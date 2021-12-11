@@ -1,8 +1,7 @@
-set(TEST test_${LIB}_core)
+set(TEST test_${LIB}_ast)
 
 add_executable(${TEST}
-    id_test.cpp
-    value_test.cpp
+    ast_test.cpp
     )
 
 target_link_libraries(${TEST}
