@@ -4,3 +4,8 @@
 /lib/
 
 /compile_commands.json
+
+#!mod
+/src/common
+/src/vm
+#!endmod

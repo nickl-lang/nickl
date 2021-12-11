@@ -1,0 +1,2 @@
+nk_common src/common origin/master
+nk_vm     src/vm     origin/master

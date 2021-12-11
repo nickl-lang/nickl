@@ -28,9 +28,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
 
 if(BUILD_TESTS)
+    include(Test)
     enable_testing()
     find_package(GTest REQUIRED)
-    find_package(GMock REQUIRED)
 endif()
 
 add_subdirectory(src)
