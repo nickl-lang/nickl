@@ -4,6 +4,7 @@ project(nickl)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 option(BUILD_TESTS "Enable testing" ON)
+option(ENABLE_LOGGING "Enable logging" ON)
 option(ENABLE_ASAN "Enable address sanitizer" ON)
 
 set(CMAKE_CXX_STANDARD 20)
