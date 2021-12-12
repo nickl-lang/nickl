@@ -34,6 +34,9 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
+add_subdirectory(ext/common)
+add_subdirectory(ext/vm)
+
 add_subdirectory(src)
 
 add_executable(${PROJECT_NAME}
