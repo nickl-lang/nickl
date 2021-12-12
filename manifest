@@ -1,2 +1,2 @@
-nk_common src/common origin/develop
-nk_vm     src/vm     origin/develop
+nk_common ext/common origin/develop
+nk_vm     ext/vm     origin/develop
