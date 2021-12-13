@@ -1,4 +1,4 @@
-#include "nkl_lang/ast.hpp"
+#include "nkl/lang/ast.hpp"
 
 #include <algorithm>
 #include <cassert>

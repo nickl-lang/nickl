@@ -5,7 +5,7 @@
 #include <cstring>
 #include <string_view>
 
-#include "nk_utils/common.hpp"
+#include "nk/common/common.hpp"
 
 union NumericVariant {
     int8_t i8;
