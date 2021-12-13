@@ -1,6 +1,6 @@
-#include "nkl_core/core.hpp"
+#include "nkl/core/core.hpp"
 
-#include "nk_utils/logger.hpp"
+#include "nk/common/logger.hpp"
 
 LOG_USE_SCOPE(core)
 

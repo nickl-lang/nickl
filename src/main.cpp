@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "nk_utils/logger.hpp"
-#include "nkl_core/core.hpp"
+#include "nk/common/logger.hpp"
+#include "nkl/core/core.hpp"
 
 static void printErrorUsage() {
     fprintf(stderr, "See `%s --help` for usage information\n", NKL_BINARY_NAME);

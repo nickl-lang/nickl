@@ -4,9 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nk_ds/hashmap.hpp"
-#include "nkl_core/common.hpp"
-#include "nkl_core/id.hpp"
+#include "nk/common/hashmap.hpp"
+#include "nkl/core/common.hpp"
+#include "nkl/core/id.hpp"
 
 struct Type;
 using type_t = Type const *;

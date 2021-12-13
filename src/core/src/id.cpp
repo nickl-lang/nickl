@@ -1,10 +1,10 @@
-#include "nkl_core/id.hpp"
+#include "nkl/core/id.hpp"
 
 #include <cstring>
 
-#include "nk_ds/hashmap.hpp"
-#include "nk_mem/arena.hpp"
-#include "nk_utils/utils.hpp"
+#include "nk/common/arena.hpp"
+#include "nk/common/hashmap.hpp"
+#include "nk/common/utils.hpp"
 
 namespace {
 
@@ -44,7 +44,7 @@ void id_init() {
     s_id2str.init(1024);
 
 #define X(type, node_id) _defineId(id_##node_id, string{sizeof(#node_id) - 1, #node_id});
-#include "nkl_core/nodes.inl"
+#include "nkl/core/nodes.inl"
 
     s_next_id = _id_count;
 }

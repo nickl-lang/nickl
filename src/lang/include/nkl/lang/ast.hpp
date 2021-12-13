@@ -1,9 +1,9 @@
 #ifndef HEADER_GUARD_AST
 #define HEADER_GUARD_AST
 
-#include "nk_ds/sequence.hpp"
-#include "nkl_core/common.hpp"
-#include "nkl_core/id.hpp"
+#include "nk/common/sequence.hpp"
+#include "nkl/core/common.hpp"
+#include "nkl/core/id.hpp"
 
 struct Node;
 using node_ref_t = Node const *;

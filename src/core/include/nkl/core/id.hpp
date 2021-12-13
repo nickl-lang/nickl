@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nkl_core/common.hpp"
+#include "nkl/core/common.hpp"
 
 using Id = uint64_t;
 
@@ -20,7 +20,7 @@ enum EId : Id {
     id_invalid = 0,
 
 #define X(type, node_id) id_##node_id,
-#include "nkl_core/nodes.inl"
+#include "nkl/core/nodes.inl"
 
     _id_count,
 };

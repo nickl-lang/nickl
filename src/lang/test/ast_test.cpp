@@ -1,4 +1,4 @@
-#include "nkl_lang/ast.hpp"
+#include "nkl/lang/ast.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -6,9 +6,9 @@
 
 #include <gtest/gtest.h>
 
-#include "nk_mem/arena.hpp"
-#include "nk_utils/logger.hpp"
-#include "nk_utils/utils.hpp"
+#include "nk/common/arena.hpp"
+#include "nk/common/logger.hpp"
+#include "nk/common/utils.hpp"
 
 namespace {
 
