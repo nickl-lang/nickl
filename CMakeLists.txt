@@ -31,4 +31,6 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
-add_subdirectory(src)
+add_subdirectory(src/common)
+add_subdirectory(src/core)
+add_subdirectory(src/vm)
