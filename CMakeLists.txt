@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(nickl)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
-
 option(BUILD_TESTS "Enable testing" ON)
 option(ENABLE_LOGGING "Enable logging" ON)
 option(ENABLE_ASAN "Enable address sanitizer" ON)
@@ -29,13 +27,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
 
 if(BUILD_TESTS)
-    include(Test)
     enable_testing()
     find_package(GTest REQUIRED)
 endif()
 
 add_subdirectory(src)
-
-if(BUILD_TESTS)
-    add_subdirectory(test)
-endif()
