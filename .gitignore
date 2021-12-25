@@ -1,7 +1,11 @@
 /.cache/
+/.repo/
 /bin/
 /build/
-/ext/
 /lib/
+
+/manifest/
+/src/common/
+/src/vm/
 
 /compile_commands.json
