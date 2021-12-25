@@ -3,9 +3,6 @@
 /bin/
 /build/
 /lib/
-
-/manifest/
-/src/common/
-/src/vm/
+/src/
 
 /compile_commands.json
