@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_HASHMAP
-#define HEADER_GUARD_HASHMAP
+#ifndef HEADER_GUARD_NK_COMMON_HASHMAP
+#define HEADER_GUARD_NK_COMMON_HASHMAP
 
 #include <algorithm>
 #include <cstddef>
@@ -199,4 +199,4 @@ private:
     }
 };
 
-#endif // HEADER_GUARD_HASHMAP
+#endif // HEADER_GUARD_NK_COMMON_HASHMAP

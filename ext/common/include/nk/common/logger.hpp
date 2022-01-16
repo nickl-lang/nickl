@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_LOGGER
-#define HEADER_GUARD_LOGGER
+#ifndef HEADER_GUARD_NK_COMMON_LOGGER
+#define HEADER_GUARD_NK_COMMON_LOGGER
 
 #ifdef ENABLE_LOGGING
 
@@ -47,4 +47,4 @@ void _logger_init(LoggerOptions opt);
 
 #endif // ENABLE_LOGGING
 
-#endif // HEADER_GUARD_LOGGER
+#endif // HEADER_GUARD_NK_COMMON_LOGGER

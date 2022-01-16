@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_MEM
-#define HEADER_GUARD_MEM
+#ifndef HEADER_GUARD_NK_COMMON_MEM
+#define HEADER_GUARD_NK_COMMON_MEM
 
 #include <cstddef>
 
@@ -27,4 +27,4 @@ struct LibcAllocator : Allocator {
     using Allocator::alloc;
 };
 
-#endif // HEADER_GUARD_MEM
+#endif // HEADER_GUARD_NK_COMMON_MEM

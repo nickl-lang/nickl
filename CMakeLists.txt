@@ -38,3 +38,7 @@ add_subdirectory(ext/common)
 add_subdirectory(ext/vm)
 
 add_subdirectory(src)
+
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
