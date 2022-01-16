@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
-project(nickl)
+project(nk_common)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
-
-option(BUILD_TESTS "Enable testing" ON)
-option(ENABLE_LOGGING "Enable logging" ON)
-option(ENABLE_ASAN "Enable address sanitizer" ON)
+option(BUILD_TESTS "Enable testing" OFF)
+option(ENABLE_LOGGING "Enable logging" OFF)
+option(ENABLE_ASAN "Enable address sanitizer" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,11 +28,29 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
 
 if(BUILD_TESTS)
     enable_testing()
-    include(Test)
     find_package(GTest REQUIRED)
 endif()
 
-add_subdirectory(ext/common)
-add_subdirectory(ext/vm)
+set(LIB ${PROJECT_NAME})
 
-add_subdirectory(src)
+add_library(${LIB}
+    src/arena.cpp
+    src/file_utils.cpp
+    src/logger.cpp
+    src/mem.cpp
+    src/utils.cpp
+    )
+
+target_include_directories(${LIB}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+if(ENABLE_LOGGING)
+    target_compile_definitions(${LIB}
+        PUBLIC ENABLE_LOGGING
+        )
+endif()
+
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
