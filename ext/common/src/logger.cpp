@@ -22,9 +22,9 @@ static constexpr char const *c_env_var = "NK_LOG_LEVEL";
 
 static constexpr char const *c_color_none = "\x1b[0m";
 // static constexpr char const *c_color_gray = "\x1b[1;30m";
-// static constexpr char const *c_color_red = "\x1b[1;31m";
+static constexpr char const *c_color_red = "\x1b[1;31m";
 static constexpr char const *c_color_green = "\x1b[1;32m";
-// static constexpr char const *c_color_yellow = "\x1b[1;33m";
+static constexpr char const *c_color_yellow = "\x1b[1;33m";
 static constexpr char const *c_color_blue = "\x1b[1;34m";
 static constexpr char const *c_color_magenta = "\x1b[1;35m";
 // static constexpr char const *c_color_cyan = "\x1b[1;36m";
@@ -32,6 +32,8 @@ static constexpr char const *c_color_magenta = "\x1b[1;35m";
 
 constexpr char const *c_color_map[] = {
     nullptr,         // None
+    c_color_red,     // Error
+    c_color_yellow,  // Warning
     c_color_blue,    // Info
     c_color_green,   // Debug
     c_color_magenta, // Trace
@@ -39,13 +41,17 @@ constexpr char const *c_color_map[] = {
 
 constexpr char const *c_log_level_map[] = {
     nullptr,
-    "[INFO]  ",
+    "[ERROR] ",
+    "[WARNING] ",
+    "[INFO] ",
     "[DEBUG] ",
     "[TRACE] ",
 };
 
 std::string const c_env_log_level_map[] = {
     "none",
+    "error",
+    "warning",
     "info",
     "debug",
     "trace",

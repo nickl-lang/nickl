@@ -17,6 +17,8 @@ class logger : public testing::Test {
 
 TEST_F(logger, basic) {
     ;
+    LOG_ERR("This is error log")
+    LOG_WRN("This is warning log")
     LOG_INF("This is info log")
     LOG_DBG("This is debug log")
     LOG_TRC("This is trace log")
