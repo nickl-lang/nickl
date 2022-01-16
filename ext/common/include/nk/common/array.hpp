@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_ARRAY
-#define HEADER_GUARD_ARRAY
+#ifndef HEADER_GUARD_NK_COMMON_ARRAY
+#define HEADER_GUARD_NK_COMMON_ARRAY
 
 #include <cassert>
 #include <cstddef>
@@ -89,4 +89,4 @@ private:
     }
 };
 
-#endif // HEADER_GUARD_ARRAY
+#endif // HEADER_GUARD_NK_COMMON_ARRAY

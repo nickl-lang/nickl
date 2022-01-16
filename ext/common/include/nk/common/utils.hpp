@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_UTILS
-#define HEADER_GUARD_UTILS
+#ifndef HEADER_GUARD_NK_COMMON_UTILS
+#define HEADER_GUARD_NK_COMMON_UTILS
 
 #include <cstdarg>
 #include <cstdbool>
@@ -114,4 +114,4 @@ TElem *arrayWithHeaderData(THeader *header) {
     return (TElem *)roundUp((size_t)(header + 1), alignof(TElem));
 }
 
-#endif // HEADER_GUARD_UTILS
+#endif // HEADER_GUARD_NK_COMMON_UTILS

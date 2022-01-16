@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_COMMON
-#define HEADER_GUARD_COMMON
+#ifndef HEADER_GUARD_NK_COMMON_COMMON
+#define HEADER_GUARD_NK_COMMON_COMMON
 
 #include <cstddef>
 #include <cstring>
@@ -20,4 +20,4 @@ inline string cstr_to_str(char const *str) {
     return string{std::strlen(str), str};
 }
 
-#endif // HEADER_GUARD_COMMON
+#endif // HEADER_GUARD_NK_COMMON_COMMON

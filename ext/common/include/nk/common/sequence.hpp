@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_SEQUENCE
-#define HEADER_GUARD_SEQUENCE
+#ifndef HEADER_GUARD_NK_COMMON_SEQUENCE
+#define HEADER_GUARD_NK_COMMON_SEQUENCE
 
 #include <cassert>
 #include <cstddef>
@@ -133,4 +133,4 @@ private:
     }
 };
 
-#endif // HEADER_GUARD_SEQUENCE
+#endif // HEADER_GUARD_NK_COMMON_SEQUENCE

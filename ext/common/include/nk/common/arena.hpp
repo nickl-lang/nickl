@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_ARENA
-#define HEADER_GUARD_ARENA
+#ifndef HEADER_GUARD_NK_COMMON_ARENA
+#define HEADER_GUARD_NK_COMMON_ARENA
 
 #include <cstddef>
 #include <cstdint>
@@ -24,4 +24,4 @@ struct ArenaAllocator : Allocator {
     Sequence<uint8_t> _seq;
 };
 
-#endif // HEADER_GUARD_ARENA
+#endif // HEADER_GUARD_NK_COMMON_ARENA
