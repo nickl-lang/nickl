@@ -1,0 +1,4 @@
+#ifndef HEADER_GUARD_NK_VM_VM
+#define HEADER_GUARD_NK_VM_VM
+
+#endif // HEADER_GUARD_NK_VM_VM
