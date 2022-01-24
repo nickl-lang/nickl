@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nkl/core/common.hpp"
+#include "nk/common/string.hpp"
 
 using Id = uint64_t;
 

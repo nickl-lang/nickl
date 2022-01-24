@@ -10,6 +10,7 @@
 
 #include "nk/common/common.hpp"
 #include "nk/common/mem.hpp"
+#include "nk/common/string.hpp"
 
 #define _CAT(x, y) x##y
 #define CAT(x, y) _CAT(x, y)

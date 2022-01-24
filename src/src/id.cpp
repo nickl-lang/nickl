@@ -29,7 +29,7 @@ void _defineId(Id id, string str) {
     char *mem = (char *)s_arena.alloc(str.size);
     std::memcpy(mem, str.data, str.size);
 
-    string str_copy{str.size, mem};
+    string str_copy{mem, str.size};
     s_str2id.insert(str_copy) = id;
     s_id2str.insert(id) = str_copy;
 }
@@ -43,7 +43,7 @@ void id_init() {
     s_str2id.init(1024);
     s_id2str.init(1024);
 
-#define X(type, node_id) _defineId(id_##node_id, string{sizeof(#node_id) - 1, #node_id});
+#define X(type, node_id) _defineId(id_##node_id, string{#node_id, sizeof(#node_id) - 1});
 #include "nkl/core/nodes.inl"
 
     s_next_id = _id_count;
@@ -59,11 +59,11 @@ void id_deinit() {
 
 string id_to_str(Id id) {
     string *pstr = s_id2str.find(id);
-    return pstr ? *pstr : string{0, nullptr};
+    return pstr ? *pstr : string{nullptr, 0};
 }
 
 Id cstr_to_id(char const *str) {
-    return str_to_id(string{std::strlen(str), str});
+    return str_to_id(string{str, std::strlen(str)});
 }
 
 Id str_to_id(string str) {

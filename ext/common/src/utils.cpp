@@ -45,5 +45,5 @@ string string_vformat(Allocator *allocator, char const *fmt, va_list ap) {
     std::vsnprintf(data, n + 1, fmt, ap_copy);
     va_end(ap_copy);
 
-    return string{n, data};
+    return string{data, n};
 }

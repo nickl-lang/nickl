@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "nk/common/sequence.hpp"
 #include "nk/common/logger.hpp"
 
 LOG_USE_SCOPE(mem)
