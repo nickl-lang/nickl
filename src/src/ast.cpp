@@ -412,7 +412,7 @@ Node Ast::make_fn_type(Id name, NamedNodeArray params, node_ref_t ret_type) {
 Node Ast::make_string_literal(Allocator *allocator, string str) {
     char *ast_str = allocator->alloc<char>(str.size);
     std::strncpy(ast_str, str.data, str.size);
-    return Node{{.str = {{str.size, ast_str}}}, id_string_literal};
+    return Node{{.str = {{ast_str, str.size}}}, id_string_literal};
 }
 
 Node Ast::make_struct_literal(node_ref_t type, NamedNodeArray fields) {
@@ -695,5 +695,5 @@ string ast_inspect(Allocator *allocator, node_ref_t node) {
     auto str = _inspect(node);
     char *data = allocator->alloc<char>(str.size());
     std::strncpy(data, str.c_str(), str.size());
-    return string{str.size(), data};
+    return string{data, str.size()};
 }
