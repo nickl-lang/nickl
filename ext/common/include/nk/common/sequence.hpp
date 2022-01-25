@@ -126,11 +126,6 @@ private:
     T *_top() const {
         return size == 0 ? &at(0) : &at(size - 1) + 1;
     }
-
-    size_t _padding(size_t align) const {
-        size_t const top = (size_t)_top();
-        return roundUp(top, align) - top;
-    }
 };
 
 #endif // HEADER_GUARD_NK_COMMON_SEQUENCE

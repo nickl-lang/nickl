@@ -1,5 +1,7 @@
 #include "nk/common/array.hpp"
 
+#include <cstring>
+
 #include <gtest/gtest.h>
 
 #include "nk/common/utils.hpp"
@@ -53,4 +55,32 @@ TEST_F(array, capacity) {
         ar.push() = i;
         EXPECT_EQ(ar.capacity, ceilToPowerOf2(i));
     }
+}
+
+TEST_F(array, zero_capacity) {
+    auto ar = Array<uint8_t>::create(0);
+    DEFER({ ar.deinit(); })
+
+    EXPECT_EQ(ar.capacity, 0);
+    EXPECT_EQ(ar.size, 0);
+    EXPECT_EQ(ar.data, nullptr);
+
+    ar.push();
+
+    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_EQ(ar.size, 1);
+    EXPECT_NE(ar.data, nullptr);
+}
+
+TEST_F(array, zero_init) {
+    Array<uint8_t> ar;
+    DEFER({ ar.deinit(); })
+
+    std::memset(&ar, 0, sizeof(ar));
+
+    ar.push() = 42;
+
+    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_EQ(ar.size, 1);
+    EXPECT_EQ(ar.data[0], 42);
 }

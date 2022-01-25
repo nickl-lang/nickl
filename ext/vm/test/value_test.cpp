@@ -42,8 +42,8 @@ TEST_F(value, array) {
 
     EXPECT_EQ(type, type_get_array(i32_t, c_array_size));
 
-    EXPECT_EQ(type->as.arr_t.elem_type, i32_t);
-    EXPECT_EQ(type->as.arr_t.elem_count, c_array_size);
+    EXPECT_EQ(type->as.arr.elem_type, i32_t);
+    EXPECT_EQ(type->as.arr.elem_count, c_array_size);
 }
 
 TEST_F(value, ptr) {
@@ -60,7 +60,7 @@ TEST_F(value, ptr) {
     auto const type_t = type_get_typeref();
     EXPECT_NE(type, type_get_ptr(type_t));
 
-    EXPECT_EQ(type->as.ptr_t.target_type, void_t);
+    EXPECT_EQ(type->as.ptr.target_type, void_t);
 }
 
 static void _plus(value_t res, value_t a, value_t b) {
@@ -70,7 +70,7 @@ static void _plus(value_t res, value_t a, value_t b) {
 TEST_F(value, fn) {
     auto const i64_t = type_get_numeric(Int64);
     type_t params[] = {i64_t, i64_t};
-    TypeArray params_ar{sizeof(params) / sizeof(void *), params};
+    TypeArray params_ar{params, sizeof(params) / sizeof(void *)};
 
     auto const params_t = type_get_tuple(&m_arena, params_ar);
 
@@ -85,12 +85,12 @@ TEST_F(value, fn) {
 
     EXPECT_NE(type, type_get_fn(i64_t, params_t, 1, (void *)_plus, nullptr));
 
-    EXPECT_EQ(type->as.fn_t.ret_type, i64_t);
+    EXPECT_EQ(type->as.fn.ret_t, i64_t);
 
-    ASSERT_EQ(type->as.fn_t.param_types_tuple->as.tuple_t.types.size, 2);
+    ASSERT_EQ(type->as.fn.args_t->as.tuple.elems.size, 2);
 
-    EXPECT_EQ(type->as.fn_t.param_types_tuple->as.tuple_t.types.data[0].type, i64_t);
-    EXPECT_EQ(type->as.fn_t.param_types_tuple->as.tuple_t.types.data[1].type, i64_t);
+    EXPECT_EQ(type->as.fn.args_t->as.tuple.elems.data[0].type, i64_t);
+    EXPECT_EQ(type->as.fn.args_t->as.tuple.elems.data[1].type, i64_t);
 }
 
 TEST_F(value, numeric) {
@@ -132,7 +132,7 @@ TEST_F(value, numeric) {
 
 TEST_F(value, tuple) {
     type_t types[] = {type_get_void(), type_get_typeref(), type_get_numeric(Int16)};
-    TypeArray types_ar{sizeof(types) / sizeof(void *), types};
+    TypeArray types_ar{types, sizeof(types) / sizeof(void *)};
 
     auto const type = type_get_tuple(&m_arena, types_ar);
 
@@ -143,14 +143,14 @@ TEST_F(value, tuple) {
 
     EXPECT_EQ(type, type_get_tuple(&m_arena, types_ar));
 
-    ASSERT_EQ(type->as.tuple_t.types.size, 3);
+    ASSERT_EQ(type->as.tuple.elems.size, 3);
 
-    EXPECT_EQ(type->as.tuple_t.types.data[0].type, type_get_void());
-    EXPECT_EQ(type->as.tuple_t.types.data[0].offset, 0);
-    EXPECT_EQ(type->as.tuple_t.types.data[1].type, type_get_typeref());
-    EXPECT_EQ(type->as.tuple_t.types.data[1].offset, 0);
-    EXPECT_EQ(type->as.tuple_t.types.data[2].type, type_get_numeric(Int16));
-    EXPECT_EQ(type->as.tuple_t.types.data[2].offset, 8);
+    EXPECT_EQ(type->as.tuple.elems.data[0].type, type_get_void());
+    EXPECT_EQ(type->as.tuple.elems.data[0].offset, 0);
+    EXPECT_EQ(type->as.tuple.elems.data[1].type, type_get_typeref());
+    EXPECT_EQ(type->as.tuple.elems.data[1].offset, 0);
+    EXPECT_EQ(type->as.tuple.elems.data[2].type, type_get_numeric(Int16));
+    EXPECT_EQ(type->as.tuple.elems.data[2].offset, 8);
 }
 
 TEST_F(value, typeref) {
