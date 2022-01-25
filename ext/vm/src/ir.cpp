@@ -36,7 +36,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 ss << ", ";
             }
             auto arg_t = funct.args_t->as.tuple.elems.data[i].type;
-            ss << "$arg" << i << ": " << type_name(&tmp_arena, arg_t).view();
+            ss << "$arg" << i << ":" << type_name(&tmp_arena, arg_t).view();
         }
 
         ss << ") -> " << type_name(&tmp_arena, funct.ret_t).view() << " {\n\n";
@@ -58,9 +58,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             for (size_t ii = block.first_instr; ii < block.instr_count; ii++) {
                 auto &instr = prog.instrs.data[ii];
 
-                auto const inspectRef = [&](Ref const &ref) {
-                    // TODO handle indirection and offset
-                    // TODO print types
+                auto const inspect_ref = [&](Ref const &ref) {
+                    if (ref.is_indirect) {
+                        ss << "[";
+                    }
                     switch (ref.ref_type) {
                     case Ref_Frame:
                         break;
@@ -71,14 +72,22 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$ret";
                         break;
                     case Ref_Global:
-                        // TODO inspect global ref
+                        ss << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
-                        // TODO inspect const ref
+                        // TODO actually inspect the const ref value
+                        ss << "<" << ref.value.data << ">";
                         break;
                     default:
                         break;
                     }
+                    if (ref.is_indirect) {
+                        ss << "]";
+                    }
+                    if (ref.offset > 0) {
+                        ss << "+" << ref.offset;
+                    }
+                    ss << ":" << type_name(&tmp_arena, ref.type).view();
                 };
 
                 auto const first_p = ss.tellp();
@@ -86,7 +95,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 ss << "  ";
 
                 if (instr.arg[0].arg_type == Arg_Ref) {
-                    inspectRef(instr.arg[0].as.ref);
+                    inspect_ref(instr.arg[0].as.ref);
                     ss << " := ";
                 }
 
@@ -98,7 +107,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     case Arg_Ref: {
                         ss << ((i > 1) ? ", " : " ");
                         auto &ref = arg.as.ref;
-                        inspectRef(ref);
+                        inspect_ref(ref);
                         break;
                     }
                     case Arg_BlockId:
@@ -141,6 +150,8 @@ void ProgramBuilder::init() {
     prog.blocks.init();
     prog.instrs.init();
 
+    prog.globals.init();
+
     prog.arena.init();
 }
 
@@ -149,6 +160,8 @@ void ProgramBuilder::deinit() {
     m_cur_block = nullptr;
 
     prog.arena.deinit();
+
+    prog.globals.deinit();
 
     prog.instrs.deinit();
     prog.blocks.deinit();

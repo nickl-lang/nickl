@@ -314,6 +314,8 @@ type_t type_get_void() {
 }
 
 string type_name(Allocator *allocator, type_t type) {
+    // TODO rewrite with stringstream
+
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
