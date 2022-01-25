@@ -44,8 +44,8 @@ struct _type_array {
 using FuncPtr = void (*)(type_t self, value_t ret, value_t args);
 
 struct _type_fn {
-    type_t ret_type;
-    type_t param_types_tuple;
+    type_t ret_t;
+    type_t args_t;
     union {
         void *native_ptr;
         FuncPtr ptr;
@@ -88,23 +88,23 @@ struct TupleElemInfo {
 };
 
 struct TupleElemInfoArray {
-    size_t size;
     TupleElemInfo *data;
+    size_t size;
 };
 
 struct _type_tuple {
-    TupleElemInfoArray types;
+    TupleElemInfoArray elems;
 };
 
 struct Type {
     union {
-        _type_null null_t;
+        _type_null null;
 
-        _type_array arr_t;
-        _type_fn fn_t;
-        _type_numeric num_t;
-        _type_ptr ptr_t;
-        _type_tuple tuple_t;
+        _type_array arr;
+        _type_fn fn;
+        _type_numeric num;
+        _type_ptr ptr;
+        _type_tuple tuple;
     } as;
     uint64_t id;
     uint64_t size;
@@ -113,8 +113,8 @@ struct Type {
 };
 
 struct TypeArray {
-    size_t size;
     type_t const *data;
+    size_t size;
 };
 
 void types_init();
@@ -130,16 +130,31 @@ type_t type_get_void();
 
 string type_name(Allocator *allocator, type_t type);
 
-value_t val_undefined();
-
-void *val_data(value_t val);
-type_t val_typeof(value_t val);
-size_t val_sizeof(value_t val);
-size_t val_alignof(value_t val);
-
-value_t val_reinterpret_cast(type_t type, value_t val);
-
 bool val_isTrue(value_t val);
+
+inline value_t val_undefined() {
+    return value_t{nullptr, nullptr};
+}
+
+inline void *val_data(value_t val) {
+    return val.data;
+}
+
+inline type_t val_typeof(value_t val) {
+    return val.type;
+}
+
+inline size_t val_sizeof(value_t val) {
+    return val.type->size;
+}
+
+inline size_t val_alignof(value_t val) {
+    return val.type->alignment;
+}
+
+inline value_t val_reinterpret_cast(type_t type, value_t val) {
+    return value_t{val.data, type};
+}
 
 #define val_as(type, val) (*(type *)(val).data)
 

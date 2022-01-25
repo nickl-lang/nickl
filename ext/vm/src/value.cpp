@@ -79,7 +79,7 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     size_t alignment = 0;
     size_t offset = 0;
 
-    TupleElemInfoArray const info_ar{types.size, s_typearena.alloc<TupleElemInfo>(types.size)};
+    TupleElemInfoArray const info_ar{s_typearena.alloc<TupleElemInfo>(types.size), types.size};
 
     for (size_t i = 0; i < types.size; i++) {
         type_t const type = types.data[i * stride];
@@ -97,12 +97,12 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
 string _typeName(Allocator *allocator, type_t type) {
     switch (type->typeclass_id) {
     case Type_Array: {
-        string s = _typeName(allocator, type->as.arr_t.elem_type);
+        string s = _typeName(allocator, type->as.arr.elem_type);
         return string_format(
-            allocator, "Array(%.*s, %lu)", s.size, s.data, type->as.arr_t.elem_count);
+            allocator, "Array(%.*s, %lu)", s.size, s.data, type->as.arr.elem_count);
     }
     case Type_Numeric:
-        switch (type->as.num_t.value_type) {
+        switch (type->as.num.value_type) {
         case Int0:
             return cstr_to_str("i0");
         case Int1:
@@ -136,7 +136,7 @@ string _typeName(Allocator *allocator, type_t type) {
             return string{nullptr, 0};
         }
     case Type_Ptr: {
-        string s = _typeName(allocator, type->as.ptr_t.target_type);
+        string s = _typeName(allocator, type->as.ptr.target_type);
         return string_format(allocator, "Ptr(%.*s)", s.size, s.data);
     }
     case Type_Typeref:
@@ -145,7 +145,7 @@ string _typeName(Allocator *allocator, type_t type) {
         return cstr_to_str("void");
     case Type_Tuple: {
         string s = cstr_to_str("Tuple(");
-        TupleElemInfoArray const info = type->as.tuple_t.types;
+        TupleElemInfoArray const info = type->as.tuple.elems;
         for (size_t i = 0; i < info.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
             string ts = _typeName(allocator, info.data[i].type);
@@ -156,13 +156,13 @@ string _typeName(Allocator *allocator, type_t type) {
     }
     case Type_Fn: {
         string s = cstr_to_str("Fn((");
-        type_t const params = type->as.fn_t.param_types_tuple;
-        for (size_t i = 0; i < params->as.tuple_t.types.size; i++) {
+        type_t const params = type->as.fn.args_t;
+        for (size_t i = 0; i < params->as.tuple.elems.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string const ts = _typeName(allocator, params->as.tuple_t.types.data[i].type);
+            string const ts = _typeName(allocator, params->as.tuple.elems.data[i].type);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
-        string const rts = _typeName(allocator, type->as.fn_t.ret_type);
+        string const rts = _typeName(allocator, type->as.fn.ret_t);
         s = string_format(allocator, "%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
         return s;
     }
@@ -199,8 +199,8 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
     if (res.inserted) {
         res.type->size = elem_count * elem_type->size;
         res.type->alignment = elem_type->alignment;
-        res.type->as.arr_t.elem_type = elem_type;
-        res.type->as.arr_t.elem_count = elem_count;
+        res.type->as.arr.elem_type = elem_type;
+        res.type->as.arr.elem_count = elem_count;
     }
     return res.type;
 }
@@ -221,10 +221,10 @@ type_t type_get_fn(type_t ret_t, type_t params_t, size_t decl_id, void *body_ptr
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
-        res.type->as.fn_t.ret_type = ret_t;
-        res.type->as.fn_t.param_types_tuple = params_t;
-        res.type->as.fn_t.body.native_ptr = body_ptr;
-        res.type->as.fn_t.closure = closure;
+        res.type->as.fn.ret_t = ret_t;
+        res.type->as.fn.args_t = params_t;
+        res.type->as.fn.body.native_ptr = body_ptr;
+        res.type->as.fn.closure = closure;
     }
     return res.type;
 }
@@ -242,7 +242,7 @@ type_t type_get_numeric(ENumericValueType value_type) {
         size_t const size = value_type & NUM_TYPE_SIZE_MASK;
         res.type->size = size;
         res.type->alignment = size;
-        res.type->as.num_t.value_type = value_type;
+        res.type->as.num.value_type = value_type;
     }
     return res.type;
 }
@@ -259,7 +259,7 @@ type_t type_get_ptr(type_t target_type) {
     if (res.inserted) {
         res.type->size = sizeof(void *);
         res.type->alignment = alignof(void *);
-        res.type->as.ptr_t.target_type = target_type;
+        res.type->as.ptr.target_type = target_type;
     }
     return res.type;
 }
@@ -280,11 +280,11 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
     }
     _TypeQueryRes res = _getType({fp_size, (uint8_t *)fp});
     if (res.inserted) {
-        _TupleLayout layout = _calcTupleLayout({types.size, types.data}, 1);
+        _TupleLayout layout = _calcTupleLayout({types.data, types.size}, 1);
 
         res.type->size = layout.size;
         res.type->alignment = layout.alignment;
-        res.type->as.tuple_t.types = layout.info_ar;
+        res.type->as.tuple.elems = layout.info_ar;
     }
     return res.type;
 }
@@ -324,30 +324,6 @@ string type_name(Allocator *allocator, type_t type) {
     std::memcpy(data, tmp_str.data, tmp_str.size);
 
     return string{data, tmp_str.size};
-}
-
-value_t val_undefined() {
-    return value_t{nullptr, nullptr};
-}
-
-void *val_data(value_t val) {
-    return val.data;
-}
-
-type_t val_typeof(value_t val) {
-    return val.type;
-}
-
-size_t val_sizeof(value_t val) {
-    return val.type->size;
-}
-
-size_t val_alignof(value_t val) {
-    return val.type->alignment;
-}
-
-value_t val_reinterpret_cast(type_t type, value_t val) {
-    return value_t{val.data, type};
 }
 
 bool val_isTrue(value_t val) {

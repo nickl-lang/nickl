@@ -11,9 +11,9 @@
 
 template <class T>
 struct Array {
+    T *data;
     size_t size;
     size_t capacity;
-    T *data;
 
     static Array create(size_t cap = c_init_capacity) {
         Array ar;
@@ -22,10 +22,8 @@ struct Array {
     }
 
     void init(size_t cap = c_init_capacity) {
-        assert(cap > 0 && "array capacity cannot be zero");
-
         size = 0;
-        capacity = ceilToPowerOf2(cap);
+        capacity = cap;
         data = nullptr;
 
         _realloc(capacity);
@@ -35,7 +33,7 @@ struct Array {
         lang_free(data);
 
         size = 0;
-        capacity = ceilToPowerOf2(0);
+        capacity = 0;
         data = nullptr;
     }
 
@@ -75,7 +73,7 @@ struct Array {
     }
 
 private:
-    static constexpr size_t c_init_capacity = 1;
+    static constexpr size_t c_init_capacity = 0;
 
     T *_top() {
         assert(data && "uninitialized array access");
@@ -83,9 +81,12 @@ private:
     }
 
     void _realloc(size_t cap) {
-        void *new_data = lang_realloc((void *)data, (capacity = ceilToPowerOf2(cap)) * sizeof(T));
-        assert(new_data && "allocation failed");
-        data = (T *)new_data;
+        if (cap > 0) {
+            void *new_data =
+                lang_realloc((void *)data, (capacity = ceilToPowerOf2(cap)) * sizeof(T));
+            assert(new_data && "allocation failed");
+            data = (T *)new_data;
+        }
     }
 };
 
