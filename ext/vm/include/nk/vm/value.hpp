@@ -132,6 +132,8 @@ string type_name(Allocator *allocator, type_t type);
 
 bool val_isTrue(value_t val);
 
+string val_inspect(Allocator *allocator, value_t val);
+
 inline value_t val_undefined() {
     return value_t{nullptr, nullptr};
 }
@@ -142,6 +144,10 @@ inline void *val_data(value_t val) {
 
 inline type_t val_typeof(value_t val) {
     return val.type;
+}
+
+inline typeid_t val_typeid(value_t val) {
+    return val.type->typeclass_id;
 }
 
 inline size_t val_sizeof(value_t val) {

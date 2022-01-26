@@ -98,9 +98,9 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
 void _typeName(type_t type, std::ostringstream &ss) {
     switch (type->typeclass_id) {
     case Type_Array:
-        ss << "Array(";
+        ss << "array{";
         _typeName(type->as.arr.elem_type, ss);
-        ss << ", " << type->as.arr.elem_count << ")";
+        ss << ", " << type->as.arr.elem_count << "}";
         break;
     case Type_Numeric:
         switch (type->as.num.value_type) {
@@ -135,9 +135,9 @@ void _typeName(type_t type, std::ostringstream &ss) {
         ss << (type->as.num.value_type & NUM_TYPE_SIZE_MASK) * 8;
         break;
     case Type_Ptr:
-        ss << "Ptr(";
+        ss << "ptr{";
         _typeName(type->as.ptr.target_type, ss);
-        ss << ")";
+        ss << "}";
         break;
     case Type_Typeref:
         ss << "type";
@@ -146,7 +146,7 @@ void _typeName(type_t type, std::ostringstream &ss) {
         ss << "void";
         break;
     case Type_Tuple: {
-        ss << "Tuple(";
+        ss << "tuple{";
         TupleElemInfoArray const info = type->as.tuple.elems;
         for (size_t i = 0; i < info.size; i++) {
             if (i) {
@@ -154,11 +154,11 @@ void _typeName(type_t type, std::ostringstream &ss) {
             }
             _typeName(info.data[i].type, ss);
         }
-        ss << ")";
+        ss << "}";
         break;
     }
     case Type_Fn: {
-        ss << "Fn((";
+        ss << "fn{(";
         type_t const params = type->as.fn.args_t;
         for (size_t i = 0; i < params->as.tuple.elems.size; i++) {
             if (i) {
@@ -168,11 +168,62 @@ void _typeName(type_t type, std::ostringstream &ss) {
         }
         ss << "), ";
         _typeName(type->as.fn.ret_t, ss);
-        ss << ")";
+        ss << "}";
         break;
     }
     default:
         ss << "type{id=" << type->id << "}";
+        break;
+    }
+}
+
+void _valInspect(value_t val, std::ostringstream &ss) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    switch (val_typeid(val)) {
+    case Type_Array: {
+        // TODO inspect array
+        break;
+    }
+    case Type_Fn: {
+        // TODO inspect fn
+        break;
+    }
+    case Type_Numeric: {
+        // TODO handle all numeric types in inspect
+        ss << val_as(int64_t, val);
+        break;
+    }
+    case Type_Ptr:
+        ss << val_data(val);
+        break;
+    case Type_Tuple: {
+        ss << "(";
+        auto type = val_typeof(val);
+        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+            if (i) {
+                ss << " ";
+            }
+            // TODO factor out tuple layout calculations
+            _valInspect(
+                value_t{
+                    ((uint8_t *)val_data(val)) + type->as.tuple.elems.data[i].offset,
+                    type->as.tuple.elems.data[i].type},
+                ss);
+            ss << ",";
+        }
+        ss << ")";
+        break;
+    }
+    case Type_Typeref:
+        ss << type_name(&tmp_arena, val_typeof(val)).view();
+        break;
+    case Type_Void:
+        ss << "void{}";
+        break;
+    default:
+        assert(!"unreachable");
         break;
     }
 }
@@ -340,6 +391,17 @@ bool val_isTrue(value_t val) {
     default:
         return true;
     }
+}
+
+string val_inspect(Allocator *allocator, value_t val) {
+    std::ostringstream ss;
+    _valInspect(val, ss);
+    auto str = ss.str();
+
+    char *data = (char *)allocator->alloc(str.size());
+    std::memcpy(data, str.data(), str.size());
+
+    return string{data, str.size()};
 }
 
 } // namespace vm

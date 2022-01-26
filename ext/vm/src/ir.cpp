@@ -19,12 +19,12 @@ static char const *s_ir_names[] = {
 };
 
 void _inspect(Program const &prog, std::ostringstream &ss) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
     static constexpr std::streamoff c_comment_padding = 50;
 
     ss << std::setfill(' ');
-
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
 
     for (size_t fi = 0; fi < prog.functs.size; fi++) {
         auto &funct = prog.functs.data[fi];
@@ -75,8 +75,9 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
-                        // TODO actually inspect the const ref value
-                        ss << "<" << ref.value.data << ">";
+                        ss << "<"
+                           << val_inspect(&tmp_arena, value_t{ref.value.data, ref.type}).view()
+                           << ">";
                         break;
                     default:
                         break;
