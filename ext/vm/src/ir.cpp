@@ -1,6 +1,7 @@
 #include "nk/vm/ir.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <iomanip>
 #include <sstream>
 
@@ -22,7 +23,6 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
     ss << std::setfill(' ');
 
-    // TODO Either get rid of ss or this allocator
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -32,7 +32,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         ss << "fn " << funct.name.view() << "(";
 
         for (size_t i = 0; i < funct.args_t->as.tuple.elems.size; i++) {
-            if (i > 0) {
+            if (i) {
                 ss << ", ";
             }
             auto arg_t = funct.args_t->as.tuple.elems.data[i].type;
@@ -84,7 +84,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     if (ref.is_indirect) {
                         ss << "]";
                     }
-                    if (ref.offset > 0) {
+                    if (ref.offset) {
                         ss << "+" << ref.offset;
                     }
                     ss << ":" << type_name(&tmp_arena, ref.type).view();

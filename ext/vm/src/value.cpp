@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <sstream>
 
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
@@ -94,80 +95,85 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     return _TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
 }
 
-string _typeName(Allocator *allocator, type_t type) {
+void _typeName(type_t type, std::ostringstream &ss) {
     switch (type->typeclass_id) {
-    case Type_Array: {
-        string s = _typeName(allocator, type->as.arr.elem_type);
-        return string_format(
-            allocator, "Array(%.*s, %lu)", s.size, s.data, type->as.arr.elem_count);
-    }
+    case Type_Array:
+        ss << "Array(";
+        _typeName(type->as.arr.elem_type, ss);
+        ss << ", " << type->as.arr.elem_count << ")";
+        break;
     case Type_Numeric:
         switch (type->as.num.value_type) {
         case Int0:
-            return cstr_to_str("i0");
-        case Int1:
-            return cstr_to_str("i1");
         case Int8:
-            return cstr_to_str("i8");
         case Int16:
-            return cstr_to_str("i16");
         case Int32:
-            return cstr_to_str("i32");
         case Int64:
-            return cstr_to_str("i64");
+            ss << "i";
+            break;
+        case Int1:
+            ss << "i1";
+            return;
         case Uint0:
-            return cstr_to_str("u0");
-        case Uint1:
-            return cstr_to_str("u1");
         case Uint8:
-            return cstr_to_str("u8");
         case Uint16:
-            return cstr_to_str("u16");
         case Uint32:
-            return cstr_to_str("u32");
         case Uint64:
-            return cstr_to_str("u64");
+            ss << "u";
+            break;
+        case Uint1:
+            ss << "u1";
+            return;
         case Float32:
-            return cstr_to_str("f32");
         case Float64:
-            return cstr_to_str("f64");
+            ss << "f";
+            break;
         default:
             assert(!"unreachable");
-            return string{nullptr, 0};
+            break;
         }
-    case Type_Ptr: {
-        string s = _typeName(allocator, type->as.ptr.target_type);
-        return string_format(allocator, "Ptr(%.*s)", s.size, s.data);
-    }
+        ss << (type->as.num.value_type & NUM_TYPE_SIZE_MASK) * 8;
+        break;
+    case Type_Ptr:
+        ss << "Ptr(";
+        _typeName(type->as.ptr.target_type, ss);
+        ss << ")";
+        break;
     case Type_Typeref:
-        return cstr_to_str("type");
+        ss << "type";
+        break;
     case Type_Void:
-        return cstr_to_str("void");
+        ss << "void";
+        break;
     case Type_Tuple: {
-        string s = cstr_to_str("Tuple(");
+        ss << "Tuple(";
         TupleElemInfoArray const info = type->as.tuple.elems;
         for (size_t i = 0; i < info.size; i++) {
-            char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string ts = _typeName(allocator, info.data[i].type);
-            s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
+            if (i) {
+                ss << ", ";
+            }
+            _typeName(info.data[i].type, ss);
         }
-        s = string_format(allocator, "%.*s)", s.size, s.data);
-        return s;
+        ss << ")";
+        break;
     }
     case Type_Fn: {
-        string s = cstr_to_str("Fn((");
+        ss << "Fn((";
         type_t const params = type->as.fn.args_t;
         for (size_t i = 0; i < params->as.tuple.elems.size; i++) {
-            char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string const ts = _typeName(allocator, params->as.tuple.elems.data[i].type);
-            s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
+            if (i) {
+                ss << ", ";
+            }
+            _typeName(params->as.tuple.elems.data[i].type, ss);
         }
-        string const rts = _typeName(allocator, type->as.fn.ret_t);
-        s = string_format(allocator, "%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
-        return s;
+        ss << "), ";
+        _typeName(type->as.fn.ret_t, ss);
+        ss << ")";
+        break;
     }
     default:
-        return string_format(allocator, "type{id=%lu}", type->id);
+        ss << "type{id=" << type->id << "}";
+        break;
     }
 }
 
@@ -314,18 +320,14 @@ type_t type_get_void() {
 }
 
 string type_name(Allocator *allocator, type_t type) {
-    // TODO rewrite with stringstream
+    std::ostringstream ss;
+    _typeName(type, ss);
+    auto str = ss.str();
 
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
+    char *data = (char *)allocator->alloc(str.size());
+    std::memcpy(data, str.data(), str.size());
 
-    size_t const frame = tmp_arena._seq.size;
-    string tmp_str = _typeName(&tmp_arena, type);
-    tmp_arena._seq.pop(tmp_arena._seq.size - frame);
-    char *data = allocator->alloc<char>(tmp_str.size);
-    std::memcpy(data, tmp_str.data, tmp_str.size);
-
-    return string{data, tmp_str.size};
+    return string{data, str.size()};
 }
 
 bool val_isTrue(value_t val) {
