@@ -38,7 +38,7 @@ TEST_F(value, array) {
     EXPECT_EQ(type->typeclass_id, Type_Array);
     EXPECT_EQ(type->size, c_array_size * i32_t->size);
     EXPECT_EQ(type->alignment, i32_t->alignment);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Array(i32, 42)"});
+    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"array{i32, 42}"});
 
     EXPECT_EQ(type, type_get_array(i32_t, c_array_size));
 
@@ -53,7 +53,7 @@ TEST_F(value, ptr) {
     EXPECT_EQ(type->typeclass_id, Type_Ptr);
     EXPECT_EQ(type->size, sizeof(void *));
     EXPECT_EQ(type->alignment, alignof(void *));
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Ptr(void)"});
+    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"ptr{void}"});
 
     EXPECT_EQ(type, type_get_ptr(void_t));
 
@@ -79,7 +79,7 @@ TEST_F(value, fn) {
     EXPECT_EQ(type->typeclass_id, Type_Fn);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Fn((i64, i64), i64)"});
+    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"fn{(i64, i64), i64}"});
 
     EXPECT_EQ(type, type_get_fn(i64_t, params_t, 0, (void *)_plus, nullptr));
 
@@ -139,7 +139,7 @@ TEST_F(value, tuple) {
     EXPECT_EQ(type->typeclass_id, Type_Tuple);
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Tuple(void, type, i16)"});
+    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"tuple{void, type, i16}"});
 
     EXPECT_EQ(type, type_get_tuple(&m_arena, types_ar));
 
