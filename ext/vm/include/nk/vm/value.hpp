@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_VALUE
 #define HEADER_GUARD_NK_VM_VALUE
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -134,6 +135,9 @@ bool val_isTrue(value_t val);
 
 string val_inspect(Allocator *allocator, value_t val);
 
+size_t val_tuple_size(value_t val);
+value_t val_tuple_at(value_t val, size_t i);
+
 inline value_t val_undefined() {
     return value_t{nullptr, nullptr};
 }
@@ -163,6 +167,53 @@ inline value_t val_reinterpret_cast(type_t type, value_t val) {
 }
 
 #define val_as(type, val) (*(type *)(val).data)
+
+template <class F>
+void val_numeric_visit(value_t val, F &&f) {
+    switch (val_typeof(val)->as.num.value_type) {
+    case Int1:
+        f(val_as(int8_t, val));
+        break;
+    case Uint1:
+        f(val_as(uint8_t, val));
+        break;
+    case Int8:
+        f(val_as(int8_t, val));
+        break;
+    case Uint8:
+        f(val_as(uint8_t, val));
+        break;
+    case Int16:
+        f(val_as(int16_t, val));
+        break;
+    case Uint16:
+        f(val_as(uint16_t, val));
+        break;
+    case Int32:
+        f(val_as(int32_t, val));
+        break;
+    case Uint32:
+        f(val_as(uint32_t, val));
+        break;
+    case Int64:
+        f(val_as(int64_t, val));
+        break;
+    case Uint64:
+        f(val_as(uint64_t, val));
+        break;
+    case Float32:
+        f(val_as(float, val));
+        break;
+    case Float64:
+        f(val_as(double, val));
+        break;
+    case Int0:
+    case Uint0:
+    default:
+        assert(!"unreachable");
+        break;
+    }
+}
 
 } // namespace vm
 } // namespace nk
