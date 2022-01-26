@@ -1,6 +1,5 @@
 #include "nk/vm/value.hpp"
 
-#include <cassert>
 #include <cstring>
 #include <sstream>
 
@@ -190,27 +189,21 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         // TODO inspect fn
         break;
     }
-    case Type_Numeric: {
-        // TODO handle all numeric types in inspect
-        ss << val_as(int64_t, val);
+    case Type_Numeric:
+        val_numeric_visit(val, [&](auto const &val) {
+            ss << val;
+        });
         break;
-    }
     case Type_Ptr:
         ss << val_data(val);
         break;
     case Type_Tuple: {
         ss << "(";
-        auto type = val_typeof(val);
-        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+        for (size_t i = 0; i < val_tuple_size(val); i++) {
             if (i) {
                 ss << " ";
             }
-            // TODO factor out tuple layout calculations
-            _valInspect(
-                value_t{
-                    ((uint8_t *)val_data(val)) + type->as.tuple.elems.data[i].offset,
-                    type->as.tuple.elems.data[i].type},
-                ss);
+            _valInspect(val_tuple_at(val, i), ss);
             ss << ",";
         }
         ss << ")";
@@ -402,6 +395,18 @@ string val_inspect(Allocator *allocator, value_t val) {
     std::memcpy(data, str.data(), str.size());
 
     return string{data, str.size()};
+}
+
+size_t val_tuple_size(value_t val) {
+    return val_typeof(val)->as.tuple.elems.size;
+}
+
+value_t val_tuple_at(value_t val, size_t i) {
+    assert(i < val_tuple_size(val) && "tuple index out of range");
+    auto const type = val_typeof(val);
+    return {
+        ((uint8_t *)val_data(val)) + type->as.tuple.elems.data[i].offset,
+        type->as.tuple.elems.data[i].type};
 }
 
 } // namespace vm
