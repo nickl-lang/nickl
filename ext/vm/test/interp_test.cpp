@@ -1,4 +1,4 @@
-#include "nk/vm/vm.hpp"
+#include "nk/vm/interp.hpp"
 
 #include <cstdint>
 
@@ -13,9 +13,9 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::test)
+LOG_USE_SCOPE(nk::vm::interp::test)
 
-class vm : public testing::Test {
+class interp : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
@@ -42,9 +42,9 @@ protected:
 
 } // namespace
 
-TEST_F(vm, plus) {
+TEST_F(interp, plus) {
     buildTestIr_plus(m_builder);
-    m_translator.translateFromIr(m_builder.prog);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n\n%.*s", str.size, str.data);
@@ -52,12 +52,16 @@ TEST_F(vm, plus) {
     str = m_translator.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    // TODO expect something
+    int64_t ret = 0;
+    int64_t args[] = {4, 5};
+    val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {args, fn_t->as.fn.args_t});
+
+    EXPECT_EQ(ret, 9);
 }
 
-TEST_F(vm, not) {
+TEST_F(interp, not) {
     buildTestIr_not(m_builder);
-    m_translator.translateFromIr(m_builder.prog);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n\n%.*s", str.size, str.data);
@@ -65,5 +69,13 @@ TEST_F(vm, not) {
     str = m_translator.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    // TODO expect something
+    int64_t ret = 42;
+    int64_t arg = 1;
+    val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
+    EXPECT_EQ(ret, 0);
+
+    ret = 42;
+    arg = 0;
+    val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
+    EXPECT_EQ(ret, 1);
 }

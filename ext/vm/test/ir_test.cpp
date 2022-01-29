@@ -40,16 +40,20 @@ protected:
 
 } // namespace
 
-TEST_F(ir, basic) {
-    buildTestIr_basic(m_builder);
+TEST_F(ir, plus) {
+    buildTestIr_plus(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    // TODO expect something
 }
 
-TEST_F(ir, ifElse) {
-    buildTestIr_ifElse(m_builder);
+TEST_F(ir, not) {
+    buildTestIr_not(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    // TODO expect something
 }
