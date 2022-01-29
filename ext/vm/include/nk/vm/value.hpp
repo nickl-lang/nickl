@@ -122,7 +122,7 @@ void types_init();
 void types_deinit();
 
 type_t type_get_array(type_t elem_type, size_t elem_count);
-type_t type_get_fn(type_t ret_t, type_t params_t, size_t decl_id, void *body_ptr, void *closure);
+type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, void *body_ptr, void *closure);
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types);
@@ -137,6 +137,8 @@ string val_inspect(Allocator *allocator, value_t val);
 
 size_t val_tuple_size(value_t val);
 value_t val_tuple_at(value_t val, size_t i);
+
+size_t type_tuple_offset(type_t tuple_t, size_t i);
 
 size_t val_array_size(value_t val);
 value_t val_array_at(value_t val, size_t i);

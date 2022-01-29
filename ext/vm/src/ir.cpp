@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "nk/common/logger.hpp"
 #include "nk/common/utils.hpp"
 
 namespace nk {
@@ -12,6 +13,8 @@ namespace vm {
 namespace ir {
 
 namespace {
+
+LOG_USE_SCOPE(nk_vm_ir)
 
 static char const *s_ir_names[] = {
 #define X(NAME) #NAME,
@@ -159,11 +162,7 @@ void ProgramBuilder::init() {
     m_cur_funct = nullptr;
     m_cur_block = nullptr;
 
-    prog.functs.init();
-    prog.blocks.init();
-    prog.instrs.init();
-
-    prog.globals.init();
+    prog = {};
 
     prog.arena.init();
 }
@@ -292,7 +291,6 @@ Ref ProgramBuilder::makeConstRef(value_t val) {
     size_t val_size = val_sizeof(val);
     char *mem = (char *)prog.arena.alloc_aligned(val_size, val_alignof(val));
     std::memcpy(mem, val_data(val), val_size);
-
     return {
         .value = {val.data = mem},
         .offset = 0,
