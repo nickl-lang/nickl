@@ -258,13 +258,13 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
     return res.type;
 }
 
-type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, void *body_ptr, void *closure) {
+type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure) {
     struct {
         _FpBase base;
         size_t decl_id;
         typeid_t ret_t;
         typeid_t args_t;
-        void *body_ptr;
+        FuncPtr body_ptr;
     } fp = {};
     fp.base.id = Type_Fn;
     fp.decl_id = decl_id;
@@ -277,7 +277,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, void *body_ptr, 
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body.native_ptr = body_ptr;
+        res.type->as.fn.body = body_ptr;
         res.type->as.fn.closure = closure;
     }
     return res.type;
@@ -397,15 +397,15 @@ string val_inspect(Allocator *allocator, value_t val) {
     return string{data, str.size()};
 }
 
-size_t val_tuple_size(value_t val) {
-    return val_typeof(val)->as.tuple.elems.size;
+size_t val_tuple_size(value_t self) {
+    return val_typeof(self)->as.tuple.elems.size;
 }
 
-value_t val_tuple_at(value_t val, size_t i) {
-    assert(i < val_tuple_size(val) && "tuple index out of range");
-    auto const type = val_typeof(val);
+value_t val_tuple_at(value_t self, size_t i) {
+    assert(i < val_tuple_size(self) && "tuple index out of range");
+    auto const type = val_typeof(self);
     return {
-        ((uint8_t *)val_data(val)) + type->as.tuple.elems.data[i].offset,
+        ((uint8_t *)val_data(self)) + type->as.tuple.elems.data[i].offset,
         type->as.tuple.elems.data[i].type};
 }
 
@@ -414,14 +414,18 @@ size_t type_tuple_offset(type_t tuple_t, size_t i) {
     return tuple_t->as.tuple.elems.data[i].offset;
 }
 
-size_t val_array_size(value_t val) {
-    return val_typeof(val)->as.arr.elem_count;
+size_t val_array_size(value_t self) {
+    return val_typeof(self)->as.arr.elem_count;
 }
 
-value_t val_array_at(value_t val, size_t i) {
-    assert(i < val_array_size(val) && "array index out of range");
-    auto const type = val_typeof(val);
-    return {((uint8_t *)val_data(val)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
+value_t val_array_at(value_t self, size_t i) {
+    assert(i < val_array_size(self) && "array index out of range");
+    auto const type = val_typeof(self);
+    return {((uint8_t *)val_data(self)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
+}
+
+void val_fn_invoke(type_t self, value_t ret, value_t args) {
+    self->as.fn.body(self, ret, args);
 }
 
 } // namespace vm
