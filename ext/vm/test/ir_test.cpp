@@ -14,6 +14,8 @@ using namespace nk::vm::ir;
 
 namespace {
 
+LOG_USE_SCOPE(nk::vm::ir::test)
+
 class ir : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
@@ -40,10 +42,14 @@ protected:
 
 TEST_F(ir, basic) {
     buildTestIr_basic(m_builder);
-    std::cout << m_builder.inspect(&m_arena).view();
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, ifElse) {
     buildTestIr_ifElse(m_builder);
-    std::cout << m_builder.inspect(&m_arena).view();
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
 }
