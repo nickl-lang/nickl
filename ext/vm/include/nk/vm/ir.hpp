@@ -18,16 +18,17 @@ enum EIrCode {
 };
 
 enum ERefType {
-    Ref_Frame = 0,
+    Ref_None = 0,
+    Ref_Base,
+
+    Ref_Frame = Ref_Base,
     Ref_Arg,
     Ref_Ret,
     Ref_Global,
     Ref_Const,
     Ref_Instr,
 
-    Ref_Count,
-
-    Ref_None,
+    Ref_End,
 };
 
 struct Ref {

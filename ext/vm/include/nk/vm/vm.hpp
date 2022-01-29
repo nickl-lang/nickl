@@ -25,10 +25,17 @@ struct Instr {
     uint16_t code;
 };
 
+struct FunctInfo {
+    type_t frame_t;
+    size_t first_instr;
+    type_t funct_t;
+};
+
 struct Program {
     Array<Instr> instrs;
     type_t globals_t;
     Array<uint8_t> rodata;
+    Array<FunctInfo> funct_info;
 };
 
 struct Translator {

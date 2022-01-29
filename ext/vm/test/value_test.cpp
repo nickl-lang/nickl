@@ -63,27 +63,28 @@ TEST_F(value, ptr) {
     EXPECT_EQ(type->as.ptr.target_type, void_t);
 }
 
-static void _plus(value_t res, value_t a, value_t b) {
-    val_as(int64_t, res) = val_as(int64_t, a) + val_as(int64_t, b);
-}
-
 TEST_F(value, fn) {
+    static constexpr auto _plus = [](type_t, value_t res, value_t args) {
+        val_as(int64_t, res) =
+            val_as(int64_t, val_tuple_at(args, 0)) + val_as(int64_t, val_tuple_at(args, 1));
+    };
+
     auto const i64_t = type_get_numeric(Int64);
     type_t params[] = {i64_t, i64_t};
-    TypeArray params_ar{params, sizeof(params) / sizeof(void *)};
+    TypeArray params_ar{params, sizeof(params) / sizeof(params[0])};
 
     auto const params_t = type_get_tuple(&m_arena, params_ar);
 
-    auto const type = type_get_fn(i64_t, params_t, 0, (void *)_plus, nullptr);
+    auto const type = type_get_fn(i64_t, params_t, 0, _plus, nullptr);
 
     EXPECT_EQ(type->typeclass_id, Type_Fn);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
     EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"fn{(i64, i64), i64}"});
 
-    EXPECT_EQ(type, type_get_fn(i64_t, params_t, 0, (void *)_plus, nullptr));
+    EXPECT_EQ(type, type_get_fn(i64_t, params_t, 0, _plus, nullptr));
 
-    EXPECT_NE(type, type_get_fn(i64_t, params_t, 1, (void *)_plus, nullptr));
+    EXPECT_NE(type, type_get_fn(i64_t, params_t, 1, _plus, nullptr));
 
     EXPECT_EQ(type->as.fn.ret_t, i64_t);
 
@@ -91,6 +92,13 @@ TEST_F(value, fn) {
 
     EXPECT_EQ(type->as.fn.args_t->as.tuple.elems.data[0].type, i64_t);
     EXPECT_EQ(type->as.fn.args_t->as.tuple.elems.data[1].type, i64_t);
+
+    int64_t ret = 0;
+    int64_t args[] = {4, 5};
+
+    val_fn_invoke(type, value_t{&ret, i64_t}, value_t{args, params_t});
+
+    EXPECT_EQ(ret, 9);
 }
 
 TEST_F(value, numeric) {
@@ -132,7 +140,7 @@ TEST_F(value, numeric) {
 
 TEST_F(value, tuple) {
     type_t types[] = {type_get_void(), type_get_typeref(), type_get_numeric(Int16)};
-    TypeArray types_ar{types, sizeof(types) / sizeof(void *)};
+    TypeArray types_ar{types, sizeof(types) / sizeof(types[0])};
 
     auto const type = type_get_tuple(&m_arena, types_ar);
 

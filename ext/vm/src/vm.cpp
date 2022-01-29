@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "nk/common/logger.hpp"
+#include "nk/vm/interp.hpp"
 
 namespace nk {
 namespace vm {
@@ -99,12 +100,14 @@ void Translator::init() {
 }
 
 void Translator::deinit() {
+    prog.funct_info.deinit();
     prog.instrs.deinit();
     prog.rodata.deinit();
 }
 
 void Translator::translateFromIr(ir::Program const &ir) {
     prog.instrs.init(ir.instrs.size);
+    prog.funct_info.push(ir.functs.size);
 
     enum ERelocType {
         Reloc_Funct,
@@ -122,18 +125,11 @@ void Translator::translateFromIr(ir::Program const &ir) {
         size_t first_instr;
     };
 
-    struct FunctInfo {
-        type_t frame_t;
-        size_t first_instr;
-        type_t funct_t;
-    };
-
     assert(ir.next_funct_id == ir.functs.size && "ill-formed ir");
 
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); });
 
-    auto funct_info_ar = tmp_arena.alloc<FunctInfo>(ir.functs.size);
     auto block_info_ar = tmp_arena.alloc<BlockInfo>(ir.blocks.size);
 
     Array<Reloc> relocs{};
@@ -146,12 +142,16 @@ void Translator::translateFromIr(ir::Program const &ir) {
 
         assert(funct.next_block_id == funct.next_block_id && "ill-formed ir");
 
-        auto &funct_info = funct_info_ar[funct.id] = {};
+        auto &funct_info = prog.funct_info.data[funct.id] = {};
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
         funct_info.first_instr = prog.instrs.size;
 
-        // TODO fill body_ptr and closure
-        funct_info.funct_t = type_get_fn(funct.ret_t, funct.args_t, fi, nullptr, nullptr);
+        static constexpr auto func_body = [](type_t self, value_t ret, value_t args) {
+            interp_invoke(*(FunctInfo const *)self->as.fn.closure, ret, args);
+        };
+
+        funct_info.funct_t =
+            type_get_fn(funct.ret_t, funct.args_t, fi, func_body, &funct_info);
 
         auto _pushConst = [&](value_t val) -> size_t {
             // TODO Unify aligned push to array
@@ -240,7 +240,7 @@ void Translator::translateFromIr(ir::Program const &ir) {
 
         switch (reloc.reloc_type) {
         case Reloc_Funct:
-            arg.type = funct_info_ar[reloc.target_id].funct_t;
+            arg.type = prog.funct_info.data[reloc.target_id].funct_t;
             break;
         case Reloc_Block:
             arg.offset = block_info_ar[reloc.target_id].first_instr * sizeof(Instr);
