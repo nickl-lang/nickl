@@ -60,7 +60,7 @@ enum EArgType {
 struct Arg {
     union {
         Ref ref;
-        size_t index;
+        size_t id;
     } as;
     EArgType arg_type;
 };

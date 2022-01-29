@@ -1,11 +1,98 @@
 #include "nk/vm/vm.hpp"
 
 #include <cassert>
+#include <iomanip>
+#include <sstream>
 
 #include "nk/common/logger.hpp"
 
 namespace nk {
 namespace vm {
+
+namespace {
+
+LOG_USE_SCOPE(nk::vm)
+
+// TODO Duplicate s_ir_names in vm
+static char const *s_ir_names[] = {
+#define X(NAME) #NAME,
+#include "nk/vm/ir.inl"
+};
+
+void _inspect(Program const &prog, std::ostringstream &ss) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    ss << std::setfill(' ') << std::left;
+    static constexpr std::streamoff c_padding = 5;
+
+    auto _inspectArg = [&](Ref &arg) {
+        if (arg.is_indirect) {
+            ss << "[";
+        }
+        switch (arg.ref_type) {
+        case ir::Ref_Frame:
+            ss << "frame";
+            break;
+        case ir::Ref_Arg:
+            ss << "arg";
+            break;
+        case ir::Ref_Ret:
+            ss << "ret";
+            break;
+        case ir::Ref_Global:
+            ss << "global";
+            break;
+        case ir::Ref_Const:
+            ss << "<"
+               << val_inspect(&tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type}).view()
+               << ">";
+            break;
+        case ir::Ref_Instr:
+            ss << arg.offset / sizeof(Instr);
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        if (arg.ref_type < ir::Ref_Const) {
+            ss << "+" << arg.offset;
+        }
+        if (arg.is_indirect) {
+            ss << "]";
+        }
+        if (arg.post_offset) {
+            ss << "+" << arg.post_offset;
+        }
+        if (arg.type) {
+            ss << ":" << type_name(&tmp_arena, arg.type).view();
+        }
+    };
+
+    for (size_t i = 0; i < prog.instrs.size; i++) {
+        auto &instr = prog.instrs.data[i];
+
+        ss << std::setw(c_padding) << i;
+
+        if (instr.arg[0].ref_type != ir::Ref_None) {
+            _inspectArg(instr.arg[0]);
+            ss << " := ";
+        }
+
+        ss << s_ir_names[instr.code];
+
+        for (size_t i = 1; i < 3; i++) {
+            if (instr.arg[i].ref_type != ir::Ref_None) {
+                ss << ((i > 1) ? ", " : " ");
+                _inspectArg(instr.arg[i]);
+            }
+        }
+
+        ss << "\n";
+    }
+}
+
+} // namespace
 
 void Translator::init() {
     prog = {};
@@ -27,7 +114,7 @@ void Translator::translateFromIr(ir::Program const &ir) {
     struct Reloc {
         size_t instr_index;
         size_t arg;
-        size_t target_index;
+        size_t target_id;
         ERelocType reloc_type;
     };
 
@@ -36,8 +123,6 @@ void Translator::translateFromIr(ir::Program const &ir) {
     };
 
     struct FunctInfo {
-        type_t ret_t;
-        type_t args_t;
         type_t frame_t;
         size_t first_instr;
         type_t funct_t;
@@ -62,14 +147,17 @@ void Translator::translateFromIr(ir::Program const &ir) {
         assert(funct.next_block_id == funct.next_block_id && "ill-formed ir");
 
         auto &funct_info = funct_info_ar[funct.id] = {};
-        funct_info.ret_t = funct.ret_t;
-        funct_info.args_t = funct.args_t;
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
         funct_info.first_instr = prog.instrs.size;
 
+        // TODO fill body_ptr and closure
+        funct_info.funct_t = type_get_fn(funct.ret_t, funct.args_t, fi, nullptr, nullptr);
+
         auto _pushConst = [&](value_t val) -> size_t {
+            // TODO Unify aligned push to array
             uint8_t *ptr = &prog.rodata.push(val_sizeof(val) + val_alignof(val) - 1);
             ptr = (uint8_t *)roundUpSafe((size_t)ptr, val_alignof(val));
+            std::memcpy(ptr, val_data(val), val_sizeof(val));
             return ptr - prog.rodata.data;
         };
 
@@ -78,37 +166,39 @@ void Translator::translateFromIr(ir::Program const &ir) {
             case ir::Arg_None:
                 arg.ref_type = ir::Ref_None;
                 break;
-            case ir::Arg_Ref:
-                switch (ir_arg.as.ref.ref_type) {
+            case ir::Arg_Ref: {
+                auto const &ref = ir_arg.as.ref;
+                switch (ref.ref_type) {
                 case ir::Ref_Frame:
-                    arg.offset = type_tuple_offset(funct_info.frame_t, ir_arg.as.ref.value.index);
+                    arg.offset = type_tuple_offset(funct_info.frame_t, ref.value.index);
                     break;
                 case ir::Ref_Arg:
-                    arg.offset = type_tuple_offset(funct.args_t, ir_arg.as.ref.value.index);
+                    arg.offset = type_tuple_offset(funct.args_t, ref.value.index);
                     break;
                 case ir::Ref_Ret:
                     break;
                 case ir::Ref_Global:
-                    arg.offset = type_tuple_offset(prog.globals_t, ir_arg.as.ref.value.index);
+                    arg.offset = type_tuple_offset(prog.globals_t, ref.value.index);
                     break;
                 case ir::Ref_Const:
-                    arg.offset = _pushConst({ir_arg.as.ref.value.data, ir_arg.as.ref.type});
+                    arg.offset = _pushConst({ref.value.data, ref.type});
                     break;
                 default:
                     assert(!"unreachable");
                     break;
                 }
-                arg.post_offset = ir_arg.as.ref.offset;
-                arg.type = ir_arg.as.ref.type;
-                arg.ref_type = ir_arg.as.ref.ref_type;
-                arg.is_indirect = ir_arg.as.ref.is_indirect;
+                arg.post_offset = ref.offset;
+                arg.type = ref.type;
+                arg.ref_type = ref.ref_type;
+                arg.is_indirect = ref.is_indirect;
                 break;
+            }
             case ir::Arg_BlockId:
                 arg.ref_type = ir::Ref_Instr;
                 relocs.push() = {
                     .instr_index = ii,
                     .arg = ai,
-                    .target_index = ir_arg.as.index,
+                    .target_id = ir_arg.as.id,
                     .reloc_type = Reloc_Block,
                 };
                 break;
@@ -117,7 +207,7 @@ void Translator::translateFromIr(ir::Program const &ir) {
                 relocs.push() = {
                     .instr_index = ii,
                     .arg = ai,
-                    .target_index = ir_arg.as.index,
+                    .target_id = ir_arg.as.id,
                     .reloc_type = Reloc_Funct,
                 };
                 break;
@@ -143,32 +233,31 @@ void Translator::translateFromIr(ir::Program const &ir) {
         }
     }
 
-    for (size_t i = 0; i < ir.functs.size; i++) {
-        auto &info = funct_info_ar[i];
-
-        // TODO fill body_ptr and closure
-        info.funct_t = type_get_fn(info.ret_t, info.args_t, i, nullptr, nullptr);
-    }
-
     for (size_t i = 0; i < relocs.size; i++) {
         auto const &reloc = relocs.data[i];
 
-        Ref &ref = prog.instrs.data[reloc.instr_index].arg[reloc.arg];
+        Ref &arg = prog.instrs.data[reloc.instr_index].arg[reloc.arg];
 
         switch (reloc.reloc_type) {
         case Reloc_Funct:
-            ref.type = funct_info_ar[reloc.target_index].funct_t;
+            arg.type = funct_info_ar[reloc.target_id].funct_t;
             break;
         case Reloc_Block:
-            ref.offset = block_info_ar[reloc.target_index].first_instr * sizeof(Instr);
+            arg.offset = block_info_ar[reloc.target_id].first_instr * sizeof(Instr);
             break;
         }
     }
 }
 
 string Translator::inspect(Allocator *allocator) {
-    (void)allocator;
-    return cstr_to_str("Translator::inspect is not implemented");
+    std::ostringstream ss;
+    _inspect(prog, ss);
+    auto str = ss.str();
+
+    char *data = (char *)allocator->alloc(str.size());
+    std::memcpy(data, str.data(), str.size());
+
+    return string{data, str.size()};
 }
 
 } // namespace vm

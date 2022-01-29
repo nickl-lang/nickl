@@ -14,7 +14,7 @@ namespace ir {
 
 namespace {
 
-LOG_USE_SCOPE(nk_vm_ir)
+LOG_USE_SCOPE(nk::vm::ir)
 
 static char const *s_ir_names[] = {
 #define X(NAME) #NAME,
@@ -24,6 +24,19 @@ static char const *s_ir_names[] = {
 void _inspect(Program const &prog, std::ostringstream &ss) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
+
+    auto funct_by_id = tmp_arena.alloc<Funct *>(prog.functs.size);
+    auto block_by_id = tmp_arena.alloc<Block *>(prog.blocks.size);
+
+    for (size_t fi = 0; fi < prog.functs.size; fi++) {
+        auto &funct = prog.functs.data[fi];
+        funct_by_id[funct.id] = &funct;
+    }
+
+    for (size_t bi = 0; bi < prog.blocks.size; bi++) {
+        auto &block = prog.blocks.data[bi];
+        block_by_id[block.id] = &block;
+    }
 
     static constexpr std::streamoff c_comment_padding = 50;
 
@@ -61,12 +74,13 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             for (size_t ii = block.first_instr; ii < block.first_instr + block.instr_count; ii++) {
                 auto &instr = prog.instrs.data[ii];
 
-                auto const inspect_ref = [&](Ref const &ref) {
+                auto const _inspectRef = [&](Ref const &ref) {
                     if (ref.is_indirect) {
                         ss << "[";
                     }
                     switch (ref.ref_type) {
                     case Ref_Frame:
+                        ss << "$" << ref.value.index;
                         break;
                     case Ref_Arg:
                         ss << "$arg" << ref.value.index;
@@ -99,7 +113,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 ss << "  ";
 
                 if (instr.arg[0].arg_type == Arg_Ref) {
-                    inspect_ref(instr.arg[0].as.ref);
+                    _inspectRef(instr.arg[0].as.ref);
                     ss << " := ";
                 }
 
@@ -107,18 +121,20 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
                 for (size_t i = 1; i < 3; i++) {
                     auto &arg = instr.arg[i];
+                    if (arg.arg_type != Arg_None) {
+                        ss << ((i > 1) ? ", " : " ");
+                    }
                     switch (arg.arg_type) {
                     case Arg_Ref: {
-                        ss << ((i > 1) ? ", " : " ");
                         auto &ref = arg.as.ref;
-                        inspect_ref(ref);
+                        _inspectRef(ref);
                         break;
                     }
                     case Arg_BlockId:
-                        ss << " %" << prog.blocks.data[arg.as.index].name.view();
+                        ss << "%" << block_by_id[arg.as.id]->name.view();
                         break;
                     case Arg_FunctId:
-                        ss << " " << prog.functs.data[arg.as.index].name.view();
+                        ss << funct_by_id[arg.as.id]->name.view();
                         break;
                     case Arg_None:
                     default:
@@ -149,11 +165,11 @@ Arg _arg(Ref const &ref) {
 }
 
 Arg _arg(BlockId block) {
-    return {{.index = block.id}, Arg_BlockId};
+    return {{.id = block.id}, Arg_BlockId};
 }
 
 Arg _arg(FunctId funct) {
-    return {{.index = funct.id}, Arg_FunctId};
+    return {{.id = funct.id}, Arg_FunctId};
 }
 
 } // namespace
@@ -238,6 +254,7 @@ void ProgramBuilder::comment(string str) {
 }
 
 Local ProgramBuilder::makeLocalVar(type_t type) {
+    assert(m_cur_funct && "no current function");
     m_cur_funct->locals.push() = type;
     return {m_cur_funct->locals.size - 1};
 }

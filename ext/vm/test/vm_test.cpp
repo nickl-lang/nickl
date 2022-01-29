@@ -13,6 +13,8 @@ using namespace nk::vm;
 
 namespace {
 
+LOG_USE_SCOPE(nk::vm::test)
+
 class vm : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
@@ -43,9 +45,21 @@ protected:
 TEST_F(vm, basic) {
     buildTestIr_basic(m_builder);
     m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }
 
 TEST_F(vm, ifElse) {
     buildTestIr_ifElse(m_builder);
     m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }
