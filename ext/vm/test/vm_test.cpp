@@ -1,4 +1,4 @@
-#include "nk/vm/ir.hpp"
+#include "nk/vm/vm.hpp"
 
 #include <cstdint>
 
@@ -9,41 +9,43 @@
 #include "nk/common/utils.hpp"
 #include "utils/ir_utils.hpp"
 
-using namespace nk;
-using namespace nk::vm::ir;
+using namespace nk::vm;
 
 namespace {
 
-class ir : public testing::Test {
+class vm : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
         m_arena.init();
-        vm::types_init();
+        types_init();
 
         m_builder.init();
+        m_translator.init();
     }
 
     void TearDown() override {
+        m_translator.deinit();
         m_builder.deinit();
 
-        vm::types_deinit();
+        types_deinit();
         m_arena.deinit();
     }
 
 protected:
     ArenaAllocator m_arena;
-    ProgramBuilder m_builder;
+    ir::ProgramBuilder m_builder;
+    Translator m_translator;
 };
 
 } // namespace
 
-TEST_F(ir, basic) {
+TEST_F(vm, basic) {
     buildTestIr_basic(m_builder);
-    std::cout << m_builder.inspect(&m_arena).view();
+    m_translator.translateFromIr(m_builder.prog);
 }
 
-TEST_F(ir, ifElse) {
+TEST_F(vm, ifElse) {
     buildTestIr_ifElse(m_builder);
-    std::cout << m_builder.inspect(&m_arena).view();
+    m_translator.translateFromIr(m_builder.prog);
 }
