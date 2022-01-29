@@ -27,8 +27,8 @@ struct Instr {
 
 struct Program {
     Array<Instr> instrs;
-    size_t globals_size;
-    ArenaAllocator arena;
+    type_t globals_t;
+    Array<uint8_t> rodata;
 };
 
 struct Translator {

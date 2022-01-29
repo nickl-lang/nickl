@@ -14,8 +14,8 @@ namespace vm {
 namespace {
 
 struct ByteArray {
-    size_t size;
     uint8_t const *data;
+    size_t size;
 };
 
 struct ByteArrayHashMapContext {
@@ -57,7 +57,7 @@ _TypeQueryRes _getType(ByteArray fp) {
         return _TypeQueryRes{*found_type, false};
     }
     uint8_t *fp_copy_data = s_typearena.alloc<uint8_t>(fp.size);
-    ByteArray fp_copy = {fp.size, fp_copy_data};
+    ByteArray fp_copy = {fp_copy_data, fp.size};
     std::memcpy(fp_copy_data, fp.data, fp.size);
     Type *type = s_typearena.alloc<Type>();
     *type = Type{
@@ -244,12 +244,11 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
         _FpBase base;
         typeid_t elem_type;
         size_t elem_count;
-    } fp;
-    memset(&fp, 0, sizeof(fp));
+    } fp = {};
     fp.base.id = Type_Array;
     fp.elem_type = elem_type->id;
     fp.elem_count = elem_count;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = elem_count * elem_type->size;
         res.type->alignment = elem_type->alignment;
@@ -259,24 +258,25 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
     return res.type;
 }
 
-type_t type_get_fn(type_t ret_t, type_t params_t, size_t decl_id, void *body_ptr, void *closure) {
+type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, void *body_ptr, void *closure) {
     struct {
         _FpBase base;
         size_t decl_id;
         typeid_t ret_t;
-        typeid_t params_t;
-    } fp;
-    std::memset(&fp, 0, sizeof(fp));
+        typeid_t args_t;
+        void *body_ptr;
+    } fp = {};
     fp.base.id = Type_Fn;
     fp.decl_id = decl_id;
     fp.ret_t = ret_t->id;
-    fp.params_t = params_t->id;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    fp.args_t = args_t->id;
+    fp.body_ptr = body_ptr;
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
-        res.type->as.fn.args_t = params_t;
+        res.type->as.fn.args_t = args_t;
         res.type->as.fn.body.native_ptr = body_ptr;
         res.type->as.fn.closure = closure;
     }
@@ -287,11 +287,10 @@ type_t type_get_numeric(ENumericValueType value_type) {
     struct {
         _FpBase base;
         ENumericValueType value_type;
-    } fp;
-    std::memset(&fp, 0, sizeof(fp));
+    } fp = {};
     fp.base.id = Type_Numeric;
     fp.value_type = value_type;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         size_t const size = value_type & NUM_TYPE_SIZE_MASK;
         res.type->size = size;
@@ -305,11 +304,10 @@ type_t type_get_ptr(type_t target_type) {
     struct {
         _FpBase base;
         typeid_t target_type;
-    } fp;
-    std::memset(&fp, 0, sizeof(fp));
+    } fp = {};
     fp.base.id = Type_Ptr;
     fp.target_type = target_type->id;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(void *);
         res.type->alignment = alignof(void *);
@@ -332,7 +330,7 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
     for (size_t i = 0; i < types.size; i++) {
         fp_types[i] = types.data[i]->id;
     }
-    _TypeQueryRes res = _getType({fp_size, (uint8_t *)fp});
+    _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         _TupleLayout layout = _calcTupleLayout({types.data, types.size}, 1);
 
@@ -344,10 +342,9 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
 }
 
 type_t type_get_typeref() {
-    _FpBase fp;
-    std::memset(&fp, 0, sizeof(fp));
+    _FpBase fp = {};
     fp.id = Type_Typeref;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(size_t);
         res.type->alignment = alignof(type_t);
@@ -356,10 +353,9 @@ type_t type_get_typeref() {
 }
 
 type_t type_get_void() {
-    _FpBase fp;
-    std::memset(&fp, 0, sizeof(fp));
+    _FpBase fp = {};
     fp.id = Type_Void;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -411,6 +407,11 @@ value_t val_tuple_at(value_t val, size_t i) {
     return {
         ((uint8_t *)val_data(val)) + type->as.tuple.elems.data[i].offset,
         type->as.tuple.elems.data[i].type};
+}
+
+size_t type_tuple_offset(type_t tuple_t, size_t i) {
+    assert(i < tuple_t->as.tuple.elems.size && "tuple index out of range");
+    return tuple_t->as.tuple.elems.data[i].offset;
 }
 
 size_t val_array_size(value_t val) {
