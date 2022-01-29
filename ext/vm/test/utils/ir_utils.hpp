@@ -7,7 +7,7 @@ namespace nk {
 namespace vm {
 namespace ir {
 
-inline void buildTestIr_basic(ProgramBuilder &builder) {
+inline void buildTestIr_plus(ProgramBuilder &builder) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -33,7 +33,7 @@ inline void buildTestIr_basic(ProgramBuilder &builder) {
     builder.comment(cstr_to_str("return the result"));
 }
 
-inline void buildTestIr_ifElse(ProgramBuilder &builder) {
+inline void buildTestIr_not(ProgramBuilder &builder) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 

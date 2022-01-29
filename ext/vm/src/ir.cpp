@@ -180,6 +180,8 @@ void ProgramBuilder::init() {
 
     prog = {};
 
+    prog.entry_point_id = -1ul;
+
     prog.arena.init();
 }
 
@@ -196,8 +198,13 @@ void ProgramBuilder::deinit() {
     prog.functs.deinit();
 }
 
-FunctId ProgramBuilder::makeFunct() {
-    return {prog.next_funct_id++};
+FunctId ProgramBuilder::makeFunct(bool is_entry_point) {
+    size_t id{prog.next_funct_id++};
+    if (is_entry_point) {
+        assert(prog.entry_point_id == -1ul && "cannot have more than one entry point");
+        prog.entry_point_id = id;
+    }
+    return {id};
 }
 
 BlockId ProgramBuilder::makeLabel() {

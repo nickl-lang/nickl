@@ -10,12 +10,6 @@
 
 namespace nk {
 namespace vm {
-namespace ir {
-
-enum EIrCode {
-#define X(NAME) ir_##NAME,
-#include "nk/vm/ir.inl"
-};
 
 enum ERefType {
     Ref_None = 0,
@@ -29,6 +23,13 @@ enum ERefType {
     Ref_Instr,
 
     Ref_End,
+};
+
+namespace ir {
+
+enum EIrCode {
+#define X(NAME) ir_##NAME,
+#include "nk/vm/ir.inl"
 };
 
 struct Ref {
@@ -107,6 +108,8 @@ struct Program {
     Array<type_t> globals;
 
     ArenaAllocator arena;
+
+    size_t entry_point_id;
 };
 
 struct Local {
@@ -123,7 +126,7 @@ struct ProgramBuilder {
     void init();
     void deinit();
 
-    FunctId makeFunct();
+    FunctId makeFunct(bool is_entry_point = false);
     BlockId makeLabel();
 
     void startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t);

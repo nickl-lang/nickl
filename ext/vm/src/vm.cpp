@@ -32,31 +32,31 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "[";
         }
         switch (arg.ref_type) {
-        case ir::Ref_Frame:
+        case Ref_Frame:
             ss << "frame";
             break;
-        case ir::Ref_Arg:
+        case Ref_Arg:
             ss << "arg";
             break;
-        case ir::Ref_Ret:
+        case Ref_Ret:
             ss << "ret";
             break;
-        case ir::Ref_Global:
+        case Ref_Global:
             ss << "global";
             break;
-        case ir::Ref_Const:
+        case Ref_Const:
             ss << "<"
                << val_inspect(&tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type}).view()
                << ">";
             break;
-        case ir::Ref_Instr:
+        case Ref_Instr:
             ss << arg.offset / sizeof(Instr);
             break;
         default:
             assert(!"unreachable");
             break;
         }
-        if (arg.ref_type < ir::Ref_Const) {
+        if (arg.ref_type < Ref_Const) {
             ss << "+" << arg.offset;
         }
         if (arg.is_indirect) {
@@ -75,7 +75,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
         ss << std::setw(c_padding) << i;
 
-        if (instr.arg[0].ref_type != ir::Ref_None) {
+        if (instr.arg[0].ref_type != Ref_None) {
             _inspectArg(instr.arg[0]);
             ss << " := ";
         }
@@ -83,7 +83,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         ss << s_ir_names[instr.code];
 
         for (size_t i = 1; i < 3; i++) {
-            if (instr.arg[i].ref_type != ir::Ref_None) {
+            if (instr.arg[i].ref_type != Ref_None) {
                 ss << ((i > 1) ? ", " : " ");
                 _inspectArg(instr.arg[i]);
             }
@@ -100,12 +100,14 @@ void Translator::init() {
 }
 
 void Translator::deinit() {
+    interp_deinit();
+
     prog.funct_info.deinit();
     prog.instrs.deinit();
     prog.rodata.deinit();
 }
 
-void Translator::translateFromIr(ir::Program const &ir) {
+type_t Translator::translateFromIr(ir::Program const &ir) {
     prog.instrs.init(ir.instrs.size);
     prog.funct_info.push(ir.functs.size);
 
@@ -146,12 +148,7 @@ void Translator::translateFromIr(ir::Program const &ir) {
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
         funct_info.first_instr = prog.instrs.size;
 
-        static constexpr auto func_body = [](type_t self, value_t ret, value_t args) {
-            interp_invoke(*(FunctInfo const *)self->as.fn.closure, ret, args);
-        };
-
-        funct_info.funct_t =
-            type_get_fn(funct.ret_t, funct.args_t, fi, func_body, &funct_info);
+        funct_info.funct_t = type_get_fn(funct.ret_t, funct.args_t, fi, interp_invoke, &funct_info);
 
         auto _pushConst = [&](value_t val) -> size_t {
             // TODO Unify aligned push to array
@@ -164,23 +161,23 @@ void Translator::translateFromIr(ir::Program const &ir) {
         auto _compileArg = [&](size_t ii, size_t ai, Ref &arg, ir::Arg const &ir_arg) {
             switch (ir_arg.arg_type) {
             case ir::Arg_None:
-                arg.ref_type = ir::Ref_None;
+                arg.ref_type = Ref_None;
                 break;
             case ir::Arg_Ref: {
                 auto const &ref = ir_arg.as.ref;
                 switch (ref.ref_type) {
-                case ir::Ref_Frame:
+                case Ref_Frame:
                     arg.offset = type_tuple_offset(funct_info.frame_t, ref.value.index);
                     break;
-                case ir::Ref_Arg:
+                case Ref_Arg:
                     arg.offset = type_tuple_offset(funct.args_t, ref.value.index);
                     break;
-                case ir::Ref_Ret:
+                case Ref_Ret:
                     break;
-                case ir::Ref_Global:
+                case Ref_Global:
                     arg.offset = type_tuple_offset(prog.globals_t, ref.value.index);
                     break;
-                case ir::Ref_Const:
+                case Ref_Const:
                     arg.offset = _pushConst({ref.value.data, ref.type});
                     break;
                 default:
@@ -194,7 +191,7 @@ void Translator::translateFromIr(ir::Program const &ir) {
                 break;
             }
             case ir::Arg_BlockId:
-                arg.ref_type = ir::Ref_Instr;
+                arg.ref_type = Ref_Instr;
                 relocs.push() = {
                     .instr_index = ii,
                     .arg = ai,
@@ -203,7 +200,7 @@ void Translator::translateFromIr(ir::Program const &ir) {
                 };
                 break;
             case ir::Arg_FunctId:
-                arg.ref_type = ir::Ref_Const;
+                arg.ref_type = Ref_Const;
                 relocs.push() = {
                     .instr_index = ii,
                     .arg = ai,
@@ -247,6 +244,13 @@ void Translator::translateFromIr(ir::Program const &ir) {
             break;
         }
     }
+
+    // TODO Think about decoupling interp from the translator
+    interp_init(&prog);
+
+    size_t entry_point_id = ir.entry_point_id == -1ul ? 0 : ir.entry_point_id;
+    assert(entry_point_id < prog.funct_info.size && "ill-formed ir");
+    return prog.funct_info.data[entry_point_id].funct_t;
 }
 
 string Translator::inspect(Allocator *allocator) {

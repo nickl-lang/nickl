@@ -16,7 +16,7 @@ struct Ref {
     size_t offset;
     size_t post_offset;
     type_t type;
-    ir::ERefType ref_type;
+    ERefType ref_type;
     bool is_indirect;
 };
 
@@ -44,7 +44,7 @@ struct Translator {
     void init();
     void deinit();
 
-    void translateFromIr(ir::Program const &ir);
+    type_t translateFromIr(ir::Program const &ir);
 
     string inspect(Allocator *allocator);
 };
