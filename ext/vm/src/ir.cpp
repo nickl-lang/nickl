@@ -41,7 +41,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
         ss << ") -> " << type_name(&tmp_arena, funct.ret_t).view() << " {\n\n";
 
-        for (size_t bi = funct.first_block; bi < funct.block_count; bi++) {
+        for (size_t bi = funct.first_block; bi < funct.first_block + funct.block_count; bi++) {
             auto &block = prog.blocks.data[bi];
 
             auto const first_p = ss.tellp();
@@ -55,7 +55,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
             ss << "\n";
 
-            for (size_t ii = block.first_instr; ii < block.instr_count; ii++) {
+            for (size_t ii = block.first_instr; ii < block.first_instr + block.instr_count; ii++) {
                 auto &instr = prog.instrs.data[ii];
 
                 auto const inspect_ref = [&](Ref const &ref) {
@@ -112,10 +112,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         break;
                     }
                     case Arg_BlockId:
-                        ss << " %" << prog.blocks.data[arg.as.id].name.view();
+                        ss << " %" << prog.blocks.data[arg.as.index].name.view();
                         break;
                     case Arg_FunctId:
-                        ss << " " << prog.functs.data[arg.as.id].name.view();
+                        ss << " " << prog.functs.data[arg.as.index].name.view();
                         break;
                     case Arg_None:
                     default:
@@ -139,6 +139,18 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
         ss << "}\n";
     }
+}
+
+Arg _arg(Ref const &ref) {
+    return {{.ref = ref}, Arg_Ref};
+}
+
+Arg _arg(BlockId block) {
+    return {{.index = block.id}, Arg_BlockId};
+}
+
+Arg _arg(FunctId funct) {
+    return {{.index = funct.id}, Arg_FunctId};
 }
 
 } // namespace
@@ -169,8 +181,19 @@ void ProgramBuilder::deinit() {
     prog.functs.deinit();
 }
 
-FunctId ProgramBuilder::makeFunct(string name, type_t ret_t, type_t args_t) {
-    auto &funct = prog.functs.push();
+FunctId ProgramBuilder::makeFunct() {
+    return {prog.next_funct_id++};
+}
+
+BlockId ProgramBuilder::makeLabel() {
+    assert(m_cur_funct && "no current function");
+    return {m_cur_funct->next_block_id++};
+}
+
+void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
+    auto &funct = prog.functs.push() = {};
+
+    funct.id = funct_id.id;
 
     char *str_data = (char *)prog.arena.alloc(name.size);
     std::memcpy(str_data, name.data, name.size);
@@ -179,35 +202,25 @@ FunctId ProgramBuilder::makeFunct(string name, type_t ret_t, type_t args_t) {
     funct.ret_t = ret_t;
     funct.args_t = args_t;
 
-    return {prog.functs.size - 1};
+    funct.first_block = prog.blocks.size;
+
+    m_cur_funct = &funct;
 }
 
-BlockId ProgramBuilder::makeLabel(string name) {
-    assert(m_cur_funct && "no current function");
+void ProgramBuilder::startBlock(BlockId block_id, string name) {
+    auto &block = prog.blocks.push() = {};
 
-    auto &block = prog.blocks.push();
-
-    block.id = m_cur_funct->block_count++;
+    block.id = block_id.id;
 
     char *str_data = (char *)prog.arena.alloc(name.size);
     std::memcpy(str_data, name.data, name.size);
     block.name = string{str_data, name.size};
 
-    return {prog.blocks.size - 1};
-}
+    block.first_instr = prog.instrs.size;
 
-void ProgramBuilder::startFunct(FunctId funct) {
-    m_cur_funct = &prog.functs.data[funct.id];
+    m_cur_block = &block;
 
-    m_cur_funct->first_block = prog.blocks.size;
-    m_cur_funct->block_count = 0;
-}
-
-void ProgramBuilder::startBlock(BlockId label) {
-    m_cur_block = &prog.blocks.data[label.id];
-
-    m_cur_block->first_instr = prog.instrs.size;
-    m_cur_block->instr_count = 0;
+    m_cur_funct->block_count++;
 }
 
 void ProgramBuilder::comment(string str) {
@@ -277,7 +290,7 @@ Ref ProgramBuilder::makeGlobalRef(Global var) {
 
 Ref ProgramBuilder::makeConstRef(value_t val) {
     size_t val_size = val_sizeof(val);
-    char *mem = (char *)prog.arena.alloc(val_size);
+    char *mem = (char *)prog.arena.alloc_aligned(val_size, val_alignof(val));
     std::memcpy(mem, val_data(val), val_size);
 
     return {
@@ -327,7 +340,7 @@ Instr ProgramBuilder::make_jmpz(Ref const &cond, BlockId label) {
 }
 
 Instr ProgramBuilder::make_jmpnz(Ref const &cond, BlockId label) {
-    return {{_arg(cond), _arg(label), {}}, ir_jmpnz, {}};
+    return {{{}, _arg(cond), _arg(label)}, ir_jmpnz, {}};
 }
 
 Instr ProgramBuilder::make_cast(Ref const &dst, Ref const &type, Ref const &arg) {
@@ -370,18 +383,6 @@ string ProgramBuilder::inspect(Allocator *allocator) {
     std::memcpy(data, str.data(), str.size());
 
     return string{data, str.size()};
-}
-
-Arg ProgramBuilder::_arg(Ref const &ref) {
-    return {{.ref = ref}, Arg_Ref};
-}
-
-Arg ProgramBuilder::_arg(BlockId block) {
-    return {{.id = block.id}, Arg_BlockId};
-}
-
-Arg ProgramBuilder::_arg(FunctId funct) {
-    return {{.id = funct.id}, Arg_FunctId};
 }
 
 } // namespace ir

@@ -18,15 +18,16 @@ enum EIrCode {
 };
 
 enum ERefType {
-    Ref_None,
-
-    Ref_Frame,
+    Ref_Frame = 0,
     Ref_Arg,
     Ref_Ret,
     Ref_Global,
     Ref_Const,
+    Ref_Instr,
 
     Ref_Count,
+
+    Ref_None,
 };
 
 struct Ref {
@@ -36,7 +37,7 @@ struct Ref {
     } value;
     size_t offset;
     type_t type;
-    ERefType ref_type = Ref_None;
+    ERefType ref_type;
     bool is_indirect;
 };
 
@@ -59,7 +60,7 @@ enum EArgType {
 struct Arg {
     union {
         Ref ref;
-        size_t id;
+        size_t index;
     } as;
     EArgType arg_type;
 };
@@ -81,6 +82,7 @@ struct Block {
 };
 
 struct Funct {
+    size_t id;
     string name;
 
     type_t ret_t;
@@ -90,6 +92,8 @@ struct Funct {
     size_t block_count;
 
     Array<type_t> locals;
+
+    size_t next_block_id;
 };
 
 struct Program {
@@ -97,11 +101,11 @@ struct Program {
     Array<Block> blocks;
     Array<Instr> instrs;
 
+    size_t next_funct_id;
+
     Array<type_t> globals;
 
     ArenaAllocator arena;
-
-    string inspect(Allocator &allocator) const;
 };
 
 struct Local {
@@ -118,11 +122,11 @@ struct ProgramBuilder {
     void init();
     void deinit();
 
-    FunctId makeFunct(string name, type_t ret_t, type_t args_t);
-    BlockId makeLabel(string name);
+    FunctId makeFunct();
+    BlockId makeLabel();
 
-    void startFunct(FunctId funct);
-    void startBlock(BlockId label);
+    void startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t);
+    void startBlock(BlockId block_id, string name);
 
     void comment(string str);
 
@@ -163,10 +167,6 @@ struct ProgramBuilder {
     string inspect(Allocator *allocator);
 
 private:
-    Arg _arg(Ref const &ref);
-    Arg _arg(BlockId block);
-    Arg _arg(FunctId funct);
-
     Funct *m_cur_funct;
     Block *m_cur_block;
 };

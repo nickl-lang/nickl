@@ -138,6 +138,9 @@ string val_inspect(Allocator *allocator, value_t val);
 size_t val_tuple_size(value_t val);
 value_t val_tuple_at(value_t val, size_t i);
 
+size_t val_array_size(value_t val);
+value_t val_array_at(value_t val, size_t i);
+
 inline value_t val_undefined() {
     return value_t{nullptr, nullptr};
 }

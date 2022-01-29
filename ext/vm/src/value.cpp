@@ -181,14 +181,17 @@ void _valInspect(value_t val, std::ostringstream &ss) {
     DEFER({ tmp_arena.deinit(); })
 
     switch (val_typeid(val)) {
-    case Type_Array: {
-        // TODO inspect array
+    case Type_Array:
+        ss << "[";
+        for (size_t i = 0; i < val_array_size(val); i++) {
+            if (i) {
+                ss << " ";
+            }
+            _valInspect(val_array_at(val, i), ss);
+            ss << ",";
+        }
+        ss << "]";
         break;
-    }
-    case Type_Fn: {
-        // TODO inspect fn
-        break;
-    }
     case Type_Numeric:
         val_numeric_visit(val, [&](auto const &val) {
             ss << val;
@@ -197,7 +200,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
     case Type_Ptr:
         ss << val_data(val);
         break;
-    case Type_Tuple: {
+    case Type_Tuple:
         ss << "(";
         for (size_t i = 0; i < val_tuple_size(val); i++) {
             if (i) {
@@ -208,15 +211,16 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         }
         ss << ")";
         break;
-    }
     case Type_Typeref:
         ss << type_name(&tmp_arena, val_typeof(val)).view();
         break;
     case Type_Void:
         ss << "void{}";
         break;
+    case Type_Fn:
     default:
-        assert(!"unreachable");
+        ss << "value{data=" << val_data(val)
+           << ", type=" << type_name(&tmp_arena, val_typeof(val)).view() << "}";
         break;
     }
 }
@@ -407,6 +411,16 @@ value_t val_tuple_at(value_t val, size_t i) {
     return {
         ((uint8_t *)val_data(val)) + type->as.tuple.elems.data[i].offset,
         type->as.tuple.elems.data[i].type};
+}
+
+size_t val_array_size(value_t val) {
+    return val_typeof(val)->as.arr.elem_count;
+}
+
+value_t val_array_at(value_t val, size_t i) {
+    assert(i < val_array_size(val) && "array index out of range");
+    auto const type = val_typeof(val);
+    return {((uint8_t *)val_data(val)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
 }
 
 } // namespace vm
