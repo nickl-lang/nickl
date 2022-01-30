@@ -47,7 +47,7 @@ TEST_F(interp, plus) {
     auto fn_t = m_translator.translateFromIr(m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
-    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_translator.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
@@ -64,7 +64,7 @@ TEST_F(interp, not ) {
     auto fn_t = m_translator.translateFromIr(m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
-    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_translator.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
@@ -80,12 +80,12 @@ TEST_F(interp, not ) {
     EXPECT_EQ(ret, 1);
 }
 
-TEST_F(interp, pi) {
+TEST_F(interp, atan) {
     buildTestIr_atan(m_builder);
     auto fn_t = m_translator.translateFromIr(m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
-    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_translator.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
@@ -105,6 +105,22 @@ TEST_F(interp, pi) {
     val_fn_invoke(fn_t, {&b, fn_t->as.fn.ret_t}, {&args, fn_t->as.fn.args_t});
 
     double pi = 4.0 * (4.0 * a - b);
+
+    EXPECT_DOUBLE_EQ(pi, 3.141592653589794);
+}
+
+TEST_F(interp, pi) {
+    buildTestIr_pi(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    double pi = 0;
+    val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
 
     EXPECT_DOUBLE_EQ(pi, 3.141592653589794);
 }

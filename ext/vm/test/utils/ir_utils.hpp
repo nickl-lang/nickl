@@ -156,6 +156,61 @@ inline FunctId buildTestIr_atan(ProgramBuilder &b) {
     return f;
 }
 
+inline FunctId buildTestIr_pi(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto f_atan = buildTestIr_atan(b);
+
+    auto u64_t = type_get_numeric(Uint64);
+    auto f64_t = type_get_numeric(Float64);
+
+    auto args_t = type_get_tuple(&tmp_arena, {});
+
+    type_t atan_args[] = {f64_t, u64_t};
+    auto atan_args_t =
+        type_get_tuple(&tmp_arena, TypeArray{atan_args, sizeof(atan_args) / sizeof(atan_args[0])});
+
+    struct AtanArgs {
+        double x;
+        uint64_t it;
+    };
+
+    AtanArgs a_args = {1.0 / 5.0, 10};
+    AtanArgs b_args = {1.0 / 239.0, 10};
+
+    auto c_a_args = b.makeConstRef({&a_args, atan_args_t});
+    auto c_b_args = b.makeConstRef({&b_args, atan_args_t});
+
+    auto ret = b.makeRetRef();
+
+    double f_val;
+
+    f_val = 4;
+    auto c_f4 = b.makeConstRef({&f_val, f64_t});
+
+    // TODO Hack with marking pi as entry point
+    auto f = b.makeFunct(true);
+    b.startFunct(f, cstr_to_str("pi"), f64_t, args_t);
+
+    auto v_a = b.makeFrameRef(b.makeLocalVar(f64_t));
+    auto v_b = b.makeFrameRef(b.makeLocalVar(f64_t));
+
+    auto l_start = b.makeLabel();
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    b.gen(b.make_call(v_a, f_atan, c_a_args));
+    b.gen(b.make_call(v_b, f_atan, c_b_args));
+    b.gen(b.make_mul(v_a, v_a, c_f4));
+    b.gen(b.make_sub(v_a, v_a, v_b));
+    b.gen(b.make_mul(ret, v_a, c_f4));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
 } // namespace ir
 } // namespace vm
 } // namespace nk

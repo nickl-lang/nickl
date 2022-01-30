@@ -44,7 +44,7 @@ TEST_F(ir, plus) {
     buildTestIr_plus(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
-    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     // TODO expect something
 }
@@ -53,16 +53,16 @@ TEST_F(ir, not) {
     buildTestIr_not(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
-    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     // TODO expect something
 }
 
-TEST_F(ir, pi) {
+TEST_F(ir, atan) {
     buildTestIr_atan(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
-    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     // TODO expect something
 }

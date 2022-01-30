@@ -45,7 +45,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     for (size_t fi = 0; fi < prog.functs.size; fi++) {
         auto &funct = prog.functs.data[fi];
 
-        ss << "fn " << funct.name.view() << "(";
+        ss << "\nfn " << funct.name.view() << "(";
 
         for (size_t i = 0; i < funct.args_t->as.tuple.elems.size; i++) {
             if (i) {

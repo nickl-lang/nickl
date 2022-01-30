@@ -42,12 +42,16 @@ void _initCtx() {
     ctx.base.global = s_globals.data;
     ctx.base.rodata = s_prog->rodata.data;
     ctx.base.instr = (uint8_t *)s_prog->instrs.data;
+
+    ctx.is_initialized = true;
 }
 
 void _deinitCtx() {
     auto &ctx = s_interp_ctx;
 
     ctx.stack.deinit();
+
+    ctx.is_initialized = false;
 }
 
 template <class T>
@@ -121,7 +125,11 @@ INTERP(cast) {
 
 INTERP(call) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(call);
+    auto ret = _getDynRef(instr.arg[0]);
+    auto fn = _getDynRef(instr.arg[1]);
+    auto args = _getDynRef(instr.arg[2]);
+
+    val_fn_invoke(val_typeof(fn), ret, args);
 }
 
 INTERP(mov) {
@@ -162,16 +170,14 @@ void _numericBinOp(Instr const &instr, F &&op) {
     auto rhs = _getDynRef(instr.arg[2]);
 
     // TODO implement errors for interp
-    assert(
-        dst.type->typeclass_id == Type_Numeric && lhs.type->typeclass_id == Type_Numeric &&
-        rhs.type->typeclass_id == Type_Numeric);
+    assert(val_typeid(dst) == val_typeid(lhs));
+    assert(val_typeid(dst) == val_typeid(rhs));
+    assert(dst.type->typeclass_id == Type_Numeric);
 
-    val_numeric_visit(lhs, [&, op](auto lhs_val) {
-        val_numeric_visit(rhs, [lhs_val, op, &dst](auto rhs_val) {
-            val_numeric_visit(dst, [=](auto &dst_val) {
-                dst_val = op(lhs_val, rhs_val);
-            });
-        });
+    val_numeric_visit(dst, [&](auto &dst_val) {
+        dst_val =
+            op(val_as(std::decay_t<decltype(dst_val)>, lhs),
+               val_as(std::decay_t<decltype(dst_val)>, rhs));
     });
 }
 
@@ -297,6 +303,7 @@ InterpFunc s_funcs[] = {
 };
 
 void _jumpTo(size_t instr_index) {
+    LOG_DBG("jump to %lu", instr_index);
     auto &ctx = s_interp_ctx;
     ctx.next_instr = &s_prog->instrs.data[instr_index];
     while (ctx.next_instr->code != ir::ir_ret) {
@@ -331,7 +338,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     assert(s_prog && "program is not initialized");
 
-    LOG_DBG(__FUNCTION__);
+    LOG_TRC(__FUNCTION__);
 
     auto &ctx = s_interp_ctx;
 
@@ -351,6 +358,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     uint8_t *base_frame = nullptr;
     uint8_t const *base_arg = (uint8_t *)val_data(args);
     uint8_t *base_ret = (uint8_t *)val_data(ret);
+    Instr const *next_instr = 0;
 
     size_t const prev_stack_top = ctx.stack._seq.size;
     if (fn_info.frame_t->size > 0) {
@@ -363,11 +371,13 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     std::swap(ctx.base.frame, base_frame);
     std::swap(ctx.base.arg, base_arg);
     std::swap(ctx.base.ret, base_ret);
+    std::swap(ctx.next_instr, next_instr);
 
     DEFER({
         ctx.base.frame = base_frame;
         ctx.base.arg = base_arg;
         ctx.base.ret = base_ret;
+        ctx.next_instr = next_instr;
     });
 
     _jumpTo(fn_info.first_instr);
