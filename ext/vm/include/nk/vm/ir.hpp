@@ -30,6 +30,8 @@ namespace ir {
 enum EIrCode {
 #define X(NAME) ir_##NAME,
 #include "nk/vm/ir.inl"
+
+    Ir_Count,
 };
 
 struct Ref {
