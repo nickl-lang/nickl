@@ -67,3 +67,16 @@ TEST_F(vm, not) {
 
     // TODO expect something
 }
+
+TEST_F(vm, pi) {
+    buildTestIr_atan(m_builder);
+    m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    // TODO expect something
+}

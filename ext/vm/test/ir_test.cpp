@@ -57,3 +57,12 @@ TEST_F(ir, not) {
 
     // TODO expect something
 }
+
+TEST_F(ir, pi) {
+    buildTestIr_atan(m_builder);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    // TODO expect something
+}

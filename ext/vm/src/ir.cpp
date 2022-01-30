@@ -195,6 +195,11 @@ void ProgramBuilder::deinit() {
 
     prog.instrs.deinit();
     prog.blocks.deinit();
+
+    for (size_t i = 0; i < prog.functs.size; i++) {
+        prog.functs.data[i].locals.deinit();
+    }
+
     prog.functs.deinit();
 }
 
