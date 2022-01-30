@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_IR
 #define HEADER_GUARD_NK_VM_IR
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -144,6 +145,12 @@ struct ProgramBuilder {
     Ref makeRetRef();
     Ref makeGlobalRef(Global var);
     Ref makeConstRef(value_t val);
+
+    template <class T>
+    Ref makeConstRef(T &&val, type_t type) {
+        assert(sizeof(val) == type->size);
+        return makeConstRef({&val, type});
+    }
 
     Ref refIndirect(Ref const &ref);
     Ref refOffset(Ref const &ref, size_t offset);

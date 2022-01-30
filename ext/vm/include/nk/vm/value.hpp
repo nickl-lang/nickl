@@ -219,6 +219,46 @@ void val_numeric_visit(value_t val, F &&f) {
     }
 }
 
+template <class F>
+void val_numeric_visit_int(value_t val, F &&f) {
+    switch (val_typeof(val)->as.num.value_type) {
+    case Int1:
+        f(val_as(int8_t, val));
+        break;
+    case Uint1:
+        f(val_as(uint8_t, val));
+        break;
+    case Int8:
+        f(val_as(int8_t, val));
+        break;
+    case Uint8:
+        f(val_as(uint8_t, val));
+        break;
+    case Int16:
+        f(val_as(int16_t, val));
+        break;
+    case Uint16:
+        f(val_as(uint16_t, val));
+        break;
+    case Int32:
+        f(val_as(int32_t, val));
+        break;
+    case Uint32:
+        f(val_as(uint32_t, val));
+        break;
+    case Int64:
+        f(val_as(int64_t, val));
+        break;
+    case Uint64:
+        f(val_as(uint64_t, val));
+        break;
+    case Int0:
+    case Uint0:
+    default:
+        assert(!"unreachable");
+        break;
+    }
+}
 } // namespace vm
 } // namespace nk
 
