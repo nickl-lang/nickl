@@ -146,6 +146,7 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
 
         auto &funct_info = prog.funct_info.data[funct.id] = {};
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
+        LOG_DBG("funct_info.first_instr=%lu", funct_info.first_instr);
         funct_info.first_instr = prog.instrs.size;
 
         funct_info.funct_t = type_get_fn(funct.ret_t, funct.args_t, fi, interp_invoke, &funct_info);
