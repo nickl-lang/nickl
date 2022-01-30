@@ -59,7 +59,7 @@ TEST_F(interp, plus) {
     EXPECT_EQ(ret, 9);
 }
 
-TEST_F(interp, not) {
+TEST_F(interp, not ) {
     buildTestIr_not(m_builder);
     auto fn_t = m_translator.translateFromIr(m_builder.prog);
 
@@ -78,4 +78,33 @@ TEST_F(interp, not) {
     arg = 0;
     val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
     EXPECT_EQ(ret, 1);
+}
+
+TEST_F(interp, pi) {
+    buildTestIr_atan(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    double a;
+    double b;
+
+    struct {
+        double x;
+        uint64_t it = 10;
+    } args;
+
+    args.x = 1.0 / 5.0;
+    val_fn_invoke(fn_t, {&a, fn_t->as.fn.ret_t}, {&args, fn_t->as.fn.args_t});
+
+    args.x = 1.0 / 239.0;
+    val_fn_invoke(fn_t, {&b, fn_t->as.fn.ret_t}, {&args, fn_t->as.fn.args_t});
+
+    double pi = 4.0 * (4.0 * a - b);
+
+    EXPECT_DOUBLE_EQ(pi, 3.141592653589794);
 }

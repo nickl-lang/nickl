@@ -155,39 +155,52 @@ INTERP(not ) {
     INTERP_NOT_IMPLEMENTED(not );
 }
 
-INTERP(add) {
-    LOG_DBG(__FUNCTION__)
-
+template <class F>
+void _numericBinOp(Instr const &instr, F &&op) {
     auto dst = _getDynRef(instr.arg[0]);
     auto lhs = _getDynRef(instr.arg[1]);
     auto rhs = _getDynRef(instr.arg[2]);
 
     // TODO implement errors for interp
-    assert(dst.type->id == lhs.type->id && dst.type->id == rhs.type->id);
-    assert(dst.type->typeclass_id == Type_Numeric);
+    assert(
+        dst.type->typeclass_id == Type_Numeric && lhs.type->typeclass_id == Type_Numeric &&
+        rhs.type->typeclass_id == Type_Numeric);
 
-    val_numeric_visit(lhs, [&](auto lhs_val) {
-        val_numeric_visit(rhs, [lhs_val, &dst](auto rhs_val) {
+    val_numeric_visit(lhs, [&, op](auto lhs_val) {
+        val_numeric_visit(rhs, [lhs_val, op, &dst](auto rhs_val) {
             val_numeric_visit(dst, [=](auto &dst_val) {
-                dst_val = lhs_val + rhs_val;
+                dst_val = op(lhs_val, rhs_val);
             });
         });
     });
 }
 
+INTERP(add) {
+    LOG_DBG(__FUNCTION__)
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs + rhs;
+    });
+}
+
 INTERP(sub) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(sub);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs - rhs;
+    });
 }
 
 INTERP(mul) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(mul);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs * rhs;
+    });
 }
 
 INTERP(div) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(div);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs / rhs;
+    });
 }
 
 INTERP(mod) {
@@ -222,42 +235,58 @@ INTERP(rsh) {
 
 INTERP(and) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(and);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs && rhs;
+    });
 }
 
 INTERP(or) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(or);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs || rhs;
+    });
 }
 
 INTERP(eq) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(eq);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs == rhs;
+    });
 }
 
 INTERP(ge) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(ge);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs >= rhs;
+    });
 }
 
 INTERP(gt) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(gt);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs > rhs;
+    });
 }
 
 INTERP(le) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(le);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs <= rhs;
+    });
 }
 
 INTERP(lt) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(lt);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs < rhs;
+    });
 }
 
 INTERP(ne) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(ne);
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
+        return lhs != rhs;
+    });
 }
 
 using InterpFunc = void (*)(Instr const &);
