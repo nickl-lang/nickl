@@ -115,7 +115,17 @@ INTERP(jmpz) {
 
 INTERP(jmpnz) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(jmpnz);
+
+    auto cond = _getDynRef(instr.arg[1]);
+
+    assert(cond.type->typeclass_id == Type_Numeric);
+
+    val_numeric_visit(cond, [=](auto val) {
+        if (val) {
+            auto &target = _getRef<Instr>(instr.arg[2]);
+            s_interp_ctx.next_instr = &target;
+        }
+    });
 }
 
 INTERP(cast) {
@@ -181,6 +191,24 @@ void _numericBinOp(Instr const &instr, F &&op) {
     });
 }
 
+template <class F>
+void _numericBinOpInt(Instr const &instr, F &&op) {
+    auto dst = _getDynRef(instr.arg[0]);
+    auto lhs = _getDynRef(instr.arg[1]);
+    auto rhs = _getDynRef(instr.arg[2]);
+
+    // TODO implement errors for interp
+    assert(val_typeid(dst) == val_typeid(lhs));
+    assert(val_typeid(dst) == val_typeid(rhs));
+    assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
+
+    val_numeric_visit_int(dst, [&](auto &dst_val) {
+        dst_val =
+            op(val_as(std::decay_t<decltype(dst_val)>, lhs),
+               val_as(std::decay_t<decltype(dst_val)>, rhs));
+    });
+}
+
 INTERP(add) {
     LOG_DBG(__FUNCTION__)
     _numericBinOp(instr, [](auto lhs, auto rhs) {
@@ -211,32 +239,44 @@ INTERP(div) {
 
 INTERP(mod) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(mod);
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+        return lhs % rhs;
+    });
 }
 
 INTERP(bitand) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(bitand);
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+        return lhs & rhs;
+    });
 }
 
 INTERP(bitor) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(bitor);
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+        return lhs | rhs;
+    });
 }
 
 INTERP(xor) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(xor);
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+        return lhs ^ rhs;
+    });
 }
 
 INTERP(lsh) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(lsh);
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+        return lhs << rhs;
+    });
 }
 
 INTERP(rsh) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(rsh);
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+        return lhs >> rhs;
+    });
 }
 
 INTERP(and) {

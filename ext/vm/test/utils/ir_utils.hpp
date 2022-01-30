@@ -211,6 +211,62 @@ inline FunctId buildTestIr_pi(ProgramBuilder &b) {
     return f;
 }
 
+inline FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto i32_t = type_get_numeric(Int32);
+    auto f32_t = type_get_numeric(Float32);
+
+    auto args_t = type_get_tuple(&tmp_arena, {&f32_t, 1});
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("rsqrt"), f32_t, args_t);
+
+    auto l_start = b.makeLabel();
+
+    auto a_number = b.makeArgRef(0);
+
+    auto ret = b.makeRetRef();
+
+    auto c_0_5f = b.makeConstRef(0.5f, f32_t);
+    auto c_1_5f = b.makeConstRef(1.5f, f32_t);
+    auto c_1u = b.makeConstRef(1, i32_t);
+    auto c_magic = b.makeConstRef(0x5f3759df, i32_t);
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    auto v_i = b.makeFrameRef(b.makeLocalVar(i32_t));
+    auto v_x2 = b.makeFrameRef(b.makeLocalVar(f32_t));
+    auto v_y = b.makeFrameRef(b.makeLocalVar(f32_t));
+    auto v_0 = b.makeFrameRef(b.makeLocalVar(i32_t));
+    auto v_1 = b.makeFrameRef(b.makeLocalVar(f32_t));
+
+    b.gen(b.make_mul(v_x2, a_number, c_0_5f));
+    b.gen(b.make_mov(v_y, a_number));
+
+    b.gen(b.make_mov(v_i, v_y));
+    b.gen(b.make_rsh(v_0, v_i, c_1u));
+    b.gen(b.make_sub(v_i, c_magic, v_0));
+    b.gen(b.make_mov(v_y, v_i));
+
+    b.gen(b.make_mul(v_1, v_x2, v_y));
+    b.gen(b.make_mul(v_1, v_1, v_y));
+    b.gen(b.make_sub(v_1, c_1_5f, v_1));
+    b.gen(b.make_mul(v_y, v_y, v_1));
+
+    b.gen(b.make_mul(v_1, v_x2, v_y));
+    b.gen(b.make_mul(v_1, v_1, v_y));
+    b.gen(b.make_sub(v_1, c_1_5f, v_1));
+    b.gen(b.make_mul(v_y, v_y, v_1));
+
+    b.gen(b.make_mov(ret, v_y));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
 } // namespace ir
 } // namespace vm
 } // namespace nk

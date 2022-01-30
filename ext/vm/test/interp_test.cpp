@@ -1,5 +1,6 @@
 #include "nk/vm/interp.hpp"
 
+#include <cmath>
 #include <cstdint>
 
 #include <gtest/gtest.h>
@@ -123,4 +124,20 @@ TEST_F(interp, pi) {
     val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
 
     EXPECT_DOUBLE_EQ(pi, 3.141592653589794);
+}
+
+TEST_F(interp, rsqrt) {
+    buildTestIr_rsqrt(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    float ret = 42;
+    float arg = 2;
+    val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
+    EXPECT_FLOAT_EQ(ret, 1.0f / std::sqrt(2.0f));
 }
