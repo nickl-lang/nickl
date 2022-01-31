@@ -208,9 +208,7 @@ FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
 
     auto l_start = b.makeLabel();
 
-    auto a_number = b.makeArgRef(0);
-
-    auto ret = b.makeRetRef();
+    auto a_x = b.makeArgRef(0);
 
     auto c_0_5f = b.makeConstRef(0.5f, f32_t);
     auto c_1_5f = b.makeConstRef(1.5f, f32_t);
@@ -219,31 +217,32 @@ FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    auto v_i = b.makeFrameRef(b.makeLocalVar(i32_t));
-    auto v_x2 = b.makeFrameRef(b.makeLocalVar(f32_t));
-    auto v_y = b.makeFrameRef(b.makeLocalVar(f32_t));
-    auto v_0 = b.makeFrameRef(b.makeLocalVar(i32_t));
-    auto v_1 = b.makeFrameRef(b.makeLocalVar(f32_t));
+    // TODO Add support for reinterpret_cast in Ir construction
+    auto v_tmp = b.makeLocalVar(i32_t);
+    auto v_tmp_i32 = b.makeFrameRef(v_tmp);
+    v_tmp_i32.type = i32_t;
+    auto v_tmp_f32 = b.makeFrameRef(v_tmp);
+    v_tmp_f32.type = f32_t;
 
-    b.gen(b.make_mul(v_x2, a_number, c_0_5f));
-    b.gen(b.make_mov(v_y, a_number));
+    auto ret_f32 = b.makeRetRef();
+    auto ret_i32 = ret_f32;
+    ret_i32.type = i32_t;
 
-    b.gen(b.make_mov(v_i, v_y));
-    b.gen(b.make_rsh(v_0, v_i, c_1u));
-    b.gen(b.make_sub(v_i, c_magic, v_0));
-    b.gen(b.make_mov(v_y, v_i));
+    b.gen(b.make_mov(ret_f32, a_x));
+    b.gen(b.make_mul(a_x, a_x, c_0_5f));
 
-    b.gen(b.make_mul(v_1, v_x2, v_y));
-    b.gen(b.make_mul(v_1, v_1, v_y));
-    b.gen(b.make_sub(v_1, c_1_5f, v_1));
-    b.gen(b.make_mul(v_y, v_y, v_1));
+    b.gen(b.make_rsh(v_tmp_i32, ret_i32, c_1u));
+    b.gen(b.make_sub(ret_i32, c_magic, v_tmp_i32));
 
-    b.gen(b.make_mul(v_1, v_x2, v_y));
-    b.gen(b.make_mul(v_1, v_1, v_y));
-    b.gen(b.make_sub(v_1, c_1_5f, v_1));
-    b.gen(b.make_mul(v_y, v_y, v_1));
+    b.gen(b.make_mul(v_tmp_f32, a_x, ret_f32));
+    b.gen(b.make_mul(v_tmp_f32, v_tmp_f32, ret_f32));
+    b.gen(b.make_sub(v_tmp_f32, c_1_5f, v_tmp_f32));
+    b.gen(b.make_mul(ret_f32, ret_f32, v_tmp_f32));
 
-    b.gen(b.make_mov(ret, v_y));
+    b.gen(b.make_mul(v_tmp_f32, a_x, ret_f32));
+    b.gen(b.make_mul(v_tmp_f32, v_tmp_f32, ret_f32));
+    b.gen(b.make_sub(v_tmp_f32, c_1_5f, v_tmp_f32));
+    b.gen(b.make_mul(ret_f32, ret_f32, v_tmp_f32));
 
     b.gen(b.make_ret());
 
