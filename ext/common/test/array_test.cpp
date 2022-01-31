@@ -38,7 +38,7 @@ TEST_F(array, basic) {
     EXPECT_EQ(ar.capacity, 4);
 
     for (size_t i = 0; i < ar.size; i++) {
-        EXPECT_EQ(ar.data[i], i);
+        EXPECT_EQ(ar[i], i);
     }
 
     ar.clear();
@@ -82,5 +82,5 @@ TEST_F(array, zero_init) {
 
     EXPECT_EQ(ar.capacity, 1);
     EXPECT_EQ(ar.size, 1);
-    EXPECT_EQ(ar.data[0], 42);
+    EXPECT_EQ(ar[0], 42);
 }

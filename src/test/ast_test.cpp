@@ -101,7 +101,7 @@ protected:
         std::ostringstream ss;
 
         if (node->id == id_fn) {
-            ss << "fn " << id_to_str(node->as.fn.sig.name).view() << "(";
+            ss << "fn " << id_to_str(node->as.fn.sig.name) << "(";
             bool first = true;
             for (node_ref_t param = node->as.fn.sig.params.data;
                  param != node->as.fn.sig.params.data + node->as.fn.sig.params.size;
@@ -109,7 +109,7 @@ protected:
                 if (!first) {
                     ss << ", ";
                 }
-                ss << id_to_str(param->as.named_node.name).view() << ": "
+                ss << id_to_str(param->as.named_node.name) << ": "
                    << printNode(param->as.named_node.node);
                 first = false;
             }
@@ -118,7 +118,7 @@ protected:
         } else if (node->id == id_add) {
             ss << printNode(node->as.binary.lhs) << " + " << printNode(node->as.binary.rhs);
         } else if (node->id == id_id) {
-            ss << id_to_str(node->as.id.name).view();
+            ss << id_to_str(node->as.id.name);
         } else if (node->id == id_return) {
             ss << "return " << printNode(node->as.unary.arg) << ";";
         } else {
@@ -136,7 +136,7 @@ protected:
         return m_ast.push(m_ast.make_fn(
 
             cstr_to_id("plus"),
-            NamedNodeArray{2, params},
+            NamedNodeArray{params, 2},
             m_ast.push(m_ast.make_id(id_void)),
             m_ast.push(m_ast.make_return(m_ast.push(m_ast.make_add(
                 m_ast.push(m_ast.make_id(cstr_to_id("a"))),
@@ -233,18 +233,18 @@ TEST_F(ast, nodes) {
     test_ternary(m_ast.push(m_ast.make_if(nop, nop, nop)), id_if, nop, nop, nop);
     test_ternary(m_ast.push(m_ast.make_ternary(nop, nop, nop)), id_ternary, nop, nop, nop);
 
-    test_array(m_ast.push(m_ast.make_array(NodeArray{1, &n_nop})), id_array, nop);
-    test_array(m_ast.push(m_ast.make_block(NodeArray{1, &n_nop})), id_block, nop);
-    test_array(m_ast.push(m_ast.make_tuple_type(NodeArray{1, &n_nop})), id_tuple_type, nop);
-    test_array(m_ast.push(m_ast.make_tuple(NodeArray{1, &n_nop})), id_tuple, nop);
+    test_array(m_ast.push(m_ast.make_array(NodeArray{&n_nop, 1})), id_array, nop);
+    test_array(m_ast.push(m_ast.make_block(NodeArray{&n_nop, 1})), id_block, nop);
+    test_array(m_ast.push(m_ast.make_tuple_type(NodeArray{&n_nop, 1})), id_tuple_type, nop);
+    test_array(m_ast.push(m_ast.make_tuple(NodeArray{&n_nop, 1})), id_tuple, nop);
 
     test_type_decl(
-        m_ast.push(m_ast.make_struct(noid, NamedNodeArray{1, &nn_nop})),
+        m_ast.push(m_ast.make_struct(noid, NamedNodeArray{&nn_nop, 1})),
         id_struct,
         noid,
         {noid, nop});
     test_type_decl(
-        m_ast.push(m_ast.make_union(noid, NamedNodeArray{1, &nn_nop})),
+        m_ast.push(m_ast.make_union(noid, NamedNodeArray{&nn_nop, 1})),
         id_union,
         noid,
         {noid, nop});
@@ -261,7 +261,7 @@ TEST_F(ast, nodes) {
     test(m_ast.push(m_ast.make_numeric_i64(42)), id_numeric_i64);
     EXPECT_EQ(m_node->as.numeric.val.i64, 42);
 
-    test(m_ast.push(m_ast.make_call(nop, NodeArray{1, &n_nop})), id_call);
+    test(m_ast.push(m_ast.make_call(nop, NodeArray{&n_nop, 1})), id_call);
     EXPECT_EQ(m_node->as.call.lhs, nop);
     EXPECT_EQ(m_node->as.call.args.size, 1);
     EXPECT_EQ(m_node->as.call.args.data->id, n_nop.id);
@@ -271,7 +271,7 @@ TEST_F(ast, nodes) {
     EXPECT_EQ(m_node->as.var_decl.type, nop);
     EXPECT_EQ(m_node->as.var_decl.value, nop);
 
-    test(m_ast.push(m_ast.make_fn(noid, NamedNodeArray{1, &nn_nop}, nop, nop)), id_fn);
+    test(m_ast.push(m_ast.make_fn(noid, NamedNodeArray{&nn_nop, 1}, nop, nop)), id_fn);
     EXPECT_EQ(m_node->as.fn.sig.name, noid);
     EXPECT_EQ(m_node->as.fn.sig.params.size, 1);
     EXPECT_EQ(m_node->as.fn.sig.params.data->as.named_node.name, noid);
@@ -282,13 +282,13 @@ TEST_F(ast, nodes) {
     test(m_ast.push(m_ast.make_string_literal(&m_arena, cstr_to_str("hello"))), id_string_literal);
     EXPECT_EQ(m_node->as.str.val.view(), "hello");
 
-    test(m_ast.push(m_ast.make_struct_literal(nop, NamedNodeArray{1, &nn_nop})), id_struct_literal);
+    test(m_ast.push(m_ast.make_struct_literal(nop, NamedNodeArray{&nn_nop, 1})), id_struct_literal);
     EXPECT_EQ(m_node->as.struct_literal.type, nop);
     EXPECT_EQ(m_node->as.struct_literal.fields.size, 1);
     EXPECT_EQ(m_node->as.struct_literal.fields.data->as.named_node.name, noid);
     EXPECT_EQ(m_node->as.struct_literal.fields.data->as.named_node.node, nop);
 
-    test(m_ast.push(m_ast.make_fn_type(noid, NamedNodeArray{1, &nn_nop}, nop)), id_fn_type);
+    test(m_ast.push(m_ast.make_fn_type(noid, NamedNodeArray{&nn_nop, 1}, nop)), id_fn_type);
     EXPECT_EQ(m_node->as.fn_type.name, noid);
     EXPECT_EQ(m_node->as.fn_type.params.size, 1);
     EXPECT_EQ(m_node->as.fn_type.params.data->as.named_node.name, noid);

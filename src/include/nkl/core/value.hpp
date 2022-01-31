@@ -46,15 +46,7 @@ struct QualifierRecord {
 
 using FuncPtr = void (*)(...);
 
-struct TypeArray {
-    size_t size;
-    type_t const *data;
-};
-
-struct IdArray {
-    size_t size;
-    Id const *data;
-};
+using TypeArray = Slice<type_t const>;
 
 // 0x<index><size>
 // Ordered in coercion order, max(lhs, rhs) is a common type
@@ -78,10 +70,7 @@ struct TupleElemInfo {
     size_t offset;
 };
 
-struct TupleElemInfoArray {
-    size_t size;
-    TupleElemInfo *data;
-};
+using TupleElemInfoArray = Slice<TupleElemInfo>;
 
 struct NameType {
     Id name;
@@ -93,10 +82,7 @@ struct NameTypeid {
     typeid_t id;
 };
 
-struct NameTypeArray {
-    size_t size;
-    NameType *data;
-};
+using NameTypeArray = Slice<NameType>;
 
 struct _type_null {
     uint8_t _dummy;
@@ -134,7 +120,7 @@ struct _type_ptr {
 
 struct _type_struct {
     TupleElemInfoArray types;
-    IdArray fields;
+    Slice<Id const> fields;
 };
 
 struct _type_tuple {

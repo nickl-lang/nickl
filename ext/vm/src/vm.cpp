@@ -27,7 +27,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     ss << std::hex << std::setfill(' ') << std::left;
     static constexpr std::streamoff c_padding = 8;
 
-    auto _inspectArg = [&](Ref &arg) {
+    auto _inspectArg = [&](Ref const &arg) {
         if (arg.is_indirect) {
             ss << "[";
         }
@@ -45,8 +45,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "global";
             break;
         case Ref_Const:
-            ss << "<"
-               << val_inspect(&tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type}).view()
+            ss << "<" << val_inspect(&tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type})
                << ">";
             break;
         case Ref_Instr:
@@ -66,14 +65,12 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "+" << arg.post_offset;
         }
         if (arg.type) {
-            ss << ":" << type_name(&tmp_arena, arg.type).view();
+            ss << ":" << type_name(&tmp_arena, arg.type);
         }
     };
 
-    for (size_t i = 0; i < prog.instrs.size; i++) {
-        auto &instr = prog.instrs.data[i];
-
-        ss << std::setw(c_padding) << i * sizeof(Instr);
+    for (auto const &instr : prog.instrs) {
+        ss << std::setw(c_padding) << (&instr - prog.instrs.data) * sizeof(Instr);
 
         if (instr.arg[0].ref_type != Ref_None) {
             _inspectArg(instr.arg[0]);
@@ -139,17 +136,17 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
 
     prog.globals_t = type_get_tuple(&tmp_arena, {ir.globals.data, ir.globals.size});
 
-    for (size_t fi = 0; fi < ir.functs.size; fi++) {
-        auto &funct = ir.functs.data[fi];
-
+    size_t fi = 0;
+    for (auto const &funct : ir.functs) {
         assert(funct.next_block_id == funct.next_block_id && "ill-formed ir");
 
-        auto &funct_info = prog.funct_info.data[funct.id] = {};
+        auto &funct_info = prog.funct_info[funct.id] = {};
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
         LOG_DBG("funct_info.first_instr=%lu", funct_info.first_instr);
         funct_info.first_instr = prog.instrs.size;
 
-        funct_info.funct_t = type_get_fn(funct.ret_t, funct.args_t, fi, interp_invoke, &funct_info);
+        funct_info.funct_t =
+            type_get_fn(funct.ret_t, funct.args_t, fi++, interp_invoke, &funct_info);
 
         auto _pushConst = [&](value_t val) -> size_t {
             // TODO Unify aligned push to array
@@ -214,13 +211,13 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
         };
 
         for (size_t bi = funct.first_block; bi < funct.first_block + funct.block_count; bi++) {
-            auto &block = ir.blocks.data[bi];
+            auto &block = ir.blocks[bi];
 
             auto &block_info = block_info_ar[block.id] = {};
             block_info.first_instr = prog.instrs.size;
 
             for (size_t ii = block.first_instr; ii < block.first_instr + block.instr_count; ii++) {
-                auto &ir_instr = ir.instrs.data[ii];
+                auto &ir_instr = ir.instrs[ii];
                 auto &instr = prog.instrs.push() = {};
 
                 instr.code = ir_instr.code;
@@ -232,14 +229,12 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
         }
     }
 
-    for (size_t i = 0; i < relocs.size; i++) {
-        auto const &reloc = relocs.data[i];
-
-        Ref &arg = prog.instrs.data[reloc.instr_index].arg[reloc.arg];
+    for (auto const &reloc : relocs) {
+        Ref &arg = prog.instrs[reloc.instr_index].arg[reloc.arg];
 
         switch (reloc.reloc_type) {
         case Reloc_Funct:
-            arg.type = prog.funct_info.data[reloc.target_id].funct_t;
+            arg.type = prog.funct_info[reloc.target_id].funct_t;
             break;
         case Reloc_Block:
             arg.offset = block_info_ar[reloc.target_id].first_instr * sizeof(Instr);
@@ -252,7 +247,7 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
 
     size_t entry_point_id = ir.entry_point_id == -1ul ? 0 : ir.entry_point_id;
     assert(entry_point_id < prog.funct_info.size && "ill-formed ir");
-    return prog.funct_info.data[entry_point_id].funct_t;
+    return prog.funct_info[entry_point_id].funct_t;
 }
 
 string Translator::inspect(Allocator *allocator) {

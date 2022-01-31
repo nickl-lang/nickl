@@ -7,6 +7,7 @@
 
 #include "nk/common/logger.hpp"
 #include "nk/common/mem.hpp"
+#include "nk/common/slice.hpp"
 #include "nk/common/utils.hpp"
 
 template <class T>
@@ -64,7 +65,7 @@ struct Array {
         return *res;
     }
 
-    bool enoughSpace(size_t n) {
+    bool enoughSpace(size_t n) const {
         return size + n <= capacity;
     }
 
@@ -72,10 +73,43 @@ struct Array {
         size = 0;
     }
 
+    Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
+        return {data + i, std::min(n, size)};
+    }
+
+    using value_type = T;
+    using iterator = T *;
+    using reference = value_type &;
+    using size_type = size_t;
+
+    constexpr reference at(size_type pos) const {
+        return data[pos];
+    }
+
+    constexpr reference operator[](size_type pos) const {
+        return data[pos];
+    }
+
+    constexpr reference front() const {
+        return data[0];
+    }
+
+    constexpr reference back() const {
+        return data[size - 1];
+    }
+
+    constexpr iterator begin() const noexcept {
+        return data;
+    }
+
+    constexpr iterator end() const noexcept {
+        return data + size;
+    }
+
 private:
     static constexpr size_t c_init_capacity = 0;
 
-    T *_top() {
+    T *_top() const {
         assert(data && "uninitialized array access");
         return data + size;
     }

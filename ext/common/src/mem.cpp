@@ -25,11 +25,15 @@ void lang_free(void *ptr) {
 }
 
 void *Allocator::alloc_aligned(size_t size, size_t align) {
-    size_t const extra = (align - 1) + sizeof(void *);
-    void *mem = alloc(size + extra);
-    void **ptr_array = (void **)(((uintptr_t)mem + extra) & ~(align - 1));
-    ptr_array[-1] = mem;
-    return ptr_array;
+    if (size) {
+        size_t const extra = (align - 1) + sizeof(void *);
+        void *mem = alloc(size + extra);
+        void **ptr_array = (void **)(((uintptr_t)mem + extra) & ~(align - 1));
+        ptr_array[-1] = mem;
+        return ptr_array;
+    } else {
+        return nullptr;
+    }
 }
 
 void Allocator::free_aligned(void *ptr) {

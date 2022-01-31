@@ -9,10 +9,7 @@
 
 namespace {
 
-struct ByteArray {
-    size_t size;
-    uint8_t const *data;
-};
+using ByteArray = Slice<uint8_t const>;
 
 struct ByteArrayHashMapContext {
     static hash_t hash(ByteArray key) {
@@ -54,7 +51,7 @@ _TypeQueryRes _getType(ByteArray fp) {
         return _TypeQueryRes{*found_type, false};
     }
     uint8_t *fp_copy_data = s_typearena.alloc<uint8_t>(fp.size);
-    ByteArray fp_copy = {fp.size, fp_copy_data};
+    ByteArray fp_copy = {fp_copy_data, fp.size};
     std::memcpy(fp_copy_data, fp.data, fp.size);
     Type *type = s_typearena.alloc<Type>();
     *type = Type{
@@ -77,15 +74,15 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     size_t alignment = 0;
     size_t offset = 0;
 
-    TupleElemInfoArray const info_ar{types.size, s_typearena.alloc<TupleElemInfo>(types.size)};
+    TupleElemInfoArray const info_ar{s_typearena.alloc<TupleElemInfo>(types.size), types.size};
 
     for (size_t i = 0; i < types.size; i++) {
-        type_t const type = types.data[i * stride];
+        type_t const type = types[i * stride];
 
         alignment = maxu(alignment, type->alignment);
 
         offset = roundUpSafe(offset, type->alignment);
-        info_ar.data[i] = TupleElemInfo{type, offset};
+        info_ar[i] = TupleElemInfo{type, offset};
         offset += type->size;
     }
 
@@ -150,7 +147,7 @@ string _typeName(Allocator *allocator, type_t type) {
         TupleElemInfoArray const info = type->as.tuple_t.types;
         for (size_t i = 0; i < info.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string ts = _typeName(allocator, info.data[i].type);
+            string ts = _typeName(allocator, info[i].type);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
         s = string_format(allocator, "%.*s)", s.size, s.data);
@@ -159,10 +156,10 @@ string _typeName(Allocator *allocator, type_t type) {
     case Type_Struct: {
         string s = cstr_to_str("struct {");
         TupleElemInfoArray const info = type->as.struct_t.types;
-        IdArray const fields = type->as.struct_t.fields;
+        auto const fields = type->as.struct_t.fields;
         for (size_t i = 0; i < info.size; i++) {
-            string name = id_to_str(fields.data[i]);
-            string const ts = _typeName(allocator, info.data[i].type);
+            string name = id_to_str(fields[i]);
+            string const ts = _typeName(allocator, info[i].type);
             char const *fmt = i ? "%.*s, %.*s: %.*s" : "%.*s%.*s: %.*s";
             s = string_format(
                 allocator, fmt, s.size, s.data, name.size, name.data, ts.size, ts.data);
@@ -175,7 +172,7 @@ string _typeName(Allocator *allocator, type_t type) {
         TypeArray const params = type->as.fn_ptr_t.param_types;
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string const ts = _typeName(allocator, params.data[i]);
+            string const ts = _typeName(allocator, params[i]);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
         string const rts = _typeName(allocator, type->as.fn_ptr_t.ret_type);
@@ -187,7 +184,7 @@ string _typeName(Allocator *allocator, type_t type) {
         TypeArray const params = type->as.fn_ptr_t.param_types;
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string const ts = _typeName(allocator, params.data[i]);
+            string const ts = _typeName(allocator, params[i]);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
         string const rts = _typeName(allocator, type->as.fn_ptr_t.ret_type);
@@ -217,7 +214,7 @@ type_t type_get_any() {
     _FpBase fp;
     std::memset(&fp, 0, sizeof(fp));
     fp.id = Type_Any;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(value_t);
         res.type->alignment = alignof(value_t);
@@ -235,7 +232,7 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
     fp.base.id = Type_Array;
     fp.elem_type = elem_type->id;
     fp.elem_count = elem_count;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = elem_count * elem_type->size;
         res.type->alignment = elem_type->alignment;
@@ -253,7 +250,7 @@ type_t type_get_array_ptr(type_t elem_type) {
     memset(&fp, 0, sizeof(fp));
     fp.base.id = Type_ArrayPtr;
     fp.elem_type = elem_type->id;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 16;
         res.type->alignment = 8;
@@ -266,7 +263,7 @@ type_t type_get_bool() {
     _FpBase fp;
     std::memset(&fp, 0, sizeof(fp));
     fp.id = Type_Bool;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(bool);
         res.type->alignment = alignof(bool);
@@ -297,9 +294,9 @@ type_t type_get_fn(
     fp->ret_type = ret_type->id;
     fp->param_count = param_types.size;
     for (size_t i = 0; i < param_types.size; i++) {
-        fp_params[i] = param_types.data[i]->id;
+        fp_params[i] = param_types[i]->id;
     }
-    _TypeQueryRes res = _getType({fp_size, (uint8_t *)fp});
+    _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         type_t *params_ar_data = s_typearena.alloc<type_t>(param_types.size);
         std::memcpy(params_ar_data, param_types.data, param_types.size * sizeof(void *));
@@ -307,7 +304,7 @@ type_t type_get_fn(
         res.type->size = 0;
         res.type->alignment = 1;
         res.type->as.fn_t.ret_type = ret_type;
-        res.type->as.fn_t.param_types = {param_types.size, params_ar_data};
+        res.type->as.fn_t.param_types = {params_ar_data, param_types.size};
         res.type->as.fn_t.body = body;
         res.type->as.fn_t.closure = closure;
         res.type->as.fn_t.args_passthrough = args_passthrough;
@@ -329,9 +326,9 @@ type_t type_get_fn_ptr(Allocator *tmp_allocator, type_t ret_type, TypeArray para
     fp->ret_type = ret_type->id;
     fp->param_count = param_types.size;
     for (size_t i = 0; i < param_types.size; i++) {
-        fp_params[i] = param_types.data[i]->id;
+        fp_params[i] = param_types[i]->id;
     }
-    _TypeQueryRes res = _getType({fp_size, (uint8_t *)fp});
+    _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         type_t *params_ar_data = s_typearena.alloc<type_t>(param_types.size);
         std::memcpy(params_ar_data, param_types.data, param_types.size * sizeof(void *));
@@ -339,7 +336,7 @@ type_t type_get_fn_ptr(Allocator *tmp_allocator, type_t ret_type, TypeArray para
         res.type->size = 8;
         res.type->alignment = 8;
         res.type->as.fn_ptr_t.ret_type = ret_type;
-        res.type->as.fn_ptr_t.param_types = {param_types.size, params_ar_data};
+        res.type->as.fn_ptr_t.param_types = {params_ar_data, param_types.size};
     }
     return res.type;
 }
@@ -352,7 +349,7 @@ type_t type_get_numeric(ENumericValueType value_type) {
     std::memset(&fp, 0, sizeof(fp));
     fp.base.id = Type_Numeric;
     fp.value_type = value_type;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         size_t const size = value_type & NUM_TYPE_SIZE_MASK;
         res.type->size = size;
@@ -370,7 +367,7 @@ type_t type_get_ptr(type_t target_type) {
     std::memset(&fp, 0, sizeof(fp));
     fp.base.id = Type_Ptr;
     fp.target_type = target_type->id;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(void *);
         res.type->alignment = alignof(void *);
@@ -383,7 +380,7 @@ type_t type_get_string() {
     _FpBase fp;
     std::memset(&fp, 0, sizeof(fp));
     fp.id = Type_String;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(string);
         res.type->alignment = alignof(string);
@@ -405,24 +402,24 @@ type_t type_get_struct(Allocator *tmp_allocator, NameTypeArray fields, size_t de
     fp->decl_id = decl_id;
     fp->field_count = fields.size;
     for (size_t i = 0; i < fields.size; i++) {
-        fp_fields[i].name = fields.data[i].name;
-        fp_fields[i].id = fields.data[i].type->id;
+        fp_fields[i].name = fields[i].name;
+        fp_fields[i].id = fields[i].type->id;
     }
-    _TypeQueryRes res = _getType({fp_size, (uint8_t *)fp});
+    _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         _TupleLayout layout =
-            _calcTupleLayout({fields.size, &fields.data->type}, sizeof(NameType) / sizeof(void *));
+            _calcTupleLayout({&fields.data->type, fields.size}, sizeof(NameType) / sizeof(void *));
 
         Id *field_ar_data = s_typearena.alloc<Id>(fields.size);
 
         for (size_t i = 0; i < fields.size; i++) {
-            field_ar_data[i] = fields.data[i].name;
+            field_ar_data[i] = fields[i].name;
         }
 
         res.type->size = layout.size;
         res.type->alignment = layout.alignment;
         res.type->as.struct_t.types = layout.info_ar;
-        res.type->as.struct_t.fields = {fields.size, field_ar_data};
+        res.type->as.struct_t.fields = {field_ar_data, fields.size};
     }
     return res.type;
 }
@@ -431,7 +428,7 @@ type_t type_get_symbol() {
     _FpBase fp;
     std::memset(&fp, 0, sizeof(fp));
     fp.id = Type_Symbol;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(Id);
         res.type->alignment = alignof(Id);
@@ -451,11 +448,11 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
     fp->base.id = Type_Tuple;
     fp->type_count = types.size;
     for (size_t i = 0; i < types.size; i++) {
-        fp_types[i] = types.data[i]->id;
+        fp_types[i] = types[i]->id;
     }
-    _TypeQueryRes res = _getType({fp_size, (uint8_t *)fp});
+    _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
-        _TupleLayout layout = _calcTupleLayout({types.size, types.data}, 1);
+        _TupleLayout layout = _calcTupleLayout({types.data, types.size}, 1);
 
         res.type->size = layout.size;
         res.type->alignment = layout.alignment;
@@ -468,7 +465,7 @@ type_t type_get_typeref() {
     _FpBase fp;
     std::memset(&fp, 0, sizeof(fp));
     fp.id = Type_Typeref;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(size_t);
         res.type->alignment = alignof(type_t);
@@ -480,7 +477,7 @@ type_t type_get_void() {
     _FpBase fp;
     std::memset(&fp, 0, sizeof(fp));
     fp.id = Type_Void;
-    _TypeQueryRes res = _getType({sizeof(fp), (uint8_t *)&fp});
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;

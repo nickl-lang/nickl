@@ -123,7 +123,7 @@ static void _plus(value_t res, value_t a, value_t b) {
 TEST_F(value, fn) {
     auto const i64_t = type_get_numeric(Int64);
     type_t params[] = {i64_t, i64_t};
-    TypeArray params_ar{sizeof(params) / sizeof(void *), params};
+    TypeArray params_ar{params, sizeof(params) / sizeof(void *)};
 
     auto const type = type_get_fn(&m_arena, i64_t, params_ar, 0, (FuncPtr)_plus, nullptr, false);
 
@@ -141,14 +141,14 @@ TEST_F(value, fn) {
 
     ASSERT_EQ(type->as.fn_t.param_types.size, 2);
 
-    EXPECT_EQ(type->as.fn_t.param_types.data[0], i64_t);
-    EXPECT_EQ(type->as.fn_t.param_types.data[1], i64_t);
+    EXPECT_EQ(type->as.fn_t.param_types[0], i64_t);
+    EXPECT_EQ(type->as.fn_t.param_types[1], i64_t);
 }
 
 TEST_F(value, fn_ptr) {
     auto const i64_t = type_get_numeric(Int64);
     type_t params[] = {i64_t, i64_t};
-    TypeArray params_ar{sizeof(params) / sizeof(void *), params};
+    TypeArray params_ar{params, sizeof(params) / sizeof(void *)};
 
     auto const type = type_get_fn_ptr(&m_arena, i64_t, params_ar);
 
@@ -167,8 +167,8 @@ TEST_F(value, fn_ptr) {
 
     ASSERT_EQ(type->as.fn_t.param_types.size, 2);
 
-    EXPECT_EQ(type->as.fn_t.param_types.data[0], i64_t);
-    EXPECT_EQ(type->as.fn_t.param_types.data[1], i64_t);
+    EXPECT_EQ(type->as.fn_t.param_types[0], i64_t);
+    EXPECT_EQ(type->as.fn_t.param_types[1], i64_t);
 }
 
 TEST_F(value, numeric) {
@@ -211,7 +211,7 @@ TEST_F(value, struct) {
     Id id_s = cstr_to_id("s");
 
     NameType fields[] = {{id_t, type_get_typeref()}, {id_s, type_get_symbol()}};
-    NameTypeArray fields_ar{sizeof(fields) / sizeof(NameType), fields};
+    NameTypeArray fields_ar{fields, sizeof(fields) / sizeof(NameType)};
 
     auto const type = type_get_struct(&m_arena, fields_ar, 0);
 
@@ -228,12 +228,12 @@ TEST_F(value, struct) {
     ASSERT_EQ(type->as.struct_t.types.size, 2);
     ASSERT_EQ(type->as.struct_t.fields.size, 2);
 
-    EXPECT_EQ(type->as.struct_t.types.data[0].type, type_get_typeref());
-    EXPECT_EQ(type->as.struct_t.types.data[0].offset, 0);
-    EXPECT_EQ(type->as.struct_t.fields.data[0], id_t);
-    EXPECT_EQ(type->as.struct_t.types.data[1].type, type_get_symbol());
-    EXPECT_EQ(type->as.struct_t.types.data[1].offset, 8);
-    EXPECT_EQ(type->as.struct_t.fields.data[1], id_s);
+    EXPECT_EQ(type->as.struct_t.types[0].type, type_get_typeref());
+    EXPECT_EQ(type->as.struct_t.types[0].offset, 0);
+    EXPECT_EQ(type->as.struct_t.fields[0], id_t);
+    EXPECT_EQ(type->as.struct_t.types[1].type, type_get_symbol());
+    EXPECT_EQ(type->as.struct_t.types[1].offset, 8);
+    EXPECT_EQ(type->as.struct_t.fields[1], id_s);
 }
 
 TEST_F(value, symbol) {
@@ -250,7 +250,7 @@ TEST_F(value, symbol) {
 
 TEST_F(value, tuple) {
     type_t types[] = {type_get_void(), type_get_typeref(), type_get_symbol()};
-    TypeArray types_ar{sizeof(types) / sizeof(void *), types};
+    TypeArray types_ar{types, sizeof(types) / sizeof(void *)};
 
     auto const type = type_get_tuple(&m_arena, types_ar);
 
@@ -264,12 +264,12 @@ TEST_F(value, tuple) {
 
     ASSERT_EQ(type->as.tuple_t.types.size, 3);
 
-    EXPECT_EQ(type->as.tuple_t.types.data[0].type, type_get_void());
-    EXPECT_EQ(type->as.tuple_t.types.data[0].offset, 0);
-    EXPECT_EQ(type->as.tuple_t.types.data[1].type, type_get_typeref());
-    EXPECT_EQ(type->as.tuple_t.types.data[1].offset, 0);
-    EXPECT_EQ(type->as.tuple_t.types.data[2].type, type_get_symbol());
-    EXPECT_EQ(type->as.tuple_t.types.data[2].offset, 8);
+    EXPECT_EQ(type->as.tuple_t.types[0].type, type_get_void());
+    EXPECT_EQ(type->as.tuple_t.types[0].offset, 0);
+    EXPECT_EQ(type->as.tuple_t.types[1].type, type_get_typeref());
+    EXPECT_EQ(type->as.tuple_t.types[1].offset, 0);
+    EXPECT_EQ(type->as.tuple_t.types[2].type, type_get_symbol());
+    EXPECT_EQ(type->as.tuple_t.types[2].offset, 8);
 }
 
 TEST_F(value, typeref) {

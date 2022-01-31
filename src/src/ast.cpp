@@ -432,12 +432,12 @@ node_ref_t Ast::push(Node node) {
 NodeArray Ast::push_ar(NodeArray nodes) {
     Node *first = &data.push(nodes.size);
     std::memcpy(first, nodes.data, nodes.size * sizeof(Node));
-    return NodeArray{nodes.size, first};
+    return NodeArray{first, nodes.size};
 }
 
 NodeArray Ast::push_named_ar(NamedNodeArray nodes) {
     Node *first = &data.push(nodes.size);
-    NodeArray const ar{nodes.size, first};
+    NodeArray const ar{first, nodes.size};
     for (auto pn = nodes.data; pn < nodes.data + nodes.size; pn++, first++) {
         first->as.named_node = *pn;
     }
@@ -485,7 +485,7 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
             }
             ss << "{";
             newline(depth + 1);
-            ss << "name: #" << id_to_str(node->as.named_node.name).view() << ",";
+            ss << "name: #" << id_to_str(node->as.named_node.name) << ",";
             newline(depth + 1);
             ss << "node: " << _inspect(node->as.named_node.node, depth + 2) << "}";
             first = false;
@@ -509,7 +509,7 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
 
     auto const inspectId = [&](Id id) {
         if (id) {
-            ss << "#" << id_to_str(id).view();
+            ss << "#" << id_to_str(id);
         } else {
             ss << "null";
         }
@@ -666,7 +666,7 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
 
     case id_string_literal:
         field("value");
-        ss << "\"" << node->as.str.val.view() << "\"";
+        ss << "\"" << node->as.str.val << "\"";
         break;
 
     case id_struct_literal:
