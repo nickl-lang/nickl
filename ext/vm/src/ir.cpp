@@ -14,8 +14,6 @@ namespace ir {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::ir)
-
 static char const *s_ir_names[] = {
 #define X(NAME) #NAME,
 #include "nk/vm/ir.inl"
@@ -25,16 +23,14 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    auto funct_by_id = tmp_arena.alloc<Funct *>(prog.functs.size);
-    auto block_by_id = tmp_arena.alloc<Block *>(prog.blocks.size);
+    auto funct_by_id = tmp_arena.alloc<Funct const *>(prog.functs.size);
+    auto block_by_id = tmp_arena.alloc<Block const *>(prog.blocks.size);
 
-    for (size_t fi = 0; fi < prog.functs.size; fi++) {
-        auto &funct = prog.functs.data[fi];
+    for (auto const &funct : prog.functs) {
         funct_by_id[funct.id] = &funct;
     }
 
-    for (size_t bi = 0; bi < prog.blocks.size; bi++) {
-        auto &block = prog.blocks.data[bi];
+    for (auto const &block : prog.blocks) {
         block_by_id[block.id] = &block;
     }
 
@@ -42,37 +38,35 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
     ss << std::setfill(' ');
 
-    for (size_t fi = 0; fi < prog.functs.size; fi++) {
-        auto &funct = prog.functs.data[fi];
-
-        ss << "\nfn " << funct.name.view() << "(";
+    for (auto const &funct : prog.functs) {
+        ss << "\nfn " << funct.name << "(";
 
         for (size_t i = 0; i < funct.args_t->as.tuple.elems.size; i++) {
             if (i) {
                 ss << ", ";
             }
-            auto arg_t = funct.args_t->as.tuple.elems.data[i].type;
-            ss << "$arg" << i << ":" << type_name(&tmp_arena, arg_t).view();
+            auto arg_t = funct.args_t->as.tuple.elems[i].type;
+            ss << "$arg" << i << ":" << type_name(&tmp_arena, arg_t);
         }
 
-        ss << ") -> " << type_name(&tmp_arena, funct.ret_t).view() << " {\n\n";
+        ss << ") -> " << type_name(&tmp_arena, funct.ret_t) << " {\n\n";
 
         for (size_t bi = funct.first_block; bi < funct.first_block + funct.block_count; bi++) {
-            auto &block = prog.blocks.data[bi];
+            auto &block = prog.blocks[bi];
 
             auto const first_p = ss.tellp();
-            ss << "%" << block.name.view() << ":";
+            ss << "%" << block.name << ":";
             auto const second_p = ss.tellp();
 
             if (block.comment.data) {
                 ss << std::setw(c_comment_padding - std::min(c_comment_padding, second_p - first_p))
-                   << "; " << block.comment.view();
+                   << "; " << block.comment;
             }
 
             ss << "\n";
 
             for (size_t ii = block.first_instr; ii < block.first_instr + block.instr_count; ii++) {
-                auto &instr = prog.instrs.data[ii];
+                auto &instr = prog.instrs[ii];
 
                 auto const _inspectRef = [&](Ref const &ref) {
                     if (ref.is_indirect) {
@@ -92,8 +86,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
-                        ss << "<"
-                           << val_inspect(&tmp_arena, value_t{ref.value.data, ref.type}).view()
+                        ss << "<" << val_inspect(&tmp_arena, value_t{ref.value.data, ref.type})
                            << ">";
                         break;
                     default:
@@ -108,7 +101,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     if (ref.post_offset) {
                         ss << "+" << ref.post_offset;
                     }
-                    ss << ":" << type_name(&tmp_arena, ref.type).view();
+                    ss << ":" << type_name(&tmp_arena, ref.type);
                 };
 
                 auto const first_p = ss.tellp();
@@ -134,10 +127,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         break;
                     }
                     case Arg_BlockId:
-                        ss << "%" << block_by_id[arg.as.id]->name.view();
+                        ss << "%" << block_by_id[arg.as.id]->name;
                         break;
                     case Arg_FunctId:
-                        ss << funct_by_id[arg.as.id]->name.view();
+                        ss << funct_by_id[arg.as.id]->name;
                         break;
                     case Arg_None:
                     default:
@@ -150,7 +143,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 if (instr.comment.data) {
                     ss << std::setw(
                               c_comment_padding - std::min(c_comment_padding, second_p - first_p))
-                       << "; " << instr.comment.view();
+                       << "; " << instr.comment;
                 }
 
                 ss << "\n";
@@ -236,8 +229,8 @@ void ProgramBuilder::deinit() {
     prog.instrs.deinit();
     prog.blocks.deinit();
 
-    for (size_t i = 0; i < prog.functs.size; i++) {
-        prog.functs.data[i].locals.deinit();
+    for (auto &funct : prog.functs) {
+        funct.locals.deinit();
     }
 
     prog.functs.deinit();
@@ -298,7 +291,7 @@ void ProgramBuilder::comment(string str) {
 
     if (m_cur_block->instr_count) {
         // TODO simplify this whole expression
-        prog.instrs.data[m_cur_block->first_instr + m_cur_block->instr_count - 1].comment =
+        prog.instrs[m_cur_block->first_instr + m_cur_block->instr_count - 1].comment =
             string{str_data, str.size};
     } else {
         m_cur_block->comment = string{str_data, str.size};
@@ -322,7 +315,7 @@ Ref ProgramBuilder::makeFrameRef(Local var) const {
         .value = {.index = var.id},
         .offset = 0,
         .post_offset = 0,
-        .type = m_cur_funct->locals.data[var.id],
+        .type = m_cur_funct->locals[var.id],
         .ref_type = Ref_Frame,
         .is_indirect = false};
 }
@@ -334,7 +327,7 @@ Ref ProgramBuilder::makeArgRef(size_t index) const {
         .value = {.index = index},
         .offset = 0,
         .post_offset = 0,
-        .type = m_cur_funct->args_t->as.tuple.elems.data[index].type,
+        .type = m_cur_funct->args_t->as.tuple.elems[index].type,
         .ref_type = Ref_Arg,
         .is_indirect = false};
 }
@@ -355,7 +348,7 @@ Ref ProgramBuilder::makeGlobalRef(Global var) const {
         .value = {.index = var.id},
         .offset = 0,
         .post_offset = 0,
-        .type = prog.globals.data[var.id],
+        .type = prog.globals[var.id],
         .ref_type = Ref_Global,
         .is_indirect = false};
 }

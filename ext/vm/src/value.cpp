@@ -13,10 +13,7 @@ namespace vm {
 
 namespace {
 
-struct ByteArray {
-    uint8_t const *data;
-    size_t size;
-};
+using ByteArray = Slice<uint8_t const>;
 
 struct ByteArrayHashMapContext {
     static hash_t hash(ByteArray key) {
@@ -82,12 +79,12 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     TupleElemInfoArray const info_ar{s_typearena.alloc<TupleElemInfo>(types.size), types.size};
 
     for (size_t i = 0; i < types.size; i++) {
-        type_t const type = types.data[i * stride];
+        type_t const type = types[i * stride];
 
         alignment = maxu(alignment, type->alignment);
 
         offset = roundUpSafe(offset, type->alignment);
-        info_ar.data[i] = TupleElemInfo{type, offset};
+        info_ar[i] = TupleElemInfo{type, offset};
         offset += type->size;
     }
 
@@ -143,7 +140,7 @@ void _typeName(type_t type, std::ostringstream &ss) {
             if (i) {
                 ss << ", ";
             }
-            _typeName(info.data[i].type, ss);
+            _typeName(info[i].type, ss);
         }
         ss << "}";
         break;
@@ -155,7 +152,7 @@ void _typeName(type_t type, std::ostringstream &ss) {
             if (i) {
                 ss << ", ";
             }
-            _typeName(params->as.tuple.elems.data[i].type, ss);
+            _typeName(params->as.tuple.elems[i].type, ss);
         }
         ss << "), ";
         _typeName(type->as.fn.ret_t, ss);
@@ -204,16 +201,17 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         ss << ")";
         break;
     case Type_Typeref:
-        ss << type_name(&tmp_arena, val_as(type_t, val)).view();
+        ss << type_name(&tmp_arena, val_as(type_t, val));
         break;
     case Type_Void:
         ss << "void{}";
         break;
     case Type_Fn:
-        // TODO inspect function
+        ss << "fn@" << (void *)val_typeof(val)->as.fn.body << "+" << val_typeof(val)->as.fn.closure;
+        break;
     default:
-        ss << "value{data=" << val_data(val)
-           << ", type=" << type_name(&tmp_arena, val_typeof(val)).view() << "}";
+        ss << "value{data=" << val_data(val) << ", type=" << type_name(&tmp_arena, val_typeof(val))
+           << "}";
         break;
     }
 }
@@ -321,7 +319,7 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
     fp->base.id = Type_Tuple;
     fp->type_count = types.size;
     for (size_t i = 0; i < types.size; i++) {
-        fp_types[i] = types.data[i]->id;
+        fp_types[i] = types[i]->id;
     }
     _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
@@ -386,13 +384,12 @@ value_t val_tuple_at(value_t self, size_t i) {
     assert(i < val_tuple_size(self) && "tuple index out of range");
     auto const type = val_typeof(self);
     return {
-        ((uint8_t *)val_data(self)) + type->as.tuple.elems.data[i].offset,
-        type->as.tuple.elems.data[i].type};
+        ((uint8_t *)val_data(self)) + type->as.tuple.elems[i].offset, type->as.tuple.elems[i].type};
 }
 
 size_t type_tuple_offset(type_t tuple_t, size_t i) {
     assert(i < tuple_t->as.tuple.elems.size && "tuple index out of range");
-    return tuple_t->as.tuple.elems.data[i].offset;
+    return tuple_t->as.tuple.elems[i].offset;
 }
 
 size_t val_array_size(value_t self) {

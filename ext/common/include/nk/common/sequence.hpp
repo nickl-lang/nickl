@@ -100,7 +100,7 @@ private:
     }
 
     _block_ptr _blockByIndex(size_t i) const {
-        return _block_table.data[_blockIndexByIndex(i)];
+        return _block_table[_blockIndexByIndex(i)];
     }
 
     static size_t _blockDataSize(size_t bi, size_t ic) {

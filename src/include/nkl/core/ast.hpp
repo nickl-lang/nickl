@@ -13,15 +13,8 @@ struct NamedNode {
     node_ref_t node;
 };
 
-struct NodeArray {
-    size_t size;
-    Node const *data;
-};
-
-struct NamedNodeArray {
-    size_t size;
-    NamedNode const *data;
-};
+using NodeArray = Slice<Node const>;
+using NamedNodeArray = Slice<NamedNode const>;
 
 struct _null {
     uint8_t _dummy;

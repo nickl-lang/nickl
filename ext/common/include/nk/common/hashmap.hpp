@@ -123,7 +123,7 @@ private:
         new_hm._alloc();
 
         for (size_t i = 0; i < capacity; i++) {
-            Entry *entry = &entries.data[i];
+            Entry *entry = &entries[i];
             if (_isValid(entry)) {
                 *new_hm._insert(entry->hash, entry->key) = entry->value;
             }
@@ -146,7 +146,7 @@ private:
 
         do {
             size_t i = _elemIndex(hash, probe_length);
-            entry = &entries.data[i];
+            entry = &entries[i];
 
             if (cleanup) {
                 if (_found(entry, hash, key)) {
@@ -186,7 +186,7 @@ private:
 
         do {
             size_t i = _elemIndex(hash, probe_length);
-            entry = &entries.data[i];
+            entry = &entries[i];
 
             if (_found(entry, hash, key)) {
                 return entry;

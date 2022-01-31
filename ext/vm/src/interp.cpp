@@ -32,6 +32,13 @@ struct InterpContext {
     bool is_initialized;
 };
 
+struct InterpFrame {
+    uint8_t *base_frame;
+    uint8_t const *base_arg;
+    uint8_t *base_ret;
+    Instr const *pinstr;
+};
+
 thread_local InterpContext ctx;
 Array<uint8_t> s_globals;
 
@@ -378,39 +385,23 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     if (was_uninitialized) {
         _initCtx();
     }
-    DEFER({
-        if (was_uninitialized) {
-            _deinitCtx();
-        }
-    });
 
     FunctInfo const &fn_info = *(FunctInfo *)self->as.fn.closure;
 
-    // TODO Use stack on heap for the interp frame storage
-    uint8_t *base_frame = nullptr;
-    uint8_t const *base_arg = (uint8_t *)val_data(args);
-    uint8_t *base_ret = (uint8_t *)val_data(ret);
-    Instr const *pinstr = &s_prog->instrs.data[fn_info.first_instr];
-
+    // TODO Refactor hack with arena and _seq
     size_t const prev_stack_top = ctx.stack._seq.size;
-    if (fn_info.frame_t->size > 0) {
-        // TODO Refactor hack with arena and _seq
-        auto frame = ctx.stack.alloc_aligned(fn_info.frame_t->size, fn_info.frame_t->alignment);
-        base_frame = (uint8_t *)frame;
-    }
-    DEFER({ ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top); })
 
-    std::swap(ctx.base.frame, base_frame);
-    std::swap(ctx.base.arg, base_arg);
-    std::swap(ctx.base.ret, base_ret);
-    std::swap(ctx.pinstr, pinstr);
+    InterpFrame fr{
+        .base_frame =
+            (uint8_t *)ctx.stack.alloc_aligned(fn_info.frame_t->size, fn_info.frame_t->alignment),
+        .base_arg = (uint8_t *)val_data(args),
+        .base_ret = (uint8_t *)val_data(ret),
+        .pinstr = &s_prog->instrs[fn_info.first_instr]};
 
-    DEFER({
-        ctx.base.frame = base_frame;
-        ctx.base.arg = base_arg;
-        ctx.base.ret = base_ret;
-        ctx.pinstr = pinstr;
-    });
+    std::swap(ctx.base.frame, fr.base_frame);
+    std::swap(ctx.base.arg, fr.base_arg);
+    std::swap(ctx.base.ret, fr.base_ret);
+    std::swap(ctx.pinstr, fr.pinstr);
 
     LOG_DBG("jumping to %lu", fn_info.first_instr * sizeof(Instr));
 
@@ -418,6 +409,17 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
         s_funcs[ctx.pinstr->code]();
         ctx.pinstr++;
+    }
+
+    ctx.base.frame = fr.base_frame;
+    ctx.base.arg = fr.base_arg;
+    ctx.base.ret = fr.base_ret;
+    ctx.pinstr = fr.pinstr;
+
+    ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
+
+    if (was_uninitialized) {
+        _deinitCtx();
     }
 }
 

@@ -81,10 +81,7 @@ struct TupleElemInfo {
     size_t offset;
 };
 
-struct TupleElemInfoArray {
-    TupleElemInfo *data;
-    size_t size;
-};
+using TupleElemInfoArray = Slice<TupleElemInfo>;
 
 struct _type_tuple {
     TupleElemInfoArray elems;
@@ -106,10 +103,7 @@ struct Type {
     uint8_t typeclass_id;
 };
 
-struct TypeArray {
-    type_t const *data;
-    size_t size;
-};
+using TypeArray = Slice<type_t const>;
 
 void types_init();
 void types_deinit();
