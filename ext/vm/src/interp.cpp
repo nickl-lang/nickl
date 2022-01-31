@@ -130,6 +130,7 @@ INTERP(jmpnz) {
 
 INTERP(cast) {
     LOG_DBG(__FUNCTION__)
+
     auto dst = _getDynRef(instr.arg[0]);
     auto type = _getDynRef(instr.arg[1]);
     auto arg = _getDynRef(instr.arg[2]);
@@ -149,6 +150,7 @@ INTERP(cast) {
 
 INTERP(call) {
     LOG_DBG(__FUNCTION__)
+
     auto ret = _getDynRef(instr.arg[0]);
     auto fn = _getDynRef(instr.arg[1]);
     auto args = _getDynRef(instr.arg[2]);

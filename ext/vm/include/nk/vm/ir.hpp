@@ -50,6 +50,7 @@ struct Ref {
     Ref plus(size_t offset, type_t type) const;
     Ref deref(type_t type) const;
     Ref deref() const;
+    Ref as(type_t type) const;
 };
 
 struct FunctId {
@@ -146,10 +147,10 @@ struct ProgramBuilder {
     Local makeLocalVar(type_t type);
     Global makeGlobalVar(type_t type);
 
-    Ref makeFrameRef(Local var);
-    Ref makeArgRef(size_t index);
-    Ref makeRetRef();
-    Ref makeGlobalRef(Global var);
+    Ref makeFrameRef(Local var) const;
+    Ref makeArgRef(size_t index) const;
+    Ref makeRetRef() const;
+    Ref makeGlobalRef(Global var) const;
     Ref makeConstRef(value_t val);
 
     template <class T>
