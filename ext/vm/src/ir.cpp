@@ -328,16 +328,19 @@ Ref ProgramBuilder::makeConstRef(value_t val) {
         .is_indirect = false};
 }
 
-Ref ProgramBuilder::refIndirect(Ref const &ref) {
+Ref ProgramBuilder::deref(Ref const &ref, type_t type, size_t offset) {
     // TODO maybe rewrite as a ref method?
     Ref copy{ref};
     copy.is_indirect = true;
+    copy.type = type;
+    copy.offset += offset;
     return copy;
 }
 
-Ref ProgramBuilder::refOffset(Ref const &ref, size_t offset) {
+Ref ProgramBuilder::offset(Ref const &ref, type_t type, size_t offset) {
     // TODO maybe rewrite as a ref method?
     Ref copy{ref};
+    copy.type = type;
     copy.offset += offset;
     return copy;
 }
@@ -396,6 +399,9 @@ Instr ProgramBuilder::make_call(Ref const &dst, Ref const &funct, Ref const &arg
 
 void ProgramBuilder::gen(Instr const &instr) {
     assert(m_cur_block && "no current block");
+    assert(
+        instr.arg[0].arg_type != Arg_Ref || instr.arg[0].as.ref.is_indirect ||
+        (instr.arg[0].as.ref.ref_type != Ref_Const && instr.arg[0].as.ref.ref_type != Ref_Arg));
 
     prog.instrs.push() = instr;
     m_cur_block->instr_count++;

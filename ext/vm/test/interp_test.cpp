@@ -141,3 +141,31 @@ TEST_F(interp, rsqrt) {
     val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
     EXPECT_FLOAT_EQ(ret, 1.0f / std::sqrt(2.0f));
 }
+
+TEST_F(interp, vec2LenSquared) {
+    buildTestIr_vec2LenSquared(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    struct Vec2 {
+        double x;
+        double y;
+    };
+    Vec2 v{4.123, 5.456};
+    double len2 = 42;
+
+    struct Args {
+        Vec2 *vec_ptr;
+        double *res_ptr;
+    };
+    Args args{&v, &len2};
+
+    val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {&args, fn_t->as.fn.args_t});
+
+    EXPECT_DOUBLE_EQ(len2, v.x * v.x + v.y * v.y);
+}
