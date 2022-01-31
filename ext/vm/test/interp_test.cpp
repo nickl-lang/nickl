@@ -169,3 +169,28 @@ TEST_F(interp, vec2LenSquared) {
 
     EXPECT_DOUBLE_EQ(len2, v.x * v.x + v.y * v.y);
 }
+
+TEST_F(interp, modf) {
+    buildTestIr_modf(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    double fract_part = 42;
+    double int_part = 42;
+
+    struct Args {
+        double x;
+        double *int_part_ptr;
+    };
+    Args args{8.123456, &int_part};
+
+    val_fn_invoke(fn_t, {&fract_part, fn_t->as.fn.ret_t}, {&args, fn_t->as.fn.args_t});
+
+    EXPECT_NEAR(fract_part, 0.123456, 1e-6);
+    EXPECT_NEAR(int_part, 8.0, 1e-6);
+}

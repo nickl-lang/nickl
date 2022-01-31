@@ -180,7 +180,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    switch (val_typeid(val)) {
+    switch (val_typeclassid(val)) {
     case Type_Array:
         ss << "[";
         for (size_t i = 0; i < val_array_size(val); i++) {
@@ -212,7 +212,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         ss << ")";
         break;
     case Type_Typeref:
-        ss << type_name(&tmp_arena, val_typeof(val)).view();
+        ss << type_name(&tmp_arena, val_as(type_t, val)).view();
         break;
     case Type_Void:
         ss << "void{}";

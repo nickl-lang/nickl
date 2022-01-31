@@ -153,6 +153,10 @@ inline type_t val_typeof(value_t val) {
 }
 
 inline typeid_t val_typeid(value_t val) {
+    return val.type->id;
+}
+
+inline typeid_t val_typeclassid(value_t val) {
     return val.type->typeclass_id;
 }
 

@@ -13,6 +13,7 @@ FunctId buildTestIr_atan(ProgramBuilder &b);
 FunctId buildTestIr_pi(ProgramBuilder &b);
 FunctId buildTestIr_rsqrt(ProgramBuilder &b);
 FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b);
+FunctId buildTestIr_modf(ProgramBuilder &b);
 
 } // namespace ir
 } // namespace vm
