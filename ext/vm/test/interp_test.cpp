@@ -194,3 +194,21 @@ TEST_F(interp, modf) {
     EXPECT_NEAR(fract_part, 0.123456, 1e-6);
     EXPECT_NEAR(int_part, 8.0, 1e-6);
 }
+
+TEST_F(interp, intPart) {
+    buildTestIr_intPart(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_translator.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    double arg = 123.456;
+    double res = 42;
+
+    val_fn_invoke(fn_t, {&res, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
+
+    EXPECT_NEAR(res, 123.0, 1e-6);
+}
