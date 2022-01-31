@@ -99,11 +99,14 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     default:
                         break;
                     }
+                    if (ref.offset) {
+                        ss << "+" << ref.offset;
+                    }
                     if (ref.is_indirect) {
                         ss << "]";
                     }
-                    if (ref.offset) {
-                        ss << "+" << ref.offset;
+                    if (ref.post_offset) {
+                        ss << "+" << ref.post_offset;
                     }
                     ss << ":" << type_name(&tmp_arena, ref.type).view();
                 };
@@ -173,6 +176,34 @@ Arg _arg(FunctId funct) {
 }
 
 } // namespace
+
+Ref Ref::plus(size_t offset) const {
+    return plus(offset, type);
+}
+
+Ref Ref::plus(size_t offset, type_t type) const {
+    Ref copy{*this};
+    if (is_indirect) {
+        copy.post_offset += offset;
+    } else {
+        copy.offset += offset;
+    }
+    copy.type = type;
+    return copy;
+}
+
+Ref Ref::deref(type_t type) const {
+    assert(this->type->typeclass_id == Type_Ptr);
+    Ref copy{*this};
+    copy.is_indirect = true;
+    copy.type = type;
+    return copy;
+}
+
+Ref Ref::deref() const {
+    assert(type->typeclass_id == Type_Ptr);
+    return deref(type->as.ptr.target_type);
+}
 
 void ProgramBuilder::init() {
     m_cur_funct = nullptr;
@@ -281,6 +312,7 @@ Ref ProgramBuilder::makeFrameRef(Local var) {
     return {
         .value = {.index = var.id},
         .offset = 0,
+        .post_offset = 0,
         .type = m_cur_funct->locals.data[var.id],
         .ref_type = Ref_Frame,
         .is_indirect = false};
@@ -292,6 +324,7 @@ Ref ProgramBuilder::makeArgRef(size_t index) {
     return {
         .value = {.index = index},
         .offset = 0,
+        .post_offset = 0,
         .type = m_cur_funct->args_t->as.tuple.elems.data[index].type,
         .ref_type = Ref_Arg,
         .is_indirect = false};
@@ -302,6 +335,7 @@ Ref ProgramBuilder::makeRetRef() {
     return {
         .value = {},
         .offset = 0,
+        .post_offset = 0,
         .type = m_cur_funct->ret_t,
         .ref_type = Ref_Ret,
         .is_indirect = false};
@@ -311,6 +345,7 @@ Ref ProgramBuilder::makeGlobalRef(Global var) {
     return {
         .value = {.index = var.id},
         .offset = 0,
+        .post_offset = 0,
         .type = prog.globals.data[var.id],
         .ref_type = Ref_Global,
         .is_indirect = false};
@@ -323,26 +358,10 @@ Ref ProgramBuilder::makeConstRef(value_t val) {
     return {
         .value = {val.data = mem},
         .offset = 0,
+        .post_offset = 0,
         .type = val_typeof(val),
         .ref_type = Ref_Const,
         .is_indirect = false};
-}
-
-Ref ProgramBuilder::deref(Ref const &ref, type_t type, size_t offset) {
-    // TODO maybe rewrite as a ref method?
-    Ref copy{ref};
-    copy.is_indirect = true;
-    copy.type = type;
-    copy.offset += offset;
-    return copy;
-}
-
-Ref ProgramBuilder::offset(Ref const &ref, type_t type, size_t offset) {
-    // TODO maybe rewrite as a ref method?
-    Ref copy{ref};
-    copy.type = type;
-    copy.offset += offset;
-    return copy;
 }
 
 Instr ProgramBuilder::make_nop() {

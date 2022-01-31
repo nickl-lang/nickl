@@ -375,18 +375,6 @@ string type_name(Allocator *allocator, type_t type) {
     return string{data, str.size()};
 }
 
-bool val_isTrue(value_t val) {
-    switch (val.type->typeclass_id) {
-    case Type_Numeric:
-    case Type_Ptr:
-    case Type_Typeref:
-        // TODO val_isTrue not implemented
-        return false;
-    default:
-        return true;
-    }
-}
-
 string val_inspect(Allocator *allocator, value_t val) {
     std::ostringstream ss;
     _valInspect(val, ss);

@@ -128,8 +128,6 @@ type_t type_get_void();
 
 string type_name(Allocator *allocator, type_t type);
 
-bool val_isTrue(value_t val);
-
 string val_inspect(Allocator *allocator, value_t val);
 
 size_t val_tuple_size(value_t self);

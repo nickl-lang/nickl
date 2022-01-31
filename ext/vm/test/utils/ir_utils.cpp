@@ -281,11 +281,11 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    b.gen(b.make_mov(v_0, b.deref(a_vec_ptr, f64_t)));
-    b.gen(b.make_mov(v_1, b.deref(a_vec_ptr, f64_t, 8)));
+    b.gen(b.make_mov(v_0, a_vec_ptr.deref(f64_t)));
+    b.gen(b.make_mov(v_1, a_vec_ptr.deref(f64_t).plus(8)));
     b.gen(b.make_mul(v_0, v_0, v_0));
     b.gen(b.make_mul(v_1, v_1, v_1));
-    b.gen(b.make_add(b.deref(a_res_ptr, f64_t), v_0, v_1));
+    b.gen(b.make_add(a_res_ptr.deref(), v_0, v_1));
 
     b.gen(b.make_ret());
 
