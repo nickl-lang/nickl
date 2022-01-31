@@ -14,16 +14,15 @@ namespace vm {
 
 enum ERefType {
     Ref_None = 0,
-    Ref_Base,
 
-    Ref_Frame = Ref_Base,
+    Ref_Frame,
     Ref_Arg,
     Ref_Ret,
     Ref_Global,
     Ref_Const,
     Ref_Instr,
 
-    Ref_End,
+    Ref_Count,
 };
 
 namespace ir {
