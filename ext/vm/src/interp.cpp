@@ -171,7 +171,13 @@ INTERP(mov) {
 
 INTERP(lea) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(lea);
+
+    auto dst = _getDynRef(ctx.pinstr->arg[0]);
+    auto src = _getDynRef(ctx.pinstr->arg[1]);
+
+    assert(val_typeclassid(dst) == Type_Ptr);
+
+    val_as(void*, dst) = val_data(src);
 }
 
 INTERP(neg) {
@@ -403,7 +409,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     std::swap(ctx.base.ret, fr.base_ret);
     std::swap(ctx.pinstr, fr.pinstr);
 
-    LOG_DBG("jumping to %lu", fn_info.first_instr * sizeof(Instr));
+    LOG_DBG("jumping to %lx", fn_info.first_instr * sizeof(Instr));
 
     while (ctx.pinstr->code != ir::ir_ret) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");

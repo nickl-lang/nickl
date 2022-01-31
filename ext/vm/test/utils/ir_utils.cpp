@@ -148,14 +148,9 @@ FunctId buildTestIr_pi(ProgramBuilder &b) {
 
     auto f_atan = buildTestIr_atan(b);
 
-    auto u64_t = type_get_numeric(Uint64);
     auto f64_t = type_get_numeric(Float64);
 
     auto args_t = type_get_tuple(&tmp_arena, {});
-
-    type_t atan_args[] = {f64_t, u64_t};
-    auto atan_args_t =
-        type_get_tuple(&tmp_arena, TypeArray{atan_args, sizeof(atan_args) / sizeof(atan_args[0])});
 
     struct AtanArgs {
         double x;
@@ -165,8 +160,8 @@ FunctId buildTestIr_pi(ProgramBuilder &b) {
     AtanArgs a_args = {1.0 / 5.0, 10};
     AtanArgs b_args = {1.0 / 239.0, 10};
 
-    auto c_a_args = b.makeConstRef({&a_args, atan_args_t});
-    auto c_b_args = b.makeConstRef({&b_args, atan_args_t});
+    auto c_a_args = b.makeConstRef({&a_args, b.prog.functs[f_atan.id].args_t});
+    auto c_b_args = b.makeConstRef({&b_args, b.prog.functs[f_atan.id].args_t});
 
     auto ret = b.makeRetRef();
 
@@ -319,6 +314,46 @@ FunctId buildTestIr_modf(ProgramBuilder &b) {
     b.gen(b.make_cast(v_int_part, b.makeConstRef(i64_t, typeref_t), a_x));
     b.gen(b.make_cast(int_part_ref, b.makeConstRef(f64_t, typeref_t), v_int_part));
     b.gen(b.make_sub(ret, a_x, int_part_ref));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
+FunctId buildTestIr_intPart(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto f_modf = buildTestIr_modf(b);
+
+    auto f64_t = type_get_numeric(Float64);
+
+    auto args_t = type_get_tuple(&tmp_arena, {&f64_t, 1});
+
+    auto f = b.makeFunct(true);
+    b.startFunct(f, cstr_to_str("intPart"), f64_t, args_t);
+
+    auto modf_args_t = b.prog.functs[f_modf.id].args_t;
+
+    auto a_x = b.makeArgRef(0);
+
+    auto ret = b.makeRetRef();
+
+    auto v_0 = b.makeFrameRef(b.makeLocalVar(f64_t));
+    auto v_args = b.makeFrameRef(b.makeLocalVar(modf_args_t));
+
+    auto v_arg0 =
+        v_args.plus(type_tuple_offset(modf_args_t, 0), modf_args_t->as.tuple.elems[0].type);
+    auto v_arg1 =
+        v_args.plus(type_tuple_offset(modf_args_t, 1), modf_args_t->as.tuple.elems[1].type);
+
+    auto l_start = b.makeLabel();
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    b.gen(b.make_mov(v_arg0, a_x));
+    b.gen(b.make_lea(v_arg1, ret));
+    b.gen(b.make_call(v_0, f_modf, v_args));
 
     b.gen(b.make_ret());
 
