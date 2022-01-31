@@ -122,14 +122,10 @@ TEST_F(value, numeric) {
         EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{name});
     };
 
-    test_num(Int0, 0, "i0");
-    test_num(Int1, 1, "i1");
     test_num(Int8, 1, "i8");
     test_num(Int16, 2, "i16");
     test_num(Int32, 4, "i32");
     test_num(Int64, 8, "i64");
-    test_num(Uint0, 0, "u0");
-    test_num(Uint1, 1, "u1");
     test_num(Uint8, 1, "u8");
     test_num(Uint16, 2, "u16");
     test_num(Uint32, 4, "u32");

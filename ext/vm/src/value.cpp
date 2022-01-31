@@ -103,26 +103,18 @@ void _typeName(type_t type, std::ostringstream &ss) {
         break;
     case Type_Numeric:
         switch (type->as.num.value_type) {
-        case Int0:
         case Int8:
         case Int16:
         case Int32:
         case Int64:
             ss << "i";
             break;
-        case Int1:
-            ss << "i1";
-            return;
-        case Uint0:
         case Uint8:
         case Uint16:
         case Uint32:
         case Uint64:
             ss << "u";
             break;
-        case Uint1:
-            ss << "u1";
-            return;
         case Float32:
         case Float64:
             ss << "f";

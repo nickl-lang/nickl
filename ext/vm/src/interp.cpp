@@ -15,6 +15,7 @@ Program const *s_prog;
 
 struct InterpContext {
     struct Base { // repeats order of ERefType values
+        uint8_t *null;
         uint8_t *frame;
         uint8_t const *arg;
         uint8_t *ret;
@@ -23,20 +24,18 @@ struct InterpContext {
         uint8_t const *instr;
     };
     union {
-        uint8_t *base_ar[Ref_End - Ref_Base];
+        uint8_t *base_ar[Ref_Count];
         Base base;
     };
     ArenaAllocator stack;
-    Instr const *next_instr;
+    Instr const *pinstr;
     bool is_initialized;
 };
 
-thread_local InterpContext s_interp_ctx;
+thread_local InterpContext ctx;
 Array<uint8_t> s_globals;
 
 void _initCtx() {
-    auto &ctx = s_interp_ctx;
-
     ctx.stack.init();
 
     ctx.base.global = s_globals.data;
@@ -47,35 +46,28 @@ void _initCtx() {
 }
 
 void _deinitCtx() {
-    auto &ctx = s_interp_ctx;
-
     ctx.stack.deinit();
 
     ctx.is_initialized = false;
 }
 
 template <class T>
-T &_getRef(Ref const &arg) {
-    auto ptr = s_interp_ctx.base_ar[arg.ref_type - Ref_Base] + arg.offset;
-    if (arg.is_indirect) {
+T &_getRef(Ref ref) {
+    auto ptr = ctx.base_ar[ref.ref_type] + ref.offset;
+    if (ref.is_indirect) {
         ptr = *reinterpret_cast<uint8_t **>(ptr);
     }
-    return *reinterpret_cast<T *>(ptr + arg.post_offset);
+    return *reinterpret_cast<T *>(ptr + ref.post_offset);
 }
 
-value_t _getDynRef(Ref const &arg) {
-    return {&_getRef<uint8_t>(arg), arg.type};
+value_t _getDynRef(Ref ref) {
+    return {&_getRef<uint8_t>(ref), ref.type};
 }
 
-#define INTERP(NAME) void _interp_##NAME(Instr const &instr)
-#define INTERP_NOT_IMPLEMENTED(NAME) \
-    (void)instr;                     \
-    assert(!"instr not implemented" #NAME)
+#define INTERP(NAME) void _interp_##NAME()
+#define INTERP_NOT_IMPLEMENTED(NAME) assert(!"instr not implemented" #NAME)
 
-INTERP(nop) {
-    LOG_DBG(__FUNCTION__)
-    (void)instr;
-}
+INTERP(nop){LOG_DBG(__FUNCTION__)}
 
 INTERP(enter) {
     LOG_DBG(__FUNCTION__)
@@ -88,27 +80,29 @@ INTERP(leave) {
 }
 
 INTERP(ret) {
-    (void)instr;
+}
+
+void _jumpTo(Ref ref) {
+    // NOTE - 1 is because pinstr gets incremented after each instruction
+    ctx.pinstr = &_getRef<Instr>(ref) - 1;
 }
 
 INTERP(jmp) {
     LOG_DBG(__FUNCTION__)
 
-    auto &target = _getRef<Instr>(instr.arg[1]);
-    s_interp_ctx.next_instr = &target;
+    _jumpTo(ctx.pinstr->arg[1]);
 }
 
 INTERP(jmpz) {
     LOG_DBG(__FUNCTION__)
 
-    auto cond = _getDynRef(instr.arg[1]);
+    auto cond = _getDynRef(ctx.pinstr->arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
 
     val_numeric_visit(cond, [=](auto val) {
         if (!val) {
-            auto &target = _getRef<Instr>(instr.arg[2]);
-            s_interp_ctx.next_instr = &target;
+            _jumpTo(ctx.pinstr->arg[2]);
         }
     });
 }
@@ -116,14 +110,13 @@ INTERP(jmpz) {
 INTERP(jmpnz) {
     LOG_DBG(__FUNCTION__)
 
-    auto cond = _getDynRef(instr.arg[1]);
+    auto cond = _getDynRef(ctx.pinstr->arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
 
     val_numeric_visit(cond, [=](auto val) {
         if (val) {
-            auto &target = _getRef<Instr>(instr.arg[2]);
-            s_interp_ctx.next_instr = &target;
+            _jumpTo(ctx.pinstr->arg[2]);
         }
     });
 }
@@ -131,9 +124,9 @@ INTERP(jmpnz) {
 INTERP(cast) {
     LOG_DBG(__FUNCTION__)
 
-    auto dst = _getDynRef(instr.arg[0]);
-    auto type = _getDynRef(instr.arg[1]);
-    auto arg = _getDynRef(instr.arg[2]);
+    auto dst = _getDynRef(ctx.pinstr->arg[0]);
+    auto type = _getDynRef(ctx.pinstr->arg[1]);
+    auto arg = _getDynRef(ctx.pinstr->arg[2]);
 
     assert(dst.type->typeclass_id == Type_Numeric);
     assert(type.type->typeclass_id == Type_Typeref);
@@ -151,9 +144,9 @@ INTERP(cast) {
 INTERP(call) {
     LOG_DBG(__FUNCTION__)
 
-    auto ret = _getDynRef(instr.arg[0]);
-    auto fn = _getDynRef(instr.arg[1]);
-    auto args = _getDynRef(instr.arg[2]);
+    auto ret = _getDynRef(ctx.pinstr->arg[0]);
+    auto fn = _getDynRef(ctx.pinstr->arg[1]);
+    auto args = _getDynRef(ctx.pinstr->arg[2]);
 
     val_fn_invoke(val_typeof(fn), ret, args);
 }
@@ -161,12 +154,12 @@ INTERP(call) {
 INTERP(mov) {
     LOG_DBG(__FUNCTION__)
 
-    auto dst = _getDynRef(instr.arg[0]);
-    auto src = _getDynRef(instr.arg[1]);
+    auto dst = _getDynRef(ctx.pinstr->arg[0]);
+    auto src = _getDynRef(ctx.pinstr->arg[1]);
 
-    assert(val_typeof(dst)->size == val_typeof(src)->size);
+    assert(val_sizeof(dst) == val_sizeof(src));
 
-    std::memcpy(val_data(dst), val_data(src), val_typeof(dst)->size);
+    std::memcpy(val_data(dst), val_data(src), val_sizeof(dst));
 }
 
 INTERP(lea) {
@@ -190,10 +183,10 @@ INTERP(not ) {
 }
 
 template <class F>
-void _numericBinOp(Instr const &instr, F &&op) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto lhs = _getDynRef(instr.arg[1]);
-    auto rhs = _getDynRef(instr.arg[2]);
+void _numericBinOp(F &&op) {
+    auto dst = _getDynRef(ctx.pinstr->arg[0]);
+    auto lhs = _getDynRef(ctx.pinstr->arg[1]);
+    auto rhs = _getDynRef(ctx.pinstr->arg[2]);
 
     // TODO implement errors for interp
     assert(val_typeid(dst) == val_typeid(lhs));
@@ -207,12 +200,11 @@ void _numericBinOp(Instr const &instr, F &&op) {
 }
 
 template <class F>
-void _numericBinOpInt(Instr const &instr, F &&op) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto lhs = _getDynRef(instr.arg[1]);
-    auto rhs = _getDynRef(instr.arg[2]);
+void _numericBinOpInt(F &&op) {
+    auto dst = _getDynRef(ctx.pinstr->arg[0]);
+    auto lhs = _getDynRef(ctx.pinstr->arg[1]);
+    auto rhs = _getDynRef(ctx.pinstr->arg[2]);
 
-    // TODO implement errors for interp
     assert(val_typeid(dst) == val_typeid(lhs));
     assert(val_typeid(dst) == val_typeid(rhs));
     assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
@@ -225,148 +217,136 @@ void _numericBinOpInt(Instr const &instr, F &&op) {
 
 INTERP(add) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs + rhs;
     });
 }
 
 INTERP(sub) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs - rhs;
     });
 }
 
 INTERP(mul) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs * rhs;
     });
 }
 
 INTERP(div) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs / rhs;
     });
 }
 
 INTERP(mod) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+    _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs % rhs;
     });
 }
 
 INTERP(bitand) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+    _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs & rhs;
     });
 }
 
 INTERP(bitor) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+    _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs | rhs;
     });
 }
 
 INTERP(xor) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+    _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs ^ rhs;
     });
 }
 
 INTERP(lsh) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+    _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs << rhs;
     });
 }
 
 INTERP(rsh) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
+    _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs >> rhs;
     });
 }
 
 INTERP(and) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs && rhs;
     });
 }
 
 INTERP(or) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs || rhs;
     });
 }
 
 INTERP(eq) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs == rhs;
     });
 }
 
 INTERP(ge) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs >= rhs;
     });
 }
 
 INTERP(gt) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs > rhs;
     });
 }
 
 INTERP(le) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs <= rhs;
     });
 }
 
 INTERP(lt) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs < rhs;
     });
 }
 
 INTERP(ne) {
     LOG_DBG(__FUNCTION__)
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
+    _numericBinOp([](auto lhs, auto rhs) {
         return lhs != rhs;
     });
 }
 
-using InterpFunc = void (*)(Instr const &);
+using InterpFunc = void (*)();
 
 InterpFunc s_funcs[] = {
 #define X(NAME) _interp_##NAME,
 #include "nk/vm/ir.inl"
 };
-
-void _jumpTo(size_t instr_index) {
-    LOG_DBG("jump to %lu", instr_index);
-    auto &ctx = s_interp_ctx;
-    ctx.next_instr = &s_prog->instrs.data[instr_index];
-    while (ctx.next_instr->code != ir::ir_ret) {
-        auto const &instr = *ctx.next_instr++;
-        assert(instr.code < ir::Ir_Count && "unknown instruction");
-        auto func = s_funcs[instr.code];
-        func(instr);
-    }
-}
 
 } // namespace
 
@@ -394,8 +374,6 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     LOG_TRC(__FUNCTION__);
 
-    auto &ctx = s_interp_ctx;
-
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
         _initCtx();
@@ -412,7 +390,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     uint8_t *base_frame = nullptr;
     uint8_t const *base_arg = (uint8_t *)val_data(args);
     uint8_t *base_ret = (uint8_t *)val_data(ret);
-    Instr const *next_instr = 0;
+    Instr const *pinstr = &s_prog->instrs.data[fn_info.first_instr];
 
     size_t const prev_stack_top = ctx.stack._seq.size;
     if (fn_info.frame_t->size > 0) {
@@ -425,16 +403,22 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     std::swap(ctx.base.frame, base_frame);
     std::swap(ctx.base.arg, base_arg);
     std::swap(ctx.base.ret, base_ret);
-    std::swap(ctx.next_instr, next_instr);
+    std::swap(ctx.pinstr, pinstr);
 
     DEFER({
         ctx.base.frame = base_frame;
         ctx.base.arg = base_arg;
         ctx.base.ret = base_ret;
-        ctx.next_instr = next_instr;
+        ctx.pinstr = pinstr;
     });
 
-    _jumpTo(fn_info.first_instr);
+    LOG_DBG("jumping to %lu", fn_info.first_instr * sizeof(Instr));
+
+    while (ctx.pinstr->code != ir::ir_ret) {
+        assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
+        s_funcs[ctx.pinstr->code]();
+        ctx.pinstr++;
+    }
 }
 
 } // namespace vm
