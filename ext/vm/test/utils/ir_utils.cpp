@@ -218,31 +218,74 @@ FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
     b.startBlock(l_start, cstr_to_str("start"));
 
     // TODO Add support for reinterpret_cast in Ir construction
-    auto v_tmp = b.makeLocalVar(i32_t);
-    auto v_tmp_i32 = b.makeFrameRef(v_tmp);
-    v_tmp_i32.type = i32_t;
-    auto v_tmp_f32 = b.makeFrameRef(v_tmp);
-    v_tmp_f32.type = f32_t;
+    auto v_0 = b.makeLocalVar(i32_t);
+    auto v_0_i32 = b.makeFrameRef(v_0);
+    v_0_i32.type = i32_t;
+    auto v_0_f32 = b.makeFrameRef(v_0);
+    v_0_f32.type = f32_t;
+
+    auto v_1 = b.makeFrameRef(b.makeLocalVar(f32_t));
 
     auto ret_f32 = b.makeRetRef();
     auto ret_i32 = ret_f32;
     ret_i32.type = i32_t;
 
     b.gen(b.make_mov(ret_f32, a_x));
-    b.gen(b.make_mul(a_x, a_x, c_0_5f));
+    b.gen(b.make_mul(v_1, a_x, c_0_5f));
 
-    b.gen(b.make_rsh(v_tmp_i32, ret_i32, c_1u));
-    b.gen(b.make_sub(ret_i32, c_magic, v_tmp_i32));
+    b.gen(b.make_rsh(v_0_i32, ret_i32, c_1u));
+    b.gen(b.make_sub(ret_i32, c_magic, v_0_i32));
 
-    b.gen(b.make_mul(v_tmp_f32, a_x, ret_f32));
-    b.gen(b.make_mul(v_tmp_f32, v_tmp_f32, ret_f32));
-    b.gen(b.make_sub(v_tmp_f32, c_1_5f, v_tmp_f32));
-    b.gen(b.make_mul(ret_f32, ret_f32, v_tmp_f32));
+    b.gen(b.make_mul(v_0_f32, v_1, ret_f32));
+    b.gen(b.make_mul(v_0_f32, v_0_f32, ret_f32));
+    b.gen(b.make_sub(v_0_f32, c_1_5f, v_0_f32));
+    b.gen(b.make_mul(ret_f32, ret_f32, v_0_f32));
 
-    b.gen(b.make_mul(v_tmp_f32, a_x, ret_f32));
-    b.gen(b.make_mul(v_tmp_f32, v_tmp_f32, ret_f32));
-    b.gen(b.make_sub(v_tmp_f32, c_1_5f, v_tmp_f32));
-    b.gen(b.make_mul(ret_f32, ret_f32, v_tmp_f32));
+    b.gen(b.make_mul(v_0_f32, v_1, ret_f32));
+    b.gen(b.make_mul(v_0_f32, v_0_f32, ret_f32));
+    b.gen(b.make_sub(v_0_f32, c_1_5f, v_0_f32));
+    b.gen(b.make_mul(ret_f32, ret_f32, v_0_f32));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
+FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto void_t = type_get_void();
+    auto f64_t = type_get_numeric(Float64);
+
+    type_t vec_types[] = {f64_t, f64_t};
+    auto vec_t = type_get_tuple(&tmp_arena, {vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
+
+    type_t vec_ptr_t = type_get_ptr(vec_t);
+    type_t f64_ptr_t = type_get_ptr(f64_t);
+
+    type_t args_types[] = {vec_ptr_t, f64_ptr_t};
+    auto args_t =
+        type_get_tuple(&tmp_arena, {args_types, sizeof(args_types) / sizeof(args_types[0])});
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("vec2LenSquared"), void_t, args_t);
+
+    auto l_start = b.makeLabel();
+
+    auto a_vec_ptr = b.makeArgRef(0);
+    auto a_res_ptr = b.makeArgRef(1);
+
+    auto v_0 = b.makeFrameRef(b.makeLocalVar(f64_t));
+    auto v_1 = b.makeFrameRef(b.makeLocalVar(f64_t));
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    b.gen(b.make_mov(v_0, b.deref(a_vec_ptr, f64_t)));
+    b.gen(b.make_mov(v_1, b.deref(a_vec_ptr, f64_t, 8)));
+    b.gen(b.make_mul(v_0, v_0, v_0));
+    b.gen(b.make_mul(v_1, v_1, v_1));
+    b.gen(b.make_add(b.deref(a_res_ptr, f64_t), v_0, v_1));
 
     b.gen(b.make_ret());
 

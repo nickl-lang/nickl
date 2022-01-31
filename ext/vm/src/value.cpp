@@ -218,6 +218,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         ss << "void{}";
         break;
     case Type_Fn:
+        // TODO inspect function
     default:
         ss << "value{data=" << val_data(val)
            << ", type=" << type_name(&tmp_arena, val_typeof(val)).view() << "}";

@@ -24,8 +24,8 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    ss << std::setfill(' ') << std::left;
-    static constexpr std::streamoff c_padding = 5;
+    ss << std::hex << std::setfill(' ') << std::left;
+    static constexpr std::streamoff c_padding = 8;
 
     auto _inspectArg = [&](Ref &arg) {
         if (arg.is_indirect) {
@@ -50,13 +50,13 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                << ">";
             break;
         case Ref_Instr:
-            ss << arg.offset / sizeof(Instr);
+            ss << "instr";
             break;
         default:
             assert(!"unreachable");
             break;
         }
-        if (arg.ref_type < Ref_Const) {
+        if (arg.ref_type != Ref_Const) {
             ss << "+" << arg.offset;
         }
         if (arg.is_indirect) {
@@ -73,7 +73,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     for (size_t i = 0; i < prog.instrs.size; i++) {
         auto &instr = prog.instrs.data[i];
 
-        ss << std::setw(c_padding) << i;
+        ss << std::setw(c_padding) << i * sizeof(Instr);
 
         if (instr.arg[0].ref_type != Ref_None) {
             _inspectArg(instr.arg[0]);

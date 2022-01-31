@@ -152,8 +152,8 @@ struct ProgramBuilder {
         return makeConstRef({&val, type});
     }
 
-    Ref refIndirect(Ref const &ref);
-    Ref refOffset(Ref const &ref, size_t offset);
+    Ref deref(Ref const &ref, type_t type, size_t offset = 0);
+    Ref offset(Ref const &ref, type_t type, size_t offset);
 
     Instr make_nop();
     Instr make_enter();
