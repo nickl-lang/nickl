@@ -185,7 +185,8 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
                     assert(!"unreachable");
                     break;
                 }
-                arg.post_offset = ref.offset;
+                arg.offset += ref.offset;
+                arg.post_offset = ref.post_offset;
                 arg.type = ref.type;
                 arg.ref_type = ref.ref_type;
                 arg.is_indirect = ref.is_indirect;

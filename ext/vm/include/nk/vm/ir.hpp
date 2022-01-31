@@ -41,9 +41,15 @@ struct Ref {
         size_t index;
     } value;
     size_t offset;
+    size_t post_offset;
     type_t type;
     ERefType ref_type;
     bool is_indirect;
+
+    Ref plus(size_t offset) const;
+    Ref plus(size_t offset, type_t type) const;
+    Ref deref(type_t type) const;
+    Ref deref() const;
 };
 
 struct FunctId {
@@ -151,9 +157,6 @@ struct ProgramBuilder {
         assert(sizeof(val) == type->size);
         return makeConstRef({&val, type});
     }
-
-    Ref deref(Ref const &ref, type_t type, size_t offset = 0);
-    Ref offset(Ref const &ref, type_t type, size_t offset);
 
     Instr make_nop();
     Instr make_enter();
