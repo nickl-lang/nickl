@@ -261,8 +261,8 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     type_t vec_types[] = {f64_t, f64_t};
     auto vec_t = type_get_tuple(&tmp_arena, {vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
 
-    type_t vec_ptr_t = type_get_ptr(vec_t);
-    type_t f64_ptr_t = type_get_ptr(f64_t);
+    auto vec_ptr_t = type_get_ptr(vec_t);
+    auto f64_ptr_t = type_get_ptr(f64_t);
 
     type_t args_types[] = {vec_ptr_t, f64_ptr_t};
     auto args_t =
@@ -286,6 +286,44 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     b.gen(b.make_mul(v_0, v_0, v_0));
     b.gen(b.make_mul(v_1, v_1, v_1));
     b.gen(b.make_add(a_res_ptr.deref(), v_0, v_1));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
+FunctId buildTestIr_modf(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto i64_t = type_get_numeric(Int64);
+    auto f64_t = type_get_numeric(Float64);
+    auto f64_ptr_t = type_get_ptr(f64_t);
+    auto typeref_t = type_get_typeref();
+
+    type_t args_types[] = {f64_t, f64_ptr_t};
+    auto args_t =
+        type_get_tuple(&tmp_arena, {args_types, sizeof(args_types) / sizeof(args_types[0])});
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("modf"), f64_t, args_t);
+
+    auto a_x = b.makeArgRef(0);
+    auto a_int_part_ptr = b.makeArgRef(1);
+
+    auto ret = b.makeRetRef();
+
+    auto v_int_part = b.makeFrameRef(b.makeLocalVar(i64_t));
+
+    auto l_start = b.makeLabel();
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    auto int_part_ref = a_int_part_ptr.deref();
+
+    b.gen(b.make_cast(v_int_part, b.makeConstRef(i64_t, typeref_t), a_x));
+    b.gen(b.make_cast(int_part_ref, b.makeConstRef(f64_t, typeref_t), v_int_part));
+    b.gen(b.make_sub(ret, a_x, int_part_ref));
 
     b.gen(b.make_ret());
 

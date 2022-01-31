@@ -130,7 +130,21 @@ INTERP(jmpnz) {
 
 INTERP(cast) {
     LOG_DBG(__FUNCTION__)
-    INTERP_NOT_IMPLEMENTED(cast);
+    auto dst = _getDynRef(instr.arg[0]);
+    auto type = _getDynRef(instr.arg[1]);
+    auto arg = _getDynRef(instr.arg[2]);
+
+    assert(dst.type->typeclass_id == Type_Numeric);
+    assert(type.type->typeclass_id == Type_Typeref);
+    assert(val_typeid(dst) == val_as(type_t, type)->id);
+    assert(arg.type->typeclass_id == Type_Numeric);
+
+    val_numeric_visit(dst, [&](auto &dst_val) {
+        using T = std::decay_t<decltype(dst_val)>;
+        val_numeric_visit(arg, [&](auto arg_val) {
+            dst_val = static_cast<T>(arg_val);
+        });
+    });
 }
 
 INTERP(call) {
@@ -185,9 +199,8 @@ void _numericBinOp(Instr const &instr, F &&op) {
     assert(dst.type->typeclass_id == Type_Numeric);
 
     val_numeric_visit(dst, [&](auto &dst_val) {
-        dst_val =
-            op(val_as(std::decay_t<decltype(dst_val)>, lhs),
-               val_as(std::decay_t<decltype(dst_val)>, rhs));
+        using T = std::decay_t<decltype(dst_val)>;
+        dst_val = op(val_as(T, lhs), val_as(T, rhs));
     });
 }
 
@@ -203,9 +216,8 @@ void _numericBinOpInt(Instr const &instr, F &&op) {
     assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
 
     val_numeric_visit_int(dst, [&](auto &dst_val) {
-        dst_val =
-            op(val_as(std::decay_t<decltype(dst_val)>, lhs),
-               val_as(std::decay_t<decltype(dst_val)>, rhs));
+        using T = std::decay_t<decltype(dst_val)>;
+        dst_val = op(val_as(T, lhs), val_as(T, rhs));
     });
 }
 
