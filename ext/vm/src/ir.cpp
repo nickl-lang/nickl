@@ -201,8 +201,17 @@ Ref Ref::deref(type_t type) const {
 }
 
 Ref Ref::deref() const {
-    assert(type->typeclass_id == Type_Ptr);
-    return deref(type->as.ptr.target_type);
+    assert(this->type->typeclass_id == Type_Ptr);
+    Ref copy{*this};
+    copy.is_indirect = true;
+    copy.type = type->as.ptr.target_type;
+    return copy;
+}
+
+Ref Ref::as(type_t type) const {
+    Ref copy{*this};
+    copy.type = type;
+    return copy;
 }
 
 void ProgramBuilder::init() {
@@ -307,7 +316,7 @@ Global ProgramBuilder::makeGlobalVar(type_t type) {
     return {prog.globals.size - 1};
 }
 
-Ref ProgramBuilder::makeFrameRef(Local var) {
+Ref ProgramBuilder::makeFrameRef(Local var) const {
     assert(m_cur_funct && "no current function");
     return {
         .value = {.index = var.id},
@@ -318,7 +327,7 @@ Ref ProgramBuilder::makeFrameRef(Local var) {
         .is_indirect = false};
 }
 
-Ref ProgramBuilder::makeArgRef(size_t index) {
+Ref ProgramBuilder::makeArgRef(size_t index) const {
     assert(m_cur_funct && "no current function");
     assert(index < m_cur_funct->args_t->as.tuple.elems.size && "arg index out of range");
     return {
@@ -330,7 +339,7 @@ Ref ProgramBuilder::makeArgRef(size_t index) {
         .is_indirect = false};
 }
 
-Ref ProgramBuilder::makeRetRef() {
+Ref ProgramBuilder::makeRetRef() const {
     assert(m_cur_funct && "no current function");
     return {
         .value = {},
@@ -341,7 +350,7 @@ Ref ProgramBuilder::makeRetRef() {
         .is_indirect = false};
 }
 
-Ref ProgramBuilder::makeGlobalRef(Global var) {
+Ref ProgramBuilder::makeGlobalRef(Global var) const {
     return {
         .value = {.index = var.id},
         .offset = 0,

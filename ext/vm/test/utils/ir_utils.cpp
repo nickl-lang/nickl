@@ -217,18 +217,13 @@ FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    // TODO Add support for reinterpret_cast in Ir construction
-    auto v_0 = b.makeLocalVar(i32_t);
-    auto v_0_i32 = b.makeFrameRef(v_0);
-    v_0_i32.type = i32_t;
-    auto v_0_f32 = b.makeFrameRef(v_0);
-    v_0_f32.type = f32_t;
+    auto v_0_i32 = b.makeFrameRef(b.makeLocalVar(i32_t));
+    auto v_0_f32 = v_0_i32.as(f32_t);
 
     auto v_1 = b.makeFrameRef(b.makeLocalVar(f32_t));
 
     auto ret_f32 = b.makeRetRef();
-    auto ret_i32 = ret_f32;
-    ret_i32.type = i32_t;
+    auto ret_i32 = ret_f32.as(i32_t);
 
     b.gen(b.make_mov(ret_f32, a_x));
     b.gen(b.make_mul(v_1, a_x, c_0_5f));
