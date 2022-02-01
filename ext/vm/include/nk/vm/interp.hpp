@@ -6,9 +6,6 @@
 namespace nk {
 namespace vm {
 
-void interp_init(Program const *prog);
-void interp_deinit();
-
 void interp_invoke(type_t self, value_t ret, value_t args);
 
 } // namespace vm

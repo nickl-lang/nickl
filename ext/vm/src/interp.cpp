@@ -11,11 +11,9 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::interp)
 
-Program const *s_prog;
-
 struct InterpContext {
     struct Base { // repeats order of ERefType values
-        uint8_t *null;
+        uint8_t const *null;
         uint8_t *frame;
         uint8_t const *arg;
         uint8_t *ret;
@@ -29,7 +27,12 @@ struct InterpContext {
     };
     ArenaAllocator stack;
     Instr const *pinstr;
-    bool is_initialized;
+};
+
+struct ProgramFrame {
+    uint8_t *base_global;
+    uint8_t const *base_rodata;
+    uint8_t const *base_instr;
 };
 
 struct InterpFrame {
@@ -40,23 +43,6 @@ struct InterpFrame {
 };
 
 thread_local InterpContext ctx;
-Array<uint8_t> s_globals;
-
-void _initCtx() {
-    ctx.stack.init();
-
-    ctx.base.global = s_globals.data;
-    ctx.base.rodata = s_prog->rodata.data;
-    ctx.base.instr = (uint8_t *)s_prog->instrs.data;
-
-    ctx.is_initialized = true;
-}
-
-void _deinitCtx() {
-    ctx.stack.deinit();
-
-    ctx.is_initialized = false;
-}
 
 template <class T>
 T &_getRef(Ref ref) {
@@ -363,53 +349,51 @@ InterpFunc s_funcs[] = {
 
 } // namespace
 
-void interp_init(Program const *prog) {
-    // TODO Maybe init prog ptr from the first function call in the thread
-    s_prog = prog;
-
-    // TODO Think if this check can be removed
-    if (prog->globals_t->size > 0) {
-        s_globals.push(prog->globals_t->size);
-    }
-}
-
-void interp_deinit() {
-    s_globals.deinit();
-
-    s_prog = nullptr;
-}
-
 void interp_invoke(type_t self, value_t ret, value_t args) {
     // TODO Add logs everywhere
     // TODO Integrate profiling
 
-    assert(s_prog && "program is not initialized");
-
     LOG_TRC(__FUNCTION__);
 
-    bool was_uninitialized = !ctx.is_initialized;
-    if (was_uninitialized) {
-        _initCtx();
+    FunctInfo const &fn = *(FunctInfo *)self->as.fn.closure;
+    Program &prog = *fn.prog;
+
+    if (!prog.globals) {
+        // TODO Use allocator instasd of new[]/delete[]
+        prog.globals = new uint8_t[prog.globals_t->size];
     }
 
-    FunctInfo const &fn_info = *(FunctInfo *)self->as.fn.closure;
+    ProgramFrame pfr{
+        .base_global = prog.globals,
+        .base_rodata = prog.rodata.data,
+        .base_instr = (uint8_t const *)prog.instrs.data,
+    };
+
+    bool was_uninitialized = pfr.base_instr != ctx.base.instr;
+    if (was_uninitialized) {
+        ctx.stack.init();
+
+        std::swap(ctx.base.global, pfr.base_global);
+        std::swap(ctx.base.rodata, pfr.base_rodata);
+        std::swap(ctx.base.instr, pfr.base_instr);
+    }
 
     // TODO Refactor hack with arena and _seq
     size_t const prev_stack_top = ctx.stack._seq.size;
 
     InterpFrame fr{
-        .base_frame =
-            (uint8_t *)ctx.stack.alloc_aligned(fn_info.frame_t->size, fn_info.frame_t->alignment),
+        .base_frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_t->size, fn.frame_t->alignment),
         .base_arg = (uint8_t *)val_data(args),
         .base_ret = (uint8_t *)val_data(ret),
-        .pinstr = &s_prog->instrs[fn_info.first_instr]};
+        .pinstr = &prog.instrs[fn.first_instr],
+    };
 
     std::swap(ctx.base.frame, fr.base_frame);
     std::swap(ctx.base.arg, fr.base_arg);
     std::swap(ctx.base.ret, fr.base_ret);
     std::swap(ctx.pinstr, fr.pinstr);
 
-    LOG_DBG("jumping to %lx", fn_info.first_instr * sizeof(Instr));
+    LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
 
     while (ctx.pinstr->code != ir::ir_ret) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
@@ -425,7 +409,11 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
 
     if (was_uninitialized) {
-        _deinitCtx();
+        ctx.stack.deinit();
+
+        ctx.base.global = pfr.base_global;
+        ctx.base.rodata = pfr.base_rodata;
+        ctx.base.instr = pfr.base_instr;
     }
 }
 

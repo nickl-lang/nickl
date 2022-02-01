@@ -188,8 +188,6 @@ size_t val_alignof(value_t val);
 
 value_t val_reinterpret_cast(type_t type, value_t val);
 
-bool val_isTrue(value_t val);
-
 #define val_as(type, val) (*(type *)(val).data)
 
 #endif // HEADER_GUARD_NKL_CORE_VALUE
