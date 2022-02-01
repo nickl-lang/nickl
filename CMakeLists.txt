@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 option(BUILD_TESTS "Enable testing" ON)
 option(ENABLE_LOGGING "Enable logging" ON)
 option(ENABLE_ASAN "Enable address sanitizer" ON)
+option(ENABLE_PROFILING "Enable profiling" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,6 +33,10 @@ if(BUILD_TESTS)
     enable_testing()
     include(Test)
     find_package(GTest REQUIRED)
+endif()
+
+if(ENABLE_PROFILING)
+    find_package(easy_profiler REQUIRED)
 endif()
 
 add_subdirectory(ext/common)

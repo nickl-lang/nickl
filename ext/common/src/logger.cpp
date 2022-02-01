@@ -16,6 +16,8 @@
 
 #include <unistd.h>
 
+#include "nk/common/profiler.hpp"
+
 namespace {
 
 static constexpr char const *c_env_var = "NK_LOG_LEVEL";
@@ -83,6 +85,8 @@ ELogLevel parseEnvLogLevel(char const *env_log_level) {
 } // namespace
 
 void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...) {
+    EASY_FUNCTION(::profiler::colors::Teal200)
+
     auto &logger = instance();
 
     char const *env_log_level = std::getenv(c_env_var);
@@ -121,6 +125,8 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
 }
 
 void _logger_init(LoggerOptions opt) {
+    EASY_FUNCTION(::profiler::colors::Teal200)
+
     auto &logger = instance();
 
     logger.start_time = std::chrono::steady_clock::now();

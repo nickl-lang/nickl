@@ -1,9 +1,11 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <thread>
 
 #include "nk/common/logger.hpp"
+#include "nk/common/profiler.hpp"
 #include "nkl/core/core.hpp"
 
 static void printErrorUsage() {
@@ -34,6 +36,8 @@ static bool eql(char const *lhs, char const *rhs) {
 }
 
 int main(int argc, char const *const *argv) {
+    ProfilerWrapper prof;
+
     char const *in_file = nullptr;
     bool help = false;
     bool version = false;

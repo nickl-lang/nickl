@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "nk/common/logger.hpp"
+#include "nk/common/profiler.hpp"
 #include "nk/vm/interp.hpp"
 
 namespace nk {
@@ -92,11 +93,15 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 } // namespace
 
 void Program::init() {
+    EASY_BLOCK("vm::Program::init", profiler::colors::Red200)
+
     globals.push(globals_t->size);
     LOG_DBG("allocating global storage: %p", globals.data)
 }
 
 void Program::deinit() {
+    EASY_BLOCK("vm::Program::deinit", profiler::colors::Red200)
+
     funct_info.deinit();
     rodata.deinit();
     globals.deinit();
@@ -115,6 +120,8 @@ string Program::inspect(Allocator *allocator) {
 }
 
 type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
+    EASY_BLOCK("Translator::translateFromIr", profiler::colors::Red200)
+
     prog.instrs.init(ir.instrs.size);
     prog.funct_info.push(ir.functs.size);
 

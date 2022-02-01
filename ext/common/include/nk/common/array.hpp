@@ -7,6 +7,7 @@
 
 #include "nk/common/logger.hpp"
 #include "nk/common/mem.hpp"
+#include "nk/common/profiler.hpp"
 #include "nk/common/slice.hpp"
 #include "nk/common/utils.hpp"
 
@@ -39,6 +40,8 @@ struct Array {
     }
 
     T &push(size_t n = 1) {
+        EASY_BLOCK("Array::push", profiler::colors::Grey200)
+
         if (!enoughSpace(n)) {
             _realloc(size + n);
         }
@@ -53,6 +56,8 @@ struct Array {
     }
 
     T &pop(size_t n = 1) {
+        EASY_BLOCK("Array::pop", profiler::colors::Grey200)
+
         assert(n <= size && "trying to pop more bytes that available");
 
         size -= n;

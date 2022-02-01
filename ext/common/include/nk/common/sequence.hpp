@@ -42,6 +42,8 @@ struct Sequence {
     }
 
     T &push(size_t n = 1) {
+        EASY_BLOCK("Sequence::push", profiler::colors::Grey200)
+
         if (!enoughSpace(n)) {
             _expand(n);
         }
@@ -56,6 +58,8 @@ struct Sequence {
     }
 
     T &pop(size_t n = 1) {
+        EASY_BLOCK("Sequence::pop", profiler::colors::Grey200)
+
         assert(size >= n && "trying to pop more bytes than available");
 
         size -= n;

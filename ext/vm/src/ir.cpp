@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "nk/common/logger.hpp"
+#include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 
 namespace nk {
@@ -208,6 +209,8 @@ Ref Ref::as(type_t type) const {
 }
 
 void ProgramBuilder::init() {
+    EASY_BLOCK("ir::ProgramBuilder::init", profiler::colors::Amber200)
+
     m_cur_funct = nullptr;
     m_cur_block = nullptr;
 
@@ -223,6 +226,8 @@ void ProgramBuilder::init() {
 }
 
 void ProgramBuilder::deinit() {
+    EASY_BLOCK("ir::ProgramBuilder::deinit", profiler::colors::Amber200)
+
     m_cur_funct = nullptr;
     m_cur_block = nullptr;
 
@@ -255,6 +260,8 @@ BlockId ProgramBuilder::makeLabel() {
 }
 
 void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
+    EASY_FUNCTION(profiler::colors::Amber200)
+
     auto &funct = prog.functs.push() = {};
 
     funct.id = funct_id.id;
@@ -272,6 +279,8 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
 }
 
 void ProgramBuilder::startBlock(BlockId block_id, string name) {
+    EASY_FUNCTION(profiler::colors::Amber200)
+
     auto &block = prog.blocks.push() = {};
 
     block.id = block_id.id;
@@ -288,6 +297,8 @@ void ProgramBuilder::startBlock(BlockId block_id, string name) {
 }
 
 void ProgramBuilder::comment(string str) {
+    EASY_FUNCTION(profiler::colors::Amber200)
+
     assert(m_cur_block && "no current block");
 
     char *str_data = (char *)prog.arena.alloc(str.size);
@@ -423,6 +434,8 @@ Instr ProgramBuilder::make_call(Ref const &dst, Ref const &funct, Ref const &arg
 #include "nk/vm/ir.inl"
 
 void ProgramBuilder::gen(Instr const &instr) {
+    EASY_BLOCK("ProgramBuilder::gen", profiler::colors::Amber200)
+
     assert(m_cur_block && "no current block");
     assert(
         instr.arg[0].arg_type != Arg_Ref || instr.arg[0].as.ref.is_indirect ||
