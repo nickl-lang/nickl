@@ -27,6 +27,7 @@ struct InterpContext {
     };
     ArenaAllocator stack;
     Instr const *pinstr;
+    bool is_initialized;
 };
 
 struct ProgramFrame {
@@ -188,8 +189,7 @@ void _numericBinOp(F &&op) {
     auto rhs = _getDynRef(ctx.pinstr->arg[2]);
 
     // TODO implement errors for interp
-    assert(val_typeid(dst) == val_typeid(lhs));
-    assert(val_typeid(dst) == val_typeid(rhs));
+    assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
     assert(dst.type->typeclass_id == Type_Numeric);
 
     val_numeric_visit(dst, [&](auto &dst_val) {
@@ -301,6 +301,7 @@ INTERP(or) {
 INTERP(eq) {
     LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
+        // TODO Need to support condfition of different size that operands
         return lhs == rhs;
     });
 }
@@ -358,9 +359,20 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     FunctInfo const &fn = *(FunctInfo *)self->as.fn.closure;
     Program &prog = *fn.prog;
 
+    LOG_DBG("program @%p", fn.prog)
+
     if (!prog.globals) {
         // TODO Use allocator instasd of new[]/delete[]
+        // TODO Add thread synchronization for globals allocation
         prog.globals = new uint8_t[prog.globals_t->size];
+        LOG_DBG("allocating global storage: %p", prog.globals)
+    }
+
+    bool was_uninitialized = !ctx.is_initialized;
+    if (was_uninitialized) {
+        LOG_TRC("initializing stack...")
+        ctx.stack.init();
+        ctx.is_initialized = true;
     }
 
     ProgramFrame pfr{
@@ -368,15 +380,6 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .base_rodata = prog.rodata.data,
         .base_instr = (uint8_t const *)prog.instrs.data,
     };
-
-    bool was_uninitialized = pfr.base_instr != ctx.base.instr;
-    if (was_uninitialized) {
-        ctx.stack.init();
-
-        std::swap(ctx.base.global, pfr.base_global);
-        std::swap(ctx.base.rodata, pfr.base_rodata);
-        std::swap(ctx.base.instr, pfr.base_instr);
-    }
 
     // TODO Refactor hack with arena and _seq
     size_t const prev_stack_top = ctx.stack._seq.size;
@@ -388,10 +391,20 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .pinstr = &prog.instrs[fn.first_instr],
     };
 
+    std::swap(ctx.base.global, pfr.base_global);
+    std::swap(ctx.base.rodata, pfr.base_rodata);
+    std::swap(ctx.base.instr, pfr.base_instr);
     std::swap(ctx.base.frame, fr.base_frame);
     std::swap(ctx.base.arg, fr.base_arg);
     std::swap(ctx.base.ret, fr.base_ret);
     std::swap(ctx.pinstr, fr.pinstr);
+
+    LOG_DBG("global=%p", ctx.base.global)
+    LOG_DBG("rodata=%p", ctx.base.rodata)
+    LOG_DBG("instr=%p", ctx.base.instr)
+    LOG_DBG("frame=%p", ctx.base.frame)
+    LOG_DBG("arg=%p", ctx.base.arg)
+    LOG_DBG("ret=%p", ctx.base.ret)
 
     LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
 
@@ -401,19 +414,22 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         ctx.pinstr++;
     }
 
+    LOG_TRC("exiting...");
+
+    ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
+
     ctx.base.frame = fr.base_frame;
     ctx.base.arg = fr.base_arg;
     ctx.base.ret = fr.base_ret;
     ctx.pinstr = fr.pinstr;
-
-    ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
+    ctx.base.global = pfr.base_global;
+    ctx.base.rodata = pfr.base_rodata;
+    ctx.base.instr = pfr.base_instr;
 
     if (was_uninitialized) {
+        LOG_TRC("deinitializing stack...")
         ctx.stack.deinit();
-
-        ctx.base.global = pfr.base_global;
-        ctx.base.rodata = pfr.base_rodata;
-        ctx.base.instr = pfr.base_instr;
+        ctx.is_initialized = false;
     }
 }
 

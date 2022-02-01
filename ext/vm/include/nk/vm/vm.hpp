@@ -40,17 +40,14 @@ struct Program {
     uint8_t *globals;
     Array<uint8_t> rodata;
     Array<FunctInfo> funct_info;
+
+    void deinit();
+
+    string inspect(Allocator *allocator);
 };
 
 struct Translator {
-    Program prog;
-
-    void init();
-    void deinit();
-
-    type_t translateFromIr(ir::Program const &ir);
-
-    string inspect(Allocator *allocator);
+    type_t translateFromIr(Program &prog, ir::Program const &ir);
 };
 
 } // namespace vm

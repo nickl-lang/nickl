@@ -117,7 +117,7 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
         out << c_color_none;
     }
 
-    out << std::endl;
+    out << "\n";
 }
 
 void _logger_init(LoggerOptions opt) {

@@ -23,11 +23,11 @@ class vm : public testing::Test {
         types_init();
 
         m_builder.init();
-        m_translator.init();
+        m_prog = {};
     }
 
     void TearDown() override {
-        m_translator.deinit();
+        m_prog.deinit();
         m_builder.deinit();
 
         types_deinit();
@@ -37,6 +37,7 @@ class vm : public testing::Test {
 protected:
     ArenaAllocator m_arena;
     ir::ProgramBuilder m_builder;
+    Program m_prog;
     Translator m_translator;
 };
 
@@ -44,25 +45,25 @@ protected:
 
 TEST_F(vm, plus) {
     buildTestIr_plus(m_builder);
-    m_translator.translateFromIr(m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_translator.inspect(&m_arena);
+    str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     // TODO expect something
 }
 
-TEST_F(vm, not) {
+TEST_F(vm, not ) {
     buildTestIr_not(m_builder);
-    m_translator.translateFromIr(m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_translator.inspect(&m_arena);
+    str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     // TODO expect something
@@ -70,12 +71,12 @@ TEST_F(vm, not) {
 
 TEST_F(vm, atan) {
     buildTestIr_atan(m_builder);
-    m_translator.translateFromIr(m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_translator.inspect(&m_arena);
+    str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     // TODO expect something
