@@ -420,15 +420,14 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     }
 
     ProgramFrame pfr{
-        .base_global = prog.globals.data,
-        .base_rodata = prog.rodata.data,
-        .base_instr = (uint8_t *)prog.instrs.data,
+        .base_global = ctx.base.global,
+        .base_rodata = ctx.base.rodata,
+        .base_instr = ctx.base.instr,
     };
 
-    // TODO Remove swap by changing the assignment order
-    std::swap(ctx.base.global, pfr.base_global);
-    std::swap(ctx.base.rodata, pfr.base_rodata);
-    std::swap(ctx.base.instr, pfr.base_instr);
+    ctx.base.global = prog.globals.data;
+    ctx.base.rodata = prog.rodata.data;
+    ctx.base.instr = (uint8_t *)prog.instrs.data;
 
     LOG_DBG("global=%p", ctx.base.global)
     LOG_DBG("rodata=%p", ctx.base.rodata)
