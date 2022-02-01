@@ -213,6 +213,10 @@ void ProgramBuilder::init() {
 
     prog = {};
 
+    prog.instrs.init(100);
+    prog.blocks.init(10);
+    prog.functs.init(10);
+
     prog.entry_point_id = -1ul;
 
     prog.arena.init();

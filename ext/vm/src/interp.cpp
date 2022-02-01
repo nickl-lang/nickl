@@ -61,15 +61,14 @@ value_t _getDynRef(Ref ref) {
 #define INTERP(NAME) void _interp_##NAME()
 #define INTERP_NOT_IMPLEMENTED(NAME) assert(!"instr not implemented" #NAME)
 
-INTERP(nop){LOG_DBG(__FUNCTION__)}
+INTERP(nop) {
+}
 
 INTERP(enter) {
-    LOG_DBG(__FUNCTION__)
     INTERP_NOT_IMPLEMENTED(enter);
 }
 
 INTERP(leave) {
-    LOG_DBG(__FUNCTION__)
     INTERP_NOT_IMPLEMENTED(leave);
 }
 
@@ -82,14 +81,10 @@ void _jumpTo(Ref ref) {
 }
 
 INTERP(jmp) {
-    LOG_DBG(__FUNCTION__)
-
     _jumpTo(ctx.pinstr->arg[1]);
 }
 
 INTERP(jmpz) {
-    LOG_DBG(__FUNCTION__)
-
     auto cond = _getDynRef(ctx.pinstr->arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
@@ -102,8 +97,6 @@ INTERP(jmpz) {
 }
 
 INTERP(jmpnz) {
-    LOG_DBG(__FUNCTION__)
-
     auto cond = _getDynRef(ctx.pinstr->arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
@@ -116,8 +109,6 @@ INTERP(jmpnz) {
 }
 
 INTERP(cast) {
-    LOG_DBG(__FUNCTION__)
-
     auto dst = _getDynRef(ctx.pinstr->arg[0]);
     auto type = _getDynRef(ctx.pinstr->arg[1]);
     auto arg = _getDynRef(ctx.pinstr->arg[2]);
@@ -136,8 +127,6 @@ INTERP(cast) {
 }
 
 INTERP(call) {
-    LOG_DBG(__FUNCTION__)
-
     auto ret = _getDynRef(ctx.pinstr->arg[0]);
     auto fn = _getDynRef(ctx.pinstr->arg[1]);
     auto args = _getDynRef(ctx.pinstr->arg[2]);
@@ -146,8 +135,6 @@ INTERP(call) {
 }
 
 INTERP(mov) {
-    LOG_DBG(__FUNCTION__)
-
     auto dst = _getDynRef(ctx.pinstr->arg[0]);
     auto src = _getDynRef(ctx.pinstr->arg[1]);
 
@@ -157,8 +144,6 @@ INTERP(mov) {
 }
 
 INTERP(lea) {
-    LOG_DBG(__FUNCTION__)
-
     auto dst = _getDynRef(ctx.pinstr->arg[0]);
     auto src = _getDynRef(ctx.pinstr->arg[1]);
 
@@ -168,17 +153,14 @@ INTERP(lea) {
 }
 
 INTERP(neg) {
-    LOG_DBG(__FUNCTION__)
     INTERP_NOT_IMPLEMENTED(neg);
 }
 
 INTERP(compl ) {
-    LOG_DBG(__FUNCTION__)
     INTERP_NOT_IMPLEMENTED(compl );
 }
 
 INTERP(not ) {
-    LOG_DBG(__FUNCTION__)
     INTERP_NOT_IMPLEMENTED(not );
 }
 
@@ -215,91 +197,78 @@ void _numericBinOpInt(F &&op) {
 }
 
 INTERP(add) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs + rhs;
     });
 }
 
 INTERP(sub) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs - rhs;
     });
 }
 
 INTERP(mul) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs * rhs;
     });
 }
 
 INTERP(div) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs / rhs;
     });
 }
 
 INTERP(mod) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs % rhs;
     });
 }
 
 INTERP(bitand) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs & rhs;
     });
 }
 
 INTERP(bitor) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs | rhs;
     });
 }
 
 INTERP(xor) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs ^ rhs;
     });
 }
 
 INTERP(lsh) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs << rhs;
     });
 }
 
 INTERP(rsh) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs >> rhs;
     });
 }
 
 INTERP(and) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs && rhs;
     });
 }
 
 INTERP(or) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs || rhs;
     });
 }
 
 INTERP(eq) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         // TODO Need to support condfition of different size that operands
         return lhs == rhs;
@@ -307,35 +276,30 @@ INTERP(eq) {
 }
 
 INTERP(ge) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs >= rhs;
     });
 }
 
 INTERP(gt) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs > rhs;
     });
 }
 
 INTERP(le) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs <= rhs;
     });
 }
 
 INTERP(lt) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs < rhs;
     });
 }
 
 INTERP(ne) {
-    LOG_DBG(__FUNCTION__)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs != rhs;
     });
@@ -351,22 +315,14 @@ InterpFunc s_funcs[] = {
 } // namespace
 
 void interp_invoke(type_t self, value_t ret, value_t args) {
-    // TODO Add logs everywhere
     // TODO Integrate profiling
 
     LOG_TRC(__FUNCTION__);
 
     FunctInfo const &fn = *(FunctInfo *)self->as.fn.closure;
-    Program &prog = *fn.prog;
+    Program const &prog = *fn.prog;
 
-    LOG_DBG("program @%p", fn.prog)
-
-    if (!prog.globals) {
-        // TODO Use allocator instasd of new[]/delete[]
-        // TODO Add thread synchronization for globals allocation
-        prog.globals = new uint8_t[prog.globals_t->size];
-        LOG_DBG("allocating global storage: %p", prog.globals)
-    }
+    LOG_DBG("program @%p", &prog)
 
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
@@ -375,14 +331,14 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         ctx.is_initialized = true;
     }
 
+    // TODO Refactor hack with arena and _seq
+    size_t const prev_stack_top = ctx.stack._seq.size;
+
     ProgramFrame pfr{
-        .base_global = prog.globals,
+        .base_global = prog.globals.data,
         .base_rodata = prog.rodata.data,
         .base_instr = (uint8_t const *)prog.instrs.data,
     };
-
-    // TODO Refactor hack with arena and _seq
-    size_t const prev_stack_top = ctx.stack._seq.size;
 
     InterpFrame fr{
         .base_frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_t->size, fn.frame_t->alignment),
@@ -410,6 +366,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     while (ctx.pinstr->code != ir::ir_ret) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
+        LOG_DBG("instr: %s", s_op_names[ctx.pinstr->code])
         s_funcs[ctx.pinstr->code]();
         ctx.pinstr++;
     }
@@ -418,13 +375,13 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
 
+    ctx.base.global = pfr.base_global;
+    ctx.base.rodata = pfr.base_rodata;
+    ctx.base.instr = pfr.base_instr;
     ctx.base.frame = fr.base_frame;
     ctx.base.arg = fr.base_arg;
     ctx.base.ret = fr.base_ret;
     ctx.pinstr = fr.pinstr;
-    ctx.base.global = pfr.base_global;
-    ctx.base.rodata = pfr.base_rodata;
-    ctx.base.instr = pfr.base_instr;
 
     if (was_uninitialized) {
         LOG_TRC("deinitializing stack...")
