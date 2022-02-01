@@ -19,6 +19,7 @@ struct ProgramFrame {
 };
 
 struct InterpFrame {
+    size_t stack_frame_base;
     uint8_t *base_frame;
     uint8_t *base_arg;
     uint8_t *base_ret;
@@ -40,6 +41,8 @@ struct InterpContext {
         Base base;
     };
     ArenaAllocator stack;
+    Array<InterpFrame> ctrl_stack;
+    size_t stack_frame_base;
     Instr const *pinstr;
     bool is_initialized;
     bool returned;
@@ -373,6 +376,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
         LOG_TRC("initializing stack...")
+        // TODO Add the ability for sequence and arena to be zero initialized
         ctx.stack.init();
         ctx.is_initialized = true;
     }
@@ -383,6 +387,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .base_instr = (uint8_t *)prog.instrs.data,
     };
 
+    // TODO Remove swap by changing the assignment order
     std::swap(ctx.base.global, pfr.base_global);
     std::swap(ctx.base.rodata, pfr.base_rodata);
     std::swap(ctx.base.instr, pfr.base_instr);
@@ -393,26 +398,26 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     //////////////////// frame setup start
 
-    // TODO Refactor hack with arena and _seq
-    size_t const prev_stack_top = ctx.stack._seq.size;
-
-    InterpFrame fr{
-        .base_frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_t->size, fn.frame_t->alignment),
-        .base_arg = (uint8_t *)val_data(args),
-        .base_ret = (uint8_t *)val_data(ret),
-        .pinstr = &prog.instrs[fn.first_instr],
+    ctx.ctrl_stack.push() = {
+        .stack_frame_base = ctx.stack_frame_base,
+        .base_frame = ctx.base.frame,
+        .base_arg = ctx.base.arg,
+        .base_ret = ctx.base.ret,
+        .pinstr = ctx.pinstr,
     };
 
-    std::swap(ctx.base.frame, fr.base_frame);
-    std::swap(ctx.base.arg, fr.base_arg);
-    std::swap(ctx.base.ret, fr.base_ret);
-    std::swap(ctx.pinstr, fr.pinstr);
+    // TODO Refactor hack with arena and _seq
+    ctx.stack_frame_base = ctx.stack._seq.size;
+    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_t->size, fn.frame_t->alignment);
+    ctx.base.arg = (uint8_t *)val_data(args);
+    ctx.base.ret = (uint8_t *)val_data(ret);
+    ctx.pinstr = &prog.instrs[fn.first_instr];
 
+    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base)
     LOG_DBG("frame=%p", ctx.base.frame)
     LOG_DBG("arg=%p", ctx.base.arg)
     LOG_DBG("ret=%p", ctx.base.ret)
-
-    LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
+    LOG_DBG("pinstr=%p", ctx.pinstr)
 
     //////////////////// frame setup end
 
@@ -420,25 +425,33 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     EASY_NONSCOPED_BLOCK("exec", profiler::colors::Blue200)
 
+    LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
+
     while (!ctx.returned) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
-        LOG_DBG("instr: %s", s_op_names[ctx.pinstr->code])
+        LOG_DBG(
+            "instr: %lx %s",
+            (ctx.pinstr - prog.instrs.data) * sizeof(Instr),
+            s_op_names[ctx.pinstr->code])
         s_funcs[ctx.pinstr->code]();
         ctx.pinstr++;
     }
 
     ctx.returned = false;
 
-    LOG_TRC("exiting...");
-
     EASY_END_BLOCK
 
     EASY_NONSCOPED_BLOCK("teardown", profiler::colors::Blue200)
 
+    LOG_TRC("exiting...");
+
     //////////////////// frame teardown start
 
-    ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
+    const auto &fr = ctx.ctrl_stack.pop();
 
+    ctx.stack._seq.pop(ctx.stack._seq.size - ctx.stack_frame_base);
+
+    ctx.stack_frame_base = fr.stack_frame_base;
     ctx.base.frame = fr.base_frame;
     ctx.base.arg = fr.base_arg;
     ctx.base.ret = fr.base_ret;
@@ -452,7 +465,12 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     if (was_uninitialized) {
         LOG_TRC("deinitializing stack...")
+
+        assert(ctx.stack._seq.size == 0 && "nonempty stack at exit");
+
         ctx.stack.deinit();
+        ctx.ctrl_stack.deinit();
+
         ctx.is_initialized = false;
     }
 
