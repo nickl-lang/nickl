@@ -51,9 +51,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
         ss << ") -> " << type_name(&tmp_arena, funct.ret_t) << " {\n\n";
 
-        for (size_t bi = funct.first_block; bi < funct.first_block + funct.block_count; bi++) {
-            auto &block = prog.blocks[bi];
-
+        for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
             auto const first_p = ss.tellp();
             ss << "%" << block.name << ":";
             auto const second_p = ss.tellp();
@@ -65,9 +63,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
             ss << "\n";
 
-            for (size_t ii = block.first_instr; ii < block.first_instr + block.instr_count; ii++) {
-                auto &instr = prog.instrs[ii];
-
+            for (auto const &instr : prog.instrs.slice(block.first_instr, block.instr_count)) {
                 auto const _inspectRef = [&](Ref const &ref) {
                     if (ref.is_indirect) {
                         ss << "[";

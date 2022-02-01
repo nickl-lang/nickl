@@ -177,7 +177,7 @@ INTERP(lea) {
 
     assert(val_typeclassid(dst) == Type_Ptr);
 
-    val_as(void*, dst) = val_data(src);
+    val_as(void *, dst) = val_data(src);
 }
 
 INTERP(neg) {

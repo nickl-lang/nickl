@@ -210,14 +210,11 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
             }
         };
 
-        for (size_t bi = funct.first_block; bi < funct.first_block + funct.block_count; bi++) {
-            auto &block = ir.blocks[bi];
-
+        for (auto const &block : ir.blocks.slice(funct.first_block, funct.block_count)) {
             auto &block_info = block_info_ar[block.id] = {};
             block_info.first_instr = prog.instrs.size;
 
-            for (size_t ii = block.first_instr; ii < block.first_instr + block.instr_count; ii++) {
-                auto &ir_instr = ir.instrs[ii];
+            for (auto const &ir_instr : ir.instrs.slice(block.first_instr, block.instr_count)) {
                 auto &instr = prog.instrs.push() = {};
 
                 instr.code = ir_instr.code;
