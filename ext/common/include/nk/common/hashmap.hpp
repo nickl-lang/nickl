@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "nk/common/array.hpp"
+#include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 
 namespace detail {
@@ -58,15 +59,18 @@ struct HashMap {
     }
 
     V &insert(K const &key) {
+        EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
         return *_insert(_keyHash(key), key);
     }
 
     V *find(K const &key) {
+        EASY_BLOCK("HashMap::find", profiler::colors::Grey200)
         Entry *entry = _find(key);
         return entry ? &entry->value : nullptr;
     }
 
     void remove(K const &key) {
+        EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
         Entry *entry = _find(key);
         if (entry) {
             entry->deleted = true;

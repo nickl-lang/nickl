@@ -8,6 +8,7 @@
 
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
+#include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.hpp"
 #include "utils/ir_utils.hpp"
@@ -38,6 +39,8 @@ class interp : public testing::Test {
     }
 
 protected:
+    ProfilerWrapper m_prof;
+
     ArenaAllocator m_arena;
     ir::ProgramBuilder m_builder;
     Program m_prog;

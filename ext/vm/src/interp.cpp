@@ -3,6 +3,7 @@
 #include <cassert>
 
 #include "nk/common/logger.hpp"
+#include "nk/common/profiler.hpp"
 
 namespace nk {
 namespace vm {
@@ -62,13 +63,16 @@ value_t _getDynRef(Ref ref) {
 #define INTERP_NOT_IMPLEMENTED(NAME) assert(!"instr not implemented" #NAME)
 
 INTERP(nop) {
+    EASY_FUNCTION(profiler::colors::Blue200)
 }
 
 INTERP(enter) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     INTERP_NOT_IMPLEMENTED(enter);
 }
 
 INTERP(leave) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     INTERP_NOT_IMPLEMENTED(leave);
 }
 
@@ -81,10 +85,14 @@ void _jumpTo(Ref ref) {
 }
 
 INTERP(jmp) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     _jumpTo(ctx.pinstr->arg[1]);
 }
 
 INTERP(jmpz) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     auto cond = _getDynRef(ctx.pinstr->arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
@@ -97,6 +105,8 @@ INTERP(jmpz) {
 }
 
 INTERP(jmpnz) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     auto cond = _getDynRef(ctx.pinstr->arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
@@ -109,6 +119,8 @@ INTERP(jmpnz) {
 }
 
 INTERP(cast) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     auto dst = _getDynRef(ctx.pinstr->arg[0]);
     auto type = _getDynRef(ctx.pinstr->arg[1]);
     auto arg = _getDynRef(ctx.pinstr->arg[2]);
@@ -127,6 +139,8 @@ INTERP(cast) {
 }
 
 INTERP(call) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     auto ret = _getDynRef(ctx.pinstr->arg[0]);
     auto fn = _getDynRef(ctx.pinstr->arg[1]);
     auto args = _getDynRef(ctx.pinstr->arg[2]);
@@ -135,6 +149,8 @@ INTERP(call) {
 }
 
 INTERP(mov) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     auto dst = _getDynRef(ctx.pinstr->arg[0]);
     auto src = _getDynRef(ctx.pinstr->arg[1]);
 
@@ -144,6 +160,8 @@ INTERP(mov) {
 }
 
 INTERP(lea) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     auto dst = _getDynRef(ctx.pinstr->arg[0]);
     auto src = _getDynRef(ctx.pinstr->arg[1]);
 
@@ -153,14 +171,20 @@ INTERP(lea) {
 }
 
 INTERP(neg) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     INTERP_NOT_IMPLEMENTED(neg);
 }
 
 INTERP(compl ) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     INTERP_NOT_IMPLEMENTED(compl );
 }
 
 INTERP(not ) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
     INTERP_NOT_IMPLEMENTED(not );
 }
 
@@ -197,78 +221,91 @@ void _numericBinOpInt(F &&op) {
 }
 
 INTERP(add) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs + rhs;
     });
 }
 
 INTERP(sub) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs - rhs;
     });
 }
 
 INTERP(mul) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs * rhs;
     });
 }
 
 INTERP(div) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs / rhs;
     });
 }
 
 INTERP(mod) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs % rhs;
     });
 }
 
 INTERP(bitand) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs & rhs;
     });
 }
 
 INTERP(bitor) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs | rhs;
     });
 }
 
 INTERP(xor) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs ^ rhs;
     });
 }
 
 INTERP(lsh) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs << rhs;
     });
 }
 
 INTERP(rsh) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOpInt([](auto lhs, auto rhs) {
         return lhs >> rhs;
     });
 }
 
 INTERP(and) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs && rhs;
     });
 }
 
 INTERP(or) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs || rhs;
     });
 }
 
 INTERP(eq) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         // TODO Need to support condfition of different size that operands
         return lhs == rhs;
@@ -276,30 +313,35 @@ INTERP(eq) {
 }
 
 INTERP(ge) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs >= rhs;
     });
 }
 
 INTERP(gt) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs > rhs;
     });
 }
 
 INTERP(le) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs <= rhs;
     });
 }
 
 INTERP(lt) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs < rhs;
     });
 }
 
 INTERP(ne) {
+    EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
         return lhs != rhs;
     });
@@ -315,9 +357,11 @@ InterpFunc s_funcs[] = {
 } // namespace
 
 void interp_invoke(type_t self, value_t ret, value_t args) {
-    // TODO Integrate profiling
+    EASY_FUNCTION(profiler::colors::Blue200)
 
     LOG_TRC(__FUNCTION__);
+
+    EASY_NONSCOPED_BLOCK("setup", profiler::colors::Blue200)
 
     FunctInfo const &fn = *(FunctInfo *)self->as.fn.closure;
     Program const &prog = *fn.prog;
@@ -364,6 +408,10 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
 
+    EASY_END_BLOCK
+
+    EASY_NONSCOPED_BLOCK("exec", profiler::colors::Blue200)
+
     while (ctx.pinstr->code != ir::ir_ret) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
         LOG_DBG("instr: %s", s_op_names[ctx.pinstr->code])
@@ -372,6 +420,10 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     }
 
     LOG_TRC("exiting...");
+
+    EASY_END_BLOCK
+
+    EASY_NONSCOPED_BLOCK("teardown", profiler::colors::Blue200)
 
     ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
 
@@ -388,6 +440,8 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         ctx.stack.deinit();
         ctx.is_initialized = false;
     }
+
+    EASY_END_BLOCK
 }
 
 } // namespace vm

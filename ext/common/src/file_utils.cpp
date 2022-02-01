@@ -3,7 +3,11 @@
 #include <fstream>
 #include <memory>
 
+#include "nk/common/profiler.hpp"
+
 Array<char> read_file(char const *filename) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     static constexpr size_t c_read_size = 4096;
 
     std::ifstream file{filename};

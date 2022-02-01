@@ -6,6 +6,7 @@
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.hpp"
+#include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 
 namespace nk {
@@ -49,6 +50,8 @@ struct _TypeQueryRes {
 };
 
 _TypeQueryRes _getType(ByteArray fp) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     Type **found_type = _findType(fp);
     if (found_type) {
         return _TypeQueryRes{*found_type, false};
@@ -219,6 +222,8 @@ void _valInspect(value_t val, std::ostringstream &ss) {
 } // namespace
 
 void types_init() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     s_typearena.init();
     s_typemap.init(100);
 
@@ -226,11 +231,15 @@ void types_init() {
 }
 
 void types_deinit() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     s_typemap.deinit();
     s_typearena.deinit();
 }
 
 type_t type_get_array(type_t elem_type, size_t elem_count) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     struct {
         _FpBase base;
         typeid_t elem_type;
@@ -250,6 +259,8 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
 }
 
 type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     struct {
         _FpBase base;
         size_t decl_id;
@@ -277,6 +288,8 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
 }
 
 type_t type_get_numeric(ENumericValueType value_type) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     struct {
         _FpBase base;
         ENumericValueType value_type;
@@ -294,6 +307,8 @@ type_t type_get_numeric(ENumericValueType value_type) {
 }
 
 type_t type_get_ptr(type_t target_type) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     struct {
         _FpBase base;
         typeid_t target_type;
@@ -310,6 +325,8 @@ type_t type_get_ptr(type_t target_type) {
 }
 
 type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     struct Fp {
         _FpBase base;
         size_t type_count;
@@ -335,6 +352,8 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
 }
 
 type_t type_get_typeref() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     _FpBase fp = {};
     fp.id = Type_Typeref;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
@@ -346,6 +365,8 @@ type_t type_get_typeref() {
 }
 
 type_t type_get_void() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     _FpBase fp = {};
     fp.id = Type_Void;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
@@ -357,6 +378,8 @@ type_t type_get_void() {
 }
 
 string type_name(Allocator *allocator, type_t type) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     std::ostringstream ss;
     _typeName(type, ss);
     auto str = ss.str();
@@ -368,6 +391,8 @@ string type_name(Allocator *allocator, type_t type) {
 }
 
 string val_inspect(Allocator *allocator, value_t val) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     std::ostringstream ss;
     _valInspect(val, ss);
     auto str = ss.str();

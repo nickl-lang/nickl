@@ -18,6 +18,16 @@ if(ENABLE_LOGGING)
         )
 endif()
 
+if(ENABLE_PROFILING)
+    target_link_libraries(${LIB}
+        PUBLIC easy_profiler
+        )
+
+    target_compile_definitions(${LIB}
+        PUBLIC EASY_PROFILER_PORT=28077
+        )
+endif()
+
 if(CMAKE_TESTING_ENABLED)
     add_subdirectory(test)
 endif()
