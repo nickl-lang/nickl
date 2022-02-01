@@ -12,15 +12,28 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::interp)
 
+struct ProgramFrame {
+    uint8_t *base_global;
+    uint8_t *base_rodata;
+    uint8_t *base_instr;
+};
+
+struct InterpFrame {
+    uint8_t *base_frame;
+    uint8_t *base_arg;
+    uint8_t *base_ret;
+    Instr const *pinstr;
+};
+
 struct InterpContext {
     struct Base { // repeats order of ERefType values
-        uint8_t const *null;
+        uint8_t *null;
         uint8_t *frame;
-        uint8_t const *arg;
+        uint8_t *arg;
         uint8_t *ret;
         uint8_t *global;
-        uint8_t const *rodata;
-        uint8_t const *instr;
+        uint8_t *rodata;
+        uint8_t *instr;
     };
     union {
         uint8_t *base_ar[Ref_Count];
@@ -29,19 +42,7 @@ struct InterpContext {
     ArenaAllocator stack;
     Instr const *pinstr;
     bool is_initialized;
-};
-
-struct ProgramFrame {
-    uint8_t *base_global;
-    uint8_t const *base_rodata;
-    uint8_t const *base_instr;
-};
-
-struct InterpFrame {
-    uint8_t *base_frame;
-    uint8_t const *base_arg;
-    uint8_t *base_ret;
-    Instr const *pinstr;
+    bool returned;
 };
 
 thread_local InterpContext ctx;
@@ -62,9 +63,7 @@ value_t _getDynRef(Ref ref) {
 #define INTERP(NAME) void _interp_##NAME()
 #define INTERP_NOT_IMPLEMENTED(NAME) assert(!"instr not implemented" #NAME)
 
-INTERP(nop) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-}
+INTERP(nop){EASY_FUNCTION(profiler::colors::Blue200)}
 
 INTERP(enter) {
     EASY_FUNCTION(profiler::colors::Blue200)
@@ -77,6 +76,9 @@ INTERP(leave) {
 }
 
 INTERP(ret) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
+    ctx.returned = true;
 }
 
 void _jumpTo(Ref ref) {
@@ -375,14 +377,24 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         ctx.is_initialized = true;
     }
 
-    // TODO Refactor hack with arena and _seq
-    size_t const prev_stack_top = ctx.stack._seq.size;
-
     ProgramFrame pfr{
         .base_global = prog.globals.data,
         .base_rodata = prog.rodata.data,
-        .base_instr = (uint8_t const *)prog.instrs.data,
+        .base_instr = (uint8_t *)prog.instrs.data,
     };
+
+    std::swap(ctx.base.global, pfr.base_global);
+    std::swap(ctx.base.rodata, pfr.base_rodata);
+    std::swap(ctx.base.instr, pfr.base_instr);
+
+    LOG_DBG("global=%p", ctx.base.global)
+    LOG_DBG("rodata=%p", ctx.base.rodata)
+    LOG_DBG("instr=%p", ctx.base.instr)
+
+    //////////////////// frame setup start
+
+    // TODO Refactor hack with arena and _seq
+    size_t const prev_stack_top = ctx.stack._seq.size;
 
     InterpFrame fr{
         .base_frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_t->size, fn.frame_t->alignment),
@@ -391,33 +403,31 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .pinstr = &prog.instrs[fn.first_instr],
     };
 
-    std::swap(ctx.base.global, pfr.base_global);
-    std::swap(ctx.base.rodata, pfr.base_rodata);
-    std::swap(ctx.base.instr, pfr.base_instr);
     std::swap(ctx.base.frame, fr.base_frame);
     std::swap(ctx.base.arg, fr.base_arg);
     std::swap(ctx.base.ret, fr.base_ret);
     std::swap(ctx.pinstr, fr.pinstr);
 
-    LOG_DBG("global=%p", ctx.base.global)
-    LOG_DBG("rodata=%p", ctx.base.rodata)
-    LOG_DBG("instr=%p", ctx.base.instr)
     LOG_DBG("frame=%p", ctx.base.frame)
     LOG_DBG("arg=%p", ctx.base.arg)
     LOG_DBG("ret=%p", ctx.base.ret)
 
     LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
 
+    //////////////////// frame setup end
+
     EASY_END_BLOCK
 
     EASY_NONSCOPED_BLOCK("exec", profiler::colors::Blue200)
 
-    while (ctx.pinstr->code != ir::ir_ret) {
+    while (!ctx.returned) {
         assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
         LOG_DBG("instr: %s", s_op_names[ctx.pinstr->code])
         s_funcs[ctx.pinstr->code]();
         ctx.pinstr++;
     }
+
+    ctx.returned = false;
 
     LOG_TRC("exiting...");
 
@@ -425,15 +435,20 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     EASY_NONSCOPED_BLOCK("teardown", profiler::colors::Blue200)
 
+    //////////////////// frame teardown start
+
     ctx.stack._seq.pop(ctx.stack._seq.size - prev_stack_top);
 
-    ctx.base.global = pfr.base_global;
-    ctx.base.rodata = pfr.base_rodata;
-    ctx.base.instr = pfr.base_instr;
     ctx.base.frame = fr.base_frame;
     ctx.base.arg = fr.base_arg;
     ctx.base.ret = fr.base_ret;
     ctx.pinstr = fr.pinstr;
+
+    //////////////////// frame teardown end
+
+    ctx.base.global = pfr.base_global;
+    ctx.base.rodata = pfr.base_rodata;
+    ctx.base.instr = pfr.base_instr;
 
     if (was_uninitialized) {
         LOG_TRC("deinitializing stack...")
