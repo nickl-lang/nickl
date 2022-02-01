@@ -18,7 +18,7 @@ struct ProgramFrame {
     uint8_t *base_instr;
 };
 
-struct InterpFrame {
+struct ControlFrame {
     size_t stack_frame_base;
     uint8_t *base_frame;
     uint8_t *base_arg;
@@ -41,7 +41,7 @@ struct InterpContext {
         Base base;
     };
     ArenaAllocator stack;
-    Array<InterpFrame> ctrl_stack;
+    Array<ControlFrame> ctrl_stack;
     size_t stack_frame_base;
     Instr const *pinstr;
     bool is_initialized;
@@ -78,15 +78,30 @@ INTERP(leave) {
     INTERP_NOT_IMPLEMENTED(leave);
 }
 
-INTERP(ret) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    ctx.returned = true;
+void _jumpTo(Instr const *pinstr) {
+    // NOTE - 1 is because pinstr gets incremented after each instruction
+    ctx.pinstr = pinstr - 1;
 }
 
 void _jumpTo(Ref ref) {
-    // NOTE - 1 is because pinstr gets incremented after each instruction
-    ctx.pinstr = &_getRef<Instr>(ref) - 1;
+    _jumpTo(&_getRef<Instr>(ref));
+}
+
+INTERP(ret) {
+    EASY_FUNCTION(profiler::colors::Blue200)
+
+    const auto &fr = ctx.ctrl_stack.pop();
+
+    ctx.stack._seq.pop(ctx.stack._seq.size - ctx.stack_frame_base);
+
+    ctx.stack_frame_base = fr.stack_frame_base;
+    ctx.base.frame = fr.base_frame;
+    ctx.base.arg = fr.base_arg;
+    ctx.base.ret = fr.base_ret;
+
+    ctx.returned = true;
+
+    _jumpTo(fr.pinstr);
 }
 
 INTERP(jmp) {
@@ -359,6 +374,29 @@ InterpFunc s_funcs[] = {
 #include "nk/vm/ir.inl"
 };
 
+void _setupFrame(Instr *pinstr, type_t frame_t, value_t ret, value_t args) {
+    ctx.ctrl_stack.push() = {
+        .stack_frame_base = ctx.stack_frame_base,
+        .base_frame = ctx.base.frame,
+        .base_arg = ctx.base.arg,
+        .base_ret = ctx.base.ret,
+        .pinstr = ctx.pinstr,
+    };
+
+    // TODO Refactor hack with arena and _seq
+    ctx.stack_frame_base = ctx.stack._seq.size;
+    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
+    ctx.base.arg = (uint8_t *)val_data(args);
+    ctx.base.ret = (uint8_t *)val_data(ret);
+    ctx.pinstr = pinstr;
+
+    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base)
+    LOG_DBG("frame=%p", ctx.base.frame)
+    LOG_DBG("arg=%p", ctx.base.arg)
+    LOG_DBG("ret=%p", ctx.base.ret)
+    LOG_DBG("pinstr=%p", ctx.pinstr)
+}
+
 } // namespace
 
 void interp_invoke(type_t self, value_t ret, value_t args) {
@@ -396,30 +434,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     LOG_DBG("rodata=%p", ctx.base.rodata)
     LOG_DBG("instr=%p", ctx.base.instr)
 
-    //////////////////// frame setup start
-
-    ctx.ctrl_stack.push() = {
-        .stack_frame_base = ctx.stack_frame_base,
-        .base_frame = ctx.base.frame,
-        .base_arg = ctx.base.arg,
-        .base_ret = ctx.base.ret,
-        .pinstr = ctx.pinstr,
-    };
-
-    // TODO Refactor hack with arena and _seq
-    ctx.stack_frame_base = ctx.stack._seq.size;
-    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_t->size, fn.frame_t->alignment);
-    ctx.base.arg = (uint8_t *)val_data(args);
-    ctx.base.ret = (uint8_t *)val_data(ret);
-    ctx.pinstr = &prog.instrs[fn.first_instr];
-
-    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base)
-    LOG_DBG("frame=%p", ctx.base.frame)
-    LOG_DBG("arg=%p", ctx.base.arg)
-    LOG_DBG("ret=%p", ctx.base.ret)
-    LOG_DBG("pinstr=%p", ctx.pinstr)
-
-    //////////////////// frame setup end
+    _setupFrame(&prog.instrs[fn.first_instr], fn.frame_t, ret, args);
 
     EASY_END_BLOCK
 
@@ -444,20 +459,6 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     EASY_NONSCOPED_BLOCK("teardown", profiler::colors::Blue200)
 
     LOG_TRC("exiting...");
-
-    //////////////////// frame teardown start
-
-    const auto &fr = ctx.ctrl_stack.pop();
-
-    ctx.stack._seq.pop(ctx.stack._seq.size - ctx.stack_frame_base);
-
-    ctx.stack_frame_base = fr.stack_frame_base;
-    ctx.base.frame = fr.base_frame;
-    ctx.base.arg = fr.base_arg;
-    ctx.base.ret = fr.base_ret;
-    ctx.pinstr = fr.pinstr;
-
-    //////////////////// frame teardown end
 
     ctx.base.global = pfr.base_global;
     ctx.base.rodata = pfr.base_rodata;
