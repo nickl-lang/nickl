@@ -256,12 +256,14 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
         typeid_t ret_t;
         typeid_t args_t;
         FuncPtr body_ptr;
+        void *closure;
     } fp = {};
     fp.base.id = Type_Fn;
     fp.decl_id = decl_id;
     fp.ret_t = ret_t->id;
     fp.args_t = args_t->id;
     fp.body_ptr = body_ptr;
+    fp.closure = closure;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;

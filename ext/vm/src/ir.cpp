@@ -65,6 +65,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
             for (auto const &instr : prog.instrs.slice(block.first_instr, block.instr_count)) {
                 auto const _inspectRef = [&](Ref const &ref) {
+                    if (ref.ref_type == Ref_None) {
+                        ss << "{}";
+                        return;
+                    }
                     if (ref.is_indirect) {
                         ss << "[";
                     }

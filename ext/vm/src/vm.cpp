@@ -92,18 +92,25 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
 } // namespace
 
-void Translator::init() {
-    prog = {};
+void Program::deinit() {
+    delete[] globals;
+    funct_info.deinit();
+    instrs.deinit();
+    rodata.deinit();
 }
 
-void Translator::deinit() {
-    delete[] prog.globals;
-    prog.funct_info.deinit();
-    prog.instrs.deinit();
-    prog.rodata.deinit();
+string Program::inspect(Allocator *allocator) {
+    std::ostringstream ss;
+    _inspect(*this, ss);
+    auto str = ss.str();
+
+    char *data = (char *)allocator->alloc(str.size());
+    std::memcpy(data, str.data(), str.size());
+
+    return string{data, str.size()};
 }
 
-type_t Translator::translateFromIr(ir::Program const &ir) {
+type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     prog.instrs.init(ir.instrs.size);
     prog.funct_info.push(ir.functs.size);
 
@@ -141,7 +148,6 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
         auto &funct_info = prog.funct_info[funct.id] = {};
         funct_info.prog = &prog;
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
-        LOG_DBG("funct_info.first_instr=%lu", funct_info.first_instr);
         funct_info.first_instr = prog.instrs.size;
 
         funct_info.funct_t =
@@ -179,6 +185,7 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
                     break;
                 default:
                     assert(!"unreachable");
+                case Ref_None:
                     break;
                 }
                 arg.offset += ref.offset;
@@ -241,17 +248,6 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
     size_t entry_point_id = ir.entry_point_id == -1ul ? 0 : ir.entry_point_id;
     assert(entry_point_id < prog.funct_info.size && "ill-formed ir");
     return prog.funct_info[entry_point_id].funct_t;
-}
-
-string Translator::inspect(Allocator *allocator) {
-    std::ostringstream ss;
-    _inspect(prog, ss);
-    auto str = ss.str();
-
-    char *data = (char *)allocator->alloc(str.size());
-    std::memcpy(data, str.data(), str.size());
-
-    return string{data, str.size()};
 }
 
 } // namespace vm
