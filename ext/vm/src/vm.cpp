@@ -97,8 +97,7 @@ void Translator::init() {
 }
 
 void Translator::deinit() {
-    interp_deinit();
-
+    delete[] prog.globals;
     prog.funct_info.deinit();
     prog.instrs.deinit();
     prog.rodata.deinit();
@@ -136,11 +135,11 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
 
     prog.globals_t = type_get_tuple(&tmp_arena, {ir.globals.data, ir.globals.size});
 
-    size_t fi = 0;
-    for (auto const &funct : ir.functs) {
+    for (size_t fi = 0; auto const &funct : ir.functs) {
         assert(funct.next_block_id == funct.next_block_id && "ill-formed ir");
 
         auto &funct_info = prog.funct_info[funct.id] = {};
+        funct_info.prog = &prog;
         funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
         LOG_DBG("funct_info.first_instr=%lu", funct_info.first_instr);
         funct_info.first_instr = prog.instrs.size;
@@ -238,9 +237,6 @@ type_t Translator::translateFromIr(ir::Program const &ir) {
             break;
         }
     }
-
-    // TODO Think about decoupling interp from the translator
-    interp_init(&prog);
 
     size_t entry_point_id = ir.entry_point_id == -1ul ? 0 : ir.entry_point_id;
     assert(entry_point_id < prog.funct_info.size && "ill-formed ir");

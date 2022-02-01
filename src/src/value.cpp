@@ -521,21 +521,3 @@ size_t val_alignof(value_t val) {
 value_t val_reinterpret_cast(type_t type, value_t val) {
     return value_t{type, val.data};
 }
-
-bool val_isTrue(value_t val) {
-    switch (val.type->typeclass_id) {
-    case Type_Any:
-    case Type_ArrayPtr:
-    case Type_Bool:
-    case Type_FnPtr:
-    case Type_Numeric:
-    case Type_Ptr:
-    case Type_String:
-    case Type_Symbol:
-    case Type_Typeref:
-        // TODO val_isTrue not implemented
-        return false;
-    default:
-        return true;
-    }
-}
