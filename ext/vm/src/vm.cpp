@@ -10,15 +10,14 @@
 namespace nk {
 namespace vm {
 
-namespace {
-
-LOG_USE_SCOPE(nk::vm)
-
-// TODO Duplicate s_ir_names in vm
-static char const *s_ir_names[] = {
+char const *s_op_names[] = {
 #define X(NAME) #NAME,
 #include "nk/vm/ir.inl"
 };
+
+namespace {
+
+LOG_USE_SCOPE(nk::vm)
 
 void _inspect(Program const &prog, std::ostringstream &ss) {
     auto tmp_arena = ArenaAllocator::create();
@@ -77,7 +76,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << " := ";
         }
 
-        ss << s_ir_names[instr.code];
+        ss << s_op_names[instr.code];
 
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].ref_type != Ref_None) {
@@ -92,11 +91,16 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
 } // namespace
 
+void Program::init() {
+    globals.push(globals_t->size);
+    LOG_DBG("allocating global storage: %p", globals.data)
+}
+
 void Program::deinit() {
-    delete[] globals;
     funct_info.deinit();
-    instrs.deinit();
     rodata.deinit();
+    globals.deinit();
+    instrs.deinit();
 }
 
 string Program::inspect(Allocator *allocator) {

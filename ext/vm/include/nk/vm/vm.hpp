@@ -12,6 +12,8 @@
 namespace nk {
 namespace vm {
 
+extern char const *s_op_names[];
+
 struct Ref {
     size_t offset;
     size_t post_offset;
@@ -37,10 +39,11 @@ struct FunctInfo {
 struct Program {
     Array<Instr> instrs;
     type_t globals_t;
-    uint8_t *globals;
+    Array<uint8_t> globals;
     Array<uint8_t> rodata;
     Array<FunctInfo> funct_info;
 
+    void init();
     void deinit();
 
     string inspect(Allocator *allocator);
