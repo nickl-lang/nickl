@@ -342,3 +342,32 @@ TEST_F(interp, one_thread_diff_progs) {
 
     val_fn_invoke(fn1_t, {nullptr, fn1_t->as.fn.ret_t}, {nullptr, fn1_t->as.fn.args_t});
 }
+
+TEST_F(interp, hasZeroByte32) {
+    buildTestIr_hasZeroByte32(m_builder);
+    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_prog.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
+
+    auto hasZeroByte32 = [&](int32_t x) -> bool {
+        int32_t res = 42;
+        val_fn_invoke(fn_t, {&res, fn_t->as.fn.ret_t}, {&x, fn_t->as.fn.args_t});
+        return res;
+    };
+
+    EXPECT_TRUE(hasZeroByte32(0));
+    EXPECT_FALSE(hasZeroByte32(0x01010101));
+    EXPECT_FALSE(hasZeroByte32(0xffffffff));
+    EXPECT_TRUE(hasZeroByte32(0xffffff00));
+    EXPECT_TRUE(hasZeroByte32(0xffff00ff));
+    EXPECT_TRUE(hasZeroByte32(0xff00ffff));
+    EXPECT_TRUE(hasZeroByte32(0x00ffffff));
+    EXPECT_FALSE(hasZeroByte32(0xf00fffff));
+    EXPECT_TRUE(hasZeroByte32(0xab00cdef));
+}
