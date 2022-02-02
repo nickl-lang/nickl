@@ -130,6 +130,7 @@ struct Global {
 };
 
 struct ProgramBuilder {
+    //@Refactor Separate the program from IR ProgramBuilder
     Program prog;
 
     void init();

@@ -214,7 +214,6 @@ void _numericBinOp(F &&op) {
     auto lhs = _getDynRef(ctx.pinstr->arg[1]);
     auto rhs = _getDynRef(ctx.pinstr->arg[2]);
 
-    // TODO implement errors for interp
     assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
     assert(dst.type->typeclass_id == Type_Numeric);
 
@@ -230,8 +229,7 @@ void _numericBinOpInt(F &&op) {
     auto lhs = _getDynRef(ctx.pinstr->arg[1]);
     auto rhs = _getDynRef(ctx.pinstr->arg[2]);
 
-    assert(val_typeid(dst) == val_typeid(lhs));
-    assert(val_typeid(dst) == val_typeid(rhs));
+    assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
     assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
 
     val_numeric_visit_int(dst, [&](auto &dst_val) {
@@ -327,7 +325,7 @@ INTERP(or) {
 INTERP(eq) {
     EASY_FUNCTION(profiler::colors::Blue200)
     _numericBinOp([](auto lhs, auto rhs) {
-        // TODO Need to support condfition of different size that operands
+        //@Refactor/Feature Make boolean instrs write to a special register
         return lhs == rhs;
     });
 }
@@ -383,7 +381,7 @@ void _setupFrame(Instr *pinstr, type_t frame_t, value_t ret, value_t args) {
         .pinstr = ctx.pinstr,
     };
 
-    // TODO Refactor hack with arena and _seq
+    //@Refactor Implement stack frame push/pop with Sequence
     ctx.stack_frame_base = ctx.stack._seq.size;
     ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
     ctx.base.arg = (uint8_t *)val_data(args);
@@ -414,7 +412,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
         LOG_TRC("initializing stack...")
-        // TODO Add the ability for sequence and arena to be zero initialized
+        //@Feature Maybe implement the push to zero initialized Sequence
         ctx.stack.init();
         ctx.is_initialized = true;
     }

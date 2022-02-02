@@ -27,7 +27,7 @@ class interp : public testing::Test {
         types_init();
 
         m_builder.init();
-        m_prog = {};
+        m_prog.init();
     }
 
     void TearDown() override {
@@ -59,6 +59,8 @@ TEST_F(interp, plus) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
+    m_prog.prepare();
+
     int64_t ret = 0;
     int64_t args[] = {4, 5};
     val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {args, fn_t->as.fn.args_t});
@@ -75,6 +77,8 @@ TEST_F(interp, not ) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
 
     int64_t ret = 42;
     int64_t arg = 1;
@@ -96,6 +100,8 @@ TEST_F(interp, atan) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
 
     double a;
     double b;
@@ -126,6 +132,8 @@ TEST_F(interp, pi) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
+    m_prog.prepare();
+
     double pi = 0;
     val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
 
@@ -142,6 +150,8 @@ TEST_F(interp, rsqrt) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
+    m_prog.prepare();
+
     float ret = 42;
     float arg = 2;
     val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {&arg, fn_t->as.fn.args_t});
@@ -157,6 +167,8 @@ TEST_F(interp, vec2LenSquared) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
 
     struct Vec2 {
         double x;
@@ -186,6 +198,8 @@ TEST_F(interp, modf) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
+    m_prog.prepare();
+
     double fract_part = 42;
     double int_part = 42;
 
@@ -210,6 +224,8 @@ TEST_F(interp, intPart) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
 
     double arg = 123.456;
     double res = 42;
@@ -238,6 +254,8 @@ TEST_F(interp, threads) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
+    m_prog.prepare();
+
     auto thread_func = [&]() {
         val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
     };
@@ -257,17 +275,22 @@ TEST_F(interp, threads_diff_progs) {
 
     buildTestIr_call10Times(m_builder, callback);
 
-    Program prog{};
-    DEFER({ prog.deinit(); });
+    Program &prog0 = m_prog;
+    Program prog1;
+    prog1.init();
 
-    auto fn0_t = m_translator.translateFromIr(m_prog, m_builder.prog);
-    auto fn1_t = m_translator.translateFromIr(prog, m_builder.prog);
+    DEFER({ prog1.deinit(); });
+
+    auto fn0_t = m_translator.translateFromIr(prog0, m_builder.prog);
+    auto fn1_t = m_translator.translateFromIr(prog1, m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = prog0.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
 
     std::thread t0{[&]() {
         val_fn_invoke(fn0_t, {nullptr, fn0_t->as.fn.ret_t}, {nullptr, fn0_t->as.fn.args_t});
@@ -286,7 +309,8 @@ TEST_F(interp, one_thread_diff_progs) {
     builder1.init();
 
     Program &prog0 = m_prog;
-    Program prog1{};
+    Program prog1;
+    prog1.init();
 
     DEFER({
         builder1.deinit();

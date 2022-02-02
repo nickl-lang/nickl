@@ -112,6 +112,7 @@ private:
     }
 
     void _allocateBlock(size_t bi) {
+        //@Refactor Use the default allocator instead of lang_* directly in Sequence
         _block_table.push() = (_block_ptr)lang_malloc(_blockDataSize(bi, _ic) * sizeof(T));
     }
 

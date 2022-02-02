@@ -169,7 +169,7 @@ FunctId buildTestIr_pi(ProgramBuilder &b) {
 
     auto c_4f = b.makeConstRef(4.0, f64_t);
 
-    // TODO Hack with marking pi as entry point
+    //@Refactor/Feature Add symbol resolution to VM programs instead of the hack with entry point
     auto f = b.makeFunct(true);
     b.startFunct(f, cstr_to_str("pi"), f64_t, args_t);
 

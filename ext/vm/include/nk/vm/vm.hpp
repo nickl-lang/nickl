@@ -46,6 +46,8 @@ struct Program {
     void init();
     void deinit();
 
+    void prepare();
+
     string inspect(Allocator *allocator);
 };
 
