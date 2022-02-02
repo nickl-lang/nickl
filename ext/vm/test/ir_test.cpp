@@ -40,22 +40,20 @@ protected:
 
 } // namespace
 
+//@Incomplete Add expects to IR tests
+
 TEST_F(ir, plus) {
     buildTestIr_plus(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    // TODO expect something
 }
 
-TEST_F(ir, not) {
+TEST_F(ir, not ) {
     buildTestIr_not(m_builder);
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    // TODO expect something
 }
 
 TEST_F(ir, atan) {
@@ -63,6 +61,4 @@ TEST_F(ir, atan) {
 
     auto str = m_builder.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    // TODO expect something
 }

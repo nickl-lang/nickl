@@ -115,12 +115,13 @@ private:
     static constexpr size_t c_init_capacity = 0;
 
     T *_top() const {
-        assert(data && "uninitialized array access");
+        assert((!size || data) && "uninitialized array access");
         return data + size;
     }
 
     void _realloc(size_t cap) {
         if (cap > 0) {
+            //@Refactor Use the default allocator instead of lang_* directly in Array
             void *new_data =
                 lang_realloc((void *)data, (capacity = ceilToPowerOf2(cap)) * sizeof(T));
             assert(new_data && "allocation failed");

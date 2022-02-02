@@ -303,14 +303,8 @@ void ProgramBuilder::comment(string str) {
 
     char *str_data = (char *)prog.arena.alloc(str.size);
     std::memcpy(str_data, str.data, str.size);
-
-    if (m_cur_block->instr_count) {
-        // TODO simplify this whole expression
-        prog.instrs[m_cur_block->first_instr + m_cur_block->instr_count - 1].comment =
-            string{str_data, str.size};
-    } else {
-        m_cur_block->comment = string{str_data, str.size};
-    }
+    (m_cur_block->instr_count ? prog.instrs.back().comment : m_cur_block->comment) =
+        string{str_data, str.size};
 }
 
 Local ProgramBuilder::makeLocalVar(type_t type) {

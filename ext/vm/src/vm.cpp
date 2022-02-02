@@ -93,10 +93,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 } // namespace
 
 void Program::init() {
-    EASY_BLOCK("vm::Program::init", profiler::colors::Red200)
-
-    globals.push(globals_t->size);
-    LOG_DBG("allocating global storage: %p", globals.data)
+    *this = {};
 }
 
 void Program::deinit() {
@@ -106,6 +103,15 @@ void Program::deinit() {
     rodata.deinit();
     globals.deinit();
     instrs.deinit();
+}
+
+void Program::prepare() {
+    EASY_BLOCK("vm::Program::prepare", profiler::colors::Red200)
+
+    if (globals_t->size > 0) {
+        globals.push(globals_t->size);
+        LOG_DBG("allocating global storage: %p", globals.data)
+    }
 }
 
 string Program::inspect(Allocator *allocator) {
@@ -165,7 +171,7 @@ type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
             type_get_fn(funct.ret_t, funct.args_t, fi++, interp_invoke, &funct_info);
 
         auto _pushConst = [&](value_t val) -> size_t {
-            // TODO Unify aligned push to array
+            //@Refactor Implement aligned push to array
             uint8_t *ptr = &prog.rodata.push(val_sizeof(val) + val_alignof(val) - 1);
             ptr = (uint8_t *)roundUpSafe((size_t)ptr, val_alignof(val));
             std::memcpy(ptr, val_data(val), val_sizeof(val));

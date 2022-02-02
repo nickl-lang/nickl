@@ -23,7 +23,7 @@ class vm : public testing::Test {
         types_init();
 
         m_builder.init();
-        m_prog = {};
+        m_prog.init();
     }
 
     void TearDown() override {
@@ -43,6 +43,8 @@ protected:
 
 } // namespace
 
+//@Incomplete Add expects to VM tests
+
 TEST_F(vm, plus) {
     buildTestIr_plus(m_builder);
     m_translator.translateFromIr(m_prog, m_builder.prog);
@@ -52,8 +54,6 @@ TEST_F(vm, plus) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    // TODO expect something
 }
 
 TEST_F(vm, not ) {
@@ -65,8 +65,6 @@ TEST_F(vm, not ) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    // TODO expect something
 }
 
 TEST_F(vm, atan) {
@@ -78,6 +76,4 @@ TEST_F(vm, atan) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    // TODO expect something
 }

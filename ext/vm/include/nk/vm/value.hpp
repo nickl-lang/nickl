@@ -109,9 +109,11 @@ void types_init();
 void types_deinit();
 
 type_t type_get_array(type_t elem_type, size_t elem_count);
+//@Feature Implement function pointer type
 type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure);
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
+//@Feature Implement optimized tuple type
 type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types);
 type_t type_get_typeref();
 type_t type_get_void();
