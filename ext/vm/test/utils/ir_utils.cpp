@@ -431,6 +431,38 @@ FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b) {
     return f;
 }
 
+void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto void_t = type_get_void();
+    auto args_t = type_get_tuple(&tmp_arena, {});
+
+    auto i64_t = type_get_numeric(Int64);
+
+    auto g_var = b.makeGlobalRef(b.makeGlobalVar(i64_t));
+
+    {
+        auto f = b.makeFunct();
+        b.startFunct(f, cstr_to_str("readGlobal"), i64_t, args_t);
+
+        auto ret = b.makeRetRef();
+
+        b.startBlock(b.makeLabel(), cstr_to_str("start"));
+        b.gen(b.make_mov(ret, g_var));
+        b.gen(b.make_ret());
+    }
+
+    {
+        auto f = b.makeFunct();
+        b.startFunct(f, cstr_to_str("toggleGlobal"), void_t, args_t);
+
+        b.startBlock(b.makeLabel(), cstr_to_str("start"));
+        b.gen(b.make_not(g_var, g_var));
+        b.gen(b.make_ret());
+    }
+}
+
 } // namespace ir
 } // namespace vm
 } // namespace nk

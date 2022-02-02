@@ -111,6 +111,8 @@ void Program::prepare() {
     if (globals_t->size > 0) {
         globals.push(globals_t->size);
         LOG_DBG("allocating global storage: %p", globals.data)
+
+        std::memset(globals.data, 0, globals_t->size);
     }
 }
 
