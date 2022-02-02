@@ -371,3 +371,34 @@ TEST_F(interp, hasZeroByte32) {
     EXPECT_FALSE(hasZeroByte32(0xf00fffff));
     EXPECT_TRUE(hasZeroByte32(0xab00cdef));
 }
+
+TEST_F(interp, readToggleGlobal) {
+    buildTestIr_readToggleGlobal(m_builder);
+    m_translator.translateFromIr(m_prog, m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_prog.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
+
+    auto readGlobal = [&]() -> int64_t {
+        auto fn_t = m_prog.funct_info[0].funct_t;
+        int64_t res = 42;
+        val_fn_invoke(fn_t, {&res, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
+        return res;
+    };
+
+    auto toggleGlobal = [&]() -> void {
+        auto fn_t = m_prog.funct_info[1].funct_t;
+        val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
+    };
+
+    EXPECT_EQ(readGlobal(), 0);
+    toggleGlobal();
+    EXPECT_EQ(readGlobal(), 1);
+    toggleGlobal();
+    EXPECT_EQ(readGlobal(), 0);
+}

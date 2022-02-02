@@ -17,6 +17,7 @@ FunctId buildTestIr_modf(ProgramBuilder &b);
 FunctId buildTestIr_intPart(ProgramBuilder &b);
 FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn);
 FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b);
+void buildTestIr_readToggleGlobal(ProgramBuilder &b);
 
 } // namespace ir
 } // namespace vm
