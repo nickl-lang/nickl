@@ -16,6 +16,7 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b);
 FunctId buildTestIr_modf(ProgramBuilder &b);
 FunctId buildTestIr_intPart(ProgramBuilder &b);
 FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn);
+FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b);
 
 } // namespace ir
 } // namespace vm

@@ -256,9 +256,8 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     auto vec_ptr_t = type_get_ptr(vec_t);
     auto f64_ptr_t = type_get_ptr(f64_t);
 
-    type_t args_types[] = {vec_ptr_t, f64_ptr_t};
-    auto args_t =
-        type_get_tuple(&tmp_arena, {args_types, sizeof(args_types) / sizeof(args_types[0])});
+    type_t args_ar[] = {vec_ptr_t, f64_ptr_t};
+    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("vec2LenSquared"), void_t, args_t);
@@ -293,9 +292,8 @@ FunctId buildTestIr_modf(ProgramBuilder &b) {
     auto f64_ptr_t = type_get_ptr(f64_t);
     auto typeref_t = type_get_typeref();
 
-    type_t args_types[] = {f64_t, f64_ptr_t};
-    auto args_t =
-        type_get_tuple(&tmp_arena, {args_types, sizeof(args_types) / sizeof(args_types[0])});
+    type_t args_ar[] = {f64_t, f64_ptr_t};
+    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("modf"), f64_t, args_t);
@@ -395,6 +393,38 @@ FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
     b.gen(b.make_jmp(l_loop));
 
     b.startBlock(l_end, cstr_to_str("end"));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
+FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto i32_t = type_get_numeric(Int32);
+
+    type_t args_ar[] = {i32_t};
+    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("hasZeroByte32"), i32_t, args_t);
+
+    auto a_x = b.makeArgRef(0);
+
+    auto ret = b.makeRetRef();
+
+    auto v_0 = b.makeFrameRef(b.makeLocalVar(i32_t));
+
+    auto l_start = b.makeLabel();
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    b.gen(b.make_sub(ret, a_x, b.makeConstRef(0x01010101u, i32_t)));
+    b.gen(b.make_compl(v_0, a_x));
+    b.gen(b.make_bitand(ret, ret, v_0));
+    b.gen(b.make_bitand(ret, ret, b.makeConstRef(0x80808080u, i32_t)));
 
     b.gen(b.make_ret());
 

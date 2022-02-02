@@ -199,7 +199,16 @@ INTERP(neg) {
 INTERP(compl ) {
     EASY_FUNCTION(profiler::colors::Blue200)
 
-    INTERP_NOT_IMPLEMENTED(compl );
+    auto dst = _getDynRef(ctx.pinstr->arg[0]);
+    auto arg = _getDynRef(ctx.pinstr->arg[1]);
+
+    assert(val_typeid(dst) == val_typeid(arg));
+    assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
+
+    val_numeric_visit_int(dst, [&](auto &dst_val) {
+        using T = std::decay_t<decltype(dst_val)>;
+        dst_val = ~val_as(T, arg);
+    });
 }
 
 INTERP(not ) {
