@@ -57,7 +57,6 @@ struct InterpContext {
     size_t stack_frame_base;
     Instr const *pinstr;
     bool is_initialized;
-    bool returned;
     Registers reg;
 };
 
@@ -76,24 +75,47 @@ value_t _getDynRef(Ref ref) {
     return {&_getRef<uint8_t>(ref), ref.type};
 }
 
-#define INTERP(NAME) void _interp_##NAME()
+void _setupFrame(type_t frame_t, value_t ret, value_t args) {
+    ctx.ctrl_stack.push() = {
+        .stack_frame_base = ctx.stack_frame_base,
+        .base_frame = ctx.base.frame,
+        .base_arg = ctx.base.arg,
+        .base_ret = ctx.base.ret,
+        .pinstr = ctx.pinstr,
+    };
+
+    //@Refactor Implement stack frame push/pop with Sequence
+    ctx.stack_frame_base = ctx.stack._seq.size;
+    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
+    ctx.base.arg = (uint8_t *)val_data(args);
+    ctx.base.ret = (uint8_t *)val_data(ret);
+
+    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base)
+    LOG_DBG("frame=%p", ctx.base.frame)
+    LOG_DBG("arg=%p", ctx.base.arg)
+    LOG_DBG("ret=%p", ctx.base.ret)
+    LOG_DBG("pinstr=%p", ctx.pinstr)
+}
+
+#define INTERP(NAME) void _interp_##NAME(Instr const &instr)
 #define INTERP_NOT_IMPLEMENTED(NAME) assert(!"instr not implemented" #NAME)
 
-INTERP(nop){EASY_FUNCTION(profiler::colors::Blue200)}
+INTERP(nop) {
+    (void)instr;
+}
 
 INTERP(enter) {
-    EASY_FUNCTION(profiler::colors::Blue200)
+    (void)instr;
     INTERP_NOT_IMPLEMENTED(enter);
 }
 
 INTERP(leave) {
-    EASY_FUNCTION(profiler::colors::Blue200)
+    (void)instr;
     INTERP_NOT_IMPLEMENTED(leave);
 }
 
 void _jumpTo(Instr const *pinstr) {
-    // NOTE - 1 is because pinstr gets incremented after each instruction
-    ctx.pinstr = pinstr - 1;
+    ctx.pinstr = pinstr;
 }
 
 void _jumpTo(Ref ref) {
@@ -101,7 +123,7 @@ void _jumpTo(Ref ref) {
 }
 
 INTERP(ret) {
-    EASY_FUNCTION(profiler::colors::Blue200)
+    (void)instr;
 
     const auto &fr = ctx.ctrl_stack.pop();
 
@@ -112,51 +134,41 @@ INTERP(ret) {
     ctx.base.arg = fr.base_arg;
     ctx.base.ret = fr.base_ret;
 
-    ctx.returned = true;
-
     _jumpTo(fr.pinstr);
 }
 
 INTERP(jmp) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    _jumpTo(ctx.pinstr->arg[1]);
+    _jumpTo(instr.arg[1]);
 }
 
 INTERP(jmpz) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto cond = _getDynRef(ctx.pinstr->arg[1]);
+    auto cond = _getDynRef(instr.arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
 
     val_numeric_visit(cond, [=](auto val) {
         if (!val) {
-            _jumpTo(ctx.pinstr->arg[2]);
+            _jumpTo(instr.arg[2]);
         }
     });
 }
 
 INTERP(jmpnz) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto cond = _getDynRef(ctx.pinstr->arg[1]);
+    auto cond = _getDynRef(instr.arg[1]);
 
     assert(cond.type->typeclass_id == Type_Numeric);
 
     val_numeric_visit(cond, [=](auto val) {
         if (val) {
-            _jumpTo(ctx.pinstr->arg[2]);
+            _jumpTo(instr.arg[2]);
         }
     });
 }
 
 INTERP(cast) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto type = _getDynRef(ctx.pinstr->arg[1]);
-    auto arg = _getDynRef(ctx.pinstr->arg[2]);
+    auto dst = _getDynRef(instr.arg[0]);
+    auto type = _getDynRef(instr.arg[1]);
+    auto arg = _getDynRef(instr.arg[2]);
 
     assert(dst.type->typeclass_id == Type_Numeric);
     assert(type.type->typeclass_id == Type_Typeref);
@@ -172,20 +184,27 @@ INTERP(cast) {
 }
 
 INTERP(call) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto ret = _getDynRef(ctx.pinstr->arg[0]);
-    auto fn = _getDynRef(ctx.pinstr->arg[1]);
-    auto args = _getDynRef(ctx.pinstr->arg[2]);
+    auto ret = _getDynRef(instr.arg[0]);
+    auto fn = _getDynRef(instr.arg[1]);
+    auto args = _getDynRef(instr.arg[2]);
 
     val_fn_invoke(val_typeof(fn), ret, args);
 }
 
-INTERP(mov) {
-    EASY_FUNCTION(profiler::colors::Blue200)
+INTERP(call_jmp) {
+    auto ret = _getDynRef(instr.arg[0]);
+    auto fn = _getDynRef(instr.arg[1]);
+    auto args = _getDynRef(instr.arg[2]);
 
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto src = _getDynRef(ctx.pinstr->arg[1]);
+    FunctInfo const &info = *(FunctInfo *)val_typeof(fn)->as.fn.closure;
+
+    _setupFrame(info.frame_t, ret, args);
+    _jumpTo(&info.prog->instrs[info.first_instr]);
+}
+
+INTERP(mov) {
+    auto dst = _getDynRef(instr.arg[0]);
+    auto src = _getDynRef(instr.arg[1]);
 
     assert(val_sizeof(dst) == val_sizeof(src));
 
@@ -193,10 +212,8 @@ INTERP(mov) {
 }
 
 INTERP(lea) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto src = _getDynRef(ctx.pinstr->arg[1]);
+    auto dst = _getDynRef(instr.arg[0]);
+    auto src = _getDynRef(instr.arg[1]);
 
     assert(val_typeclassid(dst) == Type_Ptr);
 
@@ -204,10 +221,8 @@ INTERP(lea) {
 }
 
 INTERP(neg) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto arg = _getDynRef(ctx.pinstr->arg[1]);
+    auto dst = _getDynRef(instr.arg[0]);
+    auto arg = _getDynRef(instr.arg[1]);
 
     assert(val_typeid(dst) == val_typeid(arg));
     assert(dst.type->typeclass_id == Type_Numeric);
@@ -219,10 +234,8 @@ INTERP(neg) {
 }
 
 INTERP(compl ) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto arg = _getDynRef(ctx.pinstr->arg[1]);
+    auto dst = _getDynRef(instr.arg[0]);
+    auto arg = _getDynRef(instr.arg[1]);
 
     assert(val_typeid(dst) == val_typeid(arg));
     assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
@@ -234,10 +247,8 @@ INTERP(compl ) {
 }
 
 INTERP(not ) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto arg = _getDynRef(ctx.pinstr->arg[1]);
+    auto dst = _getDynRef(instr.arg[0]);
+    auto arg = _getDynRef(instr.arg[1]);
 
     assert(val_typeid(dst) == val_typeid(arg));
     assert(dst.type->typeclass_id == Type_Numeric);
@@ -249,10 +260,10 @@ INTERP(not ) {
 }
 
 template <class F>
-void _numericBinOp(F &&op) {
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto lhs = _getDynRef(ctx.pinstr->arg[1]);
-    auto rhs = _getDynRef(ctx.pinstr->arg[2]);
+void _numericBinOp(Instr const &instr, F &&op) {
+    auto dst = _getDynRef(instr.arg[0]);
+    auto lhs = _getDynRef(instr.arg[1]);
+    auto rhs = _getDynRef(instr.arg[2]);
 
     assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
     assert(dst.type->typeclass_id == Type_Numeric);
@@ -264,10 +275,10 @@ void _numericBinOp(F &&op) {
 }
 
 template <class F>
-void _numericBinOpInt(F &&op) {
-    auto dst = _getDynRef(ctx.pinstr->arg[0]);
-    auto lhs = _getDynRef(ctx.pinstr->arg[1]);
-    auto rhs = _getDynRef(ctx.pinstr->arg[2]);
+void _numericBinOpInt(Instr const &instr, F &&op) {
+    auto dst = _getDynRef(instr.arg[0]);
+    auto lhs = _getDynRef(instr.arg[1]);
+    auto rhs = _getDynRef(instr.arg[2]);
 
     assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
     assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
@@ -279,161 +290,120 @@ void _numericBinOpInt(F &&op) {
 }
 
 INTERP(add) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs + rhs;
     });
 }
 
 INTERP(sub) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs - rhs;
     });
 }
 
 INTERP(mul) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs * rhs;
     });
 }
 
 INTERP(div) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs / rhs;
     });
 }
 
 INTERP(mod) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOpInt([](auto lhs, auto rhs) {
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
         return lhs % rhs;
     });
 }
 
 INTERP(bitand) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOpInt([](auto lhs, auto rhs) {
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
         return lhs & rhs;
     });
 }
 
 INTERP(bitor) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOpInt([](auto lhs, auto rhs) {
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
         return lhs | rhs;
     });
 }
 
 INTERP(xor) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOpInt([](auto lhs, auto rhs) {
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
         return lhs ^ rhs;
     });
 }
 
 INTERP(lsh) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOpInt([](auto lhs, auto rhs) {
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
         return lhs << rhs;
     });
 }
 
 INTERP(rsh) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOpInt([](auto lhs, auto rhs) {
+    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
         return lhs >> rhs;
     });
 }
 
 INTERP(and) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs && rhs;
     });
 }
 
 INTERP(or) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs || rhs;
     });
 }
 
 INTERP(eq) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         //@Refactor/Feature Make boolean instrs write to a special register
         return lhs == rhs;
     });
 }
 
 INTERP(ge) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs >= rhs;
     });
 }
 
 INTERP(gt) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs > rhs;
     });
 }
 
 INTERP(le) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs <= rhs;
     });
 }
 
 INTERP(lt) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs < rhs;
     });
 }
 
 INTERP(ne) {
-    EASY_FUNCTION(profiler::colors::Blue200)
-    _numericBinOp([](auto lhs, auto rhs) {
+    _numericBinOp(instr, [](auto lhs, auto rhs) {
         return lhs != rhs;
     });
 }
 
-using InterpFunc = void (*)();
+using InterpFunc = void (*)(Instr const &instr);
 
 InterpFunc s_funcs[] = {
 #define X(NAME) _interp_##NAME,
-#include "nk/vm/ir.inl"
+#include "nk/vm/op.inl"
 };
-
-void _setupFrame(Instr *pinstr, type_t frame_t, value_t ret, value_t args) {
-    ctx.ctrl_stack.push() = {
-        .stack_frame_base = ctx.stack_frame_base,
-        .base_frame = ctx.base.frame,
-        .base_arg = ctx.base.arg,
-        .base_ret = ctx.base.ret,
-        .pinstr = ctx.pinstr,
-    };
-
-    //@Refactor Implement stack frame push/pop with Sequence
-    ctx.stack_frame_base = ctx.stack._seq.size;
-    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
-    ctx.base.arg = (uint8_t *)val_data(args);
-    ctx.base.ret = (uint8_t *)val_data(ret);
-    ctx.pinstr = pinstr;
-
-    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base)
-    LOG_DBG("frame=%p", ctx.base.frame)
-    LOG_DBG("arg=%p", ctx.base.arg)
-    LOG_DBG("ret=%p", ctx.base.ret)
-    LOG_DBG("pinstr=%p", ctx.pinstr)
-}
 
 } // namespace
 
@@ -473,7 +443,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     LOG_DBG("rodata=%p", ctx.base.rodata)
     LOG_DBG("instr=%p", ctx.base.instr)
 
-    _setupFrame(&prog.instrs[fn.first_instr], fn.frame_t, ret, args);
+    _setupFrame(fn.frame_t, ret, args);
 
     EASY_END_BLOCK
 
@@ -481,17 +451,15 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
 
-    while (!ctx.returned) {
-        assert(ctx.pinstr->code < ir::Ir_Count && "unknown instruction");
-        LOG_DBG(
-            "instr: %lx %s",
-            (ctx.pinstr - prog.instrs.data) * sizeof(Instr),
-            s_op_names[ctx.pinstr->code])
-        s_funcs[ctx.pinstr->code]();
-        ctx.pinstr++;
-    }
+    _jumpTo(&prog.instrs[fn.first_instr]);
 
-    ctx.returned = false;
+    while (ctx.pinstr) {
+        auto pinstr = ctx.pinstr++;
+        assert(pinstr->code < ir::Ir_Count && "unknown instruction");
+        LOG_DBG(
+            "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code])
+        s_funcs[pinstr->code](*pinstr);
+    }
 
     EASY_END_BLOCK
 
