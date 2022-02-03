@@ -463,6 +463,47 @@ void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
     }
 }
 
+FunctId buildTestIr_callNative(ProgramBuilder &b, void *fn_ptr) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto void_t = type_get_void();
+    auto args_t = type_get_tuple(&tmp_arena, {});
+
+    auto fn = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr);
+
+    auto i64_t = type_get_numeric(Int64);
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("call10Times"), void_t, args_t);
+
+    auto v_i = b.makeFrameRef(b.makeLocalVar(i64_t));
+    auto v_cond = b.makeFrameRef(b.makeLocalVar(i64_t));
+
+    auto l_start = b.makeLabel();
+    auto l_loop = b.makeLabel();
+    auto l_end = b.makeLabel();
+
+    b.startBlock(l_start, cstr_to_str("start"));
+
+    b.gen(b.make_mov(v_i, b.makeConstRef(10l, i64_t)));
+
+    b.startBlock(l_loop, cstr_to_str("loop"));
+
+    b.gen(b.make_gt(v_cond, v_i, b.makeConstRef(0l, i64_t)));
+    b.gen(b.make_jmpz(v_cond, l_end));
+
+    b.gen(b.make_call({}, b.makeConstRef({nullptr, fn}), {}));
+    b.gen(b.make_sub(v_i, v_i, b.makeConstRef(1l, i64_t)));
+    b.gen(b.make_jmp(l_loop));
+
+    b.startBlock(l_end, cstr_to_str("end"));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
 } // namespace ir
 } // namespace vm
 } // namespace nk
