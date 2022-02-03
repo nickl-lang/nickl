@@ -24,6 +24,8 @@ add_executable(${EXE}
     src/main.cpp
     )
 
+install(TARGETS ${EXE})
+
 target_compile_definitions(${EXE}
     PUBLIC NKL_BINARY_NAME="${EXE}"
     PUBLIC NKL_VERSION_MAJOR=0
