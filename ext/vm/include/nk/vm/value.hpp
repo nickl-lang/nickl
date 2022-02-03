@@ -47,8 +47,9 @@ using FuncPtr = void (*)(type_t self, value_t ret, value_t args);
 struct _type_fn {
     type_t ret_t;
     type_t args_t;
-    FuncPtr body;
+    void *body;
     void *closure;
+    bool is_native;
 };
 
 // 0x<index><size>
@@ -111,9 +112,14 @@ void types_deinit();
 
 type_t type_get_array(type_t elem_type, size_t elem_count);
 //@Feature Implement function pointer type
-//@Feature Implement native function calls
 //@Feature Implement callbacks from native code
 type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure);
+type_t type_get_fn_native(
+    type_t ret_t,
+    type_t args_t,
+    size_t decl_id,
+    void *body_ptr,
+    void *closure);
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 //@Feature Implement optimized tuple type

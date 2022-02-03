@@ -3,6 +3,8 @@
 #include <cstring>
 #include <sstream>
 
+#include <ffi.h>
+
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.hpp"
@@ -13,6 +15,8 @@ namespace nk {
 namespace vm {
 
 namespace {
+
+LOG_USE_SCOPE(nk::vm::value)
 
 using ByteArray = Slice<uint8_t const>;
 
@@ -266,8 +270,47 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
         size_t decl_id;
         typeid_t ret_t;
         typeid_t args_t;
-        FuncPtr body_ptr;
+        void *body_ptr;
         void *closure;
+        bool is_native;
+    } fp = {};
+    fp.base.id = Type_Fn;
+    fp.decl_id = decl_id;
+    fp.ret_t = ret_t->id;
+    fp.args_t = args_t->id;
+    fp.body_ptr = (void *)body_ptr;
+    fp.closure = closure;
+    fp.is_native = false;
+    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
+    if (res.inserted) {
+        res.type->size = 0;
+        res.type->alignment = 1;
+        res.type->as.fn.ret_t = ret_t;
+        res.type->as.fn.args_t = args_t;
+        res.type->as.fn.body = (void *)body_ptr;
+        res.type->as.fn.closure = closure;
+        res.type->as.fn.is_native = false;
+    }
+    return res.type;
+}
+
+//@Refactor Boilerplate in type_get_fn_native
+type_t type_get_fn_native(
+    type_t ret_t,
+    type_t args_t,
+    size_t decl_id,
+    void *body_ptr,
+    void *closure) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
+    struct {
+        _FpBase base;
+        size_t decl_id;
+        typeid_t ret_t;
+        typeid_t args_t;
+        void *body_ptr;
+        void *closure;
+        bool is_native;
     } fp = {};
     fp.base.id = Type_Fn;
     fp.decl_id = decl_id;
@@ -275,6 +318,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
     fp.args_t = args_t->id;
     fp.body_ptr = body_ptr;
     fp.closure = closure;
+    fp.is_native = true;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
@@ -283,6 +327,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
         res.type->as.fn.args_t = args_t;
         res.type->as.fn.body = body_ptr;
         res.type->as.fn.closure = closure;
+        res.type->as.fn.is_native = true;
     }
     return res.type;
 }
@@ -404,10 +449,14 @@ string val_inspect(Allocator *allocator, value_t val) {
 }
 
 size_t val_tuple_size(value_t self) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     return val_typeof(self)->as.tuple.elems.size;
 }
 
 value_t val_tuple_at(value_t self, size_t i) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     assert(i < val_tuple_size(self) && "tuple index out of range");
     auto const type = val_typeof(self);
     return {
@@ -415,22 +464,132 @@ value_t val_tuple_at(value_t self, size_t i) {
 }
 
 size_t type_tuple_offset(type_t tuple_t, size_t i) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     assert(i < tuple_t->as.tuple.elems.size && "tuple index out of range");
     return tuple_t->as.tuple.elems[i].offset;
 }
 
 size_t val_array_size(value_t self) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     return val_typeof(self)->as.arr.elem_count;
 }
 
 value_t val_array_at(value_t self, size_t i) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
     assert(i < val_array_size(self) && "array index out of range");
     auto const type = val_typeof(self);
     return {((uint8_t *)val_data(self)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
 }
 
+ffi_type *_ffiPrepareType(Allocator *tmp_allocator, type_t type) {
+    EASY_FUNCTION(profiler::colors::Green200)
+    LOG_TRC(__PRETTY_FUNCTION__);
+
+    switch (type->typeclass_id) {
+    case Type_Array: {
+        auto elem_t = type->as.arr.elem_type;
+        auto elem_count = type->as.arr.elem_count;
+        ffi_type **elements = tmp_allocator->alloc<ffi_type *>(elem_count);
+        auto ffi_elem_t = _ffiPrepareType(tmp_allocator, elem_t);
+        for (size_t i = 0; i < elem_count; i++) {
+            elements[i] = ffi_elem_t;
+        }
+        ffi_type &ffi_t = *tmp_allocator->alloc<ffi_type>() = {
+            .size = type->size,
+            .alignment = type->alignment,
+            .type = FFI_TYPE_STRUCT,
+            .elements = elements,
+        };
+        return &ffi_t;
+    }
+    case Type_Fn:
+        assert(!"_ffiPrepareType(Type_Fn) is not implemented");
+        return nullptr;
+    case Type_Numeric:
+        switch (type->as.num.value_type) {
+        case Int8:
+            return &ffi_type_sint8;
+        case Int16:
+            return &ffi_type_sint16;
+        case Int32:
+            return &ffi_type_sint32;
+        case Int64:
+            return &ffi_type_sint64;
+        case Uint8:
+            return &ffi_type_uint8;
+        case Uint16:
+            return &ffi_type_uint16;
+        case Uint32:
+            return &ffi_type_uint32;
+        case Uint64:
+            return &ffi_type_uint64;
+        case Float32:
+            return &ffi_type_float;
+        case Float64:
+            return &ffi_type_double;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        return nullptr;
+    case Type_Ptr:
+        return &ffi_type_pointer;
+    case Type_Tuple: {
+        auto elems = type->as.tuple.elems;
+        ffi_type **elements = tmp_allocator->alloc<ffi_type *>(elems.size);
+        for (size_t i = 0; i < elems.size; i++) {
+            elements[i] = _ffiPrepareType(tmp_allocator, elems[i].type);
+        }
+        ffi_type &ffi_t = *tmp_allocator->alloc<ffi_type>() = {
+            .size = type->size,
+            .alignment = type->alignment,
+            .type = FFI_TYPE_STRUCT,
+            .elements = elements,
+        };
+        return &ffi_t;
+    }
+    case Type_Typeref:
+        return &ffi_type_pointer;
+    case Type_Void:
+        return &ffi_type_void;
+    default:
+        assert(!"unreachable");
+        return nullptr;
+    }
+}
+
 void val_fn_invoke(type_t self, value_t ret, value_t args) {
-    self->as.fn.body(self, ret, args);
+    EASY_FUNCTION(profiler::colors::Green200)
+    LOG_TRC(__PRETTY_FUNCTION__);
+
+    if (self->as.fn.is_native) {
+        auto tmp_arena = ArenaAllocator::create();
+        DEFER({ tmp_arena.deinit(); })
+
+        size_t const argc = self->as.fn.args_t->as.tuple.elems.size;
+
+        auto rtype = _ffiPrepareType(&tmp_arena, self->as.fn.ret_t);
+        auto atypes = _ffiPrepareType(&tmp_arena, self->as.fn.args_t);
+
+        ffi_cif cif;
+        ffi_status status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
+        if (status != FFI_OK) {
+            fprintf(stderr, "ffi_prep_cif failed: %d\n", status);
+            exit(1);
+        }
+
+        void **argv = tmp_arena.alloc<void *>(argc);
+        for (size_t i = 0; i < argc; i++) {
+            argv[i] = val_data(val_tuple_at(args, i));
+        }
+
+        ffi_call(&cif, FFI_FN(self->as.fn.body), val_data(ret), argv);
+    } else {
+        ((FuncPtr)self->as.fn.body)(self, ret, args);
+    }
 }
 
 } // namespace vm
