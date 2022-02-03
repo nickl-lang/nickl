@@ -2,61 +2,75 @@
 #define X(...)
 #endif
 
-#ifndef I
-#define I(...) X(__VA_ARGS__)
+#ifndef XE
+#define XE(NAME, VAR) X(NAME##_##VAR)
 #endif
 
-#ifndef U
-#define U(...) X(__VA_ARGS__)
-#endif
+X(nop)
+X(ret)
 
-#ifndef B
-#define B(...) X(__VA_ARGS__)
-#endif
+X(jmp)
+X(jmpz)
+X(jmpnz)
 
-I(nop)
-I(enter)
-I(leave)
-I(ret)
+X(cast)
 
-I(jmp)
-I(jmpz)
-I(jmpnz)
+X(call)
+XE(call, jmp)
 
-I(cast)
+X(mov)
+X(lea)
+X(neg)
+X(compl )
+X(not )
 
-I(call)
-I(call_jmp)
+#define NUM_X(NAME) \
+    X(NAME)         \
+    XE(NAME, i8)    \
+    XE(NAME, u8)    \
+    XE(NAME, i16)   \
+    XE(NAME, u16)   \
+    XE(NAME, i32)   \
+    XE(NAME, u32)   \
+    XE(NAME, i64)   \
+    XE(NAME, u64)   \
+    XE(NAME, f32)   \
+    XE(NAME, f64)
 
-U(mov)
-U(lea)
-U(neg)
-U(compl)
-U(not)
+#define NUM_INT_X(NAME) \
+    X(NAME)             \
+    XE(NAME, i8)        \
+    XE(NAME, u8)        \
+    XE(NAME, i16)       \
+    XE(NAME, u16)       \
+    XE(NAME, i32)       \
+    XE(NAME, u32)       \
+    XE(NAME, i64)       \
+    XE(NAME, u64)
 
-B(add)
-B(sub)
-B(mul)
-B(div)
-B(mod)
+NUM_X(add)
+NUM_X(sub)
+NUM_X(mul)
+NUM_X(div)
+NUM_INT_X(mod)
 
-B(bitand)
-B(bitor)
-B(xor)
-B(lsh)
-B(rsh)
+NUM_INT_X(bitand)
+NUM_INT_X(bitor)
+NUM_INT_X(xor)
+NUM_INT_X(lsh)
+NUM_INT_X(rsh)
 
-B(and)
-B(or)
+NUM_X(and)
+NUM_X(or)
 
-B(eq)
-B(ge)
-B(gt)
-B(le)
-B(lt)
-B(ne)
+NUM_X(eq)
+NUM_X(ge)
+NUM_X(gt)
+NUM_X(le)
+NUM_X(lt)
+NUM_X(ne)
 
 #undef X
-#undef I
-#undef U
-#undef B
+#undef XE
+
+#undef NUM_X

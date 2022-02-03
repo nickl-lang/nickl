@@ -54,19 +54,20 @@ struct _type_fn {
 // 0x<index><size>
 // Ordered in coercion order, max(lhs, rhs) is a common type
 enum ENumericValueType {
-    Int8 = 0x41,
-    Uint8 = 0x51,
-    Int16 = 0x62,
-    Uint16 = 0x72,
-    Int32 = 0x84,
-    Uint32 = 0x94,
-    Int64 = 0xa8,
-    Uint64 = 0xb8,
-    Float32 = 0xc4,
-    Float64 = 0xd8,
+    Int8 = 0x01,
+    Uint8 = 0x11,
+    Int16 = 0x22,
+    Uint16 = 0x32,
+    Int32 = 0x44,
+    Uint32 = 0x54,
+    Int64 = 0x68,
+    Uint64 = 0x78,
+    Float32 = 0x84,
+    Float64 = 0x98,
 };
 
-#define NUM_TYPE_SIZE_MASK 0xf
+#define NUM_TYPE_SIZE(value_type) (0xf & (value_type))
+#define NUM_TYPE_INDEX(value_type) ((0xf0 & (value_type)) >> 4)
 
 struct _type_numeric {
     ENumericValueType value_type;

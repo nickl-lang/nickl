@@ -98,20 +98,9 @@ void _setupFrame(type_t frame_t, value_t ret, value_t args) {
 }
 
 #define INTERP(NAME) void _interp_##NAME(Instr const &instr)
-#define INTERP_NOT_IMPLEMENTED(NAME) assert(!"instr not implemented" #NAME)
 
 INTERP(nop) {
     (void)instr;
-}
-
-INTERP(enter) {
-    (void)instr;
-    INTERP_NOT_IMPLEMENTED(enter);
-}
-
-INTERP(leave) {
-    (void)instr;
-    INTERP_NOT_IMPLEMENTED(leave);
 }
 
 void _jumpTo(Instr const *pinstr) {
@@ -289,114 +278,64 @@ void _numericBinOpInt(Instr const &instr, F &&op) {
     });
 }
 
-INTERP(add) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs + rhs;
-    });
-}
+#define _NUM_BIN_OP_EXT(NAME, OP, EXT, TYPE)                                                      \
+    INTERP(NAME##_##EXT) {                                                                        \
+        _getRef<TYPE>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
+    }
 
-INTERP(sub) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs - rhs;
-    });
-}
+#define NUM_BIN_OP(NAME, OP)                          \
+    INTERP(NAME) {                                    \
+        _numericBinOp(instr, [](auto lhs, auto rhs) { \
+            return lhs OP rhs;                        \
+        });                                           \
+    }                                                 \
+    _NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)             \
+    _NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)            \
+    _NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)           \
+    _NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)          \
+    _NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)           \
+    _NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)          \
+    _NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)           \
+    _NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)          \
+    _NUM_BIN_OP_EXT(NAME, OP, f32, float)             \
+    _NUM_BIN_OP_EXT(NAME, OP, f64, double)
 
-INTERP(mul) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs * rhs;
-    });
-}
+#define NUM_BIN_OP_INT(NAME, OP)                         \
+    INTERP(NAME) {                                       \
+        _numericBinOpInt(instr, [](auto lhs, auto rhs) { \
+            return lhs OP rhs;                           \
+        });                                              \
+    }                                                    \
+    _NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)                \
+    _NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)               \
+    _NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)              \
+    _NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)             \
+    _NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)              \
+    _NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)             \
+    _NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)              \
+    _NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)
 
-INTERP(div) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs / rhs;
-    });
-}
+NUM_BIN_OP(add, +)
+NUM_BIN_OP(sub, -)
+NUM_BIN_OP(mul, *)
+NUM_BIN_OP(div, /)
+NUM_BIN_OP_INT(mod, %)
 
-INTERP(mod) {
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
-        return lhs % rhs;
-    });
-}
+NUM_BIN_OP_INT(bitand, &)
+NUM_BIN_OP_INT(bitor, |)
+NUM_BIN_OP_INT(xor, ^)
+NUM_BIN_OP_INT(lsh, <<)
+NUM_BIN_OP_INT(rsh, >>)
 
-INTERP(bitand) {
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
-        return lhs & rhs;
-    });
-}
+NUM_BIN_OP(and, &&)
+NUM_BIN_OP(or, ||)
 
-INTERP(bitor) {
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
-        return lhs | rhs;
-    });
-}
-
-INTERP(xor) {
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
-        return lhs ^ rhs;
-    });
-}
-
-INTERP(lsh) {
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
-        return lhs << rhs;
-    });
-}
-
-INTERP(rsh) {
-    _numericBinOpInt(instr, [](auto lhs, auto rhs) {
-        return lhs >> rhs;
-    });
-}
-
-INTERP(and) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs && rhs;
-    });
-}
-
-INTERP(or) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs || rhs;
-    });
-}
-
-INTERP(eq) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        //@Refactor/Feature Make boolean instrs write to a special register
-        return lhs == rhs;
-    });
-}
-
-INTERP(ge) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs >= rhs;
-    });
-}
-
-INTERP(gt) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs > rhs;
-    });
-}
-
-INTERP(le) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs <= rhs;
-    });
-}
-
-INTERP(lt) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs < rhs;
-    });
-}
-
-INTERP(ne) {
-    _numericBinOp(instr, [](auto lhs, auto rhs) {
-        return lhs != rhs;
-    });
-}
+NUM_BIN_OP(eq, ==)
+NUM_BIN_OP(ge, >=)
+NUM_BIN_OP(gt, >)
+NUM_BIN_OP(le, <=)
+NUM_BIN_OP(lt, <)
+NUM_BIN_OP(ne, !=)
 
 using InterpFunc = void (*)(Instr const &instr);
 
@@ -455,7 +394,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
-        assert(pinstr->code < ir::Ir_Count && "unknown instruction");
+        assert(pinstr->code < Op_Count && "unknown instruction");
         LOG_DBG(
             "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code])
         s_funcs[pinstr->code](*pinstr);

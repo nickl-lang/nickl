@@ -123,7 +123,7 @@ void _typeName(type_t type, std::ostringstream &ss) {
             assert(!"unreachable");
             break;
         }
-        ss << (type->as.num.value_type & NUM_TYPE_SIZE_MASK) * 8;
+        ss << NUM_TYPE_SIZE(type->as.num.value_type) * 8;
         break;
     case Type_Ptr:
         ss << "ptr{";
@@ -298,7 +298,7 @@ type_t type_get_numeric(ENumericValueType value_type) {
     fp.value_type = value_type;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
-        size_t const size = value_type & NUM_TYPE_SIZE_MASK;
+        size_t const size = NUM_TYPE_SIZE(value_type);
         res.type->size = size;
         res.type->alignment = size;
         res.type->as.num.value_type = value_type;
