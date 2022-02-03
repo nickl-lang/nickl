@@ -90,7 +90,7 @@ struct Type {
         _type_ptr ptr;
         _type_tuple tuple;
     } as;
-    mutable native_type_h native_handle;
+    mutable void *native_handle;
     uint64_t id;
     uint64_t size;
     uint8_t alignment;

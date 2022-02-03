@@ -7,9 +7,6 @@
 namespace nk {
 namespace vm {
 
-struct NativeTypeHandle;
-using native_type_h = NativeTypeHandle *;
-
 struct NativeFnInfo;
 using native_fn_info_t = NativeFnInfo *;
 

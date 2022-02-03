@@ -500,16 +500,9 @@ FunctId buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
 
     auto ret = b.makeRetRef();
 
-    auto a_x = b.makeArgRef(0);
-    auto a_y = b.makeArgRef(1);
-
-    auto v_args = b.makeFrameRef(b.makeLocalVar(args_t));
-
     b.startBlock(b.makeLabel(), cstr_to_str("start"));
 
-    b.gen(b.make_mov(v_args.plus(type_tuple_offset(args_t, 0), i64_t), a_x));
-    b.gen(b.make_mov(v_args.plus(type_tuple_offset(args_t, 1), i64_t), a_y));
-    b.gen(b.make_call(ret, b.makeConstRef({nullptr, fn_t}), v_args));
+    b.gen(b.make_call(ret, b.makeConstRef({nullptr, fn_t}), b.makeArgRef(0).as(args_t)));
 
     b.gen(b.make_ret());
 
