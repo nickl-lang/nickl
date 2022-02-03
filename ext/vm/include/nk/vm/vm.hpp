@@ -14,6 +14,13 @@ namespace vm {
 
 extern char const *s_op_names[];
 
+enum EOpCode {
+#define X(NAME) op_##NAME,
+#include "nk/vm/op.inl"
+
+    Op_Count,
+};
+
 struct Ref {
     size_t offset;
     size_t post_offset;
