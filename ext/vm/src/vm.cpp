@@ -205,32 +205,32 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
             case ir::Arg_Ref: {
                 auto const &ref = ir_arg.as.ref;
                 switch (ref.ref_type) {
-                case Ref_Frame:
+                case ir::Ref_Frame:
                     arg.offset = type_tuple_offset(funct_info.frame_t, ref.value.index);
                     break;
-                case Ref_Arg:
+                case ir::Ref_Arg:
                     arg.offset = type_tuple_offset(funct.args_t, ref.value.index);
                     break;
-                case Ref_Ret:
+                case ir::Ref_Ret:
                     break;
-                case Ref_Global:
+                case ir::Ref_Global:
                     arg.offset = type_tuple_offset(prog.globals_t, ref.value.index);
                     break;
-                case Ref_Const:
+                case ir::Ref_Const:
                     arg.offset = _pushConst({ref.value.data, ref.type});
                     break;
-                case Ref_Reg:
+                case ir::Ref_Reg:
                     arg.offset = ref.value.index * REG_SIZE;
                     break;
                 default:
                     assert(!"unreachable");
-                case Ref_None:
+                case ir::Ref_None:
                     break;
                 }
                 arg.offset += ref.offset;
                 arg.post_offset = ref.post_offset;
                 arg.type = ref.type;
-                arg.ref_type = ref.ref_type;
+                arg.ref_type = (ERefType)ref.ref_type;
                 arg.is_indirect = ref.is_indirect;
                 break;
             }
