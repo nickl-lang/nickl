@@ -26,13 +26,16 @@ class interp : public testing::Test {
         m_arena.init();
         types_init();
 
-        m_builder.init();
+        m_ir_prog.init();
+        m_builder.init(m_ir_prog);
+
         m_prog.init();
     }
 
     void TearDown() override {
         m_prog.deinit();
-        m_builder.deinit();
+
+        m_ir_prog.deinit();
 
         types_deinit();
         m_arena.deinit();
@@ -42,6 +45,7 @@ protected:
     ProfilerWrapper m_prof;
 
     ArenaAllocator m_arena;
+    ir::Program m_ir_prog;
     ir::ProgramBuilder m_builder;
     Program m_prog;
     Translator m_translator;
@@ -51,9 +55,10 @@ protected:
 
 TEST_F(interp, plus) {
     buildTestIr_plus(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -70,9 +75,10 @@ TEST_F(interp, plus) {
 
 TEST_F(interp, not ) {
     buildTestIr_not(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -93,9 +99,10 @@ TEST_F(interp, not ) {
 
 TEST_F(interp, atan) {
     buildTestIr_atan(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -124,9 +131,10 @@ TEST_F(interp, atan) {
 
 TEST_F(interp, pi) {
     buildTestIr_pi(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[1].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -142,9 +150,10 @@ TEST_F(interp, pi) {
 
 TEST_F(interp, rsqrt) {
     buildTestIr_rsqrt(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -160,9 +169,10 @@ TEST_F(interp, rsqrt) {
 
 TEST_F(interp, vec2LenSquared) {
     buildTestIr_vec2LenSquared(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -190,9 +200,10 @@ TEST_F(interp, vec2LenSquared) {
 
 TEST_F(interp, modf) {
     buildTestIr_modf(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -217,9 +228,10 @@ TEST_F(interp, modf) {
 
 TEST_F(interp, intPart) {
     buildTestIr_intPart(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[1].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -246,9 +258,10 @@ TEST_F(interp, threads) {
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     buildTestIr_call10Times(m_builder, callback);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -281,10 +294,12 @@ TEST_F(interp, threads_diff_progs) {
 
     DEFER({ prog1.deinit(); });
 
-    auto fn0_t = m_translator.translateFromIr(prog0, m_builder.prog);
-    auto fn1_t = m_translator.translateFromIr(prog1, m_builder.prog);
+    m_translator.translateFromIr(prog0, m_ir_prog);
+    auto fn0_t = prog0.funct_info[0].funct_t;
+    m_translator.translateFromIr(prog1, m_ir_prog);
+    auto fn1_t = prog1.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = prog0.inspect(&m_arena);
@@ -304,16 +319,16 @@ TEST_F(interp, threads_diff_progs) {
 }
 
 TEST_F(interp, one_thread_diff_progs) {
-    ir::ProgramBuilder &builder0 = m_builder;
-    ir::ProgramBuilder builder1;
-    builder1.init();
+    ir::Program &ir_prog0 = m_ir_prog;
+    ir::Program ir_prog1;
+    ir_prog1.init();
 
     Program &prog0 = m_prog;
     Program prog1;
     prog1.init();
 
     DEFER({
-        builder1.deinit();
+        ir_prog1.deinit();
         prog1.deinit();
     })
 
@@ -322,19 +337,23 @@ TEST_F(interp, one_thread_diff_progs) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    buildTestIr_call10Times(builder0, callback);
-    auto fn0_t = m_translator.translateFromIr(prog0, builder0.prog);
+    m_builder.init(ir_prog0);
+    buildTestIr_call10Times(m_builder, callback);
+    m_translator.translateFromIr(prog0, ir_prog0);
+    auto fn0_t = prog0.funct_info[0].funct_t;
 
-    buildTestIr_call10Times(builder1, fn0_t);
-    auto fn1_t = m_translator.translateFromIr(prog1, builder1.prog);
+    m_builder.init(ir_prog1);
+    buildTestIr_call10Times(m_builder, fn0_t);
+    m_translator.translateFromIr(prog1, ir_prog1);
+    auto fn1_t = prog1.funct_info[0].funct_t;
 
-    auto str = builder0.inspect(&m_arena);
+    auto str = ir_prog0.inspect(&m_arena);
     LOG_INF("PROG0 ir:\n%.*s", str.size, str.data);
 
     str = prog0.inspect(&m_arena);
     LOG_INF("PROG0 bytecode:\n\n%.*s", str.size, str.data);
 
-    str = builder1.inspect(&m_arena);
+    str = ir_prog1.inspect(&m_arena);
     LOG_INF("PROG1 ir:\n%.*s", str.size, str.data);
 
     str = prog1.inspect(&m_arena);
@@ -345,9 +364,10 @@ TEST_F(interp, one_thread_diff_progs) {
 
 TEST_F(interp, hasZeroByte32) {
     buildTestIr_hasZeroByte32(m_builder);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -379,9 +399,10 @@ static void _nativeSayHello() {
 
 TEST_F(interp, callNativeSayHello) {
     buildTestIr_callNativeFunc(m_builder, (void *)_nativeSayHello);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -399,9 +420,10 @@ static int64_t _nativeAdd(int64_t a, int64_t b) {
 
 TEST_F(interp, callNativeAdd) {
     buildTestIr_callNativeAdd(m_builder, (void *)_nativeAdd);
-    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);

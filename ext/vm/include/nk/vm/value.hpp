@@ -6,7 +6,7 @@
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
 #include "nk/vm/common_types.hpp"
-#include "nk/vm/private/native_adapter.hpp"
+#include "nk/vm/private/native_fn_adapter.hpp"
 
 namespace nk {
 namespace vm {

@@ -144,7 +144,7 @@ string Program::inspect(Allocator *allocator) {
     return string{data, str.size()};
 }
 
-type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
+void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     EASY_BLOCK("Translator::translateFromIr", profiler::colors::Red200)
 
     prog.instrs.init(ir.instrs.size);
@@ -430,10 +430,6 @@ type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
             break;
         }
     }
-
-    size_t entry_point_id = ir.entry_point_id == -1ul ? 0 : ir.entry_point_id;
-    assert(entry_point_id < prog.funct_info.size && "ill-formed ir");
-    return prog.funct_info[entry_point_id].funct_t;
 }
 
 } // namespace vm
