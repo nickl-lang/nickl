@@ -16,6 +16,7 @@ struct ProgramFrame {
     uint8_t *base_global;
     uint8_t *base_rodata;
     uint8_t *base_instr;
+    uint8_t *base_reg;
 };
 
 struct ControlFrame {
@@ -27,7 +28,16 @@ struct ControlFrame {
 };
 
 struct InterpContext {
-    struct Base { // repeats order of ERefType values
+    struct Registers { // repeats the layout of ERegister
+        uint64_t a;
+        uint64_t b;
+        uint64_t c;
+        uint64_t d;
+        uint64_t e;
+        uint64_t f;
+    };
+
+    struct Base { // repeats the layout of ERefType
         uint8_t *null;
         uint8_t *frame;
         uint8_t *arg;
@@ -35,7 +45,9 @@ struct InterpContext {
         uint8_t *global;
         uint8_t *rodata;
         uint8_t *instr;
+        uint8_t *reg;
     };
+
     union {
         uint8_t *base_ar[Ref_Count];
         Base base;
@@ -46,6 +58,7 @@ struct InterpContext {
     Instr const *pinstr;
     bool is_initialized;
     bool returned;
+    Registers reg;
 };
 
 thread_local InterpContext ctx;
@@ -448,11 +461,13 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .base_global = ctx.base.global,
         .base_rodata = ctx.base.rodata,
         .base_instr = ctx.base.instr,
+        .base_reg = ctx.base.reg,
     };
 
     ctx.base.global = prog.globals.data;
     ctx.base.rodata = prog.rodata.data;
     ctx.base.instr = (uint8_t *)prog.instrs.data;
+    ctx.base.reg = (uint8_t *)&ctx.reg;
 
     LOG_DBG("global=%p", ctx.base.global)
     LOG_DBG("rodata=%p", ctx.base.rodata)
@@ -487,6 +502,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     ctx.base.global = pfr.base_global;
     ctx.base.rodata = pfr.base_rodata;
     ctx.base.instr = pfr.base_instr;
+    ctx.base.reg = pfr.base_reg;
 
     if (was_uninitialized) {
         LOG_TRC("deinitializing stack...")

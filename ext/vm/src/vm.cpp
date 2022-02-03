@@ -51,6 +51,9 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         case Ref_Instr:
             ss << "instr";
             break;
+        case Ref_Reg:
+            ss << "reg";
+            break;
         default:
             assert(!"unreachable");
             break;
@@ -201,6 +204,9 @@ type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                     break;
                 case Ref_Const:
                     arg.offset = _pushConst({ref.value.data, ref.type});
+                    break;
+                case Ref_Reg:
+                    arg.offset = ref.value.index * REG_SIZE;
                     break;
                 default:
                     assert(!"unreachable");
