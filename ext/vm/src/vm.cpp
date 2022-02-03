@@ -13,6 +13,7 @@ namespace vm {
 
 char const *s_op_names[] = {
 #define X(NAME) #NAME,
+#define XE(NAME, VAR) #NAME " (" #VAR ")",
 #include "nk/vm/op.inl"
 };
 
@@ -92,6 +93,19 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         ss << "\n";
     }
 }
+
+enum ENumExt {
+    Ext_i8,
+    Ext_i16,
+    Ext_i32,
+    Ext_i64,
+    Ext_u8,
+    Ext_u16,
+    Ext_u32,
+    Ext_u64,
+    Ext_f32,
+    Ext_f64,
+};
 
 } // namespace
 
@@ -246,115 +260,150 @@ type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
             block_info.first_instr = prog.instrs.size;
 
             for (auto const &ir_instr : ir.instrs.slice(block.first_instr, block.instr_count)) {
-                auto &instr = prog.instrs.push() = {};
+                uint16_t code = 0;
+
+                auto numOp = [&](uint16_t op) {
+                    auto const &arg0 = ir_instr.arg[0];
+                    auto const &arg1 = ir_instr.arg[1];
+                    auto const &arg2 = ir_instr.arg[2];
+
+                    assert(arg0.arg_type == ir::Arg_Ref);
+                    assert(arg1.arg_type == ir::Arg_Ref);
+                    assert(arg2.arg_type == ir::Arg_Ref);
+
+                    assert(arg0.as.ref.type->id == arg1.as.ref.type->id);
+                    assert(arg0.as.ref.type->id == arg2.as.ref.type->id);
+
+                    assert(arg0.as.ref.type->typeclass_id == Type_Numeric);
+
+                    code = op + 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
+                };
+
+                auto numOpInt = [&](uint16_t op) {
+                    auto const &arg0 = ir_instr.arg[0];
+                    auto const &arg1 = ir_instr.arg[1];
+                    auto const &arg2 = ir_instr.arg[2];
+
+                    assert(arg0.arg_type == ir::Arg_Ref);
+                    assert(arg1.arg_type == ir::Arg_Ref);
+                    assert(arg2.arg_type == ir::Arg_Ref);
+
+                    assert(arg0.as.ref.type->id == arg1.as.ref.type->id);
+                    assert(arg0.as.ref.type->id == arg2.as.ref.type->id);
+
+                    assert(arg0.as.ref.type->typeclass_id == Type_Numeric);
+                    assert(arg0.as.ref.type->as.num.value_type < Float32);
+
+                    code = op + 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
+                };
 
                 //@Refactor Remove boilerplate from opcode compilation
                 switch (ir_instr.code) {
                 case ir::ir_nop:
-                    instr.code = op_nop;
+                    code = op_nop;
                     break;
                 case ir::ir_enter:
-                    instr.code = op_enter;
                     break;
                 case ir::ir_leave:
-                    instr.code = op_leave;
                     break;
                 case ir::ir_ret:
-                    instr.code = op_ret;
+                    code = op_ret;
                     break;
                 case ir::ir_jmp:
-                    instr.code = op_jmp;
+                    code = op_jmp;
                     break;
                 case ir::ir_jmpz:
-                    instr.code = op_jmpz;
+                    code = op_jmpz;
                     break;
                 case ir::ir_jmpnz:
-                    instr.code = op_jmpnz;
+                    code = op_jmpnz;
                     break;
                 case ir::ir_cast:
-                    instr.code = op_cast;
+                    code = op_cast;
                     break;
                 case ir::ir_call:
                     if (ir_instr.arg[1].arg_type == ir::Arg_FunctId) {
-                        instr.code = op_call_jmp;
+                        code = op_call_jmp;
                     } else {
-                        instr.code = op_call;
+                        code = op_call;
                     }
                     break;
                 case ir::ir_mov:
-                    instr.code = op_mov;
+                    code = op_mov;
                     break;
                 case ir::ir_lea:
-                    instr.code = op_lea;
+                    code = op_lea;
                     break;
                 case ir::ir_neg:
-                    instr.code = op_neg;
+                    code = op_neg;
                     break;
                 case ir::ir_compl:
-                    instr.code = op_compl;
+                    code = op_compl;
                     break;
                 case ir::ir_not:
-                    instr.code = op_not;
+                    code = op_not;
                     break;
                 case ir::ir_add:
-                    instr.code = op_add;
+                    numOp(op_add);
                     break;
                 case ir::ir_sub:
-                    instr.code = op_sub;
+                    numOp(op_sub);
                     break;
                 case ir::ir_mul:
-                    instr.code = op_mul;
+                    numOp(op_mul);
                     break;
                 case ir::ir_div:
-                    instr.code = op_div;
+                    numOp(op_div);
                     break;
                 case ir::ir_mod:
-                    instr.code = op_mod;
+                    numOpInt(op_mod);
                     break;
                 case ir::ir_bitand:
-                    instr.code = op_bitand;
+                    numOpInt(op_bitand);
                     break;
                 case ir::ir_bitor:
-                    instr.code = op_bitor;
+                    numOpInt(op_bitor);
                     break;
                 case ir::ir_xor:
-                    instr.code = op_xor;
+                    numOpInt(op_xor);
                     break;
                 case ir::ir_lsh:
-                    instr.code = op_lsh;
+                    numOpInt(op_lsh);
                     break;
                 case ir::ir_rsh:
-                    instr.code = op_rsh;
+                    numOpInt(op_rsh);
                     break;
                 case ir::ir_and:
-                    instr.code = op_and;
+                    numOp(op_and);
                     break;
                 case ir::ir_or:
-                    instr.code = op_or;
+                    numOp(op_or);
                     break;
                 case ir::ir_eq:
-                    instr.code = op_eq;
+                    numOp(op_eq);
                     break;
                 case ir::ir_ge:
-                    instr.code = op_ge;
+                    numOp(op_ge);
                     break;
                 case ir::ir_gt:
-                    instr.code = op_gt;
+                    numOp(op_gt);
                     break;
                 case ir::ir_le:
-                    instr.code = op_le;
+                    numOp(op_le);
                     break;
                 case ir::ir_lt:
-                    instr.code = op_lt;
+                    numOp(op_lt);
                     break;
                 case ir::ir_ne:
-                    instr.code = op_ne;
+                    numOp(op_ne);
                     break;
                 default:
                     assert(!"unreachable");
                     break;
                 }
 
+                auto &instr = prog.instrs.push() = {};
+                instr.code = code;
                 for (size_t ai = 0; ai < 3; ai++) {
                     _compileArg(prog.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
                 }
