@@ -7,19 +7,19 @@ namespace nk {
 namespace vm {
 namespace ir {
 
-FunctId buildTestIr_plus(ProgramBuilder &b);
-FunctId buildTestIr_not(ProgramBuilder &b);
-FunctId buildTestIr_atan(ProgramBuilder &b);
-FunctId buildTestIr_pi(ProgramBuilder &b);
-FunctId buildTestIr_rsqrt(ProgramBuilder &b);
-FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b);
-FunctId buildTestIr_modf(ProgramBuilder &b);
-FunctId buildTestIr_intPart(ProgramBuilder &b);
-FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn);
-FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b);
+void buildTestIr_plus(ProgramBuilder &b);
+void buildTestIr_not(ProgramBuilder &b);
+void buildTestIr_atan(ProgramBuilder &b);
+void buildTestIr_pi(ProgramBuilder &b);
+void buildTestIr_rsqrt(ProgramBuilder &b);
+void buildTestIr_vec2LenSquared(ProgramBuilder &b);
+void buildTestIr_modf(ProgramBuilder &b);
+void buildTestIr_intPart(ProgramBuilder &b);
+void buildTestIr_call10Times(ProgramBuilder &b, type_t fn);
+void buildTestIr_hasZeroByte32(ProgramBuilder &b);
 void buildTestIr_readToggleGlobal(ProgramBuilder &b);
-FunctId buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr);
-FunctId buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr);
+void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr);
+void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr);
 
 } // namespace ir
 } // namespace vm

@@ -6,7 +6,7 @@ namespace nk {
 namespace vm {
 namespace ir {
 
-FunctId buildTestIr_plus(ProgramBuilder &b) {
+void buildTestIr_plus(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -29,11 +29,9 @@ FunctId buildTestIr_plus(ProgramBuilder &b) {
 
     b.gen(b.make_ret());
     b.comment(cstr_to_str("return the result"));
-
-    return f;
 }
 
-FunctId buildTestIr_not(ProgramBuilder &b) {
+void buildTestIr_not(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -67,11 +65,9 @@ FunctId buildTestIr_not(ProgramBuilder &b) {
 
     b.startBlock(l_end, cstr_to_str("end"));
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_atan(ProgramBuilder &b) {
+void buildTestIr_atan(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -140,15 +136,13 @@ FunctId buildTestIr_atan(ProgramBuilder &b) {
     b.gen(b.make_mov(ret, v_sum));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_pi(ProgramBuilder &b) {
+void buildTestIr_pi(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    auto f_atan = buildTestIr_atan(b);
+    buildTestIr_atan(b);
 
     auto f64_t = type_get_numeric(Float64);
 
@@ -162,15 +156,15 @@ FunctId buildTestIr_pi(ProgramBuilder &b) {
     AtanArgs a_args = {1.0 / 5.0, 10};
     AtanArgs b_args = {1.0 / 239.0, 10};
 
-    auto c_a_args = b.makeConstRef({&a_args, b.prog.functs[f_atan.id].args_t});
-    auto c_b_args = b.makeConstRef({&b_args, b.prog.functs[f_atan.id].args_t});
+    auto c_a_args = b.makeConstRef({&a_args, b.prog->functs[0].args_t});
+    auto c_b_args = b.makeConstRef({&b_args, b.prog->functs[0].args_t});
 
     auto ret = b.makeRetRef();
 
     auto c_4f = b.makeConstRef(4.0, f64_t);
 
-    //@Refactor/Feature Add symbol resolution to VM programs instead of the hack with entry point
-    auto f = b.makeFunct(true);
+    //@Refactor/Feature Maybe add symbol resolution to VM programs?
+    auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("pi"), f64_t, args_t);
 
     auto v_a = b.makeFrameRef(b.makeLocalVar(f64_t));
@@ -180,18 +174,16 @@ FunctId buildTestIr_pi(ProgramBuilder &b) {
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    b.gen(b.make_call(v_a, f_atan, c_a_args));
-    b.gen(b.make_call(v_b, f_atan, c_b_args));
+    b.gen(b.make_call(v_a, {b.prog->functs[0].id}, c_a_args));
+    b.gen(b.make_call(v_b, {b.prog->functs[0].id}, c_b_args));
     b.gen(b.make_mul(v_a, v_a, c_4f));
     b.gen(b.make_sub(v_a, v_a, v_b));
     b.gen(b.make_mul(ret, v_a, c_4f));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
+void buildTestIr_rsqrt(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -239,11 +231,9 @@ FunctId buildTestIr_rsqrt(ProgramBuilder &b) {
     b.gen(b.make_mul(ret_f32, ret_f32, v_0_f32));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
+void buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -279,11 +269,9 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     b.gen(b.make_add(a_res_ptr.deref(), r_a, r_b));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_modf(ProgramBuilder &b) {
+void buildTestIr_modf(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -316,24 +304,23 @@ FunctId buildTestIr_modf(ProgramBuilder &b) {
     b.gen(b.make_sub(ret, a_x, int_part_ref));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_intPart(ProgramBuilder &b) {
+void buildTestIr_intPart(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    auto f_modf = buildTestIr_modf(b);
+    buildTestIr_modf(b);
+    auto f_modf_id = b.prog->functs[0].id;
 
     auto f64_t = type_get_numeric(Float64);
 
     auto args_t = type_get_tuple(&tmp_arena, {&f64_t, 1});
 
-    auto f = b.makeFunct(true);
+    auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("intPart"), f64_t, args_t);
 
-    auto modf_args_t = b.prog.functs[f_modf.id].args_t;
+    auto modf_args_t = b.prog->functs[f_modf_id].args_t;
 
     auto a_x = b.makeArgRef(0);
 
@@ -353,14 +340,12 @@ FunctId buildTestIr_intPart(ProgramBuilder &b) {
 
     b.gen(b.make_mov(v_arg0, a_x));
     b.gen(b.make_lea(v_arg1, ret));
-    b.gen(b.make_call(v_0, f_modf, v_args));
+    b.gen(b.make_call(v_0, {f_modf_id}, v_args));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
+void buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -395,11 +380,9 @@ FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
     b.startBlock(l_end, cstr_to_str("end"));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b) {
+void buildTestIr_hasZeroByte32(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -427,8 +410,6 @@ FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b) {
     b.gen(b.make_bitand(ret, ret, b.makeConstRef(0x80808080u, i32_t)));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
 void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
@@ -463,7 +444,7 @@ void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
     }
 }
 
-FunctId buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
+void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -480,11 +461,9 @@ FunctId buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     b.gen(b.make_call({}, b.makeConstRef({nullptr, fn_t}), {}));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
-FunctId buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
+void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -505,8 +484,6 @@ FunctId buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     b.gen(b.make_call(ret, b.makeConstRef({nullptr, fn_t}), b.makeArgRef(0).as(args_t)));
 
     b.gen(b.make_ret());
-
-    return f;
 }
 
 } // namespace ir

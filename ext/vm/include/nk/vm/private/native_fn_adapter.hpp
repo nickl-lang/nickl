@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_NATIVE_ADAPTER
-#define HEADER_GUARD_NK_VM_NATIVE_ADAPTER
+#ifndef HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
+#define HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
 
 #include "nk/common/mem.hpp"
 #include "nk/vm/common_types.hpp"
@@ -21,4 +21,4 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args);
 } // namespace vm
 } // namespace nk
 
-#endif // HEADER_GUARD_NK_VM_NATIVE_ADAPTER
+#endif // HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER

@@ -22,13 +22,16 @@ class vm : public testing::Test {
         m_arena.init();
         types_init();
 
-        m_builder.init();
+        m_ir_prog.init();
+        m_builder.init(m_ir_prog);
+
         m_prog.init();
     }
 
     void TearDown() override {
         m_prog.deinit();
-        m_builder.deinit();
+
+        m_ir_prog.deinit();
 
         types_deinit();
         m_arena.deinit();
@@ -36,6 +39,7 @@ class vm : public testing::Test {
 
 protected:
     ArenaAllocator m_arena;
+    ir::Program m_ir_prog;
     ir::ProgramBuilder m_builder;
     Program m_prog;
     Translator m_translator;
@@ -47,9 +51,9 @@ protected:
 
 TEST_F(vm, plus) {
     buildTestIr_plus(m_builder);
-    m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -58,9 +62,9 @@ TEST_F(vm, plus) {
 
 TEST_F(vm, not ) {
     buildTestIr_not(m_builder);
-    m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);
@@ -69,9 +73,9 @@ TEST_F(vm, not ) {
 
 TEST_F(vm, atan) {
     buildTestIr_atan(m_builder);
-    m_translator.translateFromIr(m_prog, m_builder.prog);
+    m_translator.translateFromIr(m_prog, m_ir_prog);
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     str = m_prog.inspect(&m_arena);

@@ -23,11 +23,12 @@ class ir : public testing::Test {
         m_arena.init();
         vm::types_init();
 
-        m_builder.init();
+        m_prog.init();
+        m_builder.init(m_prog);
     }
 
     void TearDown() override {
-        m_builder.deinit();
+        m_prog.deinit();
 
         vm::types_deinit();
         m_arena.deinit();
@@ -35,6 +36,7 @@ class ir : public testing::Test {
 
 protected:
     ArenaAllocator m_arena;
+    Program m_prog;
     ProgramBuilder m_builder;
 };
 
@@ -45,20 +47,20 @@ protected:
 TEST_F(ir, plus) {
     buildTestIr_plus(m_builder);
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, not ) {
     buildTestIr_not(m_builder);
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, atan) {
     buildTestIr_atan(m_builder);
 
-    auto str = m_builder.inspect(&m_arena);
+    auto str = m_prog.inspect(&m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }

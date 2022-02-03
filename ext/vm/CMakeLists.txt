@@ -3,7 +3,7 @@ set(LIB nk_vm)
 add_library(${LIB}
     src/interp.cpp
     src/ir.cpp
-    src/native_adapter.cpp
+    src/native_fn_adapter.cpp
     src/value.cpp
     src/vm.cpp
     )

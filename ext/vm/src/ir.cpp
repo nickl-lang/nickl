@@ -211,50 +211,53 @@ Ref Ref::as(type_t type) const {
     return copy;
 }
 
-void ProgramBuilder::init() {
-    EASY_BLOCK("ir::ProgramBuilder::init", profiler::colors::Amber200)
+void Program::init() {
+    EASY_BLOCK("ir::Program::init", profiler::colors::Amber200)
 
-    m_cur_funct = nullptr;
-    m_cur_block = nullptr;
+    *this = {};
 
-    prog = {};
+    instrs.init(100);
+    blocks.init(10);
+    functs.init(10);
 
-    prog.instrs.init(100);
-    prog.blocks.init(10);
-    prog.functs.init(10);
-
-    prog.entry_point_id = -1ul;
-
-    prog.arena.init();
+    arena.init();
 }
 
-void ProgramBuilder::deinit() {
-    EASY_BLOCK("ir::ProgramBuilder::deinit", profiler::colors::Amber200)
+void Program::deinit() {
+    EASY_BLOCK("ir::Program::deinit", profiler::colors::Amber200)
 
-    m_cur_funct = nullptr;
-    m_cur_block = nullptr;
+    arena.deinit();
 
-    prog.arena.deinit();
+    globals.deinit();
 
-    prog.globals.deinit();
+    instrs.deinit();
+    blocks.deinit();
 
-    prog.instrs.deinit();
-    prog.blocks.deinit();
-
-    for (auto &funct : prog.functs) {
+    for (auto &funct : functs) {
         funct.locals.deinit();
     }
 
-    prog.functs.deinit();
+    functs.deinit();
 }
 
-FunctId ProgramBuilder::makeFunct(bool is_entry_point) {
-    size_t id{prog.next_funct_id++};
-    if (is_entry_point) {
-        assert(prog.entry_point_id == -1ul && "cannot have more than one entry point");
-        prog.entry_point_id = id;
-    }
-    return {id};
+string Program::inspect(Allocator *allocator) {
+    std::ostringstream ss;
+    _inspect(*this, ss);
+    auto str = ss.str();
+
+    char *data = (char *)allocator->alloc(str.size());
+    std::memcpy(data, str.data(), str.size());
+
+    return string{data, str.size()};
+}
+
+void ProgramBuilder::init(Program &prog) {
+    *this = {};
+    this->prog = &prog;
+}
+
+FunctId ProgramBuilder::makeFunct() {
+    return {prog->next_funct_id++};
 }
 
 BlockId ProgramBuilder::makeLabel() {
@@ -265,18 +268,18 @@ BlockId ProgramBuilder::makeLabel() {
 void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
     EASY_FUNCTION(profiler::colors::Amber200)
 
-    auto &funct = prog.functs.push() = {};
+    auto &funct = prog->functs.push() = {};
 
     funct.id = funct_id.id;
 
-    char *str_data = (char *)prog.arena.alloc(name.size);
+    char *str_data = (char *)prog->arena.alloc(name.size);
     std::memcpy(str_data, name.data, name.size);
     funct.name = string{str_data, name.size};
 
     funct.ret_t = ret_t;
     funct.args_t = args_t;
 
-    funct.first_block = prog.blocks.size;
+    funct.first_block = prog->blocks.size;
 
     m_cur_funct = &funct;
 }
@@ -284,15 +287,15 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
 void ProgramBuilder::startBlock(BlockId block_id, string name) {
     EASY_FUNCTION(profiler::colors::Amber200)
 
-    auto &block = prog.blocks.push() = {};
+    auto &block = prog->blocks.push() = {};
 
     block.id = block_id.id;
 
-    char *str_data = (char *)prog.arena.alloc(name.size);
+    char *str_data = (char *)prog->arena.alloc(name.size);
     std::memcpy(str_data, name.data, name.size);
     block.name = string{str_data, name.size};
 
-    block.first_instr = prog.instrs.size;
+    block.first_instr = prog->instrs.size;
 
     m_cur_block = &block;
 
@@ -304,9 +307,9 @@ void ProgramBuilder::comment(string str) {
 
     assert(m_cur_block && "no current block");
 
-    char *str_data = (char *)prog.arena.alloc(str.size);
+    char *str_data = (char *)prog->arena.alloc(str.size);
     std::memcpy(str_data, str.data, str.size);
-    (m_cur_block->instr_count ? prog.instrs.back().comment : m_cur_block->comment) =
+    (m_cur_block->instr_count ? prog->instrs.back().comment : m_cur_block->comment) =
         string{str_data, str.size};
 }
 
@@ -317,8 +320,8 @@ Local ProgramBuilder::makeLocalVar(type_t type) {
 }
 
 Global ProgramBuilder::makeGlobalVar(type_t type) {
-    prog.globals.push() = type;
-    return {prog.globals.size - 1};
+    prog->globals.push() = type;
+    return {prog->globals.size - 1};
 }
 
 Ref ProgramBuilder::makeFrameRef(Local var) const {
@@ -360,14 +363,14 @@ Ref ProgramBuilder::makeGlobalRef(Global var) const {
         .value = {.index = var.id},
         .offset = 0,
         .post_offset = 0,
-        .type = prog.globals[var.id],
+        .type = prog->globals[var.id],
         .ref_type = Ref_Global,
         .is_indirect = false};
 }
 
 Ref ProgramBuilder::makeConstRef(value_t val) {
     size_t val_size = val_sizeof(val);
-    char *mem = (char *)prog.arena.alloc_aligned(val_size, val_alignof(val));
+    char *mem = (char *)prog->arena.alloc_aligned(val_size, val_alignof(val));
     std::memcpy(mem, val_data(val), val_size);
     return {
         .value = {val.data = mem},
@@ -449,19 +452,8 @@ void ProgramBuilder::gen(Instr const &instr) {
         instr.arg[0].arg_type != Arg_Ref || instr.arg[0].as.ref.is_indirect ||
         (instr.arg[0].as.ref.ref_type != Ref_Const && instr.arg[0].as.ref.ref_type != Ref_Arg));
 
-    prog.instrs.push() = instr;
+    prog->instrs.push() = instr;
     m_cur_block->instr_count++;
-}
-
-string ProgramBuilder::inspect(Allocator *allocator) {
-    std::ostringstream ss;
-    _inspect(prog, ss);
-    auto str = ss.str();
-
-    char *data = (char *)allocator->alloc(str.size());
-    std::memcpy(data, str.data(), str.size());
-
-    return string{data, str.size()};
 }
 
 } // namespace ir

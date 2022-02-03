@@ -135,7 +135,10 @@ struct Program {
 
     ArenaAllocator arena;
 
-    size_t entry_point_id;
+    void init();
+    void deinit();
+
+    string inspect(Allocator *allocator);
 };
 
 struct Local {
@@ -147,13 +150,11 @@ struct Global {
 };
 
 struct ProgramBuilder {
-    //@Refactor Separate the program from IR ProgramBuilder
-    Program prog;
+    Program *prog;
 
-    void init();
-    void deinit();
+    void init(Program &prog);
 
-    FunctId makeFunct(bool is_entry_point = false);
+    FunctId makeFunct();
     BlockId makeLabel();
 
     void startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t);
@@ -198,8 +199,6 @@ struct ProgramBuilder {
 #include "nk/vm/ir.inl"
 
     void gen(Instr const &instr);
-
-    string inspect(Allocator *allocator);
 
 private:
     Funct *m_cur_funct;

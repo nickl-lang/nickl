@@ -1,4 +1,4 @@
-#include "nk/vm/private/native_adapter.hpp"
+#include "nk/vm/private/native_fn_adapter.hpp"
 
 #include <cassert>
 

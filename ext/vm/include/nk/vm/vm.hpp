@@ -59,7 +59,7 @@ struct Program {
 };
 
 struct Translator {
-    type_t translateFromIr(Program &prog, ir::Program const &ir);
+    void translateFromIr(Program &prog, ir::Program const &ir);
 };
 
 } // namespace vm
