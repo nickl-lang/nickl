@@ -89,6 +89,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     case Ref_Const:
                         ss << "<" << val_inspect(&tmp_arena, value_t{ref.value.data, ref.type})
                            << ">";
+                        break;
                     case Ref_Reg:
                         ss << "$reg" << ref.value.index;
                         break;
