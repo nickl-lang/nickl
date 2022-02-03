@@ -14,7 +14,7 @@
 #include <ostream>
 #include <string>
 
-#include <unistd.h>
+// #include <unistd.h>
 
 #include "nk/common/profiler.hpp"
 
@@ -96,7 +96,7 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
     }
 
     bool const to_color = logger.color_mode == Log_Color_Always ||
-                          (logger.color_mode == Log_Color_Auto && isatty(fileno(stdout)));
+                          (logger.color_mode == Log_Color_Auto /* && isatty(fileno(stdout))*/);
 
     auto &out = *logger.out;
 
@@ -121,7 +121,8 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
         out << c_color_none;
     }
 
-    out << "\n";
+    // out << "\n";
+    out << std::endl;
 }
 
 void _logger_init(LoggerOptions opt) {

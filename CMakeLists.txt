@@ -32,6 +32,17 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
 if(BUILD_TESTS)
     enable_testing()
     include(Test)
+
+    if(CUSTOM_GTEST)
+        add_library(GTest::GTest STATIC IMPORTED)
+        set_target_properties(GTest::GTest PROPERTIES IMPORTED_LOCATION ${GTEST_LIB})
+        target_include_directories(GTest::GTest INTERFACE "${GTEST_INCLUDE_DIR}")
+
+        add_library(GTest::Main STATIC IMPORTED)
+        set_target_properties(GTest::Main PROPERTIES IMPORTED_LOCATION ${GTEST_MAIN_LIB})
+        target_include_directories(GTest::Main INTERFACE "${GTEST_INCLUDE_DIR}")
+    endif()
+
     find_package(GTest REQUIRED)
 endif()
 

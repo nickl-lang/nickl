@@ -35,7 +35,8 @@ function(def_test)
         ${ARG_LINK}
         )
 
-    gtest_discover_tests(${TARGET_NAME})
+    # gtest_discover_tests(${TARGET_NAME})
+    gtest_add_tests(TARGET ${TARGET_NAME})
 endfunction()
 
 function(def_run_test)

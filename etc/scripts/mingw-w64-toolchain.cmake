@@ -1,0 +1,24 @@
+set(CMAKE_SYSTEM_NAME Windows)
+
+set(TOOLCHAIN_VERSISON 11.2.0)
+set(TOOLCHAIN_PREFIX x86_64-w64-mingw32)
+
+set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
+set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
+
+set(CMAKE_FIND_ROOT_PATH
+    /usr/${TOOLCHAIN_PREFIX}
+    /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON})
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+set(FFI_LIB "${PROJECT_SOURCE_DIR}/mingw/mingw-w64-x86_64-libffi-3.3-4/lib/libffi.a")
+set(FFI_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mingw/mingw-w64-x86_64-libffi-3.3-4/include")
+set(CUSTOM_LIBFFI ON)
+
+set(GTEST_LIB "${PROJECT_SOURCE_DIR}/mingw/mingw-w64-x86_64-gtest-1.11.0-5/lib/libgtest.a")
+set(GTEST_MAIN_LIB "${PROJECT_SOURCE_DIR}/mingw/mingw-w64-x86_64-gtest-1.11.0-5/lib/libgtest_main.a")
+set(GTEST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mingw/mingw-w64-x86_64-gtest-1.11.0-5/include")
+set(CUSTOM_GTEST ON)
