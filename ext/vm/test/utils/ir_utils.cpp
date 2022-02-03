@@ -267,16 +267,16 @@ FunctId buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     auto a_vec_ptr = b.makeArgRef(0);
     auto a_res_ptr = b.makeArgRef(1);
 
-    auto v_0 = b.makeFrameRef(b.makeLocalVar(f64_t));
-    auto v_1 = b.makeFrameRef(b.makeLocalVar(f64_t));
+    auto r_a = b.makeRegRef(Reg_A, f64_t);
+    auto r_b = b.makeRegRef(Reg_B, f64_t);
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    b.gen(b.make_mov(v_0, a_vec_ptr.deref(f64_t)));
-    b.gen(b.make_mov(v_1, a_vec_ptr.deref(f64_t).plus(8)));
-    b.gen(b.make_mul(v_0, v_0, v_0));
-    b.gen(b.make_mul(v_1, v_1, v_1));
-    b.gen(b.make_add(a_res_ptr.deref(), v_0, v_1));
+    b.gen(b.make_mov(r_a, a_vec_ptr.deref(f64_t)));
+    b.gen(b.make_mov(r_b, a_vec_ptr.deref(f64_t).plus(8)));
+    b.gen(b.make_mul(r_a, r_a, r_a));
+    b.gen(b.make_mul(r_b, r_b, r_b));
+    b.gen(b.make_add(a_res_ptr.deref(), r_a, r_b));
 
     b.gen(b.make_ret());
 
@@ -415,15 +415,15 @@ FunctId buildTestIr_hasZeroByte32(ProgramBuilder &b) {
 
     auto ret = b.makeRetRef();
 
-    auto v_0 = b.makeFrameRef(b.makeLocalVar(i32_t));
+    auto r_a = b.makeRegRef(Reg_A, i32_t);
 
     auto l_start = b.makeLabel();
 
     b.startBlock(l_start, cstr_to_str("start"));
 
     b.gen(b.make_sub(ret, a_x, b.makeConstRef(0x01010101u, i32_t)));
-    b.gen(b.make_compl(v_0, a_x));
-    b.gen(b.make_bitand(ret, ret, v_0));
+    b.gen(b.make_compl(r_a, a_x));
+    b.gen(b.make_bitand(ret, ret, r_a));
     b.gen(b.make_bitand(ret, ret, b.makeConstRef(0x80808080u, i32_t)));
 
     b.gen(b.make_ret());

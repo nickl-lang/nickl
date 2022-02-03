@@ -89,6 +89,8 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     case Ref_Const:
                         ss << "<" << val_inspect(&tmp_arena, value_t{ref.value.data, ref.type})
                            << ">";
+                    case Ref_Reg:
+                        ss << "$reg" << ref.value.index;
                         break;
                     default:
                         break;
@@ -372,6 +374,17 @@ Ref ProgramBuilder::makeConstRef(value_t val) {
         .post_offset = 0,
         .type = val_typeof(val),
         .ref_type = Ref_Const,
+        .is_indirect = false};
+}
+
+Ref ProgramBuilder::makeRegRef(ERegister reg, type_t type) const {
+    assert(type->size <= REG_SIZE && "reference type excedes register size");
+    return {
+        .value = {.index = reg},
+        .offset = 0,
+        .post_offset = 0,
+        .type = type,
+        .ref_type = Ref_Reg,
         .is_indirect = false};
 }
 

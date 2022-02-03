@@ -12,6 +12,7 @@
 namespace nk {
 namespace vm {
 
+// @Refactor Maybe split ERefType for IR and IM, because Ref_Instr makes sence only for the latter
 enum ERefType {
     Ref_None = 0,
 
@@ -21,11 +22,27 @@ enum ERefType {
     Ref_Global,
     Ref_Const,
     Ref_Instr,
+    Ref_Reg,
 
     Ref_Count,
 };
 
+#define REG_SIZE 8
+
+enum ERegister {
+    Reg_A,
+    Reg_B,
+    Reg_C,
+    Reg_D,
+    Reg_E,
+    Reg_F,
+
+    Reg_Count,
+};
+
 namespace ir {
+
+// @Feature Implement atomic operations for thread synchronization
 
 enum EIrCode {
 #define X(NAME) ir_##NAME,
@@ -152,6 +169,7 @@ struct ProgramBuilder {
     Ref makeRetRef() const;
     Ref makeGlobalRef(Global var) const;
     Ref makeConstRef(value_t val);
+    Ref makeRegRef(ERegister reg, type_t type) const;
 
     template <class T>
     Ref makeConstRef(T &&val, type_t type) {
