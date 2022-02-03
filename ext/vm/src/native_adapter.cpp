@@ -113,14 +113,12 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
         break;
     }
 
-    type->native_handle = (native_type_h)ffi_t;
+    type->native_handle = ffi_t;
 
     return ffi_t;
 }
 
 } // namespace
-
-struct NativeTypeHandle {};
 
 struct NativeFnInfo {
     ffi_cif cif;
@@ -143,15 +141,14 @@ native_fn_info_t type_fn_prepareNativeInfo(
 
     ffi_status status = ffi_prep_cif(&info->cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
     if (status != FFI_OK) {
-        fprintf(stderr, "ffi_prep_cif failed: %d\n", status);
-        exit(1);
+        assert("!ffi_prep_cif failed");
     }
 
     return info;
 }
 
 void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
-    //@Refactor Use preallocated storage for arguments???
+    //@Refactor Somehow allocate ffi arguments on the stack???
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
