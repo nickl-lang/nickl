@@ -2,21 +2,14 @@
 #define HEADER_GUARD_NK_VM_VALUE
 
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
 
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
+#include "nk/vm/common_types.hpp"
+#include "nk/vm/private/native_adapter.hpp"
 
 namespace nk {
 namespace vm {
-
-struct Type;
-
-using type_t = Type const *;
-
-using typeid_t = size_t;
-using typeclassid_t = uint8_t;
 
 enum ETypeclassId {
     Type_Array,
@@ -26,11 +19,6 @@ enum ETypeclassId {
     Type_Tuple,
     Type_Typeref,
     Type_Void,
-};
-
-struct value_t {
-    void *data;
-    type_t type;
 };
 
 struct _type_null {
@@ -47,7 +35,10 @@ using FuncPtr = void (*)(type_t self, value_t ret, value_t args);
 struct _type_fn {
     type_t ret_t;
     type_t args_t;
-    void *body;
+    union {
+        FuncPtr ptr;
+        native_fn_info_t native;
+    } body;
     void *closure;
     bool is_native;
 };
@@ -99,6 +90,7 @@ struct Type {
         _type_ptr ptr;
         _type_tuple tuple;
     } as;
+    mutable native_type_h native_handle;
     uint64_t id;
     uint64_t size;
     uint8_t alignment;

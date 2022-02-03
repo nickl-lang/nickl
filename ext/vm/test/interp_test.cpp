@@ -372,8 +372,13 @@ TEST_F(interp, hasZeroByte32) {
     EXPECT_TRUE(hasZeroByte32(0xab00cdef));
 }
 
-TEST_F(interp, callNative) {
-    buildTestIr_callNative(m_builder, (void *)_printThreadId);
+static void _nativeSayHello() {
+    LOG_INF(__FUNCTION__);
+    printf("Hello, World!\n");
+}
+
+TEST_F(interp, callNativeSayHello) {
+    buildTestIr_callNativeFunc(m_builder, (void *)_nativeSayHello);
     auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
 
     auto str = m_builder.inspect(&m_arena);
@@ -384,13 +389,28 @@ TEST_F(interp, callNative) {
 
     m_prog.prepare();
 
-    auto thread_func = [&]() {
-        val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
-    };
+    val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
+}
 
-    std::thread t0{thread_func};
-    std::thread t1{thread_func};
+static int64_t _nativeAdd(int64_t a, int64_t b) {
+    LOG_INF(__FUNCTION__);
+    return a + b;
+}
 
-    t0.join();
-    t1.join();
+TEST_F(interp, callNativeAdd) {
+    buildTestIr_callNativeAdd(m_builder, (void *)_nativeAdd);
+    auto fn_t = m_translator.translateFromIr(m_prog, m_builder.prog);
+
+    auto str = m_builder.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_prog.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    m_prog.prepare();
+
+    int64_t res = 42;
+    int64_t args[] = {4, 5};
+    val_fn_invoke(fn_t, {&res, fn_t->as.fn.ret_t}, {args, fn_t->as.fn.args_t});
+    EXPECT_EQ(res, 9);
 }
