@@ -1,7 +1,4 @@
 /.cache/
-/.repo/
-/bin/
-/build/
-/lib/
+/out/
 
 /compile_commands.json
