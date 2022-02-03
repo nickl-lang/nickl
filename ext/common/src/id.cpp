@@ -1,4 +1,4 @@
-#include "nkl/core/id.hpp"
+#include "nk/common/id.hpp"
 
 #include <cstring>
 
@@ -43,10 +43,7 @@ void id_init() {
     s_str2id.init(1024);
     s_id2str.init(1024);
 
-#define X(type, node_id) _defineId(id_##node_id, string{#node_id, sizeof(#node_id) - 1});
-#include "nkl/core/nodes.inl"
-
-    s_next_id = _id_count;
+    s_next_id = 1;
 }
 
 void id_deinit() {

@@ -5,8 +5,8 @@
 #include <cstdint>
 
 #include "nk/common/hashmap.hpp"
+#include "nk/common/id.hpp"
 #include "nkl/core/common.hpp"
-#include "nkl/core/id.hpp"
 
 struct Type;
 using type_t = Type const *;

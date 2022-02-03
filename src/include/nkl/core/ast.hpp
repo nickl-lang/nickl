@@ -1,9 +1,18 @@
 #ifndef HEADER_GUARD_NKL_CORE_AST
 #define HEADER_GUARD_NKL_CORE_AST
 
+#include "nk/common/id.hpp"
 #include "nk/common/sequence.hpp"
 #include "nkl/core/common.hpp"
-#include "nkl/core/id.hpp"
+
+enum ENodeId {
+#define X(TYPE, ID) Node_##ID,
+#include "nkl/core/nodes.inl"
+
+    Node_count,
+};
+
+extern char const *s_node_names[];
 
 struct Node;
 using node_ref_t = Node const *;

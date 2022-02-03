@@ -3,7 +3,6 @@ set(LIB nkl_core)
 add_library(${LIB}
     src/ast.cpp
     src/core.cpp
-    src/id.cpp
     src/ir.cpp
     src/lexer.cpp
     src/parser.cpp
