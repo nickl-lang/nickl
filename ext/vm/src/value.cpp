@@ -3,8 +3,6 @@
 #include <cstring>
 #include <sstream>
 
-#include <ffi.h>
-
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.hpp"
@@ -66,6 +64,7 @@ _TypeQueryRes _getType(ByteArray fp) {
     Type *type = s_typearena.alloc<Type>();
     *type = Type{
         .as = {{0}},
+        .native_handle = nullptr,
         .id = s_next_type_id++,
         .size = 0,
         .alignment = 0,
@@ -214,7 +213,8 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         ss << "void{}";
         break;
     case Type_Fn:
-        ss << "fn@" << (void *)val_typeof(val)->as.fn.body << "+" << val_typeof(val)->as.fn.closure;
+        ss << "fn@" << (void *)val_typeof(val)->as.fn.body.ptr << "+"
+           << val_typeof(val)->as.fn.closure;
         break;
     default:
         ss << "value{data=" << val_data(val) << ", type=" << type_name(&tmp_arena, val_typeof(val))
@@ -270,7 +270,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
         size_t decl_id;
         typeid_t ret_t;
         typeid_t args_t;
-        void *body_ptr;
+        FuncPtr body_ptr;
         void *closure;
         bool is_native;
     } fp = {};
@@ -278,7 +278,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
     fp.decl_id = decl_id;
     fp.ret_t = ret_t->id;
     fp.args_t = args_t->id;
-    fp.body_ptr = (void *)body_ptr;
+    fp.body_ptr = body_ptr;
     fp.closure = closure;
     fp.is_native = false;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
@@ -287,7 +287,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body = (void *)body_ptr;
+        res.type->as.fn.body.ptr = body_ptr;
         res.type->as.fn.closure = closure;
         res.type->as.fn.is_native = false;
     }
@@ -325,7 +325,8 @@ type_t type_get_fn_native(
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body = body_ptr;
+        res.type->as.fn.body.native =
+            type_fn_prepareNativeInfo(s_typearena, body_ptr, ret_t, args_t);
         res.type->as.fn.closure = closure;
         res.type->as.fn.is_native = true;
     }
@@ -484,111 +485,14 @@ value_t val_array_at(value_t self, size_t i) {
     return {((uint8_t *)val_data(self)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
 }
 
-ffi_type *_ffiPrepareType(Allocator *tmp_allocator, type_t type) {
-    EASY_FUNCTION(profiler::colors::Green200)
-    LOG_TRC(__PRETTY_FUNCTION__);
-
-    switch (type->typeclass_id) {
-    case Type_Array: {
-        auto elem_t = type->as.arr.elem_type;
-        auto elem_count = type->as.arr.elem_count;
-        ffi_type **elements = tmp_allocator->alloc<ffi_type *>(elem_count);
-        auto ffi_elem_t = _ffiPrepareType(tmp_allocator, elem_t);
-        for (size_t i = 0; i < elem_count; i++) {
-            elements[i] = ffi_elem_t;
-        }
-        ffi_type &ffi_t = *tmp_allocator->alloc<ffi_type>() = {
-            .size = type->size,
-            .alignment = type->alignment,
-            .type = FFI_TYPE_STRUCT,
-            .elements = elements,
-        };
-        return &ffi_t;
-    }
-    case Type_Fn:
-        assert(!"_ffiPrepareType(Type_Fn) is not implemented");
-        return nullptr;
-    case Type_Numeric:
-        switch (type->as.num.value_type) {
-        case Int8:
-            return &ffi_type_sint8;
-        case Int16:
-            return &ffi_type_sint16;
-        case Int32:
-            return &ffi_type_sint32;
-        case Int64:
-            return &ffi_type_sint64;
-        case Uint8:
-            return &ffi_type_uint8;
-        case Uint16:
-            return &ffi_type_uint16;
-        case Uint32:
-            return &ffi_type_uint32;
-        case Uint64:
-            return &ffi_type_uint64;
-        case Float32:
-            return &ffi_type_float;
-        case Float64:
-            return &ffi_type_double;
-        default:
-            assert(!"unreachable");
-            break;
-        }
-        return nullptr;
-    case Type_Ptr:
-        return &ffi_type_pointer;
-    case Type_Tuple: {
-        auto elems = type->as.tuple.elems;
-        ffi_type **elements = tmp_allocator->alloc<ffi_type *>(elems.size);
-        for (size_t i = 0; i < elems.size; i++) {
-            elements[i] = _ffiPrepareType(tmp_allocator, elems[i].type);
-        }
-        ffi_type &ffi_t = *tmp_allocator->alloc<ffi_type>() = {
-            .size = type->size,
-            .alignment = type->alignment,
-            .type = FFI_TYPE_STRUCT,
-            .elements = elements,
-        };
-        return &ffi_t;
-    }
-    case Type_Typeref:
-        return &ffi_type_pointer;
-    case Type_Void:
-        return &ffi_type_void;
-    default:
-        assert(!"unreachable");
-        return nullptr;
-    }
-}
-
 void val_fn_invoke(type_t self, value_t ret, value_t args) {
     EASY_FUNCTION(profiler::colors::Green200)
-    LOG_TRC(__PRETTY_FUNCTION__);
+    LOG_TRC(__FUNCTION__);
 
     if (self->as.fn.is_native) {
-        auto tmp_arena = ArenaAllocator::create();
-        DEFER({ tmp_arena.deinit(); })
-
-        size_t const argc = self->as.fn.args_t->as.tuple.elems.size;
-
-        auto rtype = _ffiPrepareType(&tmp_arena, self->as.fn.ret_t);
-        auto atypes = _ffiPrepareType(&tmp_arena, self->as.fn.args_t);
-
-        ffi_cif cif;
-        ffi_status status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
-        if (status != FFI_OK) {
-            fprintf(stderr, "ffi_prep_cif failed: %d\n", status);
-            exit(1);
-        }
-
-        void **argv = tmp_arena.alloc<void *>(argc);
-        for (size_t i = 0; i < argc; i++) {
-            argv[i] = val_data(val_tuple_at(args, i));
-        }
-
-        ffi_call(&cif, FFI_FN(self->as.fn.body), val_data(ret), argv);
+        val_fn_invoke_native(self, ret, args);
     } else {
-        ((FuncPtr)self->as.fn.body)(self, ret, args);
+        self->as.fn.body.ptr(self, ret, args);
     }
 }
 

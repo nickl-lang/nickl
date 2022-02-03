@@ -463,41 +463,53 @@ void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
     }
 }
 
-FunctId buildTestIr_callNative(ProgramBuilder &b, void *fn_ptr) {
+FunctId buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
     auto void_t = type_get_void();
     auto args_t = type_get_tuple(&tmp_arena, {});
 
-    auto fn = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr);
+    auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr);
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("callNativeFunc"), void_t, args_t);
+
+    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+
+    b.gen(b.make_call({}, b.makeConstRef({nullptr, fn_t}), {}));
+
+    b.gen(b.make_ret());
+
+    return f;
+}
+
+FunctId buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
 
     auto i64_t = type_get_numeric(Int64);
 
+    type_t args_ar[] = {i64_t, i64_t};
+    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+
+    auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, nullptr);
+
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("call10Times"), void_t, args_t);
+    b.startFunct(f, cstr_to_str("callNativeAdd"), i64_t, args_t);
 
-    auto v_i = b.makeFrameRef(b.makeLocalVar(i64_t));
-    auto v_cond = b.makeFrameRef(b.makeLocalVar(i64_t));
+    auto ret = b.makeRetRef();
 
-    auto l_start = b.makeLabel();
-    auto l_loop = b.makeLabel();
-    auto l_end = b.makeLabel();
+    auto a_x = b.makeArgRef(0);
+    auto a_y = b.makeArgRef(1);
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    auto v_args = b.makeFrameRef(b.makeLocalVar(args_t));
 
-    b.gen(b.make_mov(v_i, b.makeConstRef(10l, i64_t)));
+    b.startBlock(b.makeLabel(), cstr_to_str("start"));
 
-    b.startBlock(l_loop, cstr_to_str("loop"));
-
-    b.gen(b.make_gt(v_cond, v_i, b.makeConstRef(0l, i64_t)));
-    b.gen(b.make_jmpz(v_cond, l_end));
-
-    b.gen(b.make_call({}, b.makeConstRef({nullptr, fn}), {}));
-    b.gen(b.make_sub(v_i, v_i, b.makeConstRef(1l, i64_t)));
-    b.gen(b.make_jmp(l_loop));
-
-    b.startBlock(l_end, cstr_to_str("end"));
+    b.gen(b.make_mov(v_args.plus(type_tuple_offset(args_t, 0), i64_t), a_x));
+    b.gen(b.make_mov(v_args.plus(type_tuple_offset(args_t, 1), i64_t), a_y));
+    b.gen(b.make_call(ret, b.makeConstRef({nullptr, fn_t}), v_args));
 
     b.gen(b.make_ret());
 
