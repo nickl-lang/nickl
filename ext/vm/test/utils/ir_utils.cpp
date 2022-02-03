@@ -47,8 +47,8 @@ FunctId buildTestIr_not(ProgramBuilder &b) {
     auto arg = b.makeArgRef(0);
     auto ret = b.makeRetRef();
 
-    auto c_true = b.makeConstRef(1l, i64_t);
-    auto c_false = b.makeConstRef(0l, i64_t);
+    auto c_true = b.makeConstRef(1ll, i64_t);
+    auto c_false = b.makeConstRef(0ll, i64_t);
 
     auto l_else = b.makeLabel();
     auto l_end = b.makeLabel();
@@ -101,8 +101,8 @@ FunctId buildTestIr_atan(ProgramBuilder &b) {
 
     auto v_cond = b.makeFrameRef(b.makeLocalVar(u64_t));
 
-    auto c_0u = b.makeConstRef(0ul, u64_t);
-    auto c_1u = b.makeConstRef(1ul, u64_t);
+    auto c_0u = b.makeConstRef(0ull, u64_t);
+    auto c_1u = b.makeConstRef(1ull, u64_t);
 
     auto c_1f = b.makeConstRef(1.0, f64_t);
     auto c_n1f = b.makeConstRef(-1.0, f64_t);
@@ -381,15 +381,15 @@ FunctId buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    b.gen(b.make_mov(v_i, b.makeConstRef(10l, i64_t)));
+    b.gen(b.make_mov(v_i, b.makeConstRef(10ll, i64_t)));
 
     b.startBlock(l_loop, cstr_to_str("loop"));
 
-    b.gen(b.make_gt(v_cond, v_i, b.makeConstRef(0l, i64_t)));
+    b.gen(b.make_gt(v_cond, v_i, b.makeConstRef(0ll, i64_t)));
     b.gen(b.make_jmpz(v_cond, l_end));
 
     b.gen(b.make_call({}, b.makeConstRef({nullptr, fn}), {}));
-    b.gen(b.make_sub(v_i, v_i, b.makeConstRef(1l, i64_t)));
+    b.gen(b.make_sub(v_i, v_i, b.makeConstRef(1ll, i64_t)));
     b.gen(b.make_jmp(l_loop));
 
     b.startBlock(l_end, cstr_to_str("end"));
