@@ -12,21 +12,6 @@
 namespace nk {
 namespace vm {
 
-// @Refactor Maybe split ERefType for IR and IM, because Ref_Instr makes sence only for the latter
-enum ERefType {
-    Ref_None = 0,
-
-    Ref_Frame,
-    Ref_Arg,
-    Ref_Ret,
-    Ref_Global,
-    Ref_Const,
-    Ref_Instr,
-    Ref_Reg,
-
-    Ref_Count,
-};
-
 #define REG_SIZE 8
 
 enum ERegister {
@@ -49,6 +34,17 @@ enum EIrCode {
 #include "nk/vm/ir.inl"
 
     Ir_Count,
+};
+
+enum ERefType {
+    Ref_None = 0,
+
+    Ref_Frame,
+    Ref_Arg,
+    Ref_Ret,
+    Ref_Global,
+    Ref_Const,
+    Ref_Reg,
 };
 
 struct Ref {

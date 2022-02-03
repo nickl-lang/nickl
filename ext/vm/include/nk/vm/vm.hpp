@@ -21,6 +21,20 @@ enum EOpCode {
     Op_Count,
 };
 
+enum ERefType { // must preserve ir::ERefType order
+    Ref_None = 0,
+
+    Ref_Frame,
+    Ref_Arg,
+    Ref_Ret,
+    Ref_Global,
+    Ref_Const,
+    Ref_Reg,
+    Ref_Instr,
+
+    Ref_Count,
+};
+
 struct Ref {
     size_t offset;
     size_t post_offset;
