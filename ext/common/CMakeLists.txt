@@ -3,6 +3,7 @@ set(LIB nk_common)
 add_library(${LIB}
     src/arena.cpp
     src/file_utils.cpp
+    src/id.cpp
     src/logger.cpp
     src/mem.cpp
     src/utils.cpp
