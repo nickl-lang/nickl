@@ -200,6 +200,22 @@ INTERP(mov) {
     std::memcpy(val_data(dst), val_data(src), val_sizeof(dst));
 }
 
+INTERP(mov_8) {
+    _getRef<uint8_t>(instr.arg[0]) = _getRef<uint8_t>(instr.arg[1]);
+}
+
+INTERP(mov_16) {
+    _getRef<uint16_t>(instr.arg[0]) = _getRef<uint16_t>(instr.arg[1]);
+}
+
+INTERP(mov_32) {
+    _getRef<uint32_t>(instr.arg[0]) = _getRef<uint32_t>(instr.arg[1]);
+}
+
+INTERP(mov_64) {
+    _getRef<uint64_t>(instr.arg[0]) = _getRef<uint64_t>(instr.arg[1]);
+}
+
 INTERP(lea) {
     auto dst = _getDynRef(instr.arg[0]);
     auto src = _getDynRef(instr.arg[1]);

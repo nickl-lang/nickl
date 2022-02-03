@@ -19,6 +19,11 @@ X(call)
 XE(call, jmp)
 
 X(mov)
+XE(mov, 8)
+XE(mov, 16)
+XE(mov, 32)
+XE(mov, 64)
+
 X(lea)
 X(neg)
 X(compl )

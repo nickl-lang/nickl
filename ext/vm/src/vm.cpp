@@ -330,6 +330,13 @@ type_t Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                     break;
                 case ir::ir_mov:
                     code = op_mov;
+                    assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[0].as.ref.type->size == ir_instr.arg[1].as.ref.type->size);
+                    if (ir_instr.arg[0].as.ref.type->size <= REG_SIZE &&
+                        isZeroOrPowerOf2(ir_instr.arg[0].as.ref.type->size)) {
+                        code += 1 + log2u(ir_instr.arg[0].as.ref.type->size);
+                    }
                     break;
                 case ir::ir_lea:
                     code = op_lea;
