@@ -503,8 +503,8 @@ void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname) {
     auto printf_args_t =
         type_get_tuple(tmp_arena, {printf_args, sizeof(printf_args) / sizeof(printf_args[0])});
 
-    auto f_printf =
-        b.makeExtFunct(b.makeShObj(str_to_id(libname)), cstr_to_id("printf"), i32_t, printf_args_t);
+    auto f_printf = b.makeExtFunct(
+        b.makeShObj(str_to_id(libname)), cstr_to_id("test_printf"), i32_t, printf_args_t);
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("callExternalPrintf"), void_t, args_t);
