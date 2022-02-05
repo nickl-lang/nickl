@@ -10,7 +10,7 @@ struct VmConfig {
     FindLibraryConfig find_library;
 };
 
-void vm_init(VmConfig const&conf);
+void vm_init(VmConfig const &conf);
 void vm_deinit();
 
 } // namespace vm
