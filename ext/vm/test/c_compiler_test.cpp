@@ -46,7 +46,7 @@ protected:
 } // namespace
 
 TEST_F(c_compiler, basic) {
-    test_ir_main(m_builder);
+    ir::test_ir_main(m_builder);
 
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);

@@ -73,6 +73,14 @@ void _writeProgram(ir::Program const &ir, stream &src) {
 
     _writePreabmle(src);
 
+    auto block_name_by_id = tmp_arena.alloc<string>(ir.blocks.size);
+
+    for (auto const &f : ir.functs) {
+        for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
+            block_name_by_id[f.first_block + b.id] = b.name;
+        }
+    }
+
     for (auto const &f : ir.functs) {
         src << "\n";
         _writeType(f.ret_t, src);
@@ -92,7 +100,7 @@ void _writeProgram(ir::Program const &ir, stream &src) {
 
         for (size_t i = 0; auto type : f.locals) {
             _writeType(type, src);
-            src << " var" << i++ << ";";
+            src << " var" << i++ << ";\n";
         }
 
         if (f.ret_t->typeclass_id != Type_Void) {
@@ -103,7 +111,7 @@ void _writeProgram(ir::Program const &ir, stream &src) {
         src << "\n";
 
         for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
-            src << "" << b.name << ":\n";
+            src << "l_" << b.name << ":\n";
 
             auto _writeRef = [&](ir::Ref const &ref) {
                 if (ref.ref_type == ir::Ref_Const) {
@@ -117,12 +125,12 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                     src << "(";
                 }
                 if (ref.offset) {
-                    src << "(";
+                    src << "((uint8_t*)";
                 }
-                src << "(uint8_t*)&";
+                src << "&";
                 switch (ref.ref_type) {
                 case ir::Ref_Frame:
-                    src << "arg" << ref.value.index;
+                    src << "var" << ref.value.index;
                     break;
                 case ir::Ref_Arg:
                     src << "arg" << ref.value.index;
@@ -161,12 +169,6 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                 }
 
                 switch (instr.code) {
-                case ir::ir_nop:
-                    break;
-                case ir::ir_enter:
-                    break;
-                case ir::ir_leave:
-                    break;
                 case ir::ir_ret:
                     src << "return";
                     if (f.ret_t->typeclass_id != Type_Void) {
@@ -174,52 +176,123 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                     }
                     break;
                 case ir::ir_jmp:
+                    src << "goto l_" << block_name_by_id[instr.arg[1].as.id];
                     break;
                 case ir::ir_jmpz:
                     src << "if (";
                     _writeRef(instr.arg[1].as.ref);
-                    src << " == 0) { goto " << ir.blocks[instr.arg[2].as.id].name << "; }";
+                    src << " == 0) { goto l_" << block_name_by_id[instr.arg[2].as.id] << "; }";
                     break;
                 case ir::ir_jmpnz:
+                    src << "if (";
+                    _writeRef(instr.arg[1].as.ref);
+                    src << ") { goto l_" << block_name_by_id[instr.arg[2].as.id] << "; }";
                     break;
                 case ir::ir_cast:
+                    src << "(";
+                    assert(
+                        instr.arg[1].as.ref.ref_type == ir::Ref_Const &&
+                        "type must be known for cast");
+                    _writeType(*(type_t *)instr.arg[1].as.ref.value.data, src);
+                    src << ")";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_call:
+                    switch (instr.arg[1].arg_type) {
+                    case ir::Arg_FunctId:
+                        src << ir.functs[instr.arg[1].as.id].name;
+                        //@Todo Unfinished call compilation
+                        break;
+                    case ir::Arg_ExtFunctId:
+                        assert(!"cannot compile ext call");
+                        break;
+                    case ir::Arg_Ref:
+                        assert(!"cannot compile ref call");
+                        break;
+                    default:
+                        assert(!"unreachable");
+                        break;
+                    }
+                    src << "()";
                     break;
                 case ir::ir_mov:
                     _writeRef(instr.arg[1].as.ref);
                     break;
                 case ir::ir_lea:
+                    src << "&";
+                    _writeRef(instr.arg[1].as.ref);
                     break;
                 case ir::ir_neg:
+                    src << "-";
+                    _writeRef(instr.arg[1].as.ref);
                     break;
                 case ir::ir_compl:
+                    src << "~";
+                    _writeRef(instr.arg[1].as.ref);
                     break;
                 case ir::ir_not:
+                    src << "!";
+                    _writeRef(instr.arg[1].as.ref);
                     break;
                 case ir::ir_add:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " + ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_sub:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " - ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_mul:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " * ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_div:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " / ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_mod:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " % ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_bitand:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " & ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_bitor:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " | ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_xor:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " ^ ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_lsh:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " << ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_rsh:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " >> ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_and:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " && ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_or:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " || ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_eq:
                     _writeRef(instr.arg[1].as.ref);
@@ -227,17 +300,35 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                     _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_ge:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " >= ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_gt:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " > ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_le:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " <= ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_lt:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " < ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 case ir::ir_ne:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " != ";
+                    _writeRef(instr.arg[2].as.ref);
                     break;
                 default:
                     assert(!"unreachable");
+                case ir::ir_enter:
+                case ir::ir_leave:
+                case ir::ir_nop:
                     break;
                 }
 
