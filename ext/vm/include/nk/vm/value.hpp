@@ -115,13 +115,13 @@ type_t type_get_fn_native(
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 //@Feature Implement optimized tuple type
-type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types);
+type_t type_get_tuple(Allocator &tmp_allocator, TypeArray types);
 type_t type_get_typeref();
 type_t type_get_void();
 
-string type_name(Allocator *allocator, type_t type);
+string type_name(Allocator &allocator, type_t type);
 
-string val_inspect(Allocator *allocator, value_t val);
+string val_inspect(Allocator &allocator, value_t val);
 
 size_t val_tuple_size(value_t self);
 value_t val_tuple_at(value_t self, size_t i);

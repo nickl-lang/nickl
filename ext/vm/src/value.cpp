@@ -197,7 +197,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         ss << ")";
         break;
     case Type_Typeref:
-        ss << type_name(&tmp_arena, val_as(type_t, val));
+        ss << type_name(tmp_arena, val_as(type_t, val));
         break;
     case Type_Void:
         ss << "void{}";
@@ -207,7 +207,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
            << val_typeof(val)->as.fn.closure;
         break;
     default:
-        ss << "value{data=" << val_data(val) << ", type=" << type_name(&tmp_arena, val_typeof(val))
+        ss << "value{data=" << val_data(val) << ", type=" << type_name(tmp_arena, val_typeof(val))
            << "}";
         break;
     }
@@ -360,7 +360,7 @@ type_t type_get_ptr(type_t target_type) {
     return res.type;
 }
 
-type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
+type_t type_get_tuple(Allocator &tmp_allocator, TypeArray types) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct Fp {
@@ -368,7 +368,7 @@ type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
         size_t type_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, typeid_t>(types.size);
-    Fp *fp = (Fp *)tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
+    Fp *fp = (Fp *)tmp_allocator.alloc_aligned(fp_size, alignof(Fp));
     auto fp_types = arrayWithHeaderData<Fp, typeid_t>(fp);
     std::memset(fp, 0, fp_size);
     fp->base.id = Type_Tuple;
@@ -413,30 +413,24 @@ type_t type_get_void() {
     return res.type;
 }
 
-string type_name(Allocator *allocator, type_t type) {
+string type_name(Allocator &allocator, type_t type) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     std::ostringstream ss;
     _typeName(type, ss);
     auto str = ss.str();
 
-    char *data = (char *)allocator->alloc(str.size());
-    std::memcpy(data, str.data(), str.size());
-
-    return string{data, str.size()};
+    return copy(string{str.data(), str.size()}, allocator);
 }
 
-string val_inspect(Allocator *allocator, value_t val) {
+string val_inspect(Allocator &allocator, value_t val) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     std::ostringstream ss;
     _valInspect(val, ss);
     auto str = ss.str();
 
-    char *data = (char *)allocator->alloc(str.size());
-    std::memcpy(data, str.data(), str.size());
-
-    return string{data, str.size()};
+    return copy(string{str.data(), str.size()}, allocator);
 }
 
 size_t val_tuple_size(value_t self) {

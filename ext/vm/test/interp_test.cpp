@@ -68,10 +68,10 @@ TEST_F(interp, plus) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     int64_t ret = 0;
@@ -86,10 +86,10 @@ TEST_F(interp, not ) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     int64_t ret = 42;
@@ -108,10 +108,10 @@ TEST_F(interp, atan) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double a;
@@ -138,10 +138,10 @@ TEST_F(interp, pi) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double pi = 0;
@@ -155,10 +155,10 @@ TEST_F(interp, rsqrt) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     float ret = 42;
@@ -172,10 +172,10 @@ TEST_F(interp, vec2LenSquared) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     struct Vec2 {
@@ -201,10 +201,10 @@ TEST_F(interp, modf) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double fract_part = 42;
@@ -227,10 +227,10 @@ TEST_F(interp, intPart) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double arg = 123.456;
@@ -247,7 +247,7 @@ static void _printThreadId(type_t, value_t, value_t) {
 
 TEST_F(interp, threads) {
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(&m_arena, {});
+    auto args_t = type_get_tuple(m_arena, {});
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
@@ -255,10 +255,10 @@ TEST_F(interp, threads) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     auto thread_func = [&]() {
@@ -274,7 +274,7 @@ TEST_F(interp, threads) {
 
 TEST_F(interp, threads_diff_progs) {
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(&m_arena, {});
+    auto args_t = type_get_tuple(m_arena, {});
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
@@ -291,10 +291,10 @@ TEST_F(interp, threads_diff_progs) {
     m_translator.translateFromIr(prog1, m_ir_prog);
     auto fn1_t = prog1.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = prog0.inspect(&m_arena);
+    str = prog0.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     std::thread t0{[&]() {
@@ -323,7 +323,7 @@ TEST_F(interp, one_thread_diff_progs) {
     })
 
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(&m_arena, {});
+    auto args_t = type_get_tuple(m_arena, {});
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
@@ -337,16 +337,16 @@ TEST_F(interp, one_thread_diff_progs) {
     m_translator.translateFromIr(prog1, ir_prog1);
     auto fn1_t = prog1.funct_info[0].funct_t;
 
-    auto str = ir_prog0.inspect(&m_arena);
+    auto str = ir_prog0.inspect(m_arena);
     LOG_INF("PROG0 ir:\n%.*s", str.size, str.data);
 
-    str = prog0.inspect(&m_arena);
+    str = prog0.inspect(m_arena);
     LOG_INF("PROG0 bytecode:\n\n%.*s", str.size, str.data);
 
-    str = ir_prog1.inspect(&m_arena);
+    str = ir_prog1.inspect(m_arena);
     LOG_INF("PROG1 ir:\n%.*s", str.size, str.data);
 
-    str = prog1.inspect(&m_arena);
+    str = prog1.inspect(m_arena);
     LOG_INF("PROG1 bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn1_t, {}, {});
@@ -357,10 +357,10 @@ TEST_F(interp, hasZeroByte32) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     auto hasZeroByte32 = [&](int32_t x) -> bool {
@@ -390,10 +390,10 @@ TEST_F(interp, callNativeSayHello) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn_t, {}, {});
@@ -409,10 +409,10 @@ TEST_F(interp, callNativeAdd) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     int64_t res = 42;
@@ -426,10 +426,10 @@ TEST_F(interp, callExternalPrintf) {
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
-    auto str = m_ir_prog.inspect(&m_arena);
+    auto str = m_ir_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(&m_arena);
+    str = m_prog.inspect(m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn_t, {}, {});
