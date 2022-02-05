@@ -7,7 +7,8 @@
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
 #include "nk/vm/interp.hpp"
-#include "nk/vm/so_adapter.hpp"
+#include "nk/vm/private/find_library.hpp"
+#include "so_adapter.hpp"
 
 namespace nk {
 namespace vm {
@@ -182,7 +183,12 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
 
     prog.shobjs.init(ir.shobjs.size);
     for (auto so_id : ir.shobjs) {
-        auto so = prog.shobjs.push() = openSharedObject(id_to_str(so_id));
+        char buf[MAX_PATH];
+        Slice<char> path{buf, 0};
+        if (!findLibrary(id_to_str(so_id), path)) {
+            assert(!"failed to find library");
+        }
+        auto so = prog.shobjs.push() = openSharedObject({path.data, path.size});
         assert(so && "failed to open a shared object");
     }
 
