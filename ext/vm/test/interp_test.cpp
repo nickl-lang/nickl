@@ -13,6 +13,7 @@
 #include "nk/vm/ir.hpp"
 #include "nk/vm/so_adapter.hpp"
 #include "utils/ir_utils.hpp"
+#include "utils/testlib.hpp"
 
 using namespace nk::vm;
 
@@ -26,7 +27,7 @@ class interp : public testing::Test {
 
         id_init();
 
-        string paths[] = {cstr_to_str("/usr/lib/")};
+        string paths[] = {cstr_to_str(TESTLIB_PATH)};
         so_adapter_init({paths, sizeof(paths) / sizeof(paths[0])});
 
         m_arena.init();
@@ -422,7 +423,7 @@ TEST_F(interp, callNativeAdd) {
 }
 
 TEST_F(interp, callExternalPrintf) {
-    buildTestIr_callExternalPrintf(m_builder, cstr_to_str("libc.so.6"));
+    buildTestIr_callExternalPrintf(m_builder, cstr_to_str(TESTLIB_NAME));
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -433,4 +434,6 @@ TEST_F(interp, callExternalPrintf) {
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn_t, {}, {});
+
+    EXPECT_TRUE(s_test_printf_called);
 }

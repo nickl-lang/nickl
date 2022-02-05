@@ -32,6 +32,7 @@ struct _type_array {
 
 using FuncPtr = void (*)(type_t self, value_t ret, value_t args);
 
+//@Refactor Maybe separate function types from actual executable ones?
 struct _type_fn {
     type_t ret_t;
     type_t args_t;
