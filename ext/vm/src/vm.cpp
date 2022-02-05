@@ -185,6 +185,14 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
         assert(so && "failed to open a shared object");
     }
 
+    auto exsyms = tmp_arena.alloc<void *>(ir.exsyms.size);
+
+    for (size_t i = 0; auto const &exsym : ir.exsyms) {
+        void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
+        assert(sym && "failed to resolve symbol");
+        exsyms[i] = sym;
+    }
+
     for (size_t fi = 0; auto const &funct : ir.functs) {
         assert(funct.next_block_id == funct.next_block_id && "ill-formed ir");
 
@@ -235,11 +243,8 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                     arg.offset += ref.value.index * REG_SIZE;
                     break;
                 case ir::Ref_ExtVar: {
-                    auto &exsym = ir.exsyms[ir_arg.as.id];
-                    void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
-                    assert(sym && "failed to resolve symbol");
                     arg.ref_type = Ref_Abs;
-                    arg.offset = (size_t)sym;
+                    arg.offset = (size_t)exsyms[ir_arg.as.id];
                     break;
                 }
                 default:
@@ -269,11 +274,9 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                 break;
             case ir::Arg_ExtFunctId: {
                 auto &exsym = ir.exsyms[ir_arg.as.id];
-                void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
-                assert(sym && "failed to resolve symbol");
                 arg.ref_type = Ref_Const;
                 arg.type = type_get_fn_native(
-                    exsym.as.funct.ret_t, exsym.as.funct.args_t, 0, sym, nullptr);
+                    exsym.as.funct.ret_t, exsym.as.funct.args_t, 0, exsyms[ir_arg.as.id], nullptr);
                 break;
             }
             }
