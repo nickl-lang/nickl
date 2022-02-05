@@ -1,7 +1,6 @@
 #include "nk/common/hashmap.hpp"
 
 #include <random>
-#include <string_view>
 #include <unordered_map>
 
 #include <gtest/gtest.h>
@@ -29,7 +28,7 @@ TEST_F(hashmap, basic) {
 }
 
 TEST_F(hashmap, insert) {
-    using key_t = std::string_view;
+    using key_t = string;
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
@@ -38,15 +37,15 @@ TEST_F(hashmap, insert) {
 
     EXPECT_EQ(hm.size, 0);
 
-    hm.insert("one") = 1;
-    hm.insert("two") = 2;
-    hm.insert("three") = 3;
+    hm.insert(cstr_to_str("one")) = 1;
+    hm.insert(cstr_to_str("two")) = 2;
+    hm.insert(cstr_to_str("three")) = 3;
 
     EXPECT_EQ(hm.size, 3);
 }
 
 TEST_F(hashmap, find) {
-    using key_t = std::string_view;
+    using key_t = string;
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
@@ -55,66 +54,66 @@ TEST_F(hashmap, find) {
 
     EXPECT_EQ(hm.size, 0);
 
-    hm.insert("one") = 1;
-    hm.insert("two") = 2;
-    hm.insert("three") = 3;
+    hm.insert(cstr_to_str("one")) = 1;
+    hm.insert(cstr_to_str("two")) = 2;
+    hm.insert(cstr_to_str("three")) = 3;
 
     EXPECT_EQ(hm.size, 3);
 
-    EXPECT_EQ(hm.find("four"), nullptr);
+    EXPECT_EQ(hm.find(cstr_to_str("four")), nullptr);
 
-    EXPECT_EQ(*hm.find("one"), 1);
-    EXPECT_EQ(*hm.find("two"), 2);
-    EXPECT_EQ(*hm.find("three"), 3);
+    EXPECT_EQ(*hm.find(cstr_to_str("one")), 1);
+    EXPECT_EQ(*hm.find(cstr_to_str("two")), 2);
+    EXPECT_EQ(*hm.find(cstr_to_str("three")), 3);
 }
 
 TEST_F(hashmap, remove) {
-    using key_t = std::string_view;
+    using key_t = string;
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
     DEFER({ hm.deinit(); })
 
-    hm.insert("value") = 42;
+    hm.insert(cstr_to_str("value")) = 42;
 
-    EXPECT_EQ(*hm.find("value"), 42);
+    EXPECT_EQ(*hm.find(cstr_to_str("value")), 42);
 
-    hm.remove("value");
-    EXPECT_EQ(hm.find("value"), nullptr);
+    hm.remove(cstr_to_str("value"));
+    EXPECT_EQ(hm.find(cstr_to_str("value")), nullptr);
 }
 
 TEST_F(hashmap, overwrite) {
-    using key_t = std::string_view;
+    using key_t = string;
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
     DEFER({ hm.deinit(); })
 
-    hm.insert("value") = 0;
-    EXPECT_EQ(*hm.find("value"), 0);
+    hm.insert(cstr_to_str("value")) = 0;
+    EXPECT_EQ(*hm.find(cstr_to_str("value")), 0);
 
     EXPECT_EQ(hm.size, 1);
 
-    hm.insert("value") = 42;
-    EXPECT_EQ(*hm.find("value"), 42);
+    hm.insert(cstr_to_str("value")) = 42;
+    EXPECT_EQ(*hm.find(cstr_to_str("value")), 42);
 
     EXPECT_EQ(hm.size, 1);
 }
 
 TEST_F(hashmap, ptr_key) {
-    using key_t = std::string_view;
+    using key_t = string;
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
     DEFER({ hm.deinit(); })
 
-    hm.insert("________ whatever") = 42;
-    hm.insert("________ something else") = 0xDEADBEEF;
+    hm.insert(cstr_to_str("________ whatever")) = 42;
+    hm.insert(cstr_to_str("________ something else")) = 0xDEADBEEF;
 
-    val_t *pval = hm.find("________ whatever");
+    val_t *pval = hm.find(cstr_to_str("________ whatever"));
     ASSERT_TRUE(pval);
     EXPECT_EQ(*pval, 42);
 }
@@ -215,4 +214,21 @@ TEST_F(hashmap, stress) {
             ASSERT_EQ(*found, it.second);
         }
     }
+}
+
+TEST_F(hashmap, zero_init) {
+    using key_t = string;
+    using val_t = uint64_t;
+    using hashmap_t = HashMap<key_t, val_t>;
+
+    hashmap_t hm{};
+    DEFER({ hm.deinit(); })
+
+    EXPECT_EQ(hm.size, 0);
+    EXPECT_EQ(hm.find(cstr_to_str("val")), nullptr);
+
+    hm.insert(cstr_to_str("val")) = 42;
+
+    EXPECT_EQ(hm.size, 1);
+    EXPECT_EQ(*hm.find(cstr_to_str("val")), 42);
 }

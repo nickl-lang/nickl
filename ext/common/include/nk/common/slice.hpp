@@ -2,6 +2,10 @@
 #define HEADER_GUARD_NK_COMMON_SLICE
 
 #include <cstddef>
+#include <cstring>
+#include <type_traits>
+
+#include "nk/common/mem.hpp"
 
 template <class T>
 struct Slice {
@@ -37,5 +41,19 @@ struct Slice {
         return data + size;
     }
 };
+
+template <class TSlice>
+TSlice copy(TSlice slice, Allocator &allocator) {
+    using T = std::decay_t<typename TSlice::value_type>;
+    T *mem = allocator.alloc<T>(slice.size);
+    std::memcpy(mem, slice.data, slice.size * sizeof(T));
+    return {mem, slice.size};
+}
+
+template <class TSlice, class T = std::decay_t<typename TSlice::value_type>>
+T *copy(TSlice slice, T *buf) {
+    std::memcpy(buf, slice.data, slice.size * sizeof(T));
+    return buf + slice.size;
+}
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE

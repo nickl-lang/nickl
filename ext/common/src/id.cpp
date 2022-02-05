@@ -56,7 +56,7 @@ void id_deinit() {
 
 string id_to_str(Id id) {
     string *pstr = s_id2str.find(id);
-    return pstr ? *pstr : string{nullptr, 0};
+    return pstr ? *pstr : string{};
 }
 
 Id cstr_to_id(char const *str) {

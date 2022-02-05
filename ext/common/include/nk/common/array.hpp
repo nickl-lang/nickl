@@ -12,9 +12,9 @@
 #include "nk/common/utils.hpp"
 
 template <class T>
-struct Array {
-    T *data;
-    size_t size;
+struct Array : Slice<T> {
+    using Slice<T>::data;
+    using Slice<T>::size;
     size_t capacity;
 
     static Array create(size_t cap = c_init_capacity) {
@@ -80,35 +80,6 @@ struct Array {
 
     Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
         return {data + i, std::min(n, size)};
-    }
-
-    using value_type = T;
-    using iterator = T *;
-    using reference = value_type &;
-    using size_type = size_t;
-
-    constexpr reference at(size_type pos) const {
-        return data[pos];
-    }
-
-    constexpr reference operator[](size_type pos) const {
-        return data[pos];
-    }
-
-    constexpr reference front() const {
-        return data[0];
-    }
-
-    constexpr reference back() const {
-        return data[size - 1];
-    }
-
-    constexpr iterator begin() const noexcept {
-        return data;
-    }
-
-    constexpr iterator end() const noexcept {
-        return data + size;
     }
 
 private:

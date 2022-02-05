@@ -11,18 +11,8 @@ namespace {
 
 using ByteArray = Slice<uint8_t const>;
 
-struct ByteArrayHashMapContext {
-    static hash_t hash(ByteArray key) {
-        return hash_array(key.data, key.data + key.size);
-    }
-
-    static bool equal_to(ByteArray lhs, ByteArray rhs) {
-        return lhs.size == rhs.size && std::memcmp(lhs.data, rhs.data, lhs.size) == 0;
-    }
-};
-
 ArenaAllocator s_typearena;
-HashMap<ByteArray, Type *, ByteArrayHashMapContext> s_typemap;
+HashMap<ByteArray, Type *> s_typemap;
 size_t s_next_type_id = 1;
 
 #define INIT_CAPACITY 64

@@ -110,7 +110,7 @@ TEST(utils, hash) {
     std::string str2{"Hello, World!"};
 
     auto const _hash_string = [](std::string const &str) {
-        return hash_strn(str.c_str(), str.size());
+        return hash_cstrn(str.c_str(), str.size());
     };
 
     EXPECT_EQ(str1, str2);

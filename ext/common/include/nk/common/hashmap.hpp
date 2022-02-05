@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <type_traits>
 
 #include "nk/common/array.hpp"
 #include "nk/common/profiler.hpp"
@@ -47,7 +48,7 @@ struct HashMap {
 
     void init(size_t cap = 0) {
         size = 0;
-        capacity = ceilToPowerOf2(cap ? cap : INIT_CAPACITY);
+        capacity = cap;
 
         _alloc();
     }
@@ -114,8 +115,11 @@ private:
     }
 
     void _alloc() {
+        static_assert(std::is_trivial_v<Entry>, "Entry should be trivial");
+
+        capacity = maxu(capacity, 1);
         entries.init(capacity);
-        std::fill(entries.data, entries.data + entries.capacity, Entry{});
+        std::memset(entries.data, 0, entries.capacity * sizeof(Entry));
     }
 
     void _rehash() {
@@ -149,8 +153,7 @@ private:
         Entry *ret_entry = nullptr;
 
         do {
-            size_t i = _elemIndex(hash, probe_length);
-            entry = &entries[i];
+            entry = &entries[_elemIndex(hash, probe_length)];
 
             if (cleanup) {
                 if (_found(entry, hash, key)) {
@@ -188,16 +191,14 @@ private:
         size_t probe_length = 0;
         Entry *entry;
 
-        do {
-            size_t i = _elemIndex(hash, probe_length);
-            entry = &entries[i];
-
-            if (_found(entry, hash, key)) {
+        while (probe_length < capacity) {
+            entry = &entries[_elemIndex(hash, probe_length++)];
+            if (_isEmpty(entry)) {
+                break;
+            } else if (_found(entry, hash, key)) {
                 return entry;
             }
-
-            probe_length++;
-        } while (!_isEmpty(entry) && probe_length <= capacity);
+        }
 
         return nullptr;
     }
