@@ -47,7 +47,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "global";
             break;
         case Ref_Const:
-            ss << "<" << val_inspect(&tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type})
+            ss << "<" << val_inspect(tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type})
                << ">";
             break;
         case Ref_Reg:
@@ -73,7 +73,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "+" << arg.post_offset;
         }
         if (arg.type) {
-            ss << ":" << type_name(&tmp_arena, arg.type);
+            ss << ":" << type_name(tmp_arena, arg.type);
         }
     };
 
@@ -131,15 +131,12 @@ void Program::deinit() {
     instrs.deinit();
 }
 
-string Program::inspect(Allocator *allocator) {
+string Program::inspect(Allocator &allocator) {
     std::ostringstream ss;
     _inspect(*this, ss);
     auto str = ss.str();
 
-    char *data = (char *)allocator->alloc(str.size());
-    std::memcpy(data, str.data(), str.size());
-
-    return string{data, str.size()};
+    return copy(string{str.data(), str.size()}, allocator);
 }
 
 void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
@@ -174,7 +171,7 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     Array<Reloc> relocs{};
     DEFER({ relocs.deinit(); });
 
-    prog.globals_t = type_get_tuple(&tmp_arena, {ir.globals.data, ir.globals.size});
+    prog.globals_t = type_get_tuple(tmp_arena, {ir.globals.data, ir.globals.size});
     if (prog.globals_t->size > 0) {
         prog.globals.push(prog.globals_t->size);
         LOG_DBG("allocating global storage: %p", prog.globals.data)
@@ -193,7 +190,7 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
 
         auto &funct_info = prog.funct_info[funct.id] = {};
         funct_info.prog = &prog;
-        funct_info.frame_t = type_get_tuple(&tmp_arena, {funct.locals.data, funct.locals.size});
+        funct_info.frame_t = type_get_tuple(tmp_arena, {funct.locals.data, funct.locals.size});
         funct_info.first_instr = prog.instrs.size;
 
         funct_info.funct_t =

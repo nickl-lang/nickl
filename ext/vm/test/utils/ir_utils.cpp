@@ -12,7 +12,7 @@ void buildTestIr_plus(ProgramBuilder &b) {
 
     auto i64_t = type_get_numeric(Int64);
     type_t args[] = {i64_t, i64_t};
-    auto args_t = type_get_tuple(&tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("plus"), i64_t, args_t);
@@ -37,7 +37,7 @@ void buildTestIr_not(ProgramBuilder &b) {
 
     auto i64_t = type_get_numeric(Int64);
     type_t args[] = {i64_t};
-    auto args_t = type_get_tuple(&tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("not"), i64_t, args_t);
@@ -75,7 +75,7 @@ void buildTestIr_atan(ProgramBuilder &b) {
     auto f64_t = type_get_numeric(Float64);
 
     type_t args[] = {f64_t, u64_t};
-    auto args_t = type_get_tuple(&tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("atan"), f64_t, args_t);
@@ -146,7 +146,7 @@ void buildTestIr_pi(ProgramBuilder &b) {
 
     auto f64_t = type_get_numeric(Float64);
 
-    auto args_t = type_get_tuple(&tmp_arena, {});
+    auto args_t = type_get_tuple(tmp_arena, {});
 
     struct AtanArgs {
         double x;
@@ -190,7 +190,7 @@ void buildTestIr_rsqrt(ProgramBuilder &b) {
     auto i32_t = type_get_numeric(Int32);
     auto f32_t = type_get_numeric(Float32);
 
-    auto args_t = type_get_tuple(&tmp_arena, {&f32_t, 1});
+    auto args_t = type_get_tuple(tmp_arena, {&f32_t, 1});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("rsqrt"), f32_t, args_t);
@@ -241,13 +241,13 @@ void buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     auto f64_t = type_get_numeric(Float64);
 
     type_t vec_types[] = {f64_t, f64_t};
-    auto vec_t = type_get_tuple(&tmp_arena, {vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
+    auto vec_t = type_get_tuple(tmp_arena, {vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
 
     auto vec_ptr_t = type_get_ptr(vec_t);
     auto f64_ptr_t = type_get_ptr(f64_t);
 
     type_t args_ar[] = {vec_ptr_t, f64_ptr_t};
-    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("vec2LenSquared"), void_t, args_t);
@@ -281,7 +281,7 @@ void buildTestIr_modf(ProgramBuilder &b) {
     auto typeref_t = type_get_typeref();
 
     type_t args_ar[] = {f64_t, f64_ptr_t};
-    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("modf"), f64_t, args_t);
@@ -315,7 +315,7 @@ void buildTestIr_intPart(ProgramBuilder &b) {
 
     auto f64_t = type_get_numeric(Float64);
 
-    auto args_t = type_get_tuple(&tmp_arena, {&f64_t, 1});
+    auto args_t = type_get_tuple(tmp_arena, {&f64_t, 1});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("intPart"), f64_t, args_t);
@@ -350,7 +350,7 @@ void buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
     DEFER({ tmp_arena.deinit(); })
 
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(&tmp_arena, {});
+    auto args_t = type_get_tuple(tmp_arena, {});
 
     auto i64_t = type_get_numeric(Int64);
 
@@ -389,7 +389,7 @@ void buildTestIr_hasZeroByte32(ProgramBuilder &b) {
     auto i32_t = type_get_numeric(Int32);
 
     type_t args_ar[] = {i32_t};
-    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("hasZeroByte32"), i32_t, args_t);
@@ -417,7 +417,7 @@ void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
     DEFER({ tmp_arena.deinit(); })
 
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(&tmp_arena, {});
+    auto args_t = type_get_tuple(tmp_arena, {});
 
     auto i64_t = type_get_numeric(Int64);
 
@@ -449,7 +449,7 @@ void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     DEFER({ tmp_arena.deinit(); })
 
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(&tmp_arena, {});
+    auto args_t = type_get_tuple(tmp_arena, {});
 
     auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr);
 
@@ -470,7 +470,7 @@ void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     auto i64_t = type_get_numeric(Int64);
 
     type_t args_ar[] = {i64_t, i64_t};
-    auto args_t = type_get_tuple(&tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, nullptr);
 
@@ -497,11 +497,11 @@ void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname) {
 
     auto u8_ptr_t = type_get_ptr(u8_t);
 
-    auto args_t = type_get_tuple(&tmp_arena, {});
+    auto args_t = type_get_tuple(tmp_arena, {});
 
     type_t printf_args[] = {u8_ptr_t, i64_t, i64_t, i64_t};
     auto printf_args_t =
-        type_get_tuple(&tmp_arena, {printf_args, sizeof(printf_args) / sizeof(printf_args[0])});
+        type_get_tuple(tmp_arena, {printf_args, sizeof(printf_args) / sizeof(printf_args[0])});
 
     auto f_printf =
         b.makeExtFunct(b.makeShObj(str_to_id(libname)), cstr_to_id("printf"), i32_t, printf_args_t);

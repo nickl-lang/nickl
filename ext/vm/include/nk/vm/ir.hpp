@@ -163,7 +163,7 @@ struct Program {
     void init();
     void deinit();
 
-    string inspect(Allocator *allocator);
+    string inspect(Allocator &allocator);
 };
 
 struct Local {

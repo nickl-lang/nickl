@@ -47,10 +47,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 ss << ", ";
             }
             auto arg_t = funct.args_t->as.tuple.elems[i].type;
-            ss << "$arg" << i << ":" << type_name(&tmp_arena, arg_t);
+            ss << "$arg" << i << ":" << type_name(tmp_arena, arg_t);
         }
 
-        ss << ") -> " << type_name(&tmp_arena, funct.ret_t) << " {\n\n";
+        ss << ") -> " << type_name(tmp_arena, funct.ret_t) << " {\n\n";
 
         for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
             auto const first_p = ss.tellp();
@@ -87,7 +87,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
-                        ss << "<" << val_inspect(&tmp_arena, value_t{ref.value.data, ref.type})
+                        ss << "<" << val_inspect(tmp_arena, value_t{ref.value.data, ref.type})
                            << ">";
                         break;
                     case Ref_Reg:
@@ -108,7 +108,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     if (ref.post_offset) {
                         ss << "+" << ref.post_offset;
                     }
-                    ss << ":" << type_name(&tmp_arena, ref.type);
+                    ss << ":" << type_name(tmp_arena, ref.type);
                 };
 
                 auto const first_p = ss.tellp();
@@ -170,11 +170,11 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "\n" << id_to_str(prog.shobjs[sym.so_id]) << " " << id_to_str(sym.name) << ":";
             switch (sym.sym_type) {
             case Sym_Var:
-                ss << type_name(&tmp_arena, sym.as.var.type);
+                ss << type_name(tmp_arena, sym.as.var.type);
                 break;
             case Sym_Funct:
-                ss << "fn{" << type_name(&tmp_arena, sym.as.funct.args_t) << ", "
-                   << type_name(&tmp_arena, sym.as.funct.ret_t) << "}";
+                ss << "fn{" << type_name(tmp_arena, sym.as.funct.args_t) << ", "
+                   << type_name(tmp_arena, sym.as.funct.ret_t) << "}";
                 break;
             default:
                 assert(!"unreachable");
@@ -268,16 +268,12 @@ void Program::deinit() {
     functs.deinit();
 }
 
-string Program::inspect(Allocator *allocator) {
+string Program::inspect(Allocator &allocator) {
     std::ostringstream ss;
     _inspect(*this, ss);
     auto str = ss.str();
 
-    //@Refactor implement slice.copy(allocator) and replace everywhere
-    char *data = (char *)allocator->alloc(str.size());
-    std::memcpy(data, str.data(), str.size());
-
-    return string{data, str.size()};
+    return copy(string{str.data(), str.size()}, allocator);
 }
 
 void ProgramBuilder::init(Program &prog) {
@@ -305,11 +301,7 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
     auto &funct = prog->functs.push() = {};
 
     funct.id = funct_id.id;
-
-    char *str_data = (char *)prog->arena.alloc(name.size);
-    std::memcpy(str_data, name.data, name.size);
-    funct.name = string{str_data, name.size};
-
+    funct.name = copy(name, prog->arena);
     funct.ret_t = ret_t;
     funct.args_t = args_t;
 
@@ -324,10 +316,7 @@ void ProgramBuilder::startBlock(BlockId block_id, string name) {
     auto &block = prog->blocks.push() = {};
 
     block.id = block_id.id;
-
-    char *str_data = (char *)prog->arena.alloc(name.size);
-    std::memcpy(str_data, name.data, name.size);
-    block.name = string{str_data, name.size};
+    block.name = copy(name, prog->arena);
 
     block.first_instr = prog->instrs.size;
 
@@ -341,10 +330,8 @@ void ProgramBuilder::comment(string str) {
 
     assert(m_cur_block && "no current block");
 
-    char *str_data = (char *)prog->arena.alloc(str.size);
-    std::memcpy(str_data, str.data, str.size);
     (m_cur_block->instr_count ? prog->instrs.back().comment : m_cur_block->comment) =
-        string{str_data, str.size};
+        copy(str, prog->arena);
 }
 
 Local ProgramBuilder::makeLocalVar(type_t type) {
