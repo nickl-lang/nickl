@@ -174,8 +174,8 @@ void buildTestIr_pi(ProgramBuilder &b) {
 
     b.startBlock(l_start, cstr_to_str("start"));
 
-    b.gen(b.make_call(v_a, {b.prog->functs[0].id}, c_a_args));
-    b.gen(b.make_call(v_b, {b.prog->functs[0].id}, c_b_args));
+    b.gen(b.make_call(v_a, FunctId{b.prog->functs[0].id}, c_a_args));
+    b.gen(b.make_call(v_b, FunctId{b.prog->functs[0].id}, c_b_args));
     b.gen(b.make_mul(v_a, v_a, c_4f));
     b.gen(b.make_sub(v_a, v_a, v_b));
     b.gen(b.make_mul(ret, v_a, c_4f));
@@ -340,7 +340,7 @@ void buildTestIr_intPart(ProgramBuilder &b) {
 
     b.gen(b.make_mov(v_arg0, a_x));
     b.gen(b.make_lea(v_arg1, ret));
-    b.gen(b.make_call(v_0, {f_modf_id}, v_args));
+    b.gen(b.make_call(v_0, FunctId{f_modf_id}, v_args));
 
     b.gen(b.make_ret());
 }
@@ -482,6 +482,47 @@ void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     b.startBlock(b.makeLabel(), cstr_to_str("start"));
 
     b.gen(b.make_call(ret, b.makeConstRef({nullptr, fn_t}), b.makeArgRef(0).as(args_t)));
+
+    b.gen(b.make_ret());
+}
+
+void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto void_t = type_get_void();
+    auto u8_t = type_get_numeric(Uint8);
+    auto i32_t = type_get_numeric(Int32);
+    auto i64_t = type_get_numeric(Int64);
+
+    auto u8_ptr_t = type_get_ptr(u8_t);
+
+    auto args_t = type_get_tuple(&tmp_arena, {});
+
+    type_t printf_args[] = {u8_ptr_t, i64_t, i64_t, i64_t};
+    auto printf_args_t =
+        type_get_tuple(&tmp_arena, {printf_args, sizeof(printf_args) / sizeof(printf_args[0])});
+
+    auto f_printf =
+        b.makeExtFunct(b.makeShObj(str_to_id(libname)), cstr_to_id("printf"), i32_t, printf_args_t);
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("callExternalPrintf"), void_t, args_t);
+
+    auto args = b.makeFrameRef(b.makeLocalVar(printf_args_t));
+
+    auto arg0 = args.plus(type_tuple_offset(printf_args_t, 0), u8_ptr_t);
+    auto arg1 = args.plus(type_tuple_offset(printf_args_t, 1), i64_t);
+    auto arg2 = args.plus(type_tuple_offset(printf_args_t, 2), i64_t);
+    auto arg3 = args.plus(type_tuple_offset(printf_args_t, 3), i64_t);
+
+    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+
+    b.gen(b.make_mov(arg0, b.makeConstRef((char const *)"%lli + %lli = %lli\n", u8_ptr_t)));
+    b.gen(b.make_mov(arg1, b.makeConstRef(4ll, i64_t)));
+    b.gen(b.make_mov(arg2, b.makeConstRef(5ll, i64_t)));
+    b.gen(b.make_add(arg3, arg1, arg2));
+    b.gen(b.make_call(b.makeRegRef(Reg_A, i32_t), f_printf, args));
 
     b.gen(b.make_ret());
 }

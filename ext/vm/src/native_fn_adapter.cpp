@@ -14,7 +14,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::ffi_adapter)
+LOG_USE_SCOPE(nk::vm::native_fn_adapter)
 
 ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
     EASY_FUNCTION(profiler::colors::Green200)

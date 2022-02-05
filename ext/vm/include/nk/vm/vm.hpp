@@ -22,15 +22,16 @@ enum EOpCode {
 };
 
 enum ERefType { // must preserve ir::ERefType order
-    Ref_None = 0,
-
+    Ref_None,
     Ref_Frame,
     Ref_Arg,
     Ref_Ret,
     Ref_Global,
     Ref_Const,
     Ref_Reg,
+
     Ref_Instr,
+    Ref_Abs,
 
     Ref_Count,
 };
@@ -63,11 +64,10 @@ struct Program {
     Array<uint8_t> globals;
     Array<uint8_t> rodata;
     Array<FunctInfo> funct_info;
+    Array<void *> shobjs;
 
     void init();
     void deinit();
-
-    void prepare();
 
     string inspect(Allocator *allocator);
 };

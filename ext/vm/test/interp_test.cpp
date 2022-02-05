@@ -11,6 +11,7 @@
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.hpp"
+#include "nk/vm/so_adapter.hpp"
 #include "utils/ir_utils.hpp"
 
 using namespace nk::vm;
@@ -22,6 +23,11 @@ LOG_USE_SCOPE(nk::vm::interp::test)
 class interp : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
+
+        id_init();
+
+        string paths[] = {cstr_to_str("/usr/lib/")};
+        so_adapter_init({paths, sizeof(paths) / sizeof(paths[0])});
 
         m_arena.init();
         types_init();
@@ -39,6 +45,10 @@ class interp : public testing::Test {
 
         types_deinit();
         m_arena.deinit();
+
+        so_adapter_deinit();
+
+        id_deinit();
     }
 
 protected:
@@ -64,8 +74,6 @@ TEST_F(interp, plus) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
     int64_t ret = 0;
     int64_t args[] = {4, 5};
     val_fn_invoke(fn_t, {&ret, fn_t->as.fn.ret_t}, {args, fn_t->as.fn.args_t});
@@ -83,8 +91,6 @@ TEST_F(interp, not ) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    m_prog.prepare();
 
     int64_t ret = 42;
     int64_t arg = 1;
@@ -107,8 +113,6 @@ TEST_F(interp, atan) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    m_prog.prepare();
 
     double a;
     double b;
@@ -140,10 +144,8 @@ TEST_F(interp, pi) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
     double pi = 0;
-    val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
+    val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {});
 
     EXPECT_DOUBLE_EQ(pi, 3.141592653589794);
 }
@@ -158,8 +160,6 @@ TEST_F(interp, rsqrt) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    m_prog.prepare();
 
     float ret = 42;
     float arg = 2;
@@ -178,8 +178,6 @@ TEST_F(interp, vec2LenSquared) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
     struct Vec2 {
         double x;
         double y;
@@ -193,7 +191,7 @@ TEST_F(interp, vec2LenSquared) {
     };
     Args args{&v, &len2};
 
-    val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {&args, fn_t->as.fn.args_t});
+    val_fn_invoke(fn_t, {}, {&args, fn_t->as.fn.args_t});
 
     EXPECT_DOUBLE_EQ(len2, v.x * v.x + v.y * v.y);
 }
@@ -208,8 +206,6 @@ TEST_F(interp, modf) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    m_prog.prepare();
 
     double fract_part = 42;
     double int_part = 42;
@@ -236,8 +232,6 @@ TEST_F(interp, intPart) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    m_prog.prepare();
 
     double arg = 123.456;
     double res = 42;
@@ -267,10 +261,8 @@ TEST_F(interp, threads) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
     auto thread_func = [&]() {
-        val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
+        val_fn_invoke(fn_t, {}, {});
     };
 
     std::thread t0{thread_func};
@@ -305,13 +297,11 @@ TEST_F(interp, threads_diff_progs) {
     str = prog0.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
     std::thread t0{[&]() {
-        val_fn_invoke(fn0_t, {nullptr, fn0_t->as.fn.ret_t}, {nullptr, fn0_t->as.fn.args_t});
+        val_fn_invoke(fn0_t, {}, {});
     }};
     std::thread t1{[&]() {
-        val_fn_invoke(fn1_t, {nullptr, fn1_t->as.fn.ret_t}, {nullptr, fn1_t->as.fn.args_t});
+        val_fn_invoke(fn1_t, {}, {});
     }};
 
     t0.join();
@@ -359,7 +349,7 @@ TEST_F(interp, one_thread_diff_progs) {
     str = prog1.inspect(&m_arena);
     LOG_INF("PROG1 bytecode:\n\n%.*s", str.size, str.data);
 
-    val_fn_invoke(fn1_t, {nullptr, fn1_t->as.fn.ret_t}, {nullptr, fn1_t->as.fn.args_t});
+    val_fn_invoke(fn1_t, {}, {});
 }
 
 TEST_F(interp, hasZeroByte32) {
@@ -372,8 +362,6 @@ TEST_F(interp, hasZeroByte32) {
 
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-
-    m_prog.prepare();
 
     auto hasZeroByte32 = [&](int32_t x) -> bool {
         int32_t res = 42;
@@ -408,9 +396,7 @@ TEST_F(interp, callNativeSayHello) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
-    val_fn_invoke(fn_t, {nullptr, fn_t->as.fn.ret_t}, {nullptr, fn_t->as.fn.args_t});
+    val_fn_invoke(fn_t, {}, {});
 }
 
 static int64_t _nativeAdd(int64_t a, int64_t b) {
@@ -429,10 +415,22 @@ TEST_F(interp, callNativeAdd) {
     str = m_prog.inspect(&m_arena);
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
-    m_prog.prepare();
-
     int64_t res = 42;
     int64_t args[] = {4, 5};
     val_fn_invoke(fn_t, {&res, fn_t->as.fn.ret_t}, {args, fn_t->as.fn.args_t});
     EXPECT_EQ(res, 9);
+}
+
+TEST_F(interp, callExternalPrintf) {
+    buildTestIr_callExternalPrintf(m_builder, cstr_to_str("libc.so.6"));
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto fn_t = m_prog.funct_info[0].funct_t;
+
+    auto str = m_ir_prog.inspect(&m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_prog.inspect(&m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    val_fn_invoke(fn_t, {}, {});
 }
