@@ -6,7 +6,7 @@
 extern "C" {
 
 bool s_test_printf_called;
-int64_t s_global_val;
+int64_t test_val;
 
 int test_printf(char const *fmt, ...) {
     s_test_printf_called = 1;

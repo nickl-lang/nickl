@@ -437,3 +437,30 @@ TEST_F(interp, callExternalPrintf) {
 
     EXPECT_TRUE(s_test_printf_called);
 }
+
+TEST_F(interp, getSetExternalVar) {
+    ir::buildTestIr_getSetExternalVar(m_builder, cstr_to_str(TESTLIB_NAME));
+    m_translator.translateFromIr(m_prog, m_ir_prog);
+    auto get_fn_t = m_prog.funct_info[0].funct_t;
+    auto set_fn_t = m_prog.funct_info[1].funct_t;
+
+    auto str = m_ir_prog.inspect(m_arena);
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
+    str = m_prog.inspect(m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+
+    auto getExternalVar = [&]() {
+        int64_t res;
+        val_fn_invoke(get_fn_t, {&res, get_fn_t->as.fn.ret_t}, {});
+        return res;
+    };
+
+    auto setExternalVar = [&]() {
+        val_fn_invoke(set_fn_t, {}, {});
+    };
+
+    EXPECT_EQ(getExternalVar(), 0);
+    setExternalVar();
+    EXPECT_EQ(getExternalVar(), 42);
+}

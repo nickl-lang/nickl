@@ -3,11 +3,6 @@
 
 #include <cstdint>
 
-extern "C" {
-
-extern bool s_test_printf_called;
-extern int64_t s_global_val;
-
-} // extern
+extern "C" bool s_test_printf_called;
 
 #endif // HEADER_GUARD_NK_VM_TESTLIB

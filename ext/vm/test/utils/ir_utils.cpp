@@ -527,6 +527,33 @@ void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname) {
     b.gen(b.make_ret());
 }
 
+void buildTestIr_getSetExternalVar(ProgramBuilder &b, string libname) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto void_t = type_get_void();
+    auto i64_t = type_get_numeric(Int64);
+
+    auto args_t = type_get_tuple(tmp_arena, {});
+
+    auto v_test_val = b.makeExtVarRef(
+        b.makeExtVar(b.makeShObj(str_to_id(libname)), cstr_to_id("test_val"), i64_t));
+
+    b.startFunct(b.makeFunct(), cstr_to_str("getExternalVar"), i64_t, args_t);
+
+    auto ret = b.makeRetRef();
+
+    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.gen(b.make_mov(ret, v_test_val));
+    b.gen(b.make_ret());
+
+    b.startFunct(b.makeFunct(), cstr_to_str("setExternalVar"), void_t, args_t);
+
+    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.gen(b.make_mov(v_test_val, b.makeConstRef(42ll, i64_t)));
+    b.gen(b.make_ret());
+}
+
 } // namespace ir
 } // namespace vm
 } // namespace nk

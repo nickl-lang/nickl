@@ -61,7 +61,9 @@ void *openSharedObject(string name) {
 
 void closeSharedObject(void *handle) {
     LOG_TRC(__FUNCTION__);
-    dlclose(handle);
+    if (dlclose(handle)) {
+        LOG_ERR("failed to close library handle=%p", handle);
+    };
 }
 
 void *resolveSym(void *handle, string sym) {

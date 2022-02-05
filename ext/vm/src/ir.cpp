@@ -94,7 +94,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$r" << (char)('a' + ref.value.index);
                         break;
                     case Ref_ExtVar:
-                        ss << "$" << id_to_str(prog.exsyms[ref.value.index].name);
+                        ss << "(" << id_to_str(prog.exsyms[ref.value.index].name) << ")";
                         break;
                     default:
                         break;
