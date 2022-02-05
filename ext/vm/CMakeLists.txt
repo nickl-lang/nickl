@@ -1,6 +1,7 @@
 set(LIB nk_vm)
 
 add_library(${LIB}
+    src/c_compiler.cpp
     src/interp.cpp
     src/ir.cpp
     src/native_fn_adapter.cpp

@@ -554,6 +554,39 @@ void buildTestIr_getSetExternalVar(ProgramBuilder &b, string libname) {
     b.gen(b.make_ret());
 }
 
+void buildTestIr_main(ProgramBuilder &b) {
+    auto tmp_arena = ArenaAllocator::create();
+    DEFER({ tmp_arena.deinit(); })
+
+    auto i8_t = type_get_numeric(Int8);
+    auto i32_t = type_get_numeric(Int32);
+    auto argv_t = type_get_ptr(type_get_ptr(i8_t));
+
+    type_t args[] = {i32_t, argv_t};
+    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+
+    auto f = b.makeFunct();
+    b.startFunct(f, cstr_to_str("main"), i32_t, args_t);
+
+    auto ret = b.makeRetRef();
+
+    auto a_argc = b.makeArgRef(0);
+    // auto a_argv = b.makeArgRef(1);
+
+    auto l_start = b.makeLabel();
+    auto l_error = b.makeLabel();
+
+    b.startBlock(l_start, cstr_to_str("start"));
+    b.gen(b.make_eq(b.makeRegRef(Reg_A, i32_t), a_argc, b.makeConstRef(3, i32_t)));
+    b.gen(b.make_jmpz(b.makeRegRef(Reg_A, i32_t), l_error));
+    b.gen(b.make_mov(ret, b.makeConstRef(0, i32_t)));
+    b.gen(b.make_ret());
+
+    b.startBlock(l_error, cstr_to_str("error"));
+    b.gen(b.make_mov(ret, b.makeConstRef(1, i32_t)));
+    b.gen(b.make_ret());
+}
+
 } // namespace ir
 } // namespace vm
 } // namespace nk

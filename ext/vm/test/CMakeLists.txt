@@ -16,9 +16,12 @@ def_test(GROUP vm NAME value LINK ${LIB})
 
 def_test(GROUP vm NAME ir LINK ${LIB} ir_utils)
 def_test(GROUP vm NAME vm LINK ${LIB} ir_utils)
+
 def_test(GROUP vm NAME interp LINK ${LIB} ir_utils ${TESTLIB} TARGET INTERP_TEST)
 
 target_compile_definitions(${INTERP_TEST}
     PRIVATE TESTLIB_PATH="${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/"
     PRIVATE TESTLIB_NAME="lib${TESTLIB}.so"
     )
+
+def_test(GROUP vm NAME c_compiler LINK ${LIB} ir_utils)

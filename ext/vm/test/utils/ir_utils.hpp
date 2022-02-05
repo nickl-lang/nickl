@@ -22,6 +22,7 @@ void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr);
 void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr);
 void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname);
 void buildTestIr_getSetExternalVar(ProgramBuilder &b, string libname);
+void buildTestIr_main(ProgramBuilder &b);
 
 } // namespace ir
 } // namespace vm
