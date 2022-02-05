@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <memory>
 
 #include "nk/common/common.hpp"
@@ -94,12 +95,16 @@ inline void hash_combine(hash_t *seed, size_t n) {
 
 hash_t hash_array(uint8_t const *begin, uint8_t const *end);
 
-inline hash_t hash_strn(char const *str, size_t n) {
+inline hash_t hash_cstrn(char const *str, size_t n) {
     return hash_array((uint8_t *)&str[0], (uint8_t *)&str[0] + n);
 }
 
-inline hash_t hash_str(char const *str) {
-    return hash_strn(str, strlen(str));
+inline hash_t hash_cstr(char const *str) {
+    return hash_cstrn(str, strlen(str));
+}
+
+inline hash_t hash_str(string str) {
+    return hash_cstrn(str.data, str.size);
 }
 
 string string_format(Allocator *allocator, char const *fmt, ...);
@@ -114,5 +119,29 @@ template <class THeader, class TElem>
 TElem *arrayWithHeaderData(THeader *header) {
     return (TElem *)roundUp((size_t)(header + 1), alignof(TElem));
 }
+
+namespace std {
+
+template <class T>
+struct hash<::Slice<T>> {
+    size_t operator()(::Slice<T> slice) {
+        return ::hash_array((uint8_t *)&slice[0], (uint8_t *)&slice[slice.size]);
+    }
+};
+
+template <class T>
+struct equal_to<::Slice<T>> {
+    size_t operator()(::Slice<T> lhs, ::Slice<T> rhs) {
+        return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size * sizeof(T)) == 0;
+    }
+};
+
+template <>
+struct hash<::string> : hash<Slice<char const>> {};
+
+template <>
+struct equal_to<::string> : equal_to<Slice<char const>> {};
+
+} // namespace std
 
 #endif // HEADER_GUARD_NK_COMMON_UTILS
