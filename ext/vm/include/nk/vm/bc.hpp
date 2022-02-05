@@ -11,6 +11,7 @@
 
 namespace nk {
 namespace vm {
+namespace bc {
 
 extern char const *s_op_names[];
 
@@ -76,6 +77,7 @@ struct Translator {
     void translateFromIr(Program &prog, ir::Program const &ir);
 };
 
+} // namespace vm
 } // namespace vm
 } // namespace nk
 

@@ -58,8 +58,8 @@ protected:
     ArenaAllocator m_arena;
     ir::Program m_ir_prog;
     ir::ProgramBuilder m_builder;
-    Program m_prog;
-    Translator m_translator;
+    bc::Program m_prog;
+    bc::Translator m_translator;
 };
 
 } // namespace
@@ -281,8 +281,8 @@ TEST_F(interp, threads_diff_progs) {
 
     test_ir_call10Times(m_builder, callback);
 
-    Program &prog0 = m_prog;
-    Program prog1;
+    bc::Program &prog0 = m_prog;
+    bc::Program prog1;
     prog1.init();
 
     DEFER({ prog1.deinit(); });
@@ -314,8 +314,8 @@ TEST_F(interp, one_thread_diff_progs) {
     ir::Program ir_prog1;
     ir_prog1.init();
 
-    Program &prog0 = m_prog;
-    Program prog1;
+    bc::Program &prog0 = m_prog;
+    bc::Program prog1;
     prog1.init();
 
     DEFER({
