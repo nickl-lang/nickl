@@ -439,7 +439,7 @@ TEST_F(interp, callExternalPrintf) {
 }
 
 TEST_F(interp, getSetExternalVar) {
-    ir::buildTestIr_getSetExternalVar(m_builder, cstr_to_str(TESTLIB_NAME));
+    buildTestIr_getSetExternalVar(m_builder, cstr_to_str(TESTLIB_NAME));
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto get_fn_t = m_prog.funct_info[0].funct_t;
     auto set_fn_t = m_prog.funct_info[1].funct_t;
