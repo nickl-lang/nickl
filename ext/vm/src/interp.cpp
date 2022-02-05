@@ -46,6 +46,7 @@ struct InterpContext {
         uint8_t *rodata;
         uint8_t *reg;
         uint8_t *instr;
+        uint8_t *abs;
     };
 
     union {

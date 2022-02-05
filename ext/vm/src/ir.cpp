@@ -37,7 +37,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
     static constexpr std::streamoff c_comment_padding = 50;
 
-    ss << std::setfill(' ');
+    ss << std::hex << std::setfill(' ');
 
     for (auto const &funct : prog.functs) {
         ss << "\nfn " << funct.name << "(";
@@ -91,7 +91,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                            << ">";
                         break;
                     case Ref_Reg:
-                        ss << "$reg" << ref.value.index;
+                        ss << "$r" << (char)('a' + ref.value.index);
+                        break;
+                    case Ref_ExtVar:
+                        ss << "$" << id_to_str(prog.exsyms[ref.value.index].name);
                         break;
                     default:
                         break;
@@ -136,6 +139,9 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     case Arg_FunctId:
                         ss << funct_by_id[arg.as.id]->name;
                         break;
+                    case Arg_ExtFunctId:
+                        ss << "(" << id_to_str(prog.exsyms[arg.as.id].name) << ")";
+                        break;
                     case Arg_None:
                     default:
                         break;
@@ -158,6 +164,25 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
         ss << "}\n";
     }
+
+    if (prog.exsyms.size) {
+        for (auto const &sym : prog.exsyms) {
+            ss << "\n" << id_to_str(prog.shobjs[sym.so_id]) << " " << id_to_str(sym.name) << ":";
+            switch (sym.sym_type) {
+            case Sym_Var:
+                ss << type_name(&tmp_arena, sym.as.var.type);
+                break;
+            case Sym_Funct:
+                ss << "fn{" << type_name(&tmp_arena, sym.as.funct.args_t) << ", "
+                   << type_name(&tmp_arena, sym.as.funct.ret_t) << "}";
+                break;
+            default:
+                assert(!"unreachable");
+                break;
+            }
+        }
+        ss << "\n";
+    }
 }
 
 Arg _arg(Ref const &ref) {
@@ -170,6 +195,10 @@ Arg _arg(BlockId block) {
 
 Arg _arg(FunctId funct) {
     return {{.id = funct.id}, Arg_FunctId};
+}
+
+Arg _arg(ExtFunctId funct) {
+    return {{.id = funct.id}, Arg_ExtFunctId};
 }
 
 } // namespace
@@ -216,9 +245,9 @@ void Program::init() {
 
     *this = {};
 
-    instrs.init(100);
-    blocks.init(10);
     functs.init(10);
+    blocks.init(10);
+    instrs.init(100);
 
     arena.init();
 }
@@ -229,14 +258,13 @@ void Program::deinit() {
     arena.deinit();
 
     globals.deinit();
-
+    shobjs.deinit();
+    exsyms.deinit();
     instrs.deinit();
     blocks.deinit();
-
     for (auto &funct : functs) {
         funct.locals.deinit();
     }
-
     functs.deinit();
 }
 
@@ -245,6 +273,7 @@ string Program::inspect(Allocator *allocator) {
     _inspect(*this, ss);
     auto str = ss.str();
 
+    //@Refactor implement slice.copy(allocator) and replace everywhere
     char *data = (char *)allocator->alloc(str.size());
     std::memcpy(data, str.data(), str.size());
 
@@ -263,6 +292,11 @@ FunctId ProgramBuilder::makeFunct() {
 BlockId ProgramBuilder::makeLabel() {
     assert(m_cur_funct && "no current function");
     return {m_cur_funct->next_block_id++};
+}
+
+ShObjId ProgramBuilder::makeShObj(Id name) {
+    prog->shobjs.push() = name;
+    return {prog->shobjs.size - 1};
 }
 
 void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
@@ -324,6 +358,29 @@ Global ProgramBuilder::makeGlobalVar(type_t type) {
     return {prog->globals.size - 1};
 }
 
+ExtVarId ProgramBuilder::makeExtVar(ShObjId so, Id name, type_t type) {
+    auto &exsym = prog->exsyms.push() = {};
+
+    exsym.name = name;
+    exsym.so_id = so.id;
+    exsym.sym_type = Sym_Var;
+    exsym.as.var.type = type;
+
+    return {prog->exsyms.size - 1};
+}
+
+ExtFunctId ProgramBuilder::makeExtFunct(ShObjId so, Id name, type_t ret_t, type_t args_t) {
+    auto &exsym = prog->exsyms.push() = {};
+
+    exsym.name = name;
+    exsym.so_id = so.id;
+    exsym.sym_type = Sym_Funct;
+    exsym.as.funct.ret_t = ret_t;
+    exsym.as.funct.args_t = args_t;
+
+    return {prog->exsyms.size - 1};
+}
+
 Ref ProgramBuilder::makeFrameRef(Local var) const {
     assert(m_cur_funct && "no current function");
     return {
@@ -332,7 +389,8 @@ Ref ProgramBuilder::makeFrameRef(Local var) const {
         .post_offset = 0,
         .type = m_cur_funct->locals[var.id],
         .ref_type = Ref_Frame,
-        .is_indirect = false};
+        .is_indirect = false,
+    };
 }
 
 Ref ProgramBuilder::makeArgRef(size_t index) const {
@@ -344,7 +402,8 @@ Ref ProgramBuilder::makeArgRef(size_t index) const {
         .post_offset = 0,
         .type = m_cur_funct->args_t->as.tuple.elems[index].type,
         .ref_type = Ref_Arg,
-        .is_indirect = false};
+        .is_indirect = false,
+    };
 }
 
 Ref ProgramBuilder::makeRetRef() const {
@@ -355,7 +414,8 @@ Ref ProgramBuilder::makeRetRef() const {
         .post_offset = 0,
         .type = m_cur_funct->ret_t,
         .ref_type = Ref_Ret,
-        .is_indirect = false};
+        .is_indirect = false,
+    };
 }
 
 Ref ProgramBuilder::makeGlobalRef(Global var) const {
@@ -365,7 +425,8 @@ Ref ProgramBuilder::makeGlobalRef(Global var) const {
         .post_offset = 0,
         .type = prog->globals[var.id],
         .ref_type = Ref_Global,
-        .is_indirect = false};
+        .is_indirect = false,
+    };
 }
 
 Ref ProgramBuilder::makeConstRef(value_t val) {
@@ -378,7 +439,8 @@ Ref ProgramBuilder::makeConstRef(value_t val) {
         .post_offset = 0,
         .type = val_typeof(val),
         .ref_type = Ref_Const,
-        .is_indirect = false};
+        .is_indirect = false,
+    };
 }
 
 Ref ProgramBuilder::makeRegRef(ERegister reg, type_t type) const {
@@ -389,7 +451,19 @@ Ref ProgramBuilder::makeRegRef(ERegister reg, type_t type) const {
         .post_offset = 0,
         .type = type,
         .ref_type = Ref_Reg,
-        .is_indirect = false};
+        .is_indirect = false,
+    };
+}
+
+Ref ProgramBuilder::makeExtVarRef(ExtVarId var) const {
+    return {
+        .value = {.index = var.id},
+        .offset = 0,
+        .post_offset = 0,
+        .type = prog->exsyms[var.id].as.var.type,
+        .ref_type = Ref_ExtVar,
+        .is_indirect = false,
+    };
 }
 
 Instr ProgramBuilder::make_nop() {
@@ -429,6 +503,10 @@ Instr ProgramBuilder::make_call(Ref const &dst, FunctId funct, Ref const &args) 
 }
 
 Instr ProgramBuilder::make_call(Ref const &dst, Ref const &funct, Ref const &args) {
+    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call, {}};
+}
+
+Instr ProgramBuilder::make_call(Ref const &dst, ExtFunctId funct, Ref const &args) {
     return {{_arg(dst), _arg(funct), _arg(args)}, ir_call, {}};
 }
 

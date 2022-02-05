@@ -7,6 +7,7 @@
 
 #include "nk/common/arena.hpp"
 #include "nk/common/array.hpp"
+#include "nk/common/id.hpp"
 #include "nk/vm/value.hpp"
 
 namespace nk {
@@ -37,14 +38,15 @@ enum EIrCode {
 };
 
 enum ERefType {
-    Ref_None = 0,
-
+    Ref_None,
     Ref_Frame,
     Ref_Arg,
     Ref_Ret,
     Ref_Global,
     Ref_Const,
     Ref_Reg,
+
+    Ref_ExtVar,
 };
 
 struct Ref {
@@ -73,12 +75,17 @@ struct BlockId {
     size_t id;
 };
 
+struct ShObjId {
+    size_t id;
+};
+
 enum EArgType {
     Arg_None,
 
     Arg_Ref,
     Arg_BlockId,
     Arg_FunctId,
+    Arg_ExtFunctId,
 };
 
 struct Arg {
@@ -120,10 +127,32 @@ struct Funct {
     size_t next_block_id;
 };
 
+enum EExtSymType {
+    Sym_Var,
+    Sym_Funct,
+};
+
+struct ExSym {
+    union {
+        struct {
+            type_t type;
+        } var;
+        struct {
+            type_t ret_t;
+            type_t args_t;
+        } funct;
+    } as;
+    Id name;
+    size_t so_id;
+    EExtSymType sym_type;
+};
+
 struct Program {
     Array<Funct> functs;
     Array<Block> blocks;
     Array<Instr> instrs;
+    Array<Id> shobjs;
+    Array<ExSym> exsyms;
 
     size_t next_funct_id;
 
@@ -145,6 +174,14 @@ struct Global {
     size_t id;
 };
 
+struct ExtVarId {
+    size_t id;
+};
+
+struct ExtFunctId {
+    size_t id;
+};
+
 struct ProgramBuilder {
     Program *prog;
 
@@ -152,7 +189,9 @@ struct ProgramBuilder {
 
     FunctId makeFunct();
     BlockId makeLabel();
+    ShObjId makeShObj(Id name);
 
+    //@Refactor Maybe IR functions don't need ids just like shobjs
     void startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t);
     void startBlock(BlockId block_id, string name);
 
@@ -161,12 +200,16 @@ struct ProgramBuilder {
     Local makeLocalVar(type_t type);
     Global makeGlobalVar(type_t type);
 
+    ExtVarId makeExtVar(ShObjId so, Id symbol, type_t type);
+    ExtFunctId makeExtFunct(ShObjId so, Id symbol, type_t ret_t, type_t args_t);
+
     Ref makeFrameRef(Local var) const;
     Ref makeArgRef(size_t index) const;
     Ref makeRetRef() const;
     Ref makeGlobalRef(Global var) const;
     Ref makeConstRef(value_t val);
     Ref makeRegRef(ERegister reg, type_t type) const;
+    Ref makeExtVarRef(ExtVarId var) const;
 
     template <class T>
     Ref makeConstRef(T &&val, type_t type) {
@@ -187,6 +230,7 @@ struct ProgramBuilder {
 
     Instr make_call(Ref const &dst, FunctId funct, Ref const &args);
     Instr make_call(Ref const &dst, Ref const &funct, Ref const &args);
+    Instr make_call(Ref const &dst, ExtFunctId funct, Ref const &args);
 
 #define U(NAME) Instr make_##NAME(Ref const &dst, Ref const &arg);
 #include "nk/vm/ir.inl"

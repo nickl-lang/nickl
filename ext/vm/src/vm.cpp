@@ -7,6 +7,7 @@
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
 #include "nk/vm/interp.hpp"
+#include "nk/vm/so_adapter.hpp"
 
 namespace nk {
 namespace vm {
@@ -49,11 +50,14 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "<" << val_inspect(&tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type})
                << ">";
             break;
+        case Ref_Reg:
+            ss << "reg";
+            break;
         case Ref_Instr:
             ss << "instr";
             break;
-        case Ref_Reg:
-            ss << "reg";
+        case Ref_Abs:
+            ss << "abs";
             break;
         default:
             assert(!"unreachable");
@@ -116,21 +120,15 @@ void Program::init() {
 void Program::deinit() {
     EASY_BLOCK("vm::Program::deinit", profiler::colors::Red200)
 
+    for (auto shobj : shobjs) {
+        closeSharedObject(shobj);
+    }
+
+    shobjs.deinit();
     funct_info.deinit();
     rodata.deinit();
     globals.deinit();
     instrs.deinit();
-}
-
-void Program::prepare() {
-    EASY_BLOCK("vm::Program::prepare", profiler::colors::Red200)
-
-    if (globals_t->size > 0) {
-        globals.push(globals_t->size);
-        LOG_DBG("allocating global storage: %p", globals.data)
-
-        std::memset(globals.data, 0, globals_t->size);
-    }
 }
 
 string Program::inspect(Allocator *allocator) {
@@ -177,6 +175,18 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     DEFER({ relocs.deinit(); });
 
     prog.globals_t = type_get_tuple(&tmp_arena, {ir.globals.data, ir.globals.size});
+    if (prog.globals_t->size > 0) {
+        prog.globals.push(prog.globals_t->size);
+        LOG_DBG("allocating global storage: %p", prog.globals.data)
+
+        std::memset(prog.globals.data, 0, prog.globals_t->size);
+    }
+
+    prog.shobjs.init(ir.shobjs.size);
+    for (auto so_id : ir.shobjs) {
+        auto so = prog.shobjs.push() = openSharedObject(id_to_str(so_id));
+        assert(so && "failed to open a shared object");
+    }
 
     for (size_t fi = 0; auto const &funct : ir.functs) {
         assert(funct.next_block_id == funct.next_block_id && "ill-formed ir");
@@ -204,34 +214,38 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                 break;
             case ir::Arg_Ref: {
                 auto const &ref = ir_arg.as.ref;
+                arg.offset += ref.offset;
+                arg.post_offset = ref.post_offset;
+                arg.type = ref.type;
+                arg.ref_type = (ERefType)ref.ref_type;
+                arg.is_indirect = ref.is_indirect;
                 switch (ref.ref_type) {
                 case ir::Ref_Frame:
-                    arg.offset = type_tuple_offset(funct_info.frame_t, ref.value.index);
+                    arg.offset += type_tuple_offset(funct_info.frame_t, ref.value.index);
                     break;
                 case ir::Ref_Arg:
-                    arg.offset = type_tuple_offset(funct.args_t, ref.value.index);
+                    arg.offset += type_tuple_offset(funct.args_t, ref.value.index);
                     break;
                 case ir::Ref_Ret:
                     break;
                 case ir::Ref_Global:
-                    arg.offset = type_tuple_offset(prog.globals_t, ref.value.index);
+                    arg.offset += type_tuple_offset(prog.globals_t, ref.value.index);
                     break;
                 case ir::Ref_Const:
-                    arg.offset = _pushConst({ref.value.data, ref.type});
+                    arg.offset += _pushConst({ref.value.data, ref.type});
                     break;
                 case ir::Ref_Reg:
-                    arg.offset = ref.value.index * REG_SIZE;
+                    arg.offset += ref.value.index * REG_SIZE;
+                    break;
+                case ir::Ref_ExtVar:
+                    //@Todo load external var
+                    arg.ref_type = Ref_Abs;
                     break;
                 default:
                     assert(!"unreachable");
                 case ir::Ref_None:
                     break;
                 }
-                arg.offset += ref.offset;
-                arg.post_offset = ref.post_offset;
-                arg.type = ref.type;
-                arg.ref_type = (ERefType)ref.ref_type;
-                arg.is_indirect = ref.is_indirect;
                 break;
             }
             case ir::Arg_BlockId:
@@ -252,6 +266,15 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                     .reloc_type = Reloc_Funct,
                 };
                 break;
+            case ir::Arg_ExtFunctId: {
+                auto &exsym = ir.exsyms[ir_arg.as.id];
+                void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
+                assert(sym && "failed to resolve symbol");
+                arg.ref_type = Ref_Const;
+                arg.type = type_get_fn_native(
+                    exsym.as.funct.ret_t, exsym.as.funct.args_t, 0, sym, nullptr);
+                break;
+            }
             }
         };
 
