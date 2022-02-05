@@ -10,6 +10,8 @@ namespace vm {
 
 namespace {
 
+using namespace bc;
+
 LOG_USE_SCOPE(nk::vm::interp)
 
 struct ProgramFrame {

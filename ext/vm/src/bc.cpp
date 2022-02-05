@@ -11,6 +11,7 @@
 
 namespace nk {
 namespace vm {
+namespace bc {
 
 char const *s_op_names[] = {
 #define X(NAME) #NAME,
@@ -459,5 +460,6 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     }
 }
 
+} // namespace bc
 } // namespace vm
 } // namespace nk

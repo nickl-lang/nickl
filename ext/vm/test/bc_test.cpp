@@ -13,9 +13,9 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::test)
+LOG_USE_SCOPE(nk::vm::bc::test)
 
-class vm : public testing::Test {
+class bytecode : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
@@ -41,15 +41,15 @@ protected:
     ArenaAllocator m_arena;
     ir::Program m_ir_prog;
     ir::ProgramBuilder m_builder;
-    Program m_prog;
-    Translator m_translator;
+    bc::Program m_prog;
+    bc::Translator m_translator;
 };
 
 } // namespace
 
 //@Incomplete Add expects to VM tests
 
-TEST_F(vm, plus) {
+TEST_F(bytecode, plus) {
     test_ir_plus(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
@@ -60,7 +60,7 @@ TEST_F(vm, plus) {
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }
 
-TEST_F(vm, not ) {
+TEST_F(bytecode, not ) {
     test_ir_not(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
@@ -71,7 +71,7 @@ TEST_F(vm, not ) {
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }
 
-TEST_F(vm, atan) {
+TEST_F(bytecode, atan) {
     test_ir_atan(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
