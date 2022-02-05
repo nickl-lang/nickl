@@ -11,7 +11,7 @@
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.hpp"
-#include "nk/vm/so_adapter.hpp"
+#include "nk/vm/vm.hpp"
 #include "utils/test_ir.hpp"
 #include "utils/testlib.hpp"
 
@@ -25,31 +25,23 @@ class interp : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        id_init();
-
+        VmConfig conf;
         string paths[] = {cstr_to_str(TESTLIB_PATH)};
-        so_adapter_init({paths, sizeof(paths) / sizeof(paths[0])});
+        conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
+        vm_init(conf);
 
         m_arena.init();
-        types_init();
-
         m_ir_prog.init();
         m_builder.init(m_ir_prog);
-
         m_prog.init();
     }
 
     void TearDown() override {
         m_prog.deinit();
-
         m_ir_prog.deinit();
-
-        types_deinit();
         m_arena.deinit();
 
-        so_adapter_deinit();
-
-        id_deinit();
+        vm_deinit();
     }
 
 protected:

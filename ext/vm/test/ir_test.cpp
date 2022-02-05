@@ -7,6 +7,7 @@
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/common/utils.hpp"
+#include "nk/vm/vm.hpp"
 #include "utils/test_ir.hpp"
 
 using namespace nk;
@@ -20,18 +21,18 @@ class ir : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        m_arena.init();
-        vm::types_init();
+        vm::vm_init({});
 
+        m_arena.init();
         m_prog.init();
         m_builder.init(m_prog);
     }
 
     void TearDown() override {
         m_prog.deinit();
-
-        vm::types_deinit();
         m_arena.deinit();
+
+        vm::vm_deinit();
     }
 
 protected:
