@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_VM
-#define HEADER_GUARD_NK_VM_VM
+#ifndef HEADER_GUARD_NK_VM_BC
+#define HEADER_GUARD_NK_VM_BC
 
 #include <cstddef>
 #include <cstdint>
@@ -79,4 +79,4 @@ struct Translator {
 } // namespace vm
 } // namespace nk
 
-#endif // HEADER_GUARD_NK_VM_VM
+#endif // HEADER_GUARD_NK_VM_BC

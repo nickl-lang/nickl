@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_INTERP
 #define HEADER_GUARD_NK_VM_INTERP
 
-#include "nk/vm/vm.hpp"
+#include "nk/vm/bc.hpp"
 
 namespace nk {
 namespace vm {
