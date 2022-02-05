@@ -35,36 +35,36 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         }
         switch (arg.ref_type) {
         case Ref_Frame:
-            ss << "frame";
+            ss << "frame+";
             break;
         case Ref_Arg:
-            ss << "arg";
+            ss << "arg+";
             break;
         case Ref_Ret:
-            ss << "ret";
+            ss << "ret+";
             break;
         case Ref_Global:
-            ss << "global";
+            ss << "global+";
             break;
         case Ref_Const:
             ss << "<" << val_inspect(tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type})
                << ">";
             break;
         case Ref_Reg:
-            ss << "reg";
+            ss << "reg+";
             break;
         case Ref_Instr:
-            ss << "instr";
+            ss << "instr+";
             break;
         case Ref_Abs:
-            ss << "abs";
+            ss << "0x";
             break;
         default:
             assert(!"unreachable");
             break;
         }
         if (arg.ref_type != Ref_Const) {
-            ss << "+" << arg.offset;
+            ss << arg.offset;
         }
         if (arg.is_indirect) {
             ss << "]";
@@ -234,10 +234,14 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                 case ir::Ref_Reg:
                     arg.offset += ref.value.index * REG_SIZE;
                     break;
-                case ir::Ref_ExtVar:
-                    //@Todo load external var
+                case ir::Ref_ExtVar: {
+                    auto &exsym = ir.exsyms[ir_arg.as.id];
+                    void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
+                    assert(sym && "failed to resolve symbol");
                     arg.ref_type = Ref_Abs;
+                    arg.offset = (size_t)sym;
                     break;
+                }
                 default:
                     assert(!"unreachable");
                 case ir::Ref_None:

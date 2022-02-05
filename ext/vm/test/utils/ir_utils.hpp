@@ -21,6 +21,7 @@ void buildTestIr_readToggleGlobal(ProgramBuilder &b);
 void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr);
 void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr);
 void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname);
+void buildTestIr_getSetExternalVar(ProgramBuilder &b, string libname);
 
 } // namespace ir
 } // namespace vm
