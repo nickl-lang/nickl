@@ -1,4 +1,4 @@
-#include "nk/vm/vm.hpp"
+#include "nk/vm/bc.hpp"
 
 #include <cstdint>
 
@@ -7,7 +7,7 @@
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/common/utils.hpp"
-#include "utils/ir_utils.hpp"
+#include "utils/test_ir.hpp"
 
 using namespace nk::vm;
 
@@ -50,7 +50,7 @@ protected:
 //@Incomplete Add expects to VM tests
 
 TEST_F(vm, plus) {
-    buildTestIr_plus(m_builder);
+    test_ir_plus(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
     auto str = m_ir_prog.inspect(m_arena);
@@ -61,7 +61,7 @@ TEST_F(vm, plus) {
 }
 
 TEST_F(vm, not ) {
-    buildTestIr_not(m_builder);
+    test_ir_not(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
     auto str = m_ir_prog.inspect(m_arena);
@@ -72,7 +72,7 @@ TEST_F(vm, not ) {
 }
 
 TEST_F(vm, atan) {
-    buildTestIr_atan(m_builder);
+    test_ir_atan(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
     auto str = m_ir_prog.inspect(m_arena);

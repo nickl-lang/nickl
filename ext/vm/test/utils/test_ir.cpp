@@ -1,4 +1,4 @@
-#include "ir_utils.hpp"
+#include "test_ir.hpp"
 
 #include <iostream>
 
@@ -6,7 +6,7 @@ namespace nk {
 namespace vm {
 namespace ir {
 
-void buildTestIr_plus(ProgramBuilder &b) {
+void test_ir_plus(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -31,7 +31,7 @@ void buildTestIr_plus(ProgramBuilder &b) {
     b.comment(cstr_to_str("return the result"));
 }
 
-void buildTestIr_not(ProgramBuilder &b) {
+void test_ir_not(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -67,7 +67,7 @@ void buildTestIr_not(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_atan(ProgramBuilder &b) {
+void test_ir_atan(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -138,11 +138,11 @@ void buildTestIr_atan(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_pi(ProgramBuilder &b) {
+void test_ir_pi(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    buildTestIr_atan(b);
+    test_ir_atan(b);
 
     auto f64_t = type_get_numeric(Float64);
 
@@ -183,7 +183,7 @@ void buildTestIr_pi(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_rsqrt(ProgramBuilder &b) {
+void test_ir_rsqrt(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -233,7 +233,7 @@ void buildTestIr_rsqrt(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_vec2LenSquared(ProgramBuilder &b) {
+void test_ir_vec2LenSquared(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -271,7 +271,7 @@ void buildTestIr_vec2LenSquared(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_modf(ProgramBuilder &b) {
+void test_ir_modf(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -306,11 +306,11 @@ void buildTestIr_modf(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_intPart(ProgramBuilder &b) {
+void test_ir_intPart(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    buildTestIr_modf(b);
+    test_ir_modf(b);
     auto f_modf_id = b.prog->functs[0].id;
 
     auto f64_t = type_get_numeric(Float64);
@@ -345,7 +345,7 @@ void buildTestIr_intPart(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
+void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -382,7 +382,7 @@ void buildTestIr_call10Times(ProgramBuilder &b, type_t fn) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_hasZeroByte32(ProgramBuilder &b) {
+void test_ir_hasZeroByte32(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -412,7 +412,7 @@ void buildTestIr_hasZeroByte32(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
+void test_ir_readToggleGlobal(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -444,7 +444,7 @@ void buildTestIr_readToggleGlobal(ProgramBuilder &b) {
     }
 }
 
-void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
+void test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -463,7 +463,7 @@ void buildTestIr_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
+void test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -486,7 +486,7 @@ void buildTestIr_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname) {
+void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -527,7 +527,7 @@ void buildTestIr_callExternalPrintf(ProgramBuilder &b, string libname) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_getSetExternalVar(ProgramBuilder &b, string libname) {
+void test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
@@ -554,7 +554,7 @@ void buildTestIr_getSetExternalVar(ProgramBuilder &b, string libname) {
     b.gen(b.make_ret());
 }
 
-void buildTestIr_main(ProgramBuilder &b) {
+void test_ir_main(ProgramBuilder &b) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 

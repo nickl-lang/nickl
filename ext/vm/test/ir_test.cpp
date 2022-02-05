@@ -7,7 +7,7 @@
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/common/utils.hpp"
-#include "utils/ir_utils.hpp"
+#include "utils/test_ir.hpp"
 
 using namespace nk;
 using namespace nk::vm::ir;
@@ -45,21 +45,21 @@ protected:
 //@Incomplete Add expects to IR tests
 
 TEST_F(ir, plus) {
-    buildTestIr_plus(m_builder);
+    test_ir_plus(m_builder);
 
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, not ) {
-    buildTestIr_not(m_builder);
+    test_ir_not(m_builder);
 
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, atan) {
-    buildTestIr_atan(m_builder);
+    test_ir_atan(m_builder);
 
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);

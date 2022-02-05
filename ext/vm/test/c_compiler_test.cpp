@@ -5,7 +5,7 @@
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/vm/ir.hpp"
-#include "utils/ir_utils.hpp"
+#include "utils/test_ir.hpp"
 
 using namespace nk::vm;
 
@@ -46,7 +46,7 @@ protected:
 } // namespace
 
 TEST_F(c_compiler, basic) {
-    buildTestIr_main(m_builder);
+    test_ir_main(m_builder);
 
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);

@@ -1,4 +1,4 @@
-#include "nk/vm/vm.hpp"
+#include "nk/vm/bc.hpp"
 
 #include <cassert>
 #include <iomanip>

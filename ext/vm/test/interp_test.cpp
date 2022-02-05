@@ -12,7 +12,7 @@
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.hpp"
 #include "nk/vm/so_adapter.hpp"
-#include "utils/ir_utils.hpp"
+#include "utils/test_ir.hpp"
 #include "utils/testlib.hpp"
 
 using namespace nk::vm;
@@ -65,7 +65,7 @@ protected:
 } // namespace
 
 TEST_F(interp, plus) {
-    buildTestIr_plus(m_builder);
+    test_ir_plus(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -83,7 +83,7 @@ TEST_F(interp, plus) {
 }
 
 TEST_F(interp, not ) {
-    buildTestIr_not(m_builder);
+    test_ir_not(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -105,7 +105,7 @@ TEST_F(interp, not ) {
 }
 
 TEST_F(interp, atan) {
-    buildTestIr_atan(m_builder);
+    test_ir_atan(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -135,7 +135,7 @@ TEST_F(interp, atan) {
 }
 
 TEST_F(interp, pi) {
-    buildTestIr_pi(m_builder);
+    test_ir_pi(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
 
@@ -152,7 +152,7 @@ TEST_F(interp, pi) {
 }
 
 TEST_F(interp, rsqrt) {
-    buildTestIr_rsqrt(m_builder);
+    test_ir_rsqrt(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -169,7 +169,7 @@ TEST_F(interp, rsqrt) {
 }
 
 TEST_F(interp, vec2LenSquared) {
-    buildTestIr_vec2LenSquared(m_builder);
+    test_ir_vec2LenSquared(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -198,7 +198,7 @@ TEST_F(interp, vec2LenSquared) {
 }
 
 TEST_F(interp, modf) {
-    buildTestIr_modf(m_builder);
+    test_ir_modf(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -224,7 +224,7 @@ TEST_F(interp, modf) {
 }
 
 TEST_F(interp, intPart) {
-    buildTestIr_intPart(m_builder);
+    test_ir_intPart(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
 
@@ -252,7 +252,7 @@ TEST_F(interp, threads) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    buildTestIr_call10Times(m_builder, callback);
+    test_ir_call10Times(m_builder, callback);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -279,7 +279,7 @@ TEST_F(interp, threads_diff_progs) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    buildTestIr_call10Times(m_builder, callback);
+    test_ir_call10Times(m_builder, callback);
 
     Program &prog0 = m_prog;
     Program prog1;
@@ -329,12 +329,12 @@ TEST_F(interp, one_thread_diff_progs) {
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     m_builder.init(ir_prog0);
-    buildTestIr_call10Times(m_builder, callback);
+    test_ir_call10Times(m_builder, callback);
     m_translator.translateFromIr(prog0, ir_prog0);
     auto fn0_t = prog0.funct_info[0].funct_t;
 
     m_builder.init(ir_prog1);
-    buildTestIr_call10Times(m_builder, fn0_t);
+    test_ir_call10Times(m_builder, fn0_t);
     m_translator.translateFromIr(prog1, ir_prog1);
     auto fn1_t = prog1.funct_info[0].funct_t;
 
@@ -354,7 +354,7 @@ TEST_F(interp, one_thread_diff_progs) {
 }
 
 TEST_F(interp, hasZeroByte32) {
-    buildTestIr_hasZeroByte32(m_builder);
+    test_ir_hasZeroByte32(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -387,7 +387,7 @@ static void _nativeSayHello() {
 }
 
 TEST_F(interp, callNativeSayHello) {
-    buildTestIr_callNativeFunc(m_builder, (void *)_nativeSayHello);
+    test_ir_callNativeFunc(m_builder, (void *)_nativeSayHello);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -406,7 +406,7 @@ static int64_t _nativeAdd(int64_t a, int64_t b) {
 }
 
 TEST_F(interp, callNativeAdd) {
-    buildTestIr_callNativeAdd(m_builder, (void *)_nativeAdd);
+    test_ir_callNativeAdd(m_builder, (void *)_nativeAdd);
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -423,7 +423,7 @@ TEST_F(interp, callNativeAdd) {
 }
 
 TEST_F(interp, callExternalPrintf) {
-    buildTestIr_callExternalPrintf(m_builder, cstr_to_str(TESTLIB_NAME));
+    test_ir_callExternalPrintf(m_builder, cstr_to_str(TESTLIB_NAME));
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -439,7 +439,7 @@ TEST_F(interp, callExternalPrintf) {
 }
 
 TEST_F(interp, getSetExternalVar) {
-    buildTestIr_getSetExternalVar(m_builder, cstr_to_str(TESTLIB_NAME));
+    test_ir_getSetExternalVar(m_builder, cstr_to_str(TESTLIB_NAME));
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto get_fn_t = m_prog.funct_info[0].funct_t;
     auto set_fn_t = m_prog.funct_info[1].funct_t;
