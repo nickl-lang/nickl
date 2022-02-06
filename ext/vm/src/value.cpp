@@ -178,9 +178,41 @@ void _valInspect(value_t val, std::ostringstream &ss) {
         ss << "]";
         break;
     case Type_Numeric:
-        val_numeric_visit(val, [&](auto const &val) {
-            ss << val;
-        });
+        switch (val_typeof(val)->as.num.value_type) {
+        case Int8:
+            ss << (int)val_as(int8_t, val);
+            break;
+        case Uint8:
+            ss << (unsigned)val_as(uint8_t, val);
+            break;
+        case Int16:
+            ss << val_as(int16_t, val);
+            break;
+        case Uint16:
+            ss << val_as(uint16_t, val);
+            break;
+        case Int32:
+            ss << val_as(int32_t, val);
+            break;
+        case Uint32:
+            ss << val_as(uint32_t, val);
+            break;
+        case Int64:
+            ss << val_as(int64_t, val);
+            break;
+        case Uint64:
+            ss << val_as(uint64_t, val);
+            break;
+        case Float32:
+            ss << val_as(float, val);
+            break;
+        case Float64:
+            ss << val_as(double, val);
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
         break;
     case Type_Ptr:
         ss << val_data(val);
