@@ -1,6 +1,10 @@
 #include "nk/vm/c_compiler.hpp"
 
 #include <fstream>
+#include <limits>
+#include <sstream>
+
+#include "nk/common/hashmap.hpp"
 
 namespace nk {
 namespace vm {
@@ -9,48 +13,80 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::c_compiler)
 
-using stream = std::ofstream;
+using stream = std::ostringstream;
+
+struct value_hm_ctx {
+    static hash_t hash(value_t key) {
+        return hash_array((uint8_t *)&key, (uint8_t *)&key + sizeof(key));
+    }
+
+    static bool equal_to(value_t lhs, value_t rhs) {
+        return lhs.data == rhs.data && lhs.type == rhs.type;
+    }
+};
+
+struct WriterCtx {
+    ArenaAllocator arena;
+    ArenaAllocator tmp_arena;
+
+    HashMap<type_t, string> type_map;
+    size_t typedecl_count;
+
+    HashMap<value_t, string, value_hm_ctx> const_map;
+    size_t const_count;
+
+    stream types_s;
+    stream data_s;
+    stream forward_s;
+    stream main_s;
+};
 
 void _writePreabmle(stream &src) {
-    src << R"(
-#include <stddef.h>
-#include <stdint.h>
-)";
+    src << "#include <stdint.h>\n\n";
 }
 
-void _writeType(type_t type, stream &src) {
+void _writeType(WriterCtx &ctx, type_t type, stream &src) {
+    auto found_str = ctx.type_map.find(type);
+    if (found_str) {
+        src << *found_str;
+        return;
+    }
+
+    stream tmp_s;
+    bool is_complex = false;
+
     switch (type->typeclass_id) {
     case Type_Numeric:
         switch (type->as.num.value_type) {
         case Int8:
-            src << "int8_t";
+            tmp_s << "char";
             break;
         case Int16:
-            src << "int16_t";
+            tmp_s << "int16_t";
             break;
         case Int32:
-            src << "int32_t";
+            tmp_s << "int32_t";
             break;
         case Int64:
-            src << "int64_t";
+            tmp_s << "int64_t";
             break;
         case Uint8:
-            src << "uint8_t";
+            tmp_s << "uint8_t";
             break;
         case Uint16:
-            src << "uint16_t";
+            tmp_s << "uint16_t";
             break;
         case Uint32:
-            src << "uint32_t";
+            tmp_s << "uint32_t";
             break;
         case Uint64:
-            src << "uint64_t";
+            tmp_s << "uint64_t";
             break;
         case Float32:
-            src << "float";
+            tmp_s << "float";
             break;
         case Float64:
-            src << "double";
+            tmp_s << "double";
             break;
         default:
             assert(!"unreachable");
@@ -58,22 +94,177 @@ void _writeType(type_t type, stream &src) {
         }
         break;
     case Type_Ptr:
-        _writeType(type->as.ptr.target_type, src);
-        src << "*";
+        _writeType(ctx, type->as.ptr.target_type, tmp_s);
+        tmp_s << "*";
         break;
-    default:
-        src << "UNKNOWN_TYPE";
+    case Type_Void:
+        tmp_s << "void";
+        break;
+    case Type_Tuple: {
+        is_complex = true;
+        tmp_s << "struct {\n";
+        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+            tmp_s << "  ";
+            _writeType(ctx, type->as.tuple.elems[i].type, tmp_s);
+            tmp_s << " _" << i << ";\n";
+        }
+        tmp_s << "}";
         break;
     }
+    case Type_Array: {
+        is_complex = true;
+        tmp_s << "struct { ";
+        _writeType(ctx, type->as.arr.elem_type, tmp_s);
+        tmp_s << " _data[" << type->as.arr.elem_count << "]; }";
+        break;
+    }
+    default:
+        assert(!"type not implemented");
+        break;
+    }
+
+    auto tmp_str = tmp_s.str();
+
+    if (is_complex) {
+        ctx.types_s << "typedef " << tmp_str << " type" << ctx.typedecl_count << ";\n";
+        tmp_str = "type" + std::to_string(ctx.typedecl_count);
+        ctx.typedecl_count++;
+    }
+
+    auto &type_str = ctx.type_map.insert(type);
+    type_str = copy(string{tmp_str.data(), tmp_str.size()}, ctx.arena);
+    src << type_str;
 }
 
-void _writeProgram(ir::Program const &ir, stream &src) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); });
+void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = false) {
+    auto found_str = ctx.const_map.find(val);
+    if (found_str) {
+        src << *found_str;
+        return;
+    }
 
-    _writePreabmle(src);
+    stream tmp_s;
 
-    auto block_name_by_id = tmp_arena.alloc<string>(ir.blocks.size);
+    switch (val_typeclassid(val)) {
+    case Type_Numeric: {
+        auto value_type = val_typeof(val)->as.num.value_type;
+        switch (value_type) {
+        case Int8:
+            tmp_s << (int)val_as(int8_t, val);
+            break;
+        case Uint8:
+            tmp_s << (unsigned)val_as(uint8_t, val);
+            break;
+        case Int16:
+            tmp_s << val_as(int16_t, val);
+            break;
+        case Uint16:
+            tmp_s << val_as(uint16_t, val);
+            break;
+        case Int32:
+            tmp_s << val_as(int32_t, val);
+            break;
+        case Uint32:
+            tmp_s << val_as(uint32_t, val);
+            break;
+        case Int64:
+            tmp_s << val_as(int64_t, val);
+            break;
+        case Uint64:
+            tmp_s << val_as(uint64_t, val);
+            break;
+        case Float32:
+            tmp_s.precision(std::numeric_limits<float>::max_digits10);
+            tmp_s << val_as(float, val);
+            break;
+        case Float64:
+            tmp_s.precision(std::numeric_limits<double>::max_digits10);
+            tmp_s << val_as(double, val);
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        if (value_type >= Float32) {
+            if (val_sizeof(val) == 4) {
+                tmp_s << "f";
+            }
+        } else {
+            if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 ||
+                value_type == Uint64) {
+                tmp_s << "u";
+            }
+            if (val_sizeof(val) == 4) {
+                tmp_s << "l";
+            } else if (val_sizeof(val) == 8) {
+                tmp_s << "ll";
+            }
+        }
+        break;
+    }
+    case Type_Ptr:
+        tmp_s << "&";
+        _writeConst(ctx, {val_as(void *, val), val_typeof(val)->as.ptr.target_type}, tmp_s, true);
+        break;
+    case Type_Tuple: {
+        is_complex = true;
+        tmp_s << "{ ";
+        for (size_t i = 0; i < val_tuple_size(val); i++) {
+            _writeConst(ctx, val_tuple_at(val, i), tmp_s);
+            tmp_s << ", ";
+        }
+        tmp_s << "}";
+        break;
+    }
+    case Type_Array: {
+        is_complex = true;
+        tmp_s << "{ ";
+        for (size_t i = 0; i < val_array_size(val); i++) {
+            _writeConst(ctx, val_array_at(val, i), tmp_s);
+            tmp_s << ", ";
+        }
+        tmp_s << "}";
+        break;
+    }
+    default:
+        assert(!"const type not implemented");
+        break;
+    }
+
+    auto tmp_str = tmp_s.str();
+
+    if (is_complex) {
+        _writeType(ctx, val_typeof(val), ctx.data_s);
+        ctx.data_s << " const" << ctx.const_count << " = " << tmp_str << ";\n";
+        tmp_str = "const" + std::to_string(ctx.const_count);
+        ctx.const_count++;
+    }
+
+    auto &const_str = ctx.const_map.insert(val);
+    const_str = copy(string{tmp_str.data(), tmp_str.size()}, ctx.arena);
+    src << const_str;
+}
+
+void _writeFnSig(WriterCtx &ctx, stream &src, string name, type_t ret_t, type_t args_t) {
+    _writeType(ctx, ret_t, src);
+    src << " " << name << "(";
+
+    for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+        if (i) {
+            src << ", ";
+        }
+        _writeType(ctx, args_t->as.tuple.elems[i].type, src);
+        src << " arg" << i;
+    }
+    src << ")";
+}
+
+void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
+    auto &src = ctx.main_s;
+
+    _writePreabmle(ctx.types_s);
+
+    auto block_name_by_id = ctx.arena.alloc<string>(ir.blocks.size);
 
     for (auto const &f : ir.functs) {
         for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
@@ -83,28 +274,19 @@ void _writeProgram(ir::Program const &ir, stream &src) {
 
     for (auto const &f : ir.functs) {
         src << "\n";
-        _writeType(f.ret_t, src);
-        src << " " << f.name << "(";
+        _writeFnSig(ctx, src, f.name, f.ret_t, f.args_t);
+        src << " {\n\n";
 
-        for (size_t i = 0; i < f.args_t->as.tuple.elems.size; i++) {
-            if (i) {
-                src << ", ";
-            }
-            _writeType(f.args_t->as.tuple.elems[i].type, src);
-            src << " arg" << i;
-        }
-
-        src << ") {\n\n";
-
-        src << "struct { uint8_t data[" << REG_SIZE * Reg_Count << "]; } reg;\n";
+        _writeType(ctx, type_get_array(type_get_numeric(Uint8), REG_SIZE * Reg_Count), src);
+        src << " reg;\n";
 
         for (size_t i = 0; auto type : f.locals) {
-            _writeType(type, src);
+            _writeType(ctx, type, src);
             src << " var" << i++ << ";\n";
         }
 
         if (f.ret_t->typeclass_id != Type_Void) {
-            _writeType(f.ret_t, src);
+            _writeType(ctx, f.ret_t, src);
             src << " ret;\n";
         }
 
@@ -115,19 +297,21 @@ void _writeProgram(ir::Program const &ir, stream &src) {
 
             auto _writeRef = [&](ir::Ref const &ref) {
                 if (ref.ref_type == ir::Ref_Const) {
-                    src << val_inspect(tmp_arena, {ref.value.data, ref.type});
+                    _writeConst(ctx, {ref.value.data, ref.type}, src);
                     return;
                 }
                 src << "*(";
-                _writeType(ref.type, src);
+                _writeType(ctx, ref.type, src);
                 src << "*)";
                 if (ref.post_offset) {
-                    src << "(";
+                    src << "((uint8_t*)";
                 }
                 if (ref.offset) {
                     src << "((uint8_t*)";
                 }
-                src << "&";
+                if (!ref.is_indirect) {
+                    src << "&";
+                }
                 switch (ref.ref_type) {
                 case ir::Ref_Frame:
                     src << "var" << ref.value.index;
@@ -139,12 +323,13 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                     src << "ret";
                     break;
                 case ir::Ref_Global:
-                    src << "global";
+                    assert(!"global ref not implemented");
                     break;
                 case ir::Ref_Reg:
                     src << "reg";
                     break;
                 case ir::Ref_ExtVar:
+                    assert(!"ext var ref not implemented");
                     break;
                 default:
                     assert(!"unreachable");
@@ -161,6 +346,8 @@ void _writeProgram(ir::Program const &ir, stream &src) {
             };
 
             for (auto const &instr : ir.instrs.slice(b.first_instr, b.instr_count)) {
+                ctx.tmp_arena.clear();
+
                 src << "  ";
 
                 if (instr.arg[0].arg_type == ir::Arg_Ref) {
@@ -176,36 +363,48 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                     }
                     break;
                 case ir::ir_jmp:
-                    src << "goto l_" << block_name_by_id[instr.arg[1].as.id];
+                    src << "goto l_" << block_name_by_id[f.first_block + instr.arg[1].as.id];
                     break;
                 case ir::ir_jmpz:
-                    src << "if (";
+                    src << "if (0 == ";
                     _writeRef(instr.arg[1].as.ref);
-                    src << " == 0) { goto l_" << block_name_by_id[instr.arg[2].as.id] << "; }";
+                    src << ") { goto l_" << block_name_by_id[f.first_block + instr.arg[2].as.id]
+                        << "; }";
                     break;
                 case ir::ir_jmpnz:
                     src << "if (";
                     _writeRef(instr.arg[1].as.ref);
-                    src << ") { goto l_" << block_name_by_id[instr.arg[2].as.id] << "; }";
+                    src << ") { goto l_" << block_name_by_id[f.first_block + instr.arg[2].as.id]
+                        << "; }";
                     break;
                 case ir::ir_cast:
                     src << "(";
                     assert(
                         instr.arg[1].as.ref.ref_type == ir::Ref_Const &&
                         "type must be known for cast");
-                    _writeType(*(type_t *)instr.arg[1].as.ref.value.data, src);
+                    _writeType(ctx, *(type_t *)instr.arg[1].as.ref.value.data, src);
                     src << ")";
                     _writeRef(instr.arg[2].as.ref);
                     break;
-                case ir::ir_call:
+                case ir::ir_call: {
                     switch (instr.arg[1].arg_type) {
                     case ir::Arg_FunctId:
                         src << ir.functs[instr.arg[1].as.id].name;
                         //@Todo Unfinished call compilation
                         break;
-                    case ir::Arg_ExtFunctId:
-                        assert(!"cannot compile ext call");
+                    case ir::Arg_ExtFunctId: {
+                        auto &sym = ir.exsyms[instr.arg[1].as.id];
+                        ctx.forward_s << "extern ";
+                        _writeFnSig(
+                            ctx,
+                            ctx.forward_s,
+                            id_to_str(sym.name),
+                            sym.as.funct.ret_t,
+                            sym.as.funct.args_t);
+                        ctx.forward_s << ";\n";
+                        src << id_to_str(sym.name);
                         break;
+                    }
                     case ir::Arg_Ref:
                         assert(!"cannot compile ref call");
                         break;
@@ -213,8 +412,21 @@ void _writeProgram(ir::Program const &ir, stream &src) {
                         assert(!"unreachable");
                         break;
                     }
-                    src << "()";
+                    src << "(";
+                    if (instr.arg[2].as.ref.ref_type != ir::Ref_None) {
+                        auto args_t = instr.arg[2].as.ref.type;
+                        for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+                            if (i) {
+                                src << ", ";
+                            }
+                            src << "(";
+                            _writeRef(instr.arg[2].as.ref);
+                            src << ")._" << i;
+                        }
+                    }
+                    src << ")";
                     break;
+                }
                 case ir::ir_mov:
                     _writeRef(instr.arg[1].as.ref);
                     break;
@@ -347,8 +559,24 @@ void _writeProgram(ir::Program const &ir, stream &src) {
 void CCompiler::compile(string name, ir::Program const &ir) {
     LOG_TRC(__FUNCTION__)
 
-    stream src{std::string{name.data, name.size} + ".c"};
-    _writeProgram(ir, src);
+    WriterCtx ctx{};
+
+    ctx.arena.init();
+    ctx.tmp_arena.init();
+    DEFER({
+        ctx.arena.deinit();
+        ctx.tmp_arena.deinit();
+        ctx.type_map.deinit();
+        ctx.const_map.deinit();
+    })
+
+    _writeProgram(ctx, ir);
+
+    std::ofstream file{std::string{name.data, name.size} + ".c"};
+    file << ctx.types_s.str() << "\n";
+    file << ctx.data_s.str() << "\n";
+    file << ctx.forward_s.str();
+    file << ctx.main_s.str();
 }
 
 } // namespace vm
