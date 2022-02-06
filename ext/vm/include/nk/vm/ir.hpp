@@ -140,6 +140,7 @@ struct ExSym {
         struct {
             type_t ret_t;
             type_t args_t;
+            bool is_variadic;
         } funct;
     } as;
     Id name;
@@ -201,7 +202,12 @@ struct ProgramBuilder {
     Global makeGlobalVar(type_t type);
 
     ExtVarId makeExtVar(ShObjId so, Id symbol, type_t type);
-    ExtFunctId makeExtFunct(ShObjId so, Id symbol, type_t ret_t, type_t args_t);
+    ExtFunctId makeExtFunct(
+        ShObjId so,
+        Id symbol,
+        type_t ret_t,
+        type_t args_t,
+        bool is_variadic = false);
 
     Ref makeFrameRef(Local var) const;
     Ref makeArgRef(size_t index) const;
