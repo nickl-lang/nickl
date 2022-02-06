@@ -245,7 +245,13 @@ void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = fal
     src << const_str;
 }
 
-void _writeFnSig(WriterCtx &ctx, stream &src, string name, type_t ret_t, type_t args_t) {
+void _writeFnSig(
+    WriterCtx &ctx,
+    stream &src,
+    string name,
+    type_t ret_t,
+    type_t args_t,
+    bool va = false) {
     _writeType(ctx, ret_t, src);
     src << " " << name << "(";
 
@@ -255,6 +261,9 @@ void _writeFnSig(WriterCtx &ctx, stream &src, string name, type_t ret_t, type_t 
         }
         _writeType(ctx, args_t->as.tuple.elems[i].type, src);
         src << " arg" << i;
+    }
+    if (va) {
+        src << ", ...";
     }
     src << ")";
 }
@@ -272,7 +281,32 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
         }
     }
 
+    for (auto const &sym : ir.exsyms) {
+        switch (sym.sym_type) {
+        case ir::Sym_Var:
+            assert(!"external vars not implemented");
+            break;
+        case ir::Sym_Funct:
+            ctx.forward_s << "extern ";
+            _writeFnSig(
+                ctx,
+                ctx.forward_s,
+                id_to_str(sym.name),
+                sym.as.funct.ret_t,
+                sym.as.funct.args_t,
+                sym.as.funct.is_variadic);
+            ctx.forward_s << ";\n";
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+    }
+
     for (auto const &f : ir.functs) {
+        _writeFnSig(ctx, ctx.forward_s, f.name, f.ret_t, f.args_t);
+        ctx.forward_s << ";\n";
+
         src << "\n";
         _writeFnSig(ctx, src, f.name, f.ret_t, f.args_t);
         src << " {\n\n";
@@ -326,7 +360,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
                     assert(!"global ref not implemented");
                     break;
                 case ir::Ref_Reg:
-                    src << "reg";
+                    src << "*((uint8_t*)&reg+" << ref.value.index * REG_SIZE << ")";
                     break;
                 case ir::Ref_ExtVar:
                     assert(!"ext var ref not implemented");
@@ -350,7 +384,8 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
 
                 src << "  ";
 
-                if (instr.arg[0].arg_type == ir::Arg_Ref) {
+                if (instr.arg[0].arg_type == ir::Arg_Ref &&
+                    instr.arg[0].as.ref.ref_type != ir::Ref_None) {
                     _writeRef(instr.arg[0].as.ref);
                     src << " = ";
                 }
@@ -394,14 +429,6 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
                         break;
                     case ir::Arg_ExtFunctId: {
                         auto &sym = ir.exsyms[instr.arg[1].as.id];
-                        ctx.forward_s << "extern ";
-                        _writeFnSig(
-                            ctx,
-                            ctx.forward_s,
-                            id_to_str(sym.name),
-                            sym.as.funct.ret_t,
-                            sym.as.funct.args_t);
-                        ctx.forward_s << ";\n";
                         src << id_to_str(sym.name);
                         break;
                     }

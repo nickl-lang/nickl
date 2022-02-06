@@ -356,7 +356,12 @@ ExtVarId ProgramBuilder::makeExtVar(ShObjId so, Id name, type_t type) {
     return {prog->exsyms.size - 1};
 }
 
-ExtFunctId ProgramBuilder::makeExtFunct(ShObjId so, Id name, type_t ret_t, type_t args_t) {
+ExtFunctId ProgramBuilder::makeExtFunct(
+    ShObjId so,
+    Id name,
+    type_t ret_t,
+    type_t args_t,
+    bool is_variadic) {
     auto &exsym = prog->exsyms.push() = {};
 
     exsym.name = name;
@@ -364,6 +369,7 @@ ExtFunctId ProgramBuilder::makeExtFunct(ShObjId so, Id name, type_t ret_t, type_
     exsym.sym_type = Sym_Funct;
     exsym.as.funct.ret_t = ret_t;
     exsym.as.funct.args_t = args_t;
+    exsym.as.funct.is_variadic = is_variadic;
 
     return {prog->exsyms.size - 1};
 }
