@@ -24,9 +24,9 @@ target_compile_definitions(${INTERP_TEST}
     PRIVATE TESTLIB_NAME="lib${TESTLIB}.so"
     )
 
-def_test(GROUP vm NAME c_compiler LINK ${LIB} test_utils TARGET C_COMPILER_TEST)
+def_test(GROUP vm NAME translate_to_c LINK ${LIB} test_utils TARGET TRANSLATE_TO_C_TEST)
 
-target_compile_definitions(${C_COMPILER_TEST}
+target_compile_definitions(${TRANSLATE_TO_C_TEST}
     PRIVATE LIBC_NAME="libc.so.6"
     PRIVATE LIBS_SEARCH_PATH="/usr/lib/"
     )

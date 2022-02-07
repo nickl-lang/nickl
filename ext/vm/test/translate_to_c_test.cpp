@@ -1,4 +1,4 @@
-#include "nk/vm/c_compiler.hpp"
+#include "nk/vm/translate_to_c.hpp"
 
 #include <gtest/gtest.h>
 
@@ -13,9 +13,9 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::c_compiler::test)
+LOG_USE_SCOPE(nk::vm::translate_to_c::test)
 
-class c_compiler : public testing::Test {
+class translate_to_c : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
@@ -65,22 +65,20 @@ protected:
     ArenaAllocator m_arena;
     ir::Program m_prog;
     ir::ProgramBuilder m_builder;
-
-    CCompiler m_compiler;
 };
 
 } // namespace
 
-TEST_F(c_compiler, basic) {
+TEST_F(translate_to_c, basic) {
     test_ir_main(m_builder);
 
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    m_compiler.compile(cstr_to_str("test"), m_prog);
+    translateToC(cstr_to_str("test"), m_prog);
 }
 
-TEST_F(c_compiler, pi) {
+TEST_F(translate_to_c, pi) {
     test_ir_pi(m_builder);
 
     auto &b = m_builder;
@@ -116,10 +114,10 @@ TEST_F(c_compiler, pi) {
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    m_compiler.compile(cstr_to_str("test"), m_prog);
+    translateToC(cstr_to_str("test"), m_prog);
 }
 
-TEST_F(c_compiler, vec2LenSquared) {
+TEST_F(translate_to_c, vec2LenSquared) {
     test_ir_vec2LenSquared(m_builder);
 
     auto &b = m_builder;
@@ -174,13 +172,5 @@ TEST_F(c_compiler, vec2LenSquared) {
     auto str = m_prog.inspect(m_arena);
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    m_compiler.compile(cstr_to_str("test"), m_prog);
-
-    bc::Program bc_prog{};
-    bc::Translator tr;
-    tr.translateFromIr(bc_prog, m_prog);
-    str = bc_prog.inspect(m_arena);
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
-    val_fn_invoke(bc_prog.funct_info.back().funct_t, {}, {});
-    bc_prog.deinit();
+    translateToC(cstr_to_str("test"), m_prog);
 }
