@@ -491,34 +491,37 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
     DEFER({ tmp_arena.deinit(); })
 
     auto void_t = type_get_void();
-    auto u8_t = type_get_numeric(Uint8);
+    auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
     auto i64_t = type_get_numeric(Int64);
 
-    auto u8_ptr_t = type_get_ptr(u8_t);
+    auto i8_ptr_t = type_get_ptr(i8_t);
 
     auto args_t = type_get_tuple(tmp_arena, {});
 
-    type_t printf_args[] = {u8_ptr_t, i64_t, i64_t, i64_t};
-    auto printf_args_t =
-        type_get_tuple(tmp_arena, {printf_args, sizeof(printf_args) / sizeof(printf_args[0])});
+    type_t pf_args[] = {i8_ptr_t, i64_t, i64_t, i64_t};
+    auto pf_args_t = type_get_tuple(tmp_arena, {pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
 
     auto f_printf = b.makeExtFunct(
-        b.makeShObj(str_to_id(libname)), cstr_to_id("test_printf"), i32_t, printf_args_t);
+        b.makeShObj(str_to_id(libname)),
+        cstr_to_id("test_printf"),
+        i32_t,
+        type_get_tuple(tmp_arena, {&i8_ptr_t, 1}),
+        true);
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("callExternalPrintf"), void_t, args_t);
 
-    auto args = b.makeFrameRef(b.makeLocalVar(printf_args_t));
+    auto args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto arg0 = args.plus(type_tuple_offset(printf_args_t, 0), u8_ptr_t);
-    auto arg1 = args.plus(type_tuple_offset(printf_args_t, 1), i64_t);
-    auto arg2 = args.plus(type_tuple_offset(printf_args_t, 2), i64_t);
-    auto arg3 = args.plus(type_tuple_offset(printf_args_t, 3), i64_t);
+    auto arg0 = args.plus(type_tuple_offset(pf_args_t, 0), i8_ptr_t);
+    auto arg1 = args.plus(type_tuple_offset(pf_args_t, 1), i64_t);
+    auto arg2 = args.plus(type_tuple_offset(pf_args_t, 2), i64_t);
+    auto arg3 = args.plus(type_tuple_offset(pf_args_t, 3), i64_t);
 
     b.startBlock(b.makeLabel(), cstr_to_str("start"));
 
-    b.gen(b.make_mov(arg0, b.makeConstRef((char const *)"%lli + %lli = %lli\n", u8_ptr_t)));
+    b.gen(b.make_mov(arg0, b.makeConstRef((char const *)"%lli + %lli = %lli\n", i8_ptr_t)));
     b.gen(b.make_mov(arg1, b.makeConstRef(4ll, i64_t)));
     b.gen(b.make_mov(arg2, b.makeConstRef(5ll, i64_t)));
     b.gen(b.make_add(arg3, arg1, arg2));
