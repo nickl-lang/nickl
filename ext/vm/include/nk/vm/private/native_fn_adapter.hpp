@@ -13,8 +13,8 @@ using native_fn_info_t = NativeFnInfo *;
 native_fn_info_t type_fn_prepareNativeInfo(
     Allocator &allocator,
     void *body_ptr,
-    type_t ret_t,
-    type_t args_t);
+    size_t argc,
+    bool is_variadic);
 
 void val_fn_invoke_native(type_t self, value_t ret, value_t args);
 

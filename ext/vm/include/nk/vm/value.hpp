@@ -112,7 +112,8 @@ type_t type_get_fn_native(
     type_t args_t,
     size_t decl_id,
     void *body_ptr,
-    void *closure);
+    void *closure,
+    bool is_variadic);
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 //@Feature Implement optimized tuple type
