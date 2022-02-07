@@ -20,6 +20,10 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
     EASY_FUNCTION(profiler::colors::Green200)
     LOG_TRC(__FUNCTION__);
 
+    if (!type) {
+        return &ffi_type_void;
+    }
+
     if (type->native_handle) {
         return (ffi_type *)type->native_handle;
     }
@@ -148,7 +152,7 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
 
     auto info = self->as.fn.body.native;
 
-    size_t const argc = val_tuple_size(args);
+    size_t const argc = val_data(args) ? val_tuple_size(args) : 0;
 
     auto rtype = _getNativeHandle(*info->type_allocator, val_typeof(ret));
     auto atypes = _getNativeHandle(*info->type_allocator, val_typeof(args));

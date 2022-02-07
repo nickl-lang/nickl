@@ -172,8 +172,11 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 ss << type_name(tmp_arena, sym.as.var.type);
                 break;
             case Sym_Funct:
-                ss << "fn{" << type_name(tmp_arena, sym.as.funct.args_t) << ", "
-                   << type_name(tmp_arena, sym.as.funct.ret_t) << "}";
+                ss << "fn{" << type_name(tmp_arena, sym.as.funct.args_t);
+                if (sym.as.funct.is_variadic) {
+                    ss << "...";
+                }
+                ss << ", " << type_name(tmp_arena, sym.as.funct.ret_t) << "}";
                 break;
             default:
                 assert(!"unreachable");
