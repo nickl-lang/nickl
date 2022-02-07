@@ -6,9 +6,7 @@
 namespace nk {
 namespace vm {
 
-struct CCompiler {
-    void compile(string name, ir::Program const &ir);
-};
+void translateToC(string filenname, ir::Program const &ir);
 
 } // namespace vm
 } // namespace nk

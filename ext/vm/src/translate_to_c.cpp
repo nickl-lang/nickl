@@ -1,4 +1,4 @@
-#include "nk/vm/c_compiler.hpp"
+#include "nk/vm/translate_to_c.hpp"
 
 #include <fstream>
 #include <limits>
@@ -583,7 +583,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
 
 } // namespace
 
-void CCompiler::compile(string name, ir::Program const &ir) {
+void translateToC(string filename, ir::Program const &ir) {
     LOG_TRC(__FUNCTION__)
 
     WriterCtx ctx{};
@@ -599,7 +599,7 @@ void CCompiler::compile(string name, ir::Program const &ir) {
 
     _writeProgram(ctx, ir);
 
-    std::ofstream file{std::string{name.data, name.size} + ".c"};
+    std::ofstream file{std::string{filename.data, filename.size} + ".c"};
     file << ctx.types_s.str() << "\n";
     file << ctx.data_s.str() << "\n";
     file << ctx.forward_s.str();
