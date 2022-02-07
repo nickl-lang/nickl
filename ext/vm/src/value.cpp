@@ -322,7 +322,8 @@ type_t type_get_fn_native(
     type_t args_t,
     size_t decl_id,
     void *body_ptr,
-    void *closure) {
+    void *closure,
+    bool is_variadic) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct {
@@ -333,6 +334,7 @@ type_t type_get_fn_native(
         void *body_ptr;
         void *closure;
         bool is_native;
+        bool is_variadic;
     } fp = {};
     fp.base.id = Type_Fn;
     fp.decl_id = decl_id;
@@ -341,14 +343,15 @@ type_t type_get_fn_native(
     fp.body_ptr = body_ptr;
     fp.closure = closure;
     fp.is_native = true;
+    fp.is_variadic = is_variadic;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body.native =
-            type_fn_prepareNativeInfo(s_typearena, body_ptr, ret_t, args_t);
+        res.type->as.fn.body.native = type_fn_prepareNativeInfo(
+            s_typearena, body_ptr, args_t->as.tuple.elems.size, is_variadic);
         res.type->as.fn.closure = closure;
         res.type->as.fn.is_native = true;
     }

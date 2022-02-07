@@ -49,8 +49,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "global+";
             break;
         case Ref_Const:
-            ss << "<" << val_inspect(tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type})
-               << ">";
+            ss << val_inspect(tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type});
             break;
         case Ref_Reg:
             ss << "reg+";
@@ -283,7 +282,12 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                 auto &exsym = ir.exsyms[ir_arg.as.id];
                 arg.ref_type = Ref_Const;
                 arg.type = type_get_fn_native(
-                    exsym.as.funct.ret_t, exsym.as.funct.args_t, 0, exsyms[ir_arg.as.id], nullptr);
+                    exsym.as.funct.ret_t,
+                    exsym.as.funct.args_t,
+                    0,
+                    exsyms[ir_arg.as.id],
+                    nullptr,
+                    exsym.as.funct.is_variadic);
                 break;
             }
             }

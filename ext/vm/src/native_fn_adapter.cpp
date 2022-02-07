@@ -121,30 +121,24 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
 } // namespace
 
 struct NativeFnInfo {
-    ffi_cif cif;
+    Allocator *type_allocator;
     void *body_ptr;
+    size_t argc;
+    bool is_variadic;
 };
 
 native_fn_info_t type_fn_prepareNativeInfo(
     Allocator &allocator,
     void *body_ptr,
-    type_t ret_t,
-    type_t args_t) {
-    auto info = allocator.alloc<NativeFnInfo>();
-
-    info->body_ptr = body_ptr;
-
-    size_t const argc = args_t->as.tuple.elems.size;
-
-    auto rtype = _getNativeHandle(allocator, ret_t);
-    auto atypes = _getNativeHandle(allocator, args_t);
-
-    ffi_status status = ffi_prep_cif(&info->cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
-    if (status != FFI_OK) {
-        assert("!ffi_prep_cif failed");
-    }
-
-    return info;
+    size_t argc,
+    bool is_variadic) {
+    auto &info = *allocator.alloc<NativeFnInfo>() = {
+        .type_allocator = &allocator,
+        .body_ptr = body_ptr,
+        .argc = argc,
+        .is_variadic = is_variadic,
+    };
+    return &info;
 }
 
 void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
@@ -154,14 +148,28 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
 
     auto info = self->as.fn.body.native;
 
-    size_t const argc = self->as.fn.args_t->as.tuple.elems.size;
+    size_t const argc = val_tuple_size(args);
+
+    auto rtype = _getNativeHandle(*info->type_allocator, val_typeof(ret));
+    auto atypes = _getNativeHandle(*info->type_allocator, val_typeof(args));
+
+    ffi_cif cif;
+    ffi_status status;
+    if (info->is_variadic) {
+        status = ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, info->argc, argc, rtype, atypes->elements);
+    } else {
+        status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
+    }
+    if (status != FFI_OK) {
+        assert("!ffi_prep_cif failed");
+    }
 
     void **argv = tmp_arena.alloc<void *>(argc);
     for (size_t i = 0; i < argc; i++) {
         argv[i] = val_data(val_tuple_at(args, i));
     }
 
-    ffi_call(&info->cif, FFI_FN(info->body_ptr), val_data(ret), argv);
+    ffi_call(&cif, FFI_FN(info->body_ptr), val_data(ret), argv);
 }
 
 } // namespace vm

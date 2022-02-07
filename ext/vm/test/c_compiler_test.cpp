@@ -4,7 +4,9 @@
 
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
+#include "nk/vm/bc.hpp"
 #include "nk/vm/ir.hpp"
+#include "nk/vm/vm.hpp"
 #include "utils/test_ir.hpp"
 
 using namespace nk::vm;
@@ -17,22 +19,21 @@ class c_compiler : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        id_init();
+        VmConfig conf{};
+        string paths[] = {cstr_to_str(LIBS_SEARCH_PATH)};
+        conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
+        vm_init(conf);
 
         m_arena.init();
-        types_init();
-
         m_prog.init();
         m_builder.init(m_prog);
     }
 
     void TearDown() override {
         m_prog.deinit();
-
-        types_deinit();
         m_arena.deinit();
 
-        id_deinit();
+        vm_deinit();
     }
 
 protected:
@@ -174,4 +175,12 @@ TEST_F(c_compiler, vec2LenSquared) {
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     m_compiler.compile(cstr_to_str("test"), m_prog);
+
+    bc::Program bc_prog{};
+    bc::Translator tr;
+    tr.translateFromIr(bc_prog, m_prog);
+    str = bc_prog.inspect(m_arena);
+    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
+    val_fn_invoke(bc_prog.funct_info.back().funct_t, {}, {});
+    bc_prog.deinit();
 }
