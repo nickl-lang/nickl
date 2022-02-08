@@ -1,11 +1,7 @@
 #ifndef HEADER_GUARD_NKL_CORE_COMMON
 #define HEADER_GUARD_NKL_CORE_COMMON
 
-#include <cstddef>
-#include <cstring>
-#include <string_view>
-
-#include "nk/common/common.hpp"
+#include <cstdint>
 
 union NumericVariant {
     int8_t i8;

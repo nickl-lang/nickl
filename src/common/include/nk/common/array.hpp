@@ -17,13 +17,13 @@ struct Array : Slice<T> {
     using Slice<T>::size;
     size_t capacity;
 
-    static Array create(size_t cap = c_init_capacity) {
+    static Array create(size_t cap = 0) {
         Array ar;
         ar.init(cap);
         return ar;
     }
 
-    void init(size_t cap = c_init_capacity) {
+    void init(size_t cap = 0) {
         size = 0;
         capacity = cap;
         data = nullptr;
@@ -32,7 +32,7 @@ struct Array : Slice<T> {
     }
 
     void deinit() {
-        lang_free(data);
+        _mctx.def_allocator->free(data);
 
         size = 0;
         capacity = 0;
@@ -79,12 +79,10 @@ struct Array : Slice<T> {
     }
 
     Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
-        return {data + i, std::min(n, size)};
+        return {data + i, minu(n, size)};
     }
 
 private:
-    static constexpr size_t c_init_capacity = 0;
-
     T *_top() const {
         assert((!size || data) && "uninitialized array access");
         return data + size;
@@ -92,10 +90,11 @@ private:
 
     void _realloc(size_t cap) {
         if (cap > 0) {
-            //@Refactor Use the default allocator instead of lang_* directly in Array
-            void *new_data =
-                lang_realloc((void *)data, (capacity = ceilToPowerOf2(cap)) * sizeof(T));
+            capacity = ceilToPowerOf2(cap);
+            void *new_data = _mctx.def_allocator->alloc(capacity * sizeof(T));
             assert(new_data && "allocation failed");
+            std::memcpy(new_data, data, size * sizeof(T));
+            _mctx.def_allocator->free(data);
             data = (T *)new_data;
         }
     }

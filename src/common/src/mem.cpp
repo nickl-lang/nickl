@@ -3,33 +3,11 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "nk/common/arena.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
 
 LOG_USE_SCOPE(mem)
-
-void *lang_malloc(size_t size) {
-    EASY_FUNCTION(profiler::colors::Grey200)
-
-    void *mem = std::malloc(size);
-    LOG_TRC("malloc(size=%lu) -> %p", size, mem)
-    return mem;
-}
-
-void *lang_realloc(void *ptr, size_t new_size) {
-    EASY_FUNCTION(profiler::colors::Grey200)
-
-    void *mem = std::realloc(ptr, new_size);
-    LOG_TRC("realloc(ptr=%p, new_size=%lu) -> %p", ptr, new_size, mem)
-    return mem;
-}
-
-void lang_free(void *ptr) {
-    EASY_FUNCTION(profiler::colors::Grey200)
-
-    LOG_TRC("free(ptr=%p)", ptr)
-    std::free(ptr);
-}
 
 void *Allocator::alloc_aligned(size_t size, size_t align) {
     EASY_FUNCTION(profiler::colors::Grey200)
@@ -54,9 +32,23 @@ void Allocator::free_aligned(void *ptr) {
 }
 
 void *LibcAllocator::alloc(size_t size) {
-    return lang_malloc(size);
+    EASY_FUNCTION(profiler::colors::Grey200)
+
+    void *mem = std::malloc(size);
+    LOG_TRC("malloc(size=%lu) -> %p", size, mem)
+    return mem;
 }
 
 void LibcAllocator::free(void *ptr) {
-    lang_free(ptr);
+    EASY_FUNCTION(profiler::colors::Grey200)
+
+    LOG_TRC("free(ptr=%p)", ptr)
+    std::free(ptr);
 }
+
+static LibcAllocator s_libc_allocator;
+
+thread_local MemCtx _mctx{
+    .def_allocator = &s_libc_allocator,
+    .tmp_allocator = &s_libc_allocator,
+};

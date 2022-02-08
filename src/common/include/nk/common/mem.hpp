@@ -3,10 +3,6 @@
 
 #include <cstddef>
 
-void *lang_malloc(size_t size);
-void *lang_realloc(void *ptr, size_t new_size);
-void lang_free(void *ptr);
-
 struct Allocator {
     virtual void *alloc(size_t size) = 0;
     virtual void free(void *ptr) = 0;
@@ -26,5 +22,12 @@ struct LibcAllocator : Allocator {
 
     using Allocator::alloc;
 };
+
+struct MemCtx {
+    Allocator *def_allocator;
+    Allocator *tmp_allocator;
+};
+
+extern thread_local MemCtx _mctx;
 
 #endif // HEADER_GUARD_NK_COMMON_MEM

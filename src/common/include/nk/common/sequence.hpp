@@ -17,15 +17,15 @@ struct Sequence {
     size_t _bi; // block index
     size_t _ic; // initial capacity
 
-    static Sequence create(size_t cap = c_init_capacity) {
+    static Sequence create(size_t cap = INIT_CAPACITY) {
         Sequence seq;
         seq.init(cap);
         return seq;
     }
 
-    void init(size_t cap = c_init_capacity) {
+    void init(size_t cap = INIT_CAPACITY) {
         size = 0;
-        _block_table.init(c_init_block_arr_capacity);
+        _block_table.init(INIT_BLOCK_TAB_CAPACITY);
         _bi = 0;
         _ic = ceilToPowerOf2(cap);
 
@@ -35,7 +35,7 @@ struct Sequence {
     void deinit() {
         _block_ptr *pblock = _block_table.data;
         for (_block_ptr *end = pblock + _block_table.size; pblock != end; pblock++) {
-            lang_free(*pblock);
+            _mctx.def_allocator->free(*pblock);
         }
 
         _block_table.deinit();
@@ -87,8 +87,8 @@ struct Sequence {
     }
 
 private:
-    static constexpr size_t c_init_block_arr_capacity = 8;
-    static constexpr size_t c_init_capacity = 64;
+    static constexpr size_t INIT_BLOCK_TAB_CAPACITY = 8;
+    static constexpr size_t INIT_CAPACITY = 64;
 
     static size_t _indexRemainder(size_t i, size_t ic) {
         return i + ic - floorToPowerOf2(i + ic);
@@ -112,8 +112,8 @@ private:
     }
 
     void _allocateBlock(size_t bi) {
-        //@Refactor Use the default allocator instead of lang_* directly in Sequence
-        _block_table.push() = (_block_ptr)lang_malloc(_blockDataSize(bi, _ic) * sizeof(T));
+        _block_table.push() =
+            (_block_ptr)_mctx.def_allocator->alloc(_blockDataSize(bi, _ic) * sizeof(T));
     }
 
     void _expand(size_t n) {

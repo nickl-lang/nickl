@@ -9,13 +9,14 @@
 #include <functional>
 #include <memory>
 
-#include "nk/common/common.hpp"
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
 
 #define _CAT(x, y) x##y
 #define CAT(x, y) _CAT(x, y)
 #define DEFER(BLOCK) std::shared_ptr<void> CAT(__defer_, __LINE__){nullptr, [&](void *) BLOCK};
+
+using hash_t = size_t;
 
 inline size_t roundUp(size_t v, size_t m) {
     return (v + m - 1) / m * m;
