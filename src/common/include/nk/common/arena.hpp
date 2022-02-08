@@ -7,6 +7,7 @@
 #include "nk/common/mem.hpp"
 #include "nk/common/sequence.hpp"
 
+//@Refactor Implement ArenaAllocator with a freelist underlying container
 struct ArenaAllocator : SeqAllocator {
     void *alloc(size_t size) override;
     void free(void *ptr) override;

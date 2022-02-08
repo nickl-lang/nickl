@@ -90,7 +90,6 @@ void _setupFrame(type_t frame_t, value_t ret, value_t args) {
         .pinstr = ctx.pinstr,
     };
 
-    //@Refactor Implement stack frame push/pop with Sequence
     ctx.stack_frame_base = ctx.stack.size();
     ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
     ctx.base.arg = (uint8_t *)val_data(args);
