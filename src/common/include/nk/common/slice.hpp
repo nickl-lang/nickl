@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NK_COMMON_SLICE
 #define HEADER_GUARD_NK_COMMON_SLICE
 
+#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
@@ -40,20 +41,17 @@ struct Slice {
     constexpr iterator end() const noexcept {
         return data + size;
     }
+
+    void copy(Slice<T> &dst, Allocator &allocator) const {
+        auto mem = allocator.alloc<std::decay_t<T>>(size);
+        std::memcpy(mem, data, size * sizeof(T));
+        dst = {mem, size};
+    }
+
+    void copy(Slice<std::decay_t<T>> dst) const {
+        assert(dst.size >= size && "copying to a slice of insufficient size");
+        std::memcpy(dst.data, data, size * sizeof(T));
+    }
 };
-
-template <class TSlice>
-TSlice copy(TSlice slice, Allocator &allocator) {
-    using T = std::decay_t<typename TSlice::value_type>;
-    T *mem = allocator.alloc<T>(slice.size);
-    std::memcpy(mem, slice.data, slice.size * sizeof(T));
-    return {mem, slice.size};
-}
-
-template <class TSlice, class T = std::decay_t<typename TSlice::value_type>>
-T *copy(TSlice slice, T *buf) {
-    std::memcpy(buf, slice.data, slice.size * sizeof(T));
-    return buf + slice.size;
-}
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE

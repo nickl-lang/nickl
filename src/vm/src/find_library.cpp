@@ -25,7 +25,7 @@ void findLibrary_init(FindLibraryConfig const &conf) {
 
     s_search_paths.init(conf.search_paths.size);
     for (auto path : conf.search_paths) {
-        s_search_paths.push() = copy(path, s_arena);
+        path.copy(s_search_paths.push(), s_arena);
     }
 }
 
@@ -46,9 +46,9 @@ bool findLibrary(string name, Slice<char> &buf) {
             return false;
         }
 
-        char *name_buf = copy(path, buf.data);
-        char *null = copy(name, name_buf);
-        null[0] = 0;
+        path.copy({buf.data, MAX_PATH});
+        name.copy({buf.data + path.size, MAX_PATH});
+        buf[size] = 0;
 
         if (std::filesystem::exists(buf.data)) {
             buf.size = size;

@@ -134,7 +134,9 @@ string Program::inspect() {
     _inspect(*this, ss);
     auto str = ss.str();
 
-    return copy(string{str.data(), str.size()}, *_mctx.tmp_allocator);
+    string res;
+    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
+    return res;
 }
 
 void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
