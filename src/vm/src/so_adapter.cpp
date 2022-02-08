@@ -35,8 +35,8 @@ void *resolveSym(void *handle, string sym) {
     LOG_TRC(__FUNCTION__);
     LOG_DBG("sym=%.*s", sym.size, sym.data);
     char name_buf[c_max_name];
-    char *null = copy(sym, name_buf);
-    null[0] = 0;
+    sym.copy({name_buf, c_max_name});
+    name_buf[sym.size] = 0;
     void *res = dlsym(handle, name_buf);
     LOG_DBG("addr=%p", res);
     return res;

@@ -130,7 +130,7 @@ void _writeType(WriterCtx &ctx, type_t type, stream &src) {
     }
 
     auto &type_str = ctx.type_map.insert(type);
-    type_str = copy(string{tmp_str.data(), tmp_str.size()}, *_mctx.tmp_allocator);
+    string{tmp_str.data(), tmp_str.size()}.copy(type_str, *_mctx.tmp_allocator);
     src << type_str;
 }
 
@@ -239,7 +239,7 @@ void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = fal
     }
 
     auto &const_str = ctx.const_map.insert(val);
-    const_str = copy(string{tmp_str.data(), tmp_str.size()}, *_mctx.tmp_allocator);
+    string{tmp_str.data(), tmp_str.size()}.copy(const_str, *_mctx.tmp_allocator);
     src << const_str;
 }
 

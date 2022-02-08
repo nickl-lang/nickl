@@ -274,7 +274,9 @@ string Program::inspect() {
     _inspect(*this, ss);
     auto str = ss.str();
 
-    return copy(string{str.data(), str.size()}, *_mctx.tmp_allocator);
+    string res;
+    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
+    return res;
 }
 
 void ProgramBuilder::init(Program &prog) {
@@ -302,7 +304,7 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
     auto &funct = prog->functs.push() = {};
 
     funct.id = funct_id.id;
-    funct.name = copy(name, prog->arena);
+    name.copy(funct.name, prog->arena);
     funct.ret_t = ret_t;
     funct.args_t = args_t;
 
@@ -317,7 +319,7 @@ void ProgramBuilder::startBlock(BlockId block_id, string name) {
     auto &block = prog->blocks.push() = {};
 
     block.id = block_id.id;
-    block.name = copy(name, prog->arena);
+    name.copy(block.name, prog->arena);
 
     block.first_instr = prog->instrs.size;
 
@@ -331,8 +333,8 @@ void ProgramBuilder::comment(string str) {
 
     assert(m_cur_block && "no current block");
 
-    (m_cur_block->instr_count ? prog->instrs.back().comment : m_cur_block->comment) =
-        copy(str, prog->arena);
+    str.copy(
+        m_cur_block->instr_count ? prog->instrs.back().comment : m_cur_block->comment, prog->arena);
 }
 
 Local ProgramBuilder::makeLocalVar(type_t type) {

@@ -452,7 +452,9 @@ string type_name(type_t type) {
     _typeName(type, ss);
     auto str = ss.str();
 
-    return copy(string{str.data(), str.size()}, *_mctx.tmp_allocator);
+    string res;
+    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
+    return res;
 }
 
 string val_inspect(value_t val) {
@@ -462,7 +464,9 @@ string val_inspect(value_t val) {
     _valInspect(val, ss);
     auto str = ss.str();
 
-    return copy(string{str.data(), str.size()}, *_mctx.tmp_allocator);
+    string res;
+    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
+    return res;
 }
 
 size_t val_tuple_size(value_t self) {
