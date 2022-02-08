@@ -192,7 +192,6 @@ struct ProgramBuilder {
     BlockId makeLabel();
     ShObjId makeShObj(Id name);
 
-    //@Refactor Maybe IR functions don't need ids just like shobjs
     void startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t);
     void startBlock(BlockId block_id, string name);
 

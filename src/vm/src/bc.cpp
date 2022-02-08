@@ -388,60 +388,16 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                 case ir::ir_not:
                     code = op_not;
                     break;
-                case ir::ir_add:
-                    numOp(op_add);
-                    break;
-                case ir::ir_sub:
-                    numOp(op_sub);
-                    break;
-                case ir::ir_mul:
-                    numOp(op_mul);
-                    break;
-                case ir::ir_div:
-                    numOp(op_div);
-                    break;
-                case ir::ir_mod:
-                    numOpInt(op_mod);
-                    break;
-                case ir::ir_bitand:
-                    numOpInt(op_bitand);
-                    break;
-                case ir::ir_bitor:
-                    numOpInt(op_bitor);
-                    break;
-                case ir::ir_xor:
-                    numOpInt(op_xor);
-                    break;
-                case ir::ir_lsh:
-                    numOpInt(op_lsh);
-                    break;
-                case ir::ir_rsh:
-                    numOpInt(op_rsh);
-                    break;
-                case ir::ir_and:
-                    numOp(op_and);
-                    break;
-                case ir::ir_or:
-                    numOp(op_or);
-                    break;
-                case ir::ir_eq:
-                    numOp(op_eq);
-                    break;
-                case ir::ir_ge:
-                    numOp(op_ge);
-                    break;
-                case ir::ir_gt:
-                    numOp(op_gt);
-                    break;
-                case ir::ir_le:
-                    numOp(op_le);
-                    break;
-                case ir::ir_lt:
-                    numOp(op_lt);
-                    break;
-                case ir::ir_ne:
-                    numOp(op_ne);
-                    break;
+#define NUM_X(NAME)       \
+    case ir::ir_##NAME:   \
+        numOp(op_##NAME); \
+        break;
+#include "nk/vm/op.inl"
+#define NUM_INT_X(NAME)      \
+    case ir::ir_##NAME:      \
+        numOpInt(op_##NAME); \
+        break;
+#include "nk/vm/op.inl"
                 default:
                     assert(!"unreachable");
                     break;

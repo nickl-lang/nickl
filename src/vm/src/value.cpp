@@ -313,7 +313,6 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
     return res.type;
 }
 
-//@Refactor Boilerplate in type_get_fn_native
 type_t type_get_fn_native(
     type_t ret_t,
     type_t args_t,
