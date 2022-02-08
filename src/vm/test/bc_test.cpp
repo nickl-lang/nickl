@@ -52,10 +52,10 @@ TEST_F(bytecode, plus) {
     test_ir_plus(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
-    auto str = m_ir_prog.inspect(m_arena);
+    auto str = m_ir_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(m_arena);
+    str = m_prog.inspect();
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }
 
@@ -63,10 +63,10 @@ TEST_F(bytecode, not ) {
     test_ir_not(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
-    auto str = m_ir_prog.inspect(m_arena);
+    auto str = m_ir_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(m_arena);
+    str = m_prog.inspect();
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }
 
@@ -74,9 +74,9 @@ TEST_F(bytecode, atan) {
     test_ir_atan(m_builder);
     m_translator.translateFromIr(m_prog, m_ir_prog);
 
-    auto str = m_ir_prog.inspect(m_arena);
+    auto str = m_ir_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    str = m_prog.inspect(m_arena);
+    str = m_prog.inspect();
     LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 }

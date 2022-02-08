@@ -21,11 +21,10 @@ static char const *s_ir_names[] = {
 };
 
 void _inspect(Program const &prog, std::ostringstream &ss) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
+    auto &allocator = *_mctx.tmp_allocator;
 
-    auto funct_by_id = tmp_arena.alloc<Funct const *>(prog.functs.size);
-    auto block_by_id = tmp_arena.alloc<Block const *>(prog.blocks.size);
+    auto funct_by_id = allocator.alloc<Funct const *>(prog.functs.size);
+    auto block_by_id = allocator.alloc<Block const *>(prog.blocks.size);
 
     for (auto const &funct : prog.functs) {
         funct_by_id[funct.id] = &funct;
@@ -47,10 +46,10 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                 ss << ", ";
             }
             auto arg_t = funct.args_t->as.tuple.elems[i].type;
-            ss << "$arg" << i << ":" << type_name(tmp_arena, arg_t);
+            ss << "$arg" << i << ":" << type_name(arg_t);
         }
 
-        ss << ") -> " << type_name(tmp_arena, funct.ret_t) << " {\n\n";
+        ss << ") -> " << type_name(funct.ret_t) << " {\n\n";
 
         for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
             auto const first_p = ss.tellp();
@@ -87,7 +86,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
-                        ss << val_inspect(tmp_arena, value_t{ref.value.data, ref.type});
+                        ss << val_inspect(value_t{ref.value.data, ref.type});
                         break;
                     case Ref_Reg:
                         ss << "$r" << (char)('a' + ref.value.index);
@@ -107,7 +106,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     if (ref.post_offset) {
                         ss << "+" << ref.post_offset;
                     }
-                    ss << ":" << type_name(tmp_arena, ref.type);
+                    ss << ":" << type_name(ref.type);
                 };
 
                 auto const first_p = ss.tellp();
@@ -169,14 +168,14 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "\n" << id_to_str(prog.shobjs[sym.so_id]) << " " << id_to_str(sym.name) << ":";
             switch (sym.sym_type) {
             case Sym_Var:
-                ss << type_name(tmp_arena, sym.as.var.type);
+                ss << type_name(sym.as.var.type);
                 break;
             case Sym_Funct:
-                ss << "fn{" << type_name(tmp_arena, sym.as.funct.args_t);
+                ss << "fn{" << type_name(sym.as.funct.args_t);
                 if (sym.as.funct.is_variadic) {
                     ss << "...";
                 }
-                ss << ", " << type_name(tmp_arena, sym.as.funct.ret_t) << "}";
+                ss << ", " << type_name(sym.as.funct.ret_t) << "}";
                 break;
             default:
                 assert(!"unreachable");
@@ -270,12 +269,12 @@ void Program::deinit() {
     functs.deinit();
 }
 
-string Program::inspect(Allocator &allocator) {
+string Program::inspect() {
     std::ostringstream ss;
     _inspect(*this, ss);
     auto str = ss.str();
 
-    return copy(string{str.data(), str.size()}, allocator);
+    return copy(string{str.data(), str.size()}, *_mctx.tmp_allocator);
 }
 
 void ProgramBuilder::init(Program &prog) {

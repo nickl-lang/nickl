@@ -43,7 +43,7 @@ protected:
         auto argv_t = type_get_ptr(type_get_ptr(i8_t));
 
         type_t args[] = {i32_t, argv_t};
-        auto args_t = type_get_tuple(m_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+        auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
         m_builder.startFunct(m_builder.makeFunct(), cstr_to_str("main"), i32_t, args_t);
         m_builder.startBlock(m_builder.makeLabel(), cstr_to_str("start"));
@@ -54,7 +54,7 @@ protected:
         auto i8_ptr_t = type_get_ptr(type_get_numeric(Int8));
 
         type_t args[] = {i8_ptr_t};
-        auto args_t = type_get_tuple(m_arena, {args, sizeof(args) / sizeof(args[0])});
+        auto args_t = type_get_tuple({args, sizeof(args) / sizeof(args[0])});
 
         auto f_printf = m_builder.makeExtFunct(
             m_builder.makeShObj(cstr_to_id(LIBC_NAME)), cstr_to_id("printf"), i32_t, args_t, true);
@@ -72,7 +72,7 @@ protected:
 TEST_F(translate_to_c, basic) {
     test_ir_main(m_builder);
 
-    auto str = m_prog.inspect(m_arena);
+    auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     translateToC(cstr_to_str("test"), m_prog);
@@ -95,7 +95,7 @@ TEST_F(translate_to_c, pi) {
     _startMain();
 
     type_t pf_args[] = {i8_ptr_t, f64_t};
-    auto pf_args_t = type_get_tuple(m_arena, {pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
+    auto pf_args_t = type_get_tuple({pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
 
     auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
@@ -111,7 +111,7 @@ TEST_F(translate_to_c, pi) {
 
     b.gen(b.make_ret());
 
-    auto str = m_prog.inspect(m_arena);
+    auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     translateToC(cstr_to_str("test"), m_prog);
@@ -127,7 +127,7 @@ TEST_F(translate_to_c, vec2LenSquared) {
     auto f64_t = type_get_numeric(Float64);
 
     type_t vec_types[] = {f64_t, f64_t};
-    auto vec_t = type_get_tuple(m_arena, {vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
+    auto vec_t = type_get_tuple({vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
 
     auto f_printf = _makePrintf();
     auto f_vec2LenSquared = ir::FunctId{b.prog->functs[0].id};
@@ -153,7 +153,7 @@ TEST_F(translate_to_c, vec2LenSquared) {
     b.gen(b.make_call({}, f_vec2LenSquared, v_args));
 
     type_t pf_args[] = {i8_ptr_t, f64_t};
-    auto pf_args_t = type_get_tuple(m_arena, {pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
+    auto pf_args_t = type_get_tuple({pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
 
     auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
@@ -169,7 +169,7 @@ TEST_F(translate_to_c, vec2LenSquared) {
 
     b.gen(b.make_ret());
 
-    auto str = m_prog.inspect(m_arena);
+    auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
     translateToC(cstr_to_str("test"), m_prog);

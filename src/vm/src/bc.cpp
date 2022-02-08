@@ -25,9 +25,6 @@ namespace {
 LOG_USE_SCOPE(nk::vm)
 
 void _inspect(Program const &prog, std::ostringstream &ss) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     ss << std::hex << std::setfill(' ') << std::left;
     static constexpr std::streamoff c_padding = 8;
 
@@ -49,7 +46,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "global+";
             break;
         case Ref_Const:
-            ss << val_inspect(tmp_arena, value_t{prog.rodata.data + arg.offset, arg.type});
+            ss << val_inspect(value_t{prog.rodata.data + arg.offset, arg.type});
             break;
         case Ref_Reg:
             ss << "reg+";
@@ -74,7 +71,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
             ss << "+" << arg.post_offset;
         }
         if (arg.type) {
-            ss << ":" << type_name(tmp_arena, arg.type);
+            ss << ":" << type_name(arg.type);
         }
     };
 
@@ -132,12 +129,12 @@ void Program::deinit() {
     instrs.deinit();
 }
 
-string Program::inspect(Allocator &allocator) {
+string Program::inspect() {
     std::ostringstream ss;
     _inspect(*this, ss);
     auto str = ss.str();
 
-    return copy(string{str.data(), str.size()}, allocator);
+    return copy(string{str.data(), str.size()}, *_mctx.tmp_allocator);
 }
 
 void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
@@ -164,15 +161,14 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
 
     assert(ir.next_funct_id == ir.functs.size && "ill-formed ir");
 
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); });
+    auto &allocator = *_mctx.tmp_allocator;
 
-    auto block_info_ar = tmp_arena.alloc<BlockInfo>(ir.blocks.size);
+    auto block_info_ar = allocator.alloc<BlockInfo>(ir.blocks.size);
 
     Array<Reloc> relocs{};
     DEFER({ relocs.deinit(); });
 
-    prog.globals_t = type_get_tuple(tmp_arena, {ir.globals.data, ir.globals.size});
+    prog.globals_t = type_get_tuple({ir.globals.data, ir.globals.size});
     if (prog.globals_t->size > 0) {
         prog.globals.push(prog.globals_t->size);
         LOG_DBG("allocating global storage: %p", prog.globals.data)
@@ -191,7 +187,7 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
         assert(so && "failed to open a shared object");
     }
 
-    auto exsyms = tmp_arena.alloc<void *>(ir.exsyms.size);
+    auto exsyms = allocator.alloc<void *>(ir.exsyms.size);
 
     for (size_t i = 0; auto const &exsym : ir.exsyms) {
         void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
@@ -204,7 +200,7 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
 
         auto &funct_info = prog.funct_info[funct.id] = {};
         funct_info.prog = &prog;
-        funct_info.frame_t = type_get_tuple(tmp_arena, {funct.locals.data, funct.locals.size});
+        funct_info.frame_t = type_get_tuple({funct.locals.data, funct.locals.size});
         funct_info.first_instr = prog.instrs.size;
 
         funct_info.funct_t =

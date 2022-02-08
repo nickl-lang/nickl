@@ -24,7 +24,7 @@ hash_t hash_array(uint8_t const *begin, uint8_t const *end) {
     return hash;
 }
 
-string string_format(Allocator *allocator, char const *fmt, ...) {
+string string_format(Allocator &allocator, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     string str = string_vformat(allocator, fmt, ap);
@@ -32,14 +32,14 @@ string string_format(Allocator *allocator, char const *fmt, ...) {
     return str;
 }
 
-string string_vformat(Allocator *allocator, char const *fmt, va_list ap) {
+string string_vformat(Allocator &allocator, char const *fmt, va_list ap) {
     va_list ap_copy;
 
     va_copy(ap_copy, ap);
     size_t const n = std::vsnprintf(nullptr, 0, fmt, ap_copy);
     va_end(ap_copy);
 
-    char *data = allocator->alloc<char>(n + 1);
+    char *data = allocator.alloc<char>(n + 1);
 
     va_copy(ap_copy, ap);
     std::vsnprintf(data, n + 1, fmt, ap_copy);

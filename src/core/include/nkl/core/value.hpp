@@ -160,24 +160,23 @@ type_t type_get_array(type_t elem_type, size_t elem_count);
 type_t type_get_array_ptr(type_t elem_type);
 type_t type_get_bool();
 type_t type_get_fn(
-    Allocator *tmp_allocator,
     type_t ret_type,
     TypeArray param_types,
     size_t decl_id,
     FuncPtr body,
     void *closure,
     bool args_passthrough);
-type_t type_get_fn_ptr(Allocator *tmp_allocator, type_t ret_type, TypeArray param_types);
+type_t type_get_fn_ptr(type_t ret_type, TypeArray param_types);
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 type_t type_get_string();
-type_t type_get_struct(Allocator *tmp_allocator, NameTypeArray fields, size_t decl_id);
+type_t type_get_struct(NameTypeArray fields, size_t decl_id);
 type_t type_get_symbol();
-type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types);
+type_t type_get_tuple(TypeArray types);
 type_t type_get_typeref();
 type_t type_get_void();
 
-string type_name(Allocator *allocator, type_t type);
+string type_name(type_t type);
 
 value_t val_undefined();
 

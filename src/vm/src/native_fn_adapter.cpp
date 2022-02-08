@@ -146,10 +146,6 @@ void *type_fn_prepareNativeInfo(
 }
 
 void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
-    //@Refactor Somehow allocate ffi arguments on the stack???
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto &info = *(NativeFnInfo *)self->as.fn.body.native_fn_info;
 
     size_t const argc = val_data(args) ? val_tuple_size(args) : 0;
@@ -168,7 +164,8 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
         assert("!ffi_prep_cif failed");
     }
 
-    void **argv = tmp_arena.alloc<void *>(argc);
+    //@Refactor Somehow allocate ffi arguments on the stack???
+    void **argv = _mctx.tmp_allocator->alloc<void *>(argc);
     for (size_t i = 0; i < argc; i++) {
         argv[i] = val_data(val_tuple_at(args, i));
     }

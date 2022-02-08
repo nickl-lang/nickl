@@ -15,11 +15,14 @@ class value : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         m_arena.init();
+        _mctx.tmp_allocator = &m_arena;
+
         types_init();
     }
 
     void TearDown() override {
         types_deinit();
+
         m_arena.deinit();
     }
 
@@ -38,7 +41,7 @@ TEST_F(value, array) {
     EXPECT_EQ(type->typeclass_id, Type_Array);
     EXPECT_EQ(type->size, c_array_size * i32_t->size);
     EXPECT_EQ(type->alignment, i32_t->alignment);
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"array{i32, 42}"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"array{i32, 42}"});
 
     EXPECT_EQ(type, type_get_array(i32_t, c_array_size));
 
@@ -53,7 +56,7 @@ TEST_F(value, ptr) {
     EXPECT_EQ(type->typeclass_id, Type_Ptr);
     EXPECT_EQ(type->size, sizeof(void *));
     EXPECT_EQ(type->alignment, alignof(void *));
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"ptr{void}"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"ptr{void}"});
 
     EXPECT_EQ(type, type_get_ptr(void_t));
 
@@ -73,14 +76,14 @@ TEST_F(value, fn) {
     type_t params[] = {i64_t, i64_t};
     TypeArray params_ar{params, sizeof(params) / sizeof(params[0])};
 
-    auto const params_t = type_get_tuple(m_arena, params_ar);
+    auto const params_t = type_get_tuple(params_ar);
 
     auto const type = type_get_fn(i64_t, params_t, 0, _plus, nullptr);
 
     EXPECT_EQ(type->typeclass_id, Type_Fn);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"fn{(i64, i64), i64}"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"fn{(i64, i64), i64}"});
 
     EXPECT_EQ(type, type_get_fn(i64_t, params_t, 0, _plus, nullptr));
 
@@ -107,7 +110,7 @@ TEST_F(value, numeric) {
     EXPECT_EQ(type->typeclass_id, Type_Numeric);
     EXPECT_EQ(type->size, 4);
     EXPECT_EQ(type->alignment, 4);
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"i32"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"i32"});
 
     EXPECT_EQ(type, type_get_numeric(Int32));
     EXPECT_NE(type, type_get_numeric(Int64));
@@ -119,7 +122,7 @@ TEST_F(value, numeric) {
         EXPECT_EQ(type->size, size);
         EXPECT_EQ(type->alignment, size);
 
-        EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{name});
+        EXPECT_EQ(std_view(type_name(type)), std::string_view{name});
     };
 
     test_num(Int8, 1, "i8");
@@ -138,14 +141,14 @@ TEST_F(value, tuple) {
     type_t types[] = {type_get_void(), type_get_typeref(), type_get_numeric(Int16)};
     TypeArray types_ar{types, sizeof(types) / sizeof(types[0])};
 
-    auto const type = type_get_tuple(m_arena, types_ar);
+    auto const type = type_get_tuple(types_ar);
 
     EXPECT_EQ(type->typeclass_id, Type_Tuple);
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"tuple{void, type, i16}"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"tuple{void, type, i16}"});
 
-    EXPECT_EQ(type, type_get_tuple(m_arena, types_ar));
+    EXPECT_EQ(type, type_get_tuple(types_ar));
 
     ASSERT_EQ(type->as.tuple.elems.size, 3);
 
@@ -163,7 +166,7 @@ TEST_F(value, typeref) {
     EXPECT_EQ(type->typeclass_id, Type_Typeref);
     EXPECT_EQ(type->size, sizeof(size_t));
     EXPECT_EQ(type->alignment, alignof(type_t));
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"type"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"type"});
 
     EXPECT_EQ(type, type_get_typeref());
 }
@@ -174,7 +177,7 @@ TEST_F(value, void) {
     EXPECT_EQ(type->typeclass_id, Type_Void);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(std_view(type_name(m_arena, type)), std::string_view{"void"});
+    EXPECT_EQ(std_view(type_name(type)), std::string_view{"void"});
 
     EXPECT_EQ(type, type_get_void());
 }

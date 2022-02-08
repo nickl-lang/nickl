@@ -13,6 +13,11 @@ struct VmConfig {
 void vm_init(VmConfig const &conf);
 void vm_deinit();
 
+void vm_enterThread();
+void vm_leaveThread();
+
+void vm_clearTmpArena();
+
 } // namespace vm
 } // namespace nk
 

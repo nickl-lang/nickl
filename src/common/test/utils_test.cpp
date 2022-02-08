@@ -125,7 +125,7 @@ TEST(utils, format) {
     auto arena = ArenaAllocator::create();
     DEFER({ arena.deinit(); })
 
-    auto str = string_format(&arena, "%.2lf", 3.14);
+    auto str = string_format(arena, "%.2lf", 3.14);
     EXPECT_EQ(std_view(str), std::string_view("3.14"));
 }
 

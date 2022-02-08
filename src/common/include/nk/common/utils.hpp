@@ -108,8 +108,8 @@ inline hash_t hash_str(string str) {
     return hash_cstrn(str.data, str.size);
 }
 
-string string_format(Allocator *allocator, char const *fmt, ...);
-string string_vformat(Allocator *allocator, char const *fmt, va_list ap);
+string string_format(Allocator &allocator, char const *fmt, ...);
+string string_vformat(Allocator &allocator, char const *fmt, va_list ap);
 
 template <class THeader, class TElem>
 size_t arrayWithHeaderSize(size_t n) {

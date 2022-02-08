@@ -79,17 +79,19 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     return _TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
 }
 
-string _typeName(Allocator *allocator, type_t type) {
+string _typeName(type_t type) {
+    auto &allocator = *_mctx.tmp_allocator;
+
     switch (type->typeclass_id) {
     case Type_Any:
         return cstr_to_str("any");
     case Type_Array: {
-        string s = _typeName(allocator, type->as.arr_t.elem_type);
+        string s = _typeName(type->as.arr_t.elem_type);
         return string_format(
             allocator, "Array(%.*s, %lu)", s.size, s.data, type->as.arr_t.elem_count);
     }
     case Type_ArrayPtr: {
-        string s = _typeName(allocator, type->as.arr_ptr_t.elem_type);
+        string s = _typeName(type->as.arr_ptr_t.elem_type);
         return string_format(allocator, "ArrayPtr(%.*s)", s.size, s.data);
     }
     case Type_Bool:
@@ -121,7 +123,7 @@ string _typeName(Allocator *allocator, type_t type) {
             return string{nullptr, 0};
         }
     case Type_Ptr: {
-        string s = _typeName(allocator, type->as.ptr_t.target_type);
+        string s = _typeName(type->as.ptr_t.target_type);
         return string_format(allocator, "Ptr(%.*s)", s.size, s.data);
     }
     case Type_String:
@@ -137,7 +139,7 @@ string _typeName(Allocator *allocator, type_t type) {
         TupleElemInfoArray const info = type->as.tuple_t.types;
         for (size_t i = 0; i < info.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string ts = _typeName(allocator, info[i].type);
+            string ts = _typeName(info[i].type);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
         s = string_format(allocator, "%.*s)", s.size, s.data);
@@ -149,7 +151,7 @@ string _typeName(Allocator *allocator, type_t type) {
         auto const fields = type->as.struct_t.fields;
         for (size_t i = 0; i < info.size; i++) {
             string name = id_to_str(fields[i]);
-            string const ts = _typeName(allocator, info[i].type);
+            string const ts = _typeName(info[i].type);
             char const *fmt = i ? "%.*s, %.*s: %.*s" : "%.*s%.*s: %.*s";
             s = string_format(
                 allocator, fmt, s.size, s.data, name.size, name.data, ts.size, ts.data);
@@ -162,10 +164,10 @@ string _typeName(Allocator *allocator, type_t type) {
         TypeArray const params = type->as.fn_ptr_t.param_types;
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string const ts = _typeName(allocator, params[i]);
+            string const ts = _typeName(params[i]);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
-        string const rts = _typeName(allocator, type->as.fn_ptr_t.ret_type);
+        string const rts = _typeName(type->as.fn_ptr_t.ret_type);
         s = string_format(allocator, "%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
         return s;
     }
@@ -174,10 +176,10 @@ string _typeName(Allocator *allocator, type_t type) {
         TypeArray const params = type->as.fn_ptr_t.param_types;
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
-            string const ts = _typeName(allocator, params[i]);
+            string const ts = _typeName(params[i]);
             s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
         }
-        string const rts = _typeName(allocator, type->as.fn_ptr_t.ret_type);
+        string const rts = _typeName(type->as.fn_ptr_t.ret_type);
         s = string_format(allocator, "%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
         return s;
     }
@@ -262,7 +264,6 @@ type_t type_get_bool() {
 }
 
 type_t type_get_fn(
-    Allocator *tmp_allocator,
     type_t ret_type,
     TypeArray param_types,
     size_t decl_id,
@@ -276,7 +277,7 @@ type_t type_get_fn(
         size_t param_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, typeid_t>(param_types.size);
-    Fp *fp = (Fp *)tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
+    Fp *fp = (Fp *)_mctx.tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
     auto fp_params = arrayWithHeaderData<Fp, typeid_t>(fp);
     std::memset(fp, 0, fp_size);
     fp->base.id = Type_Fn;
@@ -302,14 +303,14 @@ type_t type_get_fn(
     return res.type;
 }
 
-type_t type_get_fn_ptr(Allocator *tmp_allocator, type_t ret_type, TypeArray param_types) {
+type_t type_get_fn_ptr(type_t ret_type, TypeArray param_types) {
     struct Fp {
         _FpBase base;
         typeid_t ret_type;
         size_t param_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, typeid_t>(param_types.size);
-    Fp *fp = (Fp *)tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
+    Fp *fp = (Fp *)_mctx.tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
     auto fp_params = arrayWithHeaderData<Fp, typeid_t>(fp);
     std::memset(fp, 0, fp_size);
     fp->base.id = Type_FnPtr;
@@ -378,14 +379,14 @@ type_t type_get_string() {
     return res.type;
 }
 
-type_t type_get_struct(Allocator *tmp_allocator, NameTypeArray fields, size_t decl_id) {
+type_t type_get_struct(NameTypeArray fields, size_t decl_id) {
     struct Fp {
         _FpBase base;
         size_t decl_id;
         size_t field_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, NameTypeid>(fields.size);
-    Fp *fp = (Fp *)tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
+    Fp *fp = (Fp *)_mctx.tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
     auto fp_fields = arrayWithHeaderData<Fp, NameTypeid>(fp);
     std::memset(fp, 0, fp_size);
     fp->base.id = Type_Struct;
@@ -426,13 +427,13 @@ type_t type_get_symbol() {
     return res.type;
 }
 
-type_t type_get_tuple(Allocator *tmp_allocator, TypeArray types) {
+type_t type_get_tuple(TypeArray types) {
     struct Fp {
         _FpBase base;
         size_t type_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, typeid_t>(types.size);
-    Fp *fp = (Fp *)tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
+    Fp *fp = (Fp *)_mctx.tmp_allocator->alloc_aligned(fp_size, alignof(Fp));
     auto fp_types = arrayWithHeaderData<Fp, typeid_t>(fp);
     std::memset(fp, 0, fp_size);
     fp->base.id = Type_Tuple;
@@ -475,14 +476,11 @@ type_t type_get_void() {
     return res.type;
 }
 
-string type_name(Allocator *allocator, type_t type) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
+string type_name(type_t type) {
+    auto &allocator = *_mctx.tmp_allocator;
 
-    size_t const frame = tmp_arena._seq.size;
-    string tmp_str = _typeName(&tmp_arena, type);
-    tmp_arena._seq.pop(tmp_arena._seq.size - frame);
-    char *data = allocator->alloc<char>(tmp_str.size);
+    string tmp_str = _typeName(type);
+    char *data = allocator.alloc<char>(tmp_str.size);
     std::memcpy(data, tmp_str.data, tmp_str.size);
 
     return string{data, tmp_str.size};
