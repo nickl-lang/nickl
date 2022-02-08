@@ -7,12 +7,9 @@ namespace vm {
 namespace ir {
 
 void test_ir_plus(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i64_t = type_get_numeric(Int64);
     type_t args[] = {i64_t, i64_t};
-    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("plus"), i64_t, args_t);
@@ -32,12 +29,9 @@ void test_ir_plus(ProgramBuilder &b) {
 }
 
 void test_ir_not(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i64_t = type_get_numeric(Int64);
     type_t args[] = {i64_t};
-    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("not"), i64_t, args_t);
@@ -68,14 +62,11 @@ void test_ir_not(ProgramBuilder &b) {
 }
 
 void test_ir_atan(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto u64_t = type_get_numeric(Uint64);
     auto f64_t = type_get_numeric(Float64);
 
     type_t args[] = {f64_t, u64_t};
-    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("atan"), f64_t, args_t);
@@ -139,14 +130,11 @@ void test_ir_atan(ProgramBuilder &b) {
 }
 
 void test_ir_pi(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     test_ir_atan(b);
 
     auto f64_t = type_get_numeric(Float64);
 
-    auto args_t = type_get_tuple(tmp_arena, {});
+    auto args_t = type_get_tuple({});
 
     struct AtanArgs {
         double x;
@@ -184,13 +172,10 @@ void test_ir_pi(ProgramBuilder &b) {
 }
 
 void test_ir_rsqrt(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i32_t = type_get_numeric(Int32);
     auto f32_t = type_get_numeric(Float32);
 
-    auto args_t = type_get_tuple(tmp_arena, {&f32_t, 1});
+    auto args_t = type_get_tuple({&f32_t, 1});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("rsqrt"), f32_t, args_t);
@@ -234,20 +219,17 @@ void test_ir_rsqrt(ProgramBuilder &b) {
 }
 
 void test_ir_vec2LenSquared(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto void_t = type_get_void();
     auto f64_t = type_get_numeric(Float64);
 
     type_t vec_types[] = {f64_t, f64_t};
-    auto vec_t = type_get_tuple(tmp_arena, {vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
+    auto vec_t = type_get_tuple({vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
 
     auto vec_ptr_t = type_get_ptr(vec_t);
     auto f64_ptr_t = type_get_ptr(f64_t);
 
     type_t args_ar[] = {vec_ptr_t, f64_ptr_t};
-    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("vec2LenSquared"), void_t, args_t);
@@ -272,16 +254,13 @@ void test_ir_vec2LenSquared(ProgramBuilder &b) {
 }
 
 void test_ir_modf(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i64_t = type_get_numeric(Int64);
     auto f64_t = type_get_numeric(Float64);
     auto f64_ptr_t = type_get_ptr(f64_t);
     auto typeref_t = type_get_typeref();
 
     type_t args_ar[] = {f64_t, f64_ptr_t};
-    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("modf"), f64_t, args_t);
@@ -307,15 +286,12 @@ void test_ir_modf(ProgramBuilder &b) {
 }
 
 void test_ir_intPart(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     test_ir_modf(b);
     auto f_modf_id = b.prog->functs[0].id;
 
     auto f64_t = type_get_numeric(Float64);
 
-    auto args_t = type_get_tuple(tmp_arena, {&f64_t, 1});
+    auto args_t = type_get_tuple({&f64_t, 1});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("intPart"), f64_t, args_t);
@@ -346,11 +322,8 @@ void test_ir_intPart(ProgramBuilder &b) {
 }
 
 void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(tmp_arena, {});
+    auto args_t = type_get_tuple({});
 
     auto i64_t = type_get_numeric(Int64);
 
@@ -383,13 +356,10 @@ void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
 }
 
 void test_ir_hasZeroByte32(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i32_t = type_get_numeric(Int32);
 
     type_t args_ar[] = {i32_t};
-    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("hasZeroByte32"), i32_t, args_t);
@@ -413,11 +383,8 @@ void test_ir_hasZeroByte32(ProgramBuilder &b) {
 }
 
 void test_ir_readToggleGlobal(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(tmp_arena, {});
+    auto args_t = type_get_tuple({});
 
     auto i64_t = type_get_numeric(Int64);
 
@@ -445,11 +412,8 @@ void test_ir_readToggleGlobal(ProgramBuilder &b) {
 }
 
 void test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto void_t = type_get_void();
-    auto args_t = type_get_tuple(tmp_arena, {});
+    auto args_t = type_get_tuple({});
 
     auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr, false);
 
@@ -464,13 +428,10 @@ void test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
 }
 
 void test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i64_t = type_get_numeric(Int64);
 
     type_t args_ar[] = {i64_t, i64_t};
-    auto args_t = type_get_tuple(tmp_arena, {args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
+    auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, nullptr, false);
 
@@ -487,9 +448,6 @@ void test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
 }
 
 void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto void_t = type_get_void();
     auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
@@ -497,16 +455,16 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
 
     auto i8_ptr_t = type_get_ptr(i8_t);
 
-    auto args_t = type_get_tuple(tmp_arena, {});
+    auto args_t = type_get_tuple({});
 
     type_t pf_args[] = {i8_ptr_t, i64_t, i64_t, i64_t};
-    auto pf_args_t = type_get_tuple(tmp_arena, {pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
+    auto pf_args_t = type_get_tuple({pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
 
     auto f_printf = b.makeExtFunct(
         b.makeShObj(str_to_id(libname)),
         cstr_to_id("test_printf"),
         i32_t,
-        type_get_tuple(tmp_arena, {&i8_ptr_t, 1}),
+        type_get_tuple({&i8_ptr_t, 1}),
         true);
 
     auto f = b.makeFunct();
@@ -531,13 +489,10 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
 }
 
 void test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto void_t = type_get_void();
     auto i64_t = type_get_numeric(Int64);
 
-    auto args_t = type_get_tuple(tmp_arena, {});
+    auto args_t = type_get_tuple({});
 
     auto v_test_val = b.makeExtVarRef(
         b.makeExtVar(b.makeShObj(str_to_id(libname)), cstr_to_id("test_val"), i64_t));
@@ -558,15 +513,12 @@ void test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
 }
 
 void test_ir_main(ProgramBuilder &b) {
-    auto tmp_arena = ArenaAllocator::create();
-    DEFER({ tmp_arena.deinit(); })
-
     auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
     auto argv_t = type_get_ptr(type_get_ptr(i8_t));
 
     type_t args[] = {i32_t, argv_t};
-    auto args_t = type_get_tuple(tmp_arena, TypeArray{args, sizeof(args) / sizeof(args[0])});
+    auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
     b.startFunct(f, cstr_to_str("main"), i32_t, args_t);

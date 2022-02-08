@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "nk/common/hashmap.hpp"
+#include "nk/vm/vm.hpp"
 
 namespace nk {
 namespace vm {
@@ -26,9 +27,6 @@ struct value_hm_ctx {
 };
 
 struct WriterCtx {
-    ArenaAllocator arena;
-    ArenaAllocator tmp_arena;
-
     HashMap<type_t, string> type_map;
     size_t typedecl_count;
 
@@ -132,7 +130,7 @@ void _writeType(WriterCtx &ctx, type_t type, stream &src) {
     }
 
     auto &type_str = ctx.type_map.insert(type);
-    type_str = copy(string{tmp_str.data(), tmp_str.size()}, ctx.arena);
+    type_str = copy(string{tmp_str.data(), tmp_str.size()}, *_mctx.tmp_allocator);
     src << type_str;
 }
 
@@ -241,7 +239,7 @@ void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = fal
     }
 
     auto &const_str = ctx.const_map.insert(val);
-    const_str = copy(string{tmp_str.data(), tmp_str.size()}, ctx.arena);
+    const_str = copy(string{tmp_str.data(), tmp_str.size()}, *_mctx.tmp_allocator);
     src << const_str;
 }
 
@@ -269,11 +267,13 @@ void _writeFnSig(
 }
 
 void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
+    auto &allocator = *_mctx.tmp_allocator;
+
     auto &src = ctx.main_s;
 
     _writePreabmle(ctx.types_s);
 
-    auto block_name_by_id = ctx.arena.alloc<string>(ir.blocks.size);
+    auto block_name_by_id = allocator.alloc<string>(ir.blocks.size);
 
     for (auto const &f : ir.functs) {
         for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
@@ -380,8 +380,6 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
             };
 
             for (auto const &instr : ir.instrs.slice(b.first_instr, b.instr_count)) {
-                ctx.tmp_arena.clear();
-
                 src << "  ";
 
                 if (instr.arg[0].arg_type == ir::Arg_Ref &&
@@ -588,11 +586,7 @@ void translateToC(string filename, ir::Program const &ir) {
 
     WriterCtx ctx{};
 
-    ctx.arena.init();
-    ctx.tmp_arena.init();
     DEFER({
-        ctx.arena.deinit();
-        ctx.tmp_arena.deinit();
         ctx.type_map.deinit();
         ctx.const_map.deinit();
     })

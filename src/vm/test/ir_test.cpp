@@ -48,20 +48,20 @@ protected:
 TEST_F(ir, plus) {
     test_ir_plus(m_builder);
 
-    auto str = m_prog.inspect(m_arena);
+    auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, not ) {
     test_ir_not(m_builder);
 
-    auto str = m_prog.inspect(m_arena);
+    auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }
 
 TEST_F(ir, atan) {
     test_ir_atan(m_builder);
 
-    auto str = m_prog.inspect(m_arena);
+    auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 }

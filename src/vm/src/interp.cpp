@@ -423,10 +423,8 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
             static thread_local char s_msg_buf[c_buf_len];
             auto ref = pinstr->arg[0];
             if (ref.ref_type != bc::Ref_None) {
-                auto tmp_arena = ArenaAllocator::create();
-                DEFER({ tmp_arena.deinit(); })
-                auto val_str = val_inspect(tmp_arena, _getDynRef(ref));
-                auto type_str = type_name(tmp_arena, ref.type);
+                auto val_str = val_inspect(_getDynRef(ref));
+                auto type_str = type_name(ref.type);
                 snprintf(
                     s_msg_buf,
                     c_buf_len,
