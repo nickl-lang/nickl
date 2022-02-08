@@ -108,6 +108,7 @@ void test_ir_atan(ProgramBuilder &b) {
     b.gen(b.make_mov(v_i, c_0u));
 
     b.startBlock(l_loop, cstr_to_str("loop"));
+    b.gen(b.make_enter());
 
     b.gen(b.make_lt(v_cond, v_i, a_it));
     b.gen(b.make_jmpz(v_cond, l_end));
@@ -121,6 +122,7 @@ void test_ir_atan(ProgramBuilder &b) {
     b.gen(b.make_add(v_sum, v_sum, v_2));
     b.gen(b.make_add(v_i, v_i, c_1u));
 
+    b.gen(b.make_leave());
     b.gen(b.make_jmp(l_loop));
 
     b.startBlock(l_end, cstr_to_str("end"));

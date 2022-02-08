@@ -8,6 +8,8 @@
 
 X(nop)
 X(ret)
+X(enter)
+X(leave)
 
 X(jmp)
 X(jmpz)

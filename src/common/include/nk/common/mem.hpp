@@ -16,6 +16,11 @@ struct Allocator {
     }
 };
 
+struct SeqAllocator : Allocator {
+    virtual size_t size() const = 0;
+    virtual void pop(size_t n) = 0;
+};
+
 struct LibcAllocator : Allocator {
     void *alloc(size_t size) override;
     void free(void *ptr) override;
@@ -25,7 +30,7 @@ struct LibcAllocator : Allocator {
 
 struct MemCtx {
     Allocator *def_allocator;
-    Allocator *tmp_allocator;
+    SeqAllocator *tmp_allocator;
 };
 
 extern thread_local MemCtx _mctx;

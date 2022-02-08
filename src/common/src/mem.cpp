@@ -50,5 +50,5 @@ static LibcAllocator s_libc_allocator;
 
 thread_local MemCtx _mctx{
     .def_allocator = &s_libc_allocator,
-    .tmp_allocator = &s_libc_allocator,
+    .tmp_allocator = nullptr,
 };
