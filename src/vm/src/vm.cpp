@@ -1,5 +1,6 @@
 #include "nk/vm/vm.hpp"
 
+#include "find_library.hpp"
 #include "nk/common/id.hpp"
 #include "nk/vm/value.hpp"
 

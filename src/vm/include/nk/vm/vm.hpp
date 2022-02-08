@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_VM
 #define HEADER_GUARD_NK_VM_VM
 
-#include "nk/vm/private/find_library.hpp"
+#include "nk/vm/common_types.hpp"
 
 namespace nk {
 namespace vm {

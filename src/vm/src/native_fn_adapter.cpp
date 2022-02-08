@@ -1,4 +1,4 @@
-#include "nk/vm/private/native_fn_adapter.hpp"
+#include "native_fn_adapter.hpp"
 
 #include <cassert>
 
@@ -131,7 +131,7 @@ struct NativeFnInfo {
     bool is_variadic;
 };
 
-native_fn_info_t type_fn_prepareNativeInfo(
+void *type_fn_prepareNativeInfo(
     Allocator &allocator,
     void *body_ptr,
     size_t argc,
@@ -150,17 +150,17 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
     auto tmp_arena = ArenaAllocator::create();
     DEFER({ tmp_arena.deinit(); })
 
-    auto info = self->as.fn.body.native;
+    auto &info = *(NativeFnInfo *)self->as.fn.body.native_fn_info;
 
     size_t const argc = val_data(args) ? val_tuple_size(args) : 0;
 
-    auto rtype = _getNativeHandle(*info->type_allocator, val_typeof(ret));
-    auto atypes = _getNativeHandle(*info->type_allocator, val_typeof(args));
+    auto rtype = _getNativeHandle(*info.type_allocator, val_typeof(ret));
+    auto atypes = _getNativeHandle(*info.type_allocator, val_typeof(args));
 
     ffi_cif cif;
     ffi_status status;
-    if (info->is_variadic) {
-        status = ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, info->argc, argc, rtype, atypes->elements);
+    if (info.is_variadic) {
+        status = ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, info.argc, argc, rtype, atypes->elements);
     } else {
         status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
     }
@@ -173,7 +173,7 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
         argv[i] = val_data(val_tuple_at(args, i));
     }
 
-    ffi_call(&cif, FFI_FN(info->body_ptr), val_data(ret), argv);
+    ffi_call(&cif, FFI_FN(info.body_ptr), val_data(ret), argv);
 }
 
 } // namespace vm

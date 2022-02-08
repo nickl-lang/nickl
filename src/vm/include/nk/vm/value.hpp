@@ -6,7 +6,6 @@
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
 #include "nk/vm/common_types.hpp"
-#include "nk/vm/private/native_fn_adapter.hpp"
 
 namespace nk {
 namespace vm {
@@ -38,7 +37,7 @@ struct _type_fn {
     type_t args_t;
     union {
         FuncPtr ptr;
-        native_fn_info_t native;
+        void *native_fn_info;
     } body;
     void *closure;
     bool is_native;

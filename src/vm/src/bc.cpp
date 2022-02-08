@@ -4,10 +4,10 @@
 #include <iomanip>
 #include <sstream>
 
+#include "find_library.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
 #include "nk/vm/interp.hpp"
-#include "nk/vm/private/find_library.hpp"
 #include "so_adapter.hpp"
 
 namespace nk {

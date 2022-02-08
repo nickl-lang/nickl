@@ -284,7 +284,7 @@ TEST_F(ast, nodes) {
 
     test(
         m_ast.push(m_ast.make_string_literal(&m_arena, cstr_to_str("hello"))), Node_string_literal);
-    EXPECT_EQ(m_node->as.str.val.view(), "hello");
+    EXPECT_EQ(std_view(m_node->as.str.val), "hello");
 
     test(
         m_ast.push(m_ast.make_struct_literal(nop, NamedNodeArray{&nn_nop, 1})),

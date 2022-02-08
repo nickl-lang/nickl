@@ -136,12 +136,6 @@ struct equal_to<::Slice<T>> {
     }
 };
 
-template <>
-struct hash<::string> : hash<Slice<char const>> {};
-
-template <>
-struct equal_to<::string> : equal_to<Slice<char const>> {};
-
 } // namespace std
 
 #endif // HEADER_GUARD_NK_COMMON_UTILS

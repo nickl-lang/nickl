@@ -7,10 +7,7 @@
 namespace nk {
 namespace vm {
 
-struct NativeFnInfo;
-using native_fn_info_t = NativeFnInfo *;
-
-native_fn_info_t type_fn_prepareNativeInfo(
+void *type_fn_prepareNativeInfo(
     Allocator &allocator,
     void *body_ptr,
     size_t argc,
