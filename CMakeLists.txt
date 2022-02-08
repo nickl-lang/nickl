@@ -39,9 +39,6 @@ if(ENABLE_PROFILING)
     find_package(easy_profiler REQUIRED)
 endif()
 
-add_subdirectory(ext/common)
-add_subdirectory(ext/vm)
-
 add_subdirectory(src)
 
 if(BUILD_TESTS)
