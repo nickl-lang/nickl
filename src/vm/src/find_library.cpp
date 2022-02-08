@@ -1,4 +1,4 @@
-#include "nk/vm/private/find_library.hpp"
+#include "find_library.hpp"
 
 #include <cstring>
 #include <filesystem>

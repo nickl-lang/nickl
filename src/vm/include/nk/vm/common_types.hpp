@@ -4,8 +4,14 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "nk/common/string.hpp"
+
 namespace nk {
 namespace vm {
+
+struct FindLibraryConfig {
+    Slice<string> search_paths;
+};
 
 struct Type;
 

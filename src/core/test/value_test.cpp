@@ -36,7 +36,7 @@ TEST_F(value, any) {
     EXPECT_EQ(type->size, sizeof(value_t));
     EXPECT_EQ(type->alignment, alignof(value_t));
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"any"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"any"});
 
     EXPECT_EQ(type, type_get_any());
 }
@@ -51,7 +51,7 @@ TEST_F(value, array) {
     EXPECT_EQ(type->size, c_array_size * any_t->size);
     EXPECT_EQ(type->alignment, any_t->alignment);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Array(any, 42)"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"Array(any, 42)"});
 
     EXPECT_EQ(type, type_get_array(any_t, c_array_size));
 
@@ -67,7 +67,7 @@ TEST_F(value, array_ptr) {
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"ArrayPtr(any)"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"ArrayPtr(any)"});
 
     EXPECT_EQ(type, type_get_array_ptr(any_t));
 
@@ -81,7 +81,7 @@ TEST_F(value, bool) {
     EXPECT_EQ(type->size, 1);
     EXPECT_EQ(type->alignment, 1);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"bool"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"bool"});
 
     EXPECT_EQ(type, type_get_bool());
 }
@@ -94,7 +94,7 @@ TEST_F(value, ptr) {
     EXPECT_EQ(type->size, sizeof(void *));
     EXPECT_EQ(type->alignment, alignof(void *));
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Ptr(void)"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"Ptr(void)"});
 
     EXPECT_EQ(type, type_get_ptr(void_t));
 
@@ -111,7 +111,7 @@ TEST_F(value, string) {
     EXPECT_EQ(type->size, sizeof(string));
     EXPECT_EQ(type->alignment, alignof(string));
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"string"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"string"});
 
     EXPECT_EQ(type, type_get_string());
 }
@@ -131,7 +131,7 @@ TEST_F(value, fn) {
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Fn((i64, i64), i64)"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"Fn((i64, i64), i64)"});
 
     EXPECT_EQ(type, type_get_fn(&m_arena, i64_t, params_ar, 0, (FuncPtr)_plus, nullptr, false));
 
@@ -156,7 +156,7 @@ TEST_F(value, fn_ptr) {
     EXPECT_EQ(type->size, 8);
     EXPECT_EQ(type->alignment, 8);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"FnPtr((i64, i64), i64)"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"FnPtr((i64, i64), i64)"});
 
     EXPECT_EQ(type, type_get_fn_ptr(&m_arena, i64_t, params_ar));
 
@@ -178,7 +178,7 @@ TEST_F(value, numeric) {
     EXPECT_EQ(type->size, 4);
     EXPECT_EQ(type->alignment, 4);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"i32"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"i32"});
 
     EXPECT_EQ(type, type_get_numeric(Int32));
     EXPECT_NE(type, type_get_numeric(Int64));
@@ -191,7 +191,7 @@ TEST_F(value, numeric) {
         EXPECT_EQ(type->alignment, size);
         EXPECT_EQ(type->qualifiers, 0);
 
-        EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{name});
+        EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{name});
     };
 
     test_num(Int8, 1, "i8");
@@ -219,7 +219,7 @@ TEST_F(value, struct) {
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"struct {t: type, s: symbol}"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"struct {t: type, s: symbol}"});
 
     EXPECT_EQ(type, type_get_struct(&m_arena, fields_ar, 0));
 
@@ -243,7 +243,7 @@ TEST_F(value, symbol) {
     EXPECT_EQ(type->size, sizeof(Id));
     EXPECT_EQ(type->alignment, alignof(Id));
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"symbol"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"symbol"});
 
     EXPECT_EQ(type, type_get_symbol());
 }
@@ -258,7 +258,7 @@ TEST_F(value, tuple) {
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"Tuple(void, type, symbol)"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"Tuple(void, type, symbol)"});
 
     EXPECT_EQ(type, type_get_tuple(&m_arena, types_ar));
 
@@ -279,7 +279,7 @@ TEST_F(value, typeref) {
     EXPECT_EQ(type->size, sizeof(size_t));
     EXPECT_EQ(type->alignment, alignof(type_t));
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"type"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"type"});
 
     EXPECT_EQ(type, type_get_typeref());
 }
@@ -291,7 +291,7 @@ TEST_F(value, void) {
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
     EXPECT_EQ(type->qualifiers, 0);
-    EXPECT_EQ(type_name(&m_arena, type).view(), std::string_view{"void"});
+    EXPECT_EQ(std_view(type_name(&m_arena, type)), std::string_view{"void"});
 
     EXPECT_EQ(type, type_get_void());
 }

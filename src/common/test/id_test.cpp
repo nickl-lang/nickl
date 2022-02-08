@@ -40,8 +40,8 @@ TEST_F(id, backward) {
     Id const id_a = cstr_to_id(c_str_a);
     Id const id_b = cstr_to_id(c_str_b);
 
-    EXPECT_EQ(c_str_a, id_to_str(id_a).view());
-    EXPECT_EQ(c_str_b, id_to_str(id_b).view());
+    EXPECT_EQ(c_str_a, std_view(id_to_str(id_a)));
+    EXPECT_EQ(c_str_b, std_view(id_to_str(id_b)));
 }
 
 TEST_F(id, nonexistent) {

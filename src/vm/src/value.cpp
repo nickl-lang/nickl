@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sstream>
 
+#include "native_fn_adapter.hpp"
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.hpp"
@@ -350,7 +351,7 @@ type_t type_get_fn_native(
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body.native = type_fn_prepareNativeInfo(
+        res.type->as.fn.body.native_fn_info = type_fn_prepareNativeInfo(
             s_typearena, body_ptr, args_t->as.tuple.elems.size, is_variadic);
         res.type->as.fn.closure = closure;
         res.type->as.fn.is_native = true;

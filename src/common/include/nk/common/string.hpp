@@ -7,11 +7,11 @@
 
 #include "nk/common/slice.hpp"
 
-struct string : Slice<char const> {
-    std::string_view view() const {
-        return std::string_view{data, size};
-    }
-};
+using string = Slice<char const>;
+
+inline std::string_view std_view(string str) {
+    return std::string_view{str.data, str.size};
+}
 
 inline std::ostream &operator<<(std::ostream &stream, string str) {
     return stream << std::string_view{str.data, str.size};
