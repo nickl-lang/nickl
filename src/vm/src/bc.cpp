@@ -337,8 +337,10 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                     code = op_nop;
                     break;
                 case ir::ir_enter:
+                    code = op_enter;
                     break;
                 case ir::ir_leave:
+                    code = op_leave;
                     break;
                 case ir::ir_ret:
                     code = op_ret;

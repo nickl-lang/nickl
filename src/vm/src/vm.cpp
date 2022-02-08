@@ -14,7 +14,7 @@ namespace {
 LOG_USE_SCOPE(nk::vm)
 
 thread_local ArenaAllocator s_tmp_arena;
-thread_local Allocator *s_old_tmp_alloc;
+thread_local SeqAllocator *s_old_tmp_alloc;
 
 } // namespace
 

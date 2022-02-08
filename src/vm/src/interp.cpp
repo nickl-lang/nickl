@@ -4,6 +4,7 @@
 
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
+#include "nk/vm/vm.hpp"
 
 namespace nk {
 namespace vm {
@@ -19,6 +20,7 @@ struct ProgramFrame {
     uint8_t *base_rodata;
     uint8_t *base_instr;
     uint8_t *base_reg;
+    SeqAllocator *prev_tmp_allocator;
 };
 
 struct ControlFrame {
@@ -57,6 +59,7 @@ struct InterpContext {
     };
     ArenaAllocator stack;
     Array<ControlFrame> ctrl_stack;
+    Array<size_t> stack_frames;
     size_t stack_frame_base;
     Instr const *pinstr;
     bool is_initialized;
@@ -88,7 +91,7 @@ void _setupFrame(type_t frame_t, value_t ret, value_t args) {
     };
 
     //@Refactor Implement stack frame push/pop with Sequence
-    ctx.stack_frame_base = ctx.stack._seq.size;
+    ctx.stack_frame_base = ctx.stack.size();
     ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
     ctx.base.arg = (uint8_t *)val_data(args);
     ctx.base.ret = (uint8_t *)val_data(ret);
@@ -119,7 +122,7 @@ INTERP(ret) {
 
     const auto &fr = ctx.ctrl_stack.pop();
 
-    ctx.stack._seq.pop(ctx.stack._seq.size - ctx.stack_frame_base);
+    ctx.stack.pop(ctx.stack.size() - ctx.stack_frame_base);
 
     ctx.stack_frame_base = fr.stack_frame_base;
     ctx.base.frame = fr.base_frame;
@@ -127,6 +130,18 @@ INTERP(ret) {
     ctx.base.ret = fr.base_ret;
 
     _jumpTo(fr.pinstr);
+}
+
+INTERP(enter) {
+    (void)instr;
+
+    ctx.stack_frames.push() = ctx.stack.size();
+}
+
+INTERP(leave) {
+    (void)instr;
+
+    ctx.stack.pop(ctx.stack.size() - ctx.stack_frames.pop());
 }
 
 INTERP(jmp) {
@@ -390,12 +405,14 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .base_rodata = ctx.base.rodata,
         .base_instr = ctx.base.instr,
         .base_reg = ctx.base.reg,
+        .prev_tmp_allocator = _mctx.tmp_allocator,
     };
 
     ctx.base.global = prog.globals.data;
     ctx.base.rodata = prog.rodata.data;
     ctx.base.instr = (uint8_t *)prog.instrs.data;
     ctx.base.reg = (uint8_t *)&ctx.reg;
+    _mctx.tmp_allocator = &ctx.stack;
 
     LOG_DBG("global=%p", ctx.base.global)
     LOG_DBG("rodata=%p", ctx.base.rodata)
@@ -450,11 +467,12 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     ctx.base.rodata = pfr.base_rodata;
     ctx.base.instr = pfr.base_instr;
     ctx.base.reg = pfr.base_reg;
+    _mctx.tmp_allocator = pfr.prev_tmp_allocator;
 
     if (was_uninitialized) {
         LOG_TRC("deinitializing stack...")
 
-        assert(ctx.stack._seq.size == 0 && "nonempty stack at exit");
+        assert(ctx.stack.size() == 0 && "nonempty stack at exit");
 
         ctx.stack.deinit();
         ctx.ctrl_stack.deinit();

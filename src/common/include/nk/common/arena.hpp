@@ -7,9 +7,12 @@
 #include "nk/common/mem.hpp"
 #include "nk/common/sequence.hpp"
 
-struct ArenaAllocator : Allocator {
+struct ArenaAllocator : SeqAllocator {
     void *alloc(size_t size) override;
     void free(void *ptr) override;
+
+    size_t size() const override;
+    void pop(size_t n) override;
 
     using Allocator::alloc;
 
@@ -17,7 +20,6 @@ struct ArenaAllocator : Allocator {
     void init(size_t cap = c_init_capacity);
     void deinit();
     void clear();
-    size_t size() const;
 
     static constexpr size_t c_init_capacity = 4096;
 

@@ -164,7 +164,6 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
         assert("!ffi_prep_cif failed");
     }
 
-    //@Refactor Somehow allocate ffi arguments on the stack???
     void **argv = _mctx.tmp_allocator->alloc<void *>(argc);
     for (size_t i = 0; i < argc; i++) {
         argv[i] = val_data(val_tuple_at(args, i));

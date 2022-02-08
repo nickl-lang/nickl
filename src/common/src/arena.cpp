@@ -11,6 +11,14 @@ void ArenaAllocator::free(void *ptr) {
     (void)ptr;
 }
 
+size_t ArenaAllocator::size() const {
+    return _seq.size;
+}
+
+void ArenaAllocator::pop(size_t n) {
+    _seq.pop(n);
+}
+
 ArenaAllocator ArenaAllocator::create(size_t cap) {
     ArenaAllocator ar;
     ar.init(cap);
@@ -27,8 +35,4 @@ void ArenaAllocator::deinit() {
 
 void ArenaAllocator::clear() {
     _seq.clear();
-}
-
-size_t ArenaAllocator::size() const {
-    return _seq.size;
 }
