@@ -101,9 +101,9 @@ void _writeType(WriterCtx &ctx, type_t type, stream &src) {
     case Type_Tuple: {
         is_complex = true;
         tmp_s << "struct {\n";
-        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+        for (size_t i = 0; i < type_tuple_size(type); i++) {
             tmp_s << "  ";
-            _writeType(ctx, type->as.tuple.elems[i].type, tmp_s);
+            _writeType(ctx, type_tuple_typeAt(type, i), tmp_s);
             tmp_s << " _" << i << ";\n";
         }
         tmp_s << "}";
@@ -112,8 +112,8 @@ void _writeType(WriterCtx &ctx, type_t type, stream &src) {
     case Type_Array: {
         is_complex = true;
         tmp_s << "struct { ";
-        _writeType(ctx, type->as.arr.elem_type, tmp_s);
-        tmp_s << " _data[" << type->as.arr.elem_count << "]; }";
+        _writeType(ctx, type_array_elemType(type), tmp_s);
+        tmp_s << " _data[" << type_array_size(type) << "]; }";
         break;
     }
     default:
@@ -253,11 +253,11 @@ void _writeFnSig(
     _writeType(ctx, ret_t, src);
     src << " " << name << "(";
 
-    for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+    for (size_t i = 0; i < type_tuple_size(args_t); i++) {
         if (i) {
             src << ", ";
         }
-        _writeType(ctx, args_t->as.tuple.elems[i].type, src);
+        _writeType(ctx, type_tuple_typeAt(args_t, i), src);
         src << " arg" << i;
     }
     if (va) {
@@ -440,7 +440,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
                     src << "(";
                     if (instr.arg[2].as.ref.ref_type != ir::Ref_None) {
                         auto args_t = instr.arg[2].as.ref.type;
-                        for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+                        for (size_t i = 0; i < type_tuple_size(args_t); i++) {
                             if (i) {
                                 src << ", ";
                             }

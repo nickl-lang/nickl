@@ -8,6 +8,7 @@
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
+#include "nk/vm/value.hpp"
 
 namespace nk {
 namespace vm {
@@ -41,11 +42,11 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     for (auto const &funct : prog.functs) {
         ss << "\nfn " << funct.name << "(";
 
-        for (size_t i = 0; i < funct.args_t->as.tuple.elems.size; i++) {
+        for (size_t i = 0; i < type_tuple_size(funct.args_t); i++) {
             if (i) {
                 ss << ", ";
             }
-            auto arg_t = funct.args_t->as.tuple.elems[i].type;
+            auto arg_t = type_tuple_typeAt(funct.args_t, i);
             ss << "$arg" << i << ":" << type_name(arg_t);
         }
 
@@ -391,12 +392,12 @@ Ref ProgramBuilder::makeFrameRef(Local var) const {
 
 Ref ProgramBuilder::makeArgRef(size_t index) const {
     assert(m_cur_funct && "no current function");
-    assert(index < m_cur_funct->args_t->as.tuple.elems.size && "arg index out of range");
+    assert(index < type_tuple_size(m_cur_funct->args_t) && "arg index out of range");
     return {
         .value = {.index = index},
         .offset = 0,
         .post_offset = 0,
-        .type = m_cur_funct->args_t->as.tuple.elems[index].type,
+        .type = type_tuple_typeAt(m_cur_funct->args_t, index),
         .ref_type = Ref_Arg,
         .is_indirect = false,
     };

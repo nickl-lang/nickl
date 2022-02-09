@@ -45,8 +45,8 @@ TEST_F(value, array) {
 
     EXPECT_EQ(type, type_get_array(i32_t, c_array_size));
 
-    EXPECT_EQ(type->as.arr.elem_type, i32_t);
-    EXPECT_EQ(type->as.arr.elem_count, c_array_size);
+    EXPECT_EQ(type_array_elemType(type), i32_t);
+    EXPECT_EQ(type_array_size(type), c_array_size);
 }
 
 TEST_F(value, ptr) {
@@ -91,10 +91,10 @@ TEST_F(value, fn) {
 
     EXPECT_EQ(type->as.fn.ret_t, i64_t);
 
-    ASSERT_EQ(type->as.fn.args_t->as.tuple.elems.size, 2);
+    ASSERT_EQ(type_tuple_size(type->as.fn.args_t), 2);
 
-    EXPECT_EQ(type->as.fn.args_t->as.tuple.elems[0].type, i64_t);
-    EXPECT_EQ(type->as.fn.args_t->as.tuple.elems[1].type, i64_t);
+    EXPECT_EQ(type_tuple_typeAt(type->as.fn.args_t, 0), i64_t);
+    EXPECT_EQ(type_tuple_typeAt(type->as.fn.args_t, 1), i64_t);
 
     int64_t ret = 0;
     int64_t args[] = {4, 5};
@@ -150,14 +150,14 @@ TEST_F(value, tuple) {
 
     EXPECT_EQ(type, type_get_tuple(types_ar));
 
-    ASSERT_EQ(type->as.tuple.elems.size, 3);
+    ASSERT_EQ(type_tuple_size(type), 3);
 
-    EXPECT_EQ(type->as.tuple.elems[0].type, type_get_void());
-    EXPECT_EQ(type->as.tuple.elems[0].offset, 0);
-    EXPECT_EQ(type->as.tuple.elems[1].type, type_get_typeref());
-    EXPECT_EQ(type->as.tuple.elems[1].offset, 0);
-    EXPECT_EQ(type->as.tuple.elems[2].type, type_get_numeric(Int16));
-    EXPECT_EQ(type->as.tuple.elems[2].offset, 8);
+    EXPECT_EQ(type_tuple_typeAt(type, 0), type_get_void());
+    EXPECT_EQ(type_tuple_offsetAt(type, 0), 0);
+    EXPECT_EQ(type_tuple_typeAt(type, 1), type_get_typeref());
+    EXPECT_EQ(type_tuple_offsetAt(type, 1), 0);
+    EXPECT_EQ(type_tuple_typeAt(type, 2), type_get_numeric(Int16));
+    EXPECT_EQ(type_tuple_offsetAt(type, 2), 8);
 }
 
 TEST_F(value, typeref) {

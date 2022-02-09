@@ -308,9 +308,9 @@ void test_ir_intPart(ProgramBuilder &b) {
     auto v_args = b.makeFrameRef(b.makeLocalVar(modf_args_t));
 
     auto v_arg0 =
-        v_args.plus(type_tuple_offset(modf_args_t, 0), modf_args_t->as.tuple.elems[0].type);
+        v_args.plus(type_tuple_offsetAt(modf_args_t, 0), type_tuple_typeAt(modf_args_t, 0));
     auto v_arg1 =
-        v_args.plus(type_tuple_offset(modf_args_t, 1), modf_args_t->as.tuple.elems[1].type);
+        v_args.plus(type_tuple_offsetAt(modf_args_t, 1), type_tuple_typeAt(modf_args_t, 1));
 
     auto l_start = b.makeLabel();
 
@@ -474,10 +474,10 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
 
     auto args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto arg0 = args.plus(type_tuple_offset(pf_args_t, 0), i8_ptr_t);
-    auto arg1 = args.plus(type_tuple_offset(pf_args_t, 1), i64_t);
-    auto arg2 = args.plus(type_tuple_offset(pf_args_t, 2), i64_t);
-    auto arg3 = args.plus(type_tuple_offset(pf_args_t, 3), i64_t);
+    auto arg0 = args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto arg1 = args.plus(type_tuple_offsetAt(pf_args_t, 1), i64_t);
+    auto arg2 = args.plus(type_tuple_offsetAt(pf_args_t, 2), i64_t);
+    auto arg3 = args.plus(type_tuple_offsetAt(pf_args_t, 3), i64_t);
 
     b.startBlock(b.makeLabel(), cs2s("start"));
 
