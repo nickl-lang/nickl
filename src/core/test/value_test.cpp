@@ -210,8 +210,8 @@ TEST_F(value, numeric) {
 }
 
 TEST_F(value, struct) {
-    Id id_t = cstr_to_id("t");
-    Id id_s = cstr_to_id("s");
+    Id id_t = cs2id("t");
+    Id id_s = cs2id("s");
 
     NameType fields[] = {{id_t, type_get_typeref()}, {id_s, type_get_symbol()}};
     NameTypeArray fields_ar{fields, sizeof(fields) / sizeof(NameType)};

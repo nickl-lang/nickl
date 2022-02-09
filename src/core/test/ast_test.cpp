@@ -31,7 +31,7 @@ class ast : public testing::Test {
 
 protected:
     void test(node_ref_t node, Id id) {
-        string str = id_to_str(id);
+        string str = id2s(id);
         LOG_INF("Test for #%.*s", str.size, str.data);
         str = ast_inspect(&m_arena, node);
         LOG_INF("%.*s", str.size, str.data);
@@ -101,7 +101,7 @@ protected:
         std::ostringstream ss;
 
         if (node->id == Node_fn) {
-            ss << "fn " << id_to_str(node->as.fn.sig.name) << "(";
+            ss << "fn " << id2s(node->as.fn.sig.name) << "(";
             bool first = true;
             for (node_ref_t param = node->as.fn.sig.params.data;
                  param != node->as.fn.sig.params.data + node->as.fn.sig.params.size;
@@ -109,7 +109,7 @@ protected:
                 if (!first) {
                     ss << ", ";
                 }
-                ss << id_to_str(param->as.named_node.name) << ": "
+                ss << id2s(param->as.named_node.name) << ": "
                    << printNode(param->as.named_node.node);
                 first = false;
             }
@@ -118,7 +118,7 @@ protected:
         } else if (node->id == Node_add) {
             ss << printNode(node->as.binary.lhs) << " + " << printNode(node->as.binary.rhs);
         } else if (node->id == Node_id) {
-            ss << id_to_str(node->as.id.name);
+            ss << id2s(node->as.id.name);
         } else if (node->id == Node_return) {
             ss << "return " << printNode(node->as.unary.arg) << ";";
         } else if (node->id == Node_u64) {
@@ -134,16 +134,15 @@ protected:
 
     node_ref_t makeTestTree() {
         NamedNode params[] = {
-            {cstr_to_id("a"), m_ast.push(m_ast.make_u64())},
-            {cstr_to_id("b"), m_ast.push(m_ast.make_u64())},
+            {cs2id("a"), m_ast.push(m_ast.make_u64())},
+            {cs2id("b"), m_ast.push(m_ast.make_u64())},
         };
         return m_ast.push(m_ast.make_fn(
-            cstr_to_id("plus"),
+            cs2id("plus"),
             NamedNodeArray{params, 2},
             m_ast.push(m_ast.make_void()),
             m_ast.push(m_ast.make_return(m_ast.push(m_ast.make_add(
-                m_ast.push(m_ast.make_id(cstr_to_id("a"))),
-                m_ast.push(m_ast.make_id(cstr_to_id("b")))))))));
+                m_ast.push(m_ast.make_id(cs2id("a"))), m_ast.push(m_ast.make_id(cs2id("b")))))))));
     }
 
     ArenaAllocator m_arena;
@@ -156,7 +155,7 @@ protected:
 TEST_F(ast, nodes) {
     Node const n_nop = m_ast.make_nop();
     node_ref_t const nop = m_ast.push(n_nop);
-    Id const noid = cstr_to_id("noid");
+    Id const noid = cs2id("noid");
     NamedNode const nn_nop{noid, nop};
 
     test(nop, Node_nop);
@@ -282,8 +281,7 @@ TEST_F(ast, nodes) {
     EXPECT_EQ(m_node->as.fn.sig.ret_type, nop);
     EXPECT_EQ(m_node->as.fn.body, nop);
 
-    test(
-        m_ast.push(m_ast.make_string_literal(&m_arena, cstr_to_str("hello"))), Node_string_literal);
+    test(m_ast.push(m_ast.make_string_literal(&m_arena, cs2s("hello"))), Node_string_literal);
     EXPECT_EQ(std_view(m_node->as.str.val), "hello");
 
     test(

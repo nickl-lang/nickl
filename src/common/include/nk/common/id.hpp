@@ -11,10 +11,10 @@ using Id = uint64_t;
 void id_init();
 void id_deinit();
 
-string id_to_str(Id id);
+string id2s(Id id);
 
-Id cstr_to_id(char const *str);
-Id str_to_id(string str);
+Id cs2id(char const *str);
+Id s2id(string str);
 
 enum : Id {
     id_empty = 0,

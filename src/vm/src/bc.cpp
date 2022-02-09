@@ -182,7 +182,7 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     for (auto so_id : ir.shobjs) {
         char buf[MAX_PATH];
         Slice<char> path{buf, 0};
-        if (!findLibrary(id_to_str(so_id), path)) {
+        if (!findLibrary(id2s(so_id), path)) {
             assert(!"failed to find library");
         }
         auto so = prog.shobjs.push() = openSharedObject({path.data, path.size});
@@ -192,7 +192,7 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
     auto exsyms = allocator.alloc<void *>(ir.exsyms.size);
 
     for (size_t i = 0; auto const &exsym : ir.exsyms) {
-        void *sym = resolveSym(prog.shobjs[exsym.so_id], id_to_str(exsym.name));
+        void *sym = resolveSym(prog.shobjs[exsym.so_id], id2s(exsym.name));
         assert(sym && "failed to resolve symbol");
         exsyms[i] = sym;
     }

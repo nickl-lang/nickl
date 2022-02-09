@@ -17,7 +17,7 @@ inline std::ostream &operator<<(std::ostream &stream, string str) {
     return stream << std::string_view{str.data, str.size};
 }
 
-inline string cstr_to_str(char const *str) {
+inline string cs2s(char const *str) {
     return string{str, std::strlen(str)};
 }
 

@@ -490,7 +490,7 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
             }
             ss << "{";
             newline(depth + 1);
-            ss << "name: #" << id_to_str(node->as.named_node.name) << ",";
+            ss << "name: #" << id2s(node->as.named_node.name) << ",";
             newline(depth + 1);
             ss << "node: " << _inspect(node->as.named_node.node, depth + 2) << "}";
             first = false;
@@ -514,7 +514,7 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
 
     auto const inspectId = [&](Id id) {
         if (id) {
-            ss << "#" << id_to_str(id);
+            ss << "#" << id2s(id);
         } else {
             ss << "null";
         }

@@ -37,9 +37,9 @@ TEST_F(hashmap, insert) {
 
     EXPECT_EQ(hm.size, 0);
 
-    hm.insert(cstr_to_str("one")) = 1;
-    hm.insert(cstr_to_str("two")) = 2;
-    hm.insert(cstr_to_str("three")) = 3;
+    hm.insert(cs2s("one")) = 1;
+    hm.insert(cs2s("two")) = 2;
+    hm.insert(cs2s("three")) = 3;
 
     EXPECT_EQ(hm.size, 3);
 }
@@ -54,17 +54,17 @@ TEST_F(hashmap, find) {
 
     EXPECT_EQ(hm.size, 0);
 
-    hm.insert(cstr_to_str("one")) = 1;
-    hm.insert(cstr_to_str("two")) = 2;
-    hm.insert(cstr_to_str("three")) = 3;
+    hm.insert(cs2s("one")) = 1;
+    hm.insert(cs2s("two")) = 2;
+    hm.insert(cs2s("three")) = 3;
 
     EXPECT_EQ(hm.size, 3);
 
-    EXPECT_EQ(hm.find(cstr_to_str("four")), nullptr);
+    EXPECT_EQ(hm.find(cs2s("four")), nullptr);
 
-    EXPECT_EQ(*hm.find(cstr_to_str("one")), 1);
-    EXPECT_EQ(*hm.find(cstr_to_str("two")), 2);
-    EXPECT_EQ(*hm.find(cstr_to_str("three")), 3);
+    EXPECT_EQ(*hm.find(cs2s("one")), 1);
+    EXPECT_EQ(*hm.find(cs2s("two")), 2);
+    EXPECT_EQ(*hm.find(cs2s("three")), 3);
 }
 
 TEST_F(hashmap, remove) {
@@ -75,12 +75,12 @@ TEST_F(hashmap, remove) {
     auto hm = hashmap_t::create();
     DEFER({ hm.deinit(); })
 
-    hm.insert(cstr_to_str("value")) = 42;
+    hm.insert(cs2s("value")) = 42;
 
-    EXPECT_EQ(*hm.find(cstr_to_str("value")), 42);
+    EXPECT_EQ(*hm.find(cs2s("value")), 42);
 
-    hm.remove(cstr_to_str("value"));
-    EXPECT_EQ(hm.find(cstr_to_str("value")), nullptr);
+    hm.remove(cs2s("value"));
+    EXPECT_EQ(hm.find(cs2s("value")), nullptr);
 }
 
 TEST_F(hashmap, overwrite) {
@@ -91,13 +91,13 @@ TEST_F(hashmap, overwrite) {
     auto hm = hashmap_t::create();
     DEFER({ hm.deinit(); })
 
-    hm.insert(cstr_to_str("value")) = 0;
-    EXPECT_EQ(*hm.find(cstr_to_str("value")), 0);
+    hm.insert(cs2s("value")) = 0;
+    EXPECT_EQ(*hm.find(cs2s("value")), 0);
 
     EXPECT_EQ(hm.size, 1);
 
-    hm.insert(cstr_to_str("value")) = 42;
-    EXPECT_EQ(*hm.find(cstr_to_str("value")), 42);
+    hm.insert(cs2s("value")) = 42;
+    EXPECT_EQ(*hm.find(cs2s("value")), 42);
 
     EXPECT_EQ(hm.size, 1);
 }
@@ -110,10 +110,10 @@ TEST_F(hashmap, ptr_key) {
     auto hm = hashmap_t::create();
     DEFER({ hm.deinit(); })
 
-    hm.insert(cstr_to_str("________ whatever")) = 42;
-    hm.insert(cstr_to_str("________ something else")) = 0xDEADBEEF;
+    hm.insert(cs2s("________ whatever")) = 42;
+    hm.insert(cs2s("________ something else")) = 0xDEADBEEF;
 
-    val_t *pval = hm.find(cstr_to_str("________ whatever"));
+    val_t *pval = hm.find(cs2s("________ whatever"));
     ASSERT_TRUE(pval);
     EXPECT_EQ(*pval, 42);
 }
@@ -225,10 +225,10 @@ TEST_F(hashmap, zero_init) {
     DEFER({ hm.deinit(); })
 
     EXPECT_EQ(hm.size, 0);
-    EXPECT_EQ(hm.find(cstr_to_str("val")), nullptr);
+    EXPECT_EQ(hm.find(cs2s("val")), nullptr);
 
-    hm.insert(cstr_to_str("val")) = 42;
+    hm.insert(cs2s("val")) = 42;
 
     EXPECT_EQ(hm.size, 1);
-    EXPECT_EQ(*hm.find(cstr_to_str("val")), 42);
+    EXPECT_EQ(*hm.find(cs2s("val")), 42);
 }

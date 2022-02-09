@@ -291,7 +291,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
             _writeFnSig(
                 ctx,
                 ctx.forward_s,
-                id_to_str(sym.name),
+                id2s(sym.name),
                 sym.as.funct.ret_t,
                 sym.as.funct.args_t,
                 sym.as.funct.is_variadic);
@@ -427,7 +427,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
                         break;
                     case ir::Arg_ExtFunctId: {
                         auto &sym = ir.exsyms[instr.arg[1].as.id];
-                        src << id_to_str(sym.name);
+                        src << id2s(sym.name);
                         break;
                     }
                     case ir::Arg_Ref:

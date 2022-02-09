@@ -84,7 +84,7 @@ string _typeName(type_t type) {
 
     switch (type->typeclass_id) {
     case Type_Any:
-        return cstr_to_str("any");
+        return cs2s("any");
     case Type_Array: {
         string s = _typeName(type->as.arr_t.elem_type);
         return string_format(
@@ -95,29 +95,29 @@ string _typeName(type_t type) {
         return string_format(allocator, "ArrayPtr(%.*s)", s.size, s.data);
     }
     case Type_Bool:
-        return cstr_to_str("bool");
+        return cs2s("bool");
     case Type_Numeric:
         switch (type->as.num_t.value_type) {
         case Int8:
-            return cstr_to_str("i8");
+            return cs2s("i8");
         case Int16:
-            return cstr_to_str("i16");
+            return cs2s("i16");
         case Int32:
-            return cstr_to_str("i32");
+            return cs2s("i32");
         case Int64:
-            return cstr_to_str("i64");
+            return cs2s("i64");
         case Uint8:
-            return cstr_to_str("u8");
+            return cs2s("u8");
         case Uint16:
-            return cstr_to_str("u16");
+            return cs2s("u16");
         case Uint32:
-            return cstr_to_str("u32");
+            return cs2s("u32");
         case Uint64:
-            return cstr_to_str("u64");
+            return cs2s("u64");
         case Float32:
-            return cstr_to_str("f32");
+            return cs2s("f32");
         case Float64:
-            return cstr_to_str("f64");
+            return cs2s("f64");
         default:
             assert(!"unreachable");
             return string{nullptr, 0};
@@ -127,15 +127,15 @@ string _typeName(type_t type) {
         return string_format(allocator, "Ptr(%.*s)", s.size, s.data);
     }
     case Type_String:
-        return cstr_to_str("string");
+        return cs2s("string");
     case Type_Symbol:
-        return cstr_to_str("symbol");
+        return cs2s("symbol");
     case Type_Typeref:
-        return cstr_to_str("type");
+        return cs2s("type");
     case Type_Void:
-        return cstr_to_str("void");
+        return cs2s("void");
     case Type_Tuple: {
-        string s = cstr_to_str("Tuple(");
+        string s = cs2s("Tuple(");
         TupleElemInfoArray const info = type->as.tuple_t.types;
         for (size_t i = 0; i < info.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
@@ -146,11 +146,11 @@ string _typeName(type_t type) {
         return s;
     }
     case Type_Struct: {
-        string s = cstr_to_str("struct {");
+        string s = cs2s("struct {");
         TupleElemInfoArray const info = type->as.struct_t.types;
         auto const fields = type->as.struct_t.fields;
         for (size_t i = 0; i < info.size; i++) {
-            string name = id_to_str(fields[i]);
+            string name = id2s(fields[i]);
             string const ts = _typeName(info[i].type);
             char const *fmt = i ? "%.*s, %.*s: %.*s" : "%.*s%.*s: %.*s";
             s = string_format(
@@ -160,7 +160,7 @@ string _typeName(type_t type) {
         return s;
     }
     case Type_Fn: {
-        string s = cstr_to_str("Fn((");
+        string s = cs2s("Fn((");
         TypeArray const params = type->as.fn_ptr_t.param_types;
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
@@ -172,7 +172,7 @@ string _typeName(type_t type) {
         return s;
     }
     case Type_FnPtr: {
-        string s = cstr_to_str("FnPtr((");
+        string s = cs2s("FnPtr((");
         TypeArray const params = type->as.fn_ptr_t.param_types;
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";

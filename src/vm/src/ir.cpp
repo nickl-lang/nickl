@@ -92,7 +92,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << "$r" << (char)('a' + ref.value.index);
                         break;
                     case Ref_ExtVar:
-                        ss << "(" << id_to_str(prog.exsyms[ref.value.index].name) << ")";
+                        ss << "(" << id2s(prog.exsyms[ref.value.index].name) << ")";
                         break;
                     default:
                         break;
@@ -138,7 +138,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         ss << funct_by_id[arg.as.id]->name;
                         break;
                     case Arg_ExtFunctId:
-                        ss << "(" << id_to_str(prog.exsyms[arg.as.id].name) << ")";
+                        ss << "(" << id2s(prog.exsyms[arg.as.id].name) << ")";
                         break;
                     case Arg_None:
                     default:
@@ -165,7 +165,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
 
     if (prog.exsyms.size) {
         for (auto const &sym : prog.exsyms) {
-            ss << "\n" << id_to_str(prog.shobjs[sym.so_id]) << " " << id_to_str(sym.name) << ":";
+            ss << "\n" << id2s(prog.shobjs[sym.so_id]) << " " << id2s(sym.name) << ":";
             switch (sym.sym_type) {
             case Sym_Var:
                 ss << type_name(sym.as.var.type);

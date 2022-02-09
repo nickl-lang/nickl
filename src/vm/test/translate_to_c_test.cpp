@@ -20,7 +20,7 @@ class translate_to_c : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         VmConfig conf{};
-        string paths[] = {cstr_to_str(LIBS_SEARCH_PATH)};
+        string paths[] = {cs2s(LIBS_SEARCH_PATH)};
         conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
         vm_init(conf);
 
@@ -45,8 +45,8 @@ protected:
         type_t args[] = {i32_t, argv_t};
         auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
-        m_builder.startFunct(m_builder.makeFunct(), cstr_to_str("main"), i32_t, args_t);
-        m_builder.startBlock(m_builder.makeLabel(), cstr_to_str("start"));
+        m_builder.startFunct(m_builder.makeFunct(), cs2s("main"), i32_t, args_t);
+        m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
     }
 
     ir::ExtFunctId _makePrintf() {
@@ -57,7 +57,7 @@ protected:
         auto args_t = type_get_tuple({args, sizeof(args) / sizeof(args[0])});
 
         auto f_printf = m_builder.makeExtFunct(
-            m_builder.makeShObj(cstr_to_id(LIBC_NAME)), cstr_to_id("printf"), i32_t, args_t, true);
+            m_builder.makeShObj(cs2id(LIBC_NAME)), cs2id("printf"), i32_t, args_t, true);
         return f_printf;
     }
 
@@ -75,7 +75,7 @@ TEST_F(translate_to_c, basic) {
     auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    translateToC(cstr_to_str("test"), m_prog);
+    translateToC(cs2s("test"), m_prog);
 }
 
 TEST_F(translate_to_c, pi) {
@@ -102,7 +102,7 @@ TEST_F(translate_to_c, pi) {
     auto arg0 = v_pf_args.plus(type_tuple_offset(pf_args_t, 0), i8_ptr_t);
     auto arg1 = v_pf_args.plus(type_tuple_offset(pf_args_t, 1), f64_t);
 
-    auto fmt = cstr_to_str("pi = %.16lf\n");
+    auto fmt = cs2s("pi = %.16lf\n");
     auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
 
     b.gen(b.make_mov(arg0, b.makeConstRef(fmt.data, fmt_t)));
@@ -114,7 +114,7 @@ TEST_F(translate_to_c, pi) {
     auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    translateToC(cstr_to_str("test"), m_prog);
+    translateToC(cs2s("test"), m_prog);
 }
 
 TEST_F(translate_to_c, vec2LenSquared) {
@@ -160,7 +160,7 @@ TEST_F(translate_to_c, vec2LenSquared) {
     auto pf_arg0 = v_pf_args.plus(type_tuple_offset(pf_args_t, 0), i8_ptr_t);
     auto pf_arg1 = v_pf_args.plus(type_tuple_offset(pf_args_t, 1), f64_t);
 
-    auto fmt = cstr_to_str("lenSquared = %lf\n");
+    auto fmt = cs2s("lenSquared = %lf\n");
     auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
 
     b.gen(b.make_mov(pf_arg0, b.makeConstRef(fmt.data, fmt_t)));
@@ -172,5 +172,5 @@ TEST_F(translate_to_c, vec2LenSquared) {
     auto str = m_prog.inspect();
     LOG_INF("ir:\n%.*s", str.size, str.data);
 
-    translateToC(cstr_to_str("test"), m_prog);
+    translateToC(cs2s("test"), m_prog);
 }
