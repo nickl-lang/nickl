@@ -439,8 +439,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
             if (ref.ref_type != bc::Ref_None) {
                 auto val_str = val_inspect(_getDynRef(ref));
                 auto type_str = type_name(ref.type);
-                str = string_format(
-                    ctx.stack,
+                str = tmpstr_format(
                     "%.*s:%.*s",
                     (int)val_str.size,
                     val_str.data,

@@ -108,6 +108,9 @@ inline hash_t hash_str(string str) {
     return hash_cstrn(str.data, str.size);
 }
 
+string tmpstr_format(char const *fmt, ...);
+string tmpstr_vformat(char const *fmt, va_list ap);
+
 string string_format(Allocator &allocator, char const *fmt, ...);
 string string_vformat(Allocator &allocator, char const *fmt, va_list ap);
 

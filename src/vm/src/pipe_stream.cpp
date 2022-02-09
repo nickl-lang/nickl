@@ -18,8 +18,7 @@ namespace vm {
 namespace {
 
 string _makeCmdStr(string cmd, bool quiet) {
-    return string_format(
-        *_mctx.tmp_allocator, "%.*s%s", cmd.size, cmd.data, quiet ? " >/dev/null 2>&1" : "");
+    return tmpstr_format("%.*s%s", cmd.size, cmd.data, quiet ? " >/dev/null 2>&1" : "");
 }
 
 popen_filebuf *_createFileBuf(FILE *file) {

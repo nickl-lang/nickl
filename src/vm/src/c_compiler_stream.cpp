@@ -7,8 +7,7 @@ namespace nk {
 namespace vm {
 
 std::ostream ccompiler_streamOpen(CCompilerConfig const &conf) {
-    auto cmd = string_format(
-        *_mctx.tmp_allocator,
+    auto cmd = tmpstr_format(
         "%.*s -x c -o %.*s %.*s -",
         conf.compiler_binary.size,
         conf.compiler_binary.data,

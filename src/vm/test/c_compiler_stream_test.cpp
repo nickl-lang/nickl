@@ -20,8 +20,7 @@ class c_compiler_stream : public testing::Test {
         m_conf = {
             .compiler_binary = cs2s(TEST_C_COMPILER),
             .additional_flags = cs2s(TEST_C_COMPILER_FLAGS),
-            .output_filename = string_format(
-                *_mctx.tmp_allocator,
+            .output_filename = tmpstr_format(
                 TEST_FILES_DIR "%s_test.out",
                 testing::UnitTest::GetInstance()->current_test_info()->name()),
             .quiet = TEST_QUIET,
