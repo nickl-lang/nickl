@@ -4,7 +4,36 @@
 
 namespace nk {
 namespace vm {
-namespace ir {
+
+namespace {
+
+using namespace ir;
+
+void _startMain(ProgramBuilder &b) {
+    auto i8_t = type_get_numeric(Int8);
+    auto i32_t = type_get_numeric(Int32);
+    auto argv_t = type_get_ptr(type_get_ptr(i8_t));
+
+    type_t args[] = {i32_t, argv_t};
+    auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
+
+    b.startFunct(b.makeFunct(), cs2s("main"), i32_t, args_t);
+    b.startBlock(b.makeLabel(), cs2s("start"));
+}
+
+ir::ExtFunctId _makePrintf(ProgramBuilder &b, string libc_name) {
+    auto i32_t = type_get_numeric(Int32);
+    auto i8_ptr_t = type_get_ptr(type_get_numeric(Int8));
+
+    type_t args[] = {i8_ptr_t};
+    auto args_t = type_get_tuple({args, sizeof(args) / sizeof(args[0])});
+
+    auto f_printf =
+        b.makeExtFunct(b.makeShObj(s2id(libc_name)), cs2id("printf"), i32_t, args_t, true);
+    return f_printf;
+}
+
+} // namespace
 
 void test_ir_plus(ProgramBuilder &b) {
     auto i64_t = type_get_numeric(Int64);
@@ -514,26 +543,17 @@ void test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
     b.gen(b.make_ret());
 }
 
-void test_ir_main(ProgramBuilder &b) {
-    auto i8_t = type_get_numeric(Int8);
+void test_ir_main_argc(ProgramBuilder &b) {
     auto i32_t = type_get_numeric(Int32);
-    auto argv_t = type_get_ptr(type_get_ptr(i8_t));
 
-    type_t args[] = {i32_t, argv_t};
-    auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
-
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("main"), i32_t, args_t);
+    _startMain(b);
 
     auto ret = b.makeRetRef();
 
     auto a_argc = b.makeArgRef(0);
-    // auto a_argv = b.makeArgRef(1);
 
-    auto l_start = b.makeLabel();
     auto l_error = b.makeLabel();
 
-    b.startBlock(l_start, cs2s("start"));
     b.gen(b.make_eq(b.makeRegRef(Reg_A, i32_t), a_argc, b.makeConstRef(3, i32_t)));
     b.gen(b.make_jmpz(b.makeRegRef(Reg_A, i32_t), l_error));
     b.gen(b.make_mov(ret, b.makeConstRef(0, i32_t)));
@@ -544,6 +564,88 @@ void test_ir_main(ProgramBuilder &b) {
     b.gen(b.make_ret());
 }
 
-} // namespace ir
+void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
+    test_ir_pi(b);
+
+    auto i8_t = type_get_numeric(Int8);
+    auto i32_t = type_get_numeric(Int32);
+    auto f64_t = type_get_numeric(Float64);
+
+    auto i8_ptr_t = type_get_ptr(i8_t);
+
+    auto f_printf = _makePrintf(b, libc_name);
+    auto f_pi = ir::FunctId{b.prog->functs[1].id};
+
+    _startMain(b);
+
+    type_t pf_args[] = {i8_ptr_t, f64_t};
+    auto pf_args_t = type_get_tuple({pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
+
+    auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
+
+    auto arg0 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto arg1 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 1), f64_t);
+
+    auto fmt = cs2s("pi = %.16lf\n");
+    auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
+
+    b.gen(b.make_mov(arg0, b.makeConstRef(fmt.data, fmt_t)));
+    b.gen(b.make_call(arg1, f_pi, {}));
+    b.gen(b.make_call(b.makeRegRef(Reg_A, i32_t), f_printf, v_pf_args));
+
+    b.gen(b.make_ret());
+}
+
+void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
+    test_ir_vec2LenSquared(b);
+
+    auto i8_t = type_get_numeric(Int8);
+    auto i32_t = type_get_numeric(Int32);
+    auto f64_t = type_get_numeric(Float64);
+
+    type_t vec_types[] = {f64_t, f64_t};
+    auto vec_t = type_get_tuple({vec_types, sizeof(vec_types) / sizeof(vec_types[0])});
+
+    auto f_printf = _makePrintf(b, libc_name);
+    auto f_vec2LenSquared = ir::FunctId{b.prog->functs[0].id};
+
+    auto vec_ptr_t = type_get_ptr(vec_t);
+    auto f64_ptr_t = type_get_ptr(f64_t);
+
+    auto i8_ptr_t = type_get_ptr(i8_t);
+
+    _startMain(b);
+
+    auto v_vec = b.makeFrameRef(b.makeLocalVar(vec_t));
+    auto v_lenSquared = b.makeFrameRef(b.makeLocalVar(f64_t));
+    auto v_args = b.makeFrameRef(b.makeLocalVar(b.prog->functs[0].args_t));
+
+    auto vec_arg0 = v_args.plus(type_tuple_offsetAt(vec_t, 0), vec_ptr_t);
+    auto vec_arg1 = v_args.plus(type_tuple_offsetAt(vec_t, 1), f64_ptr_t);
+
+    b.gen(b.make_mov(v_vec.plus(type_tuple_offsetAt(vec_t, 0), f64_t), b.makeConstRef(4.0, f64_t)));
+    b.gen(b.make_mov(v_vec.plus(type_tuple_offsetAt(vec_t, 1), f64_t), b.makeConstRef(5.0, f64_t)));
+    b.gen(b.make_lea(vec_arg0, v_vec));
+    b.gen(b.make_lea(vec_arg1, v_lenSquared));
+    b.gen(b.make_call({}, f_vec2LenSquared, v_args));
+
+    type_t pf_args[] = {i8_ptr_t, f64_t};
+    auto pf_args_t = type_get_tuple({pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
+
+    auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
+
+    auto pf_arg0 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto pf_arg1 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 1), f64_t);
+
+    auto fmt = cs2s("lenSquared = %lf\n");
+    auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
+
+    b.gen(b.make_mov(pf_arg0, b.makeConstRef(fmt.data, fmt_t)));
+    b.gen(b.make_mov(pf_arg1, v_lenSquared));
+    b.gen(b.make_call(b.makeRegRef(Reg_A, i32_t), f_printf, v_pf_args));
+
+    b.gen(b.make_ret());
+}
+
 } // namespace vm
 } // namespace nk
