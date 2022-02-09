@@ -40,11 +40,10 @@ protected:
 
 } // namespace
 
+//@Incomplete Add expects to translateToC tests
+
 TEST_F(translate_to_c, basic) {
     test_ir_main_argc(m_builder);
-
-    auto str = m_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     translateToC(m_prog, std::cout);
 }
@@ -52,17 +51,11 @@ TEST_F(translate_to_c, basic) {
 TEST_F(translate_to_c, pi) {
     test_ir_main_pi(m_builder, cs2s(LIBC_NAME));
 
-    auto str = m_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
     translateToC(m_prog, std::cout);
 }
 
 TEST_F(translate_to_c, vec2LenSquared) {
     test_ir_main_vec2LenSquared(m_builder, cs2s(LIBC_NAME));
-
-    auto str = m_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     translateToC(m_prog, std::cout);
 }

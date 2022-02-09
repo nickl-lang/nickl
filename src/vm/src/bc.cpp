@@ -129,7 +129,7 @@ void Program::deinit() {
     instrs.deinit();
 }
 
-string Program::inspect() {
+string Program::inspect() const {
     std::ostringstream ss;
     _inspect(*this, ss);
     auto str = ss.str();
@@ -139,8 +139,12 @@ string Program::inspect() {
     return res;
 }
 
-void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
-    EASY_BLOCK("Translator::translateFromIr", profiler::colors::Red200)
+void bc_translateFromIr(Program &prog, ir::Program const &ir) {
+    EASY_FUNCTION(profiler::colors::Red200)
+    LOG_TRC(__FUNCTION__)
+
+    auto str = ir.inspect();
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     prog.instrs.init(ir.instrs.size);
     prog.funct_info.push(ir.functs.size);
@@ -424,6 +428,9 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
             break;
         }
     }
+
+    str = prog.inspect();
+    LOG_INF("bytecode:\n%.*s", str.size, str.data);
 }
 
 } // namespace bc

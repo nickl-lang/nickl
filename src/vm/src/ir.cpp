@@ -270,7 +270,7 @@ void Program::deinit() {
     functs.deinit();
 }
 
-string Program::inspect() {
+string Program::inspect() const {
     std::ostringstream ss;
     _inspect(*this, ss);
     auto str = ss.str();

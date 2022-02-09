@@ -51,21 +51,14 @@ protected:
     ir::Program m_ir_prog;
     ir::ProgramBuilder m_builder;
     bc::Program m_prog;
-    bc::Translator m_translator;
 };
 
 } // namespace
 
 TEST_F(interp, plus) {
     test_ir_plus(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     int64_t ret = 0;
     int64_t args[] = {4, 5};
@@ -76,14 +69,8 @@ TEST_F(interp, plus) {
 
 TEST_F(interp, not ) {
     test_ir_not(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     int64_t ret = 42;
     int64_t arg = 1;
@@ -98,14 +85,8 @@ TEST_F(interp, not ) {
 
 TEST_F(interp, atan) {
     test_ir_atan(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double a;
     double b;
@@ -128,14 +109,8 @@ TEST_F(interp, atan) {
 
 TEST_F(interp, pi) {
     test_ir_pi(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double pi = 0;
     val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {});
@@ -145,14 +120,8 @@ TEST_F(interp, pi) {
 
 TEST_F(interp, rsqrt) {
     test_ir_rsqrt(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     float ret = 42;
     float arg = 2;
@@ -162,14 +131,8 @@ TEST_F(interp, rsqrt) {
 
 TEST_F(interp, vec2LenSquared) {
     test_ir_vec2LenSquared(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     struct Vec2 {
         double x;
@@ -191,14 +154,8 @@ TEST_F(interp, vec2LenSquared) {
 
 TEST_F(interp, modf) {
     test_ir_modf(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double fract_part = 42;
     double int_part = 42;
@@ -217,14 +174,8 @@ TEST_F(interp, modf) {
 
 TEST_F(interp, intPart) {
     test_ir_intPart(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     double arg = 123.456;
     double res = 42;
@@ -245,14 +196,8 @@ TEST_F(interp, threads) {
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     test_ir_call10Times(m_builder, callback);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     auto thread_func = [&]() {
         vm_enterThread();
@@ -282,16 +227,10 @@ TEST_F(interp, threads_diff_progs) {
 
     DEFER({ prog1.deinit(); });
 
-    m_translator.translateFromIr(prog0, m_ir_prog);
+    bc_translateFromIr(prog0, m_ir_prog);
     auto fn0_t = prog0.funct_info[0].funct_t;
-    m_translator.translateFromIr(prog1, m_ir_prog);
+    bc_translateFromIr(prog1, m_ir_prog);
     auto fn1_t = prog1.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = prog0.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     std::thread t0{[&]() {
         vm_enterThread();
@@ -331,12 +270,12 @@ TEST_F(interp, one_thread_diff_progs) {
 
     m_builder.init(ir_prog0);
     test_ir_call10Times(m_builder, callback);
-    m_translator.translateFromIr(prog0, ir_prog0);
+    bc_translateFromIr(prog0, ir_prog0);
     auto fn0_t = prog0.funct_info[0].funct_t;
 
     m_builder.init(ir_prog1);
     test_ir_call10Times(m_builder, fn0_t);
-    m_translator.translateFromIr(prog1, ir_prog1);
+    bc_translateFromIr(prog1, ir_prog1);
     auto fn1_t = prog1.funct_info[0].funct_t;
 
     auto str = ir_prog0.inspect();
@@ -356,14 +295,8 @@ TEST_F(interp, one_thread_diff_progs) {
 
 TEST_F(interp, hasZeroByte32) {
     test_ir_hasZeroByte32(m_builder);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     auto hasZeroByte32 = [&](int32_t x) -> bool {
         int32_t res = 42;
@@ -389,14 +322,8 @@ static void _nativeSayHello() {
 
 TEST_F(interp, callNativeSayHello) {
     test_ir_callNativeFunc(m_builder, (void *)_nativeSayHello);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn_t, {}, {});
 }
@@ -408,14 +335,8 @@ static int64_t _nativeAdd(int64_t a, int64_t b) {
 
 TEST_F(interp, callNativeAdd) {
     test_ir_callNativeAdd(m_builder, (void *)_nativeAdd);
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     int64_t res = 42;
     int64_t args[] = {4, 5};
@@ -425,14 +346,8 @@ TEST_F(interp, callNativeAdd) {
 
 TEST_F(interp, callExternalPrintf) {
     test_ir_callExternalPrintf(m_builder, cs2s(TESTLIB_NAME));
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn_t, {}, {});
 
@@ -441,15 +356,9 @@ TEST_F(interp, callExternalPrintf) {
 
 TEST_F(interp, getSetExternalVar) {
     test_ir_getSetExternalVar(m_builder, cs2s(TESTLIB_NAME));
-    m_translator.translateFromIr(m_prog, m_ir_prog);
+    bc_translateFromIr(m_prog, m_ir_prog);
     auto get_fn_t = m_prog.funct_info[0].funct_t;
     auto set_fn_t = m_prog.funct_info[1].funct_t;
-
-    auto str = m_ir_prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
-
-    str = m_prog.inspect();
-    LOG_INF("bytecode:\n\n%.*s", str.size, str.data);
 
     auto getExternalVar = [&]() {
         int64_t res;
