@@ -434,25 +434,20 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
             "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code])
         s_funcs[pinstr->code](*pinstr);
         LOG_DBG("res=%s", [&]() {
-            //@Refactor/Feature Make a string builder over an allocator
-            static constexpr size_t c_buf_len = 4096;
-            static thread_local char s_msg_buf[c_buf_len];
+            string str{};
             auto ref = pinstr->arg[0];
             if (ref.ref_type != bc::Ref_None) {
                 auto val_str = val_inspect(_getDynRef(ref));
                 auto type_str = type_name(ref.type);
-                snprintf(
-                    s_msg_buf,
-                    c_buf_len,
+                str = string_format(
+                    ctx.stack,
                     "%.*s:%.*s",
                     (int)val_str.size,
                     val_str.data,
                     (int)type_str.size,
                     type_str.data);
-            } else {
-                snprintf(s_msg_buf, c_buf_len, "(nil)");
             }
-            return s_msg_buf;
+            return str.data;
         }())
     }
 
