@@ -26,7 +26,7 @@ class interp : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         VmConfig conf;
-        string paths[] = {cstr_to_str(TESTLIB_PATH)};
+        string paths[] = {cs2s(TESTLIB_PATH)};
         conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
         vm_init(conf);
 
@@ -424,7 +424,7 @@ TEST_F(interp, callNativeAdd) {
 }
 
 TEST_F(interp, callExternalPrintf) {
-    test_ir_callExternalPrintf(m_builder, cstr_to_str(TESTLIB_NAME));
+    test_ir_callExternalPrintf(m_builder, cs2s(TESTLIB_NAME));
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
@@ -440,7 +440,7 @@ TEST_F(interp, callExternalPrintf) {
 }
 
 TEST_F(interp, getSetExternalVar) {
-    test_ir_getSetExternalVar(m_builder, cstr_to_str(TESTLIB_NAME));
+    test_ir_getSetExternalVar(m_builder, cs2s(TESTLIB_NAME));
     m_translator.translateFromIr(m_prog, m_ir_prog);
     auto get_fn_t = m_prog.funct_info[0].funct_t;
     auto set_fn_t = m_prog.funct_info[1].funct_t;

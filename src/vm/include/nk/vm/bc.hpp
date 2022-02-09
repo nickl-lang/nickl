@@ -77,7 +77,7 @@ struct Translator {
     void translateFromIr(Program &prog, ir::Program const &ir);
 };
 
-} // namespace vm
+} // namespace bc
 } // namespace vm
 } // namespace nk
 

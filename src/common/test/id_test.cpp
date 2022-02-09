@@ -21,11 +21,11 @@ TEST_F(id, forward) {
     static constexpr char const *c_str_a = "String A.";
     static constexpr char const *c_str_b = "String B.";
 
-    Id const id_a = cstr_to_id(c_str_a);
-    Id const id_b = cstr_to_id(c_str_b);
+    Id const id_a = cs2id(c_str_a);
+    Id const id_b = cs2id(c_str_b);
 
-    EXPECT_EQ(id_a, cstr_to_id(c_str_a));
-    EXPECT_EQ(id_b, cstr_to_id(c_str_b));
+    EXPECT_EQ(id_a, cs2id(c_str_a));
+    EXPECT_EQ(id_b, cs2id(c_str_b));
 
     EXPECT_NE(id_a, id_b);
 }
@@ -37,18 +37,18 @@ TEST_F(id, backward) {
     static constexpr char const *c_str_a = "This is a first string.";
     static constexpr char const *c_str_b = "This is a second string.";
 
-    Id const id_a = cstr_to_id(c_str_a);
-    Id const id_b = cstr_to_id(c_str_b);
+    Id const id_a = cs2id(c_str_a);
+    Id const id_b = cs2id(c_str_b);
 
-    EXPECT_EQ(c_str_a, std_view(id_to_str(id_a)));
-    EXPECT_EQ(c_str_b, std_view(id_to_str(id_b)));
+    EXPECT_EQ(c_str_a, std_view(id2s(id_a)));
+    EXPECT_EQ(c_str_b, std_view(id2s(id_b)));
 }
 
 TEST_F(id, nonexistent) {
     id_init();
     DEFER({ id_deinit(); })
 
-    string str = id_to_str(9999999999);
+    string str = id2s(9999999999);
     EXPECT_EQ(nullptr, str.data);
     EXPECT_EQ(0, str.size);
 }

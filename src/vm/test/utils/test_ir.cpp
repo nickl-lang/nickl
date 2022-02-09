@@ -12,20 +12,20 @@ void test_ir_plus(ProgramBuilder &b) {
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("plus"), i64_t, args_t);
+    b.startFunct(f, cs2s("plus"), i64_t, args_t);
 
-    b.startBlock(b.makeLabel(), cstr_to_str("start"));
-    b.comment(cstr_to_str("function entry point"));
+    b.startBlock(b.makeLabel(), cs2s("start"));
+    b.comment(cs2s("function entry point"));
 
     auto dst = b.makeRetRef();
     auto lhs = b.makeArgRef(0);
     auto rhs = b.makeArgRef(1);
 
     b.gen(b.make_add(dst, lhs, rhs));
-    b.comment(cstr_to_str("add the arguments together"));
+    b.comment(cs2s("add the arguments together"));
 
     b.gen(b.make_ret());
-    b.comment(cstr_to_str("return the result"));
+    b.comment(cs2s("return the result"));
 }
 
 void test_ir_not(ProgramBuilder &b) {
@@ -34,7 +34,7 @@ void test_ir_not(ProgramBuilder &b) {
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("not"), i64_t, args_t);
+    b.startFunct(f, cs2s("not"), i64_t, args_t);
 
     auto arg = b.makeArgRef(0);
     auto ret = b.makeRetRef();
@@ -47,17 +47,17 @@ void test_ir_not(ProgramBuilder &b) {
     auto l_start = b.makeLabel();
     auto l_then = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
     b.gen(b.make_jmpz(arg, l_else));
 
-    b.startBlock(l_then, cstr_to_str("then"));
+    b.startBlock(l_then, cs2s("then"));
     b.gen(b.make_mov(ret, c_false));
     b.gen(b.make_jmp(l_end));
 
-    b.startBlock(l_else, cstr_to_str("else"));
+    b.startBlock(l_else, cs2s("else"));
     b.gen(b.make_mov(ret, c_true));
 
-    b.startBlock(l_end, cstr_to_str("end"));
+    b.startBlock(l_end, cs2s("end"));
     b.gen(b.make_ret());
 }
 
@@ -69,7 +69,7 @@ void test_ir_atan(ProgramBuilder &b) {
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("atan"), f64_t, args_t);
+    b.startFunct(f, cs2s("atan"), f64_t, args_t);
 
     auto a_x = b.makeArgRef(0);
     auto a_it = b.makeArgRef(1);
@@ -99,7 +99,7 @@ void test_ir_atan(ProgramBuilder &b) {
     auto l_loop = b.makeLabel();
     auto l_end = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     b.gen(b.make_mov(v_sum, a_x));
     b.gen(b.make_mov(v_sign, c_1f));
@@ -107,7 +107,7 @@ void test_ir_atan(ProgramBuilder &b) {
     b.gen(b.make_mov(v_denom, c_1f));
     b.gen(b.make_mov(v_i, c_0u));
 
-    b.startBlock(l_loop, cstr_to_str("loop"));
+    b.startBlock(l_loop, cs2s("loop"));
     b.gen(b.make_enter());
 
     b.gen(b.make_lt(v_cond, v_i, a_it));
@@ -125,7 +125,7 @@ void test_ir_atan(ProgramBuilder &b) {
     b.gen(b.make_leave());
     b.gen(b.make_jmp(l_loop));
 
-    b.startBlock(l_end, cstr_to_str("end"));
+    b.startBlock(l_end, cs2s("end"));
     b.gen(b.make_mov(ret, v_sum));
 
     b.gen(b.make_ret());
@@ -155,14 +155,14 @@ void test_ir_pi(ProgramBuilder &b) {
 
     //@Refactor/Feature Maybe add symbol resolution to VM programs?
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("pi"), f64_t, args_t);
+    b.startFunct(f, cs2s("pi"), f64_t, args_t);
 
     auto v_a = b.makeFrameRef(b.makeLocalVar(f64_t));
     auto v_b = b.makeFrameRef(b.makeLocalVar(f64_t));
 
     auto l_start = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     b.gen(b.make_call(v_a, FunctId{b.prog->functs[0].id}, c_a_args));
     b.gen(b.make_call(v_b, FunctId{b.prog->functs[0].id}, c_b_args));
@@ -180,7 +180,7 @@ void test_ir_rsqrt(ProgramBuilder &b) {
     auto args_t = type_get_tuple({&f32_t, 1});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("rsqrt"), f32_t, args_t);
+    b.startFunct(f, cs2s("rsqrt"), f32_t, args_t);
 
     auto l_start = b.makeLabel();
 
@@ -191,7 +191,7 @@ void test_ir_rsqrt(ProgramBuilder &b) {
     auto c_1u = b.makeConstRef(1, i32_t);
     auto c_magic = b.makeConstRef(0x5f3759df, i32_t);
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     auto v_0_i32 = b.makeFrameRef(b.makeLocalVar(i32_t));
     auto v_0_f32 = v_0_i32.as(f32_t);
@@ -234,7 +234,7 @@ void test_ir_vec2LenSquared(ProgramBuilder &b) {
     auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("vec2LenSquared"), void_t, args_t);
+    b.startFunct(f, cs2s("vec2LenSquared"), void_t, args_t);
 
     auto l_start = b.makeLabel();
 
@@ -244,7 +244,7 @@ void test_ir_vec2LenSquared(ProgramBuilder &b) {
     auto r_a = b.makeRegRef(Reg_A, f64_t);
     auto r_b = b.makeRegRef(Reg_B, f64_t);
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     b.gen(b.make_mov(r_a, a_vec_ptr.deref(f64_t)));
     b.gen(b.make_mov(r_b, a_vec_ptr.deref(f64_t).plus(8)));
@@ -265,7 +265,7 @@ void test_ir_modf(ProgramBuilder &b) {
     auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("modf"), f64_t, args_t);
+    b.startFunct(f, cs2s("modf"), f64_t, args_t);
 
     auto a_x = b.makeArgRef(0);
     auto a_int_part_ptr = b.makeArgRef(1);
@@ -276,7 +276,7 @@ void test_ir_modf(ProgramBuilder &b) {
 
     auto l_start = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     auto int_part_ref = a_int_part_ptr.deref();
 
@@ -296,7 +296,7 @@ void test_ir_intPart(ProgramBuilder &b) {
     auto args_t = type_get_tuple({&f64_t, 1});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("intPart"), f64_t, args_t);
+    b.startFunct(f, cs2s("intPart"), f64_t, args_t);
 
     auto modf_args_t = b.prog->functs[f_modf_id].args_t;
 
@@ -314,7 +314,7 @@ void test_ir_intPart(ProgramBuilder &b) {
 
     auto l_start = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     b.gen(b.make_mov(v_arg0, a_x));
     b.gen(b.make_lea(v_arg1, ret));
@@ -330,7 +330,7 @@ void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
     auto i64_t = type_get_numeric(Int64);
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("call10Times"), void_t, args_t);
+    b.startFunct(f, cs2s("call10Times"), void_t, args_t);
 
     auto v_i = b.makeFrameRef(b.makeLocalVar(i64_t));
     auto v_cond = b.makeFrameRef(b.makeLocalVar(i64_t));
@@ -339,11 +339,11 @@ void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
     auto l_loop = b.makeLabel();
     auto l_end = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     b.gen(b.make_mov(v_i, b.makeConstRef(10ll, i64_t)));
 
-    b.startBlock(l_loop, cstr_to_str("loop"));
+    b.startBlock(l_loop, cs2s("loop"));
 
     b.gen(b.make_gt(v_cond, v_i, b.makeConstRef(0ll, i64_t)));
     b.gen(b.make_jmpz(v_cond, l_end));
@@ -352,7 +352,7 @@ void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
     b.gen(b.make_sub(v_i, v_i, b.makeConstRef(1ll, i64_t)));
     b.gen(b.make_jmp(l_loop));
 
-    b.startBlock(l_end, cstr_to_str("end"));
+    b.startBlock(l_end, cs2s("end"));
 
     b.gen(b.make_ret());
 }
@@ -364,7 +364,7 @@ void test_ir_hasZeroByte32(ProgramBuilder &b) {
     auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("hasZeroByte32"), i32_t, args_t);
+    b.startFunct(f, cs2s("hasZeroByte32"), i32_t, args_t);
 
     auto a_x = b.makeArgRef(0);
 
@@ -374,7 +374,7 @@ void test_ir_hasZeroByte32(ProgramBuilder &b) {
 
     auto l_start = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
 
     b.gen(b.make_sub(ret, a_x, b.makeConstRef(0x01010101u, i32_t)));
     b.gen(b.make_compl(r_a, a_x));
@@ -394,20 +394,20 @@ void test_ir_readToggleGlobal(ProgramBuilder &b) {
 
     {
         auto f = b.makeFunct();
-        b.startFunct(f, cstr_to_str("readGlobal"), i64_t, args_t);
+        b.startFunct(f, cs2s("readGlobal"), i64_t, args_t);
 
         auto ret = b.makeRetRef();
 
-        b.startBlock(b.makeLabel(), cstr_to_str("start"));
+        b.startBlock(b.makeLabel(), cs2s("start"));
         b.gen(b.make_mov(ret, g_var));
         b.gen(b.make_ret());
     }
 
     {
         auto f = b.makeFunct();
-        b.startFunct(f, cstr_to_str("toggleGlobal"), void_t, args_t);
+        b.startFunct(f, cs2s("toggleGlobal"), void_t, args_t);
 
-        b.startBlock(b.makeLabel(), cstr_to_str("start"));
+        b.startBlock(b.makeLabel(), cs2s("start"));
         b.gen(b.make_not(g_var, g_var));
         b.gen(b.make_ret());
     }
@@ -420,9 +420,9 @@ void test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr, false);
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("callNativeFunc"), void_t, args_t);
+    b.startFunct(f, cs2s("callNativeFunc"), void_t, args_t);
 
-    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.startBlock(b.makeLabel(), cs2s("start"));
 
     b.gen(b.make_call({}, b.makeConstRef({nullptr, fn_t}), {}));
 
@@ -438,11 +438,11 @@ void test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, nullptr, false);
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("callNativeAdd"), i64_t, args_t);
+    b.startFunct(f, cs2s("callNativeAdd"), i64_t, args_t);
 
     auto ret = b.makeRetRef();
 
-    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.startBlock(b.makeLabel(), cs2s("start"));
 
     b.gen(b.make_call(ret, b.makeConstRef({nullptr, fn_t}), b.makeArgRef(0).as(args_t)));
 
@@ -463,14 +463,14 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
     auto pf_args_t = type_get_tuple({pf_args, sizeof(pf_args) / sizeof(pf_args[0])});
 
     auto f_printf = b.makeExtFunct(
-        b.makeShObj(str_to_id(libname)),
-        cstr_to_id("test_printf"),
+        b.makeShObj(s2id(libname)),
+        cs2id("test_printf"),
         i32_t,
         type_get_tuple({&i8_ptr_t, 1}),
         true);
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("callExternalPrintf"), void_t, args_t);
+    b.startFunct(f, cs2s("callExternalPrintf"), void_t, args_t);
 
     auto args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
@@ -479,7 +479,7 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
     auto arg2 = args.plus(type_tuple_offset(pf_args_t, 2), i64_t);
     auto arg3 = args.plus(type_tuple_offset(pf_args_t, 3), i64_t);
 
-    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.startBlock(b.makeLabel(), cs2s("start"));
 
     b.gen(b.make_mov(arg0, b.makeConstRef((char const *)"%lli + %lli = %lli\n", i8_ptr_t)));
     b.gen(b.make_mov(arg1, b.makeConstRef(4ll, i64_t)));
@@ -496,20 +496,20 @@ void test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
 
     auto args_t = type_get_tuple({});
 
-    auto v_test_val = b.makeExtVarRef(
-        b.makeExtVar(b.makeShObj(str_to_id(libname)), cstr_to_id("test_val"), i64_t));
+    auto v_test_val =
+        b.makeExtVarRef(b.makeExtVar(b.makeShObj(s2id(libname)), cs2id("test_val"), i64_t));
 
-    b.startFunct(b.makeFunct(), cstr_to_str("getExternalVar"), i64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("getExternalVar"), i64_t, args_t);
 
     auto ret = b.makeRetRef();
 
-    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.startBlock(b.makeLabel(), cs2s("start"));
     b.gen(b.make_mov(ret, v_test_val));
     b.gen(b.make_ret());
 
-    b.startFunct(b.makeFunct(), cstr_to_str("setExternalVar"), void_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("setExternalVar"), void_t, args_t);
 
-    b.startBlock(b.makeLabel(), cstr_to_str("start"));
+    b.startBlock(b.makeLabel(), cs2s("start"));
     b.gen(b.make_mov(v_test_val, b.makeConstRef(42ll, i64_t)));
     b.gen(b.make_ret());
 }
@@ -523,7 +523,7 @@ void test_ir_main(ProgramBuilder &b) {
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
     auto f = b.makeFunct();
-    b.startFunct(f, cstr_to_str("main"), i32_t, args_t);
+    b.startFunct(f, cs2s("main"), i32_t, args_t);
 
     auto ret = b.makeRetRef();
 
@@ -533,13 +533,13 @@ void test_ir_main(ProgramBuilder &b) {
     auto l_start = b.makeLabel();
     auto l_error = b.makeLabel();
 
-    b.startBlock(l_start, cstr_to_str("start"));
+    b.startBlock(l_start, cs2s("start"));
     b.gen(b.make_eq(b.makeRegRef(Reg_A, i32_t), a_argc, b.makeConstRef(3, i32_t)));
     b.gen(b.make_jmpz(b.makeRegRef(Reg_A, i32_t), l_error));
     b.gen(b.make_mov(ret, b.makeConstRef(0, i32_t)));
     b.gen(b.make_ret());
 
-    b.startBlock(l_error, cstr_to_str("error"));
+    b.startBlock(l_error, cs2s("error"));
     b.gen(b.make_mov(ret, b.makeConstRef(1, i32_t)));
     b.gen(b.make_ret());
 }

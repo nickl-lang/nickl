@@ -18,8 +18,8 @@ class c_compiler_stream : public testing::Test {
         vm_init(VmConfig{});
 
         m_conf = {
-            .compiler_binary = cstr_to_str(TEST_C_COMPILER),
-            .additional_flags = cstr_to_str(TEST_C_COMPILER_FLAGS),
+            .compiler_binary = cs2s(TEST_C_COMPILER),
+            .additional_flags = cs2s(TEST_C_COMPILER_FLAGS),
             .output_filename = string_format(
                 *_mctx.tmp_allocator,
                 TEST_FILES_DIR "%s_test.out",

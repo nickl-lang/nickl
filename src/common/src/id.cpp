@@ -54,16 +54,16 @@ void id_deinit() {
     s_arena.deinit();
 }
 
-string id_to_str(Id id) {
+string id2s(Id id) {
     string *pstr = s_id2str.find(id);
     return pstr ? *pstr : string{};
 }
 
-Id cstr_to_id(char const *str) {
-    return str_to_id(string{str, std::strlen(str)});
+Id cs2id(char const *str) {
+    return s2id(string{str, std::strlen(str)});
 }
 
-Id str_to_id(string str) {
+Id s2id(string str) {
     Id *pid = s_str2id.find(str);
 
     if (nullptr == pid) {
