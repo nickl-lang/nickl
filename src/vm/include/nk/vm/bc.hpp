@@ -70,12 +70,10 @@ struct Program {
     void init();
     void deinit();
 
-    string inspect();
+    string inspect() const;
 };
 
-struct Translator {
-    void translateFromIr(Program &prog, ir::Program const &ir);
-};
+void bc_translateFromIr(Program &prog, ir::Program const &ir);
 
 } // namespace bc
 } // namespace vm

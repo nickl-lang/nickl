@@ -583,6 +583,9 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
 void translateToC(ir::Program const &ir, std::ostream &src) {
     LOG_TRC(__FUNCTION__)
 
+    auto str = ir.inspect();
+    LOG_INF("ir:\n%.*s", str.size, str.data);
+
     WriterCtx ctx{};
 
     DEFER({

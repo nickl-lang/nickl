@@ -164,7 +164,7 @@ struct Program {
     void init();
     void deinit();
 
-    string inspect();
+    string inspect() const;
 };
 
 struct Local {
