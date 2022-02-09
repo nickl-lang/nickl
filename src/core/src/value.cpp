@@ -80,19 +80,16 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
 }
 
 string _typeName(type_t type) {
-    auto &allocator = *_mctx.tmp_allocator;
-
     switch (type->typeclass_id) {
     case Type_Any:
         return cs2s("any");
     case Type_Array: {
         string s = _typeName(type->as.arr_t.elem_type);
-        return string_format(
-            allocator, "Array(%.*s, %lu)", s.size, s.data, type->as.arr_t.elem_count);
+        return tmpstr_format("Array(%.*s, %lu)", s.size, s.data, type->as.arr_t.elem_count);
     }
     case Type_ArrayPtr: {
         string s = _typeName(type->as.arr_ptr_t.elem_type);
-        return string_format(allocator, "ArrayPtr(%.*s)", s.size, s.data);
+        return tmpstr_format("ArrayPtr(%.*s)", s.size, s.data);
     }
     case Type_Bool:
         return cs2s("bool");
@@ -124,7 +121,7 @@ string _typeName(type_t type) {
         }
     case Type_Ptr: {
         string s = _typeName(type->as.ptr_t.target_type);
-        return string_format(allocator, "Ptr(%.*s)", s.size, s.data);
+        return tmpstr_format("Ptr(%.*s)", s.size, s.data);
     }
     case Type_String:
         return cs2s("string");
@@ -140,9 +137,9 @@ string _typeName(type_t type) {
         for (size_t i = 0; i < info.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
             string ts = _typeName(info[i].type);
-            s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
+            s = tmpstr_format(fmt, s.size, s.data, ts.size, ts.data);
         }
-        s = string_format(allocator, "%.*s)", s.size, s.data);
+        s = tmpstr_format("%.*s)", s.size, s.data);
         return s;
     }
     case Type_Struct: {
@@ -153,10 +150,9 @@ string _typeName(type_t type) {
             string name = id2s(fields[i]);
             string const ts = _typeName(info[i].type);
             char const *fmt = i ? "%.*s, %.*s: %.*s" : "%.*s%.*s: %.*s";
-            s = string_format(
-                allocator, fmt, s.size, s.data, name.size, name.data, ts.size, ts.data);
+            s = tmpstr_format(fmt, s.size, s.data, name.size, name.data, ts.size, ts.data);
         }
-        s = string_format(allocator, "%.*s}", s.size, s.data);
+        s = tmpstr_format("%.*s}", s.size, s.data);
         return s;
     }
     case Type_Fn: {
@@ -165,10 +161,10 @@ string _typeName(type_t type) {
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
             string const ts = _typeName(params[i]);
-            s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
+            s = tmpstr_format(fmt, s.size, s.data, ts.size, ts.data);
         }
         string const rts = _typeName(type->as.fn_ptr_t.ret_type);
-        s = string_format(allocator, "%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
+        s = tmpstr_format("%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
         return s;
     }
     case Type_FnPtr: {
@@ -177,14 +173,14 @@ string _typeName(type_t type) {
         for (size_t i = 0; i < params.size; i++) {
             char const *fmt = i ? "%.*s, %.*s" : "%.*s%.*s";
             string const ts = _typeName(params[i]);
-            s = string_format(allocator, fmt, s.size, s.data, ts.size, ts.data);
+            s = tmpstr_format(fmt, s.size, s.data, ts.size, ts.data);
         }
         string const rts = _typeName(type->as.fn_ptr_t.ret_type);
-        s = string_format(allocator, "%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
+        s = tmpstr_format("%.*s), %.*s)", s.size, s.data, rts.size, rts.data);
         return s;
     }
     default:
-        return string_format(allocator, "type{id=%lu}", type->id);
+        return tmpstr_format("type{id=%lu}", type->id);
     }
 }
 
@@ -477,13 +473,7 @@ type_t type_get_void() {
 }
 
 string type_name(type_t type) {
-    auto &allocator = *_mctx.tmp_allocator;
-
-    string tmp_str = _typeName(type);
-    char *data = allocator.alloc<char>(tmp_str.size);
-    std::memcpy(data, tmp_str.data, tmp_str.size);
-
-    return string{data, tmp_str.size};
+    return _typeName(type);
 }
 
 value_t val_undefined() {

@@ -24,6 +24,18 @@ hash_t hash_array(uint8_t const *begin, uint8_t const *end) {
     return hash;
 }
 
+string tmpstr_format(char const *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    string str = tmpstr_vformat(fmt, ap);
+    va_end(ap);
+    return str;
+}
+
+string tmpstr_vformat(char const *fmt, va_list ap) {
+    return string_vformat(*_mctx.tmp_allocator, fmt, ap);
+}
+
 string string_format(Allocator &allocator, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
