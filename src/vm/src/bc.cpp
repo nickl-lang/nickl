@@ -230,15 +230,15 @@ void Translator::translateFromIr(Program &prog, ir::Program const &ir) {
                 arg.is_indirect = ref.is_indirect;
                 switch (ref.ref_type) {
                 case ir::Ref_Frame:
-                    arg.offset += type_tuple_offset(funct_info.frame_t, ref.value.index);
+                    arg.offset += type_tuple_offsetAt(funct_info.frame_t, ref.value.index);
                     break;
                 case ir::Ref_Arg:
-                    arg.offset += type_tuple_offset(funct.args_t, ref.value.index);
+                    arg.offset += type_tuple_offsetAt(funct.args_t, ref.value.index);
                     break;
                 case ir::Ref_Ret:
                     break;
                 case ir::Ref_Global:
-                    arg.offset += type_tuple_offset(prog.globals_t, ref.value.index);
+                    arg.offset += type_tuple_offsetAt(prog.globals_t, ref.value.index);
                     break;
                 case ir::Ref_Const:
                     arg.offset += _pushConst({ref.value.data, ref.type});

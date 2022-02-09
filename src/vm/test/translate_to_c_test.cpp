@@ -99,8 +99,8 @@ TEST_F(translate_to_c, pi) {
 
     auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto arg0 = v_pf_args.plus(type_tuple_offset(pf_args_t, 0), i8_ptr_t);
-    auto arg1 = v_pf_args.plus(type_tuple_offset(pf_args_t, 1), f64_t);
+    auto arg0 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto arg1 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 1), f64_t);
 
     auto fmt = cs2s("pi = %.16lf\n");
     auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
@@ -143,11 +143,11 @@ TEST_F(translate_to_c, vec2LenSquared) {
     auto v_lenSquared = b.makeFrameRef(b.makeLocalVar(f64_t));
     auto v_args = b.makeFrameRef(b.makeLocalVar(b.prog->functs[0].args_t));
 
-    auto vec_arg0 = v_args.plus(type_tuple_offset(vec_t, 0), vec_ptr_t);
-    auto vec_arg1 = v_args.plus(type_tuple_offset(vec_t, 1), f64_ptr_t);
+    auto vec_arg0 = v_args.plus(type_tuple_offsetAt(vec_t, 0), vec_ptr_t);
+    auto vec_arg1 = v_args.plus(type_tuple_offsetAt(vec_t, 1), f64_ptr_t);
 
-    b.gen(b.make_mov(v_vec.plus(type_tuple_offset(vec_t, 0), f64_t), b.makeConstRef(4.0, f64_t)));
-    b.gen(b.make_mov(v_vec.plus(type_tuple_offset(vec_t, 1), f64_t), b.makeConstRef(5.0, f64_t)));
+    b.gen(b.make_mov(v_vec.plus(type_tuple_offsetAt(vec_t, 0), f64_t), b.makeConstRef(4.0, f64_t)));
+    b.gen(b.make_mov(v_vec.plus(type_tuple_offsetAt(vec_t, 1), f64_t), b.makeConstRef(5.0, f64_t)));
     b.gen(b.make_lea(vec_arg0, v_vec));
     b.gen(b.make_lea(vec_arg1, v_lenSquared));
     b.gen(b.make_call({}, f_vec2LenSquared, v_args));
@@ -157,8 +157,8 @@ TEST_F(translate_to_c, vec2LenSquared) {
 
     auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto pf_arg0 = v_pf_args.plus(type_tuple_offset(pf_args_t, 0), i8_ptr_t);
-    auto pf_arg1 = v_pf_args.plus(type_tuple_offset(pf_args_t, 1), f64_t);
+    auto pf_arg0 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto pf_arg1 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 1), f64_t);
 
     auto fmt = cs2s("lenSquared = %lf\n");
     auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));

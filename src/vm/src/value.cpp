@@ -132,12 +132,11 @@ void _typeName(type_t type, std::ostringstream &ss) {
         break;
     case Type_Tuple: {
         ss << "tuple{";
-        TupleElemInfoArray const info = type->as.tuple.elems;
-        for (size_t i = 0; i < info.size; i++) {
+        for (size_t i = 0; i < type_tuple_size(type); i++) {
             if (i) {
                 ss << ", ";
             }
-            _typeName(info[i].type, ss);
+            _typeName(type_tuple_typeAt(type, i), ss);
         }
         ss << "}";
         break;
@@ -145,11 +144,11 @@ void _typeName(type_t type, std::ostringstream &ss) {
     case Type_Fn: {
         ss << "fn{(";
         type_t const params = type->as.fn.args_t;
-        for (size_t i = 0; i < params->as.tuple.elems.size; i++) {
+        for (size_t i = 0; i < type_tuple_size(params); i++) {
             if (i) {
                 ss << ", ";
             }
-            _typeName(params->as.tuple.elems[i].type, ss);
+            _typeName(type_tuple_typeAt(params, i), ss);
         }
         ss << "), ";
         _typeName(type->as.fn.ret_t, ss);
@@ -346,8 +345,8 @@ type_t type_get_fn_native(
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body.native_fn_info = type_fn_prepareNativeInfo(
-            s_typearena, body_ptr, args_t->as.tuple.elems.size, is_variadic);
+        res.type->as.fn.body.native_fn_info =
+            type_fn_prepareNativeInfo(s_typearena, body_ptr, type_tuple_size(args_t), is_variadic);
         res.type->as.fn.closure = closure;
         res.type->as.fn.is_native = true;
     }
@@ -469,39 +468,46 @@ string val_inspect(value_t val) {
 }
 
 size_t val_tuple_size(value_t self) {
-    EASY_FUNCTION(profiler::colors::Green200)
-
     return val_typeof(self)->as.tuple.elems.size;
 }
 
 value_t val_tuple_at(value_t self, size_t i) {
-    EASY_FUNCTION(profiler::colors::Green200)
-
     assert(i < val_tuple_size(self) && "tuple index out of range");
     auto const type = val_typeof(self);
     return {
         ((uint8_t *)val_data(self)) + type->as.tuple.elems[i].offset, type->as.tuple.elems[i].type};
 }
 
-size_t type_tuple_offset(type_t tuple_t, size_t i) {
-    EASY_FUNCTION(profiler::colors::Green200)
+size_t type_tuple_size(type_t tuple_t) {
+    return tuple_t->as.tuple.elems.size;
+}
 
+type_t type_tuple_typeAt(type_t tuple_t, size_t i) {
+    assert(i < type_tuple_size(tuple_t) && "tuple index out of range");
+    return tuple_t->as.tuple.elems[i].type;
+}
+
+size_t type_tuple_offsetAt(type_t tuple_t, size_t i) {
     assert(i < tuple_t->as.tuple.elems.size && "tuple index out of range");
     return tuple_t->as.tuple.elems[i].offset;
 }
 
 size_t val_array_size(value_t self) {
-    EASY_FUNCTION(profiler::colors::Green200)
-
     return val_typeof(self)->as.arr.elem_count;
 }
 
 value_t val_array_at(value_t self, size_t i) {
-    EASY_FUNCTION(profiler::colors::Green200)
-
     assert(i < val_array_size(self) && "array index out of range");
     auto const type = val_typeof(self);
     return {((uint8_t *)val_data(self)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
+}
+
+size_t type_array_size(type_t array_t) {
+    return array_t->as.arr.elem_count;
+}
+
+type_t type_array_elemType(type_t array_t) {
+    return array_t->as.arr.elem_type;
 }
 
 void val_fn_invoke(type_t self, value_t ret, value_t args) {
