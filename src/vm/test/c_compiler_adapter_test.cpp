@@ -12,8 +12,6 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::c_compiler_adapter::test)
-
 class c_compiler_adapter : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

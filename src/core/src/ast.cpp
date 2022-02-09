@@ -9,7 +9,7 @@
 
 #define AST_INIT_CAPACITY 1024
 
-char const *s_node_names[] = {
+char const *s_ast_node_names[] = {
 #define X(TYPE, ID) #ID,
 #include "nkl/core//nodes.inl"
 };
@@ -22,297 +22,23 @@ void Ast::deinit() {
     data.deinit();
 }
 
-Node Ast::make_any() {
-    return Node{{.null = {0}}, Node_any};
-}
-
-Node Ast::make_bool() {
-    return Node{{.null = {0}}, Node_bool};
-}
-
-Node Ast::make_break() {
-    return Node{{.null = {0}}, Node_break};
-}
-
-Node Ast::make_continue() {
-    return Node{{.null = {0}}, Node_continue};
-}
-
-Node Ast::make_f32() {
-    return Node{{.null = {0}}, Node_f32};
-}
-
-Node Ast::make_f64() {
-    return Node{{.null = {0}}, Node_f64};
-}
-
-Node Ast::make_false() {
-    return Node{{.null = {0}}, Node_false};
-}
-
-Node Ast::make_i16() {
-    return Node{{.null = {0}}, Node_i16};
-}
-
-Node Ast::make_i32() {
-    return Node{{.null = {0}}, Node_i32};
-}
-
-Node Ast::make_i64() {
-    return Node{{.null = {0}}, Node_i64};
-}
-
-Node Ast::make_i8() {
-    return Node{{.null = {0}}, Node_i8};
-}
-
-Node Ast::make_nop() {
-    return Node{{.null = {0}}, Node_nop};
-}
-
-Node Ast::make_string() {
-    return Node{{.null = {0}}, Node_string};
-}
-
-Node Ast::make_symbol() {
-    return Node{{.null = {0}}, Node_symbol};
-}
-
-Node Ast::make_true() {
-    return Node{{.null = {0}}, Node_true};
-}
-
-Node Ast::make_typeref() {
-    return Node{{.null = {0}}, Node_typeref};
-}
-
-Node Ast::make_u16() {
-    return Node{{.null = {0}}, Node_u16};
-}
-
-Node Ast::make_u32() {
-    return Node{{.null = {0}}, Node_u32};
-}
-
-Node Ast::make_u64() {
-    return Node{{.null = {0}}, Node_u64};
-}
-
-Node Ast::make_u8() {
-    return Node{{.null = {0}}, Node_u8};
-}
-
-Node Ast::make_void() {
-    return Node{{.null = {0}}, Node_void};
-}
-
-Node Ast::make_addr(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_addr};
-}
-
-Node Ast::make_alignof(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_alignof};
-}
-
-Node Ast::make_assert(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_assert};
-}
-
-Node Ast::make_compl(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_compl};
-}
-
-Node Ast::make_const(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_const};
-}
-
-Node Ast::make_dec(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_dec};
-}
-
-Node Ast::make_deref(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_deref};
-}
-
-Node Ast::make_inc(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_inc};
-}
-
-Node Ast::make_not(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_not};
-}
-
-Node Ast::make_pdec(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_pdec};
-}
-
-Node Ast::make_pinc(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_pinc};
-}
-
-Node Ast::make_return(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_return};
-}
-
-Node Ast::make_sizeof(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_sizeof};
-}
-
-Node Ast::make_typeof(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_typeof};
-}
-
-Node Ast::make_uminus(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_uminus};
-}
-
-Node Ast::make_uplus(node_ref_t arg) {
-    return Node{{.unary = {arg}}, Node_uplus};
-}
-
-Node Ast::make_add(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_add};
-}
-
-Node Ast::make_add_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_add_assign};
-}
-
-Node Ast::make_and(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_and};
-}
-
-Node Ast::make_and_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_and_assign};
-}
-
-Node Ast::make_array_type(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_array_type};
-}
-
-Node Ast::make_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_assign};
-}
-
-Node Ast::make_bitand(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_bitand};
-}
-
-Node Ast::make_bitand_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_bitand_assign};
-}
-
-Node Ast::make_bitor(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_bitor};
-}
-
-Node Ast::make_bitor_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_bitor_assign};
-}
-
-Node Ast::make_cast(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_cast};
-}
-
-Node Ast::make_colon_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_colon_assign};
-}
-
-Node Ast::make_div(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_div};
-}
-
-Node Ast::make_div_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_div_assign};
-}
-
-Node Ast::make_eq(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_eq};
-}
-
-Node Ast::make_ge(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_ge};
-}
-
-Node Ast::make_gt(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_gt};
-}
-
-Node Ast::make_index(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_index};
-}
-
-Node Ast::make_le(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_le};
-}
-
-Node Ast::make_lsh(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_lsh};
-}
-
-Node Ast::make_lsh_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_lsh_assign};
-}
-
-Node Ast::make_lt(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_lt};
-}
-
-Node Ast::make_mod(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_mod};
-}
-
-Node Ast::make_mod_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_mod_assign};
-}
-
-Node Ast::make_mul(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_mul};
-}
-
-Node Ast::make_mul_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_mul_assign};
-}
-
-Node Ast::make_ne(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_ne};
-}
-
-Node Ast::make_or(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_or};
-}
-
-Node Ast::make_or_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_or_assign};
-}
-
-Node Ast::make_rsh(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_rsh};
-}
-
-Node Ast::make_rsh_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_rsh_assign};
-}
-
-Node Ast::make_sub(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_sub};
-}
-
-Node Ast::make_sub_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_sub_assign};
-}
-
-Node Ast::make_while(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_while};
-}
-
-Node Ast::make_xor(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_xor};
-}
-
-Node Ast::make_xor_assign(node_ref_t lhs, node_ref_t rhs) {
-    return Node{{.binary = {lhs, rhs}}, Node_xor_assign};
-}
+#define N(TYPE, ID)                            \
+    Node Ast::make_##ID() {                    \
+        return Node{{.TYPE = {0}}, Node_##ID}; \
+    }
+#include "nkl/core/nodes.inl"
+
+#define U(TYPE, ID)                              \
+    Node Ast::make_##ID(node_ref_t arg) {        \
+        return Node{{.TYPE = {arg}}, Node_##ID}; \
+    }
+#include "nkl/core/nodes.inl"
+
+#define B(TYPE, ID)                                       \
+    Node Ast::make_##ID(node_ref_t lhs, node_ref_t rhs) { \
+        return Node{{.TYPE = {lhs, rhs}}, Node_##ID};     \
+    }
+#include "nkl/core/nodes.inl"
 
 Node Ast::make_if(node_ref_t cond, node_ref_t then_clause, node_ref_t else_clause) {
     return Node{{.ternary = {cond, then_clause, else_clause}}, Node_if};
@@ -342,16 +68,8 @@ Node Ast::make_id(Id name) {
     return Node{{.id = {name}}, Node_id};
 }
 
-Node Ast::make_sym(Id name) {
-    return Node{{.id = {name}}, Node_sym};
-}
-
 Node Ast::make_member(node_ref_t lhs, Id name) {
     return Node{{.member = {lhs, name}}, Node_member};
-}
-
-Node Ast::make_offsetof(node_ref_t lhs, Id name) {
-    return Node{{.member = {lhs, name}}, Node_offsetof};
 }
 
 Node Ast::make_numeric_i8(int8_t val) {
@@ -398,10 +116,6 @@ Node Ast::make_struct(Id name, NamedNodeArray fields) {
     return Node{{.type_decl = {name, push_named_ar(fields)}}, Node_struct};
 }
 
-Node Ast::make_union(Id name, NamedNodeArray fields) {
-    return Node{{.type_decl = {name, push_named_ar(fields)}}, Node_union};
-}
-
 Node Ast::make_call(node_ref_t lhs, NodeArray args) {
     return Node{{.call = {lhs, push_ar(args)}}, Node_call};
 }
@@ -410,14 +124,10 @@ Node Ast::make_fn(Id name, NamedNodeArray params, node_ref_t ret_type, node_ref_
     return Node{{.fn = {{name, push_named_ar(params), ret_type}, body}}, Node_fn};
 }
 
-Node Ast::make_fn_type(Id name, NamedNodeArray params, node_ref_t ret_type) {
-    return Node{{.fn_type = {name, push_named_ar(params), ret_type}}, Node_fn_type};
-}
-
-Node Ast::make_string_literal(Allocator *allocator, string str) {
-    char *ast_str = allocator->alloc<char>(str.size);
-    std::strncpy(ast_str, str.data, str.size);
-    return Node{{.str = {{ast_str, str.size}}}, Node_string_literal};
+Node Ast::make_string_literal(Allocator &allocator, string str) {
+    string ast_str;
+    str.copy(ast_str, allocator);
+    return Node{{.str = {ast_str}}, Node_string_literal};
 }
 
 Node Ast::make_struct_literal(node_ref_t type, NamedNodeArray fields) {
@@ -436,6 +146,7 @@ node_ref_t Ast::push(Node node) {
 
 NodeArray Ast::push_ar(NodeArray nodes) {
     Node *first = &data.push(nodes.size);
+    //@Refacor Wrap explicit memcpy in AST node array allocation
     std::memcpy(first, nodes.data, nodes.size * sizeof(Node));
     return NodeArray{first, nodes.size};
 }
@@ -451,10 +162,8 @@ NodeArray Ast::push_named_ar(NamedNodeArray nodes) {
 
 namespace {
 
-std::string _inspect(node_ref_t node, size_t depth = 1) {
+void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
     assert(depth > 0);
-
-    std::ostringstream ss;
 
     auto const newline = [&](size_t depth) {
         static constexpr size_t c_indent_size = 2;
@@ -475,7 +184,7 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
             if (!first) {
                 ss << ", ";
             }
-            ss << _inspect(ar.data + i, depth + 1);
+            _inspect(ar.data + i, ss, depth + 1);
             first = false;
         }
         ss << "]";
@@ -492,7 +201,9 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
             newline(depth + 1);
             ss << "name: #" << id2s(node->as.named_node.name) << ",";
             newline(depth + 1);
-            ss << "node: " << _inspect(node->as.named_node.node, depth + 2) << "}";
+            ss << "node: ";
+            _inspect(node->as.named_node.node, ss, depth + 2);
+            ss << "}";
             first = false;
         }
         ss << "]";
@@ -505,11 +216,13 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
         inspectNamedNodeArray(sig.params, depth + 1);
         ss << ",";
         newline(depth + 1);
-        ss << "ret_type: " << _inspect(sig.ret_type, depth + 2) << "}";
+        ss << "ret_type: ";
+        _inspect(sig.ret_type, ss, depth + 2);
+        ss << "}";
     };
 
     auto const inspectNode = [&](node_ref_t node) {
-        ss << _inspect(node, depth + 1);
+        _inspect(node, ss, depth + 1);
     };
 
     auto const inspectId = [&](Id id) {
@@ -522,71 +235,25 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
 
     if (!node) {
         ss << "null";
-        return ss.str();
+        return;
     }
 
     ss << "{";
     newline(depth);
-    ss << "id: " << s_node_names[node->id];
+    ss << "id: " << s_ast_node_names[node->id];
 
     switch (node->id) {
     default:
         break;
 
-    case Node_addr:
-    case Node_alignof:
-    case Node_assert:
-    case Node_compl:
-    case Node_const:
-    case Node_dec:
-    case Node_deref:
-    case Node_inc:
-    case Node_not:
-    case Node_pdec:
-    case Node_pinc:
-    case Node_return:
-    case Node_sizeof:
-    case Node_typeof:
-    case Node_uminus:
-    case Node_uplus:
+#define U(TYPE, ID) case Node_##ID:
+#include "nkl/core/nodes.inl"
         field("arg");
         inspectNode(node->as.unary.arg);
         break;
 
-    case Node_add:
-    case Node_add_assign:
-    case Node_and:
-    case Node_and_assign:
-    case Node_array_type:
-    case Node_assign:
-    case Node_bitand:
-    case Node_bitor:
-    case Node_cast:
-    case Node_colon_assign:
-    case Node_div:
-    case Node_div_assign:
-    case Node_eq:
-    case Node_ge:
-    case Node_gt:
-    case Node_index:
-    case Node_le:
-    case Node_lsh:
-    case Node_lsh_assign:
-    case Node_lt:
-    case Node_mod:
-    case Node_mod_assign:
-    case Node_mul:
-    case Node_mul_assign:
-    case Node_ne:
-    case Node_or:
-    case Node_or_assign:
-    case Node_rsh:
-    case Node_rsh_assign:
-    case Node_sub:
-    case Node_sub_assign:
-    case Node_while:
-    case Node_xor:
-    case Node_xor_assign:
+#define B(TYPE, ID) case Node_##ID:
+#include "nkl/core/nodes.inl"
         field("lhs");
         inspectNode(node->as.binary.lhs);
         field("rhs");
@@ -612,7 +279,6 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
         break;
 
     case Node_struct:
-    case Node_union:
         field("name");
         inspectId(node->as.type_decl.name);
         field("fields");
@@ -620,7 +286,6 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
         break;
 
     case Node_member:
-    case Node_offsetof:
         field("lhs");
         inspectNode(node->as.member.lhs);
         field("name");
@@ -638,7 +303,6 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
         break;
 
     case Node_id:
-    case Node_sym:
         field("name");
         inspectId(node->as.id.name);
         break;
@@ -679,25 +343,19 @@ std::string _inspect(node_ref_t node, size_t depth = 1) {
         field("fields");
         inspectNamedNodeArray(node->as.struct_literal.fields, depth);
         break;
-
-    case Node_fn_type:
-        field("name");
-        inspectId(node->as.fn_type.name);
-        field("sig");
-        inspectSig(node->as.fn_type, depth);
-        break;
     }
 
     ss << "}";
-
-    return ss.str();
 }
 
 } // namespace
 
-string ast_inspect(Allocator *allocator, node_ref_t node) {
-    auto str = _inspect(node);
-    char *data = allocator->alloc<char>(str.size());
-    std::strncpy(data, str.c_str(), str.size());
-    return string{data, str.size()};
+string ast_inspect(node_ref_t node) {
+    std::ostringstream ss;
+    _inspect(node, ss);
+    auto str = ss.str();
+
+    string res;
+    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
+    return res;
 }

@@ -14,8 +14,6 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::bc::test)
-
 class bytecode : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

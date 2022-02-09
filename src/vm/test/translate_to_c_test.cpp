@@ -12,8 +12,6 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::translate_to_c::test)
-
 class translate_to_c : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
