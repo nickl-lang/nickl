@@ -25,8 +25,8 @@ function(def_test)
     add_executable(${TARGET_NAME} ${ARG_NAME}_test.cpp)
 
     target_include_directories(${TARGET_NAME}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        PRIVATE ${PROJECT_SOURCE_DIR}/src
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src"
         )
 
     target_link_libraries(${TARGET_NAME}

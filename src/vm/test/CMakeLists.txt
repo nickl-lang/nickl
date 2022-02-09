@@ -30,3 +30,14 @@ target_compile_definitions(${TRANSLATE_TO_C_TEST}
     PRIVATE LIBC_NAME="libc.so.6"
     PRIVATE LIBS_SEARCH_PATH="/usr/lib/"
     )
+
+def_test(GROUP vm NAME c_compiler_stream LINK ${LIB} test_utils TARGET C_COMPILER_STREAM_TEST)
+
+set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/")
+file(MAKE_DIRECTORY "${TEST_FILES_DIR}")
+target_compile_definitions(${C_COMPILER_STREAM_TEST}
+    PRIVATE TEST_C_COMPILER="gcc"
+    PRIVATE TEST_C_COMPILER_FLAGS=""
+    PRIVATE TEST_FILES_DIR="${TEST_FILES_DIR}"
+    PRIVATE TEST_QUIET=1
+    )

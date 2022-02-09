@@ -82,6 +82,10 @@ struct Array : Slice<T> {
         return {data + i, minu(n, size)};
     }
 
+    void append(Slice<T const> slice) {
+        slice.copy({&push(slice.size), slice.size});
+    }
+
 private:
     T *_top() const {
         assert((!size || data) && "uninitialized array access");
@@ -93,7 +97,7 @@ private:
             capacity = ceilToPowerOf2(cap);
             void *new_data = _mctx.def_allocator->alloc(capacity * sizeof(T));
             assert(new_data && "allocation failed");
-            std::memcpy(new_data, data, size * sizeof(T));
+            slice().copy({(T *)new_data, size});
             _mctx.def_allocator->free(data);
             data = (T *)new_data;
         }
