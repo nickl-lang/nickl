@@ -2,7 +2,7 @@ set(LIB nk_vm)
 
 add_library(${LIB}
     src/bc.cpp
-    src/c_compiler_stream.cpp
+    src/c_compiler_adapter.cpp
     src/find_library.cpp
     src/interp.cpp
     src/ir.cpp

@@ -31,6 +31,7 @@ void _logger_init(LoggerOptions opt);
 
 #define LOG_USE_SCOPE(name) static char const *__logger_scope = #name;
 
+//@Feature Make so that log expr is not evaluated if filered by log level
 #define LOG_ERR(...) _logger_write(Log_Error, __logger_scope, __VA_ARGS__);
 #define LOG_WRN(...) _logger_write(Log_Warning, __logger_scope, __VA_ARGS__);
 #define LOG_INF(...) _logger_write(Log_Info, __logger_scope, __VA_ARGS__);
