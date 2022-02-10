@@ -221,10 +221,9 @@ private:
         }
         va_list ap;
         va_start(ap, fmt);
-        string str = tmpstr_vformat(fmt, ap);
+        m_err = tmpstr_vformat(fmt, ap);
         va_end(ap);
         m_token.id = Token_error;
-        m_err = str;
     }
 };
 

@@ -14,6 +14,7 @@
 namespace {
 
 using namespace nk;
+using namespace nkl;
 
 LOG_USE_SCOPE(nkl::ast::test)
 
@@ -204,9 +205,7 @@ TEST_F(ast, nodes) {
     EXPECT_EQ(m_node->as.fn.sig.ret_type, nop);
     EXPECT_EQ(m_node->as.fn.body, nop);
 
-    test(
-        m_ast.push(m_ast.make_string_literal(*_mctx.tmp_allocator, cs2s("hello"))),
-        Node_string_literal);
+    test(m_ast.push(m_ast.make_string_literal(cs2s("hello"))), Node_string_literal);
     EXPECT_EQ(std_view(m_node->as.str.val), "hello");
 
     test(

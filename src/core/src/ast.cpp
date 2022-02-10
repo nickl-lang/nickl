@@ -7,6 +7,8 @@
 #include <sstream>
 #include <string>
 
+namespace nkl {
+
 #define AST_INIT_CAPACITY 1024
 
 char const *s_ast_node_names[] = {
@@ -16,9 +18,11 @@ char const *s_ast_node_names[] = {
 
 void Ast::init() {
     data.init(AST_INIT_CAPACITY);
+    strings.init();
 }
 
 void Ast::deinit() {
+    strings.deinit();
     data.deinit();
 }
 
@@ -120,9 +124,9 @@ Node Ast::make_fn(Id name, NamedNodeArray params, node_ref_t ret_type, node_ref_
     return Node{{.fn = {{name, push_named_ar(params), ret_type}, body}}, Node_fn};
 }
 
-Node Ast::make_string_literal(Allocator &allocator, string str) {
+Node Ast::make_string_literal(string str) {
     string ast_str;
-    str.copy(ast_str, allocator);
+    str.copy(ast_str, strings);
     return Node{{.str = {ast_str}}, Node_string_literal};
 }
 
@@ -355,3 +359,5 @@ string ast_inspect(node_ref_t node) {
     string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
     return res;
 }
+
+} // namespace nkl
