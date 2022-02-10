@@ -26,14 +26,10 @@ void Ast::deinit() {
     Node Ast::make_##ID() {                    \
         return Node{{.TYPE = {0}}, Node_##ID}; \
     }
-#include "nkl/core/nodes.inl"
-
 #define U(TYPE, ID)                              \
     Node Ast::make_##ID(node_ref_t arg) {        \
         return Node{{.TYPE = {arg}}, Node_##ID}; \
     }
-#include "nkl/core/nodes.inl"
-
 #define B(TYPE, ID)                                       \
     Node Ast::make_##ID(node_ref_t lhs, node_ref_t rhs) { \
         return Node{{.TYPE = {lhs, rhs}}, Node_##ID};     \
