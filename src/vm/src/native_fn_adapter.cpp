@@ -157,9 +157,7 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
     } else {
         status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
     }
-    if (status != FFI_OK) {
-        assert("!ffi_prep_cif failed");
-    }
+    assert(status == FFI_OK && "ffi_prep_cif failed");
 
     void **argv = _mctx.tmp_allocator->alloc<void *>(argc);
     for (size_t i = 0; i < argc; i++) {

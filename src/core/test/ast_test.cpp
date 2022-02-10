@@ -158,11 +158,7 @@ TEST_F(ast, nodes) {
     NamedNode const nn_nop{noid, nop};
 
 #define N(TYPE, ID) test(m_ast.push(m_ast.make_##ID()), Node_##ID);
-#include "nkl/core/nodes.inl"
-
 #define U(TYPE, ID) test_unary(m_ast.push(m_ast.make_##ID(nop)), Node_##ID, nop);
-#include "nkl/core/nodes.inl"
-
 #define B(TYPE, ID) test_binary(m_ast.push(m_ast.make_##ID(nop, nop)), Node_##ID, nop, nop);
 #include "nkl/core/nodes.inl"
 

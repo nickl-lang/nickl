@@ -6,6 +6,8 @@ add_library(${LIB}
     src/ir.cpp
     src/lexer.cpp
     src/parser.cpp
+    src/token.cpp
+    src/value.cpp
     )
 
 target_include_directories(${LIB}
