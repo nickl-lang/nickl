@@ -1,6 +1,8 @@
 #ifndef HEADER_GUARD_NKL_CORE_COMMON
 #define HEADER_GUARD_NKL_CORE_COMMON
 
+namespace nkl {
+
 #include <cstdint>
 
 union NumericVariant {
@@ -15,5 +17,7 @@ union NumericVariant {
     float f32;
     double f64;
 };
+
+} // namespace nkl
 
 #endif // HEADER_GUARD_NKL_CORE_COMMON

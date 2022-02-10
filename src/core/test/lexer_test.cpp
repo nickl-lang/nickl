@@ -59,8 +59,11 @@ protected:
 
     void test_err(const char *src) {
         LOG_INF("Test: %s", src)
-        ASSERT_FALSE(m_lexer.lex(cs2s(src)));
-        reportError();
+        bool result = m_lexer.lex(cs2s(src));
+        EXPECT_FALSE(result);
+        if (!result) {
+            LOG_INF("%s", formatError().data())
+        }
     }
 
     void expect_id(IDVec &&expected) {
@@ -111,18 +114,17 @@ protected:
 
 private:
     void reportError() {
-        LOG_INF(
-            "Error message: %.*s\n Tokens: { %s}",
-            m_lexer.err.size,
-            m_lexer.err.data,
-            [&]() {
-                std::ostringstream ss;
-                for (const auto &token : m_lexer.tokens) {
-                    ss << "'" << token.text << "', ";
-                }
-                return ss.str();
-            }()
-                .data());
+        LOG_ERR("%s", formatError().data());
+    }
+
+    std::string formatError() {
+        std::ostringstream ss;
+        ss << "Error message: " << m_lexer.err << "\n Tokens: { ";
+        for (const auto &token : m_lexer.tokens) {
+            ss << "'" << token.text << "', ";
+        }
+        ss << "}";
+        return ss.str();
     }
 
     nkl::Lexer m_lexer{};

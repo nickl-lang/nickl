@@ -29,6 +29,8 @@ struct Token {
     ETokenID id = Token_empty;
 };
 
+using TokenArray = Slice<Token>;
+
 } // namespace nkl
 
 #endif // HEADER_GUARD_NKL_CORE_TOKEN

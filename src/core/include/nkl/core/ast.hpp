@@ -1,9 +1,12 @@
 #ifndef HEADER_GUARD_NKL_CORE_AST
 #define HEADER_GUARD_NKL_CORE_AST
 
+#include "nk/common/arena.hpp"
 #include "nk/common/id.hpp"
 #include "nk/common/sequence.hpp"
 #include "nkl/core/common.hpp"
+
+namespace nkl {
 
 enum ENodeId {
 #define X(TYPE, ID) Node_##ID,
@@ -122,6 +125,7 @@ struct Node {
 
 struct Ast {
     Sequence<Node> data;
+    ArenaAllocator strings;
 
     void init();
     void deinit();
@@ -158,7 +162,7 @@ struct Ast {
 
     Node make_call(node_ref_t lhs, NodeArray args);
     Node make_fn(Id name, NamedNodeArray params, node_ref_t ret_type, node_ref_t body);
-    Node make_string_literal(Allocator &allocator, string str);
+    Node make_string_literal(string str);
     Node make_struct_literal(node_ref_t type, NamedNodeArray fields);
     Node make_var_decl(Id name, node_ref_t type, node_ref_t value);
 
@@ -170,5 +174,7 @@ struct Ast {
 string ast_inspect(node_ref_t node);
 
 static node_ref_t const n_none_ref = nullptr;
+
+} // namespace nkl
 
 #endif // HEADER_GUARD_NKL_CORE_AST
