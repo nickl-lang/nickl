@@ -243,7 +243,7 @@ bool Lexer::lex(string text) {
         engine.scan();
         tokens.push() = engine.m_token;
         LOG_DBG(
-            "%s: \".*s\"",
+            "%s: \"%.*s\"",
             s_token_id[tokens.back().id],
             tokens.back().text.size,
             tokens.back().text.data);
