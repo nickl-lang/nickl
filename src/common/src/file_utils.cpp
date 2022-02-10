@@ -14,7 +14,7 @@ Array<char> read_file(char const *filename) {
     file.exceptions(std::ios_base::badbit);
 
     if (!file) {
-        return {{nullptr, 0}, 0};
+        return {};
     }
 
     auto ar = Array<char>::create(c_read_size);

@@ -52,6 +52,10 @@ struct Slice {
         assert(dst.size >= size && "copying to a slice of insufficient size");
         std::memcpy(dst.data, data, size * sizeof(T));
     }
+
+    operator Slice<T const>() const {
+        return {data, size};
+    }
 };
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE

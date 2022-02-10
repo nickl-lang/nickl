@@ -57,12 +57,12 @@ int main(int argc, char const *const *argv) {
             } else {
 #ifdef ENABLE_LOGGING
                 i++;
-                if (!argv[i]) {
-                    fprintf(stderr, "error: argument required\n");
-                    printErrorUsage();
-                    return 1;
-                }
                 if (eql(arg, "-c") || eql(arg, "--color")) {
+                    if (!argv[i]) {
+                        fprintf(stderr, "error: argument required\n");
+                        printErrorUsage();
+                        return 1;
+                    }
                     if (eql(argv[i], "auto")) {
                         logger_options.color_mode = Log_Color_Auto;
                     } else if (eql(argv[i], "always")) {
@@ -79,6 +79,11 @@ int main(int argc, char const *const *argv) {
                         return 1;
                     }
                 } else if (eql(arg, "-l") || eql(arg, "--loglevel")) {
+                    if (!argv[i]) {
+                        fprintf(stderr, "error: argument required\n");
+                        printErrorUsage();
+                        return 1;
+                    }
                     if (eql(argv[i], "none")) {
                         logger_options.log_level = Log_None;
                     } else if (eql(argv[i], "info")) {
@@ -114,13 +119,13 @@ int main(int argc, char const *const *argv) {
         }
     }
 
-    if (version) {
-        printVersion();
+    if (help) {
+        printUsage();
         return 0;
     }
 
-    if (help) {
-        printUsage();
+    if (version) {
+        printVersion();
         return 0;
     }
 
@@ -132,9 +137,9 @@ int main(int argc, char const *const *argv) {
 
     LOGGER_INIT(logger_options);
 
-    lang_init();
-    int ret_code = lang_runFile(in_file);
-    lang_deinit();
+    nkl::lang_init();
+    int ret_code = nkl::lang_runFile(in_file);
+    nkl::lang_deinit();
 
     return ret_code;
 }
