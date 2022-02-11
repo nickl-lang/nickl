@@ -50,13 +50,13 @@ struct ScanEngine {
             .pos = m_pos,
             .lin = m_lin,
             .col = m_col,
-            .id = Token_empty,
+            .id = t_empty,
         };
 
         if (!chr()) {
-            m_token.id = Token_eof;
+            m_token.id = t_eof;
         } else if (on('"')) {
-            m_token.id = Token_str_const;
+            m_token.id = t_str_const;
 
             advance();
             m_token.text.data++;
@@ -89,7 +89,7 @@ struct ScanEngine {
 
             advance();
         } else if (chk<std::isdigit>() || (on('.') && chk<std::isdigit>(1))) {
-            m_token.id = Token_int_const;
+            m_token.id = t_int_const;
 
             if (on('0') && on('x', 1)) {
                 accept(2);
@@ -105,14 +105,14 @@ struct ScanEngine {
                 }
 
                 if (on('.')) {
-                    m_token.id = Token_float_const;
+                    m_token.id = t_float_const;
                     do {
                         accept();
                     } while (chk<std::isdigit>());
                 }
 
                 if (chk<std::tolower>() == 'e') {
-                    m_token.id = Token_float_const;
+                    m_token.id = t_float_const;
                     accept();
                     if (on('-') || on('+')) {
                         accept();
@@ -142,9 +142,9 @@ struct ScanEngine {
 
             if (it != std::end(s_keywords)) {
                 size_t kw_index = std::distance(std::begin(s_keywords), it);
-                m_token.id = (ETokenID)(Token_keyword_marker + kw_index);
+                m_token.id = (ETokenID)(t_keyword_marker + kw_index);
             } else {
-                m_token.id = Token_id;
+                m_token.id = t_id;
             }
         } else {
             size_t op_index = 0;
@@ -163,7 +163,7 @@ struct ScanEngine {
 
             if (op_index > 0) {
                 accept(op_len);
-                m_token.id = (ETokenID)(Token_operator_marker + op_index);
+                m_token.id = (ETokenID)(t_operator_marker + op_index);
             } else {
                 return error("unknown token '%.*s'", m_token.text.size, m_token.text.data);
             }
@@ -223,7 +223,7 @@ private:
         va_start(ap, fmt);
         m_err = tmpstr_vformat(fmt, ap);
         va_end(ap);
-        m_token.id = Token_error;
+        m_token.id = t_error;
     }
 };
 
@@ -246,10 +246,10 @@ bool Lexer::lex(string text) {
             s_token_id[tokens.back().id],
             tokens.back().text.size,
             tokens.back().text.data);
-        if (engine.m_token.id == Token_error) {
+        if (engine.m_token.id == t_error) {
             return false;
         }
-    } while (tokens.back().id != Token_eof);
+    } while (tokens.back().id != t_eof);
 
     return true;
 }

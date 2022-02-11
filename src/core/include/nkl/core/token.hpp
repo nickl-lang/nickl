@@ -8,9 +8,9 @@
 namespace nkl {
 
 enum ETokenID {
-#define OP(id, text) Token_##id,
-#define KW(id) Token_##id,
-#define SP(id) Token_##id,
+#define OP(id, text) t_##id,
+#define KW(id) t_##id,
+#define SP(id) t_##id,
 #include "nkl/core/tokens.inl"
 
     Token_Count,
@@ -26,7 +26,7 @@ struct Token {
     size_t lin;
     size_t col;
 
-    ETokenID id = Token_empty;
+    ETokenID id = t_empty;
 };
 
 using TokenArray = Slice<Token>;

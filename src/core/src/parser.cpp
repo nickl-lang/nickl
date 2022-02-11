@@ -55,7 +55,7 @@ struct ParseEngine {
 
 private:
     void getToken() {
-        assert(m_cur_token->id != Token_eof);
+        assert(m_cur_token->id != t_eof);
         m_cur_token++;
 
         LOG_DBG("getToken(): " LOG_TOKEN(m_cur_token->id))
@@ -83,12 +83,12 @@ private:
     Array<Node> sequence(bool *allow_trailing_comma = nullptr) {
         Array<Node> nodes{};
         do {
-            if (check(Token_par_r) && allow_trailing_comma) {
+            if (check(t_par_r) && allow_trailing_comma) {
                 *allow_trailing_comma = true;
                 break;
             }
             APPEND(nodes, expr());
-        } while (accept(Token_comma));
+        } while (accept(t_comma));
         return nodes;
     }
 
@@ -97,16 +97,16 @@ private:
         Array<Node> nodes{};
         DEFER({ nodes.deinit(); })
 
-        bool expect_brace_r = capture_brace && accept(Token_brace_l);
+        bool expect_brace_r = capture_brace && accept(t_brace_l);
 
-        while (!check(Token_eof) && (!expect_brace_r || !check(Token_brace_r))) {
+        while (!check(t_eof) && (!expect_brace_r || !check(t_brace_r))) {
             LOG_DBG("<next statement> token=" LOG_TOKEN(m_cur_token->id))
             APPEND(nodes, statement());
             LOG_DBG("<end of statement>")
         }
 
         if (expect_brace_r) {
-            EXPECT(Token_brace_r);
+            EXPECT(t_brace_r);
         }
 
         return nodes.size == 0   ? m_ast.make_nop()
@@ -115,12 +115,12 @@ private:
     }
 
     NamedNode declaration() {
-        if (!check(Token_id)) {
+        if (!check(t_id)) {
             return error("identifier expected"), NamedNode{};
         }
         NamedNode decl;
         ASSIGN(decl.name, identifier());
-        EXPECT(Token_colon);
+        EXPECT(t_colon);
         ASSIGN(decl.node, m_ast.push(expr()));
         return decl;
     }
@@ -137,28 +137,28 @@ private:
 
         bool expect_semi = true;
 
-        if (accept(Token_return)) {
-            if (check(Token_semi)) {
+        if (accept(t_return)) {
+            if (check(t_semi)) {
                 node = m_ast.make_return(nullptr);
             } else {
                 ASSIGN(node, m_ast.make_return(m_ast.push(tuple())));
             }
-        } else if (accept(Token_break)) {
+        } else if (accept(t_break)) {
             node = m_ast.make_break();
-        } else if (accept(Token_continue)) {
+        } else if (accept(t_continue)) {
             node = m_ast.make_continue();
-        } else if (accept(Token_if)) {
+        } else if (accept(t_if)) {
             DEFINE(cond, m_ast.push(logicOr()));
             DEFINE(then_body, m_ast.push(statement()));
-            DEFINE(else_body, accept(Token_else) ? m_ast.push(statement()) : n_none_ref);
+            DEFINE(else_body, accept(t_else) ? m_ast.push(statement()) : n_none_ref);
             node = m_ast.make_if(cond, then_body, else_body);
             expect_semi = false;
-        } else if (accept(Token_while)) {
+        } else if (accept(t_while)) {
             DEFINE(cond, m_ast.push(logicOr()));
             DEFINE(body, m_ast.push(statement()));
             node = m_ast.make_while(cond, body);
             expect_semi = false;
-        } else if (check(Token_brace_l)) {
+        } else if (check(t_brace_l)) {
             ASSIGN(node, block());
             expect_semi = false;
         } else {
@@ -166,17 +166,17 @@ private:
 
             if (node.id == Node_fn || node.id == Node_struct) {
                 expect_semi = false;
-            } else if (node.id == Node_id && accept(Token_colon)) {
+            } else if (node.id == Node_id && accept(t_colon)) {
                 DEFINE(type, m_ast.push(expr()));
-                DEFINE(value, accept(Token_eq) ? m_ast.push(tuple()) : n_none_ref);
+                DEFINE(value, accept(t_eq) ? m_ast.push(tuple()) : n_none_ref);
                 node = m_ast.make_var_decl(node.as.id.name, type, value);
             }
         }
 
         if (expect_semi) {
-            EXPECT(Token_semi);
+            EXPECT(t_semi);
         }
-        while (accept(Token_semi)) {
+        while (accept(t_semi)) {
         }
 
         return node;
@@ -185,33 +185,33 @@ private:
     Node assignment() {
         DEFINE(node, tuple());
 
-        if (accept(Token_eq)) {
+        if (accept(t_eq)) {
             ASSIGN(node, m_ast.make_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_plus_eq)) {
+        } else if (accept(t_plus_eq)) {
             ASSIGN(node, m_ast.make_add_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_minus_eq)) {
+        } else if (accept(t_minus_eq)) {
             ASSIGN(node, m_ast.make_sub_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_aster_eq)) {
+        } else if (accept(t_aster_eq)) {
             ASSIGN(node, m_ast.make_mul_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_slash_eq)) {
+        } else if (accept(t_slash_eq)) {
             ASSIGN(node, m_ast.make_div_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_percent_eq)) {
+        } else if (accept(t_percent_eq)) {
             ASSIGN(node, m_ast.make_mod_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_less_dbl_eq)) {
+        } else if (accept(t_less_2x_eq)) {
             ASSIGN(node, m_ast.make_lsh_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_greater_dbl_eq)) {
+        } else if (accept(t_greater_2x_eq)) {
             ASSIGN(node, m_ast.make_rsh_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_bar_eq)) {
+        } else if (accept(t_bar_eq)) {
             ASSIGN(node, m_ast.make_or_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_bar_dbl_eq)) {
+        } else if (accept(t_bar_2x_eq)) {
             ASSIGN(node, m_ast.make_bitor_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_caret_eq)) {
+        } else if (accept(t_caret_eq)) {
             ASSIGN(node, m_ast.make_xor_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_amper_eq)) {
+        } else if (accept(t_amper_eq)) {
             ASSIGN(node, m_ast.make_and_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_amper_dbl_eq)) {
+        } else if (accept(t_amper_2x_eq)) {
             ASSIGN(node, m_ast.make_bitand_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(Token_colon_eq)) {
+        } else if (accept(t_colon_eq)) {
             //@Incomplete Colon assignment lhs unchecked in parser, maybe change parsing to support
             // only the correct syntax?
             ASSIGN(node, m_ast.make_colon_assign(m_ast.push(node), m_ast.push(tuple())));
@@ -231,50 +231,50 @@ private:
     Node expr() {
         Node node;
 
-        if (accept(Token_fn)) {
+        if (accept(t_fn)) {
             Id name = 0;
-            if (check(Token_id)) {
+            if (check(t_id)) {
                 ASSIGN(name, identifier());
             }
 
-            EXPECT(Token_par_l);
+            EXPECT(t_par_l);
 
             Array<NamedNode> params{};
             DEFER({ params.deinit(); })
 
-            if (!accept(Token_par_r)) {
+            if (!accept(t_par_r)) {
                 do {
                     APPEND(params, declaration());
-                } while (accept(Token_comma));
+                } while (accept(t_comma));
 
-                EXPECT(Token_par_r);
+                EXPECT(t_par_r);
             }
 
-            DEFINE(ret_type, accept(Token_minus_greater) ? expr() : m_ast.make_void());
+            DEFINE(ret_type, accept(t_minus_greater) ? expr() : m_ast.make_void());
 
             Node body;
             bool has_body = false;
-            if (check(Token_brace_l)) {
+            if (check(t_brace_l)) {
                 has_body = true;
                 ASSIGN(body, block());
             }
 
             assert(has_body && "function type/ptr parsing is not implemented");
             node = m_ast.make_fn(name, params, m_ast.push(ret_type), m_ast.push(body));
-        } else if (accept(Token_struct)) {
+        } else if (accept(t_struct)) {
             Id name = 0;
-            if (check(Token_id)) {
+            if (check(t_id)) {
                 ASSIGN(name, identifier());
             }
 
-            EXPECT(Token_brace_l);
+            EXPECT(t_brace_l);
 
             Array<NamedNode> fields{};
             DEFER({ fields.deinit(); })
 
-            while (!accept(Token_brace_r)) {
+            while (!accept(t_brace_r)) {
                 APPEND(fields, declaration());
-                EXPECT(Token_semi);
+                EXPECT(t_semi);
             }
 
             node = m_ast.make_struct(name, fields.slice());
@@ -289,9 +289,9 @@ private:
         DEFINE(node, logicOr());
 
         while (true) {
-            if (accept(Token_question)) {
+            if (accept(t_question)) {
                 DEFINE(then_body, logicOr());
-                EXPECT(Token_colon);
+                EXPECT(t_colon);
                 DEFINE(else_body, logicOr());
                 node = m_ast.make_ternary(
                     m_ast.push(node), m_ast.push(then_body), m_ast.push(else_body));
@@ -307,7 +307,7 @@ private:
         DEFINE(node, logicAnd());
 
         while (true) {
-            if (accept(Token_bar_dbl)) {
+            if (accept(t_bar_2x)) {
                 ASSIGN(node, m_ast.make_or(m_ast.push(node), m_ast.push(logicOr())));
             } else {
                 break;
@@ -321,7 +321,7 @@ private:
         DEFINE(node, bitOr());
 
         while (true) {
-            if (accept(Token_amper_dbl)) {
+            if (accept(t_amper_2x)) {
                 ASSIGN(node, m_ast.make_and(m_ast.push(node), m_ast.push(bitOr())));
             } else {
                 break;
@@ -335,7 +335,7 @@ private:
         DEFINE(node, bitXor());
 
         while (true) {
-            if (accept(Token_bar)) {
+            if (accept(t_bar)) {
                 ASSIGN(node, m_ast.make_bitor(m_ast.push(node), m_ast.push(bitXor())));
             } else {
                 break;
@@ -349,7 +349,7 @@ private:
         DEFINE(node, bitAnd());
 
         while (true) {
-            if (accept(Token_caret)) {
+            if (accept(t_caret)) {
                 ASSIGN(node, m_ast.make_xor(m_ast.push(node), m_ast.push(bitAnd())));
             } else {
                 break;
@@ -363,7 +363,7 @@ private:
         DEFINE(node, equality());
 
         while (true) {
-            if (accept(Token_amper)) {
+            if (accept(t_amper)) {
                 ASSIGN(node, m_ast.make_bitand(m_ast.push(node), m_ast.push(equality())));
             } else {
                 break;
@@ -377,9 +377,9 @@ private:
         DEFINE(node, relation());
 
         while (true) {
-            if (accept(Token_eq_dbl)) {
+            if (accept(t_eq_2x)) {
                 ASSIGN(node, m_ast.make_eq(m_ast.push(node), m_ast.push(relation())));
-            } else if (accept(Token_exclam_eq)) {
+            } else if (accept(t_exclam_eq)) {
                 ASSIGN(node, m_ast.make_ne(m_ast.push(node), m_ast.push(relation())));
             } else {
                 break;
@@ -393,13 +393,13 @@ private:
         DEFINE(node, shift());
 
         while (true) {
-            if (accept(Token_less)) {
+            if (accept(t_less)) {
                 ASSIGN(node, m_ast.make_lt(m_ast.push(node), m_ast.push(shift())));
-            } else if (accept(Token_less_eq)) {
+            } else if (accept(t_less_eq)) {
                 ASSIGN(node, m_ast.make_le(m_ast.push(node), m_ast.push(shift())));
-            } else if (accept(Token_greater)) {
+            } else if (accept(t_greater)) {
                 ASSIGN(node, m_ast.make_gt(m_ast.push(node), m_ast.push(shift())));
-            } else if (accept(Token_greater_eq)) {
+            } else if (accept(t_greater_eq)) {
                 ASSIGN(node, m_ast.make_ge(m_ast.push(node), m_ast.push(shift())));
             } else {
                 break;
@@ -413,9 +413,9 @@ private:
         DEFINE(node, addSub());
 
         while (true) {
-            if (accept(Token_less_dbl)) {
+            if (accept(t_less_2x)) {
                 ASSIGN(node, m_ast.make_lsh(m_ast.push(node), m_ast.push(addSub())));
-            } else if (accept(Token_greater_dbl)) {
+            } else if (accept(t_greater_2x)) {
                 ASSIGN(node, m_ast.make_rsh(m_ast.push(node), m_ast.push(addSub())));
             } else {
                 break;
@@ -429,9 +429,9 @@ private:
         DEFINE(node, mulDiv());
 
         while (true) {
-            if (accept(Token_plus)) {
+            if (accept(t_plus)) {
                 ASSIGN(node, m_ast.make_add(m_ast.push(node), m_ast.push(mulDiv())));
-            } else if (accept(Token_minus)) {
+            } else if (accept(t_minus)) {
                 ASSIGN(node, m_ast.make_sub(m_ast.push(node), m_ast.push(mulDiv())));
             } else {
                 break;
@@ -445,11 +445,11 @@ private:
         DEFINE(node, prefix());
 
         while (true) {
-            if (accept(Token_aster)) {
+            if (accept(t_aster)) {
                 ASSIGN(node, m_ast.make_mul(m_ast.push(node), m_ast.push(prefix())));
-            } else if (accept(Token_slash)) {
+            } else if (accept(t_slash)) {
                 ASSIGN(node, m_ast.make_div(m_ast.push(node), m_ast.push(prefix())));
-            } else if (accept(Token_percent)) {
+            } else if (accept(t_percent)) {
                 ASSIGN(node, m_ast.make_mod(m_ast.push(node), m_ast.push(prefix())));
             } else {
                 break;
@@ -462,22 +462,22 @@ private:
     Node prefix() {
         Node node;
 
-        if (accept(Token_plus)) {
+        if (accept(t_plus)) {
             ASSIGN(node, m_ast.make_uplus(m_ast.push(suffix())));
-        } else if (accept(Token_minus)) {
+        } else if (accept(t_minus)) {
             ASSIGN(node, m_ast.make_uminus(m_ast.push(suffix())));
-        } else if (accept(Token_exclam)) {
+        } else if (accept(t_exclam)) {
             ASSIGN(node, m_ast.make_not(m_ast.push(suffix())));
-        } else if (accept(Token_tilde)) {
+        } else if (accept(t_tilde)) {
             ASSIGN(node, m_ast.make_compl(m_ast.push(suffix())));
-        } else if (accept(Token_amper)) {
+        } else if (accept(t_amper)) {
             ASSIGN(node, m_ast.make_addr(m_ast.push(prefix())));
-        } else if (accept(Token_aster)) {
+        } else if (accept(t_aster)) {
             ASSIGN(node, m_ast.make_deref(m_ast.push(prefix())));
-        } else if (accept(Token_cast)) {
-            EXPECT(Token_par_l);
+        } else if (accept(t_cast)) {
+            EXPECT(t_par_l);
             DEFINE(lhs, m_ast.push(expr()));
-            EXPECT(Token_par_r);
+            EXPECT(t_par_r);
             DEFINE(rhs, m_ast.push(prefix()));
             ASSIGN(node, m_ast.make_cast(lhs, rhs));
         } else {
@@ -491,23 +491,22 @@ private:
         DEFINE(node, term());
 
         while (true) {
-            if (accept(Token_par_l)) {
+            if (accept(t_par_l)) {
                 Array<Node> args{};
                 DEFER({ args.deinit(); })
-                if (!accept(Token_par_r)) {
+                if (!accept(t_par_r)) {
                     ASSIGN(args, sequence());
-                    EXPECT(Token_par_r);
+                    EXPECT(t_par_r);
                 }
                 node = m_ast.make_call(m_ast.push(node), args);
-            } else if (accept(Token_bracket_l)) {
+            } else if (accept(t_bracket_l)) {
                 ASSIGN(
                     node,
                     m_ast.make_index(
-                        m_ast.push(node),
-                        check(Token_bracket_r) ? n_none_ref : m_ast.push(tuple())));
-                EXPECT(Token_bracket_r);
-            } else if (accept(Token_period)) {
-                if (!check(Token_id)) {
+                        m_ast.push(node), check(t_bracket_r) ? n_none_ref : m_ast.push(tuple())));
+                EXPECT(t_bracket_r);
+            } else if (accept(t_period)) {
+                if (!check(t_id)) {
                     return error("identifier expected"), Node{};
                 }
                 DEFINE(name, identifier());
@@ -523,7 +522,7 @@ private:
     Node term() {
         Node node;
 
-        if (check(Token_int_const)) {
+        if (check(t_int_const)) {
             LOG_DBG("accept(int_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
             int64_t value = 0;
             int res = std::sscanf(m_cur_token->text.data, "%ld", &value);
@@ -531,7 +530,7 @@ private:
             assert(res > 0 && res != EOF && "integer constant parsing failed");
             node = m_ast.make_numeric_i64(value);
             getToken();
-        } else if (check(Token_float_const)) {
+        } else if (check(t_float_const)) {
             LOG_DBG("accept(float_const, \"\"", m_cur_token->text.size, m_cur_token->text.data)
             double value = 0.;
             //@Todo Replace std::sscanf!
@@ -540,103 +539,103 @@ private:
             assert(res > 0 && res != EOF && "float constant parsing failed");
             node = m_ast.make_numeric_f64(value);
             getToken();
-        } else if (check(Token_str_const)) {
+        } else if (check(t_str_const)) {
             LOG_DBG("accept(str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
             node = m_ast.make_string_literal(m_cur_token->text);
             getToken();
         }
 
-        else if (check(Token_id)) {
+        else if (check(t_id)) {
             ASSIGN(node, m_ast.make_id(identifier()));
         }
 
         //@Todo Parse struct literal
-        // else if (accept(Token_new)) {
+        // else if (accept(t_new)) {
         //     DEFINE(type, m_ast.push(expr()));
 
         //     Array<NamedNode> fields{};
         //     DEFER({ fields.deinit(); })
-        //     if (accept(Token_brace_l) && !accept(Token_brace_r)) {
+        //     if (accept(t_brace_l) && !accept(t_brace_r)) {
         //         do {
         //             APPEND(fields, declaration());
-        //         } while (accept(Token_comma) && !check(Token_brace_r));
+        //         } while (accept(t_comma) && !check(t_brace_r));
 
-        //         EXPECT(Token_brace_r);
+        //         EXPECT(t_brace_r);
         //     }
 
         //     node = m_ast.make_struct_literal(type, fields);
         // }
 
-        else if (accept(Token_u8)) {
+        else if (accept(t_u8)) {
             node = m_ast.make_u8();
-        } else if (accept(Token_u16)) {
+        } else if (accept(t_u16)) {
             node = m_ast.make_u16();
-        } else if (accept(Token_u32)) {
+        } else if (accept(t_u32)) {
             node = m_ast.make_u32();
-        } else if (accept(Token_u64)) {
+        } else if (accept(t_u64)) {
             node = m_ast.make_u64();
-        } else if (accept(Token_i8)) {
+        } else if (accept(t_i8)) {
             node = m_ast.make_i8();
-        } else if (accept(Token_i16)) {
+        } else if (accept(t_i16)) {
             node = m_ast.make_i16();
-        } else if (accept(Token_i32)) {
+        } else if (accept(t_i32)) {
             node = m_ast.make_i32();
-        } else if (accept(Token_i64)) {
+        } else if (accept(t_i64)) {
             node = m_ast.make_i64();
-        } else if (accept(Token_f32)) {
+        } else if (accept(t_f32)) {
             node = m_ast.make_f32();
-        } else if (accept(Token_f64)) {
+        } else if (accept(t_f64)) {
             node = m_ast.make_f64();
-        } else if (accept(Token_void)) {
+        } else if (accept(t_void)) {
             node = m_ast.make_void();
         }
 
-        else if (accept(Token_array_t)) {
-            EXPECT(Token_par_l);
+        else if (accept(t_array_t)) {
+            EXPECT(t_par_l);
             DEFINE(type, m_ast.push(expr()));
-            EXPECT(Token_comma);
+            EXPECT(t_comma);
             DEFINE(size, m_ast.push(expr()));
-            EXPECT(Token_par_r);
+            EXPECT(t_par_r);
             ASSIGN(node, m_ast.make_array_type(type, size));
-        } else if (accept(Token_tuple_t)) {
-            EXPECT(Token_par_l);
+        } else if (accept(t_tuple_t)) {
+            EXPECT(t_par_l);
             DEFINE(nodes, sequence());
             DEFER({ nodes.deinit(); })
-            EXPECT(Token_par_r);
+            EXPECT(t_par_r);
             ASSIGN(node, m_ast.make_tuple_type(nodes));
         }
 
-        else if (accept(Token_true)) {
+        else if (accept(t_true)) {
             node = m_ast.make_numeric_i8(1);
-        } else if (accept(Token_false)) {
+        } else if (accept(t_false)) {
             node = m_ast.make_numeric_i8(0);
         }
 
-        else if (accept(Token_par_l)) {
+        else if (accept(t_par_l)) {
             ASSIGN(node, assignment());
-            EXPECT(Token_par_r);
+            EXPECT(t_par_r);
         }
 
-        else if (accept(Token_bracket_l)) {
-            if (check(Token_bracket_r)) {
+        else if (accept(t_bracket_l)) {
+            if (check(t_bracket_r)) {
                 ASSIGN(node, m_ast.make_array({}));
             } else {
                 DEFINE(first, expr());
                 Array<Node> nodes{};
                 DEFER({ nodes.deinit(); })
                 nodes.push() = first;
-                while (accept(Token_comma)) {
-                    if (check(Token_bracket_r)) {
+                while (accept(t_comma)) {
+                    if (check(t_bracket_r)) {
                         break;
                     }
                     APPEND(nodes, expr());
                 }
                 ASSIGN(node, m_ast.make_array(std::move(nodes)));
             }
-            EXPECT(Token_bracket_r);
+            EXPECT(t_bracket_r);
         }
 
-        else if (check(Token_eof)) {
+        else if (check(t_eof)) {
             return error("unexpected end of file"), Node{};
         } else {
             return error("unexpected token '%.*s'", m_cur_token->text.size, m_cur_token->text.data),

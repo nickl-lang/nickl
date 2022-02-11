@@ -67,7 +67,7 @@ protected:
     }
 
     void expect_id(IDVec &&expected) {
-        expected.emplace_back(Token_eof);
+        expected.emplace_back(t_eof);
 
         IDVec actual;
         actual.reserve(m_lexer.tokens.size);
@@ -141,43 +141,43 @@ TEST_F(lexer, unknown) {
 }
 
 TEST_F(lexer, basic) {
-    test_ok("2+2", {Token_int_const, Token_plus, Token_int_const}, {"2", "+", "2"});
+    test_ok("2+2", {t_int_const, t_plus, t_int_const}, {"2", "+", "2"});
 }
 
 TEST_F(lexer, numeric) {
-    test_ok("0", {Token_int_const});
+    test_ok("0", {t_int_const});
     test_err("0x");
-    test_ok("0xFF", {Token_int_const});
-    test_ok("0x0123456789ABCDEF", {Token_int_const});
-    test_ok("0xdeadbeef", {Token_int_const});
+    test_ok("0xFF", {t_int_const});
+    test_ok("0x0123456789ABCDEF", {t_int_const});
+    test_ok("0xdeadbeef", {t_int_const});
     test_err("0xG");
-    test_ok("123", {Token_int_const});
+    test_ok("123", {t_int_const});
     test_err("123a");
-    test_ok("123.", {Token_float_const});
-    test_ok(".123", {Token_float_const});
-    test_ok("0.0", {Token_float_const});
+    test_ok("123.", {t_float_const});
+    test_ok(".123", {t_float_const});
+    test_ok("0.0", {t_float_const});
     test_err("123e");
-    test_ok("1e4", {Token_float_const});
-    test_ok("1e+4", {Token_float_const});
-    test_ok("1e-4", {Token_float_const});
-    test_ok("1.e-4", {Token_float_const});
-    test_ok(".1e+4", {Token_float_const});
-    test_ok("1.0e+4", {Token_float_const});
+    test_ok("1e4", {t_float_const});
+    test_ok("1e+4", {t_float_const});
+    test_ok("1e-4", {t_float_const});
+    test_ok("1.e-4", {t_float_const});
+    test_ok(".1e+4", {t_float_const});
+    test_ok("1.0e+4", {t_float_const});
     test_err("1.0e+4a");
     test_err("1e+");
 }
 
 TEST_F(lexer, string) {
-    test_ok("\"\"", {Token_str_const}, {""});
-    test_ok("\"hello\"", {Token_str_const}, {"hello"});
+    test_ok("\"\"", {t_str_const}, {""});
+    test_ok("\"hello\"", {t_str_const}, {"hello"});
     expect_pos({{0, 1, 1}, {7, 1, 8}});
     test_err("\"");
     test_err("\"\\");
     test_err("\"\\\"");
     test_err("\"\\z\"");
     test_err("\"\n\"");
-    test_ok("\"\\n\\t\\0\\\\\\\"\\\n\"", {Token_str_const}, {"\\n\\t\\0\\\\\\\"\\\n"});
-    test_ok("\"\\\"Hello, World!\\n\\\"\"", {Token_str_const}, {"\\\"Hello, World!\\n\\\""});
+    test_ok("\"\\n\\t\\0\\\\\\\"\\\n\"", {t_str_const}, {"\\n\\t\\0\\\\\\\"\\\n"});
+    test_ok("\"\\\"Hello, World!\\n\\\"\"", {t_str_const}, {"\\\"Hello, World!\\n\\\""});
     expect_pos({{0, 1, 1}, {21, 1, 22}});
 }
 
@@ -192,104 +192,54 @@ TEST_F(lexer, positioning) {
 
 TEST_F(lexer, extra) {
     test_ok("x, y: f64 = 1e-6;");
-    expect_id(
-        {Token_id,
-         Token_comma,
-         Token_id,
-         Token_colon,
-         Token_f64,
-         Token_eq,
-         Token_float_const,
-         Token_semi});
+    expect_id({t_id, t_comma, t_id, t_colon, t_f64, t_eq, t_float_const, t_semi});
     expect_text({"x", ",", "y", ":", "f64", "=", "1e-6", ";"});
 
     test_ok("func(arg1, arg2);");
-    expect_id({Token_id, Token_par_l, Token_id, Token_comma, Token_id, Token_par_r, Token_semi});
+    expect_id({t_id, t_par_l, t_id, t_comma, t_id, t_par_r, t_semi});
     expect_text({"func", "(", "arg1", ",", "arg2", ")", ";"});
 
     test_ok("struct {x: 0.0, y: 0.0}");
-    expect_id(
-        {Token_struct,
-         Token_brace_l,
-         Token_id,
-         Token_colon,
-         Token_float_const,
-         Token_comma,
-         Token_id,
-         Token_colon,
-         Token_float_const,
-         Token_brace_r});
+    // clang-format off
+    expect_id({t_struct, t_brace_l, t_id, t_colon, t_float_const, t_comma, t_id, t_colon, t_float_const, t_brace_r});
+    // clang-format on
     expect_text({"struct", "{", "x", ":", "0.0", ",", "y", ":", "0.0", "}"});
 
     test_ok("if a == b continue;");
-    expect_id({Token_if, Token_id, Token_eq_dbl, Token_id, Token_continue, Token_semi});
+    expect_id({t_if, t_id, t_eq_2x, t_id, t_continue, t_semi});
     expect_text({"if", "a", "==", "b", "continue", ";"});
 
     test_ok("ar[i] = !ar[i]");
-    expect_id(
-        {Token_id,
-         Token_bracket_l,
-         Token_id,
-         Token_bracket_r,
-         Token_eq,
-         Token_exclam,
-         Token_id,
-         Token_bracket_l,
-         Token_id,
-         Token_bracket_r});
+    // clang-format off
+    expect_id({t_id, t_bracket_l, t_id, t_bracket_r, t_eq, t_exclam, t_id, t_bracket_l, t_id, t_bracket_r});
+    // clang-format on
     expect_text({"ar", "[", "i", "]", "=", "!", "ar", "[", "i", "]"});
 
     test_ok("mask |= flag | 0xFF & 1");
-    expect_id(
-        {Token_id,
-         Token_bar_eq,
-         Token_id,
-         Token_bar,
-         Token_int_const,
-         Token_amper,
-         Token_int_const});
+    expect_id({t_id, t_bar_eq, t_id, t_bar, t_int_const, t_amper, t_int_const});
     expect_text({"mask", "|=", "flag", "|", "0xFF", "&", "1"});
 
     test_ok("cast(f64) \"123.456\"");
-    expect_id({Token_cast, Token_par_l, Token_f64, Token_par_r, Token_str_const});
+    expect_id({t_cast, t_par_l, t_f64, t_par_r, t_str_const});
     expect_text({"cast", "(", "f64", ")", "123.456"});
 
     test_ok("cond ? a : b");
-    expect_id({Token_id, Token_question, Token_id, Token_colon, Token_id});
+    expect_id({t_id, t_question, t_id, t_colon, t_id});
     expect_text({"cond", "?", "a", ":", "b"});
 
     test_ok("num <<= 1;");
-    expect_id({Token_id, Token_less_dbl_eq, Token_int_const, Token_semi});
+    expect_id({t_id, t_less_2x_eq, t_int_const, t_semi});
     expect_text({"num", "<<=", "1", ";"});
 
     test_ok("fn (arg: ptr_t{void}) -> type {}");
-    expect_id(
-        {Token_fn,
-         Token_par_l,
-         Token_id,
-         Token_colon,
-         Token_ptr_t,
-         Token_brace_l,
-         Token_void,
-         Token_brace_r,
-         Token_par_r,
-         Token_minus_greater,
-         Token_id,
-         Token_brace_l,
-         Token_brace_r});
+    // clang-format off
+    expect_id({t_fn, t_par_l, t_id, t_colon, t_ptr_t, t_brace_l, t_void, t_brace_r, t_par_r, t_minus_greater, t_id, t_brace_l, t_brace_r});
+    // clang-format on
     expect_text({"fn", "(", "arg", ":", "ptr_t", "{", "void", "}", ")", "->", "type", "{", "}"});
 
     test_ok("ar := u8[__sizeof(var)];");
-    expect_id(
-        {Token_id,
-         Token_colon_eq,
-         Token_u8,
-         Token_bracket_l,
-         Token_id,
-         Token_par_l,
-         Token_id,
-         Token_par_r,
-         Token_bracket_r,
-         Token_semi});
+    // clang-format off
+    expect_id({t_id, t_colon_eq, t_u8, t_bracket_l, t_id, t_par_l, t_id, t_par_r, t_bracket_r, t_semi});
+    // clang-format on
     expect_text({"ar", ":=", "u8", "[", "__sizeof", "(", "var", ")", "]", ";"});
 }
