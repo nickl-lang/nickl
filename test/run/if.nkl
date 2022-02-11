@@ -1,0 +1,7 @@
+a := true;
+
+if a {
+    __printf("a is true!\n");
+} else {
+    __printf("a is false!\n");
+}

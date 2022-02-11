@@ -1,0 +1,20 @@
+ar: array_t{i64, 3};
+
+ar[0] = 1;
+ar[1] = 2;
+ar[2] = 4;
+ar[3] = 8;
+
+i := 0;
+while i < 4 {
+    __assert(a[i] == 1 << i);
+    __printf("ar[{}]={}\n", i, a[i]);
+}
+
+ar = [1, 2, 3, 4];
+
+i := 0;
+while i < 4 {
+    __assert(a[i] == i);
+    __printf("ar[{}]={}\n", i, a[i]);
+}

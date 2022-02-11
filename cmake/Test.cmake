@@ -50,5 +50,6 @@ function(def_run_test)
     endif()
 
     get_filename_component(TEST_NAME ${ARG_FILE} NAME)
-    add_test(NAME run.${TEST_NAME} COMMAND ${PROJECT_NAME} ${ARG_FILE})
+    get_filename_component(ABS_FILE ${ARG_FILE} ABSOLUTE)
+    add_test(NAME run.${TEST_NAME} COMMAND ${PROJECT_NAME} ${ABS_FILE})
 endfunction()

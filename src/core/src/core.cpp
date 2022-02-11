@@ -1,5 +1,7 @@
 #include "nkl/core/core.hpp"
 
+#include <iostream>
+
 #include "nk/common/file_utils.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/vm/vm.hpp"
@@ -41,12 +43,18 @@ int lang_runFile(char const *filename) {
     Lexer lexer{};
     DEFER({ lexer.tokens.deinit(); })
 
-    lexer.lex(src.slice());
+    if (!lexer.lex(src.slice())) {
+        std::cerr << "error: " << lexer.err << std::endl;
+        return 1;
+    }
 
     Parser parser{};
     DEFER({ parser.ast.deinit(); })
 
-    parser.parse(lexer.tokens.slice());
+    if (!parser.parse(lexer.tokens.slice())) {
+        std::cerr << "error: " << parser.err << std::endl;
+        return 1;
+    }
 
     return 0;
 }

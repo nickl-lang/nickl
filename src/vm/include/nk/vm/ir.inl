@@ -6,14 +6,6 @@
 #define I(...) X(__VA_ARGS__)
 #endif
 
-#ifndef U
-#define U(...) X(__VA_ARGS__)
-#endif
-
-#ifndef B
-#define B(...) X(__VA_ARGS__)
-#endif
-
 I(nop)   // nop
 I(enter) // enter
 I(leave) // leave
@@ -27,11 +19,23 @@ I(cast) // $dst := cast $type $arg
 
 I(call) // $dst := call $fn $args
 
+#undef I
+
+#ifndef U
+#define U(...) X(__VA_ARGS__)
+#endif
+
 U(mov) // $dst := mov $arg
 U(lea) // $dst := lea $arg
 U(neg)   // $dst := neg $arg
 U(compl) // $dst := compl $arg
 U(not)   // $dst := not $arg
+
+#undef U
+
+#ifndef B
+#define B(...) X(__VA_ARGS__)
+#endif
 
 B(add) // $dst := add $lhs $rhs
 B(sub) // $dst := sub $lhs $rhs
@@ -55,7 +59,6 @@ B(le) // $dst := le $lhs $rhs
 B(lt) // $dst := lt $lhs $rhs
 B(ne) // $dst := ne $lhs $rhs
 
-#undef X
-#undef I
-#undef U
 #undef B
+
+#undef X
