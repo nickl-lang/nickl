@@ -1,0 +1,39 @@
+__assert(~5 == -6);
+__assert(~true == -2);
+__assert(-1 == 0 - 1);
+__assert(+1 == 0 + 1);
+
+__assert(2 + 2 == 4);
+__assert(3 - 4 == -1);
+__assert(3 * 4 == 12);
+__assert(4 / 2 == 2);
+__assert(1 / 2 == 0);
+__assert(1. / 2 == 0.5);
+__assert(5 % 2 == 1);
+
+__assert(1 << 10 == 1024);
+__assert(256 >> 2 == 64);
+
+__assert((3 & 2) == 2);
+__assert((1 | 2) == 3);
+__assert((3 ^ 2) == 1);
+
+__assert(__typeof(false + true) == i8);
+__assert((true & false) == 0);
+__assert((true & true) == 1);
+
+__assert(__typeof(!1) == bool);
+__assert(!1 == false);
+__assert(!0 == true);
+
+__assert(0 != true);
+__assert(!(1 != true));
+
+__assert((1 || 0) == true);
+__assert((1 && 0) == false);
+
+//@Todo Implement lazy evaluation
+a := false;
+false && (a = true);
+true || (a = true);
+__assert(!a);

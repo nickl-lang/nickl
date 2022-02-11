@@ -2,4 +2,4 @@ fn plus(a: i64, b: i64) -> i64 {
     return a + b;
 }
 
-plus(4, 5);
+__printf("4+5={}\n", plus(4, 5));

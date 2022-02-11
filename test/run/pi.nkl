@@ -1,0 +1,20 @@
+fn atan(x: f64, it: u64) -> f64 {
+    sum := x;
+    sign := 1.0;
+    num := x;
+    denom := 1.0;
+    i: u64 = 0;
+    while i < it {
+        num = num * x * x;
+        denom = denom + 2.0;
+        sign = sign * -1.0;
+        sum = sum + sign * num / denom;
+        i = i + 1;
+    }
+    return sum;
+}
+
+it := 10;
+pi :=  4.0 * (4.0 * atan(1.0 / 5.0, it) - atan(1.0 / 239.0, it));
+
+__printf("pi={}\n", pi);

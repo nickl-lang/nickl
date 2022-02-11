@@ -1,0 +1,13 @@
+vec2 :: tuple_t{f32, f32};
+
+v: vec2;
+pv := &v;
+
+pv.0 = 1.23;
+pv.1 = 4.56;
+
+fn printVec2(v: ptr_t{vec2}) {
+    __printf("v: {{ x: {}, y: {} }}\n", v.0, v.1);
+}
+
+printVec2(pv);
