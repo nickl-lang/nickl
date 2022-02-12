@@ -154,14 +154,14 @@ TEST_F(lexer, numeric) {
     test_ok("123", {t_int_const});
     test_err("123a");
     test_ok("123.", {t_float_const});
-    test_ok(".123", {t_float_const});
+    test_ok(".123", {t_period, t_int_const}, {".", "123"});
     test_ok("0.0", {t_float_const});
     test_err("123e");
     test_ok("1e4", {t_float_const});
     test_ok("1e+4", {t_float_const});
     test_ok("1e-4", {t_float_const});
     test_ok("1.e-4", {t_float_const});
-    test_ok(".1e+4", {t_float_const});
+    test_ok(".1e+4", {t_period, t_float_const}, {".", "1e+4"});
     test_ok("1.0e+4", {t_float_const});
     test_err("1.0e+4a");
     test_err("1e+");
@@ -176,8 +176,8 @@ TEST_F(lexer, string) {
     test_err("\"\\\"");
     test_err("\"\\z\"");
     test_err("\"\n\"");
-    test_ok("\"\\n\\t\\0\\\\\\\"\\\n\"", {t_str_const}, {"\\n\\t\\0\\\\\\\"\\\n"});
-    test_ok("\"\\\"Hello, World!\\n\\\"\"", {t_str_const}, {"\\\"Hello, World!\\n\\\""});
+    test_ok("\"\\n\\t\\0\\\\\\\"\\\n\"", {t_escaped_str_const}, {"\\n\\t\\0\\\\\\\"\\\n"});
+    test_ok("\"\\\"Hello, World!\\n\\\"\"", {t_escaped_str_const}, {"\\\"Hello, World!\\n\\\""});
     expect_pos({{0, 1, 1}, {21, 1, 22}});
 }
 

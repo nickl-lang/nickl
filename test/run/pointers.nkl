@@ -1,4 +1,4 @@
-vec2 :: tuple_t{f32, f32};
+vec2 := tuple_t{f32, f32};
 
 v: vec2;
 pv := &v;

@@ -8,9 +8,9 @@
 namespace nkl {
 
 enum ETokenID {
-#define OP(id, text) t_##id,
-#define KW(id) t_##id,
-#define SP(id) t_##id,
+#define OP(ID, TEXT) t_##ID,
+#define KW(ID) t_##ID,
+#define SP(ID, TEXT) t_##ID,
 #include "nkl/core/tokens.inl"
 
     Token_Count,
