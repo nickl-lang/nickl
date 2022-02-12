@@ -10,9 +10,7 @@ namespace {
 using namespace nk;
 using namespace nkl;
 
-LOG_USE_SCOPE(nkl::compiler::test)
-
-class parser : public testing::Test {
+class compiler : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
@@ -34,6 +32,15 @@ protected:
 
 } // namespace
 
-TEST_F(parser, empty) {
+TEST_F(compiler, nop) {
+    m_compiler.compile(m_ast.push(m_ast.make_nop()));
+}
+
+TEST_F(compiler, empty) {
     m_compiler.compile(m_ast.push(m_ast.make_block({})));
+}
+
+TEST_F(compiler, basic) {
+    m_compiler.compile(m_ast.push(m_ast.make_add(
+        m_ast.push(m_ast.make_numeric_i64(4)), m_ast.push(m_ast.make_numeric_i64(5)))));
 }
