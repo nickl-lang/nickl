@@ -49,6 +49,8 @@ struct ParseEngine {
     void parse() {
         EASY_FUNCTION(::profiler::colors::Green200);
 
+        assert(m_tokens.size && (m_tokens.end() - 1)->id == t_eof && "ill-formed token stream");
+
         m_cur_token = m_tokens.begin();
         m_root = m_ast.push(block(false));
     }
@@ -58,7 +60,7 @@ private:
         assert(m_cur_token->id != t_eof);
         m_cur_token++;
 
-        LOG_DBG("getToken(): " LOG_TOKEN(m_cur_token->id))
+        LOG_DBG("next token: " LOG_TOKEN(m_cur_token->id))
     }
 
     bool accept(ETokenID id) {
@@ -80,14 +82,20 @@ private:
         }
     }
 
-    Array<Node> sequence(bool *allow_trailing_comma = nullptr) {
+    Array<Node> sequence(bool *allow_trailing_comma = nullptr, bool *all_ids = nullptr) {
         Array<Node> nodes{};
+        if (all_ids) {
+            *all_ids = true;
+        }
         do {
             if (check(t_par_r) && allow_trailing_comma) {
                 *allow_trailing_comma = true;
                 break;
             }
             APPEND(nodes, expr());
+            if (all_ids && nodes.back().id != Node_id) {
+                *all_ids = false;
+            }
         } while (accept(t_comma));
         return nodes;
     }
@@ -100,9 +108,9 @@ private:
         bool expect_brace_r = capture_brace && accept(t_brace_l);
 
         while (!check(t_eof) && (!expect_brace_r || !check(t_brace_r))) {
-            LOG_DBG("<next statement> token=" LOG_TOKEN(m_cur_token->id))
+            LOG_DBG("next statement: token=" LOG_TOKEN(m_cur_token->id))
             APPEND(nodes, statement());
-            LOG_DBG("<end of statement>")
+            LOG_DBG("end of statement")
         }
 
         if (expect_brace_r) {
@@ -132,6 +140,41 @@ private:
         return id;
     }
 
+    struct FnSignature {
+        Id name;
+        Array<NamedNode> params;
+        Node ret_t;
+    };
+
+    FnSignature fnSignature(bool *accept_variadic = nullptr) {
+        accept(t_fn);
+
+        Id name = 0;
+        if (check(t_id)) {
+            ASSIGN(name, identifier());
+        }
+
+        EXPECT(t_par_l);
+
+        Array<NamedNode> params{};
+
+        if (!accept(t_par_r)) {
+            do {
+                if (accept_variadic && accept(t_period_3x)) {
+                    *accept_variadic = true;
+                    break;
+                }
+                APPEND(params, declaration());
+            } while (accept(t_comma));
+
+            EXPECT(t_par_r);
+        }
+
+        DEFINE(ret_t, accept(t_minus_greater) ? expr() : m_ast.make_void());
+
+        return {name, params, ret_t};
+    }
+
     Node statement() {
         Node node;
 
@@ -148,19 +191,31 @@ private:
         } else if (accept(t_continue)) {
             node = m_ast.make_continue();
         } else if (accept(t_if)) {
-            DEFINE(cond, m_ast.push(logicOr()));
+            DEFINE(cond, m_ast.push(assignment()));
             DEFINE(then_body, m_ast.push(statement()));
             DEFINE(else_body, accept(t_else) ? m_ast.push(statement()) : n_none_ref);
             node = m_ast.make_if(cond, then_body, else_body);
             expect_semi = false;
         } else if (accept(t_while)) {
-            DEFINE(cond, m_ast.push(logicOr()));
+            DEFINE(cond, m_ast.push(assignment()));
             DEFINE(body, m_ast.push(statement()));
             node = m_ast.make_while(cond, body);
             expect_semi = false;
         } else if (check(t_brace_l)) {
             ASSIGN(node, block());
             expect_semi = false;
+        } else if (accept(t_foreign)) {
+            //@Todo Handle escaped strings in foreign library names
+            if (!check(t_str_const)) {
+                return error("foreign library name expected"), Node{};
+            }
+            Id lib = s2id(m_cur_token->text);
+            getToken();
+            bool is_variadic = false;
+            DEFINE(sig, fnSignature(&is_variadic));
+            DEFER({ sig.params.deinit(); });
+            node = m_ast.make_foreign_fn(
+                lib, sig.name, sig.params.slice(), m_ast.push(sig.ret_t), is_variadic);
         } else {
             ASSIGN(node, assignment());
 
@@ -170,6 +225,14 @@ private:
                 DEFINE(type, m_ast.push(expr()));
                 DEFINE(value, accept(t_eq) ? m_ast.push(tuple()) : n_none_ref);
                 node = m_ast.make_var_decl(node.as.id.name, type, value);
+            } else if ((node.id == Node_id || node.id == Node_id_tuple)) {
+                if (accept(t_colon)) {
+                    DEFINE(type, m_ast.push(expr()));
+                    DEFINE(value, accept(t_eq) ? m_ast.push(tuple()) : n_none_ref);
+                    node = m_ast.make_var_decl(node.as.id.name, type, value);
+                } else if (accept(t_colon_eq)) {
+                    ASSIGN(node, m_ast.make_colon_assign(m_ast.push(node), m_ast.push(tuple())));
+                }
             }
         }
 
@@ -211,10 +274,6 @@ private:
             ASSIGN(node, m_ast.make_and_assign(m_ast.push(node), m_ast.push(tuple())));
         } else if (accept(t_amper_2x_eq)) {
             ASSIGN(node, m_ast.make_bitand_assign(m_ast.push(node), m_ast.push(tuple())));
-        } else if (accept(t_colon_eq)) {
-            //@Incomplete Colon assignment lhs unchecked in parser, maybe change parsing to support
-            // only the correct syntax?
-            ASSIGN(node, m_ast.make_colon_assign(m_ast.push(node), m_ast.push(tuple())));
         }
 
         return node;
@@ -222,35 +281,20 @@ private:
 
     Node tuple() {
         bool trailing_comma_provided = false;
-        DEFINE(nodes, sequence(&trailing_comma_provided));
+        bool all_ids = false;
+        DEFINE(nodes, sequence(&trailing_comma_provided, &all_ids));
         DEFER({ nodes.deinit(); })
-        return (nodes.size > 1 || trailing_comma_provided) ? m_ast.make_tuple(nodes)
-                                                           : nodes.front();
+        return (nodes.size > 1 || trailing_comma_provided)
+                   ? (all_ids ? m_ast.make_id_tuple(nodes) : m_ast.make_tuple(nodes))
+                   : nodes.front();
     }
 
     Node expr() {
         Node node;
 
         if (accept(t_fn)) {
-            Id name = 0;
-            if (check(t_id)) {
-                ASSIGN(name, identifier());
-            }
-
-            EXPECT(t_par_l);
-
-            Array<NamedNode> params{};
-            DEFER({ params.deinit(); })
-
-            if (!accept(t_par_r)) {
-                do {
-                    APPEND(params, declaration());
-                } while (accept(t_comma));
-
-                EXPECT(t_par_r);
-            }
-
-            DEFINE(ret_type, accept(t_minus_greater) ? expr() : m_ast.make_void());
+            auto sig = fnSignature();
+            DEFER({ sig.params.deinit(); });
 
             Node body;
             bool has_body = false;
@@ -260,7 +304,7 @@ private:
             }
 
             assert(has_body && "function type/ptr parsing is not implemented");
-            node = m_ast.make_fn(name, params, m_ast.push(ret_type), m_ast.push(body));
+            node = m_ast.make_fn(sig.name, sig.params, m_ast.push(sig.ret_t), m_ast.push(body));
         } else if (accept(t_struct)) {
             Id name = 0;
             if (check(t_id)) {
@@ -506,11 +550,17 @@ private:
                         m_ast.push(node), check(t_bracket_r) ? n_none_ref : m_ast.push(tuple())));
                 EXPECT(t_bracket_r);
             } else if (accept(t_period)) {
-                if (!check(t_id)) {
-                    return error("identifier expected"), Node{};
+                if (!check(t_id) && !check(t_int_const)) {
+                    return error("identifier or integer expected"), Node{};
                 }
-                DEFINE(name, identifier());
-                node = m_ast.make_member(m_ast.push(node), name);
+                if (check(t_id)) {
+                    DEFINE(name, identifier());
+                    node = m_ast.make_member(m_ast.push(node), name);
+                } else {
+                    DEFINE(index, m_ast.push(term()));
+                    node = m_ast.make_tuple_index(m_ast.push(node), index);
+                }
+
             } else {
                 break;
             }
@@ -541,6 +591,12 @@ private:
             getToken();
         } else if (check(t_str_const)) {
             LOG_DBG("accept(str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
+            node = m_ast.make_string_literal(m_cur_token->text);
+            getToken();
+        } else if (check(t_escaped_str_const)) {
+            //@Todo Implement escaped str consts parsing
+            LOG_DBG(
+                "accept(escaped_str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
             node = m_ast.make_string_literal(m_cur_token->text);
             getToken();
         }
@@ -586,23 +642,41 @@ private:
             node = m_ast.make_f32();
         } else if (accept(t_f64)) {
             node = m_ast.make_f64();
-        } else if (accept(t_void)) {
+        }
+
+        else if (accept(t_void)) {
             node = m_ast.make_void();
+        } else if (accept(t_bool)) {
+            node = m_ast.make_i8();
+        } else if (accept(t_float)) {
+            node = m_ast.make_f64();
+        } else if (accept(t_int)) {
+            node = m_ast.make_i64();
+        } else if (accept(t_uint)) {
+            node = m_ast.make_i64();
+        } else if (accept(t_string)) {
+            Node types[] = {{}, {}};
+            node = m_ast.make_tuple_type({types, sizeof(types) / sizeof(types[0])});
         }
 
         else if (accept(t_array_t)) {
-            EXPECT(t_par_l);
+            EXPECT(t_brace_l);
             DEFINE(type, m_ast.push(expr()));
             EXPECT(t_comma);
             DEFINE(size, m_ast.push(expr()));
-            EXPECT(t_par_r);
+            EXPECT(t_brace_r);
             ASSIGN(node, m_ast.make_array_type(type, size));
         } else if (accept(t_tuple_t)) {
-            EXPECT(t_par_l);
+            EXPECT(t_brace_l);
             DEFINE(nodes, sequence());
             DEFER({ nodes.deinit(); })
-            EXPECT(t_par_r);
+            EXPECT(t_brace_r);
             ASSIGN(node, m_ast.make_tuple_type(nodes));
+        } else if (accept(t_ptr_t)) {
+            EXPECT(t_brace_l);
+            DEFINE(target, m_ast.push(expr()));
+            EXPECT(t_brace_r);
+            ASSIGN(node, m_ast.make_ptr_type(target));
         }
 
         else if (accept(t_true)) {

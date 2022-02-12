@@ -56,10 +56,10 @@ struct ScanEngine {
         if (!chr()) {
             m_token.id = t_eof;
         } else if (on('"')) {
-            m_token.id = t_str_const;
-
             advance();
             m_token.text.data++;
+
+            bool escaped = false;
 
             while (chr() && !on('\"') && !on('\n')) {
                 accept();
@@ -71,6 +71,7 @@ struct ScanEngine {
                     case '\\':
                     case '"':
                     case '\n':
+                        escaped = true;
                         accept();
                         break;
                     default:
@@ -87,8 +88,10 @@ struct ScanEngine {
                 return error("invalid string constant");
             }
 
+            m_token.id = escaped ? t_escaped_str_const : t_str_const;
+
             advance();
-        } else if (chk<std::isdigit>() || (on('.') && chk<std::isdigit>(1))) {
+        } else if (chk<std::isdigit>()) {
             m_token.id = t_int_const;
 
             if (on('0') && on('x', 1)) {

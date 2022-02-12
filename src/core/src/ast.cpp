@@ -60,6 +60,10 @@ Node Ast::make_tuple(NodeArray nodes) {
     return Node{{.array = {push_ar(nodes)}}, Node_tuple};
 }
 
+Node Ast::make_id_tuple(NodeArray nodes) {
+    return Node{{.array = {push_ar(nodes)}}, Node_id_tuple};
+}
+
 Node Ast::make_tuple_type(NodeArray nodes) {
     return Node{{.array = {push_ar(nodes)}}, Node_tuple_type};
 }
@@ -121,7 +125,18 @@ Node Ast::make_call(node_ref_t lhs, NodeArray args) {
 }
 
 Node Ast::make_fn(Id name, NamedNodeArray params, node_ref_t ret_type, node_ref_t body) {
-    return Node{{.fn = {{name, push_named_ar(params), ret_type}, body}}, Node_fn};
+    return Node{{.fn = {{name, push_named_ar(params), ret_type}, body, false, 0}}, Node_fn};
+}
+
+Node Ast::make_foreign_fn(
+    Id lib,
+    Id name,
+    NamedNodeArray params,
+    node_ref_t ret_type,
+    bool is_variadic) {
+    return Node{
+        {.fn = {{name, push_named_ar(params), ret_type}, n_none_ref, is_variadic, lib}},
+        Node_foreign_fn};
 }
 
 Node Ast::make_string_literal(string str) {
@@ -233,6 +248,10 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
         }
     };
 
+    auto const inspectBool = [&](bool v) {
+        ss << std::boolalpha << v;
+    };
+
     if (!node) {
         ss << "null";
         return;
@@ -273,6 +292,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
     case Node_array:
     case Node_block:
     case Node_tuple:
+    case Node_id_tuple:
     case Node_tuple_type:
         field("nodes");
         inspectNodeArray(node->as.array.nodes, depth);
@@ -330,6 +350,15 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
         inspectSig(node->as.fn.sig, depth);
         field("body");
         inspectNode(node->as.fn.body);
+        break;
+
+    case Node_foreign_fn:
+        field("name");
+        inspectId(node->as.fn.sig.name);
+        field("sig");
+        inspectSig(node->as.fn.sig, depth);
+        field("is_variadic");
+        inspectBool(node->as.fn.is_variadic);
         break;
 
     case Node_string_literal:

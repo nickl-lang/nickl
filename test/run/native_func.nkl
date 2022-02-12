@@ -1,3 +1,2 @@
-foreign "c" fn printf(ptr_t{i8}, ...) -> i32;
-
+foreign "c" fn printf(fmt: ptr_t{i8}, ...) -> i32;
 printf("Hello, %s!\n", "World");

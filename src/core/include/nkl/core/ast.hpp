@@ -74,6 +74,8 @@ struct _fn_type {
 struct _fn {
     struct _fn_type sig;
     node_ref_t body;
+    bool is_variadic;
+    Id lib;
 };
 
 struct _member {
@@ -141,6 +143,7 @@ struct Ast {
     Node make_array(NodeArray nodes);
     Node make_block(NodeArray nodes);
     Node make_tuple(NodeArray nodes);
+    Node make_id_tuple(NodeArray nodes);
     Node make_tuple_type(NodeArray nodes);
 
     Node make_id(Id name);
@@ -162,6 +165,12 @@ struct Ast {
 
     Node make_call(node_ref_t lhs, NodeArray args);
     Node make_fn(Id name, NamedNodeArray params, node_ref_t ret_type, node_ref_t body);
+    Node make_foreign_fn(
+        Id lib,
+        Id name,
+        NamedNodeArray params,
+        node_ref_t ret_type,
+        bool is_variadic);
     Node make_string_literal(string str);
     Node make_struct_literal(node_ref_t type, NamedNodeArray fields);
     Node make_var_decl(Id name, node_ref_t type, node_ref_t value);

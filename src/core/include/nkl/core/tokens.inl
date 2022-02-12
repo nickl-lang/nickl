@@ -15,7 +15,6 @@ OP(operator_marker, "")
 // OP(number, "#")
 // OP(par_2x, "()")
 // OP(period_2x, "..")
-// OP(period_3x, "...")
 // OP(plus_2x, "++")
 // OP(uscore, "_")
 
@@ -59,6 +58,7 @@ OP(par_r, ")")
 OP(percent, "%")
 OP(percent_eq, "%=")
 OP(period, ".")
+OP(period_3x, "...")
 OP(plus, "+")
 OP(plus_eq, "+=")
 OP(question, "?")
@@ -101,7 +101,7 @@ KW(for)
 KW(foreign)
 KW(if)
 KW(ptr_t)
-KW(return )
+KW(return)
 KW(struct)
 KW(true)
 KW(tuple_t)
@@ -133,16 +133,17 @@ KW(void)
 #define SP(...)
 #endif
 
-// id
+// id, text
 
-SP(id)
+SP(id, "identifier")
 
-SP(int_const)
-SP(float_const)
-SP(str_const)
+SP(int_const, "int constant")
+SP(float_const, "float constant")
+SP(str_const, "string constant")
+SP(escaped_str_const, "string constant")
 
-SP(empty)
-SP(error)
-SP(eof)
+SP(empty, "")
+SP(error, "")
+SP(eof, "")
 
 #undef SP

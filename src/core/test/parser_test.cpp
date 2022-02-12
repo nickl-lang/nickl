@@ -162,6 +162,7 @@ private:
         case Node_array:
         case Node_block:
         case Node_tuple:
+        case Node_id_tuple:
         case Node_tuple_type:
             return compareNodeArrays(lhs.as.array.nodes, rhs.as.array.nodes);
 
@@ -351,7 +352,7 @@ TEST_F(parser, binary) {
             m_ast.push(m_ast.make_sub(num, num)));
     test_ok({t_a, t_minus_eq, t_num, t_semi},
             m_ast.push(m_ast.make_sub_assign(a, num)));
-    test_ok({t_array_t, t_par_l, t_f64, t_comma, t_num, t_par_r, t_semi},
+    test_ok({t_array_t, t_brace_l, t_f64, t_comma, t_num, t_brace_r, t_semi},
             m_ast.push(m_ast.make_array_type(m_ast.push(m_ast.make_f64()), num)));
     test_ok({t_while, t_num, t_brace_l, t_a, t_semi, t_brace_r},
             m_ast.push(m_ast.make_while(num, a)));
@@ -409,9 +410,11 @@ TEST_F(parser, other) {
     test_ok({t_brace_l, t_a, t_semi, t_b, t_semi, t_brace_r, t_semi},
             m_ast.push(m_ast.make_block({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
     test_ok({t_a, t_comma, t_b, t_semi},
-            m_ast.push(m_ast.make_tuple({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
-    test_ok({t_tuple_t, t_par_l, t_i64, t_comma, t_f64, t_par_r, t_semi},
+            m_ast.push(m_ast.make_id_tuple({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
+    test_ok({t_tuple_t, t_brace_l, t_i64, t_comma, t_f64, t_brace_r, t_semi},
             m_ast.push(m_ast.make_tuple_type({i64f64_ar, sizeof(i64f64_ar) / sizeof(i64f64_ar[0])})));
+    test_ok({t_ptr_t, t_brace_l, t_ptr_t, t_brace_l, t_i8, t_brace_r, t_brace_r, t_semi},
+            m_ast.push(m_ast.make_ptr_type(m_ast.push(m_ast.make_ptr_type(m_ast.push(m_ast.make_i8()))))));
     // clang-format on
 
     NamedNode name_ar[] = {{id_a, m_ast.push(f64)}, {id_b, m_ast.push(f64)}};

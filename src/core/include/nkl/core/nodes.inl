@@ -2,19 +2,11 @@
 #define X(...)
 #endif
 
+// type, id
+
 #ifndef N
 #define N(...) X(__VA_ARGS__)
 #endif
-
-#ifndef U
-#define U(...) X(__VA_ARGS__)
-#endif
-
-#ifndef B
-#define B(...) X(__VA_ARGS__)
-#endif
-
-// type, id
 
 N(null, nop)
 
@@ -35,6 +27,12 @@ N(null, f64)
 N(null, typeref)
 N(null, void)
 
+#undef N
+
+#ifndef U
+#define U(...) X(__VA_ARGS__)
+#endif
+
 U(unary, addr)
 U(unary, deref)
 
@@ -44,6 +42,14 @@ U(unary, uminus)
 U(unary, uplus)
 
 U(unary, return)
+
+U(unary, ptr_type)
+
+#undef U
+
+#ifndef B
+#define B(...) X(__VA_ARGS__)
+#endif
 
 B(binary, add)
 B(binary, sub)
@@ -87,7 +93,10 @@ B(binary, assign)
 B(binary, cast)
 B(binary, colon_assign)
 B(binary, index)
+B(binary, tuple_index)
 B(binary, while)
+
+#undef B
 
 X(ternary, if)
 X(ternary, ternary)
@@ -95,6 +104,7 @@ X(ternary, ternary)
 X(array, array)
 X(array, block)
 X(array, tuple)
+X(array, id_tuple)
 X(array, tuple_type)
 
 X(id, id)
@@ -114,13 +124,12 @@ X(numeric, numeric_f64)
 
 X(type_decl, struct)
 
-X(call, call)
 X(fn, fn)
+X(fn, foreign_fn)
+
+X(call, call)
 X(str, string_literal)
 X(struct_literal, struct_literal)
 X(var_decl, var_decl)
 
 #undef X
-#undef N
-#undef U
-#undef B
