@@ -2,6 +2,7 @@ set(LIB nkl_core)
 
 add_library(${LIB}
     src/ast.cpp
+    src/compiler.cpp
     src/core.cpp
     src/ir.cpp
     src/lexer.cpp
