@@ -37,6 +37,8 @@ enum EIrCode {
     Ir_Count,
 };
 
+extern char const *s_ir_names[];
+
 enum ERefType {
     Ref_None,
     Ref_Frame,

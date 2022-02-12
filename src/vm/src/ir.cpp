@@ -14,12 +14,12 @@ namespace nk {
 namespace vm {
 namespace ir {
 
-namespace {
-
-static char const *s_ir_names[] = {
+char const *s_ir_names[] = {
 #define X(NAME) #NAME,
 #include "nk/vm/ir.inl"
 };
+
+namespace {
 
 void _inspect(Program const &prog, std::ostringstream &ss) {
     auto &allocator = *_mctx.tmp_allocator;

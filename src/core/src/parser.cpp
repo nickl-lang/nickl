@@ -6,12 +6,6 @@
 #include "nk/common/logger.hpp"
 #include "nk/common/profiler.hpp"
 
-namespace nkl {
-
-namespace {
-
-LOG_USE_SCOPE(nkl::parser)
-
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_token_id[ID], s_token_text[ID]
 
 #define CHECK(EXPR)         \
@@ -35,6 +29,12 @@ LOG_USE_SCOPE(nkl::parser)
     }
 
 #define EXPECT(ID) CHECK(expect(ID))
+
+namespace nkl {
+
+namespace {
+
+LOG_USE_SCOPE(nkl::parser)
 
 struct ParseEngine {
     TokenArray const &m_tokens;
