@@ -59,13 +59,29 @@ struct CompileEngine {
     void compile() {
         //@Todo push/pop frames
 
+        m_builder.startFunct(
+            m_builder.makeFunct(), cs2s(":top"), type_get_void(), type_get_tuple({}));
+        m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
+
         compileScope(m_root);
+
+        gen(m_builder.make_ret());
     }
 
     int compileScope(node_ref_t node) {
         //@Todo push/pop scopes
 
         CHECK(compileStmt(node));
+
+        return 0;
+    }
+
+    int compileScope(NodeArray nodes) {
+        //@Todo push/pop scopes
+
+        for (auto const &node : nodes) {
+            CHECK(compileStmt(&node));
+        }
 
         return 0;
     }
@@ -89,12 +105,41 @@ struct CompileEngine {
             //@Refactor Construct void ref universally
             return {{}, type_get_void(), v_none};
 
+        case Node_add: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot add two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_add({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+
+        case Node_block:
+            compileScope(node->as.array.nodes);
+            return {{}, type_get_void(), v_none};
+
+        case Node_numeric_f64:
+            return makeValue<double>(type_get_numeric(Float64), node->as.numeric.val.f64);
+        case Node_numeric_i64:
+            return makeValue<int64_t>(type_get_numeric(Int64), node->as.numeric.val.i64);
+
         default:
             assert(!"unreachable");
             break;
         }
 
         return {};
+    }
+
+    template <class T, class... TArgs>
+    ValueInfo makeValue(type_t type, TArgs &&...args) {
+        auto mem = _mctx.tmp_allocator->alloc<T>();
+        *mem = T{args...};
+        return {{.val = mem}, type, v_val};
+    }
+
+    ValueInfo makeInstr(Instr const &instr, type_t type) {
+        return {{.instr{instr}}, type, v_instr};
     }
 
     Ref makeRef(ValueInfo const &val) {
@@ -151,7 +196,8 @@ bool Compiler::compile(node_ref_t root) {
     CompileEngine engine{root, builder, err};
     engine.compile();
 
-    LOG_INF("code:\n", prog.inspect())
+    auto str = prog.inspect();
+    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     return !engine.m_error_occurred;
 }
