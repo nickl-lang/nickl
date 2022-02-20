@@ -200,7 +200,7 @@ private:
                    compare(lhs.as.fn.body, rhs.as.fn.body);
 
         case Node_string_literal:
-            return std_view(lhs.as.str.val) == std_view(rhs.as.str.val);
+            return std_view(lhs.as.str.val->text) == std_view(rhs.as.str.val->text);
 
         case Node_struct_literal:
             return compare(lhs.as.struct_literal.type, rhs.as.struct_literal.type) &&
@@ -437,8 +437,9 @@ TEST_F(parser, other) {
             m_ast.make_var_decl(id_a, f64, num));
     test_ok({t_fn, t_id_plus, t_par_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_par_r, t_minus_greater, t_i64, t_brace_l, t_return, t_a, t_plus, t_b, t_semi, t_brace_r},
             m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, i64, m_ast.make_return(m_ast.make_add(a, b))));
+    auto str_token = mkt(t_str_const, c_test_str);
     test_ok({{t_str_const, c_test_str}, t_semi},
-            m_ast.make_string_literal(cs2s(c_test_str)));
+            m_ast.make_string_literal(&str_token));
     // test_ok({t_new, t_A, t_brace_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_brace_r, t_semi},
     //         m_ast.make_struct_literal(A, {{id_a, f64}, {id_b, f64}}));
     // clang-format on

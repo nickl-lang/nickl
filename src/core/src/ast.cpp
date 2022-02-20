@@ -18,11 +18,9 @@ char const *s_ast_node_names[] = {
 
 void Ast::init() {
     data.init(AST_INIT_CAPACITY);
-    strings.init();
 }
 
 void Ast::deinit() {
-    strings.deinit();
     data.deinit();
 }
 
@@ -140,10 +138,8 @@ Node Ast::make_foreign_fn(
         Node_foreign_fn};
 }
 
-Node Ast::make_string_literal(string str) {
-    string ast_str;
-    str.copy(ast_str, strings);
-    return Node{{.str = {ast_str}}, Node_string_literal};
+Node Ast::make_string_literal(token_ref_t val) {
+    return Node{{.str = {val}}, Node_string_literal};
 }
 
 Node Ast::make_struct_literal(Node const &type, NamedNodeArray fields) {
@@ -364,7 +360,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
 
     case Node_string_literal:
         field("value");
-        ss << "\"" << node->as.str.val << "\"";
+        ss << "\"" << node->as.str.val->text << "\"";
         break;
 
     case Node_struct_literal:

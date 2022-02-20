@@ -30,6 +30,8 @@ struct Token {
     uint8_t id = t_empty;
 };
 
+using token_ref_t = Token const *;
+
 using TokenArray = Slice<Token>;
 
 } // namespace nkl
