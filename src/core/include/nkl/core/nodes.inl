@@ -29,6 +29,9 @@ N(null, f64)
 N(null, typeref)
 N(null, void)
 
+N(null, true)
+N(null, false)
+
 #undef N
 
 #ifndef U
@@ -109,20 +112,12 @@ X(array, tuple)
 X(array, id_tuple)
 X(array, tuple_type)
 
-X(id, id)
+X(token, id)
+X(token, numeric_float)
+X(token, numeric_int)
+X(token, string_literal)
 
 X(member, member)
-
-X(numeric, numeric_i8)
-X(numeric, numeric_i16)
-X(numeric, numeric_i32)
-X(numeric, numeric_i64)
-X(numeric, numeric_u8)
-X(numeric, numeric_u16)
-X(numeric, numeric_u32)
-X(numeric, numeric_u64)
-X(numeric, numeric_f32)
-X(numeric, numeric_f64)
 
 X(type_decl, struct)
 
@@ -130,7 +125,6 @@ X(fn, fn)
 X(fn, foreign_fn)
 
 X(call, call)
-X(str, string_literal)
 X(struct_literal, struct_literal)
 X(var_decl, var_decl)
 

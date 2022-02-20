@@ -118,10 +118,22 @@ struct CompileEngine {
             compileScope(node->as.array.nodes);
             return {{}, type_get_void(), v_none};
 
-        case Node_numeric_f64:
-            return makeValue<double>(type_get_numeric(Float64), node->as.numeric.val.f64);
-        case Node_numeric_i64:
-            return makeValue<int64_t>(type_get_numeric(Int64), node->as.numeric.val.i64);
+        case Node_numeric_float: {
+            double value = 0;
+            //@Todo Replace sscanf in Compiler
+            int res = std::sscanf(node->as.token.val->text.data, "%lf", &value);
+            (void)res;
+            assert(res > 0 && res != EOF && "integer constant parsing failed");
+            return makeValue<double>(type_get_numeric(Float64), res);
+        }
+        case Node_numeric_int: {
+            int64_t value = 0;
+            //@Todo Replace sscanf in Compiler
+            int res = std::sscanf(node->as.token.val->text.data, "%ld", &value);
+            (void)res;
+            assert(res > 0 && res != EOF && "integer constant parsing failed");
+            return makeValue<int64_t>(type_get_numeric(Int64), res);
+        }
 
         default:
             assert(!"unreachable");

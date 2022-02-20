@@ -18,8 +18,10 @@ using namespace nkl;
 
 LOG_USE_SCOPE(nkl::ast::test)
 
-Token mkt(ETokenID id = t_eof, const char *text = "") {
-    return Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
+token_ref_t mkt(ETokenID id = t_eof, const char *text = "") {
+    Token *token = _mctx.tmp_allocator->alloc<Token>();
+    *token = Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
+    return token;
 }
 
 class ast : public testing::Test {
@@ -36,7 +38,7 @@ class ast : public testing::Test {
     }
 
 protected:
-    void test(Node const &node, Id id) {
+    void test(Node const &node, ENodeId id) {
         LOG_INF("Test for #%s", s_ast_node_names[id]);
         auto str = ast_inspect(&node);
         LOG_INF("%.*s", str.size, str.data);
@@ -45,14 +47,14 @@ protected:
         EXPECT_EQ(id, m_node->id);
     }
 
-    void test_unary(Node const &node, Id id, Node const &arg) {
+    void test_unary(Node const &node, ENodeId id, Node const &arg) {
         test(node, id);
         if (m_node) {
             EXPECT_EQ(m_node->as.unary.arg->id, arg.id);
         }
     }
 
-    void test_binary(Node const &node, Id id, Node const &lhs, Node const &rhs) {
+    void test_binary(Node const &node, ENodeId id, Node const &lhs, Node const &rhs) {
         test(node, id);
         if (m_node) {
             EXPECT_EQ(m_node->as.binary.lhs->id, lhs.id);
@@ -62,7 +64,7 @@ protected:
 
     void test_ternary(
         Node const &node,
-        Id id,
+        ENodeId id,
         Node const &arg1,
         Node const &arg2,
         Node const &arg3) {
@@ -74,7 +76,7 @@ protected:
         }
     }
 
-    void test_array(Node const &node, Id id, Node const &arg) {
+    void test_array(Node const &node, ENodeId id, Node const &arg) {
         test(node, id);
         if (m_node) {
             EXPECT_EQ(m_node->as.array.nodes.size, 1);
@@ -82,7 +84,7 @@ protected:
         }
     }
 
-    void test_type_decl(Node const &node, Id id, Id name, NamedNode const &field) {
+    void test_type_decl(Node const &node, ENodeId id, token_ref_t name, NamedNode const &field) {
         test(node, id);
         if (m_node) {
             EXPECT_EQ(m_node->as.type_decl.name, name);
@@ -92,18 +94,18 @@ protected:
         }
     }
 
-    void test_member(Node const &node, Id id, Node const &lhs, Id name) {
+    void test_member(Node const &node, ENodeId id, Node const &lhs, token_ref_t name) {
         test(node, id);
         if (m_node) {
             EXPECT_EQ(m_node->as.member.lhs->id, lhs.id);
-            EXPECT_EQ(m_node->as.member.name, name);
+            EXPECT_EQ(std_view(m_node->as.member.name->text), std_view(name->text));
         }
     }
 
-    void test_id(Node const &node, Id id, Id name) {
+    void test_id(Node const &node, ENodeId id, token_ref_t name) {
         test(node, id);
         if (m_node) {
-            EXPECT_EQ(m_node->as.id.name, name);
+            EXPECT_EQ(std_view(m_node->as.token.val->text), std_view(name->text));
         }
     }
 
@@ -111,7 +113,7 @@ protected:
         std::ostringstream ss;
 
         if (node->id == Node_fn) {
-            ss << "fn " << id2s(node->as.fn.sig.name) << "(";
+            ss << "fn " << node->as.fn.sig.name->text << "(";
             bool first = true;
             for (node_ref_t param = node->as.fn.sig.params.data;
                  param != node->as.fn.sig.params.data + node->as.fn.sig.params.size;
@@ -119,7 +121,7 @@ protected:
                 if (!first) {
                     ss << ", ";
                 }
-                ss << id2s(param->as.named_node.name) << ": "
+                ss << param->as.named_node.name->text << ": "
                    << printNode(param->as.named_node.node);
                 first = false;
             }
@@ -128,7 +130,7 @@ protected:
         } else if (node->id == Node_add) {
             ss << printNode(node->as.binary.lhs) << " + " << printNode(node->as.binary.rhs);
         } else if (node->id == Node_id) {
-            ss << id2s(node->as.id.name);
+            ss << node->as.token.val->text;
         } else if (node->id == Node_return) {
             ss << "return " << printNode(node->as.unary.arg) << ";";
         } else if (node->id == Node_u64) {
@@ -144,15 +146,15 @@ protected:
 
     node_ref_t makeTestTree() {
         NamedNode params[] = {
-            {cs2id("a"), m_ast.push(m_ast.make_u64())},
-            {cs2id("b"), m_ast.push(m_ast.make_u64())},
+            {mkt(t_id, "a"), m_ast.push(m_ast.make_u64())},
+            {mkt(t_id, "b"), m_ast.push(m_ast.make_u64())},
         };
         return m_ast.push(m_ast.make_fn(
-            cs2id("plus"),
+            mkt(t_id, "plus"),
             NamedNodeArray{params, 2},
             m_ast.make_void(),
             m_ast.make_return(
-                m_ast.make_add(m_ast.make_id(cs2id("a")), m_ast.make_id(cs2id("b"))))));
+                m_ast.make_add(m_ast.make_id(mkt(t_id, "a")), m_ast.make_id(mkt(t_id, "b"))))));
     }
 
     Ast m_ast;
@@ -163,7 +165,7 @@ protected:
 
 TEST_F(ast, nodes) {
     Node const nop = m_ast.make_nop();
-    Id const noid = cs2id("noid");
+    auto const noid = mkt(t_id, "noid");
     NamedNode const nn_nop{noid, m_ast.push(nop)};
 
 #define N(TYPE, ID) test(m_ast.make_##ID(), Node_##ID);
@@ -186,11 +188,11 @@ TEST_F(ast, nodes) {
 
     test_id(m_ast.make_id(noid), Node_id, noid);
 
-    test(m_ast.make_numeric_f64(3.14), Node_numeric_f64);
-    EXPECT_EQ(m_node->as.numeric.val.f64, 3.14);
+    test(m_ast.make_numeric_float(mkt(t_float_const, "3.14")), Node_numeric_float);
+    EXPECT_EQ(std_view(m_node->as.token.val->text), "3.14");
 
-    test(m_ast.make_numeric_i64(42), Node_numeric_i64);
-    EXPECT_EQ(m_node->as.numeric.val.i64, 42);
+    test(m_ast.make_numeric_int(mkt(t_int_const, "42")), Node_numeric_int);
+    EXPECT_EQ(std_view(m_node->as.token.val->text), "42");
 
     test(m_ast.make_call(nop, NodeArray{&nop, 1}), Node_call);
     EXPECT_EQ(m_node->as.call.lhs->id, nop.id);
@@ -210,9 +212,8 @@ TEST_F(ast, nodes) {
     EXPECT_EQ(m_node->as.fn.sig.ret_type->id, nop.id);
     EXPECT_EQ(m_node->as.fn.body->id, nop.id);
 
-    auto str_token = mkt(t_str_const,  "hello");
-    test(m_ast.make_string_literal(&str_token), Node_string_literal);
-    EXPECT_EQ(std_view(m_node->as.str.val->text), "hello");
+    test(m_ast.make_string_literal(mkt(t_str_const, "hello")), Node_string_literal);
+    EXPECT_EQ(std_view(m_node->as.token.val->text), "hello");
 
     test(m_ast.make_struct_literal(nop, NamedNodeArray{&nn_nop, 1}), Node_struct_literal);
     EXPECT_EQ(m_node->as.struct_literal.type->id, nop.id);

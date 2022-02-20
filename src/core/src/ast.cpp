@@ -66,55 +66,27 @@ Node Ast::make_tuple_type(NodeArray nodes) {
     return Node{{.array = {push_ar(nodes)}}, Node_tuple_type};
 }
 
-Node Ast::make_id(Id name) {
-    return Node{{.id = {name}}, Node_id};
+Node Ast::make_id(token_ref_t name) {
+    return Node{{.token = {name}}, Node_id};
 }
 
-Node Ast::make_member(Node const &lhs, Id name) {
+Node Ast::make_numeric_int(token_ref_t val) {
+    return Node{{.token = {val}}, Node_numeric_int};
+}
+
+Node Ast::make_numeric_float(token_ref_t val) {
+    return Node{{.token = {val}}, Node_numeric_float};
+}
+
+Node Ast::make_string_literal(token_ref_t val) {
+    return Node{{.token = {val}}, Node_string_literal};
+}
+
+Node Ast::make_member(Node const &lhs, token_ref_t name) {
     return Node{{.member = {push(lhs), name}}, Node_member};
 }
 
-Node Ast::make_numeric_i8(int8_t val) {
-    return Node{{.numeric = {.val = {.i8 = val}}}, Node_numeric_i8};
-}
-
-Node Ast::make_numeric_i16(int16_t val) {
-    return Node{{.numeric = {.val = {.i16 = val}}}, Node_numeric_i16};
-}
-
-Node Ast::make_numeric_i32(int32_t val) {
-    return Node{{.numeric = {.val = {.i32 = val}}}, Node_numeric_i32};
-}
-
-Node Ast::make_numeric_i64(int64_t val) {
-    return Node{{.numeric = {.val = {.i64 = val}}}, Node_numeric_i64};
-}
-
-Node Ast::make_numeric_u8(uint8_t val) {
-    return Node{{.numeric = {.val = {.u8 = val}}}, Node_numeric_u8};
-}
-
-Node Ast::make_numeric_u16(uint16_t val) {
-    return Node{{.numeric = {.val = {.u16 = val}}}, Node_numeric_u16};
-}
-
-Node Ast::make_numeric_u32(uint32_t val) {
-    return Node{{.numeric = {.val = {.u32 = val}}}, Node_numeric_u32};
-}
-
-Node Ast::make_numeric_u64(uint64_t val) {
-    return Node{{.numeric = {.val = {.u64 = val}}}, Node_numeric_u64};
-}
-
-Node Ast::make_numeric_f32(float val) {
-    return Node{{.numeric = {.val = {.f32 = val}}}, Node_numeric_f32};
-}
-
-Node Ast::make_numeric_f64(double val) {
-    return Node{{.numeric = {.val = {.f64 = val}}}, Node_numeric_f64};
-}
-
-Node Ast::make_struct(Id name, NamedNodeArray fields) {
+Node Ast::make_struct(token_ref_t name, NamedNodeArray fields) {
     return Node{{.type_decl = {name, push_named_ar(fields)}}, Node_struct};
 }
 
@@ -122,31 +94,28 @@ Node Ast::make_call(Node const &lhs, NodeArray args) {
     return Node{{.call = {push(lhs), push_ar(args)}}, Node_call};
 }
 
-Node Ast::make_fn(Id name, NamedNodeArray params, Node const &ret_type, Node const &body) {
+Node Ast::make_fn(token_ref_t name, NamedNodeArray params, Node const &ret_type, Node const &body) {
     return Node{
-        {.fn = {{name, push_named_ar(params), push(ret_type)}, push(body), false, 0}}, Node_fn};
+        {.fn = {{name, push_named_ar(params), push(ret_type)}, push(body), nullptr, false}},
+        Node_fn};
 }
 
 Node Ast::make_foreign_fn(
-    Id lib,
-    Id name,
+    token_ref_t lib,
+    token_ref_t name,
     NamedNodeArray params,
     Node const &ret_type,
     bool is_variadic) {
     return Node{
-        {.fn = {{name, push_named_ar(params), push(ret_type)}, n_none_ref, is_variadic, lib}},
+        {.fn = {{name, push_named_ar(params), push(ret_type)}, n_none_ref, lib, is_variadic}},
         Node_foreign_fn};
-}
-
-Node Ast::make_string_literal(token_ref_t val) {
-    return Node{{.str = {val}}, Node_string_literal};
 }
 
 Node Ast::make_struct_literal(Node const &type, NamedNodeArray fields) {
     return Node{{.struct_literal = {push(type), push_named_ar(fields)}}, Node_struct_literal};
 }
 
-Node Ast::make_var_decl(Id name, Node const &type, Node const &value) {
+Node Ast::make_var_decl(token_ref_t name, Node const &type, Node const &value) {
     return Node{{.var_decl = {name, push(type), push(value)}}, Node_var_decl};
 }
 
@@ -211,7 +180,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
             }
             ss << "{";
             newline(depth + 1);
-            ss << "name: #" << id2s(node->as.named_node.name) << ",";
+            ss << "name: #" << node->as.named_node.name->text << ",";
             newline(depth + 1);
             ss << "node: ";
             _inspect(node->as.named_node.node, ss, depth + 2);
@@ -237,9 +206,9 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
         _inspect(node, ss, depth + 1);
     };
 
-    auto const inspectId = [&](Id id) {
-        if (id) {
-            ss << "#" << id2s(id);
+    auto const inspectToken = [&](token_ref_t token) {
+        if (token) {
+            ss << "(" << s_token_id[token->id] << ", \"" << token->text << "\")";
         } else {
             ss << "null";
         }
@@ -297,7 +266,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
 
     case Node_struct:
         field("name");
-        inspectId(node->as.type_decl.name);
+        inspectToken(node->as.type_decl.name);
         field("fields");
         inspectNamedNodeArray(node->as.type_decl.fields, depth);
         break;
@@ -306,22 +275,15 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
         field("lhs");
         inspectNode(node->as.member.lhs);
         field("name");
-        inspectId(node->as.member.name);
-        break;
-
-    case Node_numeric_f64:
-        field("value");
-        ss << node->as.numeric.val.f64;
-        break;
-
-    case Node_numeric_i64:
-        field("value");
-        ss << node->as.numeric.val.i64;
+        inspectToken(node->as.member.name);
         break;
 
     case Node_id:
-        field("name");
-        inspectId(node->as.id.name);
+    case Node_numeric_float:
+    case Node_numeric_int:
+    case Node_string_literal:
+        field("val");
+        inspectToken(node->as.token.val);
         break;
 
     case Node_call:
@@ -333,7 +295,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
 
     case Node_var_decl:
         field("name");
-        inspectId(node->as.var_decl.name);
+        inspectToken(node->as.var_decl.name);
         field("type");
         inspectNode(node->as.var_decl.type);
         field("value");
@@ -342,7 +304,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
 
     case Node_fn:
         field("name");
-        inspectId(node->as.fn.sig.name);
+        inspectToken(node->as.fn.sig.name);
         field("sig");
         inspectSig(node->as.fn.sig, depth);
         field("body");
@@ -351,16 +313,11 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
 
     case Node_foreign_fn:
         field("name");
-        inspectId(node->as.fn.sig.name);
+        inspectToken(node->as.fn.sig.name);
         field("sig");
         inspectSig(node->as.fn.sig, depth);
         field("is_variadic");
         inspectBool(node->as.fn.is_variadic);
-        break;
-
-    case Node_string_literal:
-        field("value");
-        ss << "\"" << node->as.str.val->text << "\"";
         break;
 
     case Node_struct_literal:

@@ -16,8 +16,14 @@ using namespace nkl;
 
 LOG_USE_SCOPE(nkl::parser::test)
 
-Token mkt(ETokenID id = t_eof, const char *text = "") {
+Token createToken(ETokenID id = t_eof, const char *text = "") {
     return Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
+}
+
+token_ref_t mkt(ETokenID id = t_eof, const char *text = "") {
+    Token *token = _mctx.tmp_allocator->alloc<Token>();
+    *token = createToken(id, text);
+    return token;
 }
 
 class parser : public testing::Test {
@@ -59,7 +65,7 @@ protected:
         Array<Token> token_ar{};
         DEFER({ token_ar.deinit(); })
         for (auto const &token : tokens) {
-            token_ar.push() = mkt(token.id, token.text);
+            token_ar.push() = createToken(token.id, token.text);
         }
         bool parse_ok = m_parser.parse(token_ar);
         EXPECT_TRUE(parse_ok);
@@ -109,7 +115,7 @@ private:
 
     bool compareNamedNodeArrays(NodeArray const &lhs, NodeArray const &rhs) {
         return compareArrays(lhs, rhs, [this](Node const &lhs, Node const &rhs) {
-            return lhs.as.named_node.name == rhs.as.named_node.name &&
+            return std_view(lhs.as.type_decl.name->text) == std_view(rhs.as.type_decl.name->text) &&
                    compare(lhs.as.named_node.node, rhs.as.named_node.node);
         });
     };
@@ -168,39 +174,33 @@ private:
             return compareNodeArrays(lhs.as.array.nodes, rhs.as.array.nodes);
 
         case Node_struct:
-            return lhs.as.type_decl.name == rhs.as.type_decl.name &&
+            return std_view(lhs.as.type_decl.name->text) == std_view(rhs.as.type_decl.name->text) &&
                    compareNamedNodeArrays(lhs.as.type_decl.fields, rhs.as.type_decl.fields);
 
         case Node_member:
             return compare(lhs.as.member.lhs, rhs.as.member.lhs) &&
-                   lhs.as.member.name == rhs.as.member.name;
-
-        case Node_numeric_f64:
-            return lhs.as.numeric.val.f64 == rhs.as.numeric.val.f64;
-
-        case Node_numeric_i64:
-            return lhs.as.numeric.val.i64 == rhs.as.numeric.val.i64;
+                   std_view(lhs.as.member.name->text) == std_view(rhs.as.member.name->text);
 
         case Node_id:
-            return lhs.as.id.name == rhs.as.id.name;
+        case Node_numeric_float:
+        case Node_numeric_int:
+        case Node_string_literal:
+            return std_view(lhs.as.token.val->text) == std_view(rhs.as.token.val->text);
 
         case Node_call:
             return compare(lhs.as.call.lhs, rhs.as.call.lhs) &&
                    compareNodeArrays(lhs.as.call.args, rhs.as.call.args);
 
         case Node_var_decl:
-            return lhs.as.var_decl.name == rhs.as.var_decl.name &&
+            return std_view(lhs.as.var_decl.name->text) == std_view(rhs.as.var_decl.name->text) &&
                    compare(lhs.as.var_decl.type, rhs.as.var_decl.type) &&
                    compare(lhs.as.var_decl.value, rhs.as.var_decl.value);
 
         case Node_fn:
-            return lhs.as.fn.sig.name == rhs.as.fn.sig.name &&
+            return std_view(lhs.as.fn.sig.name->text) == std_view(rhs.as.fn.sig.name->text) &&
                    compareNamedNodeArrays(lhs.as.fn.sig.params, rhs.as.fn.sig.params) &&
                    compare(lhs.as.fn.sig.ret_type, rhs.as.fn.sig.ret_type) &&
                    compare(lhs.as.fn.body, rhs.as.fn.body);
-
-        case Node_string_literal:
-            return std_view(lhs.as.str.val->text) == std_view(rhs.as.str.val->text);
 
         case Node_struct_literal:
             return compare(lhs.as.struct_literal.type, rhs.as.struct_literal.type) &&
@@ -259,7 +259,7 @@ TEST_F(parser, nullary) {
 }
 
 TEST_F(parser, unary) {
-    auto a = m_ast.make_id(cs2id("a"));
+    auto a = m_ast.make_id(mkt(t_id, "a"));
 
     TokenDescr t_a{t_id, "a"};
 
@@ -282,8 +282,8 @@ TEST_F(parser, unary) {
 }
 
 TEST_F(parser, binary) {
-    auto a = m_ast.make_id(cs2id("a"));
-    auto num = m_ast.make_numeric_i64(42);
+    auto a = m_ast.make_id(mkt(t_id, "a"));
+    auto num = m_ast.make_numeric_int(mkt(t_int_const, "42"));
 
     TokenDescr t_a{t_id, "a"};
     TokenDescr t_num{t_int_const, "42"};
@@ -365,9 +365,9 @@ TEST_F(parser, binary) {
 }
 
 TEST_F(parser, ternary) {
-    auto a = m_ast.make_id(cs2id("a"));
-    auto b = m_ast.make_id(cs2id("b"));
-    auto num = m_ast.make_numeric_i64(42);
+    auto a = m_ast.make_id(mkt(t_id, "a"));
+    auto b = m_ast.make_id(mkt(t_id, "b"));
+    auto num = m_ast.make_numeric_int(mkt(t_int_const, "42"));
 
     TokenDescr t_a{t_id, "a"};
     TokenDescr t_b{t_id, "b"};
@@ -384,13 +384,13 @@ TEST_F(parser, ternary) {
 }
 
 TEST_F(parser, other) {
-    auto id_a = cs2id("a");
+    auto id_a = mkt(t_id, "a");
     auto a = m_ast.make_id(id_a);
-    auto id_b = cs2id("b");
+    auto id_b = mkt(t_id, "b");
     auto b = m_ast.make_id(id_b);
-    auto id_A = cs2id("A");
-    auto id_plus = cs2id("plus");
-    auto num = m_ast.make_numeric_i64(42);
+    auto id_A = mkt(t_id, "A");
+    auto id_plus = mkt(t_id, "plus");
+    auto num = m_ast.make_numeric_int(mkt(t_int_const, "42"));
     auto i64 = m_ast.make_i64();
     auto f64 = m_ast.make_f64();
 
@@ -426,9 +426,9 @@ TEST_F(parser, other) {
     test_ok({t_a, t_period, t_b, t_semi},
             m_ast.make_member(a, id_b));
     test_ok({{t_float_const, "3.14"}, t_semi},
-            m_ast.make_numeric_f64(3.14));
+            m_ast.make_numeric_float(mkt(t_float_const, "3.14")));
     test_ok({t_num, t_semi},
-            m_ast.make_numeric_i64(42));
+            m_ast.make_numeric_int(mkt(t_int_const, "42")));
     test_ok({t_a, t_semi},
             m_ast.make_id(id_a));
     test_ok({t_a, t_par_l, t_a, t_comma, t_b, t_par_r, t_semi},
@@ -437,9 +437,8 @@ TEST_F(parser, other) {
             m_ast.make_var_decl(id_a, f64, num));
     test_ok({t_fn, t_id_plus, t_par_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_par_r, t_minus_greater, t_i64, t_brace_l, t_return, t_a, t_plus, t_b, t_semi, t_brace_r},
             m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, i64, m_ast.make_return(m_ast.make_add(a, b))));
-    auto str_token = mkt(t_str_const, c_test_str);
     test_ok({{t_str_const, c_test_str}, t_semi},
-            m_ast.make_string_literal(&str_token));
+            m_ast.make_string_literal(mkt(t_str_const, c_test_str)));
     // test_ok({t_new, t_A, t_brace_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_brace_r, t_semi},
     //         m_ast.make_struct_literal(A, {{id_a, f64}, {id_b, f64}}));
     // clang-format on
