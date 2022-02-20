@@ -18,6 +18,10 @@ using namespace nkl;
 
 LOG_USE_SCOPE(nkl::ast::test)
 
+Token mkt(ETokenID id = t_eof, const char *text = "") {
+    return Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
+}
+
 class ast : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
@@ -206,8 +210,9 @@ TEST_F(ast, nodes) {
     EXPECT_EQ(m_node->as.fn.sig.ret_type->id, nop.id);
     EXPECT_EQ(m_node->as.fn.body->id, nop.id);
 
-    test(m_ast.make_string_literal(cs2s("hello")), Node_string_literal);
-    EXPECT_EQ(std_view(m_node->as.str.val), "hello");
+    auto str_token = mkt(t_str_const,  "hello");
+    test(m_ast.make_string_literal(&str_token), Node_string_literal);
+    EXPECT_EQ(std_view(m_node->as.str.val->text), "hello");
 
     test(m_ast.make_struct_literal(nop, NamedNodeArray{&nn_nop, 1}), Node_struct_literal);
     EXPECT_EQ(m_node->as.struct_literal.type->id, nop.id);

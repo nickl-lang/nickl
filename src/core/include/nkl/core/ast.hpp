@@ -1,10 +1,10 @@
 #ifndef HEADER_GUARD_NKL_CORE_AST
 #define HEADER_GUARD_NKL_CORE_AST
 
-#include "nk/common/arena.hpp"
 #include "nk/common/id.hpp"
 #include "nk/common/sequence.hpp"
 #include "nkl/core/common.hpp"
+#include "nkl/core/token.hpp"
 
 namespace nkl {
 
@@ -88,7 +88,7 @@ struct _numeric {
 };
 
 struct _str {
-    string val;
+    token_ref_t val;
 };
 
 struct _struct_literal {
@@ -127,18 +127,17 @@ struct Node {
 
 struct Ast {
     Sequence<Node> data;
-    ArenaAllocator strings;
 
     void init();
     void deinit();
 
 #define N(TYPE, ID) Node make_##ID();
-#define U(TYPE, ID) Node make_##ID(Node const& arg);
-#define B(TYPE, ID) Node make_##ID(Node const& lhs, Node const& rhs);
+#define U(TYPE, ID) Node make_##ID(Node const &arg);
+#define B(TYPE, ID) Node make_##ID(Node const &lhs, Node const &rhs);
 #include "nkl/core/nodes.inl"
 
-    Node make_if(Node const& cond, Node const& then_clause, Node const& else_clause);
-    Node make_ternary(Node const& cond, Node const& then_clause, Node const& else_clause);
+    Node make_if(Node const &cond, Node const &then_clause, Node const &else_clause);
+    Node make_ternary(Node const &cond, Node const &then_clause, Node const &else_clause);
 
     Node make_array(NodeArray nodes);
     Node make_block(NodeArray nodes);
@@ -148,7 +147,7 @@ struct Ast {
 
     Node make_id(Id name);
 
-    Node make_member(Node const& lhs, Id name);
+    Node make_member(Node const &lhs, Id name);
 
     Node make_numeric_i8(int8_t val);
     Node make_numeric_i16(int16_t val);
@@ -163,17 +162,17 @@ struct Ast {
 
     Node make_struct(Id name, NamedNodeArray fields);
 
-    Node make_call(Node const& lhs, NodeArray args);
-    Node make_fn(Id name, NamedNodeArray params, Node const& ret_type, Node const& body);
+    Node make_call(Node const &lhs, NodeArray args);
+    Node make_fn(Id name, NamedNodeArray params, Node const &ret_type, Node const &body);
     Node make_foreign_fn(
         Id lib,
         Id name,
         NamedNodeArray params,
-        Node const& ret_type,
+        Node const &ret_type,
         bool is_variadic);
-    Node make_string_literal(string str);
-    Node make_struct_literal(Node const& type, NamedNodeArray fields);
-    Node make_var_decl(Id name, Node const& type, Node const& value);
+    Node make_string_literal(token_ref_t val);
+    Node make_struct_literal(Node const &type, NamedNodeArray fields);
+    Node make_var_decl(Id name, Node const &type, Node const &value);
 
     node_ref_t push(Node node);
     NodeArray push_ar(NodeArray nodes);
