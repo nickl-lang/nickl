@@ -8,6 +8,8 @@
 #define N(...) X(__VA_ARGS__)
 #endif
 
+N(null, none)
+
 N(null, nop)
 
 N(null, break)

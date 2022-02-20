@@ -41,6 +41,6 @@ TEST_F(compiler, empty) {
 }
 
 TEST_F(compiler, basic) {
-    m_compiler.compile(m_ast.push(m_ast.make_add(
-        m_ast.push(m_ast.make_numeric_i64(4)), m_ast.push(m_ast.make_numeric_i64(5)))));
+    m_compiler.compile(
+        m_ast.push(m_ast.make_add(m_ast.make_numeric_i64(4), m_ast.make_numeric_i64(5))));
 }

@@ -30,22 +30,22 @@ void Ast::deinit() {
     Node Ast::make_##ID() {                    \
         return Node{{.TYPE = {0}}, Node_##ID}; \
     }
-#define U(TYPE, ID)                              \
-    Node Ast::make_##ID(node_ref_t arg) {        \
-        return Node{{.TYPE = {arg}}, Node_##ID}; \
+#define U(TYPE, ID)                                    \
+    Node Ast::make_##ID(Node const &arg) {             \
+        return Node{{.TYPE = {push(arg)}}, Node_##ID}; \
     }
-#define B(TYPE, ID)                                       \
-    Node Ast::make_##ID(node_ref_t lhs, node_ref_t rhs) { \
-        return Node{{.TYPE = {lhs, rhs}}, Node_##ID};     \
+#define B(TYPE, ID)                                               \
+    Node Ast::make_##ID(Node const &lhs, Node const &rhs) {       \
+        return Node{{.TYPE = {push(lhs), push(rhs)}}, Node_##ID}; \
     }
 #include "nkl/core/nodes.inl"
 
-Node Ast::make_if(node_ref_t cond, node_ref_t then_clause, node_ref_t else_clause) {
-    return Node{{.ternary = {cond, then_clause, else_clause}}, Node_if};
+Node Ast::make_if(Node const &cond, Node const &then_clause, Node const &else_clause) {
+    return Node{{.ternary = {push(cond), push(then_clause), push(else_clause)}}, Node_if};
 }
 
-Node Ast::make_ternary(node_ref_t cond, node_ref_t then_clause, node_ref_t else_clause) {
-    return Node{{.ternary = {cond, then_clause, else_clause}}, Node_ternary};
+Node Ast::make_ternary(Node const &cond, Node const &then_clause, Node const &else_clause) {
+    return Node{{.ternary = {push(cond), push(then_clause), push(else_clause)}}, Node_ternary};
 }
 
 Node Ast::make_array(NodeArray nodes) {
@@ -72,8 +72,8 @@ Node Ast::make_id(Id name) {
     return Node{{.id = {name}}, Node_id};
 }
 
-Node Ast::make_member(node_ref_t lhs, Id name) {
-    return Node{{.member = {lhs, name}}, Node_member};
+Node Ast::make_member(Node const &lhs, Id name) {
+    return Node{{.member = {push(lhs), name}}, Node_member};
 }
 
 Node Ast::make_numeric_i8(int8_t val) {
@@ -120,22 +120,23 @@ Node Ast::make_struct(Id name, NamedNodeArray fields) {
     return Node{{.type_decl = {name, push_named_ar(fields)}}, Node_struct};
 }
 
-Node Ast::make_call(node_ref_t lhs, NodeArray args) {
-    return Node{{.call = {lhs, push_ar(args)}}, Node_call};
+Node Ast::make_call(Node const &lhs, NodeArray args) {
+    return Node{{.call = {push(lhs), push_ar(args)}}, Node_call};
 }
 
-Node Ast::make_fn(Id name, NamedNodeArray params, node_ref_t ret_type, node_ref_t body) {
-    return Node{{.fn = {{name, push_named_ar(params), ret_type}, body, false, 0}}, Node_fn};
+Node Ast::make_fn(Id name, NamedNodeArray params, Node const &ret_type, Node const &body) {
+    return Node{
+        {.fn = {{name, push_named_ar(params), push(ret_type)}, push(body), false, 0}}, Node_fn};
 }
 
 Node Ast::make_foreign_fn(
     Id lib,
     Id name,
     NamedNodeArray params,
-    node_ref_t ret_type,
+    Node const &ret_type,
     bool is_variadic) {
     return Node{
-        {.fn = {{name, push_named_ar(params), ret_type}, n_none_ref, is_variadic, lib}},
+        {.fn = {{name, push_named_ar(params), push(ret_type)}, n_none_ref, is_variadic, lib}},
         Node_foreign_fn};
 }
 
@@ -145,12 +146,12 @@ Node Ast::make_string_literal(string str) {
     return Node{{.str = {ast_str}}, Node_string_literal};
 }
 
-Node Ast::make_struct_literal(node_ref_t type, NamedNodeArray fields) {
-    return Node{{.struct_literal = {type, push_named_ar(fields)}}, Node_struct_literal};
+Node Ast::make_struct_literal(Node const &type, NamedNodeArray fields) {
+    return Node{{.struct_literal = {push(type), push_named_ar(fields)}}, Node_struct_literal};
 }
 
-Node Ast::make_var_decl(Id name, node_ref_t type, node_ref_t value) {
-    return Node{{.var_decl = {name, type, value}}, Node_var_decl};
+Node Ast::make_var_decl(Id name, Node const &type, Node const &value) {
+    return Node{{.var_decl = {name, push(type), push(value)}}, Node_var_decl};
 }
 
 node_ref_t Ast::push(Node node) {
