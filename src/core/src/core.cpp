@@ -4,7 +4,10 @@
 
 #include "nk/common/file_utils.hpp"
 #include "nk/common/logger.hpp"
+#include "nk/vm/bc.hpp"
+#include "nk/vm/interp.hpp"
 #include "nk/vm/vm.hpp"
+#include "nkl/core/compiler.hpp"
 #include "nkl/core/lexer.hpp"
 #include "nkl/core/parser.hpp"
 
@@ -29,7 +32,10 @@ void lang_deinit() {
 int lang_runFile(char const *filename) {
     LOG_TRC("lang_runFile(filename=%s)", filename)
 
-    vm::vm_init({});
+    vm::VmConfig conf;
+    string paths[] = {cs2s("/usr/lib/")};
+    conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
+    vm_init(conf);
     DEFER({ vm::vm_deinit(); })
 
     auto src = read_file(filename);
@@ -55,6 +61,22 @@ int lang_runFile(char const *filename) {
         std::cerr << "error: " << parser.err << std::endl;
         return 1;
     }
+
+    // Compiler compiler{};
+    // DEFER({ compiler.prog.deinit(); })
+
+    // if (!compiler.compile(parser.root)) {
+    //     std::cerr << "error: " << compiler.err << std::endl;
+    //     return 1;
+    // }
+
+    // vm::bc::Program prog{};
+    // DEFER({ prog.deinit(); })
+
+    // vm::bc::bc_translateFromIr(prog, compiler.prog);
+
+    // auto top_fn = prog.funct_info[0].funct_t;
+    // vm::val_fn_invoke(top_fn, {}, {});
 
     return 0;
 }

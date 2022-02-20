@@ -40,7 +40,7 @@ bool findLibrary(string name, Slice<char> &buf) {
     LOG_TRC(__FUNCTION__)
 
     for (auto path : s_search_paths) {
-        size_t size = path.size + name.size + 1;
+        size_t size = path.size + name.size;
 
         if (size > MAX_PATH) {
             return false;
@@ -49,6 +49,8 @@ bool findLibrary(string name, Slice<char> &buf) {
         path.copy({buf.data, MAX_PATH});
         name.copy({buf.data + path.size, MAX_PATH});
         buf[size] = 0;
+
+        LOG_DBG("Checking `%s`...", buf)
 
         if (std::filesystem::exists(buf.data)) {
             buf.size = size;

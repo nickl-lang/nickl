@@ -18,7 +18,7 @@ using namespace nkl;
 
 LOG_USE_SCOPE(nkl::ast::test)
 
-token_ref_t mkt(ETokenID id = t_eof, const char *text = "") {
+token_ref_t mkt(ETokenID id = t_eof, char const *text = "") {
     Token *token = _mctx.tmp_allocator->alloc<Token>();
     *token = Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
     return token;

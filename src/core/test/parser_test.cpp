@@ -16,11 +16,11 @@ using namespace nkl;
 
 LOG_USE_SCOPE(nkl::parser::test)
 
-Token createToken(ETokenID id = t_eof, const char *text = "") {
+Token createToken(ETokenID id = t_eof, char const *text = "") {
     return Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
 }
 
-token_ref_t mkt(ETokenID id = t_eof, const char *text = "") {
+token_ref_t mkt(ETokenID id = t_eof, char const *text = "") {
     Token *token = _mctx.tmp_allocator->alloc<Token>();
     *token = createToken(id, text);
     return token;
@@ -70,7 +70,7 @@ protected:
         bool parse_ok = m_parser.parse(token_ar);
         EXPECT_TRUE(parse_ok);
         if (!parse_ok) {
-            reportError();
+            LOG_ERR("Error message: %.*s", m_parser.err.size, m_parser.err.data)
         }
 
         bool trees_are_equal = compare(m_parser.root, &expected);
@@ -207,10 +207,6 @@ private:
                    compareNamedNodeArrays(
                        lhs.as.struct_literal.fields, rhs.as.struct_literal.fields);
         }
-    }
-
-    void reportError() {
-        LOG_ERR("Error message: %.*s", m_parser.err.size, m_parser.err.data)
     }
 
 protected:
