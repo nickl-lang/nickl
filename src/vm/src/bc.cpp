@@ -96,19 +96,6 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
     }
 }
 
-enum ENumExt {
-    Ext_i8,
-    Ext_i16,
-    Ext_i32,
-    Ext_i64,
-    Ext_u8,
-    Ext_u16,
-    Ext_u32,
-    Ext_u64,
-    Ext_f32,
-    Ext_f64,
-};
-
 } // namespace
 
 void Program::init() {
@@ -142,9 +129,6 @@ string Program::inspect() const {
 void bc_translateFromIr(Program &prog, ir::Program const &ir) {
     EASY_FUNCTION(profiler::colors::Red200)
     LOG_TRC(__FUNCTION__)
-
-    auto str = ir.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     prog.instrs.init(ir.instrs.size);
     prog.funct_info.push(ir.functs.size);
@@ -429,8 +413,10 @@ void bc_translateFromIr(Program &prog, ir::Program const &ir) {
         }
     }
 
-    str = prog.inspect();
-    LOG_INF("bytecode:\n%.*s", str.size, str.data);
+    LOG_INF("bytecode:\n%s", [&]() {
+        auto str = prog.inspect();
+        return tmpstr_format("%.*s", str.size, str.data).data;
+    }());
 }
 
 } // namespace bc
