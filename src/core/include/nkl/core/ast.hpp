@@ -21,7 +21,7 @@ struct Node;
 using node_ref_t = Node const *;
 
 struct NamedNode {
-    Id name;
+    token_ref_t name;
     node_ref_t node;
 };
 
@@ -51,12 +51,12 @@ struct _ternary {
     node_ref_t arg3;
 };
 
-struct _id {
-    Id name;
+struct _token {
+    token_ref_t val;
 };
 
 struct _type_decl {
-    Id name;
+    token_ref_t name;
     NodeArray fields;
 };
 
@@ -66,7 +66,7 @@ struct _call {
 };
 
 struct _fn_type {
-    Id name;
+    token_ref_t name;
     NodeArray params;
     node_ref_t ret_type;
 };
@@ -74,21 +74,13 @@ struct _fn_type {
 struct _fn {
     struct _fn_type sig;
     node_ref_t body;
+    token_ref_t lib;
     bool is_variadic;
-    Id lib;
 };
 
 struct _member {
     node_ref_t lhs;
-    Id name;
-};
-
-struct _numeric {
-    NumericVariant val;
-};
-
-struct _str {
-    token_ref_t val;
+    token_ref_t name;
 };
 
 struct _struct_literal {
@@ -97,7 +89,7 @@ struct _struct_literal {
 };
 
 struct _var_decl {
-    Id name;
+    token_ref_t name;
     node_ref_t type;
     node_ref_t value;
 };
@@ -110,10 +102,8 @@ struct Node {
         struct _binary binary;
         struct _call call;
         struct _fn fn;
-        struct _id id;
+        struct _token token;
         struct _member member;
-        struct _numeric numeric;
-        struct _str str;
         struct _struct_literal struct_literal;
         struct _ternary ternary;
         struct _type_decl type_decl;
@@ -145,34 +135,25 @@ struct Ast {
     Node make_id_tuple(NodeArray nodes);
     Node make_tuple_type(NodeArray nodes);
 
-    Node make_id(Id name);
+    Node make_id(token_ref_t name);
+    Node make_numeric_float(token_ref_t val);
+    Node make_numeric_int(token_ref_t val);
+    Node make_string_literal(token_ref_t val);
 
-    Node make_member(Node const &lhs, Id name);
+    Node make_member(Node const &lhs, token_ref_t name);
 
-    Node make_numeric_i8(int8_t val);
-    Node make_numeric_i16(int16_t val);
-    Node make_numeric_i32(int32_t val);
-    Node make_numeric_i64(int64_t val);
-    Node make_numeric_u8(uint8_t val);
-    Node make_numeric_u16(uint16_t val);
-    Node make_numeric_u32(uint32_t val);
-    Node make_numeric_u64(uint64_t val);
-    Node make_numeric_f32(float val);
-    Node make_numeric_f64(double val);
-
-    Node make_struct(Id name, NamedNodeArray fields);
+    Node make_struct(token_ref_t name, NamedNodeArray fields);
 
     Node make_call(Node const &lhs, NodeArray args);
-    Node make_fn(Id name, NamedNodeArray params, Node const &ret_type, Node const &body);
+    Node make_fn(token_ref_t name, NamedNodeArray params, Node const &ret_type, Node const &body);
     Node make_foreign_fn(
-        Id lib,
-        Id name,
+        token_ref_t lib,
+        token_ref_t name,
         NamedNodeArray params,
         Node const &ret_type,
         bool is_variadic);
-    Node make_string_literal(token_ref_t val);
     Node make_struct_literal(Node const &type, NamedNodeArray fields);
-    Node make_var_decl(Id name, Node const &type, Node const &value);
+    Node make_var_decl(token_ref_t name, Node const &type, Node const &value);
 
     node_ref_t push(Node node);
     NodeArray push_ar(NodeArray nodes);

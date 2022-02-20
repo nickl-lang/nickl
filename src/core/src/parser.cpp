@@ -133,15 +133,15 @@ private:
         return decl;
     }
 
-    Id identifier() {
+    token_ref_t identifier() {
         LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data)
-        Id id = s2id(m_cur_token->text);
+        auto id = m_cur_token;
         getToken();
         return id;
     }
 
     struct FnSignature {
-        Id name;
+        token_ref_t name;
         Array<NamedNode> params;
         Node ret_t;
     };
@@ -149,7 +149,7 @@ private:
     FnSignature fnSignature(bool *accept_variadic = nullptr) {
         accept(t_fn);
 
-        Id name = 0;
+        token_ref_t name = nullptr;
         if (check(t_id)) {
             ASSIGN(name, identifier());
         }
@@ -209,7 +209,7 @@ private:
             if (!check(t_str_const)) {
                 return error("foreign library name expected"), Node{};
             }
-            Id lib = s2id(m_cur_token->text);
+            auto lib = m_cur_token;
             getToken();
             bool is_variadic = false;
             DEFINE(sig, fnSignature(&is_variadic));
@@ -223,12 +223,12 @@ private:
             } else if (node.id == Node_id && accept(t_colon)) {
                 DEFINE(type, expr());
                 DEFINE(value, accept(t_eq) ? tuple() : Node{});
-                node = m_ast.make_var_decl(node.as.id.name, type, value);
+                node = m_ast.make_var_decl(node.as.token.val, type, value);
             } else if ((node.id == Node_id || node.id == Node_id_tuple)) {
                 if (accept(t_colon)) {
                     DEFINE(type, expr());
                     DEFINE(value, accept(t_eq) ? tuple() : Node{});
-                    node = m_ast.make_var_decl(node.as.id.name, type, value);
+                    node = m_ast.make_var_decl(node.as.token.val, type, value);
                 } else if (accept(t_colon_eq)) {
                     ASSIGN(node, m_ast.make_colon_assign(node, tuple()));
                 }
@@ -305,7 +305,7 @@ private:
             assert(has_body && "function type/ptr parsing is not implemented");
             node = m_ast.make_fn(sig.name, sig.params, sig.ret_t, body);
         } else if (accept(t_struct)) {
-            Id name = 0;
+            token_ref_t name = nullptr;
             if (check(t_id)) {
                 ASSIGN(name, identifier());
             }
@@ -569,20 +569,11 @@ private:
 
         if (check(t_int_const)) {
             LOG_DBG("accept(int_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
-            int64_t value = 0;
-            int res = std::sscanf(m_cur_token->text.data, "%ld", &value);
-            (void)res;
-            assert(res > 0 && res != EOF && "integer constant parsing failed");
-            node = m_ast.make_numeric_i64(value);
+            node = m_ast.make_numeric_int(m_cur_token);
             getToken();
         } else if (check(t_float_const)) {
             LOG_DBG("accept(float_const, \"\"", m_cur_token->text.size, m_cur_token->text.data)
-            double value = 0.;
-            //@Todo Replace std::sscanf!
-            int res = std::sscanf(m_cur_token->text.data, "%lf", &value);
-            (void)res;
-            assert(res > 0 && res != EOF && "float constant parsing failed");
-            node = m_ast.make_numeric_f64(value);
+            node = m_ast.make_numeric_float(m_cur_token);
             getToken();
         } else if (check(t_str_const)) {
             LOG_DBG("accept(str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
@@ -675,9 +666,9 @@ private:
         }
 
         else if (accept(t_true)) {
-            node = m_ast.make_numeric_i8(1);
+            node = m_ast.make_true();
         } else if (accept(t_false)) {
-            node = m_ast.make_numeric_i8(0);
+            node = m_ast.make_false();
         }
 
         else if (accept(t_par_l)) {
