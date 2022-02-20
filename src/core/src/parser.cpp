@@ -182,23 +182,23 @@ private:
 
         if (accept(t_return)) {
             if (check(t_semi)) {
-                node = m_ast.make_return(nullptr);
+                node = m_ast.make_return({});
             } else {
-                ASSIGN(node, m_ast.make_return(m_ast.push(tuple())));
+                ASSIGN(node, m_ast.make_return(tuple()));
             }
         } else if (accept(t_break)) {
             node = m_ast.make_break();
         } else if (accept(t_continue)) {
             node = m_ast.make_continue();
         } else if (accept(t_if)) {
-            DEFINE(cond, m_ast.push(assignment()));
-            DEFINE(then_body, m_ast.push(statement()));
-            DEFINE(else_body, accept(t_else) ? m_ast.push(statement()) : n_none_ref);
+            DEFINE(cond, assignment());
+            DEFINE(then_body, statement());
+            DEFINE(else_body, accept(t_else) ? statement() : Node{});
             node = m_ast.make_if(cond, then_body, else_body);
             expect_semi = false;
         } else if (accept(t_while)) {
-            DEFINE(cond, m_ast.push(assignment()));
-            DEFINE(body, m_ast.push(statement()));
+            DEFINE(cond, assignment());
+            DEFINE(body, statement());
             node = m_ast.make_while(cond, body);
             expect_semi = false;
         } else if (check(t_brace_l)) {
@@ -214,24 +214,23 @@ private:
             bool is_variadic = false;
             DEFINE(sig, fnSignature(&is_variadic));
             DEFER({ sig.params.deinit(); });
-            node = m_ast.make_foreign_fn(
-                lib, sig.name, sig.params.slice(), m_ast.push(sig.ret_t), is_variadic);
+            node = m_ast.make_foreign_fn(lib, sig.name, sig.params.slice(), sig.ret_t, is_variadic);
         } else {
             ASSIGN(node, assignment());
 
             if (node.id == Node_fn || node.id == Node_struct) {
                 expect_semi = false;
             } else if (node.id == Node_id && accept(t_colon)) {
-                DEFINE(type, m_ast.push(expr()));
-                DEFINE(value, accept(t_eq) ? m_ast.push(tuple()) : n_none_ref);
+                DEFINE(type, expr());
+                DEFINE(value, accept(t_eq) ? tuple() : Node{});
                 node = m_ast.make_var_decl(node.as.id.name, type, value);
             } else if ((node.id == Node_id || node.id == Node_id_tuple)) {
                 if (accept(t_colon)) {
-                    DEFINE(type, m_ast.push(expr()));
-                    DEFINE(value, accept(t_eq) ? m_ast.push(tuple()) : n_none_ref);
+                    DEFINE(type, expr());
+                    DEFINE(value, accept(t_eq) ? tuple() : Node{});
                     node = m_ast.make_var_decl(node.as.id.name, type, value);
                 } else if (accept(t_colon_eq)) {
-                    ASSIGN(node, m_ast.make_colon_assign(m_ast.push(node), m_ast.push(tuple())));
+                    ASSIGN(node, m_ast.make_colon_assign(node, tuple()));
                 }
             }
         }
@@ -249,31 +248,31 @@ private:
         DEFINE(node, tuple());
 
         if (accept(t_eq)) {
-            ASSIGN(node, m_ast.make_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_assign(node, tuple()));
         } else if (accept(t_plus_eq)) {
-            ASSIGN(node, m_ast.make_add_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_add_assign(node, tuple()));
         } else if (accept(t_minus_eq)) {
-            ASSIGN(node, m_ast.make_sub_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_sub_assign(node, tuple()));
         } else if (accept(t_aster_eq)) {
-            ASSIGN(node, m_ast.make_mul_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_mul_assign(node, tuple()));
         } else if (accept(t_slash_eq)) {
-            ASSIGN(node, m_ast.make_div_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_div_assign(node, tuple()));
         } else if (accept(t_percent_eq)) {
-            ASSIGN(node, m_ast.make_mod_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_mod_assign(node, tuple()));
         } else if (accept(t_less_2x_eq)) {
-            ASSIGN(node, m_ast.make_lsh_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_lsh_assign(node, tuple()));
         } else if (accept(t_greater_2x_eq)) {
-            ASSIGN(node, m_ast.make_rsh_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_rsh_assign(node, tuple()));
         } else if (accept(t_bar_eq)) {
-            ASSIGN(node, m_ast.make_or_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_or_assign(node, tuple()));
         } else if (accept(t_bar_2x_eq)) {
-            ASSIGN(node, m_ast.make_bitor_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_bitor_assign(node, tuple()));
         } else if (accept(t_caret_eq)) {
-            ASSIGN(node, m_ast.make_xor_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_xor_assign(node, tuple()));
         } else if (accept(t_amper_eq)) {
-            ASSIGN(node, m_ast.make_and_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_and_assign(node, tuple()));
         } else if (accept(t_amper_2x_eq)) {
-            ASSIGN(node, m_ast.make_bitand_assign(m_ast.push(node), m_ast.push(tuple())));
+            ASSIGN(node, m_ast.make_bitand_assign(node, tuple()));
         }
 
         return node;
@@ -304,7 +303,7 @@ private:
             }
 
             assert(has_body && "function type/ptr parsing is not implemented");
-            node = m_ast.make_fn(sig.name, sig.params, m_ast.push(sig.ret_t), m_ast.push(body));
+            node = m_ast.make_fn(sig.name, sig.params, sig.ret_t, body);
         } else if (accept(t_struct)) {
             Id name = 0;
             if (check(t_id)) {
@@ -337,8 +336,7 @@ private:
                 DEFINE(then_body, logicOr());
                 EXPECT(t_colon);
                 DEFINE(else_body, logicOr());
-                node = m_ast.make_ternary(
-                    m_ast.push(node), m_ast.push(then_body), m_ast.push(else_body));
+                node = m_ast.make_ternary(node, then_body, else_body);
             } else {
                 break;
             }
@@ -352,7 +350,7 @@ private:
 
         while (true) {
             if (accept(t_bar_2x)) {
-                ASSIGN(node, m_ast.make_or(m_ast.push(node), m_ast.push(logicOr())));
+                ASSIGN(node, m_ast.make_or(node, logicOr()));
             } else {
                 break;
             }
@@ -366,7 +364,7 @@ private:
 
         while (true) {
             if (accept(t_amper_2x)) {
-                ASSIGN(node, m_ast.make_and(m_ast.push(node), m_ast.push(bitOr())));
+                ASSIGN(node, m_ast.make_and(node, bitOr()));
             } else {
                 break;
             }
@@ -380,7 +378,7 @@ private:
 
         while (true) {
             if (accept(t_bar)) {
-                ASSIGN(node, m_ast.make_bitor(m_ast.push(node), m_ast.push(bitXor())));
+                ASSIGN(node, m_ast.make_bitor(node, bitXor()));
             } else {
                 break;
             }
@@ -394,7 +392,7 @@ private:
 
         while (true) {
             if (accept(t_caret)) {
-                ASSIGN(node, m_ast.make_xor(m_ast.push(node), m_ast.push(bitAnd())));
+                ASSIGN(node, m_ast.make_xor(node, bitAnd()));
             } else {
                 break;
             }
@@ -408,7 +406,7 @@ private:
 
         while (true) {
             if (accept(t_amper)) {
-                ASSIGN(node, m_ast.make_bitand(m_ast.push(node), m_ast.push(equality())));
+                ASSIGN(node, m_ast.make_bitand(node, equality()));
             } else {
                 break;
             }
@@ -422,9 +420,9 @@ private:
 
         while (true) {
             if (accept(t_eq_2x)) {
-                ASSIGN(node, m_ast.make_eq(m_ast.push(node), m_ast.push(relation())));
+                ASSIGN(node, m_ast.make_eq(node, relation()));
             } else if (accept(t_exclam_eq)) {
-                ASSIGN(node, m_ast.make_ne(m_ast.push(node), m_ast.push(relation())));
+                ASSIGN(node, m_ast.make_ne(node, relation()));
             } else {
                 break;
             }
@@ -438,13 +436,13 @@ private:
 
         while (true) {
             if (accept(t_less)) {
-                ASSIGN(node, m_ast.make_lt(m_ast.push(node), m_ast.push(shift())));
+                ASSIGN(node, m_ast.make_lt(node, shift()));
             } else if (accept(t_less_eq)) {
-                ASSIGN(node, m_ast.make_le(m_ast.push(node), m_ast.push(shift())));
+                ASSIGN(node, m_ast.make_le(node, shift()));
             } else if (accept(t_greater)) {
-                ASSIGN(node, m_ast.make_gt(m_ast.push(node), m_ast.push(shift())));
+                ASSIGN(node, m_ast.make_gt(node, shift()));
             } else if (accept(t_greater_eq)) {
-                ASSIGN(node, m_ast.make_ge(m_ast.push(node), m_ast.push(shift())));
+                ASSIGN(node, m_ast.make_ge(node, shift()));
             } else {
                 break;
             }
@@ -458,9 +456,9 @@ private:
 
         while (true) {
             if (accept(t_less_2x)) {
-                ASSIGN(node, m_ast.make_lsh(m_ast.push(node), m_ast.push(addSub())));
+                ASSIGN(node, m_ast.make_lsh(node, addSub()));
             } else if (accept(t_greater_2x)) {
-                ASSIGN(node, m_ast.make_rsh(m_ast.push(node), m_ast.push(addSub())));
+                ASSIGN(node, m_ast.make_rsh(node, addSub()));
             } else {
                 break;
             }
@@ -474,9 +472,9 @@ private:
 
         while (true) {
             if (accept(t_plus)) {
-                ASSIGN(node, m_ast.make_add(m_ast.push(node), m_ast.push(mulDiv())));
+                ASSIGN(node, m_ast.make_add(node, mulDiv()));
             } else if (accept(t_minus)) {
-                ASSIGN(node, m_ast.make_sub(m_ast.push(node), m_ast.push(mulDiv())));
+                ASSIGN(node, m_ast.make_sub(node, mulDiv()));
             } else {
                 break;
             }
@@ -490,11 +488,11 @@ private:
 
         while (true) {
             if (accept(t_aster)) {
-                ASSIGN(node, m_ast.make_mul(m_ast.push(node), m_ast.push(prefix())));
+                ASSIGN(node, m_ast.make_mul(node, prefix()));
             } else if (accept(t_slash)) {
-                ASSIGN(node, m_ast.make_div(m_ast.push(node), m_ast.push(prefix())));
+                ASSIGN(node, m_ast.make_div(node, prefix()));
             } else if (accept(t_percent)) {
-                ASSIGN(node, m_ast.make_mod(m_ast.push(node), m_ast.push(prefix())));
+                ASSIGN(node, m_ast.make_mod(node, prefix()));
             } else {
                 break;
             }
@@ -507,22 +505,22 @@ private:
         Node node;
 
         if (accept(t_plus)) {
-            ASSIGN(node, m_ast.make_uplus(m_ast.push(suffix())));
+            ASSIGN(node, m_ast.make_uplus(suffix()));
         } else if (accept(t_minus)) {
-            ASSIGN(node, m_ast.make_uminus(m_ast.push(suffix())));
+            ASSIGN(node, m_ast.make_uminus(suffix()));
         } else if (accept(t_exclam)) {
-            ASSIGN(node, m_ast.make_not(m_ast.push(suffix())));
+            ASSIGN(node, m_ast.make_not(suffix()));
         } else if (accept(t_tilde)) {
-            ASSIGN(node, m_ast.make_compl(m_ast.push(suffix())));
+            ASSIGN(node, m_ast.make_compl(suffix()));
         } else if (accept(t_amper)) {
-            ASSIGN(node, m_ast.make_addr(m_ast.push(prefix())));
+            ASSIGN(node, m_ast.make_addr(prefix()));
         } else if (accept(t_aster)) {
-            ASSIGN(node, m_ast.make_deref(m_ast.push(prefix())));
+            ASSIGN(node, m_ast.make_deref(prefix()));
         } else if (accept(t_cast)) {
             EXPECT(t_par_l);
-            DEFINE(lhs, m_ast.push(expr()));
+            DEFINE(lhs, expr());
             EXPECT(t_par_r);
-            DEFINE(rhs, m_ast.push(prefix()));
+            DEFINE(rhs, prefix());
             ASSIGN(node, m_ast.make_cast(lhs, rhs));
         } else {
             ASSIGN(node, suffix());
@@ -542,12 +540,9 @@ private:
                     ASSIGN(args, sequence());
                     EXPECT(t_par_r);
                 }
-                node = m_ast.make_call(m_ast.push(node), args);
+                node = m_ast.make_call(node, args);
             } else if (accept(t_bracket_l)) {
-                ASSIGN(
-                    node,
-                    m_ast.make_index(
-                        m_ast.push(node), check(t_bracket_r) ? n_none_ref : m_ast.push(tuple())));
+                ASSIGN(node, m_ast.make_index(node, check(t_bracket_r) ? Node{} : tuple()));
                 EXPECT(t_bracket_r);
             } else if (accept(t_period)) {
                 if (!check(t_id) && !check(t_int_const)) {
@@ -555,10 +550,10 @@ private:
                 }
                 if (check(t_id)) {
                     DEFINE(name, identifier());
-                    node = m_ast.make_member(m_ast.push(node), name);
+                    node = m_ast.make_member(node, name);
                 } else {
-                    DEFINE(index, m_ast.push(term()));
-                    node = m_ast.make_tuple_index(m_ast.push(node), index);
+                    DEFINE(index, term());
+                    node = m_ast.make_tuple_index(node, index);
                 }
 
             } else {
@@ -607,7 +602,7 @@ private:
 
         //@Todo Parse struct literal
         // else if (accept(t_new)) {
-        //     DEFINE(type, m_ast.push(expr()));
+        //     DEFINE(type, expr());
 
         //     Array<NamedNode> fields{};
         //     DEFER({ fields.deinit(); })
@@ -661,9 +656,9 @@ private:
 
         else if (accept(t_array_t)) {
             EXPECT(t_brace_l);
-            DEFINE(type, m_ast.push(expr()));
+            DEFINE(type, expr());
             EXPECT(t_comma);
-            DEFINE(size, m_ast.push(expr()));
+            DEFINE(size, expr());
             EXPECT(t_brace_r);
             ASSIGN(node, m_ast.make_array_type(type, size));
         } else if (accept(t_tuple_t)) {
@@ -674,7 +669,7 @@ private:
             ASSIGN(node, m_ast.make_tuple_type(nodes));
         } else if (accept(t_ptr_t)) {
             EXPECT(t_brace_l);
-            DEFINE(target, m_ast.push(expr()));
+            DEFINE(target, expr());
             EXPECT(t_brace_r);
             ASSIGN(node, m_ast.make_ptr_type(target));
         }

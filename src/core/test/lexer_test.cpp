@@ -75,8 +75,8 @@ protected:
             std::begin(m_lexer.tokens),
             std::end(m_lexer.tokens),
             std::back_inserter(actual),
-            [](const auto &token) {
-                return token.id;
+            [](const auto &token) -> ETokenID {
+                return (ETokenID)token.id;
             });
 
         EXPECT_EQ(expected, actual);

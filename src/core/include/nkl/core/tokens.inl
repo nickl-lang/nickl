@@ -77,7 +77,7 @@ OP(tilde, "~")
 
 KW(keyword_marker)
 
-// KW(()w)
+// KW(new)
 // KW(alignof)
 // KW(case)
 // KW(const)

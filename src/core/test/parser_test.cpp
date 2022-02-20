@@ -17,8 +17,9 @@ using namespace nkl;
 LOG_USE_SCOPE(nkl::parser::test)
 
 Token mkt(ETokenID id = t_eof, const char *text = "") {
-    return Token{{text, std::strlen(text)}, 0, 0, 0, id};
+    return Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
 }
+
 class parser : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
@@ -48,7 +49,7 @@ protected:
         }
     };
 
-    void test_ok(std::vector<TokenDescr> tokens, node_ref_t expected) {
+    void test_ok(std::vector<TokenDescr> tokens, Node const &expected) {
         DEFER({ m_parser.ast.deinit(); })
 
         LOG_INF(
@@ -66,10 +67,10 @@ protected:
             reportError();
         }
 
-        bool trees_are_equal = compare(m_parser.root, expected);
+        bool trees_are_equal = compare(m_parser.root, &expected);
         EXPECT_TRUE(trees_are_equal);
         if (!trees_are_equal) {
-            auto expected_str = ast_inspect(expected);
+            auto expected_str = ast_inspect(&expected);
             auto actual_str = ast_inspect(m_parser.root);
             LOG_ERR("Expected tree: %.*s", expected_str.size, expected_str.data)
             LOG_ERR("Actual tree: %.*s", actual_str.size, actual_str.data)
@@ -222,151 +223,151 @@ protected:
 TEST_F(parser, empty) {
     // clang-format off
     test_ok({},
-            m_ast.push(m_ast.make_nop()));
+            m_ast.make_nop());
     // clang-format on
 }
 
 TEST_F(parser, nullary) {
     // clang-format off
     test_ok({t_break, t_semi},
-            m_ast.push(m_ast.make_break()));
+            m_ast.make_break());
     test_ok({t_continue, t_semi},
-            m_ast.push(m_ast.make_continue()));
+            m_ast.make_continue());
     test_ok({t_i16, t_semi},
-            m_ast.push(m_ast.make_i16()));
+            m_ast.make_i16());
     test_ok({t_i32, t_semi},
-            m_ast.push(m_ast.make_i32()));
+            m_ast.make_i32());
     test_ok({t_i64, t_semi},
-            m_ast.push(m_ast.make_i64()));
+            m_ast.make_i64());
     test_ok({t_i8, t_semi},
-            m_ast.push(m_ast.make_i8()));
+            m_ast.make_i8());
     test_ok({t_u16, t_semi},
-            m_ast.push(m_ast.make_u16()));
+            m_ast.make_u16());
     test_ok({t_u32, t_semi},
-            m_ast.push(m_ast.make_u32()));
+            m_ast.make_u32());
     test_ok({t_u64, t_semi},
-            m_ast.push(m_ast.make_u64()));
+            m_ast.make_u64());
     test_ok({t_u8, t_semi},
-            m_ast.push(m_ast.make_u8()));
+            m_ast.make_u8());
     test_ok({t_void, t_semi},
-            m_ast.push(m_ast.make_void()));
+            m_ast.make_void());
     test_ok({t_f32, t_semi},
-            m_ast.push(m_ast.make_f32()));
+            m_ast.make_f32());
     test_ok({t_f64, t_semi},
-            m_ast.push(m_ast.make_f64()));
+            m_ast.make_f64());
     // clang-format on
 }
 
 TEST_F(parser, unary) {
-    auto a = m_ast.push(m_ast.make_id(cs2id("a")));
+    auto a = m_ast.make_id(cs2id("a"));
 
     TokenDescr t_a{t_id, "a"};
 
     // clang-format off
     test_ok({t_amper, t_a, t_semi},
-            m_ast.push(m_ast.make_addr(a)));
+            m_ast.make_addr(a));
     test_ok({t_tilde, t_a, t_semi},
-            m_ast.push(m_ast.make_compl(a)));
+            m_ast.make_compl(a));
     test_ok({t_aster, t_a, t_semi},
-            m_ast.push(m_ast.make_deref(a)));
+            m_ast.make_deref(a));
     test_ok({t_exclam, t_a, t_semi},
-            m_ast.push(m_ast.make_not(a)));
+            m_ast.make_not(a));
     test_ok({t_return, t_a, t_semi},
-            m_ast.push(m_ast.make_return(a)));
+            m_ast.make_return(a));
     test_ok({t_minus, t_a, t_semi},
-            m_ast.push(m_ast.make_uminus(a)));
+            m_ast.make_uminus(a));
     test_ok({t_plus, t_a, t_semi},
-            m_ast.push(m_ast.make_uplus(a)));
+            m_ast.make_uplus(a));
     // clang-format on
 }
 
 TEST_F(parser, binary) {
-    auto a = m_ast.push(m_ast.make_id(cs2id("a")));
-    auto num = m_ast.push(m_ast.make_numeric_i64(42));
+    auto a = m_ast.make_id(cs2id("a"));
+    auto num = m_ast.make_numeric_i64(42);
 
     TokenDescr t_a{t_id, "a"};
     TokenDescr t_num{t_int_const, "42"};
 
     // clang-format off
     test_ok({t_num, t_plus, t_num, t_semi},
-            m_ast.push(m_ast.make_add(num, num)));
+            m_ast.make_add(num, num));
     test_ok({t_a, t_plus_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_add_assign(a, num)));
+            m_ast.make_add_assign(a, num));
     test_ok({t_num, t_amper_2x, t_num, t_semi},
-            m_ast.push(m_ast.make_and(num, num)));
+            m_ast.make_and(num, num));
     test_ok({t_a, t_amper_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_and_assign(a, num)));
+            m_ast.make_and_assign(a, num));
     test_ok({t_a, t_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_assign(a, num)));
+            m_ast.make_assign(a, num));
     test_ok({t_num, t_amper, t_num, t_semi},
-            m_ast.push(m_ast.make_bitand(num, num)));
+            m_ast.make_bitand(num, num));
     test_ok({t_num, t_amper_2x_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_bitand_assign(num, num)));
+            m_ast.make_bitand_assign(num, num));
     test_ok({t_num, t_bar, t_num, t_semi},
-            m_ast.push(m_ast.make_bitor(num, num)));
+            m_ast.make_bitor(num, num));
     test_ok({t_num, t_bar_2x_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_bitor_assign(num, num)));
+            m_ast.make_bitor_assign(num, num));
     test_ok({t_cast, t_par_l, t_f64, t_par_r, t_num, t_semi},
-            m_ast.push(m_ast.make_cast(m_ast.push(m_ast.make_f64()), num)));
+            m_ast.make_cast(m_ast.make_f64(), num));
     test_ok({t_a, t_colon_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_colon_assign(a, num)));
+            m_ast.make_colon_assign(a, num));
     test_ok({t_num, t_slash, t_num, t_semi},
-            m_ast.push(m_ast.make_div(num, num)));
+            m_ast.make_div(num, num));
     test_ok({t_a, t_slash_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_div_assign(a, num)));
+            m_ast.make_div_assign(a, num));
     test_ok({t_num, t_eq_2x, t_num, t_semi},
-            m_ast.push(m_ast.make_eq(num, num)));
+            m_ast.make_eq(num, num));
     test_ok({t_num, t_greater_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_ge(num, num)));
+            m_ast.make_ge(num, num));
     test_ok({t_num, t_greater, t_num, t_semi},
-            m_ast.push(m_ast.make_gt(num, num)));
+            m_ast.make_gt(num, num));
     test_ok({t_a, t_bracket_l, t_num, t_bracket_r, t_semi},
-            m_ast.push(m_ast.make_index(a, num)));
+            m_ast.make_index(a, num));
     test_ok({t_num, t_less_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_le(num, num)));
+            m_ast.make_le(num, num));
     test_ok({t_num, t_less_2x, t_num, t_semi},
-            m_ast.push(m_ast.make_lsh(num, num)));
+            m_ast.make_lsh(num, num));
     test_ok({t_num, t_less_2x_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_lsh_assign(num, num)));
+            m_ast.make_lsh_assign(num, num));
     test_ok({t_num, t_less, t_num, t_semi},
-            m_ast.push(m_ast.make_lt(num, num)));
+            m_ast.make_lt(num, num));
     test_ok({t_num, t_percent, t_num, t_semi},
-            m_ast.push(m_ast.make_mod(num, num)));
+            m_ast.make_mod(num, num));
     test_ok({t_a, t_percent_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_mod_assign(a, num)));
+            m_ast.make_mod_assign(a, num));
     test_ok({t_num, t_aster, t_num, t_semi},
-            m_ast.push(m_ast.make_mul(num, num)));
+            m_ast.make_mul(num, num));
     test_ok({t_a, t_aster_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_mul_assign(a, num)));
+            m_ast.make_mul_assign(a, num));
     test_ok({t_num, t_exclam_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_ne(num, num)));
+            m_ast.make_ne(num, num));
     test_ok({t_num, t_bar_2x, t_num, t_semi},
-            m_ast.push(m_ast.make_or(num, num)));
+            m_ast.make_or(num, num));
     test_ok({t_a, t_bar_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_or_assign(a, num)));
+            m_ast.make_or_assign(a, num));
     test_ok({t_num, t_greater_2x, t_num, t_semi},
-            m_ast.push(m_ast.make_rsh(num, num)));
+            m_ast.make_rsh(num, num));
     test_ok({t_a, t_greater_2x_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_rsh_assign(a, num)));
+            m_ast.make_rsh_assign(a, num));
     test_ok({t_num, t_minus, t_num, t_semi},
-            m_ast.push(m_ast.make_sub(num, num)));
+            m_ast.make_sub(num, num));
     test_ok({t_a, t_minus_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_sub_assign(a, num)));
+            m_ast.make_sub_assign(a, num));
     test_ok({t_array_t, t_brace_l, t_f64, t_comma, t_num, t_brace_r, t_semi},
-            m_ast.push(m_ast.make_array_type(m_ast.push(m_ast.make_f64()), num)));
+            m_ast.make_array_type(m_ast.make_f64(), num));
     test_ok({t_while, t_num, t_brace_l, t_a, t_semi, t_brace_r},
-            m_ast.push(m_ast.make_while(num, a)));
+            m_ast.make_while(num, a));
     test_ok({t_num, t_caret, t_num, t_semi},
-            m_ast.push(m_ast.make_xor(num, num)));
+            m_ast.make_xor(num, num));
     test_ok({t_a, t_caret_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_xor_assign(a, num)));
+            m_ast.make_xor_assign(a, num));
     // clang-format on
 }
 
 TEST_F(parser, ternary) {
-    auto a = m_ast.push(m_ast.make_id(cs2id("a")));
-    auto b = m_ast.push(m_ast.make_id(cs2id("b")));
-    auto num = m_ast.push(m_ast.make_numeric_i64(42));
+    auto a = m_ast.make_id(cs2id("a"));
+    auto b = m_ast.make_id(cs2id("b"));
+    auto num = m_ast.make_numeric_i64(42);
 
     TokenDescr t_a{t_id, "a"};
     TokenDescr t_b{t_id, "b"};
@@ -374,11 +375,11 @@ TEST_F(parser, ternary) {
 
     // clang-format off
     test_ok({t_num, t_question, t_a, t_colon, t_b, t_semi},
-            m_ast.push(m_ast.make_ternary(num, a, b)));
+            m_ast.make_ternary(num, a, b));
     test_ok({t_if, t_num, t_brace_l, t_a, t_semi, t_brace_r},
-            m_ast.push(m_ast.make_if(num, a, n_none_ref)));
+            m_ast.make_if(num, a, {}));
     test_ok({t_if, t_num, t_brace_l, t_a, t_semi, t_brace_r, t_else, t_brace_l, t_b, t_semi, t_brace_r},
-            m_ast.push(m_ast.make_if(num, a, b)));
+            m_ast.make_if(num, a, b));
     // clang-format on
 }
 
@@ -389,7 +390,7 @@ TEST_F(parser, other) {
     auto b = m_ast.make_id(id_b);
     auto id_A = cs2id("A");
     auto id_plus = cs2id("plus");
-    auto num = m_ast.push(m_ast.make_numeric_i64(42));
+    auto num = m_ast.make_numeric_i64(42);
     auto i64 = m_ast.make_i64();
     auto f64 = m_ast.make_f64();
 
@@ -406,39 +407,39 @@ TEST_F(parser, other) {
 
     // clang-format off
     test_ok({t_bracket_l, t_a, t_comma, t_b, t_bracket_r, t_semi},
-            m_ast.push(m_ast.make_array({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
+            m_ast.make_array({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
     test_ok({t_brace_l, t_a, t_semi, t_b, t_semi, t_brace_r, t_semi},
-            m_ast.push(m_ast.make_block({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
+            m_ast.make_block({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
     test_ok({t_a, t_comma, t_b, t_semi},
-            m_ast.push(m_ast.make_id_tuple({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
+            m_ast.make_id_tuple({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
     test_ok({t_tuple_t, t_brace_l, t_i64, t_comma, t_f64, t_brace_r, t_semi},
-            m_ast.push(m_ast.make_tuple_type({i64f64_ar, sizeof(i64f64_ar) / sizeof(i64f64_ar[0])})));
+            m_ast.make_tuple_type({i64f64_ar, sizeof(i64f64_ar) / sizeof(i64f64_ar[0])}));
     test_ok({t_ptr_t, t_brace_l, t_ptr_t, t_brace_l, t_i8, t_brace_r, t_brace_r, t_semi},
-            m_ast.push(m_ast.make_ptr_type(m_ast.push(m_ast.make_ptr_type(m_ast.push(m_ast.make_i8()))))));
+            m_ast.make_ptr_type(m_ast.make_ptr_type(m_ast.make_i8())));
     // clang-format on
 
     NamedNode name_ar[] = {{id_a, m_ast.push(f64)}, {id_b, m_ast.push(f64)}};
 
     // clang-format off
     test_ok({t_struct, t_A, t_brace_l, t_a, t_colon, t_f64, t_semi, t_b, t_colon, t_f64, t_semi, t_brace_r},
-            m_ast.push(m_ast.make_struct(id_A, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])})));
+            m_ast.make_struct(id_A, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}));
     test_ok({t_a, t_period, t_b, t_semi},
-            m_ast.push(m_ast.make_member(m_ast.push(a), id_b)));
+            m_ast.make_member(a, id_b));
     test_ok({{t_float_const, "3.14"}, t_semi},
-            m_ast.push(m_ast.make_numeric_f64(3.14)));
+            m_ast.make_numeric_f64(3.14));
     test_ok({t_num, t_semi},
-            m_ast.push(m_ast.make_numeric_i64(42)));
+            m_ast.make_numeric_i64(42));
     test_ok({t_a, t_semi},
-            m_ast.push(m_ast.make_id(id_a)));
+            m_ast.make_id(id_a));
     test_ok({t_a, t_par_l, t_a, t_comma, t_b, t_par_r, t_semi},
-            m_ast.push(m_ast.make_call(m_ast.push(a), {ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
+            m_ast.make_call(a, {ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
     test_ok({t_a, t_colon, t_f64, t_eq, t_num, t_semi},
-            m_ast.push(m_ast.make_var_decl(id_a, m_ast.push(f64), num)));
+            m_ast.make_var_decl(id_a, f64, num));
     test_ok({t_fn, t_id_plus, t_par_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_par_r, t_minus_greater, t_i64, t_brace_l, t_return, t_a, t_plus, t_b, t_semi, t_brace_r},
-            m_ast.push(m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, m_ast.push(i64), m_ast.push(m_ast.make_return(m_ast.push(m_ast.make_add(m_ast.push(a), m_ast.push(b))))))));
+            m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, i64, m_ast.make_return(m_ast.make_add(a, b))));
     test_ok({{t_str_const, c_test_str}, t_semi},
-            m_ast.push(m_ast.make_string_literal(cs2s(c_test_str))));
+            m_ast.make_string_literal(cs2s(c_test_str)));
     // test_ok({t_new, t_A, t_brace_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_brace_r, t_semi},
-    //         m_ast.push(m_ast.make_struct_literal(m_ast.push(A), {{id_a, m_ast.push(f64)}, {id_b, m_ast.push(f64)}})));
+    //         m_ast.make_struct_literal(A, {{id_a, f64}, {id_b, f64}}));
     // clang-format on
 }

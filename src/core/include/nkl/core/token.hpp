@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NKL_CORE_TOKEN
 
 #include <cstddef>
+#include <cstdint>
 
 #include "nk/common/string.hpp"
 
@@ -26,7 +27,7 @@ struct Token {
     size_t lin;
     size_t col;
 
-    ETokenID id = t_empty;
+    uint8_t id = t_empty;
 };
 
 using TokenArray = Slice<Token>;
