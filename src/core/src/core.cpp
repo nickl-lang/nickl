@@ -44,6 +44,15 @@ void __printf_intrinsic(type_t, value_t ret, value_t args) {
     std::cout << str;
 }
 
+void __assert_intrinsic(type_t, value_t, value_t args) {
+    vm::val_numeric_visit(vm::val_tuple_at(args, 0), [](auto val) {
+        if (!val) {
+            std::cout << "Assertion failed!" << std::endl;
+            std::abort();
+        }
+    });
+}
+
 void _setupInstrinsics(Compiler &c) {
     type_t printf_args[] = {vm::type_get_ptr(vm::type_get_numeric(vm::Int8))};
     c.intrinsics.insert(cs2id("__printf")) = vm::type_get_fn(
@@ -52,6 +61,9 @@ void _setupInstrinsics(Compiler &c) {
         0,
         __printf_intrinsic,
         nullptr);
+
+    c.intrinsics.insert(cs2id("__assert")) = vm::type_get_fn(
+        vm::type_get_void(), vm::type_get_tuple({}), 0, __assert_intrinsic, nullptr);
 }
 
 } // namespace
