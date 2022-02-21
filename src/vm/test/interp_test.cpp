@@ -57,7 +57,7 @@ protected:
 
 TEST_F(interp, plus) {
     test_ir_plus(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     int64_t ret = 0;
@@ -69,7 +69,7 @@ TEST_F(interp, plus) {
 
 TEST_F(interp, not ) {
     test_ir_not(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     int64_t ret = 42;
@@ -85,7 +85,7 @@ TEST_F(interp, not ) {
 
 TEST_F(interp, atan) {
     test_ir_atan(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     double a;
@@ -109,7 +109,7 @@ TEST_F(interp, atan) {
 
 TEST_F(interp, pi) {
     test_ir_pi(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
 
     double pi = 0;
@@ -120,7 +120,7 @@ TEST_F(interp, pi) {
 
 TEST_F(interp, rsqrt) {
     test_ir_rsqrt(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     float ret = 42;
@@ -131,7 +131,7 @@ TEST_F(interp, rsqrt) {
 
 TEST_F(interp, vec2LenSquared) {
     test_ir_vec2LenSquared(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     struct Vec2 {
@@ -154,7 +154,7 @@ TEST_F(interp, vec2LenSquared) {
 
 TEST_F(interp, modf) {
     test_ir_modf(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     double fract_part = 42;
@@ -174,7 +174,7 @@ TEST_F(interp, modf) {
 
 TEST_F(interp, intPart) {
     test_ir_intPart(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[1].funct_t;
 
     double arg = 123.456;
@@ -196,7 +196,7 @@ TEST_F(interp, threads) {
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     test_ir_call10Times(m_builder, callback);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     auto thread_func = [&]() {
@@ -227,9 +227,9 @@ TEST_F(interp, threads_diff_progs) {
 
     DEFER({ prog1.deinit(); });
 
-    bc_translateFromIr(prog0, m_ir_prog);
+    translateFromIr(prog0, m_ir_prog);
     auto fn0_t = prog0.funct_info[0].funct_t;
-    bc_translateFromIr(prog1, m_ir_prog);
+    translateFromIr(prog1, m_ir_prog);
     auto fn1_t = prog1.funct_info[0].funct_t;
 
     std::thread t0{[&]() {
@@ -270,12 +270,12 @@ TEST_F(interp, one_thread_diff_progs) {
 
     m_builder.init(ir_prog0);
     test_ir_call10Times(m_builder, callback);
-    bc_translateFromIr(prog0, ir_prog0);
+    translateFromIr(prog0, ir_prog0);
     auto fn0_t = prog0.funct_info[0].funct_t;
 
     m_builder.init(ir_prog1);
     test_ir_call10Times(m_builder, fn0_t);
-    bc_translateFromIr(prog1, ir_prog1);
+    translateFromIr(prog1, ir_prog1);
     auto fn1_t = prog1.funct_info[0].funct_t;
 
     auto str = ir_prog0.inspect();
@@ -295,7 +295,7 @@ TEST_F(interp, one_thread_diff_progs) {
 
 TEST_F(interp, hasZeroByte32) {
     test_ir_hasZeroByte32(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     auto hasZeroByte32 = [&](int32_t x) -> bool {
@@ -322,7 +322,7 @@ static void _nativeSayHello() {
 
 TEST_F(interp, callNativeSayHello) {
     test_ir_callNativeFunc(m_builder, (void *)_nativeSayHello);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     val_fn_invoke(fn_t, {}, {});
@@ -335,7 +335,7 @@ static int64_t _nativeAdd(int64_t a, int64_t b) {
 
 TEST_F(interp, callNativeAdd) {
     test_ir_callNativeAdd(m_builder, (void *)_nativeAdd);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     int64_t res = 42;
@@ -346,7 +346,7 @@ TEST_F(interp, callNativeAdd) {
 
 TEST_F(interp, callExternalPrintf) {
     test_ir_callExternalPrintf(m_builder, cs2s(TESTLIB_NAME));
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto fn_t = m_prog.funct_info[0].funct_t;
 
     val_fn_invoke(fn_t, {}, {});
@@ -356,7 +356,7 @@ TEST_F(interp, callExternalPrintf) {
 
 TEST_F(interp, getSetExternalVar) {
     test_ir_getSetExternalVar(m_builder, cs2s(TESTLIB_NAME));
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
     auto get_fn_t = m_prog.funct_info[0].funct_t;
     auto set_fn_t = m_prog.funct_info[1].funct_t;
 

@@ -126,7 +126,7 @@ string Program::inspect() const {
     return res;
 }
 
-void bc_translateFromIr(Program &prog, ir::Program const &ir) {
+void translateFromIr(Program &prog, ir::Program const &ir) {
     EASY_FUNCTION(profiler::colors::Red200)
     LOG_TRC(__FUNCTION__)
 

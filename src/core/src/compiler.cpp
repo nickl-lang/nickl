@@ -263,8 +263,7 @@ struct CompileEngine {
             return makeValue<int64_t>(type_get_numeric(Int64), value);
         }
         case Node_string_literal: {
-            type_t ar_t =
-                type_get_array(type_get_numeric(Uint8), node->as.token.val->text.size + 1);
+            type_t ar_t = type_get_array(type_get_numeric(Uint8), node->as.token.val->text.size);
             auto ref = m_builder.makeConstRef({(void *)node->as.token.val->text.data, ar_t});
             ((char *)ref.value.data)[node->as.token.val->text.size] = 0;
             return makeValue<void *>(type_get_ptr(ar_t), ref.value.data);

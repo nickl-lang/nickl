@@ -52,10 +52,11 @@ protected:
 
         vm::bc::Program prog;
         prog.init();
-        vm::bc::bc_translateFromIr(prog, m_compiler.prog);
+        DEFER({ prog.deinit(); })
+
+        vm::bc::translateFromIr(prog, m_compiler.prog);
         auto fn_t = prog.funct_info[0].funct_t;
         val_fn_invoke(fn_t, {}, {});
-        prog.deinit();
     }
 
 protected:
@@ -83,7 +84,7 @@ TEST_F(compiler, native_printf) {
     NamedNode printf_params[] = {NamedNode{
         .name = mkt(t_id, "fmt"), .node = m_ast.push(m_ast.make_ptr_type(m_ast.make_i8()))}};
     Node args[] = {
-        m_ast.make_string_literal(mkt(t_escaped_str_const, "Hello, %s!\n")),
+        m_ast.make_string_literal(mkt(t_escaped_str_const, "Hello, %s!\\n")),
         m_ast.make_string_literal(mkt(t_str_const, "World"))};
     Node nodes[] = {
         m_ast.make_foreign_fn(

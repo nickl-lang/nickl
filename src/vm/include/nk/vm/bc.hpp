@@ -73,7 +73,7 @@ struct Program {
     string inspect() const;
 };
 
-void bc_translateFromIr(Program &prog, ir::Program const &ir);
+void translateFromIr(Program &prog, ir::Program const &ir);
 
 } // namespace bc
 } // namespace vm
