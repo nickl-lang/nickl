@@ -133,7 +133,11 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         break;
                     }
                     case Arg_BlockId:
-                        ss << "%" << block_by_id[arg.as.id]->name;
+                        if (arg.as.id < prog.blocks.size) {
+                            ss << "%" << block_by_id[arg.as.id]->name;
+                        } else {
+                            ss << "%(null)";
+                        }
                         break;
                     case Arg_FunctId:
                         ss << funct_by_id[arg.as.id]->name;

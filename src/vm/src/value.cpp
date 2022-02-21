@@ -219,8 +219,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
             if (elem_type->typeclass_id == Type_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
                     auto data = val_as(char const *, val);
-                    ss << "\"" << std::string_view{data, std::min(elem_count, std::strlen(data))}
-                       << "\"";
+                    ss << "\"" << std::string_view{data, elem_count} << "\"";
                     break;
                 }
             }
@@ -522,6 +521,10 @@ size_t type_array_size(type_t array_t) {
 
 type_t type_array_elemType(type_t array_t) {
     return array_t->as.arr.elem_type;
+}
+
+value_t val_ptr_deref(value_t self) {
+    return {val_as(void *, self), val_typeof(self)->as.ptr.target_type};
 }
 
 void val_fn_invoke(type_t self, value_t ret, value_t args) {

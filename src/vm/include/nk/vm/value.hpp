@@ -137,6 +137,8 @@ value_t val_array_at(value_t self, size_t i);
 size_t type_array_size(type_t array_t);
 type_t type_array_elemType(type_t array_t);
 
+value_t val_ptr_deref(value_t self);
+
 void val_fn_invoke(type_t self, value_t ret, value_t args);
 
 inline value_t val_undefined() {

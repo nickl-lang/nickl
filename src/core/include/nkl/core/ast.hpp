@@ -3,7 +3,6 @@
 
 #include "nk/common/id.hpp"
 #include "nk/common/sequence.hpp"
-#include "nkl/core/common.hpp"
 #include "nkl/core/token.hpp"
 
 namespace nkl {
