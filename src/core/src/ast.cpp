@@ -312,6 +312,8 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
         break;
 
     case Node_foreign_fn:
+        field("lib");
+        inspectToken(node->as.fn.lib);
         field("name");
         inspectToken(node->as.fn.sig.name);
         field("sig");

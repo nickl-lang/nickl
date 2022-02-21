@@ -211,9 +211,23 @@ void _valInspect(value_t val, std::ostringstream &ss) {
             break;
         }
         break;
-    case Type_Ptr:
+    case Type_Ptr: {
+        type_t target_type = val_typeof(val)->as.ptr.target_type;
+        if (target_type->typeclass_id == Type_Array) {
+            type_t elem_type = target_type->as.arr.elem_type;
+            size_t elem_count = target_type->as.arr.elem_count;
+            if (elem_type->typeclass_id == Type_Numeric) {
+                if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
+                    auto data = val_as(char const *, val);
+                    ss << "\"" << std::string_view{data, std::min(elem_count, std::strlen(data))}
+                       << "\"";
+                    break;
+                }
+            }
+        }
         ss << val_data(val);
         break;
+    }
     case Type_Tuple:
         ss << "(";
         for (size_t i = 0; i < val_tuple_size(val); i++) {

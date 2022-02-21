@@ -62,21 +62,21 @@ int lang_runFile(char const *filename) {
         return 1;
     }
 
-    // Compiler compiler{};
-    // DEFER({ compiler.prog.deinit(); })
+    Compiler compiler{};
+    DEFER({ compiler.prog.deinit(); })
 
-    // if (!compiler.compile(parser.root)) {
-    //     std::cerr << "error: " << compiler.err << std::endl;
-    //     return 1;
-    // }
+    if (!compiler.compile(parser.root)) {
+        std::cerr << "error: " << compiler.err << std::endl;
+        return 1;
+    }
 
-    // vm::bc::Program prog{};
-    // DEFER({ prog.deinit(); })
+    vm::bc::Program prog{};
+    DEFER({ prog.deinit(); })
 
-    // vm::bc::bc_translateFromIr(prog, compiler.prog);
+    vm::bc::translateFromIr(prog, compiler.prog);
 
-    // auto top_fn = prog.funct_info[0].funct_t;
-    // vm::val_fn_invoke(top_fn, {}, {});
+    auto top_fn = prog.funct_info[0].funct_t;
+    vm::val_fn_invoke(top_fn, {}, {});
 
     return 0;
 }

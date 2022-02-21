@@ -47,15 +47,15 @@ protected:
 
 TEST_F(bytecode, plus) {
     test_ir_plus(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
 }
 
 TEST_F(bytecode, not ) {
     test_ir_not(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
 }
 
 TEST_F(bytecode, atan) {
     test_ir_atan(m_builder);
-    bc_translateFromIr(m_prog, m_ir_prog);
+    translateFromIr(m_prog, m_ir_prog);
 }
