@@ -4,7 +4,7 @@
 def_run_test(FILE empty.nkl)
 # def_run_test(FILE fast_exp.nkl)
 # def_run_test(FILE func.nkl)
-# def_run_test(FILE if.nkl)
+def_run_test(FILE if.nkl)
 # def_run_test(FILE ir_optimization.nkl)
 def_run_test(FILE native_func.nkl)
 # def_run_test(FILE pi.nkl)
