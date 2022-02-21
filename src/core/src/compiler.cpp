@@ -399,7 +399,7 @@ struct CompileEngine {
         case Node_if: {
             auto l_endif = m_builder.makeLabel();
             ir::BlockId l_else;
-            if (node->as.ternary.arg3) {
+            if (node->as.ternary.arg3->id != Node_none) {
                 l_else = m_builder.makeLabel();
             } else {
                 l_else = l_endif;
@@ -407,7 +407,7 @@ struct CompileEngine {
             DEFINE(cond, compile(node->as.ternary.arg1));
             gen(m_builder.make_jmpz(makeRef(cond), l_else));
             CHECK(compileScope(node->as.ternary.arg2));
-            if (node->as.ternary.arg3) {
+            if (node->as.ternary.arg3->id != Node_none) {
                 gen(m_builder.make_jmp(l_endif));
                 m_builder.startBlock(l_else, cs2s("else"));
                 CHECK(compileScope(node->as.ternary.arg3));
@@ -722,8 +722,11 @@ bool Compiler::compile(node_ref_t root) {
     CompileEngine engine{root, builder, err, intrinsics};
     engine.compile();
 
-    auto str = prog.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
+    LOG_INF("%s", [&]() {
+        auto str = prog.inspect();
+        str = tmpstr_format("ir:\n%.*s", str.size, str.data);
+        return str.data;
+    }());
 
     return !engine.m_error_occurred;
 }
