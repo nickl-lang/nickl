@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 #include "nk/common/logger.hpp"
@@ -21,11 +22,16 @@ char const *s_ir_names[] = {
 
 namespace {
 
+LOG_USE_SCOPE(nk::vm::ir)
+
 void _inspect(Program const &prog, std::ostringstream &ss) {
     auto &allocator = *_mctx.tmp_allocator;
 
     auto funct_by_id = allocator.alloc<Funct const *>(prog.functs.size);
     auto block_by_id = allocator.alloc<Block const *>(prog.blocks.size);
+
+    std::memset(funct_by_id, 0, prog.functs.size * sizeof(void *));
+    std::memset(block_by_id, 0, prog.blocks.size * sizeof(void *));
 
     for (auto const &funct : prog.functs) {
         funct_by_id[funct.id] = &funct;
@@ -133,14 +139,18 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                         break;
                     }
                     case Arg_BlockId:
-                        if (arg.as.id < prog.blocks.size) {
+                        if (arg.as.id < prog.blocks.size && block_by_id[arg.as.id]) {
                             ss << "%" << block_by_id[arg.as.id]->name;
                         } else {
                             ss << "%(null)";
                         }
                         break;
                     case Arg_FunctId:
-                        ss << funct_by_id[arg.as.id]->name;
+                        if (arg.as.id < prog.functs.size && funct_by_id[arg.as.id]) {
+                            ss << funct_by_id[arg.as.id]->name;
+                        } else {
+                            ss << "(null)";
+                        }
                         break;
                     case Arg_ExtFunctId:
                         ss << "(" << id2s(prog.exsyms[arg.as.id].name) << ")";
@@ -290,21 +300,26 @@ void ProgramBuilder::init(Program &prog) {
 }
 
 FunctId ProgramBuilder::makeFunct() {
+    LOG_DBG("makeFunct() -> id=%lu", prog->next_funct_id)
     return {prog->next_funct_id++};
 }
 
 BlockId ProgramBuilder::makeLabel() {
     assert(m_cur_funct && "no current function");
+    LOG_DBG("makeLabel() -> id=%lu", m_cur_funct->next_block_id)
     return {m_cur_funct->next_block_id++};
 }
 
 ShObjId ProgramBuilder::makeShObj(Id name) {
+    LOG_DBG("makeShObj() -> id=%lu", prog->shobjs.size)
     prog->shobjs.push() = name;
     return {prog->shobjs.size - 1};
 }
 
 void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
     EASY_FUNCTION(profiler::colors::Amber200)
+
+    LOG_DBG("startFunct(id=%lu)", funct_id.id)
 
     auto &funct = prog->functs.push() = {};
 
@@ -320,6 +335,8 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
 
 void ProgramBuilder::startBlock(BlockId block_id, string name) {
     EASY_FUNCTION(profiler::colors::Amber200)
+
+    LOG_DBG("startBlock(id=%lu)", block_id.id)
 
     auto &block = prog->blocks.push() = {};
 
