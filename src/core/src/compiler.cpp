@@ -36,6 +36,8 @@ struct CompileEngine {
     ir::ProgramBuilder &m_builder;
     string &m_err;
 
+    HashMap<Id, type_t> const &intrinsics;
+
     bool m_error_occurred = false;
 
     enum EDeclType {
@@ -45,6 +47,7 @@ struct CompileEngine {
         Decl_Global,
         Decl_Funct,
         Decl_ExtFunct,
+        Decl_Intrinsic,
     };
 
     struct Decl {
@@ -63,6 +66,9 @@ struct CompileEngine {
             struct {
                 ir::ExtFunctId id;
             } ext_funct;
+            struct {
+                type_t fn;
+            } intrinsic;
         } as;
         EDeclType decl_type;
         bool is_const;
@@ -72,11 +78,17 @@ struct CompileEngine {
         HashMap<Id, Decl> locals{};
     };
 
-    struct FrameCtx {
-        Array<ScopeCtx> scopes{};
+    struct FunctCtx {
+        Id name;
+        ir::FunctId id;
+        node_ref_t root;
+        type_t ret_t;
+        type_t args_t;
     };
 
-    Array<FrameCtx> frames{};
+    Array<ScopeCtx> scopes{};
+    Array<FunctCtx> functs{};
+    bool is_top_level{};
 
     enum EValueType : uint8_t {
         v_none = 0,
@@ -96,43 +108,31 @@ struct CompileEngine {
         EValueType value_type;
     };
 
-    FrameCtx &curFrame() const {
-        assert(frames.size && "no current frame");
-        return frames.back();
-    }
-
     ScopeCtx &curScope() const {
-        assert(curFrame().scopes.size && "no current scope");
-        return curFrame().scopes.back();
-    }
-
-    void pushFrame() {
-        frames.push() = {};
-    }
-
-    void popFrame() {
-        auto &frame = frames.pop();
-        assert(!frame.scopes.size && "unhandled scopes on the stack");
-        frame.scopes.deinit();
+        assert(scopes.size && "no current scope");
+        return scopes.back();
     }
 
     void pushScope() {
-        curFrame().scopes.push() = {};
+        scopes.push() = {};
         curScope().locals.init();
     }
 
     void popScope() {
-        auto &scope = curFrame().scopes.pop();
+        auto &scope = scopes.pop();
         scope.locals.deinit();
     }
 
     void compile() {
-        pushFrame();
         DEFER({
-            popFrame();
-            assert(!frames.size && "unhandled frames on the stack");
-            frames.deinit();
+            assert(!scopes.size && "unhandled scopes on the stack");
+            scopes.deinit();
         })
+
+        pushScope();
+        DEFER({ popScope(); })
+
+        is_top_level = true;
 
         m_builder.startFunct(
             m_builder.makeFunct(), cs2s(":top"), type_get_void(), type_get_tuple({}));
@@ -141,6 +141,20 @@ struct CompileEngine {
         compileScope(m_root);
 
         gen(m_builder.make_ret());
+
+        is_top_level = false;
+
+        while (functs.size) {
+            auto &funct = functs.pop();
+
+            m_builder.startFunct(
+                m_builder.makeFunct(), id2s(funct.name), funct.ret_t, funct.args_t);
+            m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
+
+            compileScope(funct.root);
+
+            gen(m_builder.make_ret());
+        }
     }
 
     int compileScope(node_ref_t node) {
@@ -170,6 +184,7 @@ struct CompileEngine {
             (void)ref;
             //@Todo Inspect refs separately
             // LOG_DBG("value ignored: %s", m_builder.inspect(ref))
+            LOG_DBG("value ignored...")
         }
     }
 
@@ -180,7 +195,7 @@ struct CompileEngine {
         case Node_nop:
             gen(m_builder.make_nop());
             //@Refactor Construct void ref universally
-            return {{}, type_get_void(), v_none};
+            return makeVoid();
 
         case Node_i8:
             return makeValue<type_t>(type_get_typeref(), type_get_numeric(Int8));
@@ -221,9 +236,72 @@ struct CompileEngine {
             return makeInstr(m_builder.make_add({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
 
+        case Node_lt: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_lt({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+
+        case Node_assign: {
+            assert(node->as.binary.lhs->id == Node_id);
+            auto name_str = node->as.binary.lhs->as.token.val->text;
+            Id name = s2id(name_str);
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            auto res = resolve(name);
+            switch (res.decl_type) {
+            case Decl_Undefined:
+                return error("`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
+            case Decl_Local:
+                return makeInstr(
+                    m_builder.make_mov(m_builder.makeFrameRef(res.as.local.id), makeRef(rhs)),
+                    res.as.local.type);
+            case Decl_Global:
+                return makeInstr(
+                    m_builder.make_mov(m_builder.makeGlobalRef(res.as.global.id), makeRef(rhs)),
+                    res.as.global.type);
+            case Decl_Funct:
+            case Decl_ExtFunct:
+            case Decl_Intrinsic:
+                return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
+            default:
+                LOG_ERR("unknown decl type");
+                assert(!"unreachable");
+                return {};
+            }
+        }
+
+        case Node_colon_assign: {
+            assert(node->as.binary.lhs->id == Node_id);
+            Id name = s2id(node->as.binary.lhs->as.token.val->text);
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (is_top_level) {
+                defineGlobal(name, m_builder.makeGlobalVar(rhs.type), rhs.type);
+            } else {
+                defineLocal(name, m_builder.makeLocalVar(rhs.type), rhs.type);
+            }
+            return makeVoid();
+        }
+
+        case Node_while: {
+            auto l_loop = m_builder.makeLabel();
+            auto l_endloop = m_builder.makeLabel();
+            m_builder.startBlock(l_loop, cs2s("loop"));
+            gen(m_builder.make_enter());
+            DEFINE(cond, compile(node->as.binary.lhs));
+            gen(m_builder.make_jmpz(makeRef(cond), l_endloop));
+            CHECK(compileScope(node->as.binary.rhs));
+            gen(m_builder.make_leave());
+            gen(m_builder.make_jmp(l_loop));
+            m_builder.startBlock(l_endloop, cs2s("endloop"));
+            return makeVoid();
+        }
+
         case Node_block:
             compileScope(node->as.array.nodes);
-            return {{}, type_get_void(), v_none};
+            return makeVoid();
 
         case Node_id: {
             string name_str = node->as.token.val->text;
@@ -239,6 +317,8 @@ struct CompileEngine {
             case Decl_Funct:
                 return {{.decl = res}, {}, v_decl};
             case Decl_ExtFunct:
+                return {{.decl = res}, {}, v_decl};
+            case Decl_Intrinsic:
                 return {{.decl = res}, {}, v_decl};
             default:
                 LOG_ERR("unknown decl type");
@@ -263,10 +343,13 @@ struct CompileEngine {
             return makeValue<int64_t>(type_get_numeric(Int64), value);
         }
         case Node_string_literal: {
-            type_t ar_t = type_get_array(type_get_numeric(Uint8), node->as.token.val->text.size);
-            auto ref = m_builder.makeConstRef({(void *)node->as.token.val->text.data, ar_t});
-            ((char *)ref.value.data)[node->as.token.val->text.size] = 0;
-            return makeValue<void *>(type_get_ptr(ar_t), ref.value.data);
+            type_t ar_t = type_get_array(type_get_numeric(Int8), node->as.token.val->text.size);
+            string val = string_format(
+                m_builder.prog->arena,
+                "%.*s",
+                node->as.token.val->text.size,
+                node->as.token.val->text.data);
+            return makeValue<void const *>(type_get_ptr(ar_t), val.data);
         }
 
         case Node_foreign_fn: {
@@ -291,7 +374,7 @@ struct CompileEngine {
                 type_get_tuple(arg_types.slice()),
                 node->as.fn.is_variadic);
             defineExtFunct(name, id);
-            return {{}, type_get_void(), v_none};
+            return makeVoid();
         }
 
         case Node_call: {
@@ -339,6 +422,15 @@ struct CompileEngine {
                         {}, decl.as.ext_funct.id, make_args(f.args_t, f.is_variadic)),
                     f.ret_t);
             }
+            case Decl_Intrinsic: {
+                auto const &f = decl.as.intrinsic.fn->as.fn;
+                return makeInstr(
+                    m_builder.make_call(
+                        {},
+                        m_builder.makeConstRef({nullptr, decl.as.intrinsic.fn}),
+                        make_args(f.args_t)),
+                    f.ret_t);
+            }
             case Decl_Undefined:
             default:
                 assert(!"unreachable");
@@ -352,6 +444,10 @@ struct CompileEngine {
         }
 
         return {};
+    }
+
+    ValueInfo makeVoid() {
+        return {{}, type_get_void(), v_none};
     }
 
     Decl &makeDecl(Id name) {
@@ -368,28 +464,48 @@ struct CompileEngine {
     }
 
     void defineLocal(Id name, ir::Local id, type_t type) {
+        LOG_DBG("defining local `%s`", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("%.*s", str.size, str.data).data;
+        }());
         makeDecl(name) = {{.local = {id, type}}, Decl_Local, false};
     }
 
     void defineGlobal(Id name, ir::Global id, type_t type) {
+        LOG_DBG("defining global `%s`", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("%.*s", str.size, str.data).data;
+        }());
         makeDecl(name) = {{.global = {id, type}}, Decl_Global, false};
     }
 
     void defineFunct(Id name, ir::FunctId id) {
+        LOG_DBG("defining funct `%s`", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("%.*s", str.size, str.data).data;
+        }());
         makeDecl(name) = {{.funct = {id}}, Decl_Funct, false};
     }
 
     void defineExtFunct(Id name, ir::ExtFunctId id) {
+        LOG_DBG("defining ext funct `%s`", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("%.*s", str.size, str.data).data;
+        }());
         makeDecl(name) = {{.ext_funct = {id}}, Decl_ExtFunct, false};
     }
 
     Decl resolve(Id name) {
-        for (size_t i = curFrame().scopes.size; i > 0; i--) {
-            auto &scope = curFrame().scopes[i - 1];
+        for (size_t i = scopes.size; i > 0; i--) {
+            auto &scope = scopes[i - 1];
             auto found = scope.locals.find(name);
             if (found) {
                 return *found;
             }
+        }
+        auto found = intrinsics.find(name);
+        if (found) {
+            return {{.intrinsic = {*found}}, Decl_Intrinsic, true};
         }
         return {{}, Decl_Undefined, false};
     }
@@ -469,6 +585,15 @@ struct CompileEngine {
 
 } // namespace
 
+void Compiler::init() {
+    *this = {};
+}
+
+void Compiler::deinit() {
+    intrinsics.deinit();
+    prog.deinit();
+}
+
 bool Compiler::compile(node_ref_t root) {
     EASY_FUNCTION(::profiler::colors::Cyan200);
 
@@ -477,7 +602,7 @@ bool Compiler::compile(node_ref_t root) {
     ir::ProgramBuilder builder{};
     builder.init(prog);
 
-    CompileEngine engine{root, builder, err};
+    CompileEngine engine{root, builder, err, intrinsics};
     engine.compile();
 
     auto str = prog.inspect();

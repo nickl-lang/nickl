@@ -64,7 +64,7 @@ struct HashMap {
         return *_insert(_keyHash(key), key);
     }
 
-    V *find(K const &key) {
+    V *find(K const &key) const {
         EASY_BLOCK("HashMap::find", profiler::colors::Grey200)
         Entry *entry = _find(key);
         return entry ? &entry->value : nullptr;
@@ -110,7 +110,7 @@ private:
     }
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
-    size_t _elemIndex(hash_t hash, size_t i) {
+    size_t _elemIndex(hash_t hash, size_t i) const {
         return (_hash(hash) + ((i) + (i) * (i)) / 2) % capacity;
     }
 
@@ -185,7 +185,7 @@ private:
         return &ret_entry->value;
     }
 
-    Entry *_find(K const &key) {
+    Entry *_find(K const &key) const {
         hash_t hash = _keyHash(key);
 
         size_t probe_length = 0;

@@ -434,6 +434,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
             "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code])
         s_funcs[pinstr->code](*pinstr);
         LOG_DBG("res=%s", [&]() {
+            auto frame = ctx.stack.size();
             string str{};
             auto ref = pinstr->arg[0];
             if (ref.ref_type != bc::Ref_None) {
@@ -446,6 +447,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
                     (int)type_str.size,
                     type_str.data);
             }
+            ctx.stack.pop(ctx.stack.size() - frame);
             return str.data;
         }())
     }
