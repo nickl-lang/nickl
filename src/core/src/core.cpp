@@ -41,7 +41,7 @@ void __printf_intrinsic(type_t, value_t ret, value_t args) {
 
     auto const &str = ss.str();
     val_as(uint64_t, ret) = str.size();
-    std::cout << str << std::endl;
+    std::cout << str;
 }
 
 void _setupInstrinsics(Compiler &c) {

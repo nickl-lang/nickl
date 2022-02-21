@@ -218,6 +218,11 @@ struct CompileEngine {
         case Node_f64:
             return makeValue<type_t>(type_get_typeref(), type_get_numeric(Float64));
 
+        case Node_true:
+            return makeValue<int8_t>(type_get_numeric(Int8), 1);
+        case Node_false:
+            return makeValue<int8_t>(type_get_numeric(Int8), 0);
+
         case Node_ptr_type: {
             DEFINE(target_type, compile(node->as.unary.arg));
             if (target_type.type->typeclass_id != Type_Typeref) {
@@ -255,10 +260,16 @@ struct CompileEngine {
             case Decl_Undefined:
                 return error("`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
             case Decl_Local:
+                if (res.as.local.type->id != rhs.type->id) {
+                    return error("cannot assign values of different types"), ValueInfo{};
+                }
                 return makeInstr(
                     m_builder.make_mov(m_builder.makeFrameRef(res.as.local.id), makeRef(rhs)),
                     res.as.local.type);
             case Decl_Global:
+                if (res.as.local.type->id != rhs.type->id) {
+                    return error("cannot assign values of different types"), ValueInfo{};
+                }
                 return makeInstr(
                     m_builder.make_mov(m_builder.makeGlobalRef(res.as.global.id), makeRef(rhs)),
                     res.as.global.type);
@@ -278,9 +289,13 @@ struct CompileEngine {
             Id name = s2id(node->as.binary.lhs->as.token.val->text);
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (is_top_level) {
-                defineGlobal(name, m_builder.makeGlobalVar(rhs.type), rhs.type);
+                auto var = m_builder.makeGlobalVar(rhs.type);
+                defineGlobal(name, var, rhs.type);
+                gen(m_builder.make_mov(m_builder.makeGlobalRef(var), makeRef(rhs)));
             } else {
-                defineLocal(name, m_builder.makeLocalVar(rhs.type), rhs.type);
+                auto var = m_builder.makeLocalVar(rhs.type);
+                defineLocal(name, var, rhs.type);
+                gen(m_builder.make_mov(m_builder.makeFrameRef(var), makeRef(rhs)));
             }
             return makeVoid();
         }
@@ -296,6 +311,26 @@ struct CompileEngine {
             gen(m_builder.make_leave());
             gen(m_builder.make_jmp(l_loop));
             m_builder.startBlock(l_endloop, cs2s("endloop"));
+            return makeVoid();
+        }
+
+        case Node_if: {
+            auto l_endif = m_builder.makeLabel();
+            ir::BlockId l_else;
+            if (node->as.ternary.arg3) {
+                l_else = m_builder.makeLabel();
+            } else {
+                l_else = l_endif;
+            }
+            DEFINE(cond, compile(node->as.ternary.arg1));
+            gen(m_builder.make_jmpz(makeRef(cond), l_else));
+            CHECK(compileScope(node->as.ternary.arg2));
+            if (node->as.ternary.arg3) {
+                gen(m_builder.make_jmp(l_endif));
+                m_builder.startBlock(l_else, cs2s("else"));
+                CHECK(compileScope(node->as.ternary.arg3));
+            }
+            m_builder.startBlock(l_endif, cs2s("endif"));
             return makeVoid();
         }
 
