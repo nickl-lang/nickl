@@ -240,7 +240,71 @@ struct CompileEngine {
             }
             return makeInstr(m_builder.make_add({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
+        case Node_sub: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot sub two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_sub({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_mul: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot mul two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_mul({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_div: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot div two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_div({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_mod: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot mod two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_mod({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
 
+        case Node_eq: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_eq({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_ge: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_ge({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_gt: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_gt({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_le: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_le({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
         case Node_lt: {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
@@ -248,6 +312,14 @@ struct CompileEngine {
                 return error("cannot compare two values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_lt({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_ne: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_ne({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
 
         case Node_assign: {
@@ -282,6 +354,16 @@ struct CompileEngine {
                 assert(!"unreachable");
                 return {};
             }
+        }
+
+        case Node_cast: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->typeclass_id != Type_Typeref) {
+                return error("type expected in cast"), ValueInfo{};
+            }
+            return makeInstr(
+                m_builder.make_cast({}, makeRef(lhs), makeRef(rhs)), val_as(type_t, asValue(lhs)));
         }
 
         case Node_colon_assign: {
