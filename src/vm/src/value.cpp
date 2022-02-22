@@ -1,6 +1,7 @@
 #include "nk/vm/value.hpp"
 
 #include <cstring>
+#include <iomanip>
 #include <sstream>
 
 #include "native_fn_adapter.hpp"
@@ -204,7 +205,7 @@ void _valInspect(value_t val, std::ostringstream &ss) {
             ss << val_as(float, val);
             break;
         case Float64:
-            ss << val_as(double, val);
+            ss << std::setprecision(16) << val_as(double, val);
             break;
         default:
             assert(!"unreachable");
