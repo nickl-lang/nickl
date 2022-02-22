@@ -48,6 +48,7 @@ struct CompileEngine {
         Decl_Funct,
         Decl_ExtFunct,
         Decl_Intrinsic,
+        Decl_Arg,
     };
 
     struct Decl {
@@ -62,6 +63,8 @@ struct CompileEngine {
             } global;
             struct {
                 ir::FunctId id;
+                type_t ret_t;
+                type_t args_t;
             } funct;
             struct {
                 ir::ExtFunctId id;
@@ -69,6 +72,10 @@ struct CompileEngine {
             struct {
                 type_t fn;
             } intrinsic;
+            struct {
+                size_t index;
+                type_t type;
+            } arg;
         } as;
         EDeclType decl_type;
         bool is_const;
@@ -84,6 +91,7 @@ struct CompileEngine {
         node_ref_t root;
         type_t ret_t;
         type_t args_t;
+        Array<Id> arg_names;
     };
 
     Array<ScopeCtx> scopes{};
@@ -127,6 +135,7 @@ struct CompileEngine {
         DEFER({
             assert(!scopes.size && "unhandled scopes on the stack");
             scopes.deinit();
+            functs.deinit();
         })
 
         pushScope();
@@ -147,13 +156,20 @@ struct CompileEngine {
         while (functs.size) {
             auto &funct = functs.pop();
 
-            m_builder.startFunct(
-                m_builder.makeFunct(), id2s(funct.name), funct.ret_t, funct.args_t);
+            m_builder.startFunct(funct.id, id2s(funct.name), funct.ret_t, funct.args_t);
             m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
+
+            for (size_t i = 0; Id name : funct.arg_names) {
+                auto type = type_tuple_typeAt(funct.args_t, i);
+                defineArg(name, i, type);
+                i++;
+            }
 
             compileScope(funct.root);
 
             gen(m_builder.make_ret());
+
+            funct.arg_names.deinit();
         }
     }
 
@@ -222,6 +238,13 @@ struct CompileEngine {
             return makeValue<int8_t>(type_get_numeric(Int8), 1);
         case Node_false:
             return makeValue<int8_t>(type_get_numeric(Int8), 0);
+
+        case Node_return: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            gen(m_builder.make_mov(m_builder.makeRetRef(), makeRef(arg)));
+            gen(m_builder.make_ret());
+            return makeVoid();
+        }
 
         case Node_ptr_type: {
             DEFINE(target_type, compile(node->as.unary.arg));
@@ -348,6 +371,7 @@ struct CompileEngine {
             case Decl_Funct:
             case Decl_ExtFunct:
             case Decl_Intrinsic:
+            case Decl_Arg:
                 return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
             default:
                 LOG_ERR("unknown decl type");
@@ -437,6 +461,8 @@ struct CompileEngine {
                 return {{.decl = res}, {}, v_decl};
             case Decl_Intrinsic:
                 return {{.decl = res}, {}, v_decl};
+            case Decl_Arg:
+                return {{.decl = res}, res.as.arg.type, v_decl};
             default:
                 LOG_ERR("unknown decl type");
                 assert(!"unreachable");
@@ -467,6 +493,38 @@ struct CompileEngine {
                 node->as.token.val->text.size,
                 node->as.token.val->text.data);
             return makeValue<void const *>(type_get_ptr(ar_t), val.data);
+        }
+
+        case Node_fn: {
+            auto arg_types = Array<type_t>::create(node->as.fn.sig.params.size);
+            auto arg_names = Array<Id>::create(node->as.fn.sig.params.size);
+            DEFER({ arg_types.deinit(); })
+            for (auto const &arg : node->as.fn.sig.params) {
+                DEFINE(arg_t, compile(arg.as.named_node.node));
+                if (arg_t.type->typeclass_id != Type_Typeref) {
+                    return error("type expected in arguments"), ValueInfo{};
+                }
+                arg_types.push() = val_as(type_t, asValue(arg_t));
+                arg_names.push() = s2id(arg.as.named_node.name->text);
+            }
+            DEFINE(ret_t_info, compile(node->as.fn.sig.ret_type));
+            if (ret_t_info.type->typeclass_id != Type_Typeref) {
+                return error("type expected in return type"), ValueInfo{};
+            }
+            Id name = s2id(node->as.fn.sig.name->text);
+            auto funct_id = m_builder.makeFunct();
+            auto ret_t = val_as(type_t, asValue(ret_t_info));
+            auto args_t = type_get_tuple(arg_types.slice());
+            defineFunct(name, funct_id, ret_t, args_t);
+            functs.push() = {
+                .name = name,
+                .id = funct_id,
+                .root = node->as.fn.body,
+                .ret_t = ret_t,
+                .args_t = args_t,
+                .arg_names = arg_names,
+            };
+            return makeVoid();
         }
 
         case Node_foreign_fn: {
@@ -526,9 +584,10 @@ struct CompileEngine {
             switch (decl.decl_type) {
             case Decl_Local:
             case Decl_Global:
+            case Decl_Arg:
                 return error("call through a pointer is not implemented"), ValueInfo{};
             case Decl_Funct: {
-                auto const &f = m_builder.prog->functs[decl.as.funct.id.id];
+                auto const &f = decl.as.funct;
                 return makeInstr(
                     m_builder.make_call({}, decl.as.funct.id, make_args(f.args_t)), f.ret_t);
             }
@@ -596,12 +655,13 @@ struct CompileEngine {
         makeDecl(name) = {{.global = {id, type}}, Decl_Global, false};
     }
 
-    void defineFunct(Id name, ir::FunctId id) {
+    void defineFunct(Id name, ir::FunctId id, type_t ret_t, type_t args_t) {
         LOG_DBG("defining funct `%s`", [&]() {
             string str = id2s(name);
             return tmpstr_format("%.*s", str.size, str.data).data;
         }());
-        makeDecl(name) = {{.funct = {id}}, Decl_Funct, false};
+        makeDecl(name) = {
+            {.funct = {.id = id, .ret_t = ret_t, .args_t = args_t}}, Decl_Funct, false};
     }
 
     void defineExtFunct(Id name, ir::ExtFunctId id) {
@@ -610,6 +670,14 @@ struct CompileEngine {
             return tmpstr_format("%.*s", str.size, str.data).data;
         }());
         makeDecl(name) = {{.ext_funct = {id}}, Decl_ExtFunct, false};
+    }
+
+    void defineArg(Id name, size_t index, type_t type) {
+        LOG_DBG("defining arg `%s`", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("%.*s", str.size, str.data).data;
+        }());
+        makeDecl(name) = {{.arg = {index, type}}, Decl_Arg, true};
     }
 
     Decl resolve(Id name) {
@@ -671,6 +739,8 @@ struct CompileEngine {
                 LOG_ERR("Ext funct ref is not implemented");
                 assert(!"unreachable");
                 return {};
+            case Decl_Arg:
+                return m_builder.makeArgRef(val.as.decl.as.arg.index);
             case Decl_Undefined:
             default:
                 assert(!"unreachable");
