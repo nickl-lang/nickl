@@ -1,4 +1,4 @@
-# def_run_test(FILE arithmetic.nkl)
+def_run_test(FILE arithmetic.nkl)
 # def_run_test(FILE cast.nkl)
 # def_run_test(FILE arrays.nkl)
 def_run_test(FILE empty.nkl)

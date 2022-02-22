@@ -74,12 +74,22 @@ NUM_INT_X(rsh)
 NUM_X(and)
 NUM_X(or)
 
-NUM_X(eq)
 NUM_X(ge)
 NUM_X(gt)
 NUM_X(le)
 NUM_X(lt)
-NUM_X(ne)
+
+X(eq)
+XE(eq, 8)
+XE(eq, 16)
+XE(eq, 32)
+XE(eq, 64)
+
+X(ne)
+XE(ne, 8)
+XE(ne, 16)
+XE(ne, 32)
+XE(ne, 64)
 
 #undef X
 #undef XE

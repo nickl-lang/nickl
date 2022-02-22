@@ -53,6 +53,10 @@ void __assert_intrinsic(type_t, value_t, value_t args) {
     });
 }
 
+void __typeof_intrinsic(type_t, value_t ret, value_t args) {
+    val_as(type_t, ret) = vm::val_typeof(vm::val_tuple_at(args, 0));
+}
+
 void _setupInstrinsics(Compiler &c) {
     type_t printf_args[] = {vm::type_get_ptr(vm::type_get_numeric(vm::Int8))};
     c.intrinsics.insert(cs2id("__printf")) = vm::type_get_fn(
@@ -64,6 +68,9 @@ void _setupInstrinsics(Compiler &c) {
 
     c.intrinsics.insert(cs2id("__assert")) = vm::type_get_fn(
         vm::type_get_void(), vm::type_get_tuple({}), 0, __assert_intrinsic, nullptr);
+
+    c.intrinsics.insert(cs2id("__typeof")) = vm::type_get_fn(
+        vm::type_get_typeref(), vm::type_get_tuple({}), 0, __typeof_intrinsic, nullptr);
 }
 
 } // namespace
