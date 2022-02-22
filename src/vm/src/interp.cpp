@@ -281,6 +281,68 @@ INTERP(not ) {
     });
 }
 
+INTERP(eq) {
+    auto dst = _getDynRef(instr.arg[0]);
+    auto lhs = _getDynRef(instr.arg[1]);
+    auto rhs = _getDynRef(instr.arg[2]);
+
+    assert(val_sizeof(dst) == 1);
+    assert(val_sizeof(lhs) == val_sizeof(rhs));
+
+    _getRef<int8_t>(instr.arg[0]) = std::memcmp(val_data(dst), val_data(lhs), val_sizeof(rhs)) == 0;
+}
+
+INTERP(eq_8) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint8_t>(instr.arg[1]) == _getRef<uint8_t>(instr.arg[2]);
+}
+
+INTERP(eq_16) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint16_t>(instr.arg[1]) == _getRef<uint16_t>(instr.arg[2]);
+}
+
+INTERP(eq_32) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint32_t>(instr.arg[1]) == _getRef<uint32_t>(instr.arg[2]);
+}
+
+INTERP(eq_64) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint64_t>(instr.arg[1]) == _getRef<uint64_t>(instr.arg[2]);
+}
+
+INTERP(ne) {
+    auto dst = _getDynRef(instr.arg[0]);
+    auto lhs = _getDynRef(instr.arg[1]);
+    auto rhs = _getDynRef(instr.arg[2]);
+
+    assert(val_sizeof(dst) == 1);
+    assert(val_sizeof(lhs) == val_sizeof(rhs));
+
+    _getRef<int8_t>(instr.arg[0]) = std::memcmp(val_data(dst), val_data(lhs), val_sizeof(rhs)) != 0;
+}
+
+INTERP(ne_8) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint8_t>(instr.arg[1]) != _getRef<uint8_t>(instr.arg[2]);
+}
+
+INTERP(ne_16) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint16_t>(instr.arg[1]) != _getRef<uint16_t>(instr.arg[2]);
+}
+
+INTERP(ne_32) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint32_t>(instr.arg[1]) != _getRef<uint32_t>(instr.arg[2]);
+}
+
+INTERP(ne_64) {
+    _getRef<int8_t>(instr.arg[0]) =
+        _getRef<uint64_t>(instr.arg[1]) != _getRef<uint64_t>(instr.arg[2]);
+}
+
 template <class F>
 void _numericBinOp(Instr const &instr, F &&op) {
     auto dst = _getDynRef(instr.arg[0]);
@@ -363,12 +425,10 @@ NUM_BIN_OP_INT(rsh, >>)
 NUM_BIN_OP(and, &&)
 NUM_BIN_OP(or, ||)
 
-NUM_BIN_OP(eq, ==)
 NUM_BIN_OP(ge, >=)
 NUM_BIN_OP(gt, >)
 NUM_BIN_OP(le, <=)
 NUM_BIN_OP(lt, <)
-NUM_BIN_OP(ne, !=)
 
 using InterpFunc = void (*)(Instr const &instr);
 

@@ -376,6 +376,30 @@ void translateFromIr(Program &prog, ir::Program const &ir) {
                 case ir::ir_not:
                     code = op_not;
                     break;
+                case ir::ir_eq:
+                    code = op_eq;
+                    assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[0].as.ref.type->size == 1);
+                    assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[2].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[1].as.ref.type->size == ir_instr.arg[2].as.ref.type->size);
+                    if (ir_instr.arg[1].as.ref.type->size <= REG_SIZE &&
+                        isZeroOrPowerOf2(ir_instr.arg[1].as.ref.type->size)) {
+                        code += 1 + log2u(ir_instr.arg[1].as.ref.type->size);
+                    }
+                    break;
+                case ir::ir_ne:
+                    code = op_ne;
+                    assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[0].as.ref.type->size == 1);
+                    assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[2].arg_type == ir::Arg_Ref);
+                    assert(ir_instr.arg[1].as.ref.type->size == ir_instr.arg[2].as.ref.type->size);
+                    if (ir_instr.arg[1].as.ref.type->size <= REG_SIZE &&
+                        isZeroOrPowerOf2(ir_instr.arg[1].as.ref.type->size)) {
+                        code += 1 + log2u(ir_instr.arg[1].as.ref.type->size);
+                    }
+                    break;
 #define NUM_X(NAME)       \
     case ir::ir_##NAME:   \
         numOp(op_##NAME); \

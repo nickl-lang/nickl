@@ -239,6 +239,27 @@ struct CompileEngine {
         case Node_false:
             return makeValue<int8_t>(type_get_numeric(Int8), 0);
 
+        case Node_compl: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            return makeInstr(m_builder.make_compl({}, makeRef(arg)), arg.type);
+        }
+        case Node_not: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            return makeInstr(m_builder.make_not({}, makeRef(arg)), arg.type);
+        }
+        case Node_uminus: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            static constexpr size_t c_zero = 0;
+            return makeInstr(
+                m_builder.make_sub(
+                    {}, m_builder.makeConstRef({(void *)&c_zero, arg.type}), makeRef(arg)),
+                arg.type);
+        }
+        case Node_uplus: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            return arg;
+        }
+
         case Node_return: {
             DEFINE(arg, compile(node->as.unary.arg));
             gen(m_builder.make_mov(m_builder.makeRetRef(), makeRef(arg)));
@@ -296,14 +317,64 @@ struct CompileEngine {
             return makeInstr(m_builder.make_mod({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
 
-        case Node_eq: {
+        case Node_bitand: {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot bitand two values of different types"), ValueInfo{};
             }
-            return makeInstr(m_builder.make_eq({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+            return makeInstr(m_builder.make_bitand({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
+        case Node_bitor: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot bitor two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_bitor({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_xor: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot xor two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_xor({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_lsh: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot lsh two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_lsh({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_rsh: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot rsh two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_rsh({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+
+        case Node_and: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot and two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_and({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+        case Node_or: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot or two values of different types"), ValueInfo{};
+            }
+            return makeInstr(m_builder.make_or({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+        }
+
         case Node_ge: {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
@@ -336,13 +407,24 @@ struct CompileEngine {
             }
             return makeInstr(m_builder.make_lt({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
+
+        case Node_eq: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            DEFINE(rhs, compile(node->as.binary.rhs));
+            if (lhs.type->id != rhs.type->id) {
+                return error("cannot compare two values of different types"), ValueInfo{};
+            }
+            return makeInstr(
+                m_builder.make_eq({}, makeRef(lhs), makeRef(rhs)), type_get_numeric(Int8));
+        }
         case Node_ne: {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
                 return error("cannot compare two values of different types"), ValueInfo{};
             }
-            return makeInstr(m_builder.make_ne({}, makeRef(lhs), makeRef(rhs)), lhs.type);
+            return makeInstr(
+                m_builder.make_ne({}, makeRef(lhs), makeRef(rhs)), type_get_numeric(Int8));
         }
 
         case Node_assign: {
