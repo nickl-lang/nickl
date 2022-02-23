@@ -568,12 +568,17 @@ struct CompileEngine {
             return makeValue<int64_t>(type_get_numeric(Int64), value);
         }
         case Node_string_literal: {
-            type_t ar_t = type_get_array(type_get_numeric(Int8), node->as.token.val->text.size);
             string val = string_format(
                 m_builder.prog->arena,
                 "%.*s",
                 node->as.token.val->text.size,
                 node->as.token.val->text.data);
+            type_t ar_t = type_get_array(type_get_numeric(Int8), val.size);
+            return makeValue<void const *>(type_get_ptr(ar_t), val.data);
+        }
+        case Node_escaped_string_literal: {
+            string val = string_unescape(m_builder.prog->arena, node->as.token.val->text);
+            type_t ar_t = type_get_array(type_get_numeric(Int8), val.size);
             return makeValue<void const *>(type_get_ptr(ar_t), val.data);
         }
 

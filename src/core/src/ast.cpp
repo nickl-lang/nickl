@@ -82,6 +82,10 @@ Node Ast::make_string_literal(token_ref_t val) {
     return Node{{.token = {val}}, Node_string_literal};
 }
 
+Node Ast::make_escaped_string_literal(token_ref_t val) {
+    return Node{{.token = {val}}, Node_escaped_string_literal};
+}
+
 Node Ast::make_member(Node const &lhs, token_ref_t name) {
     return Node{{.member = {push(lhs), name}}, Node_member};
 }

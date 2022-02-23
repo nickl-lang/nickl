@@ -114,6 +114,8 @@ string tmpstr_vformat(char const *fmt, va_list ap);
 string string_format(Allocator &allocator, char const *fmt, ...);
 string string_vformat(Allocator &allocator, char const *fmt, va_list ap);
 
+string string_unescape(Allocator &allocator, string str);
+
 template <class THeader, class TElem>
 size_t arrayWithHeaderSize(size_t n) {
     return roundUp(sizeof(THeader), alignof(TElem)) + sizeof(TElem) * n;

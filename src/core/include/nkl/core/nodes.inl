@@ -116,6 +116,7 @@ X(token, id)
 X(token, numeric_float)
 X(token, numeric_int)
 X(token, string_literal)
+X(token, escaped_string_literal)
 
 X(member, member)
 

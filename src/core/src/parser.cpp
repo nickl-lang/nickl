@@ -580,10 +580,9 @@ private:
             node = m_ast.make_string_literal(m_cur_token);
             getToken();
         } else if (check(t_escaped_str_const)) {
-            //@Todo Implement escaped str consts parsing (in Compiler from Ast)
             LOG_DBG(
                 "accept(escaped_str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
-            node = m_ast.make_string_literal(m_cur_token);
+            node = m_ast.make_escaped_string_literal(m_cur_token);
             getToken();
         }
 

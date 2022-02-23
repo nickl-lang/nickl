@@ -462,7 +462,7 @@ string type_name(type_t type) {
 
     std::ostringstream ss;
     _typeName(type, ss);
-    auto str = ss.str();
+    auto const &str = ss.str();
 
     string res;
     string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
@@ -474,7 +474,7 @@ string val_inspect(value_t val) {
 
     std::ostringstream ss;
     _valInspect(val, ss);
-    auto str = ss.str();
+    auto const &str = ss.str();
 
     string res;
     string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
