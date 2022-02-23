@@ -286,6 +286,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
     case Node_numeric_float:
     case Node_numeric_int:
     case Node_string_literal:
+    case Node_escaped_string_literal:
         field("val");
         inspectToken(node->as.token.val);
         break;
@@ -342,7 +343,7 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
 string ast_inspect(node_ref_t node) {
     std::ostringstream ss;
     _inspect(node, ss);
-    auto str = ss.str();
+    auto const &str = ss.str();
 
     string res;
     string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
