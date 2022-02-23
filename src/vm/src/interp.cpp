@@ -234,12 +234,7 @@ INTERP(mov_64) {
 }
 
 INTERP(lea) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto src = _getDynRef(instr.arg[1]);
-
-    assert(val_typeclassid(dst) == Type_Ptr);
-
-    val_as(void *, dst) = val_data(src);
+    _getRef<void *>(instr.arg[0]) = &_getRef<uint8_t>(instr.arg[1]);
 }
 
 INTERP(neg) {
