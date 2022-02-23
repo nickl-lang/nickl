@@ -58,19 +58,17 @@ void __typeof_intrinsic(type_t, value_t ret, value_t args) {
 }
 
 void _setupInstrinsics(Compiler &c) {
-    type_t printf_args[] = {vm::type_get_ptr(vm::type_get_numeric(vm::Int8))};
-    c.intrinsics.insert(cs2id("__printf")) = vm::type_get_fn(
-        vm::type_get_numeric(vm::Uint64),
-        vm::type_get_tuple({printf_args, sizeof(printf_args) / sizeof(printf_args[0])}),
-        0,
-        __printf_intrinsic,
-        nullptr);
+    using namespace vm;
 
-    c.intrinsics.insert(cs2id("__assert")) = vm::type_get_fn(
-        vm::type_get_void(), vm::type_get_tuple({}), 0, __assert_intrinsic, nullptr);
+#define INTRINSIC(NAME, RET_T)               \
+    c.intrinsics.insert(cs2id("__" #NAME)) = \
+        type_get_fn(RET_T, type_get_tuple({}), 0, __##NAME##_intrinsic, nullptr)
 
-    c.intrinsics.insert(cs2id("__typeof")) = vm::type_get_fn(
-        vm::type_get_typeref(), vm::type_get_tuple({}), 0, __typeof_intrinsic, nullptr);
+    INTRINSIC(printf, type_get_numeric(Uint64));
+    INTRINSIC(assert, type_get_void());
+    INTRINSIC(typeof, type_get_typeref());
+
+#undef INTRINSIC
 }
 
 } // namespace
