@@ -212,7 +212,6 @@ struct CompileEngine {
         switch (node->id) {
         case Node_nop:
             gen(m_builder.make_nop());
-            //@Refactor Construct void ref universally
             return makeVoid();
 
         case Node_i8:
@@ -236,10 +235,28 @@ struct CompileEngine {
         case Node_f64:
             return makeValue<type_t>(type_get_typeref(), type_get_numeric(Float64));
 
+        case Node_typeref:
+            return makeValue<type_t>(type_get_typeref(), type_get_typeref());
+        case Node_void:
+            return makeValue<type_t>(type_get_typeref(), type_get_void());
+
         case Node_true:
             return makeValue<int8_t>(type_get_numeric(Int8), int8_t{1});
         case Node_false:
             return makeValue<int8_t>(type_get_numeric(Int8), int8_t{0});
+
+        case Node_addr: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            return makeInstr(m_builder.make_lea({}, makeRef(arg)), type_get_ptr(arg.type));
+        }
+        case Node_deref: {
+            DEFINE(arg, compile(node->as.unary.arg));
+            if (arg.type->typeclass_id != Type_Ptr) {
+                return error("pointer expected in deref"), ValueInfo{};
+            }
+            auto ref = makeRef(arg).deref();
+            return {{.ref = ref}, ref.type, v_ref};
+        }
 
         case Node_compl: {
             DEFINE(arg, compile(node->as.unary.arg));
@@ -493,7 +510,8 @@ struct CompileEngine {
                 }
                 return makeInstr(m_builder.make_mov(ref, makeRef(rhs)), type);
             }
-            case Node_index: {
+            case Node_index:
+            case Node_tuple_index: {
                 DEFINE(lhs, compile(node->as.binary.lhs));
                 auto type = lhs.type;
                 DEFINE(value, compile(node->as.binary.rhs));
@@ -547,12 +565,12 @@ struct CompileEngine {
         case Node_index: {
             DEFINE(ar, compile(node->as.binary.lhs));
             if (ar.type->typeclass_id != Type_Array) {
-                return error("array expected in index"), ValueInfo{};
+                return error("array expected in array index"), ValueInfo{};
             }
             DEFINE(index, compile(node->as.binary.rhs));
             if (index.type->typeclass_id != Type_Numeric ||
                 index.type->as.num.value_type != Int64) {
-                return error("i64 expected in index"), ValueInfo{};
+                return error("i64 expected in array index"), ValueInfo{};
             }
             auto type = ar.type->as.arr.elem_type;
             auto u64_t = index.type;
@@ -566,6 +584,36 @@ struct CompileEngine {
             gen(m_builder.make_lea(tmp1, makeRef(ar)));
             gen(m_builder.make_add(tmp0.as(u64_t), tmp0.as(u64_t), tmp1.as(u64_t)));
             return {{.ref = tmp0.deref()}, type, v_ref};
+        }
+
+        case Node_tuple_index: {
+            DEFINE(lhs, compile(node->as.binary.lhs));
+            type_t tuple_t = lhs.type;
+            bool is_indirect = false;
+            if (lhs.type->typeclass_id == Type_Ptr &&
+                lhs.type->as.ptr.target_type->typeclass_id == Type_Tuple) {
+                tuple_t = lhs.type->as.ptr.target_type;
+                is_indirect = true;
+            } else if (tuple_t->typeclass_id != Type_Tuple) {
+                return error("tuple expected in tuple index"), ValueInfo{};
+            }
+            DEFINE(index_val, compile(node->as.binary.rhs));
+            if (index_val.value_type != v_val) {
+                return error("value expected in tuple index"), ValueInfo{};
+            }
+            if (index_val.type->typeclass_id != Type_Numeric ||
+                index_val.type->as.num.value_type != Int64) {
+                return error("i64 expected in tuple index"), ValueInfo{};
+            }
+            size_t index = val_as(int64_t, asValue(index_val));
+            type_t type = type_tuple_typeAt(tuple_t, index);
+            size_t offset = type_tuple_offsetAt(tuple_t, index);
+            auto ref = makeRef(lhs);
+            if (is_indirect) {
+                ref = ref.deref();
+            }
+            ref = ref.plus(offset, type);
+            return {{.ref = ref}, type, v_ref};
         }
 
         case Node_while: {
@@ -605,6 +653,22 @@ struct CompileEngine {
         case Node_block:
             compileScope(node->as.array.nodes);
             return makeVoid();
+
+        case Node_tuple_type: {
+            auto types = Array<type_t>::create(node->as.array.nodes.size);
+            DEFER({ types.deinit(); })
+            for (auto const &node : node->as.array.nodes) {
+                DEFINE(type, compile(&node));
+                if (type.value_type != v_val) {
+                    return error("value expected in tuple type"), ValueInfo{};
+                }
+                if (type.type->typeclass_id != Type_Typeref) {
+                    return error("type expected in tuple type"), ValueInfo{};
+                }
+                types.push() = val_as(type_t, asValue(type));
+            }
+            return makeValue<type_t>(type_get_typeref(), type_get_tuple(types));
+        }
 
         case Node_id: {
             string name_str = node->as.token.val->text;
@@ -665,6 +729,8 @@ struct CompileEngine {
         case Node_fn: {
             auto arg_types = Array<type_t>::create(node->as.fn.sig.params.size);
             auto arg_names = Array<Id>::create(node->as.fn.sig.params.size);
+            // NOTE: arg_names is freed afters the function has been compiled
+            //@Fix if compiler encounteds an error before, arg_names leaks
             DEFER({ arg_types.deinit(); })
             for (auto const &arg : node->as.fn.sig.params) {
                 DEFINE(arg_t, compile(arg.as.named_node.node));
