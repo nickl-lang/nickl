@@ -102,6 +102,7 @@ struct CompileEngine {
         v_none = 0,
 
         v_val,
+        v_ref,
         v_instr,
         v_decl,
     };
@@ -109,6 +110,7 @@ struct CompileEngine {
     struct ValueInfo {
         union Var {
             void *val;
+            ir::Ref ref;
             ir::Instr instr;
             Decl decl;
         } as;
@@ -235,9 +237,9 @@ struct CompileEngine {
             return makeValue<type_t>(type_get_typeref(), type_get_numeric(Float64));
 
         case Node_true:
-            return makeValue<int8_t>(type_get_numeric(Int8), 1);
+            return makeValue<int8_t>(type_get_numeric(Int8), int8_t{1});
         case Node_false:
-            return makeValue<int8_t>(type_get_numeric(Int8), 0);
+            return makeValue<int8_t>(type_get_numeric(Int8), int8_t{0});
 
         case Node_compl: {
             DEFINE(arg, compile(node->as.unary.arg));
@@ -280,7 +282,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot add two values of different types"), ValueInfo{};
+                return error("cannot add values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_add({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -288,7 +290,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot sub two values of different types"), ValueInfo{};
+                return error("cannot sub values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_sub({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -296,7 +298,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot mul two values of different types"), ValueInfo{};
+                return error("cannot mul values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_mul({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -304,7 +306,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot div two values of different types"), ValueInfo{};
+                return error("cannot div values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_div({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -312,7 +314,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot mod two values of different types"), ValueInfo{};
+                return error("cannot mod values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_mod({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -321,7 +323,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot bitand two values of different types"), ValueInfo{};
+                return error("cannot bitand values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_bitand({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -329,7 +331,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot bitor two values of different types"), ValueInfo{};
+                return error("cannot bitor values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_bitor({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -337,7 +339,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot xor two values of different types"), ValueInfo{};
+                return error("cannot xor values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_xor({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -345,7 +347,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot lsh two values of different types"), ValueInfo{};
+                return error("cannot lsh values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_lsh({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -353,7 +355,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot rsh two values of different types"), ValueInfo{};
+                return error("cannot rsh values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_rsh({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -362,7 +364,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot and two values of different types"), ValueInfo{};
+                return error("cannot and values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_and({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -370,7 +372,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot or two values of different types"), ValueInfo{};
+                return error("cannot or values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_or({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -379,7 +381,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot compare values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_ge({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -387,7 +389,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot compare values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_gt({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -395,7 +397,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot compare values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_le({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -403,7 +405,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot compare values of different types"), ValueInfo{};
             }
             return makeInstr(m_builder.make_lt({}, makeRef(lhs), makeRef(rhs)), lhs.type);
         }
@@ -412,7 +414,7 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot compare values of different types"), ValueInfo{};
             }
             return makeInstr(
                 m_builder.make_eq({}, makeRef(lhs), makeRef(rhs)), type_get_numeric(Int8));
@@ -421,42 +423,87 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));
             if (lhs.type->id != rhs.type->id) {
-                return error("cannot compare two values of different types"), ValueInfo{};
+                return error("cannot compare values of different types"), ValueInfo{};
             }
             return makeInstr(
                 m_builder.make_ne({}, makeRef(lhs), makeRef(rhs)), type_get_numeric(Int8));
         }
 
+        case Node_array_type: {
+            DEFINE(elem_type, compile(node->as.binary.lhs));
+            DEFINE(elem_count, compile(node->as.binary.rhs));
+            if (elem_type.value_type != v_val) {
+                return error("value expected in array type"), ValueInfo{};
+            }
+            if (elem_type.type->typeclass_id != Type_Typeref) {
+                return error("type expected in array type"), ValueInfo{};
+            }
+            if (elem_count.value_type != v_val) {
+                return error("value expected in array type size"), ValueInfo{};
+            }
+            if (elem_count.type->typeclass_id != Type_Numeric) {
+                return error("u64 expected in array type size"), ValueInfo{};
+            }
+            if (elem_count.type->as.num.value_type != Int64) {
+                return error("i64 expected in array type size"), ValueInfo{};
+            }
+            return makeValue<type_t>(
+                type_get_typeref(),
+                type_get_array(
+                    val_as(type_t, asValue(elem_type)), val_as(int64_t, asValue(elem_count))));
+        }
+
         case Node_assign: {
-            assert(node->as.binary.lhs->id == Node_id);
-            auto name_str = node->as.binary.lhs->as.token.val->text;
-            Id name = s2id(name_str);
-            DEFINE(rhs, compile(node->as.binary.rhs));
-            auto res = resolve(name);
-            switch (res.decl_type) {
-            case Decl_Undefined:
-                return error("`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
-            case Decl_Local:
-                if (res.as.local.type->id != rhs.type->id) {
+            switch (node->as.binary.lhs->id) {
+            case Node_id: {
+                auto name_str = node->as.binary.lhs->as.token.val->text;
+                Id name = s2id(name_str);
+                DEFINE(rhs, compile(node->as.binary.rhs));
+                auto res = resolve(name);
+                ir::Ref ref;
+                type_t type;
+                switch (res.decl_type) {
+                case Decl_Local:
+                    if (res.as.local.type->id != rhs.type->id) {
+                        return error("cannot assign values of different types"), ValueInfo{};
+                    }
+                    ref = m_builder.makeFrameRef(res.as.local.id);
+                    type = res.as.local.type;
+                    break;
+                case Decl_Global:
+                    if (res.as.local.type->id != rhs.type->id) {
+                        return error("cannot assign values of different types"), ValueInfo{};
+                    }
+                    ref = m_builder.makeGlobalRef(res.as.global.id);
+                    type = res.as.global.type;
+                    break;
+                case Decl_Undefined:
+                    return error("`%.*s` is not defined", name_str.size, name_str.data),
+                           ValueInfo{};
+                case Decl_Funct:
+                case Decl_ExtFunct:
+                case Decl_Intrinsic:
+                case Decl_Arg:
+                    return error("cannot assign to `%.*s`", name_str.size, name_str.data),
+                           ValueInfo{};
+                default:
+                    LOG_ERR("unknown decl type")
+                    assert(!"unreachable");
+                    return {};
+                }
+                return makeInstr(m_builder.make_mov(ref, makeRef(rhs)), type);
+            }
+            case Node_index: {
+                DEFINE(lhs, compile(node->as.binary.lhs));
+                auto type = lhs.type;
+                DEFINE(value, compile(node->as.binary.rhs));
+                if (value.type->id != type->id) {
                     return error("cannot assign values of different types"), ValueInfo{};
                 }
-                return makeInstr(
-                    m_builder.make_mov(m_builder.makeFrameRef(res.as.local.id), makeRef(rhs)),
-                    res.as.local.type);
-            case Decl_Global:
-                if (res.as.local.type->id != rhs.type->id) {
-                    return error("cannot assign values of different types"), ValueInfo{};
-                }
-                return makeInstr(
-                    m_builder.make_mov(m_builder.makeGlobalRef(res.as.global.id), makeRef(rhs)),
-                    res.as.global.type);
-            case Decl_Funct:
-            case Decl_ExtFunct:
-            case Decl_Intrinsic:
-            case Decl_Arg:
-                return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
+                return makeInstr(m_builder.make_mov(makeRef(lhs), makeRef(value)), type);
+            }
             default:
-                LOG_ERR("unknown decl type");
+                LOG_ERR("invalid assignment")
                 assert(!"unreachable");
                 return {};
             }
@@ -473,19 +520,52 @@ struct CompileEngine {
         }
 
         case Node_colon_assign: {
-            assert(node->as.binary.lhs->id == Node_id);
-            Id name = s2id(node->as.binary.lhs->as.token.val->text);
-            DEFINE(rhs, compile(node->as.binary.rhs));
-            if (is_top_level) {
-                auto var = m_builder.makeGlobalVar(rhs.type);
-                defineGlobal(name, var, rhs.type);
-                gen(m_builder.make_mov(m_builder.makeGlobalRef(var), makeRef(rhs)));
-            } else {
-                auto var = m_builder.makeLocalVar(rhs.type);
-                defineLocal(name, var, rhs.type);
-                gen(m_builder.make_mov(m_builder.makeFrameRef(var), makeRef(rhs)));
+            switch (node->as.binary.lhs->id) {
+            case Node_id: {
+                Id name = s2id(node->as.binary.lhs->as.token.val->text);
+                DEFINE(rhs, compile(node->as.binary.rhs));
+                ir::Ref ref;
+                if (is_top_level) {
+                    auto var = m_builder.makeGlobalVar(rhs.type);
+                    defineGlobal(name, var, rhs.type);
+                    ref = m_builder.makeGlobalRef(var);
+                } else {
+                    auto var = m_builder.makeLocalVar(rhs.type);
+                    defineLocal(name, var, rhs.type);
+                    ref = m_builder.makeFrameRef(var);
+                }
+                gen(m_builder.make_mov(ref, makeRef(rhs)));
+                return makeVoid();
             }
-            return makeVoid();
+            default:
+                LOG_ERR("invalid colon assignment")
+                assert(!"unreachable");
+                return {};
+            }
+        }
+
+        case Node_index: {
+            DEFINE(ar, compile(node->as.binary.lhs));
+            if (ar.type->typeclass_id != Type_Array) {
+                return error("array expected in index"), ValueInfo{};
+            }
+            DEFINE(index, compile(node->as.binary.rhs));
+            if (index.type->typeclass_id != Type_Numeric ||
+                index.type->as.num.value_type != Int64) {
+                return error("i64 expected in index"), ValueInfo{};
+            }
+            auto type = ar.type->as.arr.elem_type;
+            auto u64_t = index.type;
+            auto ptr_t = type_get_ptr(type);
+            auto tmp0 = m_builder.makeFrameRef(m_builder.makeLocalVar(ptr_t));
+            auto tmp1 = m_builder.makeFrameRef(m_builder.makeLocalVar(ptr_t));
+            gen(m_builder.make_mul(
+                tmp0.as(index.type),
+                makeRef(index),
+                m_builder.makeConstRef(uint64_t{type->size}, u64_t)));
+            gen(m_builder.make_lea(tmp1, makeRef(ar)));
+            gen(m_builder.make_add(tmp0.as(u64_t), tmp0.as(u64_t), tmp1.as(u64_t)));
+            return {{.ref = tmp0.deref()}, type, v_ref};
         }
 
         case Node_while: {
@@ -702,6 +782,30 @@ struct CompileEngine {
             break;
         }
 
+        case Node_var_decl: {
+            Id name = s2id(node->as.var_decl.name->text);
+            DEFINE(type_val, compile(node->as.var_decl.type));
+            if (type_val.type->typeclass_id != Type_Typeref) {
+                return error("type expected in variable declaration"), ValueInfo{};
+            }
+            type_t type = val_as(type_t, asValue(type_val));
+            ir::Ref ref;
+            if (is_top_level) {
+                auto var = m_builder.makeGlobalVar(type);
+                defineGlobal(name, var, type);
+                ref = m_builder.makeGlobalRef(var);
+            } else {
+                auto var = m_builder.makeLocalVar(type);
+                defineLocal(name, var, type);
+                ref = m_builder.makeFrameRef(var);
+            }
+            if (node->as.var_decl.value->id != Node_none) {
+                DEFINE(val, compile(node->as.var_decl.value));
+                gen(m_builder.make_mov(ref, makeRef(val)));
+            }
+            return makeVoid();
+        }
+
         default:
             return error("unknown node '%s'", s_ast_node_names[node->id]), ValueInfo{};
         }
@@ -801,6 +905,9 @@ struct CompileEngine {
         switch (val.value_type) {
         case v_val:
             return m_builder.makeConstRef({val.as.val, val.type});
+
+        case v_ref:
+            return val.as.ref;
 
         case v_instr: {
             auto instr = val.as.instr;

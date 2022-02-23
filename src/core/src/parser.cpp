@@ -220,18 +220,12 @@ private:
 
             if (node.id == Node_fn || node.id == Node_struct) {
                 expect_semi = false;
-            } else if (node.id == Node_id && accept(t_colon)) {
+            } else if ((node.id == Node_id || node.id == Node_id_tuple) && accept(t_colon)) {
                 DEFINE(type, expr());
                 DEFINE(value, accept(t_eq) ? tuple() : Node{});
                 node = m_ast.make_var_decl(node.as.token.val, type, value);
-            } else if ((node.id == Node_id || node.id == Node_id_tuple)) {
-                if (accept(t_colon)) {
-                    DEFINE(type, expr());
-                    DEFINE(value, accept(t_eq) ? tuple() : Node{});
-                    node = m_ast.make_var_decl(node.as.token.val, type, value);
-                } else if (accept(t_colon_eq)) {
-                    ASSIGN(node, m_ast.make_colon_assign(node, tuple()));
-                }
+            } else if ((node.id == Node_id || node.id == Node_id_tuple) && accept(t_colon_eq)) {
+                ASSIGN(node, m_ast.make_colon_assign(node, tuple()));
             }
         }
 
