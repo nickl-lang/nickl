@@ -138,6 +138,7 @@ struct Ast {
     Node make_numeric_float(token_ref_t val);
     Node make_numeric_int(token_ref_t val);
     Node make_string_literal(token_ref_t val);
+    Node make_escaped_string_literal(token_ref_t val);
 
     Node make_member(Node const &lhs, token_ref_t name);
 

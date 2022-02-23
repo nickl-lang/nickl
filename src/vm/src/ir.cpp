@@ -287,7 +287,7 @@ void Program::deinit() {
 string Program::inspect() const {
     std::ostringstream ss;
     _inspect(*this, ss);
-    auto str = ss.str();
+    auto const &str = ss.str();
 
     string res;
     string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);

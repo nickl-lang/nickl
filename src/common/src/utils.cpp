@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <sstream>
 
 hash_t hash_seed() {
     return std::chrono::steady_clock::now().time_since_epoch().count();
@@ -58,4 +59,51 @@ string string_vformat(Allocator &allocator, char const *fmt, va_list ap) {
     va_end(ap_copy);
 
     return string{data, n};
+}
+
+string string_unescape(Allocator &allocator, string str) {
+    std::ostringstream ss;
+
+    for (size_t i = 0; i < str.size; i++) {
+        if (str[i] == '\\' && i < str.size - 1) {
+            switch (str[++i]) {
+            case 'a':
+                ss << '\a';
+                break;
+            case 'b':
+                ss << '\b';
+                break;
+            case 'f':
+                ss << '\f';
+                break;
+            case 'n':
+                ss << '\n';
+                break;
+            case 'r':
+                ss << '\r';
+                break;
+            case 't':
+                ss << '\t';
+                break;
+            case 'v':
+                ss << '\v';
+                break;
+            case '0':
+                ss << '\0';
+                break;
+            default:
+                ss << str[i];
+                break;
+            }
+        } else {
+            ss << str[i];
+        }
+    }
+
+    ss << '\0';
+
+    auto const &std_str = ss.str();
+    string res;
+    string{std_str.data(), std_str.size()}.copy(res, allocator);
+    return res;
 }
