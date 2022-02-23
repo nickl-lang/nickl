@@ -1,4 +1,4 @@
-ar: array_t{i64, 3};
+ar: array_t{i64, 4};
 
 ar[0] = 1;
 ar[1] = 2;
@@ -7,14 +7,21 @@ ar[3] = 8;
 
 i := 0;
 while i < 4 {
-    __assert(a[i] == 1 << i);
-    __printf("ar[{}]={}\n", i, a[i]);
+    __assert(ar[i] == 1 << i);
+    __printf("ar[{}]={}\n", i, ar[i]);
+    i = i + 1;
 }
 
-ar = [1, 2, 3, 4];
+//@Todo Implement array literal
+// ar = [0, 1, 2, 3];
+ar[0] = 0;
+ar[1] = 1;
+ar[2] = 2;
+ar[3] = 3;
 
-i := 0;
+i = 0;
 while i < 4 {
-    __assert(a[i] == i);
-    __printf("ar[{}]={}\n", i, a[i]);
+    __assert(ar[i] == i);
+    __printf("ar[{}]={}\n", i, ar[i]);
+    i = i + 1;
 }

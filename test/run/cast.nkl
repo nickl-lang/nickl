@@ -1,4 +1,15 @@
-a : i64 = 256;
-b := cast(i8) a;
+a : i64;
 
-__printf("a={}, b={}\n", a, b);
+{
+    a = 256;
+    b := cast(u8) a;
+    __assert(b == cast(u8) 0);
+    __printf("a={}, {}{a}={}\n", a, __typeof(b), b);
+}
+
+{
+    a = 255;
+    b := cast(i8) a;
+    __assert(b == cast(i8) -1);
+    __printf("a={}, {}{a}={}\n", a, __typeof(b), b);
+}
