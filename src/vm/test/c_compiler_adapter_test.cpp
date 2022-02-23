@@ -1,4 +1,4 @@
-#include "c_compiler_adapter.hpp"
+#include "nk/vm/c_compiler_adapter.hpp"
 
 #include <gtest/gtest.h>
 
