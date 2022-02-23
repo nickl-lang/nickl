@@ -219,8 +219,10 @@ void _valInspect(value_t val, std::ostringstream &ss) {
             size_t elem_count = target_type->as.arr.elem_count;
             if (elem_type->typeclass_id == Type_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
-                    auto data = val_as(char const *, val);
-                    ss << "\"" << std::string_view{data, elem_count} << "\"";
+                    ss << "\""
+                       << string_escape(
+                              *_mctx.tmp_allocator, {val_as(char const *, val), elem_count})
+                       << "\"";
                     break;
                 }
             }

@@ -114,6 +114,7 @@ string tmpstr_vformat(char const *fmt, va_list ap);
 string string_format(Allocator &allocator, char const *fmt, ...);
 string string_vformat(Allocator &allocator, char const *fmt, va_list ap);
 
+string string_escape(Allocator &allocator, string str);
 string string_unescape(Allocator &allocator, string str);
 
 template <class THeader, class TElem>
