@@ -6,6 +6,7 @@
 #include "nk/common/file_utils.hpp"
 #include "nk/common/logger.hpp"
 #include "nk/vm/bc.hpp"
+#include "nk/vm/c_compiler_adapter.hpp"
 #include "nk/vm/interp.hpp"
 #include "nk/vm/vm.hpp"
 #include "nkl/core/compiler.hpp"
@@ -57,6 +58,14 @@ void __typeof_intrinsic(type_t, value_t ret, value_t args) {
     val_as(type_t, ret) = vm::val_typeof(vm::val_tuple_at(args, 0));
 }
 
+void __compile_intrinsic(type_t, value_t ret, value_t args) {
+    val_as(int8_t, ret) = 1;
+
+    lang_compileFile(
+        val_as(char const *, vm::val_tuple_at(args, 0)),
+        val_as(char const *, vm::val_tuple_at(args, 1)));
+}
+
 void _setupInstrinsics(Compiler &c) {
     using namespace vm;
 
@@ -67,35 +76,18 @@ void _setupInstrinsics(Compiler &c) {
     INTRINSIC(printf, type_get_numeric(Uint64));
     INTRINSIC(assert, type_get_void());
     INTRINSIC(typeof, type_get_typeref());
+    INTRINSIC(compile, type_get_numeric(Int8));
 
 #undef INTRINSIC
 }
 
-} // namespace
-
-void lang_init() {
-    LOG_TRC("lang_init")
-}
-
-void lang_deinit() {
-    LOG_TRC("lang_deinit")
-}
-
-int lang_runFile(char const *filename) {
-    LOG_TRC("lang_runFile(filename=%s)", filename)
-
-    vm::VmConfig conf;
-    string paths[] = {cs2s("/usr/lib/")};
-    conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
-    vm_init(conf);
-    DEFER({ vm::vm_deinit(); })
-
-    auto src = read_file(filename);
+bool _compileFile(char const *file, Compiler &compiler) {
+    auto src = read_file(file);
     DEFER({ src.deinit(); })
 
     if (!src.data) {
-        fprintf(stderr, "error: failed to read file `%s`\n", filename);
-        return 1;
+        fprintf(stderr, "error: failed to read file `%s`\n", file);
+        return false;
     }
 
     Lexer lexer{};
@@ -103,7 +95,7 @@ int lang_runFile(char const *filename) {
 
     if (!lexer.lex(src.slice())) {
         std::cerr << "error: " << lexer.err << std::endl;
-        return 1;
+        return false;
     }
 
     Parser parser{};
@@ -111,17 +103,44 @@ int lang_runFile(char const *filename) {
 
     if (!parser.parse(lexer.tokens.slice())) {
         std::cerr << "error: " << parser.err << std::endl;
-        return 1;
+        return false;
     }
+
+    if (!compiler.compile(parser.root)) {
+        std::cerr << "error: " << compiler.err << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
+void lang_init() {
+    LOG_TRC("lang_init")
+
+    vm::VmConfig conf;
+    string paths[] = {cs2s("/usr/lib/")};
+    conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
+    vm_init(conf);
+}
+
+void lang_deinit() {
+    LOG_TRC("lang_deinit")
+
+    vm::vm_deinit();
+}
+
+int lang_runFile(char const *file) {
+    LOG_TRC("lang_runFile(filename=%s)", file)
 
     Compiler compiler{};
     DEFER({ compiler.deinit(); })
 
     _setupInstrinsics(compiler);
 
-    if (!compiler.compile(parser.root)) {
-        std::cerr << "error: " << compiler.err << std::endl;
-        return 1;
+    if (!_compileFile(file, compiler)) {
+        return 0;
     }
 
     vm::bc::Program prog{};
@@ -133,6 +152,33 @@ int lang_runFile(char const *filename) {
     vm::val_fn_invoke(top_fn, {}, {});
 
     return 0;
+}
+
+bool lang_compileFile(char const *file, char const *outfile) {
+    LOG_TRC("lang_runFile(filename=%s)", file)
+
+    Compiler compiler{};
+    DEFER({ compiler.deinit(); })
+
+    _setupInstrinsics(compiler);
+
+    if (!_compileFile(file, compiler)) {
+        return false;
+    }
+
+    vm::CCompilerConfig conf = {
+        .compiler_binary = cs2s("gcc"),
+        .additional_flags = cs2s(""),
+        .output_filename = cs2s(outfile),
+        .quiet = false,
+    };
+
+    if (!vm::c_compiler_compile(conf, compiler.prog)) {
+        std::cerr << "error: c compiler failed" << compiler.err << std::endl;
+        return false;
+    }
+
+    return false;
 }
 
 } // namespace nkl
