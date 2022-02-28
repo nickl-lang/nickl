@@ -1,0 +1,1 @@
+__compile("compile_src.nkl", "test_out");
