@@ -8,8 +8,8 @@ namespace nkl {
 void lang_init();
 void lang_deinit();
 
-int lang_runFile(char const *file);
-bool lang_compileFile(char const *file, char const *outfile);
+int lang_runFile(string file);
+bool lang_compileFile(string file, string outfile);
 
 } // namespace nkl
 

@@ -5,12 +5,22 @@
 
 #include "nk/common/profiler.hpp"
 
-Array<char> read_file(char const *filename) {
+#define MAX_PATH 4096
+
+Array<char> read_file(string filename) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
     static constexpr size_t c_read_size = 4096;
 
-    std::ifstream file{filename};
+    if (filename.size > MAX_PATH - 1) {
+        return {};
+    }
+
+    char path_buf[MAX_PATH];
+    filename.copy({path_buf, MAX_PATH - 1});
+    path_buf[filename.size] = '\0';
+
+    std::ifstream file{path_buf};
     file.exceptions(std::ios_base::badbit);
 
     if (!file) {
