@@ -203,7 +203,7 @@ bool lang_compileFile(string file, string outfile) {
         .compiler_binary = cs2s("gcc"),
         .additional_flags = cs2s("-O2"),
         .output_filename = outfile,
-        .quiet = false,
+        .quiet = true,
     };
 
     if (!vm::c_compiler_compile(conf, compiler.prog)) {
