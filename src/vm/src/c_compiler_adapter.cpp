@@ -9,7 +9,8 @@ namespace vm {
 
 std::ostream c_compiler_streamOpen(CCompilerConfig const &conf) {
     auto cmd = tmpstr_format(
-        "%.*s -x c -o %.*s %.*s -",
+        "%s %.*s -x c -o %.*s %.*s -",
+        conf.quiet ? "" : "tee /dev/stderr |",
         conf.compiler_binary.size,
         conf.compiler_binary.data,
         conf.output_filename.size,
