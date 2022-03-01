@@ -70,7 +70,7 @@ void __compile_intrinsic(type_t, value_t ret, value_t args) {
     auto file = val_as(char const *, file_val);
     size_t const file_len = vm::val_array_size(vm::val_ptr_deref(file_val));
 
-    auto outfile_val = vm::val_tuple_at(args, 0);
+    auto outfile_val = vm::val_tuple_at(args, 1);
     auto outfile = val_as(char const *, outfile_val);
     size_t const outfile_len = vm::val_array_size(vm::val_ptr_deref(outfile_val));
 
@@ -201,7 +201,7 @@ bool lang_compileFile(string file, string outfile) {
 
     vm::CCompilerConfig conf = {
         .compiler_binary = cs2s("gcc"),
-        .additional_flags = cs2s(""),
+        .additional_flags = cs2s("-O2"),
         .output_filename = outfile,
         .quiet = false,
     };

@@ -11,7 +11,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::c_compiler)
+LOG_USE_SCOPE(nk::vm::translate_to_c)
 
 using stream = std::ostringstream;
 
@@ -303,6 +303,10 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
     }
 
     for (auto const &f : ir.functs) {
+        if (f.name[0] == ':') {
+            continue;
+        }
+
         _writeFnSig(ctx, ctx.forward_s, f.name, f.ret_t, f.args_t);
         ctx.forward_s << ";\n";
 
@@ -582,9 +586,6 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
 
 void translateToC(ir::Program const &ir, std::ostream &src) {
     LOG_TRC(__FUNCTION__)
-
-    auto str = ir.inspect();
-    LOG_INF("ir:\n%.*s", str.size, str.data);
 
     WriterCtx ctx{};
 

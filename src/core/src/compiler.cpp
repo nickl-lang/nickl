@@ -124,11 +124,15 @@ struct CompileEngine {
     }
 
     void pushScope() {
+        LOG_DBG("entering scope=%lu", scopes.size)
+
         scopes.push() = {};
         curScope().locals.init();
     }
 
     void popScope() {
+        LOG_DBG("exiting scope=%lu", scopes.size - 1)
+
         auto &scope = scopes.pop();
         scope.locals.deinit();
     }
@@ -140,16 +144,16 @@ struct CompileEngine {
             functs.deinit();
         })
 
-        pushScope();
-        DEFER({ popScope(); })
-
         is_top_level = true;
 
         m_builder.startFunct(
             m_builder.makeFunct(), cs2s(":top"), type_get_void(), type_get_tuple({}));
         m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
 
-        compileScope(m_root);
+        pushScope();
+        DEFER({ popScope(); })
+
+        compileNode(m_root);
 
         gen(m_builder.make_ret());
 
@@ -161,13 +165,16 @@ struct CompileEngine {
             m_builder.startFunct(funct.id, id2s(funct.name), funct.ret_t, funct.args_t);
             m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
 
+            pushScope();
+            DEFER({ popScope(); })
+
             for (size_t i = 0; Id name : funct.arg_names) {
                 auto type = type_tuple_typeAt(funct.args_t, i);
                 defineArg(name, i, type);
                 i++;
             }
 
-            compileScope(funct.root);
+            compileNode(funct.root);
 
             gen(m_builder.make_ret());
 
@@ -175,23 +182,15 @@ struct CompileEngine {
         }
     }
 
-    int compileScope(node_ref_t node) {
-        pushScope();
-        DEFER({ popScope(); })
-
+    int compileNode(node_ref_t node) {
         CHECK(compileStmt(node));
-
         return 0;
     }
 
-    int compileScope(NodeArray nodes) {
-        pushScope();
-        DEFER({ popScope(); })
-
+    int compileNodeArray(NodeArray nodes) {
         for (auto const &node : nodes) {
             CHECK(compileStmt(&node));
         }
-
         return 0;
     }
 
@@ -623,7 +622,7 @@ struct CompileEngine {
             gen(m_builder.make_enter());
             DEFINE(cond, compile(node->as.binary.lhs));
             gen(m_builder.make_jmpz(makeRef(cond), l_endloop));
-            CHECK(compileScope(node->as.binary.rhs));
+            CHECK(compileNode(node->as.binary.rhs));
             gen(m_builder.make_leave());
             gen(m_builder.make_jmp(l_loop));
             m_builder.startBlock(l_endloop, cs2s("endloop"));
@@ -640,18 +639,18 @@ struct CompileEngine {
             }
             DEFINE(cond, compile(node->as.ternary.arg1));
             gen(m_builder.make_jmpz(makeRef(cond), l_else));
-            CHECK(compileScope(node->as.ternary.arg2));
+            CHECK(compileNode(node->as.ternary.arg2));
             if (node->as.ternary.arg3->id != Node_none) {
                 gen(m_builder.make_jmp(l_endif));
                 m_builder.startBlock(l_else, cs2s("else"));
-                CHECK(compileScope(node->as.ternary.arg3));
+                CHECK(compileNode(node->as.ternary.arg3));
             }
             m_builder.startBlock(l_endif, cs2s("endif"));
             return makeVoid();
         }
 
         case Node_block:
-            compileScope(node->as.array.nodes);
+            compileNodeArray(node->as.array.nodes);
             return makeVoid();
 
         case Node_tuple_type: {
@@ -886,6 +885,11 @@ struct CompileEngine {
     Decl &makeDecl(Id name) {
         auto &locals = curScope().locals;
 
+        LOG_DBG("making declaration %s", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("name=`%.*s` scope=%lu", str.size, str.data, scopes.size - 1).data;
+        }());
+
         auto found = locals.find(name);
         if (found) {
             static Decl s_dummy_decl;
@@ -938,6 +942,11 @@ struct CompileEngine {
     }
 
     Decl resolve(Id name) {
+        LOG_DBG("resolving %s", [&]() {
+            string str = id2s(name);
+            return tmpstr_format("name=`%.*s` scope=%lu", str.size, str.data, scopes.size - 1).data;
+        }());
+
         for (size_t i = scopes.size; i > 0; i--) {
             auto &scope = scopes[i - 1];
             auto found = scope.locals.find(name);
