@@ -138,7 +138,7 @@ int main(int argc, char const *const *argv) {
     LOGGER_INIT(logger_options);
 
     nkl::lang_init();
-    int ret_code = nkl::lang_runFile(in_file);
+    int ret_code = nkl::lang_runFile(cs2s(in_file));
     nkl::lang_deinit();
 
     return ret_code;

@@ -1,5 +1,6 @@
 #include "nkl/core/core.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 
@@ -20,6 +21,12 @@ namespace {
 using namespace nk;
 
 LOG_USE_SCOPE(nkl::core)
+
+struct FileCtx {
+    string name;
+};
+
+Array<FileCtx> s_file_stack;
 
 void __printf_intrinsic(type_t, value_t ret, value_t args) {
     auto fmt_val = vm::val_tuple_at(args, 0);
@@ -59,11 +66,15 @@ void __typeof_intrinsic(type_t, value_t ret, value_t args) {
 }
 
 void __compile_intrinsic(type_t, value_t ret, value_t args) {
-    val_as(int8_t, ret) = 1;
+    auto file_val = vm::val_tuple_at(args, 0);
+    auto file = val_as(char const *, file_val);
+    size_t const file_len = vm::val_array_size(vm::val_ptr_deref(file_val));
 
-    lang_compileFile(
-        val_as(char const *, vm::val_tuple_at(args, 0)),
-        val_as(char const *, vm::val_tuple_at(args, 1)));
+    auto outfile_val = vm::val_tuple_at(args, 0);
+    auto outfile = val_as(char const *, outfile_val);
+    size_t const outfile_len = vm::val_array_size(vm::val_ptr_deref(outfile_val));
+
+    val_as(int8_t, ret) = lang_compileFile(string{file, file_len}, string{outfile, outfile_len});
 }
 
 void _setupInstrinsics(Compiler &c) {
@@ -81,12 +92,30 @@ void _setupInstrinsics(Compiler &c) {
 #undef INTRINSIC
 }
 
-bool _compileFile(char const *file, Compiler &compiler) {
-    auto src = read_file(file);
+bool _compileFile(string file, Compiler &compiler) {
+    string path_str{};
+    if (std::filesystem::path{std_view(file)}.is_absolute()) {
+        path_str = file;
+    } else {
+        std::filesystem::path path =
+            s_file_stack.size == 0
+                ? std::filesystem::current_path()
+                : std::filesystem::path{std_view(s_file_stack.back().name)}.parent_path();
+
+        path.append(std_view(file));
+
+        stds2s(path).copy(path_str, *_mctx.tmp_allocator);
+    }
+
+    s_file_stack.push() = {
+        .name = path_str,
+    };
+
+    auto src = read_file(path_str);
     DEFER({ src.deinit(); })
 
     if (!src.data) {
-        fprintf(stderr, "error: failed to read file `%s`\n", file);
+        std::cerr << "error: failed to read file `" << path_str << "`" << std::endl;
         return false;
     }
 
@@ -123,16 +152,20 @@ void lang_init() {
     string paths[] = {cs2s("/usr/lib/")};
     conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
     vm_init(conf);
+
+    s_file_stack.init(1);
 }
 
 void lang_deinit() {
     LOG_TRC("lang_deinit")
 
+    s_file_stack.deinit();
+
     vm::vm_deinit();
 }
 
-int lang_runFile(char const *file) {
-    LOG_TRC("lang_runFile(filename=%s)", file)
+int lang_runFile(string file) {
+    LOG_TRC("lang_runFile(file=%s)", file)
 
     Compiler compiler{};
     DEFER({ compiler.deinit(); })
@@ -154,8 +187,8 @@ int lang_runFile(char const *file) {
     return 0;
 }
 
-bool lang_compileFile(char const *file, char const *outfile) {
-    LOG_TRC("lang_runFile(filename=%s)", file)
+bool lang_compileFile(string file, string outfile) {
+    LOG_TRC("lang_compileFile(file=%s, outfile=%s)", file, outfile)
 
     Compiler compiler{};
     DEFER({ compiler.deinit(); })
@@ -169,12 +202,12 @@ bool lang_compileFile(char const *file, char const *outfile) {
     vm::CCompilerConfig conf = {
         .compiler_binary = cs2s("gcc"),
         .additional_flags = cs2s(""),
-        .output_filename = cs2s(outfile),
+        .output_filename = outfile,
         .quiet = false,
     };
 
     if (!vm::c_compiler_compile(conf, compiler.prog)) {
-        std::cerr << "error: c compiler failed" << compiler.err << std::endl;
+        std::cerr << "error: c compiler failed" << std::endl;
         return false;
     }
 
