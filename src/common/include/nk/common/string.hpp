@@ -21,8 +21,4 @@ inline string cs2s(char const *str) {
     return string{str, std::strlen(str)};
 }
 
-inline string stds2s(std::string const &str) {
-    return string{str.data(), str.size()};
-}
-
 #endif // HEADER_GUARD_NK_COMMON_STRGIN

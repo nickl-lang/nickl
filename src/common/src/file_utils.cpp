@@ -1,26 +1,29 @@
 #include "nk/common/file_utils.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <memory>
 
 #include "nk/common/profiler.hpp"
 
-#define MAX_PATH 4096
+namespace {
 
-Array<char> read_file(string filename) {
+string _p2s(std::filesystem::path const &path) {
+    return tmpstr_format("%.*s", path.native().size(), path.native().data());
+}
+
+std::filesystem::path _s2p(string path) {
+    return std::filesystem::path{std_view(path)};
+}
+
+} // namespace
+
+Array<char> file_read(string path) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
     static constexpr size_t c_read_size = 4096;
 
-    if (filename.size > MAX_PATH - 1) {
-        return {};
-    }
-
-    char path_buf[MAX_PATH];
-    filename.copy({path_buf, MAX_PATH - 1});
-    path_buf[filename.size] = '\0';
-
-    std::ifstream file{path_buf};
+    std::ifstream file{_s2p(path)};
     file.exceptions(std::ios_base::badbit);
 
     if (!file) {
@@ -36,4 +39,24 @@ Array<char> read_file(string filename) {
     ar.pop(c_read_size - file.gcount());
 
     return ar;
+}
+
+bool file_exists(string path) {
+    return std::filesystem::exists(_s2p(path));
+}
+
+string path_concat(string lhs, string rhs) {
+    return _p2s(_s2p(lhs) / _s2p(rhs));
+}
+
+bool path_isAbsolute(string path) {
+    return _s2p(path).is_absolute();
+}
+
+string path_current() {
+    return _p2s(std::filesystem::current_path());
+}
+
+string path_parent(string path) {
+    return _p2s(_s2p(path).parent_path());
 }

@@ -143,7 +143,7 @@ TEST(utils, defer) {
 }
 
 TEST(utils, read_file) {
-    auto ar = read_file(cs2s(TEST_FILE_NAME));
+    auto ar = file_read(cs2s(TEST_FILE_NAME));
     DEFER({ ar.deinit(); })
 
     static constexpr const char *c_test_str = "Hello, World!\n";
@@ -154,7 +154,7 @@ TEST(utils, read_file) {
 }
 
 TEST(utils, read_file_nonexistent) {
-    auto ar = read_file(cs2s("nonexistent_file.txt"));
+    auto ar = file_read(cs2s("nonexistent_file.txt"));
     DEFER({ ar.deinit(); })
 
     ASSERT_FALSE(ar.data);
@@ -162,7 +162,7 @@ TEST(utils, read_file_nonexistent) {
 }
 
 TEST(utils, big_file) {
-    auto ar = read_file(cs2s(BIG_FILE_NAME));
+    auto ar = file_read(cs2s(BIG_FILE_NAME));
     DEFER({ ar.deinit(); })
 
     ASSERT_TRUE(ar.data);
