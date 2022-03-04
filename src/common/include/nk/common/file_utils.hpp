@@ -4,6 +4,12 @@
 #include "nk/common/array.hpp"
 #include "nk/common/string.hpp"
 
-Array<char> read_file(string filename);
+Array<char> file_read(string path);
+bool file_exists(string path);
+
+string path_concat(string lhs, string rhs);
+bool path_isAbsolute(string path);
+string path_current();
+string path_parent(string path);
 
 #endif // HEADER_GUARD_NK_COMMON_FILE_UTILS

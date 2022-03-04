@@ -1,6 +1,5 @@
 #include "nkl/core/core.hpp"
 
-#include <filesystem>
 #include <iostream>
 #include <sstream>
 
@@ -23,7 +22,7 @@ using namespace nk;
 LOG_USE_SCOPE(nkl::core)
 
 struct FileCtx {
-    string name;
+    string path;
 };
 
 Array<FileCtx> s_file_stack;
@@ -93,29 +92,23 @@ void _setupInstrinsics(Compiler &c) {
 }
 
 bool _compileFile(string file, Compiler &compiler) {
-    string path_str{};
-    if (std::filesystem::path{std_view(file)}.is_absolute()) {
-        path_str = file;
+    string path{};
+    if (path_isAbsolute(file)) {
+        path = file;
     } else {
-        std::filesystem::path path =
-            s_file_stack.size == 0
-                ? std::filesystem::current_path()
-                : std::filesystem::path{std_view(s_file_stack.back().name)}.parent_path();
-
-        path.append(std_view(file));
-
-        stds2s(path).copy(path_str, *_mctx.tmp_allocator);
+        path = path_concat(
+            s_file_stack.size == 0 ? path_current() : path_parent(s_file_stack.back().path), file);
     }
 
     s_file_stack.push() = {
-        .name = path_str,
+        .path = path,
     };
 
-    auto src = read_file(path_str);
+    auto src = file_read(path);
     DEFER({ src.deinit(); })
 
     if (!src.data) {
-        std::cerr << "error: failed to read file `" << path_str << "`" << std::endl;
+        std::cerr << "error: failed to read file `" << path << "`" << std::endl;
         return false;
     }
 

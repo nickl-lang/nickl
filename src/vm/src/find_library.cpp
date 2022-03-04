@@ -1,9 +1,9 @@
 #include "find_library.hpp"
 
 #include <cstring>
-#include <filesystem>
 
 #include "nk/common/arena.hpp"
+#include "nk/common/file_utils.hpp"
 #include "nk/common/logger.hpp"
 
 namespace nk {
@@ -52,7 +52,7 @@ bool findLibrary(string name, Slice<char> &buf) {
 
         LOG_DBG("Checking `%s`...", buf)
 
-        if (std::filesystem::exists(buf.data)) {
+        if (file_exists({buf.data, size})) {
             buf.size = size;
             return true;
         }
