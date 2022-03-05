@@ -40,21 +40,17 @@ void test_ir_plus(ProgramBuilder &b) {
     type_t args[] = {i64_t, i64_t};
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("plus"), i64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("plus"), i64_t, args_t);
 
     b.startBlock(b.makeLabel(), cs2s("start"));
-    b.comment(cs2s("function entry point"));
 
     auto dst = b.makeRetRef();
     auto lhs = b.makeArgRef(0);
     auto rhs = b.makeArgRef(1);
 
     b.gen(b.make_add(dst, lhs, rhs));
-    b.comment(cs2s("add the arguments together"));
 
     b.gen(b.make_ret());
-    b.comment(cs2s("return the result"));
 }
 
 void test_ir_not(ProgramBuilder &b) {
@@ -62,8 +58,7 @@ void test_ir_not(ProgramBuilder &b) {
     type_t args[] = {i64_t};
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("not"), i64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("not"), i64_t, args_t);
 
     auto arg = b.makeArgRef(0);
     auto ret = b.makeRetRef();
@@ -97,8 +92,7 @@ void test_ir_atan(ProgramBuilder &b) {
     type_t args[] = {f64_t, u64_t};
     auto args_t = type_get_tuple(TypeArray{args, sizeof(args) / sizeof(args[0])});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("atan"), f64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("atan"), f64_t, args_t);
 
     auto a_x = b.makeArgRef(0);
     auto a_it = b.makeArgRef(1);
@@ -183,8 +177,7 @@ void test_ir_pi(ProgramBuilder &b) {
     auto c_4f = b.makeConstRef(4.0, f64_t);
 
     //@Refactor/Feature Maybe add symbol resolution to VM programs?
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("pi"), f64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("pi"), f64_t, args_t);
 
     auto v_a = b.makeFrameRef(b.makeLocalVar(f64_t));
     auto v_b = b.makeFrameRef(b.makeLocalVar(f64_t));
@@ -208,8 +201,7 @@ void test_ir_rsqrt(ProgramBuilder &b) {
 
     auto args_t = type_get_tuple({&f32_t, 1});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("rsqrt"), f32_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("rsqrt"), f32_t, args_t);
 
     auto l_start = b.makeLabel();
 
@@ -262,8 +254,7 @@ void test_ir_vec2LenSquared(ProgramBuilder &b) {
     type_t args_ar[] = {vec_ptr_t, f64_ptr_t};
     auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("vec2LenSquared"), void_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("vec2LenSquared"), void_t, args_t);
 
     auto l_start = b.makeLabel();
 
@@ -293,8 +284,7 @@ void test_ir_modf(ProgramBuilder &b) {
     type_t args_ar[] = {f64_t, f64_ptr_t};
     auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("modf"), f64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("modf"), f64_t, args_t);
 
     auto a_x = b.makeArgRef(0);
     auto a_int_part_ptr = b.makeArgRef(1);
@@ -324,8 +314,7 @@ void test_ir_intPart(ProgramBuilder &b) {
 
     auto args_t = type_get_tuple({&f64_t, 1});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("intPart"), f64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("intPart"), f64_t, args_t);
 
     auto modf_args_t = b.prog->functs[f_modf_id].args_t;
 
@@ -358,8 +347,7 @@ void test_ir_call10Times(ProgramBuilder &b, type_t fn) {
 
     auto i64_t = type_get_numeric(Int64);
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("call10Times"), void_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("call10Times"), void_t, args_t);
 
     auto v_i = b.makeFrameRef(b.makeLocalVar(i64_t));
     auto v_cond = b.makeFrameRef(b.makeLocalVar(i64_t));
@@ -392,8 +380,7 @@ void test_ir_hasZeroByte32(ProgramBuilder &b) {
     type_t args_ar[] = {i32_t};
     auto args_t = type_get_tuple({args_ar, sizeof(args_ar) / sizeof(args_ar[0])});
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("hasZeroByte32"), i32_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("hasZeroByte32"), i32_t, args_t);
 
     auto a_x = b.makeArgRef(0);
 
@@ -422,8 +409,7 @@ void test_ir_readToggleGlobal(ProgramBuilder &b) {
     auto g_var = b.makeGlobalRef(b.makeGlobalVar(i64_t));
 
     {
-        auto f = b.makeFunct();
-        b.startFunct(f, cs2s("readGlobal"), i64_t, args_t);
+        b.startFunct(b.makeFunct(), cs2s("readGlobal"), i64_t, args_t);
 
         auto ret = b.makeRetRef();
 
@@ -433,8 +419,7 @@ void test_ir_readToggleGlobal(ProgramBuilder &b) {
     }
 
     {
-        auto f = b.makeFunct();
-        b.startFunct(f, cs2s("toggleGlobal"), void_t, args_t);
+        b.startFunct(b.makeFunct(), cs2s("toggleGlobal"), void_t, args_t);
 
         b.startBlock(b.makeLabel(), cs2s("start"));
         b.gen(b.make_not(g_var, g_var));
@@ -448,8 +433,7 @@ void test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
 
     auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr, false);
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("callNativeFunc"), void_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("callNativeFunc"), void_t, args_t);
 
     b.startBlock(b.makeLabel(), cs2s("start"));
 
@@ -466,8 +450,7 @@ void test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
 
     auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, nullptr, false);
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("callNativeAdd"), i64_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("callNativeAdd"), i64_t, args_t);
 
     auto ret = b.makeRetRef();
 
@@ -498,8 +481,7 @@ void test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
         type_get_tuple({&i8_ptr_t, 1}),
         true);
 
-    auto f = b.makeFunct();
-    b.startFunct(f, cs2s("callExternalPrintf"), void_t, args_t);
+    b.startFunct(b.makeFunct(), cs2s("callExternalPrintf"), void_t, args_t);
 
     auto args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
