@@ -41,8 +41,6 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         block_by_id[block.id] = &block;
     }
 
-    static constexpr std::streamoff c_comment_padding = 50;
-
     ss << std::hex << std::setfill(' ');
 
     for (auto const &funct : prog.functs) {
@@ -59,14 +57,7 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         ss << ") -> " << type_name(funct.ret_t) << " {\n\n";
 
         for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
-            auto const first_p = ss.tellp();
             ss << "%" << block.name << ":";
-            auto const second_p = ss.tellp();
-
-            if (block.comment.data) {
-                ss << std::setw(c_comment_padding - std::min(c_comment_padding, second_p - first_p))
-                   << "; " << block.comment;
-            }
 
             ss << "\n";
 
@@ -116,8 +107,6 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     ss << ":" << type_name(ref.type);
                 };
 
-                auto const first_p = ss.tellp();
-
                 ss << "  ";
 
                 if (instr.arg[0].arg_type == Arg_Ref) {
@@ -159,14 +148,6 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     default:
                         break;
                     }
-                }
-
-                auto const second_p = ss.tellp();
-
-                if (instr.comment.data) {
-                    ss << std::setw(
-                              c_comment_padding - std::min(c_comment_padding, second_p - first_p))
-                       << "; " << instr.comment;
                 }
 
                 ss << "\n";
@@ -350,15 +331,6 @@ void ProgramBuilder::startBlock(BlockId block_id, string name) {
     m_cur_funct->block_count++;
 }
 
-void ProgramBuilder::comment(string str) {
-    EASY_FUNCTION(profiler::colors::Amber200)
-
-    assert(m_cur_block && "no current block");
-
-    str.copy(
-        m_cur_block->instr_count ? prog->instrs.back().comment : m_cur_block->comment, prog->arena);
-}
-
 Local ProgramBuilder::makeLocalVar(type_t type) {
     assert(m_cur_funct && "no current function");
     m_cur_funct->locals.push() = type;
@@ -485,58 +457,58 @@ Ref ProgramBuilder::makeExtVarRef(ExtVarId var) const {
 }
 
 Instr ProgramBuilder::make_nop() {
-    return {{}, ir_nop, {}};
+    return {{}, ir_nop};
 }
 
 Instr ProgramBuilder::make_enter() {
-    return {{}, ir_enter, {}};
+    return {{}, ir_enter};
 }
 
 Instr ProgramBuilder::make_leave() {
-    return {{}, ir_leave, {}};
+    return {{}, ir_leave};
 }
 
 Instr ProgramBuilder::make_ret() {
-    return {{}, ir_ret, {}};
+    return {{}, ir_ret};
 }
 
 Instr ProgramBuilder::make_jmp(BlockId label) {
-    return {{{}, _arg(label), {}}, ir_jmp, {}};
+    return {{{}, _arg(label)}, ir_jmp};
 }
 
 Instr ProgramBuilder::make_jmpz(Ref const &cond, BlockId label) {
-    return {{{}, _arg(cond), _arg(label)}, ir_jmpz, {}};
+    return {{{}, _arg(cond), _arg(label)}, ir_jmpz};
 }
 
 Instr ProgramBuilder::make_jmpnz(Ref const &cond, BlockId label) {
-    return {{{}, _arg(cond), _arg(label)}, ir_jmpnz, {}};
+    return {{{}, _arg(cond), _arg(label)}, ir_jmpnz};
 }
 
 Instr ProgramBuilder::make_cast(Ref const &dst, Ref const &type, Ref const &arg) {
-    return {{_arg(dst), _arg(type), _arg(arg)}, ir_cast, {}};
+    return {{_arg(dst), _arg(type), _arg(arg)}, ir_cast};
 }
 
 Instr ProgramBuilder::make_call(Ref const &dst, FunctId funct, Ref const &args) {
-    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call, {}};
+    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call};
 }
 
 Instr ProgramBuilder::make_call(Ref const &dst, Ref const &funct, Ref const &args) {
-    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call, {}};
+    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call};
 }
 
 Instr ProgramBuilder::make_call(Ref const &dst, ExtFunctId funct, Ref const &args) {
-    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call, {}};
+    return {{_arg(dst), _arg(funct), _arg(args)}, ir_call};
 }
 
 #define U(NAME)                                                         \
     Instr ProgramBuilder::make_##NAME(Ref const &dst, Ref const &arg) { \
-        return {{_arg(dst), _arg(arg), {}}, ir_##NAME, {}};             \
+        return {{_arg(dst), _arg(arg), {}}, ir_##NAME};                 \
     }
 #include "nk/vm/ir.inl"
 
 #define B(NAME)                                                                         \
     Instr ProgramBuilder::make_##NAME(Ref const &dst, Ref const &lhs, Ref const &rhs) { \
-        return {{_arg(dst), _arg(lhs), _arg(rhs)}, ir_##NAME, {}};                      \
+        return {{_arg(dst), _arg(lhs), _arg(rhs)}, ir_##NAME};                          \
     }
 #include "nk/vm/ir.inl"
 

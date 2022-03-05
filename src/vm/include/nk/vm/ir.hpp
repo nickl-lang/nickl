@@ -101,7 +101,6 @@ struct Arg {
 struct Instr {
     Arg arg[3];
     uint16_t code;
-    string comment;
 };
 
 struct Block {
@@ -110,8 +109,6 @@ struct Block {
 
     size_t first_instr;
     size_t instr_count;
-
-    string comment;
 };
 
 struct Funct {
@@ -196,8 +193,6 @@ struct ProgramBuilder {
 
     void startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t);
     void startBlock(BlockId block_id, string name);
-
-    void comment(string str);
 
     Local makeLocalVar(type_t type);
     Global makeGlobalVar(type_t type);
