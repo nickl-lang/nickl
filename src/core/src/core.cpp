@@ -166,7 +166,7 @@ int lang_runFile(string file) {
     _setupInstrinsics(compiler);
 
     if (!_compileFile(file, compiler)) {
-        return 0;
+        return 1;
     }
 
     vm::bc::Program prog{};

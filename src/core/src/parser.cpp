@@ -117,9 +117,11 @@ private:
             EXPECT(t_brace_r);
         }
 
-        return nodes.size == 0   ? m_ast.make_nop()
-               : nodes.size == 1 ? nodes.front()
-                                 : m_ast.make_block(nodes.slice());
+        auto node = nodes.size == 0   ? m_ast.make_nop()
+                    : nodes.size == 1 ? nodes.front()
+                                      : m_ast.make_block(nodes.slice());
+
+        return capture_brace ? m_ast.make_scope(node) : node;
     }
 
     NamedNode declaration() {

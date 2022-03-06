@@ -294,6 +294,13 @@ struct CompileEngine {
                 type_get_typeref(), type_get_ptr(val_as(type_t, asValue(target_type))));
         }
 
+        case Node_scope: {
+            pushScope();
+            DEFER({ popScope(); })
+
+            return compile(node->as.unary.arg);
+        }
+
         case Node_add: {
             DEFINE(lhs, compile(node->as.binary.lhs));
             DEFINE(rhs, compile(node->as.binary.rhs));

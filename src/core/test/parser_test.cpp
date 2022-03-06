@@ -352,7 +352,7 @@ TEST_F(parser, binary) {
     test_ok({t_array_t, t_brace_l, t_f64, t_comma, t_num, t_brace_r, t_semi},
             m_ast.make_array_type(m_ast.make_f64(), num));
     test_ok({t_while, t_num, t_brace_l, t_a, t_semi, t_brace_r},
-            m_ast.make_while(num, a));
+            m_ast.make_while(num, m_ast.make_scope(a)));
     test_ok({t_num, t_caret, t_num, t_semi},
             m_ast.make_xor(num, num));
     test_ok({t_a, t_caret_eq, t_num, t_semi},
@@ -373,9 +373,9 @@ TEST_F(parser, ternary) {
     test_ok({t_num, t_question, t_a, t_colon, t_b, t_semi},
             m_ast.make_ternary(num, a, b));
     test_ok({t_if, t_num, t_brace_l, t_a, t_semi, t_brace_r},
-            m_ast.make_if(num, a, {}));
+            m_ast.make_if(num, m_ast.make_scope(a), {}));
     test_ok({t_if, t_num, t_brace_l, t_a, t_semi, t_brace_r, t_else, t_brace_l, t_b, t_semi, t_brace_r},
-            m_ast.make_if(num, a, b));
+            m_ast.make_if(num, m_ast.make_scope(a), m_ast.make_scope(b)));
     // clang-format on
 }
 
@@ -405,7 +405,7 @@ TEST_F(parser, other) {
     test_ok({t_bracket_l, t_a, t_comma, t_b, t_bracket_r, t_semi},
             m_ast.make_array({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
     test_ok({t_brace_l, t_a, t_semi, t_b, t_semi, t_brace_r, t_semi},
-            m_ast.make_block({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
+            m_ast.make_scope(m_ast.make_block({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
     test_ok({t_a, t_comma, t_b, t_semi},
             m_ast.make_id_tuple({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
     test_ok({t_tuple_t, t_brace_l, t_i64, t_comma, t_f64, t_brace_r, t_semi},
@@ -432,7 +432,7 @@ TEST_F(parser, other) {
     test_ok({t_a, t_colon, t_f64, t_eq, t_num, t_semi},
             m_ast.make_var_decl(id_a, f64, num));
     test_ok({t_fn, t_id_plus, t_par_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_par_r, t_minus_greater, t_i64, t_brace_l, t_return, t_a, t_plus, t_b, t_semi, t_brace_r},
-            m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, i64, m_ast.make_return(m_ast.make_add(a, b))));
+            m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, i64, m_ast.make_scope(m_ast.make_return(m_ast.make_add(a, b)))));
     test_ok({{t_str_const, c_test_str}, t_semi},
             m_ast.make_string_literal(mkt(t_str_const, c_test_str)));
     // test_ok({t_new, t_A, t_brace_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64, t_brace_r, t_semi},

@@ -95,5 +95,5 @@ TEST_F(compiler, native_printf) {
             true),
         m_ast.make_call(
             m_ast.make_id(mkt(t_id, "printf")), {args, sizeof(args) / sizeof(args[0])})};
-    test(m_ast.push(m_ast.make_block({nodes, sizeof(nodes) / sizeof(nodes[0])})));
+    test(m_ast.push(m_ast.make_scope(m_ast.make_block({nodes, sizeof(nodes) / sizeof(nodes[0])}))));
 }

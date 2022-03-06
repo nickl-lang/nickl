@@ -50,6 +50,8 @@ U(unary, return)
 
 U(unary, ptr_type)
 
+U(unary, scope)
+
 #undef U
 
 #ifndef B
