@@ -25,7 +25,7 @@ struct DefaultHashMapContext {
     }
 };
 
-}; // namespace detail
+} // namespace detail
 
 template <class K, class V, class Context = detail::DefaultHashMapContext<K>>
 struct HashMap {

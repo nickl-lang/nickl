@@ -26,9 +26,14 @@ target_compile_definitions(${INTERP_TEST}
 
 def_test(GROUP vm NAME translate_to_c LINK ${LIB} test_utils TARGET TRANSLATE_TO_C_TEST)
 
+find_library(LIBC c REQUIRED)
+
+get_filename_component(LIBC_DIR "${LIBC}" DIRECTORY)
+get_filename_component(LIBC_NAME "${LIBC}" NAME)
+
 target_compile_definitions(${TRANSLATE_TO_C_TEST}
-    PRIVATE LIBC_NAME="libc.so.6"
-    PRIVATE LIBS_SEARCH_PATH="/usr/lib/"
+    PRIVATE LIBC_NAME="${LIBC_NAME}.6"
+    PRIVATE LIBS_SEARCH_PATH="${LIBC_DIR}/"
     )
 
 def_test(GROUP vm NAME c_compiler_adapter LINK ${LIB} test_utils TARGET C_COMPILER_ADAPTER_TEST)
@@ -36,8 +41,8 @@ def_test(GROUP vm NAME c_compiler_adapter LINK ${LIB} test_utils TARGET C_COMPIL
 set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/")
 file(MAKE_DIRECTORY "${TEST_FILES_DIR}")
 target_compile_definitions(${C_COMPILER_ADAPTER_TEST}
-    PRIVATE LIBC_NAME="libc.so.6"
-    PRIVATE LIBS_SEARCH_PATH="/usr/lib/"
+    PRIVATE LIBC_NAME="${LIBC_NAME}.6"
+    PRIVATE LIBS_SEARCH_PATH="${LIBC_DIR}/"
     PRIVATE TEST_C_COMPILER="gcc"
     PRIVATE TEST_C_COMPILER_FLAGS=""
     PRIVATE TEST_FILES_DIR="${TEST_FILES_DIR}"
