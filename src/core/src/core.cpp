@@ -142,7 +142,7 @@ void lang_init() {
     LOG_TRC("lang_init")
 
     vm::VmConfig conf;
-    string paths[] = {cs2s("/usr/lib/")};
+    string paths[] = {cs2s("/usr/lib/"), cs2s("/usr/lib/x86_64-linux-gnu/")};
     conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
     vm_init(conf);
 

@@ -25,7 +25,7 @@ class compiler : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         vm::VmConfig conf;
-        string paths[] = {cs2s("/usr/lib/")};
+        string paths[] = {cs2s(LIBS_SEARCH_PATH)};
         conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
         vm_init(conf);
 
@@ -84,11 +84,11 @@ TEST_F(compiler, native_printf) {
     NamedNode printf_params[] = {NamedNode{
         .name = mkt(t_id, "fmt"), .node = m_ast.push(m_ast.make_ptr_type(m_ast.make_i8()))}};
     Node args[] = {
-        m_ast.make_string_literal(mkt(t_escaped_str_const, "Hello, %s!\\n")),
+        m_ast.make_string_literal(mkt(t_escaped_str_const, "Hello, %s!\n")),
         m_ast.make_string_literal(mkt(t_str_const, "World"))};
     Node nodes[] = {
         m_ast.make_foreign_fn(
-            mkt(t_str_const, "libc.so.6"),
+            mkt(t_str_const, LIBC_NAME),
             mkt(t_id, "printf"),
             {printf_params, sizeof(printf_params) / sizeof(printf_params[0])},
             m_ast.make_i32(),
