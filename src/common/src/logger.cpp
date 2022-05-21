@@ -84,16 +84,20 @@ ELogLevel parseEnvLogLevel(char const *env_log_level) {
 
 } // namespace
 
-void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...) {
+bool _logger_check(ELogLevel log_level) {
     EASY_FUNCTION(::profiler::colors::Teal200)
 
     auto &logger = instance();
 
     char const *env_log_level = std::getenv(c_env_var);
-    if (!logger.out ||
-        log_level > (env_log_level ? parseEnvLogLevel(env_log_level) : logger.log_level)) {
-        return;
-    }
+    return logger.out &&
+           log_level <= (env_log_level ? parseEnvLogLevel(env_log_level) : logger.log_level);
+}
+
+void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...) {
+    EASY_FUNCTION(::profiler::colors::Teal200)
+
+    auto &logger = instance();
 
     bool const to_color = logger.color_mode == Log_Color_Always ||
                           (logger.color_mode == Log_Color_Auto && isatty(fileno(stdout)));

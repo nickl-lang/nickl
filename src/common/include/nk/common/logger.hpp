@@ -23,20 +23,25 @@ struct LoggerOptions {
     EColorMode color_mode;
 };
 
+bool _logger_check(ELogLevel log_level);
 void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...);
 
 void _logger_init(LoggerOptions opt);
 
+#define _LOG_CHK(LEVEL, ...)                               \
+    if (_logger_check(LEVEL)) {                            \
+        _logger_write(LEVEL, __logger_scope, __VA_ARGS__); \
+    }
+
 #define LOGGER_INIT(...) _logger_init(__VA_ARGS__)
 
-#define LOG_USE_SCOPE(name) static char const *__logger_scope = #name;
+#define LOG_USE_SCOPE(NAME) static char const *__logger_scope = #NAME;
 
-//@Feature Make so that log expr is not evaluated if filered by log level
-#define LOG_ERR(...) _logger_write(Log_Error, __logger_scope, __VA_ARGS__);
-#define LOG_WRN(...) _logger_write(Log_Warning, __logger_scope, __VA_ARGS__);
-#define LOG_INF(...) _logger_write(Log_Info, __logger_scope, __VA_ARGS__);
-#define LOG_DBG(...) _logger_write(Log_Debug, __logger_scope, __VA_ARGS__);
-#define LOG_TRC(...) _logger_write(Log_Trace, __logger_scope, __VA_ARGS__);
+#define LOG_ERR(...) _LOG_CHK(Log_Error, __VA_ARGS__);
+#define LOG_WRN(...) _LOG_CHK(Log_Warning, __VA_ARGS__);
+#define LOG_INF(...) _LOG_CHK(Log_Info, __VA_ARGS__);
+#define LOG_DBG(...) _LOG_CHK(Log_Debug, __VA_ARGS__);
+#define LOG_TRC(...) _LOG_CHK(Log_Trace, __VA_ARGS__);
 
 #else // ENABLE_LOGGING
 
