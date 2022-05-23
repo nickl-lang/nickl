@@ -892,10 +892,11 @@ struct CompileEngine {
     Decl &makeDecl(Id name) {
         auto &locals = curScope().locals;
 
-        LOG_DBG("making declaration %s", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("name=`%.*s` scope=%lu", str.size, str.data, scopes.size - 1).data;
-        }());
+        LOG_DBG(
+            "making declaration name=`%.*s` scope=%lu",
+            id2s(name).size,
+            id2s(name).data,
+            scopes.size - 1);
 
         auto found = locals.find(name);
         if (found) {
@@ -908,51 +909,34 @@ struct CompileEngine {
     }
 
     void defineLocal(Id name, ir::Local id, type_t type) {
-        LOG_DBG("defining local `%s`", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("%.*s", str.size, str.data).data;
-        }());
+        LOG_DBG("defining local `%.*s`", id2s(name).size, id2s(name).data);
         makeDecl(name) = {{.local = {id, type}}, Decl_Local, false};
     }
 
     void defineGlobal(Id name, ir::Global id, type_t type) {
-        LOG_DBG("defining global `%s`", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("%.*s", str.size, str.data).data;
-        }());
+        LOG_DBG("defining global `%.*s`", id2s(name).size, id2s(name).data);
         makeDecl(name) = {{.global = {id, type}}, Decl_Global, false};
     }
 
     void defineFunct(Id name, ir::FunctId id, type_t ret_t, type_t args_t) {
-        LOG_DBG("defining funct `%s`", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("%.*s", str.size, str.data).data;
-        }());
+        LOG_DBG("defining funct `%.*s`", id2s(name).size, id2s(name).data);
         makeDecl(name) = {
             {.funct = {.id = id, .ret_t = ret_t, .args_t = args_t}}, Decl_Funct, false};
     }
 
     void defineExtFunct(Id name, ir::ExtFunctId id) {
-        LOG_DBG("defining ext funct `%s`", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("%.*s", str.size, str.data).data;
-        }());
+        LOG_DBG("defining ext funct `%.*s`", id2s(name).size, id2s(name).data);
         makeDecl(name) = {{.ext_funct = {id}}, Decl_ExtFunct, false};
     }
 
     void defineArg(Id name, size_t index, type_t type) {
-        LOG_DBG("defining arg `%s`", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("%.*s", str.size, str.data).data;
-        }());
+        LOG_DBG("defining arg `%.*s`", id2s(name).size, id2s(name).data);
         makeDecl(name) = {{.arg = {index, type}}, Decl_Arg, true};
     }
 
     Decl resolve(Id name) {
-        LOG_DBG("resolving %s", [&]() {
-            string str = id2s(name);
-            return tmpstr_format("name=`%.*s` scope=%lu", str.size, str.data, scopes.size - 1).data;
-        }());
+        LOG_DBG(
+            "resolving name=`%.*s` scope=%lu", id2s(name).size, id2s(name).data, scopes.size - 1);
 
         for (size_t i = scopes.size; i > 0; i--) {
             auto &scope = scopes[i - 1];
@@ -969,7 +953,7 @@ struct CompileEngine {
     }
 
     template <class T, class... TArgs>
-    ValueInfo makeValue(type_t type, TArgs &&...args) {
+    ValueInfo makeValue(type_t type, TArgs &&... args) {
         auto mem = _mctx.tmp_allocator->alloc<T>();
         *mem = T{args...};
         return {{.val = mem}, type, v_val};
