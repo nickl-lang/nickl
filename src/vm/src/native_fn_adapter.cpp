@@ -159,7 +159,9 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
     }
     assert(status == FFI_OK && "ffi_prep_cif failed");
 
-    void **argv = _mctx.tmp_allocator->alloc<void *>(argc);
+    void **argv = _mctx.def_allocator->alloc<void *>(argc);
+    DEFER({ _mctx.def_allocator->free_aligned(argv); })
+
     for (size_t i = 0; i < argc; i++) {
         argv[i] = val_data(val_tuple_at(args, i));
     }
