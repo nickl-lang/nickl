@@ -266,13 +266,14 @@ void _writeFnSig(
 }
 
 void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
-    auto &allocator = *_mctx.tmp_allocator;
+    auto &allocator = *_mctx.def_allocator;
 
     auto &src = ctx.main_s;
 
     _writePreabmle(ctx.types_s);
 
     auto block_name_by_id = allocator.alloc<string>(ir.blocks.size);
+    DEFER({ allocator.free_aligned(block_name_by_id); })
 
     for (auto const &f : ir.functs) {
         for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {

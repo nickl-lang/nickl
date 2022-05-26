@@ -151,9 +151,10 @@ void translateFromIr(Program &prog, ir::Program const &ir) {
 
     assert(ir.next_funct_id == ir.functs.size && "ill-formed ir");
 
-    auto &allocator = *_mctx.tmp_allocator;
+    auto &allocator = *_mctx.def_allocator;
 
     auto block_info_ar = allocator.alloc<BlockInfo>(ir.blocks.size);
+    DEFER({ allocator.free_aligned(block_info_ar); })
 
     Array<Reloc> relocs{};
     DEFER({ relocs.deinit(); });
@@ -178,6 +179,7 @@ void translateFromIr(Program &prog, ir::Program const &ir) {
     }
 
     auto exsyms = allocator.alloc<void *>(ir.exsyms.size);
+    DEFER({ allocator.free_aligned(exsyms); })
 
     for (size_t i = 0; auto const &exsym : ir.exsyms) {
         void *sym = resolveSym(prog.shobjs[exsym.so_id], id2s(exsym.name));
