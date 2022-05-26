@@ -22,7 +22,9 @@ TEST_F(hashmap, basic) {
     using hashmap_t = HashMap<uint8_t, uint8_t>;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     EXPECT_EQ(hm.size, 0);
 }
@@ -33,7 +35,9 @@ TEST_F(hashmap, insert) {
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     EXPECT_EQ(hm.size, 0);
 
@@ -50,7 +54,9 @@ TEST_F(hashmap, find) {
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     EXPECT_EQ(hm.size, 0);
 
@@ -73,7 +79,9 @@ TEST_F(hashmap, remove) {
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     hm.insert(cs2s("value")) = 42;
 
@@ -89,7 +97,9 @@ TEST_F(hashmap, overwrite) {
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     hm.insert(cs2s("value")) = 0;
     EXPECT_EQ(*hm.find(cs2s("value")), 0);
@@ -108,7 +118,9 @@ TEST_F(hashmap, ptr_key) {
     using hashmap_t = HashMap<key_t, val_t>;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     hm.insert(cs2s("________ whatever")) = 42;
     hm.insert(cs2s("________ something else")) = 0xDEADBEEF;
@@ -143,7 +155,9 @@ TEST_F(hashmap, str_map) {
     std::unordered_map<std::string, val_t> stdmap;
 
     auto hm = hashmap_t::create();
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     for (size_t i = 0; i < c_test_size; i++) {
         key_t key;
@@ -187,7 +201,9 @@ TEST_F(hashmap, stress) {
     std::mt19937_64 gen{rd()};
 
     auto hm = hashmap_t::create(gen() % c_max_cap);
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     std::unordered_map<key_t, val_t> std_map;
 
@@ -222,7 +238,9 @@ TEST_F(hashmap, zero_init) {
     using hashmap_t = HashMap<key_t, val_t>;
 
     hashmap_t hm{};
-    DEFER({ hm.deinit(); })
+    defer {
+        hm.deinit();
+    };
 
     EXPECT_EQ(hm.size, 0);
     EXPECT_EQ(hm.find(cs2s("val")), nullptr);

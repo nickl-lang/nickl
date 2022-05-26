@@ -201,7 +201,9 @@ TEST_F(interp, threads) {
 
     auto thread_func = [&]() {
         vm_enterThread();
-        DEFER({ vm_leaveThread(); });
+        defer {
+            vm_leaveThread();
+        };
 
         val_fn_invoke(fn_t, {}, {});
     };
@@ -225,7 +227,9 @@ TEST_F(interp, threads_diff_progs) {
     bc::Program prog1;
     prog1.init();
 
-    DEFER({ prog1.deinit(); });
+    defer {
+        prog1.deinit();
+    };
 
     translateFromIr(prog0, m_ir_prog);
     auto fn0_t = prog0.funct_info[0].funct_t;
@@ -234,13 +238,17 @@ TEST_F(interp, threads_diff_progs) {
 
     std::thread t0{[&]() {
         vm_enterThread();
-        DEFER({ vm_leaveThread(); });
+        defer {
+            vm_leaveThread();
+        };
 
         val_fn_invoke(fn0_t, {}, {});
     }};
     std::thread t1{[&]() {
         vm_enterThread();
-        DEFER({ vm_leaveThread(); });
+        defer {
+            vm_leaveThread();
+        };
 
         val_fn_invoke(fn1_t, {}, {});
     }};
@@ -258,10 +266,10 @@ TEST_F(interp, one_thread_diff_progs) {
     bc::Program prog1;
     prog1.init();
 
-    DEFER({
+    defer {
         ir_prog1.deinit();
         prog1.deinit();
-    })
+    };
 
     auto void_t = type_get_void();
     auto args_t = type_get_tuple({});

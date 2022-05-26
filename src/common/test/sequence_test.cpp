@@ -17,7 +17,9 @@ TEST_F(sequence, basic) {
     using ValueType = uint64_t;
 
     auto sq = Sequence<ValueType>::create(1);
-    DEFER({ sq.deinit(); });
+    defer {
+        sq.deinit();
+    };
 
     EXPECT_EQ(sq.size, 0);
 
@@ -37,7 +39,9 @@ TEST_F(sequence, many_small_pushes) {
     static constexpr size_t c_bytes_to_push = 1024;
 
     auto sq = Sequence<uint8_t>::create(c_ic);
-    DEFER({ sq.deinit(); });
+    defer {
+        sq.deinit();
+    };
 
     for (size_t i = 0; i < c_bytes_to_push; i++) {
         sq.push();
@@ -50,7 +54,9 @@ TEST_F(sequence, one_big_push) {
     static constexpr size_t c_bytes_to_push = 1024;
 
     auto sq = Sequence<uint8_t>::create(c_ic);
-    DEFER({ sq.deinit(); });
+    defer {
+        sq.deinit();
+    };
 
     sq.push(c_bytes_to_push);
     EXPECT_EQ(sq.size, 2 * c_bytes_to_push - ceilToPowerOf2(c_ic));
@@ -61,7 +67,9 @@ TEST_F(sequence, pop) {
 
     {
         auto sq = Sequence<uint8_t>::create(1);
-        DEFER({ sq.deinit(); });
+        defer {
+            sq.deinit();
+        };
 
         sq.push(c_bytes_to_push);
         size_t size1 = sq.size;
@@ -76,7 +84,9 @@ TEST_F(sequence, pop) {
 
     {
         auto sq = Sequence<uint8_t>::create(1);
-        DEFER({ sq.deinit(); });
+        defer {
+            sq.deinit();
+        };
 
         for (size_t i = 0; i < c_bytes_to_push; i++) {
             sq.push();
@@ -95,7 +105,9 @@ TEST_F(sequence, pop) {
 
     {
         auto sq = Sequence<uint8_t>::create(32);
-        DEFER({ sq.deinit(); });
+        defer {
+            sq.deinit();
+        };
 
         sq.push(32);
         EXPECT_EQ(sq.size, 32);
@@ -109,7 +121,9 @@ TEST_F(sequence, pop) {
 
     {
         auto sq = Sequence<uint8_t>::create(32);
-        DEFER({ sq.deinit(); });
+        defer {
+            sq.deinit();
+        };
 
         sq.push(32);
         EXPECT_EQ(sq.size, 32);

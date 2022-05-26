@@ -56,14 +56,18 @@ protected:
     };
 
     void test_ok(std::vector<TokenDescr> tokens, Node const &expected) {
-        DEFER({ m_parser.ast.deinit(); })
+        defer {
+            m_parser.ast.deinit();
+        };
 
         LOG_INF(
             "\n==================================================\nTest: %s",
             formatTokens(tokens).data())
         tokens.emplace_back(t_eof, "");
         Array<Token> token_ar{};
-        DEFER({ token_ar.deinit(); })
+        defer {
+            token_ar.deinit();
+        };
         for (auto const &token : tokens) {
             token_ar.push() = createToken(token.id, token.text);
         }

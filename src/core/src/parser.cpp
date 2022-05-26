@@ -103,7 +103,9 @@ private:
     Node block(bool capture_brace = true) {
         //@Refactor Use tmp_allocator in parser for nodes
         Array<Node> nodes{};
-        DEFER({ nodes.deinit(); })
+        defer {
+            nodes.deinit();
+        };
 
         bool expect_brace_r = capture_brace && accept(t_brace_l);
 
@@ -117,9 +119,9 @@ private:
             EXPECT(t_brace_r);
         }
 
-        auto node = nodes.size == 0   ? m_ast.make_nop()
-                    : nodes.size == 1 ? nodes.front()
-                                      : m_ast.make_block(nodes.slice());
+        auto node = nodes.size == 0
+                        ? m_ast.make_nop()
+                        : nodes.size == 1 ? nodes.front() : m_ast.make_block(nodes.slice());
 
         return capture_brace ? m_ast.make_scope(node) : node;
     }
@@ -215,7 +217,9 @@ private:
             getToken();
             bool is_variadic = false;
             DEFINE(sig, fnSignature(&is_variadic));
-            DEFER({ sig.params.deinit(); });
+            defer {
+                sig.params.deinit();
+            };
             node = m_ast.make_foreign_fn(lib, sig.name, sig.params.slice(), sig.ret_t, is_variadic);
         } else {
             ASSIGN(node, assignment());
@@ -278,7 +282,9 @@ private:
         bool trailing_comma_provided = false;
         bool all_ids = false;
         DEFINE(nodes, sequence(&trailing_comma_provided, &all_ids));
-        DEFER({ nodes.deinit(); })
+        defer {
+            nodes.deinit();
+        };
         return (nodes.size > 1 || trailing_comma_provided)
                    ? (all_ids ? m_ast.make_id_tuple(nodes) : m_ast.make_tuple(nodes))
                    : nodes.front();
@@ -289,7 +295,9 @@ private:
 
         if (accept(t_fn)) {
             auto sig = fnSignature();
-            DEFER({ sig.params.deinit(); });
+            defer {
+                sig.params.deinit();
+            };
 
             Node body;
             bool has_body = false;
@@ -309,7 +317,9 @@ private:
             EXPECT(t_brace_l);
 
             Array<NamedNode> fields{};
-            DEFER({ fields.deinit(); })
+            defer {
+                fields.deinit();
+            };
 
             while (!accept(t_brace_r)) {
                 APPEND(fields, declaration());
@@ -531,7 +541,9 @@ private:
         while (true) {
             if (accept(t_par_l)) {
                 Array<Node> args{};
-                DEFER({ args.deinit(); })
+                defer {
+                    args.deinit();
+                };
                 if (!accept(t_par_r)) {
                     ASSIGN(args, sequence());
                     EXPECT(t_par_r);
@@ -591,7 +603,9 @@ private:
         //     DEFINE(type, expr());
 
         //     Array<NamedNode> fields{};
-        //     DEFER({ fields.deinit(); })
+        //     defer {
+        //         fields.deinit();
+        //     };
         //     if (accept(t_brace_l) && !accept(t_brace_r)) {
         //         do {
         //             APPEND(fields, declaration());
@@ -650,7 +664,9 @@ private:
         } else if (accept(t_tuple_t)) {
             EXPECT(t_brace_l);
             DEFINE(nodes, sequence());
-            DEFER({ nodes.deinit(); })
+            defer {
+                nodes.deinit();
+            };
             EXPECT(t_brace_r);
             ASSIGN(node, m_ast.make_tuple_type(nodes));
         } else if (accept(t_ptr_t)) {
@@ -677,7 +693,9 @@ private:
             } else {
                 DEFINE(first, expr());
                 Array<Node> nodes{};
-                DEFER({ nodes.deinit(); })
+                defer {
+                    nodes.deinit();
+                };
                 nodes.push() = first;
                 while (accept(t_comma)) {
                     if (check(t_bracket_r)) {

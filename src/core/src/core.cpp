@@ -105,7 +105,9 @@ bool _compileFile(string file, Compiler &compiler) {
     };
 
     auto src = file_read(path);
-    DEFER({ src.deinit(); })
+    defer {
+        src.deinit();
+    };
 
     if (!src.data) {
         std::cerr << "error: failed to read file `" << path << "`" << std::endl;
@@ -113,7 +115,9 @@ bool _compileFile(string file, Compiler &compiler) {
     }
 
     Lexer lexer{};
-    DEFER({ lexer.tokens.deinit(); })
+    defer {
+        lexer.tokens.deinit();
+    };
 
     if (!lexer.lex(src.slice())) {
         std::cerr << "error: " << lexer.err << std::endl;
@@ -121,7 +125,9 @@ bool _compileFile(string file, Compiler &compiler) {
     }
 
     Parser parser{};
-    DEFER({ parser.ast.deinit(); })
+    defer {
+        parser.ast.deinit();
+    };
 
     if (!parser.parse(lexer.tokens.slice())) {
         std::cerr << "error: " << parser.err << std::endl;
@@ -161,7 +167,9 @@ int lang_runFile(string file) {
     LOG_TRC("lang_runFile(file=%s)", file)
 
     Compiler compiler{};
-    DEFER({ compiler.deinit(); })
+    defer {
+        compiler.deinit();
+    };
 
     _setupInstrinsics(compiler);
 
@@ -170,7 +178,9 @@ int lang_runFile(string file) {
     }
 
     vm::bc::Program prog{};
-    DEFER({ prog.deinit(); })
+    defer {
+        prog.deinit();
+    };
 
     vm::bc::translateFromIr(prog, compiler.prog);
 
@@ -184,7 +194,9 @@ bool lang_compileFile(string file, string outfile) {
     LOG_TRC("lang_compileFile(file=%s, outfile=%s)", file, outfile)
 
     Compiler compiler{};
-    DEFER({ compiler.deinit(); })
+    defer {
+        compiler.deinit();
+    };
 
     _setupInstrinsics(compiler);
 

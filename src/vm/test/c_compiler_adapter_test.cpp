@@ -67,7 +67,9 @@ protected:
 
     std::string _runGetStdout() {
         auto in = pipe_streamRead(m_conf.output_filename);
-        DEFER({ pipe_streamClose(in); })
+        defer {
+            pipe_streamClose(in);
+        };
 
         std::string out_str{std::istreambuf_iterator<char>{in}, {}};
         return out_str;

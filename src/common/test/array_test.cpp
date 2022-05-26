@@ -17,7 +17,9 @@ class array : public testing::Test {
 
 TEST_F(array, init) {
     auto ar = Array<uint8_t>::create(1);
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     EXPECT_EQ(ar.size, 0);
     EXPECT_EQ(ar.capacity, 1);
@@ -28,7 +30,9 @@ TEST_F(array, basic) {
     using ValueType = uint16_t;
 
     auto ar = Array<ValueType>::create();
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     ar.push() = 0;
     ar.push() = 1;
@@ -49,7 +53,9 @@ TEST_F(array, basic) {
 
 TEST_F(array, capacity) {
     auto ar = Array<uint8_t>::create();
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     for (uint8_t i = 1; i < 60; i++) {
         ar.push() = i;
@@ -59,7 +65,9 @@ TEST_F(array, capacity) {
 
 TEST_F(array, zero_capacity) {
     auto ar = Array<uint8_t>::create(0);
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     EXPECT_EQ(ar.capacity, 0);
     EXPECT_EQ(ar.size, 0);
@@ -74,7 +82,9 @@ TEST_F(array, zero_capacity) {
 
 TEST_F(array, zero_init) {
     Array<uint8_t> ar;
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     std::memset(&ar, 0, sizeof(ar));
 
