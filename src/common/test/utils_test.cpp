@@ -123,20 +123,30 @@ TEST(utils, hash) {
 
 TEST(utils, format) {
     auto arena = ArenaAllocator::create();
-    DEFER({ arena.deinit(); })
+    defer {
+        arena.deinit();
+    };
 
     auto str = string_format(arena, "%.2lf", 3.14);
     EXPECT_EQ(std_view(str), std::string_view("3.14"));
 }
 
-TEST(utils, defer) {
+TEST(utils, defer_test) {
     std::string msg;
 
     {
-        DEFER({ msg += "!"; })
-        DEFER({ msg += "World"; })
-        DEFER({ msg += ", "; })
-        DEFER({ msg += "Hello"; });
+        defer {
+            msg += "!";
+        };
+        defer {
+            msg += "World";
+        };
+        defer {
+            msg += ", ";
+        };
+        defer {
+            msg += "Hello";
+        };
     }
 
     ASSERT_EQ(msg, "Hello, World!");
@@ -144,7 +154,9 @@ TEST(utils, defer) {
 
 TEST(utils, read_file) {
     auto ar = file_read(cs2s(TEST_FILE_NAME));
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     static constexpr const char *c_test_str = "Hello, World!\n";
 
@@ -155,7 +167,9 @@ TEST(utils, read_file) {
 
 TEST(utils, read_file_nonexistent) {
     auto ar = file_read(cs2s("nonexistent_file.txt"));
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     ASSERT_FALSE(ar.data);
     EXPECT_EQ(0, ar.size);
@@ -163,7 +177,9 @@ TEST(utils, read_file_nonexistent) {
 
 TEST(utils, big_file) {
     auto ar = file_read(cs2s(BIG_FILE_NAME));
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     ASSERT_TRUE(ar.data);
     EXPECT_NE(0, ar.size);

@@ -15,7 +15,9 @@ class arena : public testing::Test {
 
 TEST_F(arena, basic) {
     auto ar = ArenaAllocator::create(1);
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     struct ValueType {
         uint64_t a;
@@ -37,7 +39,9 @@ TEST_F(arena, basic) {
 
 TEST_F(arena, clear) {
     auto ar = ArenaAllocator::create(1);
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     ar.alloc<int>();
     EXPECT_NE(ar._seq.size, 0);
@@ -48,7 +52,9 @@ TEST_F(arena, clear) {
 
 TEST_F(arena, aligned) {
     auto ar = ArenaAllocator::create(100);
-    DEFER({ ar.deinit(); })
+    defer {
+        ar.deinit();
+    };
 
     ar.alloc<uint8_t>();
 
@@ -58,7 +64,9 @@ TEST_F(arena, aligned) {
     };
 
     A *a = ar.alloc<A>();
-    DEFER({ ar.free_aligned(a); })
+    defer {
+        ar.free_aligned(a);
+    };
 
     a->u64 = 42;
 

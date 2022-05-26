@@ -52,7 +52,9 @@ protected:
 
         vm::bc::Program prog;
         prog.init();
-        DEFER({ prog.deinit(); })
+        defer {
+            prog.deinit();
+        };
 
         vm::bc::translateFromIr(prog, m_compiler.prog);
         auto fn_t = prog.funct_info[0].funct_t;

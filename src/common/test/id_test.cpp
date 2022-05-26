@@ -16,7 +16,9 @@ class id : public testing::Test {
 
 TEST_F(id, forward) {
     id_init();
-    DEFER({ id_deinit(); })
+    defer {
+        id_deinit();
+    };
 
     static constexpr char const *c_str_a = "String A.";
     static constexpr char const *c_str_b = "String B.";
@@ -32,7 +34,9 @@ TEST_F(id, forward) {
 
 TEST_F(id, backward) {
     id_init();
-    DEFER({ id_deinit(); })
+    defer {
+        id_deinit();
+    };
 
     static constexpr char const *c_str_a = "This is a first string.";
     static constexpr char const *c_str_b = "This is a second string.";
@@ -46,7 +50,9 @@ TEST_F(id, backward) {
 
 TEST_F(id, nonexistent) {
     id_init();
-    DEFER({ id_deinit(); })
+    defer {
+        id_deinit();
+    };
 
     string str = id2s(9999999999);
     EXPECT_EQ(nullptr, str.data);

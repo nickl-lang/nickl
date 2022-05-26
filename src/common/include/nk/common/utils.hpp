@@ -12,9 +12,26 @@
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
 
+#ifndef CAT
 #define _CAT(x, y) x##y
 #define CAT(x, y) _CAT(x, y)
-#define DEFER(BLOCK) std::shared_ptr<void> CAT(__defer_, __LINE__){nullptr, [&](void *) BLOCK};
+#endif // CAT
+
+#ifndef defer
+struct nk_DeferDummy {};
+template <class F>
+struct nk_Deferrer {
+    F f;
+    ~nk_Deferrer() {
+        f();
+    }
+};
+template <class F>
+nk_Deferrer<F> operator*(nk_DeferDummy, F &&f) {
+    return {std::forward<F>(f)};
+}
+#define defer auto CAT(nk_defer, __LINE__) = nk_DeferDummy{} *[&]()
+#endif // defer
 
 using hash_t = size_t;
 

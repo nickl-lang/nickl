@@ -154,10 +154,14 @@ void translateFromIr(Program &prog, ir::Program const &ir) {
     auto &allocator = *_mctx.def_allocator;
 
     auto block_info_ar = allocator.alloc<BlockInfo>(ir.blocks.size);
-    DEFER({ allocator.free_aligned(block_info_ar); })
+    defer {
+        allocator.free_aligned(block_info_ar);
+    };
 
     Array<Reloc> relocs{};
-    DEFER({ relocs.deinit(); });
+    defer {
+        relocs.deinit();
+    };
 
     prog.globals_t = type_get_tuple({ir.globals.data, ir.globals.size});
     if (prog.globals_t->size > 0) {
@@ -179,7 +183,9 @@ void translateFromIr(Program &prog, ir::Program const &ir) {
     }
 
     auto exsyms = allocator.alloc<void *>(ir.exsyms.size);
-    DEFER({ allocator.free_aligned(exsyms); })
+    defer {
+        allocator.free_aligned(exsyms);
+    };
 
     for (size_t i = 0; auto const &exsym : ir.exsyms) {
         void *sym = resolveSym(prog.shobjs[exsym.so_id], id2s(exsym.name));

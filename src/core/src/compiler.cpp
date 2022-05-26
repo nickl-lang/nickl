@@ -138,11 +138,11 @@ struct CompileEngine {
     }
 
     void compile() {
-        DEFER({
+        defer {
             assert(!scopes.size && "unhandled scopes on the stack");
             scopes.deinit();
             functs.deinit();
-        })
+        };
 
         is_top_level = true;
 
@@ -151,7 +151,9 @@ struct CompileEngine {
         m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
 
         pushScope();
-        DEFER({ popScope(); })
+        defer {
+            popScope();
+        };
 
         compileNode(m_root);
 
@@ -166,7 +168,9 @@ struct CompileEngine {
             m_builder.startBlock(m_builder.makeLabel(), cs2s("start"));
 
             pushScope();
-            DEFER({ popScope(); })
+            defer {
+                popScope();
+            };
 
             for (size_t i = 0; Id name : funct.arg_names) {
                 auto type = type_tuple_typeAt(funct.args_t, i);
@@ -296,7 +300,9 @@ struct CompileEngine {
 
         case Node_scope: {
             pushScope();
-            DEFER({ popScope(); })
+            defer {
+                popScope();
+            };
 
             return compile(node->as.unary.arg);
         }
@@ -662,7 +668,9 @@ struct CompileEngine {
 
         case Node_tuple_type: {
             auto types = Array<type_t>::create(node->as.array.nodes.size);
-            DEFER({ types.deinit(); })
+            defer {
+                types.deinit();
+            };
             for (auto const &node : node->as.array.nodes) {
                 DEFINE(type, compile(&node));
                 if (type.value_type != v_val) {
@@ -737,7 +745,9 @@ struct CompileEngine {
             auto arg_names = Array<Id>::create(node->as.fn.sig.params.size);
             // NOTE: arg_names is freed afters the function has been compiled
             //@Fix if compiler encounteds an error before, arg_names leaks
-            DEFER({ arg_types.deinit(); })
+            defer {
+                arg_types.deinit();
+            };
             for (auto const &arg : node->as.fn.sig.params) {
                 DEFINE(arg_t, compile(arg.as.named_node.node));
                 if (arg_t.type->typeclass_id != Type_Typeref) {
@@ -768,7 +778,9 @@ struct CompileEngine {
 
         case Node_foreign_fn: {
             auto arg_types = Array<type_t>::create(node->as.fn.sig.params.size);
-            DEFER({ arg_types.deinit(); })
+            defer {
+                arg_types.deinit();
+            };
             for (auto const &arg : node->as.fn.sig.params) {
                 DEFINE(arg_t, compile(arg.as.named_node.node));
                 if (arg_t.type->typeclass_id != Type_Typeref) {
@@ -795,9 +807,13 @@ struct CompileEngine {
             DEFINE(lhs, compile(node->as.call.lhs));
             auto const make_args = [&](type_t args_t, bool is_variadic = false) -> ir::Ref {
                 auto arg_types = Array<type_t>::create(node->as.call.args.size);
-                DEFER({ arg_types.deinit(); })
+                defer {
+                    arg_types.deinit();
+                };
                 auto args_info = Array<ValueInfo>::create(node->as.call.args.size);
-                DEFER({ args_info.deinit(); })
+                defer {
+                    args_info.deinit();
+                };
                 for (auto const &arg_node : node->as.call.args) {
                     DEFINE(arg, compile(&arg_node));
                     //@Incomplete Check call arg types in Compiler
