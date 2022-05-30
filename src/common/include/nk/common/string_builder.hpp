@@ -8,7 +8,7 @@
 
 class StringBuilder {
 public:
-    void reserve(size_t capacity);
+    void reserve(size_t n);
     int printf(char const *fmt, ...);
     string moveStr(Allocator &allocator);
 
@@ -16,9 +16,10 @@ private:
     struct BlockHeader;
 
     uint8_t *_push(size_t n);
-    void _allocateBlock(size_t capacity);
+    void _allocateBlock(size_t n);
     uint8_t *_blockData(BlockHeader *header) const;
     size_t _align(size_t n) const;
+    size_t _spaceLeftInBlock() const;
 
 private:
     size_t m_size;

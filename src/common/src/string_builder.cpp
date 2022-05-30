@@ -4,7 +4,7 @@
 
 #include "nk/common/utils.hpp"
 
-static constexpr size_t PRINTF_BUFFERS_SIZE = 4096;
+static constexpr size_t PRINTF_BUFFER_SIZE = 4096;
 
 struct StringBuilder::BlockHeader {
     BlockHeader *next;
@@ -12,75 +12,86 @@ struct StringBuilder::BlockHeader {
     size_t capacity;
 };
 
-void StringBuilder::reserve(size_t capacity) {
-    if (!m_last_block || capacity > m_last_block->capacity - m_last_block->size) {
-        _allocateBlock(capacity);
+void StringBuilder::reserve(size_t n) {
+    if (n > _spaceLeftInBlock()) {
+        _allocateBlock(n);
     }
 }
 
 int StringBuilder::printf(char const *fmt, ...) {
+    char ar[PRINTF_BUFFER_SIZE];
+    char *buf = ar;
+    defer {
+        if (buf != ar) {
+            ::free(buf);
+        }
+    };
+
     va_list ap;
     va_start(ap, fmt);
-    char buf[PRINTF_BUFFERS_SIZE];
-    int n = vsnprintf(buf, PRINTF_BUFFERS_SIZE, fmt, ap);
+    int n = vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap);
     va_end(ap);
 
-    if (n >= (int)PRINTF_BUFFERS_SIZE) {
+    if (n >= (int)PRINTF_BUFFER_SIZE) {
+        buf = (char *)::malloc(n + 1);
+
         va_list ap;
         va_start(ap, fmt);
-        char *buf = (char *)::malloc(n + 1);
-        defer {
-            ::free(buf);
-        };
-        int n2 = vsnprintf(buf, n + 1, fmt, ap);
+        vsnprintf(buf, n + 1, fmt, ap);
         va_end(ap);
+    }
 
-        if (n2 >= 0) {
-            void *mem = _push(n + 1);
-            ::memcpy(mem, buf, n + 1);
-        } else {
-            return n2;
-        }
-    } else if (n >= 0) {
-        void *mem = _push(n + 1);
-        ::memcpy(mem, buf, n + 1);
-    } else {
-        return n;
+    if (n >= 0) {
+        size_t first_part_size = minu(_spaceLeftInBlock(), (size_t)n + 1);
+
+        size_t size = first_part_size;
+        ::memcpy(_push(size), buf, size);
+
+        size = n + 1 - first_part_size;
+        ::memcpy(_push(size), buf + first_part_size, size);
     }
 
     return n;
 }
 
 string StringBuilder::moveStr(Allocator &allocator) {
-    void *mem = allocator.alloc(m_size);
-    for (BlockHeader *block = m_first_block; block; block = block->next) {
-        ::memcpy(mem, _blockData(block), block->size);
+    if (m_size) {
+        char *mem = (char *)allocator.alloc(m_size);
+        size_t offset = 0;
+        for (BlockHeader *block = m_first_block; block;) {
+            BlockHeader *cur_block = block;
+            block = block->next;
+            ::memcpy(mem + offset, _blockData(cur_block), cur_block->size);
+            offset += cur_block->size;
+            ::free(cur_block);
+        }
+        return {mem, m_size - 1};
+    } else {
+        return {};
     }
-    for (BlockHeader *block = m_first_block; block;) {
-        void *cur_block = block;
-        block = block->next;
-        ::free(cur_block);
-    }
-    return {(char const *)mem, m_size - 1};
 }
 
 uint8_t *StringBuilder::_push(size_t n) {
-    reserve(n);
-    m_last_block->size += n;
-    m_size += n;
-    return _blockData(m_last_block) + m_last_block->size - n;
+    if (n) {
+        reserve(n);
+        m_last_block->size += n;
+        m_size += n;
+        return _blockData(m_last_block) + m_last_block->size - n;
+    } else {
+        return nullptr;
+    }
 }
 
-void StringBuilder::_allocateBlock(size_t capacity) {
+void StringBuilder::_allocateBlock(size_t n) {
     auto const header_size = _align(sizeof(BlockHeader));
-    capacity = ceilToPowerOf2(capacity + header_size);
-    capacity = maxu(capacity, (m_last_block ? m_last_block->capacity << 1 : 0));
+    n = ceilToPowerOf2(n + header_size);
+    n = maxu(n, (m_last_block ? m_last_block->capacity << 1 : 0));
 
-    BlockHeader *block = (BlockHeader *)::malloc(capacity);
+    BlockHeader *block = (BlockHeader *)::malloc(n);
 
     block->next = nullptr;
     block->size = 0;
-    block->capacity = capacity - header_size;
+    block->capacity = n - header_size;
 
     if (!m_last_block) {
         m_first_block = block;
@@ -98,4 +109,8 @@ uint8_t *StringBuilder::_blockData(BlockHeader *block) const {
 
 size_t StringBuilder::_align(size_t n) const {
     return roundUp(n, 16);
+}
+
+size_t StringBuilder::_spaceLeftInBlock() const {
+    return m_last_block ? m_last_block->capacity - m_last_block->size : 0;
 }
