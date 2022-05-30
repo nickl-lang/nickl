@@ -66,3 +66,17 @@ TEST_F(string_builder, printf_error) {
     int n = m_builder.printf("invalid format: %q");
     EXPECT_LT(n, 0);
 }
+
+TEST_F(string_builder, print) {
+    auto const c_test_str = cs2s("test");
+    int n = m_builder.print(c_test_str);
+    EXPECT_EQ(n, 4);
+    EXPECT_EQ(std_str(m_builder.moveStr(m_arena)), "test");
+}
+
+TEST_F(string_builder, multiple_printfs) {
+    EXPECT_EQ(m_builder.printf("one"), 3);
+    EXPECT_EQ(m_builder.printf("two"), 3);
+    EXPECT_EQ(m_builder.printf("three"), 5);
+    EXPECT_EQ(std_str(m_builder.moveStr(m_arena)), "onetwothree");
+}
