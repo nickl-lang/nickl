@@ -1,6 +1,6 @@
 #include "nk/common/arena.hpp"
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 
 void *ArenaAllocator::alloc(size_t size) {
     void *res = &_seq.push(size);

@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/arena.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/vm.hpp"
 #include "utils/test_ir.hpp"

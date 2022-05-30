@@ -1,27 +1,33 @@
 #ifndef HEADER_GUARD_NK_COMMON_LOGGER
 #define HEADER_GUARD_NK_COMMON_LOGGER
 
+#include "stdbool.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef ENABLE_LOGGING
 
-enum ELogLevel {
+typedef enum {
     Log_None = 0,
     Log_Error,
     Log_Warning,
     Log_Info,
     Log_Debug,
     Log_Trace,
-};
+} ELogLevel;
 
-enum EColorMode {
+typedef enum {
     Log_Color_Auto = 0,
     Log_Color_Always,
     Log_Color_Never,
-};
+} EColorMode;
 
-struct LoggerOptions {
+typedef struct {
     ELogLevel log_level;
     EColorMode color_mode;
-};
+} LoggerOptions;
 
 bool _logger_check(ELogLevel log_level);
 void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...);
@@ -45,8 +51,6 @@ void _logger_init(LoggerOptions opt);
 
 #else // ENABLE_LOGGING
 
-#define DEFAULT_INIT_LOGGER
-
 #define LOGGER_INIT(...)
 
 #define LOG_USE_SCOPE(...)
@@ -58,5 +62,9 @@ void _logger_init(LoggerOptions opt);
 #define LOG_TRC(...)
 
 #endif // ENABLE_LOGGING
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HEADER_GUARD_NK_COMMON_LOGGER

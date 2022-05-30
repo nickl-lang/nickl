@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/arena.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 
 class string_builder : public testing::Test {
     void SetUp() override {

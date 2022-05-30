@@ -6,7 +6,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif
 
 struct _BlockHeader;
 
@@ -24,6 +24,6 @@ void BlockAllocator_deinit(BlockAllocator *self);
 
 #ifdef __cplusplus
 }
-#endif // __cplusplus
+#endif
 
 #endif // HEADER_GUARD_NK_COMMON_BLOCK_ALLOCATOR

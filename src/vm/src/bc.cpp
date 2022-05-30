@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "find_library.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/vm/interp.hpp"
 #include "so_adapter.hpp"

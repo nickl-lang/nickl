@@ -5,7 +5,7 @@
 #include <ffi.h>
 
 #include "nk/common/arena.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/vm/value.hpp"
 

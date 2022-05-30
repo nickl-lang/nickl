@@ -2,7 +2,7 @@
 
 #include <dlfcn.h>
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 
 namespace nk {
 namespace vm {

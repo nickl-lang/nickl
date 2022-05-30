@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/vm/vm.hpp"
 
 namespace {
