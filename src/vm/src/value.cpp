@@ -1,14 +1,13 @@
 #include "nk/vm/value.hpp"
 
 #include <cstring>
-#include <iomanip>
-#include <sstream>
 
 #include "native_fn_adapter.hpp"
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 
 namespace nk {
@@ -89,12 +88,12 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     return _TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
 }
 
-void _typeName(type_t type, std::ostringstream &ss) {
+void _typeName(type_t type, StringBuilder &sb) {
     switch (type->typeclass_id) {
     case Type_Array:
-        ss << "array{";
-        _typeName(type->as.arr.elem_type, ss);
-        ss << ", " << type->as.arr.elem_count << "}";
+        sb.print("array{");
+        _typeName(type->as.arr.elem_type, sb);
+        sb.printf(", %zu}", type->as.arr.elem_count);
         break;
     case Type_Numeric:
         switch (type->as.num.value_type) {
@@ -102,110 +101,110 @@ void _typeName(type_t type, std::ostringstream &ss) {
         case Int16:
         case Int32:
         case Int64:
-            ss << "i";
+            sb.print("i");
             break;
         case Uint8:
         case Uint16:
         case Uint32:
         case Uint64:
-            ss << "u";
+            sb.print("u");
             break;
         case Float32:
         case Float64:
-            ss << "f";
+            sb.print("f");
             break;
         default:
             assert(!"unreachable");
             break;
         }
-        ss << NUM_TYPE_SIZE(type->as.num.value_type) * 8;
+        sb.printf("%i", NUM_TYPE_SIZE(type->as.num.value_type) * 8);
         break;
     case Type_Ptr:
-        ss << "ptr{";
-        _typeName(type->as.ptr.target_type, ss);
-        ss << "}";
+        sb.print("ptr{");
+        _typeName(type->as.ptr.target_type, sb);
+        sb.print("}");
         break;
     case Type_Typeref:
-        ss << "type";
+        sb.print("type");
         break;
     case Type_Void:
-        ss << "void";
+        sb.print("void");
         break;
     case Type_Tuple: {
-        ss << "tuple{";
+        sb.print("tuple{");
         for (size_t i = 0; i < type_tuple_size(type); i++) {
             if (i) {
-                ss << ", ";
+                sb.print(", ");
             }
-            _typeName(type_tuple_typeAt(type, i), ss);
+            _typeName(type_tuple_typeAt(type, i), sb);
         }
-        ss << "}";
+        sb.print("}");
         break;
     }
     case Type_Fn: {
-        ss << "fn{(";
+        sb.print("fn{(");
         type_t const params = type->as.fn.args_t;
         for (size_t i = 0; i < type_tuple_size(params); i++) {
             if (i) {
-                ss << ", ";
+                sb.print(", ");
             }
-            _typeName(type_tuple_typeAt(params, i), ss);
+            _typeName(type_tuple_typeAt(params, i), sb);
         }
-        ss << "), ";
-        _typeName(type->as.fn.ret_t, ss);
-        ss << "}";
+        sb.print("), ");
+        _typeName(type->as.fn.ret_t, sb);
+        sb.print("}");
         break;
     }
     default:
-        ss << "type{id=" << type->id << "}";
+        sb.printf("type{id=%llu}", type->id);
         break;
     }
 }
 
-void _valInspect(value_t val, std::ostringstream &ss) {
+void _valInspect(value_t val, StringBuilder &sb) {
     switch (val_typeclassid(val)) {
     case Type_Array:
-        ss << "[";
+        sb.print("[");
         for (size_t i = 0; i < val_array_size(val); i++) {
             if (i) {
-                ss << " ";
+                sb.print(" ");
             }
-            _valInspect(val_array_at(val, i), ss);
-            ss << ",";
+            _valInspect(val_array_at(val, i), sb);
+            sb.print(",");
         }
-        ss << "]";
+        sb.print("]");
         break;
     case Type_Numeric:
         switch (val_typeof(val)->as.num.value_type) {
         case Int8:
-            ss << (int)val_as(int8_t, val);
+            sb.printf("%i", (int)val_as(int8_t, val));
             break;
         case Uint8:
-            ss << (unsigned)val_as(uint8_t, val);
+            sb.printf("%u", (unsigned)val_as(uint8_t, val));
             break;
         case Int16:
-            ss << val_as(int16_t, val);
+            sb.printf("%hi", val_as(int16_t, val));
             break;
         case Uint16:
-            ss << val_as(uint16_t, val);
+            sb.printf("%hu", val_as(uint16_t, val));
             break;
         case Int32:
-            ss << val_as(int32_t, val);
+            sb.printf("%i", val_as(int32_t, val));
             break;
         case Uint32:
-            ss << val_as(uint32_t, val);
+            sb.printf("%u", val_as(uint32_t, val));
             break;
         case Int64:
-            ss << val_as(int64_t, val);
+            sb.printf("%lli", val_as(int64_t, val));
             break;
         case Uint64:
-            ss << val_as(uint64_t, val);
+            sb.printf("%llu", val_as(uint64_t, val));
             break;
         case Float32:
-            ss << val_as(float, val);
+            sb.printf("%f", val_as(float, val));
             break;
         case Float64:
-            ss << std::setprecision(16) << val_as(double, val);
+            sb.printf("%.16g", val_as(double, val));
             break;
         default:
             assert(!"unreachable");
@@ -219,40 +218,42 @@ void _valInspect(value_t val, std::ostringstream &ss) {
             size_t elem_count = target_type->as.arr.elem_count;
             if (elem_type->typeclass_id == Type_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
-                    ss << "\""
-                       << string_escape(
-                              *_mctx.tmp_allocator, {val_as(char const *, val), elem_count})
-                       << "\"";
+                    sb.print("\"");
+                    sb.print(string_escape(
+                        *_mctx.tmp_allocator, {val_as(char const *, val), elem_count}));
+                    sb.print("\"");
                     break;
                 }
             }
         }
-        ss << val_data(val);
+        sb.printf("%p", val_data(val));
         break;
     }
     case Type_Tuple:
-        ss << "(";
+        sb.print("(");
         for (size_t i = 0; i < val_tuple_size(val); i++) {
             if (i) {
-                ss << " ";
+                sb.print(" ");
             }
-            _valInspect(val_tuple_at(val, i), ss);
-            ss << ",";
+            _valInspect(val_tuple_at(val, i), sb);
+            sb.print(",");
         }
-        ss << ")";
+        sb.print(")");
         break;
     case Type_Typeref:
-        ss << type_name(val_as(type_t, val));
+        sb.print(type_name(val_as(type_t, val)));
         break;
     case Type_Void:
-        ss << "void{}";
+        sb.print("void{}");
         break;
     case Type_Fn:
-        ss << "fn@" << (void *)val_typeof(val)->as.fn.body.ptr << "+"
-           << val_typeof(val)->as.fn.closure;
+        sb.printf(
+            "fn@%p+%p", (void *)val_typeof(val)->as.fn.body.ptr, val_typeof(val)->as.fn.closure);
         break;
     default:
-        ss << "value{data=" << val_data(val) << ", type=" << type_name(val_typeof(val)) << "}";
+        sb.printf("value{data=%p, type=", val_data(val));
+        sb.print(type_name(val_typeof(val)));
+        sb.print("}");
         break;
     }
 }
@@ -462,25 +463,17 @@ type_t type_get_void() {
 string type_name(type_t type) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    std::ostringstream ss;
-    _typeName(type, ss);
-    auto const &str = ss.str();
-
-    string res;
-    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
-    return res;
+    StringBuilder sb{};
+    _typeName(type, sb);
+    return sb.moveStr(*_mctx.tmp_allocator);
 }
 
 string val_inspect(value_t val) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    std::ostringstream ss;
-    _valInspect(val, ss);
-    auto const &str = ss.str();
-
-    string res;
-    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
-    return res;
+    StringBuilder sb{};
+    _valInspect(val, sb);
+    return sb.moveStr(*_mctx.tmp_allocator);
 }
 
 size_t val_tuple_size(value_t self) {
