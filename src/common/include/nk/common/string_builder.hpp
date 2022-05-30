@@ -15,9 +15,9 @@ public:
 private:
     struct BlockHeader;
 
-    uint8_t *_push(size_t n);
+    char *_push(size_t n);
     void _allocateBlock(size_t n);
-    uint8_t *_blockData(BlockHeader *header) const;
+    char *_blockData(BlockHeader *header) const;
     size_t _align(size_t n) const;
     size_t _spaceLeftInBlock() const;
 

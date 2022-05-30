@@ -19,13 +19,7 @@ void StringBuilder::reserve(size_t n) {
 }
 
 int StringBuilder::printf(char const *fmt, ...) {
-    char ar[PRINTF_BUFFER_SIZE];
-    char *buf = ar;
-    defer {
-        if (buf != ar) {
-            ::free(buf);
-        }
-    };
+    char buf[PRINTF_BUFFER_SIZE];
 
     va_list ap;
     va_start(ap, fmt);
@@ -33,22 +27,12 @@ int StringBuilder::printf(char const *fmt, ...) {
     va_end(ap);
 
     if (n >= (int)PRINTF_BUFFER_SIZE) {
-        buf = (char *)::malloc(n + 1);
-
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf(buf, n + 1, fmt, ap);
+        vsnprintf(_push(n + 1), n + 1, fmt, ap);
         va_end(ap);
-    }
-
-    if (n >= 0) {
-        size_t first_part_size = minu(_spaceLeftInBlock(), (size_t)n + 1);
-
-        size_t size = first_part_size;
-        ::memcpy(_push(size), buf, size);
-
-        size = n + 1 - first_part_size;
-        ::memcpy(_push(size), buf + first_part_size, size);
+    } else if (n >= 0) {
+        ::memcpy(_push(n + 1), buf, n + 1);
     }
 
     return n;
@@ -71,7 +55,7 @@ string StringBuilder::moveStr(Allocator &allocator) {
     }
 }
 
-uint8_t *StringBuilder::_push(size_t n) {
+char *StringBuilder::_push(size_t n) {
     if (n) {
         reserve(n);
         m_last_block->size += n;
@@ -103,8 +87,8 @@ void StringBuilder::_allocateBlock(size_t n) {
     m_last_block = block;
 }
 
-uint8_t *StringBuilder::_blockData(BlockHeader *block) const {
-    return (uint8_t *)_align((size_t)(block + 1));
+char *StringBuilder::_blockData(BlockHeader *block) const {
+    return (char *)_align((size_t)(block + 1));
 }
 
 size_t StringBuilder::_align(size_t n) const {
