@@ -5,11 +5,11 @@
 
 #include "nk/common/utils.hpp"
 
-struct _BlockHeader {
+typedef struct _BlockHeader {
     _BlockHeader *next;
     size_t size;
     size_t capacity;
-};
+} _BlockHeader;
 
 static size_t _align(size_t n) {
     return roundUp(n, 16);
@@ -53,6 +53,12 @@ uint8_t *BlockAllocator_push(BlockAllocator *self, size_t n) {
     } else {
         return nullptr;
     }
+}
+
+void BlockAllocator_pop(BlockAllocator *self, size_t n) {
+    /// @TODO BlockAllocator_pop incomplete
+    self->_last_block->size -= n;
+    self->size -= n;
 }
 
 void BlockAllocator_reserve(BlockAllocator *self, size_t n) {

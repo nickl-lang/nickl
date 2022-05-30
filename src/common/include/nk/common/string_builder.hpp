@@ -8,6 +8,8 @@
 class StringBuilder {
 public:
     void reserve(size_t n);
+    int print(string str);
+    int print(char const *str);
     int printf(char const *fmt, ...);
     string moveStr(Allocator &allocator);
 

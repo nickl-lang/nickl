@@ -18,6 +18,7 @@ typedef struct {
 
 void BlockAllocator_reserve(BlockAllocator *self, size_t n);
 uint8_t *BlockAllocator_push(BlockAllocator *self, size_t n);
+void BlockAllocator_pop(BlockAllocator *self, size_t n);
 void BlockAllocator_copy(BlockAllocator const *self, uint8_t *dst);
 
 void BlockAllocator_deinit(BlockAllocator *self);
