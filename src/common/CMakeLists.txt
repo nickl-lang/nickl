@@ -6,6 +6,7 @@ add_library(${LIB}
     src/id.cpp
     src/logger.cpp
     src/mem.cpp
+    src/string_builder.cpp
     src/utils.cpp
     )
 
