@@ -5,6 +5,7 @@ def_test(GROUP common NAME id LINK ${LIB})
 def_test(GROUP common NAME logger LINK ${LIB})
 def_test(GROUP common NAME mem LINK ${LIB})
 def_test(GROUP common NAME sequence LINK ${LIB})
+def_test(GROUP common NAME string_builder LINK ${LIB})
 def_test(GROUP common NAME utils LINK ${LIB} TARGET UTILS_TEST)
 
 target_compile_definitions(${UTILS_TEST}
