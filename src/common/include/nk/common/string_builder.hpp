@@ -1,8 +1,7 @@
 #ifndef HEADER_GUARD_NK_COMMON_STRING_BUILDER
 #define HEADER_GUARD_NK_COMMON_STRING_BUILDER
 
-#include <cstddef>
-
+#include "nk/common/block_allocator.h"
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
 
@@ -13,18 +12,7 @@ public:
     string moveStr(Allocator &allocator);
 
 private:
-    struct BlockHeader;
-
-    char *_push(size_t n);
-    void _allocateBlock(size_t n);
-    char *_blockData(BlockHeader *header) const;
-    size_t _align(size_t n) const;
-    size_t _spaceLeftInBlock() const;
-
-private:
-    size_t m_size;
-    BlockHeader *m_first_block;
-    BlockHeader *m_last_block;
+    BlockAllocator m_allocator;
 };
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER

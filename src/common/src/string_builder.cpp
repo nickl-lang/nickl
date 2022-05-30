@@ -6,16 +6,8 @@
 
 static constexpr size_t PRINTF_BUFFER_SIZE = 4096;
 
-struct StringBuilder::BlockHeader {
-    BlockHeader *next;
-    size_t size;
-    size_t capacity;
-};
-
 void StringBuilder::reserve(size_t n) {
-    if (n > _spaceLeftInBlock()) {
-        _allocateBlock(n);
-    }
+    BlockAllocator_reserve(&m_allocator, n);
 }
 
 int StringBuilder::printf(char const *fmt, ...) {
@@ -23,78 +15,30 @@ int StringBuilder::printf(char const *fmt, ...) {
 
     va_list ap;
     va_start(ap, fmt);
-    int n = vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap);
+    int const printf_res = vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap);
+    int const byte_count = printf_res + 1;
     va_end(ap);
 
-    if (n >= (int)PRINTF_BUFFER_SIZE) {
+    if (byte_count > (int)PRINTF_BUFFER_SIZE) {
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf(_push(n + 1), n + 1, fmt, ap);
+        vsnprintf((char *)BlockAllocator_push(&m_allocator, byte_count), byte_count, fmt, ap);
         va_end(ap);
-    } else if (n >= 0) {
-        ::memcpy(_push(n + 1), buf, n + 1);
+    } else if (byte_count > 0) {
+        ::memcpy(BlockAllocator_push(&m_allocator, byte_count), buf, byte_count);
     }
 
-    return n;
+    return printf_res;
 }
 
 string StringBuilder::moveStr(Allocator &allocator) {
-    if (m_size) {
-        char *mem = (char *)allocator.alloc(m_size);
-        size_t offset = 0;
-        for (BlockHeader *block = m_first_block; block;) {
-            BlockHeader *cur_block = block;
-            block = block->next;
-            ::memcpy(mem + offset, _blockData(cur_block), cur_block->size);
-            offset += cur_block->size;
-            ::free(cur_block);
-        }
-        return {mem, m_size - 1};
+    size_t const byte_count = m_allocator.size;
+    if (byte_count) {
+        char *mem = (char *)allocator.alloc(byte_count);
+        BlockAllocator_copy(&m_allocator, (uint8_t *)mem);
+        BlockAllocator_deinit(&m_allocator);
+        return {mem, byte_count - 1};
     } else {
         return {};
     }
-}
-
-char *StringBuilder::_push(size_t n) {
-    if (n) {
-        reserve(n);
-        m_last_block->size += n;
-        m_size += n;
-        return _blockData(m_last_block) + m_last_block->size - n;
-    } else {
-        return nullptr;
-    }
-}
-
-void StringBuilder::_allocateBlock(size_t n) {
-    auto const header_size = _align(sizeof(BlockHeader));
-    n = ceilToPowerOf2(n + header_size);
-    n = maxu(n, (m_last_block ? m_last_block->capacity << 1 : 0));
-
-    BlockHeader *block = (BlockHeader *)::malloc(n);
-
-    block->next = nullptr;
-    block->size = 0;
-    block->capacity = n - header_size;
-
-    if (!m_last_block) {
-        m_first_block = block;
-        m_last_block = block;
-    } else {
-        m_last_block->next = block;
-    }
-
-    m_last_block = block;
-}
-
-char *StringBuilder::_blockData(BlockHeader *block) const {
-    return (char *)_align((size_t)(block + 1));
-}
-
-size_t StringBuilder::_align(size_t n) const {
-    return roundUp(n, 16);
-}
-
-size_t StringBuilder::_spaceLeftInBlock() const {
-    return m_last_block ? m_last_block->capacity - m_last_block->size : 0;
 }
