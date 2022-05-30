@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstdio>
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_token_id[ID], s_token_text[ID]

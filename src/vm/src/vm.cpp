@@ -3,7 +3,7 @@
 #include "find_library.hpp"
 #include "nk/common/arena.hpp"
 #include "nk/common/id.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/vm/value.hpp"
 
 namespace nk {

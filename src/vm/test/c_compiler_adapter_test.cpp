@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/vm.hpp"
 #include "pipe_stream.hpp"

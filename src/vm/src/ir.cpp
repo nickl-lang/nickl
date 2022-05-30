@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/value.hpp"

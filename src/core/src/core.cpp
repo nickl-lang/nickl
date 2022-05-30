@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "nk/common/file_utils.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/vm/bc.hpp"
 #include "nk/vm/c_compiler_adapter.hpp"
 #include "nk/vm/interp.hpp"

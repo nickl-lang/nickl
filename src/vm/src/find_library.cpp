@@ -4,7 +4,7 @@
 
 #include "nk/common/arena.hpp"
 #include "nk/common/file_utils.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 
 namespace nk {
 namespace vm {

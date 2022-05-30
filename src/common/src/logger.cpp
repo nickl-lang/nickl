@@ -1,6 +1,6 @@
 #ifdef ENABLE_LOGGING
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 
 #include <chrono>
 #include <cstdarg>

@@ -7,7 +7,7 @@
 #include "native_fn_adapter.hpp"
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 

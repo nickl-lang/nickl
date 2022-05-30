@@ -4,7 +4,7 @@
 #include <cstring>
 #include <thread>
 
-#include "nk/common/logger.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nkl/core/core.hpp"
 
