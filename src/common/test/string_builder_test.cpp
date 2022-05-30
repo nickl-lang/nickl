@@ -21,6 +21,10 @@ protected:
     ArenaAllocator m_arena;
 };
 
+TEST_F(string_builder, empty) {
+    EXPECT_EQ(std_str(m_builder.moveStr(m_arena)), "");
+}
+
 TEST_F(string_builder, basic) {
     const std::string c_test_str = "Hello, World!";
     int n = m_builder.printf(c_test_str.c_str());
