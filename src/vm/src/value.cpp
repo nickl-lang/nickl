@@ -93,7 +93,7 @@ void _typeName(type_t type, StringBuilder &sb) {
     case Type_Array:
         sb << "array{";
         _typeName(type->as.arr.elem_type, sb);
-        sb.printf(", %zu}", type->as.arr.elem_count);
+        sb << ", " << type->as.arr.elem_count << "}";
         break;
     case Type_Numeric:
         switch (type->as.num.value_type) {
@@ -117,7 +117,7 @@ void _typeName(type_t type, StringBuilder &sb) {
             assert(!"unreachable");
             break;
         }
-        sb.printf("%i", NUM_TYPE_SIZE(type->as.num.value_type) * 8);
+        sb << NUM_TYPE_SIZE(type->as.num.value_type) * 8;
         break;
     case Type_Ptr:
         sb << "ptr{";
@@ -156,7 +156,7 @@ void _typeName(type_t type, StringBuilder &sb) {
         break;
     }
     default:
-        sb.printf("type{id=%llu}", type->id);
+        sb << "type{id=" << type->id << "}";
         break;
     }
 }
@@ -177,34 +177,34 @@ void _valInspect(value_t val, StringBuilder &sb) {
     case Type_Numeric:
         switch (val_typeof(val)->as.num.value_type) {
         case Int8:
-            sb.printf("%i", (int)val_as(int8_t, val));
+            sb << (int)val_as(int8_t, val);
             break;
         case Uint8:
-            sb.printf("%u", (unsigned)val_as(uint8_t, val));
+            sb << (unsigned)val_as(uint8_t, val);
             break;
         case Int16:
-            sb.printf("%hi", val_as(int16_t, val));
+            sb << val_as(int16_t, val);
             break;
         case Uint16:
-            sb.printf("%hu", val_as(uint16_t, val));
+            sb << val_as(uint16_t, val);
             break;
         case Int32:
-            sb.printf("%i", val_as(int32_t, val));
+            sb << val_as(int32_t, val);
             break;
         case Uint32:
-            sb.printf("%u", val_as(uint32_t, val));
+            sb << val_as(uint32_t, val);
             break;
         case Int64:
-            sb.printf("%lli", val_as(int64_t, val));
+            sb << val_as(int64_t, val);
             break;
         case Uint64:
-            sb.printf("%llu", val_as(uint64_t, val));
+            sb << val_as(uint64_t, val);
             break;
         case Float32:
-            sb.printf("%f", val_as(float, val));
+            sb << val_as(float, val);
             break;
         case Float64:
-            sb.printf("%.16g", val_as(double, val));
+            sb << val_as(double, val);
             break;
         default:
             assert(!"unreachable");
@@ -225,7 +225,7 @@ void _valInspect(value_t val, StringBuilder &sb) {
                 }
             }
         }
-        sb.printf("%p", val_data(val));
+        sb << val_data(val);
         break;
     }
     case Type_Tuple:
@@ -246,13 +246,11 @@ void _valInspect(value_t val, StringBuilder &sb) {
         sb << "void{}";
         break;
     case Type_Fn:
-        sb.printf(
-            "fn@%p+%p", (void *)val_typeof(val)->as.fn.body.ptr, val_typeof(val)->as.fn.closure);
+        sb << "fn@" << (void *)val_typeof(val)->as.fn.body.ptr << "+"
+           << val_typeof(val)->as.fn.closure;
         break;
     default:
-        sb.printf("value{data=%p, type=", val_data(val));
-        sb << type_name(val_typeof(val));
-        sb << "}";
+        sb << "value{data=" << val_data(val) << ", type=" << type_name(val_typeof(val)) << "}";
         break;
     }
 }

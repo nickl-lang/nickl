@@ -26,6 +26,8 @@ public:
     int print(float val);
     int print(double val);
 
+    int print(void *ptr);
+
     template <class T>
     int print(T) {
         static_assert(!std::is_same_v<T, T>, "print not implemented");
