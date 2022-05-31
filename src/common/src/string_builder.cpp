@@ -23,6 +23,46 @@ int StringBuilder::print(char c) {
     return print({&c, 1});
 }
 
+int StringBuilder::print(int8_t val) {
+    return printf("%hhi", val);
+}
+
+int StringBuilder::print(int16_t val) {
+    return printf("%hi", val);
+}
+
+int StringBuilder::print(int32_t val) {
+    return printf("%i", val);
+}
+
+int StringBuilder::print(int64_t val) {
+    return printf("%lli", val);
+}
+
+int StringBuilder::print(uint8_t val) {
+    return printf("%hhu", val);
+}
+
+int StringBuilder::print(uint16_t val) {
+    return printf("%hu", val);
+}
+
+int StringBuilder::print(uint32_t val) {
+    return printf("%u", val);
+}
+
+int StringBuilder::print(uint64_t val) {
+    return printf("%llu", val);
+}
+
+int StringBuilder::print(float val) {
+    return printf("%f", val);
+}
+
+int StringBuilder::print(double val) {
+    return printf("%lf", val);
+}
+
 int StringBuilder::printf(char const *fmt, ...) {
     char buf[PRINTF_BUFFER_SIZE];
 

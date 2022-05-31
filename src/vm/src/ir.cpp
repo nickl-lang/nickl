@@ -52,9 +52,7 @@ void _inspect(Program const &prog, StringBuilder &sb) {
             if (i) {
                 sb << ", ";
             }
-            auto arg_t = type_tuple_typeAt(funct.args_t, i);
-            sb.printf("$arg%zu:", i);
-            sb << type_name(arg_t);
+            sb << "$arg" << i << ":" << type_name(type_tuple_typeAt(funct.args_t, i));
         }
 
         sb << ") -> " << type_name(funct.ret_t) << " {\n\n";
@@ -75,16 +73,16 @@ void _inspect(Program const &prog, StringBuilder &sb) {
                     }
                     switch (ref.ref_type) {
                     case Ref_Frame:
-                        sb.printf("$%zu", ref.value.index);
+                        sb << "$" << ref.value.index;
                         break;
                     case Ref_Arg:
-                        sb.printf("$arg%zu", ref.value.index);
+                        sb << "$arg" << ref.value.index;
                         break;
                     case Ref_Ret:
                         sb << "$ret";
                         break;
                     case Ref_Global:
-                        sb.printf("$global%zu", ref.value.index);
+                        sb << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
                         sb << val_inspect(value_t{ref.value.data, ref.type});
@@ -99,13 +97,13 @@ void _inspect(Program const &prog, StringBuilder &sb) {
                         break;
                     }
                     if (ref.offset) {
-                        sb.printf("+%zu", ref.offset);
+                        sb << "+" << ref.offset;
                     }
                     if (ref.is_indirect) {
                         sb << "]";
                     }
                     if (ref.post_offset) {
-                        sb.printf("+%zu", ref.post_offset);
+                        sb << "+" << ref.post_offset;
                     }
                     sb << ":" << type_name(ref.type);
                 };

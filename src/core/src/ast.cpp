@@ -4,8 +4,9 @@
 #include <cassert>
 #include <cstring>
 #include <iterator>
-#include <sstream>
 #include <string>
+
+#include "nk/common/string_builder.hpp"
 
 namespace nkl {
 
@@ -147,89 +148,89 @@ NodeArray Ast::push_named_ar(NamedNodeArray nodes) {
 
 namespace {
 
-void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
+void _inspect(node_ref_t node, StringBuilder &sb, size_t depth = 1) {
     assert(depth > 0);
 
     auto const newline = [&](size_t depth) {
         static constexpr size_t c_indent_size = 2;
-        ss << '\n';
-        std::fill_n(std::ostream_iterator<char>(ss), depth * c_indent_size, ' ');
+        sb << '\n';
+        sb.printf("%*s", depth * c_indent_size, "");
     };
 
     auto const field = [&](const char *name) {
-        ss << ',';
+        sb << ',';
         newline(depth);
-        ss << name << ": ";
+        sb << name << ": ";
     };
 
     auto const inspectNodeArray = [&](NodeArray const &ar, size_t depth) {
-        ss << "[";
+        sb << "[";
         bool first = true;
         for (size_t i = 0; i < ar.size; i++) {
             if (!first) {
-                ss << ", ";
+                sb << ", ";
             }
-            _inspect(ar.data + i, ss, depth + 1);
+            _inspect(ar.data + i, sb, depth + 1);
             first = false;
         }
-        ss << "]";
+        sb << "]";
     };
 
     auto const inspectNamedNodeArray = [&](NodeArray const &ar, size_t depth) {
-        ss << "[";
+        sb << "[";
         bool first = true;
         for (node_ref_t node = ar.data; node != ar.data + ar.size; node++) {
             if (!first) {
-                ss << ", ";
+                sb << ", ";
             }
-            ss << "{";
+            sb << "{";
             newline(depth + 1);
-            ss << "name: #" << node->as.named_node.name->text << ",";
+            sb << "name: #" << node->as.named_node.name->text << ",";
             newline(depth + 1);
-            ss << "node: ";
-            _inspect(node->as.named_node.node, ss, depth + 2);
-            ss << "}";
+            sb << "node: ";
+            _inspect(node->as.named_node.node, sb, depth + 2);
+            sb << "}";
             first = false;
         }
-        ss << "]";
+        sb << "]";
     };
 
     auto const inspectSig = [&](_fn_type const &sig, size_t depth) {
-        ss << "{";
+        sb << "{";
         newline(depth + 1);
-        ss << "params: ";
+        sb << "params: ";
         inspectNamedNodeArray(sig.params, depth + 1);
-        ss << ",";
+        sb << ",";
         newline(depth + 1);
-        ss << "ret_type: ";
-        _inspect(sig.ret_type, ss, depth + 2);
-        ss << "}";
+        sb << "ret_type: ";
+        _inspect(sig.ret_type, sb, depth + 2);
+        sb << "}";
     };
 
     auto const inspectNode = [&](node_ref_t node) {
-        _inspect(node, ss, depth + 1);
+        _inspect(node, sb, depth + 1);
     };
 
     auto const inspectToken = [&](token_ref_t token) {
         if (token) {
-            ss << "(" << s_token_id[token->id] << ", \"" << token->text << "\")";
+            sb << "(" << s_token_id[token->id] << ", \"" << token->text << "\")";
         } else {
-            ss << "null";
+            sb << "null";
         }
     };
 
     auto const inspectBool = [&](bool v) {
-        ss << std::boolalpha << v;
+        sb << (v ? "true" : "false");
     };
 
     if (!node) {
-        ss << "null";
+        sb << "null";
         return;
     }
 
-    ss << "{";
+    sb << "{";
     newline(depth);
-    ss << "id: " << s_ast_node_names[node->id];
+    sb << "id: " << s_ast_node_names[node->id];
 
     switch (node->id) {
     default:
@@ -335,19 +336,15 @@ void _inspect(node_ref_t node, std::ostringstream &ss, size_t depth = 1) {
         break;
     }
 
-    ss << "}";
+    sb << "}";
 }
 
 } // namespace
 
 string ast_inspect(node_ref_t node) {
-    std::ostringstream ss;
-    _inspect(node, ss);
-    auto const &str = ss.str();
-
-    string res;
-    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
-    return res;
+    StringBuilder sb{};
+    _inspect(node, sb);
+    return sb.moveStr(*_mctx.tmp_allocator);
 }
 
 } // namespace nkl

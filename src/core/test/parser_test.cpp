@@ -6,7 +6,9 @@
 
 #include <gtest/gtest.h>
 
+#include "nk/common/arena.hpp"
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.hpp"
 #include "nk/vm/vm.hpp"
 
 namespace {
@@ -56,13 +58,22 @@ protected:
     };
 
     void test_ok(std::vector<TokenDescr> tokens, Node const &expected) {
+        auto arena = ArenaAllocator::create();
+
         defer {
             m_parser.ast.deinit();
+            arena.deinit();
         };
 
-        LOG_INF(
-            "\n==================================================\nTest: %s",
-            formatTokens(tokens).data())
+        LOG_INF("\n==================================================\nTest: %s", [&]() {
+            StringBuilder sb{};
+            for (auto const &token : tokens) {
+                sb << token.text << " ";
+            }
+            sb << '\0';
+            auto str = sb.moveStr(arena);
+            return str.data;
+        }())
         tokens.emplace_back(t_eof, "");
         Array<Token> token_ar{};
         defer {
@@ -88,14 +99,6 @@ protected:
     }
 
 private:
-    std::string formatTokens(std::vector<TokenDescr> const &tokens) {
-        std::ostringstream ss;
-        for (auto const &token : tokens) {
-            ss << token.text << " ";
-        }
-        return ss.str();
-    }
-
     template <class ArrayType, class Pred>
     static bool compareArrays(ArrayType const &lhs, ArrayType const &rhs, const Pred &pred) {
         if (lhs.size != rhs.size) {

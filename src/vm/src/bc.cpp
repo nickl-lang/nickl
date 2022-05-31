@@ -1,12 +1,11 @@
 #include "nk/vm/bc.hpp"
 
 #include <cassert>
-#include <iomanip>
-#include <sstream>
 
 #include "find_library.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/string_builder.hpp"
 #include "nk/vm/interp.hpp"
 #include "so_adapter.hpp"
 
@@ -24,75 +23,72 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm)
 
-void _inspect(Program const &prog, std::ostringstream &ss) {
-    ss << std::hex << std::setfill(' ') << std::left;
-    static constexpr std::streamoff c_padding = 8;
-
+void _inspect(Program const &prog, StringBuilder &sb) {
     auto _inspectArg = [&](Ref const &arg) {
         if (arg.is_indirect) {
-            ss << "[";
+            sb << "[";
         }
         switch (arg.ref_type) {
         case Ref_Frame:
-            ss << "frame+";
+            sb << "frame+";
             break;
         case Ref_Arg:
-            ss << "arg+";
+            sb << "arg+";
             break;
         case Ref_Ret:
-            ss << "ret+";
+            sb << "ret+";
             break;
         case Ref_Global:
-            ss << "global+";
+            sb << "global+";
             break;
         case Ref_Const:
-            ss << val_inspect(value_t{prog.rodata.data + arg.offset, arg.type});
+            sb << val_inspect(value_t{prog.rodata.data + arg.offset, arg.type});
             break;
         case Ref_Reg:
-            ss << "reg+";
+            sb << "reg+";
             break;
         case Ref_Instr:
-            ss << "instr+";
+            sb << "instr+";
             break;
         case Ref_Abs:
-            ss << "0x";
+            sb << "0x";
             break;
         default:
             assert(!"unreachable");
             break;
         }
         if (arg.ref_type != Ref_Const) {
-            ss << arg.offset;
+            sb.printf("%zx", arg.offset);
         }
         if (arg.is_indirect) {
-            ss << "]";
+            sb << "]";
         }
         if (arg.post_offset) {
-            ss << "+" << arg.post_offset;
+            sb.printf("+%zx", arg.post_offset);
         }
         if (arg.type) {
-            ss << ":" << type_name(arg.type);
+            sb << ":" << type_name(arg.type);
         }
     };
 
     for (auto const &instr : prog.instrs) {
-        ss << std::setw(c_padding) << (&instr - prog.instrs.data) * sizeof(Instr);
+        sb.printf("%zx\t", (&instr - prog.instrs.data) * sizeof(Instr));
 
         if (instr.arg[0].ref_type != Ref_None) {
             _inspectArg(instr.arg[0]);
-            ss << " := ";
+            sb << " := ";
         }
 
-        ss << s_op_names[instr.code];
+        sb << s_op_names[instr.code];
 
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].ref_type != Ref_None) {
-                ss << ((i > 1) ? ", " : " ");
+                sb << ((i > 1) ? ", " : " ");
                 _inspectArg(instr.arg[i]);
             }
         }
 
-        ss << "\n";
+        sb << "\n";
     }
 }
 
@@ -117,13 +113,9 @@ void Program::deinit() {
 }
 
 string Program::inspect() const {
-    std::ostringstream ss;
-    _inspect(*this, ss);
-    auto const &str = ss.str();
-
-    string res;
-    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
-    return res;
+    StringBuilder sb{};
+    _inspect(*this, sb);
+    return sb.moveStr(*_mctx.tmp_allocator);
 }
 
 void translateFromIr(Program &prog, ir::Program const &ir) {
