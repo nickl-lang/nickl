@@ -735,7 +735,9 @@ struct CompileEngine {
             return makeValue<void const *>(type_get_ptr(ar_t), val.data);
         }
         case Node_escaped_string_literal: {
-            string val = string_unescape(m_builder.prog->arena, node->as.token.val->text);
+            StringBuilder sb{};
+            string_unescape(sb, node->as.token.val->text);
+            string val = sb.moveStr(m_builder.prog->arena);
             type_t ar_t = type_get_array(type_get_numeric(Int8), val.size);
             return makeValue<void const *>(type_get_ptr(ar_t), val.data);
         }
