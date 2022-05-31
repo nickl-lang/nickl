@@ -1,6 +1,7 @@
 #include "pipe_stream.hpp"
 
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 
 #ifdef __GNUC__
@@ -20,8 +21,11 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::pipe_stream)
 
-string _makeCmdStr(string cmd, bool quiet) {
-    return tmpstr_format("%.*s%s", cmd.size, cmd.data, quiet ? " >/dev/null 2>&1" : "");
+void _makeCmdStr(StringBuilder &sb, string cmd, bool quiet) {
+    sb << cmd;
+    if (quiet) {
+        sb << " >/dev/null 2>&1";
+    }
 }
 
 popen_filebuf *_createFileBuf(FILE *file) {
@@ -33,7 +37,14 @@ popen_filebuf *_createFileBuf(FILE *file) {
 std::istream pipe_streamRead(string cmd, bool quiet) {
     LOG_TRC(__FUNCTION__);
 
-    auto str = _makeCmdStr(cmd, quiet);
+    StringBuilder sb{};
+    _makeCmdStr(sb, cmd, quiet);
+    LibcAllocator allocator;
+    auto str = sb.moveStr(allocator);
+    defer {
+        allocator.free((void *)str.data);
+    };
+
     auto file = popen(str.data, "r");
     return std::istream{_createFileBuf(file)};
 }
@@ -41,7 +52,14 @@ std::istream pipe_streamRead(string cmd, bool quiet) {
 std::ostream pipe_streamWrite(string cmd, bool quiet) {
     LOG_TRC(__FUNCTION__);
 
-    auto str = _makeCmdStr(cmd, quiet);
+    StringBuilder sb{};
+    _makeCmdStr(sb, cmd, quiet);
+    LibcAllocator allocator;
+    auto str = sb.moveStr(allocator);
+    defer {
+        allocator.free((void *)str.data);
+    };
+
     auto file = popen(str.data, "w");
     return std::ostream{_createFileBuf(file)};
 }

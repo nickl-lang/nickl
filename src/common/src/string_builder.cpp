@@ -12,7 +12,7 @@ void StringBuilder::reserve(size_t n) {
 }
 
 int StringBuilder::print(string str) {
-    ::memcpy(BlockAllocator_push(&m_allocator, str.size), str.data, str.size);
+    str.copy({(char *)BlockAllocator_push(&m_allocator, str.size), str.size});
     return str.size;
 }
 
@@ -92,13 +92,10 @@ int StringBuilder::printf(char const *fmt, ...) {
 }
 
 string StringBuilder::moveStr(Allocator &allocator) {
+    *this << '\0';
     size_t const byte_count = m_allocator.size;
-    if (byte_count) {
-        char *mem = (char *)allocator.alloc(byte_count);
-        BlockAllocator_copy(&m_allocator, (uint8_t *)mem);
-        BlockAllocator_deinit(&m_allocator);
-        return {mem, byte_count};
-    } else {
-        return {};
-    }
+    char *mem = (char *)allocator.alloc(byte_count);
+    BlockAllocator_copy(&m_allocator, (uint8_t *)mem);
+    BlockAllocator_deinit(&m_allocator);
+    return {mem, byte_count - 1};
 }
