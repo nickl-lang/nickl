@@ -1,6 +1,7 @@
 #include "nk/common/string_builder.hpp"
 
 #include <cstdarg>
+#include <limits>
 
 #include "nk/common/utils.hpp"
 
@@ -56,11 +57,15 @@ int StringBuilder::print(uint64_t val) {
 }
 
 int StringBuilder::print(float val) {
-    return printf("%f", val);
+    return printf("%.*g", std::numeric_limits<float>::max_digits10, val);
 }
 
 int StringBuilder::print(double val) {
-    return printf("%lf", val);
+    return printf("%.*lg", std::numeric_limits<double>::max_digits10, val);
+}
+
+int StringBuilder::print(void *ptr) {
+    return printf("%p", ptr);
 }
 
 int StringBuilder::printf(char const *fmt, ...) {
