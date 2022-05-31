@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <sstream>
 
 hash_t hash_seed() {
     return std::chrono::steady_clock::now().time_since_epoch().count();
@@ -61,96 +60,80 @@ string string_vformat(Allocator &allocator, char const *fmt, va_list ap) {
     return string{data, n};
 }
 
-string string_escape(Allocator &allocator, string str) {
-    std::ostringstream ss;
-
+void string_escape(StringBuilder &sb, string str) {
     for (size_t i = 0; i < str.size; i++) {
         switch (str[i]) {
         case '\a':
-            ss << "\\a";
+            sb.print("\\a");
             break;
         case '\b':
-            ss << "\\b";
+            sb.print("\\b");
             break;
         case '\f':
-            ss << "\\f";
+            sb.print("\\f");
             break;
         case '\n':
-            ss << "\\n";
+            sb.print("\\n");
             break;
         case '\r':
-            ss << "\\r";
+            sb.print("\\r");
             break;
         case '\t':
-            ss << "\\t";
+            sb.print("\\t");
             break;
         case '\v':
-            ss << "\\v";
+            sb.print("\\v");
             break;
         case '\0':
-            ss << "\\0";
+            sb.print("\\0");
             break;
         case '\'':
-            ss << "\\'";
+            sb.print("\\'");
             break;
         case '\\':
-            ss << "\\\\";
+            sb.print("\\\\");
             break;
         default:
-            ss << str[i];
+            sb.print(str[i]);
             break;
         }
     }
-
-    ss << '\0';
-
-    string res;
-    string{ss.str().data(), ss.str().size()}.copy(res, allocator);
-    return {res.data, res.size - 1};
 }
 
-string string_unescape(Allocator &allocator, string str) {
-    std::ostringstream ss;
-
+void string_unescape(StringBuilder &sb, string str) {
     for (size_t i = 0; i < str.size; i++) {
         if (str[i] == '\\' && i < str.size - 1) {
             switch (str[++i]) {
             case 'a':
-                ss << '\a';
+                sb.print('\a');
                 break;
             case 'b':
-                ss << '\b';
+                sb.print('\b');
                 break;
             case 'f':
-                ss << '\f';
+                sb.print('\f');
                 break;
             case 'n':
-                ss << '\n';
+                sb.print('\n');
                 break;
             case 'r':
-                ss << '\r';
+                sb.print('\r');
                 break;
             case 't':
-                ss << '\t';
+                sb.print('\t');
                 break;
             case 'v':
-                ss << '\v';
+                sb.print('\v');
                 break;
             case '0':
-                ss << '\0';
+                sb.print('\0');
                 break;
             default:
-                ss << str[i];
+                sb.print(str[i]);
                 break;
             }
         } else {
-            ss << str[i];
+            sb.print(str[i]);
         }
     }
-
-    ss << '\0';
-
-    string res;
-    string{ss.str().data(), ss.str().size()}.copy(res, allocator);
-    return {res.data, res.size - 1};
 }

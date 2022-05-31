@@ -218,10 +218,9 @@ void _valInspect(value_t val, StringBuilder &sb) {
             size_t elem_count = target_type->as.arr.elem_count;
             if (elem_type->typeclass_id == Type_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
-                    sb.print("\"");
-                    sb.print(string_escape(
-                        *_mctx.tmp_allocator, {val_as(char const *, val), elem_count}));
-                    sb.print("\"");
+                    sb.print('"');
+                    string_escape(sb, {val_as(char const *, val), elem_count});
+                    sb.print('"');
                     break;
                 }
             }

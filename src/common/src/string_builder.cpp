@@ -19,6 +19,10 @@ int StringBuilder::print(char const *str) {
     return print(cs2s(str));
 }
 
+int StringBuilder::print(char c) {
+    return print({&c, 1});
+}
+
 int StringBuilder::printf(char const *fmt, ...) {
     char buf[PRINTF_BUFFER_SIZE];
 

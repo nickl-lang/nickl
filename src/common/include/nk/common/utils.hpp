@@ -11,6 +11,7 @@
 
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
+#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.h"
 
 #ifndef CAT
@@ -44,8 +45,8 @@ string tmpstr_vformat(char const *fmt, va_list ap);
 string string_format(Allocator &allocator, char const *fmt, ...);
 string string_vformat(Allocator &allocator, char const *fmt, va_list ap);
 
-string string_escape(Allocator &allocator, string str);
-string string_unescape(Allocator &allocator, string str);
+void string_escape(StringBuilder &sb, string str);
+void string_unescape(StringBuilder &sb, string str);
 
 template <class THeader, class TElem>
 size_t arrayWithHeaderSize(size_t n) {
