@@ -737,7 +737,9 @@ struct CompileEngine {
         case Node_escaped_string_literal: {
             StringBuilder sb{};
             string_unescape(sb, node->as.token.val->text);
+            sb << '\0';
             string val = sb.moveStr(m_builder.prog->arena);
+            val.size--;
             type_t ar_t = type_get_array(type_get_numeric(Int8), val.size);
             return makeValue<void const *>(type_get_ptr(ar_t), val.data);
         }

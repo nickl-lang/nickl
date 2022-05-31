@@ -4,10 +4,10 @@
 #include <cassert>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/value.hpp"
 
@@ -24,11 +24,15 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::ir)
 
-void _inspect(Program const &prog, std::ostringstream &ss) {
-    auto &allocator = *_mctx.tmp_allocator;
+void _inspect(Program const &prog, StringBuilder &sb) {
+    auto &allocator = *_mctx.def_allocator;
 
     auto funct_by_id = allocator.alloc<Funct const *>(prog.functs.size);
     auto block_by_id = allocator.alloc<Block const *>(prog.blocks.size);
+    defer {
+        allocator.free_aligned(funct_by_id);
+        allocator.free_aligned(block_by_id);
+    };
 
     std::memset(funct_by_id, 0, prog.functs.size * sizeof(void *));
     std::memset(block_by_id, 0, prog.blocks.size * sizeof(void *));
@@ -41,85 +45,84 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
         block_by_id[block.id] = &block;
     }
 
-    ss << std::hex << std::setfill(' ');
-
     for (auto const &funct : prog.functs) {
-        ss << "\nfn " << funct.name << "(";
+        sb << "\nfn " << funct.name << "(";
 
         for (size_t i = 0; i < type_tuple_size(funct.args_t); i++) {
             if (i) {
-                ss << ", ";
+                sb << ", ";
             }
             auto arg_t = type_tuple_typeAt(funct.args_t, i);
-            ss << "$arg" << i << ":" << type_name(arg_t);
+            sb.printf("$arg%zu:", i);
+            sb << type_name(arg_t);
         }
 
-        ss << ") -> " << type_name(funct.ret_t) << " {\n\n";
+        sb << ") -> " << type_name(funct.ret_t) << " {\n\n";
 
         for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
-            ss << "%" << block.name << ":";
+            sb << "%" << block.name << ":";
 
-            ss << "\n";
+            sb << "\n";
 
             for (auto const &instr : prog.instrs.slice(block.first_instr, block.instr_count)) {
                 auto const _inspectRef = [&](Ref const &ref) {
                     if (ref.ref_type == Ref_None) {
-                        ss << "{}";
+                        sb << "{}";
                         return;
                     }
                     if (ref.is_indirect) {
-                        ss << "[";
+                        sb << "[";
                     }
                     switch (ref.ref_type) {
                     case Ref_Frame:
-                        ss << "$" << ref.value.index;
+                        sb.printf("$%zu", ref.value.index);
                         break;
                     case Ref_Arg:
-                        ss << "$arg" << ref.value.index;
+                        sb.printf("$arg%zu", ref.value.index);
                         break;
                     case Ref_Ret:
-                        ss << "$ret";
+                        sb << "$ret";
                         break;
                     case Ref_Global:
-                        ss << "$global" << ref.value.index;
+                        sb.printf("$global%zu", ref.value.index);
                         break;
                     case Ref_Const:
-                        ss << val_inspect(value_t{ref.value.data, ref.type});
+                        sb << val_inspect(value_t{ref.value.data, ref.type});
                         break;
                     case Ref_Reg:
-                        ss << "$r" << (char)('a' + ref.value.index);
+                        sb << "$r" << (char)('a' + ref.value.index);
                         break;
                     case Ref_ExtVar:
-                        ss << "(" << id2s(prog.exsyms[ref.value.index].name) << ")";
+                        sb << "(" << id2s(prog.exsyms[ref.value.index].name) << ")";
                         break;
                     default:
                         break;
                     }
                     if (ref.offset) {
-                        ss << "+" << ref.offset;
+                        sb.printf("+%zu", ref.offset);
                     }
                     if (ref.is_indirect) {
-                        ss << "]";
+                        sb << "]";
                     }
                     if (ref.post_offset) {
-                        ss << "+" << ref.post_offset;
+                        sb.printf("+%zu", ref.post_offset);
                     }
-                    ss << ":" << type_name(ref.type);
+                    sb << ":" << type_name(ref.type);
                 };
 
-                ss << "  ";
+                sb << "  ";
 
                 if (instr.arg[0].arg_type == Arg_Ref) {
                     _inspectRef(instr.arg[0].as.ref);
-                    ss << " := ";
+                    sb << " := ";
                 }
 
-                ss << s_ir_names[instr.code];
+                sb << s_ir_names[instr.code];
 
                 for (size_t i = 1; i < 3; i++) {
                     auto &arg = instr.arg[i];
                     if (arg.arg_type != Arg_None) {
-                        ss << ((i > 1) ? ", " : " ");
+                        sb << ((i > 1) ? ", " : " ");
                     }
                     switch (arg.arg_type) {
                     case Arg_Ref: {
@@ -129,20 +132,20 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     }
                     case Arg_BlockId:
                         if (arg.as.id < prog.blocks.size && block_by_id[arg.as.id]) {
-                            ss << "%" << block_by_id[arg.as.id]->name;
+                            sb << "%" << block_by_id[arg.as.id]->name;
                         } else {
-                            ss << "%(null)";
+                            sb << "%(null)";
                         }
                         break;
                     case Arg_FunctId:
                         if (arg.as.id < prog.functs.size && funct_by_id[arg.as.id]) {
-                            ss << funct_by_id[arg.as.id]->name;
+                            sb << funct_by_id[arg.as.id]->name;
                         } else {
-                            ss << "(null)";
+                            sb << "(null)";
                         }
                         break;
                     case Arg_ExtFunctId:
-                        ss << "(" << id2s(prog.exsyms[arg.as.id].name) << ")";
+                        sb << "(" << id2s(prog.exsyms[arg.as.id].name) << ")";
                         break;
                     case Arg_None:
                     default:
@@ -150,35 +153,35 @@ void _inspect(Program const &prog, std::ostringstream &ss) {
                     }
                 }
 
-                ss << "\n";
+                sb << "\n";
             }
 
-            ss << "\n";
+            sb << "\n";
         }
 
-        ss << "}\n";
+        sb << "}\n";
     }
 
     if (prog.exsyms.size) {
         for (auto const &sym : prog.exsyms) {
-            ss << "\n" << id2s(prog.shobjs[sym.so_id]) << " " << id2s(sym.name) << ":";
+            sb << "\n" << id2s(prog.shobjs[sym.so_id]) << " " << id2s(sym.name) << ":";
             switch (sym.sym_type) {
             case Sym_Var:
-                ss << type_name(sym.as.var.type);
+                sb << type_name(sym.as.var.type);
                 break;
             case Sym_Funct:
-                ss << "fn{" << type_name(sym.as.funct.args_t);
+                sb << "fn{" << type_name(sym.as.funct.args_t);
                 if (sym.as.funct.is_variadic) {
-                    ss << "...";
+                    sb << "...";
                 }
-                ss << ", " << type_name(sym.as.funct.ret_t) << "}";
+                sb << ", " << type_name(sym.as.funct.ret_t) << "}";
                 break;
             default:
                 assert(!"unreachable");
                 break;
             }
         }
-        ss << "\n";
+        sb << "\n";
     }
 }
 
@@ -266,13 +269,9 @@ void Program::deinit() {
 }
 
 string Program::inspect() const {
-    std::ostringstream ss;
-    _inspect(*this, ss);
-    auto const &str = ss.str();
-
-    string res;
-    string{str.data(), str.size()}.copy(res, *_mctx.tmp_allocator);
-    return res;
+    StringBuilder sb{};
+    _inspect(*this, sb);
+    return sb.moveStr(*_mctx.tmp_allocator);
 }
 
 void ProgramBuilder::init(Program &prog) {
