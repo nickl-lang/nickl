@@ -64,37 +64,37 @@ void string_escape(StringBuilder &sb, string str) {
     for (size_t i = 0; i < str.size; i++) {
         switch (str[i]) {
         case '\a':
-            sb.print("\\a");
+            sb << "\\a";
             break;
         case '\b':
-            sb.print("\\b");
+            sb << "\\b";
             break;
         case '\f':
-            sb.print("\\f");
+            sb << "\\f";
             break;
         case '\n':
-            sb.print("\\n");
+            sb << "\\n";
             break;
         case '\r':
-            sb.print("\\r");
+            sb << "\\r";
             break;
         case '\t':
-            sb.print("\\t");
+            sb << "\\t";
             break;
         case '\v':
-            sb.print("\\v");
+            sb << "\\v";
             break;
         case '\0':
-            sb.print("\\0");
+            sb << "\\0";
             break;
         case '\'':
-            sb.print("\\'");
+            sb << "\\'";
             break;
         case '\\':
-            sb.print("\\\\");
+            sb << "\\\\";
             break;
         default:
-            sb.print(str[i]);
+            sb << str[i];
             break;
         }
     }
@@ -105,35 +105,35 @@ void string_unescape(StringBuilder &sb, string str) {
         if (str[i] == '\\' && i < str.size - 1) {
             switch (str[++i]) {
             case 'a':
-                sb.print('\a');
+                sb << '\a';
                 break;
             case 'b':
-                sb.print('\b');
+                sb << '\b';
                 break;
             case 'f':
-                sb.print('\f');
+                sb << '\f';
                 break;
             case 'n':
-                sb.print('\n');
+                sb << '\n';
                 break;
             case 'r':
-                sb.print('\r');
+                sb << '\r';
                 break;
             case 't':
-                sb.print('\t');
+                sb << '\t';
                 break;
             case 'v':
-                sb.print('\v');
+                sb << '\v';
                 break;
             case '0':
-                sb.print('\0');
+                sb << '\0';
                 break;
             default:
-                sb.print(str[i]);
+                sb << str[i];
                 break;
             }
         } else {
-            sb.print(str[i]);
+            sb << str[i];
         }
     }
 }

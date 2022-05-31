@@ -91,7 +91,7 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
 void _typeName(type_t type, StringBuilder &sb) {
     switch (type->typeclass_id) {
     case Type_Array:
-        sb.print("array{");
+        sb << "array{";
         _typeName(type->as.arr.elem_type, sb);
         sb.printf(", %zu}", type->as.arr.elem_count);
         break;
@@ -101,17 +101,17 @@ void _typeName(type_t type, StringBuilder &sb) {
         case Int16:
         case Int32:
         case Int64:
-            sb.print("i");
+            sb << "i";
             break;
         case Uint8:
         case Uint16:
         case Uint32:
         case Uint64:
-            sb.print("u");
+            sb << "u";
             break;
         case Float32:
         case Float64:
-            sb.print("f");
+            sb << "f";
             break;
         default:
             assert(!"unreachable");
@@ -120,39 +120,39 @@ void _typeName(type_t type, StringBuilder &sb) {
         sb.printf("%i", NUM_TYPE_SIZE(type->as.num.value_type) * 8);
         break;
     case Type_Ptr:
-        sb.print("ptr{");
+        sb << "ptr{";
         _typeName(type->as.ptr.target_type, sb);
-        sb.print("}");
+        sb << "}";
         break;
     case Type_Typeref:
-        sb.print("type");
+        sb << "type";
         break;
     case Type_Void:
-        sb.print("void");
+        sb << "void";
         break;
     case Type_Tuple: {
-        sb.print("tuple{");
+        sb << "tuple{";
         for (size_t i = 0; i < type_tuple_size(type); i++) {
             if (i) {
-                sb.print(", ");
+                sb << ", ";
             }
             _typeName(type_tuple_typeAt(type, i), sb);
         }
-        sb.print("}");
+        sb << "}";
         break;
     }
     case Type_Fn: {
-        sb.print("fn{(");
+        sb << "fn{(";
         type_t const params = type->as.fn.args_t;
         for (size_t i = 0; i < type_tuple_size(params); i++) {
             if (i) {
-                sb.print(", ");
+                sb << ", ";
             }
             _typeName(type_tuple_typeAt(params, i), sb);
         }
-        sb.print("), ");
+        sb << "), ";
         _typeName(type->as.fn.ret_t, sb);
-        sb.print("}");
+        sb << "}";
         break;
     }
     default:
@@ -164,15 +164,15 @@ void _typeName(type_t type, StringBuilder &sb) {
 void _valInspect(value_t val, StringBuilder &sb) {
     switch (val_typeclassid(val)) {
     case Type_Array:
-        sb.print("[");
+        sb << "[";
         for (size_t i = 0; i < val_array_size(val); i++) {
             if (i) {
-                sb.print(" ");
+                sb << " ";
             }
             _valInspect(val_array_at(val, i), sb);
-            sb.print(",");
+            sb << ",";
         }
-        sb.print("]");
+        sb << "]";
         break;
     case Type_Numeric:
         switch (val_typeof(val)->as.num.value_type) {
@@ -218,9 +218,9 @@ void _valInspect(value_t val, StringBuilder &sb) {
             size_t elem_count = target_type->as.arr.elem_count;
             if (elem_type->typeclass_id == Type_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
-                    sb.print('"');
+                    sb << '"';
                     string_escape(sb, {val_as(char const *, val), elem_count});
-                    sb.print('"');
+                    sb << '"';
                     break;
                 }
             }
@@ -229,21 +229,21 @@ void _valInspect(value_t val, StringBuilder &sb) {
         break;
     }
     case Type_Tuple:
-        sb.print("(");
+        sb << "(";
         for (size_t i = 0; i < val_tuple_size(val); i++) {
             if (i) {
-                sb.print(" ");
+                sb << " ";
             }
             _valInspect(val_tuple_at(val, i), sb);
-            sb.print(",");
+            sb << ",";
         }
-        sb.print(")");
+        sb << ")";
         break;
     case Type_Typeref:
-        sb.print(type_name(val_as(type_t, val)));
+        sb << type_name(val_as(type_t, val));
         break;
     case Type_Void:
-        sb.print("void{}");
+        sb << "void{}";
         break;
     case Type_Fn:
         sb.printf(
@@ -251,8 +251,8 @@ void _valInspect(value_t val, StringBuilder &sb) {
         break;
     default:
         sb.printf("value{data=%p, type=", val_data(val));
-        sb.print(type_name(val_typeof(val)));
-        sb.print("}");
+        sb << type_name(val_typeof(val));
+        sb << "}";
         break;
     }
 }
