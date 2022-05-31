@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_COMMON_UTILS
-#define HEADER_GUARD_NK_COMMON_UTILS
+#ifndef HEADER_GUARD_NK_COMMON_UTILS_HPP
+#define HEADER_GUARD_NK_COMMON_UTILS_HPP
 
 #include <cstdarg>
 #include <cstdbool>
@@ -11,6 +11,7 @@
 
 #include "nk/common/mem.hpp"
 #include "nk/common/string.hpp"
+#include "nk/common/utils.h"
 
 #ifndef CAT
 #define _CAT(x, y) x##y
@@ -32,94 +33,6 @@ nk_Deferrer<F> operator*(nk_DeferDummy, F &&f) {
 }
 #define defer auto CAT(nk_defer, __LINE__) = nk_DeferDummy{} *[&]()
 #endif // defer
-
-using hash_t = size_t;
-
-inline size_t roundUp(size_t v, size_t m) {
-    return (v + m - 1) / m * m;
-}
-
-inline size_t roundUpSafe(size_t v, size_t m) {
-    return m ? roundUp(v, m) : v;
-}
-
-inline uint64_t ceilToPowerOf2(uint64_t n) {
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    n++;
-    return n;
-}
-
-inline uint64_t floorToPowerOf2(uint64_t n) {
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    return n - (n >> 1);
-}
-
-inline bool isZeroOrPowerOf2(uint64_t n) {
-    return (n & (n - 1)) == 0;
-}
-
-inline uint32_t log2u(uint32_t n) {
-    static uint32_t const s_de_bruijn_magic = 0x07c4acdd;
-    static uint32_t const s_de_bruijn_table[32] = {
-        0, 9,  1,  10, 13, 21, 2,  29, 11, 14, 16, 18, 22, 25, 3, 30,
-        8, 12, 20, 28, 15, 17, 24, 7,  19, 27, 23, 6,  26, 5,  4, 31,
-    };
-
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-
-    return s_de_bruijn_table[(n * s_de_bruijn_magic) >> 27];
-}
-
-#define _MAGIC ((x ^ y) & -(x < y))
-
-inline uint64_t minu(uint64_t x, uint64_t y) {
-    return y ^ _MAGIC;
-}
-
-inline uint64_t maxu(uint64_t x, uint64_t y) {
-    return x ^ _MAGIC;
-}
-
-inline int64_t mini(int64_t x, int64_t y) {
-    return y ^ _MAGIC;
-}
-
-inline int64_t maxi(int64_t x, int64_t y) {
-    return x ^ _MAGIC;
-}
-
-#undef _MAGIC
-
-hash_t hash_seed(void);
-
-inline void hash_combine(hash_t *seed, size_t n) {
-    *seed ^= n + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-}
-
-hash_t hash_array(uint8_t const *begin, uint8_t const *end);
-
-inline hash_t hash_cstrn(char const *str, size_t n) {
-    return hash_array((uint8_t *)&str[0], (uint8_t *)&str[0] + n);
-}
-
-inline hash_t hash_cstr(char const *str) {
-    return hash_cstrn(str, strlen(str));
-}
 
 inline hash_t hash_str(string str) {
     return hash_cstrn(str.data, str.size);
@@ -162,4 +75,4 @@ struct equal_to<::Slice<T>> {
 
 } // namespace std
 
-#endif // HEADER_GUARD_NK_COMMON_UTILS
+#endif // HEADER_GUARD_NK_COMMON_UTILS_HPP

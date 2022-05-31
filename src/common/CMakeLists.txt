@@ -2,7 +2,7 @@ set(LIB nk_common)
 
 add_library(${LIB}
     src/arena.cpp
-    src/block_allocator.cpp
+    src/block_allocator.c
     src/file_utils.cpp
     src/id.cpp
     src/logger.cpp
