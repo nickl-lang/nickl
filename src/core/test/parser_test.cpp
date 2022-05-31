@@ -39,6 +39,9 @@ class parser : public testing::Test {
     void TearDown() override {
         m_ast.deinit();
         vm::vm_deinit();
+
+        LibcAllocator allocator;
+        allocator.free((void *)m_parser.err.data);
     }
 
 protected:

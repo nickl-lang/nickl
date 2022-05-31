@@ -224,7 +224,8 @@ private:
         }
         va_list ap;
         va_start(ap, fmt);
-        m_err = tmpstr_vformat(fmt, ap);
+        LibcAllocator allocator;
+        m_err = string_vformat(allocator, fmt, ap);
         va_end(ap);
         m_token.id = t_error;
     }

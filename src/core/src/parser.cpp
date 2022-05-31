@@ -723,7 +723,8 @@ private:
         m_error_occurred = true;
         va_list ap;
         va_start(ap, fmt);
-        m_err = tmpstr_vformat(fmt, ap);
+        LibcAllocator allocator;
+        m_err = string_vformat(allocator, fmt, ap);
         va_end(ap);
     }
 };

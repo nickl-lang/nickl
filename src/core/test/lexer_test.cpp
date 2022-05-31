@@ -129,6 +129,7 @@ private:
             allocator.free((void *)str.data);
         };
         LOG_ERR("%.*s", str.size, str.data);
+        allocator.free((void *)m_lexer.err.data);
     }
 
     nkl::Lexer m_lexer{};
@@ -172,16 +173,22 @@ TEST_F(lexer, numeric) {
 }
 
 TEST_F(lexer, string) {
-    test_ok("\"\"", {t_str_const}, {""});
-    test_ok("\"hello\"", {t_str_const}, {"hello"});
+    test_ok(R"("")", {t_str_const}, {""});
+    test_ok(R"("hello")", {t_str_const}, {"hello"});
     expect_pos({{0, 1, 1}, {7, 1, 8}});
-    test_err("\"");
-    test_err("\"\\");
-    test_err("\"\\\"");
-    test_err("\"\\z\"");
-    test_err("\"\n\"");
-    test_ok("\"\\n\\t\\0\\\\\\\"\\\n\"", {t_escaped_str_const}, {"\\n\\t\\0\\\\\\\"\\\n"});
-    test_ok("\"\\\"Hello, World!\\n\\\"\"", {t_escaped_str_const}, {"\\\"Hello, World!\\n\\\""});
+    test_err(R"(")");
+    test_err(R"("\)");
+    test_err(R"("\")");
+    test_err(R"("\z")");
+    test_err(R"("
+")");
+    test_ok(
+        R"("\n\t\0\\\"\
+")",
+        {t_escaped_str_const},
+        {R"(\n\t\0\\\"\
+)"});
+    test_ok(R"("\"Hello, World!\n\"")", {t_escaped_str_const}, {R"(\"Hello, World!\n\")"});
     expect_pos({{0, 1, 1}, {21, 1, 22}});
 }
 
