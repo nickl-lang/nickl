@@ -3,10 +3,10 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#include "nk/common/utils.hpp"
+#include "nk/common/utils.h"
 
 typedef struct _BlockHeader {
-    _BlockHeader *next;
+    struct _BlockHeader *next;
     size_t size;
     size_t capacity;
 } _BlockHeader;
@@ -24,13 +24,13 @@ static size_t _spaceLeftInBlock(_BlockHeader const *block) {
 }
 
 static void _allocateBlock(BlockAllocator *self, size_t n) {
-    auto const header_size = _align(sizeof(_BlockHeader));
+    size_t const header_size = _align(sizeof(_BlockHeader));
     n = ceilToPowerOf2(n + header_size);
     n = maxu(n, (self->_last_block ? self->_last_block->capacity << 1 : 0));
 
     _BlockHeader *block = (_BlockHeader *)malloc(n);
 
-    block->next = nullptr;
+    block->next = NULL;
     block->size = 0;
     block->capacity = n - header_size;
 
@@ -51,7 +51,7 @@ uint8_t *BlockAllocator_push(BlockAllocator *self, size_t n) {
         self->size += n;
         return _blockData(self->_last_block) + self->_last_block->size - n;
     } else {
-        return nullptr;
+        return NULL;
     }
 }
 
@@ -82,5 +82,5 @@ void BlockAllocator_deinit(BlockAllocator *self) {
         free(cur_block);
     }
 
-    *self = {};
+    *self = (BlockAllocator){0};
 }
