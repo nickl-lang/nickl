@@ -122,6 +122,8 @@ bool _compileFile(string file, Compiler &compiler) {
 
     if (!lexer.lex(src.slice())) {
         std::cerr << "error: " << lexer.err << std::endl;
+        LibcAllocator allocator;
+        allocator.free((void *)lexer.err.data);
         return false;
     }
 
@@ -132,6 +134,8 @@ bool _compileFile(string file, Compiler &compiler) {
 
     if (!parser.parse(lexer.tokens.slice())) {
         std::cerr << "error: " << parser.err << std::endl;
+        LibcAllocator allocator;
+        allocator.free((void *)parser.err.data);
         return false;
     }
 

@@ -51,7 +51,7 @@ string string_vformat(Allocator &allocator, char const *fmt, va_list ap) {
     size_t const n = std::vsnprintf(nullptr, 0, fmt, ap_copy);
     va_end(ap_copy);
 
-    char *data = allocator.alloc<char>(n + 1);
+    char *data = (char *)allocator.alloc(n + 1);
 
     va_copy(ap_copy, ap);
     std::vsnprintf(data, n + 1, fmt, ap_copy);
