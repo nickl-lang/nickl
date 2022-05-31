@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.hpp"
 #include "nk/vm/vm.hpp"
 
 namespace {
@@ -62,7 +63,7 @@ protected:
         bool result = m_lexer.lex(cs2s(src));
         EXPECT_FALSE(result);
         if (!result) {
-            LOG_INF("%s", formatError().data())
+            reportError();
         }
     }
 
@@ -114,17 +115,20 @@ protected:
 
 private:
     void reportError() {
-        LOG_ERR("%s", formatError().data());
-    }
-
-    std::string formatError() {
-        std::ostringstream ss;
-        ss << "Error message: " << m_lexer.err << "\n Tokens: { ";
+        StringBuilder sb{};
+        sb << "Error message: " << m_lexer.err << "\n Tokens: { ";
         for (const auto &token : m_lexer.tokens) {
-            ss << "'" << token.text << "', ";
+            sb << "'";
+            string_escape(sb, token.text);
+            sb << "', ";
         }
-        ss << "}";
-        return ss.str();
+        sb << "}";
+        LibcAllocator allocator;
+        auto str = sb.moveStr(allocator);
+        defer {
+            allocator.free((void *)str.data);
+        };
+        LOG_ERR("%.*s", str.size, str.data);
     }
 
     nkl::Lexer m_lexer{};

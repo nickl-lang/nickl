@@ -1,9 +1,9 @@
 #include "translate_to_c.hpp"
 
 #include <limits>
-#include <sstream>
 
 #include "nk/common/hashmap.hpp"
+#include "nk/common/string_builder.hpp"
 #include "nk/vm/vm.hpp"
 
 namespace nk {
@@ -12,8 +12,6 @@ namespace vm {
 namespace {
 
 LOG_USE_SCOPE(nk::vm::translate_to_c)
-
-using stream = std::ostringstream;
 
 struct value_hm_ctx {
     static hash_t hash(value_t key) {
@@ -32,24 +30,24 @@ struct WriterCtx {
     HashMap<value_t, string, value_hm_ctx> const_map;
     size_t const_count;
 
-    stream types_s;
-    stream data_s;
-    stream forward_s;
-    stream main_s;
+    StringBuilder types_s;
+    StringBuilder data_s;
+    StringBuilder forward_s;
+    StringBuilder main_s;
 };
 
-void _writePreabmle(stream &src) {
+void _writePreabmle(StringBuilder &src) {
     src << "#include <stdint.h>\n\n";
 }
 
-void _writeType(WriterCtx &ctx, type_t type, stream &src) {
+void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
     auto found_str = ctx.type_map.find(type);
     if (found_str) {
         src << *found_str;
         return;
     }
 
-    stream tmp_s;
+    StringBuilder tmp_s{};
     bool is_complex = false;
 
     switch (type->typeclass_id) {
@@ -120,27 +118,33 @@ void _writeType(WriterCtx &ctx, type_t type, stream &src) {
         break;
     }
 
-    auto tmp_str = tmp_s.str();
+    auto arena = ArenaAllocator::create();
+    defer {
+        arena.deinit();
+    };
+
+    auto tmp_str = tmp_s.moveStr(arena);
 
     if (is_complex) {
         ctx.types_s << "typedef " << tmp_str << " type" << ctx.typedecl_count << ";\n";
-        tmp_str = "type" + std::to_string(ctx.typedecl_count);
+        tmp_s << "type" << ctx.typedecl_count;
+        tmp_str = tmp_s.moveStr(arena);
         ctx.typedecl_count++;
     }
 
     auto &type_str = ctx.type_map.insert(type);
-    string{tmp_str.data(), tmp_str.size()}.copy(type_str, *_mctx.tmp_allocator);
+    tmp_str.copy(type_str, *_mctx.tmp_allocator);
     src << type_str;
 }
 
-void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = false) {
+void _writeConst(WriterCtx &ctx, value_t val, StringBuilder &src, bool is_complex = false) {
     auto found_str = ctx.const_map.find(val);
     if (found_str) {
         src << *found_str;
         return;
     }
 
-    stream tmp_s;
+    StringBuilder tmp_s{};
 
     switch (val_typeclassid(val)) {
     case Type_Numeric: {
@@ -171,12 +175,10 @@ void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = fal
             tmp_s << val_as(uint64_t, val);
             break;
         case Float32:
-            tmp_s.precision(std::numeric_limits<float>::max_digits10);
-            tmp_s << val_as(float, val);
+            tmp_s.printf("%.*g", std::numeric_limits<float>::max_digits10, val_as(float, val));
             break;
         case Float64:
-            tmp_s.precision(std::numeric_limits<double>::max_digits10);
-            tmp_s << val_as(double, val);
+            tmp_s.printf("%.*lg", std::numeric_limits<double>::max_digits10, val_as(double, val));
             break;
         default:
             assert(!"unreachable");
@@ -228,23 +230,29 @@ void _writeConst(WriterCtx &ctx, value_t val, stream &src, bool is_complex = fal
         break;
     }
 
-    auto tmp_str = tmp_s.str();
+    auto arena = ArenaAllocator::create();
+    defer {
+        arena.deinit();
+    };
+
+    auto tmp_str = tmp_s.moveStr(arena);
 
     if (is_complex) {
         _writeType(ctx, val_typeof(val), ctx.data_s);
         ctx.data_s << " const" << ctx.const_count << " = " << tmp_str << ";\n";
-        tmp_str = "const" + std::to_string(ctx.const_count);
+        tmp_s << "const" << ctx.const_count;
+        tmp_str = tmp_s.moveStr(arena);
         ctx.const_count++;
     }
 
     auto &const_str = ctx.const_map.insert(val);
-    string{tmp_str.data(), tmp_str.size()}.copy(const_str, *_mctx.tmp_allocator);
+    tmp_str.copy(const_str, *_mctx.tmp_allocator);
     src << const_str;
 }
 
 void _writeFnSig(
     WriterCtx &ctx,
-    stream &src,
+    StringBuilder &src,
     string name,
     type_t ret_t,
     type_t args_t,
@@ -591,18 +599,20 @@ void translateToC(ir::Program const &ir, std::ostream &src) {
     LOG_TRC(__FUNCTION__)
 
     WriterCtx ctx{};
+    auto arena = ArenaAllocator::create();
 
     defer {
+        arena.deinit();
         ctx.type_map.deinit();
         ctx.const_map.deinit();
     };
 
     _writeProgram(ctx, ir);
 
-    src << ctx.types_s.str() << "\n";
-    src << ctx.data_s.str() << "\n";
-    src << ctx.forward_s.str();
-    src << ctx.main_s.str();
+    src << ctx.types_s.moveStr(arena) << "\n";
+    src << ctx.data_s.moveStr(arena) << "\n";
+    src << ctx.forward_s.moveStr(arena);
+    src << ctx.main_s.moveStr(arena);
 }
 
 } // namespace vm

@@ -2,12 +2,12 @@
 
 #include <cassert>
 #include <iostream>
-#include <sstream>
 
 #include <gtest/gtest.h>
 
 #include "nk/common/arena.hpp"
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/vm.hpp"
 
@@ -109,39 +109,42 @@ protected:
         }
     }
 
-    std::string printNode(node_ref_t node) {
-        std::ostringstream ss;
-
+    void printNode(StringBuilder& sb, node_ref_t node) {
         if (node->id == Node_fn) {
-            ss << "fn " << node->as.fn.sig.name->text << "(";
+            sb << "fn " << node->as.fn.sig.name->text << "(";
             bool first = true;
             for (node_ref_t param = node->as.fn.sig.params.data;
                  param != node->as.fn.sig.params.data + node->as.fn.sig.params.size;
                  param++) {
                 if (!first) {
-                    ss << ", ";
+                    sb << ", ";
                 }
-                ss << param->as.named_node.name->text << ": "
-                   << printNode(param->as.named_node.node);
+                sb << param->as.named_node.name->text << ": ";
+                printNode(sb, param->as.named_node.node);
                 first = false;
             }
-            ss << ") -> " << printNode(node->as.fn.sig.ret_type) << " { "
-               << printNode(node->as.fn.body) << " }";
+            sb << ") -> ";
+            printNode(sb, node->as.fn.sig.ret_type);
+            sb << " { ";
+            printNode(sb, node->as.fn.body);
+            sb << " }";
         } else if (node->id == Node_add) {
-            ss << printNode(node->as.binary.lhs) << " + " << printNode(node->as.binary.rhs);
+            printNode(sb, node->as.binary.lhs);
+            sb << " + ";
+            printNode(sb, node->as.binary.rhs);
         } else if (node->id == Node_id) {
-            ss << node->as.token.val->text;
+            sb << node->as.token.val->text;
         } else if (node->id == Node_return) {
-            ss << "return " << printNode(node->as.unary.arg) << ";";
+            sb << "return ";
+            printNode(sb, node->as.unary.arg);
+            sb << ";";
         } else if (node->id == Node_u64) {
-            ss << "u64";
+            sb << "u64";
         } else if (node->id == Node_void) {
-            ss << "void";
+            sb << "void";
         } else {
             assert(!"invalid test expression");
         }
-
-        return ss.str();
     }
 
     node_ref_t makeTestTree() {
@@ -223,9 +226,15 @@ TEST_F(ast, nodes) {
 }
 
 TEST_F(ast, to_source) {
-    auto str = printNode(makeTestTree());
+    StringBuilder sb{};
+    printNode(sb, makeTestTree());
+    LibcAllocator allocator;
+    auto str = sb.moveStr(allocator);
+    defer {
+        allocator.free((void *)str.data);
+    };
     std::cout << str << std::endl;
-    ASSERT_STREQ(str.data(), "fn plus(a: u64, b: u64) -> void { return a + b; }");
+    ASSERT_EQ(std_str(str), "fn plus(a: u64, b: u64) -> void { return a + b; }");
 }
 
 TEST_F(ast, inspect) {

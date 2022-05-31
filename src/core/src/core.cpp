@@ -1,10 +1,10 @@
 #include "nkl/core/core.hpp"
 
 #include <iostream>
-#include <sstream>
 
 #include "nk/common/file_utils.hpp"
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.hpp"
 #include "nk/vm/bc.hpp"
 #include "nk/vm/c_compiler_adapter.hpp"
 #include "nk/vm/interp.hpp"
@@ -32,23 +32,25 @@ void __printf_intrinsic(type_t, value_t ret, value_t args) {
     auto fmt = val_as(char const *, fmt_val);
     size_t const fmt_len = vm::val_array_size(vm::val_ptr_deref(fmt_val));
 
-    std::ostringstream ss;
+    size_t size = 0;
+    auto write_to_stdout = [&](string str) {
+        size += str.size;
+        std::cout << str;
+    };
 
     size_t argi = 1;
     size_t start = 0;
     for (size_t i = 0; i < fmt_len; i++) {
         if (i < fmt_len - 1 && fmt[i] == '{' && fmt[i + 1] == '}') {
-            ss << string{fmt + start, i - start};
-            ss << vm::val_inspect(vm::val_tuple_at(args, argi++));
+            write_to_stdout(string{fmt + start, i - start});
+            write_to_stdout(vm::val_inspect(vm::val_tuple_at(args, argi++)));
             i += 2;
             start = i;
         }
     }
-    ss << string{fmt + start, fmt_len - start};
+    write_to_stdout(string{fmt + start, fmt_len - start});
 
-    auto const &str = ss.str();
-    val_as(uint64_t, ret) = str.size();
-    std::cout << str;
+    val_as(uint64_t, ret) = size;
 }
 
 void __assert_intrinsic(type_t, value_t, value_t args) {
