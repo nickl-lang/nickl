@@ -1,5 +1,6 @@
 #include "nk/vm/c_compiler_adapter.hpp"
 
+#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 #include "pipe_stream.hpp"
 #include "translate_to_c.hpp"
@@ -8,15 +9,16 @@ namespace nk {
 namespace vm {
 
 std::ostream c_compiler_streamOpen(CCompilerConfig const &conf) {
-    auto cmd = tmpstr_format(
-        "%s %.*s -x c -o %.*s %.*s -",
-        conf.quiet ? "" : "tee /dev/stderr |",
-        conf.compiler_binary.size,
-        conf.compiler_binary.data,
-        conf.output_filename.size,
-        conf.output_filename.data,
-        conf.additional_flags.size,
-        conf.additional_flags.data);
+    StringBuilder sb{};
+    sb << (conf.quiet ? "" : "tee /dev/stderr |") << " " << conf.compiler_binary << " -x c -o "
+       << conf.output_filename << " " << conf.additional_flags << " -";
+
+    LibcAllocator allocator;
+    auto cmd = sb.moveStr(allocator);
+    defer {
+        allocator.free((void *)cmd.data);
+    };
+
     return pipe_streamWrite(cmd, conf.quiet);
 }
 

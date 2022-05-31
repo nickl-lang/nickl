@@ -70,7 +70,6 @@ protected:
             for (auto const &token : tokens) {
                 sb << token.text << " ";
             }
-            sb << '\0';
             auto str = sb.moveStr(arena);
             return str.data;
         }())
