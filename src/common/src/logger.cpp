@@ -43,11 +43,11 @@ constexpr char const *c_color_map[] = {
 
 constexpr char const *c_log_level_map[] = {
     nullptr,
-    "[ERROR] ",
-    "[WARNING] ",
-    "[INFO] ",
-    "[DEBUG] ",
-    "[TRACE] ",
+    "error ",
+    "warning ",
+    "info ",
+    "debug ",
+    "trace ",
 };
 
 std::string const c_env_log_level_map[] = {
@@ -65,10 +65,11 @@ struct LoggerState {
     EColorMode color_mode;
     std::unique_ptr<std::ostream> out;
     std::mutex mutex;
+    size_t msg_count;
 };
 
 LoggerState &instance() {
-    static LoggerState instance;
+    static LoggerState instance{};
     return instance;
 }
 
@@ -106,15 +107,15 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
 
     std::lock_guard<std::mutex> guard{logger.mutex};
 
-    if (to_color) {
-        out << c_color_none << c_color_map[log_level];
-    }
-    out << c_log_level_map[log_level];
-
     auto const ts = std::chrono::duration_cast<std::chrono::duration<double>>(
                         std::chrono::steady_clock::now() - logger.start_time)
                         .count();
-    out << ts << " " << scope << " :: ";
+
+    if (to_color) {
+        out << c_color_none << c_color_map[log_level];
+    }
+
+    out << logger.msg_count++ << " " << ts << " " << c_log_level_map[log_level] << scope << " ";
 
     va_list ap;
     va_start(ap, fmt);
