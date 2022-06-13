@@ -49,8 +49,8 @@ struct Array : Slice<T> {
         size += n;
         T *res = _top() - n;
 
-        LOG_USE_SCOPE(arr)
-        LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res)
+        LOG_USE_SCOPE(arr);
+        LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res);
 
         return *res;
     }
@@ -64,7 +64,7 @@ struct Array : Slice<T> {
 
         T *res = _top();
 
-        LOG_USE_SCOPE(arr)
+        LOG_USE_SCOPE(arr);
         LOG_TRC("pop(size=%lu) -> %p", n * sizeof(T), res);
 
         return *res;

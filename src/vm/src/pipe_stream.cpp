@@ -19,7 +19,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::pipe_stream)
+LOG_USE_SCOPE(nk::vm::pipe_stream);
 
 void _makeCmdStr(StringBuilder &sb, string cmd, bool quiet) {
     sb << cmd;

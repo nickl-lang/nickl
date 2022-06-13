@@ -15,7 +15,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::value)
+LOG_USE_SCOPE(nk::vm::value);
 
 using ByteArray = Slice<uint8_t const>;
 

@@ -41,13 +41,13 @@ void _logger_init(LoggerOptions opt);
 
 #define LOGGER_INIT(...) _logger_init(__VA_ARGS__)
 
-#define LOG_USE_SCOPE(NAME) static char const *__logger_scope = #NAME;
+#define LOG_USE_SCOPE(NAME) static char const *__logger_scope = #NAME
 
-#define LOG_ERR(...) _LOG_CHK(Log_Error, __VA_ARGS__);
-#define LOG_WRN(...) _LOG_CHK(Log_Warning, __VA_ARGS__);
-#define LOG_INF(...) _LOG_CHK(Log_Info, __VA_ARGS__);
-#define LOG_DBG(...) _LOG_CHK(Log_Debug, __VA_ARGS__);
-#define LOG_TRC(...) _LOG_CHK(Log_Trace, __VA_ARGS__);
+#define LOG_ERR(...) _LOG_CHK(Log_Error, __VA_ARGS__)
+#define LOG_WRN(...) _LOG_CHK(Log_Warning, __VA_ARGS__)
+#define LOG_INF(...) _LOG_CHK(Log_Info, __VA_ARGS__)
+#define LOG_DBG(...) _LOG_CHK(Log_Debug, __VA_ARGS__)
+#define LOG_TRC(...) _LOG_CHK(Log_Trace, __VA_ARGS__)
 
 #else // ENABLE_LOGGING
 

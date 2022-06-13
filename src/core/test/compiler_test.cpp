@@ -12,7 +12,7 @@ namespace {
 using namespace nk;
 using namespace nkl;
 
-LOG_USE_SCOPE(nkl::compiler::test)
+LOG_USE_SCOPE(nkl::compiler::test);
 
 token_ref_t mkt(ETokenID id = t_eof, char const *text = "") {
     Token *token = _mctx.tmp_allocator->alloc<Token>();
@@ -47,7 +47,7 @@ protected:
         bool compile_ok = m_compiler.compile(root);
         EXPECT_TRUE(compile_ok);
         if (!compile_ok) {
-            LOG_ERR("Error message: %.*s", m_compiler.err.size, m_compiler.err.data)
+            LOG_ERR("Error message: %.*s", m_compiler.err.size, m_compiler.err.data);
         }
 
         vm::bc::Program prog;

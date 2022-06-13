@@ -9,7 +9,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::so_adapter)
+LOG_USE_SCOPE(nk::vm::so_adapter);
 
 static constexpr size_t c_max_name = 255;
 

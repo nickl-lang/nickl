@@ -7,7 +7,7 @@
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 
-LOG_USE_SCOPE(mem)
+LOG_USE_SCOPE(mem);
 
 void *Allocator::alloc_aligned(size_t size, size_t align) {
     EASY_FUNCTION(profiler::colors::Grey200)
@@ -35,14 +35,14 @@ void *LibcAllocator::alloc(size_t size) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
     void *mem = std::malloc(size);
-    LOG_TRC("malloc(size=%lu) -> %p", size, mem)
+    LOG_TRC("malloc(size=%lu) -> %p", size, mem);
     return mem;
 }
 
 void LibcAllocator::free(void *ptr) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    LOG_TRC("free(ptr=%p)", ptr)
+    LOG_TRC("free(ptr=%p)", ptr);
     std::free(ptr);
 }
 

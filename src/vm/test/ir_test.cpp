@@ -15,7 +15,7 @@ using namespace nk::vm::ir;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::ir::test)
+LOG_USE_SCOPE(nk::vm::ir::test);
 
 class ir : public testing::Test {
     void SetUp() override {

@@ -16,7 +16,7 @@ namespace {
 using namespace nk;
 using namespace nkl;
 
-LOG_USE_SCOPE(nkl::lexer::test)
+LOG_USE_SCOPE(nkl::lexer::test);
 
 class lexer : public testing::Test {
     void SetUp() override {
@@ -38,7 +38,7 @@ protected:
     using PosVec = std::vector<TokenPos>;
 
     void test_ok(const char *src) {
-        LOG_INF("Test: %s", src)
+        LOG_INF("Test: %s", src);
         bool result = m_lexer.lex(cs2s(src));
         EXPECT_TRUE(result);
         if (!result) {

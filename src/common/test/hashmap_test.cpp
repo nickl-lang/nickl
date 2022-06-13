@@ -16,7 +16,7 @@ class hashmap : public testing::Test {
     }
 };
 
-LOG_USE_SCOPE(test)
+LOG_USE_SCOPE(test);
 
 TEST_F(hashmap, basic) {
     using hashmap_t = HashMap<uint8_t, uint8_t>;

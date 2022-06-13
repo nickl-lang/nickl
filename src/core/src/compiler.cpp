@@ -27,7 +27,7 @@ namespace nkl {
 
 namespace {
 
-LOG_USE_SCOPE(nkl::compiler)
+LOG_USE_SCOPE(nkl::compiler);
 
 using namespace nk::vm;
 
@@ -124,14 +124,14 @@ struct CompileEngine {
     }
 
     void pushScope() {
-        LOG_DBG("entering scope=%lu", scopes.size)
+        LOG_DBG("entering scope=%lu", scopes.size);
 
         scopes.push() = {};
         curScope().locals.init();
     }
 
     void popScope() {
-        LOG_DBG("exiting scope=%lu", scopes.size - 1)
+        LOG_DBG("exiting scope=%lu", scopes.size - 1);
 
         auto &scope = scopes.pop();
         scope.locals.deinit();
@@ -204,8 +204,8 @@ struct CompileEngine {
         if (val.value_type != v_none) {
             (void)ref;
             //@Todo Inspect refs separately
-            // LOG_DBG("value ignored: %s", m_builder.inspect(ref))
-            LOG_DBG("value ignored...")
+            // LOG_DBG("value ignored: %s", m_builder.inspect(ref));
+            LOG_DBG("value ignored...");
         }
     }
 
@@ -516,7 +516,7 @@ struct CompileEngine {
                     return error("cannot assign to `%.*s`", name_str.size, name_str.data),
                            ValueInfo{};
                 default:
-                    LOG_ERR("unknown decl type")
+                    LOG_ERR("unknown decl type");
                     assert(!"unreachable");
                     return {};
                 }
@@ -533,7 +533,7 @@ struct CompileEngine {
                 return makeInstr(m_builder.make_mov(makeRef(lhs), makeRef(value)), type);
             }
             default:
-                LOG_ERR("invalid assignment")
+                LOG_ERR("invalid assignment");
                 assert(!"unreachable");
                 return {};
             }
@@ -568,7 +568,7 @@ struct CompileEngine {
                 return makeVoid();
             }
             default:
-                LOG_ERR("invalid colon assignment")
+                LOG_ERR("invalid colon assignment");
                 assert(!"unreachable");
                 return {};
             }
@@ -1033,7 +1033,7 @@ struct CompileEngine {
     void gen(ir::Instr const &instr) {
         EASY_FUNCTION(::profiler::colors::Cyan200)
 
-        LOG_DBG("gen: %s", ir::s_ir_names[instr.code])
+        LOG_DBG("gen: %s", ir::s_ir_names[instr.code]);
 
         m_builder.gen(instr);
     }

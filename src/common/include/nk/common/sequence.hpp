@@ -51,8 +51,8 @@ struct Sequence {
         size += n;
         T *res = _top() - n;
 
-        LOG_USE_SCOPE(seq)
-        LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res)
+        LOG_USE_SCOPE(seq);
+        LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res);
 
         return *res;
     }
@@ -67,7 +67,7 @@ struct Sequence {
 
         T *res = _top();
 
-        LOG_USE_SCOPE(seq)
+        LOG_USE_SCOPE(seq);
         LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res);
 
         return *res;

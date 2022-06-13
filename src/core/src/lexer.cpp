@@ -9,7 +9,7 @@ namespace nkl {
 
 namespace {
 
-LOG_USE_SCOPE(nkl::lexer)
+LOG_USE_SCOPE(nkl::lexer);
 
 char const *s_operators[] = {
 #define OP(id, text) text,
@@ -34,7 +34,7 @@ struct ScanEngine {
 
     void scan() {
         EASY_FUNCTION(::profiler::colors::Amber200);
-        LOG_TRC(__FUNCTION__)
+        LOG_TRC(__FUNCTION__);
 
         skipSpaces();
 
@@ -235,7 +235,7 @@ private:
 
 bool Lexer::lex(string text) {
     EASY_FUNCTION(::profiler::colors::Amber200);
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     tokens.clear();
     err = {};

@@ -11,7 +11,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::translate_to_c)
+LOG_USE_SCOPE(nk::vm::translate_to_c);
 
 struct value_hm_ctx {
     static hash_t hash(value_t key) {
@@ -596,7 +596,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
 } // namespace
 
 void translateToC(ir::Program const &ir, std::ostream &src) {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     WriterCtx ctx{};
     auto arena = ArenaAllocator::create();

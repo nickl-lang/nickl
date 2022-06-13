@@ -22,7 +22,7 @@ char const *s_ir_names[] = {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::ir)
+LOG_USE_SCOPE(nk::vm::ir);
 
 void _inspect(Program const &prog, StringBuilder &sb) {
     auto &allocator = *_mctx.def_allocator;
@@ -278,18 +278,18 @@ void ProgramBuilder::init(Program &prog) {
 }
 
 FunctId ProgramBuilder::makeFunct() {
-    LOG_DBG("makeFunct() -> id=%lu", prog->next_funct_id)
+    LOG_DBG("makeFunct() -> id=%lu", prog->next_funct_id);
     return {prog->next_funct_id++};
 }
 
 BlockId ProgramBuilder::makeLabel() {
     assert(m_cur_funct && "no current function");
-    LOG_DBG("makeLabel() -> id=%lu", m_cur_funct->next_block_id)
+    LOG_DBG("makeLabel() -> id=%lu", m_cur_funct->next_block_id);
     return {m_cur_funct->next_block_id++};
 }
 
 ShObjId ProgramBuilder::makeShObj(Id name) {
-    LOG_DBG("makeShObj() -> id=%lu", prog->shobjs.size)
+    LOG_DBG("makeShObj() -> id=%lu", prog->shobjs.size);
     prog->shobjs.push() = name;
     return {prog->shobjs.size - 1};
 }
@@ -297,7 +297,7 @@ ShObjId ProgramBuilder::makeShObj(Id name) {
 void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
     EASY_FUNCTION(profiler::colors::Amber200)
 
-    LOG_DBG("startFunct(id=%lu)", funct_id.id)
+    LOG_DBG("startFunct(id=%lu)", funct_id.id);
 
     auto &funct = prog->functs.push() = {};
 
@@ -314,7 +314,7 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
 void ProgramBuilder::startBlock(BlockId block_id, string name) {
     EASY_FUNCTION(profiler::colors::Amber200)
 
-    LOG_DBG("startBlock(id=%lu)", block_id.id)
+    LOG_DBG("startBlock(id=%lu)", block_id.id);
 
     auto &block = prog->blocks.push() = {};
 

@@ -11,7 +11,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm)
+LOG_USE_SCOPE(nk::vm);
 
 thread_local ArenaAllocator s_tmp_arena;
 thread_local SeqAllocator *s_old_tmp_alloc;
@@ -35,7 +35,7 @@ void vm_deinit() {
 }
 
 void vm_enterThread() {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     s_tmp_arena.init();
     s_old_tmp_alloc = _mctx.tmp_allocator;
@@ -43,14 +43,14 @@ void vm_enterThread() {
 }
 
 void vm_leaveThread() {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     s_tmp_arena.deinit();
     _mctx.tmp_allocator = s_old_tmp_alloc;
 }
 
 void vm_clearTmpArena() {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     s_tmp_arena.clear();
 }

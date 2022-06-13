@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-LOG_USE_SCOPE(test)
+LOG_USE_SCOPE(test);
 
 class logger : public testing::Test {
     void SetUp() override {
@@ -16,29 +16,27 @@ class logger : public testing::Test {
 };
 
 TEST_F(logger, basic) {
-    ;
-    LOG_ERR("This is error log")
-    LOG_WRN("This is warning log")
-    LOG_INF("This is info log")
-    LOG_DBG("This is debug log")
-    LOG_TRC("This is trace log")
+    LOG_ERR("This is error log");
+    LOG_WRN("This is warning log");
+    LOG_INF("This is info log");
+    LOG_DBG("This is debug log");
+    LOG_TRC("This is trace log");
 }
 
 TEST_F(logger, complex) {
-    ;
-    LOG_INF("float=%lf, int=%i", 3.14, 42)
+    LOG_INF("float=%lf, int=%i", 3.14, 42);
 }
 
 TEST_F(logger, theads) {
     bool stop = false;
     std::thread t1{[&]() {
         while (!stop) {
-            LOG_TRC("This is thread 1!")
+            LOG_TRC("This is thread 1!");
         }
     }};
     std::thread t2{[&]() {
         while (!stop) {
-            LOG_DBG("This is thread 2!")
+            LOG_DBG("This is thread 2!");
         }
     }};
     std::this_thread::sleep_for(std::chrono::milliseconds{10});
