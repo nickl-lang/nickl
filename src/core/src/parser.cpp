@@ -34,7 +34,7 @@ namespace nkl {
 
 namespace {
 
-LOG_USE_SCOPE(nkl::parser)
+LOG_USE_SCOPE(nkl::parser);
 
 struct ParseEngine {
     TokenArray const &m_tokens;
@@ -60,12 +60,12 @@ private:
         assert(m_cur_token->id != t_eof);
         m_cur_token++;
 
-        LOG_DBG("next token: " LOG_TOKEN(m_cur_token->id))
+        LOG_DBG("next token: " LOG_TOKEN(m_cur_token->id));
     }
 
     bool accept(ETokenID id) {
         if (check(id)) {
-            LOG_DBG("accept" LOG_TOKEN(id))
+            LOG_DBG("accept" LOG_TOKEN(id));
             getToken();
             return true;
         }
@@ -110,9 +110,9 @@ private:
         bool expect_brace_r = capture_brace && accept(t_brace_l);
 
         while (!check(t_eof) && (!expect_brace_r || !check(t_brace_r))) {
-            LOG_DBG("next statement: token=" LOG_TOKEN(m_cur_token->id))
+            LOG_DBG("next statement: token=" LOG_TOKEN(m_cur_token->id));
             APPEND(nodes, statement());
-            LOG_DBG("end of statement")
+            LOG_DBG("end of statement");
         }
 
         if (expect_brace_r) {
@@ -138,7 +138,7 @@ private:
     }
 
     token_ref_t identifier() {
-        LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data)
+        LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
         auto id = m_cur_token;
         getToken();
         return id;
@@ -576,20 +576,20 @@ private:
         Node node;
 
         if (check(t_int_const)) {
-            LOG_DBG("accept(int_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
+            LOG_DBG("accept(int_const, \"\")", m_cur_token->text.size, m_cur_token->text.data);
             node = m_ast.make_numeric_int(m_cur_token);
             getToken();
         } else if (check(t_float_const)) {
-            LOG_DBG("accept(float_const, \"\"", m_cur_token->text.size, m_cur_token->text.data)
+            LOG_DBG("accept(float_const, \"\"", m_cur_token->text.size, m_cur_token->text.data);
             node = m_ast.make_numeric_float(m_cur_token);
             getToken();
         } else if (check(t_str_const)) {
-            LOG_DBG("accept(str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
+            LOG_DBG("accept(str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data);
             node = m_ast.make_string_literal(m_cur_token);
             getToken();
         } else if (check(t_escaped_str_const)) {
             LOG_DBG(
-                "accept(escaped_str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data)
+                "accept(escaped_str_const, \"\")", m_cur_token->text.size, m_cur_token->text.data);
             node = m_ast.make_escaped_string_literal(m_cur_token);
             getToken();
         }
@@ -743,7 +743,7 @@ bool Parser::parse(TokenArray const &tokens) {
     engine.parse();
 
     auto str = ast_inspect(root);
-    LOG_INF("root: %.*s", str.size, str.data)
+    LOG_INF("root: %.*s", str.size, str.data);
 
     return !engine.m_error_occurred;
 }

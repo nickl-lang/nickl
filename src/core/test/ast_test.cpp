@@ -16,7 +16,7 @@ namespace {
 using namespace nk;
 using namespace nkl;
 
-LOG_USE_SCOPE(nkl::ast::test)
+LOG_USE_SCOPE(nkl::ast::test);
 
 token_ref_t mkt(ETokenID id = t_eof, char const *text = "") {
     Token *token = _mctx.tmp_allocator->alloc<Token>();

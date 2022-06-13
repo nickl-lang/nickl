@@ -19,7 +19,7 @@ using namespace nk::vm;
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::interp::test)
+LOG_USE_SCOPE(nk::vm::interp::test);
 
 class interp : public testing::Test {
     void SetUp() override {

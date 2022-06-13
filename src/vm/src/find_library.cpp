@@ -11,7 +11,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::findLibrary)
+LOG_USE_SCOPE(nk::vm::findLibrary);
 
 Array<string> s_search_paths;
 ArenaAllocator s_arena;
@@ -19,7 +19,7 @@ ArenaAllocator s_arena;
 } // namespace
 
 void findLibrary_init(FindLibraryConfig const &conf) {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     s_arena.init();
 
@@ -30,14 +30,14 @@ void findLibrary_init(FindLibraryConfig const &conf) {
 }
 
 void findLibrary_deinit() {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     s_search_paths.deinit();
     s_arena.deinit();
 }
 
 bool findLibrary(string name, Slice<char> &buf) {
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     for (auto path : s_search_paths) {
         size_t size = path.size + name.size;
@@ -50,7 +50,7 @@ bool findLibrary(string name, Slice<char> &buf) {
         name.copy({buf.data + path.size, MAX_PATH});
         buf[size] = 0;
 
-        LOG_DBG("Checking `%s`...", buf)
+        LOG_DBG("Checking `%s`...", buf);
 
         if (file_exists({buf.data, size})) {
             buf.size = size;

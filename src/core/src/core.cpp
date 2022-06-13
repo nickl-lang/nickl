@@ -18,7 +18,7 @@ namespace {
 
 using namespace nk;
 
-LOG_USE_SCOPE(nkl::core)
+LOG_USE_SCOPE(nkl::core);
 
 struct FileCtx {
     string path;
@@ -150,7 +150,7 @@ bool _compileFile(string file, Compiler &compiler) {
 } // namespace
 
 void lang_init() {
-    LOG_TRC("lang_init")
+    LOG_TRC("lang_init");
 
     vm::VmConfig conf;
     string paths[] = {cs2s("/usr/lib/"), cs2s("/usr/lib/x86_64-linux-gnu/")};
@@ -161,7 +161,7 @@ void lang_init() {
 }
 
 void lang_deinit() {
-    LOG_TRC("lang_deinit")
+    LOG_TRC("lang_deinit");
 
     s_file_stack.deinit();
 
@@ -169,7 +169,7 @@ void lang_deinit() {
 }
 
 int lang_runFile(string file) {
-    LOG_TRC("lang_runFile(file=%s)", file)
+    LOG_TRC("lang_runFile(file=%s)", file);
 
     Compiler compiler{};
     defer {
@@ -196,7 +196,7 @@ int lang_runFile(string file) {
 }
 
 bool lang_compileFile(string file, string outfile) {
-    LOG_TRC("lang_compileFile(file=%s, outfile=%s)", file, outfile)
+    LOG_TRC("lang_compileFile(file=%s, outfile=%s)", file, outfile);
 
     Compiler compiler{};
     defer {

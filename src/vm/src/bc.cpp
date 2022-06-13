@@ -21,7 +21,7 @@ char const *s_op_names[] = {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm)
+LOG_USE_SCOPE(nk::vm);
 
 void _inspect(Program const &prog, StringBuilder &sb) {
     auto _inspectArg = [&](Ref const &arg) {
@@ -120,7 +120,7 @@ string Program::inspect() const {
 
 void translateFromIr(Program &prog, ir::Program const &ir) {
     EASY_FUNCTION(profiler::colors::Red200)
-    LOG_TRC(__FUNCTION__)
+    LOG_TRC(__FUNCTION__);
 
     prog.instrs.init(ir.instrs.size);
     prog.funct_info.push(ir.functs.size);
@@ -158,7 +158,7 @@ void translateFromIr(Program &prog, ir::Program const &ir) {
     prog.globals_t = type_get_tuple({ir.globals.data, ir.globals.size});
     if (prog.globals_t->size > 0) {
         prog.globals.push(prog.globals_t->size);
-        LOG_DBG("allocating global storage: %p", prog.globals.data)
+        LOG_DBG("allocating global storage: %p", prog.globals.data);
 
         std::memset(prog.globals.data, 0, prog.globals_t->size);
     }

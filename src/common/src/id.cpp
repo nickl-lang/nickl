@@ -8,7 +8,7 @@
 
 namespace {
 
-LOG_USE_SCOPE(core)
+LOG_USE_SCOPE(core);
 
 struct StrHashMapContext {
     static hash_t hash(string key) {
@@ -37,7 +37,7 @@ void _defineId(Id id, string str) {
 } // namespace
 
 void id_init() {
-    LOG_TRC("id_init")
+    LOG_TRC("id_init");
 
     s_arena.init(1024);
     s_str2id.init(1024);
@@ -47,7 +47,7 @@ void id_init() {
 }
 
 void id_deinit() {
-    LOG_TRC("id_deinit")
+    LOG_TRC("id_deinit");
 
     s_id2str.deinit();
     s_str2id.deinit();

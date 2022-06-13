@@ -4,6 +4,7 @@
 
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/utils.hpp"
 #include "nk/vm/vm.hpp"
 
 namespace nk {
@@ -13,7 +14,7 @@ namespace {
 
 using namespace bc;
 
-LOG_USE_SCOPE(nk::vm::interp)
+LOG_USE_SCOPE(nk::vm::interp);
 
 struct ProgramFrame {
     uint8_t *base_global;
@@ -95,11 +96,11 @@ void _setupFrame(type_t frame_t, value_t ret, value_t args) {
     ctx.base.arg = (uint8_t *)val_data(args);
     ctx.base.ret = (uint8_t *)val_data(ret);
 
-    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base)
-    LOG_DBG("frame=%p", ctx.base.frame)
-    LOG_DBG("arg=%p", ctx.base.arg)
-    LOG_DBG("ret=%p", ctx.base.ret)
-    LOG_DBG("pinstr=%p", ctx.pinstr)
+    LOG_DBG("stack_frame_base=%lu", ctx.stack_frame_base);
+    LOG_DBG("frame=%p", ctx.base.frame);
+    LOG_DBG("arg=%p", ctx.base.arg);
+    LOG_DBG("ret=%p", ctx.base.ret);
+    LOG_DBG("pinstr=%p", ctx.pinstr);
 }
 
 #define INTERP(NAME) void _interp_##NAME(Instr const &instr)
@@ -428,7 +429,7 @@ NUM_BIN_OP(lt, <)
 using InterpFunc = void (*)(Instr const &instr);
 
 InterpFunc s_funcs[] = {
-#define X(NAME) _interp_##NAME,
+#define X(NAME) CAT(_interp_, NAME),
 #include "nk/vm/op.inl"
 };
 
@@ -444,11 +445,11 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     FunctInfo const &fn = *(FunctInfo *)self->as.fn.closure;
     Program const &prog = *fn.prog;
 
-    LOG_DBG("program @%p", &prog)
+    LOG_DBG("program @%p", &prog);
 
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
-        LOG_TRC("initializing stack...")
+        LOG_TRC("initializing stack...");
         //@Feature Maybe implement the push to zero initialized Sequence
         ctx.stack.init();
         ctx.is_initialized = true;
@@ -468,9 +469,9 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     ctx.base.reg = (uint8_t *)&ctx.reg;
     _mctx.tmp_allocator = &ctx.stack;
 
-    LOG_DBG("global=%p", ctx.base.global)
-    LOG_DBG("rodata=%p", ctx.base.rodata)
-    LOG_DBG("instr=%p", ctx.base.instr)
+    LOG_DBG("global=%p", ctx.base.global);
+    LOG_DBG("rodata=%p", ctx.base.rodata);
+    LOG_DBG("instr=%p", ctx.base.instr);
 
     _setupFrame(fn.frame_t, ret, args);
 
@@ -486,7 +487,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         auto pinstr = ctx.pinstr++;
         assert(pinstr->code < Op_Count && "unknown instruction");
         LOG_DBG(
-            "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code])
+            "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
         LOG_DBG("res=%s", [&]() {
             auto frame = ctx.stack.size();
@@ -504,7 +505,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
             }
             ctx.stack.pop(ctx.stack.size() - frame);
             return str.data;
-        }())
+        }());
     }
 
     EASY_END_BLOCK
@@ -520,7 +521,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     _mctx.tmp_allocator = pfr.prev_tmp_allocator;
 
     if (was_uninitialized) {
-        LOG_TRC("deinitializing stack...")
+        LOG_TRC("deinitializing stack...");
 
         assert(ctx.stack.size() == 0 && "nonempty stack at exit");
 

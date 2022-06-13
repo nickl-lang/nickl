@@ -16,7 +16,7 @@ namespace {
 using namespace nk;
 using namespace nkl;
 
-LOG_USE_SCOPE(nkl::parser::test)
+LOG_USE_SCOPE(nkl::parser::test);
 
 Token createToken(ETokenID id = t_eof, char const *text = "") {
     return Token{{text, std::strlen(text)}, 0, 0, 0, (uint8_t)id};
@@ -75,7 +75,7 @@ protected:
             }
             auto str = sb.moveStr(arena);
             return str.data;
-        }())
+        }());
         tokens.emplace_back(t_eof, "");
         Array<Token> token_ar{};
         defer {
@@ -87,7 +87,7 @@ protected:
         bool parse_ok = m_parser.parse(token_ar);
         EXPECT_TRUE(parse_ok);
         if (!parse_ok) {
-            LOG_ERR("Error message: %.*s", m_parser.err.size, m_parser.err.data)
+            LOG_ERR("Error message: %.*s", m_parser.err.size, m_parser.err.data);
         }
 
         bool trees_are_equal = compare(m_parser.root, &expected);
@@ -95,8 +95,8 @@ protected:
         if (!trees_are_equal) {
             auto expected_str = ast_inspect(&expected);
             auto actual_str = ast_inspect(m_parser.root);
-            LOG_ERR("Expected tree: %.*s", expected_str.size, expected_str.data)
-            LOG_ERR("Actual tree: %.*s", actual_str.size, actual_str.data)
+            LOG_ERR("Expected tree: %.*s", expected_str.size, expected_str.data);
+            LOG_ERR("Actual tree: %.*s", actual_str.size, actual_str.data);
         }
     }
 
