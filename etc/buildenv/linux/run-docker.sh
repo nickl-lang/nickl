@@ -6,7 +6,6 @@ DOCKERHOME=$PROJECTDIR/out/home
 mkdir -p $DOCKERHOME
 . $DIR/image-info.sh
 if [ -z "$(docker images -q $IMAGE_TAG 2> /dev/null)" ]; then
-    IMAGE_URL=ghcr.io/nk4rter/$IMAGE_TAG
     docker pull $IMAGE_URL
     docker tag $IMAGE_URL $IMAGE_TAG
     docker image rm $IMAGE_URL
