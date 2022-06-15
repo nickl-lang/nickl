@@ -41,7 +41,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    neovim python3-pip python3-neovim nodejs npm clangd \
+    python3-pip python3-neovim nodejs npm clangd \
  && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g neovim
+
+RUN wget https://github.com/neovim/neovim/releases/download/v0.7.0/nvim-linux64.deb \
+ && apt-get install ./nvim-linux64.deb \
+ && rm ./nvim-linux64.deb \
+ ;
