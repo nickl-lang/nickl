@@ -3,6 +3,7 @@ set(LIB nk_common)
 add_library(${LIB}
     src/block_allocator.c
     src/logger.cpp
+    src/mem.cpp
     src/utils.cpp
     )
 
