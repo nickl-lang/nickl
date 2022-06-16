@@ -37,7 +37,8 @@ void _logger_init(LoggerOptions opt);
 #define _LOG_CHK(LEVEL, ...)                               \
     if (_logger_check(LEVEL)) {                            \
         _logger_write(LEVEL, __logger_scope, __VA_ARGS__); \
-    }
+    } else                                                 \
+        (void)0
 
 #define LOGGER_INIT(...) _logger_init(__VA_ARGS__)
 
