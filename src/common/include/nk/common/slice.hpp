@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <type_traits>
 
 #include "nk/common/mem.hpp"
@@ -15,6 +16,7 @@ struct Slice {
 
     using value_type = T;
     using iterator = T *;
+    using reverse_iterator = std::reverse_iterator<iterator>;
     using reference = value_type &;
     using size_type = size_t;
 
@@ -42,6 +44,15 @@ struct Slice {
         return data + size;
     }
 
+    constexpr reverse_iterator rbegin() const noexcept {
+        return reverse_iterator{end()};
+    }
+
+    constexpr reverse_iterator rend() const noexcept {
+        return reverse_iterator{begin()};
+    }
+
+    /// @TODO Slice::copy with allocator
     // void copy(Slice<T> &dst, Allocator &allocator) const {
     //     auto mem = allocator.alloc<std::decay_t<T>>(size);
     //     std::memcpy(mem, data, size * sizeof(T));
