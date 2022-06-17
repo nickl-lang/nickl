@@ -1,4 +1,4 @@
-#include "nk/common/mem.hpp"
+#include "nk/common/mem.h"
 
 #include <cstdint>
 #include <cstdlib>

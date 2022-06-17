@@ -1,9 +1,10 @@
 set(LIB nk_common)
 
 add_library(${LIB}
-    src/block_allocator.c
     src/logger.cpp
     src/mem.cpp
+    src/stack_allocator.c
+    src/string_builder.cpp
     src/utils.cpp
     )
 
