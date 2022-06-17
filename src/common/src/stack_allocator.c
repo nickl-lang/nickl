@@ -1,6 +1,6 @@
-#include "nk/common/block_allocator.h"
+#include "nk/common/stack_allocator.h"
 
-#include <stdarg.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "nk/common/utils.h"
@@ -15,15 +15,15 @@ static size_t _align(size_t n) {
     return roundUp(n, 16);
 }
 
-static uint8_t *_blockData(_BlockHeader *block) {
-    return (uint8_t *)_align((size_t)(block + 1));
+static void *_blockData(_BlockHeader *block) {
+    return (void *)_align((size_t)(block + 1));
 }
 
 static size_t _spaceLeftInBlock(_BlockHeader const *block) {
     return block ? block->capacity - block->size : 0;
 }
 
-static void _allocateBlock(BlockAllocator *self, size_t n) {
+static void _allocateBlock(StackAllocator *self, size_t n) {
     size_t const header_size = _align(sizeof(_BlockHeader));
     n = ceilToPowerOf2(n + header_size);
     n = maxu(n, (self->_last_block ? self->_last_block->capacity << 1 : 0));
@@ -44,9 +44,9 @@ static void _allocateBlock(BlockAllocator *self, size_t n) {
     self->_last_block = block;
 }
 
-uint8_t *BlockAllocator_push(BlockAllocator *self, size_t n) {
+void *StackAllocator_push(StackAllocator *self, size_t n) {
     if (n) {
-        BlockAllocator_reserve(self, n);
+        StackAllocator_reserve(self, n);
         self->_last_block->size += n;
         self->size += n;
         return _blockData(self->_last_block) + self->_last_block->size - n;
@@ -55,32 +55,36 @@ uint8_t *BlockAllocator_push(BlockAllocator *self, size_t n) {
     }
 }
 
-void BlockAllocator_pop(BlockAllocator *self, size_t n) {
-    /// @TODO BlockAllocator_pop incomplete
+void StackAllocator_pop(StackAllocator *self, size_t n) {
+    /// @TODO StackAllocator_pop incomplete
     self->_last_block->size -= n;
     self->size -= n;
 }
 
-void BlockAllocator_reserve(BlockAllocator *self, size_t n) {
+void StackAllocator_clear(StackAllocator *self) {
+    StackAllocator_pop(self, self->size);
+}
+
+void StackAllocator_reserve(StackAllocator *self, size_t n) {
     if (n > _spaceLeftInBlock(self->_last_block)) {
         _allocateBlock(self, n);
     }
 }
 
-void BlockAllocator_copy(BlockAllocator const *self, uint8_t *dst) {
+void StackAllocator_copy(StackAllocator const *self, void *dst) {
     size_t offset = 0;
     for (_BlockHeader *block = self->_first_block; block; block = block->next) {
-        memcpy(dst + offset, _blockData(block), block->size);
+        memcpy((uint8_t *)dst + offset, _blockData(block), block->size);
         offset += block->size;
     }
 }
 
-void BlockAllocator_deinit(BlockAllocator *self) {
+void StackAllocator_deinit(StackAllocator *self) {
     for (_BlockHeader *block = self->_first_block; block;) {
         _BlockHeader *cur_block = block;
         block = block->next;
         free(cur_block);
     }
 
-    *self = (BlockAllocator){0};
+    *self = (StackAllocator){0};
 }

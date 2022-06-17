@@ -5,9 +5,6 @@
 #include <cstddef>
 #include <cstring>
 #include <iterator>
-#include <type_traits>
-
-#include "nk/common/mem.hpp"
 
 template <class T>
 struct Slice {
@@ -52,16 +49,13 @@ struct Slice {
         return reverse_iterator{begin()};
     }
 
-    /// @TODO Slice::copy with allocator
-    // void copy(Slice<T> &dst, Allocator &allocator) const {
-    //     auto mem = allocator.alloc<std::decay_t<T>>(size);
-    //     std::memcpy(mem, data, size * sizeof(T));
-    //     dst = {mem, size};
-    // }
-
     void copy(Slice<std::decay_t<T>> dst) const {
         assert(dst.size >= size && "copying to a slice of insufficient size");
-        std::memcpy(dst.data, data, size * sizeof(T));
+        copy(dst.data);
+    }
+
+    void copy(std::decay_t<T> *dst) const {
+        std::memcpy(dst, data, size * sizeof(T));
     }
 
     operator Slice<T const>() const {
