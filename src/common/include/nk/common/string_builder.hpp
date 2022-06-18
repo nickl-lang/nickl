@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "nk/common/stack_allocator.h"
+#include "nk/common/arena.hpp"
 #include "nk/common/mem.h"
 #include "nk/common/string.hpp"
 
@@ -47,7 +47,7 @@ public:
     string moveStr(Slice<char> dst);
 
 private:
-    StackAllocator m_allocator;
+    Arena m_allocator;
 };
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER

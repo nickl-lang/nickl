@@ -61,6 +61,14 @@ struct Slice {
     operator Slice<T const>() const {
         return {data, size};
     }
+
+    T &operator*() const {
+        return *data;
+    }
+
+    T *operator->() const {
+        return data;
+    }
 };
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE
