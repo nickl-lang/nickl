@@ -102,7 +102,23 @@ private:
 
     void _shrink(size_t n) {
         size -= n;
-        _last_block->size -= n;
+        if (n <= _last_block->size) {
+            _last_block->size -= n;
+        } else {
+            size_t sz = size;
+            _BlockHeader *block = _first_block;
+            while (sz) {
+                if (block->size > sz) {
+                    block->size = sz;
+                }
+                sz -= block->size;
+                block = block->next;
+            }
+            while (block) {
+                block->size = 0;
+                block = block->next;
+            }
+        }
     }
 };
 

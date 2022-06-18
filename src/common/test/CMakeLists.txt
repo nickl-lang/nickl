@@ -1,4 +1,4 @@
-# def_test(GROUP common NAME arena LINK ${LIB})
+def_test(GROUP common NAME arena LINK ${LIB})
 def_test(GROUP common NAME array LINK ${LIB})
 def_test(GROUP common NAME hashmap LINK ${LIB})
 def_test(GROUP common NAME id LINK ${LIB})

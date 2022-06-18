@@ -74,14 +74,14 @@ int StringBuilder::printf(char const *fmt, ...) {
 
     va_list ap;
     va_start(ap, fmt);
-    int const printf_res = vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap);
+    int const printf_res = std::vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap);
     int const byte_count = printf_res + 1;
     va_end(ap);
 
     if (byte_count > (int)PRINTF_BUFFER_SIZE) {
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf(m_arena.push(byte_count), byte_count, fmt, ap);
+        std::vsnprintf(m_arena.push(byte_count), byte_count, fmt, ap);
         va_end(ap);
 
         m_arena.pop();
