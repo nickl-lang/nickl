@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 
 class log2arena : public testing::Test {
