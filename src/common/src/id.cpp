@@ -4,6 +4,7 @@
 
 #include "nk/common/arena.hpp"
 #include "nk/common/hashmap.hpp"
+#include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 
 namespace {
@@ -29,8 +30,8 @@ void id_init() {
     LOG_TRC(__func__);
 
     s_arena.reserve(1024);
-    s_str2id.init(1024);
-    s_id2str.init(1024);
+    s_str2id.reserve(1024);
+    s_id2str.reserve(1024);
 
     s_next_id = 1;
 }

@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 
 class array : public testing::Test {
@@ -17,10 +18,11 @@ class array : public testing::Test {
 
 TEST_F(array, init) {
     Array<uint8_t> ar{};
-    ar.reserve(1);
     defer {
         ar.deinit();
     };
+
+    ar.reserve(1);
 
     EXPECT_EQ(ar.size, 0);
     EXPECT_EQ(ar.capacity, 1);
@@ -66,10 +68,11 @@ TEST_F(array, capacity) {
 
 TEST_F(array, zero_capacity) {
     Array<uint8_t> ar{};
-    ar.reserve(0);
     defer {
         ar.deinit();
     };
+
+    ar.reserve(0);
 
     EXPECT_EQ(ar.capacity, 0);
     EXPECT_EQ(ar.size, 0);
@@ -93,4 +96,18 @@ TEST_F(array, zero_init) {
     EXPECT_EQ(ar.capacity, 1);
     EXPECT_EQ(ar.size, 1);
     EXPECT_EQ(ar[0], 42);
+}
+
+TEST_F(array, append) {
+    Array<char> ar{};
+    defer {
+        ar.deinit();
+    };
+
+    auto const c_test_str = cs2s("hello world");
+    ar.append(c_test_str);
+
+    EXPECT_EQ(ar.capacity, ceilToPowerOf2(c_test_str.size));
+    EXPECT_EQ(ar.size, c_test_str.size);
+    EXPECT_EQ(std_str(ar), std_str(c_test_str));
 }

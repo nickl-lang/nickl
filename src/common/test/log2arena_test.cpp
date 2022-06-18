@@ -17,10 +17,11 @@ TEST_F(log2arena, basic) {
     using ValueType = uint64_t;
 
     Log2Arena<ValueType> ar{};
-    ar.reserve(1);
     defer {
         ar.deinit();
     };
+
+    ar.reserve(1);
 
     EXPECT_EQ(ar.size, 0);
 
@@ -40,10 +41,11 @@ TEST_F(log2arena, many_small_pushes) {
     static constexpr size_t c_bytes_to_push = 1024;
 
     Log2Arena<uint8_t> ar{};
-    ar.reserve(c_ic);
     defer {
         ar.deinit();
     };
+
+    ar.reserve(c_ic);
 
     for (size_t i = 0; i < c_bytes_to_push; i++) {
         ar.push();
@@ -56,10 +58,11 @@ TEST_F(log2arena, one_big_push) {
     static constexpr size_t c_bytes_to_push = 1024;
 
     Log2Arena<uint8_t> ar{};
-    ar.reserve(c_ic);
     defer {
         ar.deinit();
     };
+
+    ar.reserve(c_ic);
 
     ar.push(c_bytes_to_push);
     EXPECT_EQ(ar.size, 2 * c_bytes_to_push - ceilToPowerOf2(c_ic));
@@ -70,10 +73,11 @@ TEST_F(log2arena, pop) {
 
     {
         Log2Arena<uint8_t> ar{};
-        ar.reserve(1);
         defer {
             ar.deinit();
         };
+
+        ar.reserve(1);
 
         ar.push(c_bytes_to_push);
         size_t size1 = ar.size;
@@ -88,10 +92,11 @@ TEST_F(log2arena, pop) {
 
     {
         Log2Arena<uint8_t> ar{};
-        ar.reserve(1);
         defer {
             ar.deinit();
         };
+
+        ar.reserve(1);
 
         for (size_t i = 0; i < c_bytes_to_push; i++) {
             ar.push();
@@ -110,10 +115,11 @@ TEST_F(log2arena, pop) {
 
     {
         Log2Arena<uint8_t> ar{};
-        ar.reserve(32);
         defer {
             ar.deinit();
         };
+
+        ar.reserve(32);
 
         ar.push(32);
         EXPECT_EQ(ar.size, 32);
@@ -127,10 +133,11 @@ TEST_F(log2arena, pop) {
 
     {
         Log2Arena<uint8_t> ar{};
-        ar.reserve(32);
         defer {
             ar.deinit();
         };
+
+        ar.reserve(32);
 
         ar.push(32);
         EXPECT_EQ(ar.size, 32);

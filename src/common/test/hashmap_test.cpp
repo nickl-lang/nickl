@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include "nk/common/logger.h"
 #include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
 
@@ -22,7 +23,7 @@ LOG_USE_SCOPE(test);
 TEST_F(hashmap, basic) {
     using hashmap_t = HashMap<uint8_t, uint8_t>;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -35,7 +36,7 @@ TEST_F(hashmap, insert) {
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -54,7 +55,7 @@ TEST_F(hashmap, find) {
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -79,7 +80,7 @@ TEST_F(hashmap, remove) {
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -97,7 +98,7 @@ TEST_F(hashmap, overwrite) {
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -118,7 +119,7 @@ TEST_F(hashmap, ptr_key) {
     using val_t = uint64_t;
     using hashmap_t = HashMap<key_t, val_t>;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -155,7 +156,7 @@ TEST_F(hashmap, str_map) {
 
     std::unordered_map<std::string, val_t> stdmap;
 
-    auto hm = hashmap_t::create();
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
@@ -201,10 +202,12 @@ TEST_F(hashmap, stress) {
     std::random_device rd;
     std::mt19937_64 gen{rd()};
 
-    auto hm = hashmap_t::create(gen() % c_max_cap);
+    hashmap_t hm{};
     defer {
         hm.deinit();
     };
+
+    hm.reserve(gen() % c_max_cap);
 
     std::unordered_map<key_t, val_t> std_map;
 
