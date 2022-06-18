@@ -17,7 +17,7 @@ struct Array : Slice<T> {
     using Slice<T>::size;
     size_t capacity;
 
-    void reserve(size_t cap = 0) {
+    void reserve(size_t cap) {
         size = 0;
         capacity = cap;
         data = nullptr;

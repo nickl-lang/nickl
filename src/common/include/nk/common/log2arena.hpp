@@ -17,6 +17,7 @@ struct Log2Arena {
     size_t _bi; // block index
     size_t _ic; // initial capacity
 
+    /// @TODO Rewrite Log2Arena to suppoert zero init
     void reserve(size_t cap = INIT_CAPACITY) {
         size = 0;
         _block_table.reserve(INIT_BLOCK_TAB_CAPACITY);
@@ -78,6 +79,10 @@ struct Log2Arena {
 
     void clear() {
         pop(size);
+    }
+
+    void append(Slice<T const> slice) {
+        slice.copy(push(slice.size));
     }
 
 private:

@@ -62,6 +62,10 @@ struct Slice {
         return {data, size};
     }
 
+    operator std::decay_t<T> *() const {
+        return data;
+    }
+
     T &operator*() const {
         return *data;
     }

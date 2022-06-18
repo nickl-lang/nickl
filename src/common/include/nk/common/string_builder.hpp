@@ -47,7 +47,7 @@ public:
     string moveStr(Slice<char> dst);
 
 private:
-    Arena m_allocator;
+    Arena<char> m_arena;
 };
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER
