@@ -1,13 +1,12 @@
 #ifndef HEADER_GUARD_NK_COMMON_LOG2_ARENA
 #define HEADER_GUARD_NK_COMMON_LOG2_ARENA
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 
 #include "nk/common/array.hpp"
 #include "nk/common/container_base.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
 
 template <class T>
 struct Log2Arena : ContainerBase<Log2Arena, T> {
@@ -82,7 +81,7 @@ private:
         return size == 0 ? &at(0) : &at(size - 1) + 1;
     }
 
-    void _expand(size_t n) {
+    void _realloc(size_t n) {
         size_t const old_bi = _bi;
         size_t const new_bi = maxu(log2u(ceilToPowerOf2(n) / _ic), old_bi + 1);
 
@@ -94,7 +93,12 @@ private:
         }
     }
 
-    void _shrink(size_t /*n*/) {
+    void _expand(size_t n) {
+        size += n;
+    }
+
+    void _shrink(size_t n) {
+        size -= n;
         _bi = size == 0 ? 0 : _blockIndexByIndex(size - 1);
     }
 };
