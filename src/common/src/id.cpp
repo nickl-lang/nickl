@@ -10,13 +10,13 @@ namespace {
 
 LOG_USE_SCOPE(core);
 
-Arena s_arena;
+Arena<char> s_arena;
 HashMap<string, Id> s_str2id;
 HashMap<Id, string> s_id2str;
 Id s_next_id;
 
 void _defineId(Id id, string str) {
-    Slice<char> str_copy{(char *)Arena_push(&s_arena, str.size), str.size};
+    auto str_copy = s_arena.push(str.size);
     str.copy(str_copy);
 
     s_str2id.insert(str_copy) = id;
@@ -28,7 +28,7 @@ void _defineId(Id id, string str) {
 void id_init() {
     LOG_TRC(__func__);
 
-    Arena_reserve(&s_arena, 1024);
+    s_arena.reserve(1024);
     s_str2id.init(1024);
     s_id2str.init(1024);
 
@@ -40,7 +40,7 @@ void id_deinit() {
 
     s_id2str.deinit();
     s_str2id.deinit();
-    Arena_deinit(&s_arena);
+    s_arena.deinit();
 }
 
 string id2s(Id id) {
