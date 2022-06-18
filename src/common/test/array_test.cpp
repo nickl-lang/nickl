@@ -35,9 +35,9 @@ TEST_F(array, basic) {
         ar.deinit();
     };
 
-    ar.push()[0] = 0;
-    ar.push()[0] = 1;
-    ar.push()[0] = 2;
+    *ar.push() = 0;
+    *ar.push() = 1;
+    *ar.push() = 2;
 
     EXPECT_EQ(ar.size, 3);
     EXPECT_EQ(ar.capacity, 4);
@@ -59,7 +59,7 @@ TEST_F(array, capacity) {
     };
 
     for (uint8_t i = 1; i < 60; i++) {
-        ar.push()[0] = i;
+        *ar.push() = i;
         EXPECT_EQ(ar.capacity, ceilToPowerOf2(i));
     }
 }
@@ -88,7 +88,7 @@ TEST_F(array, zero_init) {
         ar.deinit();
     };
 
-    ar.push()[0] = 42;
+    *ar.push() = 42;
 
     EXPECT_EQ(ar.capacity, 1);
     EXPECT_EQ(ar.size, 1);

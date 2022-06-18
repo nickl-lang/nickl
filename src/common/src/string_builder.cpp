@@ -9,11 +9,11 @@
 static constexpr size_t PRINTF_BUFFER_SIZE = 4096;
 
 void StringBuilder::reserve(size_t n) {
-    StackAllocator_reserve(&m_allocator, n);
+    Arena_reserve(&m_allocator, n);
 }
 
 int StringBuilder::print(string str) {
-    str.copy({(char *)StackAllocator_push(&m_allocator, str.size), str.size});
+    str.copy({(char *)Arena_push(&m_allocator, str.size), str.size});
     return str.size;
 }
 
@@ -81,12 +81,12 @@ int StringBuilder::printf(char const *fmt, ...) {
     if (byte_count > (int)PRINTF_BUFFER_SIZE) {
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf((char *)StackAllocator_push(&m_allocator, byte_count), byte_count, fmt, ap);
+        vsnprintf((char *)Arena_push(&m_allocator, byte_count), byte_count, fmt, ap);
         va_end(ap);
 
-        StackAllocator_pop(&m_allocator, 1);
+        Arena_pop(&m_allocator, 1);
     } else if (byte_count > 0) {
-        ::memcpy(StackAllocator_push(&m_allocator, byte_count - 1), buf, byte_count - 1);
+        ::memcpy(Arena_push(&m_allocator, byte_count - 1), buf, byte_count - 1);
     }
 
     return printf_res;
@@ -100,7 +100,7 @@ string StringBuilder::moveStr(Slice<char> dst) {
     *this << '\0';
     size_t const byte_count = m_allocator.size;
     assert(dst.size >= byte_count && "dst buffer size is too small");
-    StackAllocator_copy(&m_allocator, (uint8_t *)dst.data);
-    StackAllocator_deinit(&m_allocator);
+    Arena_copy(&m_allocator, (uint8_t *)dst.data);
+    Arena_deinit(&m_allocator);
     return {dst.data, byte_count - 1};
 }
