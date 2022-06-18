@@ -17,13 +17,7 @@ struct Array : Slice<T> {
     using Slice<T>::size;
     size_t capacity;
 
-    static Array create(size_t cap = 0) {
-        Array ar;
-        ar.init(cap);
-        return ar;
-    }
-
-    void init(size_t cap = 0) {
+    void reserve(size_t cap = 0) {
         size = 0;
         capacity = cap;
         data = nullptr;
@@ -39,7 +33,7 @@ struct Array : Slice<T> {
         data = nullptr;
     }
 
-    T &push(size_t n = 1) {
+    Slice<T> push(size_t n = 1) {
         EASY_BLOCK("Array::push", profiler::colors::Grey200)
 
         if (!enoughSpace(n)) {
@@ -52,10 +46,10 @@ struct Array : Slice<T> {
         LOG_USE_SCOPE(arr);
         LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res);
 
-        return *res;
+        return {res, n};
     }
 
-    T &pop(size_t n = 1) {
+    Slice<T> pop(size_t n = 1) {
         EASY_BLOCK("Array::pop", profiler::colors::Grey200)
 
         assert(n <= size && "trying to pop more bytes that available");
@@ -67,7 +61,7 @@ struct Array : Slice<T> {
         LOG_USE_SCOPE(arr);
         LOG_TRC("pop(size=%lu) -> %p", n * sizeof(T), res);
 
-        return *res;
+        return {res, n};
     }
 
     bool enoughSpace(size_t n) const {
@@ -83,7 +77,7 @@ struct Array : Slice<T> {
     }
 
     void append(Slice<T const> slice) {
-        slice.copy({&push(slice.size), slice.size});
+        slice.copy(push(slice.size));
     }
 
 private:

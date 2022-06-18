@@ -15,7 +15,7 @@ class string_builder : public testing::Test {
 protected:
     StringBuilder m_builder{};
     char m_buf[10000];
-    Slice<char> m_dst{m_buf, 10000};
+    Slice<char> m_dst{m_buf, sizeof(m_buf)};
 };
 
 TEST_F(string_builder, empty) {

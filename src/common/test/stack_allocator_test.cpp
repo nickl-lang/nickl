@@ -52,3 +52,29 @@ TEST_F(stack_allocator, clear) {
     StackAllocator_clear(&m_allocator);
     EXPECT_EQ(m_allocator.size, 0);
 }
+
+TEST_F(stack_allocator, copy_empty) {
+    StackAllocator_copy(&m_allocator, nullptr);
+}
+
+TEST_F(stack_allocator, copy_empty_after_clear) {
+    StackAllocator_push(&m_allocator, 1);
+    StackAllocator_clear(&m_allocator);
+
+    StackAllocator_copy(&m_allocator, nullptr);
+}
+
+TEST_F(stack_allocator, pop_multiple_blocks) {
+    StackAllocator_reserve(&m_allocator, 1);
+
+    for (size_t i = 0; i < 1024; i++) {
+        StackAllocator_push(&m_allocator, 1);
+    }
+    EXPECT_EQ(m_allocator.size, 1024);
+
+    StackAllocator_pop(&m_allocator, 1024);
+    EXPECT_EQ(m_allocator.size, 0);
+
+    StackAllocator_push(&m_allocator, 1024);
+    EXPECT_EQ(m_allocator.size, 1024);
+}

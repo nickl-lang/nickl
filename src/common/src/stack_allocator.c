@@ -49,7 +49,7 @@ void *StackAllocator_push(StackAllocator *self, size_t n) {
         StackAllocator_reserve(self, n);
         self->_last_block->size += n;
         self->size += n;
-        return _blockData(self->_last_block) + self->_last_block->size - n;
+        return (uint8_t *)_blockData(self->_last_block) + self->_last_block->size - n;
     } else {
         return NULL;
     }
