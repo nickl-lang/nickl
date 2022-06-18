@@ -16,10 +16,9 @@ struct ContainerBase {
         return {self()._top() - n, n};
     }
 
-    Slice<T> pop(size_t n = 1) {
+    void pop(size_t n = 1) {
         assert(n <= self().size && "trying to pop more bytes that available");
         self()._shrink(n);
-        return {self()._top(), n};
     }
 
     void clear() {

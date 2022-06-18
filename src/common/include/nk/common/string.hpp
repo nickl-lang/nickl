@@ -1,8 +1,7 @@
 #ifndef HEADER_GUARD_NK_COMMON_STRING
 #define HEADER_GUARD_NK_COMMON_STRING
 
-#include <cstring>
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <string_view>
 
@@ -10,20 +9,11 @@
 
 using string = Slice<char const>;
 
-inline std::string_view std_view(string str) {
-    return std::string_view{str.data, str.size};
-}
+std::string_view std_view(string str);
+std::string std_str(string str);
 
-inline std::string std_str(string str) {
-    return std::string{std_view(str)};
-}
+std::ostream &operator<<(std::ostream &stream, string str);
 
-inline std::ostream &operator<<(std::ostream &stream, string str) {
-    return stream << std::string_view{str.data, str.size};
-}
-
-inline string cs2s(char const *str) {
-    return string{str, std::strlen(str)};
-}
+string cs2s(char const *str);
 
 #endif // HEADER_GUARD_NK_COMMON_STRING
