@@ -25,7 +25,7 @@ struct Sequence {
 
     void init(size_t cap = INIT_CAPACITY) {
         size = 0;
-        _block_table.init(INIT_BLOCK_TAB_CAPACITY);
+        _block_table.reserve(INIT_BLOCK_TAB_CAPACITY);
         _bi = 0;
         _ic = ceilToPowerOf2(cap);
 
