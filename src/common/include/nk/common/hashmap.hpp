@@ -40,23 +40,13 @@ struct HashMap {
     size_t size;
     size_t capacity;
 
-    static HashMap create(size_t cap = 0) {
-        HashMap hm;
-        hm.init(cap);
-        return hm;
-    }
-
-    void init(size_t cap = 0) {
-        size = 0;
-        capacity = cap;
-
-        _alloc();
+    void reserve(size_t cap) {
+        _alloc(cap);
     }
 
     void deinit() {
         entries.deinit();
-        size = 0;
-        capacity = 0;
+        *this = {};
     }
 
     V &insert(K const &key) {
@@ -114,21 +104,17 @@ private:
         return (_hash(hash) + ((i) + (i) * (i)) / 2) % capacity;
     }
 
-    void _alloc() {
+    void _alloc(size_t cap) {
         static_assert(std::is_trivial_v<Entry>, "Entry should be trivial");
 
-        capacity = maxu(capacity, 1);
+        capacity = maxu(cap, 1);
         entries.reserve(capacity);
         std::memset(entries.data, 0, entries.capacity * sizeof(Entry));
     }
 
     void _rehash() {
-        HashMap new_hm;
-
-        new_hm.size = 0;
-        new_hm.capacity = capacity << 1;
-
-        new_hm._alloc();
+        HashMap new_hm{};
+        new_hm._alloc(capacity << 1);
 
         for (size_t i = 0; i < capacity; i++) {
             Entry *entry = &entries[i];

@@ -6,6 +6,8 @@
 #include <cstring>
 #include <iterator>
 
+#include "nk/common/utils.h"
+
 template <class T>
 struct Slice {
     T *data;
@@ -56,6 +58,10 @@ struct Slice {
 
     void copy(std::decay_t<T> *dst) const {
         std::memcpy(dst, data, size * sizeof(T));
+    }
+
+    Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
+        return {data + i, minu(n, size)};
     }
 
     operator Slice<T const>() const {

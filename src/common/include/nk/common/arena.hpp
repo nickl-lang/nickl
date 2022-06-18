@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "nk/common/mem.h"
 #include "nk/common/slice.hpp"
 #include "nk/common/utils.h"
 
@@ -31,7 +32,7 @@ struct Arena {
         for (_BlockHeader *block = _first_block; block;) {
             _BlockHeader *cur_block = block;
             block = block->next;
-            free(cur_block);
+            platform_free(cur_block);
         }
 
         *this = {};
@@ -99,7 +100,7 @@ private:
         n = ceilToPowerOf2(n + header_size);
         n = maxu(n, (_last_block ? _last_block->capacity << 1 : 0));
 
-        _BlockHeader *block = (_BlockHeader *)malloc(n);
+        _BlockHeader *block = (_BlockHeader *)platform_alloc(n);
 
         block->next = nullptr;
         block->size = 0;

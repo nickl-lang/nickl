@@ -1,14 +1,18 @@
 #ifndef HEADER_GUARD_NK_COMMON_LOG2_ARENA
 #define HEADER_GUARD_NK_COMMON_LOG2_ARENA
-
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 
 #include "nk/common/array.hpp"
+#include "nk/common/container_base.hpp"
+#include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 
 template <class T>
-struct Log2Arena {
+struct Log2Arena : ContainerBase<Log2Arena, T> {
+    friend struct ContainerBase<Log2Arena, T>;
+
     using _block_ptr = T *;
 
     size_t size;
@@ -36,38 +40,6 @@ struct Log2Arena {
         _block_table.deinit();
     }
 
-    Slice<T> push(size_t n = 1) {
-        EASY_BLOCK("Log2Arena::push", profiler::colors::Grey200)
-
-        if (!enoughSpace(n)) {
-            _expand(n);
-        }
-
-        size += n;
-        T *res = _top() - n;
-
-        LOG_USE_SCOPE(log2arena);
-        LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res);
-
-        return {res, n};
-    }
-
-    Slice<T> pop(size_t n = 1) {
-        EASY_BLOCK("Log2Arena::pop", profiler::colors::Grey200)
-
-        assert(size >= n && "trying to pop more bytes than available");
-
-        size -= n;
-        _bi = size == 0 ? 0 : _blockIndexByIndex(size - 1);
-
-        T *res = _top();
-
-        LOG_USE_SCOPE(log2arena);
-        LOG_TRC("push(size=%lu) -> %p", n * sizeof(T), res);
-
-        return {res, n};
-    }
-
     T &at(size_t i) const {
         return *(_blockByIndex(i) + _indexRemainder(i));
     }
@@ -75,14 +47,6 @@ struct Log2Arena {
     bool enoughSpace(size_t n) const {
         int64_t const rem = size == 0 ? -1 : (int64_t)_indexRemainder(size - 1);
         return rem + n < _blockDataSize(_bi);
-    }
-
-    void clear() {
-        pop(size);
-    }
-
-    void append(Slice<T const> slice) {
-        slice.copy(push(slice.size));
     }
 
 private:
@@ -114,6 +78,10 @@ private:
         _block_table.push()[0] = (_block_ptr)platform_alloc(_blockDataSize(bi) * sizeof(T));
     }
 
+    T *_top() const {
+        return size == 0 ? &at(0) : &at(size - 1) + 1;
+    }
+
     void _expand(size_t n) {
         size_t const old_bi = _bi;
         size_t const new_bi = maxu(log2u(ceilToPowerOf2(n) / _ic), old_bi + 1);
@@ -126,8 +94,8 @@ private:
         }
     }
 
-    T *_top() const {
-        return size == 0 ? &at(0) : &at(size - 1) + 1;
+    void _shrink(size_t /*n*/) {
+        _bi = size == 0 ? 0 : _blockIndexByIndex(size - 1);
     }
 };
 
