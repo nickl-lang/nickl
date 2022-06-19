@@ -2,7 +2,7 @@ set(LIB nk_common)
 
 add_library(${LIB}
     src/id.cpp
-    src/logger.cpp
+    src/logger.c
     src/mem.cpp
     src/string.cpp
     src/string_builder.cpp
@@ -16,6 +16,10 @@ target_include_directories(${LIB}
 if(ENABLE_LOGGING)
     target_compile_definitions(${LIB}
         PUBLIC ENABLE_LOGGING
+        )
+
+    target_link_libraries(${LIB}
+        PUBLIC pthread
         )
 endif()
 

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iterator>
+#include <type_traits>
 
 #include "nk/common/utils.h"
 

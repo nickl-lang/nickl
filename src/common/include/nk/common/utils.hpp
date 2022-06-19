@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NK_COMMON_UTILS_HPP
 #define HEADER_GUARD_NK_COMMON_UTILS_HPP
 
+#include <type_traits>
 #include <utility>
 
 #include "nk/common/slice.hpp"
@@ -37,6 +38,7 @@ namespace std {
 template <class T>
 struct hash<::Slice<T>> {
     size_t operator()(::Slice<T> slice) {
+        static_assert(is_trivial_v<T>, "T should be trivial");
         return ::hash_array((uint8_t *)&slice[0], (uint8_t *)&slice[slice.size]);
     }
 };
@@ -44,6 +46,7 @@ struct hash<::Slice<T>> {
 template <class T>
 struct equal_to<::Slice<T>> {
     size_t operator()(::Slice<T> lhs, ::Slice<T> rhs) {
+        static_assert(is_trivial_v<T>, "T should be trivial");
         return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size * sizeof(T)) == 0;
     }
 };

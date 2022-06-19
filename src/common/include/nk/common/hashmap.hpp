@@ -107,9 +107,9 @@ private:
     void _alloc(size_t cap) {
         static_assert(std::is_trivial_v<Entry>, "Entry should be trivial");
 
-        capacity = maxu(cap, 1);
+        capacity = ceilToPowerOf2(maxu(cap, 1));
         entries.reserve(capacity);
-        std::memset(entries.data, 0, entries.capacity * sizeof(Entry));
+        std::memset(&entries[0], 0, capacity * sizeof(Entry));
     }
 
     void _rehash() {
