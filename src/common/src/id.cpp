@@ -20,8 +20,8 @@ void _defineId(Id id, string str) {
     auto str_copy = s_arena.push(str.size);
     str.copy(str_copy);
 
-    s_str2id.insert(str_copy) = id;
-    s_id2str.insert(id) = str_copy;
+    s_str2id.insert(str_copy, id);
+    s_id2str.insert(id, str_copy);
 }
 
 } // namespace
