@@ -3,7 +3,7 @@ set(LIB nk_common)
 add_library(${LIB}
     src/id.cpp
     src/logger.c
-    src/mem.cpp
+    src/mem.c
     src/string.cpp
     src/string_builder.cpp
     src/utils.cpp
