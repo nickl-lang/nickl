@@ -98,19 +98,19 @@ protected: // fields
 
 TEST_F(logger, write) {
     writeTestMsg(Log_Error, "This is error log");
-    EXPECT_LOG_MSG("1", "error", "test", " This is error log\n");
+    EXPECT_LOG_MSG("0001", "error", "test", " This is error log\n");
 
     writeTestMsg(Log_Warning, "This is warning log");
-    EXPECT_LOG_MSG("2", "warning", "test", " This is warning log\n");
+    EXPECT_LOG_MSG("0002", "warning", "test", " This is warning log\n");
 
     writeTestMsg(Log_Info, "This is info log");
-    EXPECT_LOG_MSG("3", "info", "test", " This is info log\n");
+    EXPECT_LOG_MSG("0003", "info", "test", " This is info log\n");
 
     writeTestMsg(Log_Debug, "This is debug log");
-    EXPECT_LOG_MSG("4", "debug", "test", " This is debug log\n");
+    EXPECT_LOG_MSG("0004", "debug", "test", " This is debug log\n");
 
     writeTestMsg(Log_Trace, "This is trace log");
-    EXPECT_LOG_MSG("5", "trace", "test", " This is trace log\n");
+    EXPECT_LOG_MSG("0005", "trace", "test", " This is trace log\n");
 }
 
 TEST_F(logger, complex) {
