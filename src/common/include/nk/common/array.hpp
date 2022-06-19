@@ -19,12 +19,6 @@ struct Array
     using Slice<T>::size;
     size_t capacity;
 
-    void reserve(size_t n) {
-        if (!enoughSpace(n)) {
-            _realloc(n);
-        }
-    }
-
     void deinit() {
         platform_free(data);
         *this = {};
@@ -43,11 +37,11 @@ private:
     void _realloc(size_t n) {
         if (n > 0) {
             capacity = ceilToPowerOf2(size + n);
-            void *new_data = platform_alloc(capacity * sizeof(T));
+            T *new_data = (T *)platform_alloc(capacity * sizeof(T));
             assert(new_data && "allocation failed");
-            Slice<T>::copy({(T *)new_data, size});
+            Slice<T>::copy({new_data, size});
             platform_free(data);
-            data = (T *)new_data;
+            data = new_data;
         }
     }
 

@@ -20,16 +20,6 @@ struct Log2Arena : ContainerBase<Log2Arena, T> {
     size_t _bi; // block index
     size_t _ic; // initial capacity
 
-    /// @TODO Rewrite Log2Arena to suppoert zero init
-    void reserve(size_t cap = INIT_CAPACITY) {
-        size = 0;
-        _block_table.reserve(INIT_BLOCK_TAB_CAPACITY);
-        _bi = 0;
-        _ic = ceilToPowerOf2(cap);
-
-        _allocateBlock(0);
-    }
-
     void deinit() {
         _block_ptr *pblock = _block_table.data;
         for (_block_ptr *end = pblock + _block_table.size; pblock != end; pblock++) {
@@ -43,6 +33,10 @@ struct Log2Arena : ContainerBase<Log2Arena, T> {
         return *(_blockByIndex(i) + _indexRemainder(i));
     }
 
+    T &operator[](size_t pos) const {
+        return at(pos);
+    }
+
     bool enoughSpace(size_t n) const {
         int64_t const rem = size == 0 ? -1 : (int64_t)_indexRemainder(size - 1);
         return rem + n < _blockDataSize(_bi);
@@ -50,14 +44,12 @@ struct Log2Arena : ContainerBase<Log2Arena, T> {
 
 private:
     static constexpr size_t INIT_BLOCK_TAB_CAPACITY = 8;
-    static constexpr size_t INIT_CAPACITY = 64;
 
     size_t _indexRemainder(size_t i) const {
         return i + _ic - floorToPowerOf2(i + _ic);
     }
 
     size_t _precedingBlocksSize(size_t bi) const {
-        assert(bi > 0 && "no blocks precede the first one");
         return ((1ul << bi) - 1) * _ic;
     }
 
@@ -74,7 +66,7 @@ private:
     }
 
     void _allocateBlock(size_t bi) {
-        _block_table.push()[0] = (_block_ptr)platform_alloc(_blockDataSize(bi) * sizeof(T));
+        *_block_table.push() = (_block_ptr)platform_alloc(_blockDataSize(bi) * sizeof(T));
     }
 
     T *_top() const {
@@ -82,13 +74,17 @@ private:
     }
 
     void _realloc(size_t n) {
-        size_t const old_bi = _bi;
-        size_t const new_bi = maxu(log2u(ceilToPowerOf2(n) / _ic), old_bi + 1);
+        if (!_block_table.data) {
+            _block_table.reserve(INIT_BLOCK_TAB_CAPACITY);
+            _ic = ceilToPowerOf2(n);
+        }
 
-        _bi = new_bi;
-        size = _precedingBlocksSize(new_bi);
+        if (!enoughSpace(n)) {
+            _bi = maxu(log2u(ceilToPowerOf2(n) / _ic), _bi + 1);
+        }
+        size = _precedingBlocksSize(_bi);
 
-        for (size_t bi = _block_table.size; bi <= new_bi; bi++) {
+        for (size_t bi = _block_table.size; bi <= _bi; bi++) {
             _allocateBlock(bi);
         }
     }
