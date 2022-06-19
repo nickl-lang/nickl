@@ -110,6 +110,8 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
 }
 
 void _logger_init(LoggerOptions opt) {
+    s_logger = (LoggerState){0};
+
     timespec_get(&s_logger.start_time, TIME_UTC);
 
     s_logger.log_level = opt.log_level;
