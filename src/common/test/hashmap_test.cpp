@@ -43,9 +43,9 @@ TEST_F(hashmap, insert) {
 
     EXPECT_EQ(hm.size, 0);
 
-    hm.insert(cs2s("one")) = 1;
-    hm.insert(cs2s("two")) = 2;
-    hm.insert(cs2s("three")) = 3;
+    EXPECT_TRUE(hm.insert(cs2s("one"), 1));
+    EXPECT_TRUE(hm.insert(cs2s("two"), 2));
+    EXPECT_TRUE(hm.insert(cs2s("three"), 3));
 
     EXPECT_EQ(hm.size, 3);
 }
@@ -62,9 +62,9 @@ TEST_F(hashmap, find) {
 
     EXPECT_EQ(hm.size, 0);
 
-    hm.insert(cs2s("one")) = 1;
-    hm.insert(cs2s("two")) = 2;
-    hm.insert(cs2s("three")) = 3;
+    EXPECT_TRUE(hm.insert(cs2s("one"), 1));
+    EXPECT_TRUE(hm.insert(cs2s("two"), 2));
+    EXPECT_TRUE(hm.insert(cs2s("three"), 3));
 
     EXPECT_EQ(hm.size, 3);
 
@@ -85,7 +85,7 @@ TEST_F(hashmap, remove) {
         hm.deinit();
     };
 
-    hm.insert(cs2s("value")) = 42;
+    EXPECT_TRUE(hm.insert(cs2s("value"), 42));
 
     EXPECT_EQ(*hm.find(cs2s("value")), 42);
 
@@ -103,12 +103,12 @@ TEST_F(hashmap, overwrite) {
         hm.deinit();
     };
 
-    hm.insert(cs2s("value")) = 0;
+    EXPECT_TRUE(hm.insert(cs2s("value"), 0));
     EXPECT_EQ(*hm.find(cs2s("value")), 0);
 
     EXPECT_EQ(hm.size, 1);
 
-    hm.insert(cs2s("value")) = 42;
+    EXPECT_FALSE(hm.insert(cs2s("value"), 42));
     EXPECT_EQ(*hm.find(cs2s("value")), 42);
 
     EXPECT_EQ(hm.size, 1);
@@ -124,8 +124,8 @@ TEST_F(hashmap, ptr_key) {
         hm.deinit();
     };
 
-    hm.insert(cs2s("________ whatever")) = 42;
-    hm.insert(cs2s("________ something else")) = 0xDEADBEEF;
+    EXPECT_TRUE(hm.insert(cs2s("________ whatever"), 42));
+    EXPECT_TRUE(hm.insert(cs2s("________ something else"), 0xDEADBEEF));
 
     val_t *pval = hm.find(cs2s("________ whatever"));
     ASSERT_TRUE(pval);
@@ -186,7 +186,7 @@ TEST_F(hashmap, str_map) {
             EXPECT_EQ(*found, it->second);
         } else {
             stdmap[stdkey] = val;
-            hm.insert(key) = val;
+            EXPECT_TRUE(hm.insert(key, val));
         }
     }
 }
@@ -217,7 +217,7 @@ TEST_F(hashmap, stress) {
             val_t val = gen();
             LOG_DBG("add: key=%lu, val=%lu", key, val);
             std_map[key] = val;
-            hm.insert(key) = val;
+            hm.insert(key, val);
         } else {
             auto it = std::next(std::begin(std_map), gen() % std_map.size());
             key_t key = it->first;
@@ -249,7 +249,7 @@ TEST_F(hashmap, zero_init) {
     EXPECT_EQ(hm.size, 0);
     EXPECT_EQ(hm.find(cs2s("val")), nullptr);
 
-    hm.insert(cs2s("val")) = 42;
+    EXPECT_TRUE(hm.insert(cs2s("val"), 42));
 
     EXPECT_EQ(hm.size, 1);
     EXPECT_EQ(*hm.find(cs2s("val")), 42);

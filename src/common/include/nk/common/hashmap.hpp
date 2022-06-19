@@ -49,9 +49,9 @@ struct HashMap {
         *this = {};
     }
 
-    V &insert(K const &key) {
+    bool insert(K const &key, V const &value) {
         EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
-        return *_insert(_keyHash(key), key);
+        return _insert(_keyHash(key), key, value);
     }
 
     V *find(K const &key) const {
@@ -119,7 +119,7 @@ private:
         for (size_t i = 0; i < capacity; i++) {
             Entry *entry = &entries[i];
             if (_isValid(entry)) {
-                *new_hm._insert(entry->hash, entry->key) = entry->value;
+                new_hm._insert(entry->hash, entry->key, entry->value);
             }
         }
 
@@ -127,7 +127,7 @@ private:
         *this = new_hm;
     }
 
-    V *_insert(hash_t hash, K const &key) {
+    bool _insert(hash_t hash, K const &key, V const &value) {
         if (size >= capacity * LOAD_FACTOR) {
             _rehash();
         }
@@ -136,8 +136,7 @@ private:
         Entry *entry;
 
         bool cleanup = false;
-        Entry *ret_entry = nullptr;
-
+        bool res = false;
         do {
             entry = &entries[_elemIndex(hash, probe_length)];
 
@@ -148,27 +147,33 @@ private:
                     break;
                 }
             } else if (_isDeleted(entry)) {
-                ret_entry = entry;
+                size++;
+                res = true;
+                *entry = {
+                    .key = key,
+                    .value = value,
+                    .hash = hash,
+                    .deleted = false,
+                };
                 cleanup = true;
             } else if (_isEmpty(entry) || _found(entry, hash, key)) {
-                ret_entry = entry;
+                if (!_isValid(entry)) {
+                    size++;
+                    res = true;
+                }
+                *entry = {
+                    .key = key,
+                    .value = value,
+                    .hash = hash,
+                    .deleted = false,
+                };
                 break;
             }
 
             probe_length++;
-        } while (!_isEmpty(entry) && probe_length <= capacity);
+        } while (!_isEmpty(entry) && probe_length < capacity);
 
-        assert(ret_entry && "entry not found to insert");
-
-        if (!_isValid(ret_entry)) {
-            size++;
-        }
-
-        ret_entry->key = key;
-        ret_entry->hash = hash;
-        ret_entry->deleted = false;
-
-        return &ret_entry->value;
+        return res;
     }
 
     Entry *_find(K const &key) const {
