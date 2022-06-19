@@ -25,12 +25,6 @@ struct Arena : ContainerBase<Arena, T> {
     _BlockHeader *_first_block;
     _BlockHeader *_last_block;
 
-    void reserve(size_t n) {
-        if (!enoughSpace(n)) {
-            _realloc(n);
-        }
-    }
-
     void deinit() {
         for (_BlockHeader *block = _first_block; block;) {
             _BlockHeader *cur_block = block;
@@ -53,22 +47,22 @@ struct Arena : ContainerBase<Arena, T> {
     void copy(std::decay_t<T> *dst) const {
         size_t offset = 0;
         for (_BlockHeader *block = _first_block; block; block = block->next) {
-            Slice<T const>{_blockData(block), block->size}.copy(dst + offset);
+            _blockData(block).copy(dst + offset);
             offset += block->size;
         }
     }
 
 private:
     T *_top() const {
-        return _blockData(_last_block) + _last_block->size;
+        return _blockData(_last_block).end();
     }
 
-    static size_t _align(size_t n) {
-        return roundUp(n, 16);
+    static size_t _headerSize() {
+        return roundUp(sizeof(_BlockHeader), alignof(T));
     }
 
-    static T *_blockData(_BlockHeader *block) {
-        return (T *)_align((size_t)(block + 1));
+    static Slice<T> _blockData(_BlockHeader *block) {
+        return {(T *)((uint8_t *)block + _headerSize()), block->size};
     }
 
     static size_t _spaceLeftInBlock(_BlockHeader const *block) {
@@ -76,15 +70,13 @@ private:
     }
 
     void _realloc(size_t n) {
-        size_t const header_size = _align(sizeof(_BlockHeader));
-        n = ceilToPowerOf2(n + header_size);
-        n = maxu(n, (_last_block ? _last_block->capacity << 1 : 0));
+        n = maxu(ceilToPowerOf2(n + _headerSize()), (_last_block ? _last_block->capacity << 1 : 0));
 
-        _BlockHeader *block = (_BlockHeader *)platform_alloc(n);
-
-        block->next = nullptr;
-        block->size = 0;
-        block->capacity = n - header_size;
+        auto block = new (platform_alloc(n)) _BlockHeader{
+            .next = nullptr,
+            .size = 0,
+            .capacity = n - _headerSize(),
+        };
 
         if (!_last_block) {
             _first_block = block;
@@ -107,16 +99,14 @@ private:
         } else {
             size_t sz = size;
             _BlockHeader *block = _first_block;
-            while (sz) {
+            for (; sz; block = block->next) {
                 if (block->size > sz) {
                     block->size = sz;
                 }
                 sz -= block->size;
-                block = block->next;
             }
-            while (block) {
+            for (; block; block = block->next) {
                 block->size = 0;
-                block = block->next;
             }
         }
     }

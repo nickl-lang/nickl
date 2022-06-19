@@ -150,3 +150,14 @@ TEST_F(log2arena, pop) {
         EXPECT_EQ(ar.size, 0);
     }
 }
+
+TEST_F(log2arena, zero_init) {
+    Log2Arena<uint8_t> ar{};
+    defer {
+        ar.deinit();
+    };
+
+    *ar.push() = 42;
+    EXPECT_EQ(ar.size, 1);
+    EXPECT_EQ(ar[0], 42);
+}

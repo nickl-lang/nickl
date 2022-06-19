@@ -8,10 +8,14 @@
 
 template <template <class> class TContainer, class T>
 struct ContainerBase {
-    Slice<T> push(size_t n = 1) {
+    void reserve(size_t n) {
         if (!self().enoughSpace(n)) {
             self()._realloc(n);
         }
+    }
+
+    Slice<T> push(size_t n = 1) {
+        reserve(n);
         self()._expand(n);
         return {self()._top() - n, n};
     }
