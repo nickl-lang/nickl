@@ -70,21 +70,28 @@ private:
     }
 
     void _realloc(size_t n) {
-        n = maxu(ceilToPowerOf2(n + _headerSize()), (_last_block ? _last_block->capacity << 1 : 0));
-
-        auto block = new (platform_alloc(n)) _BlockHeader{
-            .next = nullptr,
-            .size = 0,
-            .capacity = n - _headerSize(),
-        };
-
-        if (!_last_block) {
-            _first_block = block;
-        } else {
-            _last_block->next = block;
+        for (; _last_block && _last_block->next && !enoughSpace(n);
+             _last_block = _last_block->next) {
         }
 
-        _last_block = block;
+        if (!enoughSpace(n)) {
+            n = ceilToPowerOf2(n + _headerSize());
+            n = maxu(n, (_last_block ? _last_block->capacity << 1 : 0));
+
+            auto block = new (platform_alloc(n)) _BlockHeader{
+                .next = nullptr,
+                .size = 0,
+                .capacity = n - _headerSize(),
+            };
+
+            if (!_last_block) {
+                _first_block = block;
+            } else {
+                _last_block->next = block;
+            }
+
+            _last_block = block;
+        }
     }
 
     void _expand(size_t n) {
@@ -99,11 +106,12 @@ private:
         } else {
             size_t sz = size;
             _BlockHeader *block = _first_block;
-            for (; sz; block = block->next) {
+            for (_last_block = block; sz; block = block->next) {
                 if (block->size > sz) {
                     block->size = sz;
                 }
                 sz -= block->size;
+                _last_block = block;
             }
             for (; block; block = block->next) {
                 block->size = 0;
