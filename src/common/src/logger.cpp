@@ -115,7 +115,7 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
         out << c_color_none << c_color_map[log_level];
     }
 
-    out << logger.msg_count++ << " " << ts << " " << c_log_level_map[log_level] << scope << " ";
+    out << ++logger.msg_count << " " << ts << " " << c_log_level_map[log_level] << scope << " ";
 
     va_list ap;
     va_start(ap, fmt);
