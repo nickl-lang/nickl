@@ -62,7 +62,7 @@ TEST_F(arena, copy_empty_after_clear) {
     m_arena.copy(nullptr);
 }
 
-TEST_F(arena, pop_multiple_blocks) {
+TEST_F(arena, clear_multiple_blocks) {
     static constexpr size_t c_test_size = 1024;
 
     for (size_t i = 0; i < c_test_size; i++) {
@@ -70,10 +70,33 @@ TEST_F(arena, pop_multiple_blocks) {
     }
     EXPECT_EQ(m_arena.size, c_test_size);
 
-    m_arena.pop(c_test_size);
+    m_arena.clear();
     EXPECT_EQ(m_arena.size, 0);
 
     auto mem = m_arena.push(c_test_size);
     EXPECT_EQ(m_arena.size, c_test_size);
     std::memset(mem.data, 0, mem.size);
+}
+
+TEST_F(arena, push_pop_push) {
+    uint8_t *data = m_arena.push(10);
+    EXPECT_EQ(m_arena.size, 10);
+    std::memset(data, 'a', 10);
+
+    data = m_arena.push(50);
+    EXPECT_EQ(m_arena.size, 60);
+    std::memset(data, 'b', 50);
+
+    m_arena.pop(51);
+    EXPECT_EQ(m_arena.size, 9);
+
+    data = m_arena.push(10);
+    EXPECT_EQ(m_arena.size, 19);
+    std::memset(data, 'c', 10);
+
+    char buf[4096] = {};
+    Slice<char> str{buf, m_arena.size};
+    m_arena.copy((uint8_t *)str.data);
+
+    EXPECT_EQ(std_str(str), "aaaaaaaaacccccccccc");
 }
