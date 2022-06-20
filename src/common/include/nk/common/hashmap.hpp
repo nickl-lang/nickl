@@ -33,7 +33,6 @@ struct HashMap {
         K key;
         V value;
         hash_t hash;
-        bool deleted;
     };
 
     Array<Entry> entries;
@@ -64,22 +63,21 @@ struct HashMap {
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
         Entry *entry = _find(key);
         if (entry) {
-            entry->deleted = true;
+            entry->hash |= DELETED_FLAG;
             size--;
         }
         return;
     }
 
 private:
-    static constexpr size_t INIT_CAPACITY = 1;
-    static constexpr double LOAD_FACTOR = 0.5;
+    static constexpr size_t LOAD_FACTOR_PERCENT = 90;
+    static constexpr hash_t DELETED_FLAG = 1ull << (8 * sizeof(hash_t) - 1);
 
     static hash_t _keyHash(K const &key) {
-        return _hash(Context::hash(key));
-    }
-
-    static hash_t _hash(hash_t hash) {
-        return hash | 1;
+        hash_t hash = Context::hash(key);
+        hash &= ~DELETED_FLAG;
+        hash |= hash == 0;
+        return hash;
     }
 
     static bool _isEmpty(Entry const *entry) {
@@ -87,7 +85,7 @@ private:
     }
 
     static bool _isDeleted(Entry const *entry) {
-        return entry->deleted;
+        return entry->hash & DELETED_FLAG;
     }
 
     static bool _isValid(Entry const *entry) {
@@ -95,13 +93,12 @@ private:
     }
 
     static bool _found(Entry *entry, hash_t hash, K const &key) {
-        return _isValid(entry) && _hash(entry->hash) == _hash(hash) &&
-               Context::equal_to(entry->key, key);
+        return _isValid(entry) && entry->hash == hash && Context::equal_to(entry->key, key);
     }
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
     size_t _elemIndex(hash_t hash, size_t i) const {
-        return (_hash(hash) + ((i) + (i) * (i)) / 2) % capacity;
+        return (hash + ((i) + (i) * (i)) / 2) % capacity;
     }
 
     void _alloc(size_t cap) {
@@ -128,7 +125,7 @@ private:
     }
 
     bool _insert(hash_t hash, K const &key, V const &value) {
-        if (size >= capacity * LOAD_FACTOR) {
+        if (size * 100 / LOAD_FACTOR_PERCENT >= capacity) {
             _rehash();
         }
 
@@ -143,7 +140,7 @@ private:
             if (cleanup) {
                 if (_found(entry, hash, key)) {
                     size--;
-                    entry->deleted = true;
+                    entry->hash |= DELETED_FLAG;
                     break;
                 }
             } else if (_isDeleted(entry)) {
@@ -153,7 +150,6 @@ private:
                     .key = key,
                     .value = value,
                     .hash = hash,
-                    .deleted = false,
                 };
                 cleanup = true;
             } else if (_isEmpty(entry) || _found(entry, hash, key)) {
@@ -165,7 +161,6 @@ private:
                     .key = key,
                     .value = value,
                     .hash = hash,
-                    .deleted = false,
                 };
                 break;
             }

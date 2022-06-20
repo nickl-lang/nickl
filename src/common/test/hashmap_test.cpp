@@ -227,14 +227,26 @@ TEST_F(hashmap, str_map) {
     }
 }
 
-TEST_F(hashmap, test_case_8513) {
+TEST_F(hashmap, insert_remove_loop) {
     DoubleMap<int, int> map;
 
-    DOUBLE_MAP_INSERT(map, 8513, 42);
-    for (size_t i = 1; i <= 6; i++) {
+    DOUBLE_MAP_INSERT(map, 0, 42);
+    for (size_t i = 1; i <= 100; i++) {
         DOUBLE_MAP_INSERT(map, i, 24);
         DOUBLE_MAP_REMOVE(map, i);
     }
+}
+
+TEST_F(hashmap, insert_remove_same_twice_then_isert_different) {
+    DoubleMap<int, int> map;
+
+    DOUBLE_MAP_INSERT(map, 1, 0);
+    DOUBLE_MAP_REMOVE(map, 1);
+    DOUBLE_MAP_INSERT(map, 1, 0);
+    DOUBLE_MAP_REMOVE(map, 1);
+
+    DOUBLE_MAP_INSERT(map, 1, 0);
+    DOUBLE_MAP_INSERT(map, 3, 0);
 }
 
 TEST_F(hashmap, stress) {
@@ -276,8 +288,8 @@ TEST_F(hashmap, stress) {
 
         for (auto const &it : std_map) {
             auto found = hm.find(it.first);
-            ASSERT_TRUE(found);
-            ASSERT_EQ(*found, it.second);
+            ASSERT_TRUE(found) << "Key not found: " << it.first;
+            ASSERT_EQ(*found, it.second) << "Value not equal: " << it.second;
         }
     }
 }
