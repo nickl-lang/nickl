@@ -20,6 +20,42 @@ class hashmap : public testing::Test {
 
 LOG_USE_SCOPE(test);
 
+template <class K, class V>
+struct DoubleMap {
+    HashMap<K, V> hm{};
+    std::unordered_map<K, V> std_map;
+
+    ~DoubleMap() {
+        hm.deinit();
+    }
+
+    void insert(K const &key, V const &value) {
+        hm.insert(key, value);
+        std_map[key] = value;
+    }
+
+    void remove(K const &key) {
+        hm.remove(key);
+        std_map.erase(key);
+    }
+};
+
+#define DOUBLE_MAP_VERIFY(MAP)                                            \
+    EXPECT_EQ((MAP).hm.size, (MAP).std_map.size());                       \
+    for (auto const &it : (MAP).std_map) {                                \
+        auto found = (MAP).hm.find(it.first);                             \
+        ASSERT_TRUE(found) << "Key not found: " << it.first;              \
+        EXPECT_EQ(*found, it.second) << "Value not equal: " << it.second; \
+    }
+
+#define DOUBLE_MAP_INSERT(MAP, KEY, VALUE) \
+    (MAP).insert((KEY), (VALUE));          \
+    DOUBLE_MAP_VERIFY(MAP);
+
+#define DOUBLE_MAP_REMOVE(MAP, KEY) \
+    (MAP).remove((KEY));            \
+    DOUBLE_MAP_VERIFY(MAP);
+
 TEST_F(hashmap, basic) {
     using hashmap_t = HashMap<uint8_t, uint8_t>;
 
@@ -191,6 +227,16 @@ TEST_F(hashmap, str_map) {
     }
 }
 
+TEST_F(hashmap, test_case_8513) {
+    DoubleMap<int, int> map;
+
+    DOUBLE_MAP_INSERT(map, 8513, 42);
+    for (size_t i = 1; i <= 6; i++) {
+        DOUBLE_MAP_INSERT(map, i, 24);
+        DOUBLE_MAP_REMOVE(map, i);
+    }
+}
+
 TEST_F(hashmap, stress) {
     using key_t = uint64_t;
     using val_t = uint64_t;
@@ -215,13 +261,13 @@ TEST_F(hashmap, stress) {
         if (gen() % 2 || std_map.empty()) {
             key_t key = gen() % 100;
             val_t val = gen();
-            LOG_DBG("add: key=%lu, val=%lu", key, val);
+            LOG_INF("add: key=%lu, val=%lu", key, val);
             std_map[key] = val;
             hm.insert(key, val);
         } else {
             auto it = std::next(std::begin(std_map), gen() % std_map.size());
             key_t key = it->first;
-            LOG_DBG("del: key=%lu", key);
+            LOG_INF("del: key=%lu", key);
             std_map.erase(it);
             hm.remove(key);
         }
