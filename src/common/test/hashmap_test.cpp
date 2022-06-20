@@ -310,5 +310,44 @@ TEST_F(hashmap, zero_init) {
     EXPECT_TRUE(hm.insert(cs2s("val"), 42));
 
     EXPECT_EQ(hm.size, 1);
-    EXPECT_EQ(*hm.find(cs2s("val")), 42);
+    auto found = hm.find(cs2s("val"));
+    ASSERT_TRUE(found);
+    EXPECT_EQ(*found, 42);
+}
+
+TEST_F(hashmap, index_operator) {
+    using key_t = int;
+    using val_t = string;
+    using hashmap_t = HashMap<key_t, val_t>;
+
+    hashmap_t hm{};
+    defer {
+        hm.deinit();
+    };
+
+    val_t *found = nullptr;
+
+    hm[1] = cs2s("one");
+
+    EXPECT_EQ(hm.size, 1);
+
+    found = hm.find(1);
+    ASSERT_TRUE(found);
+    EXPECT_EQ(std_str(*found), "one");
+
+    hm[42];
+
+    EXPECT_EQ(hm.size, 2);
+
+    found = hm.find(42);
+    ASSERT_TRUE(found);
+    EXPECT_EQ(std_str(*found), "");
+
+    hm[42] = cs2s("forty-two");
+
+    EXPECT_EQ(hm.size, 2);
+
+    found = hm.find(42);
+    ASSERT_TRUE(found);
+    EXPECT_EQ(std_str(*found), "forty-two");
 }
