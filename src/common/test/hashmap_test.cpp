@@ -227,17 +227,7 @@ TEST_F(hashmap, str_map) {
     }
 }
 
-TEST_F(hashmap, insert_remove_loop) {
-    DoubleMap<int, int> map;
-
-    DOUBLE_MAP_INSERT(map, 0, 42);
-    for (size_t i = 1; i <= 100; i++) {
-        DOUBLE_MAP_INSERT(map, i, 24);
-        DOUBLE_MAP_REMOVE(map, i);
-    }
-}
-
-TEST_F(hashmap, insert_remove_same_twice_then_isert_different) {
+TEST_F(hashmap, insert_remove_example) {
     DoubleMap<int, int> map;
 
     DOUBLE_MAP_INSERT(map, 1, 0);
@@ -247,6 +237,16 @@ TEST_F(hashmap, insert_remove_same_twice_then_isert_different) {
 
     DOUBLE_MAP_INSERT(map, 1, 0);
     DOUBLE_MAP_INSERT(map, 3, 0);
+}
+
+TEST_F(hashmap, insert_remove_loop) {
+    DoubleMap<int, int> map;
+
+    DOUBLE_MAP_INSERT(map, 0, 42);
+    for (size_t i = 1; i <= 100; i++) {
+        DOUBLE_MAP_INSERT(map, i, 24);
+        DOUBLE_MAP_REMOVE(map, i);
+    }
 }
 
 TEST_F(hashmap, stress) {

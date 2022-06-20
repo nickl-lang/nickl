@@ -50,23 +50,29 @@ struct HashMap {
 
     bool insert(K const &key, V const &value) {
         EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
-        return _insert(_keyHash(key), key, value);
+        hash_t hash = _keyHash(key);
+        Entry *found = _find(hash, key);
+        if (found) {
+            found->value = value;
+        } else {
+            _insert(hash, key, value);
+        }
+        return !found;
     }
 
     V *find(K const &key) const {
         EASY_BLOCK("HashMap::find", profiler::colors::Grey200)
-        Entry *entry = _find(key);
-        return entry ? &entry->value : nullptr;
+        Entry *found = _find(_keyHash(key), key);
+        return found ? &found->value : nullptr;
     }
 
     void remove(K const &key) {
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
-        Entry *entry = _find(key);
-        if (entry) {
-            entry->hash |= DELETED_FLAG;
+        Entry *found = _find(_keyHash(key), key);
+        if (found) {
+            found->hash |= DELETED_FLAG;
             size--;
         }
-        return;
     }
 
 private:
@@ -98,7 +104,11 @@ private:
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
     size_t _elemIndex(hash_t hash, size_t i) const {
-        return (hash + ((i) + (i) * (i)) / 2) % capacity;
+        return (hash + ((i + i * i) >> 1)) & (capacity - 1);
+    }
+
+    Entry *_entry(hash_t hash, size_t i) const {
+        return &entries[_elemIndex(hash, i)];
     }
 
     void _alloc(size_t cap) {
@@ -124,68 +134,28 @@ private:
         *this = new_hm;
     }
 
-    bool _insert(hash_t hash, K const &key, V const &value) {
+    void _insert(hash_t hash, K const &key, V const &value) {
         if (size * 100 / LOAD_FACTOR_PERCENT >= capacity) {
             _rehash();
         }
 
-        size_t probe_length = 0;
-        Entry *entry;
+        Entry *entry = _entry(hash, 0);
+        for (size_t i = 1; _isValid(entry); entry = _entry(hash, i++)) {
+        }
 
-        bool cleanup = false;
-        bool res = false;
-        do {
-            entry = &entries[_elemIndex(hash, probe_length)];
-
-            if (cleanup) {
-                if (_found(entry, hash, key)) {
-                    size--;
-                    entry->hash |= DELETED_FLAG;
-                    break;
-                }
-            } else if (_isDeleted(entry)) {
-                size++;
-                res = true;
-                *entry = {
-                    .key = key,
-                    .value = value,
-                    .hash = hash,
-                };
-                cleanup = true;
-            } else if (_isEmpty(entry) || _found(entry, hash, key)) {
-                if (!_isValid(entry)) {
-                    size++;
-                    res = true;
-                }
-                *entry = {
-                    .key = key,
-                    .value = value,
-                    .hash = hash,
-                };
-                break;
-            }
-
-            probe_length++;
-        } while (!_isEmpty(entry) && probe_length < capacity);
-
-        return res;
+        size++;
+        *entry = {.key = key, .value = value, .hash = hash};
     }
 
-    Entry *_find(K const &key) const {
-        hash_t hash = _keyHash(key);
-
-        size_t probe_length = 0;
-        Entry *entry;
-
-        while (probe_length < capacity) {
-            entry = &entries[_elemIndex(hash, probe_length++)];
+    Entry *_find(hash_t hash, K const &key) const {
+        for (size_t i = 0; i < capacity; i++) {
+            Entry *entry = _entry(hash, i);
             if (_isEmpty(entry)) {
-                break;
+                return nullptr;
             } else if (_found(entry, hash, key)) {
                 return entry;
             }
         }
-
         return nullptr;
     }
 };
