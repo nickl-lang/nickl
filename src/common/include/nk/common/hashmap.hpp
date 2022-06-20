@@ -50,14 +50,24 @@ struct HashMap {
 
     bool insert(K const &key, V const &value) {
         EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
-        hash_t hash = _keyHash(key);
+        hash_t const hash = _keyHash(key);
         Entry *found = _find(hash, key);
         if (found) {
             found->value = value;
         } else {
-            _insert(hash, key, value);
+            _insert(hash, key)->value = value;
         }
         return !found;
+    }
+
+    V &operator[](K const &key) {
+        EASY_BLOCK("HashMap::operator[]", profiler::colors::Grey200)
+        hash_t const hash = _keyHash(key);
+        Entry *found = _find(hash, key);
+        if (!found) {
+            (found = _insert(hash, key))->value = V{};
+        }
+        return found->value;
     }
 
     V *find(K const &key) const {
@@ -126,7 +136,7 @@ private:
         for (size_t i = 0; i < capacity; i++) {
             Entry *entry = &entries[i];
             if (_isValid(entry)) {
-                new_hm._insert(entry->hash, entry->key, entry->value);
+                new_hm._insert(entry->hash, entry->key)->value = entry->value;
             }
         }
 
@@ -134,7 +144,7 @@ private:
         *this = new_hm;
     }
 
-    void _insert(hash_t hash, K const &key, V const &value) {
+    Entry *_insert(hash_t hash, K const &key) {
         if (size * 100 / LOAD_FACTOR_PERCENT >= capacity) {
             _rehash();
         }
@@ -144,7 +154,10 @@ private:
         }
 
         size++;
-        *entry = {.key = key, .value = value, .hash = hash};
+        entry->key = key;
+        entry->hash = hash;
+
+        return entry;
     }
 
     Entry *_find(hash_t hash, K const &key) const {
