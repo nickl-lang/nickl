@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "nk/common/array.hpp"
+#include "nk/common/logger.h" // TODO REMOVE
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 
@@ -29,6 +30,8 @@ struct DefaultHashMapContext {
 
 template <class K, class V, class Context = detail::DefaultHashMapContext<K>>
 struct HashMap {
+    constexpr LOG_USE_SCOPE(hashmap_debug); // TODO REMOVE
+
     struct Entry {
         K key;
         V value;
@@ -49,6 +52,11 @@ struct HashMap {
     }
 
     bool insert(K const &key, V const &value) {
+        LOG_DBG("##################################### insert key=%i", key); // TODO REMOVE
+        defer {
+            printState();
+        };
+
         EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
         return _insert(_hashKey(key), key, value);
     }
@@ -60,6 +68,11 @@ struct HashMap {
     }
 
     bool remove(K const &key) {
+        LOG_DBG("##################################### remove key=%i", key); // TODO REMOVE
+        defer {
+            printState();
+        };
+
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
         Entry *entry = _find(key);
         if (entry) {
@@ -110,6 +123,8 @@ private:
     }
 
     void _rehash() {
+        LOG_DBG("///////////////////////////////////// rehash"); // TODO REMOVE
+
         HashMap new_hm{};
         new_hm._alloc(maxu(capacity, 1) << 1);
 
@@ -122,12 +137,17 @@ private:
 
         deinit();
         *this = new_hm;
+
+        LOG_DBG("///////////////////////////////////// rehash DONE"); // TODO REMOVE
     }
 
     bool _insert(hash_t _hash, K const &_key, V const &_value) {
         if (size * 100 / LOAD_FACTOR_PERCENT >= capacity) {
             _rehash();
         }
+
+        LOG_DBG("size=%zu", size);         // TODO REMOVE
+        LOG_DBG("capacity=%zu", capacity); // TODO REMOVE
 
         Entry new_entry{
             .key = _key,
@@ -142,15 +162,22 @@ private:
         for (;;) {
             entry = &entries[pos];
 
+            LOG_DBG("========================== OK pos=%zu", pos); // TODO REMOVE
+
             if (_isEmpty(entry) || _found(entry, new_entry.hash, new_entry.key)) {
                 break;
             }
 
+            LOG_DBG("it's not empty and not found"); // TODO REMOVE
+
             size_t existing_dist = _probeDistance(entry, pos);
+            LOG_DBG("dist=%zu", dist);                   // TODO REMOVE
+            LOG_DBG("existing_dist=%zu", existing_dist); // TODO REMOVE
             if (existing_dist < dist) {
                 if (_isDeleted(entry)) {
                     break;
                 }
+                LOG_DBG("it's not deleted, swapping"); // TODO REMOVE
                 std::swap(new_entry, *entry);
                 dist = existing_dist;
             }
@@ -165,9 +192,29 @@ private:
             inserted = true;
         }
 
+        LOG_DBG("Found!!!! inserting");
+
         *entry = new_entry;
 
         return inserted;
+    }
+
+    void printState() { // TODO REMOVE
+        fprintf(stderr, "STATE [\n");
+        for (size_t idx = 0; idx < capacity; idx++) {
+            auto &entry = entries[idx];
+            fprintf(stderr, "(idx=%zu", idx);
+            if (_isEmpty(&entry)) {
+                fprintf(stderr, " // EMPTY //");
+            } else if (_isDeleted(&entry)) {
+                fprintf(stderr, " // DELETED hash=%zu //", entry.hash);
+            } else if (_isValid(&entry)) {
+                fprintf(stderr, " hash=%zu key=%i value=%i", entry.hash, entry.key, entry.value);
+            }
+            fprintf(stderr, ")\n");
+        }
+        fprintf(stderr, "]\n");
+        fflush(stderr);
     }
 
     Entry *_find(K const &key) const {
