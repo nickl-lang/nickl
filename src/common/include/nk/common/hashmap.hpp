@@ -33,7 +33,7 @@ struct HashMap {
         K key;
         V value;
         hash_t hash;
-        bool deleted;
+        bool deleted; // TODO flag deleted items with hash
     };
 
     Array<Entry> entries;
@@ -51,7 +51,7 @@ struct HashMap {
 
     bool insert(K const &key, V const &value) {
         EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
-        return _insert(_keyHash(key), key, value);
+        return _insert(_hashKey(key), key, value);
     }
 
     V *find(K const &key) const {
@@ -60,21 +60,22 @@ struct HashMap {
         return entry ? &entry->value : nullptr;
     }
 
-    void remove(K const &key) {
+    bool remove(K const &key) {
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
         Entry *entry = _find(key);
         if (entry) {
             entry->deleted = true;
             size--;
+            return true;
         }
-        return;
+        return false;
     }
 
 private:
     static constexpr size_t INIT_CAPACITY = 1;
     static constexpr double LOAD_FACTOR = 0.5;
 
-    static hash_t _keyHash(K const &key) {
+    static hash_t _hashKey(K const &key) {
         return _hash(Context::hash(key));
     }
 
@@ -101,7 +102,7 @@ private:
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
     size_t _elemIndex(hash_t hash, size_t i) const {
-        return (_hash(hash) + ((i) + (i) * (i)) / 2) % capacity;
+        return (_hash(hash) + ((i) + (i) * (i)) / 2) & (capacity - 1);
     }
 
     void _alloc(size_t cap) {
@@ -109,12 +110,12 @@ private:
 
         capacity = ceilToPowerOf2(maxu(cap, 1));
         entries.reserve(capacity);
-        std::memset(&entries[0], 0, capacity * sizeof(Entry));
+        std::memset(entries.begin(), 0, capacity * sizeof(Entry));
     }
 
     void _rehash() {
         HashMap new_hm{};
-        new_hm._alloc(capacity << 1);
+        new_hm._alloc(maxu(capacity, 1) << 1);
 
         for (size_t i = 0; i < capacity; i++) {
             Entry *entry = &entries[i];
@@ -127,71 +128,76 @@ private:
         *this = new_hm;
     }
 
-    bool _insert(hash_t hash, K const &key, V const &value) {
+    size_t _probeDistance(hash_t hash, size_t slot_idx) const {
+        return (slot_idx + capacity - (hash & (capacity - 1))) & (capacity - 1);
+    }
+
+    bool _insert(hash_t hash, K key, V value) {
         if (size >= capacity * LOAD_FACTOR) {
             _rehash();
         }
 
-        size_t probe_length = 0;
-        Entry *entry;
+        Entry *entry = nullptr;
+        size_t dist = 0;
+        size_t pos = hash & (capacity - 1);
 
-        bool cleanup = false;
-        bool res = false;
-        do {
-            entry = &entries[_elemIndex(hash, probe_length)];
+        for (;;) {
+            entry = &entries[pos];
 
-            if (cleanup) {
-                if (_found(entry, hash, key)) {
-                    size--;
-                    entry->deleted = true;
-                    break;
-                }
-            } else if (_isDeleted(entry)) {
-                size++;
-                res = true;
-                *entry = {
-                    .key = key,
-                    .value = value,
-                    .hash = hash,
-                    .deleted = false,
-                };
-                cleanup = true;
-            } else if (_isEmpty(entry) || _found(entry, hash, key)) {
-                if (!_isValid(entry)) {
-                    size++;
-                    res = true;
-                }
-                *entry = {
-                    .key = key,
-                    .value = value,
-                    .hash = hash,
-                    .deleted = false,
-                };
+            if (_isEmpty(entry) || _found(entry, hash, key)) {
                 break;
             }
 
-            probe_length++;
-        } while (!_isEmpty(entry) && probe_length < capacity);
+            size_t existing_dist = _probeDistance(entry->hash, pos);
+            if (existing_dist < dist) {
+                if (_isDeleted(entry)) {
+                    break;
+                }
+                std::swap(hash, entry->hash);
+                std::swap(key, entry->key);
+                std::swap(value, entry->value);
+                dist = existing_dist;
+            }
 
-        return res;
+            pos = (pos + 1) & (capacity - 1);
+            dist++;
+        }
+
+        bool inserted = false;
+        if (!_isValid(entry)) {
+            size++;
+            inserted = true;
+        }
+
+        *entry = {
+            .key = key,
+            .value = value,
+            .hash = hash,
+            .deleted = false,
+        };
+
+        return inserted;
     }
 
     Entry *_find(K const &key) const {
-        hash_t hash = _keyHash(key);
-
-        size_t probe_length = 0;
-        Entry *entry;
-
-        while (probe_length < capacity) {
-            entry = &entries[_elemIndex(hash, probe_length++)];
+        if (!capacity) {
+            return nullptr;
+        }
+        hash_t const hash = _hashKey(key);
+        size_t pos = hash & (capacity - 1);
+        size_t dist = 0;
+        for (;;) {
+            auto entry = &entries[pos];
             if (_isEmpty(entry)) {
-                break;
+                return nullptr;
+            } else if (dist > _probeDistance(entry->hash, pos)) {
+                return nullptr;
             } else if (_found(entry, hash, key)) {
                 return entry;
             }
+            pos = (pos + 1) & (capacity - 1);
+            dist++;
         }
-
-        return nullptr;
     }
 };
 
