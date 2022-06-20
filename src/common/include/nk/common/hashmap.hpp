@@ -33,7 +33,6 @@ struct HashMap {
         K key;
         V value;
         hash_t hash;
-        bool deleted; // TODO flag deleted items with hash
     };
 
     Array<Entry> entries;
@@ -64,7 +63,7 @@ struct HashMap {
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
         Entry *entry = _find(key);
         if (entry) {
-            entry->deleted = true;
+            entry->hash |= DELETED_FLAG;
             size--;
             return true;
         }
@@ -72,15 +71,14 @@ struct HashMap {
     }
 
 private:
-    static constexpr size_t INIT_CAPACITY = 1;
-    static constexpr double LOAD_FACTOR = 0.5;
+    static constexpr size_t LOAD_FACTOR_PERCENT = 100;
+    static constexpr hash_t DELETED_FLAG = 1ul << (8 * sizeof(hash_t) - 1);
 
     static hash_t _hashKey(K const &key) {
-        return _hash(Context::hash(key));
-    }
-
-    static hash_t _hash(hash_t hash) {
-        return hash | 1;
+        hash_t h = Context::hash(key);
+        h &= ~DELETED_FLAG;
+        h |= h == 0;
+        return h;
     }
 
     static bool _isEmpty(Entry const *entry) {
@@ -88,21 +86,19 @@ private:
     }
 
     static bool _isDeleted(Entry const *entry) {
-        return entry->deleted;
+        return entry->hash & DELETED_FLAG;
     }
 
     static bool _isValid(Entry const *entry) {
         return !_isEmpty(entry) && !_isDeleted(entry);
     }
 
-    static bool _found(Entry *entry, hash_t hash, K const &key) {
-        return _isValid(entry) && _hash(entry->hash) == _hash(hash) &&
-               Context::equal_to(entry->key, key);
+    static bool _found(Entry const *entry, hash_t hash, K const &key) {
+        return _isValid(entry) && entry->hash == hash && Context::equal_to(entry->key, key);
     }
 
-    // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
-    size_t _elemIndex(hash_t hash, size_t i) const {
-        return (_hash(hash) + ((i) + (i) * (i)) / 2) & (capacity - 1);
+    size_t _probeDistance(Entry const *entry, size_t slot_idx) const {
+        return (slot_idx + capacity - (entry->hash & (capacity - 1))) & (capacity - 1);
     }
 
     void _alloc(size_t cap) {
@@ -128,34 +124,34 @@ private:
         *this = new_hm;
     }
 
-    size_t _probeDistance(hash_t hash, size_t slot_idx) const {
-        return (slot_idx + capacity - (hash & (capacity - 1))) & (capacity - 1);
-    }
-
-    bool _insert(hash_t hash, K key, V value) {
-        if (size >= capacity * LOAD_FACTOR) {
+    bool _insert(hash_t _hash, K const &_key, V const &_value) {
+        if (size * 100 / LOAD_FACTOR_PERCENT >= capacity) {
             _rehash();
         }
 
+        Entry new_entry{
+            .key = _key,
+            .value = _value,
+            .hash = _hash,
+        };
+
         Entry *entry = nullptr;
         size_t dist = 0;
-        size_t pos = hash & (capacity - 1);
+        size_t pos = new_entry.hash & (capacity - 1);
 
         for (;;) {
             entry = &entries[pos];
 
-            if (_isEmpty(entry) || _found(entry, hash, key)) {
+            if (_isEmpty(entry) || _found(entry, new_entry.hash, new_entry.key)) {
                 break;
             }
 
-            size_t existing_dist = _probeDistance(entry->hash, pos);
+            size_t existing_dist = _probeDistance(entry, pos);
             if (existing_dist < dist) {
                 if (_isDeleted(entry)) {
                     break;
                 }
-                std::swap(hash, entry->hash);
-                std::swap(key, entry->key);
-                std::swap(value, entry->value);
+                std::swap(new_entry, *entry);
                 dist = existing_dist;
             }
 
@@ -169,12 +165,7 @@ private:
             inserted = true;
         }
 
-        *entry = {
-            .key = key,
-            .value = value,
-            .hash = hash,
-            .deleted = false,
-        };
+        *entry = new_entry;
 
         return inserted;
     }
@@ -190,7 +181,7 @@ private:
             auto entry = &entries[pos];
             if (_isEmpty(entry)) {
                 return nullptr;
-            } else if (dist > _probeDistance(entry->hash, pos)) {
+            } else if (dist > _probeDistance(entry, pos)) {
                 return nullptr;
             } else if (_found(entry, hash, key)) {
                 return entry;
