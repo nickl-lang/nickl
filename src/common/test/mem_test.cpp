@@ -26,3 +26,19 @@ TEST_F(mem, basic) {
         mem[i] = i;
     }
 }
+
+TEST_F(mem, aligned) {
+    struct A {
+        uint64_t u64;
+        std::max_align_t _pad;
+    };
+
+    A *a = (A *)platform_alloc_aligned(sizeof(A), alignof(A));
+    defer {
+        platform_free_aligned(a);
+    };
+
+    a->u64 = 42;
+
+    EXPECT_EQ((size_t)a % alignof(std::max_align_t), 0);
+}
