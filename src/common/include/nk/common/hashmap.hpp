@@ -38,6 +38,7 @@ struct HashMap {
     Array<Entry> entries;
     size_t size;
     size_t capacity;
+    size_t max_probe_dist;
 
     void reserve(size_t cap) {
         _alloc(cap);
@@ -150,8 +151,12 @@ private:
         }
 
         Entry *entry = _entry(hash, 0);
-        for (size_t i = 1; _isValid(entry); entry = _entry(hash, i++)) {
+        size_t i = 1;
+        while (_isValid(entry)) {
+            entry = _entry(hash, i++);
         }
+
+        max_probe_dist = maxu(max_probe_dist, i);
 
         size++;
         entry->key = key;
@@ -163,7 +168,7 @@ private:
     Entry *_find(hash_t hash, K const &key) const {
         for (size_t i = 0; i < capacity; i++) {
             Entry *entry = _entry(hash, i);
-            if (_isEmpty(entry)) {
+            if (_isEmpty(entry) || i > max_probe_dist) {
                 return nullptr;
             } else if (_found(entry, hash, key)) {
                 return entry;
