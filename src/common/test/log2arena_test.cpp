@@ -161,3 +161,15 @@ TEST_F(log2arena, zero_init) {
     EXPECT_EQ(ar.size, 1);
     EXPECT_EQ(ar[0], 42);
 }
+
+TEST_F(log2arena, align) {
+    size_t const c_align = 3;
+
+    Log2Arena<double> ar{};
+    defer {
+        ar.deinit();
+    };
+
+    auto ptr = ar.push_aligned(c_align);
+    EXPECT_EQ((size_t)ptr.data % (c_align * alignof(decltype(ar)::value_type)), 0);
+}

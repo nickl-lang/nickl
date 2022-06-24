@@ -4,6 +4,7 @@ add_library(${LIB}
     src/id.cpp
     src/logger.c
     src/mem.c
+    src/stack_allocator.cpp
     src/string.cpp
     src/string_builder.cpp
     src/utils.cpp
