@@ -111,3 +111,15 @@ TEST_F(array, append) {
     EXPECT_EQ(ar.size, c_test_str.size);
     EXPECT_EQ(std_str(ar), std_str(c_test_str));
 }
+
+TEST_F(array, align) {
+    size_t const c_align = 3;
+
+    Array<double> ar{};
+    defer {
+        ar.deinit();
+    };
+
+    auto ptr = ar.push_aligned(c_align);
+    EXPECT_EQ((size_t)ptr.data % (c_align * alignof(decltype(ar)::value_type)), 0);
+}

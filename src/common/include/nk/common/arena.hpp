@@ -54,7 +54,7 @@ struct Arena : ContainerBase<Arena, T> {
 
 private:
     T *_top() const {
-        return _blockData(_last_block).end();
+        return _last_block ? _blockData(_last_block).end() : 0;
     }
 
     static size_t _headerSize() {

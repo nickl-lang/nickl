@@ -70,7 +70,7 @@ private:
     }
 
     T *_top() const {
-        return size == 0 ? &at(0) : &at(size - 1) + 1;
+        return _block_table.data ? (size == 0 ? &at(0) : &at(size - 1) + 1) : 0;
     }
 
     void _realloc(size_t n) {

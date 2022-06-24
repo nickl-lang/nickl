@@ -15,6 +15,8 @@ struct Array
     , ContainerBase<Array, T> {
     friend struct ContainerBase<Array, T>;
 
+    using typename Slice<T>::value_type;
+
     using Slice<T>::data;
     using Slice<T>::size;
     size_t capacity;

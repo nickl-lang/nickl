@@ -8,6 +8,8 @@
 
 template <template <class> class TContainer, class T>
 struct ContainerBase {
+    using value_type = T;
+
     void reserve(size_t n) {
         if (!self().enoughSpace(n)) {
             self()._realloc(n);
@@ -15,8 +17,12 @@ struct ContainerBase {
     }
 
     Slice<T> push(size_t n = 1) {
-        reserve(n);
-        self()._expand(n);
+        return push_aligned(0, n);
+    }
+
+    Slice<T> push_aligned(size_t align, size_t n = 1) {
+        reserve(n + align * alignof(T));
+        self()._expand(align ? _align(align, n) : n);
         return {self()._top() - n, n};
     }
 
@@ -34,6 +40,12 @@ struct ContainerBase {
     }
 
 private:
+    size_t _align(size_t align, size_t n) {
+        size_t const top = (size_t)self()._top();
+        size_t const padding = roundUp(top, align * alignof(T)) - top;
+        return n + roundUp(padding, sizeof(T)) / sizeof(T);
+    }
+
     TContainer<T> &self() {
         return *(TContainer<T> *)this;
     }

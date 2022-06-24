@@ -4,6 +4,7 @@
 
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
+#include "nk/common/utils.hpp"
 
 class arena : public testing::Test {
     void SetUp() override {
@@ -99,4 +100,16 @@ TEST_F(arena, push_pop_push) {
     m_arena.copy((uint8_t *)str.data);
 
     EXPECT_EQ(std_str(str), "aaaaaaaaacccccccccc");
+}
+
+TEST_F(arena, align) {
+    size_t const c_align = 3;
+
+    Arena<double> ar{};
+    defer {
+        ar.deinit();
+    };
+
+    auto ptr = ar.push_aligned(c_align);
+    EXPECT_EQ((size_t)ptr.data % (c_align * alignof(decltype(ar)::value_type)), 0);
 }
