@@ -39,17 +39,18 @@ struct Arena : ContainerBase<Arena, T> {
         return n <= _spaceLeftInBlock(_last_block);
     }
 
-    void copy(Slice<std::decay_t<T>> dst) {
+    Slice<std::decay_t<T>> copy(Slice<std::decay_t<T>> dst) {
         assert(dst.size >= size && "copying to a slice of insufficient size");
-        copy(dst.data);
+        return copy(dst.data);
     }
 
-    void copy(std::decay_t<T> *dst) const {
+    Slice<std::decay_t<T>> copy(std::decay_t<T> *dst) const {
         size_t offset = 0;
         for (_BlockHeader *block = _first_block; block; block = block->next) {
             _blockData(block).copy(dst + offset);
             offset += block->size;
         }
+        return {dst, size};
     }
 
 private:
