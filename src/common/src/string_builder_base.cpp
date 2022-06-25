@@ -1,14 +1,16 @@
-#include "nk/common/string_builder_base.hpp"
+#include "nk/common/private/string_builder_base.hpp"
 
 #include <limits>
 #include <type_traits>
 
 #include "nk/common/allocator.hpp"
 #include "nk/common/arena.hpp"
+#include "nk/common/static_string_builder.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.hpp"
 
 template struct StringBuilderBase<StringBuilder>;
+template struct StringBuilderBase<StaticStringBuilder>;
 
 template <class TSelf>
 int StringBuilderBase<TSelf>::print(string str) {
@@ -78,12 +80,6 @@ int StringBuilderBase<TSelf>::print(double val) {
 template <class TSelf>
 int StringBuilderBase<TSelf>::print(void *ptr) {
     return self().printf("%p", ptr);
-}
-
-template <class TSelf>
-string StringBuilderBase<TSelf>::moveStr(Allocator &allocator) {
-    size_t const byte_count = self().size() + 1;
-    return self().moveStr({allocator.alloc<char>(byte_count), byte_count});
 }
 
 template <class TSelf>

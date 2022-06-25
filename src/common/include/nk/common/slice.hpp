@@ -62,7 +62,8 @@ struct Slice {
     }
 
     Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
-        return {data + i, minu(n, size)};
+        assert(i <= size && "index out of range");
+        return {data + i, minu(n, size - i)};
     }
 
     operator Slice<T const>() const {

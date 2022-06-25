@@ -5,8 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nk/common/container_base.hpp"
 #include "nk/common/mem.h"
+#include "nk/common/private/container_base.hpp"
 #include "nk/common/utils.hpp"
 
 template <class T>

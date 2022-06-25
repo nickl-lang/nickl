@@ -6,7 +6,6 @@
 
 #include "nk/common/slice.hpp"
 
-/// @TODO Move ContainerBase to src
 template <template <class> class TSelf, class T>
 struct ContainerBase {
     using value_type = T;

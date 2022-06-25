@@ -1,7 +1,7 @@
 #include "nk/common/string_builder.hpp"
 
-#include <cassert>
 #include <cstdarg>
+#include <cstdio>
 
 #include "nk/common/utils.hpp"
 
@@ -34,15 +34,15 @@ int StringBuilder::printf(char const *fmt, ...) {
     return printf_res;
 }
 
-size_t StringBuilder::size() const {
-    return m_arena.size;
+string StringBuilder::moveStr(Allocator &allocator) {
+    size_t const byte_count = size() + 1;
+    return moveStr({allocator.alloc<char>(byte_count), byte_count});
 }
 
 string StringBuilder::moveStr(Slice<char> dst) {
     *this << '\0';
     size_t const byte_count = size();
-    assert(dst.size >= byte_count && "dst buffer size is too small");
-    m_arena.copy(dst.data);
+    m_arena.copy(dst);
     m_arena.deinit();
     return {dst.data, byte_count - 1};
 }
