@@ -7,6 +7,7 @@ add_library(${LIB}
     src/stack_allocator.cpp
     src/string.cpp
     src/string_builder.cpp
+    src/string_builder_base.cpp
     src/utils.cpp
     )
 

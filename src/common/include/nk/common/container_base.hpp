@@ -6,7 +6,8 @@
 
 #include "nk/common/slice.hpp"
 
-template <template <class> class TContainer, class T>
+/// @TODO Move ContainerBase to src
+template <template <class> class TSelf, class T>
 struct ContainerBase {
     using value_type = T;
 
@@ -46,8 +47,8 @@ private:
         return n + roundUp(padding, sizeof(T)) / sizeof(T);
     }
 
-    TContainer<T> &self() {
-        return *(TContainer<T> *)this;
+    TSelf<T> &self() {
+        return *(TSelf<T> *)this;
     }
 };
 
