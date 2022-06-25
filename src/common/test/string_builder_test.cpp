@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/logger.h"
+#include "nk/common/stack_allocator.hpp"
+#include "nk/common/utils.hpp"
 
 class string_builder : public testing::Test {
     void SetUp() override {
@@ -76,4 +78,14 @@ TEST_F(string_builder, multiple_printfs) {
     EXPECT_EQ(m_builder.printf("two"), 3);
     EXPECT_EQ(m_builder.printf("three"), 5);
     EXPECT_EQ(std_str(m_builder.moveStr(m_dst)), "onetwothree");
+}
+
+TEST_F(string_builder, allocator) {
+    StackAllocator stack{};
+    defer {
+        stack.deinit();
+    };
+    m_builder.print("Hello, World!");
+    auto str = m_builder.moveStr(stack);
+    EXPECT_EQ(std_str(str), "Hello, World!");
 }

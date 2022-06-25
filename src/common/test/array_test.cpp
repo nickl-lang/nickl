@@ -123,3 +123,21 @@ TEST_F(array, align) {
     auto ptr = ar.push_aligned(c_align);
     EXPECT_EQ((size_t)ptr.data % (c_align * alignof(decltype(ar)::value_type)), 0);
 }
+
+TEST_F(array, multiple_reserves) {
+    Array<int> ar{};
+    defer {
+        ar.deinit();
+    };
+
+    size_t sz = 1;
+
+    ar.reserve(sz *= 10);
+    ar.reserve(sz *= 10);
+    ar.reserve(sz *= 10);
+
+    auto data = ar.push(sz);
+    std::memset(data.data, 0, sz * sizeof(decltype(ar)::value_type));
+
+    EXPECT_EQ(ar.size, sz);
+}
