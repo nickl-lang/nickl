@@ -35,8 +35,7 @@ int StringBuilder::printf(char const *fmt, ...) {
 }
 
 string StringBuilder::moveStr(Allocator &allocator) {
-    size_t const byte_count = size() + 1;
-    return moveStr({allocator.alloc<char>(byte_count), byte_count});
+    return moveStr(allocator.alloc<char>(size() + 1));
 }
 
 string StringBuilder::moveStr(Slice<char> dst) {
