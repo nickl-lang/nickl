@@ -96,9 +96,13 @@ size_t StringBuilder::size() const {
     return m_arena.size;
 }
 
+string StringBuilder::moveStr(Allocator &allocator) {
+    return moveStr({allocator.alloc<char>(size() + 1), size() + 1});
+}
+
 string StringBuilder::moveStr(Slice<char> dst) {
     *this << '\0';
-    size_t const byte_count = m_arena.size;
+    size_t const byte_count = size();
     assert(dst.size >= byte_count && "dst buffer size is too small");
     m_arena.copy(dst.data);
     m_arena.deinit();

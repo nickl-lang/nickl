@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "nk/common/allocator.hpp"
 #include "nk/common/arena.hpp"
 #include "nk/common/mem.h"
 #include "nk/common/string.hpp"
@@ -44,6 +45,7 @@ public:
 
     size_t size() const;
 
+    string moveStr(Allocator &allocator);
     string moveStr(Slice<char> dst);
 
 private:

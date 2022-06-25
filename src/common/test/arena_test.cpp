@@ -113,3 +113,16 @@ TEST_F(arena, align) {
     auto ptr = ar.push_aligned(c_align);
     EXPECT_EQ((size_t)ptr.data % (c_align * alignof(decltype(ar)::value_type)), 0);
 }
+
+TEST_F(arena, multiple_reserves) {
+    size_t sz = 1;
+
+    m_arena.reserve(sz *= 10);
+    m_arena.reserve(sz *= 10);
+    m_arena.reserve(sz *= 10);
+
+    auto data = m_arena.push(sz);
+    std::memset(data.data, 0, sz);
+
+    EXPECT_EQ(m_arena.size, sz);
+}
