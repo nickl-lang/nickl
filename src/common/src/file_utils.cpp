@@ -27,7 +27,5 @@ Slice<char> file_read(string path, Allocator &allocator) {
     } while (file.read(buf, BUFFER_SIZE));
     ar.pop(BUFFER_SIZE - file.gcount());
 
-    Slice<char> res{allocator.alloc<char>(ar.size), ar.size};
-    ar.copy(res);
-    return res;
+    return ar.copy({allocator.alloc<char>(ar.size), ar.size});
 }

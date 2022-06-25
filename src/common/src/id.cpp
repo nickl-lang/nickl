@@ -17,8 +17,7 @@ HashMap<Id, string> s_id2str;
 Id s_next_id;
 
 void _defineId(Id id, string str) {
-    auto str_copy = s_arena.push(str.size);
-    str.copy(str_copy);
+    auto str_copy = str.copy(s_arena.push(str.size));
 
     s_str2id.insert(str_copy, id);
     s_id2str.insert(id, str_copy);

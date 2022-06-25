@@ -52,13 +52,14 @@ struct Slice {
         return reverse_iterator{begin()};
     }
 
-    void copy(Slice<std::decay_t<T>> dst) const {
+    Slice<std::decay_t<T>> copy(Slice<std::decay_t<T>> dst) const {
         assert(dst.size >= size && "copying to a slice of insufficient size");
-        copy(dst.data);
+        return copy(dst.data);
     }
 
-    void copy(std::decay_t<T> *dst) const {
+    Slice<std::decay_t<T>> copy(std::decay_t<T> *dst) const {
         std::memcpy(dst, data, size * sizeof(T));
+        return {dst, size};
     }
 
     Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
