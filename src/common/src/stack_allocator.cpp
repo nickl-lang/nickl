@@ -19,3 +19,7 @@ void StackAllocator::popFrame(Frame frame) {
 void *StackAllocator::alloc_aligned(size_t size, size_t align) {
     return m_arena.push_aligned(align, size).data;
 }
+
+void StackAllocator::clear() {
+    m_arena.clear();
+}
