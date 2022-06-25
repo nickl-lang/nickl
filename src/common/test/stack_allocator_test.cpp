@@ -51,7 +51,7 @@ TEST_F(stack_allocator, align) {
     };
 
     auto ptr = m_allocator.alloc<A>();
-    EXPECT_EQ((size_t)ptr % alignof(A), 0);
+    EXPECT_EQ((size_t)ptr.data % alignof(A), 0);
 }
 
 TEST_F(stack_allocator, clear) {

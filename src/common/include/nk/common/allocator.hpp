@@ -3,10 +3,12 @@
 
 #include <cstddef>
 
+#include "nk/common/slice.hpp"
+
 struct Allocator {
     template <class T>
-    T *alloc(size_t n = 1) {
-        return (T *)alloc_aligned(n * sizeof(T), alignof(T));
+    Slice<T> alloc(size_t n = 1) {
+        return {(T *)alloc_aligned(n * sizeof(T), alignof(T)), n};
     }
 
 protected:
