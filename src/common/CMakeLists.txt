@@ -1,6 +1,7 @@
 set(LIB nk_common)
 
 add_library(${LIB}
+    src/file_utils.cpp
     src/id.cpp
     src/logger.c
     src/mem.c

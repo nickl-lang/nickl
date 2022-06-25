@@ -16,6 +16,8 @@ struct StackAllocator : Allocator {
     Frame pushFrame();
     void popFrame(Frame frame);
 
+    void clear();
+
 protected:
     void *alloc_aligned(size_t size, size_t align);
 
