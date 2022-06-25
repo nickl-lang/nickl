@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include "nk/common/array.hpp"
-#include "nk/common/container_base.hpp"
+#include "nk/common/private/container_base.hpp"
 
 template <class T>
 struct Log2Arena : ContainerBase<Log2Arena, T> {

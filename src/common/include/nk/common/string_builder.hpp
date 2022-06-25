@@ -2,15 +2,22 @@
 #define HEADER_GUARD_NK_COMMON_STRING_BUILDER
 
 #include "nk/common/arena.hpp"
-#include "nk/common/string_builder_base.hpp"
+#include "nk/common/private/string_builder_base.hpp"
 
 struct StringBuilder : StringBuilderBase<StringBuilder> {
+private:
+    using Base = StringBuilderBase<StringBuilder>;
+
+public:
     void reserve(size_t n);
-    size_t size() const;
+
+    size_t size() const {
+        return m_arena.size;
+    }
 
     int printf(char const *fmt, ...);
 
-    using StringBuilderBase<StringBuilder>::moveStr;
+    string moveStr(Allocator &allocator);
     string moveStr(Slice<char> dst);
 
 private:

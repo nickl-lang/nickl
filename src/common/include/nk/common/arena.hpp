@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "nk/common/container_base.hpp"
 #include "nk/common/mem.h"
+#include "nk/common/private/container_base.hpp"
 #include "nk/common/slice.hpp"
 #include "nk/common/utils.h"
 

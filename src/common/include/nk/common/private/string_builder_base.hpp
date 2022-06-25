@@ -38,8 +38,6 @@ struct StringBuilderBase {
         return self();
     }
 
-    string moveStr(Allocator &allocator);
-
 private:
     TSelf &self();
 };
