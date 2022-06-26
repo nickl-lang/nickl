@@ -7,6 +7,8 @@
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 
+namespace nk {
+
 namespace {
 
 LOG_USE_SCOPE(core);
@@ -63,3 +65,5 @@ Id s2id(string str) {
 
     return *pid;
 }
+
+} // namespace nk

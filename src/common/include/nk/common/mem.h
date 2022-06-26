@@ -7,11 +7,11 @@
 extern "C" {
 #endif
 
-void *platform_alloc(size_t size);
-void platform_free(void const *ptr);
+void *nk_platform_alloc(size_t size);
+void nk_platform_free(void const *ptr);
 
-void *platform_alloc_aligned(size_t size, size_t align);
-void platform_free_aligned(void const *ptr);
+void *nk_platform_alloc_aligned(size_t size, size_t align);
+void nk_platform_free_aligned(void const *ptr);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,8 @@
 
 #include "nk/common/string.hpp"
 
+namespace nk {
+
 using Id = uint64_t;
 
 void id_init();
@@ -19,5 +21,7 @@ Id s2id(string str);
 enum : Id {
     id_empty = 0,
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_ID

@@ -9,6 +9,8 @@
 #include "nk/common/private/container_base.hpp"
 #include "nk/common/utils.hpp"
 
+namespace nk {
+
 template <class T>
 struct Array
     : Slice<T>
@@ -22,7 +24,7 @@ struct Array
     size_t capacity;
 
     void deinit() {
-        platform_free(data);
+        nk_platform_free(data);
         *this = {};
     }
 
@@ -39,10 +41,10 @@ private:
     void _realloc(size_t n) {
         if (n > 0) {
             capacity = ceilToPowerOf2(size + n);
-            T *new_data = (T *)platform_alloc(capacity * sizeof(T));
+            T *new_data = (T *)nk_platform_alloc(capacity * sizeof(T));
             assert(new_data && "allocation failed");
             Slice<T>::copy({new_data, size});
-            platform_free(data);
+            nk_platform_free(data);
             data = new_data;
         }
     }
@@ -55,5 +57,7 @@ private:
         size -= n;
     }
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_ARRAY

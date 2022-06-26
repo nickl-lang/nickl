@@ -5,6 +5,8 @@
 
 #include "nk/common/utils.hpp"
 
+namespace nk {
+
 static constexpr size_t PRINTF_BUFFER_SIZE = 4096;
 
 void StringBuilder::reserve(size_t n) {
@@ -45,3 +47,5 @@ string StringBuilder::moveStr(Slice<char> dst) {
     m_arena.deinit();
     return {dst.data, byte_count - 1};
 }
+
+} // namespace nk

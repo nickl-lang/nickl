@@ -6,6 +6,8 @@
 
 #include "nk/common/slice.hpp"
 
+namespace nk {
+
 template <template <class> class TSelf, class T>
 struct ContainerBase {
     using value_type = T;
@@ -50,5 +52,7 @@ private:
         return *(TSelf<T> *)this;
     }
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_CONTAINER_BASE

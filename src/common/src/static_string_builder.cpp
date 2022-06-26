@@ -3,6 +3,8 @@
 #include <cassert>
 #include <cstdio>
 
+namespace nk {
+
 int StaticStringBuilder::printf(char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -22,3 +24,5 @@ string StaticStringBuilder::moveStr() {
     m_size = 0;
     return str;
 }
+
+} // namespace nk

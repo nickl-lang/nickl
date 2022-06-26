@@ -1,5 +1,7 @@
 #include "nk/common/stack_allocator.hpp"
 
+namespace nk {
+
 void StackAllocator::deinit() {
     m_arena.deinit();
 }
@@ -23,3 +25,5 @@ void *StackAllocator::alloc_aligned(size_t size, size_t align) {
 void StackAllocator::clear() {
     m_arena.clear();
 }
+
+} // namespace nk

@@ -7,6 +7,8 @@
 #include "nk/common/allocator.hpp"
 #include "nk/common/string.hpp"
 
+namespace nk {
+
 template <class TSelf>
 struct StringBuilderBase {
     int print(string str);
@@ -42,5 +44,7 @@ struct StringBuilderBase {
 private:
     TSelf &self();
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER_BASE

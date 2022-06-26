@@ -9,6 +9,8 @@
 
 #include "nk/common/utils.h"
 
+namespace nk {
+
 template <class T>
 struct Slice {
     T *data;
@@ -83,5 +85,7 @@ struct Slice {
         return data;
     }
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE

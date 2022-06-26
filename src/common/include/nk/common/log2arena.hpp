@@ -8,6 +8,8 @@
 #include "nk/common/array.hpp"
 #include "nk/common/private/container_base.hpp"
 
+namespace nk {
+
 template <class T>
 struct Log2Arena : ContainerBase<Log2Arena, T> {
     friend struct ContainerBase<Log2Arena, T>;
@@ -23,7 +25,7 @@ struct Log2Arena : ContainerBase<Log2Arena, T> {
     void deinit() {
         _block_ptr *pblock = _block_table.data;
         for (_block_ptr *end = pblock + _block_table.size; pblock != end; pblock++) {
-            platform_free(*pblock);
+            nk_platform_free(*pblock);
         }
 
         _block_table.deinit();
@@ -66,7 +68,7 @@ private:
     }
 
     void _allocateBlock(size_t bi) {
-        *_block_table.push() = (_block_ptr)platform_alloc(_blockDataSize(bi) * sizeof(T));
+        *_block_table.push() = (_block_ptr)nk_platform_alloc(_blockDataSize(bi) * sizeof(T));
     }
 
     T *_top() const {
@@ -98,5 +100,7 @@ private:
         _bi = size == 0 ? 0 : _blockIndexByIndex(size - 1);
     }
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_LOG2_ARENA
