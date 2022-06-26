@@ -7,8 +7,7 @@ target_include_directories(${LIB}
     )
 
 target_link_libraries(${LIB}
-    INTERFACE nk_common
-    # PUBLIC nk_vm
+    INTERFACE nkl_core
     )
 
 set(EXE nickl)
