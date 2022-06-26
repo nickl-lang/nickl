@@ -7,6 +7,8 @@
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 
+using namespace nk;
+
 class array : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

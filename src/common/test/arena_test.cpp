@@ -6,6 +6,8 @@
 #include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
 
+using namespace nk;
+
 class arena : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

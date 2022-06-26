@@ -4,6 +4,8 @@
 #include "nk/common/arena.hpp"
 #include "nk/common/private/string_builder_base.hpp"
 
+namespace nk {
+
 struct StringBuilder : StringBuilderBase<StringBuilder> {
 private:
     using Base = StringBuilderBase<StringBuilder>;
@@ -23,5 +25,7 @@ public:
 private:
     Arena<char> m_arena;
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER

@@ -6,6 +6,8 @@
 #include "nk/common/stack_allocator.hpp"
 #include "nk/common/utils.hpp"
 
+using namespace nk;
+
 class static_string_builder : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

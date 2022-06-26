@@ -4,6 +4,8 @@
 #include "nk/common/allocator.hpp"
 #include "nk/common/arena.hpp"
 
+namespace nk {
+
 struct StackAllocator : Allocator {
     struct Frame {
         size_t size;
@@ -24,5 +26,7 @@ protected:
 private:
     Arena<char> m_arena;
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_STACK_ALLOCATOR

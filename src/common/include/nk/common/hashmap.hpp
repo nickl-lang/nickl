@@ -12,6 +12,8 @@
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 
+namespace nk {
+
 namespace detail {
 
 template <class K>
@@ -177,5 +179,7 @@ private:
         return nullptr;
     }
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_HASHMAP

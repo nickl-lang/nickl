@@ -9,6 +9,8 @@
 #include "nk/common/stack_allocator.hpp"
 #include "nk/common/utils.hpp"
 
+using namespace nk;
+
 class file_utils : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

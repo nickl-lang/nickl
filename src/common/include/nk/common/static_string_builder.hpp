@@ -3,6 +3,8 @@
 
 #include "nk/common/private/string_builder_base.hpp"
 
+namespace nk {
+
 struct StaticStringBuilder : StringBuilderBase<StaticStringBuilder> {
 private:
     using Base = StringBuilderBase<StaticStringBuilder>;
@@ -25,5 +27,7 @@ private:
     Slice<char> m_dst;
     size_t m_size;
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_STATIC_STRING_BUILDER

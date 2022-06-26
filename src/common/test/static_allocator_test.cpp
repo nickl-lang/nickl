@@ -6,6 +6,8 @@
 
 #include "nk/common/logger.h"
 
+using namespace nk;
+
 class static_allocator : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});

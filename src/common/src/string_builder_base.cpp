@@ -9,6 +9,8 @@
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.hpp"
 
+namespace nk {
+
 template struct StringBuilderBase<StringBuilder>;
 template struct StringBuilderBase<StaticStringBuilder>;
 
@@ -86,3 +88,5 @@ template <class TSelf>
 TSelf &StringBuilderBase<TSelf>::self() {
     return *(TSelf *)this;
 }
+
+} // namespace nk

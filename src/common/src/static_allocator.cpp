@@ -4,6 +4,8 @@
 
 #include "nk/common/utils.h"
 
+namespace nk {
+
 void StaticAllocator::clear() {
     m_size = 0;
 }
@@ -14,3 +16,5 @@ void *StaticAllocator::alloc_aligned(size_t size, size_t align) {
     assert(m_size <= m_dst.size && "buffer overflow");
     return data;
 }
+
+} // namespace nk

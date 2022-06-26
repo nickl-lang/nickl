@@ -10,6 +10,8 @@
 #include "nk/common/slice.hpp"
 #include "nk/common/utils.h"
 
+namespace nk {
+
 template <class T>
 struct Arena : ContainerBase<Arena, T> {
     friend struct ContainerBase<Arena, T>;
@@ -29,7 +31,7 @@ struct Arena : ContainerBase<Arena, T> {
         for (_BlockHeader *block = _first_block; block;) {
             _BlockHeader *cur_block = block;
             block = block->next;
-            platform_free(cur_block);
+            nk_platform_free(cur_block);
         }
 
         *this = {};
@@ -79,7 +81,7 @@ private:
             n = ceilToPowerOf2(n + _headerSize());
             n = maxu(n, (_last_block ? _last_block->capacity << 1 : 0));
 
-            auto block = new (platform_alloc(n)) _BlockHeader{
+            auto block = new (nk_platform_alloc(n)) _BlockHeader{
                 .next = nullptr,
                 .size = 0,
                 .capacity = n - _headerSize(),
@@ -120,5 +122,7 @@ private:
         }
     }
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_ARENA

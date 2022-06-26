@@ -5,6 +5,8 @@
 
 #include "nk/common/slice.hpp"
 
+namespace nk {
+
 struct Allocator {
     template <class T>
     Slice<T> alloc(size_t n = 1) {
@@ -14,5 +16,7 @@ struct Allocator {
 protected:
     virtual void *alloc_aligned(size_t size, size_t align) = 0;
 };
+
+} // namespace nk
 
 #endif // HEADER_GUARD_NK_COMMON_ALLOCATOR

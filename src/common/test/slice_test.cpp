@@ -8,6 +8,8 @@
 
 #include "nk/common/logger.h"
 
+using namespace nk;
+
 class slice : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
