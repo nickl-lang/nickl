@@ -6,6 +6,7 @@ add_library(${LIB}
     src/logger.c
     src/mem.c
     src/stack_allocator.cpp
+    src/static_allocator.cpp
     src/static_string_builder.cpp
     src/string.cpp
     src/string_builder.cpp

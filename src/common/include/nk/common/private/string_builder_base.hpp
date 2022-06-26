@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NK_COMMON_STRING_BUILDER_BASE
 
 #include <cstdint>
+#include <type_traits>
 
 #include "nk/common/allocator.hpp"
 #include "nk/common/string.hpp"

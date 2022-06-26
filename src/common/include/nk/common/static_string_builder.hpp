@@ -9,7 +9,8 @@ private:
 
 public:
     StaticStringBuilder(Slice<char> dst)
-        : m_dst{dst} {
+        : m_dst{dst}
+        , m_size{0} {
     }
 
     size_t size() const {
