@@ -1,7 +1,7 @@
-set(LIB nkl_core)
+set(LIB nkl_core_test_utils)
 
 add_library(${LIB}
-    src/ast.cpp
+    src/ast_utils.cpp
     )
 
 target_include_directories(${LIB}
@@ -9,10 +9,5 @@ target_include_directories(${LIB}
     )
 
 target_link_libraries(${LIB}
-    PUBLIC nk_common
-    # PUBLIC nk_vm
+    PUBLIC nkl_core
     )
-
-if(CMAKE_TESTING_ENABLED)
-    add_subdirectory(test)
-endif()

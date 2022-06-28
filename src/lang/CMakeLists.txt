@@ -1,13 +1,15 @@
 set(LIB nkl_lang)
 
-add_library(${LIB} INTERFACE)
+add_library(${LIB}
+    src/ast.cpp
+    )
 
 target_include_directories(${LIB}
-    INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
 target_link_libraries(${LIB}
-    INTERFACE nkl_core
+    PUBLIC nkl_core
     )
 
 set(EXE nickl)
