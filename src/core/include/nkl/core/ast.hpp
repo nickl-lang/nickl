@@ -3,6 +3,7 @@
 
 #include "nk/common/allocator.hpp"
 #include "nk/common/arena.hpp"
+#include "nk/common/id.hpp"
 #include "nkl/core/token.hpp"
 
 namespace nkl {
@@ -10,23 +11,32 @@ namespace nkl {
 using namespace nk;
 
 struct Node;
-using node_ref_t = Node const *;
+struct NamedNode;
+
+using NodeRef = Node const *;
+using NodeArray = Slice<Node const>;
+using NamedNodeArray = Slice<NamedNode const>;
+
+struct NamedNode {
+    Token const *name;
+    NodeRef node;
+};
 
 struct Node {
-    enum EArgType {
-        Arg_None = 0,
-        Arg_Token,
-        Arg_Nodes,
-    };
     struct Arg {
-        union {
-            Token const *token;
-            Slice<Node const> nodes;
-        } as;
-        EArgType arg_type;
+        Token const *token;
+        NodeArray nodes;
     };
     Arg arg[3];
-    size_t id;
+    Id id;
+};
+
+struct PackedNamedNodeArray : Slice<Node const> {
+    PackedNamedNodeArray(Slice<Node const> ar)
+        : Slice<Node const>{ar} {
+    }
+
+    Node::Arg const &operator[](size_t i);
 };
 
 struct Ast {
@@ -35,14 +45,16 @@ struct Ast {
     void init();
     void deinit();
 
-    // node_ref_t push(Node node);
-    // NodeArray push_ar(NodeArray nodes);
-    // NodeArray push_named_ar(NamedNodeArray nodes);
+    Node::Arg push(Token const *token);
+    Node::Arg push(Node const &node);
+    Node::Arg push(NodeArray nodes);
+    Node::Arg push(NamedNode named_node);
+    Node::Arg push(NamedNodeArray named_nodes);
 };
 
-string ast_inspect(node_ref_t node, Allocator &allocator);
+string ast_inspect(NodeRef node, Allocator &allocator);
 
-static node_ref_t const n_none_ref = nullptr;
+static NodeRef const n_none_ref = nullptr;
 
 } // namespace nkl
 
