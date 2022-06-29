@@ -16,9 +16,16 @@ struct ast : testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         m_ast.init();
+
+        id_init();
+
+        t_hello = Token{cs2s("hello"), 0, 0, 0};
+        n_t_hello = Node{{{&t_hello, {}}, {}, {}}, 0};
     }
 
     void TearDown() override {
+        id_deinit();
+
         m_ast.deinit();
         m_allocator.deinit();
     }
@@ -45,12 +52,8 @@ struct ast : testing::Test {
         return is_ast_equal;
     }
 
-    enum ETestNodeId {
-        TestNode_t_hello = 42,
-    };
-
-    Token const t_hello{cs2s("hello"), 1, 2, 3};
-    Node const n_t_hello{{{&t_hello, {}}, {}, {}}, TestNode_t_hello};
+    Token t_hello{};
+    Node n_t_hello{};
 
     LangAst m_ast{};
     StackAllocator m_allocator{};
@@ -58,45 +61,59 @@ struct ast : testing::Test {
     Node m_node{};
 };
 
-#define EXPECT_AST(EXPECTED, ACTUAL)                                 \
-    {                                                                \
-        bool const is_ast_equal = expect_ast((EXPECTED), (ACTUAL));  \
-        EXPECT_TRUE(is_ast_equal) << "Actual expr: " << #EXPECTED    \
-                                  << "\nExpected expr: " << #ACTUAL; \
-    }
-
-#define EXPECT_NODE0(ID) EXPECT_NODE1(ID, n_none)
-#define EXPECT_NODE1(ID, ARG1) EXPECT_NODE2(ID, ARG1, n_none)
-#define EXPECT_NODE2(ID, ARG1, ARG2) EXPECT_NODE3(ID, ARG1, ARG2, n_none)
-#define EXPECT_NODE3(ID, ARG1, ARG2, ARG3)         \
-    EXPECT_EQ(m_node.id, ID);                      \
-    EXPECT_AST(m_node.arg[0].nodes.begin(), ARG1); \
-    EXPECT_AST(m_node.arg[1].nodes.begin(), ARG2); \
-    EXPECT_AST(m_node.arg[2].nodes.begin(), ARG3);
-/// @TODO Expect sizes
+/// @TODO Expect something in lang/ast_test
 
 TEST_F(ast, nullary) {
-#define N(TYPE, ID)          \
-    test(m_ast.make_##ID()); \
-    EXPECT_NODE0(Node_##ID);
+#define N(TYPE, ID) test(m_ast.make_##ID());
 #include "nkl/lang/nodes.inl"
 }
 
 TEST_F(ast, unary) {
-#define U(TYPE, ID)                   \
-    test(m_ast.make_##ID(n_t_hello)); \
-    EXPECT_NODE1(Node_##ID, &n_t_hello);
+#define U(TYPE, ID) test(m_ast.make_##ID(n_t_hello));
 #include "nkl/lang/nodes.inl"
 }
 
 TEST_F(ast, binary) {
-#define B(TYPE, ID)                              \
-    test(m_ast.make_##ID(n_t_hello, n_t_hello)); \
-    EXPECT_NODE2(Node_##ID, &n_t_hello, &n_t_hello);
+#define B(TYPE, ID) test(m_ast.make_##ID(n_t_hello, n_t_hello));
 #include "nkl/lang/nodes.inl"
 }
 
-TEST_F(ast, if) {
+TEST_F(ast, ternary) {
     test(m_ast.make_if(n_t_hello, n_t_hello, n_t_hello));
-    EXPECT_NODE3(Node_if, &n_t_hello, &n_t_hello, &n_t_hello);
+    test(m_ast.make_ternary(n_t_hello, n_t_hello, n_t_hello));
+}
+
+TEST_F(ast, array) {
+    Node const nodes[] = {n_t_hello, n_t_hello, n_t_hello};
+    NodeArray const ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
+
+    test(m_ast.make_array(ar));
+    test(m_ast.make_block(ar));
+    test(m_ast.make_tuple(ar));
+    test(m_ast.make_id_tuple(ar));
+    test(m_ast.make_tuple_type(ar));
+}
+
+TEST_F(ast, token) {
+    test(m_ast.make_id(&t_hello));
+    test(m_ast.make_id(&t_hello));
+    test(m_ast.make_numeric_float(&t_hello));
+    test(m_ast.make_numeric_int(&t_hello));
+    test(m_ast.make_string_literal(&t_hello));
+    test(m_ast.make_escaped_string_literal(&t_hello));
+}
+
+TEST_F(ast, other) {
+    Node const nodes[] = {n_t_hello, n_t_hello, n_t_hello};
+    NodeArray const ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
+
+    NamedNode nnodes[] = {{&t_hello, &n_t_hello}, {&t_hello, &n_t_hello}, {&t_hello, &n_t_hello}};
+    NamedNodeArray nn_ar{nnodes, sizeof(nnodes) / sizeof(nnodes[0])};
+
+    test(m_ast.make_member(n_t_hello, &t_hello));
+    test(m_ast.make_struct(&t_hello, nn_ar));
+    test(m_ast.make_call(n_t_hello, ar));
+    test(m_ast.make_fn(&t_hello, nn_ar, n_t_hello, n_t_hello));
+    test(m_ast.make_struct_literal(n_t_hello, nn_ar));
+    test(m_ast.make_var_decl(&t_hello, n_t_hello, n_t_hello));
 }
