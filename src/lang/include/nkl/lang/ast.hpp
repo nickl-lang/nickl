@@ -6,10 +6,18 @@
 namespace nkl {
 
 enum ENodeId {
-    Node_if,
+#define X(TYPE, ID) Node_##ID,
+#include "nkl/lang/nodes.inl"
+
+    Node_count,
 };
 
 struct LangAst : Ast {
+#define N(TYPE, ID) Node make_##ID();
+#define U(TYPE, ID) Node make_##ID(Node const &arg);
+#define B(TYPE, ID) Node make_##ID(Node const &lhs, Node const &rhs);
+#include "nkl/lang/nodes.inl"
+
     Node make_if(Node const &cond, Node const &then_clause, Node const &else_clause);
 
 private:

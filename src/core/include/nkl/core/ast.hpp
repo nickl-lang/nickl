@@ -46,6 +46,7 @@ struct Ast {
     void deinit();
 
     Node::Arg push(Token const *token);
+    Node::Arg push(Token const *token, Node const &node);
     Node::Arg push(Node const &node);
     Node::Arg push(NodeArray nodes);
     Node::Arg push(NamedNode named_node);
@@ -54,7 +55,7 @@ struct Ast {
 
 string ast_inspect(NodeRef node, Allocator &allocator);
 
-static NodeRef const n_none_ref = nullptr;
+static NodeRef const n_none = nullptr;
 
 } // namespace nkl
 
