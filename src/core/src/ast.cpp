@@ -98,7 +98,8 @@ static void _ast_inspect(NodeRef node, StringBuilder &sb, size_t depth = 1) {
 
     if (node->id) {
         newline(depth);
-        sb << "id: " << node->id;
+        string const str = id2s(node->id);
+        sb << "id: " << (str.data ? str : cs2s("(null)"));
     }
 
     for (size_t i = 0; i < 3; i++) {

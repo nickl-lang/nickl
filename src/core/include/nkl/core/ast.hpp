@@ -14,17 +14,18 @@ struct Node;
 struct NamedNode;
 
 using NodeRef = Node const *;
+using TokenRef = Token const*;
 using NodeArray = Slice<Node const>;
 using NamedNodeArray = Slice<NamedNode const>;
 
 struct NamedNode {
-    Token const *name;
+    TokenRef name;
     NodeRef node;
 };
 
 struct Node {
     struct Arg {
-        Token const *token;
+        TokenRef token;
         NodeArray nodes;
     };
     Arg arg[3];
@@ -45,8 +46,8 @@ struct Ast {
     void init();
     void deinit();
 
-    Node::Arg push(Token const *token);
-    Node::Arg push(Token const *token, Node const &node);
+    Node::Arg push(TokenRef token);
+    Node::Arg push(TokenRef token, Node const &node);
     Node::Arg push(Node const &node);
     Node::Arg push(NodeArray nodes);
     Node::Arg push(NamedNode named_node);
