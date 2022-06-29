@@ -74,6 +74,7 @@ Node::Arg Ast::push(NamedNode n) {
 
 Node::Arg Ast::push(NamedNodeArray ns) {
     auto ar = data.push(PACKED_NN_ARRAY_SIZE(ns));
+    std::fill_n(ar.begin(), ar.size, Node{});
     for (size_t i = 0; i < ns.size; i++) {
         PACKED_NN_ARRAY_AT(ar, i) = mkarg(ns[i]);
     }

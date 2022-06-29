@@ -107,7 +107,8 @@ TEST_F(ast, other) {
     Node const nodes[] = {n_t_hello, n_t_hello, n_t_hello};
     NodeArray const ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
 
-    NamedNode nnodes[] = {{&t_hello, &n_t_hello}, {&t_hello, &n_t_hello}, {&t_hello, &n_t_hello}};
+    NamedNode nn{&t_hello, &n_t_hello};
+    NamedNode nnodes[] = {nn, nn, nn, nn};
     NamedNodeArray nn_ar{nnodes, sizeof(nnodes) / sizeof(nnodes[0])};
 
     test(m_ast.make_member(n_t_hello, &t_hello));
