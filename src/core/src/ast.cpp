@@ -1,5 +1,8 @@
 #include "nkl/core/ast.hpp"
 
+#include "nk/common/string_builder.hpp"
+#include "nk/common/utils.hpp"
+
 #define PACKED_NN_ARRAY_SIZE(AR) roundUp((AR).size, c_arg_count) / c_arg_count
 #define PACKED_NN_ARRAY_AT(AR, IDX) (AR)[(IDX) / c_arg_count].arg[(IDX) % c_arg_count]
 
@@ -15,6 +18,10 @@ Node::Arg mkarg(Token const *token) {
 
 Node::Arg mkarg(NodeRef n) {
     return {{}, {n, 1}};
+}
+
+Node::Arg mkarg(Token const *token, NodeRef n) {
+    return {token, {n, 1}};
 }
 
 Node::Arg mkarg(NodeArray ar) {
@@ -47,16 +54,22 @@ Node::Arg Ast::push(Token const *token) {
     return mkarg(token);
 }
 
+Node::Arg Ast::push(Token const *token, Node const &node) {
+    return mkarg(token, push(node).nodes);
+}
+
 Node::Arg Ast::push(Node const &n) {
     return mkarg(&(*data.push() = n));
 }
 
 Node::Arg Ast::push(NodeArray ns) {
-    return mkarg((NodeArray)ns.copy(data.push(ns.size)));
+    auto ar = (NodeArray)ns.copy(data.push(ns.size));
+    auto arg = mkarg(ar);
+    return arg;
 }
 
 Node::Arg Ast::push(NamedNode n) {
-    return push(n);
+    return push({&n, 1});
 }
 
 Node::Arg Ast::push(NamedNodeArray ns) {
@@ -65,6 +78,86 @@ Node::Arg Ast::push(NamedNodeArray ns) {
         PACKED_NN_ARRAY_AT(ar, i) = mkarg(ns[i]);
     }
     return mkarg(PackedNamedNodeArray{ar});
+}
+
+static void _ast_inspect(NodeRef node, StringBuilder &sb, size_t depth = 1) {
+    if (!node) {
+        sb << "(null)";
+        return;
+    }
+
+    auto const newline = [&](size_t depth) {
+        sb << '\n';
+        sb.printf("%*s", 2 * depth, "");
+    };
+
+    sb << "{";
+    defer {
+        sb << "}";
+    };
+
+    if (node->id) {
+        newline(depth);
+        sb << "id: " << node->id;
+    }
+
+    for (size_t i = 0; i < 3; i++) {
+        auto const &arg = node->arg[i];
+        if (!arg.token && !arg.nodes.size) {
+            continue;
+        }
+
+        if (node->id) {
+            sb << ',';
+        }
+        newline(depth);
+        sb << "arg" << i << ": ";
+
+        if (arg.token && arg.nodes.size) {
+            sb << "[";
+        }
+        defer {
+            if (arg.token && arg.nodes.size) {
+                sb << "]";
+            }
+        };
+
+        if (arg.token) {
+            if (arg.nodes.size) {
+                newline(depth + 1);
+            }
+            sb << "\"" << arg.token->text << "\"";
+        }
+
+        if (arg.token && arg.nodes.size) {
+            sb << ", ";
+        }
+
+        if (arg.nodes.size > 1) {
+            sb << "[";
+        }
+        defer {
+            if (arg.nodes.size > 1) {
+                sb << "]";
+            }
+        };
+
+        bool first = true;
+        for (auto const &child : arg.nodes) {
+            if (!first) {
+                sb << ", ";
+            }
+            first = false;
+            _ast_inspect(&child, sb, depth + 1);
+        }
+    }
+}
+
+string ast_inspect(NodeRef node, Allocator &allocator) {
+    StringBuilder sb{};
+    sb.reserve(1000);
+    _ast_inspect(node, sb);
+    return sb.moveStr(allocator);
 }
 
 } // namespace nkl
