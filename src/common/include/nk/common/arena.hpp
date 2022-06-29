@@ -81,7 +81,7 @@ private:
             n = ceilToPowerOf2(n + _headerSize());
             n = maxu(n, (_last_block ? _last_block->capacity << 1 : 0));
 
-            auto block = new (nk_platform_alloc(n)) _BlockHeader{
+            auto block = new (nk_platform_alloc(n * sizeof(T))) _BlockHeader{
                 .next = nullptr,
                 .size = 0,
                 .capacity = n - _headerSize(),
@@ -98,8 +98,10 @@ private:
     }
 
     void _expand(size_t n) {
-        size += n;
-        _last_block->size += n;
+        if (n > 0) {
+            size += n;
+            _last_block->size += n;
+        }
     }
 
     void _shrink(size_t n) {

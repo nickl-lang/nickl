@@ -16,7 +16,7 @@ template struct StringBuilderBase<StaticStringBuilder>;
 
 template <class TSelf>
 int StringBuilderBase<TSelf>::print(string str) {
-    return self().printf("%*s", str.size, str.data);
+    return self().printf("%.*s", str.size, str.data);
 }
 
 template <class TSelf>
@@ -26,7 +26,7 @@ int StringBuilderBase<TSelf>::print(char const *str) {
 
 template <class TSelf>
 int StringBuilderBase<TSelf>::print(char c) {
-    return print({&c, 1});
+    return self().printf("%c", c);
 }
 
 template <class TSelf>

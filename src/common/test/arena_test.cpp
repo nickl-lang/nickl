@@ -32,6 +32,15 @@ TEST_F(arena, push) {
     EXPECT_EQ(std_str(c_test_str), std_str(str));
 }
 
+TEST_F(arena, push_zero) {
+    auto res = m_arena.push(0);
+
+    EXPECT_EQ(m_arena.size, 0);
+
+    EXPECT_EQ(res.size, 0);
+    EXPECT_EQ(res.data, nullptr);
+}
+
 TEST_F(arena, pop) {
     m_arena.push(42);
     EXPECT_EQ(m_arena.size, 42);
