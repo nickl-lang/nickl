@@ -41,11 +41,11 @@ string StringBuilder::moveStr(Allocator &allocator) {
 }
 
 string StringBuilder::moveStr(Slice<char> dst) {
+    size_t const len = size();
     *this << '\0';
-    size_t const byte_count = size();
     m_arena.copy(dst);
     m_arena.deinit();
-    return {dst.data, byte_count - 1};
+    return {dst.data, len};
 }
 
 } // namespace nk
