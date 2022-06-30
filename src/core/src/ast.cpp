@@ -38,8 +38,21 @@ Node::Arg mkarg(PackedNamedNodeArray ar) {
 
 } // namespace
 
-Node::Arg const &PackedNamedNodeArray::operator[](size_t i) {
-    return PACKED_NN_ARRAY_AT(data, i);
+PackedNamedNodeArray::PackedNamedNodeArray(Slice<Node const> ar)
+    : Slice{ar}
+    , size{
+          ar.size > 0 ? (ar.size - 1) * 3 + std::count_if(
+                                                std::begin(ar.back().arg),
+                                                std::end(ar.back().arg),
+                                                [](auto const &arg) {
+                                                    return arg.token && arg.nodes.data;
+                                                })
+                      : 0} {
+}
+
+NamedNode PackedNamedNodeArray::operator[](size_t i) const {
+    auto const &node = PACKED_NN_ARRAY_AT(data, i);
+    return {node.token, node.nodes.begin()};
 }
 
 void Ast::init() {

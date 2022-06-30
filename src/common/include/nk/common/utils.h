@@ -11,6 +11,11 @@
 extern "C" {
 #endif
 
+#ifndef CAT
+#define _CAT(x, y) x##y
+#define CAT(x, y) _CAT(x, y)
+#endif // CAT
+
 typedef size_t hash_t;
 
 extern inline size_t roundUp(size_t v, size_t m) {

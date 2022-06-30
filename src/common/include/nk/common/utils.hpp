@@ -8,11 +8,6 @@
 #include "nk/common/string.hpp"
 #include "nk/common/utils.h"
 
-#ifndef CAT
-#define _CAT(x, y) x##y
-#define CAT(x, y) _CAT(x, y)
-#endif // CAT
-
 #ifndef defer
 struct nk_DeferDummy {};
 template <class F>

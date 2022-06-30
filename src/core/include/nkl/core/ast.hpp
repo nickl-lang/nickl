@@ -14,7 +14,7 @@ struct Node;
 struct NamedNode;
 
 using NodeRef = Node const *;
-using TokenRef = Token const*;
+using TokenRef = Token const *;
 using NodeArray = Slice<Node const>;
 using NamedNodeArray = Slice<NamedNode const>;
 
@@ -33,11 +33,10 @@ struct Node {
 };
 
 struct PackedNamedNodeArray : Slice<Node const> {
-    PackedNamedNodeArray(Slice<Node const> ar)
-        : Slice<Node const>{ar} {
-    }
+    size_t size;
 
-    Node::Arg const &operator[](size_t i);
+    PackedNamedNodeArray(Slice<Node const> ar);
+    NamedNode operator[](size_t i) const;
 };
 
 struct Ast {
