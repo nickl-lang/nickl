@@ -160,7 +160,7 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
     }
     assert(status == FFI_OK && "ffi_prep_cif failed");
 
-    void **argv = (void **)nk_platform_alloc(argc);
+    void **argv = (void **)nk_platform_alloc(argc * sizeof(void *));
     defer {
         nk_platform_free(argv);
     };

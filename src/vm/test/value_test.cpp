@@ -102,6 +102,28 @@ TEST_F(value, fn) {
     EXPECT_EQ(ret, 9);
 }
 
+TEST_F(value, fn_native) {
+    static auto constexpr _plus = [](int64_t x, int64_t y) {
+        return x + y;
+    };
+
+    auto const i64_t = type_get_numeric(Int64);
+    type_t params[] = {i64_t, i64_t};
+    TypeArray params_ar{params, sizeof(params) / sizeof(params[0])};
+
+    auto const params_t = type_get_tuple(params_ar);
+
+    auto const type = type_get_fn_native(
+        i64_t, params_t, 0, (void *)(int64_t(*)(int64_t, int64_t))_plus, nullptr, false);
+
+    int64_t ret = 0;
+    int64_t args[] = {12, 13};
+
+    val_fn_invoke(type, value_t{&ret, i64_t}, value_t{args, params_t});
+
+    EXPECT_EQ(ret, 25);
+}
+
 TEST_F(value, numeric) {
     auto const type = type_get_numeric(Int32);
 
