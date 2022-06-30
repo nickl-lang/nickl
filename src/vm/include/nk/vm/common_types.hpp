@@ -9,10 +9,6 @@
 namespace nk {
 namespace vm {
 
-struct FindLibraryConfig {
-    Slice<string> search_paths;
-};
-
 struct Type;
 
 using type_t = Type const *;

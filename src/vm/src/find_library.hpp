@@ -1,10 +1,14 @@
 #ifndef HEADER_GUARD_NK_VM_FIND_LIBRARY
 #define HEADER_GUARD_NK_VM_FIND_LIBRARY
 
-#include "nk/vm/common_types.hpp"
+#include "nk/common/string.hpp"
 
 namespace nk {
 namespace vm {
+
+struct FindLibraryConfig {
+    Slice<string> search_paths;
+};
 
 #define MAX_PATH 4096
 
