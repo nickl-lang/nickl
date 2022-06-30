@@ -51,47 +51,45 @@ private:
 
 } // namespace nkl
 
-#define _NodeArg0(NODE) (NODE)->arg[0]
-#define _NodeArg1(NODE) (NODE)->arg[1]
-#define _NodeArg2(NODE) (NODE)->arg[2]
+#define _NodeArg(NODE, IDX) (NODE)->arg[IDX]
 
-#define _NodeArgAsToken(ARG) (ARG.token)
-#define _NodeArgAsNode(ARG) (ARG.nodes.begin())
-#define _NodeArgAsAr(ARG) (ARG.nodes)
-#define _NodeArgAsNnAr(ARG) (PackedNamedNodeArray{ARG.nodes})
+#define _NodeArgAsToken(NODE, IDX) (_NodeArg(NODE, IDX).token)
+#define _NodeArgAsNode(NODE, IDX) (_NodeArg(NODE, IDX).nodes.begin())
+#define _NodeArgAsAr(NODE, IDX) (_NodeArg(NODE, IDX).nodes)
+#define _NodeArgAsNnAr(NODE, IDX) (PackedNamedNodeArray{_NodeArg(NODE, IDX).nodes})
 
-#define Node_unary_arg(NODE) _NodeArgAsNode(_NodeArg0(NODE))
+#define Node_unary_arg(NODE) _NodeArgAsNode((NODE), 0)
 
-#define Node_binary_lhs(NODE) _NodeArgAsNode(_NodeArg0(NODE))
-#define Node_binary_rhs(NODE) _NodeArgAsNode(_NodeArg1(NODE))
+#define Node_binary_lhs(NODE) _NodeArgAsNode((NODE), 0)
+#define Node_binary_rhs(NODE) _NodeArgAsNode((NODE), 1)
 
-#define Node_ternary_cond(NODE) _NodeArgAsNode(_NodeArg0(NODE))
-#define Node_ternary_then_clause(NODE) _NodeArgAsNode(_NodeArg1(NODE))
-#define Node_ternary_else_clause(NODE) _NodeArgAsNode(_NodeArg2(NODE))
+#define Node_ternary_cond(NODE) _NodeArgAsNode((NODE), 0)
+#define Node_ternary_then_clause(NODE) _NodeArgAsNode((NODE), 1)
+#define Node_ternary_else_clause(NODE) _NodeArgAsNode((NODE), 2)
 
-#define Node_array_nodes(NODE) _NodeArgAsAr(_NodeArg0(NODE))
+#define Node_array_nodes(NODE) _NodeArgAsAr((NODE), 0)
 
-#define Node_token_name(NODE) _NodeArgAsToken(_NodeArg0(NODE))
+#define Node_token_name(NODE) _NodeArgAsToken((NODE), 0)
 
-#define Node_member_lhs(NODE) _NodeArgAsNode(_NodeArg0(NODE))
-#define Node_member_name(NODE) _NodeArgAsToken(_NodeArg1(NODE))
+#define Node_member_lhs(NODE) _NodeArgAsNode((NODE), 0)
+#define Node_member_name(NODE) _NodeArgAsToken((NODE), 1)
 
-#define Node_struct_name(NODE) _NodeArgAsToken(_NodeArg0(NODE))
-#define Node_struct_fields(NODE) _NodeArgAsNnAr(_NodeArg1(NODE))
+#define Node_struct_name(NODE) _NodeArgAsToken((NODE), 0)
+#define Node_struct_fields(NODE) _NodeArgAsNnAr((NODE), 1)
 
-#define Node_call_lhs(NODE) _NodeArgAsNode(_NodeArg0(NODE))
-#define Node_call_args(NODE) _NodeArgAsAr(_NodeArg1(NODE))
+#define Node_call_lhs(NODE) _NodeArgAsNode((NODE), 0)
+#define Node_call_args(NODE) _NodeArgAsAr((NODE), 1)
 
-#define Node_fn_name(NODE) _NodeArgAsToken(_NodeArg0(_NodeArgAsNode(_NodeArg0(NODE))))
-#define Node_fn_params(NODE) _NodeArgAsNnAr(_NodeArg1(_NodeArgAsNode(_NodeArg0(NODE))))
-#define Node_fn_ret_type(NODE) _NodeArgAsNode(_NodeArg2(_NodeArgAsNode(_NodeArg0(NODE))))
-#define Node_fn_body(NODE) _NodeArgAsNode(_NodeArg1(NODE))
+#define Node_fn_name(NODE) _NodeArgAsToken(_NodeArgAsNode((NODE), 0), 0)
+#define Node_fn_params(NODE) _NodeArgAsNnAr(_NodeArgAsNode((NODE), 0), 1)
+#define Node_fn_ret_type(NODE) _NodeArgAsNode(_NodeArgAsNode((NODE), 0), 2)
+#define Node_fn_body(NODE) _NodeArgAsNode((NODE), 1)
 
-#define Node_struct_literal_type(NODE) _NodeArgAsNode(_NodeArg0(NODE))
-#define Node_struct_literal_fields(NODE) _NodeArgAsNnAr(_NodeArg1(NODE))
+#define Node_struct_literal_type(NODE) _NodeArgAsNode((NODE), 0)
+#define Node_struct_literal_fields(NODE) _NodeArgAsNnAr((NODE), 1)
 
-#define Node_var_decl_name(NODE) _NodeArgAsToken(_NodeArg0(NODE))
-#define Node_var_decl_type(NODE) _NodeArgAsNode(_NodeArg1(NODE))
-#define Node_var_decl_value(NODE) _NodeArgAsNode(_NodeArg2(NODE))
+#define Node_var_decl_name(NODE) _NodeArgAsToken((NODE), 0)
+#define Node_var_decl_type(NODE) _NodeArgAsNode((NODE), 1)
+#define Node_var_decl_value(NODE) _NodeArgAsNode((NODE), 2)
 
 #endif // HEADER_GUARD_NKL_LANG_AST
