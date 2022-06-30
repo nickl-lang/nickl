@@ -1,5 +1,7 @@
 #include "nkl/core/ast.hpp"
 
+#include <algorithm>
+
 #include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 
