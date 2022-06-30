@@ -51,8 +51,8 @@ PackedNamedNodeArray::PackedNamedNodeArray(Slice<Node const> ar)
 }
 
 NamedNode PackedNamedNodeArray::operator[](size_t i) const {
-    auto const &node = PACKED_NN_ARRAY_AT(data, i);
-    return {node.token, node.nodes.begin()};
+    auto const &arg = PACKED_NN_ARRAY_AT(data, i);
+    return {arg.token, arg.nodes.begin()};
 }
 
 void Ast::init() {
@@ -113,7 +113,12 @@ static void _ast_inspect(NodeRef node, StringBuilder &sb, size_t depth = 1) {
     if (node->id) {
         newline(depth);
         string const str = id2s(node->id);
-        sb << "id: " << (str.data ? str : cs2s("(null)"));
+        sb << "id: ";
+        if (str.data) {
+            sb << "\"" << str << "\"";
+        } else {
+            sb << cs2s("(null)");
+        }
     }
 
     for (size_t i = 0; i < 3; i++) {

@@ -20,17 +20,17 @@ struct ast : testing::Test {
         id_init();
 
         t_hello = Token{cs2s("hello"), 0, 0, 0};
-        n_t_hello = Node{{{&t_hello, {}}, {}, {}}, 0};
+        n_t_hello = Node{{{&t_hello, {}}, {}, {}}, nodeId(Node_id)};
 
         t_x = Token{cs2s("x"), 0, 0, 0};
         t_y = Token{cs2s("y"), 0, 0, 0};
         t_z = Token{cs2s("z"), 0, 0, 0};
         t_w = Token{cs2s("w"), 0, 0, 0};
 
-        n_t_x = Node{{{&t_x, {}}, {}, {}}, 0};
-        n_t_y = Node{{{&t_y, {}}, {}, {}}, 0};
-        n_t_z = Node{{{&t_z, {}}, {}, {}}, 0};
-        n_t_w = Node{{{&t_w, {}}, {}, {}}, 0};
+        n_t_x = Node{{{&t_x, {}}, {}, {}}, nodeId(Node_id)};
+        n_t_y = Node{{{&t_y, {}}, {}, {}}, nodeId(Node_id)};
+        n_t_z = Node{{{&t_z, {}}, {}, {}}, nodeId(Node_id)};
+        n_t_w = Node{{{&t_w, {}}, {}, {}}, nodeId(Node_id)};
     }
 
     void TearDown() override {
@@ -146,7 +146,7 @@ TEST_F(ast, ternary) {
 }
 
 TEST_F(ast, array) {
-    Node const nodes[] = {n_t_x, n_t_y, n_t_y};
+    Node const nodes[] = {n_t_x, n_t_y, n_t_z};
     NodeArray const nodes_ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
 
     test(m_ast.make_array(nodes_ar));
@@ -193,7 +193,7 @@ TEST_F(ast, token) {
 }
 
 TEST_F(ast, other) {
-    Node const nodes[] = {n_t_x, n_t_y, n_t_y};
+    Node const nodes[] = {n_t_x, n_t_y, n_t_z};
     NodeArray const nodes_ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
 
     NamedNode nn_x{&t_x, &n_t_hello};
