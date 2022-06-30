@@ -15,7 +15,6 @@ struct StaticAllocator : Allocator {
 
     void clear();
 
-protected:
     void *alloc_aligned(size_t size, size_t align) override;
 
 private:

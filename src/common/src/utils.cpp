@@ -1,4 +1,4 @@
-#include "nk/common/utils.h"
+#include "nk/common/utils.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -23,3 +23,85 @@ hash_t hash_array(uint8_t const *begin, uint8_t const *end) {
     }
     return hash;
 }
+
+namespace nk {
+
+void string_escape(StringBuilder &sb, string str) {
+    for (size_t i = 0; i < str.size; i++) {
+        switch (str[i]) {
+        case '\a':
+            sb << "\\a";
+            break;
+        case '\b':
+            sb << "\\b";
+            break;
+        case '\f':
+            sb << "\\f";
+            break;
+        case '\n':
+            sb << "\\n";
+            break;
+        case '\r':
+            sb << "\\r";
+            break;
+        case '\t':
+            sb << "\\t";
+            break;
+        case '\v':
+            sb << "\\v";
+            break;
+        case '\0':
+            sb << "\\0";
+            break;
+        case '\'':
+            sb << "\\'";
+            break;
+        case '\\':
+            sb << "\\\\";
+            break;
+        default:
+            sb << str[i];
+            break;
+        }
+    }
+}
+
+void string_unescape(StringBuilder &sb, string str) {
+    for (size_t i = 0; i < str.size; i++) {
+        if (str[i] == '\\' && i < str.size - 1) {
+            switch (str[++i]) {
+            case 'a':
+                sb << '\a';
+                break;
+            case 'b':
+                sb << '\b';
+                break;
+            case 'f':
+                sb << '\f';
+                break;
+            case 'n':
+                sb << '\n';
+                break;
+            case 'r':
+                sb << '\r';
+                break;
+            case 't':
+                sb << '\t';
+                break;
+            case 'v':
+                sb << '\v';
+                break;
+            case '0':
+                sb << '\0';
+                break;
+            default:
+                sb << str[i];
+                break;
+            }
+        } else {
+            sb << str[i];
+        }
+    }
+}
+
+} // namespace nk

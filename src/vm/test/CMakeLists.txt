@@ -1,3 +1,4 @@
+def_test(GROUP vm NAME value LINK ${LIB})
 def_test(GROUP vm NAME c_compiler_adapter LINK ${LIB} TARGET C_COMPILER_ADAPTER_TEST)
 
 set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/")

@@ -13,7 +13,6 @@ struct Allocator {
         return {(T *)alloc_aligned(n * sizeof(T), alignof(T)), n};
     }
 
-protected:
     virtual void *alloc_aligned(size_t size, size_t align) = 0;
 };
 
