@@ -7,6 +7,7 @@
 #include "nk/common/file_utils.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/stack_allocator.hpp"
+#include "nk/common/static_string_builder.hpp"
 
 namespace nk {
 namespace vm {
@@ -47,18 +48,18 @@ bool findLibrary(string name, Slice<char> &buf) {
             return false;
         }
 
-        path.copy({buf.data, MAX_PATH});
-        name.copy({buf.data + path.size, MAX_PATH});
-        buf[size] = 0;
+        StaticStringBuilder sb{buf};
+        sb << path << name;
+        auto const str = sb.moveStr();
 
-        LOG_DBG("Checking `%s`...", buf);
+        LOG_DBG("Checking `%s`...", str);
 
-        if (std::filesystem::exists(std_str({buf.data, size}))) {
-            buf.size = size;
+        if (std::filesystem::exists(std_str(str))) {
             return true;
         }
     }
 
+    buf.size = 0;
     LOG_DBG("Library not found");
     return false;
 }

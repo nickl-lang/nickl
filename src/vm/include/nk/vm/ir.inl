@@ -25,11 +25,11 @@ I(call) // $dst := call $fn $args
 #define U(...) X(__VA_ARGS__)
 #endif
 
-U(mov) // $dst := mov $arg
-U(lea) // $dst := lea $arg
-U(neg)   // $dst := neg $arg
-U(compl) // $dst := compl $arg
-U(not)   // $dst := not $arg
+U(mov)    // $dst := mov $arg
+U(lea)    // $dst := lea $arg
+U(neg)    // $dst := neg $arg
+U(compl ) // $dst := compl $arg
+U(not )   // $dst := not $arg
 
 #undef U
 
