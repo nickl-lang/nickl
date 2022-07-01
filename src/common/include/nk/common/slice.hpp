@@ -88,4 +88,17 @@ struct Slice {
 
 } // namespace nk
 
+#define _SLICE(TYPE, NAME)                                                          \
+    Slice<TYPE> NAME {                                                              \
+        CAT(__buf_, NAME), sizeof(CAT(__buf_, NAME)) / sizeof(CAT(__buf_, NAME)[0]) \
+    }
+
+#define ARRAY_SLICE(TYPE, NAME, SIZE) \
+    TYPE CAT(__buf_, NAME)[SIZE];     \
+    _SLICE(TYPE, NAME)
+
+#define ARRAY_SLICE_INIT(TYPE, NAME, ...)     \
+    TYPE CAT(__buf_, NAME)[] = {__VA_ARGS__}; \
+    _SLICE(TYPE, NAME)
+
 #endif // HEADER_GUARD_NK_COMMON_SLICE

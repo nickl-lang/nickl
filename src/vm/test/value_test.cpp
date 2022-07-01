@@ -71,10 +71,9 @@ TEST_F(value, fn) {
     };
 
     auto const i64_t = type_get_numeric(Int64);
-    type_t params[] = {i64_t, i64_t};
-    TypeArray params_ar{params, sizeof(params) / sizeof(params[0])};
+    ARRAY_SLICE_INIT(type_t const, params, i64_t, i64_t);
 
-    auto const params_t = type_get_tuple(params_ar);
+    auto const params_t = type_get_tuple(params);
 
     auto const type = type_get_fn(i64_t, params_t, 0, _plus, nullptr);
 
@@ -108,10 +107,9 @@ TEST_F(value, fn_native) {
     };
 
     auto const i64_t = type_get_numeric(Int64);
-    type_t params[] = {i64_t, i64_t};
-    TypeArray params_ar{params, sizeof(params) / sizeof(params[0])};
+    ARRAY_SLICE_INIT(type_t const, params, i64_t, i64_t);
 
-    auto const params_t = type_get_tuple(params_ar);
+    auto const params_t = type_get_tuple(params);
 
     auto const type = type_get_fn_native(
         i64_t, params_t, 0, (void *)(int64_t(*)(int64_t, int64_t))_plus, nullptr, false);
@@ -158,17 +156,16 @@ TEST_F(value, numeric) {
 }
 
 TEST_F(value, tuple) {
-    type_t types[] = {type_get_void(), type_get_typeref(), type_get_numeric(Int16)};
-    TypeArray types_ar{types, sizeof(types) / sizeof(types[0])};
+    ARRAY_SLICE_INIT(type_t, types, type_get_void(), type_get_typeref(), type_get_numeric(Int16));
 
-    auto const type = type_get_tuple(types_ar);
+    auto const type = type_get_tuple(types);
 
     EXPECT_EQ(type->typeclass_id, Type_Tuple);
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
     EXPECT_EQ(std_str(type_name(type, m_arena)), "tuple{void, type, i16}");
 
-    EXPECT_EQ(type, type_get_tuple(types_ar));
+    EXPECT_EQ(type, type_get_tuple(types));
 
     ASSERT_EQ(type_tuple_size(type), 3);
 
