@@ -15,10 +15,10 @@ static constexpr size_t c_buf_size = 1024;
 
 std::ostream c_compiler_streamOpen(CCompilerConfig const &conf) {
     ARRAY_SLICE(char, cmd, c_buf_size);
-    StaticStringBuilder sb{cmd};
 
-    sb << (conf.quiet ? "" : "tee /dev/stderr |") << " " << conf.compiler_binary << " -x c -o "
-       << conf.output_filename << " " << conf.additional_flags << " -";
+    StaticStringBuilder{cmd} << (conf.quiet ? "" : "tee /dev/stderr |") << " "
+                             << conf.compiler_binary << " -x c -o " << conf.output_filename << " "
+                             << conf.additional_flags << " -";
 
     return pipe_streamWrite(cmd, conf.quiet);
 }

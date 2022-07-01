@@ -22,11 +22,12 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::pipe_stream);
 
-void _makeCmdStr(StaticStringBuilder &sb, string cmd, bool quiet) {
+void _makeCmdStr(StaticStringBuilder &&sb, string cmd, bool quiet) {
     sb << cmd;
     if (quiet) {
         sb << " >/dev/null 2>&1";
     }
+    sb << '\0';
 }
 
 popen_filebuf *_createFileBuf(FILE *file) {
@@ -42,8 +43,7 @@ std::istream pipe_streamRead(string cmd, bool quiet) {
     LOG_TRC(__func__);
 
     ARRAY_SLICE(char, str, c_buf_size);
-    StaticStringBuilder sb{str};
-    _makeCmdStr(sb, cmd, quiet);
+    _makeCmdStr(StaticStringBuilder{str}, cmd, quiet);
 
     auto file = popen(str.data, "r");
     return std::istream{_createFileBuf(file)};
@@ -53,8 +53,7 @@ std::ostream pipe_streamWrite(string cmd, bool quiet) {
     LOG_TRC(__func__);
 
     ARRAY_SLICE(char, str, c_buf_size);
-    StaticStringBuilder sb{str};
-    _makeCmdStr(sb, cmd, quiet);
+    _makeCmdStr(StaticStringBuilder{str}, cmd, quiet);
 
     auto file = popen(str.data, "w");
     return std::ostream{_createFileBuf(file)};

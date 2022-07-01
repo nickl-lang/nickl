@@ -20,8 +20,7 @@ class c_compiler_adapter : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        StaticStringBuilder sb{m_output_filename};
-        sb.printf(
+        StaticStringBuilder{m_output_filename}.printf(
             TEST_FILES_DIR "%s_test.out",
             testing::UnitTest::GetInstance()->current_test_info()->name());
 

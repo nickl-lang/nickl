@@ -17,8 +17,7 @@ class static_string_builder : public testing::Test {
     }
 
 protected:
-    char m_buf[10000];
-    Slice<char> m_dst{m_buf, sizeof(m_buf)};
+    ARRAY_SLICE(char, m_dst, 10000);
     StaticStringBuilder m_builder{m_dst};
 };
 
