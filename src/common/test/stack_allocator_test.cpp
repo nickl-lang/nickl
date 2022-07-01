@@ -35,15 +35,15 @@ TEST_F(stack_allocator, reserve) {
 
 TEST_F(stack_allocator, frames) {
     m_allocator.alloc<uint8_t>(100);
-    EXPECT_EQ(m_allocator.m_arena.size, 100);
+    EXPECT_EQ(m_allocator.size(), 100);
 
     auto frame = m_allocator.pushFrame();
 
     m_allocator.alloc<uint8_t>(100);
-    EXPECT_EQ(m_allocator.m_arena.size, 200);
+    EXPECT_EQ(m_allocator.size(), 200);
 
     m_allocator.popFrame(frame);
-    EXPECT_EQ(m_allocator.m_arena.size, 100);
+    EXPECT_EQ(m_allocator.size(), 100);
 }
 
 TEST_F(stack_allocator, align) {
@@ -63,9 +63,9 @@ TEST_F(stack_allocator, clear) {
     size_t const sz = sizeof(*ptr) * 5;
     std::memset(ptr, 0, sz);
 
-    EXPECT_EQ(m_allocator.m_arena.size, sz);
+    EXPECT_EQ(m_allocator.size(), sz);
 
     m_allocator.clear();
 
-    EXPECT_EQ(m_allocator.m_arena.size, 0);
+    EXPECT_EQ(m_allocator.size(), 0);
 }

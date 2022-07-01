@@ -26,4 +26,8 @@ void StackAllocator::clear() {
     m_arena.clear();
 }
 
+size_t StackAllocator::size() const {
+    return m_arena.size;
+}
+
 } // namespace nk

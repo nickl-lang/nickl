@@ -1,5 +1,7 @@
 #include "pipe_stream.hpp"
 
+#include <new>
+
 #include "nk/common/logger.h"
 #include "nk/common/mem.h"
 #include "nk/common/static_string_builder.hpp"
