@@ -7,10 +7,10 @@
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 
+namespace {
+
 using namespace nk::vm;
 using namespace nk;
-
-namespace {
 
 class so_adapter : public testing::Test {
     void SetUp() override {

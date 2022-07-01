@@ -9,10 +9,10 @@
 #include "nk/common/utils.hpp"
 #include "pipe_stream.hpp"
 
+namespace {
+
 using namespace nk::vm;
 using namespace nk;
-
-namespace {
 
 LOG_USE_SCOPE(nk::vm::test::c_compiler_adapter);
 

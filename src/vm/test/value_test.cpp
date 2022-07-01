@@ -6,10 +6,10 @@
 #include "nk/common/stack_allocator.hpp"
 #include "nk/common/utils.hpp"
 
+namespace {
+
 using namespace nk::vm;
 using namespace nk;
-
-namespace {
 
 class value : public testing::Test {
     void SetUp() override {
