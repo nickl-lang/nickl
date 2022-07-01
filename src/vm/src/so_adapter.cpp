@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 
 #include "nk/common/logger.h"
+#include "nk/common/static_string_builder.hpp"
 
 namespace nk {
 namespace vm {
@@ -11,7 +12,7 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::so_adapter);
 
-static constexpr size_t c_max_name = 255;
+static constexpr size_t c_max_name = 256;
 
 } // namespace
 
@@ -20,13 +21,16 @@ void *openSharedObject(string path) {
 
     LOG_DBG("path=%.*s", path.size, path.data);
     void *handle = dlopen(path.data, RTLD_LAZY);
+    if (!handle) {
+        LOG_ERR("failed to open library path=%.*s", path.size, path.data);
+    }
     LOG_DBG("handle=%p", handle);
     return handle;
 }
 
 void closeSharedObject(void *handle) {
     LOG_TRC(__func__);
-    if (dlclose(handle)) {
+    if (handle && dlclose(handle)) {
         LOG_ERR("failed to close library handle=%p", handle);
     };
 }
@@ -34,10 +38,9 @@ void closeSharedObject(void *handle) {
 void *resolveSym(void *handle, string sym) {
     LOG_TRC(__func__);
     LOG_DBG("sym=%.*s", sym.size, sym.data);
-    char name_buf[c_max_name];
-    sym.copy({name_buf, c_max_name});
-    name_buf[sym.size] = 0;
-    void *res = dlsym(handle, name_buf);
+    ARRAY_SLICE(char, name, c_max_name);
+    StaticStringBuilder{name} << sym << '\0';
+    void *res = dlsym(handle, name.data);
     LOG_DBG("addr=%p", res);
     return res;
 }

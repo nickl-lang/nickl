@@ -43,6 +43,7 @@ bool findLibrary(string name, Slice<char> &buf) {
         size_t size = path.size + name.size;
 
         if (size > MAX_PATH) {
+            LOG_ERR("path buffer overflow");
             return false;
         }
 
@@ -58,6 +59,7 @@ bool findLibrary(string name, Slice<char> &buf) {
         }
     }
 
+    LOG_DBG("Library not found");
     return false;
 }
 

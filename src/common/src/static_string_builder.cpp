@@ -16,11 +16,14 @@ int StaticStringBuilder::printf(char const *fmt, ...) {
         m_size += printf_res;
     }
 
+    assert(m_size <= m_dst.size && "buffer overflow");
+
     return printf_res;
 }
 
 string StaticStringBuilder::moveStr() {
     string const str{m_dst.data, m_size};
+    *this << '\0';
     m_size = 0;
     return str;
 }

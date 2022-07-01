@@ -1,5 +1,6 @@
 #include "native_fn_adapter.hpp"
 
+#include <algorithm>
 #include <cassert>
 
 #include <ffi.h>
@@ -33,11 +34,9 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
 
     switch (type->typeclass_id) {
     case Type_Array: {
-        ffi_type **elements = allocator.alloc<ffi_type *>(type_array_size(type));
         auto native_elem_h = _getNativeHandle(allocator, type_array_elemType(type));
-        for (size_t i = 0; i < type_array_size(type); i++) {
-            elements[i] = native_elem_h;
-        }
+        ffi_type **elements = allocator.alloc<ffi_type *>(type_array_size(type));
+        std::fill_n(elements, type_array_size(type), native_elem_h);
         ffi_t = allocator.alloc<ffi_type>();
         *ffi_t = {
             .size = type->size,
