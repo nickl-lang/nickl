@@ -14,15 +14,13 @@ using namespace nk;
 
 namespace {
 
-LOG_USE_SCOPE(test::c_compiler_adapter);
+LOG_USE_SCOPE(nk::vm::test::c_compiler_adapter);
 
 class c_compiler_adapter : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        static char buf[1024];
-        Slice<char> output_filename{buf, sizeof(buf) / sizeof(buf[0])};
-        StaticStringBuilder sb{output_filename};
+        StaticStringBuilder sb{m_output_filename};
         sb.printf(
             TEST_FILES_DIR "%s_test.out",
             testing::UnitTest::GetInstance()->current_test_info()->name());
@@ -30,7 +28,7 @@ class c_compiler_adapter : public testing::Test {
         m_conf = {
             .compiler_binary = cs2s(TEST_C_COMPILER),
             .additional_flags = cs2s(TEST_C_COMPILER_FLAGS),
-            .output_filename = output_filename,
+            .output_filename = m_output_filename,
             .quiet = TEST_QUIET,
         };
     }
@@ -51,6 +49,7 @@ protected:
     }
 
 protected:
+    ARRAY_SLICE(char, m_output_filename, 1024);
     CCompilerConfig m_conf;
 };
 

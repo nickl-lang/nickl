@@ -146,28 +146,27 @@ TEST_F(ast, ternary) {
 }
 
 TEST_F(ast, array) {
-    Node const nodes[] = {n_t_x, n_t_y, n_t_z};
-    NodeArray const nodes_ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
+    ARRAY_SLICE_INIT(Node const, nodes, n_t_x, n_t_y, n_t_z);
 
-    test(m_ast.make_array(nodes_ar));
+    test(m_ast.make_array(nodes));
     EXPECT_EQ(nodeId(Node_array), m_node.id);
-    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes_ar);
+    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
-    test(m_ast.make_block(nodes_ar));
+    test(m_ast.make_block(nodes));
     EXPECT_EQ(nodeId(Node_block), m_node.id);
-    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes_ar);
+    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
-    test(m_ast.make_tuple(nodes_ar));
+    test(m_ast.make_tuple(nodes));
     EXPECT_EQ(nodeId(Node_tuple), m_node.id);
-    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes_ar);
+    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
-    test(m_ast.make_id_tuple(nodes_ar));
+    test(m_ast.make_id_tuple(nodes));
     EXPECT_EQ(nodeId(Node_id_tuple), m_node.id);
-    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes_ar);
+    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
-    test(m_ast.make_tuple_type(nodes_ar));
+    test(m_ast.make_tuple_type(nodes));
     EXPECT_EQ(nodeId(Node_tuple_type), m_node.id);
-    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes_ar);
+    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 }
 
 TEST_F(ast, token) {
@@ -193,43 +192,41 @@ TEST_F(ast, token) {
 }
 
 TEST_F(ast, other) {
-    Node const nodes[] = {n_t_x, n_t_y, n_t_z};
-    NodeArray const nodes_ar{nodes, sizeof(nodes) / sizeof(nodes[0])};
+    ARRAY_SLICE_INIT(Node const, nodes, n_t_x, n_t_y, n_t_z);
 
     NamedNode nn_x{&t_x, &n_t_hello};
     NamedNode nn_y{&t_y, &n_t_hello};
     NamedNode nn_z{&t_z, &n_t_hello};
     NamedNode nn_w{&t_w, &n_t_hello};
 
-    NamedNode nnodes[] = {nn_x, nn_y, nn_z, nn_w};
-    NamedNodeArray nnodes_ar{nnodes, sizeof(nnodes) / sizeof(nnodes[0])};
+    ARRAY_SLICE_INIT(NamedNode const, nnodes, nn_x, nn_y, nn_z, nn_w);
 
     test(m_ast.make_member(n_t_hello, &t_hello));
     EXPECT_EQ(nodeId(Node_member), m_node.id);
     EXPECT_AST(Node_member_lhs(&m_node), &n_t_hello);
     EXPECT_EQ(Node_member_name(&m_node), &t_hello);
 
-    test(m_ast.make_struct(&t_hello, nnodes_ar));
+    test(m_ast.make_struct(&t_hello, nnodes));
     EXPECT_EQ(nodeId(Node_struct), m_node.id);
     EXPECT_EQ(Node_struct_name(&m_node), &t_hello);
-    EXPECT_AST_NN_AR(Node_struct_fields(&m_node), nnodes_ar);
+    EXPECT_AST_NN_AR(Node_struct_fields(&m_node), nnodes);
 
-    test(m_ast.make_call(n_t_hello, nodes_ar));
+    test(m_ast.make_call(n_t_hello, nodes));
     EXPECT_EQ(nodeId(Node_call), m_node.id);
     EXPECT_AST(Node_call_lhs(&m_node), &n_t_hello);
-    EXPECT_AST_AR(Node_call_args(&m_node), nodes_ar);
+    EXPECT_AST_AR(Node_call_args(&m_node), nodes);
 
-    test(m_ast.make_fn(&t_hello, nnodes_ar, n_t_hello, n_t_hello));
+    test(m_ast.make_fn(&t_hello, nnodes, n_t_hello, n_t_hello));
     EXPECT_EQ(nodeId(Node_fn), m_node.id);
     EXPECT_EQ(Node_fn_name(&m_node), &t_hello);
-    EXPECT_AST_NN_AR(Node_fn_params(&m_node), nnodes_ar);
+    EXPECT_AST_NN_AR(Node_fn_params(&m_node), nnodes);
     EXPECT_AST(Node_fn_ret_type(&m_node), &n_t_hello);
     EXPECT_AST(Node_fn_body(&m_node), &n_t_hello);
 
-    test(m_ast.make_struct_literal(n_t_hello, nnodes_ar));
+    test(m_ast.make_struct_literal(n_t_hello, nnodes));
     EXPECT_EQ(nodeId(Node_struct_literal), m_node.id);
     EXPECT_AST(Node_struct_literal_type(&m_node), &n_t_hello);
-    EXPECT_AST_NN_AR(Node_struct_literal_fields(&m_node), nnodes_ar);
+    EXPECT_AST_NN_AR(Node_struct_literal_fields(&m_node), nnodes);
 
     test(m_ast.make_var_decl(&t_hello, n_t_hello, n_t_hello));
     EXPECT_EQ(nodeId(Node_var_decl), m_node.id);

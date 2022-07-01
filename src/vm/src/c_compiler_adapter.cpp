@@ -14,8 +14,7 @@ static constexpr size_t c_buf_size = 1024;
 } // namespace
 
 std::ostream c_compiler_streamOpen(CCompilerConfig const &conf) {
-    char buf[c_buf_size];
-    Slice<char> cmd{buf, c_buf_size};
+    ARRAY_SLICE(char, cmd, c_buf_size);
     StaticStringBuilder sb{cmd};
 
     sb << (conf.quiet ? "" : "tee /dev/stderr |") << " " << conf.compiler_binary << " -x c -o "

@@ -41,8 +41,7 @@ static constexpr size_t c_buf_size = 1024;
 std::istream pipe_streamRead(string cmd, bool quiet) {
     LOG_TRC(__func__);
 
-    char buf[c_buf_size];
-    Slice<char> str{buf, c_buf_size};
+    ARRAY_SLICE(char, str, c_buf_size);
     StaticStringBuilder sb{str};
     _makeCmdStr(sb, cmd, quiet);
 
@@ -53,8 +52,7 @@ std::istream pipe_streamRead(string cmd, bool quiet) {
 std::ostream pipe_streamWrite(string cmd, bool quiet) {
     LOG_TRC(__func__);
 
-    char buf[c_buf_size];
-    Slice<char> str{buf, c_buf_size};
+    ARRAY_SLICE(char, str, c_buf_size);
     StaticStringBuilder sb{str};
     _makeCmdStr(sb, cmd, quiet);
 
