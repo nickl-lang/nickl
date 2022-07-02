@@ -414,11 +414,8 @@ Ref ProgramBuilder::makeGlobalRef(Global var) const {
 }
 
 Ref ProgramBuilder::makeConstRef(value_t val) {
-    size_t val_size = val_sizeof(val);
-    char *mem = (char *)prog->arena.alloc_aligned(val_size, val_alignof(val));
-    std::memcpy(mem, val_data(val), val_size);
     return {
-        .value = {val.data = mem},
+        .value = {.data = val_data(val_copy(val, prog->arena))},
         .offset = 0,
         .post_offset = 0,
         .type = val_typeof(val),

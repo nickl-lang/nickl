@@ -51,9 +51,8 @@ _TypeQueryRes _getType(ByteArray fp) {
     if (found_type) {
         return _TypeQueryRes{*found_type, false};
     }
-    uint8_t *fp_copy_data = s_typearena.alloc<uint8_t>(fp.size);
-    ByteArray fp_copy = {fp_copy_data, fp.size};
-    std::memcpy(fp_copy_data, fp.data, fp.size);
+    auto fp_copy = s_typearena.alloc<uint8_t>(fp.size);
+    fp.copy(fp_copy);
     Type *type = s_typearena.alloc<Type>();
     *type = Type{
         .as = {{0}},
@@ -254,8 +253,7 @@ void _valInspect(value_t val, StringBuilder &sb) {
         sb << "void{}";
         break;
     case Type_Fn:
-        sb << "fn@" << (void *)val_typeof(val)->as.fn.body.ptr << "+"
-           << val_typeof(val)->as.fn.closure;
+        sb << "fn@" << (void *)val_typeof(val)->as.fn.body << "+" << val_typeof(val)->as.fn.closure;
         break;
     default: {
         //@Performance StackAllocator in _valInspect
@@ -333,7 +331,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body.ptr = body_ptr;
+        res.type->as.fn.body = body_ptr;
         res.type->as.fn.closure = closure;
         res.type->as.fn.is_native = false;
     }
@@ -345,7 +343,6 @@ type_t type_get_fn_native(
     type_t args_t,
     size_t decl_id,
     void *body_ptr,
-    void *closure,
     bool is_variadic) {
     EASY_FUNCTION(profiler::colors::Green200)
 
@@ -355,7 +352,6 @@ type_t type_get_fn_native(
         typeid_t ret_t;
         typeid_t args_t;
         void *body_ptr;
-        void *closure;
         bool is_native;
         bool is_variadic;
     } fp = {};
@@ -364,7 +360,6 @@ type_t type_get_fn_native(
     fp.ret_t = ret_t->id;
     fp.args_t = args_t->id;
     fp.body_ptr = body_ptr;
-    fp.closure = closure;
     fp.is_native = true;
     fp.is_variadic = is_variadic;
     _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
@@ -373,9 +368,13 @@ type_t type_get_fn_native(
         res.type->alignment = 1;
         res.type->as.fn.ret_t = ret_t;
         res.type->as.fn.args_t = args_t;
-        res.type->as.fn.body.native_fn_info =
-            type_fn_prepareNativeInfo(s_typearena, body_ptr, type_tuple_size(args_t), is_variadic);
-        res.type->as.fn.closure = closure;
+        type_fn_prepareNativeInfo(
+            s_typearena,
+            body_ptr,
+            type_tuple_size(args_t),
+            is_variadic,
+            res.type->as.fn.body,
+            res.type->as.fn.closure);
         res.type->as.fn.is_native = true;
     }
     return res.type;
@@ -421,7 +420,7 @@ type_t type_get_ptr(type_t target_type) {
 type_t type_get_tuple(TypeArray types) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    //@Performance StackAllocator in _valInspect
+    //@Performance StackAllocator in type_get_tuple
     StackAllocator allocator{};
     defer {
         allocator.deinit();
@@ -546,11 +545,7 @@ void val_fn_invoke(type_t self, value_t ret, value_t args) {
     EASY_FUNCTION(profiler::colors::Green200)
     LOG_TRC(__func__);
 
-    if (self->as.fn.is_native) {
-        val_fn_invoke_native(self, ret, args);
-    } else {
-        self->as.fn.body.ptr(self, ret, args);
-    }
+    self->as.fn.body(self, ret, args);
 }
 
 } // namespace vm

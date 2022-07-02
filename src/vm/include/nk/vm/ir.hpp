@@ -69,18 +69,6 @@ struct Ref {
     Ref as(type_t type) const;
 };
 
-struct FunctId {
-    size_t id;
-};
-
-struct BlockId {
-    size_t id;
-};
-
-struct ShObjId {
-    size_t id;
-};
-
 enum EArgType {
     Arg_None,
 
@@ -164,6 +152,18 @@ struct Program {
     void deinit();
 
     string inspect(Allocator &allocator) const;
+};
+
+struct FunctId {
+    size_t id;
+};
+
+struct BlockId {
+    size_t id;
+};
+
+struct ShObjId {
+    size_t id;
 };
 
 struct Local {

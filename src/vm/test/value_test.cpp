@@ -111,8 +111,8 @@ TEST_F(value, fn_native) {
 
     auto const params_t = type_get_tuple(params);
 
-    auto const type = type_get_fn_native(
-        i64_t, params_t, 0, (void *)(int64_t(*)(int64_t, int64_t))_plus, nullptr, false);
+    auto const type =
+        type_get_fn_native(i64_t, params_t, 0, (void *)(int64_t(*)(int64_t, int64_t))_plus, false);
 
     int64_t ret = 0;
     int64_t args[] = {12, 13};

@@ -41,7 +41,7 @@ struct InterpContext {
         uint64_t f;
     };
 
-    struct Base { // repeats the layout of ERefType
+    struct Base { // repeats the layout of bc::ERefType
         uint8_t *null;
         uint8_t *frame;
         uint8_t *arg;
@@ -152,7 +152,7 @@ INTERP(jmp) {
 INTERP(jmpz) {
     auto cond = _getDynRef(instr.arg[1]);
 
-    assert(cond.type->typeclass_id == Type_Numeric);
+    assert(val_typeclassid(cond) == Type_Numeric);
 
     val_numeric_visit(cond, [=](auto val) {
         if (!val) {
@@ -164,7 +164,7 @@ INTERP(jmpz) {
 INTERP(jmpnz) {
     auto cond = _getDynRef(instr.arg[1]);
 
-    assert(cond.type->typeclass_id == Type_Numeric);
+    assert(val_typeclassid(cond) == Type_Numeric);
 
     val_numeric_visit(cond, [=](auto val) {
         if (val) {
@@ -178,10 +178,10 @@ INTERP(cast) {
     auto type = _getDynRef(instr.arg[1]);
     auto arg = _getDynRef(instr.arg[2]);
 
-    assert(dst.type->typeclass_id == Type_Numeric);
-    assert(type.type->typeclass_id == Type_Typeref);
+    assert(val_typeclassid(dst) == Type_Numeric);
+    assert(val_typeclassid(type) == Type_Typeref);
     assert(val_typeid(dst) == val_as(type_t, type)->id);
-    assert(arg.type->typeclass_id == Type_Numeric);
+    assert(val_typeclassid(arg) == Type_Numeric);
 
     val_numeric_visit(dst, [&](auto &dst_val) {
         using T = std::decay_t<decltype(dst_val)>;
@@ -244,7 +244,7 @@ INTERP(neg) {
     auto arg = _getDynRef(instr.arg[1]);
 
     assert(val_typeid(dst) == val_typeid(arg));
-    assert(dst.type->typeclass_id == Type_Numeric);
+    assert(val_typeclassid(dst) == Type_Numeric);
 
     val_numeric_visit(dst, [&](auto &dst_val) {
         using T = std::decay_t<decltype(dst_val)>;
@@ -257,7 +257,7 @@ INTERP(compl ) {
     auto arg = _getDynRef(instr.arg[1]);
 
     assert(val_typeid(dst) == val_typeid(arg));
-    assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
+    assert(val_typeclassid(dst) == Type_Numeric && val_typeof(dst)->as.num.value_type < Float32);
 
     val_numeric_visit_int(dst, [&](auto &dst_val) {
         using T = std::decay_t<decltype(dst_val)>;
@@ -270,7 +270,7 @@ INTERP(not ) {
     auto arg = _getDynRef(instr.arg[1]);
 
     assert(val_typeid(dst) == val_typeid(arg));
-    assert(dst.type->typeclass_id == Type_Numeric);
+    assert(val_typeclassid(dst) == Type_Numeric);
 
     val_numeric_visit(dst, [&](auto &dst_val) {
         using T = std::decay_t<decltype(dst_val)>;
@@ -347,7 +347,7 @@ void _numericBinOp(Instr const &instr, F &&op) {
     auto rhs = _getDynRef(instr.arg[2]);
 
     assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
-    assert(dst.type->typeclass_id == Type_Numeric);
+    assert(val_typeclassid(dst) == Type_Numeric);
 
     val_numeric_visit(dst, [&](auto &dst_val) {
         using T = std::decay_t<decltype(dst_val)>;
@@ -362,7 +362,7 @@ void _numericBinOpInt(Instr const &instr, F &&op) {
     auto rhs = _getDynRef(instr.arg[2]);
 
     assert(val_typeid(dst) == val_typeid(lhs) && val_typeid(dst) == val_typeid(rhs));
-    assert(dst.type->typeclass_id == Type_Numeric && dst.type->typeclass_id < Float32);
+    assert(val_typeclassid(dst) == Type_Numeric && val_typeof(dst)->as.num.value_type < Float32);
 
     val_numeric_visit_int(dst, [&](auto &dst_val) {
         using T = std::decay_t<decltype(dst_val)>;

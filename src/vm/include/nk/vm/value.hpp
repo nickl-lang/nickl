@@ -29,16 +29,11 @@ struct _type_array {
     size_t elem_count;
 };
 
-using FuncPtr = void (*)(type_t self, value_t ret, value_t args);
-
 //@Refactor Maybe separate function types from actual executable ones?
 struct _type_fn {
     type_t ret_t;
     type_t args_t;
-    union {
-        FuncPtr ptr;
-        void *native_fn_info;
-    } body;
+    FuncPtr body;
     void *closure;
     bool is_native;
 };
@@ -111,7 +106,6 @@ type_t type_get_fn_native(
     type_t args_t,
     size_t decl_id,
     void *body_ptr,
-    void *closure,
     bool is_variadic);
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
@@ -154,26 +148,36 @@ inline type_t val_typeof(value_t val) {
 }
 
 inline typeid_t val_typeid(value_t val) {
-    return val.type->id;
+    return val_typeof(val)->id;
 }
 
 inline typeid_t val_typeclassid(value_t val) {
-    return val.type->typeclass_id;
+    return val_typeof(val)->typeclass_id;
 }
 
 inline size_t val_sizeof(value_t val) {
-    return val.type->size;
+    return val_typeof(val)->size;
 }
 
 inline size_t val_alignof(value_t val) {
-    return val.type->alignment;
+    return val_typeof(val)->alignment;
 }
 
 inline value_t val_reinterpret_cast(type_t type, value_t val) {
-    return value_t{val.data, type};
+    return value_t{val_data(val), type};
 }
 
-#define val_as(type, val) (*(type *)(val).data)
+inline value_t val_copy(value_t val, void *dst) {
+    Slice<uint8_t> src_slice{(uint8_t *)val_data(val), val_sizeof(val)};
+    Slice<uint8_t> dst_slice{(uint8_t *)dst, val_sizeof(val)};
+    return value_t{src_slice.copy(dst_slice), val_typeof(val)};
+}
+
+inline value_t val_copy(value_t val, Allocator &allocator) {
+    return val_copy(val, allocator.alloc_aligned(val_sizeof(val), val_alignof(val)));
+}
+
+#define val_as(TYPE, VAL) (*(TYPE *)val_data(VAL))
 
 template <class F>
 void val_numeric_visit(value_t val, F &&f) {
@@ -246,6 +250,7 @@ void val_numeric_visit_int(value_t val, F &&f) {
         break;
     }
 }
+
 } // namespace vm
 } // namespace nk
 

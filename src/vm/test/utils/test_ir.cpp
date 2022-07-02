@@ -433,7 +433,7 @@ void test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     auto void_t = type_get_void();
     auto args_t = type_get_tuple({});
 
-    auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, nullptr, false);
+    auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, false);
 
     b.startFunct(b.makeFunct(), cs2s("callNativeFunc"), void_t, args_t);
 
@@ -450,7 +450,7 @@ void test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     ARRAY_SLICE_INIT(type_t, args, i64_t, i64_t);
     auto args_t = type_get_tuple(args);
 
-    auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, nullptr, false);
+    auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, false);
 
     b.startFunct(b.makeFunct(), cs2s("callNativeAdd"), i64_t, args_t);
 
