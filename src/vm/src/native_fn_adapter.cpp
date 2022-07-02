@@ -119,8 +119,6 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
     return ffi_t;
 }
 
-} // namespace
-
 struct NativeFnInfo {
     Allocator *type_allocator;
     void *body_ptr;
@@ -128,22 +126,8 @@ struct NativeFnInfo {
     bool is_variadic;
 };
 
-void *type_fn_prepareNativeInfo(
-    Allocator &allocator,
-    void *body_ptr,
-    size_t argc,
-    bool is_variadic) {
-    auto &info = *allocator.alloc<NativeFnInfo>() = {
-        .type_allocator = &allocator,
-        .body_ptr = body_ptr,
-        .argc = argc,
-        .is_variadic = is_variadic,
-    };
-    return &info;
-}
-
-void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
-    auto &info = *(NativeFnInfo *)self->as.fn.body.native_fn_info;
+void _invoke_native(type_t self, value_t ret, value_t args) {
+    auto &info = *(NativeFnInfo *)self->as.fn.closure;
 
     size_t const argc = val_data(args) ? val_tuple_size(args) : 0;
 
@@ -169,6 +153,26 @@ void val_fn_invoke_native(type_t self, value_t ret, value_t args) {
     }
 
     ffi_call(&cif, FFI_FN(info.body_ptr), val_data(ret), argv);
+}
+
+} // namespace
+
+void type_fn_prepareNativeInfo(
+    Allocator &allocator,
+    void *body_ptr,
+    size_t argc,
+    bool is_variadic,
+    FuncPtr &out_body,
+    void *&out_closure) {
+    auto &info = *allocator.alloc<NativeFnInfo>() = {
+        .type_allocator = &allocator,
+        .body_ptr = body_ptr,
+        .argc = argc,
+        .is_variadic = is_variadic,
+    };
+
+    out_body = _invoke_native;
+    out_closure = &info;
 }
 
 } // namespace vm

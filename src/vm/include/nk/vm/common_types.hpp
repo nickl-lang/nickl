@@ -21,6 +21,8 @@ struct value_t {
     type_t type;
 };
 
+using FuncPtr = void (*)(type_t self, value_t ret, value_t args);
+
 } // namespace vm
 } // namespace nk
 
