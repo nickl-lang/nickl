@@ -19,7 +19,6 @@ class ir : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         m_prog.init();
-        m_builder.init(m_prog);
     }
 
     void TearDown() override {
@@ -30,7 +29,7 @@ class ir : public testing::Test {
 protected:
     StackAllocator m_arena{};
     Program m_prog{};
-    ProgramBuilder m_builder{};
+    ProgramBuilder m_builder{m_prog};
 };
 
 } // namespace

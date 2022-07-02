@@ -19,7 +19,6 @@ class bytecode : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         m_ir_prog.init();
-        m_builder.init(m_ir_prog);
         m_prog.init();
     }
 
@@ -32,7 +31,7 @@ class bytecode : public testing::Test {
 protected:
     StackAllocator m_arena{};
     ir::Program m_ir_prog{};
-    ir::ProgramBuilder m_builder{};
+    ir::ProgramBuilder m_builder{m_ir_prog};
     bc::Program m_prog{};
 };
 

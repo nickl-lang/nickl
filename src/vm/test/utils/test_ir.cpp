@@ -171,8 +171,8 @@ void test_ir_pi(ProgramBuilder &b) {
     AtanArgs a_args = {1.0 / 5.0, 10};
     AtanArgs b_args = {1.0 / 239.0, 10};
 
-    auto c_a_args = b.makeConstRef({&a_args, b.prog->functs[0].args_t});
-    auto c_b_args = b.makeConstRef({&b_args, b.prog->functs[0].args_t});
+    auto c_a_args = b.makeConstRef({&a_args, b.prog.functs[0].args_t});
+    auto c_b_args = b.makeConstRef({&b_args, b.prog.functs[0].args_t});
 
     auto ret = b.makeRetRef();
 
@@ -188,8 +188,8 @@ void test_ir_pi(ProgramBuilder &b) {
 
     b.startBlock(l_start, cs2s("start"));
 
-    b.gen(b.make_call(v_a, FunctId{b.prog->functs[0].id}, c_a_args));
-    b.gen(b.make_call(v_b, FunctId{b.prog->functs[0].id}, c_b_args));
+    b.gen(b.make_call(v_a, FunctId{b.prog.functs[0].id}, c_a_args));
+    b.gen(b.make_call(v_b, FunctId{b.prog.functs[0].id}, c_b_args));
     b.gen(b.make_mul(v_a, v_a, c_4f));
     b.gen(b.make_sub(v_a, v_a, v_b));
     b.gen(b.make_mul(ret, v_a, c_4f));
@@ -310,7 +310,7 @@ void test_ir_modf(ProgramBuilder &b) {
 
 void test_ir_intPart(ProgramBuilder &b) {
     test_ir_modf(b);
-    auto f_modf_id = b.prog->functs[0].id;
+    auto f_modf_id = b.prog.functs[0].id;
 
     auto f64_t = type_get_numeric(Float64);
 
@@ -318,7 +318,7 @@ void test_ir_intPart(ProgramBuilder &b) {
 
     b.startFunct(b.makeFunct(), cs2s("intPart"), f64_t, args_t);
 
-    auto modf_args_t = b.prog->functs[f_modf_id].args_t;
+    auto modf_args_t = b.prog.functs[f_modf_id].args_t;
 
     auto a_x = b.makeArgRef(0);
 
@@ -558,7 +558,7 @@ void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
     auto i8_ptr_t = type_get_ptr(i8_t);
 
     auto f_printf = _makePrintf(b, libc_name);
-    auto f_pi = ir::FunctId{b.prog->functs[1].id};
+    auto f_pi = ir::FunctId{b.prog.functs[1].id};
 
     _startMain(b);
 
@@ -591,7 +591,7 @@ void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
     auto vec_t = type_get_tuple(vec_types);
 
     auto f_printf = _makePrintf(b, libc_name);
-    auto f_vec2LenSquared = ir::FunctId{b.prog->functs[0].id};
+    auto f_vec2LenSquared = ir::FunctId{b.prog.functs[0].id};
 
     auto vec_ptr_t = type_get_ptr(vec_t);
     auto f64_ptr_t = type_get_ptr(f64_t);
@@ -602,7 +602,7 @@ void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
 
     auto v_vec = b.makeFrameRef(b.makeLocalVar(vec_t));
     auto v_lenSquared = b.makeFrameRef(b.makeLocalVar(f64_t));
-    auto v_args = b.makeFrameRef(b.makeLocalVar(b.prog->functs[0].args_t));
+    auto v_args = b.makeFrameRef(b.makeLocalVar(b.prog.functs[0].args_t));
 
     auto vec_arg0 = v_args.plus(type_tuple_offsetAt(vec_t, 0), vec_ptr_t);
     auto vec_arg1 = v_args.plus(type_tuple_offsetAt(vec_t, 1), f64_ptr_t);

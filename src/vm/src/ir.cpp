@@ -269,26 +269,21 @@ string Program::inspect(Allocator &allocator) const {
     return sb.moveStr(allocator);
 }
 
-void ProgramBuilder::init(Program &prog) {
-    *this = {};
-    this->prog = &prog;
-}
-
 FunctId ProgramBuilder::makeFunct() {
-    LOG_DBG("makeFunct() -> id=%lu", prog->next_funct_id);
-    return {prog->next_funct_id++};
+    LOG_DBG("makeFunct() -> id=%lu", prog.next_funct_id);
+    return {prog.next_funct_id++};
 }
 
 BlockId ProgramBuilder::makeLabel() {
-    assert(m_cur_funct && "no current function");
-    LOG_DBG("makeLabel() -> id=%lu", m_cur_funct->next_block_id);
-    return {m_cur_funct->next_block_id++};
+    assert(_cur_funct && "no current function");
+    LOG_DBG("makeLabel() -> id=%lu", _cur_funct->next_block_id);
+    return {_cur_funct->next_block_id++};
 }
 
 ShObjId ProgramBuilder::makeShObj(Id name) {
-    LOG_DBG("makeShObj() -> id=%lu", prog->shobjs.size);
-    *prog->shobjs.push() = name;
-    return {prog->shobjs.size - 1};
+    LOG_DBG("makeShObj() -> id=%lu", prog.shobjs.size);
+    *prog.shobjs.push() = name;
+    return {prog.shobjs.size - 1};
 }
 
 void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, type_t args_t) {
@@ -296,16 +291,16 @@ void ProgramBuilder::startFunct(FunctId funct_id, string name, type_t ret_t, typ
 
     LOG_DBG("startFunct(id=%lu)", funct_id.id);
 
-    auto &funct = *prog->functs.push() = {};
+    auto &funct = *prog.functs.push() = {};
 
     funct.id = funct_id.id;
-    funct.name = name.copy(prog->arena.alloc<char>(name.size));
+    funct.name = name.copy(prog.arena.alloc<char>(name.size));
     funct.ret_t = ret_t;
     funct.args_t = args_t;
 
-    funct.first_block = prog->blocks.size;
+    funct.first_block = prog.blocks.size;
 
-    m_cur_funct = &funct;
+    _cur_funct = &funct;
 }
 
 void ProgramBuilder::startBlock(BlockId block_id, string name) {
@@ -313,38 +308,38 @@ void ProgramBuilder::startBlock(BlockId block_id, string name) {
 
     LOG_DBG("startBlock(id=%lu)", block_id.id);
 
-    auto &block = *prog->blocks.push() = {};
+    auto &block = *prog.blocks.push() = {};
 
     block.id = block_id.id;
-    block.name = name.copy(prog->arena.alloc<char>(name.size));
+    block.name = name.copy(prog.arena.alloc<char>(name.size));
 
-    block.first_instr = prog->instrs.size;
+    block.first_instr = prog.instrs.size;
 
-    m_cur_block = &block;
+    _cur_block = &block;
 
-    m_cur_funct->block_count++;
+    _cur_funct->block_count++;
 }
 
 Local ProgramBuilder::makeLocalVar(type_t type) {
-    assert(m_cur_funct && "no current function");
-    *m_cur_funct->locals.push() = type;
-    return {m_cur_funct->locals.size - 1};
+    assert(_cur_funct && "no current function");
+    *_cur_funct->locals.push() = type;
+    return {_cur_funct->locals.size - 1};
 }
 
 Global ProgramBuilder::makeGlobalVar(type_t type) {
-    *prog->globals.push() = type;
-    return {prog->globals.size - 1};
+    *prog.globals.push() = type;
+    return {prog.globals.size - 1};
 }
 
 ExtVarId ProgramBuilder::makeExtVar(ShObjId so, Id name, type_t type) {
-    auto &exsym = *prog->exsyms.push() = {};
+    auto &exsym = *prog.exsyms.push() = {};
 
     exsym.name = name;
     exsym.so_id = so.id;
     exsym.sym_type = Sym_Var;
     exsym.as.var.type = type;
 
-    return {prog->exsyms.size - 1};
+    return {prog.exsyms.size - 1};
 }
 
 ExtFunctId ProgramBuilder::makeExtFunct(
@@ -353,7 +348,7 @@ ExtFunctId ProgramBuilder::makeExtFunct(
     type_t ret_t,
     type_t args_t,
     bool is_variadic) {
-    auto &exsym = *prog->exsyms.push() = {};
+    auto &exsym = *prog.exsyms.push() = {};
 
     exsym.name = name;
     exsym.so_id = so.id;
@@ -362,41 +357,41 @@ ExtFunctId ProgramBuilder::makeExtFunct(
     exsym.as.funct.args_t = args_t;
     exsym.as.funct.is_variadic = is_variadic;
 
-    return {prog->exsyms.size - 1};
+    return {prog.exsyms.size - 1};
 }
 
 Ref ProgramBuilder::makeFrameRef(Local var) const {
-    assert(m_cur_funct && "no current function");
+    assert(_cur_funct && "no current function");
     return {
         .value = {.index = var.id},
         .offset = 0,
         .post_offset = 0,
-        .type = m_cur_funct->locals[var.id],
+        .type = _cur_funct->locals[var.id],
         .ref_type = Ref_Frame,
         .is_indirect = false,
     };
 }
 
 Ref ProgramBuilder::makeArgRef(size_t index) const {
-    assert(m_cur_funct && "no current function");
-    assert(index < type_tuple_size(m_cur_funct->args_t) && "arg index out of range");
+    assert(_cur_funct && "no current function");
+    assert(index < type_tuple_size(_cur_funct->args_t) && "arg index out of range");
     return {
         .value = {.index = index},
         .offset = 0,
         .post_offset = 0,
-        .type = type_tuple_typeAt(m_cur_funct->args_t, index),
+        .type = type_tuple_typeAt(_cur_funct->args_t, index),
         .ref_type = Ref_Arg,
         .is_indirect = false,
     };
 }
 
 Ref ProgramBuilder::makeRetRef() const {
-    assert(m_cur_funct && "no current function");
+    assert(_cur_funct && "no current function");
     return {
         .value = {},
         .offset = 0,
         .post_offset = 0,
-        .type = m_cur_funct->ret_t,
+        .type = _cur_funct->ret_t,
         .ref_type = Ref_Ret,
         .is_indirect = false,
     };
@@ -407,7 +402,7 @@ Ref ProgramBuilder::makeGlobalRef(Global var) const {
         .value = {.index = var.id},
         .offset = 0,
         .post_offset = 0,
-        .type = prog->globals[var.id],
+        .type = prog.globals[var.id],
         .ref_type = Ref_Global,
         .is_indirect = false,
     };
@@ -415,7 +410,7 @@ Ref ProgramBuilder::makeGlobalRef(Global var) const {
 
 Ref ProgramBuilder::makeConstRef(value_t val) {
     return {
-        .value = {.data = val_data(val_copy(val, prog->arena))},
+        .value = {.data = val_data(val_copy(val, prog.arena))},
         .offset = 0,
         .post_offset = 0,
         .type = val_typeof(val),
@@ -441,7 +436,7 @@ Ref ProgramBuilder::makeExtVarRef(ExtVarId var) const {
         .value = {.index = var.id},
         .offset = 0,
         .post_offset = 0,
-        .type = prog->exsyms[var.id].as.var.type,
+        .type = prog.exsyms[var.id].as.var.type,
         .ref_type = Ref_ExtVar,
         .is_indirect = false,
     };
@@ -506,13 +501,13 @@ Instr ProgramBuilder::make_call(Ref const &dst, ExtFunctId funct, Ref const &arg
 void ProgramBuilder::gen(Instr const &instr) {
     EASY_BLOCK("ProgramBuilder::gen", profiler::colors::Amber200)
 
-    assert(m_cur_block && "no current block");
+    assert(_cur_block && "no current block");
     assert(
         instr.arg[0].arg_type != Arg_Ref || instr.arg[0].as.ref.is_indirect ||
         (instr.arg[0].as.ref.ref_type != Ref_Const && instr.arg[0].as.ref.ref_type != Ref_Arg));
 
-    *prog->instrs.push() = instr;
-    m_cur_block->instr_count++;
+    *prog.instrs.push() = instr;
+    _cur_block->instr_count++;
 }
 
 } // namespace ir

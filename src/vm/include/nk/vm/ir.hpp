@@ -183,9 +183,7 @@ struct ExtFunctId {
 };
 
 struct ProgramBuilder {
-    Program *prog;
-
-    void init(Program &prog);
+    Program &prog;
 
     FunctId makeFunct();
     BlockId makeLabel();
@@ -242,9 +240,8 @@ struct ProgramBuilder {
 
     void gen(Instr const &instr);
 
-private:
-    Funct *m_cur_funct;
-    Block *m_cur_block;
+    Funct *_cur_funct = nullptr;
+    Block *_cur_block = nullptr;
 };
 
 } // namespace ir
