@@ -5,6 +5,8 @@
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/stack_allocator.hpp"
+#include "nk/common/static_allocator.hpp"
+#include "nk/common/static_string_builder.hpp"
 #include "nk/common/utils.hpp"
 
 namespace nk {
@@ -488,24 +490,21 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         LOG_DBG(
             "instr: %lx %s", (pinstr - prog.instrs.data) * sizeof(Instr), s_op_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
-        //@Todo Write logs with StaticStringBuilder in interp
-        // LOG_DBG("res=%s", [&]() {
-        //     auto frame = ctx.stack.size();
-        //     string str{};
-        //     auto ref = pinstr->arg[0];
-        //     if (ref.ref_type != bc::Ref_None) {
-        //         auto val_str = val_inspect(_getDynRef(ref));
-        //         auto type_str = type_name(ref.type);
-        //         str = tmpstr_format(
-        //             "%.*s:%.*s",
-        //             (int)val_str.size,
-        //             val_str.data,
-        //             (int)type_str.size,
-        //             type_str.data);
-        //     }
-        //     ctx.stack.pop(ctx.stack.size() - frame);
-        //     return str.data;
-        // }());
+        LOG_DBG("res=%s", [&]() {
+            string str{};
+            auto ref = pinstr->arg[0];
+            if (ref.ref_type != bc::Ref_None) {
+                //@Todo Undefined behavior: using message buffer in outer scope
+                //@Todo Not checking buffer bounds
+                ARRAY_SLICE(uint8_t, arena_buffer, 4096);
+                StaticAllocator arena{arena_buffer};
+                ARRAY_SLICE(char, buffer, 1024);
+                StaticStringBuilder sb{buffer};
+                sb << val_inspect(_getDynRef(ref), arena) << ":" << type_name(ref.type, arena);
+                str = sb.moveStr();
+            }
+            return str.data;
+        }());
     }
 
     EASY_END_BLOCK

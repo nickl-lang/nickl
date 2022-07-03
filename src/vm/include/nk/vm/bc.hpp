@@ -6,6 +6,7 @@
 
 #include "nk/common/allocator.hpp"
 #include "nk/common/array.hpp"
+#include "nk/common/log2arena.hpp"
 #include "nk/vm/ir.hpp"
 #include "nk/vm/value.hpp"
 
@@ -56,21 +57,28 @@ struct FunctInfo {
     Program *prog;
     type_t frame_t;
     size_t first_instr;
+    size_t instr_count;
     type_t funct_t;
 };
 
 struct Program {
     Array<Instr> instrs;
-    type_t globals_t;
     Array<uint8_t> globals;
     Array<uint8_t> rodata;
-    Array<FunctInfo> funct_info;
+    Log2Arena<FunctInfo> funct_info;
     Array<void *> shobjs;
 
     void init();
     void deinit();
 
-    string inspect(Allocator &allocator) const;
+    string inspect(type_t fn, Allocator &allocator) const;
+};
+
+struct ProgramBuilder {
+    ir::Program &ir_prog;
+    Program &prog;
+
+    type_t translate(ir::FunctId funct);
 };
 
 } // namespace bc
