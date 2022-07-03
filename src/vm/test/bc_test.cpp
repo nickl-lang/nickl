@@ -14,6 +14,8 @@ namespace {
 using namespace nk::vm;
 using namespace nk;
 
+LOG_USE_SCOPE(nk::vm::bc::test);
+
 class bytecode : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
@@ -31,8 +33,9 @@ class bytecode : public testing::Test {
 protected:
     StackAllocator m_arena{};
     ir::Program m_ir_prog{};
-    ir::ProgramBuilder m_builder{m_ir_prog};
+    ir::ProgramBuilder m_ir_builder{m_ir_prog};
     bc::Program m_prog{};
+    bc::ProgramBuilder m_builder{m_ir_prog, m_prog};
 };
 
 } // namespace
@@ -40,19 +43,25 @@ protected:
 //@Incomplete Add expects to BC test
 
 TEST_F(bytecode, plus) {
-    test_ir_plus(m_builder);
-    //@Incomplete bytecode not tested
-    // translateFromIr(m_prog, m_ir_prog);
+    auto const funct = test_ir_plus(m_ir_builder);
+    auto fn_t = m_builder.translate(funct);
+
+    auto str = m_prog.inspect(fn_t, m_arena);
+    LOG_INF("bc:\n%.*s", str.size, str.data);
 }
 
 TEST_F(bytecode, not ) {
-    test_ir_not(m_builder);
-    //@Incomplete bytecode not tested
-    // translateFromIr(m_prog, m_ir_prog);
+    auto const funct = test_ir_not(m_ir_builder);
+    auto fn_t = m_builder.translate(funct);
+
+    auto str = m_prog.inspect(fn_t, m_arena);
+    LOG_INF("bc:\n%.*s", str.size, str.data);
 }
 
 TEST_F(bytecode, atan) {
-    test_ir_atan(m_builder);
-    //@Incomplete bytecode not tested
-    // translateFromIr(m_prog, m_ir_prog);
+    auto const funct = test_ir_atan(m_ir_builder);
+    auto fn_t = m_builder.translate(funct);
+
+    auto str = m_prog.inspect(fn_t, m_arena);
+    LOG_INF("bc:\n%.*s", str.size, str.data);
 }

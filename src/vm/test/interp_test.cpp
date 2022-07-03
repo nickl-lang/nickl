@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "find_library.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/stack_allocator.hpp"
@@ -25,13 +26,15 @@ class interp : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        // VmConfig conf;
-        // string paths[] = {cs2s(TESTLIB_PATH)};
-        // conf.find_library.search_paths = {paths, sizeof(paths) / sizeof(paths[0])};
-        // vm_init(conf);
+        id_init();
+        types_init();
+
+        FindLibraryConfig conf{};
+        ARRAY_SLICE_INIT(string, paths, cs2s(TESTLIB_PATH));
+        conf.search_paths = paths;
+        findLibrary_init(conf);
 
         m_ir_prog.init();
-        m_builder.init(m_ir_prog);
         m_prog.init();
     }
 
@@ -40,7 +43,10 @@ class interp : public testing::Test {
         m_ir_prog.deinit();
         m_arena.deinit();
 
-        // vm_deinit();
+        findLibrary_deinit();
+
+        types_deinit();
+        id_deinit();
     }
 
 protected:
@@ -48,17 +54,21 @@ protected:
 
     StackAllocator m_arena{};
     ir::Program m_ir_prog{};
-    ir::ProgramBuilder m_builder{};
+    ir::ProgramBuilder m_ir_builder{m_ir_prog};
     bc::Program m_prog{};
+    bc::ProgramBuilder m_builder{m_ir_prog, m_prog};
 };
 
 } // namespace
 
 TEST_F(interp, plus) {
-    test_ir_plus(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_plus(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     int64_t ret = 0;
     int64_t args[] = {4, 5};
@@ -68,10 +78,13 @@ TEST_F(interp, plus) {
 }
 
 TEST_F(interp, not ) {
-    test_ir_not(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_not(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     int64_t ret = 42;
     int64_t arg = 1;
@@ -85,10 +98,13 @@ TEST_F(interp, not ) {
 }
 
 TEST_F(interp, atan) {
-    test_ir_atan(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_atan(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     double a;
     double b;
@@ -110,10 +126,13 @@ TEST_F(interp, atan) {
 }
 
 TEST_F(interp, pi) {
-    test_ir_pi(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[1].funct_t;
+    auto funct = test_ir_pi(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     double pi = 0;
     val_fn_invoke(fn_t, {&pi, fn_t->as.fn.ret_t}, {});
@@ -122,10 +141,13 @@ TEST_F(interp, pi) {
 }
 
 TEST_F(interp, rsqrt) {
-    test_ir_rsqrt(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_rsqrt(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     float ret = 42;
     float arg = 2;
@@ -134,10 +156,13 @@ TEST_F(interp, rsqrt) {
 }
 
 TEST_F(interp, vec2LenSquared) {
-    test_ir_vec2LenSquared(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_vec2LenSquared(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     struct Vec2 {
         double x;
@@ -158,10 +183,13 @@ TEST_F(interp, vec2LenSquared) {
 }
 
 TEST_F(interp, modf) {
-    test_ir_modf(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_modf(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     double fract_part = 42;
     double int_part = 42;
@@ -179,10 +207,13 @@ TEST_F(interp, modf) {
 }
 
 TEST_F(interp, intPart) {
-    test_ir_intPart(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[1].funct_t;
+    auto funct = test_ir_intPart(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     double arg = 123.456;
     double res = 42;
@@ -202,18 +233,15 @@ TEST_F(interp, threads) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    test_ir_call10Times(m_builder, callback);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_call10Times(m_ir_builder, callback);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     auto thread_func = [&]() {
-        //@Incomplete Figure out if we need thread wrapper
-        // vm_enterThread();
-        // defer {
-        //     vm_leaveThread();
-        // };
-
         val_fn_invoke(fn_t, {}, {});
     };
 
@@ -230,39 +258,33 @@ TEST_F(interp, threads_diff_progs) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    test_ir_call10Times(m_builder, callback);
+    auto funct = test_ir_call10Times(m_ir_builder, callback);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
 
-    bc::Program &prog0 = m_prog;
+    bc::ProgramBuilder &builder0 = m_builder;
+
     bc::Program prog1;
     prog1.init();
+
+    bc::ProgramBuilder builder1{m_ir_prog, prog1};
 
     defer {
         prog1.deinit();
     };
 
-    //@Incomplete interp not tested
-    // translateFromIr(prog0, m_ir_prog);
-    auto fn0_t = prog0.funct_info[0].funct_t;
-    //@Incomplete interp not tested
-    // translateFromIr(prog1, m_ir_prog);
-    auto fn1_t = prog1.funct_info[0].funct_t;
+    auto fn0_t = builder0.translate(funct);
+    auto fn1_t = builder1.translate(funct);
+
+    ASSERT_NE(fn0_t, nullptr);
+    ASSERT_NE(fn1_t, nullptr);
 
     std::thread t0{[&]() {
-        //@Incomplete Figure out if we need thread wrapper
-        // vm_enterThread();
-        // defer {
-        //     vm_leaveThread();
-        // };
-
         val_fn_invoke(fn0_t, {}, {});
     }};
     std::thread t1{[&]() {
-        //@Incomplete Figure out if we need thread wrapper
-        // vm_enterThread();
-        // defer {
-        //     vm_leaveThread();
-        // };
-
         val_fn_invoke(fn1_t, {}, {});
     }};
 
@@ -270,14 +292,18 @@ TEST_F(interp, threads_diff_progs) {
     t1.join();
 }
 
-TEST_F(interp, one_thread_diff_progs) {
+TEST_F(interp, one_thread_diff_progs) { //@Todo This case executes incorrectly
     ir::Program &ir_prog0 = m_ir_prog;
-    ir::Program ir_prog1;
+    ir::ProgramBuilder &ir_builder0 = m_ir_builder;
+    ir::Program ir_prog1{};
     ir_prog1.init();
+    ir::ProgramBuilder ir_builder1{ir_prog1};
 
     bc::Program &prog0 = m_prog;
-    bc::Program prog1;
+    bc::ProgramBuilder &builder0 = m_builder;
+    bc::Program prog1{};
     prog1.init();
+    bc::ProgramBuilder builder1{ir_prog1, prog1};
 
     defer {
         ir_prog1.deinit();
@@ -289,38 +315,35 @@ TEST_F(interp, one_thread_diff_progs) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    m_builder.init(ir_prog0);
-    test_ir_call10Times(m_builder, callback);
-    //@Incomplete interp not tested
-    // translateFromIr(prog0, ir_prog0);
-    auto fn0_t = prog0.funct_info[0].funct_t;
+    auto funct0 = test_ir_call10Times(ir_builder0, callback);
+    auto fn0_t = builder0.translate(funct0);
 
-    m_builder.init(ir_prog1);
-    test_ir_call10Times(m_builder, fn0_t);
-    //@Incomplete interp not tested
-    // translateFromIr(prog1, ir_prog1);
-    auto fn1_t = prog1.funct_info[0].funct_t;
+    auto funct1 = test_ir_call10Times(ir_builder1, fn0_t);
+    auto fn1_t = builder1.translate(funct1);
 
     auto str = ir_prog0.inspect(m_arena);
     LOG_INF("PROG0 ir:\n%.*s", str.size, str.data);
 
-    str = prog0.inspect(m_arena);
+    str = prog0.inspect(fn0_t, m_arena);
     LOG_INF("PROG0 bytecode:\n\n%.*s", str.size, str.data);
 
     str = ir_prog1.inspect(m_arena);
     LOG_INF("PROG1 ir:\n%.*s", str.size, str.data);
 
-    str = prog1.inspect(m_arena);
+    str = prog1.inspect(fn1_t, m_arena);
     LOG_INF("PROG1 bytecode:\n\n%.*s", str.size, str.data);
 
     val_fn_invoke(fn1_t, {}, {});
 }
 
 TEST_F(interp, hasZeroByte32) {
-    test_ir_hasZeroByte32(m_builder);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_hasZeroByte32(m_ir_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     auto hasZeroByte32 = [&](int32_t x) -> bool {
         int32_t res = 42;
@@ -345,10 +368,13 @@ static void _nativeSayHello() {
 }
 
 TEST_F(interp, callNativeSayHello) {
-    test_ir_callNativeFunc(m_builder, (void *)_nativeSayHello);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_callNativeFunc(m_ir_builder, (void *)_nativeSayHello);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     val_fn_invoke(fn_t, {}, {});
 }
@@ -359,10 +385,13 @@ static int64_t _nativeAdd(int64_t a, int64_t b) {
 }
 
 TEST_F(interp, callNativeAdd) {
-    test_ir_callNativeAdd(m_builder, (void *)_nativeAdd);
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_callNativeAdd(m_ir_builder, (void *)_nativeAdd);
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
     int64_t res = 42;
     int64_t args[] = {4, 5};
@@ -371,22 +400,29 @@ TEST_F(interp, callNativeAdd) {
 }
 
 TEST_F(interp, callExternalPrintf) {
-    test_ir_callExternalPrintf(m_builder, cs2s(TESTLIB_NAME));
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto fn_t = m_prog.funct_info[0].funct_t;
+    auto funct = test_ir_callExternalPrintf(m_ir_builder, cs2s(TESTLIB_NAME));
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto fn_t = m_builder.translate(funct);
+    ASSERT_NE(fn_t, nullptr);
 
+    EXPECT_FALSE(s_test_printf_called);
     val_fn_invoke(fn_t, {}, {});
-
     EXPECT_TRUE(s_test_printf_called);
 }
 
 TEST_F(interp, getSetExternalVar) {
-    test_ir_getSetExternalVar(m_builder, cs2s(TESTLIB_NAME));
-    //@Incomplete interp not tested
-    // translateFromIr(m_prog, m_ir_prog);
-    auto get_fn_t = m_prog.funct_info[0].funct_t;
-    auto set_fn_t = m_prog.funct_info[1].funct_t;
+    auto [get_funct, set_funct] = test_ir_getSetExternalVar(m_ir_builder, cs2s(TESTLIB_NAME));
+    LOG_INF("ir:\n%s", [&]() {
+        //@Robustness Refactor debug printing
+        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+    }());
+    auto get_fn_t = m_builder.translate(get_funct);
+    auto set_fn_t = m_builder.translate(set_funct);
+    ASSERT_NE(get_fn_t, nullptr);
+    ASSERT_NE(set_fn_t, nullptr);
 
     auto getExternalVar = [&]() {
         int64_t res;

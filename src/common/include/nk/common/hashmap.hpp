@@ -35,6 +35,11 @@ struct HashMap {
         K key;
         V value;
         hash_t hash;
+
+        //@Todo Implement better way to iterate over HashMap
+        bool isValid() const {
+            return !_isEmpty(this) && !_isDeleted(this);
+        }
     };
 
     Array<Entry> entries;
@@ -108,7 +113,7 @@ private:
     }
 
     static bool _isValid(Entry const *entry) {
-        return !_isEmpty(entry) && !_isDeleted(entry);
+        return entry->isValid();
     }
 
     static bool _found(Entry *entry, hash_t hash, K const &key) {
