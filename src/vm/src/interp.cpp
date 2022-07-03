@@ -23,6 +23,7 @@ struct ProgramFrame {
     uint8_t *base_rodata;
     uint8_t *base_instr;
     uint8_t *base_reg;
+    Instr const *pinstr;
 };
 
 struct ControlFrame {
@@ -83,7 +84,16 @@ value_t _getDynRef(Ref ref) {
     return {&_getRef<uint8_t>(ref), ref.type};
 }
 
-void _setupFrame(type_t frame_t, value_t ret, value_t args) {
+void _jumpTo(Instr const *pinstr) {
+    LOG_DBG("jumping to instr@%p", pinstr);
+    ctx.pinstr = pinstr;
+}
+
+void _jumpTo(Ref ref) {
+    _jumpTo(&_getRef<Instr>(ref));
+}
+
+void _jumpCall(type_t frame_t, value_t ret, value_t args, Instr const *pinstr) {
     *ctx.ctrl_stack.push() = {
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -97,7 +107,9 @@ void _setupFrame(type_t frame_t, value_t ret, value_t args) {
     ctx.base.arg = (uint8_t *)val_data(args);
     ctx.base.ret = (uint8_t *)val_data(ret);
 
-    LOG_DBG("stack_frame=%lu", ctx.stack_frame);
+    _jumpTo(pinstr);
+
+    LOG_DBG("stack_frame=%lu", ctx.stack_frame.size);
     LOG_DBG("frame=%p", ctx.base.frame);
     LOG_DBG("arg=%p", ctx.base.arg);
     LOG_DBG("ret=%p", ctx.base.ret);
@@ -108,14 +120,6 @@ void _setupFrame(type_t frame_t, value_t ret, value_t args) {
 
 INTERP(nop) {
     (void)instr;
-}
-
-void _jumpTo(Instr const *pinstr) {
-    ctx.pinstr = pinstr;
-}
-
-void _jumpTo(Ref ref) {
-    _jumpTo(&_getRef<Instr>(ref));
 }
 
 INTERP(ret) {
@@ -208,8 +212,7 @@ INTERP(call_jmp) {
 
     FunctInfo const &info = *(FunctInfo *)val_typeof(fn)->as.fn.closure;
 
-    _setupFrame(info.frame_t, ret, args);
-    _jumpTo(&info.prog->instrs[info.first_instr]);
+    _jumpCall(info.frame_t, ret, args, &info.prog->instrs[info.first_instr]);
 }
 
 INTERP(mov) {
@@ -463,26 +466,24 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
         .base_rodata = ctx.base.rodata,
         .base_instr = ctx.base.instr,
         .base_reg = ctx.base.reg,
+        .pinstr = ctx.pinstr,
     };
 
     ctx.base.global = prog.globals.data;
     ctx.base.rodata = prog.rodata.data;
     ctx.base.instr = (uint8_t *)prog.instrs.data;
     ctx.base.reg = (uint8_t *)&ctx.reg;
+    ctx.pinstr = nullptr;
 
     LOG_DBG("global=%p", ctx.base.global);
     LOG_DBG("rodata=%p", ctx.base.rodata);
     LOG_DBG("instr=%p", ctx.base.instr);
 
-    _setupFrame(fn.frame_t, ret, args);
+    _jumpCall(fn.frame_t, ret, args, &prog.instrs[fn.first_instr]);
 
     EASY_END_BLOCK
 
     EASY_NONSCOPED_BLOCK("exec", profiler::colors::Blue200)
-
-    LOG_DBG("jumping to %lx", fn.first_instr * sizeof(Instr));
-
-    _jumpTo(&prog.instrs[fn.first_instr]);
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
@@ -517,6 +518,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     ctx.base.rodata = pfr.base_rodata;
     ctx.base.instr = pfr.base_instr;
     ctx.base.reg = pfr.base_reg;
+    ctx.pinstr = pfr.pinstr;
 
     if (was_uninitialized) {
         LOG_TRC("deinitializing stack...");

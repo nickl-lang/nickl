@@ -366,14 +366,14 @@ ir::FunctId test_ir_intPart(ProgramBuilder &b) {
     return funct;
 }
 
-ir::FunctId test_ir_call10Times(ProgramBuilder &b, type_t fn) {
+ir::FunctId test_ir_call3Times(ProgramBuilder &b, type_t fn) {
     auto void_t = type_get_void();
     auto args_t = type_get_tuple({});
 
     auto i64_t = type_get_numeric(Int64);
 
     auto const funct = b.makeFunct();
-    b.startFunct(funct, cs2s("call10Times"), void_t, args_t);
+    b.startFunct(funct, cs2s("call3Times"), void_t, args_t);
 
     auto v_i = b.makeFrameRef(b.makeLocalVar(i64_t));
     auto v_cond = b.makeFrameRef(b.makeLocalVar(i64_t));
@@ -384,7 +384,7 @@ ir::FunctId test_ir_call10Times(ProgramBuilder &b, type_t fn) {
 
     b.startBlock(l_start, cs2s("start"));
 
-    b.gen(b.make_mov(v_i, b.makeConstRef(10ll, i64_t)));
+    b.gen(b.make_mov(v_i, b.makeConstRef(3ll, i64_t)));
 
     b.startBlock(l_loop, cs2s("loop"));
 
