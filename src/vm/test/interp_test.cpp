@@ -233,7 +233,7 @@ TEST_F(interp, threads) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    auto funct = test_ir_call10Times(m_ir_builder, callback);
+    auto funct = test_ir_call3Times(m_ir_builder, callback);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
         return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
@@ -258,7 +258,7 @@ TEST_F(interp, threads_diff_progs) {
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    auto funct = test_ir_call10Times(m_ir_builder, callback);
+    auto funct = test_ir_call3Times(m_ir_builder, callback);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
         return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
@@ -315,10 +315,10 @@ TEST_F(interp, one_thread_diff_progs) { //@Todo This case executes incorrectly
 
     auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
-    auto funct0 = test_ir_call10Times(ir_builder0, callback);
+    auto funct0 = test_ir_call3Times(ir_builder0, callback);
     auto fn0_t = builder0.translate(funct0);
 
-    auto funct1 = test_ir_call10Times(ir_builder1, fn0_t);
+    auto funct1 = test_ir_call3Times(ir_builder1, fn0_t);
     auto fn1_t = builder1.translate(funct1);
 
     auto str = ir_prog0.inspect(m_arena);

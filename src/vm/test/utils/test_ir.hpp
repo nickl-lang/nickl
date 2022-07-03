@@ -14,7 +14,7 @@ ir::FunctId test_ir_rsqrt(ir::ProgramBuilder &b);
 ir::FunctId test_ir_vec2LenSquared(ir::ProgramBuilder &b);
 ir::FunctId test_ir_modf(ir::ProgramBuilder &b);
 ir::FunctId test_ir_intPart(ir::ProgramBuilder &b);
-ir::FunctId test_ir_call10Times(ir::ProgramBuilder &b, type_t fn);
+ir::FunctId test_ir_call3Times(ir::ProgramBuilder &b, type_t fn);
 ir::FunctId test_ir_hasZeroByte32(ir::ProgramBuilder &b);
 void test_ir_readToggleGlobal(ir::ProgramBuilder &b);
 ir::FunctId test_ir_callNativeFunc(ir::ProgramBuilder &b, void *fn_ptr);
