@@ -101,36 +101,7 @@ void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
     }
 }
 
-} // namespace
-
-void Program::init() {
-    *this = {};
-}
-
-void Program::deinit() {
-    EASY_BLOCK("bc::Program::deinit", profiler::colors::Red200)
-
-    for (auto shobj : shobjs) {
-        closeSharedObject(shobj);
-    }
-
-    shobjs.deinit();
-    funct_info.deinit();
-    rodata.deinit();
-    globals.deinit();
-    instrs.deinit();
-}
-
-string Program::inspect(type_t fn, Allocator &allocator) const {
-    StringBuilder sb{};
-    _inspect(*this, fn, sb);
-    return sb.moveStr(allocator);
-}
-
-type_t ProgramBuilder::translate(ir::FunctId funct_id) {
-    EASY_FUNCTION(profiler::colors::Red200)
-    LOG_TRC(__func__);
-
+type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, Allocator &allocator) {
     //@Robustness Using HashMap as a set
     HashMap<size_t, uint8_t> funct_ids_to_translate_set{};
     defer {
@@ -140,11 +111,6 @@ type_t ProgramBuilder::translate(ir::FunctId funct_id) {
     while (prog.funct_info.size < ir_prog.functs.size) {
         *prog.funct_info.push() = {};
     }
-
-    StackAllocator arena{};
-    defer {
-        arena.deinit();
-    };
 
     enum ERelocType {
         Reloc_Funct,
@@ -162,7 +128,7 @@ type_t ProgramBuilder::translate(ir::FunctId funct_id) {
         size_t first_instr;
     };
 
-    auto block_info_ar = arena.alloc<BlockInfo>(ir_prog.blocks.size);
+    auto block_info_ar = allocator.alloc<BlockInfo>(ir_prog.blocks.size);
 
     Array<Reloc> relocs{};
     defer {
@@ -190,7 +156,7 @@ type_t ProgramBuilder::translate(ir::FunctId funct_id) {
         assert(so && "failed to open a shared object");
     }
 
-    auto exsyms = arena.alloc<void *>(ir_prog.exsyms.size);
+    auto exsyms = allocator.alloc<void *>(ir_prog.exsyms.size);
 
     for (size_t i = 0; auto const &exsym : ir_prog.exsyms) {
         void *sym = resolveSym(prog.shobjs[exsym.so_id], id2s(exsym.name));
@@ -444,7 +410,7 @@ type_t ProgramBuilder::translate(ir::FunctId funct_id) {
         if (!entry.isValid()) {
             continue;
         }
-        translate({entry.key});
+        _translate(ir_prog, prog, {entry.key}, allocator);
     }
 
     for (auto const &reloc : relocs) {
@@ -463,10 +429,50 @@ type_t ProgramBuilder::translate(ir::FunctId funct_id) {
     //@Todo Print bytecode only for the funtion being translated
     LOG_INF("bytecode:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << prog.inspect(funct_info.funct_t, arena)).moveStr(arena).data;
+        return (StringBuilder{} << prog.inspect(funct_info.funct_t, allocator))
+            .moveStr(allocator)
+            .data;
     }());
 
     return funct_info.funct_t;
+}
+
+} // namespace
+
+void Program::init() {
+    *this = {};
+}
+
+void Program::deinit() {
+    EASY_BLOCK("bc::Program::deinit", profiler::colors::Red200)
+
+    for (auto shobj : shobjs) {
+        closeSharedObject(shobj);
+    }
+
+    shobjs.deinit();
+    funct_info.deinit();
+    rodata.deinit();
+    globals.deinit();
+    instrs.deinit();
+}
+
+string Program::inspect(type_t fn, Allocator &allocator) const {
+    StringBuilder sb{};
+    _inspect(*this, fn, sb);
+    return sb.moveStr(allocator);
+}
+
+type_t ProgramBuilder::translate(ir::FunctId funct_id) {
+    EASY_FUNCTION(profiler::colors::Red200)
+    LOG_TRC(__func__);
+
+    StackAllocator arena{};
+    defer {
+        arena.deinit();
+    };
+
+    return _translate(ir_prog, prog, funct_id, arena);
 }
 
 } // namespace bc
