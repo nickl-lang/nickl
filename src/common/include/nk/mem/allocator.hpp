@@ -7,7 +7,6 @@
 
 namespace nk {
 
-//@Todo Make Allocator support frames
 struct Allocator {
     template <class T>
     Slice<T> alloc(size_t n = 1) {
@@ -15,6 +14,16 @@ struct Allocator {
     }
 
     virtual void *alloc_aligned(size_t size, size_t align) = 0;
+
+    struct Frame {
+        size_t size;
+    };
+
+    virtual Frame pushFrame() = 0;
+    virtual void popFrame(Frame frame) = 0;
+
+    virtual size_t size() const = 0;
+    virtual void clear() = 0;
 };
 
 } // namespace nk
