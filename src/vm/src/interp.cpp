@@ -456,7 +456,6 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
         LOG_TRC("initializing stack...");
-        //@Performance Choose ctx.stack reservation size, or remove initialiation at all
         ctx.stack.reserve(1024);
         ctx.is_initialized = true;
     }

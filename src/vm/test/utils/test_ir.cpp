@@ -591,16 +591,14 @@ void test_ir_main_argc(ProgramBuilder &b) {
 }
 
 void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
-    test_ir_pi(b);
+    auto f_pi = test_ir_pi(b);
+    auto f_printf = _makePrintf(b, libc_name);
 
     auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
     auto f64_t = type_get_numeric(Float64);
 
     auto i8_ptr_t = type_get_ptr(i8_t);
-
-    auto f_printf = _makePrintf(b, libc_name);
-    auto f_pi = ir::FunctId{b.prog.functs[1].id};
 
     _startMain(b);
 
@@ -623,7 +621,8 @@ void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
 }
 
 void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
-    test_ir_vec2LenSquared(b);
+    auto f_vec2LenSquared = test_ir_vec2LenSquared(b);
+    auto f_printf = _makePrintf(b, libc_name);
 
     auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
@@ -631,9 +630,6 @@ void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
 
     ARRAY_SLICE_INIT(type_t, vec_types, f64_t, f64_t);
     auto vec_t = type_get_tuple(vec_types);
-
-    auto f_printf = _makePrintf(b, libc_name);
-    auto f_vec2LenSquared = ir::FunctId{b.prog.functs[0].id};
 
     auto vec_ptr_t = type_get_ptr(vec_t);
     auto f64_ptr_t = type_get_ptr(f64_t);
