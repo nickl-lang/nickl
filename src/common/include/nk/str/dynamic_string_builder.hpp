@@ -8,6 +8,8 @@ namespace nk {
 
 struct DynamicStringBuilder : StringBuilder {
 public:
+    void deinit();
+
     void reserve(size_t n);
 
     size_t size() const override {

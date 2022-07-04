@@ -16,6 +16,7 @@ int StaticStringBuilder::printf(char const *fmt, ...) {
         m_size += printf_res;
     }
 
+    //@Todo Make buffer overflow ins StaticStringBuilder not an error
     assert(m_size <= m_dst.size && "buffer overflow");
 
     return printf_res;

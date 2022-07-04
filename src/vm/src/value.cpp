@@ -5,7 +5,6 @@
 #include "native_fn_adapter.hpp"
 #include "nk/ds/hashmap.hpp"
 #include "nk/mem/stack_allocator.hpp"
-#include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
 #include "nk/utils/utils.hpp"
@@ -89,7 +88,7 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     return _TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
 }
 
-void _typeName(type_t type, DynamicStringBuilder &sb) {
+void _typeName(type_t type, StringBuilder &sb) {
     switch (type->typeclass_id) {
     case Type_Array:
         sb << "array{";
@@ -162,7 +161,7 @@ void _typeName(type_t type, DynamicStringBuilder &sb) {
     }
 }
 
-void _valInspect(value_t val, DynamicStringBuilder &sb) {
+void _valInspect(value_t val, StringBuilder &sb) {
     switch (val_typeclassid(val)) {
     case Type_Array:
         sb << "[";
@@ -241,12 +240,7 @@ void _valInspect(value_t val, DynamicStringBuilder &sb) {
         sb << ")";
         break;
     case Type_Typeref: {
-        //@Performance StackAllocator in _valInspect
-        StackAllocator allocator{};
-        defer {
-            allocator.deinit();
-        };
-        sb << type_name(val_as(type_t, val), allocator);
+        type_name(val_as(type_t, val), sb);
         break;
     }
     case Type_Void:
@@ -256,13 +250,9 @@ void _valInspect(value_t val, DynamicStringBuilder &sb) {
         sb << "fn@" << (void *)val_typeof(val)->as.fn.body << "+" << val_typeof(val)->as.fn.closure;
         break;
     default: {
-        //@Performance StackAllocator in _valInspect
-        StackAllocator allocator{};
-        defer {
-            allocator.deinit();
-        };
-        sb << "value{data=" << val_data(val) << ", type=" << type_name(val_typeof(val), allocator)
-           << "}";
+        sb << "value{data=" << val_data(val) << ", type=";
+        type_name(val_typeof(val), sb);
+        sb << "}";
         break;
     }
     }
@@ -476,22 +466,18 @@ type_t type_get_void() {
     return res.type;
 }
 
-string type_name(type_t type, Allocator &allocator) {
+StringBuilder &type_name(type_t type, StringBuilder &sb) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    DynamicStringBuilder sb{};
-    sb.reserve(1000);
     _typeName(type, sb);
-    return sb.moveStr(allocator);
+    return sb;
 }
 
-string val_inspect(value_t val, Allocator &allocator) {
+StringBuilder &val_inspect(value_t val, StringBuilder &sb) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    DynamicStringBuilder sb{};
-    sb.reserve(1000);
     _valInspect(val, sb);
-    return sb.moveStr(allocator);
+    return sb;
 }
 
 size_t val_tuple_size(value_t self) {

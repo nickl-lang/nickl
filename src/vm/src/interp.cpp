@@ -496,12 +496,11 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
             auto ref = pinstr->arg[0];
             if (ref.ref_type != bc::Ref_None) {
                 //@Todo Undefined behavior: using message buffer in outer scope
-                //@Todo Not checking buffer bounds
-                ARRAY_SLICE(uint8_t, arena_buffer, 4096);
-                StaticAllocator arena{arena_buffer};
                 ARRAY_SLICE(char, buffer, 1024);
                 StaticStringBuilder sb{buffer};
-                sb << val_inspect(_getDynRef(ref), arena) << ":" << type_name(ref.type, arena);
+                val_inspect(_getDynRef(ref), sb);
+                sb << ":";
+                type_name(ref.type, sb);
                 str = sb.moveStr();
             }
             return str.data;

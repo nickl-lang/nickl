@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <iostream>
 
-#include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
 #include "nk/utils/utils.hpp"
@@ -24,7 +23,8 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::ir);
 
-void _inspect(Program const &prog, DynamicStringBuilder &sb) {
+void _inspect(Program const &prog, StringBuilder &sb) {
+    //@Performance Maybe replace StackAllocator with StaticAllocator
     StackAllocator arena{};
     defer {
         arena.deinit();
@@ -51,10 +51,13 @@ void _inspect(Program const &prog, DynamicStringBuilder &sb) {
             if (i) {
                 sb << ", ";
             }
-            sb << "$arg" << i << ":" << type_name(type_tuple_typeAt(funct.args_t, i), arena);
+            sb << "$arg" << i << ":";
+            type_name(type_tuple_typeAt(funct.args_t, i), sb);
         }
 
-        sb << ") -> " << type_name(funct.ret_t, arena) << " {\n\n";
+        sb << ") -> ";
+        type_name(funct.ret_t, sb);
+        sb << " {\n\n";
 
         for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
             sb << "%" << block.name << ":";
@@ -84,7 +87,7 @@ void _inspect(Program const &prog, DynamicStringBuilder &sb) {
                         sb << "$global" << ref.value.index;
                         break;
                     case Ref_Const:
-                        sb << val_inspect(value_t{ref.value.data, ref.type}, arena);
+                        val_inspect(value_t{ref.value.data, ref.type}, sb);
                         break;
                     case Ref_Reg:
                         sb << "$r" << (char)('a' + ref.value.index);
@@ -104,7 +107,8 @@ void _inspect(Program const &prog, DynamicStringBuilder &sb) {
                     if (ref.post_offset) {
                         sb << "+" << ref.post_offset;
                     }
-                    sb << ":" << type_name(ref.type, arena);
+                    sb << ":";
+                    type_name(ref.type, sb);
                 };
 
                 sb << "  ";
@@ -164,14 +168,17 @@ void _inspect(Program const &prog, DynamicStringBuilder &sb) {
             sb << "\n" << id2s(prog.shobjs[sym.so_id]) << " " << id2s(sym.name) << ":";
             switch (sym.sym_type) {
             case Sym_Var:
-                sb << type_name(sym.as.var.type, arena);
+                type_name(sym.as.var.type, sb);
                 break;
             case Sym_Funct:
-                sb << "fn{" << type_name(sym.as.funct.args_t, arena);
+                sb << "fn{";
+                type_name(sym.as.funct.args_t, sb);
                 if (sym.as.funct.is_variadic) {
                     sb << "...";
                 }
-                sb << ", " << type_name(sym.as.funct.ret_t, arena) << "}";
+                sb << ", ";
+                type_name(sym.as.funct.ret_t, sb);
+                sb << "}";
                 break;
             default:
                 assert(!"unreachable");
@@ -263,10 +270,9 @@ void Program::deinit() {
     functs.deinit();
 }
 
-string Program::inspect(Allocator &allocator) const {
-    DynamicStringBuilder sb{};
+StringBuilder &Program::inspect(StringBuilder &sb) const {
     _inspect(*this, sb);
-    return sb.moveStr(allocator);
+    return sb;
 }
 
 FunctId ProgramBuilder::makeFunct() {
