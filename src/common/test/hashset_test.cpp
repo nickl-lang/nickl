@@ -15,8 +15,6 @@ class hashset : public testing::Test {
     }
 };
 
-LOG_USE_SCOPE(nk::test);
-
 TEST_F(hashset, basic) {
     using set_t = HashSet<int>;
 
@@ -39,4 +37,24 @@ TEST_F(hashset, basic) {
     found = set.find(c_test_val);
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(*found, c_test_val);
+}
+
+TEST_F(hashset, overwrite) {
+    using set_t = HashSet<int>;
+
+    set_t set{};
+    defer {
+        set.deinit();
+    };
+
+    static constexpr int c_test_val = 42;
+
+    EXPECT_TRUE(set.insert(c_test_val));
+    EXPECT_EQ(set.size, 1);
+
+    EXPECT_FALSE(set.insert(c_test_val));
+    EXPECT_EQ(set.size, 1);
+
+    EXPECT_FALSE(set.insert(c_test_val));
+    EXPECT_EQ(set.size, 1);
 }
