@@ -1,31 +1,53 @@
-#ifndef HEADER_GUARD_NK_COMMON_STRING_BUILDER
-#define HEADER_GUARD_NK_COMMON_STRING_BUILDER
+#ifndef HEADER_GUARD_NK_COMMON_I_STRING_BUILDER
+#define HEADER_GUARD_NK_COMMON_I_STRING_BUILDER
 
-#include "nk/common/arena.hpp"
-#include "nk/common/private/string_builder_base.hpp"
+#include <cstdint>
+#include <type_traits>
+
+#include "nk/common/allocator.hpp"
+#include "nk/common/string.hpp"
 
 namespace nk {
 
-struct StringBuilder : StringBuilderBase<StringBuilder> {
-private:
-    using Base = StringBuilderBase<StringBuilder>;
+struct StringBuilder {
+    int print(string str);
+    int print(char const *str);
+    int print(char c);
 
-public:
-    void reserve(size_t n);
+    int print(int8_t val);
+    int print(int16_t val);
+    int print(int32_t val);
+    int print(int64_t val);
+    int print(uint8_t val);
+    int print(uint16_t val);
+    int print(uint32_t val);
+    int print(uint64_t val);
 
-    size_t size() const {
-        return m_arena.size;
+    int print(float val);
+    int print(double val);
+
+    int print(void *ptr);
+
+    template <class T>
+    int print(T) {
+        static_assert(!std::is_same_v<T, T>, "print not implemented");
+        return 0;
     }
 
-    int printf(char const *fmt, ...);
+    template <class T>
+    StringBuilder &operator<<(T val) {
+        print(val);
+        return *this;
+    }
+
+    virtual size_t size() const = 0;
+    virtual int printf(char const *fmt, ...) = 0;
 
     string moveStr(Allocator &allocator);
-    string moveStr(Slice<char> dst);
 
-private:
-    Arena<char> m_arena;
+    virtual string moveStr(Slice<char> dst) = 0;
 };
 
 } // namespace nk
 
-#endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER
+#endif // HEADER_GUARD_NK_COMMON_I_STRING_BUILDER

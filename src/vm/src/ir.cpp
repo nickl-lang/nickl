@@ -5,9 +5,9 @@
 #include <iomanip>
 #include <iostream>
 
+#include "nk/common/dynamic_string_builder.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
-#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/value.hpp"
 
@@ -24,7 +24,7 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::ir);
 
-void _inspect(Program const &prog, StringBuilder &sb) {
+void _inspect(Program const &prog, DynamicStringBuilder &sb) {
     StackAllocator arena{};
     defer {
         arena.deinit();
@@ -264,7 +264,7 @@ void Program::deinit() {
 }
 
 string Program::inspect(Allocator &allocator) const {
-    StringBuilder sb{};
+    DynamicStringBuilder sb{};
     _inspect(*this, sb);
     return sb.moveStr(allocator);
 }

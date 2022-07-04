@@ -28,4 +28,12 @@ string StaticStringBuilder::moveStr() {
     return str;
 }
 
+string StaticStringBuilder::moveStr(Slice<char> dst) {
+    string const str{m_dst.data, m_size};
+    *this << '\0';
+    str.copy(dst);
+    m_size = 0;
+    return str;
+}
+
 } // namespace nk
