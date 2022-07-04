@@ -3,7 +3,7 @@
 #include <cassert>
 
 #include "find_library.hpp"
-#include "nk/ds/hashmap.hpp"
+#include "nk/ds/hashset.hpp"
 #include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
@@ -97,10 +97,9 @@ void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
 }
 
 type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, Allocator &allocator) {
-    //@Robustness Using HashMap as a set
-    HashMap<size_t, uint8_t> funct_ids_to_translate_set{};
+    HashSet<size_t> funct_ids_to_translate{};
     defer {
-        funct_ids_to_translate_set.deinit();
+        funct_ids_to_translate.deinit();
     };
 
     while (prog.funct_info.size < ir_prog.functs.size) {
@@ -324,7 +323,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                 if (ir_instr.arg[1].arg_type == ir::Arg_FunctId) {
                     code = op_call_jmp;
                     if (!prog.funct_info[ir_instr.arg[1].as.id].prog) {
-                        funct_ids_to_translate_set.insert(ir_instr.arg[1].as.id, 0);
+                        funct_ids_to_translate.insert(ir_instr.arg[1].as.id);
                     }
                 } else {
                     code = op_call;
@@ -400,12 +399,13 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         }
     }
 
-    for (size_t i = 0; i < funct_ids_to_translate_set.capacity; i++) {
-        auto const &entry = funct_ids_to_translate_set.entries[i];
+    //@Todo Iterating through a set in a very weird and convoluted way
+    for (size_t i = 0; i < funct_ids_to_translate.capacity; i++) {
+        auto const &entry = funct_ids_to_translate.entries[i];
         if (!entry.isValid()) {
             continue;
         }
-        _translate(ir_prog, prog, {entry.key}, allocator);
+        _translate(ir_prog, prog, {entry.val}, allocator);
     }
 
     for (auto const &reloc : relocs) {

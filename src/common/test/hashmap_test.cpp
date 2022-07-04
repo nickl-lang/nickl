@@ -43,7 +43,7 @@ struct DoubleMap {
 };
 
 #define DOUBLE_MAP_VERIFY(MAP)                                            \
-    EXPECT_EQ((MAP).hm.size, (MAP).std_map.size());                       \
+    EXPECT_EQ((MAP).hm.size(), (MAP).std_map.size());                     \
     for (auto const &it : (MAP).std_map) {                                \
         auto found = (MAP).hm.find(it.first);                             \
         ASSERT_TRUE(found) << "Key not found: " << it.first;              \
@@ -66,7 +66,7 @@ TEST_F(hashmap, basic) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size, 0);
+    EXPECT_EQ(hm.size(), 0);
 }
 
 TEST_F(hashmap, insert) {
@@ -79,13 +79,13 @@ TEST_F(hashmap, insert) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size, 0);
+    EXPECT_EQ(hm.size(), 0);
 
     EXPECT_TRUE(hm.insert(cs2s("one"), 1));
     EXPECT_TRUE(hm.insert(cs2s("two"), 2));
     EXPECT_TRUE(hm.insert(cs2s("three"), 3));
 
-    EXPECT_EQ(hm.size, 3);
+    EXPECT_EQ(hm.size(), 3);
 }
 
 TEST_F(hashmap, find) {
@@ -98,13 +98,13 @@ TEST_F(hashmap, find) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size, 0);
+    EXPECT_EQ(hm.size(), 0);
 
     EXPECT_TRUE(hm.insert(cs2s("one"), 1));
     EXPECT_TRUE(hm.insert(cs2s("two"), 2));
     EXPECT_TRUE(hm.insert(cs2s("three"), 3));
 
-    EXPECT_EQ(hm.size, 3);
+    EXPECT_EQ(hm.size(), 3);
 
     EXPECT_EQ(hm.find(cs2s("four")), nullptr);
 
@@ -144,12 +144,12 @@ TEST_F(hashmap, overwrite) {
     EXPECT_TRUE(hm.insert(cs2s("value"), 0));
     EXPECT_EQ(*hm.find(cs2s("value")), 0);
 
-    EXPECT_EQ(hm.size, 1);
+    EXPECT_EQ(hm.size(), 1);
 
     EXPECT_FALSE(hm.insert(cs2s("value"), 42));
     EXPECT_EQ(*hm.find(cs2s("value")), 42);
 
-    EXPECT_EQ(hm.size, 1);
+    EXPECT_EQ(hm.size(), 1);
 }
 
 TEST_F(hashmap, ptr_key) {
@@ -286,7 +286,7 @@ TEST_F(hashmap, stress) {
             hm.remove(key);
         }
 
-        ASSERT_EQ(hm.size, std_map.size());
+        ASSERT_EQ(hm.size(), std_map.size());
 
         for (auto const &it : std_map) {
             auto found = hm.find(it.first);
@@ -306,12 +306,12 @@ TEST_F(hashmap, zero_init) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size, 0);
+    EXPECT_EQ(hm.size(), 0);
     EXPECT_EQ(hm.find(cs2s("val")), nullptr);
 
     EXPECT_TRUE(hm.insert(cs2s("val"), 42));
 
-    EXPECT_EQ(hm.size, 1);
+    EXPECT_EQ(hm.size(), 1);
     auto found = hm.find(cs2s("val"));
     ASSERT_TRUE(found);
     EXPECT_EQ(*found, 42);
@@ -331,7 +331,7 @@ TEST_F(hashmap, index_operator) {
 
     hm[1] = cs2s("one");
 
-    EXPECT_EQ(hm.size, 1);
+    EXPECT_EQ(hm.size(), 1);
 
     found = hm.find(1);
     ASSERT_TRUE(found);
@@ -339,7 +339,7 @@ TEST_F(hashmap, index_operator) {
 
     hm[42];
 
-    EXPECT_EQ(hm.size, 2);
+    EXPECT_EQ(hm.size(), 2);
 
     found = hm.find(42);
     ASSERT_TRUE(found);
@@ -347,7 +347,7 @@ TEST_F(hashmap, index_operator) {
 
     hm[42] = cs2s("forty-two");
 
-    EXPECT_EQ(hm.size, 2);
+    EXPECT_EQ(hm.size(), 2);
 
     found = hm.find(42);
     ASSERT_TRUE(found);
