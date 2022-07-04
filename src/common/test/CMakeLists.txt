@@ -1,6 +1,7 @@
 def_test(GROUP common_ds NAME arena LINK ${LIB})
 def_test(GROUP common_ds NAME array LINK ${LIB})
 def_test(GROUP common_ds NAME hashmap LINK ${LIB})
+def_test(GROUP common_ds NAME hashset LINK ${LIB})
 def_test(GROUP common_ds NAME log2arena LINK ${LIB})
 def_test(GROUP common_ds NAME slice LINK ${LIB})
 def_test(GROUP common_mem NAME mem LINK ${LIB})

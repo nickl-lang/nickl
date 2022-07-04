@@ -20,7 +20,7 @@ class hashmap : public testing::Test {
     }
 };
 
-LOG_USE_SCOPE(test);
+LOG_USE_SCOPE(nk::test);
 
 template <class K, class V>
 struct DoubleMap {
