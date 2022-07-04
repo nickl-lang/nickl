@@ -14,9 +14,13 @@ struct StaticAllocator : Allocator {
         , m_size{} {
     }
 
-    void clear();
-
     void *alloc_aligned(size_t size, size_t align) override;
+
+    Frame pushFrame() override;
+    void popFrame(Frame frame) override;
+
+    size_t size() const override;
+    void clear() override;
 
 private:
     Slice<uint8_t> m_dst;
