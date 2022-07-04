@@ -12,12 +12,11 @@ int StaticStringBuilder::printf(char const *fmt, ...) {
     int const printf_res = std::vsnprintf(dst.data, dst.size, fmt, ap);
     va_end(ap);
 
-    if (printf_res >= 0) {
-        m_size += printf_res;
+    if (printf_res > 0) {
+        size_t const old_size = m_size;
+        m_size = minu(m_size + printf_res, m_dst.size - 1);
+        return m_size - old_size;
     }
-
-    //@Todo Make buffer overflow ins StaticStringBuilder not an error
-    assert(m_size <= m_dst.size && "buffer overflow");
 
     return printf_res;
 }
@@ -30,11 +29,7 @@ string StaticStringBuilder::moveStr() {
 }
 
 string StaticStringBuilder::moveStr(Slice<char> dst) {
-    string const str{m_dst.data, m_size};
-    *this << '\0';
-    str.copy(dst);
-    m_size = 0;
-    return str;
+    return moveStr().copy(dst);
 }
 
 } // namespace nk
