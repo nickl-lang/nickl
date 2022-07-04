@@ -5,6 +5,7 @@
 
 #include "nk/mem/allocator.hpp"
 #include "nk/str/string.hpp"
+#include "nk/str/string_builder.hpp"
 #include "nk/vm/common_types.hpp"
 
 namespace nk {
@@ -114,9 +115,8 @@ type_t type_get_tuple(TypeArray types);
 type_t type_get_typeref();
 type_t type_get_void();
 
-string type_name(type_t type, Allocator &allocator);
-
-string val_inspect(value_t val, Allocator &allocator);
+StringBuilder &type_name(type_t type, StringBuilder &sb);
+StringBuilder &val_inspect(value_t val, StringBuilder &sb);
 
 size_t val_tuple_size(value_t self);
 value_t val_tuple_at(value_t self, size_t i);

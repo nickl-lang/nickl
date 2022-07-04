@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/mem/stack_allocator.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/utils.hpp"
 #include "utils/test_ir.hpp"
@@ -20,6 +21,8 @@ class bytecode : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
+        m_sb.reserve(1000);
+
         m_ir_prog.init();
         m_prog.init();
     }
@@ -32,6 +35,7 @@ class bytecode : public testing::Test {
 
 protected:
     StackAllocator m_arena{};
+    DynamicStringBuilder m_sb{};
     ir::Program m_ir_prog{};
     ir::ProgramBuilder m_ir_builder{m_ir_prog};
     bc::Program m_prog{};
@@ -46,7 +50,7 @@ TEST_F(bytecode, plus) {
     auto const funct = test_ir_plus(m_ir_builder);
     auto fn_t = m_builder.translate(funct);
 
-    auto str = m_prog.inspect(fn_t, m_arena);
+    auto str = m_prog.inspect(fn_t, m_sb).moveStr(m_arena);
     LOG_INF("bc:\n%.*s", str.size, str.data);
 }
 
@@ -54,7 +58,7 @@ TEST_F(bytecode, not ) {
     auto const funct = test_ir_not(m_ir_builder);
     auto fn_t = m_builder.translate(funct);
 
-    auto str = m_prog.inspect(fn_t, m_arena);
+    auto str = m_prog.inspect(fn_t, m_sb).moveStr(m_arena);
     LOG_INF("bc:\n%.*s", str.size, str.data);
 }
 
@@ -62,6 +66,6 @@ TEST_F(bytecode, atan) {
     auto const funct = test_ir_atan(m_ir_builder);
     auto fn_t = m_builder.translate(funct);
 
-    auto str = m_prog.inspect(fn_t, m_arena);
+    auto str = m_prog.inspect(fn_t, m_sb).moveStr(m_arena);
     LOG_INF("bc:\n%.*s", str.size, str.data);
 }

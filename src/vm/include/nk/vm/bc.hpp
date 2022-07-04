@@ -71,7 +71,7 @@ struct Program {
     void init();
     void deinit();
 
-    string inspect(type_t fn, Allocator &allocator) const;
+    StringBuilder &inspect(type_t fn, StringBuilder &sb) const;
 };
 
 struct ProgramBuilder {

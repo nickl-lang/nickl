@@ -7,6 +7,7 @@
 
 #include "nk/ds/array.hpp"
 #include "nk/mem/stack_allocator.hpp"
+#include "nk/str/string_builder.hpp"
 #include "nk/utils/id.hpp"
 #include "nk/vm/value.hpp"
 
@@ -151,7 +152,7 @@ struct Program {
     void init();
     void deinit();
 
-    string inspect(Allocator &allocator) const;
+    StringBuilder &inspect(StringBuilder &sb) const;
 };
 
 struct FunctId {

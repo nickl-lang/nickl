@@ -9,6 +9,10 @@ namespace nk {
 
 static constexpr size_t PRINTF_BUFFER_SIZE = 4096;
 
+void DynamicStringBuilder::deinit() {
+    m_arena.deinit();
+}
+
 void DynamicStringBuilder::reserve(size_t n) {
     m_arena.reserve(n);
 }

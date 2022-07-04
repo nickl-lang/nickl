@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/mem/stack_allocator.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/utils.hpp"
 
@@ -16,16 +17,20 @@ class value : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         types_init();
+
+        m_sb.reserve(1000);
     }
 
     void TearDown() override {
         types_deinit();
 
+        m_sb.deinit();
         m_arena.deinit();
     }
 
 protected:
     StackAllocator m_arena{};
+    DynamicStringBuilder m_sb{};
 };
 
 } // namespace
@@ -39,7 +44,7 @@ TEST_F(value, array) {
     EXPECT_EQ(type->typeclass_id, Type_Array);
     EXPECT_EQ(type->size, c_array_size * i32_t->size);
     EXPECT_EQ(type->alignment, i32_t->alignment);
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "array{i32, 42}");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "array{i32, 42}");
 
     EXPECT_EQ(type, type_get_array(i32_t, c_array_size));
 
@@ -54,7 +59,7 @@ TEST_F(value, ptr) {
     EXPECT_EQ(type->typeclass_id, Type_Ptr);
     EXPECT_EQ(type->size, sizeof(void *));
     EXPECT_EQ(type->alignment, alignof(void *));
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "ptr{void}");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "ptr{void}");
 
     EXPECT_EQ(type, type_get_ptr(void_t));
 
@@ -80,7 +85,7 @@ TEST_F(value, fn) {
     EXPECT_EQ(type->typeclass_id, Type_Fn);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "fn{(i64, i64), i64}");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "fn{(i64, i64), i64}");
 
     EXPECT_EQ(type, type_get_fn(i64_t, params_t, 0, _plus, nullptr));
 
@@ -128,7 +133,7 @@ TEST_F(value, numeric) {
     EXPECT_EQ(type->typeclass_id, Type_Numeric);
     EXPECT_EQ(type->size, 4);
     EXPECT_EQ(type->alignment, 4);
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "i32");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "i32");
 
     EXPECT_EQ(type, type_get_numeric(Int32));
     EXPECT_NE(type, type_get_numeric(Int64));
@@ -140,7 +145,7 @@ TEST_F(value, numeric) {
         EXPECT_EQ(type->size, size);
         EXPECT_EQ(type->alignment, size);
 
-        EXPECT_EQ(std_str(type_name(type, m_arena)), name);
+        EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), name);
     };
 
     test_num(Int8, 1, "i8");
@@ -163,7 +168,7 @@ TEST_F(value, tuple) {
     EXPECT_EQ(type->typeclass_id, Type_Tuple);
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "tuple{void, type, i16}");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "tuple{void, type, i16}");
 
     EXPECT_EQ(type, type_get_tuple(types));
 
@@ -183,7 +188,7 @@ TEST_F(value, typeref) {
     EXPECT_EQ(type->typeclass_id, Type_Typeref);
     EXPECT_EQ(type->size, sizeof(size_t));
     EXPECT_EQ(type->alignment, alignof(type_t));
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "type");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "type");
 
     EXPECT_EQ(type, type_get_typeref());
 }
@@ -194,7 +199,7 @@ TEST_F(value, void) {
     EXPECT_EQ(type->typeclass_id, Type_Void);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(std_str(type_name(type, m_arena)), "void");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "void");
 
     EXPECT_EQ(type, type_get_void());
 }

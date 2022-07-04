@@ -24,14 +24,8 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::bc);
 
-void _inspect(Program const &prog, type_t fn, DynamicStringBuilder &sb) {
+void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
     FunctInfo const &info = *(FunctInfo *)fn->as.fn.closure;
-
-    //@Performance StackAllocator in _inspect
-    StackAllocator arena{};
-    defer {
-        arena.deinit();
-    };
 
     auto _inspectArg = [&](Ref const &arg) {
         if (arg.is_indirect) {
@@ -51,7 +45,7 @@ void _inspect(Program const &prog, type_t fn, DynamicStringBuilder &sb) {
             sb << "global+";
             break;
         case Ref_Const:
-            sb << val_inspect(value_t{prog.rodata.data + arg.offset, arg.type}, arena);
+            val_inspect(value_t{prog.rodata.data + arg.offset, arg.type}, sb);
             break;
         case Ref_Reg:
             sb << "reg+";
@@ -76,7 +70,8 @@ void _inspect(Program const &prog, type_t fn, DynamicStringBuilder &sb) {
             sb.printf("+%zx", arg.post_offset);
         }
         if (arg.type) {
-            sb << ":" << type_name(arg.type, arena);
+            sb << ":";
+            type_name(arg.type, sb);
         }
     };
 
@@ -426,12 +421,9 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         }
     }
 
-    //@Todo Print bytecode only for the funtion being translated
     LOG_INF("bytecode:\n%s", [&]() {
-        //@Robustness Refactor debug printing
-        return (DynamicStringBuilder{} << prog.inspect(funct_info.funct_t, allocator))
-            .moveStr(allocator)
-            .data;
+        DynamicStringBuilder sb{};
+        return prog.inspect(funct_info.funct_t, sb).moveStr(allocator).data;
     }());
 
     return funct_info.funct_t;
@@ -457,10 +449,9 @@ void Program::deinit() {
     instrs.deinit();
 }
 
-string Program::inspect(type_t fn, Allocator &allocator) const {
-    DynamicStringBuilder sb{};
+StringBuilder &Program::inspect(type_t fn, StringBuilder &sb) const {
     _inspect(*this, fn, sb);
-    return sb.moveStr(allocator);
+    return sb;
 }
 
 type_t ProgramBuilder::translate(ir::FunctId funct_id) {
