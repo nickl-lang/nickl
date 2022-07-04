@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "find_library.hpp"
+#include "nk/common/dynamic_string_builder.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/stack_allocator.hpp"
@@ -65,7 +66,7 @@ TEST_F(interp, plus) {
     auto funct = test_ir_plus(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -81,7 +82,7 @@ TEST_F(interp, not ) {
     auto funct = test_ir_not(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -101,7 +102,7 @@ TEST_F(interp, atan) {
     auto funct = test_ir_atan(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -129,7 +130,7 @@ TEST_F(interp, pi) {
     auto funct = test_ir_pi(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -144,7 +145,7 @@ TEST_F(interp, rsqrt) {
     auto funct = test_ir_rsqrt(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -159,7 +160,7 @@ TEST_F(interp, vec2LenSquared) {
     auto funct = test_ir_vec2LenSquared(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -186,7 +187,7 @@ TEST_F(interp, modf) {
     auto funct = test_ir_modf(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -210,7 +211,7 @@ TEST_F(interp, intPart) {
     auto funct = test_ir_intPart(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -236,7 +237,7 @@ TEST_F(interp, threads) {
     auto funct = test_ir_call3Times(m_ir_builder, callback);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -261,7 +262,7 @@ TEST_F(interp, threads_diff_progs) {
     auto funct = test_ir_call3Times(m_ir_builder, callback);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
 
     bc::ProgramBuilder &builder0 = m_builder;
@@ -292,7 +293,7 @@ TEST_F(interp, threads_diff_progs) {
     t1.join();
 }
 
-TEST_F(interp, one_thread_diff_progs) { //@Todo This case executes incorrectly
+TEST_F(interp, one_thread_diff_progs) {
     ir::Program &ir_prog0 = m_ir_prog;
     ir::ProgramBuilder &ir_builder0 = m_ir_builder;
     ir::Program ir_prog1{};
@@ -340,7 +341,7 @@ TEST_F(interp, hasZeroByte32) {
     auto funct = test_ir_hasZeroByte32(m_ir_builder);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -371,7 +372,7 @@ TEST_F(interp, callNativeSayHello) {
     auto funct = test_ir_callNativeFunc(m_ir_builder, (void *)_nativeSayHello);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -388,7 +389,7 @@ TEST_F(interp, callNativeAdd) {
     auto funct = test_ir_callNativeAdd(m_ir_builder, (void *)_nativeAdd);
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -403,7 +404,7 @@ TEST_F(interp, callExternalPrintf) {
     auto funct = test_ir_callExternalPrintf(m_ir_builder, cs2s(TESTLIB_NAME));
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto fn_t = m_builder.translate(funct);
     ASSERT_NE(fn_t, nullptr);
@@ -417,7 +418,7 @@ TEST_F(interp, getSetExternalVar) {
     auto [get_funct, set_funct] = test_ir_getSetExternalVar(m_ir_builder, cs2s(TESTLIB_NAME));
     LOG_INF("ir:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
+        return (DynamicStringBuilder{} << m_ir_prog.inspect(m_arena)).moveStr(m_arena).data;
     }());
     auto get_fn_t = m_builder.translate(get_funct);
     auto set_fn_t = m_builder.translate(set_funct);

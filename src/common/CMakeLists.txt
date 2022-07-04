@@ -1,6 +1,7 @@
 set(LIB nk_common)
 
 add_library(${LIB}
+    src/dynamic_string_builder.cpp
     src/file_utils.cpp
     src/id.cpp
     src/logger.c
@@ -10,7 +11,6 @@ add_library(${LIB}
     src/static_string_builder.cpp
     src/string.cpp
     src/string_builder.cpp
-    src/string_builder_base.cpp
     src/utils.cpp
     )
 

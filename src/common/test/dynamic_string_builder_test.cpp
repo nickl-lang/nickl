@@ -1,4 +1,4 @@
-#include "nk/common/string_builder.hpp"
+#include "nk/common/dynamic_string_builder.hpp"
 
 #include <gtest/gtest.h>
 
@@ -17,7 +17,7 @@ class string_builder : public testing::Test {
     }
 
 protected:
-    StringBuilder m_builder{};
+    DynamicStringBuilder m_builder{};
     ARRAY_SLICE(char, m_dst, 10000);
 };
 

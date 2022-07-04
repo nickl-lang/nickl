@@ -3,10 +3,10 @@
 #include <cassert>
 
 #include "find_library.hpp"
+#include "nk/common/dynamic_string_builder.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
-#include "nk/common/string_builder.hpp"
 #include "nk/vm/interp.hpp"
 #include "so_adapter.hpp"
 
@@ -24,7 +24,7 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::bc);
 
-void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
+void _inspect(Program const &prog, type_t fn, DynamicStringBuilder &sb) {
     FunctInfo const &info = *(FunctInfo *)fn->as.fn.closure;
 
     //@Performance StackAllocator in _inspect
@@ -429,7 +429,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
     //@Todo Print bytecode only for the funtion being translated
     LOG_INF("bytecode:\n%s", [&]() {
         //@Robustness Refactor debug printing
-        return (StringBuilder{} << prog.inspect(funct_info.funct_t, allocator))
+        return (DynamicStringBuilder{} << prog.inspect(funct_info.funct_t, allocator))
             .moveStr(allocator)
             .data;
     }());
@@ -458,7 +458,7 @@ void Program::deinit() {
 }
 
 string Program::inspect(type_t fn, Allocator &allocator) const {
-    StringBuilder sb{};
+    DynamicStringBuilder sb{};
     _inspect(*this, fn, sb);
     return sb.moveStr(allocator);
 }

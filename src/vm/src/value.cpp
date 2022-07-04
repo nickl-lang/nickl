@@ -3,11 +3,11 @@
 #include <cstring>
 
 #include "native_fn_adapter.hpp"
+#include "nk/common/dynamic_string_builder.hpp"
 #include "nk/common/hashmap.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/stack_allocator.hpp"
-#include "nk/common/string_builder.hpp"
 #include "nk/common/utils.hpp"
 
 namespace nk {
@@ -89,7 +89,7 @@ _TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
     return _TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
 }
 
-void _typeName(type_t type, StringBuilder &sb) {
+void _typeName(type_t type, DynamicStringBuilder &sb) {
     switch (type->typeclass_id) {
     case Type_Array:
         sb << "array{";
@@ -162,7 +162,7 @@ void _typeName(type_t type, StringBuilder &sb) {
     }
 }
 
-void _valInspect(value_t val, StringBuilder &sb) {
+void _valInspect(value_t val, DynamicStringBuilder &sb) {
     switch (val_typeclassid(val)) {
     case Type_Array:
         sb << "[";
@@ -479,7 +479,7 @@ type_t type_get_void() {
 string type_name(type_t type, Allocator &allocator) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    StringBuilder sb{};
+    DynamicStringBuilder sb{};
     sb.reserve(1000);
     _typeName(type, sb);
     return sb.moveStr(allocator);
@@ -488,7 +488,7 @@ string type_name(type_t type, Allocator &allocator) {
 string val_inspect(value_t val, Allocator &allocator) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    StringBuilder sb{};
+    DynamicStringBuilder sb{};
     sb.reserve(1000);
     _valInspect(val, sb);
     return sb.moveStr(allocator);
