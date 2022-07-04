@@ -23,16 +23,16 @@ TEST_F(hashset, basic) {
         set.deinit();
     };
 
-    EXPECT_EQ(set.size, 0);
+    EXPECT_EQ(set.size(), 0);
 
     static constexpr int c_test_val = 42;
 
     auto found = set.find(c_test_val);
     EXPECT_EQ(found, nullptr);
 
-    EXPECT_TRUE(set.insert(c_test_val));
+    set.insert(c_test_val);
 
-    EXPECT_EQ(set.size, 1);
+    EXPECT_EQ(set.size(), 1);
 
     found = set.find(c_test_val);
     ASSERT_NE(found, nullptr);
@@ -49,12 +49,12 @@ TEST_F(hashset, overwrite) {
 
     static constexpr int c_test_val = 42;
 
-    EXPECT_TRUE(set.insert(c_test_val));
-    EXPECT_EQ(set.size, 1);
+    set.insert(c_test_val);
+    EXPECT_EQ(set.size(), 1);
 
-    EXPECT_FALSE(set.insert(c_test_val));
-    EXPECT_EQ(set.size, 1);
+    set.insert(c_test_val);
+    EXPECT_EQ(set.size(), 1);
 
-    EXPECT_FALSE(set.insert(c_test_val));
-    EXPECT_EQ(set.size, 1);
+    set.insert(c_test_val);
+    EXPECT_EQ(set.size(), 1);
 }

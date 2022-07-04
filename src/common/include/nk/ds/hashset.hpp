@@ -41,29 +41,35 @@ struct HashSet {
         }
     };
 
-    Array<Entry> entries;
-    size_t size;
-    //@Todo We probably can get rid of capacity, because we have entries array
-    size_t capacity;
-    size_t max_probe_dist;
+    Array<Entry> _entries;
+    size_t _size;
+    size_t _max_probe_dist;
+
+    size_t size() const {
+        return _size;
+    }
+
+    size_t capacity() const {
+        return _entries.capacity;
+    }
 
     void reserve(size_t cap) {
         _alloc(cap);
     }
 
     void deinit() {
-        entries.deinit();
+        _entries.deinit();
         *this = {};
     }
 
-    bool insert(T const &val) {
+    T &insert(T const &val) {
         EASY_BLOCK("HashSet::insert", profiler::colors::Grey200)
         hash_t const hash = _valHash(val);
         Entry *found = _find(hash, val);
         if (!found) {
-            _insert(hash, val);
+            found = _insert(hash, val);
         }
-        return !found;
+        return (found->val = val);
     }
 
     T *find(T const &val) const {
@@ -77,7 +83,7 @@ struct HashSet {
         Entry *found = _find(_valHash(val), val);
         if (found) {
             found->hash |= DELETED_FLAG;
-            size--;
+            _size--;
         }
     }
 
@@ -110,27 +116,26 @@ private:
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
     size_t _elemIndex(hash_t hash, size_t i) const {
-        return (hash + ((i + i * i) >> 1)) & (capacity - 1);
+        return (hash + ((i + i * i) >> 1)) & (capacity() - 1);
     }
 
     Entry *_entry(hash_t hash, size_t i) const {
-        return &entries[_elemIndex(hash, i)];
+        return &_entries[_elemIndex(hash, i)];
     }
 
     void _alloc(size_t cap) {
         static_assert(std::is_trivial_v<Entry>, "Entry should be trivial");
 
-        capacity = ceilToPowerOf2(maxu(cap, 1));
-        entries.reserve(capacity);
-        std::memset(&entries[0], 0, capacity * sizeof(Entry));
+        _entries.reserve(maxu(cap, 1));
+        std::memset(&_entries[0], 0, capacity() * sizeof(Entry));
     }
 
     void _rehash() {
         HashSet new_hs{};
-        new_hs._alloc(capacity << 1);
+        new_hs._alloc(capacity() << 1);
 
-        for (size_t i = 0; i < capacity; i++) {
-            Entry *entry = &entries[i];
+        for (size_t i = 0; i < capacity(); i++) {
+            Entry *entry = &_entries[i];
             if (_isValid(entry)) {
                 new_hs._insert(entry->hash, entry->val);
             }
@@ -141,7 +146,7 @@ private:
     }
 
     Entry *_insert(hash_t hash, T const &val) {
-        if (size * 100 / LOAD_FACTOR_PERCENT >= capacity) {
+        if (_size * 100 / LOAD_FACTOR_PERCENT >= capacity()) {
             _rehash();
         }
 
@@ -151,9 +156,9 @@ private:
             entry = _entry(hash, i++);
         }
 
-        max_probe_dist = maxu(max_probe_dist, i);
+        _max_probe_dist = maxu(_max_probe_dist, i);
 
-        size++;
+        _size++;
         entry->val = val;
         entry->hash = hash;
 
@@ -161,9 +166,9 @@ private:
     }
 
     Entry *_find(hash_t hash, T const &val) const {
-        for (size_t i = 0; i < capacity; i++) {
+        for (size_t i = 0; i < capacity(); i++) {
             Entry *entry = _entry(hash, i);
-            if (_isEmpty(entry) || i > max_probe_dist) {
+            if (_isEmpty(entry) || i > _max_probe_dist) {
                 return nullptr;
             } else if (_found(entry, hash, val)) {
                 return entry;

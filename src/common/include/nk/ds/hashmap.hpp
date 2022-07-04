@@ -26,44 +26,38 @@ struct HashMap {
     }
 
     size_t size() const {
-        return m_entries.size;
+        return m_entries.size();
     }
 
     size_t capacity() const {
-        return m_entries.capacity;
+        return m_entries.capacity();
     }
 
-    bool insert(K const &key, V const &value) {
+    V &insert(K const &key, V const &value) {
         EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
-        //@Robustness Creating a default value for find in HashMap
-        _Entry *found = m_entries.find(_Entry{key, {}});
-        if (found) {
-            found->value = value;
-        } else {
-            m_entries.insert(_Entry{key, value});
-        }
-        return !found;
+        return m_entries.insert(_Entry{key, value}).value;
     }
 
     V &operator[](K const &key) {
         EASY_BLOCK("HashMap::operator[]", profiler::colors::Grey200)
+        //@Robustness Creating a default value for find in HashMap
         _Entry *found = m_entries.find(_Entry{key, {}});
         if (!found) {
-            m_entries.insert(_Entry{key, {}});
-            //@Robustness Finding again in HashMap::operator[]
-            found = m_entries.find(_Entry{key, {}});
+            found = &m_entries.insert(_Entry{key, {}});
         }
         return found->value;
     }
 
     V *find(K const &key) const {
         EASY_BLOCK("HashMap::find", profiler::colors::Grey200)
+        //@Robustness Creating a default value for find in HashMap
         _Entry *found = m_entries.find(_Entry{key, {}});
         return found ? &found->value : nullptr;
     }
 
     void remove(K const &key) {
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
+        //@Robustness Creating a default value for find in HashMap
         m_entries.remove(_Entry{key, {}});
     }
 
