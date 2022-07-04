@@ -1,17 +1,17 @@
 set(LIB nk_common)
 
 add_library(${LIB}
-    src/dynamic_string_builder.cpp
-    src/file_utils.cpp
-    src/id.cpp
-    src/logger.c
-    src/mem.c
-    src/stack_allocator.cpp
-    src/static_allocator.cpp
-    src/static_string_builder.cpp
-    src/string.cpp
-    src/string_builder.cpp
-    src/utils.cpp
+    src/mem/mem.c
+    src/mem/stack_allocator.cpp
+    src/mem/static_allocator.cpp
+    src/str/dynamic_string_builder.cpp
+    src/str/static_string_builder.cpp
+    src/str/string.cpp
+    src/str/string_builder.cpp
+    src/utils/file_utils.cpp
+    src/utils/id.cpp
+    src/utils/logger.c
+    src/utils/utils.cpp
     )
 
 target_include_directories(${LIB}

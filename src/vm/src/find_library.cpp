@@ -3,11 +3,11 @@
 #include <cstring>
 #include <filesystem>
 
-#include "nk/common/array.hpp"
-#include "nk/common/file_utils.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/stack_allocator.hpp"
-#include "nk/common/static_string_builder.hpp"
+#include "nk/ds/array.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/str/static_string_builder.hpp"
+#include "nk/utils/file_utils.hpp"
+#include "nk/utils/logger.h"
 
 namespace nk {
 namespace vm {

@@ -1,9 +1,9 @@
 #ifndef HEADER_GUARD_NKL_CORE_AST
 #define HEADER_GUARD_NKL_CORE_AST
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/arena.hpp"
-#include "nk/common/id.hpp"
+#include "nk/ds/arena.hpp"
+#include "nk/str/string_builder.hpp"
+#include "nk/utils/id.hpp"
 #include "nkl/core/token.hpp"
 
 namespace nkl {
@@ -53,7 +53,7 @@ struct Ast {
     Node::Arg push(NamedNodeArray named_nodes);
 };
 
-string ast_inspect(NodeRef node, Allocator &allocator);
+StringBuilder &ast_inspect(NodeRef node, StringBuilder &sb);
 
 static NodeRef const n_none = nullptr;
 

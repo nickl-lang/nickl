@@ -2,8 +2,7 @@
 
 #include <algorithm>
 
-#include "nk/common/dynamic_string_builder.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/utils/utils.hpp"
 
 #define PACKED_NN_ARRAY_SIZE(AR) roundUp((AR).size, c_arg_count) / c_arg_count
 #define PACKED_NN_ARRAY_AT(AR, IDX) (AR)[(IDX) / c_arg_count].arg[(IDX) % c_arg_count]
@@ -96,7 +95,7 @@ Node::Arg Ast::push(NamedNodeArray ns) {
     return mkarg(PackedNamedNodeArray{ar});
 }
 
-static void _ast_inspect(NodeRef node, DynamicStringBuilder &sb, size_t depth = 1) {
+static void _ast_inspect(NodeRef node, StringBuilder &sb, size_t depth = 1) {
     if (!node) {
         sb << "(null)";
         return;
@@ -175,11 +174,9 @@ static void _ast_inspect(NodeRef node, DynamicStringBuilder &sb, size_t depth = 
     }
 }
 
-string ast_inspect(NodeRef node, Allocator &allocator) {
-    DynamicStringBuilder sb{};
-    sb.reserve(1000);
+StringBuilder &ast_inspect(NodeRef node, StringBuilder &sb) {
     _ast_inspect(node, sb);
-    return sb.moveStr(allocator);
+    return sb;
 }
 
 } // namespace nkl

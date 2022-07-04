@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nk/common/string.hpp"
+#include "nk/str/string.hpp"
 
 namespace nk {
 namespace vm {

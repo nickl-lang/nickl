@@ -2,9 +2,9 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/arena.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/utils.hpp"
+#include "nk/ds/arena.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 #include "utils/test_ir.hpp"
 
 namespace {

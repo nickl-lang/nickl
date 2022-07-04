@@ -3,8 +3,8 @@
 
 #include <cassert>
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/string.hpp"
+#include "nk/mem/allocator.hpp"
+#include "nk/str/string.hpp"
 #include "nk/vm/common_types.hpp"
 
 namespace nk {

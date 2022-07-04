@@ -5,10 +5,10 @@
 #include <iomanip>
 #include <iostream>
 
-#include "nk/common/dynamic_string_builder.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
+#include "nk/utils/utils.hpp"
 #include "nk/vm/value.hpp"
 
 namespace nk {

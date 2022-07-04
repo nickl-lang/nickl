@@ -4,8 +4,8 @@
 #include <cstring>
 #include <thread>
 
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
 // #include "nkl/core/core.hpp"
 
 static void printErrorUsage() {

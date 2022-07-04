@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_SO_ADAPTER
 #define HEADER_GUARD_NK_VM_SO_ADAPTER
 
-#include "nk/common/string.hpp"
+#include "nk/str/string.hpp"
 
 namespace nk {
 namespace vm {

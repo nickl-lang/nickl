@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_FIND_LIBRARY
 #define HEADER_GUARD_NK_VM_FIND_LIBRARY
 
-#include "nk/common/string.hpp"
+#include "nk/str/string.hpp"
 
 namespace nk {
 namespace vm {

@@ -1,10 +1,10 @@
-#include "nk/common/arena.hpp"
+#include "nk/ds/arena.hpp"
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/string.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/str/string.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 
 using namespace nk;
 

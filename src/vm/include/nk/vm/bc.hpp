@@ -4,9 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/array.hpp"
-#include "nk/common/log2arena.hpp"
+#include "nk/ds/array.hpp"
+#include "nk/ds/log2arena.hpp"
+#include "nk/mem/allocator.hpp"
 #include "nk/vm/ir.hpp"
 #include "nk/vm/value.hpp"
 

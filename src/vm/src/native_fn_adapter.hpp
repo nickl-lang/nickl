@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
 #define HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
 
-#include "nk/common/allocator.hpp"
+#include "nk/mem/allocator.hpp"
 #include "nk/vm/common_types.hpp"
 
 namespace nk {

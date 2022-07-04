@@ -1,11 +1,11 @@
-#include "nk/common/array.hpp"
+#include "nk/ds/array.hpp"
 
 #include <cstring>
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/utils.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 
 using namespace nk;
 

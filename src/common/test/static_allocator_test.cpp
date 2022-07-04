@@ -1,10 +1,10 @@
 #define private public
-#include "nk/common/static_allocator.hpp"
+#include "nk/mem/static_allocator.hpp"
 #undef private
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
+#include "nk/utils/logger.h"
 
 using namespace nk;
 

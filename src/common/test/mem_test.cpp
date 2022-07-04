@@ -1,9 +1,9 @@
-#include "nk/common/mem.h"
+#include "nk/mem/mem.h"
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/utils.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 
 using namespace nk;
 
