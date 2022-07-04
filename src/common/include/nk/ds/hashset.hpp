@@ -72,13 +72,15 @@ struct HashSet {
         return (found->val = val);
     }
 
-    T *find(T const &val) const {
+    template <class U>
+    T *find(U const &val) const {
         EASY_BLOCK("HashSet::find", profiler::colors::Grey200)
         Entry *found = _find(_valHash(val), val);
         return found ? &found->val : nullptr;
     }
 
-    void remove(T const &val) {
+    template <class U>
+    void remove(U const &val) {
         EASY_BLOCK("HashSet::remove", profiler::colors::Grey200)
         Entry *found = _find(_valHash(val), val);
         if (found) {
@@ -91,7 +93,8 @@ private:
     static constexpr size_t LOAD_FACTOR_PERCENT = 90;
     static constexpr hash_t DELETED_FLAG = 1ull << (8 * sizeof(hash_t) - 1);
 
-    static hash_t _valHash(T const &val) {
+    template <class U>
+    static hash_t _valHash(U const &val) {
         hash_t hash = Context::hash(val);
         hash &= ~DELETED_FLAG;
         hash |= hash == 0;
@@ -110,7 +113,8 @@ private:
         return entry->isValid();
     }
 
-    static bool _found(Entry *entry, hash_t hash, T const &val) {
+    template <class U>
+    static bool _found(Entry *entry, hash_t hash, U const &val) {
         return _isValid(entry) && entry->hash == hash && Context::equal_to(entry->val, val);
     }
 
@@ -165,7 +169,8 @@ private:
         return entry;
     }
 
-    Entry *_find(hash_t hash, T const &val) const {
+    template <class U>
+    Entry *_find(hash_t hash, U const &val) const {
         for (size_t i = 0; i < capacity(); i++) {
             Entry *entry = _entry(hash, i);
             if (_isEmpty(entry) || i > _max_probe_dist) {
