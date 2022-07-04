@@ -14,7 +14,7 @@ namespace vm {
 
 namespace {
 
-LOG_USE_SCOPE(nk::vm::findLibrary);
+LOG_USE_SCOPE(nk::vm::find_library);
 
 Array<string> s_search_paths;
 StackAllocator s_arena;
@@ -37,7 +37,7 @@ void findLibrary_deinit() {
     s_arena.deinit();
 }
 
-bool findLibrary(string name, Slice<char> &buf) {
+bool findLibrary(string name, Slice<char> &out_str) {
     LOG_TRC(__func__);
 
     for (auto path : s_search_paths) {
@@ -48,19 +48,17 @@ bool findLibrary(string name, Slice<char> &buf) {
             return false;
         }
 
-        StaticStringBuilder sb{buf};
-        sb << path << name;
-        auto const str = sb.moveStr();
+        StaticStringBuilder{out_str} << path << name << '\0';
 
-        LOG_DBG("Checking `%s`...", str);
+        LOG_DBG("checking `%s`...", out_str);
 
-        if (std::filesystem::exists(std_str(str))) {
+        if (std::filesystem::exists(std_str(out_str))) {
             return true;
         }
     }
 
-    buf.size = 0;
-    LOG_DBG("Library not found");
+    out_str.size = 0;
+    LOG_DBG("library not found");
     return false;
 }
 

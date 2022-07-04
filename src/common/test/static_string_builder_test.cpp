@@ -17,7 +17,7 @@ class static_string_builder : public testing::Test {
     }
 
 protected:
-    ARRAY_SLICE(char, m_dst, 10000);
+    ARRAY_SLICE(char, m_dst, 100);
     StaticStringBuilder m_builder{m_dst};
 };
 
@@ -29,12 +29,14 @@ TEST_F(static_string_builder, basic) {
     const std::string c_test_str = "Hello, World!";
     int n = m_builder.printf(c_test_str.c_str());
     EXPECT_EQ(n, c_test_str.size());
-    EXPECT_EQ(std_str(m_builder.moveStr()), c_test_str);
+    auto const str = m_builder.moveStr();
+    EXPECT_EQ(str.data, m_dst.data);
+    EXPECT_EQ(std_str(str), c_test_str);
 }
 
 TEST_F(static_string_builder, print_big) {
     std::string test_str;
-    test_str.append(5000, 'a');
+    test_str.append(50, 'a');
     int n = m_builder.printf(test_str.c_str());
     EXPECT_EQ(n, test_str.size());
     EXPECT_EQ(std_str(m_builder.moveStr()), test_str);
@@ -71,6 +73,16 @@ TEST_F(static_string_builder, allocator) {
         stack.deinit();
     };
     m_builder.print("Hello, World!");
-    auto str = m_builder.moveStr();
+    auto str = m_builder.moveStr(stack);
+    EXPECT_NE(str.data, m_dst.data);
     EXPECT_EQ(std_str(str), "Hello, World!");
+}
+
+TEST_F(static_string_builder, overflow) {
+    ARRAY_SLICE(char, dst, 6);
+    StaticStringBuilder sb{dst};
+    sb << "abcdefgh";
+    auto str = sb.moveStr();
+    EXPECT_EQ(str.size, dst.size - 1);
+    EXPECT_EQ(std_str(str), "abcde");
 }
