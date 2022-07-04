@@ -40,25 +40,18 @@ struct HashMap {
 
     V &operator[](K const &key) {
         EASY_BLOCK("HashMap::operator[]", profiler::colors::Grey200)
-        //@Robustness Creating a default value for find in HashMap
-        _Entry *found = m_entries.find(_Entry{key, {}});
-        if (!found) {
-            found = &m_entries.insert(_Entry{key, {}});
-        }
-        return found->value;
+        return m_entries.insert(_Entry{key, {}}).value;
     }
 
     V *find(K const &key) const {
         EASY_BLOCK("HashMap::find", profiler::colors::Grey200)
-        //@Robustness Creating a default value for find in HashMap
-        _Entry *found = m_entries.find(_Entry{key, {}});
+        _Entry *found = m_entries.find(key);
         return found ? &found->value : nullptr;
     }
 
     void remove(K const &key) {
         EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
-        //@Robustness Creating a default value for find in HashMap
-        m_entries.remove(_Entry{key, {}});
+        m_entries.remove(key);
     }
 
 private:
@@ -72,8 +65,16 @@ private:
             return Context::hash(entry.key);
         }
 
+        static hash_t hash(K const &key) {
+            return Context::hash(key);
+        }
+
         static bool equal_to(_Entry const &lhs, _Entry const &rhs) {
             return Context::equal_to(lhs.key, rhs.key);
+        }
+
+        static bool equal_to(_Entry const &lhs, K const &rhs_key) {
+            return Context::equal_to(lhs.key, rhs_key);
         }
     };
 
