@@ -1,7 +1,7 @@
 #include "c_compiler_adapter.hpp"
 
-#include "nk/common/static_string_builder.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/str/static_string_builder.hpp"
+#include "nk/utils/utils.hpp"
 #include "pipe_stream.hpp"
 
 namespace nk {

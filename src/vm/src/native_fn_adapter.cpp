@@ -5,10 +5,10 @@
 
 #include <ffi.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/mem.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/mem/mem.h"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
+#include "nk/utils/utils.hpp"
 #include "nk/vm/value.hpp"
 
 namespace nk {

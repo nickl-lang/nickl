@@ -4,9 +4,9 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/stack_allocator.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 #include "utils/test_ir.hpp"
 
 namespace {

@@ -1,4 +1,4 @@
-#include "nk/common/slice.hpp"
+#include "nk/ds/slice.hpp"
 
 #include <array>
 #include <iterator>
@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
+#include "nk/utils/logger.h"
 
 using namespace nk;
 

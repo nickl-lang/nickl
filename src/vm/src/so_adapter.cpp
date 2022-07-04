@@ -2,8 +2,8 @@
 
 #include <dlfcn.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/static_string_builder.hpp"
+#include "nk/str/static_string_builder.hpp"
+#include "nk/utils/logger.h"
 
 namespace nk {
 namespace vm {

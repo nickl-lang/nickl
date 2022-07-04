@@ -7,11 +7,11 @@
 #include <gtest/gtest.h>
 
 #include "find_library.hpp"
-#include "nk/common/dynamic_string_builder.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/stack_allocator.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
+#include "nk/utils/utils.hpp"
 #include "nk/vm/ir.hpp"
 #include "utils/test_ir.hpp"
 #include "utils/testlib.h"

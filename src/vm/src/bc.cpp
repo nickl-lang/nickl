@@ -3,10 +3,10 @@
 #include <cassert>
 
 #include "find_library.hpp"
-#include "nk/common/dynamic_string_builder.hpp"
-#include "nk/common/hashmap.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
+#include "nk/ds/hashmap.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
 #include "nk/vm/interp.hpp"
 #include "so_adapter.hpp"
 

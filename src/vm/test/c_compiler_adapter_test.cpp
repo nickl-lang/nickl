@@ -4,9 +4,9 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/static_string_builder.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/str/static_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 #include "pipe_stream.hpp"
 
 namespace {

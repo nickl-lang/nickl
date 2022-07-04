@@ -2,12 +2,12 @@
 
 #include <cassert>
 
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/stack_allocator.hpp"
-#include "nk/common/static_allocator.hpp"
-#include "nk/common/static_string_builder.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/mem/static_allocator.hpp"
+#include "nk/str/static_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
+#include "nk/utils/utils.hpp"
 
 namespace nk {
 namespace vm {

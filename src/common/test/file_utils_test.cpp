@@ -1,13 +1,13 @@
-#include "nk/common/file_utils.hpp"
+#include "nk/utils/file_utils.hpp"
 
 #include <cstring>
 #include <filesystem>
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/stack_allocator.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 
 using namespace nk;
 

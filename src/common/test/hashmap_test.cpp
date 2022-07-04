@@ -1,13 +1,13 @@
-#include "nk/common/hashmap.hpp"
+#include "nk/ds/hashmap.hpp"
 
 #include <random>
 #include <unordered_map>
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/string.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/str/string.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 
 using namespace nk;
 

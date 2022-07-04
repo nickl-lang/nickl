@@ -5,9 +5,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nk/common/array.hpp"
-#include "nk/common/id.hpp"
-#include "nk/common/stack_allocator.hpp"
+#include "nk/ds/array.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/utils/id.hpp"
 #include "nk/vm/value.hpp"
 
 namespace nk {

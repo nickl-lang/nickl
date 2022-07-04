@@ -2,8 +2,9 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/stack_allocator.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
+#include "nk/utils/logger.h"
 #include "nkl/core/test/ast_utils.hpp"
 
 using namespace nkl;
@@ -18,6 +19,8 @@ struct ast : testing::Test {
         m_ast.init();
 
         id_init();
+
+        m_sb.reserve(1000);
 
         t_hello = Token{cs2s("hello"), 0, 0, 0};
         n_t_hello = Node{{{&t_hello, {}}, {}, {}}, nodeId(Node_id)};
@@ -43,15 +46,15 @@ struct ast : testing::Test {
     void test(Node const &node) {
         m_node = node;
 
-        auto str = ast_inspect(&m_node, m_allocator);
+        auto str = ast_inspect(&m_node, m_sb).moveStr(m_allocator);
         LOG_INF("Test: %.*s", str.size, str.data);
     }
 
     bool expect_ast(NodeRef actual, NodeRef expected) {
         bool is_ast_equal = ast_equal(actual, expected);
         if (!is_ast_equal) {
-            auto actual_str = ast_inspect(actual, m_allocator);
-            auto expected_str = ast_inspect(expected, m_allocator);
+            auto actual_str = ast_inspect(actual, m_sb).moveStr(m_allocator);
+            auto expected_str = ast_inspect(expected, m_sb).moveStr(m_allocator);
             LOG_ERR(
                 "\nActual: %.*s\nExpected: %.*s",
                 actual_str.size,
@@ -77,6 +80,7 @@ struct ast : testing::Test {
 
     LangAst m_ast{};
     StackAllocator m_allocator{};
+    DynamicStringBuilder m_sb{};
 
     Node m_node{};
 };

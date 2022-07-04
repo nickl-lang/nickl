@@ -1,9 +1,8 @@
-#include "nk/common/utils.hpp"
+#include "nk/utils/utils.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <filesystem>
 
 #include <gtest/gtest.h>
 

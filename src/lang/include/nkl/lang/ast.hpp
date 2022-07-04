@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NKL_LANG_AST
 #define HEADER_GUARD_NKL_LANG_AST
 
-#include "nk/common/utils.hpp"
+#include "nk/utils/utils.hpp"
 #include "nkl/core/ast.hpp"
 
 namespace nkl {

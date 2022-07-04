@@ -3,12 +3,12 @@
 #include <cstring>
 
 #include "native_fn_adapter.hpp"
-#include "nk/common/dynamic_string_builder.hpp"
-#include "nk/common/hashmap.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/stack_allocator.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/ds/hashmap.hpp"
+#include "nk/mem/stack_allocator.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
+#include "nk/utils/utils.hpp"
 
 namespace nk {
 namespace vm {

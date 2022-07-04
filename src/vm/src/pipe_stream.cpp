@@ -2,10 +2,10 @@
 
 #include <new>
 
-#include "nk/common/logger.h"
-#include "nk/common/mem.h"
-#include "nk/common/static_string_builder.hpp"
-#include "nk/common/utils.hpp"
+#include "nk/mem/mem.h"
+#include "nk/str/static_string_builder.hpp"
+#include "nk/utils/logger.h"
+#include "nk/utils/utils.hpp"
 
 #ifdef __GNUC__
 #include <ext/stdio_sync_filebuf.h>
