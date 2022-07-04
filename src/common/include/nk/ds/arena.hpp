@@ -105,6 +105,9 @@ private:
     }
 
     void _shrink(size_t n) {
+        if (n == 0) {
+            return;
+        }
         size -= n;
         if (n <= _last_block->size) {
             _last_block->size -= n;

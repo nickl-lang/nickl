@@ -7,7 +7,6 @@
 
 namespace nk {
 
-//@Todo Make StaticAllocator allocate dynamic memory if needed
 struct StaticAllocator : Allocator {
     StaticAllocator(Slice<uint8_t> dst)
         : m_dst{dst}

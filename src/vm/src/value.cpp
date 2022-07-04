@@ -410,18 +410,15 @@ type_t type_get_ptr(type_t target_type) {
 type_t type_get_tuple(TypeArray types) {
     EASY_FUNCTION(profiler::colors::Green200)
 
-    //@Performance StackAllocator in type_get_tuple
-    StackAllocator allocator{};
-    defer {
-        allocator.deinit();
-    };
-
     struct Fp {
         _FpBase base;
         size_t type_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, typeid_t>(types.size);
-    Fp *fp = (Fp *)allocator.alloc_aligned(fp_size, alignof(Fp));
+    Fp *fp = (Fp *)nk_platform_alloc_aligned(fp_size, alignof(Fp));
+    defer {
+        nk_platform_free_aligned(fp);
+    };
     auto fp_types = arrayWithHeaderData<Fp, typeid_t>(fp);
     std::memset(fp, 0, fp_size);
     fp->base.id = Type_Tuple;
