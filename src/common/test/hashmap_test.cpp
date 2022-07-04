@@ -141,12 +141,12 @@ TEST_F(hashmap, overwrite) {
         hm.deinit();
     };
 
-    EXPECT_TRUE(hm.insert(cs2s("value"), 0));
+    hm.insert(cs2s("value"), 0);
     EXPECT_EQ(*hm.find(cs2s("value")), 0);
 
     EXPECT_EQ(hm.size(), 1);
 
-    EXPECT_FALSE(hm.insert(cs2s("value"), 42));
+    hm.insert(cs2s("value"), 42);
     EXPECT_EQ(*hm.find(cs2s("value")), 42);
 
     EXPECT_EQ(hm.size(), 1);
