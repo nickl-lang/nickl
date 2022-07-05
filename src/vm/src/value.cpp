@@ -33,9 +33,7 @@ Type **_findType(ByteArray fp) {
 }
 
 Type **_storeType(ByteArray fp, Type *type) {
-    //@Speed Return pointer to element from HashMap::insert
-    s_typemap.insert(fp, type);
-    return s_typemap.find(fp);
+    return &s_typemap.insert(fp, type);
 }
 
 struct _TypeQueryRes {
