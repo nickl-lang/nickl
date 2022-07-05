@@ -123,16 +123,16 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         funct_ids_to_translate.deinit();
     };
 
-    while (prog.funct_info.size < ir_prog.functs.size) {
-        *prog.funct_info.push() = {};
-    }
-
     auto block_info_ar = allocator.alloc<BlockInfo>(ir_prog.blocks.size);
 
     Array<Reloc> relocs{};
     defer {
         relocs.deinit();
     };
+
+    while (prog.funct_info.size < ir_prog.functs.size) {
+        *prog.funct_info.push() = {};
+    }
 
     auto globals_layout = calcTupleLayout(ir_prog.globals, allocator);
     if (globals_layout.size > prog.globals.capacity) {
@@ -165,9 +165,12 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
 
     auto const &funct = ir_prog.functs[funct_id.id];
 
+    auto frame_layout = calcTupleLayout(funct.locals, allocator);
+
     auto &funct_info = prog.funct_info[funct.id] = {
         .prog = &prog,
-        .frame_t = type_get_tuple(funct.locals),
+        .frame_size = frame_layout.size,
+        .frame_align = frame_layout.align,
         .first_instr = prog.instrs.size,
         .instr_count = 0,
         .funct_t = nullptr,
@@ -196,7 +199,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
             arg.is_indirect = ref.is_indirect;
             switch (ref.ref_type) {
             case ir::Ref_Frame:
-                arg.offset += type_tuple_offsetAt(funct_info.frame_t, ref.value.index);
+                arg.offset += frame_layout.info_ar[ref.value.index].offset;
                 break;
             case ir::Ref_Arg:
                 arg.offset += type_tuple_offsetAt(funct.args_t, ref.value.index);

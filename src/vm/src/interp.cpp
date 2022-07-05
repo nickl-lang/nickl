@@ -93,7 +93,7 @@ void _jumpTo(Ref ref) {
     _jumpTo(&_getRef<Instr>(ref));
 }
 
-void _jumpCall(type_t frame_t, value_t ret, value_t args, Instr const *pinstr) {
+void _jumpCall(FunctInfo const &fn, value_t ret, value_t args) {
     *ctx.ctrl_stack.push() = {
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -103,11 +103,11 @@ void _jumpCall(type_t frame_t, value_t ret, value_t args, Instr const *pinstr) {
     };
 
     ctx.stack_frame = ctx.stack.pushFrame();
-    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(frame_t->size, frame_t->alignment);
+    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_size, fn.frame_align);
     ctx.base.arg = (uint8_t *)val_data(args);
     ctx.base.ret = (uint8_t *)val_data(ret);
 
-    _jumpTo(pinstr);
+    _jumpTo(&fn.prog->instrs[fn.first_instr]);
 
     LOG_DBG("stack_frame=%lu", ctx.stack_frame.size);
     LOG_DBG("frame=%p", ctx.base.frame);
@@ -199,20 +199,19 @@ INTERP(cast) {
 
 INTERP(call) {
     auto ret = _getDynRef(instr.arg[0]);
-    auto fn = _getDynRef(instr.arg[1]);
+    auto fn_val = _getDynRef(instr.arg[1]);
     auto args = _getDynRef(instr.arg[2]);
 
-    val_fn_invoke(val_typeof(fn), ret, args);
+    val_fn_invoke(val_typeof(fn_val), ret, args);
 }
 
 INTERP(call_jmp) {
     auto ret = _getDynRef(instr.arg[0]);
-    auto fn = _getDynRef(instr.arg[1]);
+    auto fn_val = _getDynRef(instr.arg[1]);
     auto args = _getDynRef(instr.arg[2]);
 
-    FunctInfo const &info = *(FunctInfo *)val_typeof(fn)->as.fn.closure;
-
-    _jumpCall(info.frame_t, ret, args, &info.prog->instrs[info.first_instr]);
+    FunctInfo const &fn = *(FunctInfo *)val_typeof(fn_val)->as.fn.closure;
+    _jumpCall(fn, ret, args);
 }
 
 INTERP(mov) {
@@ -478,7 +477,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
     LOG_DBG("rodata=%p", ctx.base.rodata);
     LOG_DBG("instr=%p", ctx.base.instr);
 
-    _jumpCall(fn.frame_t, ret, args, &prog.instrs[fn.first_instr]);
+    _jumpCall(fn, ret, args);
 
     EASY_END_BLOCK
 

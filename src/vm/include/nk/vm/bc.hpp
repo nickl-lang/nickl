@@ -56,7 +56,8 @@ struct Program;
 
 struct FunctInfo {
     Program *prog;
-    type_t frame_t;
+    size_t frame_size;
+    size_t frame_align;
     size_t first_instr;
     size_t instr_count;
     type_t funct_t;

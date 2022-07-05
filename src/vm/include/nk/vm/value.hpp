@@ -78,7 +78,7 @@ struct _type_tuple {
 struct TupleLayout {
     TupleElemInfoArray info_ar;
     size_t size;
-    size_t alignment;
+    size_t align;
 };
 
 struct Type {

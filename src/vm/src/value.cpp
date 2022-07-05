@@ -416,7 +416,7 @@ type_t type_get_tuple(TypeArray types) {
         TupleLayout layout = calcTupleLayout(types, s_typearena);
 
         res.type->size = layout.size;
-        res.type->alignment = layout.alignment;
+        res.type->alignment = layout.align;
         res.type->as.tuple.elems = layout.info_ar;
     }
     return res.type;
