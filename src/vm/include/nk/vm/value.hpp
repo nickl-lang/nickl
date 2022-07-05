@@ -20,10 +20,6 @@ enum ETypeclassId {
     Type_Void,
 };
 
-struct _type_null {
-    uint8_t _dummy;
-};
-
 struct _type_array {
     type_t elem_type;
     size_t elem_count;
@@ -83,8 +79,6 @@ struct TupleLayout {
 
 struct Type {
     union {
-        _type_null null;
-
         _type_array arr;
         _type_fn fn;
         _type_numeric num;
