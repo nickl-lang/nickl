@@ -390,3 +390,25 @@ TEST_F(hashmap, iteration) {
     EXPECT_EQ(sum_of_keys, 126);
     EXPECT_EQ(sum_of_values, 0);
 }
+
+TEST_F(hashmap, const_iteration) {
+    using key_t = int;
+    using val_t = int;
+    using hashmap_t = HashMap<key_t, val_t>;
+
+    hashmap_t hm{};
+    defer {
+        hm.deinit();
+    };
+
+    hm.insert(1, 1);
+    hm.insert(2, 2);
+    hm.insert(3, 3);
+
+    int sum = 0;
+    for (auto &entry : (hashmap_t const)hm) {
+        sum += entry.value;
+    }
+
+    EXPECT_EQ(sum, 6);
+}
