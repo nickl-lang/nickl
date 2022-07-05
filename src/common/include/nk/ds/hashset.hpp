@@ -8,7 +8,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "nk/ds/array.hpp"
+#include "nk/mem/mem.h"
 #include "nk/utils/profiler.hpp"
 #include "nk/utils/utils.hpp"
 
@@ -31,26 +31,12 @@ struct DefaultHashSetContext {
 
 template <class T, class Context = detail::DefaultHashSetContext<T>>
 struct HashSet {
-    struct Entry {
-        T val;
-        hash_t hash;
-
-        //@Todo Implement better way to iterate over HashSet
-        bool isValid() const {
-            return !_isEmpty(this) && !_isDeleted(this);
-        }
-    };
-
-    Array<Entry> _entries;
-    size_t _size;
-    size_t _max_probe_dist;
-
     size_t size() const {
-        return _size;
+        return m_size;
     }
 
     size_t capacity() const {
-        return _entries.capacity;
+        return m_capacity;
     }
 
     void reserve(size_t cap) {
@@ -58,14 +44,14 @@ struct HashSet {
     }
 
     void deinit() {
-        _entries.deinit();
+        nk_platform_free(m_entries);
         *this = {};
     }
 
     T &insert(T const &val) {
         EASY_BLOCK("HashSet::insert", profiler::colors::Grey200)
         hash_t const hash = _valHash(val);
-        Entry *found = _find(hash, val);
+        _Entry *found = _find(hash, val);
         if (!found) {
             found = _insert(hash, val);
         }
@@ -75,21 +61,31 @@ struct HashSet {
     template <class U>
     T *find(U const &val) const {
         EASY_BLOCK("HashSet::find", profiler::colors::Grey200)
-        Entry *found = _find(_valHash(val), val);
+        _Entry *found = _find(_valHash(val), val);
         return found ? &found->val : nullptr;
     }
 
     template <class U>
     void remove(U const &val) {
         EASY_BLOCK("HashSet::remove", profiler::colors::Grey200)
-        Entry *found = _find(_valHash(val), val);
+        _Entry *found = _find(_valHash(val), val);
         if (found) {
             found->hash |= DELETED_FLAG;
-            _size--;
+            m_size--;
         }
     }
 
 private:
+    struct _Entry {
+        T val;
+        hash_t hash;
+
+        //@Todo Implement better way to iterate over HashSet
+        bool isValid() const {
+            return !_isEmpty(this) && !_isDeleted(this);
+        }
+    };
+
     static constexpr size_t LOAD_FACTOR_PERCENT = 90;
     static constexpr hash_t DELETED_FLAG = 1ull << (8 * sizeof(hash_t) - 1);
 
@@ -101,45 +97,46 @@ private:
         return hash;
     }
 
-    static bool _isEmpty(Entry const *entry) {
+    static bool _isEmpty(_Entry const *entry) {
         return entry->hash == 0;
     }
 
-    static bool _isDeleted(Entry const *entry) {
+    static bool _isDeleted(_Entry const *entry) {
         return entry->hash & DELETED_FLAG;
     }
 
-    static bool _isValid(Entry const *entry) {
+    static bool _isValid(_Entry const *entry) {
         return entry->isValid();
     }
 
     template <class U>
-    static bool _found(Entry *entry, hash_t hash, U const &val) {
+    static bool _found(_Entry *entry, hash_t hash, U const &val) {
         return _isValid(entry) && entry->hash == hash && Context::equal_to(entry->val, val);
     }
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
     size_t _elemIndex(hash_t hash, size_t i) const {
-        return (hash + ((i + i * i) >> 1)) & (capacity() - 1);
+        return (hash + ((i + i * i) >> 1)) & (m_capacity - 1);
     }
 
-    Entry *_entry(hash_t hash, size_t i) const {
-        return &_entries[_elemIndex(hash, i)];
+    _Entry *_entry(hash_t hash, size_t i) const {
+        return &m_entries[_elemIndex(hash, i)];
     }
 
     void _alloc(size_t cap) {
-        static_assert(std::is_trivial_v<Entry>, "Entry should be trivial");
+        static_assert(std::is_trivial_v<_Entry>, "Entry should be trivial");
 
-        _entries.reserve(maxu(cap, 1));
-        std::memset(&_entries[0], 0, capacity() * sizeof(Entry));
+        m_capacity = ceilToPowerOf2(maxu(cap, 1));
+        m_entries = (_Entry *)nk_platform_alloc(m_capacity * sizeof(_Entry));
+        std::memset(&m_entries[0], 0, m_capacity * sizeof(_Entry));
     }
 
     void _rehash() {
         HashSet new_hs{};
-        new_hs._alloc(capacity() << 1);
+        new_hs._alloc(m_capacity << 1);
 
-        for (size_t i = 0; i < capacity(); i++) {
-            Entry *entry = &_entries[i];
+        for (size_t i = 0; i < m_capacity; i++) {
+            _Entry *entry = &m_entries[i];
             if (_isValid(entry)) {
                 new_hs._insert(entry->hash, entry->val);
             }
@@ -149,20 +146,20 @@ private:
         *this = new_hs;
     }
 
-    Entry *_insert(hash_t hash, T const &val) {
-        if (_size * 100 / LOAD_FACTOR_PERCENT >= capacity()) {
+    _Entry *_insert(hash_t hash, T const &val) {
+        if (m_size * 100 / LOAD_FACTOR_PERCENT >= m_capacity) {
             _rehash();
         }
 
-        Entry *entry = _entry(hash, 0);
+        _Entry *entry = _entry(hash, 0);
         size_t i = 1;
         while (_isValid(entry)) {
             entry = _entry(hash, i++);
         }
 
-        _max_probe_dist = maxu(_max_probe_dist, i);
+        m_max_probe_dist = maxu(m_max_probe_dist, i);
 
-        _size++;
+        m_size++;
         entry->val = val;
         entry->hash = hash;
 
@@ -170,10 +167,10 @@ private:
     }
 
     template <class U>
-    Entry *_find(hash_t hash, U const &val) const {
-        for (size_t i = 0; i < capacity(); i++) {
-            Entry *entry = _entry(hash, i);
-            if (_isEmpty(entry) || i > _max_probe_dist) {
+    _Entry *_find(hash_t hash, U const &val) const {
+        for (size_t i = 0; i < m_capacity; i++) {
+            _Entry *entry = _entry(hash, i);
+            if (_isEmpty(entry) || i > m_max_probe_dist) {
                 return nullptr;
             } else if (_found(entry, hash, val)) {
                 return entry;
@@ -181,6 +178,14 @@ private:
         }
         return nullptr;
     }
+
+public: //@Todo Remove public fields from HashSet
+    _Entry *m_entries;
+
+private:
+    size_t m_size;
+    size_t m_capacity;
+    size_t m_max_probe_dist;
 };
 
 } // namespace nk

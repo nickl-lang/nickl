@@ -401,7 +401,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
 
     //@Todo Iterating through a set in a very weird and convoluted way
     for (size_t i = 0; i < funct_ids_to_translate.capacity(); i++) {
-        auto const &entry = funct_ids_to_translate._entries[i];
+        auto const &entry = funct_ids_to_translate.m_entries[i];
         if (!entry.isValid()) {
             continue;
         }
