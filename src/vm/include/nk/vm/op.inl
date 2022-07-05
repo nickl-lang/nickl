@@ -11,10 +11,12 @@ X(ret)
 X(enter)
 X(leave)
 
+//@Todo Implement extensions for jmpz/jmpnz
 X(jmp)
 X(jmpz)
 X(jmpnz)
 
+//@Todo Implement extensions for cast
 X(cast)
 
 X(call)
@@ -28,8 +30,8 @@ XE(mov, 64)
 
 X(lea)
 X(neg)
-X(compl)
-X(not)
+X(compl )
+X(not )
 
 #ifndef NUM_X
 #define NUM_X(NAME) \
