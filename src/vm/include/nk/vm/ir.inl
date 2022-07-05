@@ -15,6 +15,7 @@ I(jmp)   // jmp %label
 I(jmpz)  // jmpz $cond %label
 I(jmpnz) // jmpnz $cond %label
 
+//@Todo Cast should be numeric only and use extension instead of type argument
 I(cast) // $dst := cast $type $arg
 
 I(call) // $dst := call $fn $args
@@ -37,6 +38,7 @@ U(not )   // $dst := not $arg
 #define B(...) X(__VA_ARGS__)
 #endif
 
+//@Todo Maybe distinguish between int and float bin ops?
 B(add) // $dst := add $lhs $rhs
 B(sub) // $dst := sub $lhs $rhs
 B(mul) // $dst := mul $lhs $rhs
@@ -49,6 +51,7 @@ B(xor)    // $dst := xor $lhs $rhs
 B(lsh)    // $dst := lsh $lhs $rhs
 B(rsh)    // $dst := rsh $lhs $rhs
 
+//@Todo Maybe implement login and/or only for u8?
 B(and) // $dst := and $lhs $rhs
 B(or)  // $dst := or $lhs $rhs
 
