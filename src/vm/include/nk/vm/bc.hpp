@@ -67,6 +67,7 @@ struct Program {
     Array<uint8_t> rodata;
     Log2Arena<FunctInfo> funct_info;
     Array<void *> shobjs;
+    Array<void *> exsyms;
 
     void init();
     void deinit();

@@ -97,15 +97,6 @@ void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
 }
 
 type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, Allocator &allocator) {
-    HashSet<size_t> funct_ids_to_translate{};
-    defer {
-        funct_ids_to_translate.deinit();
-    };
-
-    while (prog.funct_info.size < ir_prog.functs.size) {
-        *prog.funct_info.push() = {};
-    }
-
     enum ERelocType {
         Reloc_Funct,
         Reloc_Block,
@@ -122,6 +113,15 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         size_t first_instr;
     };
 
+    HashSet<size_t> funct_ids_to_translate{};
+    defer {
+        funct_ids_to_translate.deinit();
+    };
+
+    while (prog.funct_info.size < ir_prog.functs.size) {
+        *prog.funct_info.push() = {};
+    }
+
     auto block_info_ar = allocator.alloc<BlockInfo>(ir_prog.blocks.size);
 
     Array<Reloc> relocs{};
@@ -137,29 +137,32 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         LOG_DBG("allocated global storage @%p", prog.globals.data);
     }
 
-    prog.shobjs.reserve(ir_prog.shobjs.size);
-    for (auto so_id : ir_prog.shobjs) {
-        ARRAY_SLICE(char, path, MAX_PATH);
-        if (!findLibrary(id2s(so_id), path)) {
-            assert(!"failed to find library");
+    while (prog.shobjs.size < ir_prog.shobjs.size) {
+        for (size_t i = prog.shobjs.size; i < ir_prog.shobjs.size; i++) {
+            ARRAY_SLICE(char, path, MAX_PATH);
+            if (!findLibrary(id2s(ir_prog.shobjs[i]), path)) {
+                assert(!"failed to find library");
+            }
+            auto so = openSharedObject(path);
+            assert(so && "failed to open a shared object");
+            *prog.shobjs.push() = so;
         }
-        auto so = *prog.shobjs.push() = openSharedObject({path.data, path.size});
-        assert(so && "failed to open a shared object");
     }
 
-    auto exsyms = allocator.alloc<void *>(ir_prog.exsyms.size);
-
-    for (size_t i = 0; auto const &exsym : ir_prog.exsyms) {
-        void *sym = resolveSym(prog.shobjs[exsym.so_id], id2s(exsym.name));
-        assert(sym && "failed to resolve symbol");
-        exsyms[i] = sym;
+    while (prog.exsyms.size < ir_prog.exsyms.size) {
+        for (size_t i = prog.exsyms.size; i < ir_prog.exsyms.size; i++) {
+            auto const &exsym = ir_prog.exsyms[i];
+            void *sym = resolveSym(prog.shobjs[exsym.so_id], id2s(exsym.name));
+            assert(sym && "failed to resolve symbol");
+            *prog.exsyms.push() = sym;
+        }
     }
 
     auto const &funct = ir_prog.functs[funct_id.id];
 
     auto &funct_info = prog.funct_info[funct.id] = {
         .prog = &prog,
-        .frame_t = type_get_tuple({funct.locals.data, funct.locals.size}),
+        .frame_t = type_get_tuple(funct.locals),
         .first_instr = prog.instrs.size,
         .instr_count = 0,
         .funct_t = nullptr,
@@ -206,7 +209,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                 break;
             case ir::Ref_ExtVar: {
                 arg.ref_type = Ref_Abs;
-                arg.offset = (size_t)exsyms[ir_arg.as.id];
+                arg.offset = (size_t)prog.exsyms[ir_arg.as.id];
                 break;
             }
             default:
@@ -241,7 +244,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                 exsym.as.funct.ret_t,
                 exsym.as.funct.args_t,
                 0,
-                exsyms[ir_arg.as.id],
+                prog.exsyms[ir_arg.as.id],
                 exsym.as.funct.is_variadic);
             break;
         }
@@ -434,6 +437,7 @@ void Program::deinit() {
         closeSharedObject(shobj);
     }
 
+    exsyms.deinit();
     shobjs.deinit();
     funct_info.deinit();
     rodata.deinit();
