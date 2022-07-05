@@ -234,8 +234,6 @@ struct ProgramBuilder {
     Instr make_call(Ref const &dst, ExtFunctId funct, Ref const &args);
 
 #define U(NAME) Instr make_##NAME(Ref const &dst, Ref const &arg);
-#include "nk/vm/ir.inl"
-
 #define B(NAME) Instr make_##NAME(Ref const &dst, Ref const &lhs, Ref const &rhs);
 #include "nk/vm/ir.inl"
 

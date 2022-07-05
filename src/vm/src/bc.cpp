@@ -263,93 +263,30 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         for (auto const &ir_instr : ir_prog.instrs.slice(block.first_instr, block.instr_count)) {
             uint16_t code = s_ir2opcode[ir_instr.code];
 
-            //@Todo Maybe optimize boilerplate in numOp and numOpInt
-            auto numOp = [&]() {
-                auto const &arg0 = ir_instr.arg[0];
-                auto const &arg1 = ir_instr.arg[1];
-                auto const &arg2 = ir_instr.arg[2];
-
-                assert(arg0.arg_type == ir::Arg_Ref);
-                assert(arg1.arg_type == ir::Arg_Ref);
-                assert(arg2.arg_type == ir::Arg_Ref);
-
-                assert(arg0.as.ref.type->id == arg1.as.ref.type->id);
-                assert(arg0.as.ref.type->id == arg2.as.ref.type->id);
-
-                assert(arg0.as.ref.type->typeclass_id == Type_Numeric);
-
-                code += 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
-            };
-
-            auto numOpInt = [&]() {
-                auto const &arg0 = ir_instr.arg[0];
-                auto const &arg1 = ir_instr.arg[1];
-                auto const &arg2 = ir_instr.arg[2];
-
-                assert(arg0.arg_type == ir::Arg_Ref);
-                assert(arg1.arg_type == ir::Arg_Ref);
-                assert(arg2.arg_type == ir::Arg_Ref);
-
-                assert(arg0.as.ref.type->id == arg1.as.ref.type->id);
-                assert(arg0.as.ref.type->id == arg2.as.ref.type->id);
-
-                assert(arg0.as.ref.type->typeclass_id == Type_Numeric);
-                assert(arg0.as.ref.type->as.num.value_type < Float32);
-
-                code += 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
-            };
+            auto const &arg1 = ir_instr.arg[1];
 
             switch (ir_instr.code) {
             case ir::ir_call:
-                if (ir_instr.arg[1].arg_type == ir::Arg_FunctId) {
+                if (arg1.arg_type == ir::Arg_FunctId) {
                     code = op_call_jmp;
-                    if (!prog.funct_info[ir_instr.arg[1].as.id].prog) {
-                        funct_ids_to_translate.insert(ir_instr.arg[1].as.id);
+                    if (!prog.funct_info[arg1.as.id].prog) {
+                        funct_ids_to_translate.insert(arg1.as.id);
                     }
                 }
                 break;
-                //@Todo Beautify op translation for some instructions
             case ir::ir_mov:
-                assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[0].as.ref.type->size == ir_instr.arg[1].as.ref.type->size);
-                if (ir_instr.arg[0].as.ref.type->size <= REG_SIZE &&
-                    isZeroOrPowerOf2(ir_instr.arg[0].as.ref.type->size)) {
-                    code += 1 + log2u(ir_instr.arg[0].as.ref.type->size);
-                }
-                break;
             case ir::ir_eq:
-                assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[0].as.ref.type->size == 1);
-                assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[2].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[1].as.ref.type->size == ir_instr.arg[2].as.ref.type->size);
-                if (ir_instr.arg[1].as.ref.type->size <= REG_SIZE &&
-                    isZeroOrPowerOf2(ir_instr.arg[1].as.ref.type->size)) {
-                    code += 1 + log2u(ir_instr.arg[1].as.ref.type->size);
-                }
-                break;
             case ir::ir_ne:
-                assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[0].as.ref.type->size == 1);
-                assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[2].arg_type == ir::Arg_Ref);
-                assert(ir_instr.arg[1].as.ref.type->size == ir_instr.arg[2].as.ref.type->size);
-                if (ir_instr.arg[1].as.ref.type->size <= REG_SIZE &&
-                    isZeroOrPowerOf2(ir_instr.arg[1].as.ref.type->size)) {
-                    code += 1 + log2u(ir_instr.arg[1].as.ref.type->size);
+                if (arg1.as.ref.type->size <= REG_SIZE &&
+                    isZeroOrPowerOf2(arg1.as.ref.type->size)) {
+                    code += 1 + log2u(arg1.as.ref.type->size);
                 }
                 break;
-#define NUM_X(NAME)          \
-    case ir::CAT(ir_, NAME): \
-        numOp();             \
-        break;
+#define NUM_X(NAME) case ir::CAT(ir_, NAME):
+#define NUM_INT_X(NAME) case ir::CAT(ir_, NAME):
 #include "nk/vm/op.inl"
-#define NUM_INT_X(NAME)      \
-    case ir::CAT(ir_, NAME): \
-        numOpInt();          \
-        break;
-#include "nk/vm/op.inl"
+                code += 1 + NUM_TYPE_INDEX(arg1.as.ref.type->as.num.value_type);
+                break;
             }
 
             auto &instr = *prog.instrs.push() = {};
