@@ -41,6 +41,8 @@ struct ast : testing::Test {
 
         m_ast.deinit();
         m_allocator.deinit();
+
+        m_sb.deinit();
     }
 
     void test(Node const &node) {

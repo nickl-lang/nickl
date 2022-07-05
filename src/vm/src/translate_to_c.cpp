@@ -51,6 +51,10 @@ void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
     }
 
     DynamicStringBuilder tmp_s{};
+    defer {
+        tmp_s.deinit();
+    };
+    tmp_s.reserve(100);
     bool is_complex = false;
 
     switch (type->typeclass_id) {
@@ -147,6 +151,10 @@ void _writeConst(WriterCtx &ctx, value_t val, StringBuilder &src, bool is_comple
     }
 
     DynamicStringBuilder tmp_s{};
+    defer {
+        tmp_s.deinit();
+    };
+    tmp_s.reserve(100);
 
     switch (val_typeclassid(val)) {
     case Type_Numeric: {
@@ -606,6 +614,11 @@ void translateToC(ir::Program const &ir, std::ostream &src) {
     ctx.tmp_arena.reserve(4000);
 
     defer {
+        ctx.types_s.deinit();
+        ctx.data_s.deinit();
+        ctx.forward_s.deinit();
+        ctx.main_s.deinit();
+
         ctx.type_map.deinit();
         ctx.const_map.deinit();
         ctx.tmp_arena.deinit();
