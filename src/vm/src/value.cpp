@@ -97,9 +97,6 @@ void _typeName(type_t type, StringBuilder &sb) {
         _typeName(type->as.ptr.target_type, sb);
         sb << "}";
         break;
-    case Type_Typeref:
-        sb << "type";
-        break;
     case Type_Void:
         sb << "void";
         break;
@@ -212,10 +209,6 @@ void _valInspect(value_t val, StringBuilder &sb) {
         }
         sb << ")";
         break;
-    case Type_Typeref: {
-        type_name(val_as(type_t, val), sb);
-        break;
-    }
     case Type_Void:
         sb << "void{}";
         break;
@@ -425,19 +418,6 @@ type_t type_get_tuple(TypeArray types) {
         res.type->size = layout.size;
         res.type->alignment = layout.alignment;
         res.type->as.tuple.elems = layout.info_ar;
-    }
-    return res.type;
-}
-
-type_t type_get_typeref() {
-    EASY_FUNCTION(profiler::colors::Green200)
-
-    _FpBase fp = {};
-    fp.id = Type_Typeref;
-    _TypeQueryRes res = _getType({(uint8_t *)&fp, sizeof(fp)});
-    if (res.inserted) {
-        res.type->size = sizeof(size_t);
-        res.type->alignment = alignof(type_t);
     }
     return res.type;
 }

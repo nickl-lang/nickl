@@ -17,7 +17,6 @@ enum ETypeclassId {
     Type_Numeric,
     Type_Ptr,
     Type_Tuple,
-    Type_Typeref,
     Type_Void,
 };
 
@@ -120,7 +119,6 @@ type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 //@Feature Implement optimized tuple type
 type_t type_get_tuple(TypeArray types);
-type_t type_get_typeref();
 type_t type_get_void();
 
 StringBuilder &type_name(type_t type, StringBuilder &sb);

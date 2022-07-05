@@ -63,8 +63,8 @@ TEST_F(value, ptr) {
 
     EXPECT_EQ(type, type_get_ptr(void_t));
 
-    auto const type_t = type_get_typeref();
-    EXPECT_NE(type, type_get_ptr(type_t));
+    auto const i32_t = type_get_numeric(Int32);
+    EXPECT_NE(type, type_get_ptr(i32_t));
 
     EXPECT_EQ(type->as.ptr.target_type, void_t);
 }
@@ -161,14 +161,15 @@ TEST_F(value, numeric) {
 }
 
 TEST_F(value, tuple) {
-    ARRAY_SLICE_INIT(type_t, types, type_get_void(), type_get_typeref(), type_get_numeric(Int16));
+    ARRAY_SLICE_INIT(
+        type_t, types, type_get_void(), type_get_numeric(Float64), type_get_numeric(Int16));
 
     auto const type = type_get_tuple(types);
 
     EXPECT_EQ(type->typeclass_id, Type_Tuple);
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "tuple{void, type, i16}");
+    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "tuple{void, f64, i16}");
 
     EXPECT_EQ(type, type_get_tuple(types));
 
@@ -176,21 +177,10 @@ TEST_F(value, tuple) {
 
     EXPECT_EQ(type_tuple_typeAt(type, 0), type_get_void());
     EXPECT_EQ(type_tuple_offsetAt(type, 0), 0);
-    EXPECT_EQ(type_tuple_typeAt(type, 1), type_get_typeref());
+    EXPECT_EQ(type_tuple_typeAt(type, 1), type_get_numeric(Float64));
     EXPECT_EQ(type_tuple_offsetAt(type, 1), 0);
     EXPECT_EQ(type_tuple_typeAt(type, 2), type_get_numeric(Int16));
     EXPECT_EQ(type_tuple_offsetAt(type, 2), 8);
-}
-
-TEST_F(value, typeref) {
-    auto const type = type_get_typeref();
-
-    EXPECT_EQ(type->typeclass_id, Type_Typeref);
-    EXPECT_EQ(type->size, sizeof(size_t));
-    EXPECT_EQ(type->alignment, alignof(type_t));
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "type");
-
-    EXPECT_EQ(type, type_get_typeref());
 }
 
 TEST_F(value, void) {
