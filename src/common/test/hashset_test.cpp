@@ -76,7 +76,7 @@ TEST_F(hashset, iteration) {
     EXPECT_EQ(set.size(), 3);
 
     int sum = 0;
-    for (auto &elem : set) {
+    for (auto &elem : (set_t const)set) {
         sum += elem;
     }
     EXPECT_EQ(sum, 6);

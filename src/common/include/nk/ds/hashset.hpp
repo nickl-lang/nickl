@@ -78,11 +78,11 @@ public:
         _Entry *m_end;
     };
 
-    iterator begin() {
+    iterator begin() const {
         return {m_entries, m_entries + m_capacity};
     }
 
-    iterator end() {
+    iterator end() const {
         return {m_entries + m_capacity, m_entries + m_capacity};
     }
 

@@ -47,9 +47,15 @@ private:
     using _EntrySet = HashSet<_Entry, _HashSetContext>;
 
 public:
-    struct iterator : public _EntrySet::iterator {
-        _TEntry<K const, V> &operator*() {
+    struct iterator : _EntrySet::iterator {
+        auto &operator*() {
             return (_TEntry<K const, V> &)_EntrySet::iterator::operator*();
+        }
+    };
+
+    struct const_iterator : _EntrySet::iterator {
+        auto &operator*() {
+            return (_TEntry<K const, V const> &)_EntrySet::iterator::operator*();
         }
     };
 
@@ -59,6 +65,14 @@ public:
 
     iterator end() {
         return (iterator)m_entries.end();
+    }
+
+    const_iterator begin() const {
+        return (const_iterator)m_entries.begin();
+    }
+
+    const_iterator end() const {
+        return (const_iterator)m_entries.end();
     }
 
     void reserve(size_t cap) {
