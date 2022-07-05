@@ -597,6 +597,14 @@ void translateToC(ir::Program const &ir, std::ostream &src) {
 
     WriterCtx ctx{};
 
+    ctx.types_s.reserve(4000);
+    ctx.data_s.reserve(4000);
+    ctx.forward_s.reserve(4000);
+    ctx.main_s.reserve(4000);
+
+    ctx.str_arena.reserve(4000);
+    ctx.tmp_arena.reserve(4000);
+
     defer {
         ctx.type_map.deinit();
         ctx.const_map.deinit();
