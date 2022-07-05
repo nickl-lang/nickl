@@ -1,21 +1,11 @@
 #ifndef HEADER_GUARD_NK_COMMON_HASHMAP
 #define HEADER_GUARD_NK_COMMON_HASHMAP
 
-#include <cstddef>
-
 #include "nk/ds/hashset.hpp"
-#include "nk/utils/profiler.hpp"
 
 namespace nk {
 
-namespace detail {
-
-template <class K>
-using DefaultHashMapContext = DefaultHashSetContext<K>;
-
-} // namespace detail
-
-template <class K, class V, class Context = detail::DefaultHashMapContext<K>>
+template <class K, class V, class Context = detail::DefaultHashSetContext<K>>
 struct HashMap {
 private:
     template <class TKey, class TValue>
@@ -92,23 +82,19 @@ public:
     }
 
     V &insert(K const &key, V const &value) {
-        EASY_BLOCK("HashMap::insert", profiler::colors::Grey200)
         return m_entries.insert(_Entry{key, value}).value;
     }
 
     V &operator[](K const &key) {
-        EASY_BLOCK("HashMap::operator[]", profiler::colors::Grey200)
         return m_entries.insert(_Entry{key, {}}).value;
     }
 
     V *find(K const &key) const {
-        EASY_BLOCK("HashMap::find", profiler::colors::Grey200)
         _Entry *found = m_entries.find(key);
         return found ? &found->value : nullptr;
     }
 
     void remove(K const &key) {
-        EASY_BLOCK("HashMap::remove", profiler::colors::Grey200)
         m_entries.remove(key);
     }
 

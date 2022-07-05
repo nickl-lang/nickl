@@ -24,7 +24,6 @@ namespace {
 LOG_USE_SCOPE(nk::vm::ir);
 
 void _inspect(Program const &prog, StringBuilder &sb) {
-    //@Performance Maybe replace StackAllocator with StaticAllocator
     StackAllocator arena{};
     defer {
         arena.deinit();
