@@ -31,6 +31,61 @@ struct DefaultHashSetContext {
 
 template <class T, class Context = detail::DefaultHashSetContext<T>>
 struct HashSet {
+private:
+    struct _Entry {
+        T val;
+        hash_t hash;
+    };
+
+public:
+    struct iterator {
+        iterator &operator++() {
+            m_entry++;
+            findValid();
+            return *this;
+        }
+
+        iterator operator++(int) {
+            iterator tmp{*this};
+            operator++();
+            return tmp;
+        }
+
+        bool operator!=(iterator const &rhs) {
+            return m_entry != rhs.m_entry;
+        }
+
+        T const &operator*() {
+            return m_entry->val;
+        }
+
+    private:
+        friend struct HashSet;
+
+        void findValid() {
+            while (m_entry != m_end && !_isValid(m_entry)) {
+                m_entry++;
+            }
+        }
+
+        iterator(_Entry *entries, _Entry *end)
+            : m_entry{entries}
+            , m_end{end} {
+            findValid();
+        }
+
+        _Entry *m_entry;
+        _Entry *m_end;
+    };
+
+    iterator begin() {
+        return {m_entries, m_entries + m_capacity};
+    }
+
+    iterator end() {
+        return {m_entries + m_capacity, m_entries + m_capacity};
+    }
+
     size_t size() const {
         return m_size;
     }
@@ -76,16 +131,6 @@ struct HashSet {
     }
 
 private:
-    struct _Entry {
-        T val;
-        hash_t hash;
-
-        //@Todo Implement better way to iterate over HashSet
-        bool isValid() const {
-            return !_isEmpty(this) && !_isDeleted(this);
-        }
-    };
-
     static constexpr size_t LOAD_FACTOR_PERCENT = 90;
     static constexpr hash_t DELETED_FLAG = 1ull << (8 * sizeof(hash_t) - 1);
 
@@ -106,7 +151,7 @@ private:
     }
 
     static bool _isValid(_Entry const *entry) {
-        return entry->isValid();
+        return !_isEmpty(entry) && !_isDeleted(entry);
     }
 
     template <class U>
@@ -179,10 +224,8 @@ private:
         return nullptr;
     }
 
-public: //@Todo Remove public fields from HashSet
-    _Entry *m_entries;
-
 private:
+    _Entry *m_entries;
     size_t m_size;
     size_t m_capacity;
     size_t m_max_probe_dist;

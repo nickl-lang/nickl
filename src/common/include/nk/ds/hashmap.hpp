@@ -17,6 +17,50 @@ using DefaultHashMapContext = DefaultHashSetContext<K>;
 
 template <class K, class V, class Context = detail::DefaultHashMapContext<K>>
 struct HashMap {
+private:
+    template <class TKey, class TValue>
+    struct _TEntry {
+        TKey key;
+        TValue value;
+    };
+
+    using _Entry = _TEntry<K, V>;
+
+    struct _HashSetContext {
+        static hash_t hash(_Entry const &entry) {
+            return Context::hash(entry.key);
+        }
+
+        static hash_t hash(K const &key) {
+            return Context::hash(key);
+        }
+
+        static bool equal_to(_Entry const &lhs, _Entry const &rhs) {
+            return Context::equal_to(lhs.key, rhs.key);
+        }
+
+        static bool equal_to(_Entry const &lhs, K const &rhs_key) {
+            return Context::equal_to(lhs.key, rhs_key);
+        }
+    };
+
+    using _EntrySet = HashSet<_Entry, _HashSetContext>;
+
+public:
+    struct iterator : public _EntrySet::iterator {
+        _TEntry<K const, V> &operator*() {
+            return (_TEntry<K const, V> &)_EntrySet::iterator::operator*();
+        }
+    };
+
+    iterator begin() {
+        return (iterator)m_entries.begin();
+    }
+
+    iterator end() {
+        return (iterator)m_entries.end();
+    }
+
     void reserve(size_t cap) {
         m_entries.reserve(cap);
     }
@@ -55,30 +99,7 @@ struct HashMap {
     }
 
 private:
-    struct _Entry {
-        K key;
-        V value;
-    };
-
-    struct _HashSetContext {
-        static hash_t hash(_Entry const &entry) {
-            return Context::hash(entry.key);
-        }
-
-        static hash_t hash(K const &key) {
-            return Context::hash(key);
-        }
-
-        static bool equal_to(_Entry const &lhs, _Entry const &rhs) {
-            return Context::equal_to(lhs.key, rhs.key);
-        }
-
-        static bool equal_to(_Entry const &lhs, K const &rhs_key) {
-            return Context::equal_to(lhs.key, rhs_key);
-        }
-    };
-
-    HashSet<_Entry, _HashSetContext> m_entries;
+    _EntrySet m_entries;
 };
 
 } // namespace nk
