@@ -24,6 +24,11 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::bc);
 
+EOpCode s_ir2opcode[] = {
+#define X(NAME) CAT(op_, NAME),
+#include "nk/vm/ir.inl"
+};
+
 void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
     FunctInfo const &info = *(FunctInfo *)fn->as.fn.closure;
 
@@ -256,9 +261,10 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         block_info.first_instr = prog.instrs.size;
 
         for (auto const &ir_instr : ir_prog.instrs.slice(block.first_instr, block.instr_count)) {
-            uint16_t code = 0;
+            uint16_t code = s_ir2opcode[ir_instr.code];
 
-            auto numOp = [&](uint16_t op) {
+            //@Todo Maybe optimize boilerplate in numOp and numOpInt
+            auto numOp = [&]() {
                 auto const &arg0 = ir_instr.arg[0];
                 auto const &arg1 = ir_instr.arg[1];
                 auto const &arg2 = ir_instr.arg[2];
@@ -272,10 +278,10 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
 
                 assert(arg0.as.ref.type->typeclass_id == Type_Numeric);
 
-                code = op + 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
+                code += 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
             };
 
-            auto numOpInt = [&](uint16_t op) {
+            auto numOpInt = [&]() {
                 auto const &arg0 = ir_instr.arg[0];
                 auto const &arg1 = ir_instr.arg[1];
                 auto const &arg2 = ir_instr.arg[2];
@@ -290,47 +296,20 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                 assert(arg0.as.ref.type->typeclass_id == Type_Numeric);
                 assert(arg0.as.ref.type->as.num.value_type < Float32);
 
-                code = op + 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
+                code += 1 + NUM_TYPE_INDEX(arg0.as.ref.type->as.num.value_type);
             };
 
-            //@Refactor Remove boilerplate from opcode compilation
             switch (ir_instr.code) {
-            case ir::ir_nop:
-                code = op_nop;
-                break;
-            case ir::ir_enter:
-                code = op_enter;
-                break;
-            case ir::ir_leave:
-                code = op_leave;
-                break;
-            case ir::ir_ret:
-                code = op_ret;
-                break;
-            case ir::ir_jmp:
-                code = op_jmp;
-                break;
-            case ir::ir_jmpz:
-                code = op_jmpz;
-                break;
-            case ir::ir_jmpnz:
-                code = op_jmpnz;
-                break;
-            case ir::ir_cast:
-                code = op_cast;
-                break;
             case ir::ir_call:
                 if (ir_instr.arg[1].arg_type == ir::Arg_FunctId) {
                     code = op_call_jmp;
                     if (!prog.funct_info[ir_instr.arg[1].as.id].prog) {
                         funct_ids_to_translate.insert(ir_instr.arg[1].as.id);
                     }
-                } else {
-                    code = op_call;
                 }
                 break;
+                //@Todo Beautify op translation for some instructions
             case ir::ir_mov:
-                code = op_mov;
                 assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
                 assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
                 assert(ir_instr.arg[0].as.ref.type->size == ir_instr.arg[1].as.ref.type->size);
@@ -339,20 +318,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                     code += 1 + log2u(ir_instr.arg[0].as.ref.type->size);
                 }
                 break;
-            case ir::ir_lea:
-                code = op_lea;
-                break;
-            case ir::ir_neg:
-                code = op_neg;
-                break;
-            case ir::ir_compl:
-                code = op_compl;
-                break;
-            case ir::ir_not:
-                code = op_not;
-                break;
             case ir::ir_eq:
-                code = op_eq;
                 assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
                 assert(ir_instr.arg[0].as.ref.type->size == 1);
                 assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
@@ -364,7 +330,6 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                 }
                 break;
             case ir::ir_ne:
-                code = op_ne;
                 assert(ir_instr.arg[0].arg_type == ir::Arg_Ref);
                 assert(ir_instr.arg[0].as.ref.type->size == 1);
                 assert(ir_instr.arg[1].arg_type == ir::Arg_Ref);
@@ -375,19 +340,16 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                     code += 1 + log2u(ir_instr.arg[1].as.ref.type->size);
                 }
                 break;
-#define NUM_X(NAME)       \
-    case ir::ir_##NAME:   \
-        numOp(op_##NAME); \
+#define NUM_X(NAME)          \
+    case ir::CAT(ir_, NAME): \
+        numOp();             \
         break;
 #include "nk/vm/op.inl"
 #define NUM_INT_X(NAME)      \
-    case ir::ir_##NAME:      \
-        numOpInt(op_##NAME); \
+    case ir::CAT(ir_, NAME): \
+        numOpInt();          \
         break;
 #include "nk/vm/op.inl"
-            default:
-                assert(!"unreachable");
-                break;
             }
 
             auto &instr = *prog.instrs.push() = {};
