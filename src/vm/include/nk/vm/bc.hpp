@@ -7,6 +7,7 @@
 #include "nk/ds/array.hpp"
 #include "nk/ds/log2arena.hpp"
 #include "nk/mem/allocator.hpp"
+#include "nk/utils/utils.hpp"
 #include "nk/vm/ir.hpp"
 #include "nk/vm/value.hpp"
 
@@ -17,7 +18,7 @@ namespace bc {
 extern char const *s_op_names[];
 
 enum EOpCode {
-#define X(NAME) op_##NAME,
+#define X(NAME) CAT(op_, NAME),
 #include "nk/vm/op.inl"
 
     Op_Count,
