@@ -14,6 +14,7 @@ class string_builder : public testing::Test {
     }
 
     void TearDown() override {
+        m_builder.deinit();
     }
 
 protected:

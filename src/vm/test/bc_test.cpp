@@ -30,7 +30,9 @@ class bytecode : public testing::Test {
     void TearDown() override {
         m_prog.deinit();
         m_ir_prog.deinit();
+
         m_arena.deinit();
+        m_sb.deinit();
     }
 
 protected:

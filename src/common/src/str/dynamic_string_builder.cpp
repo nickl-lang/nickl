@@ -44,7 +44,7 @@ string DynamicStringBuilder::moveStr(Slice<char> dst) {
     size_t const len = size();
     *this << '\0';
     m_arena.copy(dst);
-    m_arena.deinit();
+    m_arena.clear();
     return {dst.data, len};
 }
 
