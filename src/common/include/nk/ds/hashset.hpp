@@ -107,10 +107,12 @@ public:
         EASY_BLOCK("HashSet::insert", profiler::colors::Grey200)
         hash_t const hash = _valHash(val);
         _Entry *found = _find(hash, val);
-        if (!found) {
+        if (found) {
+            found->val = val;
+        } else {
             found = _insert(hash, val);
         }
-        return (found->val = val);
+        return found->val;
     }
 
     template <class U>
