@@ -495,8 +495,6 @@ Instr ProgramBuilder::make_call(Ref const &dst, ExtFunctId funct, Ref const &arg
     Instr ProgramBuilder::make_##NAME(Ref const &dst, Ref const &arg) { \
         return {{_arg(dst), _arg(arg), {}}, ir_##NAME};                 \
     }
-#include "nk/vm/ir.inl"
-
 #define B(NAME)                                                                         \
     Instr ProgramBuilder::make_##NAME(Ref const &dst, Ref const &lhs, Ref const &rhs) { \
         return {{_arg(dst), _arg(lhs), _arg(rhs)}, ir_##NAME};                          \
