@@ -9,6 +9,7 @@ add_library(${LIB}
     src/native_fn_adapter.cpp
     src/pipe_stream.cpp
     src/so_adapter.cpp
+    src/translate_to_c.cpp
     src/value.cpp
     )
 

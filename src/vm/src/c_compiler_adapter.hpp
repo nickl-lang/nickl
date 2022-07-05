@@ -4,6 +4,7 @@
 #include <ostream>
 
 #include "nk/str/string.hpp"
+#include "nk/vm/ir.hpp"
 
 namespace nk {
 namespace vm {
@@ -17,6 +18,8 @@ struct CCompilerConfig {
 
 std::ostream c_compiler_streamOpen(CCompilerConfig const &conf);
 bool c_compiler_streamClose(std::ostream const &stream);
+
+bool c_compiler_compile(CCompilerConfig const &conf, ir::Program const &ir);
 
 } // namespace vm
 } // namespace nk
