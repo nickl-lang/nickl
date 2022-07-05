@@ -14,6 +14,7 @@
 namespace nk {
 namespace vm {
 
+//@Todo Make register and pointer size configurable?
 #define REG_SIZE 8
 
 enum ERegister {

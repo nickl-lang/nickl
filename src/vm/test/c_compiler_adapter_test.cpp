@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 
-#include "find_library.hpp"
 #include "nk/str/dynamic_string_builder.hpp"
 #include "nk/str/static_string_builder.hpp"
 #include "nk/utils/logger.h"
@@ -27,11 +26,6 @@ class c_compiler_adapter : public testing::Test {
         id_init();
         types_init();
 
-        FindLibraryConfig conf{};
-        ARRAY_SLICE_INIT(string, paths, cs2s(LIBS_SEARCH_PATH));
-        conf.search_paths = paths;
-        findLibrary_init(conf);
-
         StaticStringBuilder{m_output_filename}.printf(
             TEST_FILES_DIR "%s_test.out",
             testing::UnitTest::GetInstance()->current_test_info()->name());
@@ -49,8 +43,6 @@ class c_compiler_adapter : public testing::Test {
         m_sb.deinit();
 
         m_prog.deinit();
-
-        findLibrary_deinit();
 
         types_deinit();
         id_deinit();
