@@ -4,10 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include "find_library.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
 #include "nk/str/static_string_builder.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/utils.hpp"
+#include "nk/vm/ir.hpp"
 #include "pipe_stream.hpp"
+#include "utils/test_ir.hpp"
 
 namespace {
 
@@ -19,6 +23,14 @@ LOG_USE_SCOPE(nk::vm::test::c_compiler_adapter);
 class c_compiler_adapter : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
+
+        id_init();
+        types_init();
+
+        FindLibraryConfig conf{};
+        ARRAY_SLICE_INIT(string, paths, cs2s(LIBS_SEARCH_PATH));
+        conf.search_paths = paths;
+        findLibrary_init(conf);
 
         StaticStringBuilder{m_output_filename}.printf(
             TEST_FILES_DIR "%s_test.out",
@@ -33,6 +45,15 @@ class c_compiler_adapter : public testing::Test {
     }
 
     void TearDown() override {
+        m_arena.deinit();
+        m_sb.deinit();
+
+        m_prog.deinit();
+
+        findLibrary_deinit();
+
+        types_deinit();
+        id_deinit();
     }
 
 protected:
@@ -50,6 +71,12 @@ protected:
 protected:
     ARRAY_SLICE(char, m_output_filename, 1024);
     CCompilerConfig m_conf;
+
+    ir::Program m_prog{};
+    ir::ProgramBuilder m_builder{m_prog};
+
+    DynamicStringBuilder m_sb{};
+    StackAllocator m_arena{};
 };
 
 } // namespace
@@ -93,4 +120,34 @@ int main() {
 )";
 
     EXPECT_FALSE(c_compiler_streamClose(src));
+}
+
+TEST_F(c_compiler_adapter, compile_basic) {
+    test_ir_main_argc(m_builder);
+    LOG_INF("ir:\n%s", [&]() {
+        return m_prog.inspect(m_sb).moveStr(m_arena).data;
+    }());
+
+    ASSERT_TRUE(c_compiler_compile(m_conf, m_prog));
+    EXPECT_EQ(_runGetStdout(), "");
+}
+
+TEST_F(c_compiler_adapter, pi) {
+    test_ir_main_pi(m_builder, cs2s(LIBC_NAME));
+    LOG_INF("ir:\n%s", [&]() {
+        return m_prog.inspect(m_sb).moveStr(m_arena).data;
+    }());
+
+    ASSERT_TRUE(c_compiler_compile(m_conf, m_prog));
+    EXPECT_EQ(_runGetStdout(), "pi = 3.1415926535897940\n");
+}
+
+TEST_F(c_compiler_adapter, vec2LenSquared) {
+    test_ir_main_vec2LenSquared(m_builder, cs2s(LIBC_NAME));
+    LOG_INF("ir:\n%s", [&]() {
+        return m_prog.inspect(m_sb).moveStr(m_arena).data;
+    }());
+
+    ASSERT_TRUE(c_compiler_compile(m_conf, m_prog));
+    EXPECT_EQ(_runGetStdout(), "lenSquared = 41.000000\n");
 }
