@@ -58,3 +58,26 @@ TEST_F(hashset, overwrite) {
     set.insert(c_test_val);
     EXPECT_EQ(set.size(), 1);
 }
+
+TEST_F(hashset, iteration) {
+    using set_t = HashSet<int>;
+
+    set_t set{};
+    defer {
+        set.deinit();
+    };
+
+    set.insert(1);
+    set.insert(1);
+    set.insert(2);
+    set.insert(3);
+    set.insert(2);
+
+    EXPECT_EQ(set.size(), 3);
+
+    int sum = 0;
+    for (auto &elem : set) {
+        sum += elem;
+    }
+    EXPECT_EQ(sum, 6);
+}

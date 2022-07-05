@@ -353,3 +353,40 @@ TEST_F(hashmap, index_operator) {
     ASSERT_TRUE(found);
     EXPECT_EQ(std_str(*found), "forty-two");
 }
+
+TEST_F(hashmap, iteration) {
+    using key_t = int;
+    using val_t = int;
+    using hashmap_t = HashMap<key_t, val_t>;
+
+    hashmap_t hm{};
+    defer {
+        hm.deinit();
+    };
+
+    hm.insert(41, 1);
+    hm.insert(42, 2);
+    hm.insert(43, 3);
+
+    EXPECT_EQ(hm.size(), 3);
+
+    int sum_of_keys = 0;
+    int sum_of_values = 0;
+    for (auto &entry : hm) {
+        sum_of_keys += entry.key;
+        sum_of_values += entry.value;
+        entry.value = 0;
+    }
+
+    EXPECT_EQ(sum_of_keys, 126);
+    EXPECT_EQ(sum_of_values, 6);
+
+    sum_of_keys = 0;
+    sum_of_values = 0;
+    for (auto const &entry : hm) {
+        sum_of_keys += entry.key;
+        sum_of_values += entry.value;
+    }
+    EXPECT_EQ(sum_of_keys, 126);
+    EXPECT_EQ(sum_of_values, 0);
+}
