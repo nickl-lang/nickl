@@ -35,7 +35,8 @@ struct WriterCtx {
     DynamicStringBuilder forward_s;
     DynamicStringBuilder main_s;
 
-    StackAllocator arena;
+    StackAllocator tmp_arena;
+    StackAllocator str_arena;
 };
 
 void _writePreabmle(StringBuilder &src) {
@@ -119,21 +120,21 @@ void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
         break;
     }
 
-    StackAllocator arena{};
+    auto const frame = ctx.tmp_arena.pushFrame();
     defer {
-        arena.deinit();
+        ctx.tmp_arena.popFrame(frame);
     };
 
-    auto tmp_str = tmp_s.moveStr(arena);
+    auto tmp_str = tmp_s.moveStr(ctx.tmp_arena);
 
     if (is_complex) {
         ctx.types_s << "typedef " << tmp_str << " type" << ctx.typedecl_count << ";\n";
         tmp_s << "type" << ctx.typedecl_count;
-        tmp_str = tmp_s.moveStr(arena);
+        tmp_str = tmp_s.moveStr(ctx.tmp_arena);
         ctx.typedecl_count++;
     }
 
-    auto type_str = tmp_str.copy(ctx.arena.alloc<char>(tmp_str.size));
+    auto type_str = tmp_str.copy(ctx.str_arena.alloc<char>(tmp_str.size));
     ctx.type_map.insert(type, type_str);
     src << (string)type_str;
 }
@@ -231,22 +232,22 @@ void _writeConst(WriterCtx &ctx, value_t val, StringBuilder &src, bool is_comple
         break;
     }
 
-    StackAllocator arena{};
+    auto const frame = ctx.tmp_arena.pushFrame();
     defer {
-        arena.deinit();
+        ctx.tmp_arena.popFrame(frame);
     };
 
-    auto tmp_str = tmp_s.moveStr(arena);
+    auto tmp_str = tmp_s.moveStr(ctx.tmp_arena);
 
     if (is_complex) {
         _writeType(ctx, val_typeof(val), ctx.data_s);
         ctx.data_s << " const" << ctx.const_count << " = " << tmp_str << ";\n";
         tmp_s << "const" << ctx.const_count;
-        tmp_str = tmp_s.moveStr(arena);
+        tmp_str = tmp_s.moveStr(ctx.tmp_arena);
         ctx.const_count++;
     }
 
-    auto const_str = tmp_str.copy(ctx.arena.alloc<char>(tmp_str.size));
+    auto const_str = tmp_str.copy(ctx.tmp_arena.alloc<char>(tmp_str.size));
     ctx.const_map.insert(val, const_str);
     src << (string)const_str;
 }
@@ -275,16 +276,11 @@ void _writeFnSig(
 }
 
 void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
-    StackAllocator allocator{};
-    defer {
-        allocator.deinit();
-    };
-
     auto &src = ctx.main_s;
 
     _writePreabmle(ctx.types_s);
 
-    auto block_name_by_id = allocator.alloc<string>(ir.blocks.size);
+    auto block_name_by_id = ctx.tmp_arena.alloc<string>(ir.blocks.size);
 
     for (auto const &f : ir.functs) {
         for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
@@ -604,15 +600,16 @@ void translateToC(ir::Program const &ir, std::ostream &src) {
     defer {
         ctx.type_map.deinit();
         ctx.const_map.deinit();
-        ctx.arena.deinit();
+        ctx.tmp_arena.deinit();
+        ctx.str_arena.deinit();
     };
 
     _writeProgram(ctx, ir);
 
-    src << ctx.types_s.moveStr(ctx.arena) << "\n";
-    src << ctx.data_s.moveStr(ctx.arena) << "\n";
-    src << ctx.forward_s.moveStr(ctx.arena);
-    src << ctx.main_s.moveStr(ctx.arena);
+    src << ctx.types_s.moveStr(ctx.tmp_arena) << "\n";
+    src << ctx.data_s.moveStr(ctx.tmp_arena) << "\n";
+    src << ctx.forward_s.moveStr(ctx.tmp_arena);
+    src << ctx.main_s.moveStr(ctx.tmp_arena);
 }
 
 } // namespace vm
