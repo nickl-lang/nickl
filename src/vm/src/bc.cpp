@@ -129,15 +129,12 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         relocs.deinit();
     };
 
-    //@Robustness Getting tuple for all globals combinations
-    type_t const globals_t = type_get_tuple(ir_prog.globals);
-    if (globals_t->size > 0) {
-        //@Robustness Clearing and pusing globals multiple times
-        prog.globals.clear();
-        prog.globals.push(globals_t->size);
-        LOG_DBG("allocating global storage: %p", prog.globals.data);
+    auto globals_layout = calcTupleLayout(ir_prog.globals, allocator);
+    if (globals_layout.size > prog.globals.capacity) {
+        prog.globals.reserve(globals_layout.size);
+        std::memset(prog.globals.data, 0, globals_layout.size);
 
-        std::memset(prog.globals.data, 0, globals_t->size);
+        LOG_DBG("allocated global storage @%p", prog.globals.data);
     }
 
     prog.shobjs.reserve(ir_prog.shobjs.size);
@@ -199,7 +196,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
             case ir::Ref_Ret:
                 break;
             case ir::Ref_Global:
-                arg.offset += type_tuple_offsetAt(globals_t, ref.value.index);
+                arg.offset += globals_layout.info_ar[ref.value.index].offset;
                 break;
             case ir::Ref_Const:
                 arg.offset += _pushConst({ref.value.data, ref.type});

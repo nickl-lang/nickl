@@ -76,6 +76,12 @@ struct _type_tuple {
     TupleElemInfoArray elems;
 };
 
+struct TupleLayout {
+    TupleElemInfoArray info_ar;
+    size_t size;
+    size_t alignment;
+};
+
 struct Type {
     union {
         _type_null null;
@@ -94,6 +100,8 @@ struct Type {
 };
 
 using TypeArray = Slice<type_t const>;
+
+TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride = 1);
 
 void types_init();
 void types_deinit();

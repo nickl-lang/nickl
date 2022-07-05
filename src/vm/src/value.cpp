@@ -61,31 +61,6 @@ _TypeQueryRes _getType(ByteArray fp) {
     return _TypeQueryRes{*_storeType(fp_copy, type), true};
 }
 
-struct _TupleLayout {
-    TupleElemInfoArray info_ar;
-    size_t size;
-    size_t alignment;
-};
-
-_TupleLayout _calcTupleLayout(TypeArray types, size_t stride) {
-    size_t alignment = 0;
-    size_t offset = 0;
-
-    TupleElemInfoArray const info_ar{s_typearena.alloc<TupleElemInfo>(types.size), types.size};
-
-    for (size_t i = 0; i < types.size; i++) {
-        type_t const type = types[i * stride];
-
-        alignment = maxu(alignment, type->alignment);
-
-        offset = roundUpSafe(offset, type->alignment);
-        info_ar[i] = TupleElemInfo{type, offset};
-        offset += type->size;
-    }
-
-    return _TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
-}
-
 void _typeName(type_t type, StringBuilder &sb) {
     switch (type->typeclass_id) {
     case Type_Array:
@@ -258,6 +233,25 @@ void _valInspect(value_t val, StringBuilder &sb) {
 
 } // namespace
 
+TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride) {
+    size_t alignment = 0;
+    size_t offset = 0;
+
+    TupleElemInfoArray const info_ar{allocator.alloc<TupleElemInfo>(types.size), types.size};
+
+    for (size_t i = 0; i < types.size; i++) {
+        type_t const type = types[i * stride];
+
+        alignment = maxu(alignment, type->alignment);
+
+        offset = roundUpSafe(offset, type->alignment);
+        info_ar[i] = TupleElemInfo{type, offset};
+        offset += type->size;
+    }
+
+    return TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
+}
+
 void types_init() {
     EASY_FUNCTION(profiler::colors::Green200)
 
@@ -426,7 +420,7 @@ type_t type_get_tuple(TypeArray types) {
     }
     _TypeQueryRes res = _getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
-        _TupleLayout layout = _calcTupleLayout({types.data, types.size}, 1);
+        TupleLayout layout = calcTupleLayout(types, s_typearena);
 
         res.type->size = layout.size;
         res.type->alignment = layout.alignment;
