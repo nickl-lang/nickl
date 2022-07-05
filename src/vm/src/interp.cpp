@@ -185,7 +185,7 @@ INTERP(cast) {
     auto arg = _getDynRef(instr.arg[2]);
 
     assert(val_typeclassid(dst) == Type_Numeric);
-    assert(val_typeclassid(type) == Type_Typeref);
+    assert(val_typeclassid(type) == Type_Ptr);
     assert(val_typeid(dst) == val_as(type_t, type)->id);
     assert(val_typeclassid(arg) == Type_Numeric);
 

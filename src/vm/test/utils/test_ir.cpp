@@ -299,7 +299,7 @@ ir::FunctId test_ir_modf(ProgramBuilder &b) {
     auto i64_t = type_get_numeric(Int64);
     auto f64_t = type_get_numeric(Float64);
     auto f64_ptr_t = type_get_ptr(f64_t);
-    auto typeref_t = type_get_typeref();
+    auto void_ptr_t = type_get_ptr(type_get_void());
 
     ARRAY_SLICE_INIT(type_t, args, f64_t, f64_ptr_t);
     auto args_t = type_get_tuple(args);
@@ -320,8 +320,8 @@ ir::FunctId test_ir_modf(ProgramBuilder &b) {
 
     auto int_part_ref = a_int_part_ptr.deref();
 
-    b.gen(b.make_cast(v_int_part, b.makeConstRef(i64_t, typeref_t), a_x));
-    b.gen(b.make_cast(int_part_ref, b.makeConstRef(f64_t, typeref_t), v_int_part));
+    b.gen(b.make_cast(v_int_part, b.makeConstRef(i64_t, void_ptr_t), a_x));
+    b.gen(b.make_cast(int_part_ref, b.makeConstRef(f64_t, void_ptr_t), v_int_part));
     b.gen(b.make_sub(ret, a_x, int_part_ref));
 
     b.gen(b.make_ret());

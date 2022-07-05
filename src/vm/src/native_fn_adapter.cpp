@@ -103,9 +103,6 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
         };
         break;
     }
-    case Type_Typeref:
-        ffi_t = &ffi_type_pointer;
-        break;
     case Type_Void:
         ffi_t = &ffi_type_void;
         break;
