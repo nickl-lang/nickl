@@ -1,18 +1,12 @@
 FROM debian:sid-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+# Essentials \
     build-essential \
     ca-certificates \
-    clang \
-    clang-format \
-    cmake \
     curl \
-    gdb \
-    git \
-    less \
     libcurl4-openssl-dev \
     locales \
-    ninja-build \
     openssl \
     pkg-config \
     python-is-python3 \
@@ -22,6 +16,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tmux \
     wget \
     zsh \
+# Build tools \
+    clang \
+    clang-format \
+    cmake \
+    gdb \
+    git \
+    ninja-build \
+# Dev Tools \
+    clangd \
+    less \
+    nodejs \
+    npm  \
+    python3-neovim \
+    python3-pip \
+    silversearcher-ag \
+# Project dependencies \
+    libffi-dev \
+    libgmock-dev \
+    libgtest-dev \
  && rm -rf /var/lib/apt/lists/*
 
 RUN echo "ALL ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/user \
@@ -36,17 +49,18 @@ RUN mkdir -p -m 0600 ~/.ssh \
  && ssh-keyscan github.com > ~/.ssh/known_hosts \
  ;
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgtest-dev libgmock-dev libffi-dev \
- && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-pip python3-neovim nodejs npm clangd \
- && rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/yse/easy_profiler.git \
+ && mkdir easy_profiler/build \
+ && cd easy_profiler/build \
+ && cmake -GNinja .. \
+ && ninja install \
+ && cd ../.. \
+ && rm -rf easy_profiler \
+ ;
 
 RUN npm install -g neovim
 
-RUN wget https://github.com/neovim/neovim/releases/download/v0.7.0/nvim-linux64.deb \
+RUN wget https://github.com/neovim/neovim/releases/download/v0.7.2/nvim-linux64.deb \
  && apt-get install ./nvim-linux64.deb \
  && rm ./nvim-linux64.deb \
  ;
