@@ -5,6 +5,7 @@
 #include "find_library.hpp"
 #include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
 #include "nk/vm/bc.hpp"
 #include "nk/vm/ir.hpp"
 #include "utils/test_ir.hpp"
@@ -31,6 +32,8 @@ class translate_to_c : public testing::Test {
     }
 
 protected:
+    ProfilerWrapper m_prof;
+
     ir::Program m_prog;
     ir::ProgramBuilder m_builder{m_prog};
 

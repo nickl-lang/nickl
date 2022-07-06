@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "nk/utils/profiler.hpp"
+
 namespace nk {
 namespace vm {
 
@@ -10,6 +12,8 @@ namespace {
 using namespace ir;
 
 void _startMain(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
     auto argv_t = type_get_ptr(type_get_ptr(i8_t));
@@ -22,6 +26,8 @@ void _startMain(ProgramBuilder &b) {
 }
 
 ir::ExtFunctId _makePrintf(ProgramBuilder &b, string libc_name) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i32_t = type_get_numeric(Int32);
     auto i8_ptr_t = type_get_ptr(type_get_numeric(Int8));
 
@@ -36,6 +42,8 @@ ir::ExtFunctId _makePrintf(ProgramBuilder &b, string libc_name) {
 } // namespace
 
 ir::FunctId test_ir_plus(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i64_t = type_get_numeric(Int64);
 
     ARRAY_SLICE_INIT(type_t, args, i64_t, i64_t);
@@ -58,6 +66,8 @@ ir::FunctId test_ir_plus(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_not(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i64_t = type_get_numeric(Int64);
 
     ARRAY_SLICE_INIT(type_t, args, i64_t);
@@ -94,6 +104,8 @@ ir::FunctId test_ir_not(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_atan(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto u64_t = type_get_numeric(Uint64);
     auto f64_t = type_get_numeric(Float64);
 
@@ -166,6 +178,8 @@ ir::FunctId test_ir_atan(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_pi(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto const atan_funct = test_ir_atan(b);
 
     auto f64_t = type_get_numeric(Float64);
@@ -210,6 +224,8 @@ ir::FunctId test_ir_pi(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_rsqrt(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i32_t = type_get_numeric(Int32);
     auto f32_t = type_get_numeric(Float32);
 
@@ -259,6 +275,8 @@ ir::FunctId test_ir_rsqrt(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_vec2LenSquared(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto void_t = type_get_void();
     auto f64_t = type_get_numeric(Float64);
 
@@ -296,6 +314,8 @@ ir::FunctId test_ir_vec2LenSquared(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_modf(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i64_t = type_get_numeric(Int64);
     auto f64_t = type_get_numeric(Float64);
     auto f64_ptr_t = type_get_ptr(f64_t);
@@ -330,6 +350,8 @@ ir::FunctId test_ir_modf(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_intPart(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto f_modf = test_ir_modf(b);
 
     auto f64_t = type_get_numeric(Float64);
@@ -367,6 +389,8 @@ ir::FunctId test_ir_intPart(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_call3Times(ProgramBuilder &b, type_t fn) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto void_t = type_get_void();
     auto args_t = type_get_tuple({});
 
@@ -403,6 +427,8 @@ ir::FunctId test_ir_call3Times(ProgramBuilder &b, type_t fn) {
 }
 
 ir::FunctId test_ir_hasZeroByte32(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i32_t = type_get_numeric(Int32);
 
     ARRAY_SLICE_INIT(type_t, args, i32_t);
@@ -432,6 +458,8 @@ ir::FunctId test_ir_hasZeroByte32(ProgramBuilder &b) {
 }
 
 void test_ir_readToggleGlobal(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto void_t = type_get_void();
     auto args_t = type_get_tuple({});
 
@@ -459,6 +487,8 @@ void test_ir_readToggleGlobal(ProgramBuilder &b) {
 }
 
 ir::FunctId test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto void_t = type_get_void();
     auto args_t = type_get_tuple({});
 
@@ -477,6 +507,8 @@ ir::FunctId test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
 }
 
 ir::FunctId test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i64_t = type_get_numeric(Int64);
 
     ARRAY_SLICE_INIT(type_t, args, i64_t, i64_t);
@@ -499,6 +531,8 @@ ir::FunctId test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
 }
 
 ir::FunctId test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto void_t = type_get_void();
     auto i8_t = type_get_numeric(Int8);
     auto i32_t = type_get_numeric(Int32);
@@ -542,6 +576,8 @@ ir::FunctId test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
 }
 
 std::pair<ir::FunctId, ir::FunctId> test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto void_t = type_get_void();
     auto i64_t = type_get_numeric(Int64);
 
@@ -570,6 +606,8 @@ std::pair<ir::FunctId, ir::FunctId> test_ir_getSetExternalVar(ProgramBuilder &b,
 }
 
 void test_ir_main_argc(ProgramBuilder &b) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto i32_t = type_get_numeric(Int32);
 
     _startMain(b);
@@ -591,6 +629,8 @@ void test_ir_main_argc(ProgramBuilder &b) {
 }
 
 void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto f_pi = test_ir_pi(b);
     auto f_printf = _makePrintf(b, libc_name);
 
@@ -621,6 +661,8 @@ void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
 }
 
 void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
+    EASY_FUNCTION(profiler::colors::Grey200)
+
     auto f_vec2LenSquared = test_ir_vec2LenSquared(b);
     auto f_printf = _makePrintf(b, libc_name);
 

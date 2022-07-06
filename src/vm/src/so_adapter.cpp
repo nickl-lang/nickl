@@ -4,6 +4,7 @@
 
 #include "nk/str/static_string_builder.hpp"
 #include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
 
 namespace nk {
 namespace vm {
