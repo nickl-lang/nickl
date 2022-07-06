@@ -1,5 +1,5 @@
 IMAGE_NAME=buildenv-nickl-linux
-IMAGE_VERSION=0.1
+IMAGE_VERSION=0.2
 
 REMOTE_ADDR=ghcr.io/nk4rter
 
