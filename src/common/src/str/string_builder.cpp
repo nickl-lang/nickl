@@ -60,6 +60,15 @@ int StringBuilder::print(void *ptr) {
     return printf("%p", ptr);
 }
 
+int StringBuilder::printf(char const *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int res = vprintf(fmt, ap);
+    va_end(ap);
+
+    return res;
+}
+
 string StringBuilder::moveStr(Allocator &allocator) {
     return moveStr(allocator.alloc<char>(size() + 1));
 }

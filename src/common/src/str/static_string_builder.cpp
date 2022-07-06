@@ -5,12 +5,9 @@
 
 namespace nk {
 
-int StaticStringBuilder::printf(char const *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
+int StaticStringBuilder::vprintf(char const *fmt, va_list ap) {
     auto const dst = m_dst.slice(m_size);
     int const printf_res = std::vsnprintf(dst.data, dst.size, fmt, ap);
-    va_end(ap);
 
     if (printf_res > 0) {
         size_t const old_size = m_size;

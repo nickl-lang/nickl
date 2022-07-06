@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NK_COMMON_I_STRING_BUILDER
 #define HEADER_GUARD_NK_COMMON_I_STRING_BUILDER
 
+#include <cstdarg>
 #include <cstdint>
 #include <type_traits>
 
@@ -40,8 +41,10 @@ struct StringBuilder {
         return *this;
     }
 
+    int printf(char const *fmt, ...);
+
     virtual size_t size() const = 0;
-    virtual int printf(char const *fmt, ...) = 0;
+    virtual int vprintf(char const *fmt, va_list ap) = 0;
 
     string moveStr(Allocator &allocator);
 
