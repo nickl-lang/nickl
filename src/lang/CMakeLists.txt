@@ -2,6 +2,7 @@ set(LIB nkl_lang)
 
 add_library(${LIB}
     src/ast.cpp
+    src/lang.cpp
     src/lexer.cpp
     src/tokens.cpp
     )
