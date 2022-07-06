@@ -20,22 +20,23 @@ void DynamicStringBuilder::reserve(size_t n) {
     m_arena.reserve(n);
 }
 
-int DynamicStringBuilder::printf(char const *fmt, ...) {
+int DynamicStringBuilder::vprintf(char const *fmt, va_list ap) {
     EASY_BLOCK("DynamicStringBuilder::printf", profiler::colors::Grey200)
 
     char buf[PRINTF_BUFFER_SIZE];
 
-    va_list ap;
-    va_start(ap, fmt);
-    int const printf_res = std::vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap);
+    va_list ap_copy;
+
+    va_copy(ap_copy, ap);
+    int const printf_res = std::vsnprintf(buf, PRINTF_BUFFER_SIZE, fmt, ap_copy);
+    va_end(ap_copy);
+
     int const byte_count = printf_res + 1;
-    va_end(ap);
 
     if (byte_count > (int)PRINTF_BUFFER_SIZE) {
-        va_list ap;
-        va_start(ap, fmt);
-        std::vsnprintf(m_arena.push(byte_count), byte_count, fmt, ap);
-        va_end(ap);
+        va_copy(ap_copy, ap);
+        std::vsnprintf(m_arena.push(byte_count), byte_count, fmt, ap_copy);
+        va_end(ap_copy);
 
         m_arena.pop();
     } else if (byte_count > 0) {

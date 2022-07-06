@@ -16,7 +16,7 @@ public:
         return m_dst.size;
     }
 
-    int printf(char const *fmt, ...) override;
+    int vprintf(char const *fmt, va_list ap) override;
 
     using StringBuilder::moveStr;
     string moveStr();
