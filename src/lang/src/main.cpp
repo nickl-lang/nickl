@@ -6,13 +6,16 @@
 
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
-// #include "nkl/core/core.hpp"
+#include "nk/utils/utils.hpp"
+#include "nkl/lang/lang.hpp"
 
-static void printErrorUsage() {
+namespace {
+
+void printErrorUsage() {
     fprintf(stderr, "See `%s --help` for usage information\n", NKL_BINARY_NAME);
 }
 
-static void printUsage() {
+void printUsage() {
     printf(
         "Usage: %s [options] file"
         "\nOptions:"
@@ -26,14 +29,16 @@ static void printUsage() {
         NKL_BINARY_NAME);
 }
 
-static void printVersion() {
+void printVersion() {
     printf(
         "%s v%i.%i.%i\n", NKL_BINARY_NAME, NKL_VERSION_MAJOR, NKL_VERSION_MINOR, NKL_VERSION_PATCH);
 }
 
-static bool eql(char const *lhs, char const *rhs) {
+bool eql(char const *lhs, char const *rhs) {
     return lhs && rhs && strcmp(lhs, rhs) == 0;
 }
+
+} // namespace
 
 int main(int argc, char const *const *argv) {
     ProfilerWrapper prof;
@@ -137,9 +142,10 @@ int main(int argc, char const *const *argv) {
 
     LOGGER_INIT(logger_options);
 
-    // nkl::lang_init();
-    // int ret_code = nkl::lang_runFile(cs2s(in_file));
-    // nkl::lang_deinit();
+    nkl::lang_init();
+    defer {
+        nkl::lang_deinit();
+    };
 
-    return 0; // ret_code;
+    return nkl::lang_runFile(nk::cs2s(in_file));
 }

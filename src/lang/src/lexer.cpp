@@ -35,7 +35,6 @@ struct ScanEngine {
 
     void scan() {
         EASY_FUNCTION(::profiler::colors::Amber200);
-        LOG_TRC(__func__);
 
         skipSpaces();
 
@@ -238,6 +237,7 @@ bool Lexer::lex(string text) {
     LOG_TRC(__func__);
 
     tokens.clear();
+    tokens.reserve(1024);
 
     ScanEngine engine{text, err};
 
