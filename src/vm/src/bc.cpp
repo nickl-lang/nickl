@@ -318,8 +318,13 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         }
     }
 
+#ifdef ENABLE_LOGGING
+    DynamicStringBuilder sb{};
+    defer {
+        sb.deinit();
+    };
+#endif // ENABLE_LOGGING
     LOG_INF("bytecode:\n%s", [&]() {
-        DynamicStringBuilder sb{};
         return prog.inspect(funct_info.funct_t, sb).moveStr(allocator).data;
     }());
 
@@ -333,7 +338,7 @@ void Program::init() {
 }
 
 void Program::deinit() {
-    EASY_BLOCK("bc::Program::deinit", profiler::colors::Red200)
+    EASY_BLOCK("bc::Program::deinit", profiler::colors::Cyan200)
 
     for (auto shobj : shobjs) {
         closeSharedObject(shobj);
@@ -348,12 +353,13 @@ void Program::deinit() {
 }
 
 StringBuilder &Program::inspect(type_t fn, StringBuilder &sb) const {
+    EASY_BLOCK("bc::Program::inspect", profiler::colors::Cyan200)
     _inspect(*this, fn, sb);
     return sb;
 }
 
 type_t ProgramBuilder::translate(ir::FunctId funct_id) {
-    EASY_FUNCTION(profiler::colors::Red200)
+    EASY_BLOCK("bc::translate", profiler::colors::Cyan200)
     LOG_TRC(__func__);
 
     StackAllocator arena{};

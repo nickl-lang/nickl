@@ -4,16 +4,19 @@
 #include <stdlib.h>
 
 #include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
 
 LOG_USE_SCOPE(mem);
 
 void *nk_platform_alloc(size_t size) {
+    EASY_FUNCTION(::profiler::colors::Red200);
     void *mem = malloc(size);
     LOG_TRC("malloc(size=%lu) -> %p", size, mem);
     return mem;
 }
 
 void nk_platform_free(void const *ptr) {
+    EASY_FUNCTION(::profiler::colors::Red100);
     LOG_TRC("free(ptr=%p)", ptr);
     free((void *)ptr);
 }

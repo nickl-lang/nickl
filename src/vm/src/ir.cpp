@@ -270,6 +270,8 @@ void Program::deinit() {
 }
 
 StringBuilder &Program::inspect(StringBuilder &sb) const {
+    EASY_BLOCK("ir::Program::inspect", profiler::colors::Amber200)
+
     _inspect(*this, sb);
     return sb;
 }
@@ -502,7 +504,7 @@ Instr ProgramBuilder::make_call(Ref const &dst, ExtFunctId funct, Ref const &arg
 #include "nk/vm/ir.inl"
 
 void ProgramBuilder::gen(Instr const &instr) {
-    EASY_BLOCK("ProgramBuilder::gen", profiler::colors::Amber200)
+    EASY_BLOCK("ir::gen", profiler::colors::Amber200)
 
     assert(_cur_block && "no current block");
     assert(

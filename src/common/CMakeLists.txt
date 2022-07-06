@@ -1,7 +1,7 @@
 set(LIB nk_common)
 
 add_library(${LIB}
-    src/mem/mem.c
+    src/mem/mem.cpp
     src/mem/stack_allocator.cpp
     src/mem/static_allocator.cpp
     src/str/dynamic_string_builder.cpp

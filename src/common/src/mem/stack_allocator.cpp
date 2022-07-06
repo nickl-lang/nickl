@@ -1,12 +1,16 @@
 #include "nk/mem/stack_allocator.hpp"
 
+#include "nk/utils/profiler.hpp"
+
 namespace nk {
 
 void StackAllocator::deinit() {
+    EASY_BLOCK("StackAllocator::deinit", profiler::colors::Grey200)
     m_arena.deinit();
 }
 
 void StackAllocator::reserve(size_t size) {
+    EASY_BLOCK("StackAllocator::reserve", profiler::colors::Grey200)
     m_arena.reserve(size);
 }
 

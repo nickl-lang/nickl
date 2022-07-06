@@ -3,6 +3,7 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include "nk/utils/profiler.hpp"
 #include "nk/utils/utils.hpp"
 
 namespace nk {
@@ -10,14 +11,18 @@ namespace nk {
 static constexpr size_t PRINTF_BUFFER_SIZE = 4096;
 
 void DynamicStringBuilder::deinit() {
+    EASY_BLOCK("DynamicStringBuilder::deinit", profiler::colors::Grey200)
     m_arena.deinit();
 }
 
 void DynamicStringBuilder::reserve(size_t n) {
+    EASY_BLOCK("DynamicStringBuilder::reserve", profiler::colors::Grey200)
     m_arena.reserve(n);
 }
 
 int DynamicStringBuilder::printf(char const *fmt, ...) {
+    EASY_BLOCK("DynamicStringBuilder::printf", profiler::colors::Grey200)
+
     char buf[PRINTF_BUFFER_SIZE];
 
     va_list ap;

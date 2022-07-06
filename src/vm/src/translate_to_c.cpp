@@ -5,6 +5,7 @@
 #include "nk/ds/hashmap.hpp"
 #include "nk/str/dynamic_string_builder.hpp"
 #include "nk/utils/logger.h"
+#include "nk/utils/profiler.hpp"
 
 namespace nk {
 namespace vm {
@@ -44,6 +45,8 @@ void _writePreabmle(StringBuilder &src) {
 }
 
 void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
+    EASY_FUNCTION(profiler::colors::Cyan200)
+
     auto found_str = ctx.type_map.find(type);
     if (found_str) {
         src << *found_str;
@@ -144,6 +147,8 @@ void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
 }
 
 void _writeConst(WriterCtx &ctx, value_t val, StringBuilder &src, bool is_complex = false) {
+    EASY_FUNCTION(profiler::colors::Cyan200)
+
     auto found_str = ctx.const_map.find(val);
     if (found_str) {
         src << *found_str;
@@ -601,6 +606,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
 } // namespace
 
 void translateToC(ir::Program const &ir, std::ostream &src) {
+    EASY_FUNCTION(profiler::colors::Cyan200)
     LOG_TRC(__func__);
 
     WriterCtx ctx{};
@@ -627,10 +633,10 @@ void translateToC(ir::Program const &ir, std::ostream &src) {
 
     _writeProgram(ctx, ir);
 
-    src << ctx.types_s.moveStr(ctx.tmp_arena) << "\n";
-    src << ctx.data_s.moveStr(ctx.tmp_arena) << "\n";
-    src << ctx.forward_s.moveStr(ctx.tmp_arena);
-    src << ctx.main_s.moveStr(ctx.tmp_arena);
+    src << ctx.types_s.moveStr(ctx.tmp_arena) << "\n"
+        << ctx.data_s.moveStr(ctx.tmp_arena) << "\n"
+        << ctx.forward_s.moveStr(ctx.tmp_arena) << "\n"
+        << ctx.main_s.moveStr(ctx.tmp_arena);
 }
 
 } // namespace vm

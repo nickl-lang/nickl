@@ -52,7 +52,7 @@ _TypeQueryRes _getType(ByteArray fp) {
     fp.copy(fp_copy);
     Type *type = s_typearena.alloc<Type>();
     *type = Type{
-        .as = {{0}},
+        .as = {},
         .native_handle = nullptr,
         .id = s_next_type_id++,
         .size = 0,
