@@ -5,7 +5,7 @@ namespace nkl {
 namespace {
 
 char const *s_ast_node_names[] = {
-#define X(TYPE, ID) #ID,
+#define X(ID) #ID,
 #include "nkl/lang/nodes.inl"
 };
 
@@ -15,15 +15,15 @@ Id nodeId(ENodeId node_id) {
     return cs2id(s_ast_node_names[node_id]);
 }
 
-#define N(TYPE, ID)                              \
+#define N(ID)                                    \
     Node LangAst::CAT(make_, ID)() {             \
         return Node{{}, nodeId(CAT(Node_, ID))}; \
     }
-#define U(TYPE, ID)                                               \
+#define U(ID)                                                     \
     Node LangAst::CAT(make_, ID)(Node const &arg) {               \
         return Node{{push(arg), {}, {}}, nodeId(CAT(Node_, ID))}; \
     }
-#define B(TYPE, ID)                                                      \
+#define B(ID)                                                            \
     Node LangAst::CAT(make_, ID)(Node const &lhs, Node const &rhs) {     \
         return Node{{push(lhs), push(rhs), {}}, nodeId(CAT(Node_, ID))}; \
     }

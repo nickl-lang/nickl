@@ -2,35 +2,35 @@
 #define X(...)
 #endif
 
-// type, id
+// id
 
 #ifndef N
 #define N(...) X(__VA_ARGS__)
 #endif
 
-N(null, none)
+N(none)
 
-N(null, nop)
+N(nop)
 
-N(null, break)
-N(null, continue)
+N(break)
+N(continue)
 
-N(null, i8)
-N(null, i16)
-N(null, i32)
-N(null, i64)
-N(null, u8)
-N(null, u16)
-N(null, u32)
-N(null, u64)
-N(null, f32)
-N(null, f64)
+N(i8)
+N(i16)
+N(i32)
+N(i64)
+N(u8)
+N(u16)
+N(u32)
+N(u64)
+N(f32)
+N(f64)
 
-N(null, typeref)
-N(null, void)
+N(typeref)
+N(void)
 
-N(null, true)
-N(null, false)
+N(true)
+N(false)
 
 #undef N
 
@@ -38,19 +38,19 @@ N(null, false)
 #define U(...) X(__VA_ARGS__)
 #endif
 
-U(unary, addr)
-U(unary, deref)
+U(addr)
+U(deref)
 
-U(unary, compl)
-U(unary, not)
-U(unary, uminus)
-U(unary, uplus)
+U(compl)
+U(not)
+U(uminus)
+U(uplus)
 
-U(unary, return)
+U(return)
 
-U(unary, ptr_type)
+U(ptr_type)
 
-U(unary, scope)
+U(scope)
 
 #undef U
 
@@ -58,77 +58,77 @@ U(unary, scope)
 #define B(...) X(__VA_ARGS__)
 #endif
 
-B(binary, add)
-B(binary, sub)
-B(binary, mul)
-B(binary, div)
-B(binary, mod)
+B(add)
+B(sub)
+B(mul)
+B(div)
+B(mod)
 
-B(binary, bitand)
-B(binary, bitor)
-B(binary, xor)
-B(binary, lsh)
-B(binary, rsh)
+B(bitand)
+B(bitor)
+B(xor)
+B(lsh)
+B(rsh)
 
-B(binary, and)
-B(binary, or)
+B(and)
+B(or)
 
-B(binary, eq)
-B(binary, ge)
-B(binary, gt)
-B(binary, le)
-B(binary, lt)
-B(binary, ne)
+B(eq)
+B(ge)
+B(gt)
+B(le)
+B(lt)
+B(ne)
 
-B(binary, add_assign)
-B(binary, sub_assign)
-B(binary, mul_assign)
-B(binary, div_assign)
-B(binary, mod_assign)
+B(add_assign)
+B(sub_assign)
+B(mul_assign)
+B(div_assign)
+B(mod_assign)
 
-B(binary, bitand_assign)
-B(binary, bitor_assign)
-B(binary, xor_assign)
-B(binary, lsh_assign)
-B(binary, rsh_assign)
+B(bitand_assign)
+B(bitor_assign)
+B(xor_assign)
+B(lsh_assign)
+B(rsh_assign)
 
-B(binary, and_assign)
-B(binary, or_assign)
+B(and_assign)
+B(or_assign)
 
-B(binary, array_type)
-B(binary, assign)
-B(binary, cast)
-B(binary, colon_assign)
-B(binary, index)
-B(binary, tuple_index)
-B(binary, while)
+B(array_type)
+B(assign)
+B(cast)
+B(colon_assign)
+B(index)
+B(tuple_index)
+B(while)
 
 #undef B
 
-X(ternary, if)
-X(ternary, ternary)
+X(if)
+X(ternary)
 
-X(array, array)
-X(array, block)
-X(array, tuple)
-X(array, id_tuple)
-X(array, tuple_type)
+X(array)
+X(block)
+X(tuple)
+X(id_tuple)
+X(tuple_type)
 
-X(token, id)
-X(token, numeric_float)
-X(token, numeric_int)
-X(token, string_literal)
-X(token, escaped_string_literal)
+X(id)
+X(numeric_float)
+X(numeric_int)
+X(string_literal)
+X(escaped_string_literal)
 
-X(member, member)
+X(member)
 
-X(type_decl, struct)
+X(struct)
 
-X(fn, fn)
-X(fn, foreign_fn)
+X(fn)
+X(foreign_fn)
 
-X(call, call)
-X(struct_literal, struct_literal)
-X(var_decl, var_decl)
+X(call)
+X(struct_literal)
+X(var_decl)
 
 #undef X

@@ -7,7 +7,7 @@
 namespace nkl {
 
 enum ENodeId {
-#define X(TYPE, ID) CAT(Node_, ID),
+#define X(ID) CAT(Node_, ID),
 #include "nkl/lang/nodes.inl"
 
     Node_count,
@@ -16,9 +16,9 @@ enum ENodeId {
 Id nodeId(ENodeId id);
 
 struct LangAst : Ast {
-#define N(TYPE, ID) Node CAT(make_, ID)();
-#define U(TYPE, ID) Node CAT(make_, ID)(Node const &arg);
-#define B(TYPE, ID) Node CAT(make_, ID)(Node const &lhs, Node const &rhs);
+#define N(ID) Node CAT(make_, ID)();
+#define U(ID) Node CAT(make_, ID)(Node const &arg);
+#define B(ID) Node CAT(make_, ID)(Node const &lhs, Node const &rhs);
 #include "nkl/lang/nodes.inl"
 
     Node make_if(Node const &cond, Node const &then_clause, Node const &else_clause);

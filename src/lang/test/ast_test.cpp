@@ -116,12 +116,12 @@ struct ast : testing::Test {
     }
 
 TEST_F(ast, nullary) {
-#define N(TYPE, ID) test(m_ast.CAT(make_, ID)());
+#define N(ID) test(m_ast.CAT(make_, ID)());
 #include "nkl/lang/nodes.inl"
 }
 
 TEST_F(ast, unary) {
-#define U(TYPE, ID)                               \
+#define U(ID)                                     \
     test(m_ast.CAT(make_, ID)(n_t_x));            \
     EXPECT_EQ(nodeId(CAT(Node_, ID)), m_node.id); \
     EXPECT_AST(Node_unary_arg(&m_node), &n_t_x);
@@ -129,7 +129,7 @@ TEST_F(ast, unary) {
 }
 
 TEST_F(ast, binary) {
-#define B(TYPE, ID)                               \
+#define B(ID)                                     \
     test(m_ast.CAT(make_, ID)(n_t_x, n_t_y));     \
     EXPECT_EQ(nodeId(CAT(Node_, ID)), m_node.id); \
     EXPECT_AST(Node_binary_lhs(&m_node), &n_t_x); \
