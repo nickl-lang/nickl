@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NKL_LANG_AST
 #define HEADER_GUARD_NKL_LANG_AST
 
+#include "nk/mem/stack_allocator.hpp"
 #include "nk/utils/utils.hpp"
 #include "nkl/core/ast.hpp"
 
@@ -13,9 +14,19 @@ enum ENodeId {
     Node_count,
 };
 
+struct NamedNode {
+    TokenRef name;
+    NodeRef node;
+};
+
+using NamedNodeArray = Slice<NamedNode const>;
+
 Id nodeId(ENodeId id);
 
 struct LangAst : Ast {
+    void init();
+    void deinit();
+
 #define N(ID) Node CAT(make_, ID)();
 #define U(ID) Node CAT(make_, ID)(Node const &arg);
 #define B(ID) Node CAT(make_, ID)(Node const &lhs, Node const &rhs);
@@ -46,7 +57,17 @@ struct LangAst : Ast {
     Node make_var_decl(TokenRef name, Node const &type, Node const &value);
 
 private:
+    NodeArg push(NamedNodeArray nns);
+
     using Ast::push;
+
+    StackAllocator m_arena{};
+};
+
+struct PackedNamedNodeArray : PackedNodeArgArray {
+    using PackedNodeArgArray::PackedNodeArgArray;
+
+    NamedNode operator[](size_t i) const;
 };
 
 } // namespace nkl

@@ -15,6 +15,16 @@ Id nodeId(ENodeId node_id) {
     return cs2id(s_ast_node_names[node_id]);
 }
 
+void LangAst::init() {
+    Ast::init();
+}
+
+void LangAst::deinit() {
+    m_arena.deinit();
+
+    Ast::deinit();
+}
+
 #define N(ID)                                    \
     Node LangAst::CAT(make_, ID)() {             \
         return Node{{}, nodeId(CAT(Node_, ID))}; \
@@ -105,6 +115,25 @@ Node LangAst::make_struct_literal(Node const &type, NamedNodeArray fields) {
 
 Node LangAst::make_var_decl(TokenRef name, Node const &type, Node const &value) {
     return Node{{push(name), push(type), push(value)}, nodeId(Node_var_decl)};
+}
+
+NodeArg LangAst::push(NamedNodeArray nns) {
+    auto const frame = m_arena.pushFrame();
+    defer {
+        m_arena.popFrame(frame);
+    };
+
+    auto args = m_arena.alloc<NodeArg>(nns.size);
+    for (size_t i = 0; auto const &nn : nns) {
+        args[i++] = {nn.name, {nn.node, 1}};
+    }
+
+    return push(args);
+}
+
+NamedNode PackedNamedNodeArray::operator[](size_t i) const {
+    auto const &arg = PackedNodeArgArray::operator[](i);
+    return {arg.token, arg.nodes.begin()};
 }
 
 } // namespace nkl

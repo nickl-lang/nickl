@@ -13,33 +13,33 @@ static constexpr size_t c_arg_count = sizeof(Node::arg) / sizeof(Node::arg[0]);
 
 namespace {
 
-Node::Arg mkarg(Token const *token) {
+NodeArg mkarg(Token const *token) {
     return {token, {}};
 }
 
-Node::Arg mkarg(NodeRef n) {
-    return {{}, {n, 1}};
+NodeArg mkarg(NodeRef node) {
+    return {{}, {node, 1}};
 }
 
-Node::Arg mkarg(Token const *token, NodeRef n) {
-    return {token, {n, 1}};
+NodeArg mkarg(Token const *token, NodeRef node) {
+    return {token, {node, 1}};
 }
 
-Node::Arg mkarg(NodeArray ar) {
+NodeArg mkarg(NodeArray ar) {
     return {{}, ar};
 }
 
-Node::Arg mkarg(NamedNode nn) {
-    return {nn.name, {nn.node, 1}};
+NodeArg mkarg(NodeArg arg) {
+    return arg;
 }
 
-Node::Arg mkarg(PackedNamedNodeArray ar) {
+NodeArg mkarg(PackedNodeArgArray ar) {
     return {{}, ar};
 }
 
 } // namespace
 
-PackedNamedNodeArray::PackedNamedNodeArray(Slice<Node const> ar)
+PackedNodeArgArray::PackedNodeArgArray(Slice<Node const> ar)
     : Slice{ar}
     , size{
           ar.size > 0 ? (ar.size - 1) * 3 + std::count_if(
@@ -51,9 +51,8 @@ PackedNamedNodeArray::PackedNamedNodeArray(Slice<Node const> ar)
                       : 0} {
 }
 
-NamedNode PackedNamedNodeArray::operator[](size_t i) const {
-    auto const &arg = PACKED_NN_ARRAY_AT(data, i);
-    return {arg.token, arg.nodes.begin()};
+NodeArg const &PackedNodeArgArray::operator[](size_t i) const {
+    return PACKED_NN_ARRAY_AT(data, i);
 }
 
 void Ast::init() {
@@ -64,35 +63,35 @@ void Ast::deinit() {
     data.deinit();
 }
 
-Node::Arg Ast::push(Token const *token) {
+NodeArg Ast::push(Token const *token) {
     return mkarg(token);
 }
 
-Node::Arg Ast::push(Token const *token, Node const &node) {
+NodeArg Ast::push(Token const *token, Node const &node) {
     return mkarg(token, push(node).nodes);
 }
 
-Node::Arg Ast::push(Node const &n) {
+NodeArg Ast::push(Node const &n) {
     return mkarg(&(*data.push() = n));
 }
 
-Node::Arg Ast::push(NodeArray ns) {
+NodeArg Ast::push(NodeArray ns) {
     auto ar = (NodeArray)ns.copy(data.push(ns.size));
     auto arg = mkarg(ar);
     return arg;
 }
 
-Node::Arg Ast::push(NamedNode n) {
-    return push({&n, 1});
+NodeArg Ast::push(NodeArg arg) {
+    return push({&arg, 1});
 }
 
-Node::Arg Ast::push(NamedNodeArray ns) {
-    auto ar = data.push(PACKED_NN_ARRAY_SIZE(ns));
+NodeArg Ast::push(NodeArgArray args) {
+    auto ar = data.push(PACKED_NN_ARRAY_SIZE(args));
     std::fill_n(ar.begin(), ar.size, Node{});
-    for (size_t i = 0; i < ns.size; i++) {
-        PACKED_NN_ARRAY_AT(ar, i) = mkarg(ns[i]);
+    for (size_t i = 0; i < args.size; i++) {
+        PACKED_NN_ARRAY_AT(ar, i) = mkarg(args[i]);
     }
-    return mkarg(PackedNamedNodeArray{ar});
+    return mkarg(PackedNodeArgArray{ar});
 }
 
 static void _ast_inspect(NodeRef node, StringBuilder &sb, size_t depth = 1) {
