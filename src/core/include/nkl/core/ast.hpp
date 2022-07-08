@@ -11,32 +11,28 @@ namespace nkl {
 using namespace nk;
 
 struct Node;
-struct NamedNode;
+struct NodeArg;
 
 using NodeRef = Node const *;
 using TokenRef = Token const *;
 using NodeArray = Slice<Node const>;
-using NamedNodeArray = Slice<NamedNode const>;
+using NodeArgArray = Slice<NodeArg const>;
 
-struct NamedNode {
-    TokenRef name;
-    NodeRef node;
+struct NodeArg {
+    TokenRef token;
+    NodeArray nodes;
 };
 
 struct Node {
-    struct Arg {
-        TokenRef token;
-        NodeArray nodes;
-    };
-    Arg arg[3];
+    NodeArg arg[3];
     Id id;
 };
 
-struct PackedNamedNodeArray : Slice<Node const> {
+struct PackedNodeArgArray : Slice<Node const> {
     size_t size;
 
-    PackedNamedNodeArray(Slice<Node const> ar);
-    NamedNode operator[](size_t i) const;
+    PackedNodeArgArray(Slice<Node const> ar);
+    NodeArg const &operator[](size_t i) const;
 };
 
 struct Ast {
@@ -45,12 +41,12 @@ struct Ast {
     void init();
     void deinit();
 
-    Node::Arg push(TokenRef token);
-    Node::Arg push(TokenRef token, Node const &node);
-    Node::Arg push(Node const &node);
-    Node::Arg push(NodeArray nodes);
-    Node::Arg push(NamedNode named_node);
-    Node::Arg push(NamedNodeArray named_nodes);
+    NodeArg push(TokenRef token);
+    NodeArg push(TokenRef token, Node const &node);
+    NodeArg push(Node const &node);
+    NodeArg push(NodeArray nodes);
+    NodeArg push(NodeArg arg);
+    NodeArg push(NodeArgArray args);
 };
 
 StringBuilder &ast_inspect(NodeRef node, StringBuilder &sb);
