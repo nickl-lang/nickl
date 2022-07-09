@@ -497,7 +497,7 @@ void interp_invoke(type_t self, value_t ret, value_t args) {
                 StaticStringBuilder sb{buffer};
                 val_inspect(_getDynRef(ref), sb);
                 sb << ":";
-                type_name(ref.type, sb);
+                types::inspect(ref.type, sb);
                 str = sb.moveStr();
             }
             return str.data;

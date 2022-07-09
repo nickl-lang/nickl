@@ -16,13 +16,13 @@ class value : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        types_init();
+        types::init();
 
         m_sb.reserve(1000);
     }
 
     void TearDown() override {
-        types_deinit();
+        types::deinit();
 
         m_sb.deinit();
         m_arena.deinit();
@@ -38,33 +38,33 @@ protected:
 TEST_F(value, array) {
     static constexpr size_t c_array_size = 42;
 
-    auto const i32_t = type_get_numeric(Int32);
-    auto const type = type_get_array(i32_t, c_array_size);
+    auto const i32_t = types::get_numeric(Int32);
+    auto const type = types::get_array(i32_t, c_array_size);
 
     EXPECT_EQ(type->typeclass_id, Type_Array);
     EXPECT_EQ(type->size, c_array_size * i32_t->size);
     EXPECT_EQ(type->alignment, i32_t->alignment);
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "array{i32, 42}");
+    EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), "array{i32, 42}");
 
-    EXPECT_EQ(type, type_get_array(i32_t, c_array_size));
+    EXPECT_EQ(type, types::get_array(i32_t, c_array_size));
 
-    EXPECT_EQ(type_array_elemType(type), i32_t);
-    EXPECT_EQ(type_array_size(type), c_array_size);
+    EXPECT_EQ(types::array_elemType(type), i32_t);
+    EXPECT_EQ(types::array_size(type), c_array_size);
 }
 
 TEST_F(value, ptr) {
-    auto const void_t = type_get_void();
-    auto const type = type_get_ptr(void_t);
+    auto const void_t = types::get_void();
+    auto const type = types::get_ptr(void_t);
 
     EXPECT_EQ(type->typeclass_id, Type_Ptr);
     EXPECT_EQ(type->size, sizeof(void *));
     EXPECT_EQ(type->alignment, alignof(void *));
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "ptr{void}");
+    EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), "ptr{void}");
 
-    EXPECT_EQ(type, type_get_ptr(void_t));
+    EXPECT_EQ(type, types::get_ptr(void_t));
 
-    auto const i32_t = type_get_numeric(Int32);
-    EXPECT_NE(type, type_get_ptr(i32_t));
+    auto const i32_t = types::get_numeric(Int32);
+    EXPECT_NE(type, types::get_ptr(i32_t));
 
     EXPECT_EQ(type->as.ptr.target_type, void_t);
 }
@@ -75,28 +75,28 @@ TEST_F(value, fn) {
             val_as(int64_t, val_tuple_at(args, 0)) + val_as(int64_t, val_tuple_at(args, 1));
     };
 
-    auto const i64_t = type_get_numeric(Int64);
+    auto const i64_t = types::get_numeric(Int64);
     ARRAY_SLICE_INIT(type_t const, params, i64_t, i64_t);
 
-    auto const params_t = type_get_tuple(params);
+    auto const params_t = types::get_tuple(params);
 
-    auto const type = type_get_fn(i64_t, params_t, 0, _plus, nullptr);
+    auto const type = types::get_fn(i64_t, params_t, 0, _plus, nullptr);
 
     EXPECT_EQ(type->typeclass_id, Type_Fn);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "fn{(i64, i64), i64}");
+    EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), "fn{(i64, i64), i64}");
 
-    EXPECT_EQ(type, type_get_fn(i64_t, params_t, 0, _plus, nullptr));
+    EXPECT_EQ(type, types::get_fn(i64_t, params_t, 0, _plus, nullptr));
 
-    EXPECT_NE(type, type_get_fn(i64_t, params_t, 1, _plus, nullptr));
+    EXPECT_NE(type, types::get_fn(i64_t, params_t, 1, _plus, nullptr));
 
     EXPECT_EQ(type->as.fn.ret_t, i64_t);
 
-    ASSERT_EQ(type_tuple_size(type->as.fn.args_t), 2);
+    ASSERT_EQ(types::tuple_size(type->as.fn.args_t), 2);
 
-    EXPECT_EQ(type_tuple_typeAt(type->as.fn.args_t, 0), i64_t);
-    EXPECT_EQ(type_tuple_typeAt(type->as.fn.args_t, 1), i64_t);
+    EXPECT_EQ(types::tuple_typeAt(type->as.fn.args_t, 0), i64_t);
+    EXPECT_EQ(types::tuple_typeAt(type->as.fn.args_t, 1), i64_t);
 
     int64_t ret = 0;
     int64_t args[] = {4, 5};
@@ -111,13 +111,13 @@ TEST_F(value, fn_native) {
         return x + y;
     };
 
-    auto const i64_t = type_get_numeric(Int64);
+    auto const i64_t = types::get_numeric(Int64);
     ARRAY_SLICE_INIT(type_t const, params, i64_t, i64_t);
 
-    auto const params_t = type_get_tuple(params);
+    auto const params_t = types::get_tuple(params);
 
-    auto const type =
-        type_get_fn_native(i64_t, params_t, 0, (void *)(int64_t(*)(int64_t, int64_t))_plus, false);
+    auto const type = types::get_fn_native(
+        i64_t, params_t, 0, (void *)(int64_t(*)(int64_t, int64_t))_plus, false);
 
     int64_t ret = 0;
     int64_t args[] = {12, 13};
@@ -128,24 +128,24 @@ TEST_F(value, fn_native) {
 }
 
 TEST_F(value, numeric) {
-    auto const type = type_get_numeric(Int32);
+    auto const type = types::get_numeric(Int32);
 
     EXPECT_EQ(type->typeclass_id, Type_Numeric);
     EXPECT_EQ(type->size, 4);
     EXPECT_EQ(type->alignment, 4);
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "i32");
+    EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), "i32");
 
-    EXPECT_EQ(type, type_get_numeric(Int32));
-    EXPECT_NE(type, type_get_numeric(Int64));
+    EXPECT_EQ(type, types::get_numeric(Int32));
+    EXPECT_NE(type, types::get_numeric(Int64));
 
     auto const test_num = [&](ENumericValueType value_type, size_t size, char const *name) {
-        auto const type = type_get_numeric(value_type);
+        auto const type = types::get_numeric(value_type);
 
         EXPECT_EQ(type->typeclass_id, Type_Numeric);
         EXPECT_EQ(type->size, size);
         EXPECT_EQ(type->alignment, size);
 
-        EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), name);
+        EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), name);
     };
 
     test_num(Int8, 1, "i8");
@@ -162,34 +162,34 @@ TEST_F(value, numeric) {
 
 TEST_F(value, tuple) {
     ARRAY_SLICE_INIT(
-        type_t, types, type_get_void(), type_get_numeric(Float64), type_get_numeric(Int16));
+        type_t, types, types::get_void(), types::get_numeric(Float64), types::get_numeric(Int16));
 
-    auto const type = type_get_tuple(types);
+    auto const type = types::get_tuple(types);
 
     EXPECT_EQ(type->typeclass_id, Type_Tuple);
     EXPECT_EQ(type->size, 16);
     EXPECT_EQ(type->alignment, 8);
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "tuple{void, f64, i16}");
+    EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), "tuple{void, f64, i16}");
 
-    EXPECT_EQ(type, type_get_tuple(types));
+    EXPECT_EQ(type, types::get_tuple(types));
 
-    ASSERT_EQ(type_tuple_size(type), 3);
+    ASSERT_EQ(types::tuple_size(type), 3);
 
-    EXPECT_EQ(type_tuple_typeAt(type, 0), type_get_void());
-    EXPECT_EQ(type_tuple_offsetAt(type, 0), 0);
-    EXPECT_EQ(type_tuple_typeAt(type, 1), type_get_numeric(Float64));
-    EXPECT_EQ(type_tuple_offsetAt(type, 1), 0);
-    EXPECT_EQ(type_tuple_typeAt(type, 2), type_get_numeric(Int16));
-    EXPECT_EQ(type_tuple_offsetAt(type, 2), 8);
+    EXPECT_EQ(types::tuple_typeAt(type, 0), types::get_void());
+    EXPECT_EQ(types::tuple_offsetAt(type, 0), 0);
+    EXPECT_EQ(types::tuple_typeAt(type, 1), types::get_numeric(Float64));
+    EXPECT_EQ(types::tuple_offsetAt(type, 1), 0);
+    EXPECT_EQ(types::tuple_typeAt(type, 2), types::get_numeric(Int16));
+    EXPECT_EQ(types::tuple_offsetAt(type, 2), 8);
 }
 
 TEST_F(value, void) {
-    auto const type = type_get_void();
+    auto const type = types::get_void();
 
     EXPECT_EQ(type->typeclass_id, Type_Void);
     EXPECT_EQ(type->size, 0);
     EXPECT_EQ(type->alignment, 1);
-    EXPECT_EQ(std_str(type_name(type, m_sb).moveStr(m_arena)), "void");
+    EXPECT_EQ(std_str(types::inspect(type, m_sb).moveStr(m_arena)), "void");
 
-    EXPECT_EQ(type, type_get_void());
+    EXPECT_EQ(type, types::get_void());
 }

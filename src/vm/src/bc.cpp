@@ -76,7 +76,7 @@ void _inspect(Program const &prog, type_t fn, StringBuilder &sb) {
         }
         if (arg.type) {
             sb << ":";
-            type_name(arg.type, sb);
+            types::inspect(arg.type, sb);
         }
     };
 
@@ -177,7 +177,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
     };
 
     funct_info.funct_t =
-        type_get_fn(funct.ret_t, funct.args_t, funct_id.id, interp_invoke, &funct_info);
+        types::get_fn(funct.ret_t, funct.args_t, funct_id.id, interp_invoke, &funct_info);
 
     auto _pushConst = [&](value_t val) -> size_t {
         uint8_t *mem = prog.rodata.push_aligned(val_alignof(val), val_sizeof(val));
@@ -202,7 +202,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
                 arg.offset += frame_layout.info_ar[ref.value.index].offset;
                 break;
             case ir::Ref_Arg:
-                arg.offset += type_tuple_offsetAt(funct.args_t, ref.value.index);
+                arg.offset += types::tuple_offsetAt(funct.args_t, ref.value.index);
                 break;
             case ir::Ref_Ret:
                 break;
@@ -248,7 +248,7 @@ type_t _translate(ir::Program &ir_prog, Program &prog, ir::FunctId funct_id, All
         case ir::Arg_ExtFunctId: {
             auto &exsym = ir_prog.exsyms[ir_arg.as.id];
             arg.ref_type = Ref_Const;
-            arg.type = type_get_fn_native(
+            arg.type = types::get_fn_native(
                 exsym.as.funct.ret_t,
                 exsym.as.funct.args_t,
                 0,

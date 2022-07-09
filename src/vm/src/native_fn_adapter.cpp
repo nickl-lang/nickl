@@ -34,9 +34,9 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
 
     switch (type->typeclass_id) {
     case Type_Array: {
-        auto native_elem_h = _getNativeHandle(allocator, type_array_elemType(type));
-        ffi_type **elements = allocator.alloc<ffi_type *>(type_array_size(type));
-        std::fill_n(elements, type_array_size(type), native_elem_h);
+        auto native_elem_h = _getNativeHandle(allocator, types::array_elemType(type));
+        ffi_type **elements = allocator.alloc<ffi_type *>(types::array_size(type));
+        std::fill_n(elements, types::array_size(type), native_elem_h);
         ffi_t = allocator.alloc<ffi_type>();
         *ffi_t = {
             .size = type->size,
@@ -90,9 +90,9 @@ ffi_type *_getNativeHandle(Allocator &allocator, type_t type) {
         ffi_t = &ffi_type_pointer;
         break;
     case Type_Tuple: {
-        ffi_type **elements = allocator.alloc<ffi_type *>(type_tuple_size(type));
-        for (size_t i = 0; i < type_tuple_size(type); i++) {
-            elements[i] = _getNativeHandle(allocator, type_tuple_typeAt(type, i));
+        ffi_type **elements = allocator.alloc<ffi_type *>(types::tuple_size(type));
+        for (size_t i = 0; i < types::tuple_size(type); i++) {
+            elements[i] = _getNativeHandle(allocator, types::tuple_typeAt(type, i));
         }
         ffi_t = allocator.alloc<ffi_type>();
         *ffi_t = {

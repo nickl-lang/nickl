@@ -32,7 +32,7 @@ Type **_storeType(ByteArray fp, Type *type) {
 
 } // namespace
 
-void types_init() {
+void types::init() {
     EASY_FUNCTION(profiler::colors::Green200)
 
     s_typemap.reserve(100);
@@ -40,14 +40,14 @@ void types_init() {
     s_next_type_id = 1;
 }
 
-void types_deinit() {
+void types::deinit() {
     EASY_FUNCTION(profiler::colors::Green200)
 
     s_typemap.deinit();
     s_typearena.deinit();
 }
 
-TypeQueryRes type_getType(ByteArray fp, size_t type_size) {
+TypeQueryRes types::getType(ByteArray fp, size_t type_size) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     Type **found_type = _findType(fp);
@@ -86,7 +86,7 @@ TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride
     return TupleLayout{info_ar, roundUpSafe(offset, alignment), alignment};
 }
 
-type_t type_get_array(type_t elem_type, size_t elem_count) {
+type_t types::get_array(type_t elem_type, size_t elem_count) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct {
@@ -97,7 +97,7 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
     fp.base.id = Type_Array;
     fp.elem_type = elem_type->id;
     fp.elem_count = elem_count;
-    TypeQueryRes res = type_getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = elem_count * elem_type->size;
         res.type->alignment = elem_type->alignment;
@@ -107,7 +107,7 @@ type_t type_get_array(type_t elem_type, size_t elem_count) {
     return res.type;
 }
 
-type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure) {
+type_t types::get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct {
@@ -126,7 +126,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
     fp.body_ptr = body_ptr;
     fp.closure = closure;
     fp.is_native = false;
-    TypeQueryRes res = type_getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -139,7 +139,7 @@ type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr
     return res.type;
 }
 
-type_t type_get_fn_native(
+type_t types::get_fn_native(
     type_t ret_t,
     type_t args_t,
     size_t decl_id,
@@ -163,7 +163,7 @@ type_t type_get_fn_native(
     fp.body_ptr = body_ptr;
     fp.is_native = true;
     fp.is_variadic = is_variadic;
-    TypeQueryRes res = type_getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -172,7 +172,7 @@ type_t type_get_fn_native(
         type_fn_prepareNativeInfo(
             s_typearena,
             body_ptr,
-            type_tuple_size(args_t),
+            types::tuple_size(args_t),
             is_variadic,
             res.type->as.fn.body,
             res.type->as.fn.closure);
@@ -181,7 +181,7 @@ type_t type_get_fn_native(
     return res.type;
 }
 
-type_t type_get_numeric(ENumericValueType value_type) {
+type_t types::get_numeric(ENumericValueType value_type) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct {
@@ -190,7 +190,7 @@ type_t type_get_numeric(ENumericValueType value_type) {
     } fp = {};
     fp.base.id = Type_Numeric;
     fp.value_type = value_type;
-    TypeQueryRes res = type_getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         size_t const size = NUM_TYPE_SIZE(value_type);
         res.type->size = size;
@@ -200,7 +200,7 @@ type_t type_get_numeric(ENumericValueType value_type) {
     return res.type;
 }
 
-type_t type_get_ptr(type_t target_type) {
+type_t types::get_ptr(type_t target_type) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct {
@@ -209,7 +209,7 @@ type_t type_get_ptr(type_t target_type) {
     } fp = {};
     fp.base.id = Type_Ptr;
     fp.target_type = target_type->id;
-    TypeQueryRes res = type_getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(void *);
         res.type->alignment = alignof(void *);
@@ -218,7 +218,7 @@ type_t type_get_ptr(type_t target_type) {
     return res.type;
 }
 
-type_t type_get_tuple(TypeArray types, size_t stride) {
+type_t types::get_tuple(TypeArray types, size_t stride) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct Fp {
@@ -237,7 +237,7 @@ type_t type_get_tuple(TypeArray types, size_t stride) {
     for (size_t i = 0; i < types.size; i++) {
         fp_types[i] = types[i * stride]->id;
     }
-    TypeQueryRes res = type_getType({(uint8_t *)fp, fp_size});
+    TypeQueryRes res = types::getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         TupleLayout layout = calcTupleLayout(types, s_typearena, stride);
 
@@ -248,12 +248,12 @@ type_t type_get_tuple(TypeArray types, size_t stride) {
     return res.type;
 }
 
-type_t type_get_void() {
+type_t types::get_void() {
     EASY_FUNCTION(profiler::colors::Green200)
 
     FpBase fp = {};
     fp.id = Type_Void;
-    TypeQueryRes res = type_getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -261,13 +261,13 @@ type_t type_get_void() {
     return res.type;
 }
 
-StringBuilder &type_name(type_t type, StringBuilder &sb) {
+StringBuilder &types::inspect(type_t type, StringBuilder &sb) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     switch (type->typeclass_id) {
     case Type_Array:
         sb << "array{";
-        type_name(type->as.arr.elem_type, sb);
+        inspect(type->as.arr.elem_type, sb);
         sb << ", " << type->as.arr.elem_count << "}";
         break;
     case Type_Numeric:
@@ -296,7 +296,7 @@ StringBuilder &type_name(type_t type, StringBuilder &sb) {
         break;
     case Type_Ptr:
         sb << "ptr{";
-        type_name(type->as.ptr.target_type, sb);
+        inspect(type->as.ptr.target_type, sb);
         sb << "}";
         break;
     case Type_Void:
@@ -304,11 +304,11 @@ StringBuilder &type_name(type_t type, StringBuilder &sb) {
         break;
     case Type_Tuple: {
         sb << "tuple{";
-        for (size_t i = 0; i < type_tuple_size(type); i++) {
+        for (size_t i = 0; i < types::tuple_size(type); i++) {
             if (i) {
                 sb << ", ";
             }
-            type_name(type_tuple_typeAt(type, i), sb);
+            inspect(types::tuple_typeAt(type, i), sb);
         }
         sb << "}";
         break;
@@ -316,14 +316,14 @@ StringBuilder &type_name(type_t type, StringBuilder &sb) {
     case Type_Fn: {
         sb << "fn{(";
         type_t const params = type->as.fn.args_t;
-        for (size_t i = 0; i < type_tuple_size(params); i++) {
+        for (size_t i = 0; i < types::tuple_size(params); i++) {
             if (i) {
                 sb << ", ";
             }
-            type_name(type_tuple_typeAt(params, i), sb);
+            inspect(types::tuple_typeAt(params, i), sb);
         }
         sb << "), ";
-        type_name(type->as.fn.ret_t, sb);
+        inspect(type->as.fn.ret_t, sb);
         sb << "}";
         break;
     }
@@ -333,6 +333,28 @@ StringBuilder &type_name(type_t type, StringBuilder &sb) {
     }
 
     return sb;
+}
+
+size_t types::tuple_size(type_t tuple_t) {
+    return tuple_t->as.tuple.elems.size;
+}
+
+type_t types::tuple_typeAt(type_t tuple_t, size_t i) {
+    assert(i < types::tuple_size(tuple_t) && "tuple index out of range");
+    return tuple_t->as.tuple.elems[i].type;
+}
+
+size_t types::tuple_offsetAt(type_t tuple_t, size_t i) {
+    assert(i < tuple_t->as.tuple.elems.size && "tuple index out of range");
+    return tuple_t->as.tuple.elems[i].offset;
+}
+
+size_t types::array_size(type_t array_t) {
+    return array_t->as.arr.elem_count;
+}
+
+type_t types::array_elemType(type_t array_t) {
+    return array_t->as.arr.elem_type;
 }
 
 StringBuilder &val_inspect(value_t val, StringBuilder &sb) {
@@ -423,7 +445,7 @@ StringBuilder &val_inspect(value_t val, StringBuilder &sb) {
         break;
     default: {
         sb << "value{data=" << val_data(val) << ", type=";
-        type_name(val_typeof(val), sb);
+        types::inspect(val_typeof(val), sb);
         sb << "}";
         break;
     }
@@ -442,21 +464,6 @@ value_t val_tuple_at(value_t self, size_t i) {
     return {
         ((uint8_t *)val_data(self)) + type->as.tuple.elems[i].offset, type->as.tuple.elems[i].type};
 }
-
-size_t type_tuple_size(type_t tuple_t) {
-    return tuple_t->as.tuple.elems.size;
-}
-
-type_t type_tuple_typeAt(type_t tuple_t, size_t i) {
-    assert(i < type_tuple_size(tuple_t) && "tuple index out of range");
-    return tuple_t->as.tuple.elems[i].type;
-}
-
-size_t type_tuple_offsetAt(type_t tuple_t, size_t i) {
-    assert(i < tuple_t->as.tuple.elems.size && "tuple index out of range");
-    return tuple_t->as.tuple.elems[i].offset;
-}
-
 size_t val_array_size(value_t self) {
     return val_typeof(self)->as.arr.elem_count;
 }
@@ -465,14 +472,6 @@ value_t val_array_at(value_t self, size_t i) {
     assert(i < val_array_size(self) && "array index out of range");
     auto const type = val_typeof(self);
     return {((uint8_t *)val_data(self)) + type->as.arr.elem_type->size * i, type->as.arr.elem_type};
-}
-
-size_t type_array_size(type_t array_t) {
-    return array_t->as.arr.elem_count;
-}
-
-type_t type_array_elemType(type_t array_t) {
-    return array_t->as.arr.elem_type;
 }
 
 value_t val_ptr_deref(value_t self) {

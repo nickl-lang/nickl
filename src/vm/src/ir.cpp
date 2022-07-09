@@ -46,16 +46,16 @@ void _inspect(Program const &prog, StringBuilder &sb) {
     for (auto const &funct : prog.functs) {
         sb << "\nfn " << funct.name << "(";
 
-        for (size_t i = 0; i < type_tuple_size(funct.args_t); i++) {
+        for (size_t i = 0; i < types::tuple_size(funct.args_t); i++) {
             if (i) {
                 sb << ", ";
             }
             sb << "$arg" << i << ":";
-            type_name(type_tuple_typeAt(funct.args_t, i), sb);
+            types::inspect(types::tuple_typeAt(funct.args_t, i), sb);
         }
 
         sb << ") -> ";
-        type_name(funct.ret_t, sb);
+        types::inspect(funct.ret_t, sb);
         sb << " {\n\n";
 
         for (auto const &block : prog.blocks.slice(funct.first_block, funct.block_count)) {
@@ -107,7 +107,7 @@ void _inspect(Program const &prog, StringBuilder &sb) {
                         sb << "+" << ref.post_offset;
                     }
                     sb << ":";
-                    type_name(ref.type, sb);
+                    types::inspect(ref.type, sb);
                 };
 
                 sb << "  ";
@@ -167,16 +167,16 @@ void _inspect(Program const &prog, StringBuilder &sb) {
             sb << "\n" << id2s(prog.shobjs[sym.so_id]) << " " << id2s(sym.name) << ":";
             switch (sym.sym_type) {
             case Sym_Var:
-                type_name(sym.as.var.type, sb);
+                types::inspect(sym.as.var.type, sb);
                 break;
             case Sym_Funct:
                 sb << "fn{";
-                type_name(sym.as.funct.args_t, sb);
+                types::inspect(sym.as.funct.args_t, sb);
                 if (sym.as.funct.is_variadic) {
                     sb << "...";
                 }
                 sb << ", ";
-                type_name(sym.as.funct.ret_t, sb);
+                types::inspect(sym.as.funct.ret_t, sb);
                 sb << "}";
                 break;
             default:
@@ -381,12 +381,12 @@ Ref ProgramBuilder::makeFrameRef(Local var) const {
 
 Ref ProgramBuilder::makeArgRef(size_t index) const {
     assert(_cur_funct && "no current function");
-    assert(index < type_tuple_size(_cur_funct->args_t) && "arg index out of range");
+    assert(index < types::tuple_size(_cur_funct->args_t) && "arg index out of range");
     return {
         .value = {.index = index},
         .offset = 0,
         .post_offset = 0,
-        .type = type_tuple_typeAt(_cur_funct->args_t, index),
+        .type = types::tuple_typeAt(_cur_funct->args_t, index),
         .ref_type = Ref_Arg,
         .is_indirect = false,
     };

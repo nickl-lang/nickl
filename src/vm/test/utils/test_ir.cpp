@@ -14,12 +14,12 @@ using namespace ir;
 void _startMain(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i8_t = type_get_numeric(Int8);
-    auto i32_t = type_get_numeric(Int32);
-    auto argv_t = type_get_ptr(type_get_ptr(i8_t));
+    auto i8_t = types::get_numeric(Int8);
+    auto i32_t = types::get_numeric(Int32);
+    auto argv_t = types::get_ptr(types::get_ptr(i8_t));
 
     ARRAY_SLICE_INIT(type_t, args, i32_t, argv_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     b.startFunct(b.makeFunct(), cs2s("main"), i32_t, args_t);
     b.startBlock(b.makeLabel(), cs2s("start"));
@@ -28,11 +28,11 @@ void _startMain(ProgramBuilder &b) {
 ir::ExtFunctId _makePrintf(ProgramBuilder &b, string libc_name) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i32_t = type_get_numeric(Int32);
-    auto i8_ptr_t = type_get_ptr(type_get_numeric(Int8));
+    auto i32_t = types::get_numeric(Int32);
+    auto i8_ptr_t = types::get_ptr(types::get_numeric(Int8));
 
     ARRAY_SLICE_INIT(type_t, args, i8_ptr_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto f_printf =
         b.makeExtFunct(b.makeShObj(s2id(libc_name)), cs2id("printf"), i32_t, args_t, true);
@@ -44,10 +44,10 @@ ir::ExtFunctId _makePrintf(ProgramBuilder &b, string libc_name) {
 ir::FunctId test_ir_plus(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i64_t = type_get_numeric(Int64);
+    auto i64_t = types::get_numeric(Int64);
 
     ARRAY_SLICE_INIT(type_t, args, i64_t, i64_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("plus"), i64_t, args_t);
@@ -68,10 +68,10 @@ ir::FunctId test_ir_plus(ProgramBuilder &b) {
 ir::FunctId test_ir_not(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i64_t = type_get_numeric(Int64);
+    auto i64_t = types::get_numeric(Int64);
 
     ARRAY_SLICE_INIT(type_t, args, i64_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("not"), i64_t, args_t);
@@ -106,11 +106,11 @@ ir::FunctId test_ir_not(ProgramBuilder &b) {
 ir::FunctId test_ir_atan(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto u64_t = type_get_numeric(Uint64);
-    auto f64_t = type_get_numeric(Float64);
+    auto u64_t = types::get_numeric(Uint64);
+    auto f64_t = types::get_numeric(Float64);
 
     ARRAY_SLICE_INIT(type_t, args, f64_t, u64_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("atan"), f64_t, args_t);
@@ -182,9 +182,9 @@ ir::FunctId test_ir_pi(ProgramBuilder &b) {
 
     auto const atan_funct = test_ir_atan(b);
 
-    auto f64_t = type_get_numeric(Float64);
+    auto f64_t = types::get_numeric(Float64);
 
-    auto args_t = type_get_tuple({});
+    auto args_t = types::get_tuple({});
 
     struct AtanArgs {
         double x;
@@ -226,10 +226,10 @@ ir::FunctId test_ir_pi(ProgramBuilder &b) {
 ir::FunctId test_ir_rsqrt(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i32_t = type_get_numeric(Int32);
-    auto f32_t = type_get_numeric(Float32);
+    auto i32_t = types::get_numeric(Int32);
+    auto f32_t = types::get_numeric(Float32);
 
-    auto args_t = type_get_tuple({&f32_t, 1});
+    auto args_t = types::get_tuple({&f32_t, 1});
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("rsqrt"), f32_t, args_t);
@@ -277,17 +277,17 @@ ir::FunctId test_ir_rsqrt(ProgramBuilder &b) {
 ir::FunctId test_ir_vec2LenSquared(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto void_t = type_get_void();
-    auto f64_t = type_get_numeric(Float64);
+    auto void_t = types::get_void();
+    auto f64_t = types::get_numeric(Float64);
 
     ARRAY_SLICE_INIT(type_t, vec_types, f64_t, f64_t);
-    auto vec_t = type_get_tuple(vec_types);
+    auto vec_t = types::get_tuple(vec_types);
 
-    auto vec_ptr_t = type_get_ptr(vec_t);
-    auto f64_ptr_t = type_get_ptr(f64_t);
+    auto vec_ptr_t = types::get_ptr(vec_t);
+    auto f64_ptr_t = types::get_ptr(f64_t);
 
     ARRAY_SLICE_INIT(type_t, args, vec_ptr_t, f64_ptr_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("vec2LenSquared"), void_t, args_t);
@@ -316,13 +316,13 @@ ir::FunctId test_ir_vec2LenSquared(ProgramBuilder &b) {
 ir::FunctId test_ir_modf(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i64_t = type_get_numeric(Int64);
-    auto f64_t = type_get_numeric(Float64);
-    auto f64_ptr_t = type_get_ptr(f64_t);
-    auto void_ptr_t = type_get_ptr(type_get_void());
+    auto i64_t = types::get_numeric(Int64);
+    auto f64_t = types::get_numeric(Float64);
+    auto f64_ptr_t = types::get_ptr(f64_t);
+    auto void_ptr_t = types::get_ptr(types::get_void());
 
     ARRAY_SLICE_INIT(type_t, args, f64_t, f64_ptr_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("modf"), f64_t, args_t);
@@ -354,9 +354,9 @@ ir::FunctId test_ir_intPart(ProgramBuilder &b) {
 
     auto f_modf = test_ir_modf(b);
 
-    auto f64_t = type_get_numeric(Float64);
+    auto f64_t = types::get_numeric(Float64);
 
-    auto args_t = type_get_tuple({&f64_t, 1});
+    auto args_t = types::get_tuple({&f64_t, 1});
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("intPart"), f64_t, args_t);
@@ -371,9 +371,9 @@ ir::FunctId test_ir_intPart(ProgramBuilder &b) {
     auto v_args = b.makeFrameRef(b.makeLocalVar(modf_args_t));
 
     auto v_arg0 =
-        v_args.plus(type_tuple_offsetAt(modf_args_t, 0), type_tuple_typeAt(modf_args_t, 0));
+        v_args.plus(types::tuple_offsetAt(modf_args_t, 0), types::tuple_typeAt(modf_args_t, 0));
     auto v_arg1 =
-        v_args.plus(type_tuple_offsetAt(modf_args_t, 1), type_tuple_typeAt(modf_args_t, 1));
+        v_args.plus(types::tuple_offsetAt(modf_args_t, 1), types::tuple_typeAt(modf_args_t, 1));
 
     auto l_start = b.makeLabel();
 
@@ -391,10 +391,10 @@ ir::FunctId test_ir_intPart(ProgramBuilder &b) {
 ir::FunctId test_ir_call3Times(ProgramBuilder &b, type_t fn) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto void_t = type_get_void();
-    auto args_t = type_get_tuple({});
+    auto void_t = types::get_void();
+    auto args_t = types::get_tuple({});
 
-    auto i64_t = type_get_numeric(Int64);
+    auto i64_t = types::get_numeric(Int64);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("call3Times"), void_t, args_t);
@@ -429,10 +429,10 @@ ir::FunctId test_ir_call3Times(ProgramBuilder &b, type_t fn) {
 ir::FunctId test_ir_hasZeroByte32(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i32_t = type_get_numeric(Int32);
+    auto i32_t = types::get_numeric(Int32);
 
     ARRAY_SLICE_INIT(type_t, args, i32_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("hasZeroByte32"), i32_t, args_t);
@@ -460,10 +460,10 @@ ir::FunctId test_ir_hasZeroByte32(ProgramBuilder &b) {
 void test_ir_readToggleGlobal(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto void_t = type_get_void();
-    auto args_t = type_get_tuple({});
+    auto void_t = types::get_void();
+    auto args_t = types::get_tuple({});
 
-    auto i64_t = type_get_numeric(Int64);
+    auto i64_t = types::get_numeric(Int64);
 
     auto g_var = b.makeGlobalRef(b.makeGlobalVar(i64_t));
 
@@ -489,10 +489,10 @@ void test_ir_readToggleGlobal(ProgramBuilder &b) {
 ir::FunctId test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto void_t = type_get_void();
-    auto args_t = type_get_tuple({});
+    auto void_t = types::get_void();
+    auto args_t = types::get_tuple({});
 
-    auto fn_t = type_get_fn_native(void_t, args_t, 0, fn_ptr, false);
+    auto fn_t = types::get_fn_native(void_t, args_t, 0, fn_ptr, false);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("callNativeFunc"), void_t, args_t);
@@ -509,12 +509,12 @@ ir::FunctId test_ir_callNativeFunc(ProgramBuilder &b, void *fn_ptr) {
 ir::FunctId test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i64_t = type_get_numeric(Int64);
+    auto i64_t = types::get_numeric(Int64);
 
     ARRAY_SLICE_INIT(type_t, args, i64_t, i64_t);
-    auto args_t = type_get_tuple(args);
+    auto args_t = types::get_tuple(args);
 
-    auto fn_t = type_get_fn_native(i64_t, args_t, 0, fn_ptr, false);
+    auto fn_t = types::get_fn_native(i64_t, args_t, 0, fn_ptr, false);
 
     auto const funct = b.makeFunct();
     b.startFunct(funct, cs2s("callNativeAdd"), i64_t, args_t);
@@ -533,23 +533,23 @@ ir::FunctId test_ir_callNativeAdd(ProgramBuilder &b, void *fn_ptr) {
 ir::FunctId test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto void_t = type_get_void();
-    auto i8_t = type_get_numeric(Int8);
-    auto i32_t = type_get_numeric(Int32);
-    auto i64_t = type_get_numeric(Int64);
+    auto void_t = types::get_void();
+    auto i8_t = types::get_numeric(Int8);
+    auto i32_t = types::get_numeric(Int32);
+    auto i64_t = types::get_numeric(Int64);
 
-    auto i8_ptr_t = type_get_ptr(i8_t);
+    auto i8_ptr_t = types::get_ptr(i8_t);
 
-    auto args_t = type_get_tuple({});
+    auto args_t = types::get_tuple({});
 
     ARRAY_SLICE_INIT(type_t, pf_args, i8_ptr_t, i64_t, i64_t, i64_t);
-    auto pf_args_t = type_get_tuple(pf_args);
+    auto pf_args_t = types::get_tuple(pf_args);
 
     auto f_printf = b.makeExtFunct(
         b.makeShObj(s2id(libname)),
         cs2id("test_printf"),
         i32_t,
-        type_get_tuple({&i8_ptr_t, 1}),
+        types::get_tuple({&i8_ptr_t, 1}),
         true);
 
     auto const funct = b.makeFunct();
@@ -557,10 +557,10 @@ ir::FunctId test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
 
     auto args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto arg0 = args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
-    auto arg1 = args.plus(type_tuple_offsetAt(pf_args_t, 1), i64_t);
-    auto arg2 = args.plus(type_tuple_offsetAt(pf_args_t, 2), i64_t);
-    auto arg3 = args.plus(type_tuple_offsetAt(pf_args_t, 3), i64_t);
+    auto arg0 = args.plus(types::tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto arg1 = args.plus(types::tuple_offsetAt(pf_args_t, 1), i64_t);
+    auto arg2 = args.plus(types::tuple_offsetAt(pf_args_t, 2), i64_t);
+    auto arg3 = args.plus(types::tuple_offsetAt(pf_args_t, 3), i64_t);
 
     b.startBlock(b.makeLabel(), cs2s("start"));
 
@@ -578,10 +578,10 @@ ir::FunctId test_ir_callExternalPrintf(ProgramBuilder &b, string libname) {
 std::pair<ir::FunctId, ir::FunctId> test_ir_getSetExternalVar(ProgramBuilder &b, string libname) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto void_t = type_get_void();
-    auto i64_t = type_get_numeric(Int64);
+    auto void_t = types::get_void();
+    auto i64_t = types::get_numeric(Int64);
 
-    auto args_t = type_get_tuple({});
+    auto args_t = types::get_tuple({});
 
     auto v_test_val =
         b.makeExtVarRef(b.makeExtVar(b.makeShObj(s2id(libname)), cs2id("test_val"), i64_t));
@@ -608,7 +608,7 @@ std::pair<ir::FunctId, ir::FunctId> test_ir_getSetExternalVar(ProgramBuilder &b,
 void test_ir_main_argc(ProgramBuilder &b) {
     EASY_FUNCTION(profiler::colors::Grey200)
 
-    auto i32_t = type_get_numeric(Int32);
+    auto i32_t = types::get_numeric(Int32);
 
     _startMain(b);
 
@@ -634,24 +634,24 @@ void test_ir_main_pi(ProgramBuilder &b, string libc_name) {
     auto f_pi = test_ir_pi(b);
     auto f_printf = _makePrintf(b, libc_name);
 
-    auto i8_t = type_get_numeric(Int8);
-    auto i32_t = type_get_numeric(Int32);
-    auto f64_t = type_get_numeric(Float64);
+    auto i8_t = types::get_numeric(Int8);
+    auto i32_t = types::get_numeric(Int32);
+    auto f64_t = types::get_numeric(Float64);
 
-    auto i8_ptr_t = type_get_ptr(i8_t);
+    auto i8_ptr_t = types::get_ptr(i8_t);
 
     _startMain(b);
 
     ARRAY_SLICE_INIT(type_t, pf_args, i8_ptr_t, f64_t);
-    auto pf_args_t = type_get_tuple(pf_args);
+    auto pf_args_t = types::get_tuple(pf_args);
 
     auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto arg0 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
-    auto arg1 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 1), f64_t);
+    auto arg0 = v_pf_args.plus(types::tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto arg1 = v_pf_args.plus(types::tuple_offsetAt(pf_args_t, 1), f64_t);
 
     auto fmt = cs2s("pi = %.16lf\n");
-    auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
+    auto fmt_t = types::get_ptr(types::get_array(i8_t, fmt.size));
 
     b.gen(b.make_mov(arg0, b.makeConstRef(fmt.data, fmt_t)));
     b.gen(b.make_call(arg1, f_pi, {}));
@@ -666,17 +666,17 @@ void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
     auto f_vec2LenSquared = test_ir_vec2LenSquared(b);
     auto f_printf = _makePrintf(b, libc_name);
 
-    auto i8_t = type_get_numeric(Int8);
-    auto i32_t = type_get_numeric(Int32);
-    auto f64_t = type_get_numeric(Float64);
+    auto i8_t = types::get_numeric(Int8);
+    auto i32_t = types::get_numeric(Int32);
+    auto f64_t = types::get_numeric(Float64);
 
     ARRAY_SLICE_INIT(type_t, vec_types, f64_t, f64_t);
-    auto vec_t = type_get_tuple(vec_types);
+    auto vec_t = types::get_tuple(vec_types);
 
-    auto vec_ptr_t = type_get_ptr(vec_t);
-    auto f64_ptr_t = type_get_ptr(f64_t);
+    auto vec_ptr_t = types::get_ptr(vec_t);
+    auto f64_ptr_t = types::get_ptr(f64_t);
 
-    auto i8_ptr_t = type_get_ptr(i8_t);
+    auto i8_ptr_t = types::get_ptr(i8_t);
 
     _startMain(b);
 
@@ -684,25 +684,27 @@ void test_ir_main_vec2LenSquared(ProgramBuilder &b, string libc_name) {
     auto v_lenSquared = b.makeFrameRef(b.makeLocalVar(f64_t));
     auto v_args = b.makeFrameRef(b.makeLocalVar(b.prog.functs[0].args_t));
 
-    auto vec_arg0 = v_args.plus(type_tuple_offsetAt(vec_t, 0), vec_ptr_t);
-    auto vec_arg1 = v_args.plus(type_tuple_offsetAt(vec_t, 1), f64_ptr_t);
+    auto vec_arg0 = v_args.plus(types::tuple_offsetAt(vec_t, 0), vec_ptr_t);
+    auto vec_arg1 = v_args.plus(types::tuple_offsetAt(vec_t, 1), f64_ptr_t);
 
-    b.gen(b.make_mov(v_vec.plus(type_tuple_offsetAt(vec_t, 0), f64_t), b.makeConstRef(4.0, f64_t)));
-    b.gen(b.make_mov(v_vec.plus(type_tuple_offsetAt(vec_t, 1), f64_t), b.makeConstRef(5.0, f64_t)));
+    b.gen(
+        b.make_mov(v_vec.plus(types::tuple_offsetAt(vec_t, 0), f64_t), b.makeConstRef(4.0, f64_t)));
+    b.gen(
+        b.make_mov(v_vec.plus(types::tuple_offsetAt(vec_t, 1), f64_t), b.makeConstRef(5.0, f64_t)));
     b.gen(b.make_lea(vec_arg0, v_vec));
     b.gen(b.make_lea(vec_arg1, v_lenSquared));
     b.gen(b.make_call({}, f_vec2LenSquared, v_args));
 
     ARRAY_SLICE_INIT(type_t, pf_args, i8_ptr_t, f64_t);
-    auto pf_args_t = type_get_tuple(pf_args);
+    auto pf_args_t = types::get_tuple(pf_args);
 
     auto v_pf_args = b.makeFrameRef(b.makeLocalVar(pf_args_t));
 
-    auto pf_arg0 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
-    auto pf_arg1 = v_pf_args.plus(type_tuple_offsetAt(pf_args_t, 1), f64_t);
+    auto pf_arg0 = v_pf_args.plus(types::tuple_offsetAt(pf_args_t, 0), i8_ptr_t);
+    auto pf_arg1 = v_pf_args.plus(types::tuple_offsetAt(pf_args_t, 1), f64_t);
 
     auto fmt = cs2s("lenSquared = %lf\n");
-    auto fmt_t = type_get_ptr(type_get_array(i8_t, fmt.size));
+    auto fmt_t = types::get_ptr(types::get_array(i8_t, fmt.size));
 
     b.gen(b.make_mov(pf_arg0, b.makeConstRef(fmt.data, fmt_t)));
     b.gen(b.make_mov(pf_arg1, v_lenSquared));

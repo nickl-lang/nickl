@@ -107,9 +107,9 @@ void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
     case Type_Tuple: {
         is_complex = true;
         tmp_s << "struct {\n";
-        for (size_t i = 0; i < type_tuple_size(type); i++) {
+        for (size_t i = 0; i < types::tuple_size(type); i++) {
             tmp_s << "  ";
-            _writeType(ctx, type_tuple_typeAt(type, i), tmp_s);
+            _writeType(ctx, types::tuple_typeAt(type, i), tmp_s);
             tmp_s << " _" << i << ";\n";
         }
         tmp_s << "}";
@@ -118,8 +118,8 @@ void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
     case Type_Array: {
         is_complex = true;
         tmp_s << "struct { ";
-        _writeType(ctx, type_array_elemType(type), tmp_s);
-        tmp_s << " _data[" << type_array_size(type) << "]; }";
+        _writeType(ctx, types::array_elemType(type), tmp_s);
+        tmp_s << " _data[" << types::array_size(type) << "]; }";
         break;
     }
     default:
@@ -275,11 +275,11 @@ void _writeFnSig(
     _writeType(ctx, ret_t, src);
     src << " " << name << "(";
 
-    for (size_t i = 0; i < type_tuple_size(args_t); i++) {
+    for (size_t i = 0; i < types::tuple_size(args_t); i++) {
         if (i) {
             src << ", ";
         }
-        _writeType(ctx, type_tuple_typeAt(args_t, i), src);
+        _writeType(ctx, types::tuple_typeAt(args_t, i), src);
         src << " arg" << i;
     }
     if (va) {
@@ -335,7 +335,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
         _writeFnSig(ctx, src, f.name, f.ret_t, f.args_t);
         src << " {\n\n";
 
-        _writeType(ctx, type_get_array(type_get_numeric(Uint8), REG_SIZE * Reg_Count), src);
+        _writeType(ctx, types::get_array(types::get_numeric(Uint8), REG_SIZE * Reg_Count), src);
         src << " reg;\n";
 
         for (size_t i = 0; auto type : f.locals) {
@@ -464,7 +464,7 @@ void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
                     src << "(";
                     if (instr.arg[2].as.ref.ref_type != ir::Ref_None) {
                         auto args_t = instr.arg[2].as.ref.type;
-                        for (size_t i = 0; i < type_tuple_size(args_t); i++) {
+                        for (size_t i = 0; i < types::tuple_size(args_t); i++) {
                             if (i) {
                                 src << ", ";
                             }
