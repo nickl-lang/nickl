@@ -5,6 +5,7 @@ add_library(${LIB}
     src/lang.cpp
     src/lexer.cpp
     src/tokens.cpp
+    src/value.cpp
     )
 
 target_include_directories(${LIB}
