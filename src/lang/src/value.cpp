@@ -14,7 +14,7 @@ LOG_USE_SCOPE(nkl::lang::value);
 
 } // namespace
 
-type_t type_get_struct(Slice<Field const> fields, size_t decl_id) {
+type_t types::get_struct(Slice<Field const> fields, size_t decl_id) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct Fp {
@@ -43,11 +43,11 @@ type_t type_get_struct(Slice<Field const> fields, size_t decl_id) {
             .type = fields[i].type->id,
         };
     }
-    vm::TypeQueryRes res = vm::type_getType({(uint8_t *)fp, fp_size});
+    vm::TypeQueryRes res = types::getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         //@Performance Effectively contructing Fp twice for type_get_struct
         auto const tuple_t =
-            vm::type_get_tuple({&fields[0].type, fields.size}, sizeof(fields[0]) / sizeof(void *));
+            types::get_tuple({&fields[0].type, fields.size}, sizeof(fields[0]) / sizeof(void *));
 
         //@Robustness Have to manually restore id and typeclass_id, because they get overwritten
         typeid_t actual_id = res.type->id;
@@ -66,35 +66,35 @@ type_t type_get_struct(Slice<Field const> fields, size_t decl_id) {
         }
 
         Type *res_type = (Type *)res.type;
-        res_type->as_ext.strukt.field_names = field_names;
+        types::ext(res_type)->as.strukt.field_names = field_names;
     }
     return (type_t)res.type;
 }
 
-StringBuilder &type_name(type_t type, StringBuilder &sb) {
+StringBuilder &types::inspect(type_t type, StringBuilder &sb) {
     switch (type->typeclass_id) {
     case Type_Struct:
         sb << "struct{";
-        for (size_t i = 0; i < type_struct_size(type); i++) {
+        for (size_t i = 0; i < types::struct_size(type); i++) {
             if (i) {
                 sb << ", ";
             }
-            sb << id2s(type_struct_nameAt(type, i)) << ": ";
-            type_name(type_struct_typeAt(type, i), sb);
+            sb << id2s(types::struct_nameAt(type, i)) << ": ";
+            types::inspect(types::struct_typeAt(type, i), sb);
         }
         sb << "}";
         break;
     default:
-        vm::type_name(type, sb);
+        vm::types::inspect(type, sb);
         break;
     }
 
     return sb;
 }
 
-static size_t _type_struct_indexAt(type_t self, Id name) {
+static size_t _struct_indexAt(type_t self, Id name) {
     size_t i = 0;
-    for (Id field_name : self->as_ext.strukt.field_names) {
+    for (Id field_name : types::ext(self)->as.strukt.field_names) {
         if (field_name == name) {
             return i;
         }
@@ -104,33 +104,31 @@ static size_t _type_struct_indexAt(type_t self, Id name) {
 }
 
 size_t val_struct_size(value_t self) {
-    return type_struct_size(::nkl::val_typeof(self)); //@Todo How is it ambiguous???
+    return types::struct_size(val_typeof(self));
 }
 
 value_t val_struct_at(value_t self, Id name) {
-    return vm::val_tuple_at(
-        self, _type_struct_indexAt(::nkl::val_typeof(self), name)); //@Todo How is it ambiguous???
+    return val_tuple_at(self, _struct_indexAt(val_typeof(self), name));
 }
 
-size_t type_struct_size(type_t self) {
-    return vm::type_tuple_size(self);
+size_t types::struct_size(type_t self) {
+    return types::tuple_size(self);
 }
 
-type_t type_struct_typeAt(type_t self, size_t i) {
-    return (type_t)vm::type_tuple_typeAt(self, i);
+type_t types::struct_typeAt(type_t self, size_t i) {
+    return types::tuple_typeAt(self, i);
 }
 
-size_t type_struct_offsetAt(type_t self, size_t i) {
-    return vm::type_tuple_offsetAt(self, i);
+size_t types::struct_offsetAt(type_t self, size_t i) {
+    return types::tuple_offsetAt(self, i);
 }
 
-size_t type_struct_offsetAt(type_t self, size_t i);
-Id type_struct_nameAt(type_t self, size_t i) {
-    return self->as_ext.strukt.field_names[i];
+Id types::struct_nameAt(type_t self, size_t i) {
+    return types::ext(self)->as.strukt.field_names[i];
 }
 
-value_t type_struct_initAt(type_t self, size_t i) {
-    //@Todo type_struct_initAt not implemented
+value_t types::struct_initAt(type_t self, size_t i) {
+    //@Todo types::struct_initAt not implemented
 }
 
 } // namespace nkl
