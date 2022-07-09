@@ -9,6 +9,7 @@ namespace nkl {
 
 using namespace nk;
 
+using vm::type_t;
 using vm::typeclassid_t;
 using vm::typeid_t;
 using vm::value_t;
@@ -19,9 +20,6 @@ enum EExtTypeclassId {
     Typeclass_Count,
 };
 
-struct Type;
-using type_t = Type const *;
-
 struct _type_struct {
     Slice<Id const> field_names;
 };
@@ -29,31 +27,33 @@ struct _type_struct {
 struct Type : vm::Type {
     union {
         _type_struct strukt;
-    } as_ext;
+    } as;
 };
 
 struct Field {
     Id name;
-    vm::type_t type;
-    vm::value_t init;
+    type_t type;
+    value_t init;
 };
 
-type_t type_get_struct(Slice<Field const> fields, size_t decl_id = 0);
+struct types : vm::types {
+    static type_t get_struct(Slice<Field const> fields, size_t decl_id = 0);
 
-StringBuilder &type_name(type_t type, StringBuilder &sb);
+    static StringBuilder &inspect(type_t type, StringBuilder &sb);
+
+    static size_t struct_size(type_t self);
+    static type_t struct_typeAt(type_t self, size_t i);
+    static size_t struct_offsetAt(type_t self, size_t i);
+    static Id struct_nameAt(type_t self, size_t i);
+    static value_t struct_initAt(type_t self, size_t i);
+
+    static Type *ext(type_t type) {
+        return (Type *)type;
+    }
+};
 
 size_t val_struct_size(value_t self);
 value_t val_struct_at(value_t self, Id name);
-
-size_t type_struct_size(type_t self);
-type_t type_struct_typeAt(type_t self, size_t i);
-size_t type_struct_offsetAt(type_t self, size_t i);
-Id type_struct_nameAt(type_t self, size_t i);
-value_t type_struct_initAt(type_t self, size_t i);
-
-inline type_t val_typeof(value_t val) {
-    return (type_t)vm::val_typeof(val);
-}
 
 } // namespace nkl
 
