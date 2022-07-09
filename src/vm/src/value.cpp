@@ -4,7 +4,6 @@
 
 #include "native_fn_adapter.hpp"
 #include "nk/ds/hashmap.hpp"
-#include "nk/mem/stack_allocator.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
 #include "nk/utils/utils.hpp"
@@ -16,7 +15,8 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::value);
 
-StackAllocator s_typearena;
+using ByteArray = Slice<uint8_t const>;
+
 HashMap<ByteArray, Type *> s_typemap;
 size_t s_next_type_id = 1;
 
@@ -31,6 +31,8 @@ Type **_storeType(ByteArray fp, Type *type) {
 }
 
 } // namespace
+
+StackAllocator types::s_typearena;
 
 void types::init() {
     EASY_FUNCTION(profiler::colors::Green200)
@@ -47,27 +49,7 @@ void types::deinit() {
     s_typearena.deinit();
 }
 
-TypeQueryRes types::getType(ByteArray fp, size_t type_size) {
-    EASY_FUNCTION(profiler::colors::Green200)
-
-    Type **found_type = _findType(fp);
-    if (found_type) {
-        return TypeQueryRes{*found_type, false};
-    }
-    auto fp_copy = s_typearena.alloc<uint8_t>(fp.size);
-    fp.copy(fp_copy);
-    Type *type = (Type *)(uint8_t *)s_typearena.alloc<uint8_t>(type_size);
-    *type = Type{
-        .as = {},
-        .native_handle = nullptr,
-        .id = s_next_type_id++,
-        .size = 0,
-        .alignment = 0,
-        .typeclass_id = ((FpBase *)fp.data)->id};
-    return TypeQueryRes{*_storeType(fp_copy, type), true};
-}
-
-TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride) {
+TupleLayout calcTupleLayout(Slice<type_t const> types, Allocator &allocator, size_t stride) {
     size_t alignment = 0;
     size_t offset = 0;
 
@@ -97,7 +79,7 @@ type_t types::get_array(type_t elem_type, size_t elem_count) {
     fp.base.id = Type_Array;
     fp.elem_type = elem_type->id;
     fp.elem_count = elem_count;
-    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = elem_count * elem_type->size;
         res.type->alignment = elem_type->alignment;
@@ -126,7 +108,7 @@ type_t types::get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_p
     fp.body_ptr = body_ptr;
     fp.closure = closure;
     fp.is_native = false;
-    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -163,7 +145,7 @@ type_t types::get_fn_native(
     fp.body_ptr = body_ptr;
     fp.is_native = true;
     fp.is_variadic = is_variadic;
-    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -190,7 +172,7 @@ type_t types::get_numeric(ENumericValueType value_type) {
     } fp = {};
     fp.base.id = Type_Numeric;
     fp.value_type = value_type;
-    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         size_t const size = NUM_TYPE_SIZE(value_type);
         res.type->size = size;
@@ -209,7 +191,7 @@ type_t types::get_ptr(type_t target_type) {
     } fp = {};
     fp.base.id = Type_Ptr;
     fp.target_type = target_type->id;
-    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = sizeof(void *);
         res.type->alignment = alignof(void *);
@@ -218,7 +200,7 @@ type_t types::get_ptr(type_t target_type) {
     return res.type;
 }
 
-type_t types::get_tuple(TypeArray types, size_t stride) {
+type_t types::get_tuple(Slice<type_t const> types, size_t stride) {
     EASY_FUNCTION(profiler::colors::Green200)
 
     struct Fp {
@@ -226,6 +208,7 @@ type_t types::get_tuple(TypeArray types, size_t stride) {
         size_t type_count;
     };
     size_t const fp_size = arrayWithHeaderSize<Fp, typeid_t>(types.size);
+    //@Todo Use StackAllocator instead of libc for types::get_tuple
     Fp *fp = (Fp *)nk_platform_alloc_aligned(fp_size, alignof(Fp));
     defer {
         nk_platform_free_aligned(fp);
@@ -237,7 +220,7 @@ type_t types::get_tuple(TypeArray types, size_t stride) {
     for (size_t i = 0; i < types.size; i++) {
         fp_types[i] = types[i * stride]->id;
     }
-    TypeQueryRes res = types::getType({(uint8_t *)fp, fp_size});
+    TypeQueryRes res = getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
         TupleLayout layout = calcTupleLayout(types, s_typearena, stride);
 
@@ -253,7 +236,7 @@ type_t types::get_void() {
 
     FpBase fp = {};
     fp.id = Type_Void;
-    TypeQueryRes res = types::getType({(uint8_t *)&fp, sizeof(fp)});
+    TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
     if (res.inserted) {
         res.type->size = 0;
         res.type->alignment = 1;
@@ -355,6 +338,26 @@ size_t types::array_size(type_t array_t) {
 
 type_t types::array_elemType(type_t array_t) {
     return array_t->as.arr.elem_type;
+}
+
+TypeQueryRes types::getType(Slice<uint8_t const> fp, size_t type_size) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
+    Type **found_type = _findType(fp);
+    if (found_type) {
+        return TypeQueryRes{*found_type, false};
+    }
+    auto fp_copy = s_typearena.alloc<uint8_t>(fp.size);
+    fp.copy(fp_copy);
+    Type *type = (Type *)(uint8_t *)s_typearena.alloc<uint8_t>(type_size);
+    *type = Type{
+        .as = {},
+        .native_handle = nullptr,
+        .id = s_next_type_id++,
+        .size = 0,
+        .alignment = 0,
+        .typeclass_id = ((FpBase *)fp.data)->id};
+    return TypeQueryRes{*_storeType(fp_copy, type), true};
 }
 
 StringBuilder &val_inspect(value_t val, StringBuilder &sb) {

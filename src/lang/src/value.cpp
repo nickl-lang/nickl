@@ -43,30 +43,23 @@ type_t types::get_struct(Slice<Field const> fields, size_t decl_id) {
             .type = fields[i].type->id,
         };
     }
-    vm::TypeQueryRes res = types::getType({(uint8_t *)fp, fp_size});
+    vm::TypeQueryRes res = getType({(uint8_t *)fp, fp_size});
     if (res.inserted) {
-        //@Performance Effectively contructing Fp twice for type_get_struct
-        auto const tuple_t =
-            types::get_tuple({&fields[0].type, fields.size}, sizeof(fields[0]) / sizeof(void *));
+        vm::TupleLayout layout = vm::calcTupleLayout(
+            {&fields[0].type, fields.size}, s_typearena, sizeof(fields[0]) / sizeof(void *));
 
-        //@Robustness Have to manually restore id and typeclass_id, because they get overwritten
-        typeid_t actual_id = res.type->id;
-        typeclassid_t actual_typeclassid = res.type->typeclass_id;
-        *res.type = *tuple_t;
-        res.type->typeclass_id = actual_typeclassid;
-        res.type->id = actual_id;
+        res.type->size = layout.size;
+        res.type->alignment = layout.align;
+        res.type->as.tuple.elems = layout.info_ar;
 
-        //@Todo Meamory leak with a static arena
-        static StackAllocator s_arena{};
         //@Todo Should have a copy with stride method for slices
-        auto field_names = s_arena.alloc<Id>(fields.size);
+        auto field_names = s_typearena.alloc<Id>(fields.size);
         size_t i = 0;
         for (auto const &field : fields) {
             field_names[i++] = field.name;
         }
 
-        Type *res_type = (Type *)res.type;
-        types::ext(res_type)->as.strukt.field_names = field_names;
+        types::ext(res.type)->as.strukt.field_names = field_names;
     }
     return (type_t)res.type;
 }
@@ -129,6 +122,10 @@ Id types::struct_nameAt(type_t self, size_t i) {
 
 value_t types::struct_initAt(type_t self, size_t i) {
     //@Todo types::struct_initAt not implemented
+}
+
+vm::TypeQueryRes types::getType(Slice<uint8_t const> fp, size_t type_size) {
+    return vm::types::getType(fp, type_size);
 }
 
 } // namespace nkl

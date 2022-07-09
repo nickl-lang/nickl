@@ -50,6 +50,9 @@ struct types : vm::types {
     static Type *ext(type_t type) {
         return (Type *)type;
     }
+
+private:
+    static vm::TypeQueryRes getType(Slice<uint8_t const> fp, size_t type_size = sizeof(Type));
 };
 
 size_t val_struct_size(value_t self);
