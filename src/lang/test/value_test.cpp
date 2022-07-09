@@ -53,7 +53,9 @@ TEST_F(value, struct_type) {
     ASSERT_EQ(type_struct_size(type), 2);
 
     EXPECT_EQ(type_struct_typeAt(type, 0), f64_t);
+    EXPECT_EQ(type_struct_offsetAt(type, 0), 0);
     EXPECT_EQ(std_str(id2s(type_struct_nameAt(type, 0))), "x");
     EXPECT_EQ(type_struct_typeAt(type, 1), f64_t);
+    EXPECT_EQ(type_struct_offsetAt(type, 1), 8);
     EXPECT_EQ(std_str(id2s(type_struct_nameAt(type, 1))), "y");
 }
