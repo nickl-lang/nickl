@@ -107,51 +107,65 @@ struct TypeQueryRes {
     bool inserted;
 };
 
-void types_init();
-void types_deinit();
-
-TypeQueryRes type_getType(ByteArray fp, size_t type_size = sizeof(Type));
-
 TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride = 1);
 
-type_t type_get_array(type_t elem_type, size_t elem_count);
-//@Feature Implement function pointer type
-//@Feature Implement callbacks from native code
-type_t type_get_fn(type_t ret_t, type_t args_t, size_t decl_id, FuncPtr body_ptr, void *closure);
-type_t type_get_fn_native(
-    type_t ret_t,
-    type_t args_t,
-    size_t decl_id,
-    void *body_ptr,
-    bool is_variadic);
-type_t type_get_numeric(ENumericValueType value_type);
-type_t type_get_ptr(type_t target_type);
-//@Feature Implement optimized tuple type
-type_t type_get_tuple(TypeArray types, size_t stride = 1);
-type_t type_get_void();
+struct types {
+    static void init();
+    static void deinit();
 
-StringBuilder &type_name(type_t type, StringBuilder &sb);
+    static TypeQueryRes getType(ByteArray fp, size_t type_size = sizeof(Type));
+
+    static type_t get_array(type_t elem_type, size_t elem_count);
+
+    //@Feature Implement function pointer type
+    //@Feature Implement callbacks from native code
+    static type_t get_fn(
+        type_t ret_t,
+        type_t args_t,
+        size_t decl_id,
+        FuncPtr body_ptr,
+        void *closure);
+
+    static type_t get_fn_native(
+        type_t ret_t,
+        type_t args_t,
+        size_t decl_id,
+        void *body_ptr,
+        bool is_variadic);
+
+    static type_t get_numeric(ENumericValueType value_type);
+
+    static type_t get_ptr(type_t target_type);
+
+    //@Feature Implement optimized tuple type
+    static type_t get_tuple(TypeArray types, size_t stride = 1);
+
+    static type_t get_void();
+
+    static StringBuilder &inspect(type_t type, StringBuilder &sb);
+
+    static size_t tuple_size(type_t tuple_t);
+    static type_t tuple_typeAt(type_t tuple_t, size_t i);
+    static size_t tuple_offsetAt(type_t tuple_t, size_t i);
+
+    static size_t array_size(type_t array_t);
+    static type_t array_elemType(type_t array_t);
+};
+
 StringBuilder &val_inspect(value_t val, StringBuilder &sb);
 
 size_t val_tuple_size(value_t self);
 value_t val_tuple_at(value_t self, size_t i);
 
-size_t type_tuple_size(type_t tuple_t);
-type_t type_tuple_typeAt(type_t tuple_t, size_t i);
-size_t type_tuple_offsetAt(type_t tuple_t, size_t i);
-
 size_t val_array_size(value_t self);
 value_t val_array_at(value_t self, size_t i);
-
-size_t type_array_size(type_t array_t);
-type_t type_array_elemType(type_t array_t);
 
 value_t val_ptr_deref(value_t self);
 
 void val_fn_invoke(type_t self, value_t ret, value_t args);
 
 inline value_t val_undefined() {
-    return value_t{nullptr, nullptr};
+    return value_t{};
 }
 
 inline void *val_data(value_t val) {

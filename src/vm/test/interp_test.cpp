@@ -28,7 +28,7 @@ class interp : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         id_init();
-        types_init();
+        types::init();
 
         FindLibraryConfig conf{};
         ARRAY_SLICE_INIT(string, paths, cs2s(TESTLIB_PATH));
@@ -50,7 +50,7 @@ class interp : public testing::Test {
 
         findLibrary_deinit();
 
-        types_deinit();
+        types::deinit();
         id_deinit();
     }
 
@@ -227,10 +227,10 @@ static void _printThreadId(type_t, value_t, value_t) {
 }
 
 TEST_F(interp, threads) {
-    auto void_t = type_get_void();
-    auto args_t = type_get_tuple({});
+    auto void_t = types::get_void();
+    auto args_t = types::get_tuple({});
 
-    auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
+    auto callback = types::get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     auto funct = test_ir_call3Times(m_ir_builder, callback);
     LOG_INF("ir:\n%s", [&]() {
@@ -251,10 +251,10 @@ TEST_F(interp, threads) {
 }
 
 TEST_F(interp, threads_diff_progs) {
-    auto void_t = type_get_void();
-    auto args_t = type_get_tuple({});
+    auto void_t = types::get_void();
+    auto args_t = types::get_tuple({});
 
-    auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
+    auto callback = types::get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     auto funct = test_ir_call3Times(m_ir_builder, callback);
     LOG_INF("ir:\n%s", [&]() {
@@ -307,10 +307,10 @@ TEST_F(interp, one_thread_diff_progs) {
         prog1.deinit();
     };
 
-    auto void_t = type_get_void();
-    auto args_t = type_get_tuple({});
+    auto void_t = types::get_void();
+    auto args_t = types::get_tuple({});
 
-    auto callback = type_get_fn(void_t, args_t, 0, _printThreadId, nullptr);
+    auto callback = types::get_fn(void_t, args_t, 0, _printThreadId, nullptr);
 
     auto funct0 = test_ir_call3Times(ir_builder0, callback);
     auto fn0_t = builder0.translate(funct0);

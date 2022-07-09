@@ -24,7 +24,7 @@ class c_compiler_adapter : public testing::Test {
         LOGGER_INIT(LoggerOptions{});
 
         id_init();
-        types_init();
+        types::init();
 
         StaticStringBuilder{m_output_filename}.printf(
             TEST_FILES_DIR "%s_test.out",
@@ -44,7 +44,7 @@ class c_compiler_adapter : public testing::Test {
 
         m_prog.deinit();
 
-        types_deinit();
+        types::deinit();
         id_deinit();
     }
 
