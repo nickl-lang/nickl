@@ -18,6 +18,8 @@ enum ETypeclassId {
     Type_Ptr,
     Type_Tuple,
     Type_Void,
+
+    Typeclass_Count,
 };
 
 struct _type_array {
@@ -94,10 +96,23 @@ struct Type {
 
 using TypeArray = Slice<type_t const>;
 
-TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride = 1);
+using ByteArray = Slice<uint8_t const>;
+
+struct FpBase {
+    typeclassid_t id;
+};
+
+struct TypeQueryRes {
+    Type *type;
+    bool inserted;
+};
 
 void types_init();
 void types_deinit();
+
+TypeQueryRes type_getType(ByteArray fp, size_t type_size = sizeof(Type));
+
+TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride = 1);
 
 type_t type_get_array(type_t elem_type, size_t elem_count);
 //@Feature Implement function pointer type
@@ -112,7 +127,7 @@ type_t type_get_fn_native(
 type_t type_get_numeric(ENumericValueType value_type);
 type_t type_get_ptr(type_t target_type);
 //@Feature Implement optimized tuple type
-type_t type_get_tuple(TypeArray types);
+type_t type_get_tuple(TypeArray types, size_t stride = 1);
 type_t type_get_void();
 
 StringBuilder &type_name(type_t type, StringBuilder &sb);
