@@ -1,0 +1,17 @@
+RUN apt-get update && apt-get install -y --no-install-recommends \
+# Dev tools \
+    clangd \
+    less \
+    nodejs \
+    npm  \
+    python3-neovim \
+    python3-pip \
+    silversearcher-ag \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g neovim
+
+RUN wget https://github.com/neovim/neovim/releases/download/v0.7.2/nvim-linux64.deb \
+ && apt-get install ./nvim-linux64.deb \
+ && rm ./nvim-linux64.deb \
+ ;
