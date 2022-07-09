@@ -47,6 +47,7 @@ value_t val_struct_at(value_t self, Id name);
 
 size_t type_struct_size(type_t self);
 type_t type_struct_typeAt(type_t self, size_t i);
+size_t type_struct_offsetAt(type_t self, size_t i);
 Id type_struct_nameAt(type_t self, size_t i);
 value_t type_struct_initAt(type_t self, size_t i);
 

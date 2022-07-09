@@ -120,12 +120,17 @@ type_t type_struct_typeAt(type_t self, size_t i) {
     return (type_t)vm::type_tuple_typeAt(self, i);
 }
 
+size_t type_struct_offsetAt(type_t self, size_t i) {
+    return vm::type_tuple_offsetAt(self, i);
+}
+
+size_t type_struct_offsetAt(type_t self, size_t i);
 Id type_struct_nameAt(type_t self, size_t i) {
     return self->as_ext.strukt.field_names[i];
 }
 
 value_t type_struct_initAt(type_t self, size_t i) {
-    //@Todo Not implemented
+    //@Todo type_struct_initAt not implemented
 }
 
 } // namespace nkl
