@@ -16,9 +16,13 @@ LOG_USE_SCOPE(nkl::value::test);
 class value : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
+
+        types::init();
     }
 
     void TearDown() override {
+        types::deinit();
+
         m_arena.deinit();
         m_sb.deinit();
     }

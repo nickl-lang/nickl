@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#include "nk/mem/allocator.hpp"
+#include "nk/mem/stack_allocator.hpp"
 #include "nk/str/string.hpp"
 #include "nk/str/string_builder.hpp"
 #include "nk/vm/common_types.hpp"
@@ -94,10 +94,6 @@ struct Type {
     uint8_t typeclass_id;
 };
 
-using TypeArray = Slice<type_t const>;
-
-using ByteArray = Slice<uint8_t const>;
-
 struct FpBase {
     typeclassid_t id;
 };
@@ -107,13 +103,11 @@ struct TypeQueryRes {
     bool inserted;
 };
 
-TupleLayout calcTupleLayout(TypeArray types, Allocator &allocator, size_t stride = 1);
+TupleLayout calcTupleLayout(Slice<type_t const> types, Allocator &allocator, size_t stride = 1);
 
 struct types {
     static void init();
     static void deinit();
-
-    static TypeQueryRes getType(ByteArray fp, size_t type_size = sizeof(Type));
 
     static type_t get_array(type_t elem_type, size_t elem_count);
 
@@ -138,7 +132,7 @@ struct types {
     static type_t get_ptr(type_t target_type);
 
     //@Feature Implement optimized tuple type
-    static type_t get_tuple(TypeArray types, size_t stride = 1);
+    static type_t get_tuple(Slice<type_t const> types, size_t stride = 1);
 
     static type_t get_void();
 
@@ -150,6 +144,11 @@ struct types {
 
     static size_t array_size(type_t array_t);
     static type_t array_elemType(type_t array_t);
+
+protected:
+    static TypeQueryRes getType(Slice<uint8_t const> fp, size_t type_size = sizeof(Type));
+
+    static StackAllocator s_typearena;
 };
 
 StringBuilder &val_inspect(value_t val, StringBuilder &sb);
