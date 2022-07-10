@@ -24,7 +24,6 @@ type_t types::get_struct(Slice<Field const> fields, size_t decl_id) {
         size_t decl_id;
         size_t type_count;
     };
-    //@Todo Field init values ignored in type_get_struct
     struct FpField {
         Id name;
         typeid_t type;
@@ -116,10 +115,6 @@ size_t types::struct_offsetAt(type_t self, size_t i) {
 
 Id types::struct_nameAt(type_t self, size_t i) {
     return types::ext(self)->as.strukt.field_names[i];
-}
-
-value_t types::struct_initAt(type_t self, size_t i) {
-    //@Todo types::struct_initAt not implemented
 }
 
 vm::TypeQueryRes types::getType(Slice<uint8_t const> fp, size_t type_size) {
