@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstring>
 #include <iterator>
 #include <type_traits>
 
@@ -60,11 +59,19 @@ struct Slice {
     }
 
     Slice<std::decay_t<T>> copy(std::decay_t<T> *dst) const {
-        std::memcpy(dst, data, size * sizeof(T));
+        for (size_t i = 0; i < size; i++) {
+            dst[i] = data[i];
+        }
         return {dst, size};
     }
 
-    Slice<T> slice(size_t i = 0, size_t n = -1ul) const {
+    void fill(T const &value) {
+        for (size_t i = 0; i < size; i++) {
+            data[i] = value;
+        }
+    };
+
+    Slice<T> slice(size_t i = 0, size_t n = -1ull) const {
         assert(i <= size && "index out of range");
         return {data + i, minu(n, size - i)};
     }
@@ -100,5 +107,15 @@ struct Slice {
 #define ARRAY_SLICE_INIT(TYPE, NAME, ...)     \
     TYPE CAT(__buf_, NAME)[] = {__VA_ARGS__}; \
     _SLICE(TYPE, NAME)
+
+#define SLICE_COPY_LSTRIDE(DST, FIELD, SRC)                                      \
+    for (size_t _i = 0; _i < (SRC).size; _i++) {                                 \
+        (&(DST)[0].FIELD)[_i * sizeof((DST)[0]) / sizeof((SRC)[0])] = (SRC)[_i]; \
+    }
+
+#define SLICE_COPY_RSTRIDE(DST, SRC, FIELD)                                      \
+    for (size_t _i = 0; _i < (SRC).size; _i++) {                                 \
+        (DST)[_i] = (&(SRC)[0].FIELD)[_i * sizeof((SRC)[0]) / sizeof((DST)[0])]; \
+    }
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE

@@ -32,8 +32,8 @@ void _inspect(Program const &prog, StringBuilder &sb) {
     auto funct_by_id = arena.alloc<Funct const *>(prog.functs.size);
     auto block_by_id = arena.alloc<Block const *>(prog.blocks.size);
 
-    std::memset(funct_by_id, 0, prog.functs.size * sizeof(void *));
-    std::memset(block_by_id, 0, prog.blocks.size * sizeof(void *));
+    funct_by_id.fill(nullptr);
+    block_by_id.fill(nullptr);
 
     for (auto const &funct : prog.functs) {
         funct_by_id[funct.id] = &funct;

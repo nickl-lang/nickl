@@ -1,5 +1,7 @@
 #include "nk/mem/static_allocator.hpp"
 
+#include <cstring>
+
 #include <gtest/gtest.h>
 
 #include "nk/utils/logger.h"

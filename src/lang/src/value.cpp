@@ -1,5 +1,7 @@
 #include "nkl/lang/value.hpp"
 
+#include <cstring>
+
 #include "nk/mem/mem.h"
 #include "nk/mem/stack_allocator.hpp"
 #include "nk/utils/logger.h"
@@ -52,12 +54,8 @@ type_t types::get_struct(Slice<Field const> fields, size_t decl_id) {
         res.type->alignment = layout.align;
         res.type->as.tuple.elems = layout.info_ar;
 
-        //@Todo Should have a copy with stride method for slices
         auto field_names = s_typearena.alloc<Id>(fields.size);
-        size_t i = 0;
-        for (auto const &field : fields) {
-            field_names[i++] = field.name;
-        }
+        SLICE_COPY_RSTRIDE(field_names, fields, name);
 
         types::ext(res.type)->as.strukt.field_names = field_names;
     }

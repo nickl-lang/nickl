@@ -1,6 +1,7 @@
 #include "nkl/lang/lexer.hpp"
 
 #include <cctype>
+#include <cstring>
 
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"

@@ -1,5 +1,7 @@
 #include "nk/ds/log2arena.hpp"
 
+#include <cstring>
+
 #include <gtest/gtest.h>
 
 #include "nk/utils/logger.h"
