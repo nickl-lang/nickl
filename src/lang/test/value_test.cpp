@@ -36,7 +36,7 @@ protected:
 
 TEST_F(value, struct_type) {
     auto f64_t = types::get_numeric(vm::Float64);
-    ARRAY_SLICE_INIT(Field, fields, Field{cs2id("x"), f64_t, {}}, Field{cs2id("y"), f64_t, {}});
+    ARRAY_SLICE_INIT(Field, fields, Field{cs2id("x"), f64_t}, Field{cs2id("y"), f64_t});
 
     auto type = types::get_struct(fields);
 

@@ -33,7 +33,6 @@ struct Type : vm::Type {
 struct Field {
     Id name;
     type_t type;
-    value_t init;
 };
 
 struct types : vm::types {
@@ -45,7 +44,6 @@ struct types : vm::types {
     static type_t struct_typeAt(type_t self, size_t i);
     static size_t struct_offsetAt(type_t self, size_t i);
     static Id struct_nameAt(type_t self, size_t i);
-    static value_t struct_initAt(type_t self, size_t i);
 
     static Type *ext(type_t type) {
         return (Type *)type;
