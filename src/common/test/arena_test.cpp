@@ -1,5 +1,7 @@
 #include "nk/ds/arena.hpp"
 
+#include <cstring>
+
 #include <gtest/gtest.h>
 
 #include "nk/str/string.hpp"

@@ -1,6 +1,7 @@
 #include "nk/vm/interp.hpp"
 
 #include <cassert>
+#include <cstring>
 
 #include "nk/mem/stack_allocator.hpp"
 #include "nk/mem/static_allocator.hpp"

@@ -2,6 +2,8 @@
 #include "nk/mem/stack_allocator.hpp"
 #undef private
 
+#include <cstring>
+
 #include <gtest/gtest.h>
 
 #include "nk/utils/logger.h"
