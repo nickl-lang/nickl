@@ -291,6 +291,12 @@ TEST_F(ast, other) {
     EXPECT_AST(Node_fn_ret_type(&m_node), &n_t_hello);
     EXPECT_AST(Node_fn_body(&m_node), &n_t_hello);
 
+    test(m_ast.make_fn(fields, n_t_hello, n_t_hello, true));
+    EXPECT_EQ(nodeId(Node_fn_var), m_node.id);
+    EXPECT_AST_FIELD_AR(Node_fn_params(&m_node), fields);
+    EXPECT_AST(Node_fn_ret_type(&m_node), &n_t_hello);
+    EXPECT_AST(Node_fn_body(&m_node), &n_t_hello);
+
     test(m_ast.make_tag(&t_hello, args, n_t_hello));
     EXPECT_EQ(nodeId(Node_tag), m_node.id);
     EXPECT_EQ(Node_tag_tag(&m_node), &t_hello);
