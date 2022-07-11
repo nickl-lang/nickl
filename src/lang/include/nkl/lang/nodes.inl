@@ -119,6 +119,7 @@ X(enum)
 X(packed_struct)
 
 X(fn) // (params: [(id=mut|const name: token, type: node, value: node)], ret_t: node, body: ?node)
+X(fn_var)
 
 X(tag) // (tag: token, args: [{name: ?token, value: node}], node: node)
 

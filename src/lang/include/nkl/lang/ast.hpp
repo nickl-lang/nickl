@@ -72,7 +72,11 @@ struct LangAst : Ast {
     Node make_enum(FieldNodeArray fields);
     Node make_packed_struct(FieldNodeArray fields);
 
-    Node make_fn(FieldNodeArray params, Node const &ret_type, Node const &body);
+    Node make_fn(
+        FieldNodeArray params,
+        Node const &ret_type,
+        Node const &body,
+        bool is_variadic = false);
 
     Node make_tag(TokenRef tag, NamedNodeArray args, Node const &node);
 

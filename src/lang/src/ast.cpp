@@ -127,8 +127,13 @@ Node LangAst::make_packed_struct(FieldNodeArray fields) {
     return Node{{push(fields), {}, {}}, nodeId(Node_packed_struct)};
 }
 
-Node LangAst::make_fn(FieldNodeArray params, Node const &ret_type, Node const &body) {
-    return Node{{push(params), push(ret_type), push(body)}, nodeId(Node_fn)};
+Node LangAst::make_fn(
+    FieldNodeArray params,
+    Node const &ret_type,
+    Node const &body,
+    bool is_variadic) {
+    return Node{
+        {push(params), push(ret_type), push(body)}, nodeId(is_variadic ? Node_fn_var : Node_fn)};
 }
 
 Node LangAst::make_tag(TokenRef tag, NamedNodeArray args, Node const &node) {
