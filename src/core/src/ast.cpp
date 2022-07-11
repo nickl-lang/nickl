@@ -4,8 +4,8 @@
 
 #include "nk/utils/utils.hpp"
 
-#define PACKED_NN_ARRAY_SIZE(AR) roundUp((AR).size, c_arg_count) / c_arg_count
-#define PACKED_NN_ARRAY_AT(AR, IDX) (AR)[(IDX) / c_arg_count].arg[(IDX) % c_arg_count]
+#define PACKED_ARG_ARRAY_SIZE(AR) roundUp((AR).size, c_arg_count) / c_arg_count
+#define PACKED_ARG_ARRAY_AT(AR, IDX) (AR)[(IDX) / c_arg_count].arg[(IDX) % c_arg_count]
 
 namespace nkl {
 
@@ -39,20 +39,20 @@ NodeArg mkarg(PackedNodeArgArray ar) {
 
 } // namespace
 
-PackedNodeArgArray::PackedNodeArgArray(Slice<Node const> ar)
+PackedNodeArgArray::PackedNodeArgArray(NodeArray ar)
     : Slice{ar}
     , size{
           ar.size > 0 ? (ar.size - 1) * 3 + std::count_if(
                                                 std::begin(ar.back().arg),
                                                 std::end(ar.back().arg),
                                                 [](auto const &arg) {
-                                                    return arg.token && arg.nodes.data;
+                                                    return arg.token || arg.nodes.data;
                                                 })
                       : 0} {
 }
 
 NodeArg const &PackedNodeArgArray::operator[](size_t i) const {
-    return PACKED_NN_ARRAY_AT(data, i);
+    return PACKED_ARG_ARRAY_AT(data, i);
 }
 
 void Ast::init() {
@@ -67,6 +67,10 @@ NodeArg Ast::push(Token const *token) {
     return mkarg(token);
 }
 
+NodeArg Ast::push(NodeRef node) {
+    return mkarg(node);
+}
+
 NodeArg Ast::push(Token const *token, Node const &node) {
     return mkarg(token, push(node).nodes);
 }
@@ -76,9 +80,7 @@ NodeArg Ast::push(Node const &n) {
 }
 
 NodeArg Ast::push(NodeArray ns) {
-    auto ar = (NodeArray)ns.copy(data.push(ns.size));
-    auto arg = mkarg(ar);
-    return arg;
+    return mkarg((NodeArray)ns.copy(data.push(ns.size)));
 }
 
 NodeArg Ast::push(NodeArg arg) {
@@ -86,10 +88,10 @@ NodeArg Ast::push(NodeArg arg) {
 }
 
 NodeArg Ast::push(NodeArgArray args) {
-    auto ar = data.push(PACKED_NN_ARRAY_SIZE(args));
+    auto ar = data.push(PACKED_ARG_ARRAY_SIZE(args));
     std::fill_n(ar.begin(), ar.size, Node{});
     for (size_t i = 0; i < args.size; i++) {
-        PACKED_NN_ARRAY_AT(ar, i) = mkarg(args[i]);
+        PACKED_ARG_ARRAY_AT(ar, i) = mkarg(args[i]);
     }
     return mkarg(PackedNodeArgArray{ar});
 }

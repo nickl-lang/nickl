@@ -21,6 +21,17 @@ struct NamedNode {
 
 using NamedNodeArray = Slice<NamedNode const>;
 
+struct FieldNode {
+    TokenRef name;
+    NodeRef type;
+    NodeRef init_value;
+    bool is_const;
+};
+
+using FieldNodeArray = Slice<FieldNode const>;
+
+using TokenArray = Slice<TokenRef const>;
+
 Id nodeId(ENodeId id);
 
 struct LangAst : Ast {
@@ -38,26 +49,49 @@ struct LangAst : Ast {
     Node make_array(NodeArray nodes);
     Node make_block(NodeArray nodes);
     Node make_tuple(NodeArray nodes);
-    Node make_id_tuple(NodeArray nodes);
     Node make_tuple_type(NodeArray nodes);
+    Node make_run(NodeArray nodes);
 
     Node make_id(TokenRef name);
     Node make_numeric_float(TokenRef val);
     Node make_numeric_int(TokenRef val);
     Node make_string_literal(TokenRef val);
     Node make_escaped_string_literal(TokenRef val);
+    Node make_import_path(TokenRef path);
+    Node make_typename(TokenRef nmae);
+
+    Node make_import(TokenArray names);
+
+    Node make_for(TokenRef it, Node const &range, Node const &body);
+    Node make_for_by_ptr(TokenRef it, Node const &range, Node const &body);
 
     Node make_member(Node const &lhs, TokenRef name);
 
-    Node make_struct(TokenRef name, NamedNodeArray fields);
+    Node make_struct(FieldNodeArray fields);
+    Node make_union(FieldNodeArray fields);
+    Node make_enum(FieldNodeArray fields);
+    Node make_packed_struct(FieldNodeArray fields);
 
-    Node make_call(Node const &lhs, NodeArray args);
-    Node make_fn(TokenRef name, NamedNodeArray params, Node const &ret_type, Node const &body);
-    Node make_struct_literal(Node const &type, NamedNodeArray fields);
+    Node make_fn(FieldNodeArray params, Node const &ret_type, Node const &body);
+
+    Node make_tag(TokenRef tag, NamedNodeArray args, Node const &node);
+
+    Node make_call(Node const &lhs, NamedNodeArray args);
+    Node make_object_literal(Node const &lhs, NamedNodeArray args);
+
+    Node make_assign(NodeArray lhs, Node const &value);
+    Node make_define(TokenArray names, Node const &value);
+
+    Node make_comptime_const_def(TokenRef name, Node const &value);
+    Node make_tag_def(TokenRef name, Node const &type);
+
     Node make_var_decl(TokenRef name, Node const &type, Node const &value);
+    Node make_const_decl(TokenRef name, Node const &type, Node const &value);
 
 private:
     NodeArg push(NamedNodeArray nns);
+    NodeArg push(FieldNodeArray fields);
+    NodeArg push(TokenArray tokens);
 
     using Ast::push;
 
@@ -66,8 +100,17 @@ private:
 
 struct PackedNamedNodeArray : PackedNodeArgArray {
     using PackedNodeArgArray::PackedNodeArgArray;
-
     NamedNode operator[](size_t i) const;
+};
+
+struct PackedFieldNodeArray : NodeArray {
+    PackedFieldNodeArray(NodeArray fields);
+    FieldNode operator[](size_t i) const;
+};
+
+struct PackedTokenArray : PackedNodeArgArray {
+    using PackedNodeArgArray::PackedNodeArgArray;
+    TokenRef operator[](size_t i) const;
 };
 
 } // namespace nkl
@@ -76,8 +119,10 @@ struct PackedNamedNodeArray : PackedNodeArgArray {
 
 #define _NodeArgAsToken(NODE, IDX) (_NodeArg(NODE, IDX).token)
 #define _NodeArgAsNode(NODE, IDX) (_NodeArg(NODE, IDX).nodes.begin())
-#define _NodeArgAsAr(NODE, IDX) (_NodeArg(NODE, IDX).nodes)
-#define _NodeArgAsNnAr(NODE, IDX) (PackedNamedNodeArray{_NodeArg(NODE, IDX).nodes})
+#define _NodeArgAsNodeAr(NODE, IDX) (_NodeArg(NODE, IDX).nodes)
+#define _NodeArgAsNamedNodeAr(NODE, IDX) (PackedNamedNodeArray{_NodeArg(NODE, IDX).nodes})
+#define _NodeArgAsFieldAr(NODE, IDX) (PackedFieldNodeArray{_NodeArg(NODE, IDX).nodes})
+#define _NodeArgAsTokenAr(NODE, IDX) (PackedTokenArray{_NodeArg(NODE, IDX).nodes})
 
 #define Node_unary_arg(NODE) _NodeArgAsNode((NODE), 0)
 
@@ -88,26 +133,40 @@ struct PackedNamedNodeArray : PackedNodeArgArray {
 #define Node_ternary_then_clause(NODE) _NodeArgAsNode((NODE), 1)
 #define Node_ternary_else_clause(NODE) _NodeArgAsNode((NODE), 2)
 
-#define Node_array_nodes(NODE) _NodeArgAsAr((NODE), 0)
+#define Node_array_nodes(NODE) _NodeArgAsNodeAr((NODE), 0)
 
-#define Node_token_name(NODE) _NodeArgAsToken((NODE), 0)
+#define Node_import_names(NODE) _NodeArgAsTokenAr((NODE), 0)
+
+#define Node_token_value(NODE) _NodeArgAsToken((NODE), 0)
+
+#define Node_for_it(NODE) _NodeArgAsToken((NODE), 0)
+#define Node_for_range(NODE) _NodeArgAsNode((NODE), 1)
+#define Node_for_body(NODE) _NodeArgAsNode((NODE), 2)
 
 #define Node_member_lhs(NODE) _NodeArgAsNode((NODE), 0)
 #define Node_member_name(NODE) _NodeArgAsToken((NODE), 1)
 
-#define Node_struct_name(NODE) _NodeArgAsToken((NODE), 0)
-#define Node_struct_fields(NODE) _NodeArgAsNnAr((NODE), 1)
+#define Node_type_fields(NODE) _NodeArgAsFieldAr((NODE), 0)
+
+#define Node_fn_params(NODE) _NodeArgAsFieldAr((NODE), 0)
+#define Node_fn_ret_type(NODE) _NodeArgAsNode((NODE), 1)
+#define Node_fn_body(NODE) _NodeArgAsNode((NODE), 2)
+
+#define Node_tag_tag(NODE) _NodeArgAsToken((NODE), 0)
+#define Node_tag_args(NODE) _NodeArgAsNamedNodeAr((NODE), 1)
+#define Node_tag_node(NODE) _NodeArgAsNode((NODE), 2)
 
 #define Node_call_lhs(NODE) _NodeArgAsNode((NODE), 0)
-#define Node_call_args(NODE) _NodeArgAsAr((NODE), 1)
+#define Node_call_args(NODE) _NodeArgAsNamedNodeAr((NODE), 1)
 
-#define Node_fn_name(NODE) _NodeArgAsToken(_NodeArgAsNode((NODE), 0), 0)
-#define Node_fn_params(NODE) _NodeArgAsNnAr(_NodeArgAsNode((NODE), 0), 1)
-#define Node_fn_ret_type(NODE) _NodeArgAsNode(_NodeArgAsNode((NODE), 0), 2)
-#define Node_fn_body(NODE) _NodeArgAsNode((NODE), 1)
+#define Node_assign_lhs(NODE) _NodeArgAsNodeAr((NODE), 0)
+#define Node_assign_value(NODE) _NodeArgAsNode((NODE), 1)
 
-#define Node_struct_literal_type(NODE) _NodeArgAsNode((NODE), 0)
-#define Node_struct_literal_fields(NODE) _NodeArgAsNnAr((NODE), 1)
+#define Node_define_names(NODE) _NodeArgAsTokenAr((NODE), 0)
+#define Node_define_value(NODE) _NodeArgAsNode((NODE), 1)
+
+#define Node_comptime_const_def_name(NODE) _NodeArgAsToken((NODE), 0)
+#define Node_comptime_const_def_value(NODE) _NodeArgAsNode((NODE), 1)
 
 #define Node_var_decl_name(NODE) _NodeArgAsToken((NODE), 0)
 #define Node_var_decl_type(NODE) _NodeArgAsNode((NODE), 1)

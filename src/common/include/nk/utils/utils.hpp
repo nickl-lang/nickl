@@ -10,19 +10,19 @@
 #include "nk/utils/utils.h"
 
 #ifndef defer
-struct nk_DeferDummy {};
+struct _DeferDummy {};
 template <class F>
-struct nk_Deferrer {
+struct _Deferrer {
     F f;
-    ~nk_Deferrer() {
+    ~_Deferrer() {
         f();
     }
 };
 template <class F>
-nk_Deferrer<F> operator*(nk_DeferDummy, F &&f) {
+_Deferrer<F> operator*(_DeferDummy, F &&f) {
     return {std::forward<F>(f)};
 }
-#define defer auto CAT(nk_defer, __LINE__) = nk_DeferDummy{} *[&]()
+#define defer auto CAT(__defer, __LINE__) = _DeferDummy{} *[&]()
 #endif // defer
 
 namespace nk {
