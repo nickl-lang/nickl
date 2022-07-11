@@ -8,29 +8,15 @@
 #define N(...) X(__VA_ARGS__)
 #endif
 
-N(none)
+N(none) // ()
 
 N(nop)
 
 N(break)
 N(continue)
 
-N(i8)
-N(i16)
-N(i32)
-N(i64)
-N(u8)
-N(u16)
-N(u32)
-N(u64)
-N(f32)
-N(f64)
-
-N(typeref)
-N(void)
-
-N(true)
 N(false)
+N(true)
 
 #undef N
 
@@ -38,19 +24,23 @@ N(false)
 #define U(...) X(__VA_ARGS__)
 #endif
 
-U(addr)
-U(deref)
-
-U(compl)
-U(not)
+U(compl ) // (arg: node)
+U(not )
 U(uminus)
 U(uplus)
 
-U(return)
+U(addr)  // (expr: node)
+U(deref) // (ptr: node)
 
-U(ptr_type)
+U(defer_stmt) // (expr: node)
 
-U(scope)
+U(return ) // (expr: node)
+
+U(ptr_type) // (target_type: node)
+U(const_ptr_type)
+U(slice_type)
+
+U(scope) // (expr: node)
 
 #undef U
 
@@ -58,7 +48,7 @@ U(scope)
 #define B(...) X(__VA_ARGS__)
 #endif
 
-B(add)
+B(add) // (lhs: node, rhs: node)
 B(sub)
 B(mul)
 B(div)
@@ -92,43 +82,57 @@ B(xor_assign)
 B(lsh_assign)
 B(rsh_assign)
 
-B(and_assign)
-B(or_assign)
-
-B(array_type)
-B(assign)
-B(cast)
-B(colon_assign)
-B(index)
-B(tuple_index)
-B(while)
+B(array_type) // (lhs: node, rhs: node)
+B(cast)       // (target_type: node, expr: node)
+B(index)      // (lhs: node, index: node)
+B(while)      // (cond: node, body: node)
 
 #undef B
 
-X(if)
+X(if) // (cond: node, then_clause: node, else_clause: node)
 X(ternary)
 
-X(array)
+X(array) // (nodes: [node])
 X(block)
 X(tuple)
-X(id_tuple)
 X(tuple_type)
+X(run)
 
-X(id)
-X(numeric_float)
-X(numeric_int)
-X(string_literal)
-X(escaped_string_literal)
+X(import) // (names: [{name: token}])
 
-X(member)
+X(id)                     // (name: token)
+X(numeric_float)          // (value: token)
+X(numeric_int)            // (value: token)
+X(string_literal)         // (value: token)
+X(escaped_string_literal) // (value: token)
+X(import_path)            // (path: token)
+X(typename)               // (name: token)
 
-X(struct)
+X(for) // (it: token, range: node, body: node)
+X(for_by_ptr)
 
-X(fn)
-X(foreign_fn)
+X(member) // (lhs: node, name: token)
 
-X(call)
-X(struct_literal)
-X(var_decl)
+X(struct) // (fields: [(id=mut|const name: token, type: node, value: node)])
+X(union)
+X(enum)
+X(packed_struct)
+
+X(fn) // (params: [(id=mut|const name: token, type: node, value: node)], ret_t: node, body: ?node)
+
+X(tag) // (tag: token, args: [{name: ?token, value: node}], node: node)
+
+X(call) // (lhs: ?node, args: [{name: ?token, value: node}])
+X(object_literal)
+
+X(assign) // (lhs: [node], value: node)
+
+X(define) // (names: [{name: token}], value: node)
+
+X(comptime_const_def) // (name: token, value: node)
+X(tag_def)
+
+X(var_decl) // (name: token, type: node, value: ?node)
+X(const_decl)
 
 #undef X

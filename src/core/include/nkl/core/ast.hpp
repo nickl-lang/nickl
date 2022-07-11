@@ -28,10 +28,10 @@ struct Node {
     Id id;
 };
 
-struct PackedNodeArgArray : Slice<Node const> {
+struct PackedNodeArgArray : NodeArray {
     size_t size;
 
-    PackedNodeArgArray(Slice<Node const> ar);
+    PackedNodeArgArray(NodeArray ar);
     NodeArg const &operator[](size_t i) const;
 };
 
@@ -42,6 +42,7 @@ struct Ast {
     void deinit();
 
     NodeArg push(TokenRef token);
+    NodeArg push(NodeRef node);
     NodeArg push(TokenRef token, Node const &node);
     NodeArg push(Node const &node);
     NodeArg push(NodeArray nodes);
