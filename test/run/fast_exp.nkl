@@ -15,4 +15,4 @@ while n != 0 {
     c = c * c;
 }
 
-__printf("{}\n", a);
+@println("{}", a);
