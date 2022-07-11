@@ -1,0 +1,19 @@
+#version :: (
+    major: u8,
+    minor: u8 = 0,
+    patch: u8 = 0,
+    tweak: u8 = 0,
+)
+
+#version(1, 2)
+Entity :: struct {
+    id: usize;
+}
+
+#IntTag :: int;
+
+#IntTag(3)
+A :: void;
+
+#IntTag{3}
+B :: void;
