@@ -1,44 +1,44 @@
-__assert(~5 == -6);
-__assert(~1 == -2);
-__assert(-1 == 0 - 1);
-__assert(+1 == 0 + 1);
+fabs :: (float x) -> float { return x < 0.0 ? -x : x; }
 
-__assert(2 + 2 == 4);
-__assert(3 - 4 == -1);
-__assert(3 * 4 == 12);
-__assert(4 / 2 == 2);
-__assert(1 / 2 == 0);
-__assert(1. / 2. == 0.5);
-__assert(5 % 2 == 1);
+@assert(~5 == -6);
+@assert(~1 == -2);
+@assert(-1 == 0 - 1);
+@assert(+1 == 0 + 1);
 
-__assert(1 << 10 == 1024);
-__assert(256 >> 2 == 64);
+@assert(2 + 2 == 4);
+@assert(3 - 4 == -1);
+@assert(3 * 4 == 12);
+@assert(4 / 2 == 2);
+@assert(1 / 2 == 0);
+@assert(fabs(1. / 2. - 0.5) < 1e-6);
+@assert(5 % 2 == 1);
 
-__assert((3 & 2) == 2);
-__assert((1 | 2) == 3);
-__assert((3 ^ 2) == 1);
+@assert(1 << 10 == 1024);
+@assert(256 >> 2 == 64);
 
-__assert(bool == i8);
+@assert((3 & 2) == 2);
+@assert((1 | 2) == 3);
+@assert((3 ^ 2) == 1);
 
-__assert(__typeof(true) == i8);
-__assert(__typeof(false) == i8);
+@assert(bool != i8);
 
-__assert(__typeof(false + true) == i8);
-__assert((true & false) == false);
-__assert((true & true) == true);
+@assert(@typeof(true) == bool);
+@assert(@typeof(false) == bool);
 
-__assert(__typeof(!1) == i64);
-__assert(!1 == 0);
-__assert(!0 == 1);
+@assert((cast(i8) true & cast(i8) false) == 0);
+@assert((cast(i8) true & cast(i8) true) == 1);
 
-__assert(cast(bool) 0 != true);
-__assert(!(cast(bool) 1 != true));
+@assert(@typeof(!1) == bool);
+@assert(!1 == false);
+@assert(!0 == true);
 
-__assert((1 || 0) == 1);
-__assert((1 && 0) == 0);
+@assert(cast(bool) 0 != true);
+@assert(!(cast(bool) 1 != true));
+
+@assert((1 || 0) == true);
+@assert((1 && 0) == false);
 
 a := false;
 false && (a = true);
 true || (a = true);
-//@Todo Implement lazy evaluation
-// __assert(!a);
+@assert(!a);

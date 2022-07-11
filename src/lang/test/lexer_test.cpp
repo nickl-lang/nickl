@@ -238,11 +238,11 @@ TEST_F(lexer, extra) {
     expect_id({t_id, t_less_2x_eq, t_int_const, t_semi});
     expect_text({"num", "<<=", "1", ";"});
 
-    test_ok("fn (arg: ptr_t{void}) -> type {}");
+    test_ok("fn :: (arg: *void) -> type {}");
     // clang-format off
-    expect_id({t_fn, t_par_l, t_id, t_colon, t_ptr_t, t_brace_l, t_void, t_brace_r, t_par_r, t_minus_greater, t_id, t_brace_l, t_brace_r});
+    expect_id({t_id, t_colon_2x, t_par_l, t_id, t_colon, t_aster, t_void, t_par_r, t_minus_greater, t_id, t_brace_l, t_brace_r});
     // clang-format on
-    expect_text({"fn", "(", "arg", ":", "ptr_t", "{", "void", "}", ")", "->", "type", "{", "}"});
+    expect_text({"fn", "::", "(", "arg", ":", "*", "void", ")", "->", "type", "{", "}"});
 
     test_ok("ar := u8[__sizeof(var)];");
     // clang-format off

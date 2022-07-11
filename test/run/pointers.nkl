@@ -1,11 +1,11 @@
-v: tuple_t{f64, f64};
+v: (f64, f64);
 pv := &v;
 
 pv.0 = 1.23;
 pv.1 = 4.56;
 
-fn printVec2(v: ptr_t{tuple_t{f64, f64}}) {
-    __printf("v={}\nv.x={}\nv.y={}\n", *v, v.0, v.1);
+printVec2 :: (v: *const (f64, f64)) {
+    @println("v={}\nv.x={}\nv.y={}", v*, v.0, v.1);
 }
 
 printVec2(pv);

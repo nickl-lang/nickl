@@ -1,7 +1,7 @@
 a := true;
 
 if a {
-    __printf("a is true!\n");
+    @println("a is true!");
 } else {
-    __printf("a is false!\n");
+    @println("a is false!");
 }

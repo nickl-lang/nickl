@@ -1,5 +1,5 @@
-fn plus(a: i64, b: i64) -> i64 {
+plus :: (a: i64, b: i64) -> i64 {
     return a + b;
 }
 
-__printf("4+5={}\n", plus(4, 5));
+@println("4+5={}", plus(4, 5));
