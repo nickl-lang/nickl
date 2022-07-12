@@ -18,6 +18,22 @@ N(continue)
 N(false)
 N(true)
 
+N(i8)
+N(i16)
+N(i32)
+N(i64)
+N(u8)
+N(u16)
+N(u32)
+N(u64)
+N(f32)
+N(f64)
+
+N(any_t)
+N(bool)
+N(type_t)
+N(void)
+
 #undef N
 
 #ifndef U
