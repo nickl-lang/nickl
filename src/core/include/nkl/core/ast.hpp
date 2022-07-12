@@ -14,7 +14,6 @@ struct Node;
 struct NodeArg;
 
 using NodeRef = Node const *;
-using TokenRef = Token const *;
 using NodeArray = Slice<Node const>;
 using NodeArgArray = Slice<NodeArg const>;
 
@@ -41,6 +40,9 @@ struct Ast {
     void init();
     void deinit();
 
+    NodeRef gen(Node const &node);
+
+protected:
     NodeArg push(TokenRef token);
     NodeArg push(NodeRef node);
     NodeArg push(TokenRef token, Node const &node);

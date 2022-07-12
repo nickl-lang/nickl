@@ -30,8 +30,6 @@ struct FieldNode {
 
 using FieldNodeArray = Slice<FieldNode const>;
 
-using TokenArray = Slice<TokenRef const>;
-
 Id nodeId(ENodeId id);
 
 struct LangAst : Ast {
@@ -60,7 +58,7 @@ struct LangAst : Ast {
     Node make_import_path(TokenRef path);
     Node make_typename(TokenRef nmae);
 
-    Node make_import(TokenArray names);
+    Node make_import(TokenRefArray names);
 
     Node make_for(TokenRef it, Node const &range, Node const &body);
     Node make_for_by_ptr(TokenRef it, Node const &range, Node const &body);
@@ -84,7 +82,7 @@ struct LangAst : Ast {
     Node make_object_literal(Node const &lhs, NamedNodeArray args);
 
     Node make_assign(NodeArray lhs, Node const &value);
-    Node make_define(TokenArray names, Node const &value);
+    Node make_define(TokenRefArray names, Node const &value);
 
     Node make_comptime_const_def(TokenRef name, Node const &value);
     Node make_tag_def(TokenRef name, Node const &type);
@@ -95,7 +93,7 @@ struct LangAst : Ast {
 private:
     NodeArg push(NamedNodeArray nns);
     NodeArg push(FieldNodeArray fields);
-    NodeArg push(TokenArray tokens);
+    NodeArg push(TokenRefArray tokens);
 
     using Ast::push;
 
@@ -112,7 +110,7 @@ struct PackedFieldNodeArray : NodeArray {
     FieldNode operator[](size_t i) const;
 };
 
-struct PackedTokenArray : PackedNodeArgArray {
+struct PackedTokenRefArray : PackedNodeArgArray {
     using PackedNodeArgArray::PackedNodeArgArray;
     TokenRef operator[](size_t i) const;
 };
@@ -126,7 +124,7 @@ struct PackedTokenArray : PackedNodeArgArray {
 #define _NodeArgAsNodeAr(NODE, IDX) (_NodeArg(NODE, IDX).nodes)
 #define _NodeArgAsNamedNodeAr(NODE, IDX) (PackedNamedNodeArray{_NodeArg(NODE, IDX).nodes})
 #define _NodeArgAsFieldAr(NODE, IDX) (PackedFieldNodeArray{_NodeArg(NODE, IDX).nodes})
-#define _NodeArgAsTokenAr(NODE, IDX) (PackedTokenArray{_NodeArg(NODE, IDX).nodes})
+#define _NodeArgAsTokenAr(NODE, IDX) (PackedTokenRefArray{_NodeArg(NODE, IDX).nodes})
 
 #define Node_unary_arg(NODE) _NodeArgAsNode((NODE), 0)
 

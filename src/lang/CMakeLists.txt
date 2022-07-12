@@ -4,6 +4,7 @@ add_library(${LIB}
     src/ast.cpp
     src/lang.cpp
     src/lexer.cpp
+    src/parser.cpp
     src/tokens.cpp
     src/value.cpp
     )

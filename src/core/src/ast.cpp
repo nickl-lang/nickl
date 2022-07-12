@@ -63,6 +63,10 @@ void Ast::deinit() {
     data.deinit();
 }
 
+NodeRef Ast::gen(Node const &n) {
+    return &(*data.push() = n);
+}
+
 NodeArg Ast::push(Token const *token) {
     return mkarg(token);
 }
@@ -76,7 +80,7 @@ NodeArg Ast::push(Token const *token, Node const &node) {
 }
 
 NodeArg Ast::push(Node const &n) {
-    return mkarg(&(*data.push() = n));
+    return mkarg(gen(n));
 }
 
 NodeArg Ast::push(NodeArray ns) {

@@ -95,7 +95,7 @@ Node LangAst::make_typename(TokenRef name) {
     return Node{{push(name), {}, {}}, nodeId(Node_typename)};
 }
 
-Node LangAst::make_import(TokenArray names) {
+Node LangAst::make_import(TokenRefArray names) {
     return Node{{push(names), {}, {}}, nodeId(Node_import)};
 }
 
@@ -152,7 +152,7 @@ Node LangAst::make_assign(NodeArray lhs, Node const &value) {
     return Node{{push(lhs), push(value), {}}, nodeId(Node_assign)};
 }
 
-Node LangAst::make_define(TokenArray names, Node const &value) {
+Node LangAst::make_define(TokenRefArray names, Node const &value) {
     return Node{{push(names), push(value), {}}, nodeId(Node_define)};
 }
 
@@ -202,7 +202,7 @@ NodeArg LangAst::push(FieldNodeArray fields) {
     return push((NodeArray)nodes);
 }
 
-NodeArg LangAst::push(TokenArray tokens) {
+NodeArg LangAst::push(TokenRefArray tokens) {
     auto const frame = m_arena.pushFrame();
     defer {
         m_arena.popFrame(frame);
@@ -238,7 +238,7 @@ FieldNode PackedFieldNodeArray::operator[](size_t i) const {
     };
 }
 
-TokenRef PackedTokenArray::operator[](size_t i) const {
+TokenRef PackedTokenRefArray::operator[](size_t i) const {
     auto const &arg = PackedNodeArgArray::operator[](i);
     return arg.token;
 }

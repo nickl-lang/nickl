@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "nk/ds/slice.hpp"
 #include "nk/str/string.hpp"
 
 namespace nkl {
@@ -19,6 +20,11 @@ struct Token {
 
     size_t id = 0;
 };
+
+using TokenArray = Slice<Token>;
+
+using TokenRef = Token const *;
+using TokenRefArray = Slice<TokenRef const>;
 
 } // namespace nkl
 

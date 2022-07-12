@@ -95,13 +95,11 @@ KW(in)
 KW(return )
 KW(struct)
 KW(true)
-KW(type_t)
 KW(union)
 KW(while)
 
 KW(typename_marker)
 
-KW(bool)
 KW(f32)
 KW(f64)
 KW(i16)
@@ -112,6 +110,10 @@ KW(u16)
 KW(u32)
 KW(u64)
 KW(u8)
+
+KW(any_t)
+KW(bool)
+KW(type_t)
 KW(void)
 
 #undef KW
