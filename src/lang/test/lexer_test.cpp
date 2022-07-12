@@ -249,4 +249,14 @@ TEST_F(lexer, extra) {
     expect_id({t_id, t_colon_eq, t_u8, t_bracket_l, t_id, t_par_l, t_id, t_par_r, t_bracket_r, t_semi});
     // clang-format on
     expect_text({"ar", ":=", "u8", "[", "__sizeof", "(", "var", ")", "]", ";"});
+
+    test_ok("#version(1, 2) Entity :: struct { id: u64; }");
+    // clang-format off
+    expect_id({t_tag, t_par_l, t_int_const, t_comma, t_int_const, t_par_r, t_id, t_colon_2x, t_struct, t_brace_l, t_id, t_colon, t_u64, t_semi, t_brace_r});
+    expect_text({"#version", "(", "1", ",", "2", ")", "Entity", "::", "struct", "{", "id", ":", "u64", ";", "}"});
+    // clang-format on
+
+    test_ok("@println(\"pi={}\", 3.14);");
+    expect_id({t_intrinsic, t_par_l, t_str_const, t_comma, t_float_const, t_par_r, t_semi});
+    expect_text({"@println", "(", "pi={}", ",", "3.14", ")", ";"});
 }
