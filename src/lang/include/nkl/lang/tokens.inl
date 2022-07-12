@@ -128,6 +128,8 @@ SP(int_const, "int constant")
 SP(float_const, "float constant")
 SP(str_const, "string constant")
 SP(escaped_str_const, "string constant")
+SP(tag, "tag")
+SP(intrinsic, "intrinsic")
 
 SP(empty, "")
 SP(error, "")

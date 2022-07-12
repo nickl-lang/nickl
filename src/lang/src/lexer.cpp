@@ -168,6 +168,20 @@ struct ScanEngine {
             if (op_index > 0) {
                 accept(op_len);
                 m_token.id = (ETokenID)(t_operator_marker + op_index);
+
+                if (m_token.id == t_at && onAlphaOrUscr(1)) {
+                    while (onAlnumOrUscr()) {
+                        accept();
+                    }
+
+                    m_token.id = t_intrinsic;
+                } else if (m_token.id == t_number && onAlphaOrUscr(1)) {
+                    while (onAlnumOrUscr()) {
+                        accept();
+                    }
+
+                    m_token.id = t_tag;
+                }
             } else {
                 return error("unknown token '%.*s'", m_token.text.size, m_token.text.data);
             }
