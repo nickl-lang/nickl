@@ -74,8 +74,7 @@ protected:
             for (auto const &token : tokens) {
                 m_sb << token.text << " ";
             }
-            auto str = m_sb.moveStr(m_arena);
-            return str.data;
+            return m_sb.moveStr(m_arena).data;
         }());
         tokens.emplace_back(t_eof, "");
         Array<Token> token_ar{};
@@ -224,9 +223,9 @@ TEST_F(parser, binary) {
     TEST_OK(m_ast.make_array_type(m_ast.make_f64(), num),
         t_bracket_l, t_num, t_bracket_r, t_f64, t_semi);
     TEST_OK(m_ast.make_cast(m_ast.make_f64(), num),
-            t_cast, t_par_l, t_f64, t_par_r, t_num, t_semi);
+        t_cast, t_par_l, t_f64, t_par_r, t_num, t_semi);
     TEST_OK(m_ast.make_index(a, num),
-            t_a, t_bracket_l, t_num, t_bracket_r, t_semi);
+        t_a, t_bracket_l, t_num, t_bracket_r, t_semi);
     TEST_OK(m_ast.make_while(num, m_ast.make_scope(a)),
         t_while, t_num, t_brace_l, t_a, t_semi, t_brace_r);
     // clang-format on
@@ -251,67 +250,130 @@ TEST_F(parser, ternary) {
     // clang-format on
 }
 
-// TEST_F(parser, other) {
-//     auto id_a = mkt(t_id, "a");
-//     auto a = m_ast.make_id(id_a);
-//     auto id_b = mkt(t_id, "b");
-//     auto b = m_ast.make_id(id_b);
-//     auto id_A = mkt(t_id, "A");
-//     auto id_plus = mkt(t_id, "plus");
-//     auto num = m_ast.make_numeric_int(mkt(t_int_const, "42"));
-//     auto i64 = m_ast.make_i64();
-//     auto f64 = m_ast.make_f64();
+TEST_F(parser, array) {
+    auto a = m_ast.make_id(mkt(t_id, "a"));
+    auto b = m_ast.make_id(mkt(t_id, "b"));
 
-//     TokenDescr t_a{t_id, "a"};
-//     TokenDescr t_b{t_id, "b"};
-//     TokenDescr t_A{t_id, "A"};
-//     TokenDescr t_id_plus{t_id, "plus"};
-//     TokenDescr t_num{t_int_const, "42"};
+    ARRAY_SLICE_INIT(Node, ab, a, b);
+    ARRAY_SLICE_INIT(Node, i64f64, m_ast.make_i64(), m_ast.make_f64());
 
-//     static constexpr const char *c_test_str = "hello";
+    // clang-format off
+    TEST_OK(m_ast.make_array(ab),
+        t_bracket_l, {t_id, "a"}, t_comma, {t_id, "b"}, t_bracket_r, t_semi);
+    TEST_OK(m_ast.make_scope(m_ast.make_block(ab)),
+        t_brace_l, {t_id, "a"}, t_semi, {t_id, "b"}, t_semi, t_brace_r);
+    TEST_OK(m_ast.make_tuple(ab),
+        {t_id, "a"}, t_comma, {t_id, "b"}, t_semi);
+    TEST_OK(m_ast.make_run(i64f64),
+        t_dollar, t_brace_l, {t_id, "a"}, t_semi, t_brace_r);
+    // clang-format on
+}
 
-//     Node ab_ar[] = {a, b};
-//     Node i64f64_ar[] = {i64, f64};
+TEST_F(parser, token) {
+    // clang-format off
+    TEST_OK(m_ast.make_id(mkt(t_id, "a")),
+        {t_id, "a"}, t_semi);
+    TEST_OK(m_ast.make_numeric_float(mkt(t_float_const, "3.14")),
+        {t_float_const, "3.14"}, t_semi);
+    TEST_OK(m_ast.make_numeric_int(mkt(t_int_const, "42")),
+        {t_int_const, "42"}, t_semi);
+    TEST_OK(m_ast.make_string_literal(mkt(t_str_const, "hello")),
+        {t_str_const, "hello"}, t_semi);
+    TEST_OK(m_ast.make_escaped_string_literal(mkt(t_str_const, "hello")),
+        {t_str_const, "hello"}, t_semi);
+    TEST_OK(m_ast.make_import_path(mkt(t_str_const, "hello")),
+        t_import, {t_str_const, "hello"}, t_semi);
+    // clang-format on
+}
 
-//     // clang-format off
-//     test_ok({t_bracket_l, t_a, t_comma, t_b, t_bracket_r, t_semi},
-//             m_ast.make_array({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
-//     test_ok({t_brace_l, t_a, t_semi, t_b, t_semi, t_brace_r, t_semi},
-//             m_ast.make_scope(m_ast.make_block({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])})));
-//     test_ok({t_a, t_comma, t_b, t_semi},
-//             m_ast.make_id_tuple({ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
-//     test_ok({t_tuple_t, t_brace_l, t_i64, t_comma, t_f64, t_brace_r, t_semi},
-//             m_ast.make_tuple_type({i64f64_ar, sizeof(i64f64_ar) / sizeof(i64f64_ar[0])}));
-//     test_ok({t_ptr_t, t_brace_l, t_ptr_t, t_brace_l, t_i8, t_brace_r, t_brace_r, t_semi},
-//             m_ast.make_ptr_type(m_ast.make_ptr_type(m_ast.make_i8())));
-//     // clang-format on
+TEST_F(parser, other) {
+    auto id_a = mkt(t_id, "a");
+    auto a = m_ast.make_id(id_a);
+    auto id_b = mkt(t_id, "b");
+    auto b = m_ast.make_id(id_b);
+    auto id_A = mkt(t_id, "A");
+    auto id_plus = mkt(t_id, "plus");
+    auto num = m_ast.make_numeric_int(mkt(t_int_const, "42"));
+    auto i64 = m_ast.make_i64();
+    auto f64 = m_ast.make_f64();
 
-//     NamedNode name_ar[] = {{id_a, m_ast.push(f64)}, {id_b, m_ast.push(f64)}};
+    TokenDescr t_a{t_id, "a"};
+    TokenDescr t_b{t_id, "b"};
+    TokenDescr t_A{t_id, "A"};
+    TokenDescr t_id_plus{t_id, "plus"};
+    TokenDescr t_num{t_int_const, "42"};
 
-//     // clang-format off
-//     test_ok({t_struct, t_A, t_brace_l, t_a, t_colon, t_f64, t_semi, t_b, t_colon, t_f64, t_semi,
-//     t_brace_r},
-//             m_ast.make_struct(id_A, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}));
-//     test_ok({t_a, t_period, t_b, t_semi},
-//             m_ast.make_member(a, id_b));
-//     test_ok({{t_float_const, "3.14"}, t_semi},
-//             m_ast.make_numeric_float(mkt(t_float_const, "3.14")));
-//     test_ok({t_num, t_semi},
-//             m_ast.make_numeric_int(mkt(t_int_const, "42")));
-//     test_ok({t_a, t_semi},
-//             m_ast.make_id(id_a));
-//     test_ok({t_a, t_par_l, t_a, t_comma, t_b, t_par_r, t_semi},
-//             m_ast.make_call(a, {ab_ar, sizeof(ab_ar) / sizeof(ab_ar[0])}));
-//     test_ok({t_a, t_colon, t_f64, t_eq, t_num, t_semi},
-//             m_ast.make_var_decl(id_a, f64, num));
-//     test_ok({t_fn, t_id_plus, t_par_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64,
-//     t_par_r, t_minus_greater, t_i64, t_brace_l, t_return, t_a, t_plus, t_b, t_semi, t_brace_r},
-//             m_ast.make_fn( id_plus, {name_ar, sizeof(name_ar) / sizeof(name_ar[0])}, i64,
-//             m_ast.make_scope(m_ast.make_return(m_ast.make_add(a, b)))));
-//     test_ok({{t_str_const, c_test_str}, t_semi},
-//             m_ast.make_string_literal(mkt(t_str_const, c_test_str)));
-//     // test_ok({t_new, t_A, t_brace_l, t_a, t_colon, t_f64, t_comma, t_b, t_colon, t_f64,
-//     t_brace_r, t_semi},
-//     //         m_ast.make_struct_literal(A, {{id_a, f64}, {id_b, f64}}));
-//     // clang-format on
-// }
+    static constexpr const char *c_test_str = "hello";
+
+    FieldNode f_a{id_a, m_ast.gen(f64), {}, false};
+    FieldNode f_b{id_b, m_ast.gen(f64), {}, false};
+    FieldNode f_b_ext{id_b, m_ast.gen(i64), m_ast.gen(num), true};
+
+    ARRAY_SLICE_INIT(TokenRef, tokens, id_a, id_b);
+    ARRAY_SLICE_INIT(FieldNode, fields, f_a, f_b);
+    ARRAY_SLICE_INIT(FieldNode, fields_ext, f_a, f_b_ext);
+
+    // clang-format off
+    TEST_OK(m_ast.make_ptr_type(m_ast.make_ptr_type(m_ast.make_i8())),
+        t_aster, t_aster, t_i8, t_semi);
+    TEST_OK(m_ast.make_import(tokens),
+        t_import, t_a, t_period, t_b, t_semi);
+
+    TEST_OK(m_ast.make_for(id_a, b, a),
+        t_for, t_a, t_in, t_b, t_brace_l, t_a, t_semi, t_brace_r);
+    TEST_OK(m_ast.make_for_by_ptr(id_a, b, a),
+        t_for, t_a, t_aster, t_in, t_b, t_brace_l, t_a, t_semi, t_brace_r);
+
+    TEST_OK(m_ast.make_member(a, id_b), t_a, t_period, t_b, t_semi);
+
+    TEST_OK(m_ast.make_struct(fields_ext),
+        t_struct, t_brace_l,
+            t_a, t_colon, t_f64, t_comma,
+            t_const, t_b, t_colon, t_i64, t_eq, t_num, t_comma,
+        t_brace_r);
+    TEST_OK(m_ast.make_union(fields),
+        t_union, t_brace_l,
+            t_a, t_colon, t_f64, t_comma,
+            t_b, t_colon, t_i64, t_comma,
+        t_brace_r);
+    TEST_OK(m_ast.make_enum(fields),
+        t_enum, t_brace_l,
+            t_a, t_colon, t_f64, t_comma,
+            t_b, t_colon, t_i64, t_comma,
+        t_brace_r);
+    TEST_OK(m_ast.make_packed_struct(fields_ext),
+        t_par_l,
+            t_a, t_colon, t_f64, t_comma,
+            t_const, t_b, t_colon, t_i64, t_eq, t_num, t_comma,
+        t_par_r);
+
+    TEST_OK(m_ast.make_fn(fields, f64, m_ast.make_scope(m_ast.make_return(m_ast.make_add(a, b)))),
+        t_par_l,
+            t_a, t_colon, t_f64, t_comma,
+            t_b, t_colon, t_f64, t_par_r, t_minus_greater, t_f64, t_brace_l,
+                t_return, t_a, t_plus, t_b, t_semi,
+        t_brace_r);
+    TEST_OK(m_ast.make_fn(fields, f64, m_ast.make_scope(m_ast.make_return(m_ast.make_add(a, b))), true),
+        t_par_l,
+            t_a, t_colon, t_f64, t_comma,
+            t_b, t_colon, t_f64, t_comma, t_period_3x, t_par_r, t_minus_greater, t_f64, t_brace_l,
+                t_return, t_a, t_plus, t_b, t_semi,
+        t_brace_r);
+
+    //@Todo tag
+
+    //@Todo call
+    //@Todo object_literal
+
+    //@Todo assign
+
+    //@Todo define
+
+    //@Todo comptime_const_def
+    //@Todo tag_def
+
+    //@Todo var_decl
+    //@Todo const_decl
+
+    // clang-format on
+}

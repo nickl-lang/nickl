@@ -122,7 +122,6 @@ X(numeric_int)            // (value: token)
 X(string_literal)         // (value: token)
 X(escaped_string_literal) // (value: token)
 X(import_path)            // (path: token)
-X(typename)               // (name: token)
 
 X(for) // (it: token, range: node, body: node)
 X(for_by_ptr)
