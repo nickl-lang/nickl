@@ -222,10 +222,6 @@ TEST_F(ast, token) {
     test(m_ast.make_import_path(&t_hello));
     EXPECT_EQ(nodeId(Node_import_path), m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
-
-    test(m_ast.make_typename(&t_hello));
-    EXPECT_EQ(nodeId(Node_typename), m_node.id);
-    EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 }
 
 TEST_F(ast, other) {

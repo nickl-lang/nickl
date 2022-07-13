@@ -56,7 +56,6 @@ struct LangAst : Ast {
     Node make_string_literal(TokenRef val);
     Node make_escaped_string_literal(TokenRef val);
     Node make_import_path(TokenRef path);
-    Node make_typename(TokenRef nmae);
 
     Node make_import(TokenRefArray names);
 

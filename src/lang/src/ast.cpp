@@ -91,10 +91,6 @@ Node LangAst::make_import_path(TokenRef path) {
     return Node{{push(path), {}, {}}, nodeId(Node_import_path)};
 }
 
-Node LangAst::make_typename(TokenRef name) {
-    return Node{{push(name), {}, {}}, nodeId(Node_typename)};
-}
-
 Node LangAst::make_import(TokenRefArray names) {
     return Node{{push(names), {}, {}}, nodeId(Node_import)};
 }
