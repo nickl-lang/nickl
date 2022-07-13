@@ -42,20 +42,20 @@ LOG_USE_SCOPE(nkl::parser);
 struct ParseEngine {
     TokenArray const &m_tokens;
     LangAst &m_ast;
-    NodeRef &m_root;
     StringBuilder &m_err;
 
     bool m_error_occurred = false;
 
     TokenRef m_cur_token{};
 
-    void parse() {
+    NodeRef parse() {
         EASY_FUNCTION(::profiler::colors::Green200);
+        LOG_TRC(__func__);
 
         assert(m_tokens.size && m_tokens.back().id == t_eof && "ill-formed token stream");
 
         m_cur_token = m_tokens.begin();
-        m_root = m_ast.gen(block(false));
+        return m_ast.gen(block(false));
     }
 
 private:
@@ -85,62 +85,49 @@ private:
         }
     }
 
-    // Array<Node> sequence(bool *allow_trailing_comma = nullptr, bool *all_ids = nullptr) {
-    //     Array<Node> nodes{};
-    //     if (all_ids) {
-    //         *all_ids = true;
-    //     }
-    //     do {
-    //         if (check(t_par_r) && allow_trailing_comma) {
-    //             *allow_trailing_comma = true;
-    //             break;
-    //         }
-    //         APPEND(nodes, expr());
-    //         if (all_ids && nodes.back().id != Node_id) {
-    //             *all_ids = false;
-    //         }
-    //     } while (accept(t_comma));
-    //     return nodes;
-    // }
-
-    Node block(bool capture_brace = true) {
-        return m_ast.make_nop();
-
-        ////@Refactor Use tmp_allocator in parser for nodes
-        // Array<Node> nodes{};
-        // defer {
-        //     nodes.deinit();
-        // };
-
-        // bool expect_brace_r = capture_brace && accept(t_brace_l);
-
-        // while (!check(t_eof) && (!expect_brace_r || !check(t_brace_r))) {
-        //     LOG_DBG("next statement: token=" LOG_TOKEN(m_cur_token->id));
-        //     APPEND(nodes, statement());
-        //     LOG_DBG("end of statement");
-        // }
-
-        // if (expect_brace_r) {
-        //     EXPECT(t_brace_r);
-        // }
-
-        // auto node = nodes.size == 0   ? m_ast.make_nop()
-        //             : nodes.size == 1 ? nodes.front()
-        //                               : m_ast.make_block(nodes.slice());
-
-        // return capture_brace ? m_ast.make_scope(node) : node;
+    Array<Node> sequence(bool *allow_trailing_comma = nullptr, bool *all_ids = nullptr) {
+        Array<Node> nodes{};
+        if (all_ids) {
+            *all_ids = true;
+        }
+        do {
+            if (check(t_par_r) && allow_trailing_comma) {
+                *allow_trailing_comma = true;
+                break;
+            }
+            APPEND(nodes, expr());
+            if (all_ids && nodes.back().id != Node_id) {
+                *all_ids = false;
+            }
+        } while (accept(t_comma));
+        return nodes;
     }
 
-    // NamedNode declaration() {
-    //     if (!check(t_id)) {
-    //         return error("identifier expected"), NamedNode{};
-    //     }
-    //     NamedNode decl;
-    //     ASSIGN(decl.name, identifier());
-    //     EXPECT(t_colon);
-    //     ASSIGN(decl.node, m_ast.gen(expr()));
-    //     return decl;
-    // }
+    Node block(bool capture_brace = true) {
+        //@Refactor Optimize node allocation in parser for nodes
+        Array<Node> nodes{};
+        defer {
+            nodes.deinit();
+        };
+
+        bool expect_brace_r = capture_brace && accept(t_brace_l);
+
+        while (!check(t_eof) && (!expect_brace_r || !check(t_brace_r))) {
+            LOG_DBG("next statement: token=" LOG_TOKEN(m_cur_token->id));
+            APPEND(nodes, statement());
+            LOG_DBG("end of statement");
+        }
+
+        if (expect_brace_r) {
+            EXPECT(t_brace_r);
+        }
+
+        auto node = nodes.size == 0   ? m_ast.make_nop()
+                    : nodes.size == 1 ? nodes.front()
+                                      : m_ast.make_block(nodes.slice());
+
+        return capture_brace ? m_ast.make_scope(node) : node;
+    }
 
     TokenRef identifier() {
         LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
@@ -149,106 +136,18 @@ private:
         return id;
     }
 
-    // struct FnSignature {
-    //     TokenRef name;
-    //     Array<NamedNode> params;
-    //     Node ret_t;
-    // };
-
-    // FnSignature fnSignature(bool *accept_variadic = nullptr) {
-    //     @Todo fnSignature is not implemented
-    //      accept(t_fn);
-
-    //     TokenRef name = nullptr;
-    //     if (check(t_id)) {
-    //         ASSIGN(name, identifier());
-    //     }
-
-    //     EXPECT(t_par_l);
-
-    //     Array<NamedNode> params{};
-
-    //     if (!accept(t_par_r)) {
-    //         do {
-    //             if (accept_variadic && accept(t_period_3x)) {
-    //                 *accept_variadic = true;
-    //                 break;
-    //             }
-    //             APPEND(params, declaration());
-    //         } while (accept(t_comma));
-
-    //         EXPECT(t_par_r);
-    //     }
-
-    //     DEFINE(ret_t, accept(t_minus_greater) ? expr() : m_ast.make_void());
-
-    //     return {name, params, ret_t};
-    // }
-
     Node statement() {
         Node node;
 
-        // bool expect_semi = true;
+        bool expect_semi = true;
 
-        // if (accept(t_return)) {
-        //     if (check(t_semi)) {
-        //         node = m_ast.make_return({});
-        //     } else {
-        //         ASSIGN(node, m_ast.make_return(tuple()));
-        //     }
-        // } else if (accept(t_break)) {
-        //     node = m_ast.make_break();
-        // } else if (accept(t_continue)) {
-        //     node = m_ast.make_continue();
-        // } else if (accept(t_if)) {
-        //     DEFINE(cond, assignment());
-        //     DEFINE(then_body, statement());
-        //     DEFINE(else_body, accept(t_else) ? statement() : Node{});
-        //     node = m_ast.make_if(cond, then_body, else_body);
-        //     expect_semi = false;
-        // } else if (accept(t_while)) {
-        //     DEFINE(cond, assignment());
-        //     DEFINE(body, statement());
-        //     node = m_ast.make_while(cond, body);
-        //     expect_semi = false;
-        // } else if (check(t_brace_l)) {
-        //     ASSIGN(node, block());
-        //     expect_semi = false;
-        // }
-        // // else if (accept(t_foreign)) {
-        // //     //@Todo Handle escaped strings in foreign library names
-        // //     if (!check(t_str_const)) {
-        // //         return error("foreign library name expected"), Node{};
-        // //     }
-        // //     auto lib = m_cur_token;
-        // //     getToken();
-        // //     bool is_variadic = false;
-        // //     DEFINE(sig, fnSignature(&is_variadic));
-        // //     defer {
-        // //         sig.params.deinit();
-        // //     };
-        // //     node = m_ast.make_foreign_fn(lib, sig.name, sig.params.slice(), sig.ret_t,
-        // //     is_variadic);
-        // // }
-        // else {
-        //     ASSIGN(node, assignment());
+        ASSIGN(node, assignment());
 
-        //     if (node.id == Node_fn || node.id == Node_struct) {
-        //         expect_semi = false;
-        //     } else if ((node.id == Node_id || node.id == Node_id_tuple) && accept(t_colon)) {
-        //         DEFINE(type, expr());
-        //         DEFINE(value, accept(t_eq) ? tuple() : Node{});
-        //         node = m_ast.make_var_decl(node.as.token.val, type, value);
-        //     } else if ((node.id == Node_id || node.id == Node_id_tuple) && accept(t_colon_eq)) {
-        //         ASSIGN(node, m_ast.make_colon_assign(node, tuple()));
-        //     }
-        // }
-
-        // if (expect_semi) {
-        //     EXPECT(t_semi);
-        // }
-        // while (accept(t_semi)) {
-        // }
+        if (expect_semi) {
+            EXPECT(t_semi);
+        }
+        while (accept(t_semi)) {
+        }
 
         return node;
     }
@@ -284,57 +183,20 @@ private:
     }
 
     Node tuple() {
-        // bool trailing_comma_provided = false;
-        // bool all_ids = false;
-        // DEFINE(nodes, sequence(&trailing_comma_provided, &all_ids));
-        // defer {
-        //     nodes.deinit();
-        // };
-        // return (nodes.size > 1 || trailing_comma_provided)
-        //            ? (all_ids ? m_ast.make_id_tuple(nodes) : m_ast.make_tuple(nodes))
-        //            : nodes.front();
+        bool trailing_comma_provided = false;
+        bool all_ids = false;
+        DEFINE(nodes, sequence(&trailing_comma_provided, &all_ids));
+        defer {
+            nodes.deinit();
+        };
+        return (nodes.size > 1 || trailing_comma_provided) ? m_ast.make_tuple(nodes)
+                                                           : nodes.front();
     }
 
     Node expr() {
         Node node;
 
-        // if (accept(t_fn)) {
-        //     auto sig = fnSignature();
-        //     defer {
-        //         sig.params.deinit();
-        //     };
-
-        //     Node body;
-        //     bool has_body = false;
-        //     if (check(t_brace_l)) {
-        //         has_body = true;
-        //         ASSIGN(body, block());
-        //     }
-
-        //     assert(has_body && "function type/ptr parsing is not implemented");
-        //     node = m_ast.make_fn(sig.name, sig.params, sig.ret_t, body);
-        // } else if (accept(t_struct)) {
-        //     TokenRef name = nullptr;
-        //     if (check(t_id)) {
-        //         ASSIGN(name, identifier());
-        //     }
-
-        //     EXPECT(t_brace_l);
-
-        //     Array<NamedNode> fields{};
-        //     defer {
-        //         fields.deinit();
-        //     };
-
-        //     while (!accept(t_brace_r)) {
-        //         APPEND(fields, declaration());
-        //         EXPECT(t_semi);
-        //     }
-
-        //     node = m_ast.make_struct(name, fields.slice());
-        // } else {
-        //     ASSIGN(node, ternary());
-        // }
+        ASSIGN(node, ternary());
 
         return node;
     }
@@ -735,10 +597,8 @@ bool Parser::parse(TokenArray const &tokens) {
 
     ast.init();
 
-    root = n_none;
-
-    ParseEngine engine{tokens, ast, root, err};
-    engine.parse();
+    ParseEngine engine{tokens, ast, err};
+    root = engine.parse();
 
 #ifdef ENABLE_LOGGING
     //@Todo Use some existing allocator for printing?
