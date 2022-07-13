@@ -297,21 +297,28 @@ TEST_F(parser, other) {
     auto i64 = m_ast.make_i64();
     auto f64 = m_ast.make_f64();
 
+    auto tag_v = mkt(t_tag, "#version");
+
     TokenDescr t_a{t_id, "a"};
     TokenDescr t_b{t_id, "b"};
     TokenDescr t_A{t_id, "A"};
     TokenDescr t_id_plus{t_id, "plus"};
     TokenDescr t_num{t_int_const, "42"};
 
-    static constexpr const char *c_test_str = "hello";
+    TokenDescr t_tag_v{t_tag, "#version"};
 
     FieldNode f_a{id_a, m_ast.gen(f64), {}, false};
     FieldNode f_b{id_b, m_ast.gen(f64), {}, false};
     FieldNode f_b_ext{id_b, m_ast.gen(i64), m_ast.gen(num), true};
 
-    ARRAY_SLICE_INIT(TokenRef, tokens, id_a, id_b);
-    ARRAY_SLICE_INIT(FieldNode, fields, f_a, f_b);
-    ARRAY_SLICE_INIT(FieldNode, fields_ext, f_a, f_b_ext);
+    NamedNode nn_a{{}, m_ast.gen(a)};
+    NamedNode nn_b{{}, m_ast.gen(b)};
+
+    ARRAY_SLICE_INIT(TokenRef const, tokens, id_a, id_b);
+    ARRAY_SLICE_INIT(FieldNode const, fields, f_a, f_b);
+    ARRAY_SLICE_INIT(FieldNode const, fields_ext, f_a, f_b_ext);
+
+    ARRAY_SLICE_INIT(NamedNode const, args, nn_a, nn_b);
 
     // clang-format off
     TEST_OK(m_ast.make_ptr_type(m_ast.make_ptr_type(m_ast.make_i8())),
@@ -360,20 +367,21 @@ TEST_F(parser, other) {
                 t_return, t_a, t_plus, t_b, t_semi,
         t_brace_r);
 
-    //@Todo tag
+    TEST_OK(m_ast.make_tag(tag_v, args, a),
+        t_tag_v, t_par_l, t_a, t_comma, t_b, t_par_r, t_a, t_semi);
 
-    //@Todo call
-    //@Todo object_literal
+    TEST_OK(m_ast.make_call(m_ast.make_id(id_plus), args),
+        t_id_plus, t_par_l, t_a, t_comma, t_b, t_par_r, t_semi);
+    TEST_OK(m_ast.make_object_literal(m_ast.make_id(id_A), args),
+        t_A, t_brace_l, t_a, t_comma, t_b, t_brace_r, t_semi);
 
-    //@Todo assign
+    TEST_OK(m_ast.make_assign({&a, 1}, b), t_a, t_eq, t_b, t_semi);
+    TEST_OK(m_ast.make_define({&id_a, 1}, b), t_a, t_colon_eq, t_b, t_semi);
 
-    //@Todo define
+    TEST_OK(m_ast.make_comptime_const_def(id_a, b), t_a, t_colon_2x, t_b, t_semi);
+    TEST_OK(m_ast.make_tag_def(tag_v, b), t_tag_v, t_colon_2x, t_b, t_semi);
 
-    //@Todo comptime_const_def
-    //@Todo tag_def
-
-    //@Todo var_decl
-    //@Todo const_decl
-
+    TEST_OK(m_ast.make_var_decl(id_a, f64, num), t_a, t_colon, t_f64, t_eq, t_num, t_semi);
+    TEST_OK(m_ast.make_const_decl(id_a, f64, num), t_const, t_a, t_colon, t_f64, t_eq, t_num, t_semi);
     // clang-format on
 }
