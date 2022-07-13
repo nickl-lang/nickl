@@ -8,6 +8,8 @@
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
 #include "nkl/lang/lexer.hpp"
+#include "nkl/lang/parser.hpp"
+#include "nkl/lang/value.hpp"
 
 namespace nkl {
 
@@ -43,12 +45,29 @@ int lang_runFile(string path) {
         return 1;
     }
 
+    id_init();
+    types::init();
+    defer {
+        types::deinit();
+        id_deinit();
+    };
+
     Lexer lexer{err_sb};
     defer {
         lexer.tokens.deinit();
     };
 
     if (!lexer.lex(src)) {
+        std::cerr << "error: " << err_sb.moveStr() << std::endl;
+        return 1;
+    }
+
+    Parser parser{err_sb};
+    defer {
+        parser.ast.deinit();
+    };
+
+    if (!parser.parse(lexer.tokens)) {
         std::cerr << "error: " << err_sb.moveStr() << std::endl;
         return 1;
     }
