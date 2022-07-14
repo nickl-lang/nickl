@@ -16,7 +16,8 @@ bool ast_equal(NodeRef lhs, NodeRef rhs) {
         auto const &larg = lhs->arg[i];
         auto const &rarg = rhs->arg[i];
 
-        if (larg.token != rarg.token) {
+        if ((bool)larg.token != (bool)rarg.token ||
+            (larg.token && rarg.token && !larg.token->text.equals(rarg.token->text))) {
             return false;
         }
 

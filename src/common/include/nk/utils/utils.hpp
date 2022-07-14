@@ -60,7 +60,7 @@ template <class T>
 struct equal_to<::nk::Slice<T>> {
     size_t operator()(::nk::Slice<T> lhs, ::nk::Slice<T> rhs) {
         static_assert(is_trivial_v<T>, "T should be trivial");
-        return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size * sizeof(T)) == 0;
+        return lhs.equals(rhs);
     }
 };
 

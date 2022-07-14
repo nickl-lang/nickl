@@ -57,6 +57,7 @@ U(const_ptr_type)
 U(slice_type)
 
 U(scope) // (expr: node)
+U(run)
 
 #undef U
 
@@ -98,7 +99,7 @@ B(xor_assign)
 B(lsh_assign)
 B(rsh_assign)
 
-B(array_type) // (lhs: node, rhs: node)
+B(array_type) // (type: node, count: node)
 B(cast)       // (target_type: node, expr: node)
 B(index)      // (lhs: node, index: node)
 B(while)      // (cond: node, body: node)
@@ -112,7 +113,6 @@ X(array) // (nodes: [node])
 X(block)
 X(tuple)
 X(tuple_type)
-X(run)
 
 X(import) // (names: [{name: token}])
 

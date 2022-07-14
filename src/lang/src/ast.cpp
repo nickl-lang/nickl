@@ -63,10 +63,6 @@ Node LangAst::make_tuple_type(NodeArray nodes) {
     return Node{{push(nodes), {}, {}}, nodeId(Node_tuple_type)};
 }
 
-Node LangAst::make_run(NodeArray nodes) {
-    return Node{{push(nodes), {}, {}}, nodeId(Node_run)};
-}
-
 Node LangAst::make_id(TokenRef name) {
     return Node{{push(name), {}, {}}, nodeId(Node_id)};
 }

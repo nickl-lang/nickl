@@ -77,14 +77,10 @@ protected:
             return m_sb.moveStr(m_arena).data;
         }());
         tokens.emplace_back(t_eof, "");
-        Array<Token> token_ar{};
-        defer {
-            token_ar.deinit();
-        };
         for (auto const &token : tokens) {
-            *token_ar.push() = createToken(token.id, token.text);
+            *m_token_ar.push() = createToken(token.id, token.text);
         }
-        return m_parser.parse(token_ar);
+        return m_parser.parse(m_token_ar);
     }
 
     void reportParseError() {
@@ -105,6 +101,7 @@ protected:
     StackAllocator m_arena{};
     DynamicStringBuilder m_sb{};
     LangAst m_ast{};
+    Array<Token> m_token_ar{};
     Parser m_parser{m_sb};
 };
 
@@ -125,15 +122,17 @@ protected:
             reportTreeError(expected);                                              \
         }                                                                           \
         m_parser.ast.deinit();                                                      \
+        m_token_ar.deinit();                                                        \
     }
 
 TEST_F(parser, empty) {
-    TEST_OK(m_ast.make_continue(), );
+    TEST_OK(m_ast.make_nop(), );
 }
 
 TEST_F(parser, nullary) {
-    TEST_OK(m_ast.make_break(), t_break, t_semi);
-    TEST_OK(m_ast.make_continue(), t_continue, t_semi);
+    //@Todo add break/continue tests with loops in parser
+    // TEST_OK(m_ast.make_break(), t_break, t_semi);
+    // TEST_OK(m_ast.make_continue(), t_continue, t_semi);
 
     TEST_OK(m_ast.make_false(), t_false, t_semi);
     TEST_OK(m_ast.make_true(), t_true, t_semi);
@@ -166,7 +165,7 @@ TEST_F(parser, unary) {
     TEST_OK(m_ast.make_uplus(a), t_plus, t_a, t_semi);
 
     TEST_OK(m_ast.make_addr(a), t_amper, t_a, t_semi);
-    TEST_OK(m_ast.make_deref(a), t_a, t_aster, t_semi);
+    TEST_OK(m_ast.make_deref(a), t_a, t_period_aster, t_semi);
 
     TEST_OK(m_ast.make_defer_stmt(a), t_defer, t_a, t_semi);
 
@@ -255,7 +254,6 @@ TEST_F(parser, array) {
     auto b = m_ast.make_id(mkt(t_id, "b"));
 
     ARRAY_SLICE_INIT(Node, ab, a, b);
-    ARRAY_SLICE_INIT(Node, i64f64, m_ast.make_i64(), m_ast.make_f64());
 
     // clang-format off
     TEST_OK(m_ast.make_array(ab),
@@ -264,7 +262,7 @@ TEST_F(parser, array) {
         t_brace_l, {t_id, "a"}, t_semi, {t_id, "b"}, t_semi, t_brace_r);
     TEST_OK(m_ast.make_tuple(ab),
         {t_id, "a"}, t_comma, {t_id, "b"}, t_semi);
-    TEST_OK(m_ast.make_run(i64f64),
+    TEST_OK(m_ast.make_run(m_ast.make_scope(a)),
         t_dollar, t_brace_l, {t_id, "a"}, t_semi, t_brace_r);
     // clang-format on
 }
@@ -279,8 +277,8 @@ TEST_F(parser, token) {
         {t_int_const, "42"}, t_semi);
     TEST_OK(m_ast.make_string_literal(mkt(t_str_const, "hello")),
         {t_str_const, "hello"}, t_semi);
-    TEST_OK(m_ast.make_escaped_string_literal(mkt(t_str_const, "hello")),
-        {t_str_const, "hello"}, t_semi);
+    TEST_OK(m_ast.make_escaped_string_literal(mkt(t_escaped_str_const, "hello")),
+        {t_escaped_str_const, "hello"}, t_semi);
     TEST_OK(m_ast.make_import_path(mkt(t_str_const, "hello")),
         t_import, {t_str_const, "hello"}, t_semi);
     // clang-format on
@@ -309,14 +307,16 @@ TEST_F(parser, other) {
 
     FieldNode f_a{id_a, m_ast.gen(f64), {}, false};
     FieldNode f_b{id_b, m_ast.gen(f64), {}, false};
-    FieldNode f_b_ext{id_b, m_ast.gen(i64), m_ast.gen(num), true};
+    FieldNode f_b_const_init{id_b, m_ast.gen(i64), m_ast.gen(num), true};
+    FieldNode f_b_init{id_b, m_ast.gen(i64), m_ast.gen(num), false};
 
     NamedNode nn_a{{}, m_ast.gen(a)};
     NamedNode nn_b{{}, m_ast.gen(b)};
 
     ARRAY_SLICE_INIT(TokenRef const, tokens, id_a, id_b);
     ARRAY_SLICE_INIT(FieldNode const, fields, f_a, f_b);
-    ARRAY_SLICE_INIT(FieldNode const, fields_ext, f_a, f_b_ext);
+    ARRAY_SLICE_INIT(FieldNode const, fields_ext, f_a, f_b_const_init);
+    ARRAY_SLICE_INIT(FieldNode const, params, f_a, f_b_init);
 
     ARRAY_SLICE_INIT(NamedNode const, args, nn_a, nn_b);
 
@@ -326,10 +326,10 @@ TEST_F(parser, other) {
     TEST_OK(m_ast.make_import(tokens),
         t_import, t_a, t_period, t_b, t_semi);
 
-    TEST_OK(m_ast.make_for(id_a, b, a),
+    TEST_OK(m_ast.make_for(id_a, b, m_ast.make_scope(a)),
         t_for, t_a, t_in, t_b, t_brace_l, t_a, t_semi, t_brace_r);
-    TEST_OK(m_ast.make_for_by_ptr(id_a, b, a),
-        t_for, t_a, t_aster, t_in, t_b, t_brace_l, t_a, t_semi, t_brace_r);
+    TEST_OK(m_ast.make_for_by_ptr(id_a, b, m_ast.make_scope(a)),
+        t_for, t_a, t_period_aster, t_in, t_b, t_brace_l, t_a, t_semi, t_brace_r);
 
     TEST_OK(m_ast.make_member(a, id_b), t_a, t_period, t_b, t_semi);
 
@@ -341,18 +341,18 @@ TEST_F(parser, other) {
     TEST_OK(m_ast.make_union(fields),
         t_union, t_brace_l,
             t_a, t_colon, t_f64, t_comma,
-            t_b, t_colon, t_i64, t_comma,
+            t_b, t_colon, t_f64, t_comma,
         t_brace_r);
     TEST_OK(m_ast.make_enum(fields),
         t_enum, t_brace_l,
             t_a, t_colon, t_f64, t_comma,
-            t_b, t_colon, t_i64, t_comma,
+            t_b, t_colon, t_f64, t_comma,
         t_brace_r);
-    TEST_OK(m_ast.make_packed_struct(fields_ext),
+    TEST_OK(m_ast.make_packed_struct(params),
         t_par_l,
             t_a, t_colon, t_f64, t_comma,
-            t_const, t_b, t_colon, t_i64, t_eq, t_num, t_comma,
-        t_par_r);
+            t_b, t_colon, t_i64, t_eq, t_num, t_comma,
+        t_par_r, t_semi);
 
     TEST_OK(m_ast.make_fn(fields, f64, m_ast.make_scope(m_ast.make_return(m_ast.make_add(a, b)))),
         t_par_l,

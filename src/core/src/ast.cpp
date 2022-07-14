@@ -13,7 +13,7 @@ static constexpr size_t c_arg_count = sizeof(Node::arg) / sizeof(Node::arg[0]);
 
 namespace {
 
-NodeArg mkarg(Token const *token) {
+NodeArg mkarg(TokenRef token) {
     return {token, {}};
 }
 
@@ -21,7 +21,7 @@ NodeArg mkarg(NodeRef node) {
     return {{}, {node, 1}};
 }
 
-NodeArg mkarg(Token const *token, NodeRef node) {
+NodeArg mkarg(TokenRef token, NodeRef node) {
     return {token, {node, 1}};
 }
 
@@ -67,7 +67,7 @@ NodeRef Ast::gen(Node const &n) {
     return &(*data.push() = n);
 }
 
-NodeArg Ast::push(Token const *token) {
+NodeArg Ast::push(TokenRef token) {
     return mkarg(token);
 }
 
@@ -75,7 +75,7 @@ NodeArg Ast::push(NodeRef node) {
     return mkarg(node);
 }
 
-NodeArg Ast::push(Token const *token, Node const &node) {
+NodeArg Ast::push(TokenRef token, Node const &node) {
     return mkarg(token, push(node).nodes);
 }
 

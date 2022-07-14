@@ -48,7 +48,6 @@ struct LangAst : Ast {
     Node make_block(NodeArray nodes);
     Node make_tuple(NodeArray nodes);
     Node make_tuple_type(NodeArray nodes);
-    Node make_run(NodeArray nodes);
 
     Node make_id(TokenRef name);
     Node make_numeric_float(TokenRef val);
