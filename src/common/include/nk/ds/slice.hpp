@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstring>
 #include <iterator>
 #include <type_traits>
 
@@ -90,6 +91,10 @@ struct Slice {
 
     T *operator->() const {
         return data;
+    }
+
+    bool equals(Slice<std::decay_t<T> const> other) const {
+        return size == other.size && std::memcmp(data, other.data, size) == 0;
     }
 };
 

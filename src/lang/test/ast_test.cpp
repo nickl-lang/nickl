@@ -192,10 +192,6 @@ TEST_F(ast, array) {
     test(m_ast.make_tuple_type(nodes));
     EXPECT_EQ(nodeId(Node_tuple_type), m_node.id);
     EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
-
-    test(m_ast.make_run(nodes));
-    EXPECT_EQ(nodeId(Node_run), m_node.id);
-    EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 }
 
 TEST_F(ast, token) {
