@@ -117,6 +117,7 @@ X(tuple_type)
 X(import) // (names: [{name: token}])
 
 X(id)                     // (name: token)
+X(intrinsic)              // (name: token)
 X(numeric_float)          // (value: token)
 X(numeric_int)            // (value: token)
 X(string_literal)         // (value: token)

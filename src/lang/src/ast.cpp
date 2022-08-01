@@ -67,6 +67,10 @@ Node LangAst::make_id(TokenRef name) {
     return Node{{push(name), {}, {}}, nodeId(Node_id)};
 }
 
+Node LangAst::make_intrinsic(TokenRef name) {
+    return Node{{push(name), {}, {}}, nodeId(Node_intrinsic)};
+}
+
 Node LangAst::make_numeric_float(TokenRef val) {
     return Node{{push(val), {}, {}}, nodeId(Node_numeric_float)};
 }

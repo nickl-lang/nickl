@@ -18,19 +18,8 @@
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
-
-#define ASSIGN(SLOT, VAL)  \
-    {                      \
-        DEFINE(__val, VAL) \
-        SLOT = __val;      \
-    }
-
-#define APPEND(AR, VAL)     \
-    {                       \
-        DEFINE(__val, VAL)  \
-        *AR.push() = __val; \
-    }
-
+#define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
+#define APPEND(AR, VAL) CHECK(*AR.push() = (VAL))
 #define EXPECT(ID) CHECK(expect(ID))
 
 namespace nkl {
@@ -49,6 +38,14 @@ struct ParseEngine {
     TokenRef m_cur_token{};
     TokenRef m_last_token{};
 
+    enum EExprKind {
+        Expr_Regular,
+        Expr_Bool,
+        Expr_Type,
+    };
+
+    EExprKind m_cur_expr_kind = Expr_Regular;
+
     NodeRef parse() {
         EASY_FUNCTION(::profiler::colors::Green200);
         LOG_TRC(__func__);
@@ -60,6 +57,8 @@ struct ParseEngine {
     }
 
 private:
+    struct Void {};
+
     void getToken() {
         assert(m_cur_token->id != t_eof);
         m_last_token = m_cur_token++;
@@ -86,8 +85,10 @@ private:
         }
     }
 
-    Array<Node> sequence(bool *allow_trailing_comma = nullptr, bool *all_ids = nullptr) {
-        Array<Node> nodes{};
+    Void sequence(
+        Array<Node> &nodes,
+        bool *allow_trailing_comma = nullptr,
+        bool *all_ids = nullptr) {
         if (all_ids) {
             *all_ids = true;
         }
@@ -101,7 +102,7 @@ private:
                 *all_ids = false;
             }
         } while (accept(t_comma));
-        return nodes;
+        return {};
     }
 
     struct ParseFieldsConfig {
@@ -117,23 +118,33 @@ private:
         bool tuple_parsed;
     };
 
-    ParseFieldsResult parseFields(ETokenID closer, ParseFieldsConfig const &cfg) {
-        ParseFieldsResult res{};
+    Void parseFields(ParseFieldsResult &res, ETokenID closer, ParseFieldsConfig const &cfg) {
         bool &tuple_mode = res.tuple_parsed = cfg.allow_tuple_mode;
+        if (accept(closer)) {
+            return {};
+        }
         FieldNode &field = *res.fields.push() = {};
         if (cfg.accept_const && accept(t_const)) {
             field.is_const = true;
             tuple_mode = false;
         }
-        ASSIGN(field.name, identifier());
         if (tuple_mode) {
+            if (check(t_id)) {
+                ASSIGN(field.name, identifier());
+            }
             if (accept(t_colon)) {
                 tuple_mode = false;
+                ASSIGN(field.type, m_ast.gen(expr(Expr_Type)));
+            } else {
+                if (field.name) {
+                    m_cur_token--;
+                }
                 ASSIGN(field.type, m_ast.gen(expr()));
             }
         } else {
+            ASSIGN(field.name, identifier());
             EXPECT(t_colon);
-            ASSIGN(field.type, m_ast.gen(expr()));
+            ASSIGN(field.type, m_ast.gen(expr(Expr_Type)));
             if (cfg.accept_init && accept(t_eq)) {
                 ASSIGN(field.init_value, m_ast.gen(expr()));
             }
@@ -163,22 +174,21 @@ private:
                 }
                 ASSIGN(field.name, identifier());
                 EXPECT(t_colon);
-                ASSIGN(field.type, m_ast.gen(expr()));
+                ASSIGN(field.type, m_ast.gen(expr(Expr_Type)));
                 if (cfg.accept_init && accept(t_eq)) {
                     ASSIGN(field.init_value, m_ast.gen(expr()));
                 }
             }
         }
         EXPECT(closer);
-        return res;
+        return {};
     }
 
     struct ParseArgsConfig {
         bool allow_trailing_comma;
     };
 
-    Array<NamedNode> parseArgs(ETokenID closer, ParseArgsConfig const &cfg) {
-        Array<NamedNode> args{};
+    Void parseArgs(Array<NamedNode> &args, ETokenID closer, ParseArgsConfig const &cfg) {
         do {
             if (cfg.allow_trailing_comma && check(closer)) {
                 break;
@@ -197,7 +207,7 @@ private:
             ASSIGN(arg.node, m_ast.gen(expr()));
         } while (accept(t_comma));
         EXPECT(closer);
-        return args;
+        return {};
     }
 
     Node block(bool capture_brace = true) {
@@ -236,6 +246,26 @@ private:
         return id;
     }
 
+    Node parseImport() {
+        Node node{};
+        if (check(t_str_const)) {
+            LOG_DBG("accept(str_const, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
+            ASSIGN(node, m_ast.make_import_path(m_cur_token))
+            getToken();
+        } else {
+            Array<TokenRef> tokens{};
+            defer {
+                tokens.deinit();
+            };
+            APPEND(tokens, identifier());
+            while (accept(t_period)) {
+                APPEND(tokens, identifier());
+            }
+            ASSIGN(node, m_ast.make_import(tokens));
+        }
+        return node;
+    }
+
     Node statement() {
         Node node;
 
@@ -250,12 +280,12 @@ private:
         } else if (accept(t_continue)) {
             node = m_ast.make_continue();
         } else if (accept(t_if)) {
-            DEFINE(cond, assignment());
+            DEFINE(cond, expr(Expr_Bool));
             DEFINE(then_body, statement());
             DEFINE(else_body, accept(t_else) ? statement() : Node{});
             node = m_ast.make_if(cond, then_body, else_body);
         } else if (accept(t_while)) {
-            DEFINE(cond, assignment());
+            DEFINE(cond, expr(Expr_Bool));
             DEFINE(body, statement());
             node = m_ast.make_while(cond, body);
         } else if (check(t_brace_l)) {
@@ -263,27 +293,12 @@ private:
         } else if (accept(t_defer)) {
             ASSIGN(node, m_ast.make_defer_stmt(assignment()));
         } else if (accept(t_import)) {
-            if (check(t_str_const)) {
-                LOG_DBG(
-                    "accept(str_const, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
-                ASSIGN(node, m_ast.make_import_path(m_cur_token))
-                getToken();
-            } else {
-                Array<TokenRef> tokens{};
-                defer {
-                    tokens.deinit();
-                };
-                APPEND(tokens, identifier());
-                while (accept(t_period)) {
-                    APPEND(tokens, identifier());
-                }
-                ASSIGN(node, m_ast.make_import(tokens));
-            }
+            ASSIGN(node, parseImport());
         } else if (accept(t_for)) {
             DEFINE(it, identifier());
             bool const by_ptr = accept(t_period_aster);
             EXPECT(t_in);
-            DEFINE(range, assignment());
+            DEFINE(range, expr(Expr_Bool)); //@Todo Using bool for range in for
             DEFINE(body, statement());
             if (by_ptr) {
                 ASSIGN(node, m_ast.make_for_by_ptr(it, range, body));
@@ -295,22 +310,53 @@ private:
             LOG_DBG("accept(tag, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
             auto tag = m_cur_token;
             getToken();
-            Array<NamedNode> args{};
-            defer {
-                args.deinit();
-            };
-            if (accept(t_par_l)) {
-                ASSIGN(
-                    args,
-                    parseArgs(
-                        t_par_r,
+            if (accept(t_colon_2x)) {
+                ASSIGN(node, m_ast.make_tag_def(tag, tuple()));
+            } else {
+                Array<NamedNode> args{};
+                defer {
+                    args.deinit();
+                };
+                if (check(t_par_l) || check(t_brace_l)) {
+                    auto closer = check(t_par_l) ? t_par_r : t_brace_r;
+                    getToken();
+                    CHECK(parseArgs(
+                        args,
+                        closer,
                         {
                             .allow_trailing_comma = true,
                         }));
+                }
+                ASSIGN(node, m_ast.make_tag(tag, args, statement()));
             }
-            ASSIGN(node, m_ast.make_tag(tag, args, statement()));
+        } else if (accept(t_const)) {
+            //@Boilerplate in const var decl
+            DEFINE(name, identifier());
+            EXPECT(t_colon);
+            DEFINE(type, expr(Expr_Type));
+            DEFINE(value, accept(t_eq) ? tuple() : Node{});
+            ASSIGN(node, m_ast.make_const_decl(name, type, value));
         } else {
             ASSIGN(node, assignment());
+        }
+
+        //@Todo Hack for id-statements, also support multiple assignment
+        if (node.id == nodeId(Node_id)) {
+            if (accept(t_colon_eq)) {
+                ASSIGN(node, m_ast.make_define({&Node_token_value(&node), 1}, tuple()));
+            } else if (accept(t_colon_2x)) {
+                Node rhs{};
+                if (accept(t_import)) {
+                    ASSIGN(rhs, parseImport());
+                } else {
+                    ASSIGN(rhs, tuple());
+                }
+                ASSIGN(node, m_ast.make_comptime_const_def(Node_token_value(&node), rhs));
+            } else if (accept(t_colon)) {
+                DEFINE(type, expr(Expr_Type));
+                DEFINE(value, accept(t_eq) ? tuple() : Node{});
+                ASSIGN(node, m_ast.make_var_decl(Node_token_value(&node), type, value));
+            }
         }
 
         if (m_last_token->id != t_semi && m_last_token->id != t_brace_r) {
@@ -326,7 +372,7 @@ private:
         DEFINE(node, tuple());
 
         if (accept(t_eq)) {
-            //@Todo supprt multiple assignment in parser
+            //@Todo Support multiple assignment in parser
             ASSIGN(node, m_ast.make_assign({m_ast.gen(node), 1}, tuple()));
         } else if (accept(t_plus_eq)) {
             ASSIGN(node, m_ast.make_add_assign(node, tuple()));
@@ -356,7 +402,11 @@ private:
     Node tuple() {
         bool trailing_comma_provided = false;
         bool all_ids = false;
-        DEFINE(nodes, sequence(&trailing_comma_provided, &all_ids));
+        Array<Node> nodes{};
+        defer {
+            nodes.deinit();
+        };
+        CHECK(sequence(nodes, &trailing_comma_provided, &all_ids));
         defer {
             nodes.deinit();
         };
@@ -364,7 +414,13 @@ private:
                                                            : nodes.front();
     }
 
-    Node expr() {
+    Node expr(EExprKind kind = Expr_Regular) {
+        auto const old_expr_kind = m_cur_expr_kind;
+        m_cur_expr_kind = kind;
+        defer {
+            m_cur_expr_kind = old_expr_kind;
+        };
+
         Node node;
 
         if (accept(t_struct)) {
@@ -373,15 +429,14 @@ private:
             defer {
                 res.fields.deinit();
             };
-            ASSIGN(
+            CHECK(parseFields(
                 res,
-                parseFields(
-                    t_brace_r,
-                    {
-                        .accept_const = true,
-                        .accept_init = true,
-                        .allow_tuple_mode = false,
-                    }));
+                t_brace_r,
+                {
+                    .accept_const = true,
+                    .accept_init = true,
+                    .allow_tuple_mode = false,
+                }));
             ASSIGN(node, m_ast.make_struct(res.fields));
         } else if (accept(t_union)) {
             EXPECT(t_brace_l);
@@ -389,15 +444,14 @@ private:
             defer {
                 res.fields.deinit();
             };
-            ASSIGN(
+            CHECK(parseFields(
                 res,
-                parseFields(
-                    t_brace_r,
-                    {
-                        .accept_const = false,
-                        .accept_init = false,
-                        .allow_tuple_mode = false,
-                    }));
+                t_brace_r,
+                {
+                    .accept_const = false,
+                    .accept_init = false,
+                    .allow_tuple_mode = false,
+                }));
             ASSIGN(node, m_ast.make_union(res.fields));
         } else if (accept(t_enum)) {
             EXPECT(t_brace_l);
@@ -405,55 +459,15 @@ private:
             defer {
                 res.fields.deinit();
             };
-            ASSIGN(
+            CHECK(parseFields(
                 res,
-                parseFields(
-                    t_brace_r,
-                    {
-                        .accept_const = false,
-                        .accept_init = false,
-                        .allow_tuple_mode = false,
-                    }));
+                t_brace_r,
+                {
+                    .accept_const = false,
+                    .accept_init = false,
+                    .allow_tuple_mode = false,
+                }));
             ASSIGN(node, m_ast.make_enum(res.fields));
-        } else if (accept(t_par_l)) {
-            ParseFieldsResult res{};
-            defer {
-                res.fields.deinit();
-            };
-            ASSIGN(
-                res,
-                parseFields(
-                    t_par_r,
-                    {
-                        .accept_const = false,
-                        .accept_init = true,
-                        .allow_tuple_mode = true,
-                    }));
-            if (accept(t_minus_greater)) {
-                if (res.trailing_comma_parsed) {
-                    return error("trailing comma is not allowed in function signature"), Node{};
-                }
-                DEFINE(ret_type, tuple());
-                if (!check(t_brace_l)) {
-                    return error("'{' expected"), Node{};
-                }
-                ASSIGN(node, m_ast.make_fn(res.fields, ret_type, block(), res.variadic_parsed));
-            } else {
-                if (res.tuple_parsed) {
-                    //@Todo Maybe avoid copy in case of tuple
-                    Array<Node> nodes{};
-                    defer {
-                        nodes.deinit();
-                    };
-                    nodes.reserve(res.fields.size);
-                    for (auto const &field : res.fields) {
-                        *nodes.push() = *field.type;
-                    }
-                    ASSIGN(node, m_ast.make_tuple(nodes));
-                } else {
-                    ASSIGN(node, m_ast.make_packed_struct(res.fields));
-                }
-            }
         } else {
             ASSIGN(node, ternary());
         }
@@ -658,7 +672,11 @@ private:
         } else if (accept(t_bracket_l)) {
             bool trailing_comma_provided = false;
             bool all_ids = false;
-            DEFINE(nodes, sequence(&trailing_comma_provided, &all_ids));
+            Array<Node> nodes{};
+            defer {
+                nodes.deinit();
+            };
+            CHECK(sequence(nodes, &trailing_comma_provided, &all_ids));
             defer {
                 nodes.deinit();
             };
@@ -674,7 +692,7 @@ private:
             }
         } else if (accept(t_cast)) {
             EXPECT(t_par_l);
-            DEFINE(lhs, expr());
+            DEFINE(lhs, expr(Expr_Type));
             EXPECT(t_par_r);
             DEFINE(rhs, prefix());
             ASSIGN(node, m_ast.make_cast(lhs, rhs));
@@ -696,31 +714,27 @@ private:
                 defer {
                     args.deinit();
                 };
-                ASSIGN(
+                CHECK(parseArgs(
                     args,
-                    parseArgs(
-                        t_par_r,
-                        {
-                            .allow_trailing_comma = true,
-                        }));
+                    t_par_r,
+                    {
+                        .allow_trailing_comma = true,
+                    }));
                 node = m_ast.make_call(node, args);
-            }
-            // else if (accept(t_brace_l)) {
-            //     Array<NamedNode> args{};
-            //     defer {
-            //         args.deinit();
-            //     };
-            //     ASSIGN(
-            //         args,
-            //         parseArgs(
-            //             t_brace_r,
-            //             {
-            //                 .allow_trailing_comma = true,
-            //             }));
-            //     node = m_ast.make_object_literal(node, args);
-            // }
-            else if (accept(t_bracket_l)) {
-                ASSIGN(node, m_ast.make_index(node, check(t_bracket_r) ? Node{} : tuple()));
+            } else if (m_cur_expr_kind == Expr_Regular && accept(t_brace_l)) {
+                Array<NamedNode> args{};
+                defer {
+                    args.deinit();
+                };
+                CHECK(parseArgs(
+                    args,
+                    t_brace_r,
+                    {
+                        .allow_trailing_comma = true,
+                    }));
+                node = m_ast.make_object_literal(node, args);
+            } else if (accept(t_bracket_l)) {
+                ASSIGN(node, m_ast.make_index(node, check(t_bracket_r) ? Node{} : expr()));
                 EXPECT(t_bracket_r);
             } else if (accept(t_period)) {
                 DEFINE(name, identifier());
@@ -759,6 +773,9 @@ private:
 
         else if (check(t_id)) {
             ASSIGN(node, m_ast.make_id(identifier()));
+        } else if (check(t_intrinsic)) {
+            ASSIGN(node, m_ast.make_intrinsic(m_cur_token));
+            getToken();
         }
 
         else if (accept(t_u8)) {
@@ -800,8 +817,54 @@ private:
         }
 
         else if (accept(t_par_l)) {
-            ASSIGN(node, assignment());
-            EXPECT(t_par_r);
+            ParseFieldsResult res{};
+            defer {
+                res.fields.deinit();
+            };
+            CHECK(parseFields(
+                res,
+                t_par_r,
+                {
+                    .accept_const = false,
+                    .accept_init = true,
+                    .allow_tuple_mode = true,
+                }));
+            if (accept(t_minus_greater)) {
+                if (res.trailing_comma_parsed) {
+                    return error("trailing comma is not allowed in function signature"), Node{};
+                }
+                DEFINE(ret_type, expr(Expr_Type));
+                ASSIGN(
+                    node,
+                    m_ast.make_fn(
+                        res.fields,
+                        ret_type,
+                        m_cur_expr_kind == Expr_Regular && check(t_brace_l) ? block() : Node{},
+                        res.variadic_parsed));
+            } else {
+                if (res.tuple_parsed) {
+                    //@Todo Maybe avoid copy in case of tuple
+                    Array<Node> nodes{};
+                    defer {
+                        nodes.deinit();
+                    };
+                    nodes.reserve(res.fields.size);
+                    for (auto const &field : res.fields) {
+                        *nodes.push() = *field.type;
+                    }
+                    if (m_cur_expr_kind == Expr_Type) {
+                        ASSIGN(node, m_ast.make_tuple_type(nodes));
+                    } else {
+                        ASSIGN(
+                            node,
+                            nodes.size == 1 && !res.trailing_comma_parsed
+                                ? nodes[0]
+                                : m_ast.make_tuple(nodes));
+                    }
+                } else {
+                    ASSIGN(node, m_ast.make_packed_struct(res.fields));
+                }
+            }
         }
 
         else if (accept(t_dollar)) {

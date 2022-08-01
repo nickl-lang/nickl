@@ -50,6 +50,7 @@ struct LangAst : Ast {
     Node make_tuple_type(NodeArray nodes);
 
     Node make_id(TokenRef name);
+    Node make_intrinsic(TokenRef name);
     Node make_numeric_float(TokenRef val);
     Node make_numeric_int(TokenRef val);
     Node make_string_literal(TokenRef val);
