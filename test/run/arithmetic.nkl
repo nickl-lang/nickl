@@ -1,4 +1,4 @@
-fabs :: (float x) -> float { return x < 0.0 ? -x : x; }
+fabs :: (x: float) -> float { return x < 0.0 ? -x : x; }
 
 @assert(~5 == -6);
 @assert(~1 == -2);
@@ -39,6 +39,7 @@ fabs :: (float x) -> float { return x < 0.0 ? -x : x; }
 @assert((1 && 0) == false);
 
 a := false;
-false && (a = true);
-true || (a = true);
+toggle :: () -> void { a = !a; }
+false && toggle();
+true || toggle();
 @assert(!a);

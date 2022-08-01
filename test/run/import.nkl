@@ -1,7 +1,7 @@
 import imported;
 @println("{}", imported.MyStruct);
 
-imp :: import imported;
+imp :: import imported.nested;
 @println("{}", imp.MyStruct);
 @assert(imp == imported.MyStruct);
 
