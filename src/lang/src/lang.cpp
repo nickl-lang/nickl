@@ -7,6 +7,7 @@
 #include "nk/utils/file_utils.hpp"
 #include "nk/utils/logger.h"
 #include "nk/utils/profiler.hpp"
+#include "nkl/lang/compiler.hpp"
 #include "nkl/lang/lexer.hpp"
 #include "nkl/lang/parser.hpp"
 #include "nkl/lang/value.hpp"
@@ -70,6 +71,16 @@ int lang_runFile(string path) {
     if (!parser.parse(lexer.tokens)) {
         std::cerr << "error: " << err_sb.moveStr() << std::endl;
         return 1;
+    }
+
+    Compiler compiler{err_sb};
+    defer {
+        compiler.prog.deinit();
+    };
+
+    if (!compiler.compile(parser.root)) {
+        std::cerr << "error: " << err_sb.moveStr() << std::endl;
+        return false;
     }
 
     return 0;
