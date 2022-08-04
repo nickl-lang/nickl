@@ -190,32 +190,35 @@ struct CompileEngine {
             gen(m_builder.make_nop());
             return makeVoid();
 
-        //@Todo Add typeref
         case Node_i8:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Int8));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Int8));
         case Node_i16:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Int16));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Int16));
         case Node_i32:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Int32));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Int32));
         case Node_i64:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Int64));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Int64));
         case Node_u8:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Uint8));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Uint8));
         case Node_u16:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Uint16));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Uint16));
         case Node_u32:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Uint32));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Uint32));
         case Node_u64:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_numeric(Uint64));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Uint64));
         case Node_f32:
-            return makeValue<type_t>(
-                types::get_ptr(types::get_void()), types::get_numeric(Float32));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Float32));
         case Node_f64:
-            return makeValue<type_t>(
-                types::get_ptr(types::get_void()), types::get_numeric(Float64));
+            return makeValue<type_t>(types::get_type(), types::get_numeric(Float64));
 
+        case Node_any_t:
+            return makeValue<type_t>(types::get_type(), types::get_any());
+        case Node_bool:
+            return makeValue<type_t>(types::get_type(), types::get_bool());
+        case Node_type_t:
+            return makeValue<type_t>(types::get_type(), types::get_type());
         case Node_void:
-            return makeValue<type_t>(types::get_ptr(types::get_void()), types::get_void());
+            return makeValue<type_t>(types::get_type(), types::get_void());
 
         case Node_true:
             return makeValue<int8_t>(types::get_numeric(Int8), int8_t{1});
@@ -487,10 +490,9 @@ struct CompileEngine {
         case Node_var_decl: {
             Id name = s2id(Node_var_decl_name(node)->text);
             DEFINE(type_val, compile(Node_var_decl_type(node)));
-            //@Todo Need Type_Typeref
-            // if (type_val.type->typeclass_id != Type_Typeref) {
-            //     return error("type expected in variable declaration"), ValueInfo{};
-            // }
+            if (type_val.type->typeclass_id != Type_Type) {
+                return error("type expected in variable declaration"), ValueInfo{};
+            }
             type_t type = val_as(type_t, asValue(type_val));
             ir::Ref ref;
             if (m_is_top_level) {
