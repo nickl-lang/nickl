@@ -55,6 +55,24 @@ type_t types::get_type() {
     return res.type;
 }
 
+type_t types::get_slice(type_t target_type) {
+    EASY_FUNCTION(profiler::colors::Green200)
+
+    struct {
+        vm::FpBase base;
+        typeid_t target_type;
+    } fp = {};
+    fp.base.id = Type_Slice;
+    fp.target_type = target_type->id;
+    vm::TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
+    if (res.inserted) {
+        res.type->size = sizeof(void *);
+        res.type->alignment = alignof(void *);
+        res.type->as.ptr.target_type = target_type;
+    }
+    return res.type;
+}
+
 type_t types::get_struct(Slice<Field const> fields, size_t decl_id) {
     EASY_FUNCTION(profiler::colors::Green200)
 

@@ -48,10 +48,14 @@ struct CompileEngine {
             struct {
                 ir::Local id;
                 type_t type;
+                value_t value;
+                bool is_const;
             } local;
             struct {
                 ir::Global id;
                 type_t type;
+                value_t value;
+                bool is_const;
             } global;
             struct {
                 ir::FunctId id;
@@ -70,7 +74,6 @@ struct CompileEngine {
             } arg;
         } as;
         EDeclType decl_type;
-        bool is_const;
     };
 
     enum EValueType : uint8_t {
@@ -264,6 +267,24 @@ struct CompileEngine {
             gen(m_builder.make_mov(m_builder.makeRetRef(), makeRef(arg)));
             gen(m_builder.make_ret());
             return makeVoid();
+        }
+
+        case Node_ptr_type: {
+            DEFINE(target_type, compile(Node_unary_arg(node)));
+            if (target_type.type->typeclass_id != Type_Type) {
+                return error("type expected in pointer type"), ValueInfo{};
+            }
+            return makeValue<type_t>(
+                types::get_type(), types::get_ptr(val_as(type_t, asValue(target_type))));
+        }
+
+        case Node_slice_type: {
+            DEFINE(target_type, compile(Node_unary_arg(node)));
+            if (target_type.type->typeclass_id != Type_Type) {
+                return error("type expected in slice type"), ValueInfo{};
+            }
+            return makeValue<type_t>(
+                types::get_type(), types::get_slice(val_as(type_t, asValue(target_type))));
         }
 
         case Node_scope: {
@@ -476,8 +497,6 @@ struct CompileEngine {
                 return {{.decl = res}, {}, v_decl};
             case Decl_ExtFunct:
                 return {{.decl = res}, {}, v_decl};
-            case Decl_Intrinsic:
-                return {{.decl = res}, {}, v_decl};
             case Decl_Arg:
                 return {{.decl = res}, res.as.arg.type, v_decl};
             default:
@@ -485,6 +504,184 @@ struct CompileEngine {
                 assert(!"unreachable");
                 return {};
             }
+        }
+
+        case Node_intrinsic: {
+            string name_str = Node_token_value(node)->text;
+            Id name = s2id(name_str);
+            auto res = resolve(name);
+            switch (res.decl_type) {
+            case Decl_Undefined:
+                return error("`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
+            case Decl_Intrinsic:
+                return {{.decl = res}, {}, v_decl};
+            default:
+                LOG_ERR("unknown decl type");
+                assert(!"unreachable");
+                return {};
+            }
+        }
+
+        case Node_numeric_float: {
+            double value = 0;
+            //@Todo Replace sscanf in Compiler
+            int res = std::sscanf(Node_token_value(node)->text.data, "%lf", &value);
+            (void)res;
+            assert(res > 0 && res != EOF && "integer constant parsing failed");
+            return makeValue<double>(types::get_numeric(Float64), value);
+        }
+        case Node_numeric_int: {
+            int64_t value = 0;
+            //@Todo Replace sscanf in Compiler
+            int res = std::sscanf(Node_token_value(node)->text.data, "%ld", &value);
+            (void)res;
+            assert(res > 0 && res != EOF && "integer constant parsing failed");
+            return makeValue<int64_t>(types::get_numeric(Int64), value);
+        }
+        case Node_string_literal: {
+            string val = Node_token_value(node)->text.copy(
+                m_builder.prog.arena.alloc<char>(Node_token_value(node)->text.size));
+            type_t ar_t = types::get_array(types::get_numeric(Int8), val.size);
+            return makeValue<void const *>(types::get_ptr(ar_t), val.data);
+        }
+        case Node_escaped_string_literal: {
+            DynamicStringBuilder sb{};
+            string_unescape(sb, Node_token_value(node)->text);
+            string val = sb.moveStr(m_builder.prog.arena);
+            type_t ar_t = types::get_array(types::get_numeric(Int8), val.size);
+            return makeValue<void const *>(types::get_ptr(ar_t), val.data);
+        }
+
+        case Node_fn: {
+            auto const &params = Node_fn_params(node);
+            Array<type_t> arg_types{};
+            arg_types.reserve(params.size);
+            Array<Id> arg_names{};
+            arg_names.reserve(params.size);
+            // NOTE: arg_names is freed afters the function has been compiled
+            //@Fix if compiler encounteds an error before, arg_names leaks
+            defer {
+                arg_types.deinit();
+            };
+            for (size_t i = 0; i < params.size; i++) {
+                auto const &arg = params[i];
+                DEFINE(arg_t, compile(arg.type));
+                if (arg_t.type->typeclass_id != Type_Type) {
+                    return error("type expected in arguments"), ValueInfo{};
+                }
+                *arg_types.push() = val_as(type_t, asValue(arg_t));
+                *arg_names.push() = s2id(arg.name->text);
+            }
+            DEFINE(ret_t_info, compile(Node_fn_ret_type(node)));
+            if (ret_t_info.type->typeclass_id != Type_Type) {
+                return error("type expected in return type"), ValueInfo{};
+            }
+            // auto funct_id = m_builder.makeFunct();
+            // auto ret_t = val_as(type_t, asValue(ret_t_info));
+            // auto args_t = types::get_tuple(arg_types.slice());
+            //@Todo defineFunct commented out
+            // defineFunct(name, funct_id, ret_t, args_t);
+            //@Todo *functs.push() commented out
+            // *functs.push() = {
+            //     .name = name,
+            //     .id = funct_id,
+            //     .root = node->as.fn.body,
+            //     .ret_t = ret_t,
+            //     .args_t = args_t,
+            //     .arg_names = arg_names,
+            // };
+            //@Todo Not returning anything for Node_fn
+            return makeVoid();
+        }
+
+        case Node_call: {
+            DEFINE(lhs, compile(Node_call_lhs(node)));
+            auto const make_args = [&](type_t args_t, bool is_variadic = false) -> ir::Ref {
+                Array<type_t> arg_types{};
+                arg_types.reserve(Node_call_args(node).size);
+                defer {
+                    arg_types.deinit();
+                };
+                Array<ValueInfo> args_info{};
+                args_info.reserve(Node_call_args(node).size);
+                defer {
+                    args_info.deinit();
+                };
+                for (auto const &arg_node : Node_call_args(node)) {
+                    DEFINE(arg, compile(&arg_node));
+                    //@Incomplete Check call arg types in Compiler
+                    *args_info.push() = arg;
+                    *arg_types.push() = arg.type;
+                }
+                auto actual_args_t = types::get_tuple(arg_types);
+                auto args = m_builder.makeFrameRef(m_builder.makeLocalVar(actual_args_t));
+                for (size_t i = 0; auto const &arg : args_info) {
+                    gen(m_builder.make_mov(
+                        args.plus(
+                            types::tuple_offsetAt(actual_args_t, i),
+                            types::tuple_typeAt(actual_args_t, i)),
+                        makeRef(arg)));
+                    i++;
+                }
+                return args;
+            };
+            if (lhs.value_type != v_decl) {
+                return error("call through a pointer is not implemented"), ValueInfo{};
+            }
+            auto &decl = lhs.as.decl;
+            switch (decl.decl_type) {
+            case Decl_Local:
+            case Decl_Global:
+            case Decl_Arg:
+                return error("call through a pointer is not implemented"), ValueInfo{};
+            case Decl_Funct: {
+                auto const &f = decl.as.funct;
+                return makeInstr(
+                    m_builder.make_call({}, decl.as.funct.id, make_args(f.args_t)), f.ret_t);
+            }
+            case Decl_ExtFunct: {
+                auto const &f = m_builder.prog.exsyms[decl.as.ext_funct.id.id].as.funct;
+                return makeInstr(
+                    m_builder.make_call(
+                        {}, decl.as.ext_funct.id, make_args(f.args_t, f.is_variadic)),
+                    f.ret_t);
+            }
+            case Decl_Intrinsic: {
+                auto const &f = decl.as.intrinsic.fn->as.fn;
+                return makeInstr(
+                    m_builder.make_call(
+                        {},
+                        m_builder.makeConstRef({nullptr, decl.as.intrinsic.fn}),
+                        make_args(f.args_t)),
+                    f.ret_t);
+            }
+            case Decl_Undefined:
+            default:
+                assert(!"unreachable");
+                return {};
+            }
+            break;
+        }
+
+        case Node_define: {
+            auto const &names = Node_define_names(node);
+            if (names.size > 1) {
+                return error("multiple assignment is not implemented"), ValueInfo{};
+            }
+            Id name = s2id(names[0]->text);
+            DEFINE(rhs, compile(Node_define_value(node)));
+            ir::Ref ref;
+            if (m_is_top_level) {
+                auto var = m_builder.makeGlobalVar(rhs.type);
+                defineGlobal(name, var, rhs.type);
+                ref = m_builder.makeGlobalRef(var);
+            } else {
+                auto var = m_builder.makeLocalVar(rhs.type);
+                defineLocal(name, var, rhs.type);
+                ref = m_builder.makeFrameRef(var);
+            }
+            gen(m_builder.make_mov(ref, makeRef(rhs)));
+            return makeVoid();
         }
 
         case Node_var_decl: {
@@ -544,28 +741,27 @@ struct CompileEngine {
 
     void defineLocal(Id name, ir::Local id, type_t type) {
         LOG_DBG("defining local `%.*s`", id2s(name).size, id2s(name).data);
-        makeDecl(name) = {{.local = {id, type}}, Decl_Local, false};
+        makeDecl(name) = {{.local = {id, type}}, Decl_Local};
     }
 
     void defineGlobal(Id name, ir::Global id, type_t type) {
         LOG_DBG("defining global `%.*s`", id2s(name).size, id2s(name).data);
-        makeDecl(name) = {{.global = {id, type}}, Decl_Global, false};
+        makeDecl(name) = {{.global = {id, type}}, Decl_Global};
     }
 
     void defineFunct(Id name, ir::FunctId id, type_t ret_t, type_t args_t) {
         LOG_DBG("defining funct `%.*s`", id2s(name).size, id2s(name).data);
-        makeDecl(name) = {
-            {.funct = {.id = id, .ret_t = ret_t, .args_t = args_t}}, Decl_Funct, false};
+        makeDecl(name) = {{.funct = {.id = id, .ret_t = ret_t, .args_t = args_t}}, Decl_Funct};
     }
 
     void defineExtFunct(Id name, ir::ExtFunctId id) {
         LOG_DBG("defining ext funct `%.*s`", id2s(name).size, id2s(name).data);
-        makeDecl(name) = {{.ext_funct = {id}}, Decl_ExtFunct, false};
+        makeDecl(name) = {{.ext_funct = {id}}, Decl_ExtFunct};
     }
 
     void defineArg(Id name, size_t index, type_t type) {
         LOG_DBG("defining arg `%.*s`", id2s(name).size, id2s(name).data);
-        makeDecl(name) = {{.arg = {index, type}}, Decl_Arg, true};
+        makeDecl(name) = {{.arg = {index, type}}, Decl_Arg};
     }
 
     Decl resolve(Id name) {
@@ -581,9 +777,9 @@ struct CompileEngine {
         }
         auto found = intrinsics.find(name);
         if (found) {
-            return {{.intrinsic = {*found}}, Decl_Intrinsic, true};
+            return {{.intrinsic = {*found}}, Decl_Intrinsic};
         }
-        return {{}, Decl_Undefined, false};
+        return {{}, Decl_Undefined};
     }
 
     template <class T, class... TArgs>
@@ -648,9 +844,7 @@ struct CompileEngine {
 
     void gen(ir::Instr const &instr) {
         EASY_FUNCTION(::profiler::colors::Cyan200)
-
         LOG_DBG("gen: %s", ir::s_ir_names[instr.code]);
-
         m_builder.gen(instr);
     }
 
