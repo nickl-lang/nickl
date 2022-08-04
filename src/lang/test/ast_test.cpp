@@ -16,33 +16,33 @@ struct ast : testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        m_ast.init();
-
         id_init();
+
+        m_ast.init();
 
         m_sb.reserve(1000);
 
         t_hello = Token{cs2s("hello"), 0, 0, 0};
-        n_t_hello = Node{{{&t_hello, {}}, {}, {}}, nodeId(Node_id)};
+        n_t_hello = Node{{{&t_hello, {}}, {}, {}}, Node_id};
 
         t_x = Token{cs2s("x"), 0, 0, 0};
         t_y = Token{cs2s("y"), 0, 0, 0};
         t_z = Token{cs2s("z"), 0, 0, 0};
         t_w = Token{cs2s("w"), 0, 0, 0};
 
-        n_t_x = Node{{{&t_x, {}}, {}, {}}, nodeId(Node_id)};
-        n_t_y = Node{{{&t_y, {}}, {}, {}}, nodeId(Node_id)};
-        n_t_z = Node{{{&t_z, {}}, {}, {}}, nodeId(Node_id)};
-        n_t_w = Node{{{&t_w, {}}, {}, {}}, nodeId(Node_id)};
+        n_t_x = Node{{{&t_x, {}}, {}, {}}, Node_id};
+        n_t_y = Node{{{&t_y, {}}, {}, {}}, Node_id};
+        n_t_z = Node{{{&t_z, {}}, {}, {}}, Node_id};
+        n_t_w = Node{{{&t_w, {}}, {}, {}}, Node_id};
     }
 
     void TearDown() override {
-        id_deinit();
-
         m_ast.deinit();
         m_allocator.deinit();
 
         m_sb.deinit();
+
+        id_deinit();
     }
 
     void test(Node const &node) {
@@ -144,9 +144,9 @@ TEST_F(ast, nullary) {
 }
 
 TEST_F(ast, unary) {
-#define U(ID)                                     \
-    test(m_ast.CAT(make_, ID)(n_t_x));            \
-    EXPECT_EQ(nodeId(CAT(Node_, ID)), m_node.id); \
+#define U(ID)                             \
+    test(m_ast.CAT(make_, ID)(n_t_x));    \
+    EXPECT_EQ(CAT(Node_, ID), m_node.id); \
     EXPECT_AST(Node_unary_arg(&m_node), &n_t_x);
 #include "nkl/lang/nodes.inl"
 }
@@ -154,7 +154,7 @@ TEST_F(ast, unary) {
 TEST_F(ast, binary) {
 #define B(ID)                                     \
     test(m_ast.CAT(make_, ID)(n_t_x, n_t_y));     \
-    EXPECT_EQ(nodeId(CAT(Node_, ID)), m_node.id); \
+    EXPECT_EQ(CAT(Node_, ID), m_node.id);         \
     EXPECT_AST(Node_binary_lhs(&m_node), &n_t_x); \
     EXPECT_AST(Node_binary_rhs(&m_node), &n_t_y);
 #include "nkl/lang/nodes.inl"
@@ -162,13 +162,13 @@ TEST_F(ast, binary) {
 
 TEST_F(ast, ternary) {
     test(m_ast.make_if(n_t_x, n_t_y, n_t_z));
-    EXPECT_EQ(nodeId(Node_if), m_node.id);
+    EXPECT_EQ(Node_if, m_node.id);
     EXPECT_AST(Node_ternary_cond(&m_node), &n_t_x);
     EXPECT_AST(Node_ternary_then_clause(&m_node), &n_t_y);
     EXPECT_AST(Node_ternary_else_clause(&m_node), &n_t_z);
 
     test(m_ast.make_ternary(n_t_x, n_t_y, n_t_z));
-    EXPECT_EQ(nodeId(Node_ternary), m_node.id);
+    EXPECT_EQ(Node_ternary, m_node.id);
     EXPECT_AST(Node_ternary_cond(&m_node), &n_t_x);
     EXPECT_AST(Node_ternary_then_clause(&m_node), &n_t_y);
     EXPECT_AST(Node_ternary_else_clause(&m_node), &n_t_z);
@@ -178,45 +178,45 @@ TEST_F(ast, array) {
     ARRAY_SLICE_INIT(Node const, nodes, n_t_x, n_t_y, n_t_z);
 
     test(m_ast.make_array(nodes));
-    EXPECT_EQ(nodeId(Node_array), m_node.id);
+    EXPECT_EQ(Node_array, m_node.id);
     EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
     test(m_ast.make_block(nodes));
-    EXPECT_EQ(nodeId(Node_block), m_node.id);
+    EXPECT_EQ(Node_block, m_node.id);
     EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
     test(m_ast.make_tuple(nodes));
-    EXPECT_EQ(nodeId(Node_tuple), m_node.id);
+    EXPECT_EQ(Node_tuple, m_node.id);
     EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 
     test(m_ast.make_tuple_type(nodes));
-    EXPECT_EQ(nodeId(Node_tuple_type), m_node.id);
+    EXPECT_EQ(Node_tuple_type, m_node.id);
     EXPECT_AST_AR(Node_array_nodes(&m_node), nodes);
 }
 
 TEST_F(ast, token) {
     test(m_ast.make_id(&t_hello));
-    EXPECT_EQ(nodeId(Node_id), m_node.id);
+    EXPECT_EQ(Node_id, m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 
     test(m_ast.make_numeric_float(&t_hello));
-    EXPECT_EQ(nodeId(Node_numeric_float), m_node.id);
+    EXPECT_EQ(Node_numeric_float, m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 
     test(m_ast.make_numeric_int(&t_hello));
-    EXPECT_EQ(nodeId(Node_numeric_int), m_node.id);
+    EXPECT_EQ(Node_numeric_int, m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 
     test(m_ast.make_string_literal(&t_hello));
-    EXPECT_EQ(nodeId(Node_string_literal), m_node.id);
+    EXPECT_EQ(Node_string_literal, m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 
     test(m_ast.make_escaped_string_literal(&t_hello));
-    EXPECT_EQ(nodeId(Node_escaped_string_literal), m_node.id);
+    EXPECT_EQ(Node_escaped_string_literal, m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 
     test(m_ast.make_import_path(&t_hello));
-    EXPECT_EQ(nodeId(Node_import_path), m_node.id);
+    EXPECT_EQ(Node_import_path, m_node.id);
     EXPECT_EQ(Node_token_value(&m_node), &t_hello);
 }
 
@@ -235,104 +235,104 @@ TEST_F(ast, other) {
     ARRAY_SLICE_INIT(FieldNode const, fields, f_x, f_y);
 
     test(m_ast.make_import(tokens));
-    EXPECT_EQ(nodeId(Node_import), m_node.id);
+    EXPECT_EQ(Node_import, m_node.id);
     EXPECT_AST_TOKEN_AR(Node_import_names(&m_node), tokens);
 
     test(m_ast.make_for(&t_hello, n_t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_for), m_node.id);
+    EXPECT_EQ(Node_for, m_node.id);
     EXPECT_EQ(Node_for_it(&m_node), &t_hello);
     EXPECT_AST(Node_for_range(&m_node), &n_t_hello);
     EXPECT_AST(Node_for_body(&m_node), &n_t_hello);
 
     test(m_ast.make_for(&t_hello, n_t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_for), m_node.id);
+    EXPECT_EQ(Node_for, m_node.id);
     EXPECT_EQ(Node_for_it(&m_node), &t_hello);
     EXPECT_AST(Node_for_range(&m_node), &n_t_hello);
     EXPECT_AST(Node_for_body(&m_node), &n_t_hello);
 
     test(m_ast.make_for_by_ptr(&t_hello, n_t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_for_by_ptr), m_node.id);
+    EXPECT_EQ(Node_for_by_ptr, m_node.id);
     EXPECT_EQ(Node_for_it(&m_node), &t_hello);
     EXPECT_AST(Node_for_range(&m_node), &n_t_hello);
     EXPECT_AST(Node_for_body(&m_node), &n_t_hello);
 
     test(m_ast.make_member(n_t_hello, &t_hello));
-    EXPECT_EQ(nodeId(Node_member), m_node.id);
+    EXPECT_EQ(Node_member, m_node.id);
     EXPECT_AST(Node_member_lhs(&m_node), &n_t_hello);
     EXPECT_EQ(Node_member_name(&m_node), &t_hello);
 
     test(m_ast.make_struct(fields));
-    EXPECT_EQ(nodeId(Node_struct), m_node.id);
+    EXPECT_EQ(Node_struct, m_node.id);
     EXPECT_AST_FIELD_AR(Node_type_fields(&m_node), fields);
 
     test(m_ast.make_union(fields));
-    EXPECT_EQ(nodeId(Node_union), m_node.id);
+    EXPECT_EQ(Node_union, m_node.id);
     EXPECT_AST_FIELD_AR(Node_type_fields(&m_node), fields);
 
     test(m_ast.make_enum(fields));
-    EXPECT_EQ(nodeId(Node_enum), m_node.id);
+    EXPECT_EQ(Node_enum, m_node.id);
     EXPECT_AST_FIELD_AR(Node_type_fields(&m_node), fields);
 
     test(m_ast.make_packed_struct(fields));
-    EXPECT_EQ(nodeId(Node_packed_struct), m_node.id);
+    EXPECT_EQ(Node_packed_struct, m_node.id);
     EXPECT_AST_FIELD_AR(Node_type_fields(&m_node), fields);
 
     test(m_ast.make_fn(fields, n_t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_fn), m_node.id);
+    EXPECT_EQ(Node_fn, m_node.id);
     EXPECT_AST_FIELD_AR(Node_fn_params(&m_node), fields);
     EXPECT_AST(Node_fn_ret_type(&m_node), &n_t_hello);
     EXPECT_AST(Node_fn_body(&m_node), &n_t_hello);
 
     test(m_ast.make_fn(fields, n_t_hello, n_t_hello, true));
-    EXPECT_EQ(nodeId(Node_fn_var), m_node.id);
+    EXPECT_EQ(Node_fn_var, m_node.id);
     EXPECT_AST_FIELD_AR(Node_fn_params(&m_node), fields);
     EXPECT_AST(Node_fn_ret_type(&m_node), &n_t_hello);
     EXPECT_AST(Node_fn_body(&m_node), &n_t_hello);
 
     test(m_ast.make_tag(&t_hello, args, n_t_hello));
-    EXPECT_EQ(nodeId(Node_tag), m_node.id);
+    EXPECT_EQ(Node_tag, m_node.id);
     EXPECT_EQ(Node_tag_tag(&m_node), &t_hello);
     EXPECT_AST_NN_AR(Node_tag_args(&m_node), args);
     EXPECT_AST(Node_tag_node(&m_node), &n_t_hello);
 
     test(m_ast.make_call(n_t_hello, args));
-    EXPECT_EQ(nodeId(Node_call), m_node.id);
+    EXPECT_EQ(Node_call, m_node.id);
     EXPECT_AST(Node_call_lhs(&m_node), &n_t_hello);
     EXPECT_AST_NN_AR(Node_call_args(&m_node), args);
 
     test(m_ast.make_object_literal(n_t_hello, args));
-    EXPECT_EQ(nodeId(Node_object_literal), m_node.id);
+    EXPECT_EQ(Node_object_literal, m_node.id);
     EXPECT_AST(Node_call_lhs(&m_node), &n_t_hello);
     EXPECT_AST_NN_AR(Node_call_args(&m_node), args);
 
     test(m_ast.make_assign(nodes, n_t_hello));
-    EXPECT_EQ(nodeId(Node_assign), m_node.id);
+    EXPECT_EQ(Node_assign, m_node.id);
     EXPECT_AST_AR(Node_assign_lhs(&m_node), nodes);
     EXPECT_AST(Node_assign_value(&m_node), &n_t_hello);
 
     test(m_ast.make_define(tokens, n_t_hello));
-    EXPECT_EQ(nodeId(Node_define), m_node.id);
+    EXPECT_EQ(Node_define, m_node.id);
     EXPECT_AST_TOKEN_AR(Node_define_names(&m_node), tokens);
     EXPECT_AST(Node_define_value(&m_node), &n_t_hello);
 
     test(m_ast.make_comptime_const_def(&t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_comptime_const_def), m_node.id);
+    EXPECT_EQ(Node_comptime_const_def, m_node.id);
     EXPECT_EQ(Node_comptime_const_def_name(&m_node), &t_hello);
     EXPECT_AST(Node_comptime_const_def_value(&m_node), &n_t_hello);
 
     test(m_ast.make_tag_def(&t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_tag_def), m_node.id);
+    EXPECT_EQ(Node_tag_def, m_node.id);
     EXPECT_EQ(Node_comptime_const_def_name(&m_node), &t_hello);
     EXPECT_AST(Node_comptime_const_def_value(&m_node), &n_t_hello);
 
     test(m_ast.make_var_decl(&t_hello, n_t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_var_decl), m_node.id);
+    EXPECT_EQ(Node_var_decl, m_node.id);
     EXPECT_EQ(Node_var_decl_name(&m_node), &t_hello);
     EXPECT_AST(Node_var_decl_type(&m_node), &n_t_hello);
     EXPECT_AST(Node_var_decl_value(&m_node), &n_t_hello);
 
     test(m_ast.make_const_decl(&t_hello, n_t_hello, n_t_hello));
-    EXPECT_EQ(nodeId(Node_const_decl), m_node.id);
+    EXPECT_EQ(Node_const_decl, m_node.id);
     EXPECT_EQ(Node_var_decl_name(&m_node), &t_hello);
     EXPECT_AST(Node_var_decl_type(&m_node), &n_t_hello);
     EXPECT_AST(Node_var_decl_value(&m_node), &n_t_hello);

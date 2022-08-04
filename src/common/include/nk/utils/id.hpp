@@ -18,6 +18,8 @@ string id2s(Id id);
 Id cs2id(char const *str);
 Id s2id(string str);
 
+void defineId(Id id, string str);
+
 enum : Id {
     id_empty = 0,
 };

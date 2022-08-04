@@ -23,6 +23,52 @@ namespace {
 
 LOG_USE_SCOPE(nk::vm::ir);
 
+void _inspectRef(Program const &prog, Ref const &ref, StringBuilder &sb) {
+    if (ref.ref_type == Ref_None) {
+        sb << "{}";
+        return;
+    }
+    if (ref.is_indirect) {
+        sb << "[";
+    }
+    switch (ref.ref_type) {
+    case Ref_Frame:
+        sb << "$" << ref.value.index;
+        break;
+    case Ref_Arg:
+        sb << "$arg" << ref.value.index;
+        break;
+    case Ref_Ret:
+        sb << "$ret";
+        break;
+    case Ref_Global:
+        sb << "$global" << ref.value.index;
+        break;
+    case Ref_Const:
+        val_inspect(value_t{ref.value.data, ref.type}, sb);
+        break;
+    case Ref_Reg:
+        sb << "$r" << (char)('a' + ref.value.index);
+        break;
+    case Ref_ExtVar:
+        sb << "(" << id2s(prog.exsyms[ref.value.index].name) << ")";
+        break;
+    default:
+        break;
+    }
+    if (ref.offset) {
+        sb << "+" << ref.offset;
+    }
+    if (ref.is_indirect) {
+        sb << "]";
+    }
+    if (ref.post_offset) {
+        sb << "+" << ref.post_offset;
+    }
+    sb << ":";
+    types::inspect(ref.type, sb);
+}
+
 void _inspect(Program const &prog, StringBuilder &sb) {
     StackAllocator arena{};
     defer {
@@ -64,56 +110,10 @@ void _inspect(Program const &prog, StringBuilder &sb) {
             sb << "\n";
 
             for (auto const &instr : prog.instrs.slice(block.first_instr, block.instr_count)) {
-                auto const _inspectRef = [&](Ref const &ref) {
-                    if (ref.ref_type == Ref_None) {
-                        sb << "{}";
-                        return;
-                    }
-                    if (ref.is_indirect) {
-                        sb << "[";
-                    }
-                    switch (ref.ref_type) {
-                    case Ref_Frame:
-                        sb << "$" << ref.value.index;
-                        break;
-                    case Ref_Arg:
-                        sb << "$arg" << ref.value.index;
-                        break;
-                    case Ref_Ret:
-                        sb << "$ret";
-                        break;
-                    case Ref_Global:
-                        sb << "$global" << ref.value.index;
-                        break;
-                    case Ref_Const:
-                        val_inspect(value_t{ref.value.data, ref.type}, sb);
-                        break;
-                    case Ref_Reg:
-                        sb << "$r" << (char)('a' + ref.value.index);
-                        break;
-                    case Ref_ExtVar:
-                        sb << "(" << id2s(prog.exsyms[ref.value.index].name) << ")";
-                        break;
-                    default:
-                        break;
-                    }
-                    if (ref.offset) {
-                        sb << "+" << ref.offset;
-                    }
-                    if (ref.is_indirect) {
-                        sb << "]";
-                    }
-                    if (ref.post_offset) {
-                        sb << "+" << ref.post_offset;
-                    }
-                    sb << ":";
-                    types::inspect(ref.type, sb);
-                };
-
                 sb << "  ";
 
                 if (instr.arg[0].arg_type == Arg_Ref) {
-                    _inspectRef(instr.arg[0].as.ref);
+                    _inspectRef(prog, instr.arg[0].as.ref, sb);
                     sb << " := ";
                 }
 
@@ -127,7 +127,7 @@ void _inspect(Program const &prog, StringBuilder &sb) {
                     switch (arg.arg_type) {
                     case Arg_Ref: {
                         auto &ref = arg.as.ref;
-                        _inspectRef(ref);
+                        _inspectRef(prog, ref, sb);
                         break;
                     }
                     case Arg_BlockId:
@@ -273,6 +273,13 @@ StringBuilder &Program::inspect(StringBuilder &sb) const {
     EASY_BLOCK("ir::Program::inspect", profiler::colors::Amber200)
 
     _inspect(*this, sb);
+    return sb;
+}
+
+StringBuilder &Program::inspectRef(Ref const &ref, StringBuilder &sb) const {
+    EASY_BLOCK("ir::Program::inspectRef", profiler::colors::Amber200)
+
+    _inspectRef(*this, ref, sb);
     return sb;
 }
 

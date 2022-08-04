@@ -154,6 +154,7 @@ struct Program {
     void deinit();
 
     StringBuilder &inspect(StringBuilder &sb) const;
+    StringBuilder &inspectRef(Ref const &ref, StringBuilder &sb) const;
 };
 
 struct FunctId {
