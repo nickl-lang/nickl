@@ -46,6 +46,8 @@ struct types : vm::types {
     static type_t get_bool();
     static type_t get_type();
 
+    static type_t get_slice(type_t target_type);
+
     static type_t get_struct(Slice<Field const> fields, size_t decl_id = 0);
 
     static StringBuilder &inspect(type_t type, StringBuilder &sb);
