@@ -15,7 +15,13 @@ using vm::typeid_t;
 using vm::value_t;
 
 enum EExtTypeclassId {
-    Type_Struct = vm::Typeclass_Count,
+    Type_Ext_Marker = vm::Typeclass_Count,
+
+    Type_Any,
+    Type_Bool,
+    Type_Slice,
+    Type_Struct,
+    Type_Type,
 
     Typeclass_Count,
 };
@@ -36,6 +42,10 @@ struct Field {
 };
 
 struct types : vm::types {
+    static type_t get_any();
+    static type_t get_bool();
+    static type_t get_type();
+
     static type_t get_struct(Slice<Field const> fields, size_t decl_id = 0);
 
     static StringBuilder &inspect(type_t type, StringBuilder &sb);

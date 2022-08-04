@@ -16,6 +16,45 @@ LOG_USE_SCOPE(nkl::lang::value);
 
 } // namespace
 
+type_t types::get_any() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
+    vm::FpBase fp = {};
+    fp.id = Type_Any;
+    vm::TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
+    if (res.inserted) {
+        res.type->size = sizeof(value_t);
+        res.type->alignment = alignof(value_t);
+    }
+    return res.type;
+}
+
+type_t types::get_bool() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
+    vm::FpBase fp = {};
+    fp.id = Type_Bool;
+    vm::TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
+    if (res.inserted) {
+        res.type->size = sizeof(bool);
+        res.type->alignment = alignof(bool);
+    }
+    return res.type;
+}
+
+type_t types::get_type() {
+    EASY_FUNCTION(profiler::colors::Green200)
+
+    vm::FpBase fp = {};
+    fp.id = Type_Type;
+    vm::TypeQueryRes res = getType({(uint8_t *)&fp, sizeof(fp)});
+    if (res.inserted) {
+        res.type->size = sizeof(void *);
+        res.type->alignment = alignof(void *);
+    }
+    return res.type;
+}
+
 type_t types::get_struct(Slice<Field const> fields, size_t decl_id) {
     EASY_FUNCTION(profiler::colors::Green200)
 
