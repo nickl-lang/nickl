@@ -341,7 +341,7 @@ private:
         }
 
         //@Todo Hack for id-statements, also support multiple assignment
-        if (node.id == nodeId(Node_id)) {
+        if (node.id == Node_id) {
             if (accept(t_colon_eq)) {
                 ASSIGN(node, m_ast.make_define({&Node_token_value(&node), 1}, tuple()));
             } else if (accept(t_colon_2x)) {

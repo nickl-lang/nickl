@@ -80,7 +80,7 @@ int lang_runFile(string path) {
 
     if (!compiler.compile(parser.root)) {
         std::cerr << "error: " << err_sb.moveStr() << std::endl;
-        return false;
+        return 0; //@Todo Failing compilation is temporarily Ok
     }
 
     return 0;

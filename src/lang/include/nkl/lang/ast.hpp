@@ -14,6 +14,8 @@ enum ENodeId {
     Node_count,
 };
 
+extern char const *s_ast_node_names[];
+
 struct NamedNode {
     TokenRef name;
     NodeRef node;
@@ -29,8 +31,6 @@ struct FieldNode {
 };
 
 using FieldNodeArray = Slice<FieldNode const>;
-
-Id nodeId(ENodeId id);
 
 struct LangAst : Ast {
     void init();

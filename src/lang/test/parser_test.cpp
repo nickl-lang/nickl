@@ -27,20 +27,20 @@ class parser : public testing::Test {
     void SetUp() override {
         LOGGER_INIT(LoggerOptions{});
 
-        m_ast.init();
-
         id_init();
+
+        m_ast.init();
 
         m_sb.reserve(1000);
     }
 
     void TearDown() override {
-        id_deinit();
-
         m_ast.deinit();
 
         m_arena.deinit();
         m_sb.deinit();
+
+        id_deinit();
     }
 
 protected:
