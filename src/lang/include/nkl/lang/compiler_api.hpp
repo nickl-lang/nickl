@@ -6,13 +6,11 @@
 
 namespace nkl {
 
-struct CompilerContext;
+using namespace nk;
 
-extern "C" CompilerContext *nk_compiler_getInstance();
-
-extern "C" bool nk_compiler_defineVar(CompilerContext *c, string name, type_t type);
-extern "C" bool nk_compiler_defineVarInit(CompilerContext *c, string name, value_t value);
-extern "C" bool nk_compiler_defineConst(CompilerContext *c, string name, value_t value);
+extern "C" bool nk_compiler_defineVar(string name, type_t type);
+extern "C" bool nk_compiler_defineVarInit(string name, value_t value);
+extern "C" bool nk_compiler_defineConst(string name, value_t value);
 
 } // namespace nkl
 

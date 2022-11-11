@@ -10,7 +10,7 @@ using namespace nk;
 void lang_init();
 void lang_deinit();
 
-int lang_runFile(string path);
+int lang_runFile(string filename);
 
 } // namespace nkl
 
