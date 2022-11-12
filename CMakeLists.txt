@@ -1,12 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
 project(nickl)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
-
 option(BUILD_TESTS "Enable testing" OFF)
 option(ENABLE_LOGGING "Enable logging" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 option(ENABLE_PROFILING "Enable profiling" OFF)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+    ${PROJECT_SOURCE_DIR}/cmake
+    ${PROJECT_SOURCE_DIR}/etc/buildenv/${PLATFORM}/cmake
+    )
+
+include(Dependencies)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,13 +33,12 @@ set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic")
 if(ENABLE_ASAN)
     set(FLAGS "${FLAGS} -g -fsanitize=address -fsanitize=leak")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS} ${PLATFORM_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_FLAGS}")
 
 if(BUILD_TESTS)
     enable_testing()
     include(Test)
-    find_package(GTest REQUIRED)
 endif()
 
 if(ENABLE_PROFILING)

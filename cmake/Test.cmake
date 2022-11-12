@@ -1,3 +1,5 @@
+include(GoogleTest)
+
 function(def_test)
     set(options)
     set(oneValueArgs GROUP NAME TARGET)
@@ -30,12 +32,13 @@ function(def_test)
         )
 
     target_link_libraries(${TARGET_NAME}
-        GTest::GTest
-        GTest::Main
+        Gtest
+        Gtest_Main
+        ${Threads_LIBRARY}
         ${ARG_LINK}
         )
 
-    gtest_discover_tests(${TARGET_NAME})
+    gtest_add_tests(${TARGET_NAME} "" AUTO)
 endfunction()
 
 function(def_run_test)

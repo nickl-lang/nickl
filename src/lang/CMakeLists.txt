@@ -1,6 +1,6 @@
 set(LIB nkl_lang)
 
-add_library(${LIB} SHARED
+add_library(${LIB}
     src/ast.cpp
     src/compiler.cpp
     src/lang.cpp

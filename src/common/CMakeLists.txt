@@ -24,7 +24,7 @@ if(ENABLE_LOGGING)
         )
 
     target_link_libraries(${LIB}
-        PUBLIC pthread
+        ${Threads_LIBRARY}
         )
 endif()
 

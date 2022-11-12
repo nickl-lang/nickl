@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <threads.h>
 #include <unistd.h>
+// #include <threads.h>
 
 int fileno(FILE *);
 
@@ -51,10 +51,10 @@ char const *c_env_log_level_map[] = {
 };
 
 typedef struct {
-    struct timespec start_time;
+    // struct timespec start_time;
     ELogLevel log_level;
     EColorMode color_mode;
-    mtx_t mutex;
+    // mtx_t mutex;
     size_t msg_count;
     bool initialized;
 } LoggerState;
@@ -81,12 +81,13 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
     bool const to_color = s_logger.color_mode == Log_Color_Always ||
                           (s_logger.color_mode == Log_Color_Auto && isatty(fileno(stdout)));
 
-    struct timespec now;
-    timespec_get(&now, TIME_UTC);
-    double ts =
-        now.tv_sec - s_logger.start_time.tv_sec + (now.tv_nsec - s_logger.start_time.tv_nsec) / 1e9;
+    // struct timespec now;
+    // timespec_get(&now, TIME_UTC);
+    // double ts = now.tv_sec - s_logger.start_time.tv_sec + (now.tv_nsec -
+    // s_logger.start_time.tv_nsec) / 1e9;
+    double ts = 0;
 
-    mtx_lock(&s_logger.mutex);
+    // mtx_lock(&s_logger.mutex);
 
     if (to_color) {
         fprintf(stderr, COLOR_NONE "%s", c_color_map[log_level]);
@@ -106,18 +107,18 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
 
     fputc('\n', stderr);
 
-    mtx_unlock(&s_logger.mutex);
+    // mtx_unlock(&s_logger.mutex);
 }
 
 void _logger_init(LoggerOptions opt) {
     s_logger = (LoggerState){0};
 
-    timespec_get(&s_logger.start_time, TIME_UTC);
+    // timespec_get(&s_logger.start_time, TIME_UTC);
 
     s_logger.log_level = opt.log_level;
     s_logger.color_mode = opt.color_mode;
 
-    mtx_init(&s_logger.mutex, mtx_plain);
+    // mtx_init(&s_logger.mutex, mtx_plain);
 
     s_logger.initialized = true;
 }

@@ -17,7 +17,7 @@ class static_allocator : public testing::Test {
     }
 
 protected:
-    ARRAY_SLICE(u_int8_t, m_dst, 100);
+    ARRAY_SLICE(uint8_t, m_dst, 100);
     StaticAllocator m_allocator{m_dst};
 };
 
