@@ -1,8 +1,7 @@
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    g++-mingw-w64-x86-64 \
-    mingw-w64-x86-64-dev \
+RUN apk add --no-cache \
+    mingw-w64-gcc \
     zstd \
- && rm -rf /var/lib/apt/lists/*
+    ;
 
 ADD mingw64/scripts/install_mingw64_package.sh /root
 

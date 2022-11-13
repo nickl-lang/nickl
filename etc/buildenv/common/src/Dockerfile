@@ -1,34 +1,33 @@
-FROM ubuntu:20.04
+FROM alpine:edge
 
-ARG DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+RUN apk add --no-cache \
     ca-certificates \
-    clang \
-    clang-format \
+    clang15-extra-tools \
     cmake \
     curl \
     gdb \
     git \
     less \
-    libcurl4-openssl-dev \
-    locales \
-    ninja-build \
+    libcurl \
+    ninja \
+    openssh \
     openssl \
-    pkg-config \
-    ssh \
+    pkgconf \
     sudo \
     tmux \
     wget \
     zsh \
- && rm -rf /var/lib/apt/lists/*
+    ;
+# TODO
+    # locales \
+    # build-essential \
 
 RUN echo "ALL ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/user \
  && chmod 0440 /etc/sudoers.d/user \
  ;
 
-RUN locale-gen en_US.UTF-8
+# TODO
+# RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LC_ALL C
 

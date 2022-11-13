@@ -1,8 +1,10 @@
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apk add --no-cache \
+    debootstrap \
+    g++ \
+    gmock \
+    gtest-dev \
     libffi-dev \
-    libgmock-dev \
-    libgtest-dev \
- && rm -rf /var/lib/apt/lists/*
+    ;
 
 RUN git clone https://github.com/yse/easy_profiler.git \
  && mkdir easy_profiler/build \

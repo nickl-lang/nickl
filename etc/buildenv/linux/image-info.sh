@@ -1,1 +1,1 @@
-IMAGE=buildenv-nickl-linux:0.4
+IMAGE=buildenv-nickl-linux:0.5

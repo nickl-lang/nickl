@@ -37,7 +37,8 @@ install(
         ${Ffi_LIBRARY}
         ${Gtest_LIBRARY}
         ${Gtest_Main_LIBRARY}
+        /usr/x86_64-w64-mingw32/bin/libgcc_s_seh-1.dll
+        /usr/x86_64-w64-mingw32/bin/libstdc++-6.dll
+        /usr/x86_64-w64-mingw32/bin/libwinpthread-1.dll
     DESTINATION bin
     )
-
-set(PLATFORM_FLAGS "-static-libstdc++ -static-libgcc -static")
