@@ -8,8 +8,6 @@
 extern "C" {
 #endif
 
-struct NkType;
-
 typedef struct NkType const *nk_type_t;
 
 typedef size_t nk_typeid_t;

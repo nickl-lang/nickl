@@ -1,5 +1,6 @@
-add_subdirectory(common)
+# add_subdirectory(common)
 # add_subdirectory(core)
 # add_subdirectory(lang)
 # add_subdirectory(vm)
+add_subdirectory(new_common)
 add_subdirectory(new_vm)

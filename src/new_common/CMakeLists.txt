@@ -1,0 +1,25 @@
+set(LIB nk_new_common)
+
+add_library(${LIB}
+    src/allocator.c
+    src/logger.c
+    src/string_builder.c
+    )
+
+target_include_directories(${LIB}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+if(ENABLE_LOGGING)
+    target_compile_definitions(${LIB}
+        PUBLIC ENABLE_LOGGING
+        )
+
+    target_link_libraries(${LIB}
+        PUBLIC pthread
+        )
+endif()
+
+if(CMAKE_TESTING_ENABLED)
+    add_subdirectory(test)
+endif()
