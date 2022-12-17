@@ -7,9 +7,9 @@
 
 #include "nk/common/string.h"
 
-std::string_view std_view(string str);
-std::string std_str(string str);
+std::string_view std_view(nkstr str);
+std::string std_str(nkstr str);
 
-std::ostream &operator<<(std::ostream &stream, string str);
+std::ostream &operator<<(std::ostream &stream, nkstr str);
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_HPP

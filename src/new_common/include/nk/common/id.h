@@ -12,13 +12,13 @@ extern "C" {
 
 typedef uint64_t Id;
 
-string nkid2s(Id id);
+nkstr nkid2s(Id id);
 char const *nkid2cs(Id id);
 
-Id s2nkid(string str);
+Id s2nkid(nkstr str);
 Id cs2nkid(char const *str);
 
-void nkid_define(Id id, string str);
+void nkid_define(Id id, nkstr str);
 
 enum {
     id_empty = 0,

@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
 
 class string_builder : public testing::Test {
@@ -23,7 +24,7 @@ TEST_F(string_builder, basic) {
     nksb_printf(sb, "Hello, %s!", "World");
     auto str = nksb_concat(sb);
 
-    EXPECT_STREQ(str, "Hello, World!");
+    EXPECT_EQ(std_view(str), "Hello, World!");
 }
 
 TEST_F(string_builder, counting) {
@@ -42,5 +43,5 @@ TEST_F(string_builder, counting) {
 
     auto str = nksb_concat(sb);
 
-    EXPECT_STREQ(str, "[0123456789]");
+    EXPECT_EQ(std_view(str), "[0123456789]");
 }

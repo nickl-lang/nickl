@@ -66,6 +66,6 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
     return printf_res;
 }
 
-char const *nksb_concat(NkStringBuilder sb) {
-    return sb->data;
+nkstr nksb_concat(NkStringBuilder sb) {
+    return {sb->data, sb->size};
 }

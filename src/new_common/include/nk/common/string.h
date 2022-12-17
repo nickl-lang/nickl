@@ -11,9 +11,9 @@ extern "C" {
 typedef struct {
     char const *data;
     size_t size;
-} string;
+} nkstr;
 
-string cs2s(char const *str);
+nkstr cs2s(char const *str);
 
 #ifdef __cplusplus
 }
