@@ -19,8 +19,8 @@ TEST_F(id, forward) {
     static constexpr char const *c_str_a = "String A.";
     static constexpr char const *c_str_b = "String B.";
 
-    Id const id_a = cs2nkid(c_str_a);
-    Id const id_b = cs2nkid(c_str_b);
+    nkid const id_a = cs2nkid(c_str_a);
+    nkid const id_b = cs2nkid(c_str_b);
 
     EXPECT_EQ(id_a, cs2nkid(c_str_a));
     EXPECT_EQ(id_b, cs2nkid(c_str_b));
@@ -32,8 +32,8 @@ TEST_F(id, backward) {
     static constexpr char const *c_str_a = "This is a first string.";
     static constexpr char const *c_str_b = "This is a second string.";
 
-    Id const id_a = cs2nkid(c_str_a);
-    Id const id_b = cs2nkid(c_str_b);
+    nkid const id_a = cs2nkid(c_str_a);
+    nkid const id_b = cs2nkid(c_str_b);
 
     EXPECT_EQ(c_str_a, std_view(nkid2s(id_a)));
     EXPECT_EQ(c_str_b, std_view(nkid2s(id_b)));

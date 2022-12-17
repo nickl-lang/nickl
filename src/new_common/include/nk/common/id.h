@@ -10,18 +10,18 @@
 extern "C" {
 #endif
 
-typedef uint64_t Id;
+typedef uint64_t nkid;
 
-nkstr nkid2s(Id id);
-char const *nkid2cs(Id id);
+nkstr nkid2s(nkid id);
+char const *nkid2cs(nkid id);
 
-Id s2nkid(nkstr str);
-Id cs2nkid(char const *str);
+nkid s2nkid(nkstr str);
+nkid cs2nkid(char const *str);
 
-void nkid_define(Id id, nkstr str);
+void nkid_define(nkid id, nkstr str);
 
 enum {
-    id_empty = 0,
+    nkid_empty = 0,
 };
 
 #ifdef __cplusplus

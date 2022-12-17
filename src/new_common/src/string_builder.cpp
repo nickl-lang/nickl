@@ -5,6 +5,8 @@
 #include <cstring>
 #include <new>
 
+#include "nk/common/allocator.h"
+
 typedef struct NkStringBuilder_T {
     NkAllocator *alloc;
     char *data;
