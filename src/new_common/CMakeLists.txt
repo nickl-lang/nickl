@@ -1,7 +1,7 @@
 set(LIB nk_new_common)
 
 add_library(${LIB}
-    src/allocator.c
+    src/allocator.cpp
     src/id.cpp
     src/logger.c
     src/string.cpp
