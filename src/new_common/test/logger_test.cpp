@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-LOG_USE_SCOPE(test);
+NK_LOG_USE_SCOPE(test);
 
 static constexpr std::size_t c_buffer_size = 4096;
 
@@ -19,7 +19,7 @@ class logger : public testing::Test {
         // Assign test msg buffer to STDERR
         setvbuf(stderr, m_msg_buffer, _IOFBF, c_buffer_size);
 
-        LOGGER_INIT(LoggerOptions{Log_Trace, Log_Color_Auto});
+        NK_LOGGER_INIT(NkLoggerOptions{NkLog_Trace, NkLog_Color_Auto});
     }
 
     void TearDown() override {
@@ -28,7 +28,7 @@ class logger : public testing::Test {
     }
 
 protected:
-    void writeTestMsg(ELogLevel level, char const *msg) {
+    void writeTestMsg(NkLogLevel level, char const *msg) {
         // Flush any existing data
         std::fflush(stderr);
         std::fflush(stdout);
@@ -45,7 +45,7 @@ protected:
         dummy = std::freopen("/dev/null", "a", stdout);
         (void)dummy;
 
-        _LOG_CHK(level, msg);
+        _NK_LOG_CHK(level, msg);
 
         // Flush any test msg data
         std::fflush(stderr);
@@ -97,36 +97,36 @@ protected: // fields
     }
 
 TEST_F(logger, write) {
-    writeTestMsg(Log_Error, "This is error log");
+    writeTestMsg(NkLog_Error, "This is error log");
     EXPECT_LOG_MSG("0001", "error", "test", " This is error log\n");
 
-    writeTestMsg(Log_Warning, "This is warning log");
+    writeTestMsg(NkLog_Warning, "This is warning log");
     EXPECT_LOG_MSG("0002", "warning", "test", " This is warning log\n");
 
-    writeTestMsg(Log_Info, "This is info log");
+    writeTestMsg(NkLog_Info, "This is info log");
     EXPECT_LOG_MSG("0003", "info", "test", " This is info log\n");
 
-    writeTestMsg(Log_Debug, "This is debug log");
+    writeTestMsg(NkLog_Debug, "This is debug log");
     EXPECT_LOG_MSG("0004", "debug", "test", " This is debug log\n");
 
-    writeTestMsg(Log_Trace, "This is trace log");
+    writeTestMsg(NkLog_Trace, "This is trace log");
     EXPECT_LOG_MSG("0005", "trace", "test", " This is trace log\n");
 }
 
 TEST_F(logger, complex) {
-    LOG_INF("float=%lf, int=%i", 3.14, 42);
+    NK_LOG_INF("float=%lf, int=%i", 3.14, 42);
 }
 
-TEST_F(logger, theads) {
+TEST_F(logger, threads) {
     bool stop = false;
     std::thread t1{[&]() {
         while (!stop) {
-            LOG_TRC("This is thread 1!");
+            NK_LOG_TRC("This is thread 1!");
         }
     }};
     std::thread t2{[&]() {
         while (!stop) {
-            LOG_DBG("This is thread 2!");
+            NK_LOG_DBG("This is thread 2!");
         }
     }};
     std::this_thread::sleep_for(std::chrono::milliseconds{1});

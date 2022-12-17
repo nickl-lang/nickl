@@ -23,7 +23,7 @@ int fileno(FILE *);
 // #define COLOR_CYAN "\x1b[1;36m"
 // #define COLOR_WHITE "\x1b[1;37m"
 
-char const *c_color_map[] = {
+static char const *c_color_map[] = {
     NULL,          // None
     COLOR_RED,     // Error
     COLOR_YELLOW,  // Warning
@@ -32,7 +32,7 @@ char const *c_color_map[] = {
     COLOR_MAGENTA, // Trace
 };
 
-char const *c_log_level_map[] = {
+static char const *c_log_level_map[] = {
     NULL,
     "error",
     "warning",
@@ -41,7 +41,7 @@ char const *c_log_level_map[] = {
     "trace",
 };
 
-char const *c_env_log_level_map[] = {
+static char const *c_env_log_level_map[] = {
     "none",
     "error",
     "warning",
@@ -52,8 +52,8 @@ char const *c_env_log_level_map[] = {
 
 typedef struct {
     struct timespec start_time;
-    ELogLevel log_level;
-    EColorMode color_mode;
+    NkLogLevel log_level;
+    NkColorMode color_mode;
     mtx_t mutex;
     size_t msg_count;
     bool initialized;
@@ -61,25 +61,25 @@ typedef struct {
 
 static LoggerState s_logger;
 
-ELogLevel parseEnvLogLevel(char const *env_log_level) {
+static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
     size_t i = 0;
-    for (; i <= Log_Trace; i++) {
+    for (; i <= NkLog_Trace; i++) {
         if (strcmp(env_log_level, c_env_log_level_map[i]) == 0) {
-            return (ELogLevel)i;
+            return (NkLogLevel)i;
         }
     }
-    return Log_None;
+    return NkLog_None;
 }
 
-bool _logger_check(ELogLevel log_level) {
+bool _nk_loggerCheck(NkLogLevel log_level) {
     char const *env_log_level = getenv(ENV_VAR);
     return s_logger.initialized &&
            log_level <= (env_log_level ? parseEnvLogLevel(env_log_level) : s_logger.log_level);
 }
 
-void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...) {
-    bool const to_color = s_logger.color_mode == Log_Color_Always ||
-                          (s_logger.color_mode == Log_Color_Auto && isatty(fileno(stdout)));
+void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
+    bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
+                          (s_logger.color_mode == NkLog_Color_Auto && isatty(fileno(stdout)));
 
     struct timespec now;
     timespec_get(&now, TIME_UTC);
@@ -109,7 +109,7 @@ void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...)
     mtx_unlock(&s_logger.mutex);
 }
 
-void _logger_init(LoggerOptions opt) {
+void _nk_loggerInit(NkLoggerOptions opt) {
     s_logger = (LoggerState){0};
 
     timespec_get(&s_logger.start_time, TIME_UTC);

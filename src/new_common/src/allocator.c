@@ -2,6 +2,9 @@
 
 #include <stdlib.h>
 
+void *nk_allocate(NkAllocator *alloc, size_t size);
+void nk_free(NkAllocator *alloc, void *ptr);
+
 static void *defaultAllocate(NkAllocator *alloc, size_t size) {
     (void)alloc;
     return malloc(size);

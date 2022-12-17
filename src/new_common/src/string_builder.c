@@ -4,13 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nk/common/allocator.h"
-
-struct NkStringBuilder_T {
+typedef struct NkStringBuilder_T {
     NkAllocator *alloc;
     char *data;
     size_t size;
-};
+} NkStringBuilder_T;
 
 NkStringBuilder nksb_create() {
     return nksb_create_alloc(nk_default_allocator);
@@ -18,7 +16,7 @@ NkStringBuilder nksb_create() {
 
 NkStringBuilder nksb_create_alloc(NkAllocator *alloc) {
     NkStringBuilder sb = (NkStringBuilder)nk_allocate(alloc, sizeof(*sb));
-    *sb = (struct NkStringBuilder_T){
+    *sb = (NkStringBuilder_T){
         .alloc = alloc,
         .data = nk_allocate(alloc, 1),
         .size = 0,
@@ -30,7 +28,6 @@ NkStringBuilder nksb_create_alloc(NkAllocator *alloc) {
 void nksb_free(NkStringBuilder sb) {
     nk_free(sb->alloc, sb->data);
     nk_free(sb->alloc, sb);
-    *sb = (struct NkStringBuilder_T){0};
 }
 
 int nksb_printf(NkStringBuilder sb, char const *fmt, ...) {
@@ -42,6 +39,7 @@ int nksb_printf(NkStringBuilder sb, char const *fmt, ...) {
     return res;
 }
 
+// TODO Performance. Incredibly inefficient nksb_vprintf
 int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
     va_list ap_copy;
 
@@ -51,7 +49,7 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
 
     size_t const new_size = sb->size + printf_res;
 
-    char *new_data = (char *)nk_allocate(sb->alloc, new_size);
+    char *new_data = (char *)nk_allocate(sb->alloc, new_size + 1);
     memcpy(new_data, sb->data, sb->size);
 
     va_copy(ap_copy, ap);

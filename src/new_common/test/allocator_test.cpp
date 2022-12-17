@@ -13,4 +13,7 @@ protected:
 };
 
 TEST_F(allocator, basic) {
+    auto ptr = (int *)nk_allocate(nk_default_allocator, sizeof(int));
+    *ptr = 42;
+    nk_free(nk_default_allocator, ptr);
 }

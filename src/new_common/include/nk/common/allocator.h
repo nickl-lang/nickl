@@ -17,11 +17,11 @@ struct NkAllocator {
     NkFreeFunc free;
 };
 
-static inline void *nk_allocate(NkAllocator *alloc, size_t size) {
+inline void *nk_allocate(NkAllocator *alloc, size_t size) {
     return alloc->allocate(alloc, size);
 }
 
-static inline void nk_free(NkAllocator *alloc, void *ptr) {
+inline void nk_free(NkAllocator *alloc, void *ptr) {
     alloc->free(alloc, ptr);
 }
 

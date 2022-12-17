@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "nk/common/string_builder.h"
 #include "nk/vm/common.h"
 
 #ifdef __cplusplus
@@ -146,7 +147,9 @@ NkIrInstr nkir_make_call_indir(NkIrProg p, NkIrRefPtr dst, NkIrRefPtr funct, NkI
 
 void nkir_gen(NkIrProg p, NkIrInstrPtr instr);
 
-void nkir_invoke(NkIrProg p, NkIrFunct self, nk_value_t ret, nk_value_t args);
+void nkir_invoke(NkIrProg p, NkIrFunct fn, nk_value_t ret, nk_value_t args);
+
+void nkir_inspect(NkIrProg p, NkStringBuilder sb);
 
 #ifdef __cplusplus
 }

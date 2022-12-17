@@ -10,57 +10,57 @@ extern "C" {
 #ifdef ENABLE_LOGGING
 
 typedef enum {
-    Log_None = 0,
-    Log_Error,
-    Log_Warning,
-    Log_Info,
-    Log_Debug,
-    Log_Trace,
-} ELogLevel;
+    NkLog_None = 0,
+    NkLog_Error,
+    NkLog_Warning,
+    NkLog_Info,
+    NkLog_Debug,
+    NkLog_Trace,
+} NkLogLevel;
 
 typedef enum {
-    Log_Color_Auto = 0,
-    Log_Color_Always,
-    Log_Color_Never,
-} EColorMode;
+    NkLog_Color_Auto = 0,
+    NkLog_Color_Always,
+    NkLog_Color_Never,
+} NkColorMode;
 
 typedef struct {
-    ELogLevel log_level;
-    EColorMode color_mode;
-} LoggerOptions;
+    NkLogLevel log_level;
+    NkColorMode color_mode;
+} NkLoggerOptions;
 
-bool _logger_check(ELogLevel log_level);
-void _logger_write(ELogLevel log_level, char const *scope, char const *fmt, ...);
+bool _nk_loggerCheck(NkLogLevel log_level);
+void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
-void _logger_init(LoggerOptions opt);
+void _nk_loggerInit(NkLoggerOptions opt);
 
-#define _LOG_CHK(LEVEL, ...)                               \
-    if (_logger_check(LEVEL)) {                            \
-        _logger_write(LEVEL, __logger_scope, __VA_ARGS__); \
-    } else                                                 \
+#define _NK_LOG_CHK(LEVEL, ...)                                 \
+    if (_nk_loggerCheck(LEVEL)) {                               \
+        _nk_loggerWrite(LEVEL, __nk_logger_scope, __VA_ARGS__); \
+    } else                                                      \
         (void)0
 
-#define LOGGER_INIT(...) _logger_init(__VA_ARGS__)
+#define NK_LOGGER_INIT(...) _nk_loggerInit(__VA_ARGS__)
 
-#define LOG_USE_SCOPE(NAME) static char const *__logger_scope = #NAME
+#define NK_LOG_USE_SCOPE(NAME) static char const *__nk_logger_scope = #NAME
 
-#define LOG_ERR(...) _LOG_CHK(Log_Error, __VA_ARGS__)
-#define LOG_WRN(...) _LOG_CHK(Log_Warning, __VA_ARGS__)
-#define LOG_INF(...) _LOG_CHK(Log_Info, __VA_ARGS__)
-#define LOG_DBG(...) _LOG_CHK(Log_Debug, __VA_ARGS__)
-#define LOG_TRC(...) _LOG_CHK(Log_Trace, __VA_ARGS__)
+#define NK_LOG_ERR(...) _NK_LOG_CHK(NkLog_Error, __VA_ARGS__)
+#define NK_LOG_WRN(...) _NK_LOG_CHK(NkLog_Warning, __VA_ARGS__)
+#define NK_LOG_INF(...) _NK_LOG_CHK(NkLog_Info, __VA_ARGS__)
+#define NK_LOG_DBG(...) _NK_LOG_CHK(NkLog_Debug, __VA_ARGS__)
+#define NK_LOG_TRC(...) _NK_LOG_CHK(NkLog_Trace, __VA_ARGS__)
 
 #else // ENABLE_LOGGING
 
-#define LOGGER_INIT(...)
+#define NK_LOGGER_INIT(...)
 
-#define LOG_USE_SCOPE(...)
+#define NK_LOG_USE_SCOPE(...)
 
-#define LOG_ERR(...)
-#define LOG_WRN(...)
-#define LOG_INF(...)
-#define LOG_DBG(...)
-#define LOG_TRC(...)
+#define NK_LOG_ERR(...)
+#define NK_LOG_WRN(...)
+#define NK_LOG_INF(...)
+#define NK_LOG_DBG(...)
+#define NK_LOG_TRC(...)
 
 #endif // ENABLE_LOGGING
 
