@@ -31,7 +31,7 @@ typedef enum {
     nkir_count,
 } NkIrCode;
 
-extern char const *s_ir_names[];
+extern char const *s_nk_ir_names[];
 
 typedef enum {
     NkIrRef_None,
@@ -58,12 +58,6 @@ typedef struct {
 } NkIrRef;
 
 typedef NkIrRef const *NkIrRefPtr;
-
-void nkir_ref_plus(NkIrRef *ref, size_t offset);
-void nkir_ref_plusAs(NkIrRef *ref, size_t offset, nk_type_t type);
-void nkir_ref_deref(NkIrRef *ref);
-void nkir_ref_derefAs(NkIrRef *ref, nk_type_t type);
-void nkir_ref_as(NkIrRef *ref, nk_type_t type);
 
 typedef enum {
     NkIrArg_None,
@@ -97,7 +91,7 @@ DEFINE_ID_TYPE(NkIrGlobalVar);
 DEFINE_ID_TYPE(NkIrExtVar);
 DEFINE_ID_TYPE(NkIrExtFunct);
 
-typedef struct NkIrProgram_T *NkIrProg;
+typedef struct NkIrProg_T *NkIrProg;
 
 NkIrProg nkir_createProgram();
 void nkir_deinitProgram(NkIrProg p);

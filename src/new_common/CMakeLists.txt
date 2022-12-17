@@ -2,8 +2,10 @@ set(LIB nk_new_common)
 
 add_library(${LIB}
     src/allocator.c
+    src/id.cpp
     src/logger.c
-    src/string_builder.c
+    src/string.cpp
+    src/string_builder.cpp
     )
 
 target_include_directories(${LIB}

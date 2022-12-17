@@ -1,24 +1,31 @@
 #include "nk/vm/ir.h"
 
-void nkir_ref_plus(NkIrRef *ref, size_t offset) {
-}
+#include <new>
 
-void nkir_ref_plusAs(NkIrRef *ref, size_t offset, nk_type_t type) {
-}
+#include "nk/common/allocator.h"
+#include "nk/common/id.h"
+#include "nk/common/logger.h"
 
-void nkir_ref_deref(NkIrRef *ref) {
-}
+char const *s_nk_ir_names[] = {
+#define X(NAME) #NAME,
+#include "nk/vm/ir.inl"
+};
 
-void nkir_ref_derefAs(NkIrRef *ref, nk_type_t type) {
-}
+struct Funct {};
 
-void nkir_ref_as(NkIrRef *ref, nk_type_t type) {
-}
+struct Block {};
+
+struct ShObj {};
+
+struct NkIrProg_T {};
 
 NkIrProg nkir_createProgram() {
+    return new (nk_allocate(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{};
 }
 
 void nkir_deinitProgram(NkIrProg p) {
+    p->~NkIrProg_T();
+    nk_free(nk_default_allocator, p);
 }
 
 NkIrFunct nkir_makeFunct(NkIrProg p) {

@@ -1,8 +1,9 @@
 #include "nk/common/string_builder.h"
 
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
+#include <new>
 
 typedef struct NkStringBuilder_T {
     NkAllocator *alloc;
@@ -15,10 +16,9 @@ NkStringBuilder nksb_create() {
 }
 
 NkStringBuilder nksb_create_alloc(NkAllocator *alloc) {
-    NkStringBuilder sb = (NkStringBuilder)nk_allocate(alloc, sizeof(*sb));
-    *sb = (NkStringBuilder_T){
+    NkStringBuilder sb = new (nk_allocate(alloc, sizeof(*sb))) NkStringBuilder_T{
         .alloc = alloc,
-        .data = nk_allocate(alloc, 1),
+        .data = (char *)nk_allocate(alloc, 1),
         .size = 0,
     };
     sb->data[0] = 0;
@@ -44,16 +44,16 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
     va_list ap_copy;
 
     va_copy(ap_copy, ap);
-    int const printf_res = vsnprintf(NULL, 0, fmt, ap_copy);
+    int const printf_res = std::vsnprintf(NULL, 0, fmt, ap_copy);
     va_end(ap_copy);
 
     size_t const new_size = sb->size + printf_res;
 
     char *new_data = (char *)nk_allocate(sb->alloc, new_size + 1);
-    memcpy(new_data, sb->data, sb->size);
+    std::memcpy(new_data, sb->data, sb->size);
 
     va_copy(ap_copy, ap);
-    vsnprintf(new_data + sb->size, printf_res + 1, fmt, ap_copy);
+    std::vsnprintf(new_data + sb->size, printf_res + 1, fmt, ap_copy);
     va_end(ap_copy);
 
     new_data[new_size] = 0;
