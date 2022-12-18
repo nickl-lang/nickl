@@ -27,6 +27,9 @@ inline void nk_free(NkAllocator *alloc, void *ptr) {
 
 extern NkAllocator *nk_default_allocator;
 
+NkAllocator *nk_create_arena();
+void nk_free_arena(NkAllocator *alloc);
+
 #ifdef __cplusplus
 }
 #endif

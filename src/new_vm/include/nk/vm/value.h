@@ -123,6 +123,12 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb);
 
 void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
+size_t nkval_array_size(nkval_t self);
+nkval_t nkval_array_at(nkval_t self, size_t i);
+
+size_t nkval_tuple_size(nkval_t self);
+nkval_t nkval_tuple_at(nkval_t self, size_t i);
+
 inline nkval_t nkval_undefined() {
     return nkval_t{};
 }

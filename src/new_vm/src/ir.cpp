@@ -12,6 +12,7 @@
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/vm/common.h"
+#include "nk/vm/value.h"
 
 char const *s_nk_ir_names[] = {
 #define X(NAME) #NAME,
@@ -56,6 +57,10 @@ NkIrArg _arg(NkIrFunctId funct) {
 
 NkIrArg _arg(NkIrExtFunctId funct) {
     return {{.id = funct.id}, NkIrArg_ExtFunctId};
+}
+
+NkIrArg _arg(NkNumericValueType value_type) {
+    return {{.id = value_type}, NkIrArg_NumValType};
 }
 
 } // namespace
@@ -116,6 +121,8 @@ void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
     auto &block = p->blocks[block_id.id];
     block.name = std_str(name);
 
+    p->cur_funct->blocks.emplace_back(block_id);
+
     nkir_activateBlock(p, block_id);
 }
 
@@ -167,12 +174,13 @@ NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
 
 NkIrRef nkir_makeArgRef(NkIrProg p, size_t index) {
     assert(p->cur_funct && "no current function");
-    // TODO assert(index < types::tuple_size(_cur_funct->args_t) && "arg index out of range");
+    assert(
+        index < p->cur_funct->fn_t->as.fn.args_t->as.tuple.elems.size && "arg index out of range");
     return {
         .index = index,
         .offset = 0,
         .post_offset = 0,
-        .type = 0, // TODO types::tuple_typeAt(_cur_funct->args_t, index),
+        .type = p->cur_funct->fn_t->as.fn.args_t->as.tuple.elems.data[index].type,
         .ref_type = NkIrRef_Arg,
         .is_indirect = false,
     };
@@ -184,7 +192,7 @@ NkIrRef nkir_makeRetRef(NkIrProg p) {
         .data = {},
         .offset = 0,
         .post_offset = 0,
-        .type = 0, // TODO _cur_funct->ret_t,
+        .type = p->cur_funct->fn_t->as.fn.ret_t,
         .ref_type = NkIrRef_Ret,
         .is_indirect = false,
     };
@@ -201,19 +209,19 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var) {
     };
 }
 
-NkIrRef nkir_makeConstRef(NkIrProg p, nkval_t val) {
+NkIrRef nkir_makeConstRef(NkIrProg, nkval_t val) {
     return {
-        .data = 0, // TODO val_data(val_copy(val, prog.arena)),
+        .data = nkval_data(val),
         .offset = 0,
         .post_offset = 0,
-        .type = 0, // TODO val_typeof(val),
+        .type = nkval_typeof(val),
         .ref_type = NkIrRef_Const,
         .is_indirect = false,
     };
 }
 
-NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type) {
-    // TODO assert(type->size <= REG_SIZE && "reference type excedes register size");
+NkIrRef nkir_makeRegRef(NkIrProg, NkIrRegister reg, nktype_t type) {
+    assert(type->size <= REG_SIZE && "reference type excedes register size");
     return {
         .index = reg,
         .offset = 0,
@@ -226,11 +234,11 @@ NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type) {
 
 NkIrRef nkir_makeExtVarRef(NkIrProg p, NkIrExtVarId var) {
     return {
-        .data = 0, // TODO val_data(val_copy(val, prog.arena)),
+        .index = var.id,
         .offset = 0,
         .post_offset = 0,
-        .type = 0, // TODO val_typeof(val),
-        .ref_type = NkIrRef_Const,
+        .type = p->exsyms[var.id].type,
+        .ref_type = NkIrRef_ExtVar,
         .is_indirect = false,
     };
 }
@@ -264,7 +272,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRefPtr cond, NkIrBlockId label) {
 }
 
 NkIrInstr nkir_make_cast(NkIrRefPtr dst, nktype_t type, NkIrRefPtr arg) {
-    // TODO return {{_arg(dst), _arg(type), _arg(arg)}, nkir_cast};
+    return {{_arg(dst), _arg(type->as.num.value_type), _arg(arg)}, nkir_cast};
 }
 
 NkIrInstr nkir_make_call(NkIrRefPtr dst, NkIrFunctId funct, NkIrRefPtr args) {
@@ -289,21 +297,106 @@ NkIrInstr nkir_make_call_indir(NkIrRefPtr dst, NkIrRefPtr funct, NkIrRefPtr args
     }
 #include "nk/vm/ir.inl"
 
-void nkir_gen(NkIrProg p, NkIrInstrPtr instr) {
+void nkir_gen(NkIrProg p, NkIrInstr instr) {
     assert(p->cur_block && "no current block");
     assert(
-        instr->arg[0].arg_type != NkIrArg_Ref || instr->arg[0].ref.is_indirect ||
-        (instr->arg[0].ref.ref_type != NkIrRef_Const && instr->arg[0].ref.ref_type != NkIrRef_Arg));
+        instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
+        (instr.arg[0].ref.ref_type != NkIrRef_Const && instr.arg[0].ref.ref_type != NkIrRef_Arg));
 
     NkIrInstrId id{p->instrs.size()};
-    p->instrs.emplace_back(*instr);
+    p->instrs.emplace_back(instr);
     p->cur_block->instrs.emplace_back(id);
 }
 
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) { // TODO
+void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
+    //@TODO nkir_invoke
 }
 
-void nkir_inspect(NkIrProg p, NkStringBuilder sb) { // TODO
+void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
+    for (auto const &funct : p->functs) {
+        nksb_printf(sb, "\nfn %s(", funct.name.c_str());
+
+        for (size_t i = 0; i < funct.fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
+            if (i) {
+                nksb_printf(sb, ", ");
+            }
+            nksb_printf(sb, "$arg%llu:", i);
+            nkt_inspect(funct.fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
+        }
+
+        nksb_printf(sb, ") -> ");
+        nkt_inspect(funct.fn_t->as.fn.ret_t, sb);
+        nksb_printf(sb, " {\n\n");
+
+        for (auto block_id : funct.blocks) {
+            auto const &block = p->blocks[block_id.id];
+
+            nksb_printf(sb, "%%%s:\n", block.name.c_str());
+
+            for (auto instr_id : block.instrs) {
+                auto const &instr = p->instrs[instr_id.id];
+
+                nksb_printf(sb, "  ");
+
+                if (instr.arg[0].arg_type == NkIrArg_Ref) {
+                    nkir_inspectRef(p, &instr.arg[0].ref, sb);
+                    nksb_printf(sb, " := ");
+                }
+
+                nksb_printf(sb, s_nk_ir_names[instr.code]);
+
+                for (size_t i = 1; i < 3; i++) {
+                    auto &arg = instr.arg[i];
+                    if (arg.arg_type != NkIrArg_None) {
+                        nksb_printf(sb, ((i > 1) ? ", " : " "));
+                    }
+                    switch (arg.arg_type) {
+                    case NkIrArg_Ref: {
+                        auto &ref = arg.ref;
+                        nkir_inspectRef(p, &ref, sb);
+                        break;
+                    }
+                    case NkIrArg_BlockId:
+                        if (arg.id < p->blocks.size() && !p->blocks[arg.id].name.empty()) {
+                            nksb_printf(sb, "%%%s", p->blocks[arg.id].name.c_str());
+                        } else {
+                            nksb_printf(sb, "%(null)");
+                        }
+                        break;
+                    case NkIrArg_FunctId:
+                        if (arg.id < p->functs.size() && !p->functs[arg.id].name.empty()) {
+                            nksb_printf(sb, p->functs[arg.id].name.c_str());
+                        } else {
+                            nksb_printf(sb, "(null)");
+                        }
+                        break;
+                    case NkIrArg_ExtFunctId:
+                        nksb_printf(sb, "(%s)", p->exsyms[arg.id].name.c_str());
+                        break;
+                    case NkIrArg_NumValType: //@TODO Incomplete
+                        break;
+                    case NkIrArg_None:
+                    default:
+                        break;
+                    }
+                }
+
+                nksb_printf(sb, "\n");
+            }
+
+            nksb_printf(sb, "\n");
+        }
+
+        nksb_printf(sb, "}\n");
+    }
+
+    if (p->exsyms.size()) {
+        for (auto const &sym : p->exsyms) {
+            nksb_printf(sb, "\n%s %s:", p->shobjs[sym.so_id.id].c_str(), sym.name.c_str());
+            nkt_inspect(sym.type, sb);
+        }
+        nksb_printf(sb, "\n");
+    }
 }
 
 void nkir_inspectRef(NkIrProg p, NkIrRefPtr ref, NkStringBuilder sb) {
@@ -316,19 +409,19 @@ void nkir_inspectRef(NkIrProg p, NkIrRefPtr ref, NkStringBuilder sb) {
     }
     switch (ref->ref_type) {
     case NkIrRef_Frame:
-        nksb_printf(sb, "$%ul", ref->index);
+        nksb_printf(sb, "$%llu", ref->index);
         break;
     case NkIrRef_Arg:
-        nksb_printf(sb, "$arg%ul", ref->index);
+        nksb_printf(sb, "$arg%llu", ref->index);
         break;
     case NkIrRef_Ret:
         nksb_printf(sb, "$ret");
         break;
     case NkIrRef_Global:
-        nksb_printf(sb, "$global%ul", ref->index);
+        nksb_printf(sb, "$global%llu", ref->index);
         break;
     case NkIrRef_Const:
-        // TODO val_inspect(nk_value_t{ref->data, ref->type}, sb);
+        nkval_inspect(nkval_t{ref->data, ref->type}, sb);
         break;
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref->index));
@@ -340,14 +433,14 @@ void nkir_inspectRef(NkIrProg p, NkIrRefPtr ref, NkStringBuilder sb) {
         break;
     }
     if (ref->offset) {
-        nksb_printf(sb, "+", ref->offset);
+        nksb_printf(sb, "+%llu", ref->offset);
     }
     if (ref->is_indirect) {
         nksb_printf(sb, "]");
     }
     if (ref->post_offset) {
-        nksb_printf(sb, "+%ul", ref->post_offset);
+        nksb_printf(sb, "+%llu", ref->post_offset);
     }
     nksb_printf(sb, ":");
-    // TODO types::inspect(ref->type, sb);
+    nkt_inspect(ref->type, sb);
 }

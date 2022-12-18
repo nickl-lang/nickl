@@ -67,6 +67,7 @@ typedef enum {
     NkIrArg_BlockId,
     NkIrArg_FunctId,
     NkIrArg_ExtFunctId,
+    NkIrArg_NumValType,
 } NkIrArgType;
 
 typedef struct {
@@ -81,8 +82,6 @@ typedef struct {
     NkIrArg arg[3];
     uint16_t code;
 } NkIrInstr;
-
-typedef NkIrInstr const *NkIrInstrPtr;
 
 DEFINE_ID_TYPE(NkIrFunctId);
 DEFINE_ID_TYPE(NkIrBlockId);
@@ -139,7 +138,7 @@ NkIrInstr nkir_make_call_indir(NkIrRefPtr dst, NkIrRefPtr funct, NkIrRefPtr args
 #define B(N) NkIrInstr nkir_make_##N(NkIrRefPtr dst, NkIrRefPtr lhs, NkIrRefPtr rhs);
 #include "nk/vm/ir.inl"
 
-void nkir_gen(NkIrProg p, NkIrInstrPtr instr);
+void nkir_gen(NkIrProg p, NkIrInstr instr);
 
 void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args);
 
