@@ -58,8 +58,6 @@ typedef struct {
     bool is_indirect;
 } NkIrRef;
 
-typedef NkIrRef const *NkIrRefPtr;
-
 typedef enum {
     NkIrArg_None,
 
@@ -125,25 +123,25 @@ NkIrInstr nkir_make_leave();
 NkIrInstr nkir_make_ret();
 
 NkIrInstr nkir_make_jmp(NkIrBlockId label);
-NkIrInstr nkir_make_jmpz(NkIrRefPtr cond, NkIrBlockId label);
-NkIrInstr nkir_make_jmpnz(NkIrRefPtr cond, NkIrBlockId label);
+NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrBlockId label);
+NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrBlockId label);
 
-NkIrInstr nkir_make_cast(NkIrRefPtr dst, nktype_t type, NkIrRefPtr arg);
+NkIrInstr nkir_make_cast(NkIrRef dst, nktype_t type, NkIrRef arg);
 
-NkIrInstr nkir_make_call(NkIrRefPtr dst, NkIrFunctId funct, NkIrRefPtr args);
-NkIrInstr nkir_make_call_ext(NkIrRefPtr dst, NkIrExtFunctId funct, NkIrRefPtr args);
-NkIrInstr nkir_make_call_indir(NkIrRefPtr dst, NkIrRefPtr funct, NkIrRefPtr args);
+NkIrInstr nkir_make_call(NkIrRef dst, NkIrFunctId funct, NkIrRef args);
+NkIrInstr nkir_make_call_ext(NkIrRef dst, NkIrExtFunctId funct, NkIrRef args);
+NkIrInstr nkir_make_call_indir(NkIrRef dst, NkIrRef funct, NkIrRef args);
 
-#define U(N) NkIrInstr nkir_make_##N(NkIrRefPtr dst, NkIrRefPtr arg);
-#define B(N) NkIrInstr nkir_make_##N(NkIrRefPtr dst, NkIrRefPtr lhs, NkIrRefPtr rhs);
+#define U(N) NkIrInstr nkir_make_##N(NkIrRef dst, NkIrRef arg);
+#define B(N) NkIrInstr nkir_make_##N(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #include "nk/vm/ir.inl"
 
 void nkir_gen(NkIrProg p, NkIrInstr instr);
 
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args);
-
 void nkir_inspect(NkIrProg p, NkStringBuilder sb);
-void nkir_inspectRef(NkIrProg p, NkIrRefPtr ref, NkStringBuilder sb);
+void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb);
+
+void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args);
 
 #ifdef __cplusplus
 }

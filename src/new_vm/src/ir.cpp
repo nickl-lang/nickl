@@ -42,8 +42,8 @@ struct IrExSym {
     nktype_t type;
 };
 
-NkIrArg _arg(NkIrRefPtr ref) {
-    return {{.ref = *ref}, NkIrArg_Ref};
+NkIrArg _arg(NkIrRef ref) {
+    return {{.ref = ref}, NkIrArg_Ref};
 }
 
 NkIrArg _arg(NkIrBlockId block) {
@@ -263,38 +263,38 @@ NkIrInstr nkir_make_jmp(NkIrBlockId label) {
     return {{{}, _arg(label)}, nkir_jmp};
 }
 
-NkIrInstr nkir_make_jmpz(NkIrRefPtr cond, NkIrBlockId label) {
+NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrBlockId label) {
     return {{{}, _arg(cond), _arg(label)}, nkir_jmpz};
 }
 
-NkIrInstr nkir_make_jmpnz(NkIrRefPtr cond, NkIrBlockId label) {
+NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrBlockId label) {
     return {{{}, _arg(cond), _arg(label)}, nkir_jmpnz};
 }
 
-NkIrInstr nkir_make_cast(NkIrRefPtr dst, nktype_t type, NkIrRefPtr arg) {
+NkIrInstr nkir_make_cast(NkIrRef dst, nktype_t type, NkIrRef arg) {
     assert(type->typeclass_id == NkType_Numeric && "numeric type expected in cast");
     return {{_arg(dst), _arg(type->as.num.value_type), _arg(arg)}, nkir_cast};
 }
 
-NkIrInstr nkir_make_call(NkIrRefPtr dst, NkIrFunctId funct, NkIrRefPtr args) {
+NkIrInstr nkir_make_call(NkIrRef dst, NkIrFunctId funct, NkIrRef args) {
     return {{_arg(dst), _arg(funct), _arg(args)}, nkir_call};
 }
 
-NkIrInstr nkir_make_call_ext(NkIrRefPtr dst, NkIrExtFunctId funct, NkIrRefPtr args) {
+NkIrInstr nkir_make_call_ext(NkIrRef dst, NkIrExtFunctId funct, NkIrRef args) {
     return {{_arg(dst), _arg(funct), _arg(args)}, nkir_call};
 }
 
-NkIrInstr nkir_make_call_indir(NkIrRefPtr dst, NkIrRefPtr funct, NkIrRefPtr args) {
+NkIrInstr nkir_make_call_indir(NkIrRef dst, NkIrRef funct, NkIrRef args) {
     return {{_arg(dst), _arg(funct), _arg(args)}, nkir_call};
 }
 
-#define U(NAME)                                                  \
-    NkIrInstr nkir_make_##NAME(NkIrRefPtr dst, NkIrRefPtr arg) { \
-        return {{_arg(dst), _arg(arg), {}}, nkir_##NAME};        \
+#define U(NAME)                                            \
+    NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg) { \
+        return {{_arg(dst), _arg(arg), {}}, nkir_##NAME};  \
     }
-#define B(NAME)                                                                  \
-    NkIrInstr nkir_make_##NAME(NkIrRefPtr dst, NkIrRefPtr lhs, NkIrRefPtr rhs) { \
-        return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_##NAME};                 \
+#define B(NAME)                                                         \
+    NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
+        return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_##NAME};        \
     }
 #include "nk/vm/ir.inl"
 
@@ -307,10 +307,6 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
     NkIrInstrId id{p->instrs.size()};
     p->instrs.emplace_back(instr);
     p->blocks[p->cur_block].instrs.emplace_back(id);
-}
-
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
-    //@TODO nkir_invoke
 }
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
@@ -340,7 +336,7 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
                 nksb_printf(sb, "  ");
 
                 if (instr.arg[0].arg_type == NkIrArg_Ref) {
-                    nkir_inspectRef(p, &instr.arg[0].ref, sb);
+                    nkir_inspectRef(p, instr.arg[0].ref, sb);
                     nksb_printf(sb, " := ");
                 }
 
@@ -354,7 +350,7 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
                     switch (arg.arg_type) {
                     case NkIrArg_Ref: {
                         auto &ref = arg.ref;
-                        nkir_inspectRef(p, &ref, sb);
+                        nkir_inspectRef(p, ref, sb);
                         break;
                     }
                     case NkIrArg_BlockId:
@@ -422,48 +418,52 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
     }
 }
 
-void nkir_inspectRef(NkIrProg p, NkIrRefPtr ref, NkStringBuilder sb) {
-    if (ref->ref_type == NkIrRef_None) {
+void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
+    if (ref.ref_type == NkIrRef_None) {
         nksb_printf(sb, "{}");
         return;
     }
-    if (ref->is_indirect) {
+    if (ref.is_indirect) {
         nksb_printf(sb, "[");
     }
-    switch (ref->ref_type) {
+    switch (ref.ref_type) {
     case NkIrRef_Frame:
-        nksb_printf(sb, "$%llu", ref->index);
+        nksb_printf(sb, "$%llu", ref.index);
         break;
     case NkIrRef_Arg:
-        nksb_printf(sb, "$arg%llu", ref->index);
+        nksb_printf(sb, "$arg%llu", ref.index);
         break;
     case NkIrRef_Ret:
         nksb_printf(sb, "$ret");
         break;
     case NkIrRef_Global:
-        nksb_printf(sb, "$global%llu", ref->index);
+        nksb_printf(sb, "$global%llu", ref.index);
         break;
     case NkIrRef_Const:
-        nkval_inspect(nkval_t{ref->data, ref->type}, sb);
+        nkval_inspect(nkval_t{ref.data, ref.type}, sb);
         break;
     case NkIrRef_Reg:
-        nksb_printf(sb, "$r%c", (char)('a' + ref->index));
+        nksb_printf(sb, "$r%c", (char)('a' + ref.index));
         break;
     case NkIrRef_ExtVar:
-        nksb_printf(sb, "(%s)", p->exsyms[ref->index].name.c_str());
+        nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
         break;
     default:
         break;
     }
-    if (ref->offset) {
-        nksb_printf(sb, "+%llu", ref->offset);
+    if (ref.offset) {
+        nksb_printf(sb, "+%llu", ref.offset);
     }
-    if (ref->is_indirect) {
+    if (ref.is_indirect) {
         nksb_printf(sb, "]");
     }
-    if (ref->post_offset) {
-        nksb_printf(sb, "+%llu", ref->post_offset);
+    if (ref.post_offset) {
+        nksb_printf(sb, "+%llu", ref.post_offset);
     }
     nksb_printf(sb, ":");
-    nkt_inspect(ref->type, sb);
+    nkt_inspect(ref.type, sb);
+}
+
+void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
+    //@TODO nkir_invoke
 }
