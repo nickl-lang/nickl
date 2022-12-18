@@ -1,7 +1,6 @@
 #include "nk/vm/ir.h"
 
 #include <cassert>
-#include <deque>
 #include <new>
 #include <string>
 #include <vector>
@@ -66,11 +65,11 @@ NkIrArg _arg(NkNumericValueType value_type) {
 } // namespace
 
 struct NkIrProg_T {
-    IrFunct *cur_funct{};
-    IrBlock *cur_block{};
+    size_t cur_funct;
+    size_t cur_block;
 
-    std::deque<IrFunct> functs{};
-    std::deque<IrBlock> blocks{};
+    std::vector<IrFunct> functs{};
+    std::vector<IrBlock> blocks{};
     std::vector<NkIrInstr> instrs{};
     std::vector<std::string> shobjs{};
     std::vector<nktype_t> globals{};
@@ -115,32 +114,32 @@ void nkir_startFunct(NkIrProg p, NkIrFunctId funct_id, nkstr name, nktype_t fn_t
 }
 
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
-    assert(p->cur_funct && "no current function");
+    assert(p->cur_funct < p->functs.size() && "no current function");
     assert(block_id.id < p->blocks.size() && "invalid block");
 
     auto &block = p->blocks[block_id.id];
     block.name = std_str(name);
 
-    p->cur_funct->blocks.emplace_back(block_id);
+    p->functs[p->cur_funct].blocks.emplace_back(block_id);
 
     nkir_activateBlock(p, block_id);
 }
 
 void nkir_activateFunct(NkIrProg p, NkIrFunctId funct_id) {
     assert(funct_id.id < p->functs.size() && "invalid function");
-    p->cur_funct = &p->functs[funct_id.id];
+    p->cur_funct = funct_id.id;
 }
 
 void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id) {
-    assert(p->cur_funct && "no current function");
+    assert(p->cur_funct < p->functs.size() && "no current function");
     assert(block_id.id < p->blocks.size() && "invalid block");
-    p->cur_block = &p->blocks[block_id.id];
+    p->cur_block = block_id.id;
 }
 
 NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type) {
-    assert(p->cur_funct && "no current function");
-    NkIrLocalVarId id{p->cur_funct->locals.size()};
-    p->cur_funct->locals.emplace_back(type);
+    assert(p->cur_funct < p->functs.size() && "no current function");
+    NkIrLocalVarId id{p->functs[p->cur_funct].locals.size()};
+    p->functs[p->cur_funct].locals.emplace_back(type);
     return id;
 }
 
@@ -161,38 +160,39 @@ NkIrExtVarId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t ty
 }
 
 NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
-    assert(p->cur_funct && "no current function");
+    assert(p->cur_funct < p->functs.size() && "no current function");
     return {
         .index = var.id,
         .offset = 0,
         .post_offset = 0,
-        .type = p->cur_funct->locals[var.id],
+        .type = p->functs[p->cur_funct].locals[var.id],
         .ref_type = NkIrRef_Frame,
         .is_indirect = false,
     };
 }
 
 NkIrRef nkir_makeArgRef(NkIrProg p, size_t index) {
-    assert(p->cur_funct && "no current function");
+    assert(p->cur_funct < p->functs.size() && "no current function");
     assert(
-        index < p->cur_funct->fn_t->as.fn.args_t->as.tuple.elems.size && "arg index out of range");
+        index < p->functs[p->cur_funct].fn_t->as.fn.args_t->as.tuple.elems.size &&
+        "arg index out of range");
     return {
         .index = index,
         .offset = 0,
         .post_offset = 0,
-        .type = p->cur_funct->fn_t->as.fn.args_t->as.tuple.elems.data[index].type,
+        .type = p->functs[p->cur_funct].fn_t->as.fn.args_t->as.tuple.elems.data[index].type,
         .ref_type = NkIrRef_Arg,
         .is_indirect = false,
     };
 }
 
 NkIrRef nkir_makeRetRef(NkIrProg p) {
-    assert(p->cur_funct && "no current function");
+    assert(p->cur_funct < p->functs.size() && "no current function");
     return {
         .data = {},
         .offset = 0,
         .post_offset = 0,
-        .type = p->cur_funct->fn_t->as.fn.ret_t,
+        .type = p->functs[p->cur_funct].fn_t->as.fn.ret_t,
         .ref_type = NkIrRef_Ret,
         .is_indirect = false,
     };
@@ -299,14 +299,14 @@ NkIrInstr nkir_make_call_indir(NkIrRefPtr dst, NkIrRefPtr funct, NkIrRefPtr args
 #include "nk/vm/ir.inl"
 
 void nkir_gen(NkIrProg p, NkIrInstr instr) {
-    assert(p->cur_block && "no current block");
+    assert(p->cur_block < p->blocks.size() && "no current block");
     assert(
         instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
         (instr.arg[0].ref.ref_type != NkIrRef_Const && instr.arg[0].ref.ref_type != NkIrRef_Arg));
 
     NkIrInstrId id{p->instrs.size()};
     p->instrs.emplace_back(instr);
-    p->cur_block->instrs.emplace_back(id);
+    p->blocks[p->cur_block].instrs.emplace_back(id);
 }
 
 void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
