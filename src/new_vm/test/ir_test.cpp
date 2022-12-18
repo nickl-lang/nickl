@@ -33,34 +33,41 @@ protected:
 
 } // namespace
 
-TEST_F(ir, basic) {
-    auto ir = nkir_createProgram();
+TEST_F(ir, add) {
+    auto p = nkir_createProgram();
     defer {
-        nkir_deinitProgram(ir);
+        nkir_deinitProgram(p);
     };
 
+    auto i32_t = nkt_get_numeric(m_arena, Int32);
+
+    nktype_t add_args[] = {i32_t, i32_t};
+    auto args_t = nkt_get_tuple(m_arena, add_args, AR_SIZE(add_args), 1);
+
+    auto add = nkir_makeFunct(p);
     nkir_startFunct(
-        ir,
-        nkir_makeFunct(ir),
-        cs2s("test"),
-        nkt_get_fn(
-            m_arena,
-            nkt_get_void(m_arena),
-            nkt_get_tuple(m_arena, nullptr, 0, 1),
-            nullptr,
-            NkCallConv_Nk,
-            false));
-    nkir_startBlock(ir, nkir_makeBlock(ir), cs2s("start"));
+        p, add, cs2s("add"), nkt_get_fn(m_arena, i32_t, args_t, nullptr, NkCallConv_Nk, false));
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
-    nkir_gen(ir, nkir_make_ret());
+    nkir_gen(p, nkir_make_add(nkir_makeRetRef(p), nkir_makeArgRef(p, 0), nkir_makeArgRef(p, 1)));
+    nkir_gen(p, nkir_make_ret());
 
-    auto sb = nksb_create();
-    defer {
-        nksb_free(sb);
-    };
+    {
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
 
-    nkir_inspect(ir, sb);
-    auto str = nksb_concat(sb);
+        nkir_inspect(p, sb);
+        auto str = nksb_concat(sb);
 
-    NK_LOG_INF("\n%.*s", str.size, str.data);
+        NK_LOG_INF("\n%.*s", str.size, str.data);
+    }
+
+    int32_t args[] = {4, 5};
+    int32_t res = 0;
+
+    nkir_invoke(p, add, nkval_t{&res, i32_t}, nkval_t{args, args_t});
+
+    EXPECT_EQ(res, 9);
 }

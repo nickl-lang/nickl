@@ -16,6 +16,8 @@ extern "C" {
 #define CAT(x, y) _CAT(x, y)
 #endif // CAT
 
+#define AR_SIZE(AR) sizeof(AR) / sizeof((AR)[0])
+
 typedef size_t hash_t;
 
 extern inline size_t roundUp(size_t v, size_t m) {

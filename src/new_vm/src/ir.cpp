@@ -465,5 +465,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
 }
 
 void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
-    //@TODO nkir_invoke
+    assert(fn.id < p->functs.size() && "invalid function");
+
+    //@ TODO nkir_invoke
 }
