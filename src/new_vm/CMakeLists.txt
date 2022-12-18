@@ -2,6 +2,7 @@ set(LIB nk_new_vm)
 
 add_library(${LIB}
     src/ir.cpp
+    src/value.cpp
     )
 
 target_include_directories(${LIB}

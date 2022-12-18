@@ -8,17 +8,17 @@
 extern "C" {
 #endif
 
-typedef struct NkType const *nk_type_t;
+typedef struct NkType const *nktype_t;
 
 typedef size_t nk_typeid_t;
 typedef uint8_t nk_typeclassid_t;
 
 typedef struct {
     void *data;
-    nk_type_t type;
-} nk_value_t;
+    nktype_t type;
+} nkval_t;
 
-typedef void (*FuncPtr)(nk_type_t self, nk_value_t ret, nk_value_t args);
+typedef void (*FuncPtr)(nkval_t fn, nkval_t ret, nkval_t args);
 
 // TODO Move somewhere
 #define DEFINE_ID_TYPE(NAME) \

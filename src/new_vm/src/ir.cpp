@@ -24,10 +24,10 @@ DEFINE_ID_TYPE(NkIrInstrId);
 
 struct IrFunct {
     std::string name{};
-    nk_type_t fn_t{};
+    nktype_t fn_t{};
 
     std::vector<NkIrBlockId> blocks{};
-    std::vector<nk_type_t> locals{};
+    std::vector<nktype_t> locals{};
 };
 
 struct IrBlock {
@@ -39,7 +39,7 @@ struct IrBlock {
 struct IrExSym {
     std::string name;
     NkIrShObjId so_id;
-    nk_type_t type;
+    nktype_t type;
 };
 
 NkIrArg _arg(NkIrRefPtr ref) {
@@ -68,7 +68,7 @@ struct NkIrProg_T {
     std::deque<IrBlock> blocks{};
     std::vector<NkIrInstr> instrs{};
     std::vector<std::string> shobjs{};
-    std::vector<nk_type_t> globals{};
+    std::vector<nktype_t> globals{};
     std::vector<IrExSym> exsyms{};
 };
 
@@ -99,7 +99,7 @@ NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name) {
     return shobj_id;
 }
 
-void nkir_startFunct(NkIrProg p, NkIrFunctId funct_id, nkstr name, nk_type_t fn_t) {
+void nkir_startFunct(NkIrProg p, NkIrFunctId funct_id, nkstr name, nktype_t fn_t) {
     assert(funct_id.id < p->functs.size() && "invalid function");
 
     auto &funct = p->functs[funct_id.id];
@@ -130,20 +130,20 @@ void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id) {
     p->cur_block = &p->blocks[block_id.id];
 }
 
-NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nk_type_t type) {
+NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type) {
     assert(p->cur_funct && "no current function");
     NkIrLocalVarId id{p->cur_funct->locals.size()};
     p->cur_funct->locals.emplace_back(type);
     return id;
 }
 
-NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nk_type_t type) {
+NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nktype_t type) {
     NkIrGlobalVarId id{p->globals.size()};
     p->globals.emplace_back(type);
     return id;
 }
 
-NkIrExtVarId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nk_type_t type) {
+NkIrExtVarId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type) {
     NkIrExtVarId id{p->exsyms.size()};
     p->exsyms.emplace_back(IrExSym{
         .name = std_str(name),
@@ -201,7 +201,7 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var) {
     };
 }
 
-NkIrRef nkir_makeConstRef(NkIrProg p, nk_value_t val) {
+NkIrRef nkir_makeConstRef(NkIrProg p, nkval_t val) {
     return {
         .data = 0, // TODO val_data(val_copy(val, prog.arena)),
         .offset = 0,
@@ -212,7 +212,7 @@ NkIrRef nkir_makeConstRef(NkIrProg p, nk_value_t val) {
     };
 }
 
-NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nk_type_t type) {
+NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type) {
     // TODO assert(type->size <= REG_SIZE && "reference type excedes register size");
     return {
         .index = reg,
@@ -263,7 +263,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRefPtr cond, NkIrBlockId label) {
     return {{{}, _arg(cond), _arg(label)}, nkir_jmpnz};
 }
 
-NkIrInstr nkir_make_cast(NkIrRefPtr dst, nk_type_t type, NkIrRefPtr arg) {
+NkIrInstr nkir_make_cast(NkIrRefPtr dst, nktype_t type, NkIrRefPtr arg) {
     // TODO return {{_arg(dst), _arg(type), _arg(arg)}, nkir_cast};
 }
 
@@ -300,7 +300,7 @@ void nkir_gen(NkIrProg p, NkIrInstrPtr instr) {
     p->cur_block->instrs.emplace_back(id);
 }
 
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nk_value_t ret, nk_value_t args) { // TODO
+void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) { // TODO
 }
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) { // TODO
@@ -328,7 +328,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRefPtr ref, NkStringBuilder sb) {
         nksb_printf(sb, "$global%ul", ref->index);
         break;
     case NkIrRef_Const:
-        // TODO val_inspect(value_t{ref->data, ref->type}, sb);
+        // TODO val_inspect(nk_value_t{ref->data, ref->type}, sb);
         break;
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref->index));
