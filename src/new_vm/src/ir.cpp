@@ -272,6 +272,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRefPtr cond, NkIrBlockId label) {
 }
 
 NkIrInstr nkir_make_cast(NkIrRefPtr dst, nktype_t type, NkIrRefPtr arg) {
+    assert(type->typeclass_id == NkType_Numeric && "numeric type expected in cast");
     return {{_arg(dst), _arg(type->as.num.value_type), _arg(arg)}, nkir_cast};
 }
 
@@ -373,7 +374,29 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
                     case NkIrArg_ExtFunctId:
                         nksb_printf(sb, "(%s)", p->exsyms[arg.id].name.c_str());
                         break;
-                    case NkIrArg_NumValType: //@TODO Incomplete
+                    case NkIrArg_NumValType:
+                        switch (arg.id) {
+                        case Int8:
+                        case Int16:
+                        case Int32:
+                        case Int64:
+                            nksb_printf(sb, "i");
+                            break;
+                        case Uint8:
+                        case Uint16:
+                        case Uint32:
+                        case Uint64:
+                            nksb_printf(sb, "u");
+                            break;
+                        case Float32:
+                        case Float64:
+                            nksb_printf(sb, "f");
+                            break;
+                        default:
+                            assert(!"unreachable");
+                            break;
+                        }
+                        nksb_printf(sb, "%llu", (size_t)NUM_TYPE_SIZE(arg.id) * 8);
                         break;
                     case NkIrArg_None:
                     default:

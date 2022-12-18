@@ -50,8 +50,7 @@ TEST_F(ir, basic) {
             nullptr,
             NkCallConv_Nk,
             false));
-    auto start = nkir_makeBlock(ir);
-    nkir_startBlock(ir, start, cs2s("start"));
+    nkir_startBlock(ir, nkir_makeBlock(ir), cs2s("start"));
 
     nkir_gen(ir, nkir_make_ret());
 
