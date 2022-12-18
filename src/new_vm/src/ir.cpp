@@ -2,9 +2,8 @@
 
 #include <cassert>
 #include <new>
-#include <string>
-#include <vector>
 
+#include "ir_internal.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -19,28 +18,6 @@ char const *s_nk_ir_names[] = {
 };
 
 namespace {
-
-DEFINE_ID_TYPE(NkIrInstrId);
-
-struct IrFunct {
-    std::string name{};
-    nktype_t fn_t{};
-
-    std::vector<NkIrBlockId> blocks{};
-    std::vector<nktype_t> locals{};
-};
-
-struct IrBlock {
-    std::string name{};
-
-    std::vector<NkIrInstrId> instrs{};
-};
-
-struct IrExSym {
-    std::string name;
-    NkIrShObjId so_id;
-    nktype_t type;
-};
 
 NkIrArg _arg(NkIrRef ref) {
     return {{.ref = ref}, NkIrArg_Ref};
@@ -64,36 +41,25 @@ NkIrArg _arg(NkNumericValueType value_type) {
 
 } // namespace
 
-struct NkIrProg_T {
-    size_t cur_funct;
-    size_t cur_block;
-
-    std::vector<IrFunct> functs{};
-    std::vector<IrBlock> blocks{};
-    std::vector<NkIrInstr> instrs{};
-    std::vector<std::string> shobjs{};
-    std::vector<nktype_t> globals{};
-    std::vector<IrExSym> exsyms{};
-};
-
 NkIrProg nkir_createProgram() {
     return new (nk_allocate(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{};
 }
 
 void nkir_deinitProgram(NkIrProg p) {
+    nkop_deinitProgram(p->op);
     p->~NkIrProg_T();
     nk_free(nk_default_allocator, p);
 }
 
 NkIrFunctId nkir_makeFunct(NkIrProg p) {
     NkIrFunctId id{p->functs.size()};
-    p->functs.emplace_back();
+    p->functs.emplace_back(IrFunct{});
     return id;
 }
 
 NkIrBlockId nkir_makeBlock(NkIrProg p) {
     NkIrBlockId id{p->blocks.size()};
-    p->blocks.emplace_back();
+    p->blocks.emplace_back(IrBlock{});
     return id;
 }
 
@@ -120,7 +86,7 @@ void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
     auto &block = p->blocks[block_id.id];
     block.name = std_str(name);
 
-    p->functs[p->cur_funct].blocks.emplace_back(block_id);
+    p->functs[p->cur_funct].blocks.emplace_back(block_id.id);
 
     nkir_activateBlock(p, block_id);
 }
@@ -304,7 +270,7 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
         instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
         (instr.arg[0].ref.ref_type != NkIrRef_Const && instr.arg[0].ref.ref_type != NkIrRef_Arg));
 
-    NkIrInstrId id{p->instrs.size()};
+    size_t id = p->instrs.size();
     p->instrs.emplace_back(instr);
     p->blocks[p->cur_block].instrs.emplace_back(id);
 }
@@ -326,12 +292,12 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
         nksb_printf(sb, " {\n\n");
 
         for (auto block_id : funct.blocks) {
-            auto const &block = p->blocks[block_id.id];
+            auto const &block = p->blocks[block_id];
 
             nksb_printf(sb, "%%%s:\n", block.name.c_str());
 
             for (auto instr_id : block.instrs) {
-                auto const &instr = p->instrs[instr_id.id];
+                auto const &instr = p->instrs[instr_id];
 
                 nksb_printf(sb, "  ");
 
@@ -467,5 +433,9 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
 void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
     assert(fn.id < p->functs.size() && "invalid function");
 
-    //@ TODO nkir_invoke
+    if (!p->op) {
+        p->op = nkop_createProgram(p);
+    }
+
+    nkop_invoke(p->op, fn, ret, args);
 }
