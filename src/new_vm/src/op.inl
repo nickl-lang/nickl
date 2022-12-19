@@ -11,7 +11,6 @@ X(ret)
 X(enter)
 X(leave)
 
-//@Todo Implement extensions for jmpz/jmpnz
 X(jmp)
 X(jmpz)
 X(jmpnz)

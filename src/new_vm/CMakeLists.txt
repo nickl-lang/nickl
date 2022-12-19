@@ -1,6 +1,7 @@
 set(LIB nk_new_vm)
 
 add_library(${LIB}
+    src/interp.cpp
     src/ir.cpp
     src/op.cpp
     src/value.cpp

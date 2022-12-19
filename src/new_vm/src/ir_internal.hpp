@@ -8,10 +8,6 @@
 #include "nk/vm/ir.h"
 #include "op.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct IrFunct {
     std::string name;
     nktype_t fn_t;
@@ -45,9 +41,5 @@ struct NkIrProg_T {
 
     NkOpProg op;
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // HEADER_GUARD_NK_VM_IR_INTERNAL

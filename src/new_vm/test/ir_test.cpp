@@ -41,8 +41,8 @@ TEST_F(ir, add) {
 
     auto i32_t = nkt_get_numeric(m_arena, Int32);
 
-    nktype_t add_args[] = {i32_t, i32_t};
-    auto args_t = nkt_get_tuple(m_arena, add_args, AR_SIZE(add_args), 1);
+    nktype_t args_types[] = {i32_t, i32_t};
+    auto args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
 
     auto add = nkir_makeFunct(p);
     nkir_startFunct(
