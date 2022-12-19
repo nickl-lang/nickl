@@ -129,6 +129,18 @@ nkval_t nkval_array_at(nkval_t self, size_t i);
 size_t nkval_tuple_size(nkval_t self);
 nkval_t nkval_tuple_at(nkval_t self, size_t i);
 
+typedef struct {
+    NkTupleElemInfoArray info_ar;
+    size_t size;
+    size_t align;
+} NkTupleLayout;
+
+NkTupleLayout nk_calcTupleLayout(
+    nktype_t const *types,
+    size_t count,
+    NkAllocator *allocator,
+    size_t stride);
+
 inline nkval_t nkval_undefined() {
     return nkval_t{};
 }

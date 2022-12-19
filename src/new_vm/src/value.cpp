@@ -15,36 +15,6 @@ namespace {
 
 nk_typeid_t s_next_type_id = 1;
 
-struct TupleLayout {
-    NkTupleElemInfoArray info_ar;
-    size_t size;
-    size_t align;
-};
-
-TupleLayout _calcTupleLayout(
-    nktype_t const *types,
-    size_t count,
-    NkAllocator *alloc,
-    size_t stride) {
-    size_t alignment = 0;
-    size_t offset = 0;
-
-    NkTupleElemInfo *info_ar =
-        (NkTupleElemInfo *)nk_allocate(alloc, sizeof(NkTupleElemInfo) * count);
-
-    for (size_t i = 0; i < count; i++) {
-        nktype_t const type = types[i * stride];
-
-        alignment = maxu(alignment, type->alignment);
-
-        offset = roundUpSafe(offset, type->alignment);
-        info_ar[i] = NkTupleElemInfo{type, offset};
-        offset += type->size;
-    }
-
-    return TupleLayout{{info_ar, count}, roundUpSafe(offset, alignment), alignment};
-}
-
 } // namespace
 
 nktype_t nkt_get_array(NkAllocator *alloc, nktype_t elem_type, size_t elem_count) {
@@ -107,7 +77,7 @@ nktype_t nkt_get_ptr(NkAllocator *alloc, nktype_t target_type) {
 }
 
 nktype_t nkt_get_tuple(NkAllocator *alloc, nktype_t const *types, size_t count, size_t stride) {
-    auto layout = _calcTupleLayout(types, count, alloc, stride);
+    auto layout = nk_calcTupleLayout(types, count, alloc, stride);
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.tuple{
             .elems = layout.info_ar,
@@ -321,4 +291,28 @@ nkval_t nkval_tuple_at(nkval_t self, size_t i) {
         ((uint8_t *)nkval_data(self)) + type->as.tuple.elems.data[i].offset,
         type->as.tuple.elems.data[i].type,
     };
+}
+
+NkTupleLayout nk_calcTupleLayout(
+    nktype_t const *types,
+    size_t count,
+    NkAllocator *alloc,
+    size_t stride) {
+    size_t alignment = 0;
+    size_t offset = 0;
+
+    NkTupleElemInfo *info_ar =
+        (NkTupleElemInfo *)nk_allocate(alloc, sizeof(NkTupleElemInfo) * count);
+
+    for (size_t i = 0; i < count; i++) {
+        nktype_t const type = types[i * stride];
+
+        alignment = maxu(alignment, type->alignment);
+
+        offset = roundUpSafe(offset, type->alignment);
+        info_ar[i] = NkTupleElemInfo{type, offset};
+        offset += type->size;
+    }
+
+    return NkTupleLayout{{info_ar, count}, roundUpSafe(offset, alignment), alignment};
 }
