@@ -1,22 +1,20 @@
-#include "op.h"
+#include "bytecode.h"
 
 #include <cassert>
 #include <new>
 #include <tuple>
 
+#include "bytecode_impl.hpp"
 #include "interp.hpp"
-#include "ir_internal.hpp"
+#include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/utils.hpp"
-#include "nk/vm/common.h"
-#include "nk/vm/ir.h"
 #include "nk/vm/value.h"
-#include "op_internal.hpp"
 
-char const *s_nk_op_names[] = {
+char const *s_nk_bc_names[] = {
 #define X(NAME) #NAME,
 #define XE(NAME, VAR) #NAME " (" #VAR ")",
-#include "op.inl"
+#include "bytecode.inl"
 };
 
 namespace {
@@ -26,7 +24,7 @@ NkOpCode s_ir2opcode[] = {
 #include "nk/vm/ir.inl"
 };
 
-FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
+FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
     auto const &ir = *prog->ir;
 
     auto const &funct = ir.functs[fn.id];
@@ -60,17 +58,17 @@ FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
 
     // std::vector<Reloc> relocs{};
 
-    auto _compileArg = [&](size_t ii, size_t ai, NkOpRef &arg, NkIrArg const &ir_arg) {
+    auto _compileArg = [&](size_t ii, size_t ai, NkBcRef &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.arg_type) {
         case NkIrArg_None:
-            arg.ref_type = NkOpRef_None;
+            arg.ref_type = NkBcRef_None;
             break;
         case NkIrArg_Ref: {
             auto const &ref = ir_arg.ref;
             arg.offset += ref.offset;
             arg.post_offset = ref.post_offset;
             arg.type = ref.type;
-            arg.ref_type = (NkOpRefType)ref.ref_type;
+            arg.ref_type = (NkBcRefType)ref.ref_type;
             arg.is_indirect = ref.is_indirect;
             switch (ref.ref_type) {
             case NkIrRef_Frame:
@@ -91,7 +89,7 @@ FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
                 arg.offset += ref.index * REG_SIZE;
                 break;
             case NkIrRef_ExtVar: {
-                // TODO arg.ref_type = NkOpRef_Abs;
+                // TODO arg.ref_type = NkBcRef_Abs;
                 // arg.offset = (size_t)prog.exsyms[ir_arg.id];
                 break;
             }
@@ -103,7 +101,7 @@ FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
             break;
         }
         case NkIrArg_BlockId:
-            // TODO arg.ref_type = NkOpRef_Instr;
+            // TODO arg.ref_type = NkBcRef_Instr;
             // *relocs.push() = {
             //     .instr_index = ii,
             //     .arg = ai,
@@ -112,7 +110,7 @@ FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
             // };
             // break;
         case NkIrArg_FunctId:
-            // TODO arg.ref_type = NkOpRef_Const;
+            // TODO arg.ref_type = NkBcRef_Const;
             // *relocs.push() = {
             //     .instr_index = ii,
             //     .arg = ai,
@@ -169,7 +167,7 @@ FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
                 break;
 #define NUM_X(NAME) case CAT(nkir_, NAME):
 #define NUM_INT_X(NAME) case CAT(nkir_, NAME):
-#include "op.inl"
+#include "bytecode.inl"
                 code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 break;
             }
@@ -188,22 +186,22 @@ FunctInfo _translateIr(NkOpProg prog, NkIrFunctId fn) {
 
 } // namespace
 
-NkOpProg nkop_createProgram(NkIrProg ir) {
-    return new (nk_allocate(nk_default_allocator, sizeof(NkOpProg_T))) NkOpProg_T{
+NkBcProg nkbc_createProgram(NkIrProg ir) {
+    return new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
         .arena = nk_create_arena(),
     };
 }
 
-void nkop_deinitProgram(NkOpProg p) {
+void nkbc_deinitProgram(NkBcProg p) {
     if (p) {
         nk_free_arena(p->arena);
-        p->~NkOpProg_T();
+        p->~NkBcProg_T();
         nk_free(nk_default_allocator, p);
     }
 }
 
-void nkop_invoke(NkOpProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
+void nkbc_invoke(NkBcProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
     //@TODO Add trace/debug logs
 
     assert(fn.id < p->ir->functs.size() && "invalid function");

@@ -6,9 +6,7 @@
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
-#include "nk/vm/common.h"
 #include "nk/vm/value.h"
-#include "op_internal.hpp"
 
 namespace {
 
@@ -19,7 +17,7 @@ struct ProgramFrame {
     uint8_t *base_rodata;
     uint8_t *base_instr;
     uint8_t *base_reg;
-    NkOpInstr const *pinstr;
+    NkBcInstr const *pinstr;
 };
 
 struct ControlFrame {
@@ -27,7 +25,7 @@ struct ControlFrame {
     uint8_t *base_frame;
     uint8_t *base_arg;
     uint8_t *base_ret;
-    NkOpInstr const *pinstr;
+    NkBcInstr const *pinstr;
 };
 
 struct InterpContext {
@@ -40,7 +38,7 @@ struct InterpContext {
         uint64_t f;
     };
 
-    struct Base { // repeats the layout of NkOpRefType
+    struct Base { // repeats the layout of NkBcRefType
         uint8_t *null;
         uint8_t *frame;
         uint8_t *arg;
@@ -53,14 +51,14 @@ struct InterpContext {
     };
 
     union {
-        uint8_t *base_ar[NkOpRef_Count];
+        uint8_t *base_ar[NkBcRef_Count];
         Base base;
     };
     NkStackAllocator *stack;
     std::vector<ControlFrame> ctrl_stack;
     std::vector<NkStackAllocatorFrame> stack_frames;
     NkStackAllocatorFrame stack_frame;
-    NkOpInstr const *pinstr;
+    NkBcInstr const *pinstr;
     bool is_initialized;
     Registers reg;
 };
@@ -68,7 +66,7 @@ struct InterpContext {
 thread_local InterpContext ctx;
 
 template <class T>
-T &_getRef(NkOpRef ref) {
+T &_getRef(NkBcRef ref) {
     auto ptr = ctx.base_ar[ref.ref_type] + ref.offset;
     if (ref.is_indirect) {
         ptr = *reinterpret_cast<uint8_t **>(ptr);
@@ -76,17 +74,17 @@ T &_getRef(NkOpRef ref) {
     return *reinterpret_cast<T *>(ptr + ref.post_offset);
 }
 
-nkval_t _getDynRef(NkOpRef ref) {
+nkval_t _getDynRef(NkBcRef ref) {
     return {&_getRef<uint8_t>(ref), ref.type};
 }
 
-void _jumpTo(NkOpInstr const *pinstr) {
+void _jumpTo(NkBcInstr const *pinstr) {
     NK_LOG_DBG("jumping to instr@%p", pinstr);
     ctx.pinstr = pinstr;
 }
 
-void _jumpTo(NkOpRef ref) {
-    _jumpTo(&_getRef<NkOpInstr>(ref));
+void _jumpTo(NkBcRef ref) {
+    _jumpTo(&_getRef<NkBcInstr>(ref));
 }
 
 void _jumpCall(FunctInfo const &fn, nkval_t ret, nkval_t args) {
@@ -112,7 +110,7 @@ void _jumpCall(FunctInfo const &fn, nkval_t ret, nkval_t args) {
     NK_LOG_DBG("pinstr=%p", ctx.pinstr);
 }
 
-#define INTERP(NAME) void _interp_##NAME(NkOpInstr const &instr)
+#define INTERP(NAME) void _interp_##NAME(NkBcInstr const &instr)
 
 INTERP(nop) {
     (void)instr;
@@ -344,7 +342,7 @@ INTERP(ne_64) {
 }
 
 template <class F>
-void _numericBinOp(NkOpInstr const &instr, F &&op) {
+void _numericBinBc(NkBcInstr const &instr, F &&op) {
     auto dst = _getDynRef(instr.arg[0]);
     auto lhs = _getDynRef(instr.arg[1]);
     auto rhs = _getDynRef(instr.arg[2]);
@@ -359,7 +357,7 @@ void _numericBinOp(NkOpInstr const &instr, F &&op) {
 }
 
 template <class F>
-void _numericBinOpInt(NkOpInstr const &instr, F &&op) {
+void _numericBinBcInt(NkBcInstr const &instr, F &&op) {
     auto dst = _getDynRef(instr.arg[0]);
     auto lhs = _getDynRef(instr.arg[1]);
     auto rhs = _getDynRef(instr.arg[2]);
@@ -381,7 +379,7 @@ void _numericBinOpInt(NkOpInstr const &instr, F &&op) {
 
 #define NUM_BIN_OP(NAME, OP)                          \
     INTERP(NAME) {                                    \
-        _numericBinOp(instr, [](auto lhs, auto rhs) { \
+        _numericBinBc(instr, [](auto lhs, auto rhs) { \
             return lhs OP rhs;                        \
         });                                           \
     }                                                 \
@@ -398,7 +396,7 @@ void _numericBinOpInt(NkOpInstr const &instr, F &&op) {
 
 #define NUM_BIN_OP_INT(NAME, OP)                         \
     INTERP(NAME) {                                       \
-        _numericBinOpInt(instr, [](auto lhs, auto rhs) { \
+        _numericBinBcInt(instr, [](auto lhs, auto rhs) { \
             return lhs OP rhs;                           \
         });                                              \
     }                                                    \
@@ -431,11 +429,11 @@ NUM_BIN_OP(gt, >)
 NUM_BIN_OP(le, <=)
 NUM_BIN_OP(lt, <)
 
-using InterpFunc = void (*)(NkOpInstr const &instr);
+using InterpFunc = void (*)(NkBcInstr const &instr);
 
 InterpFunc s_funcs[] = {
 #define X(NAME) CAT(_interp_, NAME),
-#include "op.inl"
+#include "bytecode.inl"
 };
 
 } // namespace
@@ -443,7 +441,7 @@ InterpFunc s_funcs[] = {
 void nk_interp_invoke(FunctInfo const &fn, nkval_t ret, nkval_t args) {
     NK_LOG_TRC(__func__);
 
-    NkOpProg_T const &prog = *fn.prog;
+    auto const &prog = *fn.prog;
 
     NK_LOG_DBG("program @%p", &prog);
 
@@ -480,8 +478,8 @@ void nk_interp_invoke(FunctInfo const &fn, nkval_t ret, nkval_t args) {
         assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
             "instr: %lx %s",
-            (pinstr - prog.instrs.data()) * sizeof(NkOpInstr),
-            s_nk_op_names[pinstr->code]);
+            (pinstr - prog.instrs.data()) * sizeof(NkBcInstr),
+            s_nk_bc_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
         // TODO NK_LOG_DBG("res=%s", [&]() {
         //     string str{};

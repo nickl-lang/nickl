@@ -1,12 +1,12 @@
-#ifndef HEADER_GUARD_NK_VM_IR_INTERNAL
-#define HEADER_GUARD_NK_VM_IR_INTERNAL
+#ifndef HEADER_GUARD_NK_VM_IR_IMPL
+#define HEADER_GUARD_NK_VM_IR_IMPL
 
 #include <cstddef>
 #include <string>
 #include <vector>
 
+#include "bytecode.h"
 #include "nk/vm/ir.h"
-#include "op.h"
 
 struct IrFunct {
     std::string name;
@@ -39,7 +39,7 @@ struct NkIrProg_T {
     std::vector<nktype_t> globals;
     std::vector<IrExSym> exsyms;
 
-    NkOpProg op;
+    NkBcProg bc;
 };
 
-#endif // HEADER_GUARD_NK_VM_IR_INTERNAL
+#endif // HEADER_GUARD_NK_VM_IR_IMPL

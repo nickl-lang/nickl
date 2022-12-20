@@ -3,13 +3,11 @@
 #include <cassert>
 #include <new>
 
-#include "ir_internal.hpp"
+#include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
-#include "nk/common/string_builder.h"
-#include "nk/vm/common.h"
 #include "nk/vm/value.h"
 
 char const *s_nk_ir_names[] = {
@@ -46,7 +44,7 @@ NkIrProg nkir_createProgram() {
 }
 
 void nkir_deinitProgram(NkIrProg p) {
-    nkop_deinitProgram(p->op);
+    nkbc_deinitProgram(p->bc);
     p->~NkIrProg_T();
     nk_free(nk_default_allocator, p);
 }
@@ -433,9 +431,9 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
 void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
     assert(fn.id < p->functs.size() && "invalid function");
 
-    if (!p->op) {
-        p->op = nkop_createProgram(p);
+    if (!p->bc) {
+        p->bc = nkbc_createProgram(p);
     }
 
-    nkop_invoke(p->op, fn, ret, args);
+    nkbc_invoke(p->bc, fn, ret, args);
 }
