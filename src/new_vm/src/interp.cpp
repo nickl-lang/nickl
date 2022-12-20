@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
@@ -22,7 +23,7 @@ struct ProgramFrame {
 };
 
 struct ControlFrame {
-    // TODO StackAllocator::Frame stack_frame;
+    NkStackAllocatorFrame stack_frame;
     uint8_t *base_frame;
     uint8_t *base_arg;
     uint8_t *base_ret;
@@ -55,10 +56,10 @@ struct InterpContext {
         uint8_t *base_ar[NkOpRef_Count];
         Base base;
     };
-    // TODO StackAllocator stack;
-    // TODO Array<ControlFrame> ctrl_stack;
-    // TODO Array<StackAllocator::Frame> stack_frames;
-    // TODO StackAllocator::Frame stack_frame;
+    NkStackAllocator *stack;
+    std::vector<ControlFrame> ctrl_stack;
+    std::vector<NkStackAllocatorFrame> stack_frames;
+    NkStackAllocatorFrame stack_frame;
     NkOpInstr const *pinstr;
     bool is_initialized;
     Registers reg;
@@ -89,16 +90,16 @@ void _jumpTo(NkOpRef ref) {
 }
 
 void _jumpCall(FunctInfo const &fn, nkval_t ret, nkval_t args) {
-    *ctx.ctrl_stack.push() = {
+    ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
         .base_arg = ctx.base.arg,
         .base_ret = ctx.base.ret,
         .pinstr = ctx.pinstr,
-    };
+    });
 
-    ctx.stack_frame = ctx.stack.pushFrame();
-    ctx.base.frame = (uint8_t *)ctx.stack.alloc_aligned(fn.frame_size, fn.frame_align);
+    ctx.stack_frame = nk_stack_pushFrame(ctx.stack);
+    ctx.base.frame = (uint8_t *)nk_stack_allocate(ctx.stack, fn.frame_size); // TODO not aligned
     ctx.base.arg = (uint8_t *)nkval_data(args);
     ctx.base.ret = (uint8_t *)nkval_data(ret);
 
@@ -120,10 +121,10 @@ INTERP(nop) {
 INTERP(ret) {
     (void)instr;
 
-    const auto &fr = ctx.ctrl_stack.back();
-    ctx.ctrl_stack.pop();
+    auto const fr = ctx.ctrl_stack.back();
+    ctx.ctrl_stack.pop_back();
 
-    ctx.stack.popFrame(ctx.stack_frame);
+    nk_stack_popFrame(ctx.stack, ctx.stack_frame);
 
     ctx.stack_frame = fr.stack_frame;
     ctx.base.frame = fr.base_frame;
@@ -136,14 +137,14 @@ INTERP(ret) {
 INTERP(enter) {
     (void)instr;
 
-    *ctx.stack_frames.push() = ctx.stack.pushFrame();
+    ctx.stack_frames.emplace_back(nk_stack_pushFrame(ctx.stack));
 }
 
 INTERP(leave) {
     (void)instr;
 
-    ctx.stack.popFrame(ctx.stack_frames.back());
-    ctx.stack_frames.pop();
+    nk_stack_popFrame(ctx.stack, ctx.stack_frames.back());
+    ctx.stack_frames.pop_back();
 }
 
 INTERP(jmp) {
@@ -449,7 +450,8 @@ void nk_interp_invoke(FunctInfo const &fn, nkval_t ret, nkval_t args) {
     bool was_uninitialized = !ctx.is_initialized;
     if (was_uninitialized) {
         NK_LOG_TRC("initializing stack...");
-        ctx.stack.reserve(1024);
+        // TODO ctx.stack.reserve(1024);
+        ctx.stack = nk_create_stack();
         ctx.is_initialized = true;
     }
 
@@ -507,10 +509,9 @@ void nk_interp_invoke(FunctInfo const &fn, nkval_t ret, nkval_t args) {
     if (was_uninitialized) {
         NK_LOG_TRC("deinitializing stack...");
 
-        assert(ctx.stack.size() == 0 && "nonempty stack at exit");
+        // TODO assert(ctx.stack.size() == 0 && "nonempty stack at exit");
 
-        ctx.stack.deinit();
-        ctx.ctrl_stack.deinit();
+        nk_free_stack(ctx.stack);
 
         ctx.is_initialized = false;
     }

@@ -13,6 +13,12 @@
 #include "nk/vm/value.h"
 #include "op_internal.hpp"
 
+char const *s_nk_op_names[] = {
+#define X(NAME) #NAME,
+#define XE(NAME, VAR) #NAME " (" #VAR ")",
+#include "op.inl"
+};
+
 namespace {
 
 NkOpCode s_ir2opcode[] = {
