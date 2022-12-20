@@ -97,7 +97,7 @@ void nkir_activateFunct(NkIrProg p, NkIrFunctId funct_id) {
 void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id) {
     assert(p->cur_funct < p->functs.size() && "no current function");
     assert(block_id.id < p->blocks.size() && "invalid block");
-    p->cur_block = block_id.id;
+    p->functs[p->cur_funct].cur_block = block_id.id;
 }
 
 NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type) {
@@ -263,14 +263,15 @@ NkIrInstr nkir_make_call_indir(NkIrRef dst, NkIrRef funct, NkIrRef args) {
 #include "nk/vm/ir.inl"
 
 void nkir_gen(NkIrProg p, NkIrInstr instr) {
-    assert(p->cur_block < p->blocks.size() && "no current block");
+    assert(p->cur_funct < p->functs.size() && "no current function");
+    assert(p->functs[p->cur_funct].cur_block < p->blocks.size() && "no current block");
     assert(
         instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
         (instr.arg[0].ref.ref_type != NkIrRef_Const && instr.arg[0].ref.ref_type != NkIrRef_Arg));
 
     size_t id = p->instrs.size();
     p->instrs.emplace_back(instr);
-    p->blocks[p->cur_block].instrs.emplace_back(id);
+    p->blocks[p->functs[p->cur_funct].cur_block].instrs.emplace_back(id);
 }
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {

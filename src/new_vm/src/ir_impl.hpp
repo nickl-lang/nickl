@@ -9,6 +9,8 @@
 #include "nk/vm/ir.h"
 
 struct IrFunct {
+    size_t cur_block;
+
     std::string name;
     nktype_t fn_t;
 
@@ -30,7 +32,6 @@ struct IrExSym {
 
 struct NkIrProg_T {
     size_t cur_funct;
-    size_t cur_block;
 
     std::vector<IrFunct> functs;
     std::vector<IrBlock> blocks;

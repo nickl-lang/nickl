@@ -71,3 +71,64 @@ TEST_F(ir, add) {
 
     EXPECT_EQ(res, 9);
 }
+
+TEST_F(ir, nested_functions) {
+    auto p = nkir_createProgram();
+    defer {
+        nkir_deinitProgram(p);
+    };
+
+    auto i32_t = nkt_get_numeric(m_arena, Int32);
+    auto void_t = nkt_get_void(m_arena);
+
+    int32_t const_2 = 2;
+    int32_t const_4 = 4;
+
+    auto getEight = nkir_makeFunct(p);
+    nkir_startFunct(
+        p,
+        getEight,
+        cs2s("getEight"),
+        nkt_get_fn(m_arena, i32_t, void_t, nullptr, NkCallConv_Nk, false));
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    auto getFour = nkir_makeFunct(p);
+    nkir_startFunct(
+        p,
+        getFour,
+        cs2s("getFour"),
+        nkt_get_fn(m_arena, i32_t, void_t, nullptr, NkCallConv_Nk, false));
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, nkval_t{&const_4, i32_t})));
+    nkir_gen(p, nkir_make_ret());
+
+    nkir_activateFunct(p, getEight);
+
+    auto var = nkir_makeLocalVar(p, i32_t);
+
+    nkir_gen(p, nkir_make_call(nkir_makeFrameRef(p, var), getFour, {}));
+    nkir_gen(
+        p,
+        nkir_make_mul(
+            nkir_makeRetRef(p),
+            nkir_makeFrameRef(p, var),
+            nkir_makeConstRef(p, nkval_t{&const_2, i32_t})));
+    nkir_gen(p, nkir_make_ret());
+
+    {
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+
+        nkir_inspect(p, sb);
+        auto str = nksb_concat(sb);
+
+        NK_LOG_INF("\n%.*s", str.size, str.data);
+    }
+
+    int32_t res = 0;
+    nkir_invoke(p, getEight, nkval_t{&res, i32_t}, {});
+    EXPECT_EQ(res, 8);
+}
