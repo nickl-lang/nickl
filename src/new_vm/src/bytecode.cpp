@@ -8,7 +8,10 @@
 #include "interp.hpp"
 #include "ir_impl.hpp"
 #include "nk/common/allocator.h"
+#include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
+#include "nk/vm/common.h"
+#include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 
 char const *s_nk_bc_names[] = {
@@ -19,29 +22,31 @@ char const *s_nk_bc_names[] = {
 
 namespace {
 
+NK_LOG_USE_SCOPE(bytecode);
+
 NkOpCode s_ir2opcode[] = {
 #define X(NAME) CAT(nkop_, NAME),
 #include "nk/vm/ir.inl"
 };
 
-FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
+BytecodeFunct _translateIr(NkBcProg prog, NkIrFunctId fn) {
+    NK_LOG_DBG("translating funct id=%llu", fn.id);
+
     auto const &ir = *prog->ir;
 
-    auto const &funct = ir.functs[fn.id];
+    auto const &ir_funct = ir.functs[fn.id];
 
     auto frame_layout =
-        nk_calcTupleLayout(funct.locals.data(), funct.locals.size(), nk_default_allocator, 1);
+        nk_calcTupleLayout(ir_funct.locals.data(), ir_funct.locals.size(), nk_default_allocator, 1);
     defer {
         nk_free(nk_default_allocator, frame_layout.info_ar.data);
     };
 
-    FunctInfo funct_info{
+    BytecodeFunct bc_funct{
         .prog = prog,
         .frame_size = frame_layout.size,
-        .frame_align = frame_layout.align,
         .first_instr = prog->instrs.size(),
-        .instr_count = 0,
-        .fn_t = funct.fn_t,
+        .fn_t = ir_funct.fn_t,
     };
 
     // TODO enum ERelocType {
@@ -75,7 +80,7 @@ FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
                 arg.offset += frame_layout.info_ar.data[ref.index].offset;
                 break;
             case NkIrRef_Arg:
-                arg.offset += funct.fn_t->as.fn.args_t->as.tuple.elems.data[ref.index].offset;
+                arg.offset += ir_funct.fn_t->as.fn.args_t->as.tuple.elems.data[ref.index].offset;
                 break;
             case NkIrRef_Ret:
                 break;
@@ -83,16 +88,16 @@ FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
                 // TODO arg.offset += globals_layout.info_ar[ref.value.index].offset;
                 break;
             case NkIrRef_Const:
-                // TODO arg.offset += _pushConst({ref.value.data, ref.type});
+                arg.ref_type = NkBcRef_Abs;
+                arg.offset = (size_t)ref.data;
                 break;
             case NkIrRef_Reg:
                 arg.offset += ref.index * REG_SIZE;
                 break;
-            case NkIrRef_ExtVar: {
+            case NkIrRef_ExtVar:
                 // TODO arg.ref_type = NkBcRef_Abs;
                 // arg.offset = (size_t)prog.exsyms[ir_arg.id];
                 break;
-            }
             default:
                 assert(!"unreachable");
             case NkIrRef_None:
@@ -136,7 +141,7 @@ FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
         }
     };
 
-    for (auto block_id : funct.blocks) {
+    for (auto block_id : ir_funct.blocks) {
         auto const &block = ir.blocks[block_id];
 
         // TODO???????????? auto &block_info = block_info_ar[block.id] = {};
@@ -151,12 +156,7 @@ FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
 
             switch (ir_instr.code) {
             case nkir_call:
-                // TODO if (arg1.arg_type == NkIrArg_FunctId) {
-                //     code = op_call_jmp;
-                //     if (!prog.funct_info[arg1.id].prog) {
-                //         funct_ids_to_translate.insert(arg1.id);
-                //     }
-                // }
+                code = nkop_call; // TODO Not doing jump call
                 break;
             case nkir_mov:
             case nkir_eq:
@@ -173,7 +173,6 @@ FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
             }
 
             auto &instr = prog->instrs.emplace_back();
-            funct_info.instr_count++;
             instr.code = code;
             for (size_t ai = 0; ai < 3; ai++) {
                 _compileArg(prog->instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
@@ -181,16 +180,18 @@ FunctInfo _translateIr(NkBcProg prog, NkIrFunctId fn) {
         }
     }
 
-    return funct_info;
+    return bc_funct;
 }
 
 } // namespace
 
 NkBcProg nkbc_createProgram(NkIrProg ir) {
-    return new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
+    auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
         .arena = nk_create_arena(),
     };
+    prog->instrs.reserve(100); // TODO Huge hack that avoids instruction reallocation
+    return prog;
 }
 
 void nkbc_deinitProgram(NkBcProg p) {

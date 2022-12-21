@@ -25,14 +25,6 @@ NkIrArg _arg(NkIrBlockId block) {
     return {{.id = block.id}, NkIrArg_BlockId};
 }
 
-NkIrArg _arg(NkIrFunctId funct) {
-    return {{.id = funct.id}, NkIrArg_FunctId};
-}
-
-NkIrArg _arg(NkIrExtFunctId funct) {
-    return {{.id = funct.id}, NkIrArg_ExtFunctId};
-}
-
 NkIrArg _arg(NkNumericValueType value_type) {
     return {{.id = value_type}, NkIrArg_NumValType};
 }
@@ -207,6 +199,21 @@ NkIrRef nkir_makeExtVarRef(NkIrProg p, NkIrExtVarId var) {
     };
 }
 
+NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunctId funct_id) {
+    auto &funct_info = p->functs_for_invoke.emplace_back(NkIrFunct{
+        .prog = p,
+        .id = funct_id,
+    });
+    return {
+        .data = &funct_info,
+        .offset = 0,
+        .post_offset = 0,
+        .type = p->functs[funct_id.id].fn_t,
+        .ref_type = NkIrRef_Const,
+        .is_indirect = false,
+    };
+}
+
 NkIrInstr nkir_make_nop() {
     return {{}, nkir_nop};
 }
@@ -240,16 +247,8 @@ NkIrInstr nkir_make_cast(NkIrRef dst, nktype_t type, NkIrRef arg) {
     return {{_arg(dst), _arg(type->as.num.value_type), _arg(arg)}, nkir_cast};
 }
 
-NkIrInstr nkir_make_call(NkIrRef dst, NkIrFunctId funct, NkIrRef args) {
-    return {{_arg(dst), _arg(funct), _arg(args)}, nkir_call};
-}
-
-NkIrInstr nkir_make_call_ext(NkIrRef dst, NkIrExtFunctId funct, NkIrRef args) {
-    return {{_arg(dst), _arg(funct), _arg(args)}, nkir_call};
-}
-
-NkIrInstr nkir_make_call_indir(NkIrRef dst, NkIrRef funct, NkIrRef args) {
-    return {{_arg(dst), _arg(funct), _arg(args)}, nkir_call};
+NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef fn, NkIrRef args) {
+    return {{_arg(dst), _arg(fn), _arg(args)}, nkir_call};
 }
 
 #define U(NAME)                                            \
@@ -429,12 +428,14 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     nkt_inspect(ref.type, sb);
 }
 
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
-    assert(fn.id < p->functs.size() && "invalid function");
+void nkir_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
+    auto const &fn = nkval_as(NkIrFunct, fn_val);
 
-    if (!p->bc) {
-        p->bc = nkbc_createProgram(p);
+    assert(fn.id.id < fn.prog->functs.size() && "invalid function");
+
+    if (!fn.prog->bc) {
+        fn.prog->bc = nkbc_createProgram(fn.prog);
     }
 
-    nkbc_invoke(p->bc, fn, ret, args);
+    nkbc_invoke(fn.prog->bc, fn.id, ret, args);
 }

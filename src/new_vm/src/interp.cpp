@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "bytecode_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
@@ -87,7 +88,7 @@ void _jumpTo(NkBcRef ref) {
     _jumpTo(&_getRef<NkBcInstr>(ref));
 }
 
-void _jumpCall(FunctInfo const &fn, nkval_t ret, nkval_t args) {
+void _jumpCall(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
     ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -196,16 +197,15 @@ INTERP(call) {
     auto fn_val = _getDynRef(instr.arg[1]);
     auto args = _getDynRef(instr.arg[2]);
 
-    // TODO val_fn_invoke(nkval_typeof(fn_val), ret, args);
+    nkval_fn_invoke(fn_val, ret, args);
 }
 
 INTERP(call_jmp) {
-    auto ret = _getDynRef(instr.arg[0]);
-    auto fn_val = _getDynRef(instr.arg[1]);
-    auto args = _getDynRef(instr.arg[2]);
+    // TODO auto ret = _getDynRef(instr.arg[0]);
+    // auto fn_val = _getDynRef(instr.arg[1]);
+    // auto args = _getDynRef(instr.arg[2]);
 
-    FunctInfo const &fn = *(FunctInfo *)nkval_typeof(fn_val)->as.fn.closure;
-    _jumpCall(fn, ret, args);
+    // _jumpCall(nkval_as(BytecodeFunct, fn_val), ret, args);
 }
 
 INTERP(mov) {
@@ -438,7 +438,7 @@ InterpFunc s_funcs[] = {
 
 } // namespace
 
-void nk_interp_invoke(FunctInfo const &fn, nkval_t ret, nkval_t args) {
+void nk_interp_invoke(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
     NK_LOG_TRC(__func__);
 
     auto const &prog = *fn.prog;

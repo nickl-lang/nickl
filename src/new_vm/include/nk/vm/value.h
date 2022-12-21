@@ -30,18 +30,12 @@ typedef struct {
     size_t elem_count;
 } _nk_type_array;
 
-typedef enum {
-    NkCallConv_Nk,
-    NkCallConv_Cdecl,
-
-    NkCallConv_Count,
-} NkCallConv;
+typedef void (*NkFuncPtr)(nkval_t fn, nkval_t ret, nkval_t args);
 
 typedef struct {
     nktype_t ret_t;
     nktype_t args_t;
-    void *closure;
-    NkCallConv call_conv;
+    NkFuncPtr invoke_fn;
     bool is_variadic;
 } _nk_type_fn;
 
@@ -105,8 +99,7 @@ nktype_t nkt_get_fn(
     NkAllocator *alloc,
     nktype_t ret_t,
     nktype_t args_t,
-    void *closure,
-    NkCallConv call_conv,
+    NkFuncPtr invoke_fn,
     bool is_variadic);
 
 nktype_t nkt_get_numeric(NkAllocator *alloc, NkNumericValueType value_type);

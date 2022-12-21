@@ -46,12 +46,10 @@ typedef struct {
     uint16_t code;
 } NkBcInstr;
 
-struct FunctInfo {
+struct BytecodeFunct {
     NkBcProg prog;
     size_t frame_size;
-    size_t frame_align;
     size_t first_instr;
-    size_t instr_count;
     nktype_t fn_t;
 };
 
@@ -59,7 +57,7 @@ struct NkBcProg_T {
     NkIrProg ir;
 
     std::unordered_map<size_t, nkval_t> globals;
-    std::unordered_map<size_t, FunctInfo> functs;
+    std::unordered_map<size_t, BytecodeFunct> functs;
 
     std::vector<NkBcInstr> instrs;
 

@@ -34,15 +34,13 @@ nktype_t nkt_get_fn(
     NkAllocator *alloc,
     nktype_t ret_t,
     nktype_t args_t,
-    void *closure,
-    NkCallConv call_conv,
+    NkFuncPtr invoke_fn,
     bool is_variadic) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.fn{
             .ret_t = ret_t,
             .args_t = args_t,
-            .closure = closure,
-            .call_conv = call_conv,
+            .invoke_fn = invoke_fn,
             .is_variadic = is_variadic,
         }},
         .id = s_next_type_id++,
@@ -265,6 +263,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
 }
 
 void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
+    nkval_typeof(fn)->as.fn.invoke_fn(fn, ret, args);
 }
 
 size_t nkval_array_size(nkval_t self) {

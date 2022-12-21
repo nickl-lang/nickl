@@ -18,8 +18,6 @@ typedef struct {
     nktype_t type;
 } nkval_t;
 
-typedef void (*FuncPtr)(nkval_t fn, nkval_t ret, nkval_t args);
-
 // TODO Move somewhere
 #define DEFINE_ID_TYPE(NAME) \
     typedef struct {         \

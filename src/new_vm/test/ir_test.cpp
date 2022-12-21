@@ -45,8 +45,8 @@ TEST_F(ir, add) {
     auto args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
 
     auto add = nkir_makeFunct(p);
-    nkir_startFunct(
-        p, add, cs2s("add"), nkt_get_fn(m_arena, i32_t, args_t, nullptr, NkCallConv_Nk, false));
+    auto add_fn_t = nkt_get_fn(m_arena, i32_t, args_t, nkir_invoke, false);
+    nkir_startFunct(p, add, cs2s("add"), add_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     nkir_gen(p, nkir_make_add(nkir_makeRetRef(p), nkir_makeArgRef(p, 0), nkir_makeArgRef(p, 1)));
@@ -67,7 +67,8 @@ TEST_F(ir, add) {
     int32_t args[] = {4, 5};
     int32_t res = 0;
 
-    nkir_invoke(p, add, nkval_t{&res, i32_t}, nkval_t{args, args_t});
+    NkIrFunct add_fn{p, add};
+    nkir_invoke(nkval_t{&add_fn, add_fn_t}, nkval_t{&res, i32_t}, nkval_t{args, args_t});
 
     EXPECT_EQ(res, 9);
 }
@@ -85,19 +86,13 @@ TEST_F(ir, nested_functions) {
     int32_t const_4 = 4;
 
     auto getEight = nkir_makeFunct(p);
-    nkir_startFunct(
-        p,
-        getEight,
-        cs2s("getEight"),
-        nkt_get_fn(m_arena, i32_t, void_t, nullptr, NkCallConv_Nk, false));
+    auto getEight_fn_t = nkt_get_fn(m_arena, i32_t, void_t, nkir_invoke, false);
+    nkir_startFunct(p, getEight, cs2s("getEight"), getEight_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     auto getFour = nkir_makeFunct(p);
     nkir_startFunct(
-        p,
-        getFour,
-        cs2s("getFour"),
-        nkt_get_fn(m_arena, i32_t, void_t, nullptr, NkCallConv_Nk, false));
+        p, getFour, cs2s("getFour"), nkt_get_fn(m_arena, i32_t, void_t, nkir_invoke, false));
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, nkval_t{&const_4, i32_t})));
@@ -107,7 +102,7 @@ TEST_F(ir, nested_functions) {
 
     auto var = nkir_makeLocalVar(p, i32_t);
 
-    nkir_gen(p, nkir_make_call(nkir_makeFrameRef(p, var), getFour, {}));
+    nkir_gen(p, nkir_make_call(nkir_makeFrameRef(p, var), nkir_makeFunctRef(p, getFour), {}));
     nkir_gen(
         p,
         nkir_make_mul(
@@ -129,6 +124,7 @@ TEST_F(ir, nested_functions) {
     }
 
     int32_t res = 0;
-    nkir_invoke(p, getEight, nkval_t{&res, i32_t}, {});
+    NkIrFunct getEight_fn{p, getEight};
+    nkir_invoke(nkval_t{&getEight_fn, getEight_fn_t}, nkval_t{&res, i32_t}, {});
     EXPECT_EQ(res, 8);
 }

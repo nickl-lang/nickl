@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NK_VM_IR_IMPL
 
 #include <cstddef>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -39,6 +40,8 @@ struct NkIrProg_T {
     std::vector<std::string> shobjs;
     std::vector<nktype_t> globals;
     std::vector<IrExSym> exsyms;
+
+    std::deque<NkIrFunct> functs_for_invoke; // TODO Rename or refactor
 
     NkBcProg bc;
 };

@@ -91,6 +91,11 @@ DEFINE_ID_TYPE(NkIrExtFunctId);
 
 typedef struct NkIrProg_T *NkIrProg;
 
+struct NkIrFunct {
+    NkIrProg prog;
+    NkIrFunctId id;
+};
+
 NkIrProg nkir_createProgram();
 void nkir_deinitProgram(NkIrProg p);
 
@@ -116,6 +121,7 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var);
 NkIrRef nkir_makeConstRef(NkIrProg p, nkval_t val);
 NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type);
 NkIrRef nkir_makeExtVarRef(NkIrProg p, NkIrExtVarId var);
+NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunctId funct_id);
 
 NkIrInstr nkir_make_nop();
 NkIrInstr nkir_make_enter();
@@ -128,9 +134,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrBlockId label);
 
 NkIrInstr nkir_make_cast(NkIrRef dst, nktype_t type, NkIrRef arg);
 
-NkIrInstr nkir_make_call(NkIrRef dst, NkIrFunctId funct, NkIrRef args);
-NkIrInstr nkir_make_call_ext(NkIrRef dst, NkIrExtFunctId funct, NkIrRef args);
-NkIrInstr nkir_make_call_indir(NkIrRef dst, NkIrRef funct, NkIrRef args);
+NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef fn, NkIrRef args);
 
 #define U(N) NkIrInstr nkir_make_##N(NkIrRef dst, NkIrRef arg);
 #define B(N) NkIrInstr nkir_make_##N(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
@@ -141,7 +145,7 @@ void nkir_gen(NkIrProg p, NkIrInstr instr);
 void nkir_inspect(NkIrProg p, NkStringBuilder sb);
 void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb);
 
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args);
+void nkir_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
 #ifdef __cplusplus
 }
