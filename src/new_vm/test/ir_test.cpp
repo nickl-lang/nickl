@@ -1,6 +1,7 @@
 #include "nk/vm/ir.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 
 #include <gtest/gtest.h>
@@ -126,7 +127,7 @@ TEST_F(ir, nested_functions) {
     EXPECT_EQ(res, 8);
 }
 
-TEST_F(ir, if) {
+TEST_F(ir, isEven) {
     auto p = nkir_createProgram();
     defer {
         nkir_deinitProgram(p);
@@ -177,4 +178,55 @@ TEST_F(ir, if) {
     args[0] = 2;
     nkir_invoke(p, isEven, nkval_t{&res, i32_t}, {&args, args_t});
     EXPECT_EQ(res, 1);
+}
+
+bool test_print_called;
+extern "C" void _test_print(char const *str) {
+    test_print_called = true;
+    puts(str);
+}
+
+TEST_F(ir, native_call) {
+    auto p = nkir_createProgram();
+    defer {
+        nkir_deinitProgram(p);
+    };
+
+    auto void_t = nkt_get_void(m_arena);
+    auto i8_t = nkt_get_numeric(m_arena, Int8);
+    auto i8_ptr_t = nkt_get_ptr(m_arena, i8_t);
+
+    auto sayHello = nkir_makeFunct(p);
+    nkir_startFunct(
+        p,
+        sayHello,
+        cs2s("sayHello"),
+        nkt_get_fn(m_arena, void_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false));
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    char const *const_str = "Hello, World!";
+
+    nktype_t args_types[] = {i8_ptr_t};
+    auto test_print_args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
+
+    auto so = nkir_makeShObj(p, cs2s(""));
+    auto _test_print_fn = nkir_makeExtSym(
+        p,
+        so,
+        cs2s("_test_print"),
+        nkt_get_fn(m_arena, void_t, test_print_args_t, NkCallConv_Cdecl, false));
+
+    nkir_gen(
+        p,
+        nkir_make_call(
+            {},
+            nkir_makeExtSymRef(p, _test_print_fn),
+            nkir_makeConstRef(p, nkval_t{&const_str, i8_ptr_t})));
+    nkir_gen(p, nkir_make_ret());
+
+    inspect(p);
+
+    nkir_invoke(p, sayHello, {}, {});
+
+    EXPECT_TRUE(test_print_called);
 }

@@ -105,8 +105,8 @@ NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nktype_t type) {
     return id;
 }
 
-NkIrExtVarId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type) {
-    NkIrExtVarId id{p->exsyms.size()};
+NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type) {
+    NkIrExtSymId id{p->exsyms.size()};
     p->exsyms.emplace_back(IrExSym{
         .name = std_str(name),
         .so_id = so,
@@ -188,13 +188,13 @@ NkIrRef nkir_makeRegRef(NkIrProg, NkIrRegister reg, nktype_t type) {
     };
 }
 
-NkIrRef nkir_makeExtVarRef(NkIrProg p, NkIrExtVarId var) {
+NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym) {
     return {
-        .index = var.id,
+        .index = sym.id,
         .offset = 0,
         .post_offset = 0,
-        .type = p->exsyms[var.id].type,
-        .ref_type = NkIrRef_ExtVar,
+        .type = p->exsyms[sym.id].type,
+        .ref_type = NkIrRef_ExtSym,
         .is_indirect = false,
     };
 }
@@ -331,9 +331,6 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
                             nksb_printf(sb, "(null)");
                         }
                         break;
-                    case NkIrArg_ExtFunctId:
-                        nksb_printf(sb, "(%s)", p->exsyms[arg.id].name.c_str());
-                        break;
                     case NkIrArg_NumValType:
                         switch (arg.id) {
                         case Int8:
@@ -409,7 +406,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref.index));
         break;
-    case NkIrRef_ExtVar:
+    case NkIrRef_ExtSym:
         nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
         break;
     default:

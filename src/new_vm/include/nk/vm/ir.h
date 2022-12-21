@@ -43,7 +43,7 @@ typedef enum {
     NkIrRef_Const,
     NkIrRef_Reg,
 
-    NkIrRef_ExtVar,
+    NkIrRef_ExtSym,
 } NkIrRefType;
 
 typedef struct {
@@ -64,7 +64,6 @@ typedef enum {
     NkIrArg_Ref,
     NkIrArg_BlockId,
     NkIrArg_FunctId,
-    NkIrArg_ExtFunctId,
     NkIrArg_NumValType,
 } NkIrArgType;
 
@@ -86,8 +85,7 @@ DEFINE_ID_TYPE(NkIrBlockId);
 DEFINE_ID_TYPE(NkIrShObjId);
 DEFINE_ID_TYPE(NkIrLocalVarId);
 DEFINE_ID_TYPE(NkIrGlobalVarId);
-DEFINE_ID_TYPE(NkIrExtVarId);
-DEFINE_ID_TYPE(NkIrExtFunctId);
+DEFINE_ID_TYPE(NkIrExtSymId);
 
 typedef struct NkIrProg_T *NkIrProg;
 
@@ -112,7 +110,7 @@ void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id);
 NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type);
 NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nktype_t type);
 
-NkIrExtVarId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type);
+NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type);
 
 NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var);
 NkIrRef nkir_makeArgRef(NkIrProg p, size_t index);
@@ -120,7 +118,7 @@ NkIrRef nkir_makeRetRef(NkIrProg p);
 NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var);
 NkIrRef nkir_makeConstRef(NkIrProg p, nkval_t val);
 NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type);
-NkIrRef nkir_makeExtVarRef(NkIrProg p, NkIrExtVarId var);
+NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym);
 NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunctId funct_id);
 
 NkIrInstr nkir_make_nop();

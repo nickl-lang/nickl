@@ -174,7 +174,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
             case NkIrRef_Reg:
                 arg.offset += ref.index * REG_SIZE;
                 break;
-            case NkIrRef_ExtVar:
+            case NkIrRef_ExtSym:
                 // TODO arg.ref_type = NkBcRef_Abs;
                 // arg.offset = (size_t)prog.exsyms[ir_arg.id];
                 break;
@@ -203,17 +203,17 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
             //     .reloc_type = Reloc_Funct,
             // };
             // break;
-        case NkIrArg_ExtFunctId: {
-            // TODO auto &exsym = ir.exsyms[ir_arg.id];
-            // arg.ref_type = Ref_Const;
-            // arg.type = types::get_fn_native(
-            //     exsym.as.funct.ret_t,
-            //     exsym.as.funct.args_t,
-            //     0,
-            //     prog.exsyms[ir_arg.id],
-            //     exsym.as.funct.is_variadic);
-            // break;
-        }
+        // TODO case NkIrArg_ExtFunctId: {
+        //     auto &exsym = ir.exsyms[ir_arg.id];
+        //     arg.ref_type = Ref_Const;
+        //     arg.type = types::get_fn_native(
+        //         exsym.as.funct.ret_t,
+        //         exsym.as.funct.args_t,
+        //         0,
+        //         prog.exsyms[ir_arg.id],
+        //         exsym.as.funct.is_variadic);
+        //     break;
+        // }
         case NkIrArg_NumValType: {
             // TODO
             break;
