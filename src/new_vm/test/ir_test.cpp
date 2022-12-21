@@ -61,7 +61,7 @@ TEST_F(ir, add) {
         nkir_inspect(p, sb);
         auto str = nksb_concat(sb);
 
-        NK_LOG_INF("\n%.*s", str.size, str.data);
+        NK_LOG_INF("ir:\n%.*s", str.size, str.data);
     }
 
     int32_t args[] = {4, 5};
@@ -120,7 +120,7 @@ TEST_F(ir, nested_functions) {
         nkir_inspect(p, sb);
         auto str = nksb_concat(sb);
 
-        NK_LOG_INF("\n%.*s", str.size, str.data);
+        NK_LOG_INF("ir:\n%.*s", str.size, str.data);
     }
 
     int32_t res = 0;

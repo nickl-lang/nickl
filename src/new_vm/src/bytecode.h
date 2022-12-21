@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_BYTECODE
 #define HEADER_GUARD_NK_VM_BYTECODE
 
+#include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"

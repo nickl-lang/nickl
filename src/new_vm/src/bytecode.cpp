@@ -9,6 +9,7 @@
 #include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
@@ -29,10 +30,82 @@ NkOpCode s_ir2opcode[] = {
 #include "nk/vm/ir.inl"
 };
 
-BytecodeFunct _translateIr(NkBcProg prog, NkIrFunctId fn) {
+void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder sb) {
+    auto _inspectArg = [&](NkBcRef const &arg) {
+        if (arg.is_indirect) {
+            nksb_printf(sb, "[");
+        }
+        switch (arg.ref_type) {
+        case NkBcRef_Frame:
+            nksb_printf(sb, "frame+");
+            break;
+        case NkBcRef_Arg:
+            nksb_printf(sb, "arg+");
+            break;
+        case NkBcRef_Ret:
+            nksb_printf(sb, "ret+");
+            break;
+        case NkBcRef_Global:
+            nksb_printf(sb, "global+");
+            break;
+        case NkBcRef_Const:
+            // TODO NkBcRef_Const??
+            break;
+        case NkBcRef_Reg:
+            nksb_printf(sb, "reg+");
+            break;
+        case NkBcRef_Instr:
+            nksb_printf(sb, "instr+");
+            break;
+        case NkBcRef_Abs:
+            nkval_inspect(nkval_t{(void *)arg.offset, arg.type}, sb);
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        if (arg.ref_type != NkBcRef_Const && arg.ref_type != NkBcRef_Abs) {
+            nksb_printf(sb, "%zx", arg.offset);
+        }
+        if (arg.is_indirect) {
+            nksb_printf(sb, "]");
+        }
+        if (arg.post_offset) {
+            nksb_printf(sb, "+%zx", arg.post_offset);
+        }
+        if (arg.type) {
+            nksb_printf(sb, ":");
+            nkt_inspect(arg.type, sb);
+        }
+    };
+
+    for (size_t i = first_instr; i <= last_instr; i++) {
+        auto const &instr = p->instrs[i];
+
+        nksb_printf(sb, "%zx\t", (&instr - p->instrs.data()) * sizeof(NkBcInstr));
+
+        if (instr.arg[0].ref_type != NkBcRef_None) {
+            _inspectArg(instr.arg[0]);
+            nksb_printf(sb, " := ");
+        }
+
+        nksb_printf(sb, s_nk_bc_names[instr.code]);
+
+        for (size_t i = 1; i < 3; i++) {
+            if (instr.arg[i].ref_type != NkBcRef_None) {
+                nksb_printf(sb, ((i > 1) ? ", " : " "));
+                _inspectArg(instr.arg[i]);
+            }
+        }
+
+        nksb_printf(sb, "\n");
+    }
+}
+
+BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
     NK_LOG_DBG("translating funct id=%llu", fn.id);
 
-    auto const &ir = *prog->ir;
+    auto const &ir = *p->ir;
 
     auto const &ir_funct = ir.functs[fn.id];
 
@@ -43,9 +116,9 @@ BytecodeFunct _translateIr(NkBcProg prog, NkIrFunctId fn) {
     };
 
     BytecodeFunct bc_funct{
-        .prog = prog,
+        .prog = p,
         .frame_size = frame_layout.size,
-        .first_instr = prog->instrs.size(),
+        .first_instr = p->instrs.size(),
         .fn_t = ir_funct.fn_t,
     };
 
@@ -172,12 +245,24 @@ BytecodeFunct _translateIr(NkBcProg prog, NkIrFunctId fn) {
                 break;
             }
 
-            auto &instr = prog->instrs.emplace_back();
+            auto &instr = p->instrs.emplace_back();
             instr.code = code;
             for (size_t ai = 0; ai < 3; ai++) {
-                _compileArg(prog->instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
+                _compileArg(p->instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
             }
         }
+    }
+
+    {
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+
+        _inspect(p, bc_funct.first_instr, p->instrs.size() - 1, sb);
+        auto str = nksb_concat(sb);
+
+        NK_LOG_INF("bytecode:\n%.*s", str.size, str.data);
     }
 
     return bc_funct;
