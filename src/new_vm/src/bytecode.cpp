@@ -122,19 +122,26 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
         .fn_t = ir_funct.fn_t,
     };
 
-    // TODO enum ERelocType {
-    //     Reloc_Funct,
-    //     Reloc_Block,
-    // };
+    enum ERelocType {
+        // TODO Reloc_Funct,
+        Reloc_Block,
+    };
 
-    // struct Reloc {
-    //     size_t instr_index;
-    //     size_t arg;
-    //     size_t target_id;
-    //     ERelocType reloc_type;
-    // };
+    struct Reloc {
+        size_t instr_index;
+        size_t arg;
+        size_t target_id;
+        ERelocType reloc_type;
+    };
 
-    // std::vector<Reloc> relocs{};
+    struct BlockInfo {
+        size_t first_instr;
+    };
+
+    std::vector<BlockInfo> block_info;
+    block_info.resize(ir.blocks.size());
+
+    std::vector<Reloc> relocs{};
 
     auto _compileArg = [&](size_t ii, size_t ai, NkBcRef &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.arg_type) {
@@ -179,14 +186,14 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
             break;
         }
         case NkIrArg_BlockId:
-            // TODO arg.ref_type = NkBcRef_Instr;
-            // *relocs.push() = {
-            //     .instr_index = ii,
-            //     .arg = ai,
-            //     .target_id = ir_arg.id,
-            //     .reloc_type = Reloc_Block,
-            // };
-            // break;
+            arg.ref_type = NkBcRef_Instr;
+            relocs.emplace_back(Reloc{
+                .instr_index = ii,
+                .arg = ai,
+                .target_id = ir_arg.id,
+                .reloc_type = Reloc_Block,
+            });
+            break;
         case NkIrArg_FunctId:
             // TODO arg.ref_type = NkBcRef_Const;
             // *relocs.push() = {
@@ -217,8 +224,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
     for (auto block_id : ir_funct.blocks) {
         auto const &block = ir.blocks[block_id];
 
-        // TODO???????????? auto &block_info = block_info_ar[block.id] = {};
-        // block_info.first_instr = prog.instrs.size;
+        block_info[block_id].first_instr = p->instrs.size();
 
         for (auto const &ir_instr_id : block.instrs) {
             auto const &ir_instr = ir.instrs[ir_instr_id];
@@ -232,6 +238,8 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
                 code = nkop_call; // TODO Not doing jump call
                 break;
             case nkir_mov:
+            case nkir_jmpz:
+            case nkir_jmpnz:
             case nkir_eq:
             case nkir_ne:
                 if (arg1.ref.type->size <= REG_SIZE && isZeroOrPowerOf2(arg1.ref.type->size)) {
@@ -250,6 +258,19 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
             for (size_t ai = 0; ai < 3; ai++) {
                 _compileArg(p->instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
             }
+        }
+    }
+
+    for (auto const &reloc : relocs) {
+        NkBcRef &arg = p->instrs[reloc.instr_index].arg[reloc.arg];
+
+        switch (reloc.reloc_type) {
+        // TODO case Reloc_Funct:
+        //     arg.type = p->funct_info[reloc.target_id].funct_t;
+        //     break;
+        case Reloc_Block:
+            arg.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
+            break;
         }
     }
 

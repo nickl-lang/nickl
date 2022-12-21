@@ -162,6 +162,30 @@ INTERP(jmpz) {
     // });
 }
 
+INTERP(jmpz_8) {
+    if (!_getRef<uint8_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
+INTERP(jmpz_16) {
+    if (!_getRef<uint16_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
+INTERP(jmpz_32) {
+    if (!_getRef<uint32_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
+INTERP(jmpz_64) {
+    if (!_getRef<uint64_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
 INTERP(jmpnz) {
     auto cond = _getDynRef(instr.arg[1]);
 
@@ -172,6 +196,30 @@ INTERP(jmpnz) {
     //         _jumpTo(instr.arg[2]);
     //     }
     // });
+}
+
+INTERP(jmpnz_8) {
+    if (_getRef<uint8_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
+INTERP(jmpnz_16) {
+    if (_getRef<uint16_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
+INTERP(jmpnz_32) {
+    if (_getRef<uint32_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
+}
+
+INTERP(jmpnz_64) {
+    if (_getRef<uint64_t>(instr.arg[1])) {
+        _jumpTo(instr.arg[2]);
+    }
 }
 
 INTERP(cast) {

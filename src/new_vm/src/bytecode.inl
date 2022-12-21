@@ -12,8 +12,18 @@ X(enter)
 X(leave)
 
 X(jmp)
+
 X(jmpz)
+XE(jmpz, 8)
+XE(jmpz, 16)
+XE(jmpz, 32)
+XE(jmpz, 64)
+
 X(jmpnz)
+XE(jmpnz, 8)
+XE(jmpnz, 16)
+XE(jmpnz, 32)
+XE(jmpnz, 64)
 
 //@Todo Implement extensions for cast
 X(cast)
