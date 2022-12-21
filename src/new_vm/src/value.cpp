@@ -10,6 +10,7 @@
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
+#include "nk/vm/ir.h"
 
 namespace {
 
@@ -34,13 +35,13 @@ nktype_t nkt_get_fn(
     NkAllocator *alloc,
     nktype_t ret_t,
     nktype_t args_t,
-    NkFuncPtr invoke_fn,
+    NkCallConv call_conv,
     bool is_variadic) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.fn{
             .ret_t = ret_t,
             .args_t = args_t,
-            .invoke_fn = invoke_fn,
+            .call_conv = call_conv,
             .is_variadic = is_variadic,
         }},
         .id = s_next_type_id++,
@@ -262,8 +263,16 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
     }
 }
 
-void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
-    nkval_typeof(fn)->as.fn.invoke_fn(fn, ret, args);
+void nkval_fn_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
+    switch (nkval_typeof(fn_val)->as.fn.call_conv) {
+    case NkCallConv_Nk: {
+        auto const &fn = nkval_as(NkIrFunct, fn_val);
+        nkir_invoke(fn.prog, fn.id, ret, args);
+        break;
+    }
+    case NkCallConv_Cdecl: // TODO
+        break;
+    }
 }
 
 size_t nkval_array_size(nkval_t self) {

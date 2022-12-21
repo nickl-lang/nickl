@@ -428,14 +428,12 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     nkt_inspect(ref.type, sb);
 }
 
-void nkir_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
-    auto const &fn = nkval_as(NkIrFunct, fn_val);
+void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
+    assert(fn.id < p->functs.size() && "invalid function");
 
-    assert(fn.id.id < fn.prog->functs.size() && "invalid function");
-
-    if (!fn.prog->bc) {
-        fn.prog->bc = nkbc_createProgram(fn.prog);
+    if (!p->bc) {
+        p->bc = nkbc_createProgram(p);
     }
 
-    nkbc_invoke(fn.prog->bc, fn.id, ret, args);
+    nkbc_invoke(p->bc, fn, ret, args);
 }

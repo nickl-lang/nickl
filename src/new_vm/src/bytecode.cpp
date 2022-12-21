@@ -273,6 +273,9 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
 NkBcProg nkbc_createProgram(NkIrProg ir) {
     auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
+        .globals{},
+        .functs{},
+        .instrs{},
         .arena = nk_create_arena(),
     };
     prog->instrs.reserve(100); // TODO Huge hack that avoids instruction reallocation
