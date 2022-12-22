@@ -372,7 +372,7 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
 
     if (p->exsyms.size()) {
         for (auto const &sym : p->exsyms) {
-            nksb_printf(sb, "\n%s %s:", p->shobjs[sym.so_id.id].c_str(), sym.name.c_str());
+            nksb_printf(sb, "\n\"%s\" %s:", p->shobjs[sym.so_id.id].c_str(), sym.name.c_str());
             nkt_inspect(sym.type, sb);
         }
         nksb_printf(sb, "\n");

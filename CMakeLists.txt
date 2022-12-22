@@ -24,7 +24,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic")
+set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic -fvisibility=hidden")
 if(ENABLE_ASAN)
     set(FLAGS "${FLAGS} -g -fsanitize=address -fsanitize=leak")
 endif()

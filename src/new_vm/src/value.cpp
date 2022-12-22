@@ -6,6 +6,7 @@
 #include <limits>
 #include <new>
 
+#include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
@@ -271,8 +272,7 @@ void nkval_fn_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
         break;
     }
     case NkCallConv_Cdecl:
-        using fn_type = void (*)(char const *);
-        nkval_as(fn_type, fn_val)("Hahhahhaha!"); // TODO Calling Cdecl incorrectly
+        nk_native_invoke(fn_val, ret, args);
         break;
     }
 }

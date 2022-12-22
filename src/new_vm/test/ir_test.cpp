@@ -180,8 +180,8 @@ TEST_F(ir, isEven) {
     EXPECT_EQ(res, 1);
 }
 
-char const *s_test_print_str;
-extern "C" void _test_print(char const *str) {
+static char const *s_test_print_str;
+extern "C" NK_EXPORT void _test_print(char const *str) {
     s_test_print_str = str;
     puts(str);
 }
@@ -221,7 +221,7 @@ TEST_F(ir, native_call) {
         nkir_make_call(
             {},
             nkir_makeExtSymRef(p, _test_print_fn),
-            nkir_makeConstRef(p, nkval_t{&const_str, i8_ptr_t})));
+            nkir_makeConstRef(p, nkval_t{&const_str, test_print_args_t})));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);

@@ -5,6 +5,7 @@ add_library(${LIB}
     src/dl_adapter.cpp
     src/interp.cpp
     src/ir.cpp
+    src/native_fn_adapter.cpp
     src/value.cpp
     )
 
