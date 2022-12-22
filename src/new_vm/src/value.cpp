@@ -270,7 +270,9 @@ void nkval_fn_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
         nkir_invoke(fn.prog, fn.id, ret, args);
         break;
     }
-    case NkCallConv_Cdecl: // TODO
+    case NkCallConv_Cdecl:
+        using fn_type = void (*)(char const *);
+        nkval_as(fn_type, fn_val)("Hahhahhaha!"); // TODO Calling Cdecl incorrectly
         break;
     }
 }

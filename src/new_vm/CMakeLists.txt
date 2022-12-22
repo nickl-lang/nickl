@@ -2,6 +2,7 @@ set(LIB nk_new_vm)
 
 add_library(${LIB}
     src/bytecode.cpp
+    src/dl_adapter.cpp
     src/interp.cpp
     src/ir.cpp
     src/value.cpp

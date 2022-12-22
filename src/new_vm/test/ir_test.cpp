@@ -180,9 +180,9 @@ TEST_F(ir, isEven) {
     EXPECT_EQ(res, 1);
 }
 
-bool test_print_called;
+char const *s_test_print_str;
 extern "C" void _test_print(char const *str) {
-    test_print_called = true;
+    s_test_print_str = str;
     puts(str);
 }
 
@@ -228,5 +228,5 @@ TEST_F(ir, native_call) {
 
     nkir_invoke(p, sayHello, {}, {});
 
-    EXPECT_TRUE(test_print_called);
+    EXPECT_STREQ(s_test_print_str, const_str);
 }

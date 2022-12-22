@@ -5,6 +5,7 @@
 #include <tuple>
 
 #include "bytecode_impl.hpp"
+#include "dl_adapter.h"
 #include "interp.hpp"
 #include "ir_impl.hpp"
 #include "nk/common/allocator.h"
@@ -174,10 +175,16 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
             case NkIrRef_Reg:
                 arg.offset += ref.index * REG_SIZE;
                 break;
-            case NkIrRef_ExtSym:
-                // TODO arg.ref_type = NkBcRef_Abs;
-                // arg.offset = (size_t)prog.exsyms[ir_arg.id];
+            case NkIrRef_ExtSym: {
+                arg.ref_type = NkBcRef_Abs;
+                auto const &exsym = ir.exsyms[ref.index];
+                auto dl = nkdl_open(
+                    cs2s(ir.shobjs[exsym.so_id.id]
+                             .c_str())); // TODO Opening dl every time  and not closing once
+                static void *sym = nkdl_sym(dl, cs2s(exsym.name.c_str())); // TODO Static hack 
+                arg.offset = (size_t)&sym;
                 break;
+            }
             default:
                 assert(!"unreachable");
             case NkIrRef_None:
