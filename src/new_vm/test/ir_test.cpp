@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 
 #include <gtest/gtest.h>
@@ -132,8 +133,7 @@ TEST_F(ir, isEven) {
 
     auto i32_t = nkt_get_numeric(m_arena, Int32);
 
-    nktype_t args_types[] = {i32_t};
-    auto args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
+    auto args_t = nkt_get_tuple(m_arena, &i32_t, 1, 1);
 
     auto isEven = nkir_makeFunct(p);
     auto isEven_fn_t = nkt_get_fn(m_arena, i32_t, args_t, NkCallConv_Nk, false);
@@ -204,6 +204,10 @@ TEST_F(ir, native_call) {
     nktype_t args_types[] = {i8_ptr_t};
     auto test_print_args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
 
+    auto ar_t = nkt_get_array(m_arena, i8_t, std::strlen(const_str) + 1);
+    auto str_t = nkt_get_ptr(m_arena, ar_t);
+    auto actual_args_t = nkt_get_tuple(m_arena, &str_t, 1, 1);
+
     auto so = nkir_makeShObj(p, cs2s(""));
     auto _test_print_fn = nkir_makeExtSym(
         p,
@@ -216,7 +220,7 @@ TEST_F(ir, native_call) {
         nkir_make_call(
             {},
             nkir_makeExtSymRef(p, _test_print_fn),
-            nkir_makeConstRef(p, {&const_str, test_print_args_t})));
+            nkir_makeConstRef(p, {&const_str, actual_args_t})));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);

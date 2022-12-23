@@ -224,20 +224,19 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
         }
         break;
     case NkType_Ptr: {
-        // TODO nktype_t target_type = nkval_typeof(val)->as.ptr.target_type;
-        // if (target_type->typeclass_id == NkType_Array) {
-        //     nktype_t elem_type = target_type->as.arr.elem_type;
-        //     size_t elem_count = target_type->as.arr.elem_count;
-        //     if (elem_type->typeclass_id == NkType_Numeric) {
-        //         if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type ==
-        //         Uint8) {
-        //             nksb_printf(sb, "\"");
-        //             string_escape(sb, {nkval_as(char const *, val), elem_count});
-        //             nksb_printf(sb, "\"");
-        //             break;
-        //         }
-        //     }
-        // }
+        nktype_t target_type = nkval_typeof(val)->as.ptr.target_type;
+        if (target_type->typeclass_id == NkType_Array) {
+            nktype_t elem_type = target_type->as.arr.elem_type;
+            size_t elem_count = target_type->as.arr.elem_count;
+            if (elem_type->typeclass_id == NkType_Numeric) {
+                if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
+                    nksb_printf(sb, "\"");
+                    nksb_str_escape(sb, {nkval_as(char const *, val), elem_count});
+                    nksb_printf(sb, "\"");
+                    break;
+                }
+            }
+        }
         nksb_printf(sb, "%p", nkval_data(val));
         break;
     }

@@ -71,3 +71,43 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
 nkstr nksb_concat(NkStringBuilder sb) {
     return {sb->data, sb->size};
 }
+
+void nksb_str_escape(NkStringBuilder sb, nkstr str) {
+    for (size_t i = 0; i < str.size; i++) {
+        switch (str.data[i]) {
+        case '\a':
+            nksb_printf(sb, "\\a");
+            break;
+        case '\b':
+            nksb_printf(sb, "\\b");
+            break;
+        case '\f':
+            nksb_printf(sb, "\\f");
+            break;
+        case '\n':
+            nksb_printf(sb, "\\n");
+            break;
+        case '\r':
+            nksb_printf(sb, "\\r");
+            break;
+        case '\t':
+            nksb_printf(sb, "\\t");
+            break;
+        case '\v':
+            nksb_printf(sb, "\\v");
+            break;
+        case '\0':
+            nksb_printf(sb, "\\0");
+            break;
+        case '\'':
+            nksb_printf(sb, "\\'");
+            break;
+        case '\\':
+            nksb_printf(sb, "\\\\");
+            break;
+        default:
+            nksb_printf(sb, "%c", str.data[i]);
+            break;
+        }
+    }
+}

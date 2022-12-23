@@ -22,6 +22,8 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap);
 
 nkstr nksb_concat(NkStringBuilder sb);
 
+void nksb_str_escape(NkStringBuilder sb, nkstr str);
+
 #ifdef __cplusplus
 }
 #endif

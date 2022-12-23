@@ -17,4 +17,3 @@ std::ostream &operator<<(std::ostream &stream, nkstr str) {
 nkstr cs2s(char const *str) {
     return {str, std::strlen(str)};
 }
-
