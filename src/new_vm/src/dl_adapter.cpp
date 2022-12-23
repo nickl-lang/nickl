@@ -1,7 +1,5 @@
 #include "dl_adapter.h"
 
-#include <cstdio>
-
 #include <dlfcn.h>
 
 #include "nk/common/logger.h"

@@ -13,7 +13,7 @@ struct NkIrFunct_T {
     NkIrProg prog;
     NkIrFunct self_ptr{};
 
-    size_t cur_block;
+    size_t cur_block{};
 
     std::string name{};
     nktype_t fn_t{};

@@ -201,8 +201,7 @@ TEST_F(ir, native_call) {
 
     char const *const_str = "Hello, World!";
 
-    nktype_t args_types[] = {i8_ptr_t};
-    auto test_print_args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
+    auto test_print_args_t = nkt_get_tuple(m_arena, &i8_ptr_t, 1, 1);
 
     auto ar_t = nkt_get_array(m_arena, i8_t, std::strlen(const_str) + 1);
     auto str_t = nkt_get_ptr(m_arena, ar_t);

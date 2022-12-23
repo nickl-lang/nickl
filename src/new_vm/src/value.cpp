@@ -6,12 +6,12 @@
 #include <limits>
 #include <new>
 
+#include "ir_impl.hpp"
 #include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
-#include "nk/vm/ir.h"
 
 namespace {
 
@@ -102,12 +102,11 @@ nktype_t nkt_get_void(NkAllocator *alloc) {
 void nkt_inspect(nktype_t type, NkStringBuilder sb) {
     switch (type->typeclass_id) {
     case NkType_Array:
-        nksb_printf(sb, "array{");
+        nksb_printf(sb, "[%llu]", type->as.arr.elem_count);
         nkt_inspect(type->as.arr.elem_type, sb);
-        nksb_printf(sb, ", %llu}", type->as.arr.elem_count);
         break;
     case NkType_Fn: {
-        nksb_printf(sb, "fn{(");
+        nksb_printf(sb, "(");
         nktype_t const params = type->as.fn.args_t;
         for (size_t i = 0; i < params->as.tuple.elems.size; i++) {
             if (i) {
@@ -115,9 +114,8 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
             }
             nkt_inspect(params->as.tuple.elems.data[i].type, sb);
         }
-        nksb_printf(sb, "), ");
+        nksb_printf(sb, ")->");
         nkt_inspect(type->as.fn.ret_t, sb);
-        nksb_printf(sb, "}");
         break;
     }
     case NkType_Numeric:
@@ -145,19 +143,19 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
         nksb_printf(sb, "%llu", (size_t)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
         break;
     case NkType_Ptr:
-        nksb_printf(sb, "ptr{");
+        nksb_printf(sb, "*");
         nkt_inspect(type->as.ptr.target_type, sb);
-        nksb_printf(sb, "}");
         break;
     case NkType_Tuple: {
-        nksb_printf(sb, "tuple{");
+        nksb_printf(sb, "(");
         for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
             if (i) {
-                nksb_printf(sb, ", ");
+                nksb_printf(sb, " ");
             }
             nkt_inspect(type->as.tuple.elems.data[i].type, sb);
+            nksb_printf(sb, ",");
         }
-        nksb_printf(sb, "}");
+        nksb_printf(sb, ")");
         break;
     }
     case NkType_Void:
@@ -183,7 +181,14 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
         nksb_printf(sb, "]");
         break;
     case NkType_Fn:
-        nksb_printf(sb, "fn@%p", nkval_as(void *, val));
+        switch (nkval_typeof(val)->as.fn.call_conv) {
+        case NkCallConv_Nk:
+            nksb_printf(sb, "%s", nkval_as(NkIrFunct, val)->name.c_str());
+            break;
+        case NkCallConv_Cdecl:
+            nksb_printf(sb, "%p", nkval_as(void *, val));
+            break;
+        }
         break;
     case NkType_Numeric:
         switch (nkval_typeof(val)->as.num.value_type) {
