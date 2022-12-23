@@ -59,7 +59,7 @@ void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder
             nksb_printf(sb, "instr+");
             break;
         case NkBcRef_Abs:
-            nkval_inspect(nkval_t{(void *)arg.offset, arg.type}, sb);
+            nkval_inspect({(void *)arg.offset, arg.type}, sb);
             break;
         default:
             assert(!"unreachable");

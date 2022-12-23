@@ -1,11 +1,14 @@
 #include "interp.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 
 #include "bytecode_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.h"
+#include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/value.h"
 
@@ -67,7 +70,7 @@ struct InterpContext {
 thread_local InterpContext ctx;
 
 template <class T>
-T &_getRef(NkBcRef ref) {
+T &_getRef(NkBcRef const &ref) {
     auto ptr = ctx.base_ar[ref.ref_type] + ref.offset;
     if (ref.is_indirect) {
         ptr = *reinterpret_cast<uint8_t **>(ptr);
@@ -75,7 +78,7 @@ T &_getRef(NkBcRef ref) {
     return *reinterpret_cast<T *>(ptr + ref.post_offset);
 }
 
-nkval_t _getDynRef(NkBcRef ref) {
+nkval_t _getValRef(NkBcRef const &ref) {
     return {&_getRef<uint8_t>(ref), ref.type};
 }
 
@@ -84,7 +87,7 @@ void _jumpTo(NkBcInstr const *pinstr) {
     ctx.pinstr = pinstr;
 }
 
-void _jumpTo(NkBcRef ref) {
+void _jumpTo(NkBcRef const &ref) {
     _jumpTo(&_getRef<NkBcInstr>(ref));
 }
 
@@ -151,7 +154,7 @@ INTERP(jmp) {
 }
 
 INTERP(jmpz) {
-    auto cond = _getDynRef(instr.arg[1]);
+    auto cond = _getValRef(instr.arg[1]);
 
     assert(nkval_typeclassid(cond) == NkType_Numeric);
 
@@ -187,7 +190,7 @@ INTERP(jmpz_64) {
 }
 
 INTERP(jmpnz) {
-    auto cond = _getDynRef(instr.arg[1]);
+    auto cond = _getValRef(instr.arg[1]);
 
     assert(nkval_typeclassid(cond) == NkType_Numeric);
 
@@ -241,9 +244,9 @@ INTERP(cast) {
 }
 
 INTERP(call) {
-    auto ret = _getDynRef(instr.arg[0]);
-    auto fn_val = _getDynRef(instr.arg[1]);
-    auto args = _getDynRef(instr.arg[2]);
+    auto ret = _getValRef(instr.arg[0]);
+    auto fn_val = _getValRef(instr.arg[1]);
+    auto args = _getValRef(instr.arg[2]);
 
     nkval_fn_invoke(fn_val, ret, args);
 }
@@ -257,8 +260,8 @@ INTERP(call_jmp) {
 }
 
 INTERP(mov) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto src = _getDynRef(instr.arg[1]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto src = _getValRef(instr.arg[1]);
 
     assert(nkval_sizeof(dst) == nkval_sizeof(src));
 
@@ -286,8 +289,8 @@ INTERP(lea) {
 }
 
 INTERP(neg) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto arg = _getDynRef(instr.arg[1]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto arg = _getValRef(instr.arg[1]);
 
     assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
@@ -299,8 +302,8 @@ INTERP(neg) {
 }
 
 INTERP(compl ) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto arg = _getDynRef(instr.arg[1]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto arg = _getValRef(instr.arg[1]);
 
     assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(
@@ -313,8 +316,8 @@ INTERP(compl ) {
 }
 
 INTERP(not ) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto arg = _getDynRef(instr.arg[1]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto arg = _getValRef(instr.arg[1]);
 
     assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
@@ -326,9 +329,9 @@ INTERP(not ) {
 }
 
 INTERP(eq) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto lhs = _getDynRef(instr.arg[1]);
-    auto rhs = _getDynRef(instr.arg[2]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto lhs = _getValRef(instr.arg[1]);
+    auto rhs = _getValRef(instr.arg[2]);
 
     assert(nkval_sizeof(dst) == 1);
     assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
@@ -358,9 +361,9 @@ INTERP(eq_64) {
 }
 
 INTERP(ne) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto lhs = _getDynRef(instr.arg[1]);
-    auto rhs = _getDynRef(instr.arg[2]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto lhs = _getValRef(instr.arg[1]);
+    auto rhs = _getValRef(instr.arg[2]);
 
     assert(nkval_sizeof(dst) == 1);
     assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
@@ -391,9 +394,9 @@ INTERP(ne_64) {
 
 template <class F>
 void _numericBinBc(NkBcInstr const &instr, F &&op) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto lhs = _getDynRef(instr.arg[1]);
-    auto rhs = _getDynRef(instr.arg[2]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto lhs = _getValRef(instr.arg[1]);
+    auto rhs = _getValRef(instr.arg[2]);
 
     assert(nkval_typeid(dst) == nkval_typeid(lhs) && nkval_typeid(dst) == nkval_typeid(rhs));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
@@ -406,9 +409,9 @@ void _numericBinBc(NkBcInstr const &instr, F &&op) {
 
 template <class F>
 void _numericBinBcInt(NkBcInstr const &instr, F &&op) {
-    auto dst = _getDynRef(instr.arg[0]);
-    auto lhs = _getDynRef(instr.arg[1]);
-    auto rhs = _getDynRef(instr.arg[2]);
+    auto dst = _getValRef(instr.arg[0]);
+    auto lhs = _getValRef(instr.arg[1]);
+    auto rhs = _getValRef(instr.arg[2]);
 
     assert(nkval_typeid(dst) == nkval_typeid(lhs) && nkval_typeid(dst) == nkval_typeid(rhs));
     assert(
@@ -529,19 +532,24 @@ void nk_interp_invoke(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
             (pinstr - prog.instrs.data()) * sizeof(NkBcInstr),
             s_nk_bc_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
-        // TODO NK_LOG_DBG("res=%s", [&]() {
-        //     string str{};
-        //     auto ref = pinstr->arg[0];
-        //     if (ref.ref_type != bc::Ref_None) {
-        //         static thread_local ARRAY_SLICE(char, buffer, 100);
-        //         StaticStringBuilder sb{buffer};
-        //         val_inspect(_getDynRef(ref), sb);
-        //         sb << ":";
-        //         types::inspect(ref.type, sb);
-        //         str = sb.moveStr();
-        //     }
-        //     return str.data;
-        // }());
+        NK_LOG_DBG("res=%s", [&]() { // TODO Inefficient inspect in interp
+            char const *res = nullptr;
+            auto const &ref = pinstr->arg[0];
+            if (ref.ref_type != NkBcRef_None) {
+                NkStringBuilder sb = nksb_create();
+                defer {
+                    nksb_free(sb);
+                };
+                nkval_inspect(_getValRef(ref), sb);
+                nksb_printf(sb, ":");
+                nkt_inspect(ref.type, sb);
+                auto str = nksb_concat(sb);
+                static thread_local char buf[100];
+                std::copy_n(str.data, std::min(AR_SIZE(buf), str.size), buf);
+                res = buf;
+            }
+            return res;
+        }());
     }
 
     NK_LOG_TRC("exiting...");

@@ -395,7 +395,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         nksb_printf(sb, "$global%llu", ref.index);
         break;
     case NkIrRef_Const:
-        nkval_inspect(nkval_t{ref.data, ref.type}, sb);
+        nkval_inspect({ref.data, ref.type}, sb);
         break;
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref.index));
