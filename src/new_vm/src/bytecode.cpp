@@ -103,15 +103,13 @@ void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder
     }
 }
 
-BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
-    NK_LOG_DBG("translating funct id=%llu", fn.id);
+BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
+    NK_LOG_DBG("translating funct `%s`", fn->name.c_str());
 
     auto const &ir = *p->ir;
 
-    auto const &ir_funct = ir.functs[fn.id];
-
     auto frame_layout =
-        nk_calcTupleLayout(ir_funct.locals.data(), ir_funct.locals.size(), nk_default_allocator, 1);
+        nk_calcTupleLayout(fn->locals.data(), fn->locals.size(), nk_default_allocator, 1);
     defer {
         nk_free(nk_default_allocator, frame_layout.info_ar.data);
     };
@@ -120,7 +118,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
         .prog = p,
         .frame_size = frame_layout.size,
         .first_instr = p->instrs.size(),
-        .fn_t = ir_funct.fn_t,
+        .fn_t = fn->fn_t,
     };
 
     enum ERelocType {
@@ -161,7 +159,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
                 arg.offset += frame_layout.info_ar.data[ref.index].offset;
                 break;
             case NkIrRef_Arg:
-                arg.offset += ir_funct.fn_t->as.fn.args_t->as.tuple.elems.data[ref.index].offset;
+                arg.offset += fn->fn_t->as.fn.args_t->as.tuple.elems.data[ref.index].offset;
                 break;
             case NkIrRef_Ret:
                 break;
@@ -181,7 +179,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
                 auto dl = nkdl_open(
                     cs2s(ir.shobjs[exsym.so_id.id]
                              .c_str())); // TODO Opening dl every time  and not closing once
-                static void *sym = nkdl_sym(dl, cs2s(exsym.name.c_str())); // TODO Static hack 
+                static void *sym = nkdl_sym(dl, cs2s(exsym.name.c_str())); // TODO Static hack
                 arg.offset = (size_t)&sym;
                 break;
             }
@@ -228,7 +226,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunctId fn) {
         }
     };
 
-    for (auto block_id : ir_funct.blocks) {
+    for (auto block_id : fn->blocks) {
         auto const &block = ir.blocks[block_id];
 
         block_info[block_id].first_instr = p->instrs.size();
@@ -318,14 +316,12 @@ void nkbc_deinitProgram(NkBcProg p) {
     }
 }
 
-void nkbc_invoke(NkBcProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
+void nkbc_invoke(NkBcProg p, NkIrFunct fn, nkval_t ret, nkval_t args) {
     //@TODO Add trace/debug logs
 
-    assert(fn.id < p->ir->functs.size() && "invalid function");
-
-    auto it = p->functs.find(fn.id);
+    auto it = p->functs.find(fn);
     if (it == std::end(p->functs)) {
-        std::tie(it, std::ignore) = p->functs.emplace(fn.id, _translateIr(p, fn));
+        std::tie(it, std::ignore) = p->functs.emplace(fn, _translateIr(p, fn));
     }
 
     nk_interp_invoke(it->second, ret, args);

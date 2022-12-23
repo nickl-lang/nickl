@@ -15,7 +15,7 @@ typedef struct NkBcProg_T *NkBcProg;
 NkBcProg nkbc_createProgram(NkIrProg ir);
 void nkbc_deinitProgram(NkBcProg p);
 
-void nkbc_invoke(NkBcProg p, NkIrFunctId fn, nkval_t ret, nkval_t args);
+void nkbc_invoke(NkBcProg p, NkIrFunct fn, nkval_t ret, nkval_t args);
 
 #ifdef __cplusplus
 }

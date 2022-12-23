@@ -11,16 +11,15 @@
 
 struct NkIrFunct_T {
     NkIrProg prog;
-    NkIrFunctId id;
-    NkIrFunct self_ptr;
+    NkIrFunct self_ptr{};
 
     size_t cur_block;
 
-    std::string name;
-    nktype_t fn_t;
+    std::string name{};
+    nktype_t fn_t{};
 
-    std::vector<size_t> blocks;
-    std::vector<nktype_t> locals;
+    std::vector<size_t> blocks{};
+    std::vector<nktype_t> locals{};
 };
 
 struct IrBlock {
@@ -36,7 +35,7 @@ struct IrExSym {
 };
 
 struct NkIrProg_T {
-    size_t cur_funct;
+    NkIrFunct cur_funct;
 
     std::deque<NkIrFunct_T> functs;
     std::vector<IrBlock> blocks;

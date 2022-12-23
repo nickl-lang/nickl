@@ -8,6 +8,7 @@
 
 #include "bytecode.h"
 #include "nk/common/allocator.h"
+#include "nk/vm/ir.h"
 
 typedef enum {
 #define X(NAME) CAT(nkop_, NAME),
@@ -57,7 +58,7 @@ struct NkBcProg_T {
     NkIrProg ir;
 
     std::unordered_map<size_t, nkval_t> globals;
-    std::unordered_map<size_t, BytecodeFunct> functs;
+    std::unordered_map<NkIrFunct, BytecodeFunct> functs;
 
     std::vector<NkBcInstr> instrs;
 
