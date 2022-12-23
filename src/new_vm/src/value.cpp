@@ -264,15 +264,13 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
     }
 }
 
-void nkval_fn_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
-    switch (nkval_typeof(fn_val)->as.fn.call_conv) {
-    case NkCallConv_Nk: {
-        auto const &fn = nkval_as(NkIrFunct, fn_val);
-        nkir_invoke(fn.prog, fn.id, ret, args);
+void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
+    switch (nkval_typeof(fn)->as.fn.call_conv) {
+    case NkCallConv_Nk:
+        nkir_invoke(fn, ret, args);
         break;
-    }
     case NkCallConv_Cdecl:
-        nk_native_invoke(fn_val, ret, args);
+        nk_native_invoke(fn, ret, args);
         break;
     }
 }

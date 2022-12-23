@@ -61,7 +61,8 @@ TEST_F(ir, add) {
     auto args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
 
     auto add = nkir_makeFunct(p);
-    nkir_startFunct(p, add, cs2s("add"), nkt_get_fn(m_arena, i32_t, args_t, NkCallConv_Nk, false));
+    auto add_fn_t = nkt_get_fn(m_arena, i32_t, args_t, NkCallConv_Nk, false);
+    nkir_startFunct(p, add, cs2s("add"), add_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     nkir_gen(p, nkir_make_add(nkir_makeRetRef(p), nkir_makeArgRef(p, 0), nkir_makeArgRef(p, 1)));
@@ -72,7 +73,7 @@ TEST_F(ir, add) {
     int32_t args[] = {4, 5};
     int32_t res = 0;
 
-    nkir_invoke(p, add, nkval_t{&res, i32_t}, nkval_t{args, args_t});
+    nkir_invoke({&add, add_fn_t}, {&res, i32_t}, {args, args_t});
 
     EXPECT_EQ(res, 9);
 }
@@ -89,22 +90,18 @@ TEST_F(ir, nested_functions) {
     int32_t const_4 = 4;
 
     auto getEight = nkir_makeFunct(p);
-    nkir_startFunct(
-        p,
-        getEight,
-        cs2s("getEight"),
-        nkt_get_fn(m_arena, i32_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false));
+    auto getEight_fn_t =
+        nkt_get_fn(m_arena, i32_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false);
+    nkir_startFunct(p, getEight, cs2s("getEight"), getEight_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     auto getFour = nkir_makeFunct(p);
-    nkir_startFunct(
-        p,
-        getFour,
-        cs2s("getFour"),
-        nkt_get_fn(m_arena, i32_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false));
+    auto getFour_fn_t =
+        nkt_get_fn(m_arena, i32_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false);
+    nkir_startFunct(p, getFour, cs2s("getFour"), getFour_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
-    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, nkval_t{&const_4, i32_t})));
+    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_4, i32_t})));
     nkir_gen(p, nkir_make_ret());
 
     nkir_activateFunct(p, getEight);
@@ -117,13 +114,13 @@ TEST_F(ir, nested_functions) {
         nkir_make_mul(
             nkir_makeRetRef(p),
             nkir_makeFrameRef(p, var),
-            nkir_makeConstRef(p, nkval_t{&const_2, i32_t})));
+            nkir_makeConstRef(p, {&const_2, i32_t})));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);
 
     int32_t res = 0;
-    nkir_invoke(p, getEight, nkval_t{&res, i32_t}, {});
+    nkir_invoke({&getEight, getEight_fn_t}, {&res, i32_t}, {});
     EXPECT_EQ(res, 8);
 }
 
@@ -139,8 +136,8 @@ TEST_F(ir, isEven) {
     auto args_t = nkt_get_tuple(m_arena, args_types, AR_SIZE(args_types), 1);
 
     auto isEven = nkir_makeFunct(p);
-    nkir_startFunct(
-        p, isEven, cs2s("isEven"), nkt_get_fn(m_arena, i32_t, args_t, NkCallConv_Nk, false));
+    auto isEven_fn_t = nkt_get_fn(m_arena, i32_t, args_t, NkCallConv_Nk, false);
+    nkir_startFunct(p, isEven, cs2s("isEven"), isEven_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     int32_t const_0 = 0;
@@ -157,12 +154,12 @@ TEST_F(ir, isEven) {
         nkir_make_mod(
             nkir_makeFrameRef(p, var),
             nkir_makeArgRef(p, 0),
-            nkir_makeConstRef(p, nkval_t{&const_2, i32_t})));
+            nkir_makeConstRef(p, {&const_2, i32_t})));
     nkir_gen(p, nkir_make_jmpnz(nkir_makeFrameRef(p, var), l_else));
-    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, nkval_t{&const_1, i32_t})));
+    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_1, i32_t})));
     nkir_gen(p, nkir_make_jmp(l_end));
     nkir_startBlock(p, l_else, cs2s("else"));
-    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, nkval_t{&const_0, i32_t})));
+    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_0, i32_t})));
     nkir_startBlock(p, l_end, cs2s("end"));
     nkir_gen(p, nkir_make_ret());
 
@@ -172,11 +169,11 @@ TEST_F(ir, isEven) {
     int32_t args[] = {0};
 
     args[0] = 1;
-    nkir_invoke(p, isEven, nkval_t{&res, i32_t}, {&args, args_t});
+    nkir_invoke({&isEven, isEven_fn_t}, {&res, i32_t}, {&args, args_t});
     EXPECT_EQ(res, 0);
 
     args[0] = 2;
-    nkir_invoke(p, isEven, nkval_t{&res, i32_t}, {&args, args_t});
+    nkir_invoke({&isEven, isEven_fn_t}, {&res, i32_t}, {&args, args_t});
     EXPECT_EQ(res, 1);
 }
 
@@ -197,11 +194,9 @@ TEST_F(ir, native_call) {
     auto i8_ptr_t = nkt_get_ptr(m_arena, i8_t);
 
     auto sayHello = nkir_makeFunct(p);
-    nkir_startFunct(
-        p,
-        sayHello,
-        cs2s("sayHello"),
-        nkt_get_fn(m_arena, void_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false));
+    auto sayHello_fn_t =
+        nkt_get_fn(m_arena, void_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false);
+    nkir_startFunct(p, sayHello, cs2s("sayHello"), sayHello_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     char const *const_str = "Hello, World!";
@@ -221,12 +216,12 @@ TEST_F(ir, native_call) {
         nkir_make_call(
             {},
             nkir_makeExtSymRef(p, _test_print_fn),
-            nkir_makeConstRef(p, nkval_t{&const_str, test_print_args_t})));
+            nkir_makeConstRef(p, {&const_str, test_print_args_t})));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);
 
-    nkir_invoke(p, sayHello, {}, {});
+    nkir_invoke({&sayHello, sayHello_fn_t}, {}, {});
 
     EXPECT_STREQ(s_test_print_str, const_str);
 }

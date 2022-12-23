@@ -9,7 +9,11 @@
 #include "bytecode.h"
 #include "nk/vm/ir.h"
 
-struct IrFunct {
+struct NkIrFunct_T {
+    NkIrProg prog;
+    NkIrFunctId id;
+    NkIrFunct self_ptr;
+
     size_t cur_block;
 
     std::string name;
@@ -34,14 +38,12 @@ struct IrExSym {
 struct NkIrProg_T {
     size_t cur_funct;
 
-    std::vector<IrFunct> functs;
+    std::deque<NkIrFunct_T> functs;
     std::vector<IrBlock> blocks;
     std::vector<NkIrInstr> instrs;
     std::vector<std::string> shobjs;
     std::vector<nktype_t> globals;
     std::vector<IrExSym> exsyms;
-
-    std::deque<NkIrFunct> functs_for_invoke; // TODO Rename or refactor
 
     NkBcProg bc;
 };

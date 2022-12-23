@@ -41,10 +41,13 @@ void nkir_deinitProgram(NkIrProg p) {
     nk_free(nk_default_allocator, p);
 }
 
-NkIrFunctId nkir_makeFunct(NkIrProg p) {
-    NkIrFunctId id{p->functs.size()};
-    p->functs.emplace_back(IrFunct{});
-    return id;
+NkIrFunct nkir_makeFunct(NkIrProg p) {
+    auto &fn = p->functs.emplace_back(NkIrFunct_T{
+        .prog = p,
+        .id{p->functs.size()},
+    });
+    fn.self_ptr = &fn;
+    return &fn;
 }
 
 NkIrBlockId nkir_makeBlock(NkIrProg p) {
@@ -59,14 +62,11 @@ NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name) {
     return shobj_id;
 }
 
-void nkir_startFunct(NkIrProg p, NkIrFunctId funct_id, nkstr name, nktype_t fn_t) {
-    assert(funct_id.id < p->functs.size() && "invalid function");
+void nkir_startFunct(NkIrProg p, NkIrFunct funct, nkstr name, nktype_t fn_t) {
+    funct->name = std_str(name);
+    funct->fn_t = fn_t;
 
-    auto &funct = p->functs[funct_id.id];
-    funct.name = std_str(name);
-    funct.fn_t = fn_t;
-
-    nkir_activateFunct(p, funct_id);
+    nkir_activateFunct(p, funct);
 }
 
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
@@ -81,9 +81,8 @@ void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
     nkir_activateBlock(p, block_id);
 }
 
-void nkir_activateFunct(NkIrProg p, NkIrFunctId funct_id) {
-    assert(funct_id.id < p->functs.size() && "invalid function");
-    p->cur_funct = funct_id.id;
+void nkir_activateFunct(NkIrProg p, NkIrFunct funct) {
+    p->cur_funct = funct->id.id; // TODO ?? Storing id as cur_funct
 }
 
 void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id) {
@@ -199,16 +198,13 @@ NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym) {
     };
 }
 
-NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunctId funct_id) {
-    auto &funct_info = p->functs_for_invoke.emplace_back(NkIrFunct{
-        .prog = p,
-        .id = funct_id,
-    });
+NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunct funct) {
+    (void)p; // TODO Ignoring prog param for funct ref
     return {
-        .data = &funct_info,
+        .data = &funct->self_ptr,
         .offset = 0,
         .post_offset = 0,
-        .type = p->functs[funct_id.id].fn_t,
+        .type = funct->fn_t,
         .ref_type = NkIrRef_Const,
         .is_indirect = false,
     };
@@ -425,12 +421,14 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     nkt_inspect(ref.type, sb);
 }
 
-void nkir_invoke(NkIrProg p, NkIrFunctId fn, nkval_t ret, nkval_t args) {
-    assert(fn.id < p->functs.size() && "invalid function");
+void nkir_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
+    auto &fn = *nkval_as(NkIrFunct, fn_val);
 
-    if (!p->bc) {
-        p->bc = nkbc_createProgram(p);
+    assert(fn.id.id < fn.prog->functs.size() && "invalid function");
+
+    if (!fn.prog->bc) {
+        fn.prog->bc = nkbc_createProgram(fn.prog);
     }
 
-    nkbc_invoke(p->bc, fn, ret, args);
+    nkbc_invoke(fn.prog->bc, fn.id, ret, args);
 }
