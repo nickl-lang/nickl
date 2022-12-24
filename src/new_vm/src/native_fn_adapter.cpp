@@ -19,18 +19,115 @@ NK_LOG_USE_SCOPE(native_fn_adapter);
 std::unordered_map<nk_typeid_t, ffi_type *> s_typemap;
 NkAllocator *s_typearena;
 
+static struct TypeArenaDeleter { // TODO Hack with static deleter
+    ~TypeArenaDeleter() {
+        if (s_typearena) {
+            nk_free_arena(s_typearena);
+        }
+    }
+} s_typearena_deleter;
+
 ffi_type *_getNativeHandle(nktype_t type) {
     NK_LOG_TRC(__func__);
 
-    static struct TypeArenaDeleter { // TODO Hack with static deleter
-        ~TypeArenaDeleter() {
-            nk_free_arena(s_typearena);
-        }
-    } s_typearena_deleter;
-
     if (!type) {
-        NK_LOG_DBG("Returning void for null type");
+        NK_LOG_DBG("ffi(null) -> void");
         return &ffi_type_void;
+    }
+
+    ffi_type *ffi_t = nullptr;
+
+    auto it = s_typemap.find(type->id);
+    if (it != s_typemap.end()) {
+        NK_LOG_DBG("Found existing ffi type=%p", it->second);
+        ffi_t = it->second;
+    } else {
+        if (!s_typearena) {
+            s_typearena = nk_create_arena();
+        }
+
+        switch (type->typeclass_id) {
+        case NkType_Array: {
+            auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
+            ffi_type **elements =
+                (ffi_type **)nk_allocate(s_typearena, type->as.arr.elem_count * sizeof(void *));
+            std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
+            ffi_t = (ffi_type *)nk_allocate(s_typearena, sizeof(ffi_type));
+            *ffi_t = {
+                .size = type->size,
+                .alignment = type->alignment,
+                .type = FFI_TYPE_STRUCT,
+                .elements = elements,
+            };
+            break;
+        }
+        case NkType_Fn:
+            ffi_t = &ffi_type_pointer;
+            break;
+        case NkType_Numeric:
+            switch (type->as.num.value_type) {
+            case Int8:
+                ffi_t = &ffi_type_sint8;
+                break;
+            case Int16:
+                ffi_t = &ffi_type_sint16;
+                break;
+            case Int32:
+                ffi_t = &ffi_type_sint32;
+                break;
+            case Int64:
+                ffi_t = &ffi_type_sint64;
+                break;
+            case Uint8:
+                ffi_t = &ffi_type_uint8;
+                break;
+            case Uint16:
+                ffi_t = &ffi_type_uint16;
+                break;
+            case Uint32:
+                ffi_t = &ffi_type_uint32;
+                break;
+            case Uint64:
+                ffi_t = &ffi_type_uint64;
+                break;
+            case Float32:
+                ffi_t = &ffi_type_float;
+                break;
+            case Float64:
+                ffi_t = &ffi_type_double;
+                break;
+            default:
+                assert(!"unreachable");
+                break;
+            }
+            break;
+        case NkType_Ptr:
+            ffi_t = &ffi_type_pointer;
+            break;
+        case NkType_Tuple: {
+            ffi_type **elements =
+                (ffi_type **)nk_allocate(s_typearena, type->as.tuple.elems.size * sizeof(void *));
+            for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+                elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type);
+            }
+            ffi_t = (ffi_type *)nk_allocate(s_typearena, sizeof(ffi_type));
+            *ffi_t = {
+                .size = type->size,
+                .alignment = type->alignment,
+                .type = FFI_TYPE_STRUCT,
+                .elements = elements,
+            };
+            break;
+        }
+        case NkType_Void:
+            ffi_t = &ffi_type_void;
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+
+        s_typemap.emplace(type->id, ffi_t);
     }
 
     {
@@ -43,105 +140,8 @@ ffi_type *_getNativeHandle(nktype_t type) {
         nkt_inspect(type, sb);
         auto str = nksb_concat(sb);
 
-        NK_LOG_DBG("Requesting ffi type for type=%.*s", str.size, str.data);
+        NK_LOG_DBG("ffi(type{id=%llu name=%.*s}) -> %p", type->id, str.size, str.data, ffi_t);
     }
-
-    {
-        auto it = s_typemap.find(type->id);
-        if (it != s_typemap.end()) {
-            NK_LOG_DBG("Returning existing ffi type=%p", it->second);
-            return it->second;
-        }
-    }
-
-    if (!s_typearena) {
-        s_typearena = nk_create_arena();
-    }
-
-    ffi_type *ffi_t = nullptr;
-
-    switch (type->typeclass_id) {
-    case NkType_Array: {
-        auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
-        ffi_type **elements =
-            (ffi_type **)nk_allocate(s_typearena, type->as.arr.elem_count * sizeof(void *));
-        std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
-        ffi_t = (ffi_type *)nk_allocate(s_typearena, sizeof(ffi_type));
-        *ffi_t = {
-            .size = type->size,
-            .alignment = type->alignment,
-            .type = FFI_TYPE_STRUCT,
-            .elements = elements,
-        };
-        break;
-    }
-    case NkType_Fn:
-        assert(!"_getNativeHandle(NkType_Fn) is not implemented");
-        break;
-    case NkType_Numeric:
-        switch (type->as.num.value_type) {
-        case Int8:
-            ffi_t = &ffi_type_sint8;
-            break;
-        case Int16:
-            ffi_t = &ffi_type_sint16;
-            break;
-        case Int32:
-            ffi_t = &ffi_type_sint32;
-            break;
-        case Int64:
-            ffi_t = &ffi_type_sint64;
-            break;
-        case Uint8:
-            ffi_t = &ffi_type_uint8;
-            break;
-        case Uint16:
-            ffi_t = &ffi_type_uint16;
-            break;
-        case Uint32:
-            ffi_t = &ffi_type_uint32;
-            break;
-        case Uint64:
-            ffi_t = &ffi_type_uint64;
-            break;
-        case Float32:
-            ffi_t = &ffi_type_float;
-            break;
-        case Float64:
-            ffi_t = &ffi_type_double;
-            break;
-        default:
-            assert(!"unreachable");
-            break;
-        }
-        break;
-    case NkType_Ptr:
-        ffi_t = &ffi_type_pointer;
-        break;
-    case NkType_Tuple: {
-        ffi_type **elements =
-            (ffi_type **)nk_allocate(s_typearena, type->as.tuple.elems.size * sizeof(void *));
-        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
-            elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type);
-        }
-        ffi_t = (ffi_type *)nk_allocate(s_typearena, sizeof(ffi_type));
-        *ffi_t = {
-            .size = type->size,
-            .alignment = type->alignment,
-            .type = FFI_TYPE_STRUCT,
-            .elements = elements,
-        };
-        break;
-    }
-    case NkType_Void:
-        ffi_t = &ffi_type_void;
-        break;
-    default:
-        assert(!"unreachable");
-        break;
-    }
-
-    s_typemap.emplace(type->id, ffi_t);
 
     return ffi_t;
 }
