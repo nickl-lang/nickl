@@ -104,7 +104,7 @@ void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder
 }
 
 BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
-    NK_LOG_DBG("translating funct `%s`", fn->name.c_str());
+    NK_LOG_DBG("Translating funct `%s`", fn->name.c_str());
 
     auto const &ir = *p->ir;
 
@@ -176,10 +176,16 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case NkIrRef_ExtSym: {
                 arg.ref_type = NkBcRef_Abs;
                 auto const &exsym = ir.exsyms[ref.index];
-                auto dl = nkdl_open(
-                    cs2s(ir.shobjs[exsym.so_id.id]
-                             .c_str())); // TODO Opening dl every time  and not closing once
-                static void *sym = nkdl_sym(dl, cs2s(exsym.name.c_str())); // TODO Static hack
+                if (exsym.so_id.id >= p->shobjs.size()) {
+                    p->shobjs.resize(exsym.so_id.id + 1);
+                }
+                auto &dl = p->shobjs[exsym.so_id.id];
+                dl = nkdl_open(cs2s(ir.shobjs[exsym.so_id.id].c_str()));
+                if (ref.index >= p->exsyms.size()) {
+                    p->exsyms.resize(ref.index + 1);
+                }
+                auto &sym = p->exsyms[ref.index];
+                sym = nkdl_sym(dl, cs2s(exsym.name.c_str()));
                 arg.offset = (size_t)&sym;
                 break;
             }
@@ -280,6 +286,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     }
 
     {
+        // TODO Inspecting bytecode in _translateIr outside of the log macro
         auto sb = nksb_create();
         defer {
             nksb_free(sb);
@@ -299,10 +306,8 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 NkBcProg nkbc_createProgram(NkIrProg ir) {
     auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
-        .globals{},
         .functs{},
         .instrs{},
-        .arena = nk_create_arena(),
     };
     prog->instrs.reserve(100); // TODO Huge hack that avoids instruction reallocation
     return prog;
@@ -310,7 +315,10 @@ NkBcProg nkbc_createProgram(NkIrProg ir) {
 
 void nkbc_deinitProgram(NkBcProg p) {
     if (p) {
-        nk_free_arena(p->arena);
+        for (auto dl : p->shobjs) {
+            nkdl_close(dl);
+        }
+
         p->~NkBcProg_T();
         nk_free(nk_default_allocator, p);
     }

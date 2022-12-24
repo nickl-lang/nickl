@@ -8,6 +8,7 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
+#include "nk/common/string_builder.h"
 #include "nk/vm/value.h"
 
 char const *s_nk_ir_names[] = {
@@ -281,7 +282,20 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
 
         nksb_printf(sb, ") -> ");
         nkt_inspect(funct.fn_t->as.fn.ret_t, sb);
-        nksb_printf(sb, " {\n\n");
+
+        if (!funct.locals.empty()) {
+            nksb_printf(sb, "\n\n");
+            for (size_t i = 0; i < funct.locals.size(); i++) {
+                nksb_printf(sb, "$%llu: ", i);
+                nkt_inspect(funct.locals[i], sb);
+                nksb_printf(sb, "\n");
+            }
+            nksb_printf(sb, "\n");
+        } else {
+            nksb_printf(sb, " ");
+        }
+
+        nksb_printf(sb, "{\n\n");
 
         for (auto block_id : funct.blocks) {
             auto const &block = p->blocks[block_id];
@@ -293,7 +307,8 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
 
                 nksb_printf(sb, "  ");
 
-                if (instr.arg[0].arg_type == NkIrArg_Ref) {
+                if (instr.arg[0].arg_type == NkIrArg_Ref &&
+                    instr.arg[0].ref.ref_type != NkIrRef_None) {
                     nkir_inspectRef(p, instr.arg[0].ref, sb);
                     nksb_printf(sb, " := ");
                 }

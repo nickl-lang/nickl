@@ -3,10 +3,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <unordered_map>
 #include <vector>
 
 #include "bytecode.h"
+#include "dl_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/vm/ir.h"
 
@@ -57,12 +59,13 @@ struct BytecodeFunct {
 struct NkBcProg_T {
     NkIrProg ir;
 
-    std::unordered_map<size_t, nkval_t> globals;
+    // TODO std::unordered_map<size_t, nkval_t> globals;
     std::unordered_map<NkIrFunct, BytecodeFunct> functs;
 
     std::vector<NkBcInstr> instrs;
 
-    NkAllocator *arena;
+    std::vector<NkDlHandle> shobjs;
+    std::deque<void *> exsyms;
 };
 
 #endif // HEADER_GUARD_NK_VM_BYTECODE_IMPL

@@ -102,6 +102,7 @@ void _jumpCall(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
 
     ctx.stack_frame = nk_stack_pushFrame(ctx.stack);
     ctx.base.frame = (uint8_t *)nk_stack_allocate(ctx.stack, fn.frame_size); // TODO not aligned
+    std::memset(ctx.base.frame, 0, fn.frame_size);
     ctx.base.arg = (uint8_t *)nkval_data(args);
     ctx.base.ret = (uint8_t *)nkval_data(ret);
 
@@ -545,7 +546,7 @@ void nk_interp_invoke(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
                 nkt_inspect(ref.type, sb);
                 auto str = nksb_concat(sb);
                 static thread_local char buf[100];
-                std::copy_n(str.data, std::min(AR_SIZE(buf), str.size), buf);
+                std::copy_n(str.data, std::min(AR_SIZE(buf), str.size + 1), buf);
                 res = buf;
             }
             return res;

@@ -7,6 +7,7 @@
 
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
@@ -28,12 +29,27 @@ ffi_type *_getNativeHandle(nktype_t type) {
     } s_typearena_deleter;
 
     if (!type) {
+        NK_LOG_DBG("Returning void for null type");
         return &ffi_type_void;
+    }
+
+    {
+        // TODO Inspecting type in _getNativeHandle outside of the log macro
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+
+        nkt_inspect(type, sb);
+        auto str = nksb_concat(sb);
+
+        NK_LOG_DBG("Requesting ffi type for type=%.*s", str.size, str.data);
     }
 
     {
         auto it = s_typemap.find(type->id);
         if (it != s_typemap.end()) {
+            NK_LOG_DBG("Returning existing ffi type=%p", it->second);
             return it->second;
         }
     }
