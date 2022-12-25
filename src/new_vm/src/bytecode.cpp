@@ -48,12 +48,6 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
         case NkBcRef_Ret:
             nksb_printf(sb, "ret+");
             break;
-        case NkBcRef_Global:
-            nksb_printf(sb, "global+");
-            break;
-        case NkBcRef_Const:
-            // TODO NkBcRef_Const??
-            break;
         case NkBcRef_Reg:
             nksb_printf(sb, "reg+");
             break;
@@ -67,7 +61,7 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
             assert(!"unreachable");
             break;
         }
-        if (arg.ref_type != NkBcRef_Const && arg.ref_type != NkBcRef_Abs) {
+        if (arg.ref_type != NkBcRef_Abs) {
             nksb_printf(sb, "%zx", arg.offset);
         }
         if (arg.is_indirect) {

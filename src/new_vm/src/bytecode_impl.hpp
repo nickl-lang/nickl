@@ -26,12 +26,10 @@ typedef enum { // must preserve NkIrRefType order
     NkBcRef_Frame,
     NkBcRef_Arg,
     NkBcRef_Ret,
-    NkBcRef_Global,
-    NkBcRef_Const,
     NkBcRef_Reg,
 
-    NkBcRef_Instr,
     NkBcRef_Abs,
+    NkBcRef_Instr,
 
     NkBcRef_Count,
 } NkBcRefType;

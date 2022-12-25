@@ -39,10 +39,10 @@ typedef enum {
     NkIrRef_Frame,
     NkIrRef_Arg,
     NkIrRef_Ret,
-    NkIrRef_Global,
-    NkIrRef_Const,
     NkIrRef_Reg,
 
+    NkIrRef_Global,
+    NkIrRef_Const,
     NkIrRef_ExtSym,
     NkIrRef_Funct,
 } NkIrRefType;

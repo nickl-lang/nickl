@@ -19,8 +19,6 @@ namespace {
 NK_LOG_USE_SCOPE(interp);
 
 struct ProgramFrame {
-    uint8_t *base_global;
-    uint8_t *base_rodata;
     uint8_t *base_reg;
     NkBcInstr const *pinstr;
 };
@@ -45,15 +43,13 @@ struct InterpContext {
     };
 
     struct Base { // repeats the layout of NkBcRefType
-        uint8_t *null;
+        uint8_t *none;
         uint8_t *frame;
         uint8_t *arg;
         uint8_t *ret;
-        uint8_t *global;
-        uint8_t *rodata;
         uint8_t *reg;
-        uint8_t *instr;
         uint8_t *abs;
+        uint8_t *instr;
     };
 
     union {
@@ -477,19 +473,13 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     }
 
     ProgramFrame pfr{
-        .base_global = ctx.base.global,
-        .base_rodata = ctx.base.rodata,
         .base_reg = ctx.base.reg,
         .pinstr = ctx.pinstr,
     };
 
-    ctx.base.global = 0; // TODO prog.globals.data;
-    ctx.base.rodata = 0; // TODO prog.rodata.data;
     ctx.base.reg = (uint8_t *)&ctx.reg;
     ctx.pinstr = nullptr;
 
-    NK_LOG_DBG("global=%p", ctx.base.global);
-    NK_LOG_DBG("rodata=%p", ctx.base.rodata);
     NK_LOG_DBG("instr=%p", ctx.base.instr);
 
     _jumpCall(fn, ret, args);
@@ -524,8 +514,6 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     NK_LOG_TRC("exiting...");
 
-    ctx.base.global = pfr.base_global;
-    ctx.base.rodata = pfr.base_rodata;
     ctx.base.reg = pfr.base_reg;
     ctx.pinstr = pfr.pinstr;
 
