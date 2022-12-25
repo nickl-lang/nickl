@@ -6,6 +6,7 @@
 
 #include "bytecode.h"
 #include "bytecode_impl.hpp"
+#include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/string_builder.h"
@@ -74,9 +75,9 @@ template <class T>
 T &_getRef(NkBcRef const &ref) {
     auto ptr = ctx.base_ar[ref.ref_type] + ref.offset;
     if (ref.is_indirect) {
-        ptr = *reinterpret_cast<uint8_t **>(ptr);
+        ptr = *(uint8_t **)ptr;
     }
-    return *reinterpret_cast<T *>(ptr + ref.post_offset);
+    return *(T *)(ptr + ref.post_offset);
 }
 
 nkval_t _getValRef(NkBcRef const &ref) {
@@ -159,15 +160,9 @@ INTERP(jmp) {
 }
 
 INTERP(jmpz) {
-    auto cond = _getValRef(instr.arg[1]);
+    (void)instr;
 
-    assert(nkval_typeclassid(cond) == NkType_Numeric);
-
-    // TODO val_numeric_visit(cond, [=](auto val) {
-    //     if (!val) {
-    //         _jumpTo(instr.arg[2]);
-    //     }
-    // });
+    assert(!"not implemented");
 }
 
 INTERP(jmpz_8) {
@@ -195,15 +190,9 @@ INTERP(jmpz_64) {
 }
 
 INTERP(jmpnz) {
-    auto cond = _getValRef(instr.arg[1]);
+    (void)instr;
 
-    assert(nkval_typeclassid(cond) == NkType_Numeric);
-
-    // TODO val_numeric_visit(cond, [=](auto val) {
-    //     if (val) {
-    //         _jumpTo(instr.arg[2]);
-    //     }
-    // });
+    assert(!"not implemented");
 }
 
 INTERP(jmpnz_8) {
@@ -246,6 +235,8 @@ INTERP(cast) {
     //         dst_val = static_cast<T>(arg_val);
     //     });
     // });
+
+    assert(!"not implemented");
 }
 
 INTERP(call) {
@@ -257,11 +248,11 @@ INTERP(call) {
 }
 
 INTERP(call_jmp) {
-    // TODO auto ret = _getDynRef(instr.arg[0]);
-    // auto fn_val = _getDynRef(instr.arg[1]);
-    // auto args = _getDynRef(instr.arg[2]);
+    auto ret = _getValRef(instr.arg[0]);
+    auto fn_val = _getValRef(instr.arg[1]);
+    auto args = _getValRef(instr.arg[2]);
 
-    // _jumpCall(nkval_as(BytecodeFunct, fn_val), ret, args);
+    _jumpCall(nkval_as(NkIrFunct, fn_val)->bc_funct, ret, args);
 }
 
 INTERP(mov) {
@@ -300,10 +291,7 @@ INTERP(neg) {
     assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
 
-    // TODO val_numeric_visit(dst, [&](auto &dst_val) {
-    //     using T = std::decay_t<decltype(dst_val)>;
-    //     dst_val = -nkval_as(T, arg);
-    // });
+    assert(!"not implemented");
 }
 
 INTERP(compl ) {
@@ -314,10 +302,7 @@ INTERP(compl ) {
     assert(
         nkval_typeclassid(dst) == NkType_Numeric && nkval_typeof(dst)->as.num.value_type < Float32);
 
-    // TODO val_numeric_visit_int(dst, [&](auto &dst_val) {
-    //     using T = std::decay_t<decltype(dst_val)>;
-    //     dst_val = ~nkval_as(T, arg);
-    // });
+    assert(!"not implemented");
 }
 
 INTERP(not ) {
@@ -327,10 +312,7 @@ INTERP(not ) {
     assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
 
-    // TODO val_numeric_visit(dst, [&](auto &dst_val) {
-    //     using T = std::decay_t<decltype(dst_val)>;
-    //     dst_val = !nkval_as(T, arg);
-    // });
+    assert(!"not implemented");
 }
 
 INTERP(eq) {
@@ -399,33 +381,18 @@ INTERP(ne_64) {
 
 template <class F>
 void _numericBinBc(NkBcInstr const &instr, F &&op) {
-    auto dst = _getValRef(instr.arg[0]);
-    auto lhs = _getValRef(instr.arg[1]);
-    auto rhs = _getValRef(instr.arg[2]);
+    (void)instr;
+    (void)op;
 
-    assert(nkval_typeid(dst) == nkval_typeid(lhs) && nkval_typeid(dst) == nkval_typeid(rhs));
-    assert(nkval_typeclassid(dst) == NkType_Numeric);
-
-    // TODO val_numeric_visit(dst, [&](auto &dst_val) {
-    //     using T = std::decay_t<decltype(dst_val)>;
-    //     dst_val = op(nkval_as(T, lhs), nkval_as(T, rhs));
-    // });
+    assert(!"not implemented");
 }
 
 template <class F>
 void _numericBinBcInt(NkBcInstr const &instr, F &&op) {
-    auto dst = _getValRef(instr.arg[0]);
-    auto lhs = _getValRef(instr.arg[1]);
-    auto rhs = _getValRef(instr.arg[2]);
+    (void)instr;
+    (void)op;
 
-    assert(nkval_typeid(dst) == nkval_typeid(lhs) && nkval_typeid(dst) == nkval_typeid(rhs));
-    assert(
-        nkval_typeclassid(dst) == NkType_Numeric && nkval_typeof(dst)->as.num.value_type < Float32);
-
-    // TODO val_numeric_visit_int(dst, [&](auto &dst_val) {
-    //     using T = std::decay_t<decltype(dst_val)>;
-    //     dst_val = op(nkval_as(T, lhs), nkval_as(T, rhs));
-    // });
+    assert(!"not implemented");
 }
 
 #define _NUM_BIN_OP_EXT(NAME, OP, EXT, TYPE)                                                      \
@@ -532,7 +499,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
             "instr: %lx %s",
-            (pinstr - (NkBcInstr *)ctx.ctrl_stack.back().base_instr) * sizeof(NkBcInstr), // TODO???
+            (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
             s_nk_bc_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
         NK_LOG_DBG("res=%s", [&]() { // TODO Inefficient inspect in interp
@@ -565,7 +532,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     if (was_uninitialized) {
         NK_LOG_TRC("deinitializing stack...");
 
-        // TODO assert(ctx.stack.size() == 0 && "nonempty stack at exit");
+        assert(nk_stack_pushFrame(ctx.stack).size == 0 && "nonempty stack at exit");
 
         nk_free_stack(ctx.stack);
 

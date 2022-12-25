@@ -33,7 +33,7 @@ NkOpCode s_ir2opcode[] = {
 #include "nk/vm/ir.inl"
 };
 
-void _inspect(NkBcProg p, std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
+void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
     auto _inspectArg = [&](NkBcRef const &arg) {
         if (arg.is_indirect) {
             nksb_printf(sb, "[");
@@ -242,7 +242,9 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
             switch (ir_instr.code) {
             case nkir_call:
-                code = nkop_call; // TODO Not doing jump call
+                if (arg1.ref.ref_type == NkIrRef_Funct) {
+                    code = nkop_call_jmp;
+                }
                 break;
             case nkir_mov:
             case nkir_jmpz:
@@ -287,7 +289,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             nksb_free(sb);
         };
 
-        _inspect(p, instrs, sb);
+        _inspect(instrs, sb);
         auto str = nksb_concat(sb);
 
         NK_LOG_INF("bytecode:\n%.*s", str.size, str.data);
