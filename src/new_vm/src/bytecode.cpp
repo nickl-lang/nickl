@@ -104,7 +104,7 @@ void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder
     }
 }
 
-BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
+NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     NK_LOG_DBG("Translating funct `%s`", fn->name.c_str());
 
     auto const &ir = *p->ir;
@@ -115,12 +115,12 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         nk_free(nk_default_allocator, frame_layout.info_ar.data);
     };
 
-    BytecodeFunct bc_funct{
+    auto &bc_funct = p->functs.emplace_back(NkBcFunct_T{
         .prog = p,
         .frame_size = frame_layout.size,
         .first_instr = p->instrs.size(),
         .fn_t = fn->fn_t,
-    };
+    });
 
     enum ERelocType {
         Reloc_Block,
@@ -287,7 +287,7 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         NK_LOG_INF("bytecode:\n%.*s", str.size, str.data);
     }
 
-    return bc_funct;
+    return &bc_funct;
 }
 
 } // namespace
@@ -295,8 +295,6 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 NkBcProg nkbc_createProgram(NkIrProg ir) {
     auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
-        .functs{},
-        .instrs{},
     };
     prog->instrs.reserve(100); // TODO Huge hack that avoids instruction reallocation
     return prog;
@@ -319,10 +317,9 @@ void nkbc_deinitProgram(NkBcProg p) {
 void nkbc_invoke(NkBcProg p, NkIrFunct fn, nkval_t ret, nkval_t args) {
     //@TODO Add trace/debug logs
 
-    auto it = p->functs.find(fn);
-    if (it == std::end(p->functs)) {
-        std::tie(it, std::ignore) = p->functs.emplace(fn, _translateIr(p, fn));
+    if (!fn->bc_funct) {
+        fn->bc_funct = _translateIr(p, fn);
     }
 
-    nk_interp_invoke(it->second, ret, args);
+    nk_interp_invoke(fn->bc_funct, ret, args);
 }

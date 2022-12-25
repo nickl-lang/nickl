@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <unordered_map>
 #include <vector>
 
 #include "bytecode.h"
@@ -50,7 +49,7 @@ typedef struct {
     uint16_t code;
 } NkBcInstr;
 
-struct BytecodeFunct {
+struct NkBcFunct_T {
     NkBcProg prog;
     size_t frame_size;
     size_t first_instr;
@@ -61,14 +60,14 @@ struct NkBcProg_T {
     NkIrProg ir;
 
     // TODO std::unordered_map<size_t, nkval_t> globals;
-    std::unordered_map<NkIrFunct, BytecodeFunct> functs;
+    std::deque<NkBcFunct_T> functs{};
 
-    std::vector<NkBcInstr> instrs;
+    std::vector<NkBcInstr> instrs{};
 
-    std::vector<NkDlHandle> shobjs;
-    std::deque<void *> exsyms;
+    std::vector<NkDlHandle> shobjs{};
+    std::deque<void *> exsyms{};
 
-    std::vector<NkNativeClosure> closures;
+    std::vector<NkNativeClosure> closures{};
 };
 
 #endif // HEADER_GUARD_NK_VM_BYTECODE_IMPL

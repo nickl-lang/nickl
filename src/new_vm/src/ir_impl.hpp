@@ -19,6 +19,8 @@ struct NkIrFunct_T {
 
     std::vector<size_t> blocks{};
     std::vector<nktype_t> locals{};
+
+    NkBcFunct bc_funct{};
 };
 
 struct IrBlock {

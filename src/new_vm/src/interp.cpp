@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "bytecode.h"
 #include "bytecode_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
@@ -91,7 +92,7 @@ void _jumpTo(NkBcRef const &ref) {
     _jumpTo(&_getRef<NkBcInstr>(ref));
 }
 
-void _jumpCall(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
+void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
     ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -101,12 +102,12 @@ void _jumpCall(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
     });
 
     ctx.stack_frame = nk_stack_pushFrame(ctx.stack);
-    ctx.base.frame = (uint8_t *)nk_stack_allocate(ctx.stack, fn.frame_size); // TODO not aligned
-    std::memset(ctx.base.frame, 0, fn.frame_size);
+    ctx.base.frame = (uint8_t *)nk_stack_allocate(ctx.stack, fn->frame_size); // TODO not aligned
+    std::memset(ctx.base.frame, 0, fn->frame_size);
     ctx.base.arg = (uint8_t *)nkval_data(args);
     ctx.base.ret = (uint8_t *)nkval_data(ret);
 
-    _jumpTo(&fn.prog->instrs[fn.first_instr]);
+    _jumpTo(&fn->prog->instrs[fn->first_instr]);
 
     NK_LOG_DBG("stack_frame=%lu", ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", ctx.base.frame);
@@ -490,10 +491,10 @@ InterpFunc s_funcs[] = {
 
 } // namespace
 
-void nk_interp_invoke(BytecodeFunct const &fn, nkval_t ret, nkval_t args) {
+void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     NK_LOG_TRC(__func__);
 
-    auto const &prog = *fn.prog;
+    auto const &prog = *fn->prog;
 
     NK_LOG_DBG("program @%p", &prog);
 
