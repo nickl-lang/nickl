@@ -205,30 +205,17 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 .reloc_type = Reloc_Block,
             });
             break;
-        case NkIrArg_FunctId:
-            // TODO arg.ref_type = NkBcRef_Const;
-            // *relocs.push() = {
-            //     .instr_index = ii,
-            //     .arg = ai,
-            //     .target_id = ir_arg.id,
-            //     .reloc_type = Reloc_Funct,
-            // };
-            // break;
-        // TODO case NkIrArg_ExtFunctId: {
-        //     auto &exsym = ir.exsyms[ir_arg.id];
-        //     arg.ref_type = Ref_Const;
-        //     arg.type = types::get_fn_native(
-        //         exsym.as.funct.ret_t,
-        //         exsym.as.funct.args_t,
-        //         0,
-        //         prog.exsyms[ir_arg.id],
-        //         exsym.as.funct.is_variadic);
+        // TODO case NkIrArg_FunctId:
+        //     arg.ref_type = NkBcRef_Const;
+        //     *relocs.push() = {
+        //         .instr_index = ii,
+        //         .arg = ai,
+        //         .target_id = ir_arg.id,
+        //         .reloc_type = Reloc_Funct,
+        //     };
         //     break;
-        // }
-        case NkIrArg_NumValType: {
-            // TODO
+        case NkIrArg_NumValType: // TODO
             break;
-        }
         }
     };
 

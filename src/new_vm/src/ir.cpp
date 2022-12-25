@@ -333,13 +333,6 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
                             nksb_printf(sb, "%(null)");
                         }
                         break;
-                    case NkIrArg_FunctId:
-                        if (arg.id < p->functs.size() && !p->functs[arg.id].name.empty()) {
-                            nksb_printf(sb, p->functs[arg.id].name.c_str());
-                        } else {
-                            nksb_printf(sb, "(null)");
-                        }
-                        break;
                     case NkIrArg_NumValType:
                         switch (arg.id) {
                         case Int8:

@@ -63,7 +63,6 @@ typedef enum {
 
     NkIrArg_Ref,
     NkIrArg_BlockId,
-    NkIrArg_FunctId,
     NkIrArg_NumValType,
 } NkIrArgType;
 
