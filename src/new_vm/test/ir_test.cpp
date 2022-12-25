@@ -109,7 +109,7 @@ TEST_F(ir, nested_functions) {
 
     auto var = nkir_makeFrameRef(p, nkir_makeLocalVar(p, i32_t));
 
-    nkir_gen(p, nkir_make_call(var, nkir_makeFunctRef(p, getFour), {}));
+    nkir_gen(p, nkir_make_call(var, nkir_makeFunctRef(getFour), {}));
     nkir_gen(p, nkir_make_mul(nkir_makeRetRef(p), var, nkir_makeConstRef(p, {&const_2, i32_t})));
     nkir_gen(p, nkir_make_ret());
 
@@ -322,4 +322,80 @@ TEST_F(ir, nested_functions_call_while_compiling) {
     nkir_invoke({&test, test_fn_t}, {}, {});
 
     EXPECT_EQ(s_test_ar_sum, 15);
+}
+
+extern "C" NK_EXPORT void _test_sayHello(void *getName) {
+    auto arena = nk_create_arena();
+    defer {
+        nk_free_arena(arena);
+    };
+
+    auto u8_t = nkt_get_numeric(arena, Uint8);
+    auto u8_ptr_t = nkt_get_ptr(arena, u8_t);
+
+    auto getName_fn_t =
+        nkt_get_fn(arena, u8_ptr_t, nkt_get_tuple(arena, nullptr, 0, 1), NkCallConv_Nk, false);
+
+    char const *name = nullptr;
+    nkir_invoke({&getName, getName_fn_t}, {&name, u8_ptr_t}, {});
+
+    char buf[100];
+    std::snprintf(buf, AR_SIZE(buf), "Hello, %s!", name);
+    _test_print(buf);
+}
+
+TEST_F(ir, callback) {
+    auto p = nkir_createProgram();
+    defer {
+        nkir_deinitProgram(p);
+    };
+
+    auto u8_t = nkt_get_numeric(m_arena, Uint8);
+    auto u8_ptr_t = nkt_get_ptr(m_arena, u8_t);
+    auto void_t = nkt_get_void(m_arena);
+
+    auto so = nkir_makeShObj(p, cs2s(""));
+
+    auto getName_fn_t =
+        nkt_get_fn(m_arena, u8_ptr_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false);
+
+    auto args_t = nkt_get_tuple(m_arena, &getName_fn_t, 1, 1);
+
+    auto sayHello_fn = nkir_makeExtSym(
+        p,
+        so,
+        cs2s("_test_sayHello"),
+        nkt_get_fn(m_arena, void_t, args_t, NkCallConv_Cdecl, false));
+
+    auto getName = nkir_makeFunct(p);
+    nkir_startFunct(p, getName, cs2s("getName"), getName_fn_t);
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    char const *const_str = "my name is ****";
+
+    auto ar_t = nkt_get_array(m_arena, u8_t, std::strlen(const_str) + 1);
+    auto str_t = nkt_get_ptr(m_arena, ar_t);
+    auto actual_args_t = nkt_get_tuple(m_arena, &str_t, 1, 1);
+
+    nkir_gen(
+        p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_str, actual_args_t})));
+    nkir_gen(p, nkir_make_ret());
+
+    auto test = nkir_makeFunct(p);
+    auto test_fn_t =
+        nkt_get_fn(m_arena, void_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false);
+    nkir_startFunct(p, test, cs2s("test"), test_fn_t);
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    auto getName_arg = nkir_makeFunctRef(getName);
+    getName_arg.type = args_t;
+
+    nkir_gen(p, nkir_make_call({}, nkir_makeExtSymRef(p, sayHello_fn), getName_arg));
+    nkir_gen(p, nkir_make_ret());
+
+    inspect(p);
+
+    nkir_invoke({&test, test_fn_t}, {}, {});
+
+    EXPECT_STREQ(s_test_print_str, "Hello, my name is ****!");
 }

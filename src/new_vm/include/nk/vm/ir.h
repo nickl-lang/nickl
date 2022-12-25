@@ -114,7 +114,8 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var);
 NkIrRef nkir_makeConstRef(NkIrProg p, nkval_t val);
 NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type);
 NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym);
-NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunct funct);
+
+NkIrRef nkir_makeFunctRef(NkIrFunct funct);
 
 NkIrInstr nkir_make_nop();
 NkIrInstr nkir_make_enter();

@@ -197,8 +197,7 @@ NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym) {
     };
 }
 
-NkIrRef nkir_makeFunctRef(NkIrProg p, NkIrFunct funct) {
-    (void)p; // TODO Ignoring prog param for funct ref
+NkIrRef nkir_makeFunctRef(NkIrFunct funct) {
     return {
         .data = &funct->self_ptr,
         .offset = 0,
