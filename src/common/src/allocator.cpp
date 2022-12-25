@@ -64,15 +64,15 @@ void stackPopFrame(NkStackAllocator *alloc, NkStackAllocatorFrame frame) {
 NkAllocator *nk_default_allocator = &s_default_allocator;
 
 NkAllocator *nk_create_arena() {
-    return (NkAllocator *)new (nk_allocate(nk_default_allocator, sizeof(ArenaAllocator)))
-        ArenaAllocator{
-            .base{
-                .allocate = arenaAllocate,
-                .free = arenaFree,
-            },
-            .data = (uint8_t *)nk_allocate(nk_default_allocator, 1000000), //@TODO Fixed sized arena
-            .size = 0,
-        };
+    return (NkAllocator *)new (
+        nk_allocate(nk_default_allocator, sizeof(ArenaAllocator))) ArenaAllocator{
+        .base{
+            .allocate = arenaAllocate,
+            .free = arenaFree,
+        },
+        .data = (uint8_t *)nk_allocate(nk_default_allocator, 10000000), //@TODO Fixed sized arena
+        .size = 0,
+    };
 }
 
 void nk_free_arena(NkAllocator *alloc) {
@@ -82,16 +82,16 @@ void nk_free_arena(NkAllocator *alloc) {
 }
 
 NkStackAllocator *nk_create_stack() {
-    return (NkStackAllocator *)new (nk_allocate(nk_default_allocator, sizeof(StackAllocator)))
-        StackAllocator{
-            .base{
-                .allocate = stackAllocate,
-                .pushFrame = stackPushFrame,
-                .popFrame = stackPopFrame,
-            },
-            .data = (uint8_t *)nk_allocate(nk_default_allocator, 1000000), //@TODO Fixed sized stack
-            .size = 0,
-        };
+    return (NkStackAllocator *)new (
+        nk_allocate(nk_default_allocator, sizeof(StackAllocator))) StackAllocator{
+        .base{
+            .allocate = stackAllocate,
+            .pushFrame = stackPushFrame,
+            .popFrame = stackPopFrame,
+        },
+        .data = (uint8_t *)nk_allocate(nk_default_allocator, 10000000), //@TODO Fixed sized stack
+        .size = 0,
+    };
 }
 
 void nk_free_stack(NkStackAllocator *alloc) {

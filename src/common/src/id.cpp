@@ -20,7 +20,7 @@ nkstr nkid2s(nkid id) {
     return it != std::end(s_id2str) ? nkstr{it->second.c_str(), it->second.size()} : nkstr{};
 }
 
-char const *cnkid2s(nkid id) {
+char const *nkid2cs(nkid id) {
     return nkid2s(id).data;
 }
 
