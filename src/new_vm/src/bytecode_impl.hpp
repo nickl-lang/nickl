@@ -9,6 +9,7 @@
 
 #include "bytecode.h"
 #include "dl_adapter.h"
+#include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/vm/ir.h"
 
@@ -66,6 +67,8 @@ struct NkBcProg_T {
 
     std::vector<NkDlHandle> shobjs;
     std::deque<void *> exsyms;
+
+    std::vector<NkNativeClosure> closures;
 };
 
 #endif // HEADER_GUARD_NK_VM_BYTECODE_IMPL

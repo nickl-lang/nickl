@@ -1,6 +1,8 @@
 #include "native_fn_adapter.h"
 
 #include <cassert>
+#include <cstdint>
+#include <cstring>
 #include <unordered_map>
 
 #include <ffi.h>
@@ -10,7 +12,15 @@
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
+#include "nk/vm/ir.h"
 #include "nk/vm/value.h"
+
+struct NkNativeClosure_T {
+    void *code;
+    ffi_cif cif;
+    ffi_closure *closure;
+    nkval_t fn;
+};
 
 namespace {
 
@@ -146,12 +156,57 @@ ffi_type *_getNativeHandle(nktype_t type) {
     return ffi_t;
 }
 
+void _ffiPrepareCif(ffi_cif *cif, nktype_t fn_t) { // TODO Unify ffi cif preparation
+    size_t const argc = fn_t->as.fn.args_t->as.tuple.elems.size;
+
+    auto rtype = _getNativeHandle(fn_t->as.fn.ret_t);
+    auto atypes = _getNativeHandle(fn_t->as.fn.args_t);
+
+    ffi_status status;
+    if (fn_t->as.fn.is_variadic) {
+        status = FFI_BAD_ABI;
+        // TODO Not handling variadic ffi closure
+    } else {
+        status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
+    }
+    assert(status == FFI_OK && "ffi_prep_cif failed");
+}
+
+void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
+    NK_LOG_TRC(__func__);
+
+    auto const &cl = *(NkNativeClosure)userdata;
+
+    auto const fn_t = nkval_typeof(cl.fn);
+
+    size_t argc = fn_t->as.fn.args_t->as.tuple.elems.size;
+
+    void *argv = (void *)nk_allocate(nk_default_allocator, fn_t->as.fn.args_t->size);
+    defer {
+        nk_free(nk_default_allocator, argv);
+    };
+
+    nkval_t args_val{argv, fn_t->as.fn.args_t};
+
+    for (size_t i = 0; i < argc; i++) {
+        std::memcpy(
+            nkval_data(nkval_tuple_at(args_val, i)),
+            args[i],
+            fn_t->as.fn.args_t->as.tuple.elems.data[i].type->size);
+    }
+
+    nkir_invoke(cl.fn, {resp, fn_t->as.fn.ret_t}, args_val);
+}
+
 } // namespace
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     NK_LOG_TRC(__func__);
 
-    size_t const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
+    size_t const argc =
+        nkval_data(args)
+            ? nkval_typeof(args)->typeclass_id == NkType_Tuple ? nkval_tuple_size(args) : 1
+            : 0; // TODO Have to handle args not being a tuple
 
     auto rtype = _getNativeHandle(nkval_typeof(ret));
     auto atypes = _getNativeHandle(nkval_typeof(args));
@@ -165,21 +220,48 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
             nkval_typeof(fn)->as.fn.args_t->as.tuple.elems.size,
             argc,
             rtype,
-            atypes->elements);
+            nkval_typeof(args)->typeclass_id == NkType_Tuple ? atypes->elements : &atypes);
     } else {
-        status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
+        status = ffi_prep_cif(
+            &cif,
+            FFI_DEFAULT_ABI,
+            argc,
+            rtype,
+            nkval_typeof(args)->typeclass_id == NkType_Tuple ? atypes->elements : &atypes);
     }
     assert(status == FFI_OK && "ffi_prep_cif failed");
 
-    void **argv = (void **)nk_allocate(
-        nk_default_allocator, argc * sizeof(void *)); // TODO Unnecessary allocation on every call
+    void **argv = (void **)nk_allocate(nk_default_allocator, argc * sizeof(void *));
     defer {
         nk_free(nk_default_allocator, argv);
     };
 
-    for (size_t i = 0; i < argc; i++) {
-        argv[i] = nkval_data(nkval_tuple_at(args, i));
+    if (nkval_typeof(args)->typeclass_id == NkType_Tuple) {
+        for (size_t i = 0; i < argc; i++) {
+            argv[i] = nkval_data(nkval_tuple_at(args, i));
+        }
+    } else {
+        argv[0] = nkval_data(args);
     }
 
-    ffi_call(&cif, (void (*)())nkval_as(void *, fn), nkval_data(ret), argv);
+    ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);
+}
+
+NkNativeClosure nk_native_make_closure(nkval_t fn) {
+    auto cl = (NkNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkNativeClosure_T));
+    cl->fn = fn;
+
+    _ffiPrepareCif(&cl->cif, nkval_typeof(fn));
+
+    cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
+
+    ffi_status status = ffi_prep_closure_loc(cl->closure, &cl->cif, _ffiClosure, cl, cl->code);
+    assert(status == FFI_OK && "ffi_prep_closure_loc failed");
+
+    return cl;
+}
+
+void nk_native_free_closure(NkNativeClosure cl) {
+    ffi_closure_free(cl->closure);
+    nk_free(nk_default_allocator, cl);
 }

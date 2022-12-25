@@ -9,6 +9,11 @@ extern "C" {
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
+typedef struct NkNativeClosure_T *NkNativeClosure;
+
+NkNativeClosure nk_native_make_closure(nkval_t fn);
+void nk_native_free_closure(NkNativeClosure closure);
+
 #ifdef __cplusplus
 }
 #endif

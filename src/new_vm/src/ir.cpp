@@ -43,11 +43,9 @@ void nkir_deinitProgram(NkIrProg p) {
 }
 
 NkIrFunct nkir_makeFunct(NkIrProg p) {
-    auto &fn = p->functs.emplace_back(NkIrFunct_T{
+    return &p->functs.emplace_back(NkIrFunct_T{
         .prog = p,
     });
-    fn.self_ptr = &fn;
-    return &fn;
 }
 
 NkIrBlockId nkir_makeBlock(NkIrProg p) {
@@ -199,11 +197,11 @@ NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym) {
 
 NkIrRef nkir_makeFunctRef(NkIrFunct funct) {
     return {
-        .data = &funct->self_ptr,
+        .data = funct,
         .offset = 0,
         .post_offset = 0,
         .type = funct->fn_t,
-        .ref_type = NkIrRef_Const,
+        .ref_type = NkIrRef_Funct,
         .is_indirect = false,
     };
 }
@@ -409,6 +407,9 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         break;
     case NkIrRef_ExtSym:
         nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
+        break;
+    case NkIrRef_Funct:
+        nksb_printf(sb, "%s", ((NkIrFunct)ref.data)->name.c_str());
         break;
     default:
         break;

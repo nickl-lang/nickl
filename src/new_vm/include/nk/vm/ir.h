@@ -44,6 +44,7 @@ typedef enum {
     NkIrRef_Reg,
 
     NkIrRef_ExtSym,
+    NkIrRef_Funct,
 } NkIrRefType;
 
 typedef struct {

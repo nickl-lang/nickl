@@ -8,6 +8,7 @@
 #include "dl_adapter.h"
 #include "interp.hpp"
 #include "ir_impl.hpp"
+#include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/string_builder.h"
@@ -122,7 +123,6 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     };
 
     enum ERelocType {
-        // TODO Reloc_Funct,
         Reloc_Block,
     };
 
@@ -189,6 +189,20 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.offset = (size_t)&sym;
                 break;
             }
+            case NkIrRef_Funct:
+                arg.ref_type = NkBcRef_Abs;
+                switch (ref.type->as.fn.call_conv) {
+                case NkCallConv_Nk:
+                    arg.offset = (size_t)&ref.data;
+                    break;
+                case NkCallConv_Cdecl:
+                    arg.offset = (size_t)p->closures.emplace_back(
+                        nk_native_make_closure({(void *)&ref.data, ref.type}));
+                    break;
+                default:
+                    assert(!"unreachable");
+                }
+                break;
             default:
                 assert(!"unreachable");
             case NkIrRef_None:
@@ -205,15 +219,6 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 .reloc_type = Reloc_Block,
             });
             break;
-        // TODO case NkIrArg_FunctId:
-        //     arg.ref_type = NkBcRef_Const;
-        //     *relocs.push() = {
-        //         .instr_index = ii,
-        //         .arg = ai,
-        //         .target_id = ir_arg.id,
-        //         .reloc_type = Reloc_Funct,
-        //     };
-        //     break;
         case NkIrArg_NumValType: // TODO
             break;
         }
@@ -263,9 +268,6 @@ BytecodeFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         NkBcRef &arg = p->instrs[reloc.instr_index].arg[reloc.arg];
 
         switch (reloc.reloc_type) {
-        // TODO case Reloc_Funct:
-        //     arg.type = p->funct_info[reloc.target_id].funct_t;
-        //     break;
         case Reloc_Block:
             arg.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
             break;
@@ -304,6 +306,9 @@ void nkbc_deinitProgram(NkBcProg p) {
     if (p) {
         for (auto dl : p->shobjs) {
             nkdl_close(dl);
+        }
+        for (auto cl : p->closures) {
+            nk_native_free_closure(cl);
         }
 
         p->~NkBcProg_T();

@@ -399,3 +399,58 @@ TEST_F(ir, callback) {
 
     EXPECT_STREQ(s_test_print_str, "Hello, my name is ****!");
 }
+
+extern "C" NK_EXPORT uint32_t _test_nativeCallback(void *cb) {
+    return ((uint32_t(*)(uint32_t, uint32_t))cb)(12, 34);
+}
+
+TEST_F(ir, callback_from_native) {
+    auto p = nkir_createProgram();
+    defer {
+        nkir_deinitProgram(p);
+    };
+
+    auto u32_t = nkt_get_numeric(m_arena, Uint32);
+
+    auto so = nkir_makeShObj(p, cs2s(""));
+
+    nktype_t nativeAdd_args_types[] = {u32_t, u32_t};
+    auto nativeAdd_args_t =
+        nkt_get_tuple(m_arena, nativeAdd_args_types, AR_SIZE(nativeAdd_args_types), 1);
+    auto nativeAdd_fn_t = nkt_get_fn(m_arena, u32_t, nativeAdd_args_t, NkCallConv_Cdecl, false);
+
+    auto nativeCallback_args_t = nkt_get_tuple(m_arena, &nativeAdd_fn_t, 1, 1);
+
+    auto nativeCallback_fn = nkir_makeExtSym(
+        p,
+        so,
+        cs2s("_test_nativeCallback"),
+        nkt_get_fn(m_arena, u32_t, nativeCallback_args_t, NkCallConv_Cdecl, false));
+
+    auto nativeAdd = nkir_makeFunct(p);
+    nkir_startFunct(p, nativeAdd, cs2s("nativeAdd"), nativeAdd_fn_t);
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    nkir_gen(p, nkir_make_add(nkir_makeRetRef(p), nkir_makeArgRef(p, 0), nkir_makeArgRef(p, 1)));
+    nkir_gen(p, nkir_make_ret());
+
+    auto test = nkir_makeFunct(p);
+    auto test_fn_t =
+        nkt_get_fn(m_arena, u32_t, nkt_get_tuple(m_arena, nullptr, 0, 1), NkCallConv_Nk, false);
+    nkir_startFunct(p, test, cs2s("test"), test_fn_t);
+    nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
+
+    auto cb_arg = nkir_makeFunctRef(nativeAdd);
+    // TODO Have to not pass a funct ref as tuple
+    // cb_arg.type = nativeCallback_args_t;
+
+    nkir_gen(
+        p, nkir_make_call(nkir_makeRetRef(p), nkir_makeExtSymRef(p, nativeCallback_fn), cb_arg));
+    nkir_gen(p, nkir_make_ret());
+
+    inspect(p);
+
+    uint32_t res = 0;
+    nkir_invoke({&test, test_fn_t}, {&res, u32_t}, {});
+    EXPECT_EQ(res, 46);
+}
