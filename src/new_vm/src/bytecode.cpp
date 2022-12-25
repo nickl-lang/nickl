@@ -3,6 +3,7 @@
 #include <cassert>
 #include <new>
 #include <tuple>
+#include <vector>
 
 #include "bytecode_impl.hpp"
 #include "dl_adapter.h"
@@ -32,7 +33,7 @@ NkOpCode s_ir2opcode[] = {
 #include "nk/vm/ir.inl"
 };
 
-void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder sb) {
+void _inspect(NkBcProg p, std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
     auto _inspectArg = [&](NkBcRef const &arg) {
         if (arg.is_indirect) {
             nksb_printf(sb, "[");
@@ -81,10 +82,8 @@ void _inspect(NkBcProg p, size_t first_instr, size_t last_instr, NkStringBuilder
         }
     };
 
-    for (size_t i = first_instr; i <= last_instr; i++) {
-        auto const &instr = p->instrs[i];
-
-        nksb_printf(sb, "%zx\t", (&instr - p->instrs.data()) * sizeof(NkBcInstr));
+    for (auto const &instr : instrs) {
+        nksb_printf(sb, "%zx\t", (&instr - instrs.data()) * sizeof(NkBcInstr));
 
         if (instr.arg[0].ref_type != NkBcRef_None) {
             _inspectArg(instr.arg[0]);
@@ -115,10 +114,12 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         nk_free(nk_default_allocator, frame_layout.info_ar.data);
     };
 
+    auto &instrs = p->instrs.emplace_back();
+
     auto &bc_funct = p->functs.emplace_back(NkBcFunct_T{
         .prog = p,
         .frame_size = frame_layout.size,
-        .first_instr = p->instrs.size(),
+        .instrs = nullptr,
         .fn_t = fn->fn_t,
     });
 
@@ -141,6 +142,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     block_info.resize(ir.blocks.size());
 
     std::vector<Reloc> relocs{};
+
+    std::vector<NkIrFunct> referenced_functs;
 
     auto _compileArg = [&](size_t ii, size_t ai, NkBcRef &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.arg_type) {
@@ -190,6 +193,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 break;
             }
             case NkIrRef_Funct:
+                referenced_functs.emplace_back((NkIrFunct)ref.data);
                 arg.ref_type = NkBcRef_Abs;
                 switch (ref.type->as.fn.call_conv) {
                 case NkCallConv_Nk:
@@ -227,7 +231,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     for (auto block_id : fn->blocks) {
         auto const &block = ir.blocks[block_id];
 
-        block_info[block_id].first_instr = p->instrs.size();
+        block_info[block_id].first_instr = instrs.size();
 
         for (auto const &ir_instr_id : block.instrs) {
             auto const &ir_instr = ir.instrs[ir_instr_id];
@@ -256,16 +260,16 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 break;
             }
 
-            auto &instr = p->instrs.emplace_back();
+            auto &instr = instrs.emplace_back();
             instr.code = code;
             for (size_t ai = 0; ai < 3; ai++) {
-                _compileArg(p->instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
+                _compileArg(instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
             }
         }
     }
 
     for (auto const &reloc : relocs) {
-        NkBcRef &arg = p->instrs[reloc.instr_index].arg[reloc.arg];
+        NkBcRef &arg = instrs[reloc.instr_index].arg[reloc.arg];
 
         switch (reloc.reloc_type) {
         case Reloc_Block:
@@ -274,6 +278,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         }
     }
 
+    bc_funct.instrs = instrs.data();
+
     {
         // TODO Inspecting bytecode in _translateIr outside of the log macro
         auto sb = nksb_create();
@@ -281,10 +287,16 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             nksb_free(sb);
         };
 
-        _inspect(p, bc_funct.first_instr, p->instrs.size() - 1, sb);
+        _inspect(p, instrs, sb);
         auto str = nksb_concat(sb);
 
         NK_LOG_INF("bytecode:\n%.*s", str.size, str.data);
+    }
+
+    for (auto fn : referenced_functs) {
+        if (!fn->bc_funct) {
+            fn->bc_funct = _translateIr(p, fn);
+        }
     }
 
     return &bc_funct;
@@ -296,7 +308,6 @@ NkBcProg nkbc_createProgram(NkIrProg ir) {
     auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
     };
-    prog->instrs.reserve(100); // TODO Huge hack that avoids instruction reallocation
     return prog;
 }
 

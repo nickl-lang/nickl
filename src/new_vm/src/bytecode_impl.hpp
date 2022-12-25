@@ -52,7 +52,7 @@ typedef struct {
 struct NkBcFunct_T {
     NkBcProg prog;
     size_t frame_size;
-    size_t first_instr;
+    NkBcInstr *instrs;
     nktype_t fn_t;
 };
 
@@ -62,7 +62,7 @@ struct NkBcProg_T {
     // TODO std::unordered_map<size_t, nkval_t> globals;
     std::deque<NkBcFunct_T> functs{};
 
-    std::vector<NkBcInstr> instrs{};
+    std::vector<std::vector<NkBcInstr>> instrs{};
 
     std::vector<NkDlHandle> shobjs{};
     std::deque<void *> exsyms{};

@@ -20,7 +20,6 @@ NK_LOG_USE_SCOPE(interp);
 struct ProgramFrame {
     uint8_t *base_global;
     uint8_t *base_rodata;
-    uint8_t *base_instr;
     uint8_t *base_reg;
     NkBcInstr const *pinstr;
 };
@@ -30,6 +29,7 @@ struct ControlFrame {
     uint8_t *base_frame;
     uint8_t *base_arg;
     uint8_t *base_ret;
+    uint8_t *base_instr;
     NkBcInstr const *pinstr;
 };
 
@@ -98,6 +98,7 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
         .base_frame = ctx.base.frame,
         .base_arg = ctx.base.arg,
         .base_ret = ctx.base.ret,
+        .base_instr = ctx.base.instr,
         .pinstr = ctx.pinstr,
     });
 
@@ -106,8 +107,9 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
     std::memset(ctx.base.frame, 0, fn->frame_size);
     ctx.base.arg = (uint8_t *)nkval_data(args);
     ctx.base.ret = (uint8_t *)nkval_data(ret);
+    ctx.base.instr = (uint8_t *)fn->instrs;
 
-    _jumpTo(&fn->prog->instrs[fn->first_instr]);
+    _jumpTo(fn->instrs);
 
     NK_LOG_DBG("stack_frame=%lu", ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", ctx.base.frame);
@@ -134,6 +136,7 @@ INTERP(ret) {
     ctx.base.frame = fr.base_frame;
     ctx.base.arg = fr.base_arg;
     ctx.base.ret = fr.base_ret;
+    ctx.base.instr = fr.base_instr;
 
     _jumpTo(fr.pinstr);
 }
@@ -509,14 +512,12 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     ProgramFrame pfr{
         .base_global = ctx.base.global,
         .base_rodata = ctx.base.rodata,
-        .base_instr = ctx.base.instr,
         .base_reg = ctx.base.reg,
         .pinstr = ctx.pinstr,
     };
 
     ctx.base.global = 0; // TODO prog.globals.data;
     ctx.base.rodata = 0; // TODO prog.rodata.data;
-    ctx.base.instr = (uint8_t *)prog.instrs.data();
     ctx.base.reg = (uint8_t *)&ctx.reg;
     ctx.pinstr = nullptr;
 
@@ -531,7 +532,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
             "instr: %lx %s",
-            (pinstr - prog.instrs.data()) * sizeof(NkBcInstr),
+            (pinstr - (NkBcInstr *)ctx.ctrl_stack.back().base_instr) * sizeof(NkBcInstr), // TODO???
             s_nk_bc_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
         NK_LOG_DBG("res=%s", [&]() { // TODO Inefficient inspect in interp
@@ -558,7 +559,6 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     ctx.base.global = pfr.base_global;
     ctx.base.rodata = pfr.base_rodata;
-    ctx.base.instr = pfr.base_instr;
     ctx.base.reg = pfr.base_reg;
     ctx.pinstr = pfr.pinstr;
 
