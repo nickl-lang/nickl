@@ -1,4 +1,4 @@
-set(LIB nk_new_vm)
+set(LIB nk_vm)
 
 add_library(${LIB}
     src/bytecode.cpp
@@ -17,7 +17,7 @@ find_library(LIBFFI ffi REQUIRED)
 find_library(LIBDL dl REQUIRED)
 
 target_link_libraries(${LIB}
-    PUBLIC nk_new_common
+    PUBLIC nk_common
     PRIVATE ${LIBFFI}
     PRIVATE ${LIBDL}
     )

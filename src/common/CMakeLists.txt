@@ -1,4 +1,4 @@
-set(LIB nk_new_common)
+set(LIB nk_common)
 
 add_library(${LIB}
     src/allocator.cpp
