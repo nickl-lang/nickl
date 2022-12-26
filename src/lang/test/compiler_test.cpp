@@ -116,7 +116,7 @@ TEST_F(compiler, basic) {
     auto n_add = mkn("add", n_const2, n_const2);
     inspect(n_add);
 
-    nkl_run(m_compiler, &n_add.data[0]);
+    nkl_compiler_run(m_compiler, &n_add.data[0]);
 }
 
 TEST_F(compiler, fn) {
@@ -150,5 +150,5 @@ TEST_F(compiler, fn) {
 
     inspect(n_fn);
 
-    nkl_run(m_compiler, &n_fn.data[0]);
+    nkl_compiler_run(m_compiler, &n_fn.data[0]);
 }
