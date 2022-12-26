@@ -109,24 +109,34 @@ TEST_F(ast, basic) {
     inspect(n_add);
 }
 
-TEST_F(ast, fn_def) {
+TEST_F(ast, fn) {
     auto n_u32 = mkn("u32", "u32");
     auto n_lhs = mkn("id", "lhs");
     auto n_rhs = mkn("id", "rhs");
 
-    auto n_fn_def =
-        mkn("const_def",
-            mkn("id", "add"),
-            mkn("fn",
-                mkar({
-                    mkn("param", n_lhs, n_u32),
-                    mkn("param", n_rhs, n_u32),
-                }),
-                n_u32,
-                mkn("block",
-                    mkar({
-                        mkn("return", mkn("add", n_lhs, n_rhs)),
-                    }))));
+    auto n_fn =
+        mkn("block",
+            mkar({
+                mkn("const_def",
+                    mkn("id", "add"),
+                    mkn("fn",
+                        mkar({
+                            mkn("param", n_lhs, n_u32),
+                            mkn("param", n_rhs, n_u32),
+                        }),
+                        n_u32,
+                        mkn("block",
+                            mkar({
+                                mkn("return", mkn("add", n_lhs, n_rhs)),
+                            })))),
+                mkn("call",
+                    mkn("id", "add"),
+                    mkn("tuple",
+                        mkar({
+                            mkn("int", "4"),
+                            mkn("int", "5"),
+                        }))),
+            }));
 
-    inspect(n_fn_def);
+    inspect(n_fn);
 }

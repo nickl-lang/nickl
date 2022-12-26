@@ -35,7 +35,7 @@ void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
 
         if (node->id) {
             _newline();
-            nksb_printf(sb, "id=%s", nkid2cs(node->id));
+            nksb_printf(sb, "#%s", nkid2cs(node->id));
         }
 
         bool print_text = true;
@@ -49,7 +49,7 @@ void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
         }
 
         if (node->token && print_text) {
-            nksb_printf(sb, " text=\"%.*s\"", node->token->text.size, node->token->text.data);
+            nksb_printf(sb, " \"%.*s\"", node->token->text.size, node->token->text.data);
         }
     }
 }
