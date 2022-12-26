@@ -13,10 +13,16 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
+void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 0) {
     auto const _indent = [&]() {
-        nksb_printf(sb, "%0*c", depth * 2, ' ');
+        nksb_printf(sb, "%*s", depth * 2, "");
     };
+
+    if (nodes.size > 1) {
+        _indent();
+        nksb_printf(sb, "list:\n");
+        depth += 1;
+    }
 
     for (size_t node_i = 0; node_i < nodes.size; node_i++) {
         auto const node = &nodes.data[node_i];
@@ -29,13 +35,14 @@ void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
 
         if (node->id) {
             _indent();
-            nksb_printf(sb, "id: %s\n", nkid2cs(node->id));
+            nksb_printf(sb, "id=%s", nkid2cs(node->id));
         }
 
-        if (node->token) {
-            _indent();
-            nksb_printf(sb, "text: \"%.*s\"\n", node->token->text.size, node->token->text.data);
+        if (node->token && !node->args[0].size && !node->args[1].size && !node->args[2].size) {
+            nksb_printf(sb, " text=\"%.*s\"", node->token->text.size, node->token->text.data);
         }
+
+        nksb_printf(sb, "\n");
 
         for (size_t arg_i = 0; arg_i < 3; arg_i++) {
             _inspect(node->args[arg_i], sb, depth + 1);
