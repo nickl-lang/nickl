@@ -99,8 +99,8 @@ void nksb_str_escape(NkStringBuilder sb, nkstr str) {
         case '\0':
             nksb_printf(sb, "\\0");
             break;
-        case '\'':
-            nksb_printf(sb, "\\'");
+        case '\"':
+            nksb_printf(sb, "\\\"");
             break;
         case '\\':
             nksb_printf(sb, "\\\\");

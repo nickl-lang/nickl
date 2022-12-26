@@ -41,7 +41,7 @@ protected:
         nkl_ast_inspect(node.data, sb);
         auto str = nksb_concat(sb);
 
-        NK_LOG_INF("ast:%.*s", str.size, str.data);
+        NK_LOG_INF("ast:%.*s\n", str.size, str.data);
     }
 
     NklToken const *mkt(char const *text) {
@@ -114,6 +114,7 @@ TEST_F(compiler, empty) {
 TEST_F(compiler, basic) {
     auto n_const2 = mkn("int", "2");
     auto n_add = mkn("add", n_const2, n_const2);
+
     inspect(n_add);
 
     nkl_compiler_run(m_compiler, &n_add.data[0]);
@@ -124,7 +125,7 @@ TEST_F(compiler, fn) {
     auto n_lhs = mkn("id", "lhs");
     auto n_rhs = mkn("id", "rhs");
 
-    auto n_fn =
+    auto n_root =
         mkn("block",
             mkar({
                 mkn("const_def",
@@ -135,10 +136,7 @@ TEST_F(compiler, fn) {
                             mkn("param", n_rhs, n_u32),
                         }),
                         n_u32,
-                        mkn("block",
-                            mkar({
-                                mkn("return", mkn("add", n_lhs, n_rhs)),
-                            })))),
+                        mkn("block", mkn("return", mkn("add", n_lhs, n_rhs))))),
                 mkn("call",
                     mkn("id", "add"),
                     mkn("tuple",
@@ -148,7 +146,27 @@ TEST_F(compiler, fn) {
                         }))),
             }));
 
-    inspect(n_fn);
+    inspect(n_root);
 
-    nkl_compiler_run(m_compiler, &n_fn.data[0]);
+    nkl_compiler_run(m_compiler, &n_root.data[0]);
+}
+
+TEST_F(compiler, native_puts) {
+    auto n_root =
+        mkn("block",
+            mkar({
+                mkn("const_def",
+                    mkn("id", "puts"),
+                    mkn("tagged",
+                        mkn("tag", "#foreign"),
+                        mkn("tuple", mkn("string", "")),
+                        mkn("fn",
+                            mkn("param", mkn("id", "str"), mkn("ptr_type", mkn("u8", "u8"))),
+                            mkn("void", "void")))),
+                mkn("call", mkn("id", "puts"), mkn("tuple", mkn("string", "Hello, World!"))),
+            }));
+
+    inspect(n_root);
+
+    nkl_compiler_run(m_compiler, &n_root.data[0]);
 }

@@ -49,7 +49,9 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
         }
 
         if (node->token && print_text) {
-            nksb_printf(sb, " \"%.*s\"", node->token->text.size, node->token->text.data);
+            nksb_printf(sb, " \"");
+            nksb_str_escape(sb, node->token->text);
+            nksb_printf(sb, "\"");
         }
     }
 }
