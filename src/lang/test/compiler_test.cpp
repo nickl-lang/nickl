@@ -131,7 +131,7 @@ TEST_F(compiler, fn) {
     auto n_root =
         mkn("block",
             mkar({
-                mkn("const_def",
+                mkn("const_decl",
                     mkn("id", "add"),
                     mkn("fn",
                         mkar({
@@ -142,11 +142,10 @@ TEST_F(compiler, fn) {
                         mkn("block", mkn("return", mkn("add", n_lhs, n_rhs))))),
                 mkn("call",
                     mkn("id", "add"),
-                    mkn("tuple",
-                        mkar({
-                            mkn("int", "4"),
-                            mkn("int", "5"),
-                        }))),
+                    mkar({
+                        mkn("int", "4"),
+                        mkn("int", "5"),
+                    })),
             }));
 
     inspect(n_root);
@@ -158,7 +157,7 @@ TEST_F(compiler, native_puts) {
     auto n_root =
         mkn("block",
             mkar({
-                mkn("const_def",
+                mkn("const_decl",
                     mkn("id", "puts"),
                     mkn("tagged",
                         mkn("tag", "#foreign"),
@@ -166,7 +165,7 @@ TEST_F(compiler, native_puts) {
                         mkn("fn",
                             mkn("param", mkn("id", "str"), mkn("ptr_type", mkn("u8", "u8"))),
                             mkn("void", "void")))),
-                mkn("call", mkn("id", "puts"), mkn("tuple", mkn("string", "Hello, World!"))),
+                mkn("call", mkn("id", "puts"), mkn("string", "Hello, World!")),
             }));
 
     inspect(n_root);

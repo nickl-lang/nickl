@@ -24,7 +24,7 @@ N(none) // ()
 // N(i64)
 // N(u8)
 // N(u16)
-// N(u32)
+N(u32)
 // N(u64)
 // N(f32)
 // N(f64)
@@ -50,7 +50,7 @@ N(none) // ()
 
 // U(defer_stmt) // (expr: node)
 
-// U(return ) // (expr: node)
+U(return ) // (expr: node)
 
 // U(ptr_type) // (target_type: node)
 // U(const_ptr_type)
@@ -110,13 +110,13 @@ B(add) // (lhs: node, rhs: node)
 // X(ternary)
 
 // X(array) // (nodes: [node])
-// X(block)
+X(block)
 // X(tuple)
 // X(tuple_type)
 
 // X(import) // (names: [{name: token}])
 
-// X(id)                     // (name: token)
+X(id) // (name: token)
 // X(intrinsic)              // (name: token)
 // X(numeric_float)          // (value: token)
 X(int) // (value: token)
@@ -134,12 +134,12 @@ X(int) // (value: token)
 // X(enum)
 // X(packed_struct)
 
-// X(fn) // (params: [(id=mut|const name: token, type: node, value: node)], ret_t: node, body:
-// ?node) X(fn_var)
+X(fn) // (params: [(id=mut|const name: token, type: node, value: node)], ret_t: node, body: ?node)
+// X(fn_var)
 
 // X(tag) // (tag: token, args: [{name: ?token, value: node}], node: node)
 
-// X(call) // (lhs: ?node, args: [{name: ?token, value: node}])
+X(call) // (lhs: ?node, args: [{name: ?token, value: node}])
 // X(object_literal)
 
 // X(assign) // (lhs: [node], value: node)
@@ -150,6 +150,6 @@ X(int) // (value: token)
 // X(tag_def)
 
 // X(var_decl) // (name: token, type: node, value: ?node)
-// X(const_decl)
+X(const_decl)
 
 #undef X
