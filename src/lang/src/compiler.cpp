@@ -2,12 +2,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <new>
 #include <unordered_map>
 #include <vector>
 
 #include "ast_impl.h"
 #include "nk/common/allocator.h"
+#include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.h"
 #include "nk/common/string_builder.h"
@@ -198,6 +200,10 @@ ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
+ValueInfo makeValue(NklCompiler, nkval_t val) {
+    return {{.val = nkval_data(val)}, val.type, v_val};
+}
+
 ValueInfo makeInstr(NkIrInstr const &instr, nktype_t type) {
     return {{.instr{instr}}, type, v_instr};
 }
@@ -264,10 +270,39 @@ COMPILE(none) {
     return {};
 }
 
+COMPILE(u8) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint8));
+}
+
+COMPILE(u16) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint16));
+}
+
 COMPILE(u32) {
+    (void)node;
     // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint32));
+}
+
+COMPILE(u64) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint64));
+}
+
+COMPILE(void) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_void(c->arena));
 }
 
 COMPILE(return ) {
@@ -275,6 +310,15 @@ COMPILE(return ) {
     gen(c, nkir_make_mov(nkir_makeRetRef(c->ir), makeRef(c, arg)));
     gen(c, nkir_make_ret());
     return makeVoid(c);
+}
+
+COMPILE(ptr_type) {
+    auto target_type = compileNode(c, node->args[0].data);
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        nkt_get_ptr(c->arena, nkval_as(nktype_t, asValue(target_type))));
 }
 
 COMPILE(add) {
@@ -328,6 +372,20 @@ COMPILE(int) {
     return makeValue<int64_t>(c, nkt_get_numeric(c->arena, Int64), value);
 }
 
+COMPILE(string) {
+    auto size = node->token->text.size;
+
+    auto u8_t = nkt_get_numeric(c->arena, Uint8);
+    auto ar_t = nkt_get_array(c->arena, u8_t, size + 1);
+    auto str_t = nkt_get_ptr(c->arena, ar_t);
+
+    auto str = (char *)nk_allocate(c->arena, size + 1);
+    std::memcpy(str, node->token->text.data, size);
+    str[size] = '\0';
+
+    return makeValue<char *>(c, str_t, str);
+}
+
 COMPILE(fn) {
     // TODO Refactor fn compilation
 
@@ -373,6 +431,55 @@ COMPILE(fn) {
     compileStmt(c, node->args[2].data);
 
     return makeValue<void *>(c, fn_t, fn);
+}
+
+COMPILE(fn_type) {
+    std::vector<nkid> params_names;
+    std::vector<nktype_t> params_types;
+
+    auto params = node->args[0];
+
+    for (size_t i = 0; i < params.size; i++) {
+        auto const &param = params.data[i];
+        params_names.emplace_back(s2nkid(param.args[0].data->token->text));
+        params_types.emplace_back(nkval_as(nktype_t, asValue(compileNode(c, param.args[1].data))));
+    }
+
+    auto ret = compileNode(c, node->args[1].data);
+
+    nktype_t ret_t = nkval_as(nktype_t, asValue(ret));
+    nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
+
+    auto fn_t = nkt_get_fn(
+        c->arena, ret_t, args_t, NkCallConv_Cdecl, false); // TODO CallConv Hack for #foreign
+
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), fn_t);
+}
+
+COMPILE(tag) {
+    // TODO Only handling #foreign
+    assert(
+        0 == std::strncmp(
+                 node->args[0].data->token->text.data,
+                 "#foreign",
+                 node->args[0].data->token->text.size));
+
+    auto name = compileNode(c, node->args[1].data);
+
+    assert(node->args[2].data->id == n_const_decl);
+
+    nkstr soname{nkval_as(char *, asValue(name)), name.type->as.ptr.target_type->as.arr.elem_count};
+    auto so = nkir_makeShObj(c->ir, soname); // TODO Creating so every time
+
+    nkstr sym_name{node->args[2].data->args[0].data->token->text};
+
+    auto fn_t_val = compileNode(c, node->args[2].data->args[1].data);
+    auto fn_t = nkval_as(nktype_t, asValue(fn_t_val));
+
+    defineExtSym(c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name, fn_t), fn_t);
+
+    return makeVoid(c);
 }
 
 COMPILE(call) {
