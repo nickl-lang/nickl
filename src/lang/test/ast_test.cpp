@@ -1,5 +1,7 @@
 #include "nkl/lang/ast.h"
 
+#include <algorithm>
+#include <iterator>
 #include <new>
 
 #include <gtest/gtest.h>
@@ -36,12 +38,12 @@ protected:
         nkl_ast_inspect(node.data, sb);
         auto str = nksb_concat(sb);
 
-        NK_LOG_INF("ast:\n\n%.*s", str.size, str.data);
+        NK_LOG_INF("ast:%.*s", str.size, str.data);
     }
 
     NklToken const *mkt(char const *text) {
         return new (nk_allocate(m_arena, sizeof(NklToken))) NklToken{
-            .text = cs2s(text),
+            .text = text ? cs2s(text) : nkstr{},
             .pos = 0,
             .lin = 0,
             .col = 0,
@@ -49,12 +51,45 @@ protected:
         };
     }
 
+    NklNodeArray mkn(char const *id, char const *text) {
+        return mkn(id, text, {}, {}, {});
+    }
+
+    NklNodeArray mkn(char const *id, NklNodeArray arg0) {
+        return mkn(id, arg0, {}, {});
+    }
+
+    NklNodeArray mkn(char const *id, NklNodeArray arg0, NklNodeArray arg1) {
+        return mkn(id, arg0, arg1, {});
+    }
+
+    NklNodeArray mkn(char const *id, NklNodeArray arg0, NklNodeArray arg1, NklNodeArray arg2) {
+        return mkn(id, {}, arg0, arg1, arg2);
+    }
+
+    NklNodeArray mkn(
+        char const *id,
+        char const *text,
+        NklNodeArray arg0,
+        NklNodeArray arg1,
+        NklNodeArray arg2) {
+        return mkn(NklNode{
+            .args{arg0, arg1, arg2},
+            .token = mkt(text),
+            .id = cs2nkid(id),
+        });
+    }
+
     NklNodeArray mkn(NklNode const &node) {
         return {nkl_ast_pushNode(m_ast, node), 1};
     }
 
-    NklNodeArray mkar(std::vector<NklNode> const &ar) {
-        return nkl_ast_pushNodeAr(m_ast, {ar.data(), ar.size()});
+    NklNodeArray mkar(std::vector<NklNodeArray> const &ar) {
+        std::vector<NklNode> nodes;
+        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklNodeArray ar) {
+            return ar.data[0];
+        });
+        return nkl_ast_pushNodeAr(m_ast, {nodes.data(), nodes.size()});
     }
 
 protected:
@@ -69,114 +104,29 @@ TEST_F(ast, empty) {
 }
 
 TEST_F(ast, basic) {
-    auto n_const2 = mkn(NklNode{
-        .args{},
-        .token = mkt("2"),
-        .id = cs2nkid("int"),
-    });
-
-    auto n_add = mkn(NklNode{
-        .args{
-            n_const2,
-            n_const2,
-            {},
-        },
-        .token = mkt("+"),
-        .id = cs2nkid("add"),
-    });
-
+    auto n_const2 = mkn("int", "2");
+    auto n_add = mkn("add", n_const2, n_const2);
     inspect(n_add);
 }
 
 TEST_F(ast, fn_def) {
-    auto n_u32 = mkn(NklNode{
-        .args{},
-        .token = mkt("u32"),
-        .id = cs2nkid("u32"),
-    });
+    auto n_u32 = mkn("u32", "u32");
+    auto n_lhs = mkn("id", "lhs");
+    auto n_rhs = mkn("id", "rhs");
 
-    auto n_fn_def = mkn(NklNode{
-        .args{
-            mkn(NklNode{
-                .args{},
-                .token = mkt("add"),
-                .id = cs2nkid("id"),
-            }),
-            mkn(NklNode{
-                .args{
+    auto n_fn_def =
+        mkn("const_def",
+            mkn("id", "add"),
+            mkn("fn",
+                mkar({
+                    mkn("param", n_lhs, n_u32),
+                    mkn("param", n_rhs, n_u32),
+                }),
+                n_u32,
+                mkn("block",
                     mkar({
-                        NklNode{
-                            .args{
-                                mkn(NklNode{
-                                    .args{},
-                                    .token = mkt("lhs"),
-                                    .id = cs2nkid("id"),
-                                }),
-                                n_u32,
-                                {},
-                            },
-                            .token = mkt("lhs"),
-                            .id = cs2nkid("param"),
-                        },
-                        NklNode{
-                            .args{
-                                mkn(NklNode{
-                                    .args{},
-                                    .token = mkt("rhs"),
-                                    .id = cs2nkid("id"),
-                                }),
-                                n_u32,
-                                {},
-                            },
-                            .token = mkt("rhs"),
-                            .id = cs2nkid("param"),
-                        },
-                    }),
-                    n_u32,
-                    mkn(NklNode{
-                        .args{
-                            mkar({
-                                NklNode{
-                                    .args{
-                                        mkn(NklNode{
-                                            .args{
-                                                mkn(NklNode{
-                                                    .args{},
-                                                    .token = mkt("lhs"),
-                                                    .id = cs2nkid("id"),
-                                                }),
-                                                mkn(NklNode{
-                                                    .args{},
-                                                    .token = mkt("rhs"),
-                                                    .id = cs2nkid("id"),
-                                                }),
-                                                {},
-                                            },
-                                            .token = mkt("+"),
-                                            .id = cs2nkid("add"),
-                                        }),
-                                        {},
-                                        {},
-                                    },
-                                    .token = mkt("return"),
-                                    .id = cs2nkid("return"),
-                                },
-                            }),
-                            {},
-                            {},
-                        },
-                        .token = mkt("{"),
-                        .id = cs2nkid("block"),
-                    }),
-                },
-                .token = mkt("("),
-                .id = cs2nkid("fn"),
-            }),
-            {},
-        },
-        .token = mkt("::"),
-        .id = cs2nkid("const_def"),
-    });
+                        mkn("return", mkn("add", n_lhs, n_rhs)),
+                    }))));
 
     inspect(n_fn_def);
 }

@@ -13,14 +13,14 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 0) {
-    auto const _indent = [&]() {
-        nksb_printf(sb, "%*s", depth * 2, "");
+void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
+    auto const _newline = [&]() {
+        nksb_printf(sb, "\n%*s", depth * 2, "");
     };
 
     if (nodes.size > 1) {
-        _indent();
-        nksb_printf(sb, "list:\n");
+        _newline();
+        nksb_printf(sb, "list:");
         depth += 1;
     }
 
@@ -28,24 +28,28 @@ void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 0) {
         auto const node = &nodes.data[node_i];
 
         if (!node) {
-            _indent();
-            nksb_printf(sb, "(null)\n");
+            _newline();
+            nksb_printf(sb, "(null)");
             return;
         }
 
         if (node->id) {
-            _indent();
+            _newline();
             nksb_printf(sb, "id=%s", nkid2cs(node->id));
         }
 
-        if (node->token && !node->args[0].size && !node->args[1].size && !node->args[2].size) {
-            nksb_printf(sb, " text=\"%.*s\"", node->token->text.size, node->token->text.data);
-        }
-
-        nksb_printf(sb, "\n");
+        bool print_text = true;
 
         for (size_t arg_i = 0; arg_i < 3; arg_i++) {
-            _inspect(node->args[arg_i], sb, depth + 1);
+            auto const &arg = node->args[arg_i];
+            if (arg.size) {
+                print_text = false;
+                _inspect(arg, sb, depth + 1);
+            }
+        }
+
+        if (node->token && print_text) {
+            nksb_printf(sb, " text=\"%.*s\"", node->token->text.size, node->token->text.data);
         }
     }
 }
