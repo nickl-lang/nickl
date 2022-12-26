@@ -49,7 +49,7 @@ void *stackAllocate(NkStackAllocator *alloc, size_t size) {
     return mem;
 }
 
-NkStackAllocatorFrame stackPushFrame(NkStackAllocator *alloc) {
+NkStackAllocatorFrame stackGetFrame(NkStackAllocator *alloc) {
     auto stack = (StackAllocator *)alloc;
     return {stack->size};
 }
@@ -86,7 +86,7 @@ NkStackAllocator *nk_create_stack() {
         nk_allocate(nk_default_allocator, sizeof(StackAllocator))) StackAllocator{
         .base{
             .allocate = stackAllocate,
-            .pushFrame = stackPushFrame,
+            .getFrame = stackGetFrame,
             .popFrame = stackPopFrame,
         },
         .data = (uint8_t *)nk_allocate(nk_default_allocator, 10000000), //@TODO Fixed sized stack

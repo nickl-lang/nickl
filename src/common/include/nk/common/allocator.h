@@ -38,7 +38,7 @@ typedef struct {
 
 struct NkStackAllocator {
     void *(*allocate)(NkStackAllocator *alloc, size_t size);
-    NkStackAllocatorFrame (*pushFrame)(NkStackAllocator *);
+    NkStackAllocatorFrame (*getFrame)(NkStackAllocator *);
     void (*popFrame)(NkStackAllocator *, NkStackAllocatorFrame);
 };
 
@@ -46,8 +46,8 @@ inline void *nk_stack_allocate(NkStackAllocator *alloc, size_t size) {
     return alloc->allocate(alloc, size);
 }
 
-inline NkStackAllocatorFrame nk_stack_pushFrame(NkStackAllocator *alloc) {
-    return alloc->pushFrame(alloc);
+inline NkStackAllocatorFrame nk_stack_getFrame(NkStackAllocator *alloc) {
+    return alloc->getFrame(alloc);
 }
 
 inline void nk_stack_popFrame(NkStackAllocator *alloc, NkStackAllocatorFrame frame) {

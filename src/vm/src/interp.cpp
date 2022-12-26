@@ -99,7 +99,7 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
         .pinstr = ctx.pinstr,
     });
 
-    ctx.stack_frame = nk_stack_pushFrame(ctx.stack);
+    ctx.stack_frame = nk_stack_getFrame(ctx.stack);
     ctx.base.frame = (uint8_t *)nk_stack_allocate(ctx.stack, fn->frame_size); // TODO not aligned
     std::memset(ctx.base.frame, 0, fn->frame_size);
     ctx.base.arg = (uint8_t *)nkval_data(args);
@@ -141,7 +141,7 @@ INTERP(ret) {
 INTERP(enter) {
     (void)instr;
 
-    ctx.stack_frames.emplace_back(nk_stack_pushFrame(ctx.stack));
+    ctx.stack_frames.emplace_back(nk_stack_getFrame(ctx.stack));
 }
 
 INTERP(leave) {
@@ -520,7 +520,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     if (was_uninitialized) {
         NK_LOG_TRC("deinitializing stack...");
 
-        assert(nk_stack_pushFrame(ctx.stack).size == 0 && "nonempty stack at exit");
+        assert(nk_stack_getFrame(ctx.stack).size == 0 && "nonempty stack at exit");
 
         nk_free_stack(ctx.stack);
 

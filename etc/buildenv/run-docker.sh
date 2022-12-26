@@ -15,7 +15,13 @@ DOCKERHOME=$PROJECTDIR/out/home
 mkdir -p $DOCKERHOME
 
 if [ -z "$(docker images -q $IMAGE 2> /dev/null)" ]; then
-    $DIR/build-image.sh
+    URL=ghcr.io/nk4rter
+    if docker pull $URL/$IMAGE; then
+        docker image tag $URL/$IMAGE $IMAGE
+        docker image rm $URL/$IMAGE
+    else
+        $DIR/build-image.sh
+    fi
 fi
 
 echo "Running docker image $IMAGE"
