@@ -21,6 +21,8 @@ typedef struct {
     size_t id;
 } NklToken; // TODO Move NklToken declaration
 
+extern char const *s_nkl_ast_node_names[];
+
 typedef struct NklAstNode_T const *NklAstNode;
 
 typedef struct {

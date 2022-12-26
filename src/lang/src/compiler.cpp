@@ -6,14 +6,17 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ast_impl.h"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.h"
 #include "nk/common/string_builder.h"
+#include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
+#include "nkl/lang/ast.h"
 
 namespace {
 
@@ -90,6 +93,8 @@ struct NklCompiler_T {
     NkAllocator *arena;
 
     std::vector<ScopeCtx> scopes{};
+
+    bool is_top_level{};
 };
 
 namespace {
@@ -241,6 +246,72 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
+ValueInfo compileNode(NklCompiler c, NklAstNode node);
+
+#define COMPILE(NAME) ValueInfo _compile_##NAME(NklCompiler c, NklAstNode node)
+
+COMPILE(none) {
+    (void)node;
+    return {};
+}
+
+COMPILE(add) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot add values of different types");
+    //     throw "whoops"; // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_add({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(int) {
+    int64_t value = 0;
+    // TODO Replace sscanf in Compiler
+    int res = std::sscanf(node->token->text.data, "%ld", &value);
+    (void)res;
+    assert(res > 0 && res != EOF && "integer constant parsing failed");
+    return makeValue<int64_t>(c, nkt_get_numeric(c->arena, Int64), value);
+}
+
+using CompileFunc = ValueInfo (*)(NklCompiler c, NklAstNode node);
+
+CompileFunc s_funcs[] = {
+#define X(NAME) CAT(_compile_, NAME),
+#include "nodes.inl"
+};
+
+ValueInfo compileNode(NklCompiler c, NklAstNode node) {
+    assert(node->id < AR_SIZE(s_funcs) && "invalid node");
+    NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
+    return s_funcs[node->id](c, node);
+}
+
+void compileStmt(NklCompiler c, NklAstNode node) {
+    auto val = compileNode(c, node);
+    auto ref = makeRef(c, val);
+    if (val.value_type != v_none) {
+        (void)ref;
+        // TODO Boilerplate for debug printing
+#ifdef ENABLE_LOGGING
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+#endif // ENABLE_LOGGING
+        NK_LOG_DBG("value ignored: %s", [&]() {
+            nkir_inspectRef(c->ir, ref, sb);
+            return nksb_concat(sb).data;
+        }());
+    }
+}
+
+void compileNodeArray(NklCompiler c, NklAstNodeArray nodes) {
+    for (size_t i = 0; i < nodes.size; i++) {
+        compileStmt(c, &nodes.data[i]);
+    }
+}
+
 } // namespace
 
 NklCompiler nkl_compiler_create() {
@@ -260,6 +331,8 @@ void nkl_compiler_free(NklCompiler c) {
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     NK_LOG_TRC(__func__);
 
+    c->is_top_level = true;
+
     auto top_level_fn = nkir_makeFunct(c->ir);
     auto top_level_fn_t = nkt_get_fn(
         c->arena,
@@ -270,6 +343,16 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
 
     nkir_startFunct(c->ir, top_level_fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+
+    pushScope(c);
+    defer {
+        popScope(c);
+    };
+
+    if (root) {
+        compileStmt(c, root);
+    }
+
     gen(c, nkir_make_ret());
 
     {

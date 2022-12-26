@@ -4,8 +4,15 @@
 #include <deque>
 #include <new>
 
+#include "ast_impl.h"
 #include "nk/common/allocator.h"
+#include "nk/common/id.h"
 #include "nk/common/string_builder.h"
+
+char const *s_nkl_ast_node_names[] = {
+#define X(ID) #ID,
+#include "nodes.inl"
+};
 
 struct NklAst_T {
     NkAllocator *arena;
@@ -59,10 +66,13 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
 } // namespace
 
 NklAst nkl_ast_create() {
-    auto ast = new (nk_allocate(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{
+    // TODO Defining ast node ids every time
+#define X(ID) nkid_define(CAT(n_, ID), cs2s(#ID));
+#include "nodes.inl"
+
+    return new (nk_allocate(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{
         .arena = nk_create_arena(),
     };
-    return ast;
 }
 
 void nkl_ast_free(NklAst ast) {

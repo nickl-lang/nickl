@@ -108,7 +108,10 @@ protected:
 } // namespace
 
 TEST_F(compiler, empty) {
-    inspect({});
+    auto n_empty = NklAstNodeArray{};
+    inspect(n_empty);
+
+    nkl_compiler_run(m_compiler, n_empty.data);
 }
 
 TEST_F(compiler, basic) {
@@ -117,7 +120,7 @@ TEST_F(compiler, basic) {
 
     inspect(n_add);
 
-    nkl_compiler_run(m_compiler, &n_add.data[0]);
+    nkl_compiler_run(m_compiler, n_add.data);
 }
 
 TEST_F(compiler, fn) {
@@ -148,7 +151,7 @@ TEST_F(compiler, fn) {
 
     inspect(n_root);
 
-    nkl_compiler_run(m_compiler, &n_root.data[0]);
+    nkl_compiler_run(m_compiler, n_root.data);
 }
 
 TEST_F(compiler, native_puts) {
@@ -168,5 +171,5 @@ TEST_F(compiler, native_puts) {
 
     inspect(n_root);
 
-    nkl_compiler_run(m_compiler, &n_root.data[0]);
+    nkl_compiler_run(m_compiler, n_root.data);
 }
