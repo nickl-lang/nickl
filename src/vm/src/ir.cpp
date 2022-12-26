@@ -267,8 +267,17 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
     for (auto const &funct : p->functs) {
-        nksb_printf(sb, "\nfn %s(", funct.name.c_str());
+        nksb_printf(sb, "\nfn ");
 
+        switch (funct.fn_t->as.fn.call_conv) {
+        case NkCallConv_Nk:
+            break;
+        case NkCallConv_Cdecl:
+            nksb_printf(sb, "(cdecl) ");
+            break;
+        }
+
+        nksb_printf(sb, "%s(", funct.name.c_str());
         for (size_t i = 0; i < funct.fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
             if (i) {
                 nksb_printf(sb, ", ");
