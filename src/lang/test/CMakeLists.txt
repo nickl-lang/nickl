@@ -1,1 +1,1 @@
-def_test(GROUP lang NAME ast LINK ${LIB})
+def_test(GROUP lang NAME compiler LINK ${LIB})

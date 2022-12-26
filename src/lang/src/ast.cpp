@@ -13,7 +13,7 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
+void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
     auto const _newline = [&]() {
         nksb_printf(sb, "\n%*s", depth * 2, "");
     };
@@ -69,16 +69,17 @@ void nkl_ast_free(NklAst ast) {
     nk_free(nk_default_allocator, ast);
 }
 
-void nkl_ast_inspect(NklNode const *root, NkStringBuilder sb) {
+void nkl_ast_inspect(NklAstNode root, NkStringBuilder sb) {
     _inspect({root, 1}, sb);
 }
 
-NklNode const *nkl_ast_pushNode(NklAst ast, NklNode node) {
-    return new (nk_allocate(ast->arena, sizeof(NklNode))) NklNode{node};
+NklAstNode nkl_ast_pushNode(NklAst ast, NklAstNode node) {
+    return new (nk_allocate(ast->arena, sizeof(NklAstNode_T))) NklAstNode_T{*node};
 }
 
-NklNodeArray nkl_ast_pushNodeAr(NklAst ast, NklNodeArray ar) {
-    auto new_ar = new (nk_allocate(ast->arena, sizeof(NklNode) * ar.size)) NklNode[ar.size];
-    std::memcpy(new_ar, ar.data, sizeof(NklNode) * ar.size);
+NklAstNodeArray nkl_ast_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
+    auto new_ar =
+        new (nk_allocate(ast->arena, sizeof(NklAstNode_T) * ar.size)) NklAstNode_T[ar.size];
+    std::memcpy(new_ar, ar.data, sizeof(NklAstNode_T) * ar.size);
     return {new_ar, ar.size};
 }

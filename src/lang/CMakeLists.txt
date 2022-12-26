@@ -2,6 +2,7 @@ set(LIB nkl_lang)
 
 add_library(${LIB}
     src/ast.cpp
+    src/compiler.cpp
     )
 
 target_include_directories(${LIB}
@@ -9,7 +10,7 @@ target_include_directories(${LIB}
     )
 
 target_link_libraries(${LIB}
-    PUBLIC nk_common
+    PUBLIC nk_vm
     )
 
 set(EXE nickl)

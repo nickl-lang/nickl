@@ -1,4 +1,4 @@
-#include "nkl/lang/ast.h"
+#include "nkl/lang/compiler.h"
 
 #include <algorithm>
 #include <iterator>
@@ -10,26 +10,29 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
+#include "nkl/lang/ast.h"
 
 namespace {
 
 NK_LOG_USE_SCOPE(test);
 
-class ast : public testing::Test {
+class compiler : public testing::Test {
     void SetUp() override {
         NK_LOGGER_INIT(NkLoggerOptions{});
 
         m_ast = nkl_ast_create();
+        m_compiler = nkl_compiler_create();
         m_arena = nk_create_arena();
     }
 
     void TearDown() override {
         nk_free_arena(m_arena);
+        nkl_compiler_free(m_compiler);
         nkl_ast_free(m_ast);
     }
 
 protected:
-    void inspect(NklNodeArray node) {
+    void inspect(NklAstNodeArray node) {
         auto sb = nksb_create();
         defer {
             nksb_free(sb);
@@ -51,42 +54,46 @@ protected:
         };
     }
 
-    NklNodeArray mkn(char const *id, char const *text) {
+    NklAstNodeArray mkn(char const *id, char const *text) {
         return mkn(id, text, {}, {}, {});
     }
 
-    NklNodeArray mkn(char const *id, NklNodeArray arg0) {
+    NklAstNodeArray mkn(char const *id, NklAstNodeArray arg0) {
         return mkn(id, arg0, {}, {});
     }
 
-    NklNodeArray mkn(char const *id, NklNodeArray arg0, NklNodeArray arg1) {
+    NklAstNodeArray mkn(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1) {
         return mkn(id, arg0, arg1, {});
     }
 
-    NklNodeArray mkn(char const *id, NklNodeArray arg0, NklNodeArray arg1, NklNodeArray arg2) {
+    NklAstNodeArray mkn(
+        char const *id,
+        NklAstNodeArray arg0,
+        NklAstNodeArray arg1,
+        NklAstNodeArray arg2) {
         return mkn(id, {}, arg0, arg1, arg2);
     }
 
-    NklNodeArray mkn(
+    NklAstNodeArray mkn(
         char const *id,
         char const *text,
-        NklNodeArray arg0,
-        NklNodeArray arg1,
-        NklNodeArray arg2) {
-        return mkn(NklNode{
+        NklAstNodeArray arg0,
+        NklAstNodeArray arg1,
+        NklAstNodeArray arg2) {
+        return mkn(NklAstNode_T{
             .args{arg0, arg1, arg2},
             .token = mkt(text),
             .id = cs2nkid(id),
         });
     }
 
-    NklNodeArray mkn(NklNode const &node) {
-        return {nkl_ast_pushNode(m_ast, node), 1};
+    NklAstNodeArray mkn(NklAstNode_T node) {
+        return {nkl_ast_pushNode(m_ast, &node), 1};
     }
 
-    NklNodeArray mkar(std::vector<NklNodeArray> const &ar) {
-        std::vector<NklNode> nodes;
-        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklNodeArray ar) {
+    NklAstNodeArray mkar(std::vector<NklAstNodeArray> const &ar) {
+        std::vector<NklAstNode_T> nodes;
+        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeArray ar) {
             return ar.data[0];
         });
         return nkl_ast_pushNodeAr(m_ast, {nodes.data(), nodes.size()});
@@ -94,22 +101,25 @@ protected:
 
 protected:
     NklAst m_ast;
+    NklCompiler m_compiler;
     NkAllocator *m_arena;
 };
 
 } // namespace
 
-TEST_F(ast, empty) {
+TEST_F(compiler, empty) {
     inspect({});
 }
 
-TEST_F(ast, basic) {
+TEST_F(compiler, basic) {
     auto n_const2 = mkn("int", "2");
     auto n_add = mkn("add", n_const2, n_const2);
     inspect(n_add);
+
+    nkl_run(m_compiler, &n_add.data[0]);
 }
 
-TEST_F(ast, fn) {
+TEST_F(compiler, fn) {
     auto n_u32 = mkn("u32", "u32");
     auto n_lhs = mkn("id", "lhs");
     auto n_rhs = mkn("id", "rhs");
@@ -139,4 +149,6 @@ TEST_F(ast, fn) {
             }));
 
     inspect(n_fn);
+
+    nkl_run(m_compiler, &n_fn.data[0]);
 }
