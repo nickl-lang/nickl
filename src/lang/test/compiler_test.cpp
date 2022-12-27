@@ -54,44 +54,41 @@ protected:
         };
     }
 
-    NklAstNodeArray n(char const *id, char const *text) {
-        return n(id, text, {}, {}, {});
+    NklAstNodeArray _(char const *id, char const *text) {
+        return _(id, text, {}, {}, {});
     }
 
-    NklAstNodeArray n(char const *id, NklAstNodeArray arg0) {
-        return n(id, arg0, {}, {});
+    NklAstNodeArray _(char const *id, NklAstNodeArray arg0) {
+        return _(id, arg0, {}, {});
     }
 
-    NklAstNodeArray n(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1) {
-        return n(id, arg0, arg1, {});
+    NklAstNodeArray _(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1) {
+        return _(id, arg0, arg1, {});
     }
 
-    NklAstNodeArray n(
+    NklAstNodeArray _(
         char const *id,
         NklAstNodeArray arg0,
         NklAstNodeArray arg1,
         NklAstNodeArray arg2) {
-        return n(id, {}, arg0, arg1, arg2);
+        return _(id, {}, arg0, arg1, arg2);
     }
 
-    NklAstNodeArray n(
+    NklAstNodeArray _(
         char const *id,
         char const *text,
         NklAstNodeArray arg0,
         NklAstNodeArray arg1,
         NklAstNodeArray arg2) {
-        return n(NklAstNode_T{
+        NklAstNode_T node{
             .args{arg0, arg1, arg2},
             .token = mkt(text),
             .id = cs2nkid(id),
-        });
-    }
-
-    NklAstNodeArray n(NklAstNode_T node) {
+        };
         return {nkl_ast_pushNode(m_ast, &node), 1};
     }
 
-    NklAstNodeArray ar(std::vector<NklAstNodeArray> const &ar) {
+    NklAstNodeArray _(std::vector<NklAstNodeArray> const &ar) {
         std::vector<NklAstNode_T> nodes;
         std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeArray ar) {
             return ar.data[0];
@@ -115,7 +112,7 @@ TEST_F(compiler, empty) {
 }
 
 TEST_F(compiler, basic) {
-    auto n_root = n("add", n("int", "2"), n("int", "2"));
+    auto n_root = _("add", _("int", "2"), _("int", "2"));
 
     inspect(n_root);
 
@@ -124,22 +121,22 @@ TEST_F(compiler, basic) {
 
 TEST_F(compiler, fn) {
     auto n_root =
-        n("block",
-          ar({
-              n("const_decl",
-                n("id", "add"),
-                n("fn",
-                  ar({
-                      n("#param", n("id", "lhs"), n("u32", "u32")),
-                      n("#param", n("id", "rhs"), n("u32", "u32")),
+        _("block",
+          _({
+              _("const_decl",
+                _("id", "add"),
+                _("fn",
+                  _({
+                      _("#param", _("id", "lhs"), _("u32", "u32")),
+                      _("#param", _("id", "rhs"), _("u32", "u32")),
                   }),
-                  n("u32", "u32"),
-                  n("block", n("return", n("add", n("id", "lhs"), n("id", "rhs")))))),
-              n("call",
-                n("id", "add"),
-                ar({
-                    n("int", "4"),
-                    n("int", "5"),
+                  _("u32", "u32"),
+                  _("block", _("return", _("add", _("id", "lhs"), _("id", "rhs")))))),
+              _("call",
+                _("id", "add"),
+                _({
+                    _("int", "4"),
+                    _("int", "5"),
                 })),
           }));
 
@@ -150,17 +147,17 @@ TEST_F(compiler, fn) {
 
 TEST_F(compiler, native_puts) {
     auto n_root =
-        n("block",
-          ar({
-              n("tag",
-                n("#name", "#foreign"),
-                n("string", ""),
-                n("const_decl",
-                  n("id", "puts"),
-                  n("fn_type",
-                    n("#param", n("id", "str"), n("ptr_type", n("u8", "u8"))),
-                    n("void", "void")))),
-              n("call", n("id", "puts"), n("string", "Hello, World!")),
+        _("block",
+          _({
+              _("tag",
+                _("#name", "#foreign"),
+                _("string", ""),
+                _("const_decl",
+                  _("id", "puts"),
+                  _("fn_type",
+                    _("#param", _("id", "str"), _("ptr_type", _("u8", "u8"))),
+                    _("void", "void")))),
+              _("call", _("id", "puts"), _("string", "Hello, World!")),
           }));
 
     inspect(n_root);

@@ -140,6 +140,7 @@ ffi_type *_getNativeHandle(nktype_t type) {
         s_typemap.emplace(type->id, ffi_t);
     }
 
+#ifdef ENABLE_LOGGING
     {
         // TODO Inspecting type in _getNativeHandle outside of the log macro
         auto sb = nksb_create();
@@ -152,6 +153,7 @@ ffi_type *_getNativeHandle(nktype_t type) {
 
         NK_LOG_DBG("ffi(type{id=%llu name=%.*s}) -> %p", type->id, str.size, str.data, ffi_t);
     }
+#endif // ENABLE_LOGGING
 
     return ffi_t;
 }

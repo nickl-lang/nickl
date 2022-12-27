@@ -166,6 +166,19 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case NkIrRef_Const:
                 arg.ref_type = NkBcRef_Abs;
                 arg.offset = (size_t)ref.data;
+                if (ref.type->typeclass_id == NkType_Fn &&
+                    ref.type->as.fn.call_conv == NkCallConv_Nk) {
+                    bool found = false;
+                    for (auto const &f : ir.functs) {
+                        if (*(void **)ref.data == (void *)&f) { // TODO Manual search for fn
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
+                        referenced_functs.emplace_back((NkIrFunct) * (void **)ref.data);
+                    }
+                }
                 break;
             case NkIrRef_Reg:
                 arg.offset += ref.index * REG_SIZE;
@@ -238,6 +251,20 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case nkir_call:
                 if (arg1.ref.ref_type == NkIrRef_Funct) {
                     code = nkop_call_jmp;
+                } else if (
+                    arg1.ref.ref_type == NkIrRef_Const &&
+                    arg1.ref.type->typeclass_id == NkType_Fn &&
+                    arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
+                    bool found = false;
+                    for (auto const &f : ir.functs) {
+                        if (*(void **)arg1.ref.data == (void *)&f) { // TODO Manual search for fn
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
+                        code = nkop_call_jmp;
+                    }
                 }
                 break;
             case nkir_mov:
@@ -276,6 +303,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     bc_funct.instrs = instrs.data();
 
+#ifdef ENABLE_LOGGING
     {
         // TODO Inspecting bytecode in _translateIr outside of the log macro
         auto sb = nksb_create();
@@ -288,6 +316,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
         NK_LOG_INF("bytecode:\n%.*s", str.size, str.data);
     }
+#endif // ENABLE_LOGGING
 
     for (auto fn : referenced_functs) {
         if (!fn->bc_funct) {
