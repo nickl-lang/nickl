@@ -57,7 +57,9 @@ struct NkBcFunct_T {
 struct NkBcProg_T {
     NkIrProg ir;
 
-    // TODO std::unordered_map<size_t, nkval_t> globals;
+    NkAllocator *arena;
+
+    std::vector<nkval_t> globals{};
     std::deque<NkBcFunct_T> functs{};
 
     std::vector<std::vector<NkBcInstr>> instrs{};

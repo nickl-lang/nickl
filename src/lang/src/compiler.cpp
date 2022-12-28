@@ -725,8 +725,7 @@ void nkl_compiler_free(NklCompiler c) {
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     NK_LOG_TRC(__func__);
 
-    // TODO Implement globals
-    // c->is_top_level = true;
+    c->is_top_level = true;
 
     auto top_level_fn = nkir_makeFunct(c->ir);
     auto top_level_fn_t = nkt_get_fn(

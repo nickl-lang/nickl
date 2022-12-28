@@ -1,6 +1,7 @@
 #include "bytecode.h"
 
 #include <cassert>
+#include <cstring>
 #include <new>
 #include <tuple>
 #include <vector>
@@ -133,7 +134,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     };
 
     std::vector<BlockInfo> block_info;
-    block_info.resize(ir.blocks.size());
+    block_info.resize(ir.blocks.size(), {});
 
     std::vector<Reloc> relocs{};
 
@@ -160,9 +161,19 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 break;
             case NkIrRef_Ret:
                 break;
-            case NkIrRef_Global:
-                // TODO arg.offset += globals_layout.info_ar[ref.value.index].offset;
+            case NkIrRef_Global: {
+                arg.ref_type = NkBcRef_Abs;
+                if (ref.index >= p->globals.size()) {
+                    p->globals.resize(ref.index + 1, {});
+                }
+                auto &val = p->globals[ref.index];
+                if (!val.data) {
+                    val = {nk_allocate(p->arena, ref.type->size), arg.type};
+                    std::memset(val.data, 0, ref.type->size);
+                }
+                arg.offset += (size_t)val.data;
                 break;
+            }
             case NkIrRef_Const:
                 arg.ref_type = NkBcRef_Abs;
                 arg.offset = (size_t)ref.data;
@@ -187,16 +198,16 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.ref_type = NkBcRef_Abs;
                 auto const &exsym = ir.exsyms[ref.index];
                 if (exsym.so_id.id >= p->shobjs.size()) {
-                    p->shobjs.resize(exsym.so_id.id + 1);
+                    p->shobjs.resize(exsym.so_id.id + 1, {});
                 }
                 auto &dl = p->shobjs[exsym.so_id.id];
                 dl = nkdl_open(cs2s(ir.shobjs[exsym.so_id.id].c_str()));
                 if (ref.index >= p->exsyms.size()) {
-                    p->exsyms.resize(ref.index + 1);
+                    p->exsyms.resize(ref.index + 1, {});
                 }
                 auto &sym = p->exsyms[ref.index];
                 sym = nkdl_sym(dl, cs2s(exsym.name.c_str()));
-                arg.offset = (size_t)&sym;
+                arg.offset += (size_t)&sym;
                 break;
             }
             case NkIrRef_Funct:
@@ -204,10 +215,10 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.ref_type = NkBcRef_Abs;
                 switch (ref.type->as.fn.call_conv) {
                 case NkCallConv_Nk:
-                    arg.offset = (size_t)&ref.data;
+                    arg.offset += (size_t)&ref.data;
                     break;
                 case NkCallConv_Cdecl:
-                    arg.offset = (size_t)p->closures.emplace_back(
+                    arg.offset += (size_t)p->closures.emplace_back(
                         nk_native_make_closure({(void *)&ref.data, ref.type}));
                     break;
                 default:
@@ -332,6 +343,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 NkBcProg nkbc_createProgram(NkIrProg ir) {
     auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
+        .arena = nk_create_arena(),
     };
     return prog;
 }
@@ -344,6 +356,8 @@ void nkbc_deinitProgram(NkBcProg p) {
         for (auto cl : p->closures) {
             nk_native_free_closure(cl);
         }
+
+        nk_free_arena(p->arena);
 
         p->~NkBcProg_T();
         nk_free(nk_default_allocator, p);
