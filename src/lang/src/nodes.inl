@@ -56,7 +56,7 @@ U(ptr_type) // (target_type: node)
 // U(const_ptr_type)
 // U(slice_type)
 
-// U(scope) // (expr: node)
+U(scope) // (expr: node)
 // U(run)
 
 #undef U
@@ -66,10 +66,10 @@ U(ptr_type) // (target_type: node)
 #endif
 
 B(add) // (lhs: node, rhs: node)
-// B(sub)
-// B(mul)
-// B(div)
-// B(mod)
+B(sub)
+B(mul)
+B(div)
+B(mod)
 
 // B(bitand)
 // B(bitor)
@@ -80,12 +80,12 @@ B(add) // (lhs: node, rhs: node)
 // B(and)
 // B(or)
 
-// B(eq)
+B(eq)
 // B(ge)
 // B(gt)
 // B(le)
 // B(lt)
-// B(ne)
+B(ne)
 
 // B(add_assign)
 // B(sub_assign)
@@ -102,11 +102,11 @@ B(add) // (lhs: node, rhs: node)
 // B(array_type) // (type: node, count: node)
 // B(cast)       // (target_type: node, expr: node)
 // B(index)      // (lhs: node, index: node)
-// B(while)      // (cond: node, body: node)
+B(while) // (cond: node, body: node)
 
 #undef B
 
-// X(if) // (cond: node, then_clause: node, else_clause: node)
+X(if) // (cond: node, then_clause: node, else_clause: node)
 // X(ternary)
 
 // X(array) // (nodes: [node])
@@ -146,7 +146,7 @@ X(call) // (lhs: ?node, args: [{name: ?token, value: node}])
 
 // X(assign) // (lhs: [node], value: node)
 
-// X(define) // (names: [{name: token}], value: node)
+X(define) // (names: [{name: token}], value: node)
 
 // X(comptime_const_def) // (name: token, value: node)
 // X(tag_def)

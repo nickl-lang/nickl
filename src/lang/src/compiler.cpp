@@ -321,6 +321,10 @@ COMPILE(ptr_type) {
         nkt_get_ptr(c->arena, nkval_as(nktype_t, asValue(target_type))));
 }
 
+COMPILE(scope) {
+    assert(!"scope compilation is not implemented");
+}
+
 COMPILE(add) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
@@ -329,6 +333,38 @@ COMPILE(add) {
     //     throw "whoops"; // TODO Report errors properly
     // }
     return makeInstr(nkir_make_add({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(sub) {
+    assert(!"sub compilation is not implemented");
+}
+
+COMPILE(mul) {
+    assert(!"mul compilation is not implemented");
+}
+
+COMPILE(div) {
+    assert(!"div compilation is not implemented");
+}
+
+COMPILE(mod) {
+    assert(!"mod compilation is not implemented");
+}
+
+COMPILE(eq) {
+    assert(!"eq compilation is not implemented");
+}
+
+COMPILE(ne) {
+    assert(!"ne compilation is not implemented");
+}
+
+COMPILE(while) {
+    assert(!"while compilation is not implemented");
+}
+
+COMPILE(if) {
+    assert(!"if compilation is not implemented");
 }
 
 COMPILE(block) {
@@ -498,6 +534,10 @@ COMPILE(call) {
     }
 
     return makeInstr(nkir_make_call({}, makeRef(c, lhs), args), fn_t->as.fn.ret_t);
+}
+
+COMPILE(define) {
+    assert(!"define compilation is not implemented");
 }
 
 COMPILE(const_decl) {

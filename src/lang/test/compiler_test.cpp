@@ -127,8 +127,8 @@ TEST_F(compiler, fn) {
                 _("id", "add"),
                 _("fn",
                   _({
-                      _("#param", _("id", "lhs"), _("u32", "u32")),
-                      _("#param", _("id", "rhs"), _("u32", "u32")),
+                      _("param", _("id", "lhs"), _("u32", "u32")),
+                      _("param", _("id", "rhs"), _("u32", "u32")),
                   }),
                   _("u32", "u32"),
                   _("block", _("return", _("add", _("id", "lhs"), _("id", "rhs")))))),
@@ -150,14 +150,41 @@ TEST_F(compiler, native_puts) {
         _("block",
           _({
               _("tag",
-                _("#name", "#foreign"),
+                _("name", "#foreign"),
                 _("string", ""),
                 _("const_decl",
                   _("id", "puts"),
                   _("fn_type",
-                    _("#param", _("id", "str"), _("ptr_type", _("u8", "u8"))),
+                    _("param", _("id", "str"), _("ptr_type", _("u8", "u8"))),
                     _("void", "void")))),
               _("call", _("id", "puts"), _("string", "Hello, World!")),
+          }));
+
+    inspect(n_root);
+
+    nkl_compiler_run(m_compiler, n_root.data);
+}
+
+TEST_F(compiler, fast_exp) {
+    auto n_root =
+        _("block",
+          _({
+              _("define", _("id", "b"), _("int", "2")),
+              _("define", _("id", "n"), _("int", "16")),
+              _("define", _("id", "a"), _("int", "1")),
+              _("define", _("id", "c"), _("id", "b")),
+              _("while",
+                _("ne", _("id", "n"), _("int", "0")),
+                _("scope",
+                  _("block",
+                    _({
+                        _("define", _("id", "r"), _("mod", _("id", "n"), _("int", "2"))),
+                        _("if",
+                          _("eq", _("id", "r"), _("int", "1")),
+                          _("assign", _("id", "a"), _("mul", _("id", "a"), _("id", "c")))),
+                        _("assign", _("id", "n"), _("div", _("id", "n"), _("int", "2"))),
+                        _("assign", _("id", "c"), _("mul", _("id", "c"), _("id", "c"))),
+                    })))),
           }));
 
     inspect(n_root);
