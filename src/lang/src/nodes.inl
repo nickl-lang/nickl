@@ -144,7 +144,7 @@ X(tag) // (tag: token, args: [{name: ?token, value: node}], node: node)
 X(call) // (lhs: ?node, args: [{name: ?token, value: node}])
 // X(object_literal)
 
-// X(assign) // (lhs: [node], value: node)
+X(assign) // (lhs: [node], value: node)
 
 X(define) // (names: [{name: token}], value: node)
 

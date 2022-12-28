@@ -139,7 +139,7 @@ Decl &makeDecl(NklCompiler c, nkid name) {
     if (it != locals.end()) {
         nkstr name_str = nkid2s(name);
         NK_LOG_ERR("`%.*s` is already defined", name_str.size, name_str.data);
-        throw "whoops"; // TODO Report errors properly
+        std::abort(); // TODO Report errors properly
     } else {
         std::tie(it, std::ignore) = locals.emplace(name, Decl{});
     }
@@ -330,41 +330,103 @@ COMPILE(add) {
     auto rhs = compileNode(c, node->args[1].data);
     // TODO if (lhs.type->id != rhs.type->id) {
     //     NK_LOG_ERR("cannot add values of different types");
-    //     throw "whoops"; // TODO Report errors properly
+    //     std::abort(); // TODO Report errors properly
     // }
     return makeInstr(nkir_make_add({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(sub) {
-    assert(!"sub compilation is not implemented");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot sub values of different types");
+    //     std::abort(); // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_sub({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mul) {
-    assert(!"mul compilation is not implemented");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot mul values of different types");
+    //     std::abort(); // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_mul({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(div) {
-    assert(!"div compilation is not implemented");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot div values of different types");
+    //     std::abort(); // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_div({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mod) {
-    assert(!"mod compilation is not implemented");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot mod values of different types");
+    //     std::abort(); // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_mod({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(eq) {
-    assert(!"eq compilation is not implemented");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot eq values of different types");
+    //     std::abort(); // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_eq({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ne) {
-    assert(!"ne compilation is not implemented");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    // TODO if (lhs.type->id != rhs.type->id) {
+    //     NK_LOG_ERR("cannot ne values of different types");
+    //     std::abort(); // TODO Report errors properly
+    // }
+    return makeInstr(nkir_make_ne({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(while) {
-    assert(!"while compilation is not implemented");
+    auto l_loop = nkir_makeBlock(c->ir);
+    auto l_endloop = nkir_makeBlock(c->ir);
+    nkir_startBlock(c->ir, l_loop, cs2s("loop"));
+    gen(c, nkir_make_enter());
+    auto cond = compileNode(c, node->args[0].data);
+    gen(c, nkir_make_jmpz(makeRef(c, cond), l_endloop));
+    compileStmt(c, node->args[1].data);
+    gen(c, nkir_make_leave());
+    gen(c, nkir_make_jmp(l_loop));
+    nkir_startBlock(c->ir, l_endloop, cs2s("endloop"));
+    return makeVoid(c);
 }
 
 COMPILE(if) {
-    assert(!"if compilation is not implemented");
+    auto l_endif = nkir_makeBlock(c->ir);
+    NkIrBlockId l_else;
+    if (node->args[2].data) {
+        l_else = nkir_makeBlock(c->ir);
+    } else {
+        l_else = l_endif;
+    }
+    auto cond = compileNode(c, node->args[0].data);
+    gen(c, nkir_make_jmpz(makeRef(c, cond), l_else));
+    compileStmt(c, node->args[1].data);
+    if (node->args[2].data) {
+        gen(c, nkir_make_jmp(l_endif));
+        nkir_startBlock(c->ir, l_else, cs2s("else"));
+        compileStmt(c, node->args[2].data);
+    }
+    nkir_startBlock(c->ir, l_endif, cs2s("endif"));
+    return makeVoid(c);
 }
 
 COMPILE(block) {
@@ -379,7 +441,7 @@ COMPILE(id) {
     switch (decl.decl_type) {
     case Decl_Undefined:
         NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
-        throw "whoops"; // TODO Report errors properly
+        std::abort(); // TODO Report errors properly
     case Decl_ComptimeConst:
         return {{.decl = &decl}, decl.as.comptime_const.value.type, v_decl};
     case Decl_Local:
@@ -536,15 +598,69 @@ COMPILE(call) {
     return makeInstr(nkir_make_call({}, makeRef(c, lhs), args), fn_t->as.fn.ret_t);
 }
 
+COMPILE(assign) {
+    auto name_str = node->args[0].data->token->text;
+    nkid name = s2nkid(name_str);
+    auto rhs = compileNode(c, node->args[1].data);
+    auto res = resolve(c, name);
+    NkIrRef ref;
+    nktype_t type;
+    switch (res.decl_type) {
+    case Decl_Local:
+        if (res.as.local.type->id != rhs.type->id) {
+            // return error("cannot assign values of different types"), ValueInfo{};
+        }
+        ref = nkir_makeFrameRef(c->ir, res.as.local.id);
+        type = res.as.local.type;
+        break;
+    case Decl_Global:
+        if (res.as.local.type->id != rhs.type->id) {
+            // return error("cannot assign values of different types"), ValueInfo{};
+        }
+        ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
+        type = res.as.global.type;
+        break;
+    case Decl_Undefined:
+        // return error("`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
+    case Decl_Funct:
+    case Decl_ExtSym:
+    case Decl_Arg:
+        // return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
+    default:
+        NK_LOG_ERR("unknown decl type");
+        assert(!"unreachable");
+        return {};
+    }
+    return makeInstr(nkir_make_mov(ref, makeRef(c, rhs)), type);
+}
+
 COMPILE(define) {
-    assert(!"define compilation is not implemented");
+    auto const &names = node->args[0];
+    if (names.size > 1) {
+        NK_LOG_ERR("multiple assignment is not implemented");
+        std::abort(); // TODO Report errors properly
+    }
+    nkid name = s2nkid(names.data[0].token->text);
+    auto rhs = compileNode(c, node->args[1].data);
+    NkIrRef ref;
+    if (c->is_top_level) {
+        auto var = nkir_makeGlobalVar(c->ir, rhs.type);
+        defineGlobal(c, name, var, rhs.type);
+        ref = nkir_makeGlobalRef(c->ir, var);
+    } else {
+        auto var = nkir_makeLocalVar(c->ir, rhs.type);
+        defineLocal(c, name, var, rhs.type);
+        ref = nkir_makeFrameRef(c->ir, var);
+    }
+    gen(c, nkir_make_mov(ref, makeRef(c, rhs)));
+    return makeVoid(c);
 }
 
 COMPILE(const_decl) {
     auto names = node->args[0];
     if (names.size > 1) {
         NK_LOG_ERR("multiple assignment is not implemented");
-        throw "whoops"; // TODO Report errors properly
+        std::abort(); // TODO Report errors properly
     }
     nkid name = s2nkid(names.data[0].token->text);
     auto rhs = compileNode(c, node->args[1].data);
@@ -609,7 +725,8 @@ void nkl_compiler_free(NklCompiler c) {
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     NK_LOG_TRC(__func__);
 
-    c->is_top_level = true;
+    // TODO Implement globals
+    // c->is_top_level = true;
 
     auto top_level_fn = nkir_makeFunct(c->ir);
     auto top_level_fn_t = nkt_get_fn(

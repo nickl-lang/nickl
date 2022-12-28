@@ -175,16 +175,15 @@ TEST_F(compiler, fast_exp) {
               _("define", _("id", "c"), _("id", "b")),
               _("while",
                 _("ne", _("id", "n"), _("int", "0")),
-                _("scope",
-                  _("block",
-                    _({
-                        _("define", _("id", "r"), _("mod", _("id", "n"), _("int", "2"))),
-                        _("if",
-                          _("eq", _("id", "r"), _("int", "1")),
-                          _("assign", _("id", "a"), _("mul", _("id", "a"), _("id", "c")))),
-                        _("assign", _("id", "n"), _("div", _("id", "n"), _("int", "2"))),
-                        _("assign", _("id", "c"), _("mul", _("id", "c"), _("id", "c"))),
-                    })))),
+                _("block",
+                  _({
+                      _("define", _("id", "r"), _("mod", _("id", "n"), _("int", "2"))),
+                      _("if",
+                        _("eq", _("id", "r"), _("int", "1")),
+                        _("assign", _("id", "a"), _("mul", _("id", "a"), _("id", "c")))),
+                      _("assign", _("id", "n"), _("div", _("id", "n"), _("int", "2"))),
+                      _("assign", _("id", "c"), _("mul", _("id", "c"), _("id", "c"))),
+                  }))),
           }));
 
     inspect(n_root);
