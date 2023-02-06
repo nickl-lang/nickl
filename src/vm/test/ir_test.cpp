@@ -400,8 +400,8 @@ TEST_F(ir, callback) {
     EXPECT_STREQ(s_test_print_str, "Hello, my name is ****!");
 }
 
-extern "C" NK_EXPORT uint32_t _test_nativeCallback(void *cb) {
-    return ((uint32_t(*)(uint32_t, uint32_t))cb)(12, 34);
+extern "C" NK_EXPORT uint32_t _test_nativeCallback(uint32_t (*cb)(uint32_t, uint32_t)) {
+    return cb(12, 34);
 }
 
 TEST_F(ir, callback_from_native) {

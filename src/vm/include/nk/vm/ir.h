@@ -80,7 +80,6 @@ typedef struct {
     uint16_t code;
 } NkIrInstr;
 
-DEFINE_ID_TYPE(NkIrFunctId);
 DEFINE_ID_TYPE(NkIrBlockId);
 DEFINE_ID_TYPE(NkIrShObjId);
 DEFINE_ID_TYPE(NkIrLocalVarId);

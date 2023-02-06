@@ -24,7 +24,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(compiler);
 
-enum EDeclType {
+enum EDeclKind {
     Decl_Undefined,
 
     Decl_ComptimeConst,
@@ -61,10 +61,10 @@ struct Decl { // TODO Compact the Decl struct
             nktype_t type;
         } arg;
     } as;
-    EDeclType decl_type;
+    EDeclKind kind;
 };
 
-enum EValueType {
+enum EValueKind {
     v_none,
 
     v_val,
@@ -81,7 +81,7 @@ struct ValueInfo {
         Decl const *decl;
     } as;
     nktype_t type;
-    EValueType value_type;
+    EValueKind kind;
 };
 
 struct ScopeCtx {
@@ -213,7 +213,7 @@ nkval_t asValue(ValueInfo const &val) {
 }
 
 NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
-    switch (val.value_type) {
+    switch (val.kind) {
     case v_val: // TODO Isn't it the same as Decl_ComptimeConst?
         return nkir_makeConstRef(c->ir, {val.as.val, val.type});
 
@@ -232,7 +232,7 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
 
     case v_decl: {
         auto &decl = *val.as.decl;
-        switch (decl.decl_type) {
+        switch (decl.kind) {
         case Decl_ComptimeConst:
             return nkir_makeConstRef(c->ir, decl.as.comptime_const.value);
         case Decl_Local:
@@ -438,7 +438,7 @@ COMPILE(id) {
     nkstr name_str = node->token->text;
     nkid name = s2nkid(name_str);
     auto const &decl = resolve(c, name);
-    switch (decl.decl_type) {
+    switch (decl.kind) {
     case Decl_Undefined:
         NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
         std::abort(); // TODO Report errors properly
@@ -459,6 +459,15 @@ COMPILE(id) {
         assert(!"unreachable");
         return {};
     }
+}
+
+COMPILE(float) {
+    double value = 0.0;
+    // TODO Replace sscanf in Compiler
+    int res = std::sscanf(node->token->text.data, "%lf", &value);
+    (void)res;
+    assert(res > 0 && res != EOF && "integer constant parsing failed");
+    return makeValue<double>(c, nkt_get_numeric(c->arena, Float64), value);
 }
 
 COMPILE(int) {
@@ -565,7 +574,7 @@ COMPILE(tag) {
 
     auto name = compileNode(c, node->args[1].data);
 
-    assert(node->args[2].data->id == n_const_decl);
+    assert(node->args[2].data->id == n_comptime_const_def);
 
     nkstr soname{nkval_as(char *, asValue(name)), name.type->as.ptr.target_type->as.arr.elem_count};
     auto so = nkir_makeShObj(c->ir, soname); // TODO Creating so every time
@@ -605,7 +614,7 @@ COMPILE(assign) {
     auto res = resolve(c, name);
     NkIrRef ref;
     nktype_t type;
-    switch (res.decl_type) {
+    switch (res.kind) {
     case Decl_Local:
         if (res.as.local.type->id != rhs.type->id) {
             // return error("cannot assign values of different types"), ValueInfo{};
@@ -656,7 +665,7 @@ COMPILE(define) {
     return makeVoid(c);
 }
 
-COMPILE(const_decl) {
+COMPILE(comptime_const_def) {
     auto names = node->args[0];
     if (names.size > 1) {
         NK_LOG_ERR("multiple assignment is not implemented");
@@ -684,7 +693,7 @@ ValueInfo compileNode(NklCompiler c, NklAstNode node) {
 void compileStmt(NklCompiler c, NklAstNode node) {
     auto val = compileNode(c, node);
     auto ref = makeRef(c, val);
-    if (val.value_type != v_none) {
+    if (val.kind != v_none) {
         (void)ref;
         // TODO Boilerplate for debug printing
 #ifdef ENABLE_LOGGING

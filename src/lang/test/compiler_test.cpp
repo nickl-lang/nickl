@@ -107,15 +107,18 @@ protected:
 TEST_F(compiler, empty) {
     auto n_empty = NklAstNodeArray{};
     inspect(n_empty);
-
     nkl_compiler_run(m_compiler, n_empty.data);
 }
 
 TEST_F(compiler, basic) {
     auto n_root = _("add", _("int", "2"), _("int", "2"));
-
     inspect(n_root);
+    nkl_compiler_run(m_compiler, n_root.data);
+}
 
+TEST_F(compiler, comptime_const) {
+    auto n_root = _("comptime_const_def", _("id", "pi"), _("float", "3.14"));
+    inspect(n_root);
     nkl_compiler_run(m_compiler, n_root.data);
 }
 
@@ -123,7 +126,7 @@ TEST_F(compiler, fn) {
     auto n_root =
         _("block",
           _({
-              _("const_decl",
+              _("comptime_const_def",
                 _("id", "add"),
                 _("fn",
                   _({
@@ -152,7 +155,7 @@ TEST_F(compiler, native_puts) {
               _("tag",
                 _("name", "#foreign"),
                 _("string", ""),
-                _("const_decl",
+                _("comptime_const_def",
                   _("id", "puts"),
                   _("fn_type",
                     _("param", _("id", "str"), _("ptr_type", _("u8", "u8"))),

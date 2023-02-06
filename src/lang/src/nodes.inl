@@ -118,7 +118,7 @@ X(block)
 
 X(id) // (name: token)
 // X(intrinsic)              // (name: token)
-// X(numeric_float)          // (value: token)
+X(float)  // (value: token)
 X(int)    // (value: token)
 X(string) // (value: token)
 // X(escaped_string) // (value: token)
@@ -148,10 +148,10 @@ X(assign) // (lhs: [node], value: node)
 
 X(define) // (names: [{name: token}], value: node)
 
-// X(comptime_const_def) // (name: token, value: node)
+X(comptime_const_def) // (name: token, value: node)
 // X(tag_def)
 
 // X(var_decl) // (name: token, type: node, value: ?node)
-X(const_decl)
+// X(const_decl)
 
 #undef X
