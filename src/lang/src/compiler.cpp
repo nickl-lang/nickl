@@ -35,11 +35,22 @@ enum EDeclKind {
     Decl_Arg,
 };
 
+enum EComptimeConstKind {
+    ComptimeConst_Value,
+    ComptimeConst_Funct,
+};
+
+struct ComptimeConst {
+    union {
+        nkval_t value;
+        NkIrFunct funct;
+    };
+    EComptimeConstKind kind;
+};
+
 struct Decl { // TODO Compact the Decl struct
     union {
-        struct {
-            nkval_t value;
-        } comptime_const;
+        ComptimeConst comptime_const;
         struct {
             NkIrLocalVarId id;
             nktype_t type;
@@ -147,9 +158,9 @@ Decl &makeDecl(NklCompiler c, nkid name) {
     return it->second;
 }
 
-void defineComptimeConst(NklCompiler c, nkid name, nkval_t val) {
+void defineComptimeConst(NklCompiler c, nkid name, ComptimeConst cnst) {
     NK_LOG_DBG("defining comptime const `%.*s`", nkid2s(name).size, nkid2s(name).data);
-    makeDecl(c, name) = {{.comptime_const{val}}, Decl_ComptimeConst};
+    makeDecl(c, name) = {{.comptime_const{cnst}}, Decl_ComptimeConst};
 }
 
 void defineLocal(NklCompiler c, nkid name, NkIrLocalVarId id, nktype_t type) {
@@ -212,6 +223,29 @@ nkval_t asValue(ValueInfo const &val) {
     return {val.as.val, val.type};
 }
 
+nkval_t comptimeConstGetValue(NklCompiler c, ComptimeConst cnst) {
+    switch (cnst.kind) {
+    case ComptimeConst_Value:
+        return cnst.value;
+    case ComptimeConst_Funct: {
+        auto fn_t = nkir_functGetType(cnst.funct);
+        auto type = fn_t->as.fn.ret_t;
+        nkval_t val{nk_allocate(c->arena, type->size), type};
+        nkir_invoke({&cnst.funct, fn_t}, val, {});
+        return val;
+    }
+    }
+}
+
+nktype_t comptimeConstType(ComptimeConst cnst) {
+    switch (cnst.kind) {
+    case ComptimeConst_Value:
+        return nkval_typeof(cnst.value);
+    case ComptimeConst_Funct:
+        return nkir_functGetType(cnst.funct)->as.fn.ret_t;
+    }
+}
+
 NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
     switch (val.kind) {
     case v_val: // TODO Isn't it the same as Decl_ComptimeConst?
@@ -234,7 +268,7 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
         auto &decl = *val.as.decl;
         switch (decl.kind) {
         case Decl_ComptimeConst:
-            return nkir_makeConstRef(c->ir, decl.as.comptime_const.value);
+            return nkir_makeConstRef(c->ir, comptimeConstGetValue(c, decl.as.comptime_const));
         case Decl_Local:
             return nkir_makeFrameRef(c->ir, decl.as.local.id);
         case Decl_Global:
@@ -258,6 +292,7 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
+ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
 ValueInfo compileNode(NklCompiler c, NklAstNode node);
 void compileStmt(NklCompiler c, NklAstNode node);
 void compileNodeArray(NklCompiler c, NklAstNodeArray nodes);
@@ -443,7 +478,7 @@ COMPILE(id) {
         NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
         std::abort(); // TODO Report errors properly
     case Decl_ComptimeConst:
-        return {{.decl = &decl}, decl.as.comptime_const.value.type, v_decl};
+        return {{.decl = &decl}, comptimeConstType(decl.as.comptime_const), v_decl};
     case Decl_Local:
         return {{.decl = &decl}, decl.as.local.type, v_decl};
     case Decl_Global:
@@ -672,8 +707,8 @@ COMPILE(comptime_const_def) {
         std::abort(); // TODO Report errors properly
     }
     nkid name = s2nkid(names.data[0].token->text);
-    auto rhs = compileNode(c, node->args[1].data);
-    defineComptimeConst(c, name, asValue(rhs)); // TODO Unconditionally treating rhs as value
+    auto decl = comptimeCompileNode(c, node->args[1].data);
+    defineComptimeConst(c, name, decl);
     return makeVoid(c);
 }
 
@@ -688,6 +723,13 @@ ValueInfo compileNode(NklCompiler c, NklAstNode node) {
     assert(node->id < AR_SIZE(s_funcs) && "invalid node");
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
     return s_funcs[node->id](c, node);
+}
+
+ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
+    ComptimeConst cnst{};
+    cnst.value = asValue(compileNode(c, node)); // TODO ComptimeConst_Funct not implemented
+    cnst.kind = ComptimeConst_Value;
+    return cnst;
 }
 
 void compileStmt(NklCompiler c, NklAstNode node) {

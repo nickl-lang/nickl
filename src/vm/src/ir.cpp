@@ -445,3 +445,7 @@ void nkir_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
 
     nkbc_invoke(fn->prog->bc, fn, ret, args);
 }
+
+nktype_t nkir_functGetType(NkIrFunct fn) {
+    return fn->fn_t;
+}

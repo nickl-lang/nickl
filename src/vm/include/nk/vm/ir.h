@@ -141,6 +141,8 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb);
 
 void nkir_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
+nktype_t nkir_functGetType(NkIrFunct fn);
+
 #ifdef __cplusplus
 }
 #endif
