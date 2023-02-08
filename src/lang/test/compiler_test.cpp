@@ -122,6 +122,29 @@ TEST_F(compiler, comptime_const) {
     nkl_compiler_run(m_compiler, n_root.data);
 }
 
+TEST_F(compiler, comptime_const_getter) {
+    auto n_root = _(
+        "block",
+        _({
+            _("define", _("id", "counter"), _("int", "0")),
+            _("comptime_const_def",
+              _("id", "getVal"),
+              _("fn",
+                _({}),
+                _("u32", "u32"),
+                _("block",
+                  _({
+                      _("assign", _("id", "counter"), _("add", _("id", "counter"), _("int", "1"))),
+                      _("return", _("int", "42")),
+                  })))),
+            _("comptime_const_def", _("id", "val"), _("call", _("id", "getVal"), _({}))),
+            // _("id", "val"),
+            // _("id", "val"),
+        }));
+    inspect(n_root);
+    nkl_compiler_run(m_compiler, n_root.data);
+}
+
 TEST_F(compiler, fn) {
     auto n_root =
         _("block",

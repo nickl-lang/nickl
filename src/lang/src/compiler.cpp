@@ -89,7 +89,7 @@ struct ValueInfo {
         void *val;
         NkIrRef ref;
         NkIrInstr instr;
-        Decl const *decl;
+        Decl *decl;
     } as;
     nktype_t type;
     EValueKind kind;
@@ -188,7 +188,7 @@ void defineArg(NklCompiler c, nkid name, size_t index, nktype_t type) {
     makeDecl(c, name) = {{.arg{index, type}}, Decl_Arg};
 }
 
-Decl const &resolve(NklCompiler c, nkid name) {
+Decl &resolve(NklCompiler c, nkid name) {
     NK_LOG_DBG(
         "resolving name=`%.*s` scope=%lu",
         nkid2s(name).size,
@@ -202,7 +202,7 @@ Decl const &resolve(NklCompiler c, nkid name) {
             return it->second;
         }
     }
-    static Decl const s_undefined_decl{{}, Decl_Undefined};
+    static Decl s_undefined_decl{{}, Decl_Undefined};
     return s_undefined_decl;
 }
 
@@ -223,15 +223,19 @@ nkval_t asValue(ValueInfo const &val) {
     return {val.as.val, val.type};
 }
 
-nkval_t comptimeConstGetValue(NklCompiler c, ComptimeConst cnst) {
+nkval_t comptimeConstGetValue(NklCompiler c, ComptimeConst &cnst) {
     switch (cnst.kind) {
     case ComptimeConst_Value:
+        NK_LOG_DBG("returning comptime const as value");
         return cnst.value;
     case ComptimeConst_Funct: {
+        NK_LOG_DBG("getting comptime const from funct");
         auto fn_t = nkir_functGetType(cnst.funct);
         auto type = fn_t->as.fn.ret_t;
         nkval_t val{nk_allocate(c->arena, type->size), type};
         nkir_invoke({&cnst.funct, fn_t}, val, {});
+        cnst.value = val;
+        cnst.kind = ComptimeConst_Value;
         return val;
     }
     }
@@ -472,7 +476,7 @@ COMPILE(block) {
 COMPILE(id) {
     nkstr name_str = node->token->text;
     nkid name = s2nkid(name_str);
-    auto const &decl = resolve(c, name);
+    auto &decl = resolve(c, name);
     switch (decl.kind) {
     case Decl_Undefined:
         NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
