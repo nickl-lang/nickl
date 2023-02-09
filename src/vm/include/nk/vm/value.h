@@ -98,12 +98,14 @@ typedef struct NkType {
 
 nktype_t nkt_get_array(NkAllocator *alloc, nktype_t elem_type, size_t elem_count);
 
-nktype_t nkt_get_fn(
-    NkAllocator *alloc,
-    nktype_t ret_t,
-    nktype_t args_t,
-    NkCallConv call_conv,
-    bool is_variadic);
+typedef struct {
+    nktype_t ret_t;
+    nktype_t args_t;
+    NkCallConv call_conv;
+    bool is_variadic;
+} NktFnInfo;
+
+nktype_t nkt_get_fn(NkAllocator *alloc, NktFnInfo const *info);
 
 nktype_t nkt_get_numeric(NkAllocator *alloc, NkNumericValueType value_type);
 

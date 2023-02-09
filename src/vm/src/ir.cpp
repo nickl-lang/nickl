@@ -60,11 +60,37 @@ NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name) {
     return shobj_id;
 }
 
-void nkir_startFunct(NkIrProg p, NkIrFunct funct, nkstr name, nktype_t fn_t) {
+void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t) {
     funct->name = std_str(name);
-    funct->fn_t = fn_t;
 
-    nkir_activateFunct(p, funct);
+    funct->fn_t = fn_t;
+    funct->state = NkIrFunct_Complete;
+
+    nkir_activateFunct(funct->prog, funct);
+}
+
+void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info) {
+    funct->name = std_str(name);
+
+    funct->fn_info = *fn_info;
+    funct->state = NkIrFunct_Incomplete;
+
+    nkir_activateFunct(funct->prog, funct);
+}
+
+void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator *alloc) {
+    funct->fn_t = nkt_get_fn(alloc, &funct->fn_info);
+    funct->state = NkIrFunct_Complete;
+}
+
+nktype_t nkir_functGetType(NkIrFunct fn) {
+    assert(fn->state == NkIrFunct_Complete && "invalid function state");
+    return fn->fn_t;
+}
+
+NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct fn) {
+    assert(fn->state == NkIrFunct_Incomplete && "invalid function state");
+    return &fn->fn_info;
 }
 
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
@@ -127,12 +153,16 @@ NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
 NkIrRef nkir_makeArgRef(NkIrProg p, size_t index) {
     assert(p->cur_funct && "no current function");
     assert(
-        index < p->cur_funct->fn_t->as.fn.args_t->as.tuple.elems.size && "arg index out of range");
+        (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.args_t) &&
+        "referencing incomplete function args type");
+    auto const args_t = p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.args_t
+                                                                  : p->cur_funct->fn_info.args_t;
+    assert(index < args_t->as.tuple.elems.size && "arg index out of range");
     return {
         .index = index,
         .offset = 0,
         .post_offset = 0,
-        .type = p->cur_funct->fn_t->as.fn.args_t->as.tuple.elems.data[index].type,
+        .type = args_t->as.tuple.elems.data[index].type,
         .ref_type = NkIrRef_Arg,
         .is_indirect = false,
     };
@@ -140,11 +170,16 @@ NkIrRef nkir_makeArgRef(NkIrProg p, size_t index) {
 
 NkIrRef nkir_makeRetRef(NkIrProg p) {
     assert(p->cur_funct && "no current function");
+    assert(
+        (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.ret_t) &&
+        "referencing incomplete function ret type");
+    auto const ret_t = p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.ret_t
+                                                                 : p->cur_funct->fn_info.ret_t;
     return {
         .data = {},
         .offset = 0,
         .post_offset = 0,
-        .type = p->cur_funct->fn_t->as.fn.ret_t,
+        .type = ret_t,
         .ref_type = NkIrRef_Ret,
         .is_indirect = false,
     };
@@ -196,6 +231,7 @@ NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym) {
 }
 
 NkIrRef nkir_makeFunctRef(NkIrFunct funct) {
+    assert(funct->state == NkIrFunct_Complete && "referencing incomplete function");
     return {
         .data = funct,
         .offset = 0,
@@ -268,6 +304,8 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
     for (auto const &funct : p->functs) {
         nksb_printf(sb, "\nfn ");
+
+        assert(funct.state == NkIrFunct_Complete && "inspecting incomplete function");
 
         switch (funct.fn_t->as.fn.call_conv) {
         case NkCallConv_Nk:
@@ -444,8 +482,4 @@ void nkir_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {
     }
 
     nkbc_invoke(fn->prog->bc, fn, ret, args);
-}
-
-nktype_t nkir_functGetType(NkIrFunct fn) {
-    return fn->fn_t;
 }

@@ -4,9 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "nk/common/allocator.h"
 #include "nk/common/string.h"
 #include "nk/common/string_builder.h"
 #include "nk/vm/common.h"
+#include "nk/vm/value.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,7 +98,14 @@ NkIrFunct nkir_makeFunct(NkIrProg p);
 NkIrBlockId nkir_makeBlock(NkIrProg p);
 NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name);
 
-void nkir_startFunct(NkIrProg p, NkIrFunct funct, nkstr name, nktype_t fn_t);
+void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t);
+
+void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info);
+void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator *alloc);
+
+nktype_t nkir_functGetType(NkIrFunct fn);
+NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct fn);
+
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name);
 
 void nkir_activateFunct(NkIrProg p, NkIrFunct funct);
@@ -140,8 +149,6 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb);
 void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb);
 
 void nkir_invoke(nkval_t fn, nkval_t ret, nkval_t args);
-
-nktype_t nkir_functGetType(NkIrFunct fn);
 
 #ifdef __cplusplus
 }

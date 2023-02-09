@@ -8,6 +8,12 @@
 
 #include "bytecode.h"
 #include "nk/vm/ir.h"
+#include "nk/vm/value.h"
+
+enum ENkIrFunctState {
+    NkIrFunct_Incomplete,
+    NkIrFunct_Complete,
+};
 
 struct NkIrFunct_T {
     NkIrProg prog;
@@ -15,7 +21,11 @@ struct NkIrFunct_T {
     size_t cur_block{};
 
     std::string name{};
-    nktype_t fn_t{};
+    union {
+        nktype_t fn_t{};
+        NktFnInfo fn_info;
+    };
+    ENkIrFunctState state;
 
     std::vector<size_t> blocks{};
     std::vector<nktype_t> locals{};

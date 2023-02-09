@@ -551,7 +551,8 @@ COMPILE(fn) {
     nktype_t ret_t = nkval_as(nktype_t, asValue(ret));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    auto fn_t = nkt_get_fn(c->arena, ret_t, args_t, NkCallConv_Nk, false);
+    NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, false};
+    auto fn_t = nkt_get_fn(c->arena, &fn_info);
 
     auto prev_fn = c->cur_fn;
     defer {
@@ -562,7 +563,7 @@ COMPILE(fn) {
     auto fn = nkir_makeFunct(c->ir);
     c->cur_fn = fn;
 
-    nkir_startFunct(c->ir, fn, cs2s(""), fn_t); // TODO Empty funct name
+    nkir_startFunct(fn, cs2s(""), fn_t); // TODO Empty funct name
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
     pushScope(c);
@@ -596,8 +597,8 @@ COMPILE(fn_type) {
     nktype_t ret_t = nkval_as(nktype_t, asValue(ret));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    auto fn_t = nkt_get_fn(
-        c->arena, ret_t, args_t, NkCallConv_Cdecl, false); // TODO CallConv Hack for #foreign
+    NktFnInfo fn_info{ret_t, args_t, NkCallConv_Cdecl, false}; // TODO CallConv Hack for #foreign
+    auto fn_t = nkt_get_fn(c->arena, &fn_info);
 
     // TODO Modeling type_t as *void
     return makeValue<nktype_t>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), fn_t);
@@ -783,14 +784,11 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     c->is_top_level = true;
 
     auto top_level_fn = nkir_makeFunct(c->ir);
-    auto top_level_fn_t = nkt_get_fn(
-        c->arena,
-        nkt_get_void(c->arena),
-        nkt_get_tuple(c->arena, nullptr, 0, 1),
-        NkCallConv_Nk,
-        false);
+    NktFnInfo top_level_fn_info{
+        nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
+    auto top_level_fn_t = nkt_get_fn(c->arena, &top_level_fn_info);
 
-    nkir_startFunct(c->ir, top_level_fn, cs2s("#top_level"), top_level_fn_t);
+    nkir_startFunct(top_level_fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
     pushScope(c);

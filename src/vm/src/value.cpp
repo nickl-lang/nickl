@@ -32,18 +32,13 @@ nktype_t nkt_get_array(NkAllocator *alloc, nktype_t elem_type, size_t elem_count
     };
 }
 
-nktype_t nkt_get_fn(
-    NkAllocator *alloc,
-    nktype_t ret_t,
-    nktype_t args_t,
-    NkCallConv call_conv,
-    bool is_variadic) {
+nktype_t nkt_get_fn(NkAllocator *alloc, NktFnInfo const *info) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.fn{
-            .ret_t = ret_t,
-            .args_t = args_t,
-            .call_conv = call_conv,
-            .is_variadic = is_variadic,
+            .ret_t = info->ret_t,
+            .args_t = info->args_t,
+            .call_conv = info->call_conv,
+            .is_variadic = info->is_variadic,
         }},
         .id = s_next_type_id++,
         .size = sizeof(void *),
