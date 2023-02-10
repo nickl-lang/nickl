@@ -778,7 +778,8 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     ComptimeConst cnst{};
 
     if (isKnown(cnst_val)) {
-        // TODO Discard ir funct if it's not needed
+        nkir_discardFunct(fn);
+
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
     } else {

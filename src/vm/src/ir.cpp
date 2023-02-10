@@ -38,14 +38,20 @@ NkIrProg nkir_createProgram() {
 
 void nkir_deinitProgram(NkIrProg p) {
     nkbc_deinitProgram(p->bc);
+    for (auto funct : p->functs) {
+        funct->~NkIrFunct_T();
+        nk_free(nk_default_allocator, funct);
+    }
     p->~NkIrProg_T();
     nk_free(nk_default_allocator, p);
 }
 
 NkIrFunct nkir_makeFunct(NkIrProg p) {
-    return &p->functs.emplace_back(NkIrFunct_T{
-        .prog = p,
-    });
+    return p->functs.emplace_back(new (nk_allocate(nk_default_allocator, sizeof(NkIrFunct_T)))
+                                      NkIrFunct_T{
+                                          .prog = p,
+                                          .fn_t{},
+                                      });
 }
 
 NkIrBlockId nkir_makeBlock(NkIrProg p) {
@@ -83,14 +89,26 @@ void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator *alloc) {
     funct->state = NkIrFunct_Complete;
 }
 
-nktype_t nkir_functGetType(NkIrFunct fn) {
-    assert(fn->state == NkIrFunct_Complete && "invalid function state");
-    return fn->fn_t;
+void nkir_discardFunct(NkIrFunct funct) {
+    auto p = funct->prog;
+    auto it = std::find_if(p->functs.begin(), p->functs.end(), [funct](NkIrFunct elem) {
+        return elem == funct;
+    });
+    if (it != p->functs.end()) {
+        p->functs.erase(it);
+    }
+    funct->~NkIrFunct_T();
+    nk_free(nk_default_allocator, funct);
 }
 
-NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct fn) {
-    assert(fn->state == NkIrFunct_Incomplete && "invalid function state");
-    return &fn->fn_info;
+nktype_t nkir_functGetType(NkIrFunct funct) {
+    assert(funct->state == NkIrFunct_Complete && "invalid function state");
+    return funct->fn_t;
+}
+
+NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct) {
+    assert(funct->state == NkIrFunct_Incomplete && "invalid function state");
+    return &funct->fn_info;
 }
 
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
@@ -302,12 +320,12 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
 }
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
-    for (auto const &funct : p->functs) {
+    for (auto funct : p->functs) {
         nksb_printf(sb, "\nfn ");
 
-        assert(funct.state == NkIrFunct_Complete && "inspecting incomplete function");
+        assert(funct->state == NkIrFunct_Complete && "inspecting incomplete function");
 
-        switch (funct.fn_t->as.fn.call_conv) {
+        switch (funct->fn_t->as.fn.call_conv) {
         case NkCallConv_Nk:
             break;
         case NkCallConv_Cdecl:
@@ -315,23 +333,23 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
             break;
         }
 
-        nksb_printf(sb, "%s(", funct.name.c_str());
-        for (size_t i = 0; i < funct.fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
+        nksb_printf(sb, "%s(", funct->name.c_str());
+        for (size_t i = 0; i < funct->fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
             if (i) {
                 nksb_printf(sb, ", ");
             }
             nksb_printf(sb, "$arg%llu:", i);
-            nkt_inspect(funct.fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
+            nkt_inspect(funct->fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
         }
 
         nksb_printf(sb, ") -> ");
-        nkt_inspect(funct.fn_t->as.fn.ret_t, sb);
+        nkt_inspect(funct->fn_t->as.fn.ret_t, sb);
 
-        if (!funct.locals.empty()) {
+        if (!funct->locals.empty()) {
             nksb_printf(sb, "\n\n");
-            for (size_t i = 0; i < funct.locals.size(); i++) {
+            for (size_t i = 0; i < funct->locals.size(); i++) {
                 nksb_printf(sb, "$%llu: ", i);
-                nkt_inspect(funct.locals[i], sb);
+                nkt_inspect(funct->locals[i], sb);
                 nksb_printf(sb, "\n");
             }
             nksb_printf(sb, "\n");
@@ -341,7 +359,7 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
 
         nksb_printf(sb, "{\n\n");
 
-        for (auto block_id : funct.blocks) {
+        for (auto block_id : funct->blocks) {
             auto const &block = p->blocks[block_id];
 
             nksb_printf(sb, "%%%s:\n", block.name.c_str());

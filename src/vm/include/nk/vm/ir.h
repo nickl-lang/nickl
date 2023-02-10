@@ -103,8 +103,10 @@ void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t);
 void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info);
 void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator *alloc);
 
-nktype_t nkir_functGetType(NkIrFunct fn);
-NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct fn);
+void nkir_discardFunct(NkIrFunct funct);
+
+nktype_t nkir_functGetType(NkIrFunct funct);
+NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct);
 
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name);
 

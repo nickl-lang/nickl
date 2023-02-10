@@ -2,7 +2,6 @@
 #define HEADER_GUARD_NK_VM_IR_IMPL
 
 #include <cstddef>
-#include <deque>
 #include <string>
 #include <vector>
 
@@ -22,10 +21,10 @@ struct NkIrFunct_T {
 
     std::string name{};
     union {
-        nktype_t fn_t{};
+        nktype_t fn_t;
         NktFnInfo fn_info;
     };
-    ENkIrFunctState state;
+    ENkIrFunctState state{};
 
     std::vector<size_t> blocks{};
     std::vector<nktype_t> locals{};
@@ -48,7 +47,7 @@ struct IrExSym {
 struct NkIrProg_T {
     NkIrFunct cur_funct;
 
-    std::deque<NkIrFunct_T> functs;
+    std::vector<NkIrFunct> functs;
     std::vector<IrBlock> blocks;
     std::vector<NkIrInstr> instrs;
     std::vector<std::string> shobjs;
