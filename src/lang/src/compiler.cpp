@@ -309,6 +309,7 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
 }
 
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
+nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node);
 ValueInfo compileNode(NklCompiler c, NklAstNode node);
 void compileStmt(NklCompiler c, NklAstNode node);
 void compileNodeArray(NklCompiler c, NklAstNodeArray nodes);
@@ -364,12 +365,12 @@ COMPILE(return ) {
 }
 
 COMPILE(ptr_type) {
-    auto target_type = compileNode(c, node->args[0].data);
+    auto target_type = comptimeCompileNodeGetValue(c, node->args[0].data);
     // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c,
         nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
-        nkt_get_ptr(c->arena, nkval_as(nktype_t, asValue(c, target_type))));
+        nkt_get_ptr(c->arena, nkval_as(nktype_t, target_type)));
 }
 
 COMPILE(scope) {
@@ -556,12 +557,10 @@ COMPILE(fn) {
         auto const &param = params.data[i];
         params_names.emplace_back(s2nkid(param.args[0].data->token->text));
         params_types.emplace_back(
-            nkval_as(nktype_t, asValue(c, compileNode(c, param.args[1].data))));
+            nkval_as(nktype_t, comptimeCompileNodeGetValue(c, param.args[1].data)));
     }
 
-    auto ret = compileNode(c, node->args[1].data);
-
-    nktype_t ret_t = nkval_as(nktype_t, asValue(c, ret));
+    nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
     NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, false};
@@ -609,12 +608,10 @@ COMPILE(fn_type) {
         auto const &param = params.data[i];
         params_names.emplace_back(s2nkid(param.args[0].data->token->text));
         params_types.emplace_back(
-            nkval_as(nktype_t, asValue(c, compileNode(c, param.args[1].data))));
+            nkval_as(nktype_t, comptimeCompileNodeGetValue(c, param.args[1].data)));
     }
 
-    auto ret = compileNode(c, node->args[1].data);
-
-    nktype_t ret_t = nkval_as(nktype_t, asValue(c, ret));
+    nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
     NktFnInfo fn_info{ret_t, args_t, NkCallConv_Cdecl, false}; // TODO CallConv Hack for #foreign
@@ -781,6 +778,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     ComptimeConst cnst{};
 
     if (isKnown(cnst_val)) {
+        // TODO Discard ir funct if it's not needed
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
     } else {
@@ -792,6 +790,11 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     }
 
     return cnst;
+}
+
+nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node) {
+    auto cnst = comptimeCompileNode(c, node);
+    return comptimeConstGetValue(c, cnst);
 }
 
 void compileStmt(NklCompiler c, NklAstNode node) {
