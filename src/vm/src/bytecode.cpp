@@ -56,7 +56,7 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
             nksb_printf(sb, "instr+");
             break;
         case NkBcRef_Abs:
-            nkval_inspect({(void *)arg.offset, arg.type}, sb);
+            nkval_inspect({(void *)arg.offset, arg.type}, sb); // TODO Separate Const and Abs refs
             break;
         default:
             assert(!"unreachable");

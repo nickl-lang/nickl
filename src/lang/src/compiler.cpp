@@ -308,6 +308,22 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
+ValueInfo makeRefAndStore(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
+    assert(val.type->typeclass_id != NkType_Void && "storing void");
+
+    if (val.kind == v_instr) {
+        auto &instr_dst = val.as.instr.arg[0].ref;
+        if (instr_dst.ref_type == NkIrRef_None) {
+            instr_dst = dst;
+            return {{.ref = makeRef(c, val)}, dst.type, v_ref};
+        }
+    }
+
+    gen(c, nkir_make_mov(dst, makeRef(c, val)));
+
+    return {{.ref = dst}, dst.type, v_ref};
+}
+
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
 nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node);
 ValueInfo compileNode(NklCompiler c, NklAstNode node);
@@ -359,7 +375,7 @@ COMPILE(void) {
 
 COMPILE(return ) {
     auto arg = compileNode(c, node->args[0].data);
-    gen(c, nkir_make_mov(nkir_makeRetRef(c->ir), makeRef(c, arg)));
+    makeRefAndStore(c, nkir_makeRetRef(c->ir), arg);
     gen(c, nkir_make_ret());
     return makeVoid(c);
 }
@@ -662,7 +678,7 @@ COMPILE(call) {
         auto arg_ref = args;
         arg_ref.offset += fn_t->as.fn.args_t->as.tuple.elems.data[i].offset;
         arg_ref.type = fn_t->as.fn.args_t->as.tuple.elems.data[i].type;
-        gen(c, nkir_make_mov(arg_ref, makeRef(c, arg)));
+        makeRefAndStore(c, arg_ref, arg);
     }
 
     return makeInstr(nkir_make_call({}, makeRef(c, lhs), args), fn_t->as.fn.ret_t);
@@ -701,7 +717,7 @@ COMPILE(assign) {
         assert(!"unreachable");
         return {};
     }
-    return makeInstr(nkir_make_mov(ref, makeRef(c, rhs)), type);
+    return makeRefAndStore(c, ref, rhs);
 }
 
 COMPILE(define) {
@@ -722,7 +738,7 @@ COMPILE(define) {
         defineLocal(c, name, var, rhs.type);
         ref = nkir_makeFrameRef(c->ir, var);
     }
-    gen(c, nkir_make_mov(ref, makeRef(c, rhs)));
+    makeRefAndStore(c, ref, rhs);
     return makeVoid(c);
 }
 
@@ -783,7 +799,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
     } else {
-        gen(c, nkir_make_mov(nkir_makeRetRef(c->ir), makeRef(c, cnst_val)));
+        makeRefAndStore(c, nkir_makeRetRef(c->ir), cnst_val);
         gen(c, nkir_make_ret());
 
         cnst.funct = fn;
