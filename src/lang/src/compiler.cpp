@@ -502,6 +502,10 @@ COMPILE(block) {
     return makeVoid(c);
 }
 
+COMPILE(import) {
+    return makeVoid(c); // TODO import not implemented
+}
+
 COMPILE(id) {
     nkstr name_str = node->token->text;
     nkid name = s2nkid(name_str);
@@ -559,6 +563,10 @@ COMPILE(string) {
     str[size] = '\0';
 
     return makeValue<char *>(c, str_t, str);
+}
+
+COMPILE(member) {
+    return makeVoid(c); // TODO member not implemented
 }
 
 COMPILE(fn) {
@@ -841,7 +849,8 @@ void compileNodeArray(NklCompiler c, NklAstNodeArray nodes) {
 
 } // namespace
 
-NklCompiler nkl_compiler_create() {
+NklCompiler nkl_compiler_create(NklCompilerConfig config) {
+    // TODO config unused
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
         .arena = nk_create_arena(),

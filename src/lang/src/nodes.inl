@@ -114,7 +114,7 @@ X(block)
 // X(tuple)
 // X(tuple_type)
 
-// X(import) // (names: [{name: token}])
+X(import) // (names: [{name: token}])
 
 X(id) // (name: token)
 // X(intrinsic)              // (name: token)
@@ -127,7 +127,7 @@ X(string) // (value: token)
 // X(for) // (it: token, range: node, body: node)
 // X(for_by_ptr)
 
-// X(member) // (lhs: node, name: token)
+X(member) // (lhs: node, name: token)
 
 // X(struct) // (fields: [(id=mut|const name: token, type: node, value: node)])
 // X(union)

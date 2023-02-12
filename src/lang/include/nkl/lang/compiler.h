@@ -7,9 +7,13 @@
 extern "C" {
 #endif
 
+typedef struct {
+    nkstr stdlib_dir;
+} NklCompilerConfig;
+
 typedef struct NklCompiler_T *NklCompiler;
 
-NklCompiler nkl_compiler_create();
+NklCompiler nkl_compiler_create(NklCompilerConfig config);
 void nkl_compiler_free(NklCompiler c);
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root);

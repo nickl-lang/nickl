@@ -21,7 +21,7 @@ class compiler : public testing::Test {
         NK_LOGGER_INIT(NkLoggerOptions{});
 
         m_ast = nkl_ast_create();
-        m_compiler = nkl_compiler_create();
+        m_compiler = nkl_compiler_create({}); // TODO Providing empty stdlib dir
         m_arena = nk_create_arena();
     }
 
@@ -210,6 +210,21 @@ TEST_F(compiler, fast_exp) {
                       _("assign", _("id", "n"), _("div", _("id", "n"), _("int", "2"))),
                       _("assign", _("id", "c"), _("mul", _("id", "c"), _("id", "c"))),
                   }))),
+          }));
+
+    inspect(n_root);
+
+    nkl_compiler_run(m_compiler, n_root.data);
+}
+
+TEST_F(compiler, import) {
+    auto n_root =
+        _("block",
+          _({
+              _("import", _("id", "std")),
+              _("call",
+                _("member", _("id", "std"), _("id", "println")),
+                _("string", "Hello, World!")),
           }));
 
     inspect(n_root);
