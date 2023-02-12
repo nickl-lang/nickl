@@ -895,3 +895,6 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
 
     nkir_invoke({&top_level_fn, top_level_fn_t}, {}, {});
 }
+
+void nkl_compiler_runFile(NklCompiler c, nkstr filename) {
+}

@@ -13,6 +13,7 @@ NklCompiler nkl_compiler_create();
 void nkl_compiler_free(NklCompiler c);
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root);
+void nkl_compiler_runFile(NklCompiler c, nkstr filename);
 
 #ifdef __cplusplus
 }

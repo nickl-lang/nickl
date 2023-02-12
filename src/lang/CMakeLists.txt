@@ -3,6 +3,8 @@ set(LIB nkl_lang)
 add_library(${LIB}
     src/ast.cpp
     src/compiler.cpp
+    src/lexer.cpp
+    src/parser.cpp
     )
 
 target_include_directories(${LIB}

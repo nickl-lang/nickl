@@ -1,25 +1,13 @@
 #ifndef HEADER_GUARD_NKL_LANG_AST
 #define HEADER_GUARD_NKL_LANG_AST
 
-#include <stddef.h>
-
 #include "nk/common/id.h"
-#include "nk/common/string.h"
 #include "nk/common/string_builder.h"
+#include "nkl/lang/token.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct {
-    nkstr text;
-
-    size_t pos;
-    size_t lin;
-    size_t col;
-
-    size_t id;
-} NklToken; // TODO Move NklToken declaration
 
 extern char const *s_nkl_ast_node_names[];
 
