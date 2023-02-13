@@ -503,7 +503,20 @@ COMPILE(block) {
 }
 
 COMPILE(import) {
-    return makeVoid(c); // TODO import not implemented
+    NK_LOG_WRN("TODO import implementation not finished");
+
+    static auto fn = nkir_makeFunct(c->ir);
+    NktFnInfo fn_info{
+        nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
+    auto fn_t = nkt_get_fn(c->arena, &fn_info);
+    auto fn_val = asValue(c, makeValue<void *>(c, fn_t, fn));
+
+    auto name = s2nkid(node->args[0].data->token->text);
+    if (name == cs2nkid("std")) {
+        NK_LOG_WRN("TODO stdlib injection");
+    }
+    defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
+    return makeVoid(c);
 }
 
 COMPILE(id) {
@@ -566,7 +579,10 @@ COMPILE(string) {
 }
 
 COMPILE(member) {
-    return makeVoid(c); // TODO member not implemented
+    NK_LOG_WRN("TODO member implementation not finished");
+    auto lhs = compileNode(c, node->args[0].data);
+    auto name = s2nkid(node->args[1].data->token->text);
+    return makeVoid(c);
 }
 
 COMPILE(fn) {
