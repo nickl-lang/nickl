@@ -223,7 +223,7 @@ TEST_F(compiler, import) {
           _({
               _("import", _("id", "std")),
               _("call",
-                _("member", _("id", "std"), _("id", "println")),
+                _("member", _("id", "std"), _("id", "puts")),
                 _("string", "Hello, World!")),
           }));
 

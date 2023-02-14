@@ -523,10 +523,6 @@ COMPILE(block) {
     return makeVoid(c);
 }
 
-extern "C" void nkl_stdlib_printf(char *str) {
-    printf("%s\n", str);
-}
-
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
 
@@ -560,15 +556,14 @@ COMPILE(import) {
             NK_LOG_INF("TODO stdlib injection");
 
             auto u8_t = nkt_get_numeric(c->arena, Uint8);
+            auto i32_t = nkt_get_numeric(c->arena, Int32);
             auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
             NktFnInfo fn_info{
-                nkt_get_void(c->arena),
-                nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1),
-                NkCallConv_Cdecl,
-                false};
+                i32_t, nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1), NkCallConv_Cdecl, false};
             auto fn_t = nkt_get_fn(c->arena, &fn_info);
-            auto fn_val = asValue(c, makeValue<void *>(c, fn_t, (void *)nkl_stdlib_printf));
-            defineComptimeConst(c, cs2nkid("println"), {{.value{fn_val}}, ComptimeConst_Value});
+
+            auto so = nkir_makeShObj(c->ir, cs2s("")); // TODO Creating so every time
+            defineExtSym(c, cs2nkid("puts"), nkir_makeExtSym(c->ir, so, cs2s("puts"), fn_t), fn_t);
         }
     }
 
