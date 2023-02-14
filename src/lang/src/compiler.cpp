@@ -345,6 +345,26 @@ ValueInfo makeRefAndStore(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
     return {{.ref = dst}, dst.type, v_ref};
 }
 
+ValueInfo declToValueInfo(NklCompiler c, Decl &decl) {
+    switch (decl.kind) {
+    case Decl_ComptimeConst:
+        return {{.decl = &decl}, comptimeConstType(decl.as.comptime_const), v_decl};
+    case Decl_Local:
+        return {{.decl = &decl}, decl.as.local.type, v_decl};
+    case Decl_Global:
+        return {{.decl = &decl}, decl.as.global.type, v_decl};
+    case Decl_Funct:
+        return {{.decl = &decl}, decl.as.funct.fn_t, v_decl};
+    case Decl_ExtSym:
+        return {{.decl = &decl}, decl.as.ext_sym.type, v_decl};
+    case Decl_Arg:
+        return {{.decl = &decl}, decl.as.arg.type, v_decl};
+    default:
+        assert(!"unreachable");
+        return {};
+    }
+}
+
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
 nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node);
 ValueInfo compileNode(NklCompiler c, NklAstNode node);
@@ -575,26 +595,11 @@ COMPILE(id) {
     nkstr name_str = node->token->text;
     nkid name = s2nkid(name_str);
     auto &decl = resolve(c, name);
-    switch (decl.kind) {
-    case Decl_Undefined:
+    if (decl.kind == Decl_Undefined) {
         NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
         std::abort(); // TODO Report errors properly
-    case Decl_ComptimeConst:
-        return {{.decl = &decl}, comptimeConstType(decl.as.comptime_const), v_decl};
-    case Decl_Local:
-        return {{.decl = &decl}, decl.as.local.type, v_decl};
-    case Decl_Global:
-        return {{.decl = &decl}, decl.as.global.type, v_decl};
-    case Decl_Funct:
-        return {{.decl = &decl}, decl.as.funct.fn_t, v_decl};
-    case Decl_ExtSym:
-        return {{.decl = &decl}, decl.as.ext_sym.type, v_decl};
-    case Decl_Arg:
-        return {{.decl = &decl}, decl.as.arg.type, v_decl};
-    default:
-        NK_LOG_ERR("unknown decl type");
-        assert(!"unreachable");
-        return {};
+    } else {
+        return declToValueInfo(c, decl);
     }
 }
 
@@ -644,27 +649,7 @@ COMPILE(member) {
                 auto member_it = scope.locals.find(name);
                 if (member_it != scope.locals.end()) {
                     auto &decl = member_it->second;
-                    switch (decl.kind) { // TODO duplicate Decl to ValueInfo conversion
-                    // case Decl_Undefined:
-                    //     NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
-                    //     std::abort(); // TODO Report errors properly
-                    case Decl_ComptimeConst:
-                        return {{.decl = &decl}, comptimeConstType(decl.as.comptime_const), v_decl};
-                    case Decl_Local:
-                        return {{.decl = &decl}, decl.as.local.type, v_decl};
-                    case Decl_Global:
-                        return {{.decl = &decl}, decl.as.global.type, v_decl};
-                    case Decl_Funct:
-                        return {{.decl = &decl}, decl.as.funct.fn_t, v_decl};
-                    case Decl_ExtSym:
-                        return {{.decl = &decl}, decl.as.ext_sym.type, v_decl};
-                    case Decl_Arg:
-                        return {{.decl = &decl}, decl.as.arg.type, v_decl};
-                    default:
-                        NK_LOG_ERR("unknown decl type");
-                        assert(!"unreachable");
-                        return {};
-                    }
+                    return declToValueInfo(c, decl);
                 } else {
                     NK_LOG_ERR("member `%s` not found", nkid2cs(name));
                     std::abort(); // TODO Report errors properly
