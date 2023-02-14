@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <new>
+#include <stack>
 #include <unordered_map>
 #include <vector>
 
@@ -96,7 +97,7 @@ struct ValueInfo {
     EValueKind kind;
 };
 
-struct ScopeCtx {
+struct Scope {
     std::unordered_map<nkid, Decl> locals;
 };
 
@@ -106,7 +107,11 @@ struct NklCompiler_T {
     NkIrProg ir;
     NkAllocator *arena;
 
-    std::vector<ScopeCtx> scopes{};
+    std::stack<Scope> nonpersistent_scope_stack{};
+    std::deque<Scope> persistent_scopes{};
+    std::vector<Scope *> scopes{};
+
+    std::unordered_map<NkIrFunct, Scope *> fn_scopes;
 
     NkIrFunct cur_fn;
     bool is_top_level{};
@@ -116,17 +121,33 @@ struct NklCompiler_T {
 
 namespace {
 
-ScopeCtx &curScope(NklCompiler c) {
+Scope &curScope(NklCompiler c) {
     assert(!c->scopes.empty() && "no current scope");
-    return c->scopes.back();
+    return *c->scopes.back();
 }
 
 void pushScope(NklCompiler c) {
     NK_LOG_DBG("entering scope=%lu", c->scopes.size());
-    c->scopes.emplace_back();
+    auto scope = &c->nonpersistent_scope_stack.emplace();
+    c->scopes.emplace_back(scope);
+}
+
+void pushPersistentScope(NklCompiler c) {
+    NK_LOG_DBG("entering persistent scope=%lu", c->scopes.size());
+    auto scope = &c->persistent_scopes.emplace_back();
+    c->scopes.emplace_back(scope);
+}
+
+void pushFnScope(NklCompiler c, NkIrFunct fn) {
+    pushPersistentScope(c);
+    c->fn_scopes.emplace(fn, &curScope(c));
 }
 
 void popScope(NklCompiler c) {
+    auto scope = &c->nonpersistent_scope_stack.top();
+    if (scope == c->scopes.back()) {
+        c->nonpersistent_scope_stack.pop();
+    }
     c->scopes.pop_back();
     NK_LOG_DBG("exiting scope=%lu", c->scopes.size());
 }
@@ -199,7 +220,7 @@ Decl &resolve(NklCompiler c, nkid name) {
         c->scopes.size() - 1);
 
     for (size_t i = c->scopes.size(); i > 0; i--) {
-        auto &scope = c->scopes[i - 1];
+        auto &scope = *c->scopes[i - 1];
         auto it = scope.locals.find(name);
         if (it != scope.locals.end()) {
             return it->second;
@@ -502,19 +523,55 @@ COMPILE(block) {
     return makeVoid(c);
 }
 
+extern "C" void nkl_stdlib_printf(char *str) {
+    printf("%s\n", str);
+}
+
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
 
-    static auto fn = nkir_makeFunct(c->ir);
+    // TODO Duplicate fn saving in import
+    auto prev_fn = c->cur_fn;
+    defer {
+        c->cur_fn = prev_fn;
+        nkir_activateFunct(c->ir, c->cur_fn);
+    };
+
+    auto fn = nkir_makeFunct(c->ir);
+    c->cur_fn = fn;
     NktFnInfo fn_info{
         nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
     auto fn_t = nkt_get_fn(c->arena, &fn_info);
     auto fn_val = asValue(c, makeValue<void *>(c, fn_t, fn));
 
     auto name = s2nkid(node->args[0].data->token->text);
-    if (name == cs2nkid("std")) {
-        NK_LOG_WRN("TODO stdlib injection");
+
+    nkir_startFunct(fn, cs2s("#imported_func"), fn_t);
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+    gen(c, nkir_make_ret());
+
+    {
+        pushFnScope(c, fn);
+        defer {
+            popScope(c);
+        };
+
+        if (name == cs2nkid("std")) {
+            NK_LOG_INF("TODO stdlib injection");
+
+            auto u8_t = nkt_get_numeric(c->arena, Uint8);
+            auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
+            NktFnInfo fn_info{
+                nkt_get_void(c->arena),
+                nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1),
+                NkCallConv_Cdecl,
+                false};
+            auto fn_t = nkt_get_fn(c->arena, &fn_info);
+            auto fn_val = asValue(c, makeValue<void *>(c, fn_t, (void *)nkl_stdlib_printf));
+            defineComptimeConst(c, cs2nkid("println"), {{.value{fn_val}}, ComptimeConst_Value});
+        }
     }
+
     defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
     return makeVoid(c);
 }
@@ -582,6 +639,44 @@ COMPILE(member) {
     NK_LOG_WRN("TODO member implementation not finished");
     auto lhs = compileNode(c, node->args[0].data);
     auto name = s2nkid(node->args[1].data->token->text);
+    if (isKnown(lhs)) {
+        auto lhs_val = asValue(c, lhs);
+        if (nkval_typeclassid(lhs_val) == NkType_Fn &&
+            nkval_typeof(lhs_val)->as.fn.call_conv == NkCallConv_Nk) {
+            auto scope_it = c->fn_scopes.find(*(NkIrFunct *)nkval_data(lhs_val));
+            if (scope_it != c->fn_scopes.end()) {
+                auto &scope = *scope_it->second;
+                auto member_it = scope.locals.find(name);
+                if (member_it != scope.locals.end()) {
+                    auto &decl = member_it->second;
+                    switch (decl.kind) { // TODO duplicate Decl to ValueInfo conversion
+                    // case Decl_Undefined:
+                    //     NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
+                    //     std::abort(); // TODO Report errors properly
+                    case Decl_ComptimeConst:
+                        return {{.decl = &decl}, comptimeConstType(decl.as.comptime_const), v_decl};
+                    case Decl_Local:
+                        return {{.decl = &decl}, decl.as.local.type, v_decl};
+                    case Decl_Global:
+                        return {{.decl = &decl}, decl.as.global.type, v_decl};
+                    case Decl_Funct:
+                        return {{.decl = &decl}, decl.as.funct.fn_t, v_decl};
+                    case Decl_ExtSym:
+                        return {{.decl = &decl}, decl.as.ext_sym.type, v_decl};
+                    case Decl_Arg:
+                        return {{.decl = &decl}, decl.as.arg.type, v_decl};
+                    default:
+                        NK_LOG_ERR("unknown decl type");
+                        assert(!"unreachable");
+                        return {};
+                    }
+                } else {
+                    NK_LOG_ERR("member `%s` not found", nkid2cs(name));
+                    std::abort(); // TODO Report errors properly
+                }
+            }
+        }
+    }
     return makeVoid(c);
 }
 
@@ -624,7 +719,7 @@ COMPILE(fn) {
     nkir_startFunct(fn, cs2s(fn_name_buf), fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
-    pushScope(c);
+    pushFnScope(c, fn);
     defer {
         popScope(c);
     };
@@ -806,7 +901,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     nkir_startIncompleteFunct(fn, cs2s("#comptime_const_getter"), &fn_info);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
-    pushScope(c);
+    pushFnScope(c, fn);
     defer {
         popScope(c);
     };
@@ -893,7 +988,7 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     nkir_startFunct(top_level_fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
-    pushScope(c);
+    pushFnScope(c, top_level_fn);
     defer {
         popScope(c);
     };
