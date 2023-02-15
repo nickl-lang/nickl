@@ -24,8 +24,6 @@ typedef struct {
         size_t id;           \
     } NAME
 
-#define NK_EXPORT __attribute__((__visibility__("default")))
-
 #ifdef __cplusplus
 }
 #endif

@@ -18,16 +18,16 @@ N(none) // ()
 // N(false)
 // N(true)
 
-// N(i8)
-// N(i16)
-// N(i32)
-// N(i64)
+N(i8)
+N(i16)
+N(i32)
+N(i64)
 N(u8)
 N(u16)
 N(u32)
 N(u64)
-// N(f32)
-// N(f64)
+N(f32)
+N(f64)
 
 // N(any_t)
 // N(bool)
@@ -57,7 +57,7 @@ U(ptr_type) // (target_type: node)
 // U(slice_type)
 
 U(scope) // (expr: node)
-// U(run)
+U(run)
 
 #undef U
 

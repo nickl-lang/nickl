@@ -101,6 +101,8 @@ struct Scope {
     std::unordered_map<nkid, Decl> locals;
 };
 
+static thread_local NklCompiler s_compiler;
+
 } // namespace
 
 struct NklCompiler_T {
@@ -330,19 +332,22 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
 }
 
 ValueInfo makeRefAndStore(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
-    assert(val.type->typeclass_id != NkType_Void && "storing void");
-
-    if (val.kind == v_instr) {
-        auto &instr_dst = val.as.instr.arg[0].ref;
-        if (instr_dst.ref_type == NkIrRef_None) {
-            instr_dst = dst;
-            return {{.ref = makeRef(c, val)}, dst.type, v_ref};
+    if (val.type->typeclass_id != NkType_Void) {
+        if (val.kind == v_instr) {
+            auto &instr_dst = val.as.instr.arg[0].ref;
+            if (instr_dst.ref_type == NkIrRef_None) {
+                instr_dst = dst;
+                return {{.ref = makeRef(c, val)}, dst.type, v_ref};
+            }
         }
+
+        gen(c, nkir_make_mov(dst, makeRef(c, val)));
+
+        return {{.ref = dst}, dst.type, v_ref};
+    } else {
+        // TODO Figure out why does this work????
+        return {{.ref = makeRef(c, val)}, dst.type, v_ref};
     }
-
-    gen(c, nkir_make_mov(dst, makeRef(c, val)));
-
-    return {{.ref = dst}, dst.type, v_ref};
 }
 
 ValueInfo declToValueInfo(Decl &decl) {
@@ -388,6 +393,34 @@ COMPILE(none) {
     return {};
 }
 
+COMPILE(i8) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int8));
+}
+
+COMPILE(i16) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int16));
+}
+
+COMPILE(i32) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int32));
+}
+
+COMPILE(i64) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int64));
+}
+
 COMPILE(u8) {
     (void)node;
     // TODO Modeling type_t as *void
@@ -416,6 +449,20 @@ COMPILE(u64) {
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint64));
 }
 
+COMPILE(f32) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float32));
+}
+
+COMPILE(f64) {
+    (void)node;
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float64));
+}
+
 COMPILE(void) {
     (void)node;
     // TODO Modeling type_t as *void
@@ -441,6 +488,10 @@ COMPILE(ptr_type) {
 
 COMPILE(scope) {
     assert(!"scope compilation is not implemented");
+}
+
+COMPILE(run) {
+    return makeValue(c, comptimeCompileNodeGetValue(c, node->args[0].data));
 }
 
 COMPILE(add) {
@@ -581,12 +632,48 @@ COMPILE(import) {
             auto u8_t = nkt_get_numeric(c->arena, Uint8);
             auto i32_t = nkt_get_numeric(c->arena, Int32);
             auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
-            NktFnInfo fn_info{
+
+            NktFnInfo puts_fn_info{
                 i32_t, nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1), NkCallConv_Cdecl, false};
-            auto fn_t = nkt_get_fn(c->arena, &fn_info);
+            auto puts_fn_t = nkt_get_fn(c->arena, &puts_fn_info);
 
             auto so = nkir_makeShObj(c->ir, cs2s("")); // TODO Creating so every time
-            defineExtSym(c, cs2nkid("puts"), nkir_makeExtSym(c->ir, so, cs2s("puts"), fn_t), fn_t);
+
+            defineExtSym(
+                c, cs2nkid("puts"), nkir_makeExtSym(c->ir, so, cs2s("puts"), puts_fn_t), puts_fn_t);
+
+            NktFnInfo putchar_fn_info{
+                i32_t, nkt_get_tuple(c->arena, &i32_t, 1, 1), NkCallConv_Cdecl, false};
+            auto putchar_fn_t = nkt_get_fn(c->arena, &putchar_fn_info);
+
+            defineExtSym(
+                c,
+                cs2nkid("putchar"),
+                nkir_makeExtSym(c->ir, so, cs2s("putchar"), putchar_fn_t),
+                putchar_fn_t);
+        } else if (name == cs2nkid("compiler")) {
+            NK_LOG_INF("TODO compilerlib injection");
+
+            auto void_t = nkt_get_void(c->arena);
+            auto void_ptr_t = nkt_get_ptr(c->arena, void_t);
+            auto u8_t = nkt_get_numeric(c->arena, Uint8);
+            auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
+
+            nktype_t declareLocal_args_types[] = {u8_ptr_t, void_ptr_t};
+            NktFnInfo declareLocal_fn_info{
+                void_t,
+                nkt_get_tuple(
+                    c->arena, declareLocal_args_types, AR_SIZE(declareLocal_args_types), 1),
+                NkCallConv_Cdecl,
+                false};
+            auto declareLocal_fn_t = nkt_get_fn(c->arena, &declareLocal_fn_info);
+
+            auto so = nkir_makeShObj(c->ir, cs2s("")); // TODO Creating so every time
+            defineExtSym(
+                c,
+                cs2nkid("declareLocal"),
+                nkir_makeExtSym(c->ir, so, cs2s("nkl_compiler_declareLocal"), declareLocal_fn_t),
+                declareLocal_fn_t);
         }
     }
 
@@ -803,7 +890,8 @@ COMPILE(assign) {
         type = res.as.global.type;
         break;
     case Decl_Undefined:
-        // return error("`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
+        NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
+        std::abort(); // TODO Report errors properly
     case Decl_Funct:
     case Decl_ExtSym:
     case Decl_Arg:
@@ -931,6 +1019,12 @@ void compileNodeArray(NklCompiler c, NklAstNodeArray nodes) {
 
 } // namespace
 
+extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t type) {
+    NklCompiler c = s_compiler;
+    NK_LOG_DBG("nkl_compiler_declareLocal: compiler=%p", c);
+    defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type);
+}
+
 NklCompiler nkl_compiler_create(NklCompilerConfig config) {
     // TODO config unused
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
@@ -949,41 +1043,48 @@ void nkl_compiler_free(NklCompiler c) {
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     NK_LOG_TRC(__func__);
 
-    c->is_top_level = true;
-
     auto top_level_fn = nkir_makeFunct(c->ir);
     NktFnInfo top_level_fn_info{
         nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
     auto top_level_fn_t = nkt_get_fn(c->arena, &top_level_fn_info);
 
-    nkir_startFunct(top_level_fn, cs2s("#top_level"), top_level_fn_t);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
-
-    pushFnScope(c, top_level_fn);
-    defer {
-        popScope(c);
-    };
-
-    if (root) {
-        c->cur_fn = top_level_fn;
-        compileStmt(c, root);
-    }
-
-    gen(c, nkir_make_ret());
-
     {
-        // TODO Inspecting ir in nkl_compiler_run outside of the log macro
-        auto sb = nksb_create();
+        auto prev_compiler = s_compiler;
+        s_compiler = c;
         defer {
-            nksb_free(sb);
+            s_compiler = prev_compiler;
         };
 
-        nkir_inspect(c->ir, sb);
-        auto str = nksb_concat(sb);
+        c->is_top_level = true;
 
-        NK_LOG_INF("ir:\n%.*s", str.size, str.data);
+        nkir_startFunct(top_level_fn, cs2s("#top_level"), top_level_fn_t);
+        nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+
+        pushFnScope(c, top_level_fn);
+        defer {
+            popScope(c);
+        };
+
+        if (root) {
+            c->cur_fn = top_level_fn;
+            compileStmt(c, root);
+        }
+
+        gen(c, nkir_make_ret());
+
+        {
+            // TODO Inspecting ir in nkl_compiler_run outside of the log macro
+            auto sb = nksb_create();
+            defer {
+                nksb_free(sb);
+            };
+
+            nkir_inspect(c->ir, sb);
+            auto str = nksb_concat(sb);
+
+            NK_LOG_INF("ir:\n%.*s", str.size, str.data);
+        }
     }
-
     nkir_invoke({&top_level_fn, top_level_fn_t}, {}, {});
 }
 

@@ -222,9 +222,26 @@ TEST_F(compiler, import) {
         _("block",
           _({
               _("import", _("id", "std")),
-              _("call",
-                _("member", _("id", "std"), _("id", "puts")),
-                _("string", "Hello, World!")),
+              _("call", _("member", _("id", "std"), _("id", "puts")), _("string", "Hello, World!")),
+          }));
+
+    inspect(n_root);
+
+    nkl_compiler_run(m_compiler, n_root.data);
+}
+
+TEST_F(compiler, comptime_declareLocal) {
+    auto n_root =
+        _("block",
+          _({
+              _("import", _("id", "std")),
+              _("import", _("id", "compiler")),
+              _("run",
+                _("call",
+                  _("member", _("id", "compiler"), _("id", "declareLocal")),
+                  _({_("string", "a"), _("i64", "i64")}))),
+              _("assign", _("id", "a"), _("int", "65")),
+              _("call", _("member", _("id", "std"), _("id", "putchar")), _("id", "a")),
           }));
 
     inspect(n_root);

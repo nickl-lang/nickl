@@ -15,6 +15,10 @@ target_link_libraries(${LIB}
     PUBLIC nk_vm
     )
 
+target_link_options(${LIB}
+    PUBLIC -export-dynamic # for dl
+    )
+
 set(EXE nickl)
 
 add_executable(${EXE}

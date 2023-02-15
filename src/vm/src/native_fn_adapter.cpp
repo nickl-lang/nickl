@@ -205,10 +205,9 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     NK_LOG_TRC(__func__);
 
-    size_t const argc =
-        nkval_data(args)
-            ? nkval_typeof(args)->typeclass_id == NkType_Tuple ? nkval_tuple_size(args) : 1
-            : 0; // TODO Have to handle args not being a tuple
+    size_t const argc = nkval_data(args)
+                            ? nkval_typeclassid(args) == NkType_Tuple ? nkval_tuple_size(args) : 1
+                            : 0; // TODO Have to handle args not being a tuple
 
     auto rtype = _getNativeHandle(nkval_typeof(ret));
     auto atypes = _getNativeHandle(nkval_typeof(args));
@@ -222,14 +221,16 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
             nkval_typeof(fn)->as.fn.args_t->as.tuple.elems.size,
             argc,
             rtype,
-            nkval_typeof(args)->typeclass_id == NkType_Tuple ? atypes->elements : &atypes);
+            (nkval_data(args) && nkval_typeclassid(args) == NkType_Tuple) ? atypes->elements
+                                                                          : &atypes);
     } else {
         status = ffi_prep_cif(
             &cif,
             FFI_DEFAULT_ABI,
             argc,
             rtype,
-            nkval_typeof(args)->typeclass_id == NkType_Tuple ? atypes->elements : &atypes);
+            (nkval_data(args) && nkval_typeclassid(args) == NkType_Tuple) ? atypes->elements
+                                                                          : &atypes);
     }
     assert(status == FFI_OK && "ffi_prep_cif failed");
 
@@ -238,12 +239,14 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
         nk_free(nk_default_allocator, argv);
     };
 
-    if (nkval_typeof(args)->typeclass_id == NkType_Tuple) {
-        for (size_t i = 0; i < argc; i++) {
-            argv[i] = nkval_data(nkval_tuple_at(args, i));
+    if (nkval_data(args)) {
+        if (nkval_typeclassid(args) == NkType_Tuple) {
+            for (size_t i = 0; i < argc; i++) {
+                argv[i] = nkval_data(nkval_tuple_at(args, i));
+            }
+        } else {
+            argv[0] = nkval_data(args);
         }
-    } else {
-        argv[0] = nkval_data(args);
     }
 
     ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);

@@ -1,3 +1,5 @@
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic") # TODO For dlsym
+def_test(GROUP vm NAME ir LINK ${LIB} TARGET IR_TEST)
 
-def_test(GROUP vm NAME ir LINK ${LIB})
+target_link_options(${IR_TEST}
+    PRIVATE -export-dynamic # for dl
+    )
