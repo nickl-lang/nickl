@@ -345,7 +345,7 @@ ValueInfo makeRefAndStore(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
     return {{.ref = dst}, dst.type, v_ref};
 }
 
-ValueInfo declToValueInfo(NklCompiler c, Decl &decl) {
+ValueInfo declToValueInfo(Decl &decl) {
     switch (decl.kind) {
     case Decl_ComptimeConst:
         return {{.decl = &decl}, comptimeConstType(decl.as.comptime_const), v_decl};
@@ -363,6 +363,15 @@ ValueInfo declToValueInfo(NklCompiler c, Decl &decl) {
         assert(!"unreachable");
         return {};
     }
+}
+
+[[nodiscard]] auto pushFn(NklCompiler c, NkIrFunct fn) {
+    auto prev_fn = c->cur_fn;
+    c->cur_fn = fn;
+    return createDeferrer([=]() {
+        c->cur_fn = prev_fn;
+        nkir_activateFunct(c->ir, c->cur_fn);
+    });
 }
 
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
@@ -546,15 +555,9 @@ COMPILE(block) {
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
 
-    // TODO Duplicate fn saving in import
-    auto prev_fn = c->cur_fn;
-    defer {
-        c->cur_fn = prev_fn;
-        nkir_activateFunct(c->ir, c->cur_fn);
-    };
-
     auto fn = nkir_makeFunct(c->ir);
-    c->cur_fn = fn;
+    auto pop_fn = pushFn(c, fn);
+
     NktFnInfo fn_info{
         nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
     auto fn_t = nkt_get_fn(c->arena, &fn_info);
@@ -599,7 +602,7 @@ COMPILE(id) {
         NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
         std::abort(); // TODO Report errors properly
     } else {
-        return declToValueInfo(c, decl);
+        return declToValueInfo(decl);
     }
 }
 
@@ -649,7 +652,7 @@ COMPILE(member) {
                 auto member_it = scope.locals.find(name);
                 if (member_it != scope.locals.end()) {
                     auto &decl = member_it->second;
-                    return declToValueInfo(c, decl);
+                    return declToValueInfo(decl);
                 } else {
                     NK_LOG_ERR("member `%s` not found", nkid2cs(name));
                     std::abort(); // TODO Report errors properly
@@ -681,14 +684,8 @@ COMPILE(fn) {
     NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, false};
     auto fn_t = nkt_get_fn(c->arena, &fn_info);
 
-    auto prev_fn = c->cur_fn;
-    defer {
-        c->cur_fn = prev_fn;
-        nkir_activateFunct(c->ir, c->cur_fn);
-    };
-
     auto fn = nkir_makeFunct(c->ir);
-    c->cur_fn = fn;
+    auto pop_fn = pushFn(c, fn);
 
     char fn_name_buf[100];
     std::snprintf(
@@ -870,13 +867,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     auto fn = nkir_makeFunct(c->ir);
     NktFnInfo fn_info{nullptr, nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
 
-    auto prev_fn = c->cur_fn;
-    defer {
-        c->cur_fn = prev_fn;
-        nkir_activateFunct(c->ir, c->cur_fn);
-    };
-
-    c->cur_fn = fn;
+    auto pop_fn = pushFn(c, fn);
 
     nkir_startIncompleteFunct(fn, cs2s("#comptime_const_getter"), &fn_info);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
