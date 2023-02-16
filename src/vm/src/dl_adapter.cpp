@@ -15,6 +15,7 @@ NkDlHandle nkdl_open(nkstr name) {
     if (!dl) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly
     }
+    NK_LOG_DBG("dlopen(\"%.*s\") -> %p", name.size, name.data, dl);
     return dl;
 }
 
@@ -27,5 +28,6 @@ void *nkdl_sym(NkDlHandle dl, nkstr sym) {
     if (!ptr) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly
     }
+    NK_LOG_DBG("dlsym(\"%.*s\") -> %p", sym.size, sym.data, ptr);
     return ptr;
 }

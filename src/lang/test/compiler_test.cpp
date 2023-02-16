@@ -239,9 +239,9 @@ TEST_F(compiler, comptime_declareLocal) {
               _("run",
                 _("call",
                   _("member", _("id", "compiler"), _("id", "declareLocal")),
-                  _({_("string", "a"), _("i64", "i64")}))),
-              _("assign", _("id", "a"), _("int", "65")),
-              _("call", _("member", _("id", "std"), _("id", "putchar")), _("id", "a")),
+                  _({_("string", "str"), _("ptr_type", _("u8", "u8"))}))),
+              _("assign", _("id", "str"), _("string", "hello")),
+              _("call", _("member", _("id", "std"), _("id", "puts")), _("id", "str")),
           }));
 
     inspect(n_root);

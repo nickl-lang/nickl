@@ -616,7 +616,7 @@ COMPILE(import) {
 
     auto name = s2nkid(node->args[0].data->token->text);
 
-    nkir_startFunct(fn, cs2s("#imported_func"), fn_t);
+    nkir_startFunct(fn, cs2s("#imported"), fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
     gen(c, nkir_make_ret());
 
@@ -641,16 +641,6 @@ COMPILE(import) {
 
             defineExtSym(
                 c, cs2nkid("puts"), nkir_makeExtSym(c->ir, so, cs2s("puts"), puts_fn_t), puts_fn_t);
-
-            NktFnInfo putchar_fn_info{
-                i32_t, nkt_get_tuple(c->arena, &i32_t, 1, 1), NkCallConv_Cdecl, false};
-            auto putchar_fn_t = nkt_get_fn(c->arena, &putchar_fn_info);
-
-            defineExtSym(
-                c,
-                cs2nkid("putchar"),
-                nkir_makeExtSym(c->ir, so, cs2s("putchar"), putchar_fn_t),
-                putchar_fn_t);
         } else if (name == cs2nkid("compiler")) {
             NK_LOG_INF("TODO compilerlib injection");
 
@@ -957,7 +947,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
 
     auto pop_fn = pushFn(c, fn);
 
-    nkir_startIncompleteFunct(fn, cs2s("#comptime_const_getter"), &fn_info);
+    nkir_startIncompleteFunct(fn, cs2s("#comptime"), &fn_info);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
     pushFnScope(c, fn);
