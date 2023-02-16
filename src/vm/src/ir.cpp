@@ -321,126 +321,10 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
     for (auto funct : p->functs) {
-        nksb_printf(sb, "\nfn ");
-
-        assert(funct->state == NkIrFunct_Complete && "inspecting incomplete function");
-
-        switch (funct->fn_t->as.fn.call_conv) {
-        case NkCallConv_Nk:
-            break;
-        case NkCallConv_Cdecl:
-            nksb_printf(sb, "(cdecl) ");
-            break;
-        }
-
-        nksb_printf(sb, "%s(", funct->name.c_str());
-        for (size_t i = 0; i < funct->fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
-            if (i) {
-                nksb_printf(sb, ", ");
-            }
-            nksb_printf(sb, "$arg%llu:", i);
-            nkt_inspect(funct->fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
-        }
-
-        nksb_printf(sb, ") -> ");
-        nkt_inspect(funct->fn_t->as.fn.ret_t, sb);
-
-        if (!funct->locals.empty()) {
-            nksb_printf(sb, "\n\n");
-            for (size_t i = 0; i < funct->locals.size(); i++) {
-                nksb_printf(sb, "$%llu: ", i);
-                nkt_inspect(funct->locals[i], sb);
-                nksb_printf(sb, "\n");
-            }
-            nksb_printf(sb, "\n");
-        } else {
-            nksb_printf(sb, " ");
-        }
-
-        nksb_printf(sb, "{\n\n");
-
-        for (auto block_id : funct->blocks) {
-            auto const &block = p->blocks[block_id];
-
-            nksb_printf(sb, "%%%s:\n", block.name.c_str());
-
-            for (auto instr_id : block.instrs) {
-                auto const &instr = p->instrs[instr_id];
-
-                nksb_printf(sb, "  ");
-
-                if (instr.arg[0].arg_type == NkIrArg_Ref &&
-                    instr.arg[0].ref.ref_type != NkIrRef_None) {
-                    nkir_inspectRef(p, instr.arg[0].ref, sb);
-                    nksb_printf(sb, " := ");
-                }
-
-                nksb_printf(sb, s_nk_ir_names[instr.code]);
-
-                for (size_t i = 1; i < 3; i++) {
-                    auto &arg = instr.arg[i];
-                    if (arg.arg_type != NkIrArg_None) {
-                        nksb_printf(sb, ((i > 1) ? ", " : " "));
-                    }
-                    switch (arg.arg_type) {
-                    case NkIrArg_Ref: {
-                        auto &ref = arg.ref;
-                        nkir_inspectRef(p, ref, sb);
-                        break;
-                    }
-                    case NkIrArg_BlockId:
-                        if (arg.id < p->blocks.size() && !p->blocks[arg.id].name.empty()) {
-                            nksb_printf(sb, "%%%s", p->blocks[arg.id].name.c_str());
-                        } else {
-                            nksb_printf(sb, "%(null)");
-                        }
-                        break;
-                    case NkIrArg_NumValType:
-                        switch (arg.id) {
-                        case Int8:
-                        case Int16:
-                        case Int32:
-                        case Int64:
-                            nksb_printf(sb, "i");
-                            break;
-                        case Uint8:
-                        case Uint16:
-                        case Uint32:
-                        case Uint64:
-                            nksb_printf(sb, "u");
-                            break;
-                        case Float32:
-                        case Float64:
-                            nksb_printf(sb, "f");
-                            break;
-                        default:
-                            assert(!"unreachable");
-                            break;
-                        }
-                        nksb_printf(sb, "%llu", (size_t)NUM_TYPE_SIZE(arg.id) * 8);
-                        break;
-                    case NkIrArg_None:
-                    default:
-                        break;
-                    }
-                }
-
-                nksb_printf(sb, "\n");
-            }
-
-            nksb_printf(sb, "\n");
-        }
-
-        nksb_printf(sb, "}\n");
+        nkir_inspectFunct(funct, sb);
     }
 
-    if (p->exsyms.size()) {
-        for (auto const &sym : p->exsyms) {
-            nksb_printf(sb, "\n\"%s\" %s:", p->shobjs[sym.so_id.id].c_str(), sym.name.c_str());
-            nkt_inspect(sym.type, sb);
-        }
-        nksb_printf(sb, "\n");
-    }
+    nkir_inspectExtSyms(p, sb);
 }
 
 void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
@@ -490,6 +374,131 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     }
     nksb_printf(sb, ":");
     nkt_inspect(ref.type, sb);
+}
+
+void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
+    auto p = funct->prog;
+
+    nksb_printf(sb, "\nfn ");
+
+    assert(funct->state == NkIrFunct_Complete && "inspecting incomplete function");
+
+    switch (funct->fn_t->as.fn.call_conv) {
+    case NkCallConv_Nk:
+        break;
+    case NkCallConv_Cdecl:
+        nksb_printf(sb, "(cdecl) ");
+        break;
+    }
+
+    nksb_printf(sb, "%s(", funct->name.c_str());
+    for (size_t i = 0; i < funct->fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
+        if (i) {
+            nksb_printf(sb, ", ");
+        }
+        nksb_printf(sb, "$arg%llu:", i);
+        nkt_inspect(funct->fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
+    }
+
+    nksb_printf(sb, ") -> ");
+    nkt_inspect(funct->fn_t->as.fn.ret_t, sb);
+
+    if (!funct->locals.empty()) {
+        nksb_printf(sb, "\n\n");
+        for (size_t i = 0; i < funct->locals.size(); i++) {
+            nksb_printf(sb, "$%llu: ", i);
+            nkt_inspect(funct->locals[i], sb);
+            nksb_printf(sb, "\n");
+        }
+        nksb_printf(sb, "\n");
+    } else {
+        nksb_printf(sb, " ");
+    }
+
+    nksb_printf(sb, "{\n\n");
+
+    for (auto block_id : funct->blocks) {
+        auto const &block = p->blocks[block_id];
+
+        nksb_printf(sb, "%%%s:\n", block.name.c_str());
+
+        for (auto instr_id : block.instrs) {
+            auto const &instr = p->instrs[instr_id];
+
+            nksb_printf(sb, "  ");
+
+            if (instr.arg[0].arg_type == NkIrArg_Ref && instr.arg[0].ref.ref_type != NkIrRef_None) {
+                nkir_inspectRef(p, instr.arg[0].ref, sb);
+                nksb_printf(sb, " := ");
+            }
+
+            nksb_printf(sb, s_nk_ir_names[instr.code]);
+
+            for (size_t i = 1; i < 3; i++) {
+                auto &arg = instr.arg[i];
+                if (arg.arg_type != NkIrArg_None) {
+                    nksb_printf(sb, ((i > 1) ? ", " : " "));
+                }
+                switch (arg.arg_type) {
+                case NkIrArg_Ref: {
+                    auto &ref = arg.ref;
+                    nkir_inspectRef(p, ref, sb);
+                    break;
+                }
+                case NkIrArg_BlockId:
+                    if (arg.id < p->blocks.size() && !p->blocks[arg.id].name.empty()) {
+                        nksb_printf(sb, "%%%s", p->blocks[arg.id].name.c_str());
+                    } else {
+                        nksb_printf(sb, "%(null)");
+                    }
+                    break;
+                case NkIrArg_NumValType:
+                    switch (arg.id) {
+                    case Int8:
+                    case Int16:
+                    case Int32:
+                    case Int64:
+                        nksb_printf(sb, "i");
+                        break;
+                    case Uint8:
+                    case Uint16:
+                    case Uint32:
+                    case Uint64:
+                        nksb_printf(sb, "u");
+                        break;
+                    case Float32:
+                    case Float64:
+                        nksb_printf(sb, "f");
+                        break;
+                    default:
+                        assert(!"unreachable");
+                        break;
+                    }
+                    nksb_printf(sb, "%llu", (size_t)NUM_TYPE_SIZE(arg.id) * 8);
+                    break;
+                case NkIrArg_None:
+                default:
+                    break;
+                }
+            }
+
+            nksb_printf(sb, "\n");
+        }
+
+        nksb_printf(sb, "\n");
+    }
+
+    nksb_printf(sb, "}\n");
+}
+
+void nkir_inspectExtSyms(NkIrProg p, NkStringBuilder sb) {
+    if (p->exsyms.size()) {
+        for (auto const &sym : p->exsyms) {
+            nksb_printf(sb, "\n\"%s\" %s:", p->shobjs[sym.so_id.id].c_str(), sym.name.c_str());
+            nkt_inspect(sym.type, sb);
+        }
+        nksb_printf(sb, "\n");
+    }
 }
 
 void nkir_invoke(nkval_t fn_val, nkval_t ret, nkval_t args) {

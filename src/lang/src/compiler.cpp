@@ -784,6 +784,19 @@ COMPILE(fn) {
 
     compileStmt(c, node->args[2].data);
 
+    {
+        // TODO Inspecting ir in nkl_compiler_run outside of the log macro
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+
+        nkir_inspectFunct(fn, sb);
+        auto str = nksb_concat(sb);
+
+        NK_LOG_INF("ir:\n%.*s", str.size, str.data);
+    }
+
     return makeValue<void *>(c, fn_t, fn);
 }
 
@@ -972,6 +985,19 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
 
         cnst.funct = fn;
         cnst.kind = ComptimeConst_Funct;
+
+        {
+            // TODO Inspecting ir in nkl_compiler_run outside of the log macro
+            auto sb = nksb_create();
+            defer {
+                nksb_free(sb);
+            };
+
+            nkir_inspectFunct(fn, sb);
+            auto str = nksb_concat(sb);
+
+            NK_LOG_INF("ir:\n%.*s", str.size, str.data);
+        }
     }
 
     return cnst;
@@ -1069,7 +1095,8 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
                 nksb_free(sb);
             };
 
-            nkir_inspect(c->ir, sb);
+            nkir_inspectFunct(top_level_fn, sb);
+            nkir_inspectExtSyms(c->ir, sb);
             auto str = nksb_concat(sb);
 
             NK_LOG_INF("ir:\n%.*s", str.size, str.data);

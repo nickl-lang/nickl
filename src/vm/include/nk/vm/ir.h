@@ -149,6 +149,8 @@ void nkir_gen(NkIrProg p, NkIrInstr instr);
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb);
 void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb);
+void nkir_inspectFunct(NkIrFunct fn, NkStringBuilder sb);
+void nkir_inspectExtSyms(NkIrProg p, NkStringBuilder sb);
 
 void nkir_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
