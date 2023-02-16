@@ -1,5 +1,3 @@
-#include "nkl/lang/compiler.h"
-
 #include <algorithm>
 #include <iterator>
 #include <new>
@@ -11,12 +9,13 @@
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
+#include "nkl/lang/compiler.h"
 
 namespace {
 
 NK_LOG_USE_SCOPE(test);
 
-class compiler : public testing::Test {
+class compiler_ast : public testing::Test {
     void SetUp() override {
         NK_LOGGER_INIT(NkLoggerOptions{});
 
@@ -32,16 +31,16 @@ class compiler : public testing::Test {
     }
 
 protected:
-    void inspect(NklAstNodeArray node) {
-        auto sb = nksb_create();
-        defer {
-            nksb_free(sb);
-        };
-
-        nkl_ast_inspect(node.data, sb);
-        auto str = nksb_concat(sb);
-
-        NK_LOG_INF("ast:%.*s\n", str.size, str.data);
+    void test(NklAstNodeArray root) {
+        NK_LOG_INF(
+            "ast:%s\n", (char const *)[&]() {
+                auto sb = nksb_create();
+                nkl_ast_inspect(root.data, sb);
+                return makeDeferrerWithData(nksb_concat(sb).data, [=]() {
+                    nksb_free(sb);
+                });
+            }());
+        nkl_compiler_run(m_compiler, root.data);
     }
 
     NklToken const *mkt(char const *text) {
@@ -104,49 +103,20 @@ protected:
 
 } // namespace
 
-TEST_F(compiler, empty) {
-    auto n_empty = NklAstNodeArray{};
-    inspect(n_empty);
-    nkl_compiler_run(m_compiler, n_empty.data);
+TEST_F(compiler_ast, empty) {
+    test({});
 }
 
-TEST_F(compiler, basic) {
-    auto n_root = _("add", _("int", "2"), _("int", "2"));
-    inspect(n_root);
-    nkl_compiler_run(m_compiler, n_root.data);
+TEST_F(compiler_ast, basic) {
+    test(_("add", _("int", "2"), _("int", "2")));
 }
 
-TEST_F(compiler, comptime_const) {
-    auto n_root = _("comptime_const_def", _("id", "pi"), _("float", "3.14"));
-    inspect(n_root);
-    nkl_compiler_run(m_compiler, n_root.data);
+TEST_F(compiler_ast, comptime_const) {
+    test(_("comptime_const_def", _("id", "pi"), _("float", "3.14")));
 }
 
-TEST_F(compiler, comptime_const_getter) {
-    auto n_root = _(
-        "block",
-        _({
-            _("define", _("id", "counter"), _("int", "0")),
-            _("comptime_const_def",
-              _("id", "getVal"),
-              _("fn",
-                _({}),
-                _("u32", "u32"),
-                _("block",
-                  _({
-                      _("assign", _("id", "counter"), _("add", _("id", "counter"), _("int", "1"))),
-                      _("return", _("int", "42")),
-                  })))),
-            _("comptime_const_def", _("id", "val"), _("call", _("id", "getVal"), _({}))),
-            _("id", "val"),
-            _("id", "val"),
-        }));
-    inspect(n_root);
-    nkl_compiler_run(m_compiler, n_root.data);
-}
-
-TEST_F(compiler, fn) {
-    auto n_root =
+TEST_F(compiler_ast, fn) {
+    test(
         _("block",
           _({
               _("comptime_const_def",
@@ -164,15 +134,32 @@ TEST_F(compiler, fn) {
                     _("int", "4"),
                     _("int", "5"),
                 })),
-          }));
-
-    inspect(n_root);
-
-    nkl_compiler_run(m_compiler, n_root.data);
+          })));
 }
 
-TEST_F(compiler, native_puts) {
-    auto n_root =
+TEST_F(compiler_ast, comptime_const_getter) {
+    test(_(
+        "block",
+        _({
+            _("define", _("id", "counter"), _("int", "0")),
+            _("comptime_const_def",
+              _("id", "getVal"),
+              _("fn",
+                _({}),
+                _("u32", "u32"),
+                _("block",
+                  _({
+                      _("assign", _("id", "counter"), _("add", _("id", "counter"), _("int", "1"))),
+                      _("return", _("int", "42")),
+                  })))),
+            _("comptime_const_def", _("id", "val"), _("call", _("id", "getVal"), _({}))),
+            _("id", "val"),
+            _("id", "val"),
+        })));
+}
+
+TEST_F(compiler_ast, native_puts) {
+    test(
         _("block",
           _({
               _("tag",
@@ -184,15 +171,11 @@ TEST_F(compiler, native_puts) {
                     _("param", _("id", "str"), _("ptr_type", _("u8", "u8"))),
                     _("void", "void")))),
               _("call", _("id", "puts"), _("string", "Hello, World!")),
-          }));
-
-    inspect(n_root);
-
-    nkl_compiler_run(m_compiler, n_root.data);
+          })));
 }
 
-TEST_F(compiler, fast_exp) {
-    auto n_root =
+TEST_F(compiler_ast, fast_exp) {
+    test(
         _("block",
           _({
               _("define", _("id", "b"), _("int", "2")),
@@ -210,28 +193,20 @@ TEST_F(compiler, fast_exp) {
                       _("assign", _("id", "n"), _("div", _("id", "n"), _("int", "2"))),
                       _("assign", _("id", "c"), _("mul", _("id", "c"), _("id", "c"))),
                   }))),
-          }));
-
-    inspect(n_root);
-
-    nkl_compiler_run(m_compiler, n_root.data);
+          })));
 }
 
-TEST_F(compiler, import) {
-    auto n_root =
+TEST_F(compiler_ast, import) {
+    test(
         _("block",
           _({
               _("import", _("id", "std")),
               _("call", _("member", _("id", "std"), _("id", "puts")), _("string", "Hello, World!")),
-          }));
-
-    inspect(n_root);
-
-    nkl_compiler_run(m_compiler, n_root.data);
+          })));
 }
 
-TEST_F(compiler, comptime_declareLocal) {
-    auto n_root =
+TEST_F(compiler_ast, comptime_declareLocal) {
+    test(
         _("block",
           _({
               _("import", _("id", "std")),
@@ -242,9 +217,5 @@ TEST_F(compiler, comptime_declareLocal) {
                   _({_("string", "str"), _("ptr_type", _("u8", "u8"))}))),
               _("assign", _("id", "str"), _("string", "hello")),
               _("call", _("member", _("id", "std"), _("id", "puts")), _("id", "str")),
-          }));
-
-    inspect(n_root);
-
-    nkl_compiler_run(m_compiler, n_root.data);
+          })));
 }

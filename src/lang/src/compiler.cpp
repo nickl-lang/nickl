@@ -1090,7 +1090,7 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
                 auto sb = nksb_create();
                 nkir_inspectFunct(top_level_fn, sb);
                 nkir_inspectExtSyms(c->ir, sb);
-                return makeDeferrerWithData(nksb_concat(sb).data, [=]() {
+                return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
                     nksb_free(sb);
                 });
             }());
@@ -1098,5 +1098,5 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     nkir_invoke({&top_level_fn, top_level_fn_t}, {}, {});
 }
 
-void nkl_compiler_runFile(NklCompiler c, nkstr filename) {
+void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
 }

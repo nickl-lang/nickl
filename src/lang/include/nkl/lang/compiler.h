@@ -17,7 +17,7 @@ NklCompiler nkl_compiler_create(NklCompilerConfig config);
 void nkl_compiler_free(NklCompiler c);
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root);
-void nkl_compiler_runFile(NklCompiler c, nkstr filename);
+void nkl_compiler_runSrc(NklCompiler c, nkstr src);
 
 #ifdef __cplusplus
 }

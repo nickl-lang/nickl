@@ -1,4 +1,4 @@
 #include "lexer.hpp"
 
-std::vector<NklToken> nkl_lex(nkstr filename) {
+std::vector<NklToken> nkl_lex(nkstr src) {
 }
