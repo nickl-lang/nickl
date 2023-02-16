@@ -13,10 +13,6 @@ struct _Deferrer {
     ~_Deferrer() {
         f();
     }
-    _Deferrer(F &&f)
-        : f{std::move(f)} {
-    }
-    _Deferrer(_Deferrer<F> const &) = delete;
 };
 template <class F>
 _Deferrer<F> operator*(_DeferDummy, F &&f) {
@@ -26,8 +22,25 @@ _Deferrer<F> operator*(_DeferDummy, F &&f) {
 #endif // defer
 
 template <class F>
-[[nodiscard]] _Deferrer<F> createDeferrer(F &&f) {
+[[nodiscard]] _Deferrer<F> makeDeferrer(F &&f) {
     return {std::forward<F>(f)};
+}
+
+template <class T, class F>
+struct _DeferrerWithData {
+    T data;
+    F f;
+    operator T() const {
+        return data;
+    }
+    ~_DeferrerWithData() {
+        f();
+    }
+};
+
+template <class T, class F>
+[[nodiscard]] _DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
+    return {std::forward<T>(data), std::forward<F>(f)};
 }
 
 #endif // HEADER_GUARD_NK_COMMON_UTILS_HPP

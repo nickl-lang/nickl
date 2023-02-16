@@ -140,20 +140,17 @@ ffi_type *_getNativeHandle(nktype_t type) {
         s_typemap.emplace(type->id, ffi_t);
     }
 
-#ifdef ENABLE_LOGGING
-    {
-        // TODO Inspecting type in _getNativeHandle outside of the log macro
-        auto sb = nksb_create();
-        defer {
-            nksb_free(sb);
-        };
-
-        nkt_inspect(type, sb);
-        auto str = nksb_concat(sb);
-
-        NK_LOG_DBG("ffi(type{id=%llu name=%.*s}) -> %p", type->id, str.size, str.data, ffi_t);
-    }
-#endif // ENABLE_LOGGING
+    NK_LOG_DBG(
+        "ffi(type{id=%llu name=%s}) -> %p",
+        type->id,
+        (char const *)[&]() {
+            auto sb = nksb_create();
+            nkt_inspect(type, sb);
+            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                nksb_free(sb);
+            });
+        }(),
+        ffi_t);
 
     return ffi_t;
 }

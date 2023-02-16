@@ -314,20 +314,14 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     bc_funct.instrs = instrs.data();
 
-#ifdef ENABLE_LOGGING
-    {
-        // TODO Inspecting bytecode in _translateIr outside of the log macro
-        auto sb = nksb_create();
-        defer {
-            nksb_free(sb);
-        };
-
-        _inspect(instrs, sb);
-        auto str = nksb_concat(sb);
-
-        NK_LOG_INF("bytecode:\n%.*s", str.size, str.data);
-    }
-#endif // ENABLE_LOGGING
+    NK_LOG_INF(
+        "bytecode:\n%s", (char const *)[&]() {
+            auto sb = nksb_create();
+            _inspect(instrs, sb);
+            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                nksb_free(sb);
+            });
+        }());
 
     for (auto fn : referenced_functs) {
         if (!fn->bc_funct) {

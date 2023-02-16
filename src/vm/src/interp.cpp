@@ -67,7 +67,7 @@ struct InterpContext {
 
 thread_local InterpContext ctx;
 
-thread_local auto s_deinit_ctx = createDeferrer([]() {
+thread_local auto s_deinit_ctx = makeDeferrer([]() {
     NK_LOG_TRC("deinitializing stack...");
     assert(nk_stack_getFrame(ctx.stack).size == 0 && "nonempty stack at exit");
     nk_free_stack(ctx.stack);

@@ -373,7 +373,7 @@ ValueInfo declToValueInfo(Decl &decl) {
 [[nodiscard]] auto pushFn(NklCompiler c, NkIrFunct fn) {
     auto prev_fn = c->cur_fn;
     c->cur_fn = fn;
-    return createDeferrer([=]() {
+    return makeDeferrer([=]() {
         c->cur_fn = prev_fn;
         nkir_activateFunct(c->ir, c->cur_fn);
     });
@@ -784,18 +784,14 @@ COMPILE(fn) {
 
     compileStmt(c, node->args[2].data);
 
-    {
-        // TODO Inspecting ir in nkl_compiler_run outside of the log macro
-        auto sb = nksb_create();
-        defer {
-            nksb_free(sb);
-        };
-
-        nkir_inspectFunct(fn, sb);
-        auto str = nksb_concat(sb);
-
-        NK_LOG_INF("ir:\n%.*s", str.size, str.data);
-    }
+    NK_LOG_INF(
+        "ir:\n%s", (char const *)[&]() {
+            auto sb = nksb_create();
+            nkir_inspectFunct(fn, sb);
+            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                nksb_free(sb);
+            });
+        }());
 
     return makeValue<void *>(c, fn_t, fn);
 }
@@ -986,18 +982,14 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
         cnst.funct = fn;
         cnst.kind = ComptimeConst_Funct;
 
-        {
-            // TODO Inspecting ir in nkl_compiler_run outside of the log macro
-            auto sb = nksb_create();
-            defer {
-                nksb_free(sb);
-            };
-
-            nkir_inspectFunct(fn, sb);
-            auto str = nksb_concat(sb);
-
-            NK_LOG_INF("ir:\n%.*s", str.size, str.data);
-        }
+        NK_LOG_INF(
+            "ir:\n%s", (char const *)[&]() {
+                auto sb = nksb_create();
+                nkir_inspectFunct(fn, sb);
+                return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                    nksb_free(sb);
+                });
+            }());
     }
 
     return cnst;
@@ -1088,19 +1080,20 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
 
         gen(c, nkir_make_ret());
 
-        {
-            // TODO Inspecting ir in nkl_compiler_run outside of the log macro
-            auto sb = nksb_create();
-            defer {
-                nksb_free(sb);
-            };
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
 
-            nkir_inspectFunct(top_level_fn, sb);
-            nkir_inspectExtSyms(c->ir, sb);
-            auto str = nksb_concat(sb);
-
-            NK_LOG_INF("ir:\n%.*s", str.size, str.data);
-        }
+        NK_LOG_INF(
+            "ir:\n%s", (char const *)[&]() {
+                auto sb = nksb_create();
+                nkir_inspectFunct(top_level_fn, sb);
+                nkir_inspectExtSyms(c->ir, sb);
+                return makeDeferrerWithData(nksb_concat(sb).data, [=]() {
+                    nksb_free(sb);
+                });
+            }());
     }
     nkir_invoke({&top_level_fn, top_level_fn_t}, {}, {});
 }
