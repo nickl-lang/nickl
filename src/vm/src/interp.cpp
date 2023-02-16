@@ -61,11 +61,18 @@ struct InterpContext {
     std::vector<NkStackAllocatorFrame> stack_frames;
     NkStackAllocatorFrame stack_frame;
     NkBcInstr const *pinstr;
-    bool is_initialized;
     Registers reg;
+    bool is_initialized;
 };
 
 thread_local InterpContext ctx;
+
+thread_local auto s_deinit_ctx = createDeferrer([]() {
+    NK_LOG_TRC("deinitializing stack...");
+    assert(nk_stack_getFrame(ctx.stack).size == 0 && "nonempty stack at exit");
+    nk_free_stack(ctx.stack);
+    ctx.is_initialized = false;
+});
 
 template <class T>
 T &_getRef(NkBcRef const &ref) {
@@ -464,8 +471,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     NK_LOG_DBG("program @%p", &prog);
 
-    bool was_uninitialized = !ctx.is_initialized;
-    if (was_uninitialized) {
+    if (!ctx.is_initialized) {
         NK_LOG_TRC("initializing stack...");
         // TODO ctx.stack.reserve(1024);
         ctx.stack = nk_create_stack();
@@ -516,14 +522,4 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     ctx.base.reg = pfr.base_reg;
     ctx.pinstr = pfr.pinstr;
-
-    if (was_uninitialized) {
-        NK_LOG_TRC("deinitializing stack...");
-
-        assert(nk_stack_getFrame(ctx.stack).size == 0 && "nonempty stack at exit");
-
-        nk_free_stack(ctx.stack);
-
-        ctx.is_initialized = false;
-    }
 }
