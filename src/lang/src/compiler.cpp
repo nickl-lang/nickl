@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "ast_impl.h"
+#include "lexer.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -21,6 +22,7 @@
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 #include "nkl/lang/ast.h"
+#include "parser.hpp"
 
 namespace {
 
@@ -1099,4 +1101,6 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
 }
 
 void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
+    NK_LOG_TRC(__func__);
+    auto tokens = nkl_lex(src);
 }

@@ -17,7 +17,7 @@ typedef struct {
     size_t col;
 
     size_t id;
-} NklToken; // TODO Move NklToken declaration
+} NklToken;
 
 #ifdef __cplusplus
 }

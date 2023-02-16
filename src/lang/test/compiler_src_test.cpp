@@ -31,7 +31,7 @@ class compiler_src : public testing::Test {
 
 protected:
     void test(char const *src) {
-        NK_LOG_INF("src:%s", src);
+        NK_LOG_INF("src:\n%s", src);
         nkl_compiler_runSrc(m_compiler, cs2s(src));
     }
 
