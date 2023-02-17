@@ -45,7 +45,7 @@ N(void)
 // U(uminus)
 // U(uplus)
 
-// U(addr)  // (expr: node)
+U(addr)  // (expr: node)
 // U(deref) // (ptr: node)
 
 // U(defer_stmt) // (expr: node)

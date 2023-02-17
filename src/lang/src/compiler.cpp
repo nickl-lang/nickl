@@ -479,6 +479,11 @@ COMPILE(void) {
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_void(c->arena));
 }
 
+COMPILE(addr) {
+    auto arg = compileNode(c, node->args[0].data);
+    return makeInstr(nkir_make_lea({}, makeRef(c, arg)), arg.type);
+}
+
 COMPILE(return ) {
     auto arg = compileNode(c, node->args[0].data);
     makeRefAndStore(c, nkir_makeRetRef(c->ir), arg);
