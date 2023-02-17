@@ -35,7 +35,7 @@ protected:
         NK_LOG_INF(
             "ast:%s\n", (char const *)[&]() {
                 auto sb = nksb_create();
-                nkl_ast_inspect(root.data, sb);
+                nkl_inspectNode(root.data, sb);
                 return makeDeferrerWithData(nksb_concat(sb).data, [=]() {
                     nksb_free(sb);
                 });
@@ -79,15 +79,13 @@ protected:
         NklAstNodeArray arg0,
         NklAstNodeArray arg1,
         NklAstNodeArray arg2) {
-        return {
-            nkl_ast_pushNode(
-                m_ast,
-                {
-                    .args{arg0, arg1, arg2},
-                    .token = mkt(text),
-                    .id = cs2nkid(id),
-                }),
-            1};
+        return nkl_pushNode(
+            m_ast,
+            {
+                .args{arg0, arg1, arg2},
+                .token = mkt(text),
+                .id = cs2nkid(id),
+            });
     }
 
     NklAstNodeArray _(std::vector<NklAstNodeArray> const &ar) {
@@ -95,7 +93,7 @@ protected:
         std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeArray ar) {
             return ar.data[0];
         });
-        return nkl_ast_pushNodeAr(m_ast, {nodes.data(), nodes.size()});
+        return nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()});
     }
 
 protected:
@@ -134,8 +132,8 @@ TEST_F(compiler_ast, fn) {
               _("call",
                 _("id", "add"),
                 _({
-                    _("int", "4"),
-                    _("int", "5"),
+                    _("arg", {}, _("int", "4")),
+                    _("arg", {}, _("int", "5")),
                 })),
           })));
 }
@@ -167,13 +165,13 @@ TEST_F(compiler_ast, native_puts) {
           _({
               _("tag",
                 _("name", "#foreign"),
-                _("string", ""),
+                _("arg", {}, _("string", "")),
                 _("comptime_const_def",
                   _("id", "puts"),
                   _("fn_type",
                     _("param", _("id", "str"), _("ptr_type", _("u8", "u8"))),
                     _("void", "void")))),
-              _("call", _("id", "puts"), _("string", "Hello, World!")),
+              _("call", _("id", "puts"), _("arg", {}, _("string", "Hello, World!"))),
           })));
 }
 
@@ -204,7 +202,9 @@ TEST_F(compiler_ast, import) {
         _("block",
           _({
               _("import", _("id", "std")),
-              _("call", _("member", _("id", "std"), _("id", "puts")), _("string", "Hello, World!")),
+              _("call",
+                _("member", _("id", "std"), _("id", "puts")),
+                _("arg", {}, _("string", "Hello, World!"))),
           })));
 }
 
@@ -217,8 +217,11 @@ TEST_F(compiler_ast, comptime_declareLocal) {
               _("run",
                 _("call",
                   _("member", _("id", "compiler"), _("id", "declareLocal")),
-                  _({_("string", "str"), _("ptr_type", _("u8", "u8"))}))),
+                  _({
+                      _("arg", {}, _("string", "str")),
+                      _("arg", {}, _("ptr_type", _("u8", "u8"))),
+                  }))),
               _("assign", _("id", "str"), _("string", "hello")),
-              _("call", _("member", _("id", "std"), _("id", "puts")), _("id", "str")),
+              _("call", _("member", _("id", "std"), _("id", "puts")), _("arg", {}, _("id", "str"))),
           })));
 }

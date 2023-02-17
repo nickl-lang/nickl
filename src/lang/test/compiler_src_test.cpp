@@ -20,13 +20,11 @@ class compiler_src : public testing::Test {
     void SetUp() override {
         NK_LOGGER_INIT(NkLoggerOptions{});
 
-        m_ast = nkl_ast_create();
         m_compiler = nkl_compiler_create({}); // TODO Providing empty stdlib dir
     }
 
     void TearDown() override {
         nkl_compiler_free(m_compiler);
-        nkl_ast_free(m_ast);
     }
 
 protected:
@@ -36,7 +34,6 @@ protected:
     }
 
 protected:
-    NklAst m_ast;
     NklCompiler m_compiler;
 };
 

@@ -20,7 +20,7 @@ typedef struct {
 
 struct NklAstNode_T {
     NklAstNodeArray args[3];
-    NklToken const *token;
+    NklTokenRef token;
     nkid id;
 };
 
@@ -29,10 +29,24 @@ typedef struct NklAst_T *NklAst;
 NklAst nkl_ast_create();
 void nkl_ast_free(NklAst ast);
 
-NklAstNode nkl_ast_pushNode(NklAst ast, NklAstNode_T node);
-NklAstNodeArray nkl_ast_pushNodeAr(NklAst ast, NklAstNodeArray ar);
+NklAstNode_T nkl_makeNode0(char const *id, NklTokenRef token);
+NklAstNode_T nkl_makeNode1(char const *id, NklTokenRef token, NklAstNodeArray arg0);
+NklAstNode_T nkl_makeNode2(
+    char const *id,
+    NklTokenRef token,
+    NklAstNodeArray arg0,
+    NklAstNodeArray arg1);
+NklAstNode_T nkl_makeNode3(
+    char const *id,
+    NklTokenRef token,
+    NklAstNodeArray arg0,
+    NklAstNodeArray arg1,
+    NklAstNodeArray arg2);
 
-void nkl_ast_inspect(NklAstNode root, NkStringBuilder sb);
+NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
+NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
+
+void nkl_inspectNode(NklAstNode root, NkStringBuilder sb);
 
 #ifdef __cplusplus
 }

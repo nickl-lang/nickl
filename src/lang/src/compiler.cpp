@@ -395,6 +395,13 @@ COMPILE(none) {
     return {};
 }
 
+COMPILE(nop) {
+    (void)c;
+    (void)node;
+    nkir_gen(c->ir, nkir_make_nop()); // TODO Do we actually need to generate nop?
+    return makeVoid(c);
+}
+
 COMPILE(i8) {
     (void)node;
     // TODO Modeling type_t as *void
@@ -489,7 +496,8 @@ COMPILE(ptr_type) {
 }
 
 COMPILE(scope) {
-    assert(!"scope compilation is not implemented");
+    NK_LOG_WRN("TODO scope implementation not finished");
+    return compileNode(c, node->args[0].data);
 }
 
 COMPILE(run) {
@@ -829,7 +837,9 @@ COMPILE(tag) {
                  "#foreign",
                  node->args[0].data->token->text.size));
 
-    auto name = compileNode(c, node->args[1].data);
+    auto args = node->args[1];
+    assert(args.size == 1);
+    auto name = compileNode(c, args.data[0].args[1].data);
 
     assert(node->args[2].data->id == n_comptime_const_def);
 
@@ -857,8 +867,9 @@ COMPILE(call) {
         args = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, fn_t->as.fn.args_t));
     }
 
-    for (size_t i = 0; i < node->args[1].size; i++) {
-        auto arg = compileNode(c, &node->args[1].data[i]);
+    auto nodes = node->args[1];
+    for (size_t i = 0; i < nodes.size; i++) {
+        auto arg = compileNode(c, nodes.data[i].args[1].data); // TODO Support named args in call
         auto arg_ref = args;
         arg_ref.offset += fn_t->as.fn.args_t->as.tuple.elems.data[i].offset;
         arg_ref.type = fn_t->as.fn.args_t->as.tuple.elems.data[i].type;
