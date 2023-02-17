@@ -4,8 +4,13 @@
 #include <cstring>
 #include <thread>
 
+// TODO reading file
+#include <fstream>
+#include <iterator>
+
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
+#include "nkl/lang/compiler.h"
 
 namespace {
 
@@ -138,12 +143,14 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
-    // TODO nkl::lang_init();
-    // defer {
-    //     nkl::lang_deinit();
-    // };
+    auto compiler = nkl_compiler_create({}); // TODO Empty compiler config
+    defer {
+        nkl_compiler_free(compiler);
+    };
 
-    // return nkl::lang_runFile(nk::cs2s(in_file));
+    std::ifstream file{in_file};
+    std::string src{std::istreambuf_iterator<char>{file}, {}};
+    nkl_compiler_runSrc(compiler, {src.data(), src.size()});
 
     return 0;
 }
