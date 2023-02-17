@@ -79,12 +79,15 @@ protected:
         NklAstNodeArray arg0,
         NklAstNodeArray arg1,
         NklAstNodeArray arg2) {
-        NklAstNode_T node{
-            .args{arg0, arg1, arg2},
-            .token = mkt(text),
-            .id = cs2nkid(id),
-        };
-        return {nkl_ast_pushNode(m_ast, &node), 1};
+        return {
+            nkl_ast_pushNode(
+                m_ast,
+                {
+                    .args{arg0, arg1, arg2},
+                    .token = mkt(text),
+                    .id = cs2nkid(id),
+                }),
+            1};
     }
 
     NklAstNodeArray _(std::vector<NklAstNodeArray> const &ar) {

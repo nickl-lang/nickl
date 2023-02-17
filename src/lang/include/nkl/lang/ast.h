@@ -29,7 +29,7 @@ typedef struct NklAst_T *NklAst;
 NklAst nkl_ast_create();
 void nkl_ast_free(NklAst ast);
 
-NklAstNode nkl_ast_pushNode(NklAst ast, NklAstNode node);
+NklAstNode nkl_ast_pushNode(NklAst ast, NklAstNode_T node);
 NklAstNodeArray nkl_ast_pushNodeAr(NklAst ast, NklAstNodeArray ar);
 
 void nkl_ast_inspect(NklAstNode root, NkStringBuilder sb);

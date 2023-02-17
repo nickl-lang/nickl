@@ -1103,4 +1103,10 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
 void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     NK_LOG_TRC(__func__);
     auto tokens = nkl_lex(src);
+    auto ast = nkl_ast_create();
+    defer {
+        nkl_ast_free(ast);
+    };
+    auto root = nkl_parse(ast, tokens);
+    nkl_compiler_run(c, root);
 }

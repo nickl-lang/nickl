@@ -85,8 +85,8 @@ void nkl_ast_inspect(NklAstNode root, NkStringBuilder sb) {
     _inspect({root, 1}, sb);
 }
 
-NklAstNode nkl_ast_pushNode(NklAst ast, NklAstNode node) {
-    return new (nk_allocate(ast->arena, sizeof(NklAstNode_T))) NklAstNode_T{*node};
+NklAstNode nkl_ast_pushNode(NklAst ast, NklAstNode_T node) {
+    return new (nk_allocate(ast->arena, sizeof(NklAstNode_T))) NklAstNode_T{node};
 }
 
 NklAstNodeArray nkl_ast_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
