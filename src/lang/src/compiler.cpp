@@ -486,7 +486,7 @@ COMPILE(void) {
 
 COMPILE(addr) {
     auto arg = compileNode(c, node->args[0].data);
-    return makeInstr(nkir_make_lea({}, makeRef(c, arg)), arg.type);
+    return makeInstr(nkir_make_lea({}, makeRef(c, arg)), nkt_get_ptr(c->arena, arg.type));
 }
 
 COMPILE(return ) {
@@ -584,6 +584,14 @@ COMPILE(ne) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
     return makeInstr(nkir_make_ne({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(array_type) {
+    // TODO Hardcoded array size type in array_type
+    auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
+    auto size = nkval_as(int64_t, comptimeCompileNodeGetValue(c, node->args[1].data));
+    return makeValue<nktype_t>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_array(c->arena, type, size));
 }
 
 COMPILE(while) {
