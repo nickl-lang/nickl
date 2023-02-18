@@ -1,7 +1,9 @@
+import std;
+
 a := true;
 
 if a {
-    @println("a is true!");
+    std.printf("a is true!\n");
 } else {
-    @println("a is false!");
+    std.printf("a is false!\n");
 }

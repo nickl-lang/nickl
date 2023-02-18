@@ -15,8 +15,8 @@ N(nop)
 // N(break)
 // N(continue)
 
-// N(false)
-// N(true)
+N(false)
+N(true)
 
 N(i8)
 N(i16)
@@ -112,7 +112,7 @@ X(if) // (cond: node, then_clause: node, else_clause: node)
 // X(array) // (nodes: [node])
 X(block)
 // X(tuple)
-// X(tuple_type)
+X(tuple_type)
 
 X(import) // (names: [{name: token}])
 
@@ -151,7 +151,7 @@ X(define) // (names: [{name: token}], value: node)
 X(comptime_const_def) // (name: token, value: node)
 // X(tag_def)
 
-// X(var_decl) // (name: token, type: node, value: ?node)
+X(var_decl) // (name: token, type: node, value: ?node)
 // X(const_decl)
 
 #undef X

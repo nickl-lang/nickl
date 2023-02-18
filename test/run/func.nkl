@@ -1,5 +1,7 @@
+import std;
+
 plus :: (a: i64, b: i64) -> i64 {
     return a + b;
 }
 
-@println("4+5={}", plus(4, 5));
+std.printf("4+5=%li\n", plus(4, 5));

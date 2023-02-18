@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iterator>
@@ -405,6 +406,16 @@ COMPILE(nop) {
     return makeVoid(c);
 }
 
+COMPILE(true) {
+    (void)node;
+    return makeValue<bool>(c, nkt_get_numeric(c->arena, Uint8), true);
+}
+
+COMPILE(false) {
+    (void)node;
+    return makeValue<bool>(c, nkt_get_numeric(c->arena, Uint8), false);
+}
+
 COMPILE(i8) {
     (void)node;
     // TODO Modeling type_t as *void
@@ -614,11 +625,23 @@ COMPILE(if) {
     }
     auto cond = compileNode(c, node->args[0].data);
     gen(c, nkir_make_jmpz(makeRef(c, cond), l_else));
-    compileStmt(c, node->args[1].data);
+    {
+        pushScope(c);
+        defer {
+            popScope(c);
+        };
+        compileStmt(c, node->args[1].data);
+    }
     if (node->args[2].data) {
         gen(c, nkir_make_jmp(l_endif));
         nkir_startBlock(c->ir, l_else, cs2s("else"));
-        compileStmt(c, node->args[2].data);
+        {
+            pushScope(c);
+            defer {
+                popScope(c);
+            };
+            compileStmt(c, node->args[2].data);
+        }
     }
     nkir_startBlock(c->ir, l_endif, cs2s("endif"));
     return makeVoid(c);
@@ -627,6 +650,19 @@ COMPILE(if) {
 COMPILE(block) {
     compileNodeArray(c, node->args[0]);
     return makeVoid(c);
+}
+
+COMPILE(tuple_type) {
+    auto nodes = node->args[0];
+    std::vector<nktype_t> types;
+    types.reserve(nodes.size);
+    for (size_t i = 0; i < nodes.size; i++) {
+        types.emplace_back(nkval_as(nktype_t, comptimeCompileNodeGetValue(c, &nodes.data[i])));
+    }
+    return makeValue<nktype_t>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        nkt_get_tuple(c->arena, types.data(), types.size(), 1));
 }
 
 COMPILE(import) {
@@ -954,40 +990,45 @@ COMPILE(call) {
 }
 
 COMPILE(assign) {
-    auto name_str = node->args[0].data->token->text;
-    nkid name = s2nkid(name_str);
-    auto rhs = compileNode(c, node->args[1].data);
-    auto res = resolve(c, name);
-    NkIrRef ref;
-    nktype_t type;
-    switch (res.kind) {
-    case Decl_Local:
-        if (res.as.local.type->id != rhs.type->id) {
-            // return error("cannot assign values of different types"), ValueInfo{};
+    if (node->args[0].data->id == cs2nkid("id")) {
+        auto name_str = node->args[0].data->token->text;
+        nkid name = s2nkid(name_str);
+        auto rhs = compileNode(c, node->args[1].data);
+        auto res = resolve(c, name);
+        NkIrRef ref;
+        nktype_t type;
+        switch (res.kind) {
+        case Decl_Local:
+            if (res.as.local.type->id != rhs.type->id) {
+                // return error("cannot assign values of different types"), ValueInfo{};
+            }
+            ref = nkir_makeFrameRef(c->ir, res.as.local.id);
+            type = res.as.local.type;
+            break;
+        case Decl_Global:
+            if (res.as.local.type->id != rhs.type->id) {
+                // return error("cannot assign values of different types"), ValueInfo{};
+            }
+            ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
+            type = res.as.global.type;
+            break;
+        case Decl_Undefined:
+            NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
+            std::abort(); // TODO Report errors properly
+        case Decl_Funct:
+        case Decl_ExtSym:
+        case Decl_Arg:
+            // return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
+        default:
+            NK_LOG_ERR("unknown decl type");
+            assert(!"unreachable");
+            return {};
         }
-        ref = nkir_makeFrameRef(c->ir, res.as.local.id);
-        type = res.as.local.type;
-        break;
-    case Decl_Global:
-        if (res.as.local.type->id != rhs.type->id) {
-            // return error("cannot assign values of different types"), ValueInfo{};
-        }
-        ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
-        type = res.as.global.type;
-        break;
-    case Decl_Undefined:
-        NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
-        std::abort(); // TODO Report errors properly
-    case Decl_Funct:
-    case Decl_ExtSym:
-    case Decl_Arg:
-        // return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
-    default:
-        NK_LOG_ERR("unknown decl type");
-        assert(!"unreachable");
-        return {};
+        return makeRefAndStore(c, ref, rhs);
+    } else {
+        NK_LOG_ERR("invalid assignment");
+        std::abort();
     }
-    return makeRefAndStore(c, ref, rhs);
 }
 
 COMPILE(define) {
@@ -1021,6 +1062,30 @@ COMPILE(comptime_const_def) {
     nkid name = s2nkid(names.data[0].token->text);
     auto decl = comptimeCompileNode(c, node->args[1].data);
     defineComptimeConst(c, name, decl);
+    return makeVoid(c);
+}
+
+COMPILE(var_decl) {
+    auto const &names = node->args[0];
+    if (names.size > 1) {
+        NK_LOG_ERR("multiple assignment is not implemented");
+        std::abort(); // TODO Report errors properly
+    }
+    nkid name = s2nkid(names.data[0].token->text);
+    auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
+    NkIrRef ref;
+    if (c->is_top_level) {
+        auto var = nkir_makeGlobalVar(c->ir, type);
+        defineGlobal(c, name, var, type);
+        ref = nkir_makeGlobalRef(c->ir, var);
+    } else {
+        auto var = nkir_makeLocalVar(c->ir, type);
+        defineLocal(c, name, var, type);
+        ref = nkir_makeFrameRef(c->ir, var);
+    }
+    if (node->args[2].data) {
+        NK_LOG_WRN("TODO Ignoring init value in var_decl");
+    }
     return makeVoid(c);
 }
 

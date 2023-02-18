@@ -1,6 +1,7 @@
 i := 0;
 
-while i < 10 {
-    @println("i={}", i);
+while i < 3 {
+    import std;
+    std.printf("i=%li\n", i);
     i = i + 1;
 }

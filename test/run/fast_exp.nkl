@@ -15,4 +15,5 @@ while n != 0 {
     c = c * c;
 }
 
-@println("{}", a);
+import std;
+std.printf("%li\n", a);
