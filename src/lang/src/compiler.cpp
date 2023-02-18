@@ -522,73 +522,71 @@ COMPILE(run) {
     return makeValue(c, comptimeCompileNodeGetValue(c, node->args[0].data));
 }
 
+// TODO Not doing type checks in arithmetic
+
 COMPILE(add) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot add values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_add({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(sub) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot sub values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_sub({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mul) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot mul values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_mul({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(div) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot div values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_div({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mod) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot mod values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_mod({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(eq) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot eq values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_eq({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(ge) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_ge({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(gt) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_gt({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(le) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_le({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+}
+
+COMPILE(lt) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_lt({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ne) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    // TODO if (lhs.type->id != rhs.type->id) {
-    //     NK_LOG_ERR("cannot ne values of different types");
-    //     std::abort(); // TODO Report errors properly
-    // }
     return makeInstr(nkir_make_ne({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
 }
 
@@ -665,10 +663,19 @@ COMPILE(import) {
                 i32_t, nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1), NkCallConv_Cdecl, false};
             auto puts_fn_t = nkt_get_fn(c->arena, &puts_fn_info);
 
+            NktFnInfo printf_fn_info{
+                i32_t, nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1), NkCallConv_Cdecl, true};
+            auto printf_fn_t = nkt_get_fn(c->arena, &printf_fn_info);
+
             auto so = nkir_makeShObj(c->ir, cs2s("")); // TODO Creating so every time
 
             defineExtSym(
                 c, cs2nkid("puts"), nkir_makeExtSym(c->ir, so, cs2s("puts"), puts_fn_t), puts_fn_t);
+            defineExtSym(
+                c,
+                cs2nkid("printf"),
+                nkir_makeExtSym(c->ir, so, cs2s("printf"), printf_fn_t),
+                printf_fn_t);
         } else if (name == cs2nkid("compiler")) {
             NK_LOG_INF("TODO compilerlib injection");
 

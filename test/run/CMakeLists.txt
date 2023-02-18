@@ -7,10 +7,10 @@
 # def_run_test(FILE if.nkl)
 # def_run_test(FILE import.nkl)
 # def_run_test(FILE ir_optimization.nkl)
-# def_run_test(FILE pi.nkl)
 # def_run_test(FILE pointers.nkl)
 # def_run_test(FILE tags.nkl)
 # def_run_test(FILE while.nkl)
 
 def_run_test(FILE empty.nkl OUTPUT "")
 def_run_test(FILE native_func.nkl OUTPUT "Hello, World!")
+def_run_test(FILE pi.nkl OUTPUT "3.141592653589794")

@@ -102,9 +102,8 @@ int main(int argc, char const *const *argv) {
                     } else {
                         fprintf(
                             stderr,
-                            "error: invalid loglevel `%s`. Possible values are `none`, `info`, "
-                            "`debug`, "
-                            "`trace`\n",
+                            "error: invalid loglevel `%s`. Possible values are `none`, `error`, "
+                            "`warning`, `info`, `debug`, `trace`\n",
                             argv[i]);
                         printErrorUsage();
                         return 1;

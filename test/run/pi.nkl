@@ -1,3 +1,5 @@
+import std;
+
 atan :: (x: f64, it: i64) -> f64 {
     sum := x;
     sign := 1.0;
@@ -17,4 +19,4 @@ atan :: (x: f64, it: i64) -> f64 {
 it := 10;
 pi :=  4.0 * (4.0 * atan(1.0 / 5.0, it) - atan(1.0 / 239.0, it));
 
-@println("pi = {}", pi);
+std.printf("pi = %.*g\n", 16, pi);
