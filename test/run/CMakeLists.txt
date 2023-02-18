@@ -7,6 +7,7 @@
 # def_run_test(FILE pointers.nkl)
 # def_run_test(FILE tags.nkl)
 
+def_run_test(FILE comptime_run.nkl OUTPUT_REGEX "^comptime\nruntime\n$")
 def_run_test(FILE empty.nkl OUTPUT_REGEX "^$")
 def_run_test(FILE fast_exp.nkl OUTPUT_REGEX "^65536\n$")
 def_run_test(FILE func.nkl OUTPUT_REGEX "^4\\+5=9\n$")

@@ -998,26 +998,29 @@ private:
                     .accept_init = true,
                     .allow_tuple_mode = true,
                 }));
-            if (accept(t_minus_greater)) {
+            if (check(t_minus_greater) || check(t_brace_l)) {
+                NklAstNode_T ret_type{};
+                if (accept(t_minus_greater)) {
+                    ASSIGN(ret_type, expr(Expr_Type));
+                }
                 if (res.trailing_comma_parsed) {
                     return error("trailing comma is not allowed in function signature"),
                            NklAstNode_T{};
                 }
-                DEFINE(ret_type, expr(Expr_Type));
                 if (m_cur_expr_kind == Expr_Regular && check(t_brace_l)) {
                     DEFINE(body, block());
                     node = nkl_makeNode3(
                         res.variadic_parsed ? "fn_var" : "fn",
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
-                        nkl_pushNode(m_ast, ret_type),
+                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{},
                         nkl_pushNode(m_ast, body));
                 } else {
                     node = nkl_makeNode2(
                         res.variadic_parsed ? "fn_type_var" : "fn_type",
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
-                        nkl_pushNode(m_ast, ret_type));
+                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{});
                 }
             } else {
                 if (res.tuple_parsed) {

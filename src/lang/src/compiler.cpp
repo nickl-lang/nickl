@@ -416,79 +416,70 @@ COMPILE(false) {
     return makeValue<bool>(c, nkt_get_numeric(c->arena, Uint8), false);
 }
 
+// TODO Modeling type_t as *void
+
 COMPILE(i8) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int8));
 }
 
 COMPILE(i16) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int16));
 }
 
 COMPILE(i32) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int32));
 }
 
 COMPILE(i64) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int64));
 }
 
 COMPILE(u8) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint8));
 }
 
 COMPILE(u16) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint16));
 }
 
 COMPILE(u32) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint32));
 }
 
 COMPILE(u64) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint64));
 }
 
 COMPILE(f32) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float32));
 }
 
 COMPILE(f64) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float64));
 }
 
 COMPILE(void) {
     (void)node;
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_void(c->arena));
 }
@@ -501,27 +492,21 @@ COMPILE(addr) {
 COMPILE(return ) {
     auto arg = compileNode(c, node->args[0].data);
     makeRefAndStore(c, nkir_makeRetRef(c->ir), arg);
-    gen(c, nkir_make_ret());
+    gen(c, nkir_make_ret()); // TODO potentially generating ret twice
     return makeVoid(c);
 }
 
 COMPILE(ptr_type) {
-    auto target_type = comptimeCompileNodeGetValue(c, node->args[0].data);
-    // TODO Modeling type_t as *void
+    auto target_type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
     return makeValue<nktype_t>(
-        c,
-        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
-        nkt_get_ptr(c->arena, nkval_as(nktype_t, target_type)));
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_ptr(c->arena, target_type));
 }
 
 COMPILE(const_ptr_type) {
     // TODO Ignoring const in const_ptr_type
-    auto target_type = comptimeCompileNodeGetValue(c, node->args[0].data);
-    // TODO Modeling type_t as *void
+    auto target_type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
     return makeValue<nktype_t>(
-        c,
-        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
-        nkt_get_ptr(c->arena, nkval_as(nktype_t, target_type)));
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_ptr(c->arena, target_type));
 }
 
 COMPILE(scope) {
@@ -847,7 +832,9 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
             nkval_as(nktype_t, comptimeCompileNodeGetValue(c, param.args[1].data)));
     }
 
-    nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
+    nktype_t ret_t = node->args[1].data
+                         ? nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data))
+                         : nkt_get_void(c->arena);
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
     NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, is_variadic};
@@ -875,6 +862,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
     }
 
     compileStmt(c, node->args[2].data);
+    gen(c, nkir_make_ret());
 
     NK_LOG_INF(
         "ir:\n%s", (char const *)[&]() {
@@ -916,7 +904,6 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
         ret_t, args_t, NkCallConv_Cdecl, is_variadic}; // TODO CallConv Hack for #foreign
     auto fn_t = nkt_get_fn(c->arena, &fn_info);
 
-    // TODO Modeling type_t as *void
     return makeValue<nktype_t>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), fn_t);
 }
 
