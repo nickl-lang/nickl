@@ -4,10 +4,6 @@
 #include <cstring>
 #include <thread>
 
-// TODO reading file
-#include <fstream>
-#include <iterator>
-
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 #include "nkl/lang/compiler.h"
@@ -23,11 +19,11 @@ void printUsage() {
         "Usage: %s [options] file"
         "\nOptions:"
 #ifdef ENABLE_LOGGING
-        "\n    -c, --color {auto,always,never}           Choose when to color output"
-        "\n    -l, --loglevel {none,info,debug,trace}    Select logging level"
+        "\n    -c, --color {auto,always,never}                      Choose when to color output"
+        "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
 #endif // ENABLE_LOGGING
-        "\n    -h, --help                                Display this message and exit"
-        "\n    -v, --version                             Show version information"
+        "\n    -h, --help                                           Display this message and exit"
+        "\n    -v, --version                                        Show version information"
         "\n",
         NKL_BINARY_NAME);
 }
@@ -50,6 +46,7 @@ int main(int argc, char const *const *argv) {
 
 #ifdef ENABLE_LOGGING
     NkLoggerOptions logger_options{};
+    logger_options.log_level = NkLog_Error;
 #endif // ENABLE_LOGGING
 
     for (int i = 1; i < argc; i++) {
@@ -92,6 +89,10 @@ int main(int argc, char const *const *argv) {
                     }
                     if (eql(argv[i], "none")) {
                         logger_options.log_level = NkLog_None;
+                    } else if (eql(argv[i], "error")) {
+                        logger_options.log_level = NkLog_Error;
+                    } else if (eql(argv[i], "warning")) {
+                        logger_options.log_level = NkLog_Warning;
                     } else if (eql(argv[i], "info")) {
                         logger_options.log_level = NkLog_Info;
                     } else if (eql(argv[i], "debug")) {
@@ -147,10 +148,7 @@ int main(int argc, char const *const *argv) {
     defer {
         nkl_compiler_free(compiler);
     };
-
-    std::ifstream file{in_file};
-    std::string src{std::istreambuf_iterator<char>{file}, {}};
-    nkl_compiler_runSrc(compiler, {src.data(), src.size()});
+    nkl_compiler_runFile(compiler, cs2s(in_file));
 
     return 0;
 }

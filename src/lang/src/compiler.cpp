@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <iterator>
 #include <new>
 #include <stack>
 #include <unordered_map>
@@ -15,6 +17,7 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.h"
+#include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
@@ -500,6 +503,16 @@ COMPILE(ptr_type) {
         nkt_get_ptr(c->arena, nkval_as(nktype_t, target_type)));
 }
 
+COMPILE(const_ptr_type) {
+    // TODO Ignoring const in const_ptr_type
+    auto target_type = comptimeCompileNodeGetValue(c, node->args[0].data);
+    // TODO Modeling type_t as *void
+    return makeValue<nktype_t>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        nkt_get_ptr(c->arena, nkval_as(nktype_t, target_type)));
+}
+
 COMPILE(scope) {
     NK_LOG_WRN("TODO scope implementation not finished");
     return compileNode(c, node->args[0].data);
@@ -730,6 +743,27 @@ COMPILE(string) {
     return makeValue<char *>(c, str_t, str);
 }
 
+COMPILE(escaped_string) {
+    auto size = node->token->text.size;
+
+    auto u8_t = nkt_get_numeric(c->arena, Uint8);
+    auto ar_t = nkt_get_array(c->arena, u8_t, size + 1);
+    auto str_t = nkt_get_ptr(c->arena, ar_t);
+
+    auto sb = nksb_create();
+    defer {
+        nksb_free(sb);
+    };
+    nksb_str_unescape(sb, node->token->text);
+    auto unescaped_str = nksb_concat(sb);
+
+    auto str = (char *)nk_allocate(c->arena, unescaped_str.size + 1);
+    std::memcpy(str, unescaped_str.data, size);
+    str[size] = '\0';
+
+    return makeValue<char *>(c, str_t, str);
+}
+
 COMPILE(member) {
     NK_LOG_WRN("TODO member implementation not finished");
     auto lhs = compileNode(c, node->args[0].data);
@@ -755,7 +789,7 @@ COMPILE(member) {
     return makeVoid(c);
 }
 
-COMPILE(fn) {
+ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
     // TODO Refactor fn compilation
 
     std::vector<nkid> params_names;
@@ -773,7 +807,7 @@ COMPILE(fn) {
     nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, false};
+    NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, is_variadic};
     auto fn_t = nkt_get_fn(c->arena, &fn_info);
 
     auto fn = nkir_makeFunct(c->ir);
@@ -811,7 +845,15 @@ COMPILE(fn) {
     return makeValue<void *>(c, fn_t, fn);
 }
 
-COMPILE(fn_type) {
+COMPILE(fn) {
+    return compileFn(c, node, false);
+}
+
+COMPILE(fn_var) {
+    return compileFn(c, node, true);
+}
+
+ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
     std::vector<nkid> params_names;
     std::vector<nktype_t> params_types;
 
@@ -827,11 +869,20 @@ COMPILE(fn_type) {
     nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    NktFnInfo fn_info{ret_t, args_t, NkCallConv_Cdecl, false}; // TODO CallConv Hack for #foreign
+    NktFnInfo fn_info{
+        ret_t, args_t, NkCallConv_Cdecl, is_variadic}; // TODO CallConv Hack for #foreign
     auto fn_t = nkt_get_fn(c->arena, &fn_info);
 
     // TODO Modeling type_t as *void
     return makeValue<nktype_t>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), fn_t);
+}
+
+COMPILE(fn_type) {
+    return compileFnType(c, node, false);
+}
+
+COMPILE(fn_type_var) {
+    return compileFnType(c, node, true);
 }
 
 COMPILE(tag) {
@@ -865,20 +916,31 @@ COMPILE(tag) {
 COMPILE(call) {
     auto lhs = compileNode(c, node->args[0].data);
 
-    auto fn_t = lhs.type;
-
-    NkIrRef args{};
-    if (fn_t->as.fn.args_t->size) {
-        args = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, fn_t->as.fn.args_t));
-    }
+    std::vector<ValueInfo> args_info{};
+    std::vector<nktype_t> args_types{};
 
     auto nodes = node->args[1];
     for (size_t i = 0; i < nodes.size; i++) {
-        auto arg = compileNode(c, nodes.data[i].args[1].data); // TODO Support named args in call
+        auto val_info =
+            compileNode(c, nodes.data[i].args[1].data); // TODO Support named args in call
+        args_info.emplace_back(val_info);
+        args_types.emplace_back(val_info.type);
+    }
+
+    auto args_t = nkt_get_tuple(c->arena, args_types.data(), args_types.size(), 1);
+
+    NkIrRef args{};
+    if (args_t->size) {
+        args = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, args_t));
+    }
+
+    auto fn_t = lhs.type;
+
+    for (size_t i = 0; i < args_info.size(); i++) {
         auto arg_ref = args;
-        arg_ref.offset += fn_t->as.fn.args_t->as.tuple.elems.data[i].offset;
-        arg_ref.type = fn_t->as.fn.args_t->as.tuple.elems.data[i].type;
-        makeRefAndStore(c, arg_ref, arg);
+        arg_ref.offset += args_t->as.tuple.elems.data[i].offset;
+        arg_ref.type = args_t->as.tuple.elems.data[i].type;
+        makeRefAndStore(c, arg_ref, args_info[i]);
     }
 
     return makeInstr(nkir_make_call({}, makeRef(c, lhs), args), fn_t->as.fn.ret_t);
@@ -1125,4 +1187,15 @@ void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     };
     auto root = nkl_parse(ast, tokens);
     nkl_compiler_run(c, root);
+}
+
+void nkl_compiler_runFile(NklCompiler c, nkstr path) {
+    NK_LOG_TRC(__func__);
+    std::ifstream file{std_str(path)};
+    if (file) {
+        std::string src{std::istreambuf_iterator<char>{file}, {}};
+        nkl_compiler_runSrc(c, {src.data(), src.size()});
+    } else {
+        NK_LOG_ERR("failed to open file `%.*s`", path.size, path.data);
+    }
 }

@@ -23,6 +23,7 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap);
 nkstr nksb_concat(NkStringBuilder sb);
 
 void nksb_str_escape(NkStringBuilder sb, nkstr str);
+void nksb_str_unescape(NkStringBuilder sb, nkstr str);
 
 #ifdef __cplusplus
 }

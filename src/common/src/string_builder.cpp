@@ -111,3 +111,41 @@ void nksb_str_escape(NkStringBuilder sb, nkstr str) {
         }
     }
 }
+
+void nksb_str_unescape(NkStringBuilder sb, nkstr str) {
+    for (size_t i = 0; i < str.size; i++) {
+        if (str.data[i] == '\\' && i < str.size - 1) {
+            switch (str.data[++i]) {
+            case 'a':
+                nksb_printf(sb, "%c", '\a');
+                break;
+            case 'b':
+                nksb_printf(sb, "%c", '\b');
+                break;
+            case 'f':
+                nksb_printf(sb, "%c", '\f');
+                break;
+            case 'n':
+                nksb_printf(sb, "%c", '\n');
+                break;
+            case 'r':
+                nksb_printf(sb, "%c", '\r');
+                break;
+            case 't':
+                nksb_printf(sb, "%c", '\t');
+                break;
+            case 'v':
+                nksb_printf(sb, "%c", '\v');
+                break;
+            case '0':
+                nksb_printf(sb, "%c", '\0');
+                break;
+            default:
+                nksb_printf(sb, "%c", str.data[i]);
+                break;
+            }
+        } else {
+            nksb_printf(sb, "%c", str.data[i]);
+        }
+    }
+}

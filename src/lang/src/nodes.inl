@@ -53,7 +53,7 @@ U(addr)  // (expr: node)
 U(return ) // (expr: node)
 
 U(ptr_type) // (target_type: node)
-// U(const_ptr_type)
+U(const_ptr_type)
 // U(slice_type)
 
 U(scope) // (expr: node)
@@ -121,7 +121,7 @@ X(id) // (name: token)
 X(float)  // (value: token)
 X(int)    // (value: token)
 X(string) // (value: token)
-// X(escaped_string) // (value: token)
+X(escaped_string) // (value: token)
 // X(import_path)            // (path: token)
 
 // X(for) // (it: token, range: node, body: node)
@@ -136,8 +136,8 @@ X(member) // (lhs: node, name: token)
 
 X(fn) // (params: [(id=mut|const name: token, type: node, value: node)], ret_t: node, body: ?node)
 X(fn_type)
-// X(fn_var)
-// X(fn_type_var)
+X(fn_var)
+X(fn_type_var)
 
 X(tag) // (tag: token, args: [{name: ?token, value: node}], node: node)
 
