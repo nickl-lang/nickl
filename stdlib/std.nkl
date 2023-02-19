@@ -1,0 +1,4 @@
+#foreign("") printf :: (fmt: *i8, ...) -> i32;
+#foreign("") puts :: (str: *i8) -> i32;
+
+puts("Hello from stdlib!");

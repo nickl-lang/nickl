@@ -4,6 +4,9 @@
 #include <cstring>
 #include <thread>
 
+// TODO filesystem in main
+#include <filesystem>
+
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
 #include "nkl/lang/compiler.h"
@@ -143,7 +146,10 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
-    auto compiler = nkl_compiler_create({cs2s(argv[0])});
+    auto stdlib_dir = (std::filesystem::absolute(std::filesystem::path{argv[0]}) /
+                       "../../../../stdlib/") // TODO A terrible hack with relative stdlib path
+                          .lexically_normal();
+    auto compiler = nkl_compiler_create({cs2s(stdlib_dir.c_str())});
     defer {
         nkl_compiler_free(compiler);
     };

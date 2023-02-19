@@ -20,7 +20,7 @@ class compiler_src : public testing::Test {
     void SetUp() override {
         NK_LOGGER_INIT(NkLoggerOptions{});
 
-        m_compiler = nkl_compiler_create({}); // TODO Providing empty stdlib dir
+        m_compiler = nkl_compiler_create({cs2s(STDLIB_DIR)});
     }
 
     void TearDown() override {

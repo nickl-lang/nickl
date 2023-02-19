@@ -20,7 +20,7 @@ class compiler_ast : public testing::Test {
         NK_LOGGER_INIT(NkLoggerOptions{});
 
         m_ast = nkl_ast_create();
-        m_compiler = nkl_compiler_create({}); // TODO Providing empty stdlib dir
+        m_compiler = nkl_compiler_create({cs2s(STDLIB_DIR)});
         m_arena = nk_create_arena();
     }
 

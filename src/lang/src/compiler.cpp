@@ -116,7 +116,7 @@ struct NklCompiler_T {
     NkIrProg ir;
     NkAllocator *arena;
 
-    std::filesystem::path stdlib_dir;
+    NklCompilerConfig config;
 
     std::stack<Scope> nonpersistent_scope_stack{};
     std::deque<Scope> persistent_scopes{};
@@ -394,7 +394,7 @@ ValueInfo compileNode(NklCompiler c, NklAstNode node);
 void compileStmt(NklCompiler c, NklAstNode node);
 void compileNodeArray(NklCompiler c, NklAstNodeArray nodes);
 
-NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src);
+NkIrFunct nkl_compileFile(NklCompiler c, nkstr path);
 
 #define COMPILE(NAME) ValueInfo _compile_##NAME(NklCompiler c, NklAstNode node)
 
@@ -663,33 +663,20 @@ COMPILE(tuple_type) {
         nkt_get_tuple(c->arena, types.data(), types.size(), 1));
 }
 
-static char const *c_stdlib_src = R"(
-#foreign("") printf :: (fmt: *i8, ...) -> i32;
-#foreign("") puts :: (str: *i8) -> i32;
-)";
-
-static char const *c_compilerlib_src = R"(
-#foreign("", "nkl_compiler_") declareLocal :: (name: *i8, type: *void) -> void;
-)";
-
 COMPILE(import) {
-    auto name = s2nkid(node->args[0].data->token->text);
-    if (name == cs2nkid("std")) {
-        NK_LOG_INF("TODO stdlib injection from src");
-        auto fn = nkl_compileSrc(c, cs2s(c_stdlib_src));
-        auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
-        defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
-        return makeVoid(c);
-    } else if (name == cs2nkid("compiler")) {
-        NK_LOG_INF("TODO compilerlib injection from src");
-        auto fn = nkl_compileSrc(c, cs2s(c_compilerlib_src));
-        auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
-        defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
-        return makeVoid(c);
-    } else {
-        NK_LOG_ERR("TODO import implementation not finished");
+    NK_LOG_WRN("TODO import implementation not finished");
+    auto name = node->args[0].data->token->text;
+    std::string filename = std_str(name) + ".nkl";
+    auto filepath = std::filesystem::path{std_str(c->config.stdlib_dir)} / filename;
+    auto filepath_str = filepath.string();
+    if (!std::filesystem::exists(filepath)) {
+        NK_LOG_ERR("imported file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
         std::abort();
     }
+    auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+    auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
+    defineComptimeConst(c, s2nkid(name), {{.value{fn_val}}, ComptimeConst_Value});
+    return makeVoid(c);
 }
 
 COMPILE(id) {
@@ -1215,14 +1202,11 @@ extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t t
 }
 
 NklCompiler nkl_compiler_create(NklCompilerConfig config) {
-    // TODO auto compiler_dir =
-    //     std::filesystem::absolute(std::filesystem::path{std_view(config.compiler_binary)})
-    //         .lexically_normal();
-    // auto stdlib_dir = (compiler_dir / "../../../../stdlib/").lexically_normal();
+    NK_LOG_DBG("stdlib_dir=%.*s", config.stdlib_dir.size, config.stdlib_dir.data);
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
         .arena = nk_create_arena(),
-        .stdlib_dir = {},
+        .config = config,
     };
 }
 
