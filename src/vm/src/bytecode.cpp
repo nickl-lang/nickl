@@ -345,7 +345,9 @@ NkBcProg nkbc_createProgram(NkIrProg ir) {
 void nkbc_deinitProgram(NkBcProg p) {
     if (p) {
         for (auto dl : p->shobjs) {
-            nkdl_close(dl);
+            if (dl) { // TODO Figure out why do we need this check
+                nkdl_close(dl);
+            }
         }
         for (auto cl : p->closures) {
             nk_native_free_closure(cl);

@@ -394,6 +394,8 @@ ValueInfo compileNode(NklCompiler c, NklAstNode node);
 void compileStmt(NklCompiler c, NklAstNode node);
 void compileNodeArray(NklCompiler c, NklAstNodeArray nodes);
 
+NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src);
+
 #define COMPILE(NAME) ValueInfo _compile_##NAME(NklCompiler c, NklAstNode node)
 
 COMPILE(none) {
@@ -661,81 +663,33 @@ COMPILE(tuple_type) {
         nkt_get_tuple(c->arena, types.data(), types.size(), 1));
 }
 
+static char const *c_stdlib_src = R"(
+#foreign("") printf :: (fmt: *i8, ...) -> i32;
+#foreign("") puts :: (str: *i8) -> i32;
+)";
+
+static char const *c_compilerlib_src = R"(
+#foreign("", "nkl_compiler_") declareLocal :: (name: *i8, type: *void) -> void;
+)";
+
 COMPILE(import) {
-    NK_LOG_WRN("TODO import implementation not finished");
-
-    auto fn = nkir_makeFunct(c->ir);
-    auto pop_fn = pushFn(c, fn);
-
-    NktFnInfo fn_info{
-        nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
-    auto fn_t = nkt_get_fn(c->arena, &fn_info);
-    auto fn_val = asValue(c, makeValue<void *>(c, fn_t, fn));
-
     auto name = s2nkid(node->args[0].data->token->text);
-
-    nkir_startFunct(fn, cs2s("#imported"), fn_t);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
-    gen(c, nkir_make_ret());
-
-    {
-        pushFnScope(c, fn);
-        defer {
-            popScope(c);
-        };
-
-        if (name == cs2nkid("std")) {
-            NK_LOG_INF("TODO stdlib injection");
-
-            auto u8_t = nkt_get_numeric(c->arena, Uint8);
-            auto i32_t = nkt_get_numeric(c->arena, Int32);
-            auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
-
-            NktFnInfo puts_fn_info{
-                i32_t, nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1), NkCallConv_Cdecl, false};
-            auto puts_fn_t = nkt_get_fn(c->arena, &puts_fn_info);
-
-            NktFnInfo printf_fn_info{
-                i32_t, nkt_get_tuple(c->arena, &u8_ptr_t, 1, 1), NkCallConv_Cdecl, true};
-            auto printf_fn_t = nkt_get_fn(c->arena, &printf_fn_info);
-
-            auto so = nkir_makeShObj(c->ir, cs2s("")); // TODO Creating so every time
-
-            defineExtSym(
-                c, cs2nkid("puts"), nkir_makeExtSym(c->ir, so, cs2s("puts"), puts_fn_t), puts_fn_t);
-            defineExtSym(
-                c,
-                cs2nkid("printf"),
-                nkir_makeExtSym(c->ir, so, cs2s("printf"), printf_fn_t),
-                printf_fn_t);
-        } else if (name == cs2nkid("compiler")) {
-            NK_LOG_INF("TODO compilerlib injection");
-
-            auto void_t = nkt_get_void(c->arena);
-            auto void_ptr_t = nkt_get_ptr(c->arena, void_t);
-            auto u8_t = nkt_get_numeric(c->arena, Uint8);
-            auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
-
-            nktype_t declareLocal_args_types[] = {u8_ptr_t, void_ptr_t};
-            NktFnInfo declareLocal_fn_info{
-                void_t,
-                nkt_get_tuple(
-                    c->arena, declareLocal_args_types, AR_SIZE(declareLocal_args_types), 1),
-                NkCallConv_Cdecl,
-                false};
-            auto declareLocal_fn_t = nkt_get_fn(c->arena, &declareLocal_fn_info);
-
-            auto so = nkir_makeShObj(c->ir, cs2s("")); // TODO Creating so every time
-            defineExtSym(
-                c,
-                cs2nkid("declareLocal"),
-                nkir_makeExtSym(c->ir, so, cs2s("nkl_compiler_declareLocal"), declareLocal_fn_t),
-                declareLocal_fn_t);
-        }
+    if (name == cs2nkid("std")) {
+        NK_LOG_INF("TODO stdlib injection from src");
+        auto fn = nkl_compileSrc(c, cs2s(c_stdlib_src));
+        auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
+        defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
+        return makeVoid(c);
+    } else if (name == cs2nkid("compiler")) {
+        NK_LOG_INF("TODO compilerlib injection from src");
+        auto fn = nkl_compileSrc(c, cs2s(c_compilerlib_src));
+        auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
+        defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
+        return makeVoid(c);
+    } else {
+        NK_LOG_ERR("TODO import implementation not finished");
+        std::abort();
     }
-
-    defineComptimeConst(c, name, {{.value{fn_val}}, ComptimeConst_Value});
-    return makeVoid(c);
 }
 
 COMPILE(id) {
@@ -927,29 +881,37 @@ COMPILE(fn_type_var) {
 }
 
 COMPILE(tag) {
-    // TODO Only handling #foreign
+    NK_LOG_WRN("TODO Only handling #foreign tag");
+
+    auto n_tag_name = node->args[0];
+    auto n_args = node->args[1];
+    auto n_def = node->args[2];
+
     assert(
         0 == std::strncmp(
-                 node->args[0].data->token->text.data,
-                 "#foreign",
-                 node->args[0].data->token->text.size));
+                 n_tag_name.data->token->text.data, "#foreign", n_tag_name.data->token->text.size));
 
-    auto args = node->args[1];
-    assert(args.size == 1);
-    auto name = compileNode(c, args.data[0].args[1].data);
+    assert(n_args.size == 1 || n_args.size == 2);
+    auto soname =
+        nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
+    std::string link_prefix =
+        n_args.size == 2
+            ? nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data))
+            : "";
 
-    assert(node->args[2].data->id == n_comptime_const_def);
+    assert(n_def.data->id == n_comptime_const_def);
 
-    nkstr soname{
-        nkval_as(char *, asValue(c, name)), name.type->as.ptr.target_type->as.arr.elem_count};
-    auto so = nkir_makeShObj(c->ir, soname); // TODO Creating so every time
+    auto so = nkir_makeShObj(c->ir, cs2s(soname)); // TODO Creating so every time
 
-    nkstr sym_name{node->args[2].data->args[0].data->token->text};
+    auto sym_name = n_def.data->args[0].data->token->text;
+    auto sym_name_with_prefix_std_str = link_prefix + std_str(sym_name);
+    nkstr sym_name_with_prefix{
+        sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
 
-    auto fn_t_val = compileNode(c, node->args[2].data->args[1].data);
+    auto fn_t_val = compileNode(c, n_def.data->args[1].data);
     auto fn_t = nkval_as(nktype_t, asValue(c, fn_t_val));
 
-    defineExtSym(c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name, fn_t), fn_t);
+    defineExtSym(c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t);
 
     return makeVoid(c);
 }
@@ -1175,6 +1137,75 @@ void compileNodeArray(NklCompiler c, NklAstNodeArray nodes) {
     }
 }
 
+NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
+    NK_LOG_TRC(__func__);
+
+    auto fn = nkir_makeFunct(c->ir);
+    auto pop_fn = pushFn(c, fn);
+
+    NktFnInfo top_level_fn_info{
+        nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
+    auto top_level_fn_t = nkt_get_fn(c->arena, &top_level_fn_info);
+
+    auto prev_compiler = s_compiler;
+    s_compiler = c;
+    defer {
+        s_compiler = prev_compiler;
+    };
+
+    c->is_top_level = true;
+
+    nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+
+    pushFnScope(c, fn);
+    defer {
+        popScope(c);
+    };
+
+    if (root) {
+        c->cur_fn = fn;
+        compileStmt(c, root);
+    }
+
+    gen(c, nkir_make_ret());
+
+    NK_LOG_INF(
+        "ir:\n%s", (char const *)[&]() {
+            auto sb = nksb_create();
+            nkir_inspectFunct(fn, sb);
+            nkir_inspectExtSyms(c->ir, sb);
+            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                nksb_free(sb);
+            });
+        }());
+
+    return fn;
+}
+
+NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
+    NK_LOG_TRC(__func__);
+    auto tokens = nkl_lex(src);
+    auto ast = nkl_ast_create();
+    defer {
+        nkl_ast_free(ast);
+    };
+    auto root = nkl_parse(ast, tokens);
+    return nkl_compile(c, root);
+}
+
+NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
+    NK_LOG_TRC(__func__);
+    std::ifstream file{std_str(path)};
+    if (file) {
+        std::string src{std::istreambuf_iterator<char>{file}, {}};
+        return nkl_compileSrc(c, {src.data(), src.size()});
+    } else {
+        NK_LOG_ERR("failed to open file `%.*s`", path.size, path.data);
+        std::abort();
+    }
+}
+
 } // namespace
 
 extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t type) {
@@ -1184,14 +1215,14 @@ extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t t
 }
 
 NklCompiler nkl_compiler_create(NklCompilerConfig config) {
-    auto compiler_dir =
-        std::filesystem::absolute(std::filesystem::path{std_view(config.compiler_binary)})
-            .lexically_normal();
-    auto stdlib_dir = (compiler_dir / "../../../../stdlib/").lexically_normal();
+    // TODO auto compiler_dir =
+    //     std::filesystem::absolute(std::filesystem::path{std_view(config.compiler_binary)})
+    //         .lexically_normal();
+    // auto stdlib_dir = (compiler_dir / "../../../../stdlib/").lexically_normal();
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
         .arena = nk_create_arena(),
-        .stdlib_dir = stdlib_dir,
+        .stdlib_dir = {},
     };
 }
 
@@ -1203,73 +1234,16 @@ void nkl_compiler_free(NklCompiler c) {
 }
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
-    NK_LOG_TRC(__func__);
-
-    auto top_level_fn = nkir_makeFunct(c->ir);
-    NktFnInfo top_level_fn_info{
-        nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
-    auto top_level_fn_t = nkt_get_fn(c->arena, &top_level_fn_info);
-
-    {
-        auto prev_compiler = s_compiler;
-        s_compiler = c;
-        defer {
-            s_compiler = prev_compiler;
-        };
-
-        c->is_top_level = true;
-
-        nkir_startFunct(top_level_fn, cs2s("#top_level"), top_level_fn_t);
-        nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
-
-        pushFnScope(c, top_level_fn);
-        defer {
-            popScope(c);
-        };
-
-        if (root) {
-            c->cur_fn = top_level_fn;
-            compileStmt(c, root);
-        }
-
-        gen(c, nkir_make_ret());
-
-        auto sb = nksb_create();
-        defer {
-            nksb_free(sb);
-        };
-
-        NK_LOG_INF(
-            "ir:\n%s", (char const *)[&]() {
-                auto sb = nksb_create();
-                nkir_inspectFunct(top_level_fn, sb);
-                nkir_inspectExtSyms(c->ir, sb);
-                return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                    nksb_free(sb);
-                });
-            }());
-    }
-    nkir_invoke({&top_level_fn, top_level_fn_t}, {}, {});
+    auto fn = nkl_compile(c, root);
+    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
 
 void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
-    NK_LOG_TRC(__func__);
-    auto tokens = nkl_lex(src);
-    auto ast = nkl_ast_create();
-    defer {
-        nkl_ast_free(ast);
-    };
-    auto root = nkl_parse(ast, tokens);
-    nkl_compiler_run(c, root);
+    auto fn = nkl_compileSrc(c, src);
+    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
 
 void nkl_compiler_runFile(NklCompiler c, nkstr path) {
-    NK_LOG_TRC(__func__);
-    std::ifstream file{std_str(path)};
-    if (file) {
-        std::string src{std::istreambuf_iterator<char>{file}, {}};
-        nkl_compiler_runSrc(c, {src.data(), src.size()});
-    } else {
-        NK_LOG_ERR("failed to open file `%.*s`", path.size, path.data);
-    }
+    auto fn = nkl_compileFile(c, path);
+    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
