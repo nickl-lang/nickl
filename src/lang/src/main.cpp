@@ -143,7 +143,7 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
-    auto compiler = nkl_compiler_create({}); // TODO Empty compiler config
+    auto compiler = nkl_compiler_create({cs2s(argv[0])});
     defer {
         nkl_compiler_free(compiler);
     };

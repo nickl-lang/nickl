@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    nkstr stdlib_dir;
+    nkstr compiler_binary;
 } NklCompilerConfig;
 
 typedef struct NklCompiler_T *NklCompiler;

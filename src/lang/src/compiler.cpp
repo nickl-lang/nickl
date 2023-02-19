@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <new>
@@ -114,6 +115,8 @@ static thread_local NklCompiler s_compiler;
 struct NklCompiler_T {
     NkIrProg ir;
     NkAllocator *arena;
+
+    std::filesystem::path stdlib_dir;
 
     std::stack<Scope> nonpersistent_scope_stack{};
     std::deque<Scope> persistent_scopes{};
@@ -1181,10 +1184,14 @@ extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t t
 }
 
 NklCompiler nkl_compiler_create(NklCompilerConfig config) {
-    // TODO config unused
+    auto compiler_dir =
+        std::filesystem::absolute(std::filesystem::path{std_view(config.compiler_binary)})
+            .lexically_normal();
+    auto stdlib_dir = (compiler_dir / "../../../../stdlib/").lexically_normal();
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
         .arena = nk_create_arena(),
+        .stdlib_dir = stdlib_dir,
     };
 }
 
