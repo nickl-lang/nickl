@@ -48,6 +48,9 @@ if(ENABLE_PROFILING)
     find_package(easy_profiler REQUIRED)
 endif()
 
+set(STDLIB_DIR ${PROJECT_SOURCE_DIR}/stdlib)
+configure_file(config.nkl.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl)
+
 add_subdirectory(src)
 
 if(BUILD_TESTS)

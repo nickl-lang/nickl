@@ -17,10 +17,11 @@ NK_LOG_USE_SCOPE(test);
 
 class compiler_ast : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT(NkLoggerOptions{});
+        NK_LOGGER_INIT({});
 
         m_ast = nkl_ast_create();
-        m_compiler = nkl_compiler_create({cs2s(STDLIB_DIR)});
+        m_compiler = nkl_compiler_create();
+        nkl_compiler_configure(m_compiler, cs2s(CONFIG_DIR));
         m_arena = nk_create_arena();
     }
 

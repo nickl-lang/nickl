@@ -146,10 +146,10 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
-    auto stdlib_dir = (std::filesystem::absolute(std::filesystem::path{argv[0]}) /
-                       "../../../../stdlib/") // TODO A terrible hack with relative stdlib path
-                          .lexically_normal();
-    auto compiler = nkl_compiler_create({cs2s(stdlib_dir.c_str())});
+    auto config_dir =
+        std::filesystem::absolute(std::filesystem::path{argv[0]}).parent_path().lexically_normal();
+    auto compiler = nkl_compiler_create();
+    nkl_compiler_configure(compiler, cs2s(config_dir.c_str()));
     defer {
         nkl_compiler_free(compiler);
     };

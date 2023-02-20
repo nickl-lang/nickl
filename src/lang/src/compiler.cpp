@@ -116,15 +116,16 @@ struct NklCompiler_T {
     NkIrProg ir;
     NkAllocator *arena;
 
-    NklCompilerConfig config;
+    std::string stdlib_dir{};
+    bool configured = false;
 
     std::stack<Scope> nonpersistent_scope_stack{};
     std::deque<Scope> persistent_scopes{};
     std::vector<Scope *> scopes{};
 
-    std::unordered_map<NkIrFunct, Scope *> fn_scopes;
+    std::unordered_map<NkIrFunct, Scope *> fn_scopes{};
 
-    NkIrFunct cur_fn;
+    NkIrFunct cur_fn{};
     bool is_top_level{};
 
     size_t funct_counter{};
@@ -269,6 +270,9 @@ nkval_t comptimeConstGetValue(NklCompiler c, ComptimeConst &cnst) {
         cnst.kind = ComptimeConst_Value;
         return val;
     }
+    default:
+        assert(!"unreachable");
+        return {};
     }
 }
 
@@ -291,6 +295,9 @@ nktype_t comptimeConstType(ComptimeConst cnst) {
         return nkval_typeof(cnst.value);
     case ComptimeConst_Funct:
         return nkir_functGetType(cnst.funct)->as.fn.ret_t;
+    default:
+        assert(!"unreachable");
+        return {};
     }
 }
 
@@ -665,9 +672,13 @@ COMPILE(tuple_type) {
 
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
+    if (!c->configured) {
+        NK_LOG_ERR("stdlib is not available");
+        std::abort();
+    }
     auto name = node->args[0].data->token->text;
     std::string filename = std_str(name) + ".nkl";
-    auto filepath = std::filesystem::path{std_str(c->config.stdlib_dir)} / filename;
+    auto filepath = std::filesystem::path{c->stdlib_dir} / filename;
     auto filepath_str = filepath.string();
     if (!std::filesystem::exists(filepath)) {
         NK_LOG_ERR("imported file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
@@ -943,21 +954,18 @@ COMPILE(assign) {
         auto rhs = compileNode(c, node->args[1].data);
         auto res = resolve(c, name);
         NkIrRef ref;
-        nktype_t type;
         switch (res.kind) {
         case Decl_Local:
             if (res.as.local.type->id != rhs.type->id) {
                 // return error("cannot assign values of different types"), ValueInfo{};
             }
             ref = nkir_makeFrameRef(c->ir, res.as.local.id);
-            type = res.as.local.type;
             break;
         case Decl_Global:
             if (res.as.local.type->id != rhs.type->id) {
                 // return error("cannot assign values of different types"), ValueInfo{};
             }
             ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
-            type = res.as.global.type;
             break;
         case Decl_Undefined:
             NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
@@ -1201,12 +1209,10 @@ extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t t
     defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type);
 }
 
-NklCompiler nkl_compiler_create(NklCompilerConfig config) {
-    NK_LOG_DBG("stdlib_dir=%.*s", config.stdlib_dir.size, config.stdlib_dir.data);
+NklCompiler nkl_compiler_create() {
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
         .arena = nk_create_arena(),
-        .config = config,
     };
 }
 
@@ -1215,6 +1221,34 @@ void nkl_compiler_free(NklCompiler c) {
     nkir_deinitProgram(c->ir);
     c->~NklCompiler_T();
     nk_free(nk_default_allocator, c);
+}
+
+void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
+    NK_LOG_TRC(__func__);
+    NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
+    auto config_filepath = std::filesystem::path{std_view(config_dir)} / "config.nkl";
+    auto filepath_str = config_filepath.string();
+    if (!std::filesystem::exists(config_filepath)) {
+        NK_LOG_ERR("config file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
+        std::abort();
+    }
+    auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+    auto &config = c->fn_scopes[fn]->locals;
+    auto it = config.find(cs2nkid("stdlib_dir"));
+    if (it == config.end()) {
+        NK_LOG_ERR("`stdlib_dir` is missing in config");
+        std::abort();
+    }
+    // TODO Implement more convenient value acquisition
+    auto val_info = declToValueInfo(it->second);
+    if (!isKnown(val_info)) {
+        NK_LOG_ERR("`stdlib_dir` value is not known");
+        std::abort();
+    }
+    auto val = asValue(c, val_info);
+    c->stdlib_dir = nkval_as(char const *, val); // TODO Assuming correct type for stdlib_dir
+    NK_LOG_DBG("stdlib_dir=`%.*s`", c->stdlib_dir.size(), c->stdlib_dir.c_str());
+    c->configured = true;
 }
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {

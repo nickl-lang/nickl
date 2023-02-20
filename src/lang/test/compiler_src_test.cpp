@@ -18,9 +18,10 @@ NK_LOG_USE_SCOPE(test);
 
 class compiler_src : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT(NkLoggerOptions{});
+        NK_LOGGER_INIT({});
 
-        m_compiler = nkl_compiler_create({cs2s(STDLIB_DIR)});
+        m_compiler = nkl_compiler_create();
+        nkl_compiler_configure(m_compiler, cs2s(CONFIG_DIR));
     }
 
     void TearDown() override {
