@@ -1,0 +1,11 @@
+import std;
+
+BUF_SIZE :: 64;
+buf: [BUF_SIZE]u8;
+
+file := std.fopen("file.txt", "r");
+
+std.fread(&buf, BUF_SIZE, BUF_SIZE, file);
+std.printf("%s", &buf);
+
+std.fclose(file);

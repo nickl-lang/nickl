@@ -51,7 +51,12 @@ function(def_run_test)
 
     get_filename_component(TEST_NAME ${ARG_FILE} NAME)
     get_filename_component(ABS_FILE ${ARG_FILE} ABSOLUTE)
-    add_test(NAME run.${TEST_NAME} COMMAND ${PROJECT_NAME} ${ABS_FILE})
+
+    add_test(
+        NAME run.${TEST_NAME}
+        COMMAND ${PROJECT_NAME} ${ABS_FILE}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
 
     if(ARG_OUTPUT_REGEX)
         set_tests_properties(run.${TEST_NAME} PROPERTIES PASS_REGULAR_EXPRESSION ${ARG_OUTPUT_REGEX})
