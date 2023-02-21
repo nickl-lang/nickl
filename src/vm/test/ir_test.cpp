@@ -291,9 +291,11 @@ TEST_F(ir, nested_functions_call_while_compiling) {
             nkir_makeConstRef(p, {&const_64, log2_args_t})));
     nkir_gen(p, nkir_make_ret());
 
-    uint32_t ar_size = 0;
+    uint64_t ar_size = 0; // Must be aligned to 8
     nkir_invoke({&getArrSize, getArrSize_fn_t}, {&ar_size, u32_t}, {});
     EXPECT_EQ(ar_size, 6);
+
+    EXPECT_NE(p, nullptr);
 
     nkir_activateFunct(p, test);
 
@@ -445,7 +447,7 @@ TEST_F(ir, callback_from_native) {
 
     inspect(p);
 
-    uint32_t res = 0;
+    uint64_t res = 0; // Must be aligned to 8
     nkir_invoke({&test, test_fn_t}, {&res, u32_t}, {});
     EXPECT_EQ(res, 46);
 }

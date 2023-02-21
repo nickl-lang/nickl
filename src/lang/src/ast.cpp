@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <deque>
+#include <iostream>
 #include <new>
 
 #include "ast_impl.h"
@@ -43,7 +44,8 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
 
         if (node->id) {
             _newline();
-            nksb_printf(sb, "#%s", nkid2cs(node->id));
+            auto id_str = nkid2s(node->id);
+            nksb_printf(sb, "#%.*s", id_str.size, id_str.data);
         } else {
             _newline();
             nksb_printf(sb, "(null)");

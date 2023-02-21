@@ -7,6 +7,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <new>
 #include <stack>
@@ -156,9 +157,12 @@ void pushFnScope(NklCompiler c, NkIrFunct fn) {
 }
 
 void popScope(NklCompiler c) {
-    auto scope = &c->nonpersistent_scope_stack.top();
-    if (scope == c->scopes.back()) {
-        c->nonpersistent_scope_stack.pop();
+    assert(!c->scopes.empty() && "popping an empty scope stack");
+    if (!c->nonpersistent_scope_stack.empty()) {
+        auto scope = &c->nonpersistent_scope_stack.top();
+        if (scope == c->scopes.back()) {
+            c->nonpersistent_scope_stack.pop();
+        }
     }
     c->scopes.pop_back();
     NK_LOG_DBG("exiting scope=%lu", c->scopes.size());
@@ -906,8 +910,7 @@ COMPILE(tag) {
     nkstr sym_name_with_prefix{
         sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
 
-    auto fn_t_val = compileNode(c, n_def.data->args[1].data);
-    auto fn_t = nkval_as(nktype_t, asValue(c, fn_t_val));
+    auto fn_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, n_def.data->args[1].data));
 
     defineExtSym(c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t);
 
@@ -1079,6 +1082,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
 
     if (isKnown(cnst_val)) {
         nkir_discardFunct(fn);
+        c->fn_scopes.erase(fn); // TODO Actually delete persistent scopes
 
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
