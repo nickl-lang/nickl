@@ -81,7 +81,7 @@ val;
 
 TEST_F(compiler_src, native_puts) {
     test(R"(
-#foreign("")
+#foreign("c")
 puts :: (str: *u8) -> void;
 puts("Hello, World!");
 )");

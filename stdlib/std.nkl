@@ -1,5 +1,5 @@
-#foreign("") printf :: (format: *i8, ...) -> i32;
-#foreign("") puts :: (str: *i8) -> i32;
+#foreign("c") printf :: (format: *i8, ...) -> i32;
+#foreign("c") puts :: (str: *i8) -> i32;
 
 FILE :: void; // TODO Defining FILE as void in stdlib
 
@@ -7,16 +7,16 @@ STDIN_FILENO  :: 0;
 STDOUT_FILENO :: 1;
 STDERR_FILENO :: 2;
 
-#foreign("") fopen :: (path: *i8, mode: *i8) -> *FILE;
-#foreign("") fdopen :: (fd: i32, mode: *i8) -> *FILE;
-#foreign("") freopen :: (path: *i8, mode: *i8, stream: *FILE) -> *FILE;
+#foreign("c") fopen :: (path: *i8, mode: *i8) -> *FILE;
+#foreign("c") fdopen :: (fd: i32, mode: *i8) -> *FILE;
+#foreign("c") freopen :: (path: *i8, mode: *i8, stream: *FILE) -> *FILE;
 
-#foreign("") fclose :: (stream: *FILE) -> i32;
-#foreign("") fflush :: (stream: *FILE) -> i32;
+#foreign("c") fclose :: (stream: *FILE) -> i32;
+#foreign("c") fflush :: (stream: *FILE) -> i32;
 
-#foreign("") fprintf :: (stream: *FILE, format: *i8, ... ) -> i32;
-#foreign("") fputs :: (str: *i8, stream: *FILE) -> i32;
+#foreign("c") fprintf :: (stream: *FILE, format: *i8, ... ) -> i32;
+#foreign("c") fputs :: (str: *i8, stream: *FILE) -> i32;
 
-#foreign("") fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
+#foreign("c") fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
 
 puts("Hello from stdlib!");

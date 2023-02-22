@@ -49,6 +49,7 @@ if(ENABLE_PROFILING)
 endif()
 
 set(STDLIB_DIR ${PROJECT_SOURCE_DIR}/stdlib)
+set(LIBC_NAME libc.so.6)
 configure_file(config.nkl.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl)
 
 add_subdirectory(src)

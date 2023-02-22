@@ -118,6 +118,7 @@ struct NklCompiler_T {
     NkAllocator *arena;
 
     std::string stdlib_dir{};
+    std::string libc_name{};
     bool configured = false;
 
     std::stack<Scope> nonpersistent_scope_stack{};
@@ -894,8 +895,11 @@ COMPILE(tag) {
                  n_tag_name.data->token->text.data, "#foreign", n_tag_name.data->token->text.size));
 
     assert(n_args.size == 1 || n_args.size == 2);
-    auto soname =
+    std::string soname =
         nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
+    if (soname == "c" || soname == "C") {
+        soname = c->libc_name;
+    }
     std::string link_prefix =
         n_args.size == 2
             ? nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data))
@@ -903,7 +907,7 @@ COMPILE(tag) {
 
     assert(n_def.data->id == n_comptime_const_def);
 
-    auto so = nkir_makeShObj(c->ir, cs2s(soname)); // TODO Creating so every time
+    auto so = nkir_makeShObj(c->ir, cs2s(soname.c_str())); // TODO Creating so every time
 
     auto sym_name = n_def.data->args[0].data->token->text;
     auto sym_name_with_prefix_std_str = link_prefix + std_str(sym_name);
@@ -1227,6 +1231,22 @@ void nkl_compiler_free(NklCompiler c) {
     nk_free(nk_default_allocator, c);
 }
 
+template <class T>
+T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
+    auto it = config.find(cs2nkid(name.c_str()));
+    if (it == config.end()) {
+        NK_LOG_ERR("`stdlib_dir` is missing in config");
+        std::abort();
+    }
+    auto val_info = declToValueInfo(it->second);
+    if (!isKnown(val_info)) {
+        NK_LOG_ERR("`stdlib_dir` value is not known");
+        std::abort();
+    }
+    auto val = asValue(c, val_info);
+    return nkval_as(T, val); // TODO Reinterpret cast in compiler without check
+}
+
 void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     NK_LOG_TRC(__func__);
     NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
@@ -1238,20 +1258,13 @@ void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     }
     auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
     auto &config = c->fn_scopes[fn]->locals;
-    auto it = config.find(cs2nkid("stdlib_dir"));
-    if (it == config.end()) {
-        NK_LOG_ERR("`stdlib_dir` is missing in config");
-        std::abort();
-    }
-    // TODO Implement more convenient value acquisition
-    auto val_info = declToValueInfo(it->second);
-    if (!isKnown(val_info)) {
-        NK_LOG_ERR("`stdlib_dir` value is not known");
-        std::abort();
-    }
-    auto val = asValue(c, val_info);
-    c->stdlib_dir = nkval_as(char const *, val); // TODO Assuming correct type for stdlib_dir
+
+    c->stdlib_dir = getConfigValue<char const *>(c, "stdlib_dir", config);
     NK_LOG_DBG("stdlib_dir=`%.*s`", c->stdlib_dir.size(), c->stdlib_dir.c_str());
+
+    c->libc_name = getConfigValue<char const *>(c, "libc_name", config);
+    NK_LOG_DBG("libc_name=`%.*s`", c->libc_name.size(), c->libc_name.c_str());
+
     c->configured = true;
 }
 

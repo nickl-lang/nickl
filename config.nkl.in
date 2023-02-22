@@ -1,1 +1,2 @@
 stdlib_dir :: "@STDLIB_DIR@";
+libc_name :: "@LIBC_NAME@";
