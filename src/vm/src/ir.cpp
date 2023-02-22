@@ -314,9 +314,16 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
         instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
         (instr.arg[0].ref.ref_type != NkIrRef_Const && instr.arg[0].ref.ref_type != NkIrRef_Arg));
 
-    size_t id = p->instrs.size();
-    p->instrs.emplace_back(instr);
-    p->blocks[p->cur_funct->cur_block].instrs.emplace_back(id);
+    auto &instrs = p->instrs;
+    auto &block = p->blocks[p->cur_funct->cur_block].instrs;
+
+    if (instr.code == nkir_ret && block.size() && instrs[block.back()].code == nkir_ret) {
+        return;
+    }
+
+    size_t id = instrs.size();
+    instrs.emplace_back(instr);
+    block.emplace_back(id);
 }
 
 void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
