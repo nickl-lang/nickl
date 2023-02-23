@@ -19,4 +19,6 @@ STDERR_FILENO :: 2;
 
 #foreign("c") fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
 
+#foreign("c") atoi :: (str: *i8) -> i32;
+
 puts("Hello from stdlib!");

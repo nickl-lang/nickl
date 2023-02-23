@@ -1,1 +1,6 @@
 #foreign("", "nkl_compiler_") declareLocal :: (name: *i8, type: *void) -> void;
+
+buildExecutable :: () {
+    import std;
+    std.puts("TODO buildExecutable");
+}
