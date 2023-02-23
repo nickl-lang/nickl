@@ -1,0 +1,631 @@
+#include "translate_to_c.hpp"
+
+#include <limits>
+
+#include "nk/ds/hashmap.hpp"
+#include "nk/str/dynamic_string_builder.hpp"
+#include "nk/utils/logger.h"
+
+namespace {
+
+LOG_USE_SCOPE(nk::vm::translate_to_c);
+
+struct value_hm_ctx {
+    static hash_t hash(value_t key) {
+        return hash_array((uint8_t *)&key, (uint8_t *)&key + sizeof(key));
+    }
+
+    static bool equal_to(value_t lhs, value_t rhs) {
+        return val_data(lhs) == val_data(rhs) && val_typeid(lhs) == val_typeid(rhs);
+    }
+};
+
+struct WriterCtx {
+    HashMap<type_t, string> type_map;
+    size_t typedecl_count;
+
+    HashMap<value_t, string, value_hm_ctx> const_map;
+    size_t const_count;
+
+    DynamicStringBuilder types_s;
+    DynamicStringBuilder data_s;
+    DynamicStringBuilder forward_s;
+    DynamicStringBuilder main_s;
+
+    StackAllocator tmp_arena;
+    StackAllocator str_arena;
+};
+
+void _writePreabmle(StringBuilder &src) {
+    src << "#include <stdint.h>\n\n";
+}
+
+void _writeType(WriterCtx &ctx, type_t type, StringBuilder &src) {
+    auto found_str = ctx.type_map.find(type);
+    if (found_str) {
+        src << *found_str;
+        return;
+    }
+
+    DynamicStringBuilder tmp_s{};
+    defer {
+        tmp_s.deinit();
+    };
+    tmp_s.reserve(100);
+    bool is_complex = false;
+
+    switch (type->typeclass_id) {
+    case Type_Numeric:
+        switch (type->as.num.value_type) {
+        case Int8:
+            tmp_s << "char";
+            break;
+        case Int16:
+            tmp_s << "int16_t";
+            break;
+        case Int32:
+            tmp_s << "int32_t";
+            break;
+        case Int64:
+            tmp_s << "int64_t";
+            break;
+        case Uint8:
+            tmp_s << "uint8_t";
+            break;
+        case Uint16:
+            tmp_s << "uint16_t";
+            break;
+        case Uint32:
+            tmp_s << "uint32_t";
+            break;
+        case Uint64:
+            tmp_s << "uint64_t";
+            break;
+        case Float32:
+            tmp_s << "float";
+            break;
+        case Float64:
+            tmp_s << "double";
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        break;
+    case Type_Ptr:
+        tmp_s << "void*";
+        break;
+    case Type_Void:
+        tmp_s << "void";
+        break;
+    case Type_Tuple: {
+        is_complex = true;
+        tmp_s << "struct {\n";
+        for (size_t i = 0; i < types::tuple_size(type); i++) {
+            tmp_s << "  ";
+            _writeType(ctx, types::tuple_typeAt(type, i), tmp_s);
+            tmp_s << " _" << i << ";\n";
+        }
+        tmp_s << "}";
+        break;
+    }
+    case Type_Array: {
+        is_complex = true;
+        tmp_s << "struct { ";
+        _writeType(ctx, types::array_elemType(type), tmp_s);
+        tmp_s << " _data[" << types::array_size(type) << "]; }";
+        break;
+    }
+    default:
+        assert(!"type not implemented");
+        break;
+    }
+
+    auto const frame = ctx.tmp_arena.pushFrame();
+    defer {
+        ctx.tmp_arena.popFrame(frame);
+    };
+
+    auto tmp_str = tmp_s.moveStr(ctx.tmp_arena);
+
+    if (is_complex) {
+        ctx.types_s << "typedef " << tmp_str << " type" << ctx.typedecl_count << ";\n";
+        tmp_s << "type" << ctx.typedecl_count;
+        tmp_str = tmp_s.moveStr(ctx.tmp_arena);
+        ctx.typedecl_count++;
+    }
+
+    auto type_str = tmp_str.copy(ctx.str_arena.alloc<char>(tmp_str.size));
+    ctx.type_map.insert(type, type_str);
+    src << (string)type_str;
+}
+
+void _writeConst(WriterCtx &ctx, value_t val, StringBuilder &src, bool is_complex = false) {
+    auto found_str = ctx.const_map.find(val);
+    if (found_str) {
+        src << *found_str;
+        return;
+    }
+
+    DynamicStringBuilder tmp_s{};
+    defer {
+        tmp_s.deinit();
+    };
+    tmp_s.reserve(100);
+
+    switch (val_typeclassid(val)) {
+    case Type_Numeric: {
+        auto value_type = val_typeof(val)->as.num.value_type;
+        switch (value_type) {
+        case Int8:
+            tmp_s << (int)val_as(int8_t, val);
+            break;
+        case Uint8:
+            tmp_s << (unsigned)val_as(uint8_t, val);
+            break;
+        case Int16:
+            tmp_s << val_as(int16_t, val);
+            break;
+        case Uint16:
+            tmp_s << val_as(uint16_t, val);
+            break;
+        case Int32:
+            tmp_s << val_as(int32_t, val);
+            break;
+        case Uint32:
+            tmp_s << val_as(uint32_t, val);
+            break;
+        case Int64:
+            tmp_s << val_as(int64_t, val);
+            break;
+        case Uint64:
+            tmp_s << val_as(uint64_t, val);
+            break;
+        case Float32:
+            tmp_s.printf("%.*g", std::numeric_limits<float>::max_digits10, val_as(float, val));
+            break;
+        case Float64:
+            tmp_s.printf("%.*lg", std::numeric_limits<double>::max_digits10, val_as(double, val));
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        if (value_type >= Float32) {
+            if (val_sizeof(val) == 4) {
+                tmp_s << "f";
+            }
+        } else {
+            if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 ||
+                value_type == Uint64) {
+                tmp_s << "u";
+            }
+            if (val_sizeof(val) == 4) {
+                tmp_s << "l";
+            } else if (val_sizeof(val) == 8) {
+                tmp_s << "ll";
+            }
+        }
+        break;
+    }
+    case Type_Ptr:
+        tmp_s << "&";
+        _writeConst(ctx, {val_as(void *, val), val_typeof(val)->as.ptr.target_type}, tmp_s, true);
+        break;
+    case Type_Tuple: {
+        is_complex = true;
+        tmp_s << "{ ";
+        for (size_t i = 0; i < val_tuple_size(val); i++) {
+            _writeConst(ctx, val_tuple_at(val, i), tmp_s);
+            tmp_s << ", ";
+        }
+        tmp_s << "}";
+        break;
+    }
+    case Type_Array: {
+        is_complex = true;
+        tmp_s << "{ ";
+        for (size_t i = 0; i < val_array_size(val); i++) {
+            _writeConst(ctx, val_array_at(val, i), tmp_s);
+            tmp_s << ", ";
+        }
+        tmp_s << "}";
+        break;
+    }
+    default:
+        assert(!"const type not implemented");
+        break;
+    }
+
+    auto const frame = ctx.tmp_arena.pushFrame();
+    defer {
+        ctx.tmp_arena.popFrame(frame);
+    };
+
+    auto tmp_str = tmp_s.moveStr(ctx.tmp_arena);
+
+    if (is_complex) {
+        _writeType(ctx, val_typeof(val), ctx.data_s);
+        ctx.data_s << " const" << ctx.const_count << " = " << tmp_str << ";\n";
+        tmp_s << "const" << ctx.const_count;
+        tmp_str = tmp_s.moveStr(ctx.tmp_arena);
+        ctx.const_count++;
+    }
+
+    auto const_str = tmp_str.copy(ctx.tmp_arena.alloc<char>(tmp_str.size));
+    ctx.const_map.insert(val, const_str);
+    src << (string)const_str;
+}
+
+void _writeFnSig(
+    WriterCtx &ctx,
+    StringBuilder &src,
+    string name,
+    type_t ret_t,
+    type_t args_t,
+    bool va = false) {
+    _writeType(ctx, ret_t, src);
+    src << " " << name << "(";
+
+    for (size_t i = 0; i < types::tuple_size(args_t); i++) {
+        if (i) {
+            src << ", ";
+        }
+        _writeType(ctx, types::tuple_typeAt(args_t, i), src);
+        src << " arg" << i;
+    }
+    if (va) {
+        src << ", ...";
+    }
+    src << ")";
+}
+
+void _writeProgram(WriterCtx &ctx, ir::Program const &ir) {
+    auto &src = ctx.main_s;
+
+    _writePreabmle(ctx.types_s);
+
+    auto block_name_by_id = ctx.tmp_arena.alloc<string>(ir.blocks.size);
+
+    for (auto const &f : ir.functs) {
+        for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
+            block_name_by_id[f.first_block + b.id] = b.name;
+        }
+    }
+
+    for (auto const &sym : ir.exsyms) {
+        switch (sym.sym_type) {
+        case ir::Sym_Var:
+            assert(!"external vars not implemented");
+            break;
+        case ir::Sym_Funct:
+            ctx.forward_s << "extern ";
+            _writeFnSig(
+                ctx,
+                ctx.forward_s,
+                id2s(sym.name),
+                sym.as.funct.ret_t,
+                sym.as.funct.args_t,
+                sym.as.funct.is_variadic);
+            ctx.forward_s << ";\n";
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+    }
+
+    for (auto const &f : ir.functs) {
+        if (f.name[0] == ':') {
+            continue;
+        }
+
+        _writeFnSig(ctx, ctx.forward_s, f.name, f.ret_t, f.args_t);
+        ctx.forward_s << ";\n";
+
+        src << "\n";
+        _writeFnSig(ctx, src, f.name, f.ret_t, f.args_t);
+        src << " {\n\n";
+
+        _writeType(ctx, types::get_array(types::get_numeric(Uint8), REG_SIZE * Reg_Count), src);
+        src << " reg;\n";
+
+        for (size_t i = 0; auto type : f.locals) {
+            _writeType(ctx, type, src);
+            src << " var" << i++ << ";\n";
+        }
+
+        if (f.ret_t->typeclass_id != Type_Void) {
+            _writeType(ctx, f.ret_t, src);
+            src << " ret;\n";
+        }
+
+        src << "\n";
+
+        for (auto const &b : ir.blocks.slice(f.first_block, f.block_count)) {
+            src << "l_" << b.name << ":\n";
+
+            auto _writeRef = [&](ir::Ref const &ref) {
+                if (ref.ref_type == ir::Ref_Const) {
+                    _writeConst(ctx, {ref.value.data, ref.type}, src);
+                    return;
+                }
+                src << "*(";
+                _writeType(ctx, ref.type, src);
+                src << "*)";
+                if (ref.post_offset) {
+                    src << "((uint8_t*)";
+                }
+                if (ref.offset) {
+                    src << "((uint8_t*)";
+                }
+                if (!ref.is_indirect) {
+                    src << "&";
+                }
+                switch (ref.ref_type) {
+                case ir::Ref_Frame:
+                    src << "var" << ref.value.index;
+                    break;
+                case ir::Ref_Arg:
+                    src << "arg" << ref.value.index;
+                    break;
+                case ir::Ref_Ret:
+                    src << "ret";
+                    break;
+                case ir::Ref_Global:
+                    assert(!"global ref not implemented");
+                    break;
+                case ir::Ref_Reg:
+                    src << "*((uint8_t*)&reg+" << ref.value.index * REG_SIZE << ")";
+                    break;
+                case ir::Ref_ExtVar:
+                    assert(!"ext var ref not implemented");
+                    break;
+                default:
+                    assert(!"unreachable");
+                case ir::Ref_None:
+                case ir::Ref_Const:
+                    break;
+                }
+                if (ref.offset) {
+                    src << "+" << ref.offset << ")";
+                }
+                if (ref.post_offset) {
+                    src << "+" << ref.post_offset << ")";
+                }
+            };
+
+            for (auto const &instr : ir.instrs.slice(b.first_instr, b.instr_count)) {
+                src << "  ";
+
+                if (instr.arg[0].arg_type == ir::Arg_Ref &&
+                    instr.arg[0].as.ref.ref_type != ir::Ref_None) {
+                    _writeRef(instr.arg[0].as.ref);
+                    src << " = ";
+                }
+
+                switch (instr.code) {
+                case ir::ir_ret:
+                    src << "return";
+                    if (f.ret_t->typeclass_id != Type_Void) {
+                        src << " ret";
+                    }
+                    break;
+                case ir::ir_jmp:
+                    src << "goto l_" << block_name_by_id[f.first_block + instr.arg[1].as.id];
+                    break;
+                case ir::ir_jmpz:
+                    src << "if (0 == ";
+                    _writeRef(instr.arg[1].as.ref);
+                    src << ") { goto l_" << block_name_by_id[f.first_block + instr.arg[2].as.id]
+                        << "; }";
+                    break;
+                case ir::ir_jmpnz:
+                    src << "if (";
+                    _writeRef(instr.arg[1].as.ref);
+                    src << ") { goto l_" << block_name_by_id[f.first_block + instr.arg[2].as.id]
+                        << "; }";
+                    break;
+                case ir::ir_cast:
+                    src << "(";
+                    assert(
+                        instr.arg[1].as.ref.ref_type == ir::Ref_Const &&
+                        "type must be known for cast");
+                    _writeType(ctx, *(type_t *)instr.arg[1].as.ref.value.data, src);
+                    src << ")";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_call: {
+                    switch (instr.arg[1].arg_type) {
+                    case ir::Arg_FunctId:
+                        src << ir.functs[instr.arg[1].as.id].name;
+                        //@Todo Unfinished call compilation
+                        break;
+                    case ir::Arg_ExtFunctId: {
+                        auto &sym = ir.exsyms[instr.arg[1].as.id];
+                        src << id2s(sym.name);
+                        break;
+                    }
+                    case ir::Arg_Ref:
+                        assert(!"cannot compile ref call");
+                        break;
+                    default:
+                        assert(!"unreachable");
+                        break;
+                    }
+                    src << "(";
+                    if (instr.arg[2].as.ref.ref_type != ir::Ref_None) {
+                        auto args_t = instr.arg[2].as.ref.type;
+                        for (size_t i = 0; i < types::tuple_size(args_t); i++) {
+                            if (i) {
+                                src << ", ";
+                            }
+                            src << "(";
+                            _writeRef(instr.arg[2].as.ref);
+                            src << ")._" << i;
+                        }
+                    }
+                    src << ")";
+                    break;
+                }
+                case ir::ir_mov:
+                    _writeRef(instr.arg[1].as.ref);
+                    break;
+                case ir::ir_lea:
+                    src << "&";
+                    _writeRef(instr.arg[1].as.ref);
+                    break;
+                case ir::ir_neg:
+                    src << "-";
+                    _writeRef(instr.arg[1].as.ref);
+                    break;
+                case ir::ir_compl:
+                    src << "~";
+                    _writeRef(instr.arg[1].as.ref);
+                    break;
+                case ir::ir_not:
+                    src << "!";
+                    _writeRef(instr.arg[1].as.ref);
+                    break;
+                case ir::ir_add:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " + ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_sub:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " - ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_mul:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " * ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_div:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " / ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_mod:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " % ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_bitand:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " & ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_bitor:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " | ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_xor:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " ^ ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_lsh:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " << ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_rsh:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " >> ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_and:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " && ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_or:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " || ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_eq:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " == ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_ge:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " >= ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_gt:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " > ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_le:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " <= ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_lt:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " < ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                case ir::ir_ne:
+                    _writeRef(instr.arg[1].as.ref);
+                    src << " != ";
+                    _writeRef(instr.arg[2].as.ref);
+                    break;
+                default:
+                    assert(!"unreachable");
+                case ir::ir_enter:
+                case ir::ir_leave:
+                case ir::ir_nop:
+                    break;
+                }
+
+                src << ";\n";
+            }
+
+            src << "\n";
+        }
+
+        src << "}\n";
+    }
+}
+
+} // namespace
+
+void nkir_translateToC(NkIrProg ir, std::ostream &src) {
+    LOG_TRC(__func__);
+
+    WriterCtx ctx{};
+
+    ctx.types_s.reserve(4000);
+    ctx.data_s.reserve(4000);
+    ctx.forward_s.reserve(4000);
+    ctx.main_s.reserve(4000);
+
+    ctx.str_arena.reserve(4000);
+    ctx.tmp_arena.reserve(4000);
+
+    defer {
+        ctx.types_s.deinit();
+        ctx.data_s.deinit();
+        ctx.forward_s.deinit();
+        ctx.main_s.deinit();
+
+        ctx.type_map.deinit();
+        ctx.const_map.deinit();
+        ctx.tmp_arena.deinit();
+        ctx.str_arena.deinit();
+    };
+
+    _writeProgram(ctx, ir);
+
+    src << ctx.types_s.moveStr(ctx.tmp_arena) << "\n"
+        << ctx.data_s.moveStr(ctx.tmp_arena) << "\n"
+        << ctx.forward_s.moveStr(ctx.tmp_arena) << "\n"
+        << ctx.main_s.moveStr(ctx.tmp_arena);
+}

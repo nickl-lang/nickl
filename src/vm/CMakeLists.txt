@@ -2,10 +2,13 @@ set(LIB nk_vm)
 
 add_library(${LIB}
     src/bytecode.cpp
+    src/cc_adapter.cpp
     src/dl_adapter.cpp
     src/interp.cpp
     src/ir.cpp
     src/native_fn_adapter.cpp
+    src/pipe_stream.cpp
+    # src/translate_to_c.cpp
     src/value.cpp
     )
 
