@@ -73,6 +73,8 @@ TEST_F(cc_adapter, empty_main) {
     src << "int main() {}\n";
 
     EXPECT_TRUE(nkcc_streamClose(src));
+
+    EXPECT_EQ(_runGetStdout(), "");
 }
 
 TEST_F(cc_adapter, hello_world) {
