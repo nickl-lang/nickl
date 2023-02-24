@@ -885,7 +885,7 @@ private:
                     args,
                     t_par_r,
                     {
-                        .allow_trailing_comma = false,
+                        .allow_trailing_comma = true,
                     }));
                 node = nkl_makeNode2(
                     "call",

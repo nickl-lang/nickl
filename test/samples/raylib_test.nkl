@@ -1,6 +1,6 @@
 import raylib;
 
-main :: () -> void {
+main :: (argc: i32, argv: **i8) -> i32 {
     ScreenWidth :: 800;
     ScreenHeight :: 450;
 
@@ -17,9 +17,9 @@ main :: () -> void {
         if raylib.IsKeyDown(raylib.KEY_UP)    { y = y - 10; }
         if raylib.IsKeyDown(raylib.KEY_DOWN)  { y = y + 10; }
 
-        WHITE :: 4294967295;      // 0xffffffff
-        MAROON :: 4281802430;     // 0xff371ebe
-        DARKGRAY :: 4283453520;   // 0xff505050
+        WHITE    :: 4294967295; // 0xffffffff
+        MAROON   :: 4281802430; // 0xff371ebe
+        DARKGRAY :: 4283453520; // 0xff505050
 
         radius: f32 = 1112014848; // 50.0f
 
@@ -33,5 +33,12 @@ main :: () -> void {
 
     raylib.CloseWindow();
 }
+
+import compiler;
+compiler.buildExecutable(
+    main,
+    "./raylib_test_build/",
+    "raylib_test",
+);
 
 main();

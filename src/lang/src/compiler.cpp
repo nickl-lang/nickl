@@ -33,6 +33,8 @@
 
 namespace {
 
+namespace fs = std::filesystem;
+
 NK_LOG_USE_SCOPE(compiler);
 
 enum EDeclKind {
@@ -133,7 +135,7 @@ struct NklCompiler_T {
 
     size_t funct_counter{};
 
-    std::map<std::filesystem::path, NkIrFunct> imports{};
+    std::map<fs::path, NkIrFunct> imports{};
 };
 
 namespace {
@@ -705,11 +707,11 @@ COMPILE(import) {
     }
     auto name = node->args[0].data->token->text;
     std::string filename = std_str(name) + ".nkl";
-    auto filepath = (std::filesystem::path{c->stdlib_dir} / filename).lexically_normal();
+    auto filepath = (fs::path{c->stdlib_dir} / filename).lexically_normal();
     auto it = c->imports.find(filepath);
     if (it == c->imports.end()) {
         auto filepath_str = filepath.string();
-        if (!std::filesystem::exists(filepath)) {
+        if (!fs::exists(filepath)) {
             NK_LOG_ERR(
                 "imported file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
             std::abort();
@@ -1239,9 +1241,21 @@ NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
 } // namespace
 
 extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t type) {
+    NK_LOG_TRC(__func__);
     NklCompiler c = s_compiler;
-    NK_LOG_DBG("nkl_compiler_declareLocal: compiler=%p", c);
     defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type);
+}
+
+extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
+    NkIrFunct entry_point,
+    char const *cache_dir,
+    char const *exe_name) {
+    NK_LOG_TRC(__func__);
+
+    auto cache_dir_path = fs::path{cache_dir}.lexically_normal();
+    if (!fs::exists(cache_dir_path)) {
+        fs::create_directory(cache_dir_path);
+    }
 }
 
 NklCompiler nkl_compiler_create() {
@@ -1277,9 +1291,9 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
 void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     NK_LOG_TRC(__func__);
     NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
-    auto config_filepath = std::filesystem::path{std_view(config_dir)} / "config.nkl";
+    auto config_filepath = fs::path{std_view(config_dir)} / "config.nkl";
     auto filepath_str = config_filepath.string();
-    if (!std::filesystem::exists(config_filepath)) {
+    if (!fs::exists(config_filepath)) {
         NK_LOG_ERR("config file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
         std::abort();
     }
