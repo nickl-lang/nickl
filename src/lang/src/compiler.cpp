@@ -107,7 +107,8 @@ struct ValueInfo {
 };
 
 struct Scope {
-    std::unordered_map<nkid, Decl> locals;
+    bool is_top_level;
+    std::unordered_map<nkid, Decl> locals{};
 };
 
 static thread_local NklCompiler s_compiler;
@@ -132,7 +133,7 @@ struct NklCompiler_T {
 
     size_t funct_counter{};
 
-    std::map<std::filesystem::path, NkIrFunct> imports;
+    std::map<std::filesystem::path, NkIrFunct> imports{};
 };
 
 namespace {
@@ -144,14 +145,25 @@ Scope &curScope(NklCompiler c) {
 
 void pushScope(NklCompiler c) {
     NK_LOG_DBG("entering scope=%lu", c->scopes.size());
-    auto scope = &c->nonpersistent_scope_stack.emplace();
+    auto scope = &c->nonpersistent_scope_stack.emplace(Scope{false});
     c->scopes.emplace_back(scope);
 }
 
 void pushPersistentScope(NklCompiler c) {
     NK_LOG_DBG("entering persistent scope=%lu", c->scopes.size());
-    auto scope = &c->persistent_scopes.emplace_back();
+    auto scope = &c->persistent_scopes.emplace_back(Scope{false});
     c->scopes.emplace_back(scope);
+}
+
+void pushTopLevelScope(NklCompiler c) {
+    NK_LOG_DBG("entering top level scope=%lu", c->scopes.size());
+    auto scope = &c->persistent_scopes.emplace_back(Scope{true});
+    c->scopes.emplace_back(scope);
+}
+
+void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
+    pushTopLevelScope(c);
+    c->fn_scopes.emplace(fn, &curScope(c));
 }
 
 void pushFnScope(NklCompiler c, NkIrFunct fn) {
@@ -169,11 +181,6 @@ void popScope(NklCompiler c) {
     }
     c->scopes.pop_back();
     NK_LOG_DBG("exiting scope=%lu", c->scopes.size());
-}
-
-bool isTopLevel(NklCompiler c) {
-    return !c->persistent_scopes.empty() && !c->scopes.empty() &&
-           &c->persistent_scopes.back() == c->scopes.back();
 }
 
 void gen(NklCompiler c, NkIrInstr const &instr) {
@@ -1015,7 +1022,7 @@ COMPILE(define) {
     nkid name = s2nkid(names.data[0].token->text);
     auto rhs = compileNode(c, node->args[1].data);
     NkIrRef ref;
-    if (isTopLevel(c)) {
+    if (curScope(c).is_top_level) {
         auto var = nkir_makeGlobalVar(c->ir, rhs.type);
         defineGlobal(c, name, var, rhs.type);
         ref = nkir_makeGlobalRef(c->ir, var);
@@ -1049,7 +1056,7 @@ COMPILE(var_decl) {
     nkid name = s2nkid(names.data[0].token->text);
     auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     NkIrRef ref;
-    if (isTopLevel(c)) {
+    if (curScope(c).is_top_level) {
         auto var = nkir_makeGlobalVar(c->ir, type);
         defineGlobal(c, name, var, type);
         ref = nkir_makeGlobalRef(c->ir, var);
@@ -1172,7 +1179,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
-    pushFnScope(c, fn);
+    pushTopLevelFnScope(c, fn);
     defer {
         popScope(c);
     };
@@ -1246,12 +1253,12 @@ template <class T>
 T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
     auto it = config.find(cs2nkid(name.c_str()));
     if (it == config.end()) {
-        NK_LOG_ERR("`stdlib_dir` is missing in config");
+        NK_LOG_ERR("`%.*s` is missing in config", name.size(), name.data());
         std::abort();
     }
     auto val_info = declToValueInfo(it->second);
     if (!isKnown(val_info)) {
-        NK_LOG_ERR("`stdlib_dir` value is not known");
+        NK_LOG_ERR("`%.*s` value is not known");
         std::abort();
     }
     auto val = asValue(c, val_info);
