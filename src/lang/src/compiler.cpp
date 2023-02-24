@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <new>
 #include <stack>
 #include <unordered_map>
@@ -128,9 +129,10 @@ struct NklCompiler_T {
     std::unordered_map<NkIrFunct, Scope *> fn_scopes{};
 
     NkIrFunct cur_fn{};
-    bool is_top_level{};
 
     size_t funct_counter{};
+
+    std::map<std::filesystem::path, NkIrFunct> imports;
 };
 
 namespace {
@@ -167,6 +169,11 @@ void popScope(NklCompiler c) {
     }
     c->scopes.pop_back();
     NK_LOG_DBG("exiting scope=%lu", c->scopes.size());
+}
+
+bool isTopLevel(NklCompiler c) {
+    return !c->persistent_scopes.empty() && !c->scopes.empty() &&
+           &c->persistent_scopes.back() == c->scopes.back();
 }
 
 void gen(NklCompiler c, NkIrInstr const &instr) {
@@ -628,7 +635,7 @@ COMPILE(while) {
 COMPILE(if) {
     auto l_endif = nkir_makeBlock(c->ir);
     NkIrBlockId l_else;
-    if (node->args[2].data) {
+    if (node->args[2].data && node->args[2].data->id) {
         l_else = nkir_makeBlock(c->ir);
     } else {
         l_else = l_endif;
@@ -642,7 +649,7 @@ COMPILE(if) {
         };
         compileStmt(c, node->args[1].data);
     }
-    if (node->args[2].data) {
+    if (node->args[2].data && node->args[2].data->id) {
         gen(c, nkir_make_jmp(l_endif));
         nkir_startBlock(c->ir, l_else, cs2s("else"));
         {
@@ -683,13 +690,19 @@ COMPILE(import) {
     }
     auto name = node->args[0].data->token->text;
     std::string filename = std_str(name) + ".nkl";
-    auto filepath = std::filesystem::path{c->stdlib_dir} / filename;
-    auto filepath_str = filepath.string();
-    if (!std::filesystem::exists(filepath)) {
-        NK_LOG_ERR("imported file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
-        std::abort();
+    auto filepath = (std::filesystem::path{c->stdlib_dir} / filename).lexically_normal();
+    auto it = c->imports.find(filepath);
+    if (it == c->imports.end()) {
+        auto filepath_str = filepath.string();
+        if (!std::filesystem::exists(filepath)) {
+            NK_LOG_ERR(
+                "imported file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
+            std::abort();
+        }
+        auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+        std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
     }
-    auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+    auto fn = it->second;
     auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
     defineComptimeConst(c, s2nkid(name), {{.value{fn_val}}, ComptimeConst_Value});
     return makeVoid(c);
@@ -1002,7 +1015,7 @@ COMPILE(define) {
     nkid name = s2nkid(names.data[0].token->text);
     auto rhs = compileNode(c, node->args[1].data);
     NkIrRef ref;
-    if (c->is_top_level) {
+    if (isTopLevel(c)) {
         auto var = nkir_makeGlobalVar(c->ir, rhs.type);
         defineGlobal(c, name, var, rhs.type);
         ref = nkir_makeGlobalRef(c->ir, var);
@@ -1036,7 +1049,7 @@ COMPILE(var_decl) {
     nkid name = s2nkid(names.data[0].token->text);
     auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     NkIrRef ref;
-    if (c->is_top_level) {
+    if (isTopLevel(c)) {
         auto var = nkir_makeGlobalVar(c->ir, type);
         defineGlobal(c, name, var, type);
         ref = nkir_makeGlobalRef(c->ir, var);
@@ -1155,8 +1168,6 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     defer {
         s_compiler = prev_compiler;
     };
-
-    c->is_top_level = true;
 
     nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));

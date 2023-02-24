@@ -1,29 +1,29 @@
 import std;
 
-readConfig :: (filename: *i8) -> i64 {
-    std.puts("readConfig");
-
-    file := std.fopen(filename, "r");
-
-    if 0 == file {
-        std.printf("error: failed to read config file `%s`\n", filename);
-        return 0;
-    }
-
-    BUF_SIZE :: 1024;
-    buf: [BUF_SIZE]i8;
-    bytes_read := std.fread(&buf, 1, BUF_SIZE - 1, file);
-    val := std.atoi(&buf);
-
-    std.fclose(file);
-
-    return val;
-}
-
 main :: (argc: i32, argv: **i8) -> i32 {
     std.puts("main");
 
-    ITERATION_COUNT :: readConfig("compile_test_config.txt");
+    ITERATION_COUNT :: () -> i64 {
+        CONFIG_FILENAME :: "compile_test_config.txt";
+
+        std.puts("reading config");
+
+        file := std.fopen(CONFIG_FILENAME, "r");
+
+        if 0 == file {
+            std.printf("error: failed to read config file `%s`\n", CONFIG_FILENAME);
+            return 0;
+        }
+
+        BUF_SIZE :: 1024;
+        buf: [BUF_SIZE]i8;
+        bytes_read := std.fread(&buf, 1, BUF_SIZE - 1, file);
+        val := std.atoi(&buf);
+
+        std.fclose(file);
+
+        return val;
+    }();
 
     i := 0;
     while i < ITERATION_COUNT {
