@@ -768,18 +768,18 @@ COMPILE(string) {
 }
 
 COMPILE(escaped_string) {
-    auto size = node->token->text.size;
-
-    auto u8_t = nkt_get_numeric(c->arena, Uint8);
-    auto ar_t = nkt_get_array(c->arena, u8_t, size + 1);
-    auto str_t = nkt_get_ptr(c->arena, ar_t);
-
     auto sb = nksb_create();
     defer {
         nksb_free(sb);
     };
     nksb_str_unescape(sb, node->token->text);
     auto unescaped_str = nksb_concat(sb);
+
+    auto size = unescaped_str.size;
+
+    auto u8_t = nkt_get_numeric(c->arena, Uint8);
+    auto ar_t = nkt_get_array(c->arena, u8_t, size + 1);
+    auto str_t = nkt_get_ptr(c->arena, ar_t);
 
     auto str = (char *)nk_allocate(c->arena, unescaped_str.size + 1);
     std::memcpy(str, unescaped_str.data, size);
@@ -1073,8 +1073,9 @@ COMPILE(var_decl) {
         defineLocal(c, name, var, type);
         ref = nkir_makeFrameRef(c->ir, var);
     }
-    if (node->args[2].data) {
-        NK_LOG_WRN("TODO Ignoring init value in var_decl");
+    if (node->args[2].data && node->args[2].data->id) {
+        auto val = compileNode(c, node->args[2].data);
+        makeRefAndStore(c, ref, val);
     }
     return makeVoid(c);
 }
