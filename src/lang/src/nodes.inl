@@ -30,7 +30,7 @@ N(f32)
 N(f64)
 
 // N(any_t)
-// N(bool)
+N(bool)
 // N(type_t)
 N(void)
 

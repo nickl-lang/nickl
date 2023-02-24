@@ -509,6 +509,14 @@ COMPILE(f64) {
         c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float64));
 }
 
+COMPILE(bool) {
+    (void)node;
+    return makeValue<nktype_t>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        nkt_get_numeric(c->arena, Uint8)); // TODO Modeling bool as u8
+}
+
 COMPILE(void) {
     (void)node;
     return makeValue<nktype_t>(

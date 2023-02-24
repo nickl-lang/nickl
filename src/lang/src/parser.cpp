@@ -6,6 +6,7 @@
 
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/token.h"
@@ -546,6 +547,9 @@ private:
                 }));
             node = nkl_makeNode1(
                 "enum", _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
+        } else if (check(t_tag) && std_view(m_cur_token->text) == "#type") {
+            getToken();
+            ASSIGN(node, expr(Expr_Type));
         } else {
             ASSIGN(node, ternary());
         }
