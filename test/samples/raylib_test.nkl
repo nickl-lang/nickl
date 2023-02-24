@@ -1,21 +1,24 @@
-import raylib;
+runRaylib :: () -> i32 {
+    import raylib;
 
-main :: (argc: i32, argv: **i8) -> i32 {
-    ScreenWidth :: 800;
-    ScreenHeight :: 450;
+    SCREEN_WIDTH  :: 800;
+    SCREEN_HEIGHT :: 450;
 
-    raylib.InitWindow(ScreenWidth, ScreenHeight, "raylib [core] example - keyboard input");
+    raylib.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib");
 
-    x: i64 = ScreenWidth / 2;
-    y: i64 = ScreenHeight / 2;
+    x: i64 = SCREEN_WIDTH / 2;
+    y: i64 = SCREEN_HEIGHT / 2;
+    dist := 0;
 
     raylib.SetTargetFPS(60);
 
     while 0 == raylib.WindowShouldClose() {
-        if raylib.IsKeyDown(raylib.KEY_RIGHT) { x = x + 10; }
-        if raylib.IsKeyDown(raylib.KEY_LEFT)  { x = x - 10; }
-        if raylib.IsKeyDown(raylib.KEY_UP)    { y = y - 10; }
-        if raylib.IsKeyDown(raylib.KEY_DOWN)  { y = y + 10; }
+        STEP :: 10;
+
+        if raylib.IsKeyDown(raylib.KEY_RIGHT) { x = x + STEP; dist = dist + STEP; }
+        if raylib.IsKeyDown(raylib.KEY_LEFT)  { x = x - STEP; dist = dist + STEP; }
+        if raylib.IsKeyDown(raylib.KEY_UP)    { y = y - STEP; dist = dist + STEP; }
+        if raylib.IsKeyDown(raylib.KEY_DOWN)  { y = y + STEP; dist = dist + STEP; }
 
         WHITE    :: 4294967295; // 0xffffffff
         MAROON   :: 4281802430; // 0xff371ebe
@@ -28,10 +31,18 @@ main :: (argc: i32, argv: **i8) -> i32 {
             raylib.DrawCircle(x, y, radius, MAROON);
             raylib.DrawFPS(10, 10);
             raylib.DrawText("move the ball with arrow keys", 10, 30, 20, DARKGRAY);
+            raylib.DrawText(raylib.TextFormat("distance traveled: %i pix", dist), 10, 50, 20, DARKGRAY);
         raylib.EndDrawing();
     }
 
     raylib.CloseWindow();
+
+    return dist;
+}
+
+main :: (argc: i32, argv: **i8) -> i32 {
+    import std;
+    std.printf("distance traveled: %i pix\n", ${ runRaylib(); });
 }
 
 import compiler;

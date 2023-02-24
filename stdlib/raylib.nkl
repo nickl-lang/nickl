@@ -21,3 +21,5 @@ Color :: #type (u8, u8, u8, u8);
 #foreign("libraylib.so") DrawCircle :: (centerX: i32, centerY: i32, radius: f32, color: Color) -> void;
 
 #foreign("libraylib.so") DrawFPS :: (posX: i32, posY: i32) -> void;
+
+#foreign("libraylib.so") TextFormat :: (text: *i8, ...) -> *i8;
