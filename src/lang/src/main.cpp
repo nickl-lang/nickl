@@ -8,6 +8,7 @@
 #include <filesystem>
 
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 #include "nkl/lang/compiler.h"
 
@@ -43,6 +44,11 @@ bool eql(char const *lhs, char const *rhs) {
 } // namespace
 
 int main(int argc, char const *const *argv) {
+#ifdef BUILD_WITH_EASY_PROFILER
+    EASY_PROFILER_ENABLE;
+    ::profiler::startListen(EASY_PROFILER_PORT);
+#endif // BUILD_WITH_EASY_PROFILER
+
     char const *in_file = nullptr;
     bool help = false;
     bool version = false;
@@ -154,6 +160,11 @@ int main(int argc, char const *const *argv) {
         nkl_compiler_free(compiler);
     };
     nkl_compiler_runFile(compiler, cs2s(in_file));
+
+#ifdef BUILD_WITH_EASY_PROFILER
+    puts("press any key to exit");
+    getchar();
+#endif // BUILD_WITH_EASY_PROFILER
 
     return 0;
 }

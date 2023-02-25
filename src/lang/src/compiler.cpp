@@ -20,6 +20,7 @@
 #include "nk/common/allocator.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
@@ -1091,6 +1092,10 @@ CompileFunc s_funcs[] = {
 
 ValueInfo compileNode(NklCompiler c, NklAstNode node) {
     assert(node->id < AR_SIZE(s_funcs) && "invalid node");
+#ifdef BUILD_WITH_EASY_PROFILER
+    auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
+#endif // BUILD_WITH_EASY_PROFILER
+    EASY_BLOCK(block_name.c_str(), ::profiler::colors::DeepPurple100);
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
     return s_funcs[node->id](c, node);
 }
@@ -1172,6 +1177,7 @@ void compileNodeArray(NklCompiler c, NklAstNodeArray nodes) {
 }
 
 NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
     auto fn = nkir_makeFunct(c->ir);
@@ -1216,6 +1222,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
 }
 
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     auto tokens = nkl_lex(src);
     auto ast = nkl_ast_create();
@@ -1227,6 +1234,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
 }
 
 NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     std::ifstream file{std_str(path)};
     if (file) {
@@ -1241,6 +1249,7 @@ NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
 } // namespace
 
 extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t type) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     NklCompiler c = s_compiler;
     defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type);
@@ -1250,6 +1259,7 @@ extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
     NkIrFunct entry_point,
     char const *cache_dir,
     char const *exe_name) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
     auto cache_dir_path = fs::path{cache_dir}.lexically_normal();
@@ -1289,6 +1299,7 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
 }
 
 void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
     auto config_filepath = fs::path{std_view(config_dir)} / "config.nkl";
@@ -1310,16 +1321,19 @@ void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
 }
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     auto fn = nkl_compile(c, root);
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
 
 void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     auto fn = nkl_compileSrc(c, src);
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
 
 void nkl_compiler_runFile(NklCompiler c, nkstr path) {
+    EASY_FUNCTION(::profiler::colors::DeepPurple100);
     auto fn = nkl_compileFile(c, path);
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }

@@ -9,6 +9,7 @@
 
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
@@ -38,6 +39,7 @@ static struct TypeArenaDeleter { // TODO Hack with static deleter
 } s_typearena_deleter;
 
 ffi_type *_getNativeHandle(nktype_t type) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 
     if (!type) {
@@ -200,6 +202,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 
     size_t const argc = nkval_data(args)
@@ -246,10 +249,15 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
         }
     }
 
-    ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);
+    {
+        EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
+        ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);
+    }
 }
 
 NkNativeClosure nk_native_make_closure(nkval_t fn) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
+
     auto cl = (NkNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkNativeClosure_T));
     cl->fn = fn;
 
@@ -264,6 +272,8 @@ NkNativeClosure nk_native_make_closure(nkval_t fn) {
 }
 
 void nk_native_free_closure(NkNativeClosure cl) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
+
     ffi_closure_free(cl->closure);
     nk_free(nk_default_allocator, cl);
 }

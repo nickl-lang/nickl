@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "token.hpp"
@@ -259,6 +260,7 @@ private:
 } // namespace
 
 std::vector<NklToken> nkl_lex(nkstr src) {
+    EASY_FUNCTION(::profiler::colors::Lime200);
     NK_LOG_TRC(__func__);
 
     std::vector<NklToken> tokens;

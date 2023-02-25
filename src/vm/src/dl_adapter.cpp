@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 
 namespace {
 
@@ -11,6 +12,8 @@ NK_LOG_USE_SCOPE(dl_adapter);
 } // namespace
 
 NkDlHandle nkdl_open(nkstr name) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
+
     auto dl = (NkDlHandle)dlopen(name.data, RTLD_GLOBAL | RTLD_LAZY);
     if (!dl) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly
@@ -20,10 +23,14 @@ NkDlHandle nkdl_open(nkstr name) {
 }
 
 void nkdl_close(NkDlHandle dl) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
+
     dlclose((void *)dl);
 }
 
 void *nkdl_sym(NkDlHandle dl, nkstr sym) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
+
     auto ptr = dlsym((void *)dl, sym.data);
     if (!ptr) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly

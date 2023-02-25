@@ -6,6 +6,7 @@
 
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
@@ -1085,6 +1086,7 @@ private:
 } // namespace
 
 NklAstNode nkl_parse(NklAst ast, std::vector<NklToken> const &tokens) {
+    EASY_FUNCTION(::profiler::colors::Teal200);
     NK_LOG_TRC(__func__);
 
     assert(tokens.size() && "empty token array");

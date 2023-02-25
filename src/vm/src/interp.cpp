@@ -9,6 +9,7 @@
 #include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
@@ -465,6 +466,8 @@ InterpFunc s_funcs[] = {
 } // namespace
 
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
+    EASY_FUNCTION(::profiler::colors::Red200);
+
     NK_LOG_TRC(__func__);
 
     auto const &prog = *fn->prog;
@@ -492,6 +495,10 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
+#ifdef BUILD_WITH_EASY_PROFILER
+        auto block_name = std::string{"interp: "} + s_nk_bc_names[pinstr->code];
+#endif // BUILD_WITH_EASY_PROFILER
+        EASY_BLOCK(block_name, ::profiler::colors::Red200);
         assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
             "instr: %lx %s",
