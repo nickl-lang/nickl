@@ -4,6 +4,7 @@
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.h"
+#include "nk/vm/ir_compile.h"
 #include "pipe_stream.hpp"
 #include "translate_to_c.hpp"
 
@@ -13,7 +14,7 @@ NK_LOG_USE_SCOPE(cc_adapter);
 
 } // namespace
 
-std::ostream nkcc_streamOpen(CCompilerConfig const &conf) {
+std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     auto sb = nksb_create();
     defer {
         nksb_free(sb);
@@ -38,8 +39,8 @@ bool nkcc_streamClose(std::ostream const &stream) {
     return nk_pipe_streamClose(stream);
 }
 
-bool nkcc_compile(CCompilerConfig const &conf, NkIrProg ir) {
+bool nkir_compile(NkIrCompilerConfig conf, NkIrProg ir, NkIrFunct entry_point) {
     auto src = nkcc_streamOpen(conf);
-    // TODO nkir_translateToC(ir, src);
+    nkir_translateToC(ir, entry_point, src);
     return nkcc_streamClose(src);
 }

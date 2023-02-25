@@ -55,7 +55,7 @@ protected:
 
 protected:
     NkStringBuilder m_output_filename_sb;
-    CCompilerConfig m_conf;
+    NkIrCompilerConfig m_conf;
 
     // NkIrProg m_prog{};
 };
@@ -104,33 +104,3 @@ int main() {
 
     EXPECT_FALSE(nkcc_streamClose(src));
 }
-
-// TEST_F(c_compiler_adapter, compile_basic) {
-//     test_ir_main_argc(m_builder);
-//     NK_LOG_INF("ir:\n%s", [&]() {
-//         return m_prog.inspect(m_sb).moveStr(m_arena).data;
-//     }());
-
-//     ASSERT_TRUE(c_compiler_compile(m_conf, m_prog));
-//     EXPECT_EQ(_runGetStdout(), "");
-// }
-
-// TEST_F(c_compiler_adapter, pi) {
-//     test_ir_main_pi(m_builder, cs2s(LIBC_NAME));
-//     NK_LOG_INF("ir:\n%s", [&]() {
-//         return m_prog.inspect(m_sb).moveStr(m_arena).data;
-//     }());
-
-//     ASSERT_TRUE(c_compiler_compile(m_conf, m_prog));
-//     EXPECT_EQ(_runGetStdout(), "pi = 3.1415926535897940\n");
-// }
-
-// TEST_F(c_compiler_adapter, vec2LenSquared) {
-//     test_ir_main_vec2LenSquared(m_builder, cs2s(LIBC_NAME));
-//     NK_LOG_INF("ir:\n%s", [&]() {
-//         return m_prog.inspect(m_sb).moveStr(m_arena).data;
-//     }());
-
-//     ASSERT_TRUE(c_compiler_compile(m_conf, m_prog));
-//     EXPECT_EQ(_runGetStdout(), "lenSquared = 41.000000\n");
-// }

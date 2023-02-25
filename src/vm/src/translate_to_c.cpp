@@ -12,6 +12,7 @@
 #include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/profiler.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.h"
@@ -596,8 +597,17 @@ void _writeProgram(WriterCtx &ctx, NkIrProg ir) {
 
 } // namespace
 
-void nkir_translateToC(NkIrProg ir, std::ostream &src) {
+void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
+    EASY_FUNCTION(::profiler::colors::Amber200);
     NK_LOG_TRC(__func__);
+
+    src << R"(
+int main(int argc, char **argv) {
+    printf("hello world\n");
+    return 0;
+}
+)";
+    return;
 
     std::ostringstream types_s;
     std::ostringstream data_s;

@@ -28,6 +28,7 @@
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
+#include "nk/vm/ir_compile.h"
 #include "nk/vm/value.h"
 #include "nkl/lang/ast.h"
 #include "parser.hpp"
@@ -1187,12 +1188,6 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
         nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
     auto top_level_fn_t = nkt_get_fn(c->arena, &top_level_fn_info);
 
-    auto prev_compiler = s_compiler;
-    s_compiler = c;
-    defer {
-        s_compiler = prev_compiler;
-    };
-
     nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
@@ -1257,15 +1252,19 @@ extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t t
 
 extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
     NkIrFunct entry_point,
-    char const *cache_dir,
     char const *exe_name) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
-    auto cache_dir_path = fs::path{cache_dir}.lexically_normal();
-    if (!fs::exists(cache_dir_path)) {
-        fs::create_directory(cache_dir_path);
-    }
+    NklCompiler c = s_compiler;
+
+    NkIrCompilerConfig conf{
+        .compiler_binary = cs2s("gcc"),
+        .additional_flags = cs2s("-O2"),
+        .output_filename = cs2s(exe_name),
+        .quiet = false,
+    };
+    nkir_compile(conf, c->ir, entry_point);
 }
 
 NklCompiler nkl_compiler_create() {
@@ -1322,18 +1321,41 @@ void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
 
 void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
+
+    // TODO Boilerplate in nkl_compiler_run_*
+
+    auto prev_compiler = s_compiler;
+    s_compiler = c;
+    defer {
+        s_compiler = prev_compiler;
+    };
+
     auto fn = nkl_compile(c, root);
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
 
 void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
+
+    auto prev_compiler = s_compiler;
+    s_compiler = c;
+    defer {
+        s_compiler = prev_compiler;
+    };
+
     auto fn = nkl_compileSrc(c, src);
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }
 
 void nkl_compiler_runFile(NklCompiler c, nkstr path) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
+
+    auto prev_compiler = s_compiler;
+    s_compiler = c;
+    defer {
+        s_compiler = prev_compiler;
+    };
+
     auto fn = nkl_compileFile(c, path);
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 }

@@ -1,13 +1,11 @@
 # def_run_test(FILE arithmetic.nkl)
 # def_run_test(FILE arrays.nkl)
 # def_run_test(FILE cast.nkl)
-# def_run_test(FILE compile.nkl)
 # def_run_test(FILE import.nkl)
 # def_run_test(FILE ir_optimization.nkl)
 # def_run_test(FILE pointers.nkl)
 # def_run_test(FILE tags.nkl)
 
-def_run_test(FILE compile.nkl OUTPUT_REGEX "^reading config\n$")
 def_run_test(FILE comptime_run.nkl OUTPUT_REGEX "^comptime\nruntime\n$")
 def_run_test(FILE empty.nkl OUTPUT_REGEX "^$")
 def_run_test(FILE fast_exp.nkl OUTPUT_REGEX "^65536\n$")

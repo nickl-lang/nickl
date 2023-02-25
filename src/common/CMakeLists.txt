@@ -6,6 +6,7 @@ add_library(${LIB}
     src/logger.c
     src/string.cpp
     src/string_builder.cpp
+    src/utils.cpp
     )
 
 target_include_directories(${LIB}

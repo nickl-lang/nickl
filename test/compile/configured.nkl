@@ -4,7 +4,7 @@ main :: (argc: i32, argv: **i8) -> i32 {
     std.puts("main");
 
     ITERATION_COUNT :: () -> i64 {
-        CONFIG_FILENAME :: "compile_test_config.txt";
+        CONFIG_FILENAME :: "config.txt";
 
         std.puts("reading config");
 
@@ -39,4 +39,4 @@ main :: (argc: i32, argv: **i8) -> i32 {
 }
 
 import compiler;
-compiler.buildExecutable(main, "./compiler_out/", "compile_test");
+compiler.buildExecutable(main, "configured");
