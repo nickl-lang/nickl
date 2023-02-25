@@ -42,7 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgtest-dev \
  && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/yse/easy_profiler.git \
+RUN git clone https://github.com/yse/easy_profiler.git -b v2.1.0 \
  && mkdir easy_profiler/build \
  && cd easy_profiler/build \
  && cmake -GNinja .. \
