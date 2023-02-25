@@ -34,11 +34,6 @@ class cc_adapter : public testing::Test {
 
     void TearDown() override {
         nksb_free(m_output_filename_sb);
-
-        // m_arena.deinit();
-        // m_sb.deinit();
-
-        // nkir_deinitProgram(m_prog);
     }
 
 protected:
@@ -56,8 +51,6 @@ protected:
 protected:
     NkStringBuilder m_output_filename_sb;
     NkIrCompilerConfig m_conf;
-
-    // NkIrProg m_prog{};
 };
 
 } // namespace

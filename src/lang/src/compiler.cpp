@@ -135,9 +135,11 @@ struct NklCompiler_T {
 
     NkIrFunct cur_fn{};
 
-    size_t funct_counter{};
-
     std::map<fs::path, NkIrFunct> imports{};
+
+    std::stack<std::string> comptime_const_names{};
+    std::vector<nkid> node_ids{};
+    size_t fn_counter;
 };
 
 namespace {
@@ -843,13 +845,15 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
 
-    char fn_name_buf[100];
-    std::snprintf(
-        fn_name_buf,
-        sizeof(fn_name_buf),
-        "funct_%lu",
-        c->funct_counter++); // TODO snprintf in compiler
-    nkir_startFunct(fn, cs2s(fn_name_buf), fn_t);
+    std::string fn_name;
+    if (c->node_ids.size() >= 2 && *(c->node_ids.rbegin() + 1) == n_comptime_const_def) {
+        fn_name = c->comptime_const_names.top();
+    } else {
+        fn_name.resize(100);
+        int n = std::snprintf(fn_name.data(), fn_name.size(), "fn%zu", c->fn_counter++);
+        fn_name.resize(n);
+    }
+    nkir_startFunct(fn, {fn_name.c_str(), fn_name.size()}, fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
 
     pushFnScope(c, fn);
@@ -1053,8 +1057,13 @@ COMPILE(comptime_const_def) {
         NK_LOG_ERR("multiple assignment is not implemented");
         std::abort(); // TODO Report errors properly
     }
-    nkid name = s2nkid(names.data[0].token->text);
+    auto name_str = std_str(names.data[0].token->text);
+    c->comptime_const_names.push(name_str);
+    defer {
+        c->comptime_const_names.pop();
+    };
     auto decl = comptimeCompileNode(c, node->args[1].data);
+    nkid name = s2nkid({name_str.data(), name_str.size()});
     defineComptimeConst(c, name, decl);
     return makeVoid(c);
 }
@@ -1098,6 +1107,10 @@ ValueInfo compileNode(NklCompiler c, NklAstNode node) {
 #endif // BUILD_WITH_EASY_PROFILER
     EASY_BLOCK(block_name.c_str(), ::profiler::colors::DeepPurple100);
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
+    c->node_ids.emplace_back(node->id);
+    defer {
+        c->node_ids.pop_back();
+    };
     return s_funcs[node->id](c, node);
 }
 
