@@ -644,6 +644,9 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             if (ref.ref_type == NkIrRef_Const) {
                 _writeConst(ctx, {ref.data, ref.type}, src);
                 return;
+            } else if (ref.ref_type == NkIrRef_ExtSym) {
+                src << ctx.ir->exsyms[ref.index].name;
+                return;
             }
             src << "*(";
             _writeType(ctx, ref.type, src);
@@ -673,14 +676,12 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             case NkIrRef_Reg:
                 src << "*((uint8_t*)&reg+" << ref.index * REG_SIZE << ")";
                 break;
-            case NkIrRef_ExtSym:
-                assert(!"ext sym ref not implemented");
-                break;
             case NkIrRef_Funct:
                 assert(!"funct ref not implemented");
                 break;
-            case NkIrRef_None:
             case NkIrRef_Const:
+            case NkIrRef_ExtSym:
+            case NkIrRef_None:
             default:
                 assert(!"unreachable");
                 break;
@@ -731,24 +732,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 _writeRef(instr.arg[2].ref);
                 break;
             case nkir_call: {
-                // TODO Call translation not implemented
-                // switch (instr.arg[1].arg_type) {
-                // case NkIrArg_FunctId:
-                //    src << ctx.ir->functs[instr.arg[1].id]->name;
-                //    //@Todo Unfinished call compilation
-                //    break;
-                // case NkIrArg_ExtFunctId: {
-                //    auto &sym = ir.exsyms[instr.arg[1].id];
-                //    src << sym.name;
-                //    break;
-                //}
-                // case NkIrArg_Ref:
-                //    assert(!"cannot compile ref call");
-                //    break;
-                // default:
-                //    assert(!"unreachable");
-                //    break;
-                //}
+                _writeRef(instr.arg[1].ref);
                 src << "(";
                 if (instr.arg[2].ref.ref_type != NkIrRef_None) {
                     auto args_t = instr.arg[2].ref.type;

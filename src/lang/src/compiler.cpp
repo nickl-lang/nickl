@@ -139,7 +139,7 @@ struct NklCompiler_T {
 
     std::stack<std::string> comptime_const_names{};
     std::vector<nkid> node_ids{};
-    size_t fn_counter;
+    size_t fn_counter{};
 };
 
 namespace {
@@ -1271,11 +1271,12 @@ extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
 
     NklCompiler c = s_compiler;
 
+    // TODO Hardcoded compiler settings
     NkIrCompilerConfig conf{
         .compiler_binary = cs2s("gcc"),
         .additional_flags = cs2s("-O2"),
         .output_filename = cs2s(exe_name),
-        .quiet = false,
+        .quiet = 1,
     };
     nkir_compile(conf, c->ir, entry_point);
 }

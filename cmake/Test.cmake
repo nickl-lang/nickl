@@ -62,6 +62,8 @@ function(def_run_test)
     endif()
 endfunction()
 
+set(COMPILE_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/compile_test_out")
+
 function(def_compile_test)
     set(options)
     set(oneValueArgs NAME OUTPUT_REGEX)
@@ -75,12 +77,13 @@ function(def_compile_test)
 
     get_filename_component(ABS_FILE ${ARG_NAME}.nkl ABSOLUTE)
 
-    set(TEST_OUT_DIR "${CMAKE_BINARY_DIR}/compile_test_out")
-    make_directory("${TEST_OUT_DIR}")
+    make_directory("${COMPILE_TEST_OUT_DIR}")
     add_test(
         NAME compile.${ARG_NAME}
-        COMMAND sh -c "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME} ${ABS_FILE} && ./${ARG_NAME}"
-        WORKING_DIRECTORY "${TEST_OUT_DIR}"
+        COMMAND sh -c "\
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME} ${ABS_FILE} >/dev/null 2>&1 \
+         && ./${ARG_NAME}"
+        WORKING_DIRECTORY "${COMPILE_TEST_OUT_DIR}"
         )
 
     if(ARG_OUTPUT_REGEX)
