@@ -5,6 +5,7 @@ runRaylib :: () -> i32 {
     SCREEN_HEIGHT :: 450;
 
     raylib.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib");
+    raylib.SetWindowState(raylib.FLAG_WINDOW_RESIZABLE);
 
     x: i64 = SCREEN_WIDTH / 2;
     y: i64 = SCREEN_HEIGHT / 2;
@@ -48,7 +49,7 @@ main :: (argc: i32, argv: **i8) -> i32 {
 import compiler;
 compiler.buildExecutable(
     main,
-    "./raylib_test_build/",
+    "./compiler_out/",
     "raylib_test",
 );
 
