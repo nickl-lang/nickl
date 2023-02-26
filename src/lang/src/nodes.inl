@@ -46,7 +46,7 @@ N(void)
 // U(uplus)
 
 U(addr) // (expr: node)
-// U(deref) // (ptr: node)
+U(deref) // (ptr: node)
 
 // U(defer_stmt) // (expr: node)
 
@@ -142,7 +142,7 @@ X(fn_type_var)
 X(tag) // (tag: token, args: [{name: ?token, value: node}], node: node)
 
 X(call) // (lhs: ?node, args: [{name: ?token, value: node}])
-// X(object_literal)
+X(object_literal)
 
 X(assign) // (lhs: [node], value: node)
 

@@ -249,6 +249,7 @@ void defineArg(NklCompiler c, nkid name, size_t index, nktype_t type) {
     makeDecl(c, name) = {{.arg{index, type}}, Decl_Arg};
 }
 
+// TODO Restrict resolving local through stack frame boundaries
 Decl &resolve(NklCompiler c, nkid name) {
     NK_LOG_DBG(
         "resolving name=`%.*s` scope=%lu",
@@ -431,15 +432,15 @@ struct IndexResult {
     nktype_t type;
 };
 
-IndexResult calcArrayIndex(nktype_t type, size_t index) {
-    size_t elem_count = type->as.arr.elem_count;
-    size_t elem_size = type->as.arr.elem_type->size;
-    if (index >= elem_count) {
-        NK_LOG_ERR("idnex out of range");
-        std::abort();
-    }
-    return {elem_size * index, type->as.arr.elem_type};
-}
+// TODO IndexResult calcArrayIndex(nktype_t type, size_t index) {
+//     size_t elem_count = type->as.arr.elem_count;
+//     size_t elem_size = type->as.arr.elem_type->size;
+//     if (index >= elem_count) {
+//         NK_LOG_ERR("idnex out of range");
+//         std::abort();
+//     }
+//     return {elem_size * index, type->as.arr.elem_type};
+// }
 
 IndexResult calcTupleIndex(nktype_t type, size_t index) {
     size_t elem_count = type->as.tuple.elems.size;
@@ -478,41 +479,41 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
     } else if (node->id == cs2nkid("index")) {
         ref = makeRef(c, compileNode(c, node->args[0].data));
         auto type = ref.type;
-        auto index = comptimeCompileNodeGetValue(c, node->args[1].data);
-        if (nkval_typeclassid(index) != NkType_Numeric) {
+        auto index = compileNode(c, node->args[1].data);
+        if (index.type->typeclass_id != NkType_Numeric) {
             NK_LOG_ERR("expected number in index");
             std::abort();
         }
+        // TODO Optimize array indexing
         if (type->typeclass_id == NkType_Array) {
-            auto idx_res = calcArrayIndex(type, nkval_as(uint64_t, index));
-            ref.post_offset += idx_res.offset;
-            ref.type = idx_res.type;
-        } else if (type->typeclass_id == NkType_Tuple) {
-            auto idx_res = calcTupleIndex(type, nkval_as(uint64_t, index));
-            ref.post_offset += idx_res.offset;
-            ref.type = idx_res.type;
-        } else if (type->typeclass_id == NkType_Ptr) {
+            auto u64_t = nkt_get_numeric(c->arena, Uint64);
+            ref = makeRef(
+                c,
+                makeInstr(
+                    nkir_make_add(
+                        {},
+                        makeRef(c, makeInstr(nkir_make_lea({}, ref), u64_t)),
+                        makeRef(
+                            c,
+                            makeInstr(
+                                nkir_make_mul(
+                                    {},
+                                    makeRef(c, index),
+                                    makeRef(
+                                        c,
+                                        makeValue<uint64_t>(
+                                            c, u64_t, type->as.arr.elem_type->size))),
+                                u64_t))),
+                    u64_t));
             ref.is_indirect = true;
-            auto type = ref.type->as.ptr.target_type;
-            if (type->typeclass_id == NkType_Array) {
-                auto idx_res = calcArrayIndex(type, nkval_as(uint64_t, index));
-                ref.post_offset += idx_res.offset;
-                ref.type = idx_res.type;
-            } else if (type->typeclass_id == NkType_Tuple) {
-                auto idx_res = calcTupleIndex(type, nkval_as(uint64_t, index));
-                ref.post_offset += idx_res.offset;
-                ref.type = idx_res.type;
-            } else {
-                // TODO Boilerplate in nonindexable type compiler error
-                auto sb = nksb_create();
-                defer {
-                    nksb_free(sb);
-                };
-                nkt_inspect(type, sb);
-                auto type_str = nksb_concat(sb);
-                NK_LOG_ERR("type `%.*s` is not indexable", type_str.size, type_str.data);
+        } else if (type->typeclass_id == NkType_Tuple) {
+            if (!isKnown(index)) {
+                NK_LOG_ERR("comptime value expected in tuple index");
                 std::abort();
             }
+            auto idx_res = calcTupleIndex(type, nkval_as(uint64_t, asValue(c, index)));
+            ref.post_offset += idx_res.offset;
+            ref.type = idx_res.type;
         } else {
             auto sb = nksb_create();
             defer {
@@ -636,6 +637,18 @@ COMPILE(void) {
 COMPILE(addr) {
     auto arg = compileNode(c, node->args[0].data);
     return makeInstr(nkir_make_lea({}, makeRef(c, arg)), nkt_get_ptr(c->arena, arg.type));
+}
+
+COMPILE(deref) {
+    auto arg = compileNode(c, node->args[0].data);
+    if (arg.type->typeclass_id != NkType_Ptr) {
+        NK_LOG_ERR("pointer expected in dereference");
+        std::abort();
+    }
+    auto ref = makeRef(c, arg);
+    ref.is_indirect = true;
+    ref.type = arg.type->as.ptr.target_type;
+    return {{.ref = ref}, ref.type, v_ref};
 }
 
 COMPILE(return ) {
@@ -1099,9 +1112,45 @@ COMPILE(call) {
     return makeInstr(nkir_make_call({}, makeRef(c, lhs), args), fn_t->as.fn.ret_t);
 }
 
+nkval_t instantiate(NklCompiler c, nktype_t type, std::vector<ValueInfo> const &init) {
+    nkval_t val{nk_allocate(c->arena, type->size), type};
+    std::memset(nkval_data(val), 0, nkval_sizeof(val));
+    NK_LOG_WRN("TODO object_literal compilation is not finised, zero initializing");
+    return val;
+}
+
+COMPILE(object_literal) {
+    auto type = comptimeCompileNodeGetValue(c, node->args[0].data);
+
+    // TODO Modeling type_t as *void
+    if (nkval_typeclassid(type) != NkType_Ptr &&
+        nkval_typeof(type)->as.ptr.target_type->typeclass_id != NkType_Void) {
+        NK_LOG_ERR("type expected in object literal");
+        std::abort();
+    }
+
+    std::vector<ValueInfo> args_info{};
+    bool all_is_known = true;
+
+    auto nodes = node->args[1];
+    for (size_t i = 0; i < nodes.size; i++) {
+        auto val_info =
+            compileNode(c, nodes.data[i].args[1].data); // TODO Support named args in object_literal
+        all_is_known &= isKnown(val_info);
+        args_info.emplace_back(val_info);
+    }
+
+    if (!all_is_known) {
+        NK_LOG_ERR("TODO runtime object literal is not implemented");
+        std::abort();
+    }
+
+    return makeValue(c, instantiate(c, nkval_as(nktype_t, type), args_info));
+}
+
 COMPILE(assign) {
     if (node->args->size > 1) {
-        NK_LOG_WRN("multiple assignment is not supported");
+        NK_LOG_WRN("TODO multiple assignment is not supported");
     }
     auto lhs_ref = getLvalueRef(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
