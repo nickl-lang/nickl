@@ -273,12 +273,16 @@ ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
-ValueInfo makeValue(NklCompiler, nkval_t val) {
+ValueInfo makeValue(nkval_t val) {
     return {{.val = nkval_data(val)}, val.type, v_val};
 }
 
 ValueInfo makeInstr(NkIrInstr const &instr, nktype_t type) {
     return {{.instr{instr}}, type, v_instr};
+}
+
+ValueInfo makeRef(NkIrRef const &ref) {
+    return {{.ref = ref}, ref.type, v_ref};
 }
 
 nkval_t comptimeConstGetValue(NklCompiler c, ComptimeConst &cnst) {
@@ -327,7 +331,7 @@ nktype_t comptimeConstType(ComptimeConst cnst) {
     }
 }
 
-NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
+NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     switch (val.kind) {
     case v_val: // TODO Isn't it the same as Decl_ComptimeConst?
         return nkir_makeConstRef(c->ir, {val.as.val, val.type});
@@ -373,23 +377,16 @@ NkIrRef makeRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
-ValueInfo makeRefAndStore(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
+ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
     if (val.type->typeclass_id != NkType_Void) {
-        if (val.kind == v_instr) {
-            auto &instr_dst = val.as.instr.arg[0].ref;
-            if (instr_dst.ref_type == NkIrRef_None) {
-                instr_dst = dst;
-                return {{.ref = makeRef(c, val)}, dst.type, v_ref};
-            }
+        if (val.kind == v_instr && val.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
+            val.as.instr.arg[0].ref = dst;
+        } else {
+            gen(c, nkir_make_mov(dst, asRef(c, val)));
+            return makeRef(dst);
         }
-
-        gen(c, nkir_make_mov(dst, makeRef(c, val)));
-
-        return {{.ref = dst}, dst.type, v_ref};
-    } else {
-        // TODO Figure out why does this work????
-        return {{.ref = makeRef(c, val)}, dst.type, v_ref};
     }
+    return makeRef(asRef(c, val));
 }
 
 ValueInfo declToValueInfo(Decl &decl) {
@@ -477,7 +474,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             return {};
         }
     } else if (node->id == cs2nkid("index")) {
-        ref = makeRef(c, compileNode(c, node->args[0].data));
+        ref = asRef(c, compileNode(c, node->args[0].data));
         auto type = ref.type;
         auto index = compileNode(c, node->args[1].data);
         if (index.type->typeclass_id != NkType_Numeric) {
@@ -487,19 +484,19 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
         // TODO Optimize array indexing
         if (type->typeclass_id == NkType_Array) {
             auto u64_t = nkt_get_numeric(c->arena, Uint64);
-            ref = makeRef(
+            ref = asRef(
                 c,
                 makeInstr(
                     nkir_make_add(
                         {},
-                        makeRef(c, makeInstr(nkir_make_lea({}, ref), u64_t)),
-                        makeRef(
+                        asRef(c, makeInstr(nkir_make_lea({}, ref), u64_t)),
+                        asRef(
                             c,
                             makeInstr(
                                 nkir_make_mul(
                                     {},
-                                    makeRef(c, index),
-                                    makeRef(
+                                    asRef(c, index),
+                                    asRef(
                                         c,
                                         makeValue<uint64_t>(
                                             c, u64_t, type->as.arr.elem_type->size))),
@@ -636,7 +633,7 @@ COMPILE(void) {
 
 COMPILE(addr) {
     auto arg = compileNode(c, node->args[0].data);
-    return makeInstr(nkir_make_lea({}, makeRef(c, arg)), nkt_get_ptr(c->arena, arg.type));
+    return makeInstr(nkir_make_lea({}, asRef(c, arg)), nkt_get_ptr(c->arena, arg.type));
 }
 
 COMPILE(deref) {
@@ -645,15 +642,15 @@ COMPILE(deref) {
         NK_LOG_ERR("pointer expected in dereference");
         std::abort();
     }
-    auto ref = makeRef(c, arg);
+    auto ref = asRef(c, arg);
     ref.is_indirect = true;
     ref.type = arg.type->as.ptr.target_type;
-    return {{.ref = ref}, ref.type, v_ref};
+    return makeRef(ref);
 }
 
 COMPILE(return ) {
     auto arg = compileNode(c, node->args[0].data);
-    makeRefAndStore(c, nkir_makeRetRef(c->ir), arg);
+    store(c, nkir_makeRetRef(c->ir), arg);
     gen(c, nkir_make_ret()); // TODO potentially generating ret twice
     return makeVoid(c);
 }
@@ -677,7 +674,7 @@ COMPILE(scope) {
 }
 
 COMPILE(run) {
-    return makeValue(c, comptimeCompileNodeGetValue(c, node->args[0].data));
+    return makeValue(comptimeCompileNodeGetValue(c, node->args[0].data));
 }
 
 // TODO Not doing type checks in arithmetic
@@ -685,67 +682,67 @@ COMPILE(run) {
 COMPILE(add) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_add({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_add({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(sub) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_sub({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_sub({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mul) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_mul({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_mul({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(div) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_div({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_div({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mod) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_mod({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_mod({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(eq) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_eq({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_eq({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ge) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_ge({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_ge({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(gt) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_gt({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_gt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(le) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_le({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_le({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(lt) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_lt({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_lt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ne) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeInstr(nkir_make_ne({}, makeRef(c, lhs), makeRef(c, rhs)), lhs.type);
+    return makeInstr(nkir_make_ne({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(array_type) {
@@ -762,7 +759,7 @@ COMPILE(while) {
     nkir_startBlock(c->ir, l_loop, cs2s("loop"));
     gen(c, nkir_make_enter());
     auto cond = compileNode(c, node->args[0].data);
-    gen(c, nkir_make_jmpz(makeRef(c, cond), l_endloop));
+    gen(c, nkir_make_jmpz(asRef(c, cond), l_endloop));
     compileStmt(c, node->args[1].data);
     gen(c, nkir_make_leave());
     gen(c, nkir_make_jmp(l_loop));
@@ -771,8 +768,7 @@ COMPILE(while) {
 }
 
 COMPILE(index) {
-    auto ref = getLvalueRef(c, node);
-    return {{.ref = ref}, ref.type, v_ref};
+    return makeRef(getLvalueRef(c, node));
 }
 
 COMPILE(if) {
@@ -784,7 +780,7 @@ COMPILE(if) {
         l_else = l_endif;
     }
     auto cond = compileNode(c, node->args[0].data);
-    gen(c, nkir_make_jmpz(makeRef(c, cond), l_else));
+    gen(c, nkir_make_jmpz(asRef(c, cond), l_else));
     {
         pushScope(c);
         defer {
@@ -1106,10 +1102,10 @@ COMPILE(call) {
         auto arg_ref = args;
         arg_ref.offset += args_t->as.tuple.elems.data[i].offset;
         arg_ref.type = args_t->as.tuple.elems.data[i].type;
-        makeRefAndStore(c, arg_ref, args_info[i]);
+        store(c, arg_ref, args_info[i]);
     }
 
-    return makeInstr(nkir_make_call({}, makeRef(c, lhs), args), fn_t->as.fn.ret_t);
+    return makeInstr(nkir_make_call({}, asRef(c, lhs), args), fn_t->as.fn.ret_t);
 }
 
 nkval_t instantiate(NklCompiler c, nktype_t type, std::vector<ValueInfo> const &init) {
@@ -1145,7 +1141,7 @@ COMPILE(object_literal) {
         std::abort();
     }
 
-    return makeValue(c, instantiate(c, nkval_as(nktype_t, type), args_info));
+    return makeValue(instantiate(c, nkval_as(nktype_t, type), args_info));
 }
 
 COMPILE(assign) {
@@ -1154,7 +1150,7 @@ COMPILE(assign) {
     }
     auto lhs_ref = getLvalueRef(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
-    return makeRefAndStore(c, lhs_ref, rhs);
+    return store(c, lhs_ref, rhs);
 }
 
 COMPILE(define) {
@@ -1175,7 +1171,7 @@ COMPILE(define) {
         defineLocal(c, name, var, rhs.type);
         ref = nkir_makeFrameRef(c->ir, var);
     }
-    makeRefAndStore(c, ref, rhs);
+    store(c, ref, rhs);
     return makeVoid(c);
 }
 
@@ -1216,7 +1212,7 @@ COMPILE(var_decl) {
     }
     if (node->args[2].data && node->args[2].data->id) {
         auto val = compileNode(c, node->args[2].data);
-        makeRefAndStore(c, ref, val);
+        store(c, ref, val);
     }
     return makeVoid(c);
 }
@@ -1269,7 +1265,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
     } else {
-        makeRefAndStore(c, nkir_makeRetRef(c->ir), cnst_val);
+        store(c, nkir_makeRetRef(c->ir), cnst_val);
         gen(c, nkir_make_ret());
 
         cnst.funct = fn;
@@ -1295,7 +1291,7 @@ nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node) {
 
 void compileStmt(NklCompiler c, NklAstNode node) {
     auto val = compileNode(c, node);
-    auto ref = makeRef(c, val);
+    auto ref = asRef(c, val);
     if (val.kind != v_none) {
         (void)ref;
         // TODO Boilerplate for debug printing
