@@ -356,7 +356,11 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         nksb_printf(sb, "$global%llu", ref.index);
         break;
     case NkIrRef_Const:
-        nkval_inspect({ref.data, ref.type}, sb);
+        if (ref.is_indirect) {
+            nksb_printf(sb, "%p", ref.data);
+        } else {
+            nkval_inspect({ref.data, ref.type}, sb);
+        }
         break;
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref.index));

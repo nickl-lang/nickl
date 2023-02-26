@@ -426,6 +426,110 @@ ValueInfo compileNode(NklCompiler c, NklAstNode node);
 void compileStmt(NklCompiler c, NklAstNode node);
 void compileNodeArray(NklCompiler c, NklAstNodeArray nodes);
 
+struct IndexResult {
+    size_t offset;
+    nktype_t type;
+};
+
+IndexResult calcArrayIndex(nktype_t type, size_t index) {
+    size_t elem_count = type->as.arr.elem_count;
+    size_t elem_size = type->as.arr.elem_type->size;
+    if (index >= elem_count) {
+        NK_LOG_ERR("idnex out of range");
+        std::abort();
+    }
+    return {elem_size * index, type->as.arr.elem_type};
+}
+
+IndexResult calcTupleIndex(nktype_t type, size_t index) {
+    size_t elem_count = type->as.tuple.elems.size;
+    if (index >= elem_count) {
+        NK_LOG_ERR("idnex out of range");
+        std::abort();
+    }
+    return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
+}
+
+NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
+    NkIrRef ref{};
+    if (node->id == cs2nkid("id")) {
+        auto name = node->token->text;
+        auto res = resolve(c, s2nkid(name));
+        switch (res.kind) {
+        case Decl_Local:
+            ref = nkir_makeFrameRef(c->ir, res.as.local.id);
+            break;
+        case Decl_Global:
+            ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
+            break;
+        case Decl_Undefined:
+            NK_LOG_ERR("`%.*s` is not defined", name.size, name.data);
+            std::abort(); // TODO Report errors properly
+        case Decl_Funct:
+        case Decl_ExtSym:
+        case Decl_Arg:
+            NK_LOG_ERR("cannot assign to `%.*s`", name.size, name.data);
+            std::abort();
+        default:
+            NK_LOG_ERR("unknown decl type");
+            assert(!"unreachable");
+            return {};
+        }
+    } else if (node->id == cs2nkid("index")) {
+        ref = makeRef(c, compileNode(c, node->args[0].data));
+        auto type = ref.type;
+        auto index = comptimeCompileNodeGetValue(c, node->args[1].data);
+        if (nkval_typeclassid(index) != NkType_Numeric) {
+            NK_LOG_ERR("expected number in index");
+            std::abort();
+        }
+        if (type->typeclass_id == NkType_Array) {
+            auto idx_res = calcArrayIndex(type, nkval_as(uint64_t, index));
+            ref.post_offset += idx_res.offset;
+            ref.type = idx_res.type;
+        } else if (type->typeclass_id == NkType_Tuple) {
+            auto idx_res = calcTupleIndex(type, nkval_as(uint64_t, index));
+            ref.post_offset += idx_res.offset;
+            ref.type = idx_res.type;
+        } else if (type->typeclass_id == NkType_Ptr) {
+            ref.is_indirect = true;
+            auto type = ref.type->as.ptr.target_type;
+            if (type->typeclass_id == NkType_Array) {
+                auto idx_res = calcArrayIndex(type, nkval_as(uint64_t, index));
+                ref.post_offset += idx_res.offset;
+                ref.type = idx_res.type;
+            } else if (type->typeclass_id == NkType_Tuple) {
+                auto idx_res = calcTupleIndex(type, nkval_as(uint64_t, index));
+                ref.post_offset += idx_res.offset;
+                ref.type = idx_res.type;
+            } else {
+                // TODO Boilerplate in nonindexable type compiler error
+                auto sb = nksb_create();
+                defer {
+                    nksb_free(sb);
+                };
+                nkt_inspect(type, sb);
+                auto type_str = nksb_concat(sb);
+                NK_LOG_ERR("type `%.*s` is not indexable", type_str.size, type_str.data);
+                std::abort();
+            }
+        } else {
+            auto sb = nksb_create();
+            defer {
+                nksb_free(sb);
+            };
+            nkt_inspect(type, sb);
+            auto type_str = nksb_concat(sb);
+            NK_LOG_ERR("type `%.*s` is not indexable", type_str.size, type_str.data);
+            std::abort();
+        }
+    } else {
+        NK_LOG_ERR("invalid assignment");
+        std::abort();
+    }
+    return ref;
+}
+
 NkIrFunct nkl_compileFile(NklCompiler c, nkstr path);
 
 #define COMPILE(NAME) ValueInfo _compile_##NAME(NklCompiler c, NklAstNode node)
@@ -651,6 +755,11 @@ COMPILE(while) {
     gen(c, nkir_make_jmp(l_loop));
     nkir_startBlock(c->ir, l_endloop, cs2s("endloop"));
     return makeVoid(c);
+}
+
+COMPILE(index) {
+    auto ref = getLvalueRef(c, node);
+    return {{.ref = ref}, ref.type, v_ref};
 }
 
 COMPILE(if) {
@@ -991,42 +1100,12 @@ COMPILE(call) {
 }
 
 COMPILE(assign) {
-    if (node->args[0].data->id == cs2nkid("id")) {
-        auto name_str = node->args[0].data->token->text;
-        nkid name = s2nkid(name_str);
-        auto rhs = compileNode(c, node->args[1].data);
-        auto res = resolve(c, name);
-        NkIrRef ref;
-        switch (res.kind) {
-        case Decl_Local:
-            if (res.as.local.type->id != rhs.type->id) {
-                // return error("cannot assign values of different types"), ValueInfo{};
-            }
-            ref = nkir_makeFrameRef(c->ir, res.as.local.id);
-            break;
-        case Decl_Global:
-            if (res.as.local.type->id != rhs.type->id) {
-                // return error("cannot assign values of different types"), ValueInfo{};
-            }
-            ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
-            break;
-        case Decl_Undefined:
-            NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
-            std::abort(); // TODO Report errors properly
-        case Decl_Funct:
-        case Decl_ExtSym:
-        case Decl_Arg:
-            // return error("cannot assign to `%.*s`", name_str.size, name_str.data), ValueInfo{};
-        default:
-            NK_LOG_ERR("unknown decl type");
-            assert(!"unreachable");
-            return {};
-        }
-        return makeRefAndStore(c, ref, rhs);
-    } else {
-        NK_LOG_ERR("invalid assignment");
-        std::abort();
+    if (node->args->size > 1) {
+        NK_LOG_WRN("multiple assignment is not supported");
     }
+    auto lhs_ref = getLvalueRef(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeRefAndStore(c, lhs_ref, rhs);
 }
 
 COMPILE(define) {

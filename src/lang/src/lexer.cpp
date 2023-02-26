@@ -251,7 +251,9 @@ private:
     void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        std::vprintf(fmt, ap); // TODO Report errors properly
+        std::vfprintf(stderr, fmt, ap); // TODO Report errors properly
+        std::fputs("\n", stderr);
+        std::fflush(stderr);
         va_end(ap);
         std::abort();
     }

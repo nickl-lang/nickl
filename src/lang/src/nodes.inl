@@ -101,7 +101,7 @@ B(ne)
 
 B(array_type) // (type: node, count: node)
 // B(cast)       // (target_type: node, expr: node)
-// B(index)      // (lhs: node, index: node)
+B(index)      // (lhs: node, index: node)
 B(while) // (cond: node, body: node)
 
 #undef B
