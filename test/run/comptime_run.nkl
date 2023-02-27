@@ -1,6 +1,6 @@
 import std;
 
-foo :: () {
+foo :: () -> void { // TODO Fix parsing for `() {}`
     std.puts("runtime");
     ${ std.puts("comptime"); }
 }

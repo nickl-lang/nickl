@@ -1,24 +1,27 @@
 import std;
 
-AR_SIZE :: 4;
+AR_SIZE :: 3;
 
 ar: [AR_SIZE]i64;
 
 ar[0] = 1;
 ar[1] = 2;
 ar[2] = 4;
-ar[3] = 8;
 
 i := 0;
-while i < 4 {
-    std.printf("ar[%li]=%li\n", i, ar[i]);
+while i < AR_SIZE {
+    std.printf("ar[%li]=%li ", i, ar[i]);
     i = i + 1;
 }
 
-// ar = [0, 1, 2, 3];
+std.puts("");
 
-// i = 0;
-// while i < AR_SIZE {
-//     std.printf("ar[%li]=%li\n", i, ar[i]);
-//     i = i + 1;
-// }
+ar = ([AR_SIZE]i64){0, 1, 2};
+
+i = 0;
+while i < AR_SIZE {
+    std.printf("ar[%li]=%li ", i, ar[i]);
+    i = i + 1;
+}
+
+std.puts("");

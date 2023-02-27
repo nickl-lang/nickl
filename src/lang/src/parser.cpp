@@ -1003,7 +1003,7 @@ private:
                     .accept_init = true,
                     .allow_tuple_mode = true,
                 }));
-            if (check(t_minus_greater) || check(t_brace_l)) {
+            if (check(t_minus_greater) || (!res.tuple_parsed && check(t_brace_l))) {
                 NklAstNode_T ret_type{};
                 if (accept(t_minus_greater)) {
                     ASSIGN(ret_type, expr(Expr_Type));

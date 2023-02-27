@@ -12,6 +12,7 @@
 #include <map>
 #include <new>
 #include <stack>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -433,7 +434,7 @@ struct IndexResult {
 //     size_t elem_count = type->as.arr.elem_count;
 //     size_t elem_size = type->as.arr.elem_type->size;
 //     if (index >= elem_count) {
-//         NK_LOG_ERR("idnex out of range");
+//         NK_LOG_ERR("array index out of range");
 //         std::abort();
 //     }
 //     return {elem_size * index, type->as.arr.elem_type};
@@ -442,7 +443,7 @@ struct IndexResult {
 IndexResult calcTupleIndex(nktype_t type, size_t index) {
     size_t elem_count = type->as.tuple.elems.size;
     if (index >= elem_count) {
-        NK_LOG_ERR("idnex out of range");
+        NK_LOG_ERR("tuple index out of range");
         std::abort();
     }
     return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
@@ -1108,40 +1109,108 @@ COMPILE(call) {
     return makeInstr(nkir_make_call({}, asRef(c, lhs), args), fn_t->as.fn.ret_t);
 }
 
-nkval_t instantiate(NklCompiler c, nktype_t type, std::vector<ValueInfo> const &init) {
-    nkval_t val{nk_allocate(c->arena, type->size), type};
-    std::memset(nkval_data(val), 0, nkval_sizeof(val));
-    NK_LOG_WRN("TODO object_literal compilation is not finised, zero initializing");
-    return val;
+void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
+    switch (nkval_typeclassid(val)) {
+    case NkType_Array:
+        if (init_nodes.size > nkval_tuple_size(val)) {
+            NK_LOG_ERR("too many values to init array");
+            std::abort();
+        }
+        for (size_t i = 0; i < nkval_array_size(val); i++) {
+            initFromAst(c, nkval_array_at(val, i), {&init_nodes.data[i], 1});
+        }
+        break;
+    case NkType_Numeric: {
+        if (init_nodes.size > 1) {
+            NK_LOG_ERR("too many values to init numeric");
+            std::abort();
+        }
+        auto const &node = init_nodes.data[0];
+        if (node.id != cs2nkid("int") && node.id != cs2nkid("float")) {
+            NK_LOG_ERR("invalid value to init numeric");
+            std::abort();
+        }
+        auto str = std_str(node.token->text);
+        switch (nkval_typeof(val)->as.num.value_type) {
+        case Int8:
+            nkval_as(int8_t, val) = std::stoll(str);
+            break;
+        case Int16:
+            nkval_as(int16_t, val) = std::stoll(str);
+            break;
+        case Int32:
+            nkval_as(int32_t, val) = std::stoll(str);
+            break;
+        case Int64:
+            nkval_as(int64_t, val) = std::stoll(str);
+            break;
+        case Uint8:
+            nkval_as(uint8_t, val) = std::stoull(str);
+            break;
+        case Uint16:
+            nkval_as(uint16_t, val) = std::stoull(str);
+            break;
+        case Uint32:
+            nkval_as(uint32_t, val) = std::stoull(str);
+            break;
+        case Uint64:
+            nkval_as(uint64_t, val) = std::stoull(str);
+            break;
+        case Float32:
+            nkval_as(float, val) = std::stof(str);
+            break;
+        case Float64:
+            nkval_as(double, val) = std::stod(str);
+            break;
+        }
+        break;
+    }
+    case NkType_Tuple:
+        if (init_nodes.size > nkval_tuple_size(val)) {
+            NK_LOG_ERR("too many values to init array");
+            std::abort();
+        }
+        for (size_t i = 0; i < nkval_tuple_size(val); i++) {
+            initFromAst(c, nkval_tuple_at(val, i), {&init_nodes.data[i], 1});
+        }
+        break;
+    default:
+        NK_LOG_ERR("initFromAst is not implemented fir this type");
+        assert(!"unreachable");
+        break;
+    }
 }
 
 COMPILE(object_literal) {
-    auto type = comptimeCompileNodeGetValue(c, node->args[0].data);
+    // TODO Optimize object literal
+
+    auto type_val = comptimeCompileNodeGetValue(c, node->args[0].data);
 
     // TODO Modeling type_t as *void
-    if (nkval_typeclassid(type) != NkType_Ptr &&
-        nkval_typeof(type)->as.ptr.target_type->typeclass_id != NkType_Void) {
+    if (nkval_typeclassid(type_val) != NkType_Ptr &&
+        nkval_typeof(type_val)->as.ptr.target_type->typeclass_id != NkType_Void) {
         NK_LOG_ERR("type expected in object literal");
         std::abort();
     }
 
-    std::vector<ValueInfo> args_info{};
-    bool all_is_known = true;
+    auto type = nkval_as(nktype_t, type_val);
 
-    auto nodes = node->args[1];
-    for (size_t i = 0; i < nodes.size; i++) {
-        auto val_info =
-            compileNode(c, nodes.data[i].args[1].data); // TODO Support named args in object_literal
-        all_is_known &= isKnown(val_info);
-        args_info.emplace_back(val_info);
+    nkval_t val{nk_allocate(c->arena, type->size), type};
+    std::memset(nkval_data(val), 0, nkval_sizeof(val));
+
+    auto init_nodes = node->args[1];
+
+    // TODO Ingnoreing named args in object literal, and copying values to a sperate array
+    std::vector<NklAstNode_T> nodes;
+    nodes.reserve(init_nodes.size);
+
+    for (size_t i = 0; i < init_nodes.size; i++) {
+        nodes.emplace_back(init_nodes.data[i].args[1].data[0]);
     }
 
-    if (!all_is_known) {
-        NK_LOG_ERR("TODO runtime object literal is not implemented");
-        std::abort();
-    }
+    initFromAst(c, val, {nodes.data(), nodes.size()});
 
-    return makeValue(instantiate(c, nkval_as(nktype_t, type), args_info));
+    return makeValue(val);
 }
 
 COMPILE(assign) {
