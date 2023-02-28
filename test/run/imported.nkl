@@ -1,4 +1,0 @@
-MyStruct :: struct {
-    a: int;
-    b: int;
-}

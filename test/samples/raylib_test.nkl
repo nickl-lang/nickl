@@ -21,15 +21,15 @@ runRaylib :: () -> i32 {
         if raylib.IsKeyDown(raylib.KEY_UP)    { y = y - STEP; dist = dist + STEP; }
         if raylib.IsKeyDown(raylib.KEY_DOWN)  { y = y + STEP; dist = dist + STEP; }
 
-        WHITE    :: 4294967295; // 0xffffffff
-        MAROON   :: 4281802430; // 0xff371ebe
-        DARKGRAY :: 4283453520; // 0xff505050
+        WHITE    :: raylib.Color{255, 255, 255, 255};
+        MAROON   :: raylib.Color{190, 30,  55,  255};
+        DARKGRAY :: raylib.Color{80,  80,  80,  255};
 
-        radius: f32 = 1112014848; // 50.0f
+        RADIUS :: f32{50};
 
         raylib.BeginDrawing();
             raylib.ClearBackground(WHITE);
-            raylib.DrawCircle(x, y, radius, MAROON);
+            raylib.DrawCircle(x, y, RADIUS, MAROON);
             raylib.DrawFPS(10, 10);
             raylib.DrawText("move the ball with arrow keys", 10, 30, 20, DARKGRAY);
             raylib.DrawText(raylib.TextFormat("distance traveled: %i pix", dist), 10, 50, 20, DARKGRAY);

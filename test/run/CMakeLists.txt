@@ -1,8 +1,6 @@
 # def_run_test(NAME arithmetic)
 # def_run_test(NAME cast)
-# def_run_test(NAME import)
 # def_run_test(NAME ir_optimization)
-# def_run_test(NAME tags)
 
 def_run_test(NAME arrays OUTPUT_REGEX "^ar\\[0\\]=1 ar\\[1\\]=2 ar\\[2\\]=4 \nar\\[0\\]=0 ar\\[1\\]=1 ar\\[2\\]=2 \n$")
 def_run_test(NAME comptime_run OUTPUT_REGEX "^comptime\nruntime\n$")
