@@ -1,5 +1,6 @@
-def_test(GROUP vm NAME ir LINK ${LIB} TARGET IR_TEST)
 def_test(GROUP vm NAME cc_adapter LINK ${LIB} TARGET CC_ADAPTER_TEST)
+def_test(GROUP vm NAME ir LINK ${LIB} TARGET IR_TEST)
+def_test(GROUP vm NAME native_fn_adapter LINK ${LIB})
 
 target_link_options(${IR_TEST}
     PRIVATE -export-dynamic # for dl

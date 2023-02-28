@@ -12,7 +12,7 @@
 
 namespace {
 
-NK_LOG_USE_SCOPE(cc_adapter);
+NK_LOG_USE_SCOPE(test);
 
 class cc_adapter : public testing::Test {
     void SetUp() override {

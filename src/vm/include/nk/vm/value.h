@@ -105,7 +105,7 @@ typedef struct {
     bool is_variadic;
 } NktFnInfo;
 
-nktype_t nkt_get_fn(NkAllocator *alloc, NktFnInfo const *info);
+nktype_t nkt_get_fn(NkAllocator *alloc, NktFnInfo info);
 
 nktype_t nkt_get_numeric(NkAllocator *alloc, NkNumericValueType value_type);
 

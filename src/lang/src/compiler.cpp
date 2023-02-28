@@ -958,8 +958,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
                          : nkt_get_void(c->arena);
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    NktFnInfo fn_info{ret_t, args_t, NkCallConv_Nk, is_variadic};
-    auto fn_t = nkt_get_fn(c->arena, &fn_info);
+    auto fn_t = nkt_get_fn(c->arena, {ret_t, args_t, NkCallConv_Nk, is_variadic});
 
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
@@ -1023,9 +1022,9 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
     nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    NktFnInfo fn_info{
-        ret_t, args_t, NkCallConv_Cdecl, is_variadic}; // TODO CallConv Hack for #foreign
-    auto fn_t = nkt_get_fn(c->arena, &fn_info);
+    auto fn_t = nkt_get_fn(
+        c->arena,
+        {ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #foreign
 
     return makeValue<nktype_t>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), fn_t);
 }
@@ -1390,9 +1389,9 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
 
-    NktFnInfo top_level_fn_info{
-        nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false};
-    auto top_level_fn_t = nkt_get_fn(c->arena, &top_level_fn_info);
+    auto top_level_fn_t = nkt_get_fn(
+        c->arena,
+        {nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false});
 
     nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
