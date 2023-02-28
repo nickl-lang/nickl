@@ -449,8 +449,7 @@ TEST_F(ir, callback_from_native) {
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     auto cb_arg = nkir_makeFunctRef(nativeAdd);
-    // TODO Have to not pass a funct ref as tuple
-    // cb_arg.type = nativeCallback_args_t;
+    cb_arg.type = nativeCallback_args_t;
 
     nkir_gen(
         p, nkir_make_call(nkir_makeRetRef(p), nkir_makeExtSymRef(p, nativeCallback_fn), cb_arg));

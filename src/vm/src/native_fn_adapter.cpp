@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <new>
 #include <unordered_map>
 
 #include <ffi.h>
@@ -61,11 +62,11 @@ ffi_type *_getNativeHandle(nktype_t type) {
         switch (type->typeclass_id) {
         case NkType_Array: {
             auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
-            ffi_type **elements =
-                (ffi_type **)nk_allocate(s_typearena, type->as.arr.elem_count * sizeof(void *));
+            ffi_type **elements = (ffi_type **)nk_allocate(
+                s_typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
             std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
-            ffi_t = (ffi_type *)nk_allocate(s_typearena, sizeof(ffi_type));
-            *ffi_t = {
+            elements[type->as.arr.elem_count] = nullptr;
+            ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
                 .size = type->size,
                 .alignment = type->alignment,
                 .type = FFI_TYPE_STRUCT,
@@ -117,13 +118,13 @@ ffi_type *_getNativeHandle(nktype_t type) {
             ffi_t = &ffi_type_pointer;
             break;
         case NkType_Tuple: {
-            ffi_type **elements =
-                (ffi_type **)nk_allocate(s_typearena, type->as.tuple.elems.size * sizeof(void *));
+            ffi_type **elements = (ffi_type **)nk_allocate(
+                s_typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
             for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
                 elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type);
             }
-            ffi_t = (ffi_type *)nk_allocate(s_typearena, sizeof(ffi_type));
-            *ffi_t = {
+            elements[type->as.tuple.elems.size] = nullptr;
+            ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
                 .size = type->size,
                 .alignment = type->alignment,
                 .type = FFI_TYPE_STRUCT,
@@ -205,9 +206,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 
-    size_t const argc = nkval_data(args)
-                            ? nkval_typeclassid(args) == NkType_Tuple ? nkval_tuple_size(args) : 1
-                            : 0; // TODO Have to handle args not being a tuple
+    size_t const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
 
     auto rtype = _getNativeHandle(nkval_typeof(ret));
     auto atypes = _getNativeHandle(nkval_typeof(args));
@@ -221,16 +220,9 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
             nkval_typeof(fn)->as.fn.args_t->as.tuple.elems.size,
             argc,
             rtype,
-            (nkval_data(args) && nkval_typeclassid(args) == NkType_Tuple) ? atypes->elements
-                                                                          : &atypes);
+            atypes->elements);
     } else {
-        status = ffi_prep_cif(
-            &cif,
-            FFI_DEFAULT_ABI,
-            argc,
-            rtype,
-            (nkval_data(args) && nkval_typeclassid(args) == NkType_Tuple) ? atypes->elements
-                                                                          : &atypes);
+        status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
     }
     assert(status == FFI_OK && "ffi_prep_cif failed");
 
@@ -240,12 +232,8 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     };
 
     if (nkval_data(args)) {
-        if (nkval_typeclassid(args) == NkType_Tuple) {
-            for (size_t i = 0; i < argc; i++) {
-                argv[i] = nkval_data(nkval_tuple_at(args, i));
-            }
-        } else {
-            argv[0] = nkval_data(args);
+        for (size_t i = 0; i < argc; i++) {
+            argv[i] = nkval_data(nkval_tuple_at(args, i));
         }
     }
 
@@ -257,6 +245,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
 
 NkNativeClosure nk_native_make_closure(nkval_t fn) {
     EASY_FUNCTION(::profiler::colors::Orange200);
+    NK_LOG_TRC(__func__);
 
     auto cl = (NkNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkNativeClosure_T));
     cl->fn = fn;
@@ -273,6 +262,7 @@ NkNativeClosure nk_native_make_closure(nkval_t fn) {
 
 void nk_native_free_closure(NkNativeClosure cl) {
     EASY_FUNCTION(::profiler::colors::Orange200);
+    NK_LOG_TRC(__func__);
 
     ffi_closure_free(cl->closure);
     nk_free(nk_default_allocator, cl);

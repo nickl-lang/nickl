@@ -25,7 +25,9 @@ NkDlHandle nkdl_open(nkstr name) {
 void nkdl_close(NkDlHandle dl) {
     EASY_FUNCTION(::profiler::colors::Orange200);
 
-    dlclose((void *)dl);
+    if (dl) {
+        dlclose((void *)dl);
+    }
 }
 
 void *nkdl_sym(NkDlHandle dl, nkstr sym) {

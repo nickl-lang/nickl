@@ -188,11 +188,12 @@ protected:
 
 } // namespace
 
-#define SET_TEST(TYPE, VAL)                                                          \
-    do {                                                                             \
-        TYPE _val = VAL;                                                             \
-        nk_native_invoke({&set_##TYPE##_fn, set_##TYPE##_t}, {}, {&_val, TYPE##_t}); \
-        EXPECT_EQ(s_##TYPE##_val, VAL);                                              \
+#define SET_TEST(TYPE, VAL)                                                        \
+    do {                                                                           \
+        TYPE _val = VAL;                                                           \
+        auto args_t = nkt_get_tuple(m_arena, &TYPE##_t, 1, 1);                     \
+        nk_native_invoke({&set_##TYPE##_fn, set_##TYPE##_t}, {}, {&_val, args_t}); \
+        EXPECT_EQ(s_##TYPE##_val, VAL);                                            \
     } while (0)
 
 TEST_F(native_fn_adapter, set) {
@@ -202,8 +203,8 @@ TEST_F(native_fn_adapter, set) {
     SET_TEST(i64, 78);
     SET_TEST(f32, 3.14f);
     SET_TEST(f64, 3.14);
-    // TODO(failing test) SET_TEST(ivec3, (ivec3{1, 2, 3}));
-    // TODO(failing test) SET_TEST(dvec3, (dvec3{1.2, 3.4, 5.6}));
+    SET_TEST(ivec3, (ivec3{1, 2, 3}));
+    SET_TEST(dvec3, (dvec3{1.2, 3.4, 5.6}));
 }
 
 #define GET_TEST(TYPE, VAL)                                                          \
@@ -221,8 +222,8 @@ TEST_F(native_fn_adapter, get) {
     GET_TEST(i64, 78);
     GET_TEST(f32, 3.14f);
     GET_TEST(f64, 3.14);
-    // TODO(failing test) GET_TEST(ivec3, (ivec3{1, 2, 3}));
-    // TODO(failing test) GET_TEST(dvec3, (dvec3{1.2, 3.4, 5.6}));
+    GET_TEST(ivec3, (ivec3{1, 2, 3}));
+    GET_TEST(dvec3, (dvec3{1.2, 3.4, 5.6}));
 }
 
 template <class T>
@@ -241,12 +242,12 @@ struct VariadicArgs {
     } while (0)
 
 TEST_F(native_fn_adapter, set_variadic) {
-    // TODO(implement promotion) SET_VARIADIC_TEST(i8, 12);
-    // TODO(implement promotion) SET_VARIADIC_TEST(i16, 34);
+    // TODO(promotion) SET_VARIADIC_TEST(i8, 12);
+    // TODO(promotion) SET_VARIADIC_TEST(i16, 34);
     SET_VARIADIC_TEST(i32, 56);
     SET_VARIADIC_TEST(i64, 78);
-    // TODO(implement promotion) SET_VARIADIC_TEST(f32, 3.14f);
+    // TODO(promotion) SET_VARIADIC_TEST(f32, 3.14f);
     SET_VARIADIC_TEST(f64, 3.14);
-    // TODO(failing test) SET_VARIADIC_TEST(ivec3, (ivec3{1, 2, 3}));
-    // TODO(failing test) SET_VARIADIC_TEST(dvec3, (dvec3{1.2, 3.4, 5.6}));
+    SET_VARIADIC_TEST(ivec3, (ivec3{1, 2, 3}));
+    SET_VARIADIC_TEST(dvec3, (dvec3{1.2, 3.4, 5.6}));
 }
