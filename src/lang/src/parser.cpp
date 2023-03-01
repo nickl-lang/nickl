@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -31,7 +32,7 @@ namespace {
 NK_LOG_USE_SCOPE(parser);
 
 struct ParseEngine {
-    std::vector<NklToken> const &m_tokens;
+    nkslice<NklToken const> m_tokens;
     NklAst m_ast;
 
     bool m_error_occurred = false;
@@ -232,12 +233,11 @@ private:
         }
 
         auto node =
-            nodes.size() == 0
-                ? nkl_makeNode0("nop", _n_token)
-                : nodes.size() == 1
-                      ? nodes.front()
-                      : nkl_makeNode1(
-                            "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+            nodes.size() == 0 ? nkl_makeNode0("nop", _n_token)
+            : nodes.size() == 1
+                ? nodes.front()
+                : nkl_makeNode1(
+                      "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1("scope", _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -1085,7 +1085,7 @@ private:
 
 } // namespace
 
-NklAstNode nkl_parse(NklAst ast, std::vector<NklToken> const &tokens) {
+NklAstNode nkl_parse(NklAst ast, nkslice<NklToken const> tokens) {
     EASY_FUNCTION(::profiler::colors::Teal200);
     NK_LOG_TRC(__func__);
 
