@@ -710,6 +710,36 @@ COMPILE(mod) {
     return makeInstr(nkir_make_mod({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
+COMPILE(bitand) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_bitand({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
+COMPILE(bitor) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_bitor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
+COMPILE(xor) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_xor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
+COMPILE(lsh) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_lsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
+COMPILE(rsh) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_rsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
 COMPILE(eq) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
