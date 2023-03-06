@@ -522,8 +522,17 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             NK_LOG_ERR("type `%.*s` is not indexable", type_str.size, type_str.data);
             std::abort();
         }
+    } else if (node->id == cs2nkid("deref")) {
+        auto arg = compileNode(c, node->args[0].data);
+        if (arg.type->typeclass_id != NkType_Ptr) {
+            NK_LOG_ERR("pointer expected in dereference");
+            std::abort();
+        }
+        ref = asRef(c, arg);
+        ref.is_indirect = true;
+        ref.type = arg.type->as.ptr.target_type;
     } else {
-        NK_LOG_ERR("invalid assignment");
+        NK_LOG_ERR("invalid lvalue");
         std::abort();
     }
     return ref;
@@ -638,15 +647,7 @@ COMPILE(addr) {
 }
 
 COMPILE(deref) {
-    auto arg = compileNode(c, node->args[0].data);
-    if (arg.type->typeclass_id != NkType_Ptr) {
-        NK_LOG_ERR("pointer expected in dereference");
-        std::abort();
-    }
-    auto ref = asRef(c, arg);
-    ref.is_indirect = true;
-    ref.type = arg.type->as.ptr.target_type;
-    return makeRef(ref);
+    return makeRef(getLvalueRef(c, node));
 }
 
 COMPILE(return ) {
