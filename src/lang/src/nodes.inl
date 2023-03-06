@@ -77,8 +77,8 @@ B(xor)
 B(lsh)
 B(rsh)
 
-// B(and)
-// B(or)
+B(and)
+B(or)
 
 B(eq)
 B(ge)

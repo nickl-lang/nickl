@@ -741,6 +741,18 @@ COMPILE(rsh) {
     return makeInstr(nkir_make_rsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
+COMPILE(and) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_and({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
+COMPILE(or) {
+    auto lhs = compileNode(c, node->args[0].data);
+    auto rhs = compileNode(c, node->args[1].data);
+    return makeInstr(nkir_make_or({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+}
+
 COMPILE(eq) {
     auto lhs = compileNode(c, node->args[0].data);
     auto rhs = compileNode(c, node->args[1].data);
