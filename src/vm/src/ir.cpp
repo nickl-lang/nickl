@@ -1,5 +1,6 @@
 #include "nk/vm/ir.h"
 
+#include <algorithm>
 #include <cassert>
 #include <new>
 

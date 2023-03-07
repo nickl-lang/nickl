@@ -14,7 +14,7 @@ NK_LOG_USE_SCOPE(dl_adapter);
 NkDlHandle nkdl_open(nkstr name) {
     EASY_FUNCTION(::profiler::colors::Orange200);
 
-    auto dl = (NkDlHandle)dlopen(name.data, RTLD_GLOBAL | RTLD_LAZY);
+    auto dl = (NkDlHandle)dlopen(name.size ? name.data : nullptr, RTLD_GLOBAL | RTLD_LAZY);
     if (!dl) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly
     }
