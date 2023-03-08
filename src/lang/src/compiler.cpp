@@ -151,11 +151,17 @@ struct NklCompiler_T {
 namespace {
 
 nkstr block(NklCompiler c, char const *name) {
+    // TODO Not ideal string management in compiler
     auto id = cs2nkid(name);
     auto num = c->id2blocknum[id]++;
     char buf[1024];
-    std::snprintf(buf, AR_SIZE(buf), "%s%zu", name, num);
-    return cs2s(buf);
+    size_t size = std::snprintf(buf, AR_SIZE(buf), "%s%zu", name, num);
+
+    auto str = (char *)nk_allocate(c->arena, size + 1);
+    std::memcpy(str, buf, size);
+    str[size] = '\0';
+
+    return {str, size};
 }
 
 Scope &curScope(NklCompiler c) {
@@ -1407,7 +1413,6 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     if (isKnown(cnst_val)) {
         nkir_discardFunct(fn);
         c->fn_scopes.erase(fn); // TODO Actually delete persistent scopes
-        c->id2blocknum[cs2nkid("start")]--;
 
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
@@ -1557,7 +1562,7 @@ extern "C" NK_EXPORT void nkl_compiler_link(NklCompilerBuilder *b, char const *l
     b->libs.emplace_back(lib);
 }
 
-extern "C" NK_EXPORT void nkl_compiler_build(
+extern "C" NK_EXPORT bool nkl_compiler_build(
     NklCompilerBuilder *b,
     NkIrFunct entry,
     char const *exe_name) {
@@ -1578,7 +1583,7 @@ extern "C" NK_EXPORT void nkl_compiler_build(
         .echo_src = 0,
         .quiet = 0,
     };
-    nkir_compile(conf, c->ir, entry);
+    return nkir_compile(conf, c->ir, entry);
 }
 
 NklCompiler nkl_compiler_create() {
