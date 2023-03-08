@@ -1542,7 +1542,7 @@ extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
         .compiler_binary = cs2s("gcc"),
         .additional_flags = cs2s("-O2"),
         .output_filename = cs2s(exe_name),
-        .quiet = 0,
+        .quiet = 1,
     };
     nkir_compile(conf, c->ir, entry_point);
 }
