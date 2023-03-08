@@ -28,6 +28,7 @@ class cc_adapter : public testing::Test {
             .compiler_binary = cs2s(TEST_CC),
             .additional_flags = cs2s(TEST_CC_FLAGS),
             .output_filename = nksb_concat(m_output_filename_sb),
+            .echo_src = !TEST_QUIET,
             .quiet = TEST_QUIET,
         };
     }

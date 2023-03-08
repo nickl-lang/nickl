@@ -1,6 +1,8 @@
 import std;
 import compiler;
 
+MAGIC :: 0.654321;
+
 Vec3 :: #type (f64, f64, f64);
 
 vecLength :: (vec: Vec3) -> f64 {
@@ -14,9 +16,12 @@ main :: (argc: i32, argv: **i8) -> i32 {
     vec[1] = std.sqrt(f64{3}) / f64{2};
     vec[2] = f64{0.5};
     len := vecLength(vec);
-    std.printf("len=%lf\n", len);
+    std.printf("%lf\n", len + MAGIC);
     return 0;
 }
 
-main();
-compiler.buildExecutable(main, "vec_length");
+main(0, 0);
+
+builder := compiler.createBuilder();
+compiler.build(builder, main, "vec_length");
+compiler.freeBuilder(builder);

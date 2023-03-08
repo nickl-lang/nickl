@@ -160,4 +160,6 @@ main :: () -> i32 {
 }
 
 import compiler;
-compiler.buildExecutable(main, "life");
+builder := compiler.createBuilder();
+compiler.build(builder, main, "life");
+compiler.freeBuilder(builder);

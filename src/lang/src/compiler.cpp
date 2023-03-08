@@ -1532,22 +1532,53 @@ extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t t
     defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type);
 }
 
-extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
-    NkIrFunct entry_point,
+struct NklCompilerBuilder {
+    std::vector<fs::path> libs{};
+};
+
+extern "C" NK_EXPORT NklCompilerBuilder *nkl_compiler_createBuilder() {
+    NK_LOG_TRC(__func__);
+
+    return new (nk_allocate(nk_default_allocator, sizeof(NklCompilerBuilder))) NklCompilerBuilder{};
+}
+
+extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
+    NK_LOG_TRC(__func__);
+
+    b->~NklCompilerBuilder();
+    nk_free(nk_default_allocator, b);
+}
+
+extern "C" NK_EXPORT void nkl_compiler_link(NklCompilerBuilder *b, char const *lib) {
+    NK_LOG_TRC(__func__);
+
+    b->libs.emplace_back(lib);
+}
+
+extern "C" NK_EXPORT void nkl_compiler_build(
+    NklCompilerBuilder *b,
+    NkIrFunct entry,
     char const *exe_name) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
+    // TODO Hardcoded compiler settings
+
     NklCompiler c = s_compiler;
 
-    // TODO Hardcoded compiler settings
+    std::string flags = "-O2";
+    for (auto const &lib : b->libs) {
+        flags += " -L" + lib.parent_path().string() + " -l:" + lib.filename().string();
+    }
+
     NkIrCompilerConfig conf{
         .compiler_binary = cs2s("gcc"),
-        .additional_flags = cs2s("-O2"),
+        .additional_flags = {flags.c_str(), flags.size()},
         .output_filename = cs2s(exe_name),
-        .quiet = 1,
+        .echo_src = 0,
+        .quiet = 0,
     };
-    nkir_compile(conf, c->ir, entry_point);
+    nkir_compile(conf, c->ir, entry);
 }
 
 NklCompiler nkl_compiler_create() {

@@ -12,6 +12,7 @@ typedef struct {
     nkstr compiler_binary;
     nkstr additional_flags;
     nkstr output_filename;
+    bool echo_src;
     bool quiet;
 } NkIrCompilerConfig;
 

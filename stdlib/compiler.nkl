@@ -1,4 +1,10 @@
 #foreign("", "nkl_compiler_") declareLocal :: (name: *i8, type: *void) -> void;
 
+Builder :: void;
 EntryPoint :: (argc: i32, argv: **i8) -> i32;
-#foreign("", "nkl_compiler_") buildExecutable :: (entry_point: EntryPoint, exe_name: *i8) -> void;
+
+#foreign("", "nkl_compiler_") createBuilder :: () -> *Builder;
+#foreign("", "nkl_compiler_") freeBuilder :: (b: *Builder) -> void;
+
+#foreign("", "nkl_compiler_") link :: (b: *Builder, lib: *i8) -> bool;
+#foreign("", "nkl_compiler_") build :: (b: *Builder, entry: EntryPoint, exe_name: *i8) -> bool;
