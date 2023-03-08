@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iomanip>
 #include <limits>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stack>
@@ -18,6 +19,7 @@
 #include "nk/common/profiler.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/utils.hpp"
+#include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 
@@ -309,325 +311,17 @@ void _writeFnSig(
     src << ")";
 }
 
-#if 0
-// TODO Remove _writeProgram
-void _writeProgram(WriterCtx &ctx, NkIrProg ir) {
-    auto &src = ctx.main_s;
-
-    _writePreabmle(ctx.types_s);
-
-    // std::vector<std::string> block_name_by_id;
-
-    // for (auto const &f : ir.functs) {
-    //     for (auto const &b : ir.blocks.slice(f->first_block, f->block_count)) {
-    //         block_name_by_id[f->first_block + b.id] = b.name;
-    //     }
-    // }
-
-    for (auto const &sym : ir->exsyms) {
-        if (sym.type->typeclass_id == NkType_Fn) {
-            NK_LOG_ERR("external vars not implemented");
-            std::abort();
-        }
-        ctx.forward_s << "extern ";
-        auto const &fn_t = sym.type->as.fn;
-        _writeFnSig(ctx, ctx.forward_s, sym.name, fn_t.ret_t, fn_t.args_t, fn_t.is_variadic);
-        ctx.forward_s << ";\n";
+// TODO Check if cast is needed
+void _writeCast(WriterCtx &ctx, std::ostream &src, nktype_t type) {
+    if (type->typeclass_id != NkType_Numeric && type->typeclass_id != NkType_Ptr &&
+        type->typeclass_id != NkType_Void) {
+        return;
     }
 
-    for (auto const &f : ir->functs) {
-        auto fn_t = f->fn_t;
-        auto args_t = fn_t->as.fn.args_t;
-        auto ret_t = fn_t->as.fn.ret_t;
-
-        if (f->name[0] == '#') {
-            continue;
-        }
-
-        _writeFnSig(ctx, ctx.forward_s, f->name, ret_t, args_t);
-        ctx.forward_s << ";\n";
-
-        src << "\n";
-        _writeFnSig(ctx, src, f->name, ret_t, args_t);
-        src << " {\n\n";
-
-        _writeType(
-            ctx,
-            nkt_get_array(ctx.arena, nkt_get_numeric(ctx.arena, Uint8), REG_SIZE * NkIrReg_Count),
-            src);
-        src << " reg;\n";
-
-        for (size_t i = 0; auto type : f->locals) {
-            _writeType(ctx, type, src);
-            src << " var" << i++ << ";\n";
-        }
-
-        if (ret_t->typeclass_id != NkType_Void) {
-            _writeType(ctx, ret_t, src);
-            src << " ret;\n";
-        }
-
-        src << "\n";
-
-        for (auto bi : f->blocks) {
-            auto const &b = ir->blocks[bi];
-
-            src << "l_" << b.name << ":\n";
-
-            auto _writeRef = [&](NkIrRef const &ref) {
-                if (ref.ref_type == NkIrRef_Const) {
-                    _writeConst(ctx, {ref.data, ref.type}, src);
-                    return;
-                }
-                src << "*(";
-                _writeType(ctx, ref.type, src);
-                src << "*)";
-                if (ref.post_offset) {
-                    src << "((uint8_t*)";
-                }
-                if (ref.offset) {
-                    src << "((uint8_t*)";
-                }
-                if (!ref.is_indirect) {
-                    src << "&";
-                }
-                switch (ref.ref_type) {
-                case NkIrRef_Frame:
-                    src << "var" << ref.index;
-                    break;
-                case NkIrRef_Arg:
-                    src << "arg" << ref.index;
-                    break;
-                case NkIrRef_Ret:
-                    src << "ret";
-                    break;
-                case NkIrRef_Global:
-                    assert(!"global ref not implemented");
-                    break;
-                case NkIrRef_Reg:
-                    src << "*((uint8_t*)&reg+" << ref.index * REG_SIZE << ")";
-                    break;
-                case NkIrRef_ExtSym:
-                    assert(!"ext sym ref not implemented");
-                    break;
-                case NkIrRef_Funct:
-                    assert(!"funct ref not implemented");
-                    break;
-                case NkIrRef_None:
-                case NkIrRef_Const:
-                default:
-                    assert(!"unreachable");
-                    break;
-                }
-                if (ref.offset) {
-                    src << "+" << ref.offset << ")";
-                }
-                if (ref.post_offset) {
-                    src << "+" << ref.post_offset << ")";
-                }
-            };
-
-            for (auto ii : b.instrs) {
-                auto const &instr = ir->instrs[ii];
-
-                src << "  ";
-
-                if (instr.arg[0].arg_type == NkIrArg_Ref &&
-                    instr.arg[0].ref.ref_type != NkIrRef_None) {
-                    _writeRef(instr.arg[0].ref);
-                    src << " = ";
-                }
-
-                switch (instr.code) {
-                case nkir_ret:
-                    src << "return";
-                    if (ret_t->typeclass_id != NkType_Void) {
-                        src << " ret";
-                    }
-                    break;
-                case nkir_jmp:
-                    src << "goto l_" << ir->blocks[instr.arg[1].id].name;
-                    break;
-                case nkir_jmpz:
-                    src << "if (0 == ";
-                    _writeRef(instr.arg[1].ref);
-                    src << ") { goto l_" << ir->blocks[instr.arg[2].id].name << "; }";
-                    break;
-                case nkir_jmpnz:
-                    src << "if (";
-                    _writeRef(instr.arg[1].ref);
-                    src << ") { goto l_" << ir->blocks[instr.arg[2].id].name << "; }";
-                    break;
-                case nkir_cast:
-                    src << "(";
-                    assert(
-                        instr.arg[1].ref.ref_type == NkIrRef_Const &&
-                        "type must be known for cast");
-                    _writeType(ctx, *(nktype_t *)instr.arg[1].ref.data, src);
-                    src << ")";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_call: {
-                    // TODO Call translation not implemented
-                    // switch (instr.arg[1].arg_type) {
-                    // case NkIrArg_FunctId:
-                    //    src << ir->functs[instr.arg[1].id]->name;
-                    //    //@Todo Unfinished call compilation
-                    //    break;
-                    // case NkIrArg_ExtFunctId: {
-                    //    auto &sym = ir.exsyms[instr.arg[1].id];
-                    //    src << sym.name;
-                    //    break;
-                    //}
-                    // case NkIrArg_Ref:
-                    //    assert(!"cannot compile ref call");
-                    //    break;
-                    // default:
-                    //    assert(!"unreachable");
-                    //    break;
-                    //}
-                    src << "(";
-                    if (instr.arg[2].ref.ref_type != NkIrRef_None) {
-                        auto args_t = instr.arg[2].ref.type;
-                        for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
-                            if (i) {
-                                src << ", ";
-                            }
-                            src << "(";
-                            _writeRef(instr.arg[2].ref);
-                            src << ")._" << i;
-                        }
-                    }
-                    src << ")";
-                    break;
-                }
-                case nkir_mov:
-                    _writeRef(instr.arg[1].ref);
-                    break;
-                case nkir_lea:
-                    src << "&";
-                    _writeRef(instr.arg[1].ref);
-                    break;
-                case nkir_neg:
-                    src << "-";
-                    _writeRef(instr.arg[1].ref);
-                    break;
-                case nkir_compl:
-                    src << "~";
-                    _writeRef(instr.arg[1].ref);
-                    break;
-                case nkir_not:
-                    src << "!";
-                    _writeRef(instr.arg[1].ref);
-                    break;
-                case nkir_add:
-                    _writeRef(instr.arg[1].ref);
-                    src << " + ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_sub:
-                    _writeRef(instr.arg[1].ref);
-                    src << " - ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_mul:
-                    _writeRef(instr.arg[1].ref);
-                    src << " * ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_div:
-                    _writeRef(instr.arg[1].ref);
-                    src << " / ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_mod:
-                    _writeRef(instr.arg[1].ref);
-                    src << " % ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_bitand:
-                    _writeRef(instr.arg[1].ref);
-                    src << " & ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_bitor:
-                    _writeRef(instr.arg[1].ref);
-                    src << " | ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_xor:
-                    _writeRef(instr.arg[1].ref);
-                    src << " ^ ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_lsh:
-                    _writeRef(instr.arg[1].ref);
-                    src << " << ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_rsh:
-                    _writeRef(instr.arg[1].ref);
-                    src << " >> ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_and:
-                    _writeRef(instr.arg[1].ref);
-                    src << " && ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_or:
-                    _writeRef(instr.arg[1].ref);
-                    src << " || ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_eq:
-                    _writeRef(instr.arg[1].ref);
-                    src << " == ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_ge:
-                    _writeRef(instr.arg[1].ref);
-                    src << " >= ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_gt:
-                    _writeRef(instr.arg[1].ref);
-                    src << " > ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_le:
-                    _writeRef(instr.arg[1].ref);
-                    src << " <= ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_lt:
-                    _writeRef(instr.arg[1].ref);
-                    src << " < ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                case nkir_ne:
-                    _writeRef(instr.arg[1].ref);
-                    src << " != ";
-                    _writeRef(instr.arg[2].ref);
-                    break;
-                default:
-                    assert(!"unreachable");
-                case nkir_enter:
-                case nkir_leave:
-                case nkir_nop:
-                    break;
-                }
-
-                src << ";\n";
-            }
-
-            src << "\n";
-        }
-
-        src << "}\n";
-    }
+    src << "(";
+    _writeType(ctx, type, src);
+    src << ")";
 }
-#endif
 
 void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
     NK_LOG_TRC(__func__);
@@ -753,11 +447,21 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
         for (auto ii : b.instrs) {
             auto const &instr = ctx.ir->instrs[ii];
 
+            switch (instr.code) {
+            case nkir_enter:
+            case nkir_leave:
+            case nkir_nop:
+                continue;
+            default:
+                break;
+            }
+
             src << "  ";
 
             if (instr.arg[0].arg_type == NkIrArg_Ref && instr.arg[0].ref.ref_type != NkIrRef_None) {
                 _writeRef(instr.arg[0].ref);
                 src << " = ";
+                _writeCast(ctx, src, instr.arg[0].ref.type);
             }
 
             switch (instr.code) {
@@ -788,6 +492,8 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 _writeRef(instr.arg[2].ref);
                 break;
             case nkir_call: {
+                auto fn_t = instr.arg[1].ref.type;
+                assert(fn_t->typeclass_id == NkType_Fn);
                 _writeRef(instr.arg[1].ref);
                 src << "(";
                 if (instr.arg[2].ref.ref_type != NkIrRef_None) {
@@ -795,6 +501,9 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                     for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
                         if (i) {
                             src << ", ";
+                        }
+                        if (i < fn_t->as.fn.args_t->as.tuple.elems.size) {
+                            _writeCast(ctx, src, fn_t->as.fn.args_t->as.tuple.elems.data[i].type);
                         }
                         src << "(";
                         _writeRef(instr.arg[2].ref);
@@ -915,10 +624,6 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 break;
             default:
                 assert(!"unreachable");
-            case nkir_enter:
-            case nkir_leave:
-            case nkir_nop:
-                continue;
             }
 
             src << ";\n";

@@ -280,7 +280,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
@@ -674,7 +674,7 @@ COMPILE(deref) {
     return makeRef(getLvalueRef(c, node));
 }
 
-COMPILE(return) {
+COMPILE(return ) {
     auto arg = compileNode(c, node->args[0].data);
     store(c, nkir_makeRetRef(c->ir), arg);
     gen(c, nkir_make_ret()); // TODO potentially generating ret twice
@@ -1402,6 +1402,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     if (isKnown(cnst_val)) {
         nkir_discardFunct(fn);
         c->fn_scopes.erase(fn); // TODO Actually delete persistent scopes
+        c->id2blocknum[cs2nkid("start")]--;
 
         cnst.value = asValue(c, cnst_val);
         cnst.kind = ComptimeConst_Value;
