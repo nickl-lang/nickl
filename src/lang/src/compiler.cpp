@@ -127,6 +127,8 @@ struct NklCompiler_T {
     std::string stdlib_dir{};
     std::string libc_name{};
     std::string libm_name{};
+    std::string c_compiler{};
+    std::string c_compiler_flags{};
     bool configured = false;
 
     std::stack<Scope> nonpersistent_scope_stack{};
@@ -1562,17 +1564,15 @@ extern "C" NK_EXPORT void nkl_compiler_build(
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
-    // TODO Hardcoded compiler settings
-
     NklCompiler c = s_compiler;
 
-    std::string flags = "-O2";
+    std::string flags = c->c_compiler_flags;
     for (auto const &lib : b->libs) {
         flags += " -L" + lib.parent_path().string() + " -l:" + lib.filename().string();
     }
 
     NkIrCompilerConfig conf{
-        .compiler_binary = cs2s("gcc"),
+        .compiler_binary = {c->c_compiler.c_str(), c->c_compiler.size()},
         .additional_flags = {flags.c_str(), flags.size()},
         .output_filename = cs2s(exe_name),
         .echo_src = 0,
@@ -1632,6 +1632,12 @@ void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
 
     c->libm_name = getConfigValue<char const *>(c, "libm_name", config);
     NK_LOG_DBG("libm_name=`%.*s`", c->libm_name.size(), c->libm_name.c_str());
+
+    c->c_compiler = getConfigValue<char const *>(c, "c_compiler", config);
+    NK_LOG_DBG("c_compiler=`%.*s`", c->c_compiler.size(), c->c_compiler.c_str());
+
+    c->c_compiler_flags = getConfigValue<char const *>(c, "c_compiler_flags", config);
+    NK_LOG_DBG("c_compiler_flags=`%.*s`", c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
 
     c->configured = true;
 }
