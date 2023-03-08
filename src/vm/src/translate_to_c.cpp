@@ -1,5 +1,6 @@
 #include "translate_to_c.hpp"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -191,23 +192,30 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         case Uint64:
             tmp_s << nkval_as(uint64_t, val);
             break;
-        case Float32:
+        case Float32: {
             tmp_s << std::setprecision(std::numeric_limits<float>::max_digits10);
-            tmp_s << nkval_as(float, val);
+            auto f_val = nkval_as(float, val);
+            tmp_s << f_val;
+            if (f_val == std::round(f_val)) {
+                tmp_s << ".";
+            }
+            tmp_s << "f";
             break;
-        case Float64:
+        }
+        case Float64: {
             tmp_s << std::setprecision(std::numeric_limits<double>::max_digits10);
-            tmp_s << nkval_as(double, val);
+            auto f_val = nkval_as(double, val);
+            tmp_s << f_val;
+            if (f_val == std::round(f_val)) {
+                tmp_s << ".";
+            }
             break;
+        }
         default:
             assert(!"unreachable");
             break;
         }
-        if (value_type >= Float32) {
-            if (nkval_sizeof(val) == 4) {
-                tmp_s << "f";
-            }
-        } else {
+        if (value_type < Float32) {
             if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 ||
                 value_type == Uint64) {
                 tmp_s << "u";

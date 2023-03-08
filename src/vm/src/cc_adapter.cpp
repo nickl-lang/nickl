@@ -22,7 +22,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
 
     nksb_printf(
         sb,
-        "%s %s -x c -o %s %s -",
+        "%s %s -x c - -o %s %s",
         conf.quiet ? "" : "tee /dev/stderr |",
         conf.compiler_binary.data,
         conf.output_filename.data,
