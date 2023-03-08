@@ -141,9 +141,19 @@ struct NklCompiler_T {
     std::stack<std::string> comptime_const_names{};
     std::vector<nkid> node_ids{};
     size_t fn_counter{};
+
+    std::unordered_map<nkid, size_t> id2blocknum{};
 };
 
 namespace {
+
+nkstr block(NklCompiler c, char const *name) {
+    auto id = cs2nkid(name);
+    auto num = c->id2blocknum[id]++;
+    char buf[1024];
+    std::snprintf(buf, AR_SIZE(buf), "%s%zu", name, num);
+    return cs2s(buf);
+}
 
 Scope &curScope(NklCompiler c) {
     assert(!c->scopes.empty() && "no current scope");
@@ -270,7 +280,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&...args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
@@ -483,14 +493,17 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             std::abort();
         }
         // TODO Optimize array indexing
+        // TODO Think about type correctness in array indexing
         if (type->typeclass_id == NkType_Array) {
             auto u64_t = nkt_get_numeric(c->arena, Uint64);
+            auto u8_t = nkt_get_numeric(c->arena, Uint8);
+            auto u8_ptr_t = nkt_get_ptr(c->arena, u8_t);
             ref = asRef(
                 c,
                 makeInstr(
                     nkir_make_add(
                         {},
-                        asRef(c, makeInstr(nkir_make_lea({}, ref), u64_t)),
+                        asRef(c, makeInstr(nkir_make_lea({}, ref), u8_ptr_t)),
                         asRef(
                             c,
                             makeInstr(
@@ -502,8 +515,9 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
                                         makeValue<uint64_t>(
                                             c, u64_t, type->as.arr.elem_type->size))),
                                 u64_t))),
-                    u64_t));
+                    nkt_get_ptr(c->arena, type->as.arr.elem_type)));
             ref.is_indirect = true;
+            ref.type = type->as.arr.elem_type;
         } else if (type->typeclass_id == NkType_Tuple) {
             if (!isKnown(index)) {
                 NK_LOG_ERR("comptime value expected in tuple index");
@@ -569,76 +583,86 @@ COMPILE(false) {
 
 COMPILE(i8) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int8));
+    return makeValue<void *>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)nkt_get_numeric(c->arena, Int8));
 }
 
 COMPILE(i16) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int16));
+    return makeValue<void *>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)nkt_get_numeric(c->arena, Int16));
 }
 
 COMPILE(i32) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int32));
+    return makeValue<void *>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)nkt_get_numeric(c->arena, Int32));
 }
 
 COMPILE(i64) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Int64));
+    return makeValue<void *>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)nkt_get_numeric(c->arena, Int64));
 }
 
 COMPILE(u8) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint8));
+    return makeValue<void *>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)nkt_get_numeric(c->arena, Uint8));
 }
 
 COMPILE(u16) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint16));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_numeric(c->arena, Uint16));
 }
 
 COMPILE(u32) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint32));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_numeric(c->arena, Uint32));
 }
 
 COMPILE(u64) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Uint64));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_numeric(c->arena, Uint64));
 }
 
 COMPILE(f32) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float32));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_numeric(c->arena, Float32));
 }
 
 COMPILE(f64) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_numeric(c->arena, Float64));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_numeric(c->arena, Float64));
 }
 
 COMPILE(bool) {
     (void)node;
-    return makeValue<nktype_t>(
+    return makeValue<void *>(
         c,
         nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
-        nkt_get_numeric(c->arena, Uint8)); // TODO Modeling bool as u8
+        (void *)nkt_get_numeric(c->arena, Uint8)); // TODO Modeling bool as u8
 }
 
 COMPILE(void) {
     (void)node;
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_void(c->arena));
+    return makeValue<void *>(
+        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)nkt_get_void(c->arena));
 }
 
 COMPILE(addr) {
@@ -650,7 +674,7 @@ COMPILE(deref) {
     return makeRef(getLvalueRef(c, node));
 }
 
-COMPILE(return ) {
+COMPILE(return) {
     auto arg = compileNode(c, node->args[0].data);
     store(c, nkir_makeRetRef(c->ir), arg);
     gen(c, nkir_make_ret()); // TODO potentially generating ret twice
@@ -659,15 +683,19 @@ COMPILE(return ) {
 
 COMPILE(ptr_type) {
     auto target_type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_ptr(c->arena, target_type));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_ptr(c->arena, target_type));
 }
 
 COMPILE(const_ptr_type) {
     // TODO Ignoring const in const_ptr_type
     auto target_type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_ptr(c->arena, target_type));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_ptr(c->arena, target_type));
 }
 
 COMPILE(scope) {
@@ -793,21 +821,23 @@ COMPILE(array_type) {
     // TODO Hardcoded array size type in array_type
     auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
     auto size = nkval_as(int64_t, comptimeCompileNodeGetValue(c, node->args[1].data));
-    return makeValue<nktype_t>(
-        c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), nkt_get_array(c->arena, type, size));
+    return makeValue<void *>(
+        c,
+        nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
+        (void *)nkt_get_array(c->arena, type, size));
 }
 
 COMPILE(while) {
     auto l_loop = nkir_makeBlock(c->ir);
     auto l_endloop = nkir_makeBlock(c->ir);
-    nkir_startBlock(c->ir, l_loop, cs2s("loop"));
+    nkir_startBlock(c->ir, l_loop, block(c, "loop"));
     gen(c, nkir_make_enter());
     auto cond = compileNode(c, node->args[0].data);
     gen(c, nkir_make_jmpz(asRef(c, cond), l_endloop));
     compileStmt(c, node->args[1].data);
     gen(c, nkir_make_leave());
     gen(c, nkir_make_jmp(l_loop));
-    nkir_startBlock(c->ir, l_endloop, cs2s("endloop"));
+    nkir_startBlock(c->ir, l_endloop, block(c, "endloop"));
     return makeVoid(c);
 }
 
@@ -834,7 +864,7 @@ COMPILE(if) {
     }
     if (node->args[2].data && node->args[2].data->id) {
         gen(c, nkir_make_jmp(l_endif));
-        nkir_startBlock(c->ir, l_else, cs2s("else"));
+        nkir_startBlock(c->ir, l_else, block(c, "else"));
         {
             pushScope(c);
             defer {
@@ -843,7 +873,7 @@ COMPILE(if) {
             compileStmt(c, node->args[2].data);
         }
     }
-    nkir_startBlock(c->ir, l_endif, cs2s("endif"));
+    nkir_startBlock(c->ir, l_endif, block(c, "endif"));
     return makeVoid(c);
 }
 
@@ -859,10 +889,10 @@ COMPILE(tuple_type) {
     for (size_t i = 0; i < nodes.size; i++) {
         types.emplace_back(nkval_as(nktype_t, comptimeCompileNodeGetValue(c, &nodes.data[i])));
     }
-    return makeValue<nktype_t>(
+    return makeValue<void *>(
         c,
         nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
-        nkt_get_tuple(c->arena, types.data(), types.size(), 1));
+        (void *)nkt_get_tuple(c->arena, types.data(), types.size(), 1));
 }
 
 COMPILE(import) {
@@ -886,7 +916,7 @@ COMPILE(import) {
         std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
     }
     auto fn = it->second;
-    auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), fn));
+    auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), (void *)fn));
     defineComptimeConst(c, s2nkid(name), {{.value{fn_val}}, ComptimeConst_Value});
     return makeVoid(c);
 }
@@ -932,7 +962,7 @@ COMPILE(string) {
     std::memcpy(str, node->token->text.data, size);
     str[size] = '\0';
 
-    return makeValue<char *>(c, str_t, str);
+    return makeValue<void *>(c, str_t, (void *)str);
 }
 
 COMPILE(escaped_string) {
@@ -953,7 +983,7 @@ COMPILE(escaped_string) {
     std::memcpy(str, unescaped_str.data, size);
     str[size] = '\0';
 
-    return makeValue<char *>(c, str_t, str);
+    return makeValue<void *>(c, str_t, (void *)str);
 }
 
 COMPILE(member) {
@@ -1015,7 +1045,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
         fn_name.resize(n);
     }
     nkir_startFunct(fn, {fn_name.c_str(), fn_name.size()}, fn_t);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), block(c, "start"));
 
     pushFnScope(c, fn);
     defer {
@@ -1038,7 +1068,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
             });
         }());
 
-    return makeValue<void *>(c, fn_t, fn);
+    return makeValue<void *>(c, fn_t, (void *)fn);
 }
 
 COMPILE(fn) {
@@ -1069,7 +1099,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
         c->arena,
         {ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #foreign
 
-    return makeValue<nktype_t>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), fn_t);
+    return makeValue<void *>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)fn_t);
 }
 
 COMPILE(fn_type) {
@@ -1356,7 +1386,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     auto pop_fn = pushFn(c, fn);
 
     nkir_startIncompleteFunct(fn, cs2s("#comptime"), &fn_info);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), block(c, "start"));
 
     pushFnScope(c, fn);
     defer {
@@ -1437,7 +1467,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
         {nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false});
 
     nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), cs2s("start"));
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), block(c, "start"));
 
     pushTopLevelFnScope(c, fn);
     defer {
@@ -1511,7 +1541,7 @@ extern "C" NK_EXPORT void nkl_compiler_buildExecutable(
         .compiler_binary = cs2s("gcc"),
         .additional_flags = cs2s("-O2"),
         .output_filename = cs2s(exe_name),
-        .quiet = 1,
+        .quiet = 0,
     };
     nkir_compile(conf, c->ir, entry_point);
 }

@@ -356,13 +356,15 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     case NkIrRef_Global:
         nksb_printf(sb, "$global%llu", ref.index);
         break;
-    case NkIrRef_Const:
+    case NkIrRef_Const: {
+        auto ptr = (uint8_t *)ref.data + ref.offset;
         if (ref.is_indirect) {
-            nksb_printf(sb, "%p", ref.data);
-        } else {
-            nkval_inspect({ref.data, ref.type}, sb);
+            ptr = *(uint8_t **)ptr;
         }
+        ptr += ref.post_offset;
+        nkval_inspect({ptr, ref.type}, sb);
         break;
+    }
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref.index));
         break;

@@ -154,4 +154,6 @@ main :: () -> i32 {
     return 0;
 }
 
-main();
+import compiler;
+compiler.buildExecutable(main, "life");
+//main();

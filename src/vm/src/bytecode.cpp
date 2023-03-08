@@ -296,7 +296,12 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 #define NUM_X(NAME) case CAT(nkir_, NAME):
 #define NUM_INT_X(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
-                code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                if (arg1.ref.type->typeclass_id == NkType_Ptr) {
+                    code += 1 + NUM_TYPE_INDEX(Uint64);
+                } else {
+                    assert(arg1.ref.type->typeclass_id == NkType_Numeric);
+                    code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                }
                 break;
             }
 

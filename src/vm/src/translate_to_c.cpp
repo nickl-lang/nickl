@@ -53,6 +53,9 @@ struct WriterCtx {
 
     std::set<NkIrFunct> translated{};
     std::stack<NkIrFunct> to_translate{};
+
+    std::set<size_t> ext_syms_forward_declared{};
+    std::set<size_t> globals_forward_declared{};
 };
 
 void _writePreabmle(std::ostream &src) {
@@ -108,7 +111,8 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
         }
         break;
     case NkType_Ptr:
-        tmp_s << "void*";
+        _writeType(ctx, type->as.ptr.target_type, tmp_s);
+        tmp_s << "*";
         break;
     case NkType_Void:
         tmp_s << "void";
@@ -241,8 +245,21 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         tmp_s << "}";
         break;
     }
+    case NkType_Void: {
+        assert(!"trying to write void const");
+        break;
+    }
+    case NkType_Fn: {
+        // TODO Assuming NkIrFunct in translate_to_c
+        auto fn = nkval_as(NkIrFunct, val);
+        tmp_s << fn->name;
+        if (ctx.translated.find(fn) == ctx.translated.end()) {
+            ctx.to_translate.emplace(fn);
+        }
+        break;
+    }
     default:
-        assert(!"const type not implemented");
+        assert(!"unreachable");
         break;
     }
 
@@ -284,6 +301,8 @@ void _writeFnSig(
     src << ")";
 }
 
+#if 0
+// TODO Remove _writeProgram
 void _writeProgram(WriterCtx &ctx, NkIrProg ir) {
     auto &src = ctx.main_s;
 
@@ -600,9 +619,12 @@ void _writeProgram(WriterCtx &ctx, NkIrProg ir) {
         src << "}\n";
     }
 }
+#endif
 
 void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
     NK_LOG_TRC(__func__);
+
+    ctx.translated.emplace(fn);
 
     auto &src = ctx.main_s;
 
@@ -621,16 +643,16 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
         ctx,
         nkt_get_array(ctx.arena, nkt_get_numeric(ctx.arena, Uint8), REG_SIZE * NkIrReg_Count),
         src);
-    src << " reg;\n";
+    src << " reg={0};\n";
 
     for (size_t i = 0; auto type : fn->locals) {
         _writeType(ctx, type, src);
-        src << " var" << i++ << ";\n";
+        src << " var" << i++ << "={0};\n";
     }
 
     if (ret_t->typeclass_id != NkType_Void) {
         _writeType(ctx, ret_t, src);
-        src << " ret;\n";
+        src << " ret={0};\n";
     }
 
     src << "\n";
@@ -642,10 +664,30 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
         auto _writeRef = [&](NkIrRef const &ref) {
             if (ref.ref_type == NkIrRef_Const) {
-                _writeConst(ctx, {ref.data, ref.type}, src);
+                auto ptr = (uint8_t *)ref.data + ref.offset;
+                if (ref.is_indirect) {
+                    ptr = *(uint8_t **)ptr;
+                }
+                ptr += ref.post_offset;
+                _writeConst(ctx, {ptr, ref.type}, src);
                 return;
             } else if (ref.ref_type == NkIrRef_ExtSym) {
-                src << ctx.ir->exsyms[ref.index].name;
+                auto sym = ctx.ir->exsyms[ref.index];
+                src << sym.name;
+                if (sym.type->typeclass_id == NkType_Fn &&
+                    ctx.ext_syms_forward_declared.find(ref.index) ==
+                        ctx.ext_syms_forward_declared.end()) {
+                    ctx.forward_s << "extern ";
+                    _writeFnSig(
+                        ctx,
+                        ctx.forward_s,
+                        sym.name,
+                        sym.type->as.fn.ret_t,
+                        sym.type->as.fn.args_t,
+                        sym.type->as.fn.is_variadic);
+                    ctx.forward_s << ";\n";
+                    ctx.ext_syms_forward_declared.emplace(ref.index);
+                }
                 return;
             }
             src << "*(";
@@ -671,7 +713,13 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << "ret";
                 break;
             case NkIrRef_Global:
-                assert(!"global ref not implemented");
+                src << "global" << ref.index;
+                if (ctx.globals_forward_declared.find(ref.index) ==
+                    ctx.globals_forward_declared.end()) {
+                    _writeType(ctx, ref.type, ctx.forward_s);
+                    ctx.forward_s << " global" << ref.index << "={0};\n";
+                    ctx.globals_forward_declared.emplace(ref.index);
+                }
                 break;
             case NkIrRef_Reg:
                 src << "*((uint8_t*)&reg+" << ref.index * REG_SIZE << ")";
@@ -862,7 +910,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             case nkir_enter:
             case nkir_leave:
             case nkir_nop:
-                break;
+                continue;
             }
 
             src << ";\n";
