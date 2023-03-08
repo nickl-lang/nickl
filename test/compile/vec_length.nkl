@@ -1,0 +1,22 @@
+import std;
+import compiler;
+
+Vec3 :: #type (f64, f64, f64);
+
+vecLength :: (vec: Vec3) -> f64 {
+    return std.sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+}
+
+main :: (argc: i32, argv: **i8) -> i32 {
+    // TODO Cannot do runtime object literal
+    vec: Vec3;
+    vec[0] = f64{0};
+    vec[1] = std.sqrt(f64{3}) / f64{2};
+    vec[2] = f64{0.5};
+    len := vecLength(vec);
+    std.printf("len=%lf\n", len);
+    return 0;
+}
+
+main();
+compiler.buildExecutable(main, "vec_length");

@@ -126,6 +126,7 @@ struct NklCompiler_T {
 
     std::string stdlib_dir{};
     std::string libc_name{};
+    std::string libm_name{};
     bool configured = false;
 
     std::stack<Scope> nonpersistent_scope_stack{};
@@ -1126,6 +1127,8 @@ COMPILE(tag) {
         nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
     if (soname == "c" || soname == "C") {
         soname = c->libc_name;
+    } else if (soname == "m" || soname == "M") {
+        soname = c->libm_name;
     }
     std::string link_prefix =
         n_args.size == 2
@@ -1595,6 +1598,9 @@ void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
 
     c->libc_name = getConfigValue<char const *>(c, "libc_name", config);
     NK_LOG_DBG("libc_name=`%.*s`", c->libc_name.size(), c->libc_name.c_str());
+
+    c->libm_name = getConfigValue<char const *>(c, "libm_name", config);
+    NK_LOG_DBG("libm_name=`%.*s`", c->libm_name.size(), c->libm_name.c_str());
 
     c->configured = true;
 }

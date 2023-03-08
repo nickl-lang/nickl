@@ -44,4 +44,7 @@ timespec :: #type (i64, i64);
 #foreign("c") clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
 #foreign("c") nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
 
+#foreign("m") sqrt :: (x: f64) -> f64;
+#foreign("m") sqrtf :: (x: f32) -> f32;
+
 puts("Hello from stdlib!");
