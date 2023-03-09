@@ -87,8 +87,7 @@ main :: () -> i32 {
     std.system("stty -icanon -echo");
 
     fl := std.fcntl(std.STDIN_FILENO, std.F_GETFL, 0);
-    fl = fl | std.O_NONBLOCK;
-    std.fcntl(std.STDIN_FILENO, std.F_SETFL, fl);
+    std.fcntl(std.STDIN_FILENO, std.F_SETFL, fl | std.O_NONBLOCK);
 
     std.putchar(ESC); std.printf("[?25l");
 
@@ -153,6 +152,8 @@ main :: () -> i32 {
     }
 
     std.putchar(ESC); std.printf("[?25h");
+
+    std.fcntl(std.STDIN_FILENO, std.F_SETFL, fl);
 
     std.system("stty icanon echo");
 

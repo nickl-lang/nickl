@@ -180,8 +180,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 if (ref.type->typeclass_id == NkType_Fn &&
                     ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
-                    for (auto const &f : ir.functs) {
-                        if (*(void **)ref.data == (void *)&f) { // TODO Manual search for fn
+                    for (auto f : ir.functs) {
+                        if (*(void **)ref.data == (void *)f) { // TODO Manual search for fn
                             found = true;
                             break;
                         }
@@ -273,8 +273,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                     arg1.ref.type->typeclass_id == NkType_Fn &&
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
-                    for (auto const &f : ir.functs) {
-                        if (*(void **)arg1.ref.data == (void *)&f) { // TODO Manual search for fn
+                    for (auto f : ir.functs) {
+                        if (*(void **)arg1.ref.data == (void *)f) { // TODO Manual search for fn
                             found = true;
                             break;
                         }

@@ -495,10 +495,6 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
-#ifdef BUILD_WITH_EASY_PROFILER
-        auto block_name = std::string{"interp: "} + s_nk_bc_names[pinstr->code];
-#endif // BUILD_WITH_EASY_PROFILER
-        EASY_BLOCK(block_name, ::profiler::colors::Red200);
         assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
             "instr: %lx %s",
