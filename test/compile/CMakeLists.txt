@@ -4,3 +4,5 @@ def_compile_test(NAME vec_length OUTPUT_REGEX "^1.654321\n$")
 
 configure_file(config.txt ${COMPILE_TEST_OUT_DIR}/config.txt COPYONLY)
 def_compile_test(NAME configured OUTPUT_REGEX "^main\ni=0\ni=1\ni=2\n$")
+
+def_compile_test(NAME threads OUTPUT_REGEX "^thread: arg='arg'\nthread: id=[0-9]*\nmain: ret='hello'\n$")
