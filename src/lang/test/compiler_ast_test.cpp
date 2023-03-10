@@ -165,7 +165,7 @@ TEST_F(compiler_ast, native_puts) {
         _("block",
           _({
               _("tag",
-                _("name", "#foreign"),
+                _("name", "#link"),
                 _("arg", {}, _("string", "")),
                 _("comptime_const_def",
                   _("id", "puts"),

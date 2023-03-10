@@ -1,5 +1,5 @@
-#foreign("c") printf :: (format: *i8, ...) -> i32;
-#foreign("c") puts :: (str: *i8) -> i32;
+#link("c") printf :: (format: *i8, ...) -> i32;
+#link("c") puts :: (str: *i8) -> i32;
 
 FILE :: void; // TODO Defining FILE as void in stdlib
 
@@ -7,44 +7,44 @@ STDIN_FILENO  :: 0;
 STDOUT_FILENO :: 1;
 STDERR_FILENO :: 2;
 
-#foreign("c") fopen :: (path: *i8, mode: *i8) -> *FILE;
-#foreign("c") fdopen :: (fd: i32, mode: *i8) -> *FILE;
-#foreign("c") freopen :: (path: *i8, mode: *i8, stream: *FILE) -> *FILE;
+#link("c") fopen :: (path: *i8, mode: *i8) -> *FILE;
+#link("c") fdopen :: (fd: i32, mode: *i8) -> *FILE;
+#link("c") freopen :: (path: *i8, mode: *i8, stream: *FILE) -> *FILE;
 
-#foreign("c") fclose :: (stream: *FILE) -> i32;
-#foreign("c") fflush :: (stream: *FILE) -> i32;
+#link("c") fclose :: (stream: *FILE) -> i32;
+#link("c") fflush :: (stream: *FILE) -> i32;
 
-#foreign("c") fprintf :: (stream: *FILE, format: *i8, ... ) -> i32;
-#foreign("c") fputs :: (str: *i8, stream: *FILE) -> i32;
+#link("c") fprintf :: (stream: *FILE, format: *i8, ... ) -> i32;
+#link("c") fputs :: (str: *i8, stream: *FILE) -> i32;
 
-#foreign("c") getchar :: () -> i32;
-#foreign("c") putchar :: (c: i32) -> i32;
+#link("c") getchar :: () -> i32;
+#link("c") putchar :: (c: i32) -> i32;
 
-#foreign("c") fgetc :: (stream: *FILE) -> i32;
+#link("c") fgetc :: (stream: *FILE) -> i32;
 
-#foreign("c") fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
+#link("c") fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
 
-#foreign("c") atoi :: (str: *i8) -> i32;
+#link("c") atoi :: (str: *i8) -> i32;
 
-#foreign("c") memset :: (s: *void, c: i32, n: u64) -> *void;
+#link("c") memset :: (s: *void, c: i32, n: u64) -> *void;
 
 F_GETFL :: 3;
 F_SETFL :: 4;
 O_NONBLOCK :: 7640;
 
-#foreign("c") fcntl :: (fildes: i32, cmd: i32, ...) -> i32;
+#link("c") fcntl :: (fildes: i32, cmd: i32, ...) -> i32;
 
-#foreign("c") system :: (cmd: *u8) -> i32;
+#link("c") system :: (cmd: *u8) -> i32;
 
 CLOCK_MONOTONIC :: 1;
 
 clockid_t :: i32;
 timespec :: #type (i64, i64);
 
-#foreign("c") clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
-#foreign("c") nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
+#link("c") clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
+#link("c") nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
 
-#foreign("m") sqrt :: (x: f64) -> f64;
-#foreign("m") sqrtf :: (x: f32) -> f32;
+#link("m") sqrt :: (x: f64) -> f64;
+#link("m") sqrtf :: (x: f32) -> f32;
 
 puts("Hello from stdlib!");

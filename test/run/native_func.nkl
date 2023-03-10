@@ -1,2 +1,2 @@
-#foreign("c") printf :: (fmt: *const i8, ...) -> i32;
+#link("c") printf :: (fmt: *const i8, ...) -> i32;
 printf("Hello, %s!\n", "World");

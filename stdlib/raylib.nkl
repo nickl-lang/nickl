@@ -3,10 +3,10 @@ KEY_LEFT  :: 263;
 KEY_DOWN  :: 264;
 KEY_UP    :: 265;
 
-#foreign("libraylib.so") InitWindow :: (width: i32, height: i32, title: *i8) -> void;
-#foreign("libraylib.so") CloseWindow :: () -> void;
-#foreign("libraylib.so") SetTargetFPS :: (fps: i32) -> void;
-#foreign("libraylib.so") WindowShouldClose :: () -> bool;
+#link("libraylib.so") InitWindow :: (width: i32, height: i32, title: *i8) -> void;
+#link("libraylib.so") CloseWindow :: () -> void;
+#link("libraylib.so") SetTargetFPS :: (fps: i32) -> void;
+#link("libraylib.so") WindowShouldClose :: () -> bool;
 
 // FLAG_VSYNC_HINT               ::       0x00000040;
 // FLAG_FULLSCREEN_MODE          ::       0x00000002;
@@ -24,20 +24,20 @@ KEY_UP    :: 265;
 // FLAG_MSAA_4X_HINT             ::       0x00000020;
 // FLAG_INTERLACED_HINT          ::       0x00010000;
 
-#foreign("libraylib.so") SetWindowState :: (flags: u32) -> void;
+#link("libraylib.so") SetWindowState :: (flags: u32) -> void;
 
-#foreign("libraylib.so") IsKeyDown :: (key: i32) -> bool;
+#link("libraylib.so") IsKeyDown :: (key: i32) -> bool;
 
-#foreign("libraylib.so") BeginDrawing :: () -> void;
-#foreign("libraylib.so") EndDrawing :: () -> void;
+#link("libraylib.so") BeginDrawing :: () -> void;
+#link("libraylib.so") EndDrawing :: () -> void;
 
 Color :: #type (u8, u8, u8, u8);
 
-#foreign("libraylib.so") ClearBackground :: (color: Color) -> void;
+#link("libraylib.so") ClearBackground :: (color: Color) -> void;
 
-#foreign("libraylib.so") DrawText :: (text: *i8, posX: i32, posY: i32, fontSize: i32, color: Color) -> void;
-#foreign("libraylib.so") DrawCircle :: (centerX: i32, centerY: i32, radius: f32, color: Color) -> void;
+#link("libraylib.so") DrawText :: (text: *i8, posX: i32, posY: i32, fontSize: i32, color: Color) -> void;
+#link("libraylib.so") DrawCircle :: (centerX: i32, centerY: i32, radius: f32, color: Color) -> void;
 
-#foreign("libraylib.so") DrawFPS :: (posX: i32, posY: i32) -> void;
+#link("libraylib.so") DrawFPS :: (posX: i32, posY: i32) -> void;
 
-#foreign("libraylib.so") TextFormat :: (text: *i8, ...) -> *i8;
+#link("libraylib.so") TextFormat :: (text: *i8, ...) -> *i8;

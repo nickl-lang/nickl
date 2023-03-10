@@ -1142,7 +1142,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
 
     auto fn_t = nkt_get_fn(
         c->arena,
-        {ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #foreign
+        {ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #link
 
     return makeValue<void *>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)fn_t);
 }
@@ -1156,7 +1156,7 @@ COMPILE(fn_type_var) {
 }
 
 COMPILE(tag) {
-    NK_LOG_WRN("TODO Only handling #foreign and #extern tags");
+    NK_LOG_WRN("TODO Only handling #link and #extern tags");
 
     auto n_tag_name = node->args[0];
     auto n_args = node->args[1];
@@ -1166,7 +1166,7 @@ COMPILE(tag) {
 
     assert(n_def.data->id == n_comptime_const_def);
 
-    if (tag_name == "#foreign") {
+    if (tag_name == "#link") {
         assert(n_args.size == 1 || n_args.size == 2);
         std::string soname =
             nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
