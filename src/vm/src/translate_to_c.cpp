@@ -73,6 +73,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
     }
 
     std::ostringstream tmp_s;
+    std::ostringstream tmp_s_suf;
     bool is_complex = false;
 
     switch (type->typeclass_id) {
@@ -138,6 +139,26 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
         tmp_s << " _data[" << type->as.arr.elem_count << "]; }";
         break;
     }
+    case NkType_Fn: {
+        is_complex = true;
+        auto const ret_t = type->as.fn.ret_t;
+        auto const args_t = type->as.fn.args_t;
+        auto const is_variadic = type->as.fn.is_variadic;
+        _writeType(ctx, ret_t, tmp_s);
+        tmp_s << " (*";
+        tmp_s_suf << ")(";
+        for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+            if (i) {
+                tmp_s_suf << ", ";
+            }
+            _writeType(ctx, args_t->as.tuple.elems.data[i].type, tmp_s_suf);
+        }
+        if (is_variadic) {
+            tmp_s_suf << ", ...";
+        }
+        tmp_s_suf << ")";
+        break;
+    }
     default:
         assert(!"type not implemented");
         break;
@@ -146,10 +167,9 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
     auto type_str = tmp_s.str();
 
     if (is_complex) {
-        ctx.types_s << "typedef " << type_str << " type" << ctx.typedecl_count << ";\n";
-        std::ostringstream s;
-        s << "type" << ctx.typedecl_count;
-        type_str = s.str();
+        ctx.types_s << "typedef " << type_str << " type" << ctx.typedecl_count << tmp_s_suf.str()
+                    << ";\n";
+        type_str = "type" + std::to_string(ctx.typedecl_count);
         ctx.typedecl_count++;
     }
 
@@ -260,8 +280,23 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         break;
     }
     case NkType_Fn: {
-        // TODO Assuming NkIrFunct in translate_to_c
-        auto fn = nkval_as(NkIrFunct, val);
+        NkIrFunct fn;
+        switch (nkval_typeof(val)->as.fn.call_conv) {
+        case NkCallConv_Nk: {
+            fn = nkval_as(NkIrFunct, val);
+            break;
+        }
+        case NkCallConv_Cdecl: {
+            auto it = ctx.ir->closureCode2IrFunct.find(nkval_as(void *, val));
+            assert(
+                it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
+            fn = it->second;
+            break;
+        }
+        default:
+            assert(!"invalid calling convention");
+            break;
+        }
         tmp_s << fn->name;
         if (ctx.translated.find(fn) == ctx.translated.end()) {
             ctx.to_translate.emplace(fn);

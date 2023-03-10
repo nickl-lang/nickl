@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
 
 #include "nk/vm/common.h"
+#include "nk/vm/ir.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,10 +10,8 @@ extern "C" {
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
-typedef struct NkNativeClosure_T *NkNativeClosure;
-
-NkNativeClosure nk_native_make_closure(nkval_t fn);
-void nk_native_free_closure(NkNativeClosure closure);
+NkIrNativeClosure nk_native_make_closure(NkIrFunct fn);
+void nk_native_free_closure(NkIrNativeClosure closure);
 
 #ifdef __cplusplus
 }

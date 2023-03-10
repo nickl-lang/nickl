@@ -3,11 +3,13 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <mutex>
 #include <new>
 #include <unordered_map>
 
 #include <ffi.h>
 
+#include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
@@ -17,11 +19,11 @@
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 
-struct NkNativeClosure_T {
-    void *code;
+struct NkIrNativeClosure_T {
+    void *code; // Assumed to be first field
     ffi_cif cif;
     ffi_closure *closure;
-    nkval_t fn;
+    NkIrFunct fn;
 };
 
 namespace {
@@ -30,14 +32,13 @@ NK_LOG_USE_SCOPE(native_fn_adapter);
 
 std::unordered_map<nk_typeid_t, ffi_type *> s_typemap;
 NkAllocator *s_typearena;
+std::recursive_mutex s_mtx;
 
-static struct TypeArenaDeleter { // TODO Hack with static deleter
-    ~TypeArenaDeleter() {
-        if (s_typearena) {
-            nk_free_arena(s_typearena);
-        }
+auto s_deinit_typearena = makeDeferrer([]() {
+    if (s_typearena) {
+        nk_free_arena(s_typearena);
     }
-} s_typearena_deleter;
+});
 
 ffi_type *_getNativeHandle(nktype_t type) {
     EASY_FUNCTION(::profiler::colors::Orange200);
@@ -47,6 +48,8 @@ ffi_type *_getNativeHandle(nktype_t type) {
         NK_LOG_DBG("ffi(null) -> void");
         return &ffi_type_void;
     }
+
+    std::lock_guard lk{s_mtx};
 
     ffi_type *ffi_t = nullptr;
 
@@ -177,9 +180,9 @@ void _ffiPrepareCif(ffi_cif *cif, nktype_t fn_t) { // TODO Unify ffi cif prepara
 void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
     NK_LOG_TRC(__func__);
 
-    auto const &cl = *(NkNativeClosure)userdata;
+    auto const &cl = *(NkIrNativeClosure)userdata;
 
-    auto const fn_t = nkval_typeof(cl.fn);
+    auto const fn_t = cl.fn->fn_t;
 
     size_t argc = fn_t->as.fn.args_t->as.tuple.elems.size;
 
@@ -197,7 +200,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
             fn_t->as.fn.args_t->as.tuple.elems.data[i].type->size);
     }
 
-    nkir_invoke(cl.fn, {resp, fn_t->as.fn.ret_t}, args_val);
+    nkir_invoke({(void *)&cl.fn, fn_t}, {resp, fn_t->as.fn.ret_t}, args_val);
 }
 
 } // namespace
@@ -243,14 +246,14 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     }
 }
 
-NkNativeClosure nk_native_make_closure(nkval_t fn) {
+NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 
-    auto cl = (NkNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkNativeClosure_T));
+    auto cl = (NkIrNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkIrNativeClosure_T));
     cl->fn = fn;
 
-    _ffiPrepareCif(&cl->cif, nkval_typeof(fn));
+    _ffiPrepareCif(&cl->cif, fn->fn_t);
 
     cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
 
@@ -260,7 +263,7 @@ NkNativeClosure nk_native_make_closure(nkval_t fn) {
     return cl;
 }
 
-void nk_native_free_closure(NkNativeClosure cl) {
+void nk_native_free_closure(NkIrNativeClosure cl) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 

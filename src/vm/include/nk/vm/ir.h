@@ -94,9 +94,12 @@ typedef struct NkIrFunct_T *NkIrFunct;
 NkIrProg nkir_createProgram();
 void nkir_deinitProgram(NkIrProg p);
 
+typedef struct NkIrNativeClosure_T *NkIrNativeClosure;
+
 NkIrFunct nkir_makeFunct(NkIrProg p);
 NkIrBlockId nkir_makeBlock(NkIrProg p);
 NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name);
+NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct);
 
 void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t);
 

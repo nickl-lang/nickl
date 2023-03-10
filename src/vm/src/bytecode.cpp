@@ -214,21 +214,10 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 referenced_functs.emplace_back((NkIrFunct)ref.data);
                 arg.ref_type = NkBcRef_Abs;
                 auto fn_t = ref.type;
-                // TODO A big hack. Need to make native closure at IR stage!
                 if (fn_t->typeclass_id == NkType_Tuple && fn_t->as.tuple.elems.size == 1) {
                     fn_t = fn_t->as.tuple.elems.data[0].type;
                 }
-                switch (fn_t->as.fn.call_conv) {
-                case NkCallConv_Nk:
-                    arg.offset += (size_t)&ref.data;
-                    break;
-                case NkCallConv_Cdecl:
-                    arg.offset += (size_t)p->closures.emplace_back(
-                        nk_native_make_closure({(void *)&ref.data, fn_t}));
-                    break;
-                default:
-                    assert(!"unreachable");
-                }
+                arg.offset += (size_t)&ref.data;
                 break;
             }
             default:
@@ -357,9 +346,6 @@ void nkbc_deinitProgram(NkBcProg p) {
     if (p) {
         for (auto dl : p->shobjs) {
             nkdl_close(dl);
-        }
-        for (auto cl : p->closures) {
-            nk_native_free_closure(cl);
         }
 
         nk_free_arena(p->arena);

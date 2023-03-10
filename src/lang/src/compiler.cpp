@@ -64,6 +64,14 @@ struct ComptimeConst {
     EComptimeConstKind kind;
 };
 
+ComptimeConst makeValueComptimeConst(nkval_t val) {
+    return {.value{val}, .kind = ComptimeConst_Value};
+}
+
+ComptimeConst makeFunctComptimeConst(NkIrFunct funct) {
+    return {.funct = funct, .kind = ComptimeConst_Funct};
+}
+
 struct Decl { // TODO Compact the Decl struct
     union {
         ComptimeConst comptime_const;
@@ -316,8 +324,7 @@ nkval_t comptimeConstGetValue(NklCompiler c, ComptimeConst &cnst) {
         auto type = fn_t->as.fn.ret_t;
         nkval_t val{nk_allocate(c->arena, type->size), type};
         nkir_invoke({&cnst.funct, fn_t}, val, {});
-        cnst.value = val;
-        cnst.kind = ComptimeConst_Value;
+        cnst = makeValueComptimeConst(val);
         return val;
     }
     default:
@@ -559,6 +566,23 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
         std::abort();
     }
     return ref;
+}
+
+template <class F>
+ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compile_cnst) {
+    auto names = node->args[0];
+    if (names.size > 1) {
+        NK_LOG_ERR("multiple assignment is not implemented");
+        std::abort(); // TODO Report errors properly
+    }
+    auto name_str = std_str(names.data[0].token->text);
+    c->comptime_const_names.push(name_str);
+    defer {
+        c->comptime_const_names.pop();
+    };
+    nkid name = s2nkid({name_str.data(), name_str.size()});
+    defineComptimeConst(c, name, compile_cnst());
+    return makeVoid(c);
 }
 
 NkIrFunct nkl_compileFile(NklCompiler c, nkstr path);
@@ -926,7 +950,7 @@ COMPILE(import) {
     }
     auto fn = it->second;
     auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), (void *)fn));
-    defineComptimeConst(c, s2nkid(name), {{.value{fn_val}}, ComptimeConst_Value});
+    defineComptimeConst(c, s2nkid(name), makeValueComptimeConst(fn_val));
     return makeVoid(c);
 }
 
@@ -1020,7 +1044,11 @@ COMPILE(member) {
     return makeVoid(c);
 }
 
-ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
+ValueInfo compileFn(
+    NklCompiler c,
+    NklAstNode node,
+    bool is_variadic,
+    NkCallConv call_conv = NkCallConv_Nk) {
     // TODO Refactor fn compilation
 
     std::vector<nkid> params_names;
@@ -1040,7 +1068,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
                          : nkt_get_void(c->arena);
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
-    auto fn_t = nkt_get_fn(c->arena, {ret_t, args_t, NkCallConv_Nk, is_variadic});
+    auto fn_t = nkt_get_fn(c->arena, {ret_t, args_t, call_conv, is_variadic});
 
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
@@ -1049,6 +1077,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
     if (c->node_ids.size() >= 2 && *(c->node_ids.rbegin() + 1) == n_comptime_const_def) {
         fn_name = c->comptime_const_names.top();
     } else {
+        // TODO Fix not finding the name of #extern function
         fn_name.resize(100);
         int n = std::snprintf(fn_name.data(), fn_name.size(), "fn%zu", c->fn_counter++);
         fn_name.resize(n);
@@ -1077,7 +1106,14 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic) {
             });
         }());
 
-    return makeValue<void *>(c, fn_t, (void *)fn);
+    if (call_conv == NkCallConv_Nk) {
+        return makeValue<void *>(c, fn_t, (void *)fn);
+    } else if (call_conv == NkCallConv_Cdecl) {
+        auto cl = nkir_makeNativeClosure(c->ir, fn);
+        return makeValue<void *>(c, fn_t, *(void **)cl);
+    } else {
+        assert(!"invalid calling convention");
+    }
 }
 
 COMPILE(fn) {
@@ -1120,42 +1156,57 @@ COMPILE(fn_type_var) {
 }
 
 COMPILE(tag) {
-    NK_LOG_WRN("TODO Only handling #foreign tag");
+    NK_LOG_WRN("TODO Only handling #foreign and #extern tags");
 
     auto n_tag_name = node->args[0];
     auto n_args = node->args[1];
     auto n_def = node->args[2];
 
-    assert(
-        0 == std::strncmp(
-                 n_tag_name.data->token->text.data, "#foreign", n_tag_name.data->token->text.size));
-
-    assert(n_args.size == 1 || n_args.size == 2);
-    std::string soname =
-        nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
-    if (soname == "c" || soname == "C") {
-        soname = c->libc_name;
-    } else if (soname == "m" || soname == "M") {
-        soname = c->libm_name;
-    }
-    std::string link_prefix =
-        n_args.size == 2
-            ? nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data))
-            : "";
+    std::string tag_name{n_tag_name.data->token->text.data, n_tag_name.data->token->text.size};
 
     assert(n_def.data->id == n_comptime_const_def);
 
-    auto so = nkir_makeShObj(c->ir, cs2s(soname.c_str())); // TODO Creating so every time
+    if (tag_name == "#foreign") {
+        assert(n_args.size == 1 || n_args.size == 2);
+        std::string soname =
+            nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
+        if (soname == "c" || soname == "C") {
+            soname = c->libc_name;
+        } else if (soname == "m" || soname == "M") {
+            soname = c->libm_name;
+        }
+        std::string link_prefix =
+            n_args.size == 2
+                ? nkval_as(
+                      char const *, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data))
+                : "";
 
-    auto sym_name = n_def.data->args[0].data->token->text;
-    auto sym_name_with_prefix_std_str = link_prefix + std_str(sym_name);
-    nkstr sym_name_with_prefix{
-        sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
+        auto so = nkir_makeShObj(c->ir, cs2s(soname.c_str())); // TODO Creating so every time
 
-    auto fn_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, n_def.data->args[1].data));
+        auto sym_name = n_def.data->args[0].data->token->text;
+        auto sym_name_with_prefix_std_str = link_prefix + std_str(sym_name);
+        nkstr sym_name_with_prefix{
+            sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
 
-    defineExtSym(c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t);
+        auto fn_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, n_def.data->args[1].data));
 
+        defineExtSym(
+            c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t);
+    } else if (tag_name == "#extern") {
+        compileComptimeConstDef(c, n_def.data, [=]() {
+            auto const n_def_id = n_def.data->args[1].data->id;
+            if (n_def_id != n_fn && n_def_id != n_fn_var) {
+                NK_LOG_ERR("function expected in #extern");
+                std::abort();
+            }
+            bool const is_variadic = n_def_id == n_fn_var;
+            auto const fn_val =
+                asValue(c, compileFn(c, n_def.data->args[1].data, is_variadic, NkCallConv_Cdecl));
+            return makeValueComptimeConst(fn_val);
+        });
+    } else {
+        assert(!"unsupported tag");
+    }
     return makeVoid(c);
 }
 
@@ -1328,20 +1379,9 @@ COMPILE(define) {
 }
 
 COMPILE(comptime_const_def) {
-    auto names = node->args[0];
-    if (names.size > 1) {
-        NK_LOG_ERR("multiple assignment is not implemented");
-        std::abort(); // TODO Report errors properly
-    }
-    auto name_str = std_str(names.data[0].token->text);
-    c->comptime_const_names.push(name_str);
-    defer {
-        c->comptime_const_names.pop();
-    };
-    auto decl = comptimeCompileNode(c, node->args[1].data);
-    nkid name = s2nkid({name_str.data(), name_str.size()});
-    defineComptimeConst(c, name, decl);
-    return makeVoid(c);
+    return compileComptimeConstDef(c, node, [=]() {
+        return comptimeCompileNode(c, node->args[1].data);
+    });
 }
 
 COMPILE(var_decl) {
@@ -1414,14 +1454,12 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
         nkir_discardFunct(fn);
         c->fn_scopes.erase(fn); // TODO Actually delete persistent scopes
 
-        cnst.value = asValue(c, cnst_val);
-        cnst.kind = ComptimeConst_Value;
+        cnst = makeValueComptimeConst(asValue(c, cnst_val));
     } else {
         store(c, nkir_makeRetRef(c->ir), cnst_val);
         gen(c, nkir_make_ret());
 
-        cnst.funct = fn;
-        cnst.kind = ComptimeConst_Funct;
+        cnst = makeFunctComptimeConst(fn);
 
         NK_LOG_INF(
             "ir:\n%s", (char const *)[&]() {
@@ -1573,7 +1611,10 @@ extern "C" NK_EXPORT bool nkl_compiler_build(
 
     std::string flags = c->c_compiler_flags;
     for (auto const &lib : b->libs) {
-        flags += " -L" + lib.parent_path().string() + " -l:" + lib.filename().string();
+        if (!lib.parent_path().empty()) {
+            flags += " -L" + lib.parent_path().string();
+        }
+        flags += " -l:" + lib.filename().string();
     }
 
     NkIrCompilerConfig conf{

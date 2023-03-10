@@ -429,18 +429,21 @@ TEST_F(ir, callback_from_native) {
 
     auto nativeCallback_args_t = nkt_get_tuple(m_arena, &nativeAdd_fn_t, 1, 1);
 
-    auto nativeCallback_fn = nkir_makeExtSym(
+    auto test_nativeCallback_fn = nkir_makeExtSym(
         p,
         so,
         cs2s("_test_nativeCallback"),
         nkt_get_fn(m_arena, {u32_t, nativeCallback_args_t, NkCallConv_Cdecl, false}));
 
     auto nativeAdd = nkir_makeFunct(p);
+
     nkir_startFunct(nativeAdd, cs2s("nativeAdd"), nativeAdd_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
     nkir_gen(p, nkir_make_add(nkir_makeRetRef(p), nkir_makeArgRef(p, 0), nkir_makeArgRef(p, 1)));
     nkir_gen(p, nkir_make_ret());
+
+    auto nativeAdd_cl = nkir_makeNativeClosure(p, nativeAdd);
 
     auto test = nkir_makeFunct(p);
     auto test_fn_t =
@@ -448,11 +451,12 @@ TEST_F(ir, callback_from_native) {
     nkir_startFunct(test, cs2s("test"), test_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
-    auto cb_arg = nkir_makeFunctRef(nativeAdd);
+    auto cb_arg = nkir_makeConstRef(p, {nativeAdd_cl, nativeAdd_fn_t});
     cb_arg.type = nativeCallback_args_t;
 
     nkir_gen(
-        p, nkir_make_call(nkir_makeRetRef(p), nkir_makeExtSymRef(p, nativeCallback_fn), cb_arg));
+        p,
+        nkir_make_call(nkir_makeRetRef(p), nkir_makeExtSymRef(p, test_nativeCallback_fn), cb_arg));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);

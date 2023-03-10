@@ -224,6 +224,9 @@ INTERP(jmpnz_64) {
 }
 
 INTERP(cast) {
+    (void)instr;
+    assert(!"cast not implemented");
+
     // TODO auto dst = _getDynRef(instr.arg[0]);
     // auto type = _getDynRef(instr.arg[1]);
     // auto arg = _getDynRef(instr.arg[2]);
@@ -239,8 +242,6 @@ INTERP(cast) {
     //         dst_val = static_cast<T>(arg_val);
     //     });
     // });
-
-    assert(!"not implemented");
 }
 
 INTERP(call) {

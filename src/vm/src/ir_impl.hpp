@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "bytecode.h"
@@ -55,6 +56,9 @@ struct NkIrProg_T {
     std::vector<IrExSym> exsyms;
 
     NkBcProg bc;
+
+    std::vector<NkIrNativeClosure> closures;
+    std::unordered_map<void *, NkIrFunct> closureCode2IrFunct;
 };
 
 #endif // HEADER_GUARD_NK_VM_IR_IMPL

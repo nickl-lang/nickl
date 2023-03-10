@@ -5,6 +5,7 @@
 #include <new>
 
 #include "ir_impl.hpp"
+#include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -43,6 +44,9 @@ void nkir_deinitProgram(NkIrProg p) {
         funct->~NkIrFunct_T();
         nk_free(nk_default_allocator, funct);
     }
+    for (auto cl : p->closures) {
+        nk_native_free_closure(cl);
+    }
     p->~NkIrProg_T();
     nk_free(nk_default_allocator, p);
 }
@@ -65,6 +69,13 @@ NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name) {
     NkIrShObjId shobj_id{p->shobjs.size()};
     p->shobjs.emplace_back(std_str(name));
     return shobj_id;
+}
+
+NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct) {
+    auto const cl = nk_native_make_closure(funct);
+    p->closures.emplace_back(cl);
+    p->closureCode2IrFunct.emplace(*(void **)cl, funct);
+    return cl;
 }
 
 void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t) {
