@@ -81,7 +81,12 @@ private:
 
     void expect(ETokenId id) {
         if (!accept(id)) {
-            return error("unexpected token `%.*s`", m_cur_token->text.size, m_cur_token->text.data);
+            // TODO Improve token quote for string constants etc.
+            return error(
+                "expected `%s` before `%.*s`",
+                s_token_text[id],
+                m_cur_token->text.size,
+                m_cur_token->text.data);
         }
     }
 
@@ -385,12 +390,10 @@ private:
             }
         }
 
-        while (accept(t_semi)) {
-        }
         if (m_last_token->id != t_semi && m_last_token->id != t_brace_r) {
-            // TODO Improve token quote for string constants etc.
-            return error("unexpected token `%.*s`", m_cur_token->text.size, m_cur_token->text.data),
-                   NklAstNode_T{};
+            EXPECT(t_semi);
+        }
+        while (accept(t_semi)) {
         }
 
         return node;

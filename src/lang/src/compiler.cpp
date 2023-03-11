@@ -38,7 +38,21 @@
 #include "nkl/lang/token.h"
 #include "parser.hpp"
 
+#define CHECK(EXPR)              \
+    EXPR;                        \
+    do {                         \
+        if (c->error_occurred) { \
+            return {};           \
+        }                        \
+    } while (0)
+
+#define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
+#define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
+#define APPEND(AR, VAL) CHECK(AR.emplace_back(VAL))
+
 namespace {
+
+struct Void {};
 
 namespace fs = std::filesystem;
 
@@ -136,6 +150,9 @@ struct NklCompiler_T {
     NkIrProg ir;
     NkAllocator arena;
 
+    std::string err_str{};
+    bool error_occurred = false;
+
     std::string stdlib_dir{};
     std::string libc_name{};
     std::string libm_name{};
@@ -165,7 +182,18 @@ struct NklCompiler_T {
 
 namespace {
 
-nkstr block(NklCompiler c, char const *name) {
+void error(NklCompiler c, char const *fmt, ...) {
+    assert(!c->error_occurred && "compiler error already initialized");
+
+    va_list ap;
+    va_start(ap, fmt);
+    c->err_str = string_vformat(fmt, ap);
+    va_end(ap);
+
+    c->error_occurred = true;
+}
+
+nkstr irBlockName(NklCompiler c, char const *name) {
     // TODO Not ideal string management in compiler
     auto id = cs2nkid(name);
     auto num = c->id2blocknum[id]++;
@@ -245,8 +273,8 @@ Decl &makeDecl(NklCompiler c, nkid name) {
     auto it = locals.find(name);
     if (it != locals.end()) {
         nkstr name_str = nkid2s(name);
-        NK_LOG_ERR("`%.*s` is already defined", name_str.size, name_str.data);
-        std::abort(); // TODO Report errors properly
+        static Decl s_dummy_decl{};
+        return error(c, "`%.*s` is already defined", name_str.size, name_str.data), s_dummy_decl;
     } else {
         std::tie(it, std::ignore) = locals.emplace(name, Decl{});
     }
@@ -269,10 +297,10 @@ void defineGlobal(NklCompiler c, nkid name, NkIrGlobalVarId id, nktype_t type) {
     makeDecl(c, name) = {{.global{id, type}}, Decl_Global};
 }
 
-void defineFunct(NklCompiler c, nkid name, NkIrFunct funct, nktype_t fn_t) {
-    NK_LOG_DBG("defining funct `%.*s`", nkid2s(name).size, nkid2s(name).data);
-    makeDecl(c, name) = {{.funct{funct, fn_t}}, Decl_Funct};
-}
+// TODO(unused) void defineFunct(NklCompiler c, nkid name, NkIrFunct funct, nktype_t fn_t) {
+//     NK_LOG_DBG("defining funct `%.*s`", nkid2s(name).size, nkid2s(name).data);
+//     makeDecl(c, name) = {{.funct{funct, fn_t}}, Decl_Funct};
+// }
 
 void defineExtSym(NklCompiler c, nkid name, NkIrExtSymId id, nktype_t type) {
     NK_LOG_DBG("defining ext sym `%.*s`", nkid2s(name).size, nkid2s(name).data);
@@ -454,30 +482,27 @@ ValueInfo declToValueInfo(Decl &decl) {
 
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
 nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node);
-ValueInfo compileNode(NklCompiler c, NklAstNode node);
-void compileStmt(NklCompiler c, NklAstNode node);
-void compileNodeArray(NklCompiler c, NklAstNodeArray nodes);
+ValueInfo compile(NklCompiler c, NklAstNode node);
+Void compileStmt(NklCompiler c, NklAstNode node);
 
 struct IndexResult {
     size_t offset;
     nktype_t type;
 };
 
-// TODO IndexResult calcArrayIndex(nktype_t type, size_t index) {
+// TODO IndexResult calcArrayIndex(NklCompiler c, nktype_t type, size_t index) {
 //     size_t elem_count = type->as.arr.elem_count;
 //     size_t elem_size = type->as.arr.elem_type->size;
 //     if (index >= elem_count) {
-//         NK_LOG_ERR("array index out of range");
-//         std::abort();
+//         return error(c, "array index out of range"), IndexResult{};
 //     }
 //     return {elem_size * index, type->as.arr.elem_type};
 // }
 
-IndexResult calcTupleIndex(nktype_t type, size_t index) {
+IndexResult calcTupleIndex(NklCompiler c, nktype_t type, size_t index) {
     size_t elem_count = type->as.tuple.elems.size;
     if (index >= elem_count) {
-        NK_LOG_ERR("tuple index out of range");
-        std::abort();
+        return error(c, "tuple index out of range"), IndexResult{};
     }
     return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
 }
@@ -495,25 +520,22 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
             break;
         case Decl_Undefined:
-            NK_LOG_ERR("`%.*s` is not defined", name.size, name.data);
-            std::abort(); // TODO Report errors properly
+            return error(c, "`%.*s` is not defined", name.size, name.data), NkIrRef{};
         case Decl_Funct:
         case Decl_ExtSym:
         case Decl_Arg:
-            NK_LOG_ERR("cannot assign to `%.*s`", name.size, name.data);
-            std::abort();
+            return error(c, "cannot assign to `%.*s`", name.size, name.data), NkIrRef{};
         default:
             NK_LOG_ERR("unknown decl type");
             assert(!"unreachable");
             return {};
         }
     } else if (node->id == cs2nkid("index")) {
-        ref = asRef(c, compileNode(c, node->args[0].data));
+        ref = asRef(c, compile(c, node->args[0].data));
         auto type = ref.type;
-        auto index = compileNode(c, node->args[1].data);
+        auto index = compile(c, node->args[1].data);
         if (index.type->typeclass_id != NkType_Numeric) {
-            NK_LOG_ERR("expected number in index");
-            std::abort();
+            return error(c, "expected number in index"), NkIrRef{};
         }
         // TODO Optimize array indexing
         // TODO Think about type correctness in array indexing
@@ -543,10 +565,9 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             ref.type = type->as.arr.elem_type;
         } else if (type->typeclass_id == NkType_Tuple) {
             if (!isKnown(index)) {
-                NK_LOG_ERR("comptime value expected in tuple index");
-                std::abort();
+                return error(c, "comptime value expected in tuple index"), NkIrRef{};
             }
-            auto idx_res = calcTupleIndex(type, nkval_as(uint64_t, asValue(c, index)));
+            DEFINE(idx_res, calcTupleIndex(c, type, nkval_as(uint64_t, asValue(c, index))));
             ref.post_offset += idx_res.offset;
             ref.type = idx_res.type;
         } else {
@@ -556,21 +577,19 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             };
             nkt_inspect(type, sb);
             auto type_str = nksb_concat(sb);
-            NK_LOG_ERR("type `%.*s` is not indexable", type_str.size, type_str.data);
-            std::abort();
+            return error(c, "type `%.*s` is not indexable", type_str.size, type_str.data),
+                   NkIrRef{};
         }
     } else if (node->id == cs2nkid("deref")) {
-        auto arg = compileNode(c, node->args[0].data);
+        auto arg = compile(c, node->args[0].data);
         if (arg.type->typeclass_id != NkType_Ptr) {
-            NK_LOG_ERR("pointer expected in dereference");
-            std::abort();
+            return error(c, "pointer expected in dereference"), NkIrRef{};
         }
         ref = asRef(c, arg);
         ref.is_indirect = true;
         ref.type = arg.type->as.ptr.target_type;
     } else {
-        NK_LOG_ERR("invalid lvalue");
-        std::abort();
+        return error(c, "invalid lvalue"), NkIrRef{};
     }
     return ref;
 }
@@ -579,8 +598,7 @@ template <class F>
 ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compile_cnst) {
     auto names = node->args[0];
     if (names.size > 1) {
-        NK_LOG_ERR("multiple assignment is not implemented");
-        std::abort(); // TODO Report errors properly
+        return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
     auto name_str = std_str(names.data[0].token->text);
     c->comptime_const_names.push(name_str);
@@ -588,7 +606,8 @@ ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compi
         c->comptime_const_names.pop();
     };
     nkid name = s2nkid({name_str.data(), name_str.size()});
-    defineComptimeConst(c, name, compile_cnst());
+    DEFINE(cnst, compile_cnst());
+    CHECK(defineComptimeConst(c, name, cnst));
     return makeVoid(c);
 }
 
@@ -706,23 +725,25 @@ COMPILE(void) {
 }
 
 COMPILE(addr) {
-    auto arg = compileNode(c, node->args[0].data);
+    DEFINE(arg, compile(c, node->args[0].data));
     return makeInstr(nkir_make_lea({}, asRef(c, arg)), nkt_get_ptr(c->arena, arg.type));
 }
 
 COMPILE(deref) {
-    return makeRef(getLvalueRef(c, node));
+    DEFINE(arg, getLvalueRef(c, node));
+    return makeRef(arg);
 }
 
 COMPILE(return ) {
-    auto arg = compileNode(c, node->args[0].data);
+    DEFINE(arg, compile(c, node->args[0].data));
     store(c, nkir_makeRetRef(c->ir), arg);
-    gen(c, nkir_make_ret()); // TODO potentially generating ret twice
+    gen(c, nkir_make_ret());
     return makeVoid(c);
 }
 
 COMPILE(ptr_type) {
-    auto target_type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    auto target_type = nkval_as(nktype_t, val);
     return makeValue<void *>(
         c,
         nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
@@ -731,7 +752,8 @@ COMPILE(ptr_type) {
 
 COMPILE(const_ptr_type) {
     // TODO Ignoring const in const_ptr_type
-    auto target_type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    auto target_type = nkval_as(nktype_t, val);
     return makeValue<void *>(
         c,
         nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
@@ -739,128 +761,134 @@ COMPILE(const_ptr_type) {
 }
 
 COMPILE(scope) {
-    NK_LOG_WRN("TODO scope implementation not finished");
-    return compileNode(c, node->args[0].data);
+    gen(c, nkir_make_enter());
+    defer {
+        gen(c, nkir_make_leave());
+    };
+    return compile(c, node->args[0].data);
 }
 
 COMPILE(run) {
-    return makeValue(comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(arg, comptimeCompileNodeGetValue(c, node->args[0].data));
+    return makeValue(arg);
 }
 
 // TODO Not doing type checks in arithmetic
 
 COMPILE(add) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_add({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(sub) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_sub({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mul) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_mul({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(div) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_div({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mod) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_mod({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(bitand) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_bitand({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(bitor) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_bitor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(xor) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_xor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(lsh) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_lsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(rsh) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_rsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(and) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_and({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(or) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_or({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(eq) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_eq({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ge) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_ge({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(gt) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_gt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(le) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_le({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(lt) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_lt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ne) {
-    auto lhs = compileNode(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return makeInstr(nkir_make_ne({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(array_type) {
     // TODO Hardcoded array size type in array_type
-    auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[0].data));
-    auto size = nkval_as(int64_t, comptimeCompileNodeGetValue(c, node->args[1].data));
+    DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    auto type = nkval_as(nktype_t, type_val);
+    DEFINE(size_val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    auto size = nkval_as(int64_t, size_val);
     return makeValue<void *>(
         c,
         nkt_get_ptr(c->arena, nkt_get_void(c->arena)),
@@ -870,19 +898,20 @@ COMPILE(array_type) {
 COMPILE(while) {
     auto l_loop = nkir_makeBlock(c->ir);
     auto l_endloop = nkir_makeBlock(c->ir);
-    nkir_startBlock(c->ir, l_loop, block(c, "loop"));
+    nkir_startBlock(c->ir, l_loop, irBlockName(c, "loop"));
     gen(c, nkir_make_enter());
-    auto cond = compileNode(c, node->args[0].data);
+    DEFINE(cond, compile(c, node->args[0].data));
     gen(c, nkir_make_jmpz(asRef(c, cond), l_endloop));
-    compileStmt(c, node->args[1].data);
+    CHECK(compileStmt(c, node->args[1].data));
     gen(c, nkir_make_leave());
     gen(c, nkir_make_jmp(l_loop));
-    nkir_startBlock(c->ir, l_endloop, block(c, "endloop"));
+    nkir_startBlock(c->ir, l_endloop, irBlockName(c, "endloop"));
     return makeVoid(c);
 }
 
 COMPILE(index) {
-    return makeRef(getLvalueRef(c, node));
+    DEFINE(arg, getLvalueRef(c, node));
+    return makeRef(arg);
 }
 
 COMPILE(if) {
@@ -893,32 +922,35 @@ COMPILE(if) {
     } else {
         l_else = l_endif;
     }
-    auto cond = compileNode(c, node->args[0].data);
+    DEFINE(cond, compile(c, node->args[0].data));
     gen(c, nkir_make_jmpz(asRef(c, cond), l_else));
     {
         pushScope(c);
         defer {
             popScope(c);
         };
-        compileStmt(c, node->args[1].data);
+        CHECK(compileStmt(c, node->args[1].data));
     }
     if (node->args[2].data && node->args[2].data->id) {
         gen(c, nkir_make_jmp(l_endif));
-        nkir_startBlock(c->ir, l_else, block(c, "else"));
+        nkir_startBlock(c->ir, l_else, irBlockName(c, "else"));
         {
             pushScope(c);
             defer {
                 popScope(c);
             };
-            compileStmt(c, node->args[2].data);
+            CHECK(compileStmt(c, node->args[2].data));
         }
     }
-    nkir_startBlock(c->ir, l_endif, block(c, "endif"));
+    nkir_startBlock(c->ir, l_endif, irBlockName(c, "endif"));
     return makeVoid(c);
 }
 
 COMPILE(block) {
-    compileNodeArray(c, node->args[0]);
+    auto nodes = node->args[0];
+    for (size_t i = 0; i < nodes.size; i++) {
+        CHECK(compileStmt(c, &nodes.data[i]));
+    }
     return makeVoid(c);
 }
 
@@ -927,7 +959,8 @@ COMPILE(tuple_type) {
     std::vector<nktype_t> types;
     types.reserve(nodes.size);
     for (size_t i = 0; i < nodes.size; i++) {
-        types.emplace_back(nkval_as(nktype_t, comptimeCompileNodeGetValue(c, &nodes.data[i])));
+        DEFINE(val, comptimeCompileNodeGetValue(c, &nodes.data[i]));
+        types.emplace_back(nkval_as(nktype_t, val));
     }
     return makeValue<void *>(
         c,
@@ -938,29 +971,28 @@ COMPILE(tuple_type) {
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
     if (!c->configured) {
-        NK_LOG_ERR("stdlib is not available");
-        std::abort();
+        return error(c, "stdlib is not available"), ValueInfo{};
     }
     auto name = node->args[0].data->token->text;
     std::string filename = std_str(name) + ".nkl";
-    auto filepath = (fs::path{c->stdlib_dir} / filename).lexically_normal();
+    auto filepath = fs::canonical(fs::path{c->stdlib_dir} / filename);
     auto it = c->imports.find(filepath);
     if (it == c->imports.end()) {
         auto filepath_str = filepath.string();
         if (!fs::exists(filepath)) {
-            NK_LOG_ERR(
-                "imported file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
-            std::abort();
+            return error(
+                       c,
+                       "imported file `%.*s` doesn't exist",
+                       filepath_str.size(),
+                       filepath_str.c_str()),
+                   ValueInfo{};
         }
-        auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
-        if (!fn) {
-            return makeVoid(c);
-        }
+        DEFINE(fn, nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()}));
         std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
     }
     auto fn = it->second;
     auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), (void *)fn));
-    defineComptimeConst(c, s2nkid(name), makeValueComptimeConst(fn_val));
+    CHECK(defineComptimeConst(c, s2nkid(name), makeValueComptimeConst(fn_val)));
     return makeVoid(c);
 }
 
@@ -969,8 +1001,7 @@ COMPILE(id) {
     nkid name = s2nkid(name_str);
     auto &decl = resolve(c, name);
     if (decl.kind == Decl_Undefined) {
-        NK_LOG_ERR("`%.*s` is not defined", name_str.size, name_str.data);
-        std::abort(); // TODO Report errors properly
+        return error(c, "`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
     } else {
         return declToValueInfo(decl);
     }
@@ -1030,8 +1061,7 @@ COMPILE(escaped_string) {
 }
 
 COMPILE(member) {
-    NK_LOG_WRN("TODO member implementation not finished");
-    auto lhs = compileNode(c, node->args[0].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
     auto name = s2nkid(node->args[1].data->token->text);
     if (isKnown(lhs)) {
         auto lhs_val = asValue(c, lhs);
@@ -1045,11 +1075,12 @@ COMPILE(member) {
                     auto &decl = member_it->second;
                     return declToValueInfo(decl);
                 } else {
-                    NK_LOG_ERR("member `%s` not found", nkid2cs(name));
-                    std::abort(); // TODO Report errors properly
+                    return error(c, "member `%s` not found", nkid2cs(name)), ValueInfo{};
                 }
             }
         }
+    } else {
+        return error(c, "TODO  member implementation not finished"), ValueInfo{};
     }
     return makeVoid(c);
 }
@@ -1069,13 +1100,17 @@ ValueInfo compileFn(
     for (size_t i = 0; i < params.size; i++) {
         auto const &param = params.data[i];
         params_names.emplace_back(s2nkid(param.args[0].data->token->text));
-        params_types.emplace_back(
-            nkval_as(nktype_t, comptimeCompileNodeGetValue(c, param.args[1].data)));
+        DEFINE(val, comptimeCompileNodeGetValue(c, param.args[1].data));
+        params_types.emplace_back(nkval_as(nktype_t, val));
     }
 
-    nktype_t ret_t = node->args[1].data
-                         ? nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data))
-                         : nkt_get_void(c->arena);
+    nktype_t ret_t;
+    if (node->args[1].data) {
+        DEFINE(val, comptimeCompileNodeGetValue(c, node->args[1].data));
+        ret_t = nkval_as(nktype_t, val);
+    } else {
+        ret_t = nkt_get_void(c->arena);
+    }
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
     auto fn_t = nkt_get_fn(c->arena, {ret_t, args_t, call_conv, is_variadic});
@@ -1093,7 +1128,7 @@ ValueInfo compileFn(
         fn_name.resize(n);
     }
     nkir_startFunct(fn, {fn_name.c_str(), fn_name.size()}, fn_t);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), block(c, "start"));
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     pushFnScope(c, fn);
     defer {
@@ -1101,10 +1136,10 @@ ValueInfo compileFn(
     };
 
     for (size_t i = 0; i < params.size; i++) {
-        defineArg(c, params_names[i], i, params_types[i]);
+        CHECK(defineArg(c, params_names[i], i, params_types[i]));
     }
 
-    compileStmt(c, node->args[2].data);
+    CHECK(compileStmt(c, node->args[2].data));
     gen(c, nkir_make_ret());
 
     NK_LOG_INF(
@@ -1138,16 +1173,19 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
     std::vector<nkid> params_names;
     std::vector<nktype_t> params_types;
 
+    // TODO Boilerplate between compileFn and compileFnType
+
     auto params = node->args[0];
 
     for (size_t i = 0; i < params.size; i++) {
         auto const &param = params.data[i];
         params_names.emplace_back(s2nkid(param.args[0].data->token->text));
-        params_types.emplace_back(
-            nkval_as(nktype_t, comptimeCompileNodeGetValue(c, param.args[1].data)));
+        DEFINE(val, comptimeCompileNodeGetValue(c, param.args[1].data));
+        params_types.emplace_back(nkval_as(nktype_t, val));
     }
 
-    nktype_t ret_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
+    DEFINE(ret_t_val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    auto ret_t = nkval_as(nktype_t, ret_t_val);
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
     auto fn_t = nkt_get_fn(
@@ -1177,18 +1215,18 @@ COMPILE(tag) {
 
     if (tag_name == "#link") {
         assert(n_args.size == 1 || n_args.size == 2);
-        std::string soname =
-            nkval_as(char const *, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
+        DEFINE(soname_val, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
+        std::string soname = nkval_as(char const *, soname_val);
         if (soname == "c" || soname == "C") {
             soname = c->libc_name;
         } else if (soname == "m" || soname == "M") {
             soname = c->libm_name;
         }
-        std::string link_prefix =
-            n_args.size == 2
-                ? nkval_as(
-                      char const *, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data))
-                : "";
+        std::string link_prefix;
+        if (n_args.size == 2) {
+            DEFINE(link_prefix_val, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data));
+            link_prefix = nkval_as(char const *, link_prefix_val);
+        }
 
         auto so = nkir_makeShObj(c->ir, cs2s(soname.c_str())); // TODO Creating so every time
 
@@ -1197,22 +1235,23 @@ COMPILE(tag) {
         nkstr sym_name_with_prefix{
             sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
 
-        auto fn_t = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, n_def.data->args[1].data));
+        DEFINE(fn_t_val, comptimeCompileNodeGetValue(c, n_def.data->args[1].data));
+        auto fn_t = nkval_as(nktype_t, fn_t_val);
 
-        defineExtSym(
-            c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t);
+        CHECK(defineExtSym(
+            c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t));
     } else if (tag_name == "#extern") {
-        compileComptimeConstDef(c, n_def.data, [=]() {
+        CHECK(compileComptimeConstDef(c, n_def.data, [=]() -> ComptimeConst {
             auto const n_def_id = n_def.data->args[1].data->id;
             if (n_def_id != n_fn && n_def_id != n_fn_var) {
-                NK_LOG_ERR("function expected in #extern");
-                std::abort();
+                return error(c, "function expected in #extern"), ComptimeConst{};
             }
             bool const is_variadic = n_def_id == n_fn_var;
-            auto const fn_val =
-                asValue(c, compileFn(c, n_def.data->args[1].data, is_variadic, NkCallConv_Cdecl));
+            DEFINE(
+                fn_val,
+                asValue(c, compileFn(c, n_def.data->args[1].data, is_variadic, NkCallConv_Cdecl)));
             return makeValueComptimeConst(fn_val);
-        });
+        }));
     } else {
         assert(!"unsupported tag");
     }
@@ -1220,15 +1259,15 @@ COMPILE(tag) {
 }
 
 COMPILE(call) {
-    auto lhs = compileNode(c, node->args[0].data);
+    auto lhs = compile(c, node->args[0].data);
 
     std::vector<ValueInfo> args_info{};
     std::vector<nktype_t> args_types{};
 
     auto nodes = node->args[1];
     for (size_t i = 0; i < nodes.size; i++) {
-        auto val_info =
-            compileNode(c, nodes.data[i].args[1].data); // TODO Support named args in call
+        // TODO Support named args in call
+        DEFINE(val_info, compile(c, nodes.data[i].args[1].data));
         args_info.emplace_back(val_info);
         args_types.emplace_back(val_info.type);
     }
@@ -1256,8 +1295,7 @@ void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
     switch (nkval_typeclassid(val)) {
     case NkType_Array:
         if (init_nodes.size > nkval_tuple_size(val)) {
-            NK_LOG_ERR("too many values to init array");
-            std::abort();
+            return error(c, "too many values to init array");
         }
         for (size_t i = 0; i < nkval_array_size(val); i++) {
             initFromAst(c, nkval_array_at(val, i), {&init_nodes.data[i], 1});
@@ -1265,13 +1303,11 @@ void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
         break;
     case NkType_Numeric: {
         if (init_nodes.size > 1) {
-            NK_LOG_ERR("too many values to init numeric");
-            std::abort();
+            return error(c, "too many values to init numeric");
         }
         auto const &node = init_nodes.data[0];
         if (node.id != cs2nkid("int") && node.id != cs2nkid("float")) {
-            NK_LOG_ERR("invalid value to init numeric");
-            std::abort();
+            return error(c, "invalid value to init numeric");
         }
         auto str = std_str(node.token->text);
         switch (nkval_typeof(val)->as.num.value_type) {
@@ -1310,15 +1346,14 @@ void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
     }
     case NkType_Tuple:
         if (init_nodes.size > nkval_tuple_size(val)) {
-            NK_LOG_ERR("too many values to init array");
-            std::abort();
+            return error(c, "too many values to init array");
         }
         for (size_t i = 0; i < nkval_tuple_size(val); i++) {
             initFromAst(c, nkval_tuple_at(val, i), {&init_nodes.data[i], 1});
         }
         break;
     default:
-        NK_LOG_ERR("initFromAst is not implemented fir this type");
+        NK_LOG_ERR("initFromAst is not implemented for this type");
         assert(!"unreachable");
         break;
     }
@@ -1327,13 +1362,12 @@ void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
 COMPILE(object_literal) {
     // TODO Optimize object literal
 
-    auto type_val = comptimeCompileNodeGetValue(c, node->args[0].data);
+    DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[0].data));
 
     // TODO Modeling type_t as *void
     if (nkval_typeclassid(type_val) != NkType_Ptr &&
         nkval_typeof(type_val)->as.ptr.target_type->typeclass_id != NkType_Void) {
-        NK_LOG_ERR("type expected in object literal");
-        std::abort();
+        return error(c, "type expected in object literal"), ValueInfo{};
     }
 
     auto type = nkval_as(nktype_t, type_val);
@@ -1351,7 +1385,7 @@ COMPILE(object_literal) {
         nodes.emplace_back(init_nodes.data[i].args[1].data[0]);
     }
 
-    initFromAst(c, val, {nodes.data(), nodes.size()});
+    CHECK(initFromAst(c, val, {nodes.data(), nodes.size()}));
 
     return makeValue(val);
 }
@@ -1360,27 +1394,26 @@ COMPILE(assign) {
     if (node->args->size > 1) {
         NK_LOG_WRN("TODO multiple assignment is not supported");
     }
-    auto lhs_ref = getLvalueRef(c, node->args[0].data);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(lhs_ref, getLvalueRef(c, node->args[0].data));
+    DEFINE(rhs, compile(c, node->args[1].data));
     return store(c, lhs_ref, rhs);
 }
 
 COMPILE(define) {
     auto const &names = node->args[0];
     if (names.size > 1) {
-        NK_LOG_ERR("multiple assignment is not implemented");
-        std::abort(); // TODO Report errors properly
+        return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
     nkid name = s2nkid(names.data[0].token->text);
-    auto rhs = compileNode(c, node->args[1].data);
+    DEFINE(rhs, compile(c, node->args[1].data));
     NkIrRef ref;
     if (curScope(c).is_top_level) {
         auto var = nkir_makeGlobalVar(c->ir, rhs.type);
-        defineGlobal(c, name, var, rhs.type);
+        CHECK(defineGlobal(c, name, var, rhs.type));
         ref = nkir_makeGlobalRef(c->ir, var);
     } else {
         auto var = nkir_makeLocalVar(c->ir, rhs.type);
-        defineLocal(c, name, var, rhs.type);
+        CHECK(defineLocal(c, name, var, rhs.type));
         ref = nkir_makeFrameRef(c->ir, var);
     }
     store(c, ref, rhs);
@@ -1396,23 +1429,23 @@ COMPILE(comptime_const_def) {
 COMPILE(var_decl) {
     auto const &names = node->args[0];
     if (names.size > 1) {
-        NK_LOG_ERR("multiple assignment is not implemented");
-        std::abort(); // TODO Report errors properly
+        return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
     nkid name = s2nkid(names.data[0].token->text);
-    auto type = nkval_as(nktype_t, comptimeCompileNodeGetValue(c, node->args[1].data));
+    DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    auto type = nkval_as(nktype_t, type_val);
     NkIrRef ref;
     if (curScope(c).is_top_level) {
         auto var = nkir_makeGlobalVar(c->ir, type);
-        defineGlobal(c, name, var, type);
+        CHECK(defineGlobal(c, name, var, type));
         ref = nkir_makeGlobalRef(c->ir, var);
     } else {
         auto var = nkir_makeLocalVar(c->ir, type);
-        defineLocal(c, name, var, type);
+        CHECK(defineLocal(c, name, var, type));
         ref = nkir_makeFrameRef(c->ir, var);
     }
     if (node->args[2].data && node->args[2].data->id) {
-        auto val = compileNode(c, node->args[2].data);
+        DEFINE(val, compile(c, node->args[2].data));
         store(c, ref, val);
     }
     return makeVoid(c);
@@ -1425,7 +1458,7 @@ CompileFunc s_funcs[] = {
 #include "nodes.inl"
 };
 
-ValueInfo compileNode(NklCompiler c, NklAstNode node) {
+ValueInfo compile(NklCompiler c, NklAstNode node) {
     assert(node->id < AR_SIZE(s_funcs) && "invalid node");
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
@@ -1446,14 +1479,14 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     auto pop_fn = pushFn(c, fn);
 
     nkir_startIncompleteFunct(fn, cs2s("#comptime"), &fn_info);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), block(c, "start"));
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     pushFnScope(c, fn);
     defer {
         popScope(c);
     };
 
-    auto cnst_val = compileNode(c, node);
+    DEFINE(cnst_val, compile(c, node));
     nkir_incompleteFunctGetInfo(fn)->ret_t = cnst_val.type;
     nkir_finalizeIncompleteFunct(fn, c->arena);
 
@@ -1484,12 +1517,14 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
 }
 
 nkval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node) {
-    auto cnst = comptimeCompileNode(c, node);
+    DEFINE(cnst, comptimeCompileNode(c, node));
+    // TODO Probably should have a way of controlling, whether we want to
+    // automatically invoke code at compile time here
     return comptimeConstGetValue(c, cnst);
 }
 
-void compileStmt(NklCompiler c, NklAstNode node) {
-    auto val = compileNode(c, node);
+Void compileStmt(NklCompiler c, NklAstNode node) {
+    DEFINE(val, compile(c, node));
     auto ref = asRef(c, val);
     if (val.kind != v_none) {
         (void)ref;
@@ -1505,12 +1540,7 @@ void compileStmt(NklCompiler c, NklAstNode node) {
             return nksb_concat(sb).data;
         }());
     }
-}
-
-void compileNodeArray(NklCompiler c, NklAstNodeArray nodes) {
-    for (size_t i = 0; i < nodes.size; i++) {
-        compileStmt(c, &nodes.data[i]);
-    }
+    return {};
 }
 
 NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
@@ -1525,7 +1555,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
         {nkt_get_void(c->arena), nkt_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false});
 
     nkir_startFunct(fn, cs2s("#top_level"), top_level_fn_t);
-    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), block(c, "start"));
+    nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     pushTopLevelFnScope(c, fn);
     defer {
@@ -1534,7 +1564,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
 
     if (root) {
         c->cur_fn = fn;
-        compileStmt(c, root);
+        CHECK(compileStmt(c, root));
     }
 
     gen(c, nkir_make_ret());
@@ -1625,14 +1655,14 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
         c->src_stack.pop();
     };
 
-    std::string err_str;
+    std::string &err_str = c->err_str;
     NklTokenRef err_token;
 
     std::vector<NklToken> tokens;
     bool res = nkl_lex(src, tokens, err_str);
     if (!res) {
         printError(c, &tokens.back(), err_str);
-        return nullptr;
+        return {};
     }
 
     auto ast = nkl_ast_create();
@@ -1642,10 +1672,17 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     auto root = nkl_parse(ast, tokens, err_str, err_token);
     if (!root) {
         printError(c, err_token, err_str);
-        return nullptr;
+        return {};
     }
 
-    return nkl_compile(c, root);
+    auto fn = nkl_compile(c, root);
+    if (!fn) {
+        // TODO Not getting proper token for compiler error
+        printError(c, &tokens.front(), err_str);
+        return {};
+    }
+
+    return fn;
 }
 
 NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
@@ -1662,18 +1699,18 @@ NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
         std::string src{std::istreambuf_iterator<char>{file}, {}};
         return nkl_compileSrc(c, {src.data(), src.size()});
     } else {
-        NK_LOG_ERR("failed to open file `%.*s`", path.size, path.data);
-        std::abort();
+        return error(c, "failed to open file `%.*s`", path.size, path.data), NkIrFunct{};
     }
 }
 
 } // namespace
 
-extern "C" NK_EXPORT void nkl_compiler_declareLocal(char const *name, nktype_t type) {
+extern "C" NK_EXPORT Void nkl_compiler_declareLocal(char const *name, nktype_t type) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     NklCompiler c = s_compiler;
-    defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type);
+    CHECK(defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, type), type));
+    return {};
 }
 
 struct NklCompilerBuilder {
@@ -1744,50 +1781,55 @@ template <class T>
 T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
     auto it = config.find(cs2nkid(name.c_str()));
     if (it == config.end()) {
-        NK_LOG_ERR("`%.*s` is missing in config", name.size(), name.data());
-        std::abort();
+        return error(c, "`%.*s` is missing in config", name.size(), name.data()), T{};
     }
     auto val_info = declToValueInfo(it->second);
     if (!isKnown(val_info)) {
-        NK_LOG_ERR("`%.*s` value is not known");
-        std::abort();
+        return error(c, "`%.*s` value is not known"), T{};
     }
     auto val = asValue(c, val_info);
     return nkval_as(T, val); // TODO Reinterpret cast in compiler without check
 }
 
-void nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
+bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
     auto config_filepath = fs::path{std_view(config_dir)} / "config.nkl";
     auto filepath_str = config_filepath.string();
     if (!fs::exists(config_filepath)) {
-        NK_LOG_ERR("config file `%.*s` doesn't exist", filepath_str.size(), filepath_str.c_str());
-        std::abort();
+        return error(
+                   c,
+                   "config file `%.*s` doesn't exist",
+                   filepath_str.size(),
+                   filepath_str.c_str()),
+               false;
     }
-    auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+    DEFINE(fn, nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()}));
     auto &config = c->fn_scopes[fn]->locals;
 
-    c->stdlib_dir = getConfigValue<char const *>(c, "stdlib_dir", config);
+    ASSIGN(c->stdlib_dir, getConfigValue<char const *>(c, "stdlib_dir", config));
     NK_LOG_DBG("stdlib_dir=`%.*s`", c->stdlib_dir.size(), c->stdlib_dir.c_str());
 
-    c->libc_name = getConfigValue<char const *>(c, "libc_name", config);
+    ASSIGN(c->libc_name, getConfigValue<char const *>(c, "libc_name", config));
     NK_LOG_DBG("libc_name=`%.*s`", c->libc_name.size(), c->libc_name.c_str());
 
-    c->libm_name = getConfigValue<char const *>(c, "libm_name", config);
+    ASSIGN(c->libm_name, getConfigValue<char const *>(c, "libm_name", config));
     NK_LOG_DBG("libm_name=`%.*s`", c->libm_name.size(), c->libm_name.c_str());
 
-    c->c_compiler = getConfigValue<char const *>(c, "c_compiler", config);
+    ASSIGN(c->c_compiler, getConfigValue<char const *>(c, "c_compiler", config));
     NK_LOG_DBG("c_compiler=`%.*s`", c->c_compiler.size(), c->c_compiler.c_str());
 
-    c->c_compiler_flags = getConfigValue<char const *>(c, "c_compiler_flags", config);
+    ASSIGN(c->c_compiler_flags, getConfigValue<char const *>(c, "c_compiler_flags", config));
     NK_LOG_DBG("c_compiler_flags=`%.*s`", c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
 
     c->configured = true;
+
+    return true;
 }
 
-void nkl_compiler_run(NklCompiler c, NklAstNode root) {
+// TODO nkl_compiler_run probably is not needed
+bool nkl_compiler_run(NklCompiler c, NklAstNode root) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
 
     // TODO Boilerplate in nkl_compiler_run_*
@@ -1801,10 +1843,13 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     auto fn = nkl_compile(c, root);
     if (fn) {
         nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+        return true;
+    } else {
+        return false;
     }
 }
 
-void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
+bool nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
 
     auto prev_compiler = s_compiler;
@@ -1816,10 +1861,13 @@ void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     auto fn = nkl_compileSrc(c, src);
     if (fn) {
         nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+        return true;
+    } else {
+        return false;
     }
 }
 
-void nkl_compiler_runFile(NklCompiler c, nkstr path) {
+bool nkl_compiler_runFile(NklCompiler c, nkstr path) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
 
     auto prev_compiler = s_compiler;
@@ -1831,5 +1879,8 @@ void nkl_compiler_runFile(NklCompiler c, nkstr path) {
     auto fn = nkl_compileFile(c, path);
     if (fn) {
         nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+        return true;
+    } else {
+        return false;
     }
 }

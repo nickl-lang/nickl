@@ -151,11 +151,15 @@ int main(int argc, char const *const *argv) {
     NK_LOGGER_INIT(logger_options);
 
     auto compiler = nkl_compiler_create();
-    nkl_compiler_configure(compiler, cs2s(nksys_appDir().c_str()));
+    if (!nkl_compiler_configure(compiler, cs2s(nksys_appDir().c_str()))) {
+        return 1;
+    }
     defer {
         nkl_compiler_free(compiler);
     };
-    nkl_compiler_runFile(compiler, cs2s(in_file));
+    if (!nkl_compiler_runFile(compiler, cs2s(in_file))) {
+        return 1;
+    }
 
 #ifdef BUILD_WITH_EASY_PROFILER
     puts("press any key to exit");
