@@ -151,6 +151,7 @@ struct NklCompiler_T {
     NkAllocator arena;
 
     std::string err_str{};
+    NklTokenRef err_token{};
     bool error_occurred = false;
 
     std::string stdlib_dir{};
@@ -158,7 +159,6 @@ struct NklCompiler_T {
     std::string libm_name{};
     std::string c_compiler{};
     std::string c_compiler_flags{};
-    bool configured = false;
 
     std::stack<Scope> nonpersistent_scope_stack{};
     std::deque<Scope> persistent_scopes{};
@@ -171,7 +171,7 @@ struct NklCompiler_T {
     std::map<fs::path, NkIrFunct> imports{};
 
     std::stack<std::string> comptime_const_names{};
-    std::vector<nkid> node_ids{};
+    std::vector<NklAstNode> node_stack{};
     size_t fn_counter{};
 
     std::unordered_map<nkid, size_t> id2blocknum{};
@@ -189,6 +189,10 @@ void error(NklCompiler c, char const *fmt, ...) {
     va_start(ap, fmt);
     c->err_str = string_vformat(fmt, ap);
     va_end(ap);
+
+    if (!c->node_stack.empty()) {
+        c->err_token = c->node_stack.back()->token;
+    }
 
     c->error_occurred = true;
 }
@@ -970,22 +974,21 @@ COMPILE(tuple_type) {
 
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
-    if (!c->configured) {
-        return error(c, "stdlib is not available"), ValueInfo{};
-    }
     auto name = node->args[0].data->token->text;
     std::string filename = std_str(name) + ".nkl";
-    auto filepath = fs::canonical(fs::path{c->stdlib_dir} / filename);
+    auto filepath = fs::path{c->stdlib_dir} / filename;
+    auto filepath_str = filepath.string();
+    if (!fs::exists(filepath)) {
+        return error(
+                   c,
+                   "imported file `%.*s` doesn't exist",
+                   filepath_str.size(),
+                   filepath_str.c_str()),
+               ValueInfo{};
+    }
     auto it = c->imports.find(filepath);
     if (it == c->imports.end()) {
-        auto filepath_str = filepath.string();
         if (!fs::exists(filepath)) {
-            return error(
-                       c,
-                       "imported file `%.*s` doesn't exist",
-                       filepath_str.size(),
-                       filepath_str.c_str()),
-                   ValueInfo{};
         }
         DEFINE(fn, nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()}));
         std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
@@ -1119,7 +1122,7 @@ ValueInfo compileFn(
     auto pop_fn = pushFn(c, fn);
 
     std::string fn_name;
-    if (c->node_ids.size() >= 2 && *(c->node_ids.rbegin() + 1) == n_comptime_const_def) {
+    if (c->node_stack.size() >= 2 && (*(c->node_stack.rbegin() + 1))->id == n_comptime_const_def) {
         fn_name = c->comptime_const_names.top();
     } else {
         // TODO Fix not finding the name of #extern function
@@ -1211,7 +1214,9 @@ COMPILE(tag) {
 
     std::string tag_name{n_tag_name.data->token->text.data, n_tag_name.data->token->text.size};
 
-    assert(n_def.data->id == n_comptime_const_def);
+    if (n_def.data->id != n_comptime_const_def) {
+        return error(c, "TODO comptime const def assumed in tag"), ValueInfo{};
+    }
 
     if (tag_name == "#link") {
         assert(n_args.size == 1 || n_args.size == 2);
@@ -1259,7 +1264,7 @@ COMPILE(tag) {
 }
 
 COMPILE(call) {
-    auto lhs = compile(c, node->args[0].data);
+    DEFINE(lhs, compile(c, node->args[0].data));
 
     std::vector<ValueInfo> args_info{};
     std::vector<nktype_t> args_types{};
@@ -1365,7 +1370,7 @@ COMPILE(object_literal) {
     DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[0].data));
 
     // TODO Modeling type_t as *void
-    if (nkval_typeclassid(type_val) != NkType_Ptr &&
+    if (nkval_typeclassid(type_val) != NkType_Ptr ||
         nkval_typeof(type_val)->as.ptr.target_type->typeclass_id != NkType_Void) {
         return error(c, "type expected in object literal"), ValueInfo{};
     }
@@ -1400,6 +1405,7 @@ COMPILE(assign) {
 }
 
 COMPILE(define) {
+    // TODO Shadowing is not allowed
     auto const &names = node->args[0];
     if (names.size > 1) {
         return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
@@ -1459,16 +1465,18 @@ CompileFunc s_funcs[] = {
 };
 
 ValueInfo compile(NklCompiler c, NklAstNode node) {
-    assert(node->id < AR_SIZE(s_funcs) && "invalid node");
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
 #endif // BUILD_WITH_EASY_PROFILER
     EASY_BLOCK(block_name.c_str(), ::profiler::colors::DeepPurple100);
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
-    c->node_ids.emplace_back(node->id);
+    c->node_stack.emplace_back(node);
     defer {
-        c->node_ids.pop_back();
+        c->node_stack.pop_back();
     };
+    if (node->id >= AR_SIZE(s_funcs)) {
+        return error(c, "TODO node compilation is not implemented"), ValueInfo{};
+    }
     return s_funcs[node->id](c, node);
 }
 
@@ -1646,6 +1654,23 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     printQuote(src, token, to_color);
 }
 
+void printError(char const *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    auto str = string_vformat(fmt, ap);
+    va_end(ap);
+
+    bool const to_color = nksys_isatty();
+
+    std::fprintf(
+        stderr,
+        "%serror:%s %.*s\n",
+        to_color ? COLOR_RED : COLOR_NONE,
+        COLOR_NONE,
+        (int)str.size(),
+        str.c_str());
+}
+
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
@@ -1677,8 +1702,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
 
     auto fn = nkl_compile(c, root);
     if (!fn) {
-        // TODO Not getting proper token for compiler error
-        printError(c, &tokens.front(), err_str);
+        printError(c, c->err_token, err_str);
         return {};
     }
 
@@ -1699,7 +1723,8 @@ NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
         std::string src{std::istreambuf_iterator<char>{file}, {}};
         return nkl_compileSrc(c, {src.data(), src.size()});
     } else {
-        return error(c, "failed to open file `%.*s`", path.size, path.data), NkIrFunct{};
+        printError("failed to open file `%.*s`", (int)path.size, path.data);
+        return {};
     }
 }
 
@@ -1798,32 +1823,57 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     auto config_filepath = fs::path{std_view(config_dir)} / "config.nkl";
     auto filepath_str = config_filepath.string();
     if (!fs::exists(config_filepath)) {
-        return error(
-                   c,
-                   "config file `%.*s` doesn't exist",
-                   filepath_str.size(),
-                   filepath_str.c_str()),
-               false;
+        printError(
+            "config file `%.*s` doesn't exist", (int)filepath_str.size(), filepath_str.c_str());
+        return false;
     }
-    DEFINE(fn, nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()}));
+    auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+    if (!fn) {
+        return false;
+    }
     auto &config = c->fn_scopes[fn]->locals;
 
-    ASSIGN(c->stdlib_dir, getConfigValue<char const *>(c, "stdlib_dir", config));
+    // TODO Boilerplate in nkl_compiler_configure error handling
+
+    auto stdlib_dir_str = getConfigValue<char const *>(c, "stdlib_dir", config);
+    if (c->error_occurred) {
+        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return false;
+    }
+    c->stdlib_dir = stdlib_dir_str;
     NK_LOG_DBG("stdlib_dir=`%.*s`", c->stdlib_dir.size(), c->stdlib_dir.c_str());
 
-    ASSIGN(c->libc_name, getConfigValue<char const *>(c, "libc_name", config));
+    auto libc_name_str = getConfigValue<char const *>(c, "libc_name", config);
+    if (c->error_occurred) {
+        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return false;
+    }
+    c->libc_name = libc_name_str;
     NK_LOG_DBG("libc_name=`%.*s`", c->libc_name.size(), c->libc_name.c_str());
 
-    ASSIGN(c->libm_name, getConfigValue<char const *>(c, "libm_name", config));
+    auto libm_name_str = getConfigValue<char const *>(c, "libm_name", config);
+    if (c->error_occurred) {
+        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return false;
+    }
+    c->libm_name = libm_name_str;
     NK_LOG_DBG("libm_name=`%.*s`", c->libm_name.size(), c->libm_name.c_str());
 
-    ASSIGN(c->c_compiler, getConfigValue<char const *>(c, "c_compiler", config));
+    auto c_compiler_str = getConfigValue<char const *>(c, "c_compiler", config);
+    if (c->error_occurred) {
+        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return false;
+    }
+    c->c_compiler = c_compiler_str;
     NK_LOG_DBG("c_compiler=`%.*s`", c->c_compiler.size(), c->c_compiler.c_str());
 
-    ASSIGN(c->c_compiler_flags, getConfigValue<char const *>(c, "c_compiler_flags", config));
+    auto c_compiler_flags_str = getConfigValue<char const *>(c, "c_compiler_flags", config);
+    if (c->error_occurred) {
+        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return false;
+    }
+    c->c_compiler_flags = c_compiler_flags_str;
     NK_LOG_DBG("c_compiler_flags=`%.*s`", c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
-
-    c->configured = true;
 
     return true;
 }
