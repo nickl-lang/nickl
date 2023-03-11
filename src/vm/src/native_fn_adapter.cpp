@@ -40,7 +40,8 @@ auto s_deinit_typearena = makeDeferrer([]() {
     }
 });
 
-ffi_type *_getNativeHandle(nktype_t type) {
+// TODO Integer promotion works only on little-endian
+ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 
@@ -83,10 +84,10 @@ ffi_type *_getNativeHandle(nktype_t type) {
         case NkType_Numeric:
             switch (type->as.num.value_type) {
             case Int8:
-                ffi_t = &ffi_type_sint8;
+                ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint8;
                 break;
             case Int16:
-                ffi_t = &ffi_type_sint16;
+                ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint16;
                 break;
             case Int32:
                 ffi_t = &ffi_type_sint32;
@@ -95,10 +96,10 @@ ffi_type *_getNativeHandle(nktype_t type) {
                 ffi_t = &ffi_type_sint64;
                 break;
             case Uint8:
-                ffi_t = &ffi_type_uint8;
+                ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint8;
                 break;
             case Uint16:
-                ffi_t = &ffi_type_uint16;
+                ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint16;
                 break;
             case Uint32:
                 ffi_t = &ffi_type_uint32;
@@ -107,7 +108,7 @@ ffi_type *_getNativeHandle(nktype_t type) {
                 ffi_t = &ffi_type_uint64;
                 break;
             case Float32:
-                ffi_t = &ffi_type_float;
+                ffi_t = promote ? &ffi_type_double : &ffi_type_float;
                 break;
             case Float64:
                 ffi_t = &ffi_type_double;
@@ -124,7 +125,7 @@ ffi_type *_getNativeHandle(nktype_t type) {
             ffi_type **elements = (ffi_type **)nk_allocate(
                 s_typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
             for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
-                elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type);
+                elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
             }
             elements[type->as.tuple.elems.size] = nullptr;
             ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
@@ -161,16 +162,16 @@ ffi_type *_getNativeHandle(nktype_t type) {
     return ffi_t;
 }
 
-void _ffiPrepareCif(ffi_cif *cif, nktype_t fn_t) { // TODO Unify ffi cif preparation
-    size_t const argc = fn_t->as.fn.args_t->as.tuple.elems.size;
-
-    auto rtype = _getNativeHandle(fn_t->as.fn.ret_t);
-    auto atypes = _getNativeHandle(fn_t->as.fn.args_t);
-
+void _ffiPrepareCif(
+    ffi_cif *cif,
+    size_t actual_argc,
+    bool is_variadic,
+    ffi_type *rtype,
+    ffi_type *atypes,
+    size_t argc) {
     ffi_status status;
-    if (fn_t->as.fn.is_variadic) {
-        status = FFI_BAD_ABI;
-        // TODO Not handling variadic ffi closure
+    if (is_variadic) {
+        status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, actual_argc, argc, rtype, atypes->elements);
     } else {
         status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
     }
@@ -211,23 +212,14 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
 
     size_t const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
 
-    auto rtype = _getNativeHandle(nkval_typeof(ret));
-    auto atypes = _getNativeHandle(nkval_typeof(args));
+    auto const fn_t = nkval_typeof(fn);
+    bool const is_variadic = fn_t->as.fn.is_variadic;
+
+    auto const rtype = _getNativeHandle(nkval_typeof(ret));
+    auto const atypes = _getNativeHandle(nkval_typeof(args), is_variadic);
 
     ffi_cif cif;
-    ffi_status status;
-    if (nkval_typeof(fn)->as.fn.is_variadic) {
-        status = ffi_prep_cif_var(
-            &cif,
-            FFI_DEFAULT_ABI,
-            nkval_typeof(fn)->as.fn.args_t->as.tuple.elems.size,
-            argc,
-            rtype,
-            atypes->elements);
-    } else {
-        status = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
-    }
-    assert(status == FFI_OK && "ffi_prep_cif failed");
+    _ffiPrepareCif(&cif, fn_t->as.fn.args_t->as.tuple.elems.size, is_variadic, rtype, atypes, argc);
 
     void **argv = (void **)nk_allocate(nk_default_allocator, argc * sizeof(void *));
     defer {
@@ -253,7 +245,14 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
     auto cl = (NkIrNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkIrNativeClosure_T));
     cl->fn = fn;
 
-    _ffiPrepareCif(&cl->cif, fn->fn_t);
+    size_t const argc = fn->fn_t->as.fn.args_t->as.tuple.elems.size;
+
+    bool const is_variadic = fn->fn_t->as.fn.is_variadic;
+
+    auto const rtype = _getNativeHandle(fn->fn_t->as.fn.ret_t);
+    auto const atypes = _getNativeHandle(fn->fn_t->as.fn.args_t, is_variadic);
+
+    _ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
 
     cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
 

@@ -242,8 +242,8 @@ struct VariadicArgs {
     } while (0)
 
 TEST_F(native_fn_adapter, set_variadic) {
-    // TODO(promotion) SET_VARIADIC_TEST(i8, 12);
-    // TODO(promotion) SET_VARIADIC_TEST(i16, 34);
+    SET_VARIADIC_TEST(i8, 12);
+    SET_VARIADIC_TEST(i16, 34);
     SET_VARIADIC_TEST(i32, 56);
     SET_VARIADIC_TEST(i64, 78);
     // TODO(promotion) SET_VARIADIC_TEST(f32, 3.14f);
