@@ -34,6 +34,7 @@ NK_LOG_USE_SCOPE(parser);
 struct ParseEngine {
     nkslice<NklToken const> m_tokens;
     NklAst m_ast;
+    std::string &m_err_str;
 
     bool m_error_occurred = false;
 
@@ -80,7 +81,7 @@ private:
 
     void expect(ETokenId id) {
         if (!accept(id)) {
-            return error("'%s' expected", s_token_text[id]);
+            return error("unexpected token `%.*s`", m_cur_token->text.size, m_cur_token->text.data);
         }
     }
 
@@ -233,11 +234,12 @@ private:
         }
 
         auto node =
-            nodes.size() == 0 ? nkl_makeNode0("nop", _n_token)
-            : nodes.size() == 1
-                ? nodes.front()
-                : nkl_makeNode1(
-                      "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+            nodes.size() == 0
+                ? nkl_makeNode0("nop", _n_token)
+                : nodes.size() == 1
+                      ? nodes.front()
+                      : nkl_makeNode1(
+                            "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1("scope", _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -383,10 +385,12 @@ private:
             }
         }
 
-        if (m_last_token->id != t_semi && m_last_token->id != t_brace_r) {
-            EXPECT(t_semi);
-        }
         while (accept(t_semi)) {
+        }
+        if (m_last_token->id != t_semi && m_last_token->id != t_brace_r) {
+            // TODO Improve token quote for string constants etc.
+            return error("unexpected token `%.*s`", m_cur_token->text.size, m_cur_token->text.data),
+                   NklAstNode_T{};
         }
 
         return node;
@@ -1008,10 +1012,6 @@ private:
                 if (accept(t_minus_greater)) {
                     ASSIGN(ret_type, expr(Expr_Type));
                 }
-                if (res.trailing_comma_parsed) {
-                    return error("trailing comma is not allowed in function signature"),
-                           NklAstNode_T{};
-                }
                 if (m_cur_expr_kind == Expr_Regular && check(t_brace_l)) {
                     DEFINE(body, block());
                     node = nkl_makeNode3(
@@ -1062,9 +1062,10 @@ private:
         }
 
         else if (check(t_eof)) {
+            m_cur_token--;
             return error("unexpected end of file"), NklAstNode_T{};
         } else {
-            return error("unexpected token '%.*s'", m_cur_token->text.size, m_cur_token->text.data),
+            return error("unexpected token `%.*s`", m_cur_token->text.size, m_cur_token->text.data),
                    NklAstNode_T{};
         }
 
@@ -1073,25 +1074,29 @@ private:
 
     void error(char const *fmt, ...) {
         assert(!m_error_occurred && "Parser error already initialized");
-        m_error_occurred = true;
+
         va_list ap;
         va_start(ap, fmt);
-        std::vfprintf(stderr, fmt, ap);
-        std::fprintf(stderr, "\n");
-        std::fflush(stderr);
+        m_err_str = string_vformat(fmt, ap);
         va_end(ap);
+
+        m_error_occurred = true;
     }
 };
 
 } // namespace
 
-NklAstNode nkl_parse(NklAst ast, nkslice<NklToken const> tokens) {
+NklAstNode nkl_parse(
+    NklAst ast,
+    nkslice<NklToken const> tokens,
+    std::string &err_str,
+    NklTokenRef &err_token) {
     EASY_FUNCTION(::profiler::colors::Teal200);
     NK_LOG_TRC(__func__);
 
     assert(tokens.size() && "empty token array");
 
-    ParseEngine engine{tokens, ast};
+    ParseEngine engine{tokens, ast, err_str};
     NklAstNode root = engine.parse();
 
     NK_LOG_INF(
@@ -1104,7 +1109,8 @@ NklAstNode nkl_parse(NklAst ast, nkslice<NklToken const> tokens) {
         }());
 
     if (engine.m_error_occurred) {
-        std::abort(); // TODO Report errors properly
+        err_token = engine.m_cur_token;
+        return nullptr;
     }
 
     return root;

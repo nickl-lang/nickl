@@ -1563,36 +1563,57 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
 #define COLOR_CYAN "\x1b[1;36m"
 #define COLOR_WHITE "\x1b[1;37m"
 
-void printQuote(NklCompiler c, NklToken token, bool to_color) {
-    assert(!c->src_stack.empty());
-    auto src = std_view(c->src_stack.top());
-
-    auto prev_newline = src.find_last_of("\n", token.pos);
+void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
+    auto prev_newline = src.find_last_of("\n", token->pos);
     if (prev_newline == std::string::npos) {
         prev_newline = 0;
     } else {
         prev_newline++;
     }
-    auto next_newline = src.find_first_of("\n", token.pos);
+    auto next_newline = src.find_first_of("\n", token->pos);
     std::fprintf(
         stderr,
         "%zu | %.*s%s%.*s%s%.*s\n%s%*s",
-        token.lin,
-        (int)(token.pos - prev_newline),
+        token->lin,
+        (int)(token->pos - prev_newline),
         src.data() + prev_newline,
         to_color ? COLOR_RED : COLOR_NONE,
-        (int)(token.text.size),
-        src.data() + token.pos,
+        (int)(token->text.size),
+        src.data() + token->pos,
         COLOR_NONE,
-        (int)(next_newline - token.pos - token.text.size),
-        src.data() + token.pos + token.text.size,
+        (int)(next_newline - token->pos - token->text.size),
+        src.data() + token->pos + token->text.size,
         to_color ? COLOR_RED : COLOR_NONE,
-        (int)(token.col + std::log10(token.lin) + 4),
+        (int)(token->col + std::log10(token->lin) + 4),
         "^");
-    for (size_t i = 0; i < token.text.size - 1; i++) {
+    for (size_t i = 0; i < token->text.size - 1; i++) {
         std::fprintf(stderr, "%c", '~');
     }
     std::fprintf(stderr, "%s\n", COLOR_NONE);
+}
+
+void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
+    // TODO Refactor coloring
+    // TODO Add option to control coloring from CLI
+    bool const to_color = nksys_isatty();
+    assert(!c->file_stack.empty());
+    std::fprintf(
+        stderr,
+        "%s%s:%zu:%zu:%s %serror:%s %.*s\n",
+        to_color ? COLOR_WHITE : COLOR_NONE,
+        c->file_stack.top().string().c_str(),
+        token->lin,
+        token->col,
+        COLOR_NONE,
+        to_color ? COLOR_RED : COLOR_NONE,
+        COLOR_NONE,
+        (int)err_str.size(),
+        err_str.data());
+
+    assert(!c->src_stack.empty());
+    auto src = std_view(c->src_stack.top());
+
+    printQuote(src, token, to_color);
 }
 
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
@@ -1604,29 +1625,13 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
         c->src_stack.pop();
     };
 
-    std::vector<NklToken> tokens;
     std::string err_str;
+    NklTokenRef err_token;
 
+    std::vector<NklToken> tokens;
     bool res = nkl_lex(src, tokens, err_str);
     if (!res) {
-        // TODO Refactor coloring
-        // TODO Add option to control coloring from CLI
-        bool const to_color = nksys_isatty();
-        assert(!c->file_stack.empty());
-        auto token = tokens.back();
-        std::fprintf(
-            stderr,
-            "%s%s:%zu:%zu:%s %serror:%s %.*s\n",
-            to_color ? COLOR_WHITE : COLOR_NONE,
-            c->file_stack.top().string().c_str(),
-            token.lin,
-            token.col,
-            COLOR_NONE,
-            to_color ? COLOR_RED : COLOR_NONE,
-            COLOR_NONE,
-            (int)err_str.size(),
-            err_str.data());
-        printQuote(c, token, to_color);
+        printError(c, &tokens.back(), err_str);
         return nullptr;
     }
 
@@ -1634,8 +1639,12 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     defer {
         nkl_ast_free(ast);
     };
+    auto root = nkl_parse(ast, tokens, err_str, err_token);
+    if (!root) {
+        printError(c, err_token, err_str);
+        return nullptr;
+    }
 
-    auto root = nkl_parse(ast, tokens);
     return nkl_compile(c, root);
 }
 

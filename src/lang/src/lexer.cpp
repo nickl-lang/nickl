@@ -101,7 +101,7 @@ struct ScanEngine {
                             m_token.pos = m_pos - 1;
                             m_token.lin = m_lin;
                             m_token.col = m_col - 1;
-                            return error("invalid escape sequence");
+                            return error("invalid escape sequence `\\%c`", chr());
                         }
                     }
                 }
@@ -222,7 +222,7 @@ struct ScanEngine {
                 }
             } else {
                 accept();
-                return error("unknown token");
+                return error("unknown token `%c`", chr(-1));
             }
         }
     }
