@@ -132,7 +132,7 @@ class native_fn_adapter : public testing::Test {
     }
 
 protected:
-    NkAllocator *m_arena;
+    NkAllocator m_arena;
 
     nktype_t str_t;
 

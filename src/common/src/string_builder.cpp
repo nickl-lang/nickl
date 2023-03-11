@@ -8,7 +8,7 @@
 #include "nk/common/allocator.h"
 
 typedef struct NkStringBuilder_T {
-    NkAllocator *alloc;
+    NkAllocator alloc;
     char *data;
     size_t size;
 } NkStringBuilder_T;
@@ -17,7 +17,7 @@ NkStringBuilder nksb_create() {
     return nksb_create_alloc(nk_default_allocator);
 }
 
-NkStringBuilder nksb_create_alloc(NkAllocator *alloc) {
+NkStringBuilder nksb_create_alloc(NkAllocator alloc) {
     NkStringBuilder sb = new (nk_allocate(alloc, sizeof(*sb))) NkStringBuilder_T{
         .alloc = alloc,
         .data = (char *)nk_allocate(alloc, 1),

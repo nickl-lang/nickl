@@ -19,7 +19,7 @@ nk_typeid_t s_next_type_id = 1;
 
 } // namespace
 
-nktype_t nkt_get_array(NkAllocator *alloc, nktype_t elem_type, size_t elem_count) {
+nktype_t nkt_get_array(NkAllocator alloc, nktype_t elem_type, size_t elem_count) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.arr{
             .elem_type = elem_type,
@@ -32,7 +32,7 @@ nktype_t nkt_get_array(NkAllocator *alloc, nktype_t elem_type, size_t elem_count
     };
 }
 
-nktype_t nkt_get_fn(NkAllocator *alloc, NktFnInfo info) {
+nktype_t nkt_get_fn(NkAllocator alloc, NktFnInfo info) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.fn{
             .ret_t = info.ret_t,
@@ -47,7 +47,7 @@ nktype_t nkt_get_fn(NkAllocator *alloc, NktFnInfo info) {
     };
 }
 
-nktype_t nkt_get_numeric(NkAllocator *alloc, NkNumericValueType value_type) {
+nktype_t nkt_get_numeric(NkAllocator alloc, NkNumericValueType value_type) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.num{
             .value_type = value_type,
@@ -59,7 +59,7 @@ nktype_t nkt_get_numeric(NkAllocator *alloc, NkNumericValueType value_type) {
     };
 }
 
-nktype_t nkt_get_ptr(NkAllocator *alloc, nktype_t target_type) {
+nktype_t nkt_get_ptr(NkAllocator alloc, nktype_t target_type) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.ptr{
             .target_type = target_type,
@@ -71,7 +71,7 @@ nktype_t nkt_get_ptr(NkAllocator *alloc, nktype_t target_type) {
     };
 }
 
-nktype_t nkt_get_tuple(NkAllocator *alloc, nktype_t const *types, size_t count, size_t stride) {
+nktype_t nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride) {
     auto layout = nk_calcTupleLayout(types, count, alloc, stride);
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.tuple{
@@ -84,7 +84,7 @@ nktype_t nkt_get_tuple(NkAllocator *alloc, nktype_t const *types, size_t count, 
     };
 }
 
-nktype_t nkt_get_void(NkAllocator *alloc) {
+nktype_t nkt_get_void(NkAllocator alloc) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{},
         .id = s_next_type_id++,
@@ -303,7 +303,7 @@ nkval_t nkval_tuple_at(nkval_t self, size_t i) {
 NkTupleLayout nk_calcTupleLayout(
     nktype_t const *types,
     size_t count,
-    NkAllocator *alloc,
+    NkAllocator alloc,
     size_t stride) {
     size_t alignment = 0;
     size_t offset = 0;

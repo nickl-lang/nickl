@@ -130,7 +130,7 @@ static thread_local NklCompiler s_compiler;
 
 struct NklCompiler_T {
     NkIrProg ir;
-    NkAllocator *arena;
+    NkAllocator arena;
 
     std::string stdlib_dir{};
     std::string libc_name{};
@@ -1141,8 +1141,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
     nktype_t args_t = nkt_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
     auto fn_t = nkt_get_fn(
-        c->arena,
-        {ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #link
+        c->arena, {ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #link
 
     return makeValue<void *>(c, nkt_get_ptr(c->arena, nkt_get_void(c->arena)), (void *)fn_t);
 }

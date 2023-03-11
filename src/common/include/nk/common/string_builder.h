@@ -13,7 +13,7 @@ extern "C" {
 typedef struct NkStringBuilder_T *NkStringBuilder;
 
 NkStringBuilder nksb_create();
-NkStringBuilder nksb_create_alloc(NkAllocator *alloc);
+NkStringBuilder nksb_create_alloc(NkAllocator alloc);
 
 void nksb_free(NkStringBuilder sb);
 

@@ -96,7 +96,7 @@ void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info) 
     nkir_activateFunct(funct->prog, funct);
 }
 
-void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator *alloc) {
+void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator alloc) {
     funct->fn_t = nkt_get_fn(alloc, funct->fn_info);
     funct->state = NkIrFunct_Complete;
 }

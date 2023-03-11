@@ -57,7 +57,7 @@ struct InterpContext {
         uint8_t *base_ar[NkBcRef_Count];
         Base base;
     };
-    NkStackAllocator *stack;
+    NkStackAllocator stack;
     std::vector<ControlFrame> ctrl_stack;
     std::vector<NkStackAllocatorFrame> stack_frames;
     NkStackAllocatorFrame stack_frame;

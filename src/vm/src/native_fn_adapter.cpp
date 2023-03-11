@@ -31,7 +31,7 @@ namespace {
 NK_LOG_USE_SCOPE(native_fn_adapter);
 
 std::unordered_map<nk_typeid_t, ffi_type *> s_typemap;
-NkAllocator *s_typearena;
+NkAllocator s_typearena;
 std::recursive_mutex s_mtx;
 
 auto s_deinit_typearena = makeDeferrer([]() {

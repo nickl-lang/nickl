@@ -17,7 +17,7 @@ char const *s_nkl_ast_node_names[] = {
 };
 
 struct NklAst_T {
-    NkAllocator *arena;
+    NkAllocator arena;
 };
 
 namespace {

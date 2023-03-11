@@ -41,7 +41,7 @@ struct nkval_hash {
 
 struct WriterCtx {
     NkIrProg ir;
-    NkAllocator *arena;
+    NkAllocator arena;
 
     std::ostream &types_s;
     std::ostream &data_s;

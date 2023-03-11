@@ -45,7 +45,7 @@ protected:
     }
 
 protected:
-    NkAllocator *m_arena;
+    NkAllocator m_arena;
 };
 
 } // namespace
