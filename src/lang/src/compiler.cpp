@@ -1,5 +1,7 @@
 #include "nkl/lang/compiler.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -27,11 +29,13 @@
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
+#include "nk/sys/tty.h"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/ir_compile.h"
 #include "nk/vm/value.h"
 #include "nkl/lang/ast.h"
+#include "nkl/lang/token.h"
 #include "parser.hpp"
 
 namespace {
@@ -154,6 +158,9 @@ struct NklCompiler_T {
     size_t fn_counter{};
 
     std::unordered_map<nkid, size_t> id2blocknum{};
+
+    std::stack<fs::path> file_stack{};
+    std::stack<nkstr> src_stack{};
 };
 
 namespace {
@@ -946,6 +953,9 @@ COMPILE(import) {
             std::abort();
         }
         auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+        if (!fn) {
+            return makeVoid(c);
+        }
         std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
     }
     auto fn = it->second;
@@ -1542,14 +1552,89 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     return fn;
 }
 
+// TODO Unify coloring with logger
+#define COLOR_NONE "\x1b[0m"
+#define COLOR_GRAY "\x1b[1;30m"
+#define COLOR_RED "\x1b[1;31m"
+#define COLOR_GREEN "\x1b[1;32m"
+#define COLOR_YELLOW "\x1b[1;33m"
+#define COLOR_BLUE "\x1b[1;34m"
+#define COLOR_MAGENTA "\x1b[1;35m"
+#define COLOR_CYAN "\x1b[1;36m"
+#define COLOR_WHITE "\x1b[1;37m"
+
+void printQuote(NklCompiler c, NklToken token, bool to_color) {
+    assert(!c->src_stack.empty());
+    auto src = std_view(c->src_stack.top());
+
+    auto prev_newline = src.find_last_of("\n", token.pos);
+    if (prev_newline == std::string::npos) {
+        prev_newline = 0;
+    } else {
+        prev_newline++;
+    }
+    auto next_newline = src.find_first_of("\n", token.pos);
+    std::fprintf(
+        stderr,
+        "%zu | %.*s%s%.*s%s%.*s\n%s%*s",
+        token.lin,
+        (int)(token.pos - prev_newline),
+        src.data() + prev_newline,
+        to_color ? COLOR_RED : COLOR_NONE,
+        (int)(token.text.size),
+        src.data() + token.pos,
+        COLOR_NONE,
+        (int)(next_newline - token.pos - token.text.size),
+        src.data() + token.pos + token.text.size,
+        to_color ? COLOR_RED : COLOR_NONE,
+        (int)(token.col + std::log10(token.lin) + 4),
+        "^");
+    for (size_t i = 0; i < token.text.size - 1; i++) {
+        std::fprintf(stderr, "%c", '~');
+    }
+    std::fprintf(stderr, "%s\n", COLOR_NONE);
+}
+
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
-    auto tokens = nkl_lex(src);
+
+    c->src_stack.emplace(src);
+    defer {
+        c->src_stack.pop();
+    };
+
+    std::vector<NklToken> tokens;
+    std::string err_str;
+
+    bool res = nkl_lex(src, tokens, err_str);
+    if (!res) {
+        // TODO Refactor coloring
+        // TODO Add option to control coloring from CLI
+        bool const to_color = nksys_isatty();
+        assert(!c->file_stack.empty());
+        auto token = tokens.back();
+        std::fprintf(
+            stderr,
+            "%s%s:%zu:%zu:%s %serror:%s %.*s\n",
+            to_color ? COLOR_WHITE : COLOR_NONE,
+            c->file_stack.top().string().c_str(),
+            token.lin,
+            token.col,
+            COLOR_NONE,
+            to_color ? COLOR_RED : COLOR_NONE,
+            COLOR_NONE,
+            (int)err_str.size(),
+            err_str.data());
+        printQuote(c, token, to_color);
+        return nullptr;
+    }
+
     auto ast = nkl_ast_create();
     defer {
         nkl_ast_free(ast);
     };
+
     auto root = nkl_parse(ast, tokens);
     return nkl_compile(c, root);
 }
@@ -1557,6 +1642,12 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
 NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
+
+    c->file_stack.emplace(fs::relative(fs::path{std_str(path)}));
+    defer {
+        c->file_stack.pop();
+    };
+
     std::ifstream file{std_str(path)};
     if (file) {
         std::string src{std::istreambuf_iterator<char>{file}, {}};
@@ -1699,7 +1790,9 @@ void nkl_compiler_run(NklCompiler c, NklAstNode root) {
     };
 
     auto fn = nkl_compile(c, root);
-    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    if (fn) {
+        nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    }
 }
 
 void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
@@ -1712,7 +1805,9 @@ void nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     };
 
     auto fn = nkl_compileSrc(c, src);
-    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    if (fn) {
+        nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    }
 }
 
 void nkl_compiler_runFile(NklCompiler c, nkstr path) {
@@ -1725,5 +1820,7 @@ void nkl_compiler_runFile(NklCompiler c, nkstr path) {
     };
 
     auto fn = nkl_compileFile(c, path);
-    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    if (fn) {
+        nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    }
 }

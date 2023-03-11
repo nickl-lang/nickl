@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <threads.h>
-#include <unistd.h>
+
+#include "nk/sys/tty.h"
 
 int fileno(FILE *);
 
@@ -79,7 +80,7 @@ bool _nk_loggerCheck(NkLogLevel log_level) {
 
 void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
     bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
-                          (s_logger.color_mode == NkLog_Color_Auto && isatty(fileno(stdout)));
+                          (s_logger.color_mode == NkLog_Color_Auto && nksys_isatty());
 
     struct timespec now;
     timespec_get(&now, TIME_UTC);

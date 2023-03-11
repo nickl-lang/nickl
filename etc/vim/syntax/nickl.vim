@@ -12,7 +12,7 @@ syn match nicklSymbol     display '#\w\+'
 syn match nicklDollar     display '\$\w\+'
 syn match nicklAt         display '@\w\+'
 syn match nicklComptime   display '\<\w\+\s*::'me=e-2
-syn match nicklNumber     display '\(\.\d\+\|\<\d\+\.\=\d*\)\([eE][-+]\=\d\+\>\)\='
+syn match nicklNumber     display '\(0x[0-9a-fA-F_]\+\|\.[0-9_]\+\|\<[0-9_]\+\.\=\d*\)\([eE][-+]\=\d\+\>\)\='
 
 " TODO Escape sequences
 

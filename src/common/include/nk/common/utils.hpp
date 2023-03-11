@@ -1,6 +1,8 @@
 #ifndef HEADER_GUARD_NK_COMMON_UTILS_HPP
 #define HEADER_GUARD_NK_COMMON_UTILS_HPP
 
+#include <cstdarg>
+#include <string>
 #include <utility>
 
 #include "nk/common/utils.h"
@@ -42,5 +44,7 @@ template <class T, class F>
 [[nodiscard]] _DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
     return {std::forward<T>(data), std::forward<F>(f)};
 }
+
+std::string string_vformat(char const *fmt, va_list ap);
 
 #endif // HEADER_GUARD_NK_COMMON_UTILS_HPP

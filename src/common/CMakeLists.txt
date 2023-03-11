@@ -13,6 +13,10 @@ target_include_directories(${LIB}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
+target_link_libraries(${LIB}
+    PRIVATE nk_sys
+    )
+
 if(ENABLE_LOGGING)
     target_compile_definitions(${LIB}
         PUBLIC ENABLE_LOGGING

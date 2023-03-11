@@ -12,6 +12,7 @@
 #include "nk/common/profiler.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
+#include "nk/common/utils.hpp"
 #include "token.hpp"
 
 const char *s_token_id[] = {
@@ -44,6 +45,7 @@ char const *s_keywords[] = {
 
 struct ScanEngine {
     nkstr const m_src;
+    std::string &m_err_str;
 
     size_t m_pos = 0;
     size_t m_lin = 1;
@@ -94,13 +96,19 @@ struct ScanEngine {
                         if (!chr()) {
                             return error("unexpected end of file");
                         } else {
-                            return error("invalid escape sequence '\\%c'", chr());
+                            m_token.text.data = m_src.data + m_pos - 1;
+                            m_token.text.size = 2;
+                            m_token.pos = m_pos - 1;
+                            m_token.lin = m_lin;
+                            m_token.col = m_col - 1;
+                            return error("invalid escape sequence");
                         }
                     }
                 }
             }
 
             if (!on('\"')) {
+                accept();
                 return error("invalid string constant");
             }
 
@@ -108,18 +116,32 @@ struct ScanEngine {
 
             advance();
         } else if (chk<std::isdigit>()) {
-            m_token.id = t_int;
-
             if (on('0') && on('x', 1)) {
+                m_token.id = t_int_hex;
                 accept(2);
-                if (!chk<std::isxdigit>()) {
+                bool invalid_num = false;
+                if (!onAlnumOrUscr()) {
+                    invalid_num = true;
+                } else {
+                    while (onAlnumOrUscr()) {
+                        if (on('_')) {
+                            m_token.id = t_int_hex_uscore;
+                        } else if (!chk<std::isxdigit>()) {
+                            invalid_num = true;
+                        }
+                        accept();
+                    }
+                }
+                if (invalid_num) {
                     return error("invalid hex literal");
                 }
-                while (chk<std::isxdigit>()) {
-                    accept();
-                }
             } else {
-                while (chk<std::isdigit>()) {
+                m_token.id = t_int;
+
+                while (chk<std::isdigit>() || on('_')) {
+                    if (on('_')) {
+                        m_token.id = t_int_uscore;
+                    }
                     accept();
                 }
 
@@ -146,6 +168,7 @@ struct ScanEngine {
             }
 
             if (chk<std::isalpha>()) {
+                accept();
                 return error("invalid suffix");
             }
         } else if (onAlphaOrUscr()) {
@@ -198,7 +221,8 @@ struct ScanEngine {
                     m_token.id = t_tag;
                 }
             } else {
-                return error("unknown token '%.*s'", m_token.text.size, m_token.text.data);
+                accept();
+                return error("unknown token");
             }
         }
     }
@@ -251,23 +275,19 @@ private:
     void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        std::vfprintf(stderr, fmt, ap); // TODO Report errors properly
-        std::fputs("\n", stderr);
-        std::fflush(stderr);
+        m_err_str = string_vformat(fmt, ap);
         va_end(ap);
-        std::abort();
+        m_token.id = t_error;
     }
 };
 
 } // namespace
 
-std::vector<NklToken> nkl_lex(nkstr src) {
+bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str) {
     EASY_FUNCTION(::profiler::colors::Lime200);
     NK_LOG_TRC(__func__);
 
-    std::vector<NklToken> tokens;
-
-    ScanEngine engine{src};
+    ScanEngine engine{src, err_str};
 
     do {
         engine.scan();
@@ -277,10 +297,10 @@ std::vector<NklToken> nkl_lex(nkstr src) {
             s_token_id[tokens.back().id],
             tokens.back().text.size,
             tokens.back().text.data);
-        // TODO if (engine.m_token.id == t_error) {
-        //     return false;
-        // }
+        if (engine.m_token.id == t_error) {
+            return false;
+        }
     } while (tokens.back().id != t_eof);
 
-    return tokens;
+    return true;
 }

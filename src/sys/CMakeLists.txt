@@ -1,7 +1,9 @@
 set(LIB nk_sys)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(SYS_SRC src/linux_app.cpp)
+    set(SYS_SRC
+        src/linux_sys.cpp
+        )
 else()
     message(FATAL_ERROR "Platform is not supported")
 endif()
