@@ -57,6 +57,7 @@ message("Build time: ${BUILD_TIME}")
 set(PACKAGE_NAME "${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}.tar.gz")
 set(PACKAGE_FILE "${PROJECT_SOURCE_DIR}/out/${PACKAGE_NAME}")
 
+# TODO Strip binaries
 # TODO Figure out how to make it depend on installed files
 add_custom_command(
     OUTPUT "${PACKAGE_FILE}"

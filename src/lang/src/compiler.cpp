@@ -1778,7 +1778,7 @@ extern "C" NK_EXPORT bool nkl_compiler_build(
         .additional_flags = {flags.c_str(), flags.size()},
         .output_filename = cs2s(exe_name),
         .echo_src = 0,
-        .quiet = 1,
+        .quiet = 0,
     };
     return nkir_compile(conf, c->ir, entry);
 }

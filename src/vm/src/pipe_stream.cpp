@@ -22,7 +22,7 @@ namespace {
 NK_LOG_USE_SCOPE(pipe_stream);
 
 void _makeCmdStr(NkStringBuilder sb, nkstr cmd, bool quiet) {
-    nksb_printf(sb, "%s", cmd);
+    nksb_printf(sb, "%.*s", cmd.size, cmd.data);
     if (quiet) {
         nksb_printf(sb, " >/dev/null 2>&1");
     }

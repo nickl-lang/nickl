@@ -13,4 +13,5 @@ set_target_properties(Dl PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
+# TODO Ship libstdc++ and libgcc
 set(PLATFORM_CXX_FLAGS "-static-libstdc++ -static-libgcc")

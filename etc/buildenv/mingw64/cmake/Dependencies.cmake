@@ -13,4 +13,4 @@ set_target_properties(Dl PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
-set(PLATFORM_CXX_FLAGS "-static-libstdc++ -static-libgcc -fstack-protector -static")
+set(PLATFORM_CXX_FLAGS "-fstack-protector")

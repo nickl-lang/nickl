@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <windows.h>
 
 #include "nk/sys/app.hpp"
 #include "nk/sys/term.h"
@@ -6,7 +7,9 @@
 namespace fs = std::filesystem;
 
 fs::path nksys_appDir() {
-    return fs::canonical(fs::path("/proc/self/exe")).parent_path();
+    TCHAR szFileName[MAX_PATH];
+    GetModuleFileName(NULL, szFileName, MAX_PATH);
+    return fs::path{szFileName}.parent_path();
 }
 
 bool nksys_isatty() {

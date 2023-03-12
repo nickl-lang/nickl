@@ -1,6 +1,6 @@
 set(LIB nkl_lang)
 
-add_library(${LIB}
+add_library(${LIB} SHARED
     src/ast.cpp
     src/compiler.cpp
     src/lexer.cpp
@@ -16,9 +16,7 @@ target_link_libraries(${LIB}
     PUBLIC nk_sys
     )
 
-target_link_options(${LIB}
-    PUBLIC -export-dynamic # for dl
-    )
+install(TARGETS ${LIB})
 
 set(EXE nickl)
 
