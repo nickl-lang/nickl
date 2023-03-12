@@ -2,11 +2,12 @@
 
 #include "nk/common/logger.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <threads.h>
+#include <chrono>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <mutex>
 
 #include "nk/sys/term.h"
 
@@ -42,10 +43,10 @@ static char const *c_env_log_level_map[] = {
 };
 
 typedef struct {
-    struct timespec start_time;
+    std::chrono::steady_clock::time_point start_time;
     NkLogLevel log_level;
     NkColorMode color_mode;
-    mtx_t mutex;
+    std::mutex mutex;
     size_t msg_count;
     bool initialized;
 } LoggerState;
@@ -72,12 +73,10 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
                           (s_logger.color_mode == NkLog_Color_Auto && nksys_isatty());
 
-    struct timespec now;
-    timespec_get(&now, TIME_UTC);
-    double ts =
-        now.tv_sec - s_logger.start_time.tv_sec + (now.tv_nsec - s_logger.start_time.tv_nsec) / 1e9;
+    auto now = std::chrono::steady_clock::now();
+    auto ts = std::chrono::duration<double>{now - s_logger.start_time}.count();
 
-    mtx_lock(&s_logger.mutex);
+    std::lock_guard<std::mutex> lk{s_logger.mutex};
 
     if (to_color) {
         fprintf(stderr, TERM_COLOR_NONE "%s", c_color_map[log_level]);
@@ -96,19 +95,13 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     }
 
     fputc('\n', stderr);
-
-    mtx_unlock(&s_logger.mutex);
 }
 
 void _nk_loggerInit(NkLoggerOptions opt) {
-    s_logger = (LoggerState){0};
-
-    timespec_get(&s_logger.start_time, TIME_UTC);
+    s_logger.start_time = std::chrono::steady_clock::now();
 
     s_logger.log_level = opt.log_level;
     s_logger.color_mode = opt.color_mode;
-
-    mtx_init(&s_logger.mutex, mtx_plain);
 
     s_logger.initialized = true;
 }

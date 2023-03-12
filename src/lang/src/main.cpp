@@ -151,7 +151,7 @@ int main(int argc, char const *const *argv) {
     NK_LOGGER_INIT(logger_options);
 
     auto compiler = nkl_compiler_create();
-    if (!nkl_compiler_configure(compiler, cs2s(nksys_appDir().c_str()))) {
+    if (!nkl_compiler_configure(compiler, cs2s(nksys_appDir().string().c_str()))) {
         return 1;
     }
     defer {

@@ -48,6 +48,26 @@ if(ENABLE_PROFILING)
     find_package(easy_profiler REQUIRED)
 endif()
 
+include(Version)
+get_build_version(${PROJECT_SOURCE_DIR} BUILD_VERSION)
+string(TIMESTAMP BUILD_TIME UTC)
+message("Build version: ${BUILD_VERSION}")
+message("Build time: ${BUILD_TIME}")
+
+set(PACKAGE_NAME "${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}.tar.gz")
+set(PACKAGE_FILE "${PROJECT_SOURCE_DIR}/out/${PACKAGE_NAME}")
+
+# TODO Figure out how to make it depend on installed files
+add_custom_command(
+    OUTPUT "${PACKAGE_FILE}"
+    COMMAND find . -type f -o -type l | sed -e s/^\\.\\///g | xargs tar czf "${PACKAGE_FILE}"
+    DEPENDS install
+    COMMENT "Generating package '${PACKAGE_NAME}'"
+    WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}"
+    VERBATIM)
+
+add_custom_target(package DEPENDS "${PACKAGE_FILE}")
+
 set(STDLIB_DIR ${PROJECT_SOURCE_DIR}/stdlib)
 set(LIBC_NAME libc.so.6)
 set(LIBM_NAME libm.so.6)
