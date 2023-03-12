@@ -1613,8 +1613,10 @@ void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
         to_color ? TERM_COLOR_RED : "",
         (int)(token->col + std::log10(token->lin) + 4),
         "^");
-    for (size_t i = 0; i < token->text.size - 1; i++) {
-        std::fprintf(stderr, "%c", '~');
+    if (token->text.size) {
+        for (size_t i = 0; i < token->text.size - 1; i++) {
+            std::fprintf(stderr, "%c", '~');
+        }
     }
     std::fprintf(stderr, "%s\n", to_color ? TERM_COLOR_NONE : "");
 }
@@ -1641,9 +1643,11 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     auto src = std_view(c->src_stack.top());
 
     printQuote(src, token, to_color);
+
+    c->error_occurred = true;
 }
 
-void printError(char const *fmt, ...) {
+void printError(NklCompiler c, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     auto str = string_vformat(fmt, ap);
@@ -1658,6 +1662,8 @@ void printError(char const *fmt, ...) {
         to_color ? TERM_COLOR_NONE : "",
         (int)str.size(),
         str.c_str());
+
+    c->error_occurred = true;
 }
 
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
@@ -1670,7 +1676,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     };
 
     std::string &err_str = c->err_str;
-    NklTokenRef err_token;
+    NklTokenRef &err_token = c->err_token;
 
     std::vector<NklToken> tokens;
     bool res = nkl_lex(src, tokens, err_str);
@@ -1690,7 +1696,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     }
 
     auto fn = nkl_compile(c, root);
-    if (!fn) {
+    if (c->error_occurred) {
         printError(c, c->err_token, err_str);
         return {};
     }
@@ -1712,7 +1718,7 @@ NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
         std::string src{std::istreambuf_iterator<char>{file}, {}};
         return nkl_compileSrc(c, {src.data(), src.size()});
     } else {
-        printError("failed to open file `%.*s`", (int)path.size, path.data);
+        printError(c, "failed to open file `%.*s`", (int)path.size, path.data);
         return {};
     }
 }
@@ -1804,7 +1810,7 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
         }
     }
     if (c->error_occurred) {
-        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        printError(c, "%.*s", (int)c->err_str.size(), c->err_str.c_str());
         return T{};
     }
     return nkval_as(T, asValue(c, val_info)); // TODO Reinterpret cast in compiler without check
@@ -1818,7 +1824,7 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     auto filepath_str = config_filepath.string();
     if (!fs::exists(config_filepath)) {
         printError(
-            "config file `%.*s` doesn't exist", (int)filepath_str.size(), filepath_str.c_str());
+            c, "config file `%.*s` doesn't exist", (int)filepath_str.size(), filepath_str.c_str());
         return false;
     }
     auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
@@ -1862,13 +1868,9 @@ bool nkl_compiler_run(NklCompiler c, NklAstNode root) {
         s_compiler = prev_compiler;
     };
 
-    auto fn = nkl_compile(c, root);
-    if (fn) {
-        nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
-        return true;
-    } else {
-        return false;
-    }
+    DEFINE(fn, nkl_compile(c, root));
+    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    return true;
 }
 
 bool nkl_compiler_runSrc(NklCompiler c, nkstr src) {
@@ -1880,13 +1882,9 @@ bool nkl_compiler_runSrc(NklCompiler c, nkstr src) {
         s_compiler = prev_compiler;
     };
 
-    auto fn = nkl_compileSrc(c, src);
-    if (fn) {
-        nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
-        return true;
-    } else {
-        return false;
-    }
+    DEFINE(fn, nkl_compileSrc(c, src));
+    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    return true;
 }
 
 bool nkl_compiler_runFile(NklCompiler c, nkstr path) {
@@ -1898,11 +1896,7 @@ bool nkl_compiler_runFile(NklCompiler c, nkstr path) {
         s_compiler = prev_compiler;
     };
 
-    auto fn = nkl_compileFile(c, path);
-    if (fn) {
-        nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
-        return true;
-    } else {
-        return false;
-    }
+    DEFINE(fn, nkl_compileFile(c, path));
+    nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
+    return true;
 }
