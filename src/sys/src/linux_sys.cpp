@@ -1,7 +1,7 @@
 #include <unistd.h>
 
 #include "nk/sys/app.hpp"
-#include "nk/sys/tty.h"
+#include "nk/sys/term.h"
 
 namespace fs = std::filesystem;
 

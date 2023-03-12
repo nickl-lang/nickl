@@ -8,29 +8,19 @@
 #include <string.h>
 #include <threads.h>
 
-#include "nk/sys/tty.h"
+#include "nk/sys/term.h"
 
 int fileno(FILE *);
 
 #define ENV_VAR "NK_LOG_LEVEL"
 
-#define COLOR_NONE "\x1b[0m"
-// #define COLOR_GRAY "\x1b[1;30m"
-#define COLOR_RED "\x1b[1;31m"
-#define COLOR_GREEN "\x1b[1;32m"
-#define COLOR_YELLOW "\x1b[1;33m"
-#define COLOR_BLUE "\x1b[1;34m"
-#define COLOR_MAGENTA "\x1b[1;35m"
-// #define COLOR_CYAN "\x1b[1;36m"
-// #define COLOR_WHITE "\x1b[1;37m"
-
 static char const *c_color_map[] = {
-    NULL,          // None
-    COLOR_RED,     // Error
-    COLOR_YELLOW,  // Warning
-    COLOR_BLUE,    // Info
-    COLOR_GREEN,   // Debug
-    COLOR_MAGENTA, // Trace
+    NULL,               // None
+    TERM_COLOR_RED,     // Error
+    TERM_COLOR_YELLOW,  // Warning
+    TERM_COLOR_BLUE,    // Info
+    TERM_COLOR_GREEN,   // Debug
+    TERM_COLOR_MAGENTA, // Trace
 };
 
 static char const *c_log_level_map[] = {
@@ -90,7 +80,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     mtx_lock(&s_logger.mutex);
 
     if (to_color) {
-        fprintf(stderr, COLOR_NONE "%s", c_color_map[log_level]);
+        fprintf(stderr, TERM_COLOR_NONE "%s", c_color_map[log_level]);
     }
 
     fprintf(
@@ -102,7 +92,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     va_end(ap);
 
     if (to_color) {
-        fprintf(stderr, COLOR_NONE);
+        fprintf(stderr, TERM_COLOR_NONE);
     }
 
     fputc('\n', stderr);

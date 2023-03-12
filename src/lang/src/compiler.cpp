@@ -29,7 +29,7 @@
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
-#include "nk/sys/tty.h"
+#include "nk/sys/term.h"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/ir_compile.h"
@@ -336,7 +336,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&...args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
@@ -738,7 +738,7 @@ COMPILE(deref) {
     return makeRef(arg);
 }
 
-COMPILE(return ) {
+COMPILE(return) {
     DEFINE(arg, compile(c, node->args[0].data));
     store(c, nkir_makeRetRef(c->ir), arg);
     gen(c, nkir_make_ret());
@@ -1590,17 +1590,6 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     return fn;
 }
 
-// TODO Unify coloring with logger
-#define COLOR_NONE "\x1b[0m"
-#define COLOR_GRAY "\x1b[1;30m"
-#define COLOR_RED "\x1b[1;31m"
-#define COLOR_GREEN "\x1b[1;32m"
-#define COLOR_YELLOW "\x1b[1;33m"
-#define COLOR_BLUE "\x1b[1;34m"
-#define COLOR_MAGENTA "\x1b[1;35m"
-#define COLOR_CYAN "\x1b[1;36m"
-#define COLOR_WHITE "\x1b[1;37m"
-
 void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
     auto prev_newline = src.find_last_of("\n", token->pos);
     if (prev_newline == std::string::npos) {
@@ -1615,19 +1604,19 @@ void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
         token->lin,
         (int)(token->pos - prev_newline),
         src.data() + prev_newline,
-        to_color ? COLOR_RED : "",
+        to_color ? TERM_COLOR_RED : "",
         (int)(token->text.size),
         src.data() + token->pos,
-        to_color ? COLOR_NONE : "",
+        to_color ? TERM_COLOR_NONE : "",
         (int)(next_newline - token->pos - token->text.size),
         src.data() + token->pos + token->text.size,
-        to_color ? COLOR_RED : "",
+        to_color ? TERM_COLOR_RED : "",
         (int)(token->col + std::log10(token->lin) + 4),
         "^");
     for (size_t i = 0; i < token->text.size - 1; i++) {
         std::fprintf(stderr, "%c", '~');
     }
-    std::fprintf(stderr, "%s\n", to_color ? COLOR_NONE : "");
+    std::fprintf(stderr, "%s\n", to_color ? TERM_COLOR_NONE : "");
 }
 
 void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
@@ -1638,13 +1627,13 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     std::fprintf(
         stderr,
         "%s%s:%zu:%zu:%s %serror:%s %.*s\n",
-        to_color ? COLOR_WHITE : "",
+        to_color ? TERM_COLOR_WHITE : "",
         c->file_stack.top().string().c_str(),
         token->lin,
         token->col,
-        to_color ? COLOR_NONE : "",
-        to_color ? COLOR_RED : "",
-        to_color ? COLOR_NONE : "",
+        to_color ? TERM_COLOR_NONE : "",
+        to_color ? TERM_COLOR_RED : "",
+        to_color ? TERM_COLOR_NONE : "",
         (int)err_str.size(),
         err_str.data());
 
@@ -1665,8 +1654,8 @@ void printError(char const *fmt, ...) {
     std::fprintf(
         stderr,
         "%serror:%s %.*s\n",
-        to_color ? COLOR_RED : "",
-        to_color ? COLOR_NONE : "",
+        to_color ? TERM_COLOR_RED : "",
+        to_color ? TERM_COLOR_NONE : "",
         (int)str.size(),
         str.c_str());
 }
