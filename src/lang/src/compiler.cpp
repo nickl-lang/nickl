@@ -1615,19 +1615,19 @@ void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
         token->lin,
         (int)(token->pos - prev_newline),
         src.data() + prev_newline,
-        to_color ? COLOR_RED : COLOR_NONE,
+        to_color ? COLOR_RED : "",
         (int)(token->text.size),
         src.data() + token->pos,
-        COLOR_NONE,
+        to_color ? COLOR_NONE : "",
         (int)(next_newline - token->pos - token->text.size),
         src.data() + token->pos + token->text.size,
-        to_color ? COLOR_RED : COLOR_NONE,
+        to_color ? COLOR_RED : "",
         (int)(token->col + std::log10(token->lin) + 4),
         "^");
     for (size_t i = 0; i < token->text.size - 1; i++) {
         std::fprintf(stderr, "%c", '~');
     }
-    std::fprintf(stderr, "%s\n", COLOR_NONE);
+    std::fprintf(stderr, "%s\n", to_color ? COLOR_NONE : "");
 }
 
 void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
@@ -1638,13 +1638,13 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     std::fprintf(
         stderr,
         "%s%s:%zu:%zu:%s %serror:%s %.*s\n",
-        to_color ? COLOR_WHITE : COLOR_NONE,
+        to_color ? COLOR_WHITE : "",
         c->file_stack.top().string().c_str(),
         token->lin,
         token->col,
-        COLOR_NONE,
-        to_color ? COLOR_RED : COLOR_NONE,
-        COLOR_NONE,
+        to_color ? COLOR_NONE : "",
+        to_color ? COLOR_RED : "",
+        to_color ? COLOR_NONE : "",
         (int)err_str.size(),
         err_str.data());
 
@@ -1665,8 +1665,8 @@ void printError(char const *fmt, ...) {
     std::fprintf(
         stderr,
         "%serror:%s %.*s\n",
-        to_color ? COLOR_RED : COLOR_NONE,
-        COLOR_NONE,
+        to_color ? COLOR_RED : "",
+        to_color ? COLOR_NONE : "",
         (int)str.size(),
         str.c_str());
 }
@@ -1805,15 +1805,20 @@ void nkl_compiler_free(NklCompiler c) {
 template <class T>
 T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
     auto it = config.find(cs2nkid(name.c_str()));
+    ValueInfo val_info;
     if (it == config.end()) {
-        return error(c, "`%.*s` is missing in config", name.size(), name.data()), T{};
+        error(c, "`%.*s` is missing in config", name.size(), name.c_str());
+    } else {
+        val_info = declToValueInfo(it->second);
+        if (!isKnown(val_info)) {
+            error(c, "`%.*s` value is not known", name.size(), name.c_str());
+        }
     }
-    auto val_info = declToValueInfo(it->second);
-    if (!isKnown(val_info)) {
-        return error(c, "`%.*s` value is not known"), T{};
+    if (c->error_occurred) {
+        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return T{};
     }
-    auto val = asValue(c, val_info);
-    return nkval_as(T, val); // TODO Reinterpret cast in compiler without check
+    return nkval_as(T, asValue(c, val_info)); // TODO Reinterpret cast in compiler without check
 }
 
 bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
@@ -1833,45 +1838,23 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     }
     auto &config = c->fn_scopes[fn]->locals;
 
-    // TODO Boilerplate in nkl_compiler_configure error handling
-
-    auto stdlib_dir_str = getConfigValue<char const *>(c, "stdlib_dir", config);
-    if (c->error_occurred) {
-        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
-        return false;
-    }
+    DEFINE(stdlib_dir_str, getConfigValue<char const *>(c, "stdlib_dir", config));
     c->stdlib_dir = stdlib_dir_str;
     NK_LOG_DBG("stdlib_dir=`%.*s`", c->stdlib_dir.size(), c->stdlib_dir.c_str());
 
-    auto libc_name_str = getConfigValue<char const *>(c, "libc_name", config);
-    if (c->error_occurred) {
-        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
-        return false;
-    }
+    DEFINE(libc_name_str, getConfigValue<char const *>(c, "libc_name", config));
     c->libc_name = libc_name_str;
     NK_LOG_DBG("libc_name=`%.*s`", c->libc_name.size(), c->libc_name.c_str());
 
-    auto libm_name_str = getConfigValue<char const *>(c, "libm_name", config);
-    if (c->error_occurred) {
-        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
-        return false;
-    }
+    DEFINE(libm_name_str, getConfigValue<char const *>(c, "libm_name", config));
     c->libm_name = libm_name_str;
     NK_LOG_DBG("libm_name=`%.*s`", c->libm_name.size(), c->libm_name.c_str());
 
-    auto c_compiler_str = getConfigValue<char const *>(c, "c_compiler", config);
-    if (c->error_occurred) {
-        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
-        return false;
-    }
+    DEFINE(c_compiler_str, getConfigValue<char const *>(c, "c_compiler", config));
     c->c_compiler = c_compiler_str;
     NK_LOG_DBG("c_compiler=`%.*s`", c->c_compiler.size(), c->c_compiler.c_str());
 
-    auto c_compiler_flags_str = getConfigValue<char const *>(c, "c_compiler_flags", config);
-    if (c->error_occurred) {
-        printError("%.*s", (int)c->err_str.size(), c->err_str.c_str());
-        return false;
-    }
+    DEFINE(c_compiler_flags_str, getConfigValue<char const *>(c, "c_compiler_flags", config));
     c->c_compiler_flags = c_compiler_flags_str;
     NK_LOG_DBG("c_compiler_flags=`%.*s`", c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
 
