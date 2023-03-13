@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(nickl)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
@@ -27,7 +27,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include(Dependencies)
@@ -52,6 +52,24 @@ if(ENABLE_PROFILING)
     find_package(easy_profiler REQUIRED)
 endif()
 
+set(STRIP_STAMPS)
+foreach(DEP ${SYSTEM_DEPS})
+    get_filename_component(DEP_FILENAME "${DEP}" NAME)
+    file(COPY "${DEP}" DESTINATION "${CMAKE_BINARY_DIR}/system_deps/" FOLLOW_SYMLINK_CHAIN)
+    set(OUT_FILE "${CMAKE_BINARY_DIR}/system_deps/${DEP_FILENAME}")
+    set(STAMP "${OUT_FILE}.stamp")
+    add_custom_command(
+        OUTPUT "${STAMP}"
+        DEPENDS "${OUT_FILE}"
+        COMMAND ${CMAKE_STRIP} "${OUT_FILE}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${STAMP}"
+        COMMENT "Strip ${OUT_FILE}"
+        VERBATIM)
+    list(APPEND STRIP_STAMPS "${STAMP}")
+    install(CODE "file(INSTALL ${OUT_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin FOLLOW_SYMLINK_CHAIN)")
+endforeach()
+add_custom_target(strip_system_deps ALL DEPENDS ${STRIP_STAMPS})
+
 include(Version)
 get_build_version(${PROJECT_SOURCE_DIR} BUILD_VERSION)
 string(TIMESTAMP BUILD_TIME UTC)
@@ -72,7 +90,7 @@ add_custom_command(
 
 add_custom_target(package DEPENDS "${PACKAGE_FILE}")
 
-set(STDLIB_DIR "stdlib")
+set(STDLIB_DIR "../stdlib")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(LIBC_NAME libc.so.6)
@@ -85,18 +103,10 @@ else()
 endif()
 
 configure_file(config.nkl.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl)
-file(
-    COPY ${CMAKE_CURRENT_SOURCE_DIR}/stdlib
-    DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    )
-install(
-    FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl
-    DESTINATION bin
-    )
-install(
-    DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/stdlib
-    DESTINATION bin
-    )
+install(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl DESTINATION bin)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/stdlib DESTINATION ${CMAKE_BINARY_DIR})
+install(DIRECTORY ${CMAKE_BINARY_DIR}/stdlib DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 add_subdirectory(src)
 

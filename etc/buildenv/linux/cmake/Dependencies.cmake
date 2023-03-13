@@ -15,8 +15,5 @@ set_target_properties(Dl PROPERTIES
 
 set(SYSTEM_DEPS
     /lib/x86_64-linux-gnu/libstdc++.so.6
-    /lib/x86_64-linux-gnu/libgcc_s.so
+    /lib/x86_64-linux-gnu/libgcc_s.so.1
     )
-
-# TODO Ship libstdc++ and libgcc
-set(PLATFORM_CXX_FLAGS "-static-libstdc++ -static-libgcc")
