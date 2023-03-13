@@ -24,12 +24,17 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         nksb_free(sb);
     };
 
+    auto echo_cmd = cs2s(conf.echo_src ? "tee /dev/stderr |" : "");
     nksb_printf(
         sb,
-        "%s %s -x c - -o %s -lm %s",
-        conf.echo_src ? "tee /dev/stderr |" : "",
+        "%.*s %.*s -x c - -o %.*s -lm %.*s",
+        echo_cmd.size,
+        echo_cmd.data,
+        conf.compiler_binary.size,
         conf.compiler_binary.data,
+        conf.output_filename.size,
         conf.output_filename.data,
+        conf.additional_flags.size,
         conf.additional_flags.data);
 
     auto cmd = nksb_concat(sb);

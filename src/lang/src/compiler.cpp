@@ -154,6 +154,7 @@ struct NklCompiler_T {
     NklTokenRef err_token{};
     bool error_occurred = false;
 
+    std::string compiler_dir{};
     std::string stdlib_dir{};
     std::string libc_name{};
     std::string libm_name{};
@@ -976,7 +977,11 @@ COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
     auto name = node->args[0].data->token->text;
     std::string filename = std_str(name) + ".nkl";
-    auto filepath = fs::path{c->stdlib_dir} / filename;
+    auto stdlib_path = fs::path{c->stdlib_dir};
+    if (!stdlib_path.is_absolute()) {
+        stdlib_path = fs::path{c->compiler_dir} / stdlib_path;
+    }
+    auto filepath = stdlib_path / filename;
     auto filepath_str = filepath.string();
     if (!fs::exists(filepath)) {
         return error(
@@ -1820,7 +1825,8 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
-    auto config_filepath = fs::path{std_view(config_dir)} / "config.nkl";
+    c->compiler_dir = std_str(config_dir);
+    auto config_filepath = fs::path{c->compiler_dir} / "config.nkl";
     auto filepath_str = config_filepath.string();
     if (!fs::exists(config_filepath)) {
         printError(

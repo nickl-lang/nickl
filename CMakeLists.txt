@@ -3,6 +3,7 @@ project(nickl)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
+# option(DEV_BUILD "Development build" OFF)
 option(BUILD_TESTS "Enable testing" OFF)
 option(ENABLE_LOGGING "Enable logging" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
@@ -12,8 +13,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     ${PROJECT_SOURCE_DIR}/cmake
     ${PROJECT_SOURCE_DIR}/etc/buildenv/${PLATFORM}/cmake
     )
-
-include(Dependencies)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -25,11 +24,13 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-# set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+include(Dependencies)
 
 set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic -Werror=unused-result -fvisibility=hidden")
 if(ENABLE_ASAN)
@@ -37,6 +38,9 @@ if(ENABLE_ASAN)
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
+
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 
 if(BUILD_TESTS)
     enable_testing()
@@ -57,7 +61,6 @@ message("Build time: ${BUILD_TIME}")
 set(PACKAGE_NAME "${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}.tar.gz")
 set(PACKAGE_FILE "${PROJECT_SOURCE_DIR}/out/${PACKAGE_NAME}")
 
-# TODO Strip binaries
 # TODO Figure out how to make it depend on installed files
 add_custom_command(
     OUTPUT "${PACKAGE_FILE}"
@@ -69,10 +72,31 @@ add_custom_command(
 
 add_custom_target(package DEPENDS "${PACKAGE_FILE}")
 
-set(STDLIB_DIR ${PROJECT_SOURCE_DIR}/stdlib)
-set(LIBC_NAME libc.so.6)
-set(LIBM_NAME libm.so.6)
+set(STDLIB_DIR "stdlib")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(LIBC_NAME libc.so.6)
+    set(LIBM_NAME libm.so.6)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(LIBC_NAME msvcrt.dll)
+    set(LIBM_NAME msvcrt.dll)
+else()
+    message(FATAL_ERROR "Platform is not supported")
+endif()
+
 configure_file(config.nkl.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl)
+file(
+    COPY ${CMAKE_CURRENT_SOURCE_DIR}/stdlib
+    DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    )
+install(
+    FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl
+    DESTINATION bin
+    )
+install(
+    DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/stdlib
+    DESTINATION bin
+    )
 
 add_subdirectory(src)
 
