@@ -24,6 +24,7 @@ if [ -f /.dockerenv ]; then
         cmake -S $PROJ_ROOT -B $BIN_DIR -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=$PROJ_ROOT/etc/buildenv/$PLATFORM/cmake/Toolchain.cmake \
             -DCMAKE_INSTALL_PREFIX=$PROJ_ROOT/out/install-$PLATFORM_SUFFIX \
+            -DDEPLOY_PREFIX=$PROJ_ROOT/out/deploy-$PLATFORM_SUFFIX \
             -DPLATFORM=$PLATFORM \
             -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
             ${DEV_BUILD+-DDEV_BUILD=$DEV_BUILD}

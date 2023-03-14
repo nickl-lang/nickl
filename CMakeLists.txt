@@ -3,7 +3,7 @@ project(nickl)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
-# option(DEV_BUILD "Development build" OFF)
+option(DEV_BUILD "Development build" OFF)
 option(BUILD_TESTS "Enable testing" OFF)
 option(ENABLE_LOGGING "Enable logging" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
@@ -39,9 +39,6 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
-
 if(BUILD_TESTS)
     enable_testing()
     include(Test)
@@ -55,11 +52,13 @@ endif()
 set(STRIP_STAMPS)
 foreach(DEP ${SYSTEM_DEPS})
     get_filename_component(DEP_FILENAME "${DEP}" NAME)
-    file(COPY "${DEP}" DESTINATION "${CMAKE_BINARY_DIR}/system_deps/" FOLLOW_SYMLINK_CHAIN)
-    set(OUT_FILE "${CMAKE_BINARY_DIR}/system_deps/${DEP_FILENAME}")
-    set(STAMP "${OUT_FILE}.stamp")
+    set(OUT_DIR "${CMAKE_BINARY_DIR}/system_deps")
+    set(OUT_FILE "${OUT_DIR}/${DEP_FILENAME}")
+    if("${DEP}" IS_NEWER_THAN "${OUT_FILE}")
+        file(COPY "${DEP}" DESTINATION "${OUT_DIR}/" FOLLOW_SYMLINK_CHAIN)
+    endif()
     add_custom_command(
-        OUTPUT "${STAMP}"
+        OUTPUT "${OUT_FILE}"
         DEPENDS "${OUT_FILE}"
         COMMAND ${CMAKE_STRIP} "${OUT_FILE}"
         COMMAND ${CMAKE_COMMAND} -E touch "${STAMP}"
@@ -77,18 +76,15 @@ message("Build version: ${BUILD_VERSION}")
 message("Build time: ${BUILD_TIME}")
 
 set(PACKAGE_NAME "${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}.tar.gz")
-set(PACKAGE_FILE "${PROJECT_SOURCE_DIR}/out/${PACKAGE_NAME}")
+set(PACKAGE_FILE "${DEPLOY_PREFIX}/${PACKAGE_NAME}")
 
-# TODO Figure out how to make it depend on installed files
-add_custom_command(
-    OUTPUT "${PACKAGE_FILE}"
+add_custom_target(package
+    COMMAND mkdir -p ${DEPLOY_PREFIX}
     COMMAND find . -type f -o -type l | sed -e s/^\\.\\///g | xargs tar czf "${PACKAGE_FILE}"
     DEPENDS install
     COMMENT "Generating package '${PACKAGE_NAME}'"
     WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}"
     VERBATIM)
-
-add_custom_target(package DEPENDS "${PACKAGE_FILE}")
 
 set(STDLIB_DIR "../stdlib")
 

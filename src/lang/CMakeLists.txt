@@ -16,6 +16,12 @@ target_link_libraries(${LIB}
     PUBLIC nk_sys
     )
 
+if(NOT DEV_BUILD)
+    target_link_options(${LIB}
+        PRIVATE -s
+        )
+endif()
+
 install(TARGETS ${LIB})
 
 set(EXE nickl)
@@ -23,6 +29,12 @@ set(EXE nickl)
 add_executable(${EXE}
     src/main.cpp
     )
+
+if(NOT DEV_BUILD)
+    target_link_options(${EXE}
+        PRIVATE -s
+        )
+endif()
 
 install(TARGETS ${EXE})
 
