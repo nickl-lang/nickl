@@ -54,11 +54,12 @@ foreach(DEP ${SYSTEM_DEPS})
     get_filename_component(DEP_FILENAME "${DEP}" NAME)
     set(OUT_DIR "${CMAKE_BINARY_DIR}/system_deps")
     set(OUT_FILE "${OUT_DIR}/${DEP_FILENAME}")
+    set(STAMP "${OUT_FILE}.stamp")
     if("${DEP}" IS_NEWER_THAN "${OUT_FILE}")
         file(COPY "${DEP}" DESTINATION "${OUT_DIR}/" FOLLOW_SYMLINK_CHAIN)
     endif()
     add_custom_command(
-        OUTPUT "${OUT_FILE}"
+        OUTPUT "${STAMP}"
         DEPENDS "${OUT_FILE}"
         COMMAND ${CMAKE_STRIP} "${OUT_FILE}"
         COMMAND ${CMAKE_COMMAND} -E touch "${STAMP}"
@@ -75,16 +76,8 @@ string(TIMESTAMP BUILD_TIME UTC)
 message("Build version: ${BUILD_VERSION}")
 message("Build time: ${BUILD_TIME}")
 
-set(PACKAGE_NAME "${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}.tar.gz")
-set(PACKAGE_FILE "${DEPLOY_PREFIX}/${PACKAGE_NAME}")
-
-add_custom_target(package
-    COMMAND mkdir -p ${DEPLOY_PREFIX}
-    COMMAND find . -type f -o -type l | sed -e s/^\\.\\///g | xargs tar czf "${PACKAGE_FILE}"
-    DEPENDS install
-    COMMENT "Generating package '${PACKAGE_NAME}'"
-    WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}"
-    VERBATIM)
+include(Package)
+add_package_target("${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}" "${DEPLOY_PREFIX}")
 
 set(STDLIB_DIR "../stdlib")
 
