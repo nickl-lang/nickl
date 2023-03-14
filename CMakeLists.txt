@@ -84,6 +84,11 @@ set(STDLIB_DIR "../stdlib")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(LIBC_NAME libc.so.6)
     set(LIBM_NAME libm.so.6)
+
+    install(
+        PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/etc/scripts/${PROJECT_NAME}
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(LIBC_NAME msvcrt.dll)
     set(LIBM_NAME msvcrt.dll)
@@ -96,6 +101,7 @@ install(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl DESTINATION bin)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/stdlib DESTINATION ${CMAKE_BINARY_DIR})
 install(DIRECTORY ${CMAKE_BINARY_DIR}/stdlib DESTINATION ${CMAKE_INSTALL_PREFIX})
+
 
 add_subdirectory(src)
 
