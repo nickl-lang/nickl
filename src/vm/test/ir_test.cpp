@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/allocator.h"
+#include "nk/common/common.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"

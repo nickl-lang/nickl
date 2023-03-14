@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NKL_LANG_COMPILER
 #define HEADER_GUARD_NKL_LANG_COMPILER
 
+#include "nk/common/common.h"
 #include "nk/common/utils.h"
 #include "nkl/lang/ast.h"
 

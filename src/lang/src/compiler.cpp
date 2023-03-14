@@ -21,6 +21,7 @@
 #include "ast_impl.h"
 #include "lexer.hpp"
 #include "nk/common/allocator.h"
+#include "nk/common/common.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
@@ -337,7 +338,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
@@ -739,7 +740,7 @@ COMPILE(deref) {
     return makeRef(arg);
 }
 
-COMPILE(return) {
+COMPILE(return ) {
     DEFINE(arg, compile(c, node->args[0].data));
     store(c, nkir_makeRetRef(c->ir), arg);
     gen(c, nkir_make_ret());

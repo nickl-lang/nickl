@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include "nk/common/common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,10 +31,10 @@ typedef struct {
     NkColorMode color_mode;
 } NkLoggerOptions;
 
-bool _nk_loggerCheck(NkLogLevel log_level);
-void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
+NK_EXPORT bool _nk_loggerCheck(NkLogLevel log_level);
+NK_EXPORT void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
-void _nk_loggerInit(NkLoggerOptions opt);
+NK_EXPORT void _nk_loggerInit(NkLoggerOptions opt);
 
 #define _NK_LOG_CHK(LEVEL, ...)                                 \
     if (_nk_loggerCheck(LEVEL)) {                               \
@@ -52,15 +54,18 @@ void _nk_loggerInit(NkLoggerOptions opt);
 
 #else // ENABLE_LOGGING
 
-#define NK_LOGGER_INIT(...)
+#define _NK_LOG_NOP (void)0
+#define _NK_LOG_NOP_TOPLEVEL extern int _
 
-#define NK_LOG_USE_SCOPE(...)
+#define NK_LOGGER_INIT(...) _NK_LOG_NOP
 
-#define NK_LOG_ERR(...)
-#define NK_LOG_WRN(...)
-#define NK_LOG_INF(...)
-#define NK_LOG_DBG(...)
-#define NK_LOG_TRC(...)
+#define NK_LOG_USE_SCOPE(...) _NK_LOG_NOP_TOPLEVEL
+
+#define NK_LOG_ERR(...) _NK_LOG_NOP
+#define NK_LOG_WRN(...) _NK_LOG_NOP
+#define NK_LOG_INF(...) _NK_LOG_NOP
+#define NK_LOG_DBG(...) _NK_LOG_NOP
+#define NK_LOG_TRC(...) _NK_LOG_NOP
 
 #endif // ENABLE_LOGGING
 
