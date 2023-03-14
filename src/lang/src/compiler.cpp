@@ -766,10 +766,11 @@ COMPILE(const_ptr_type) {
 }
 
 COMPILE(scope) {
-    gen(c, nkir_make_enter());
-    defer {
-        gen(c, nkir_make_leave());
-    };
+    // TODO scope compilation is disabled
+    // gen(c, nkir_make_enter());
+    // defer {
+    //     gen(c, nkir_make_leave());
+    // };
     return compile(c, node->args[0].data);
 }
 
