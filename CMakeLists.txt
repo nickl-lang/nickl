@@ -49,24 +49,17 @@ if(ENABLE_PROFILING)
     find_package(easy_profiler REQUIRED)
 endif()
 
+include(Strip)
 set(STRIP_STAMPS)
 foreach(DEP ${SYSTEM_DEPS})
-    get_filename_component(DEP_FILENAME "${DEP}" NAME)
-    set(OUT_DIR "${CMAKE_BINARY_DIR}/system_deps")
-    set(OUT_FILE "${OUT_DIR}/${DEP_FILENAME}")
-    set(STAMP "${OUT_FILE}.stamp")
-    if("${DEP}" IS_NEWER_THAN "${OUT_FILE}")
-        file(COPY "${DEP}" DESTINATION "${OUT_DIR}/" FOLLOW_SYMLINK_CHAIN)
-    endif()
-    add_custom_command(
-        OUTPUT "${STAMP}"
-        DEPENDS "${OUT_FILE}"
-        COMMAND ${CMAKE_STRIP} "${OUT_FILE}"
-        COMMAND ${CMAKE_COMMAND} -E touch "${STAMP}"
-        COMMENT "Strip ${OUT_FILE}"
-        VERBATIM)
-    list(APPEND STRIP_STAMPS "${STAMP}")
-    install(CODE "file(INSTALL ${OUT_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin FOLLOW_SYMLINK_CHAIN)")
+    message("DEP=${DEP}")
+    strip_binary(
+        FILE "${DEP}"
+        CACHE_DIR "${CMAKE_BINARY_DIR}/system_deps"
+        INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin"
+        OUT_STAMP_FILE STAMP_FILE
+        )
+    list(APPEND STRIP_STAMPS "${STAMP_FILE}")
 endforeach()
 add_custom_target(strip_system_deps ALL DEPENDS ${STRIP_STAMPS})
 
@@ -101,7 +94,6 @@ install(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl DESTINATION bin)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/stdlib DESTINATION ${CMAKE_BINARY_DIR})
 install(DIRECTORY ${CMAKE_BINARY_DIR}/stdlib DESTINATION ${CMAKE_INSTALL_PREFIX})
-
 
 add_subdirectory(src)
 
