@@ -49,13 +49,21 @@ if(ENABLE_PROFILING)
     find_package(easy_profiler REQUIRED)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(SYSTEM_INSTALL_DIR lib)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(SYSTEM_INSTALL_DIR bin)
+else()
+    message(FATAL_ERROR "Platform is not supported")
+endif()
+
 include(Strip)
 set(STRIP_STAMPS)
 foreach(DEP ${SYSTEM_DEPS})
     strip_binary(
         FILE "${DEP}"
         CACHE_DIR "${CMAKE_BINARY_DIR}/system_deps"
-        INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin"
+        INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEM_INSTALL_DIR}"
         OUT_STAMP_FILE STAMP_FILE
         )
     list(APPEND STRIP_STAMPS "${STAMP_FILE}")

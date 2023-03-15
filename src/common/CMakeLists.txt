@@ -8,7 +8,6 @@ if(ENABLE_LOGGING)
         )
 
     target_link_libraries(nk_logger
-        PUBLIC pthread # TODO Check if we need pthread here
         PRIVATE nk_sys
         )
 

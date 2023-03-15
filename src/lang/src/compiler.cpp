@@ -338,7 +338,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&...args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
@@ -740,9 +740,11 @@ COMPILE(deref) {
     return makeRef(arg);
 }
 
-COMPILE(return ) {
-    DEFINE(arg, compile(c, node->args[0].data));
-    store(c, nkir_makeRetRef(c->ir), arg);
+COMPILE(return) {
+    if (node->args[0].size) {
+        DEFINE(arg, compile(c, node->args[0].data));
+        store(c, nkir_makeRetRef(c->ir), arg);
+    }
     gen(c, nkir_make_ret());
     return makeVoid(c);
 }
