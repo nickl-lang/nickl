@@ -32,7 +32,7 @@ function(strip_binary)
         COMMENT "Strip ${OUT_FILE}"
         VERBATIM)
 
-    set(${OUT_STAMP_FILE} ${STAMP_FILE} PARENT_SCOPE)
+    set(${ARG_OUT_STAMP_FILE} "${STAMP_FILE}" PARENT_SCOPE)
 
     if(ARG_INSTALL_DIR)
         install(CODE

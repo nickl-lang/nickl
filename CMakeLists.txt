@@ -52,7 +52,6 @@ endif()
 include(Strip)
 set(STRIP_STAMPS)
 foreach(DEP ${SYSTEM_DEPS})
-    message("DEP=${DEP}")
     strip_binary(
         FILE "${DEP}"
         CACHE_DIR "${CMAKE_BINARY_DIR}/system_deps"

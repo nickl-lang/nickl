@@ -9,8 +9,9 @@ function(get_build_version REPO_DIR OUT_VERSION)
             OUTPUT_VARIABLE REPO_TAG
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-    if(NOT REPO_TAG)
+        if(NOT REPO_TAG)
             message(WARNING "Repo tag is not found")
+            set(REPO_TAG undefined)
         endif()
     else()
         message(WARNING "Git is not found")
