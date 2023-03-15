@@ -90,7 +90,6 @@ typedef struct NkType {
         _nk_type_ptr ptr;
         _nk_type_tuple tuple;
     } as;
-    uint64_t id;
     uint64_t size;
     uint8_t alignment;
     uint8_t typeclass_id;
@@ -149,10 +148,6 @@ inline void *nkval_data(nkval_t val) {
 
 inline nktype_t nkval_typeof(nkval_t val) {
     return val.type;
-}
-
-inline nk_typeid_t nkval_typeid(nkval_t val) {
-    return nkval_typeof(val)->id;
 }
 
 inline nk_typeclassid_t nkval_typeclassid(nkval_t val) {

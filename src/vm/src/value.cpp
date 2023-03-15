@@ -13,19 +13,12 @@
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 
-namespace {
-
-nk_typeid_t s_next_type_id = 1;
-
-} // namespace
-
 nktype_t nkt_get_array(NkAllocator alloc, nktype_t elem_type, size_t elem_count) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{.arr{
             .elem_type = elem_type,
             .elem_count = elem_count,
         }},
-        .id = s_next_type_id++,
         .size = elem_type->size * elem_count,
         .alignment = elem_type->alignment,
         .typeclass_id = NkType_Array,
@@ -40,7 +33,6 @@ nktype_t nkt_get_fn(NkAllocator alloc, NktFnInfo info) {
             .call_conv = info.call_conv,
             .is_variadic = info.is_variadic,
         }},
-        .id = s_next_type_id++,
         .size = sizeof(void *),
         .alignment = sizeof(void *),
         .typeclass_id = NkType_Fn,
@@ -52,7 +44,6 @@ nktype_t nkt_get_numeric(NkAllocator alloc, NkNumericValueType value_type) {
         .as{.num{
             .value_type = value_type,
         }},
-        .id = s_next_type_id++,
         .size = (size_t)NUM_TYPE_SIZE(value_type),
         .alignment = (uint8_t)NUM_TYPE_SIZE(value_type),
         .typeclass_id = NkType_Numeric,
@@ -64,7 +55,6 @@ nktype_t nkt_get_ptr(NkAllocator alloc, nktype_t target_type) {
         .as{.ptr{
             .target_type = target_type,
         }},
-        .id = s_next_type_id++,
         .size = sizeof(void *),
         .alignment = alignof(void *),
         .typeclass_id = NkType_Ptr,
@@ -77,7 +67,6 @@ nktype_t nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, s
         .as{.tuple{
             .elems = layout.info_ar,
         }},
-        .id = s_next_type_id++,
         .size = layout.size,
         .alignment = (uint8_t)layout.align,
         .typeclass_id = NkType_Tuple,
@@ -87,7 +76,6 @@ nktype_t nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, s
 nktype_t nkt_get_void(NkAllocator alloc) {
     return new (nk_allocate(alloc, sizeof(NkType))) NkType{
         .as{},
-        .id = s_next_type_id++,
         .size = 0,
         .alignment = 1,
         .typeclass_id = NkType_Void,
@@ -157,7 +145,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
         nksb_printf(sb, "void");
         break;
     default:
-        nksb_printf(sb, "type{id=%llu}", type->id);
+        nksb_printf(sb, "type{%p}", type);
         break;
     }
 }

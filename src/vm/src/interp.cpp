@@ -293,7 +293,7 @@ INTERP(neg) {
     auto dst = _getValRef(instr.arg[0]);
     auto arg = _getValRef(instr.arg[1]);
 
-    assert(nkval_typeid(dst) == nkval_typeid(arg));
+    // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
 
     assert(!"not implemented");
@@ -303,7 +303,7 @@ INTERP(compl ) {
     auto dst = _getValRef(instr.arg[0]);
     auto arg = _getValRef(instr.arg[1]);
 
-    assert(nkval_typeid(dst) == nkval_typeid(arg));
+    // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(
         nkval_typeclassid(dst) == NkType_Numeric && nkval_typeof(dst)->as.num.value_type < Float32);
 
@@ -314,7 +314,7 @@ INTERP(not ) {
     auto dst = _getValRef(instr.arg[0]);
     auto arg = _getValRef(instr.arg[1]);
 
-    assert(nkval_typeid(dst) == nkval_typeid(arg));
+    // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
 
     assert(!"not implemented");

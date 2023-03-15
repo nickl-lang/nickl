@@ -10,7 +10,6 @@ extern "C" {
 
 typedef struct NkType const *nktype_t;
 
-typedef size_t nk_typeid_t;
 typedef uint8_t nk_typeclassid_t;
 
 typedef struct {

@@ -30,7 +30,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(native_fn_adapter);
 
-std::unordered_map<nk_typeid_t, ffi_type *> s_typemap;
+std::unordered_map<nktype_t, ffi_type *> s_typemap;
 NkAllocator s_typearena;
 std::recursive_mutex s_mtx;
 
@@ -54,7 +54,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
 
     ffi_type *ffi_t = nullptr;
 
-    auto it = s_typemap.find(type->id);
+    auto it = s_typemap.find(type);
     if (it != s_typemap.end()) {
         NK_LOG_DBG("Found existing ffi type=%p", it->second);
         ffi_t = it->second;
@@ -144,12 +144,11 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             break;
         }
 
-        s_typemap.emplace(type->id, ffi_t);
+        s_typemap.emplace(type, ffi_t);
     }
 
     NK_LOG_DBG(
-        "ffi(type{id=%llu name=%s}) -> %p",
-        type->id,
+        "ffi(type{name=%s}) -> %p",
         (char const *)[&]() {
             auto sb = nksb_create();
             nkt_inspect(type, sb);
