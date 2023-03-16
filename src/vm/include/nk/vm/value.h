@@ -95,7 +95,7 @@ typedef struct NkType {
     uint8_t typeclass_id;
 } NkType;
 
-nktype_t nkt_get_array(NkAllocator alloc, nktype_t elem_type, size_t elem_count);
+NkType nkt_get_array(nktype_t elem_type, size_t elem_count);
 
 typedef struct {
     nktype_t ret_t;
@@ -104,16 +104,16 @@ typedef struct {
     bool is_variadic;
 } NktFnInfo;
 
-nktype_t nkt_get_fn(NkAllocator alloc, NktFnInfo info);
+NkType nkt_get_fn(NktFnInfo info);
 
-nktype_t nkt_get_numeric(NkAllocator alloc, NkNumericValueType value_type);
+NkType nkt_get_numeric(NkNumericValueType value_type);
 
-nktype_t nkt_get_ptr(NkAllocator alloc, nktype_t target_type);
+NkType nkt_get_ptr(nktype_t target_type);
 
 //@Feature TODO Implement optimized tuple type
-nktype_t nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride);
+NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride);
 
-nktype_t nkt_get_void(NkAllocator alloc);
+NkType nkt_get_void();
 
 void nkt_inspect(nktype_t type, NkStringBuilder sb);
 void nkval_inspect(nkval_t val, NkStringBuilder sb);

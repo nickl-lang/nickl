@@ -291,7 +291,7 @@ INTERP(lea) {
 
 INTERP(neg) {
     auto dst = _getValRef(instr.arg[0]);
-    auto arg = _getValRef(instr.arg[1]);
+    // auto arg = _getValRef(instr.arg[1]);
 
     // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);
@@ -301,7 +301,7 @@ INTERP(neg) {
 
 INTERP(compl ) {
     auto dst = _getValRef(instr.arg[0]);
-    auto arg = _getValRef(instr.arg[1]);
+    // auto arg = _getValRef(instr.arg[1]);
 
     // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(
@@ -312,7 +312,7 @@ INTERP(compl ) {
 
 INTERP(not ) {
     auto dst = _getValRef(instr.arg[0]);
-    auto arg = _getValRef(instr.arg[1]);
+    // auto arg = _getValRef(instr.arg[1]);
 
     // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
     assert(nkval_typeclassid(dst) == NkType_Numeric);

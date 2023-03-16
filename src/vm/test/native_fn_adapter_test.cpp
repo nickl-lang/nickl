@@ -88,47 +88,52 @@ class native_fn_adapter : public testing::Test {
 
         m_arena = nk_create_arena();
 
-        auto void_t = nkt_get_tuple(m_arena, nullptr, 0, 1);
+        auto void_t = alloct(nkt_get_tuple(m_arena, nullptr, 0, 1));
 
-        i8_t = nkt_get_numeric(m_arena, Int8);
-        i16_t = nkt_get_numeric(m_arena, Int16);
-        i32_t = nkt_get_numeric(m_arena, Int32);
-        i64_t = nkt_get_numeric(m_arena, Int64);
-        f32_t = nkt_get_numeric(m_arena, Float32);
-        f64_t = nkt_get_numeric(m_arena, Float64);
+        i8_t = alloct(nkt_get_numeric(Int8));
+        i16_t = alloct(nkt_get_numeric(Int16));
+        i32_t = alloct(nkt_get_numeric(Int32));
+        i64_t = alloct(nkt_get_numeric(Int64));
+        f32_t = alloct(nkt_get_numeric(Float32));
+        f64_t = alloct(nkt_get_numeric(Float64));
 
         nktype_t ivec3_types[] = {i64_t, i64_t, i64_t};
-        ivec3_t = nkt_get_tuple(m_arena, ivec3_types, AR_SIZE(ivec3_types), 1);
+        ivec3_t = alloct(nkt_get_tuple(m_arena, ivec3_types, AR_SIZE(ivec3_types), 1));
 
         nktype_t dvec3_types[] = {f64_t, f64_t, f64_t};
-        dvec3_t = nkt_get_tuple(m_arena, dvec3_types, AR_SIZE(dvec3_types), 1);
+        dvec3_t = alloct(nkt_get_tuple(m_arena, dvec3_types, AR_SIZE(dvec3_types), 1));
 
-        set_i8_t = nkt_get_fn(m_arena, {void_t, i8_t, NkCallConv_Cdecl, false});
-        set_i16_t = nkt_get_fn(m_arena, {void_t, i16_t, NkCallConv_Cdecl, false});
-        set_i32_t = nkt_get_fn(m_arena, {void_t, i32_t, NkCallConv_Cdecl, false});
-        set_i64_t = nkt_get_fn(m_arena, {void_t, i64_t, NkCallConv_Cdecl, false});
-        set_f32_t = nkt_get_fn(m_arena, {void_t, f32_t, NkCallConv_Cdecl, false});
-        set_f64_t = nkt_get_fn(m_arena, {void_t, f64_t, NkCallConv_Cdecl, false});
-        set_ivec3_t = nkt_get_fn(m_arena, {void_t, ivec3_t, NkCallConv_Cdecl, false});
-        set_dvec3_t = nkt_get_fn(m_arena, {void_t, dvec3_t, NkCallConv_Cdecl, false});
+        set_i8_t = alloct(nkt_get_fn({void_t, i8_t, NkCallConv_Cdecl, false}));
+        set_i16_t = alloct(nkt_get_fn({void_t, i16_t, NkCallConv_Cdecl, false}));
+        set_i32_t = alloct(nkt_get_fn({void_t, i32_t, NkCallConv_Cdecl, false}));
+        set_i64_t = alloct(nkt_get_fn({void_t, i64_t, NkCallConv_Cdecl, false}));
+        set_f32_t = alloct(nkt_get_fn({void_t, f32_t, NkCallConv_Cdecl, false}));
+        set_f64_t = alloct(nkt_get_fn({void_t, f64_t, NkCallConv_Cdecl, false}));
+        set_ivec3_t = alloct(nkt_get_fn({void_t, ivec3_t, NkCallConv_Cdecl, false}));
+        set_dvec3_t = alloct(nkt_get_fn({void_t, dvec3_t, NkCallConv_Cdecl, false}));
 
-        get_i8_t = nkt_get_fn(m_arena, {i8_t, void_t, NkCallConv_Cdecl, false});
-        get_i16_t = nkt_get_fn(m_arena, {i16_t, void_t, NkCallConv_Cdecl, false});
-        get_i32_t = nkt_get_fn(m_arena, {i32_t, void_t, NkCallConv_Cdecl, false});
-        get_i64_t = nkt_get_fn(m_arena, {i64_t, void_t, NkCallConv_Cdecl, false});
-        get_f32_t = nkt_get_fn(m_arena, {f32_t, void_t, NkCallConv_Cdecl, false});
-        get_f64_t = nkt_get_fn(m_arena, {f64_t, void_t, NkCallConv_Cdecl, false});
-        get_ivec3_t = nkt_get_fn(m_arena, {ivec3_t, void_t, NkCallConv_Cdecl, false});
-        get_dvec3_t = nkt_get_fn(m_arena, {dvec3_t, void_t, NkCallConv_Cdecl, false});
+        get_i8_t = alloct(nkt_get_fn({i8_t, void_t, NkCallConv_Cdecl, false}));
+        get_i16_t = alloct(nkt_get_fn({i16_t, void_t, NkCallConv_Cdecl, false}));
+        get_i32_t = alloct(nkt_get_fn({i32_t, void_t, NkCallConv_Cdecl, false}));
+        get_i64_t = alloct(nkt_get_fn({i64_t, void_t, NkCallConv_Cdecl, false}));
+        get_f32_t = alloct(nkt_get_fn({f32_t, void_t, NkCallConv_Cdecl, false}));
+        get_f64_t = alloct(nkt_get_fn({f64_t, void_t, NkCallConv_Cdecl, false}));
+        get_ivec3_t = alloct(nkt_get_fn({ivec3_t, void_t, NkCallConv_Cdecl, false}));
+        get_dvec3_t = alloct(nkt_get_fn({dvec3_t, void_t, NkCallConv_Cdecl, false}));
 
-        str_t = nkt_get_ptr(m_arena, i8_t);
-        auto set_variadic_args_t = nkt_get_tuple(m_arena, &str_t, 1, 1);
+        str_t = alloct(nkt_get_ptr(i8_t));
+        auto set_variadic_args_t = alloct(nkt_get_tuple(m_arena, &str_t, 1, 1));
 
-        set_variadic_t = nkt_get_fn(m_arena, {void_t, set_variadic_args_t, NkCallConv_Cdecl, true});
+        set_variadic_t = alloct(nkt_get_fn({void_t, set_variadic_args_t, NkCallConv_Cdecl, true}));
     }
 
     void TearDown() override {
         nk_free_arena(m_arena);
+    }
+
+protected:
+    nktype_t alloct(NkType type) {
+        return new (nk_allocate(m_arena, sizeof(NkType))) NkType{type};
     }
 
 protected:
@@ -191,7 +196,7 @@ protected:
 #define SET_TEST(TYPE, VAL)                                                        \
     do {                                                                           \
         TYPE _val = VAL;                                                           \
-        auto args_t = nkt_get_tuple(m_arena, &TYPE##_t, 1, 1);                     \
+        auto args_t = alloct(nkt_get_tuple(m_arena, &TYPE##_t, 1, 1));             \
         nk_native_invoke({&set_##TYPE##_fn, set_##TYPE##_t}, {}, {&_val, args_t}); \
         EXPECT_EQ(s_##TYPE##_val, VAL);                                            \
     } while (0)
@@ -235,7 +240,7 @@ struct VariadicArgs {
 #define SET_VARIADIC_TEST(TYPE, VAL)                                                \
     do {                                                                            \
         nktype_t types[] = {str_t, TYPE##_t};                                       \
-        auto args_t = nkt_get_tuple(m_arena, types, AR_SIZE(types), 1);             \
+        auto args_t = alloct(nkt_get_tuple(m_arena, types, AR_SIZE(types), 1));     \
         VariadicArgs<TYPE> _args{#TYPE, VAL};                                       \
         nk_native_invoke({&set_variadic_fn, set_variadic_t}, {}, {&_args, args_t}); \
         EXPECT_EQ(s_##TYPE##_val, VAL);                                             \

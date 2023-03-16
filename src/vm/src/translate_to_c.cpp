@@ -29,9 +29,7 @@ NK_LOG_USE_SCOPE(translate_to_c);
 
 struct nkval_equal_to {
     bool operator()(nkval_t lhs, nkval_t rhs) const noexcept {
-        return nkval_data(lhs) == nkval_data(rhs)
-            // TODO(replace nkval_typeid with nkl version) && nkval_typeid(lhs) == nkval_typeid(rhs)
-            ;
+        return nkval_data(lhs) == nkval_data(rhs) && nkval_typeof(lhs) == nkval_typeof(rhs);
     }
 };
 
@@ -378,10 +376,9 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
     _writeFnSig(ctx, src, fn->name, ret_t, args_t);
     src << " {\n\n";
 
-    _writeType(
-        ctx,
-        nkt_get_array(ctx.arena, nkt_get_numeric(ctx.arena, Uint8), REG_SIZE * NkIrReg_Count),
-        src);
+    auto u8_t = nkt_get_numeric(Uint8);
+    auto reg_t = nkt_get_array(&u8_t, REG_SIZE * NkIrReg_Count);
+    _writeType(ctx, &reg_t, src);
     src << " reg={0};\n";
 
     for (size_t i = 0; auto type : fn->locals) {

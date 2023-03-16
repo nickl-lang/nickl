@@ -5,6 +5,7 @@ add_library(${LIB} SHARED
     src/compiler.cpp
     src/lexer.cpp
     src/parser.cpp
+    src/types.cpp
     )
 
 target_include_directories(${LIB}

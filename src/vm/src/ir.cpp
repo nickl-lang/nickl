@@ -96,8 +96,12 @@ void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info) 
     nkir_activateFunct(funct->prog, funct);
 }
 
-void nkir_finalizeIncompleteFunct(NkIrFunct funct, NkAllocator alloc) {
-    funct->fn_t = nkt_get_fn(alloc, funct->fn_info);
+void nkir_finalizeIncompleteFunct(NkIrFunct funct, nktype_t fn_t) {
+    assert(fn_t->as.fn.args_t == funct->fn_info.args_t);
+    assert(fn_t->as.fn.ret_t == funct->fn_info.ret_t);
+    assert(fn_t->as.fn.call_conv == funct->fn_info.call_conv);
+    assert(fn_t->as.fn.is_variadic == funct->fn_info.is_variadic);
+    funct->fn_t = fn_t;
     funct->state = NkIrFunct_Complete;
 }
 

@@ -4,7 +4,6 @@
 #include <cstdalign>
 #include <cstdint>
 #include <limits>
-#include <new>
 
 #include "ir_impl.hpp"
 #include "native_fn_adapter.h"
@@ -13,8 +12,8 @@
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 
-nktype_t nkt_get_array(NkAllocator alloc, nktype_t elem_type, size_t elem_count) {
-    return new (nk_allocate(alloc, sizeof(NkType))) NkType{
+NkType nkt_get_array(nktype_t elem_type, size_t elem_count) {
+    return {
         .as{.arr{
             .elem_type = elem_type,
             .elem_count = elem_count,
@@ -25,8 +24,8 @@ nktype_t nkt_get_array(NkAllocator alloc, nktype_t elem_type, size_t elem_count)
     };
 }
 
-nktype_t nkt_get_fn(NkAllocator alloc, NktFnInfo info) {
-    return new (nk_allocate(alloc, sizeof(NkType))) NkType{
+NkType nkt_get_fn(NktFnInfo info) {
+    return NkType{
         .as{.fn{
             .ret_t = info.ret_t,
             .args_t = info.args_t,
@@ -39,8 +38,8 @@ nktype_t nkt_get_fn(NkAllocator alloc, NktFnInfo info) {
     };
 }
 
-nktype_t nkt_get_numeric(NkAllocator alloc, NkNumericValueType value_type) {
-    return new (nk_allocate(alloc, sizeof(NkType))) NkType{
+NkType nkt_get_numeric(NkNumericValueType value_type) {
+    return NkType{
         .as{.num{
             .value_type = value_type,
         }},
@@ -50,8 +49,8 @@ nktype_t nkt_get_numeric(NkAllocator alloc, NkNumericValueType value_type) {
     };
 }
 
-nktype_t nkt_get_ptr(NkAllocator alloc, nktype_t target_type) {
-    return new (nk_allocate(alloc, sizeof(NkType))) NkType{
+NkType nkt_get_ptr(nktype_t target_type) {
+    return NkType{
         .as{.ptr{
             .target_type = target_type,
         }},
@@ -61,9 +60,9 @@ nktype_t nkt_get_ptr(NkAllocator alloc, nktype_t target_type) {
     };
 }
 
-nktype_t nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride) {
+NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride) {
     auto layout = nk_calcTupleLayout(types, count, alloc, stride);
-    return new (nk_allocate(alloc, sizeof(NkType))) NkType{
+    return NkType{
         .as{.tuple{
             .elems = layout.info_ar,
         }},
@@ -73,8 +72,8 @@ nktype_t nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, s
     };
 }
 
-nktype_t nkt_get_void(NkAllocator alloc) {
-    return new (nk_allocate(alloc, sizeof(NkType))) NkType{
+NkType nkt_get_void() {
+    return NkType{
         .as{},
         .size = 0,
         .alignment = 1,
