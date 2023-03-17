@@ -92,7 +92,7 @@ typedef struct NkType {
     } as;
     uint64_t size;
     uint8_t alignment;
-    uint8_t typeclass_id;
+    nk_typeclassid_t typeclass_id;
 } NkType;
 
 NkType nkt_get_array(nktype_t elem_type, size_t elem_count);

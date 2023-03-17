@@ -264,7 +264,7 @@ void gen(NklCompiler c, NkIrInstr const &instr) {
     nkir_gen(c->ir, instr);
 }
 
-ValueInfo makeVoid(NklCompiler c) {
+ValueInfo makeVoid() {
     return {{}, nkl_get_void(), v_none};
 }
 
@@ -339,7 +339,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nktype_t type, TArgs &&...args) {
     return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
 }
 
@@ -615,7 +615,7 @@ ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compi
     nkid name = s2nkid({name_str.data(), name_str.size()});
     DEFINE(cnst, compile_cnst());
     CHECK(defineComptimeConst(c, name, cnst));
-    return makeVoid(c);
+    return makeVoid();
 }
 
 NkIrFunct nkl_compileFile(NklCompiler c, nkstr path);
@@ -632,7 +632,7 @@ COMPILE(nop) {
     (void)c;
     (void)node;
     nkir_gen(c->ir, nkir_make_nop()); // TODO Do we actually need to generate nop?
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(true) {
@@ -720,13 +720,13 @@ COMPILE(deref) {
     return makeRef(arg);
 }
 
-COMPILE(return ) {
+COMPILE(return) {
     if (node->args[0].size) {
         DEFINE(arg, compile(c, node->args[0].data));
         store(c, nkir_makeRetRef(c->ir), arg);
     }
     gen(c, nkir_make_ret());
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(ptr_type) {
@@ -886,7 +886,7 @@ COMPILE(while) {
     gen(c, nkir_make_leave());
     gen(c, nkir_make_jmp(l_loop));
     nkir_startBlock(c->ir, l_endloop, irBlockName(c, "endloop"));
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(index) {
@@ -923,7 +923,7 @@ COMPILE(if) {
         }
     }
     nkir_startBlock(c->ir, l_endif, irBlockName(c, "endif"));
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(block) {
@@ -931,7 +931,7 @@ COMPILE(block) {
     for (size_t i = 0; i < nodes.size; i++) {
         CHECK(compileStmt(c, &nodes.data[i]));
     }
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(tuple_type) {
@@ -976,7 +976,7 @@ COMPILE(import) {
     auto fn = it->second;
     auto fn_val = asValue(c, makeValue<void *>(c, nkir_functGetType(fn), (void *)fn));
     CHECK(defineComptimeConst(c, s2nkid(name), makeValueComptimeConst(fn_val)));
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(id) {
@@ -1065,7 +1065,7 @@ COMPILE(member) {
     } else {
         return error(c, "TODO  member implementation not finished"), ValueInfo{};
     }
-    return makeVoid(c);
+    return makeVoid();
 }
 
 ValueInfo compileFn(
@@ -1240,7 +1240,7 @@ COMPILE(tag) {
     } else {
         assert(!"unsupported tag");
     }
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(call) {
@@ -1403,7 +1403,7 @@ COMPILE(define) {
         ref = nkir_makeFrameRef(c->ir, var);
     }
     store(c, ref, rhs);
-    return makeVoid(c);
+    return makeVoid();
 }
 
 COMPILE(comptime_const_def) {
@@ -1434,7 +1434,7 @@ COMPILE(var_decl) {
         DEFINE(val, compile(c, node->args[2].data));
         store(c, ref, val);
     }
-    return makeVoid(c);
+    return makeVoid();
 }
 
 using CompileFunc = ValueInfo (*)(NklCompiler c, NklAstNode node);

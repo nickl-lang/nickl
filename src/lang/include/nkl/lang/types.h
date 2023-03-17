@@ -1,6 +1,8 @@
 #ifndef HEADER_GUARD_NKL_LANG_TYPES
 #define HEADER_GUARD_NKL_LANG_TYPES
 
+#include <stdint.h>
+
 #include "nk/vm/value.h"
 
 #ifdef __cplusplus
