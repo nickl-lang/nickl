@@ -1,0 +1,16 @@
+import std;
+
+ar: [3]i64;
+
+ar[0] = 4;
+ar[1] = 5;
+ar[2] = 6;
+
+slice: []i64;
+
+// TODO Initializing slice manually
+slice[0] = &ar;
+slice[1] = 3;
+
+std.printf("%p\n", &ar);
+std.printf("%p %li\n", slice[0], slice[1]);

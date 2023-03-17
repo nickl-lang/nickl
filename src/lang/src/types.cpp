@@ -9,6 +9,8 @@
 
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/utils.h"
+#include "nk/vm/common.h"
 #include "nk/vm/value.h"
 
 // TODO @Optimization A bit excessive approach with type fingerprints
@@ -51,7 +53,9 @@ void pushVal(ByteArray &ar, T v) {
 nktype_t nkl_get_array(nktype_t elem_type, size_t elem_count) {
     auto const tclass = NkType_Array;
 
-    ByteArray fp;
+    // TODO Pushing ptrs instead of typeids
+
+    ByteArray fp{};
     pushVal(fp, tclass);
     pushVal(fp, elem_type);
     pushVal(fp, elem_count);
@@ -64,7 +68,7 @@ nktype_t nkl_get_array(nktype_t elem_type, size_t elem_count) {
 nktype_t nkl_get_fn(NktFnInfo info) {
     auto const tclass = NkType_Fn;
 
-    ByteArray fp;
+    ByteArray fp{};
     pushVal(fp, tclass);
     pushVal(fp, info.ret_t);
     pushVal(fp, info.args_t);
@@ -84,7 +88,7 @@ nktype_t nkl_get_fn(NktFnInfo info) {
 nktype_t nkl_get_numeric(NkNumericValueType value_type) {
     auto const tclass = NkType_Numeric;
 
-    ByteArray fp;
+    ByteArray fp{};
     pushVal(fp, tclass);
     pushVal(fp, value_type);
 
@@ -96,7 +100,7 @@ nktype_t nkl_get_numeric(NkNumericValueType value_type) {
 nktype_t nkl_get_ptr(nktype_t target_type) {
     auto const tclass = NkType_Ptr;
 
-    ByteArray fp;
+    ByteArray fp{};
     pushVal(fp, tclass);
     pushVal(fp, target_type);
 
@@ -108,7 +112,7 @@ nktype_t nkl_get_ptr(nktype_t target_type) {
 nktype_t nkl_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride) {
     auto const tclass = NkType_Tuple;
 
-    ByteArray fp;
+    ByteArray fp{};
     pushVal(fp, tclass);
     pushVal(fp, count);
     for (size_t i = 0; i < count; i++) {
@@ -123,10 +127,25 @@ nktype_t nkl_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, s
 nktype_t nkl_get_void() {
     auto const tclass = NkType_Void;
 
-    ByteArray fp;
+    ByteArray fp{};
     pushVal(fp, tclass);
 
     return getTypeByFingerprint(std::move(fp), tclass, [=]() {
         return nkt_get_void();
+    });
+}
+
+nktype_t nkl_get_slice(NkAllocator alloc, nktype_t elem_type) {
+    auto const tclass = NklType_Slice;
+
+    ByteArray fp{};
+    pushVal(fp, tclass);
+
+    return getTypeByFingerprint(std::move(fp), tclass, [=]() {
+        auto ptr_t = nkl_get_ptr(elem_type);
+        auto u64_t = nkl_get_numeric(Uint64);
+        nktype_t types[] = {ptr_t, u64_t};
+        // TODO Duplicating tuple types with actual tuples
+        return nkt_get_tuple(alloc, types, AR_SIZE(types), 1);
     });
 }

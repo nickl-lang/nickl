@@ -54,7 +54,7 @@ U(return ) // (expr: node)
 
 U(ptr_type) // (target_type: node)
 U(const_ptr_type)
-// U(slice_type)
+U(slice_type)
 
 U(scope) // (expr: node)
 U(run)

@@ -577,6 +577,32 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             DEFINE(idx_res, calcTupleIndex(c, type, nkval_as(uint64_t, asValue(c, index))));
             ref.post_offset += idx_res.offset;
             ref.type = idx_res.type;
+        } else if (type->typeclass_id == NklType_Slice) {
+            auto u64_t = nkl_get_numeric(Uint64);
+            // TODO Accessing slice info as tuple
+            auto elem_ptr_t = type->as.tuple.elems.data[0].type;
+            auto target_type = elem_ptr_t->as.ptr.target_type;
+            ref.type = elem_ptr_t;
+            ref = asRef(
+                c,
+                makeInstr(
+                    nkir_make_add(
+                        {},
+                        ref,
+                        asRef(
+                            c,
+                            makeInstr(
+                                nkir_make_mul(
+                                    {},
+                                    asRef(c, index),
+                                    asRef(
+                                        c,
+                                        makeValue<uint64_t>(
+                                            c, u64_t, type->as.arr.elem_type->size))),
+                                u64_t))),
+                    elem_ptr_t));
+            ref.is_indirect = true;
+            ref.type = target_type;
         } else {
             auto sb = nksb_create();
             defer {
@@ -740,6 +766,13 @@ COMPILE(const_ptr_type) {
     DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
     auto target_type = nkval_as(nktype_t, val);
     return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_ptr(target_type));
+}
+
+COMPILE(slice_type) {
+    DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    auto target_type = nkval_as(nktype_t, val);
+    return makeValue<void *>(
+        c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_slice(c->arena, target_type));
 }
 
 COMPILE(scope) {
