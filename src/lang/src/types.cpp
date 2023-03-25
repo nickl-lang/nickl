@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <deque>
 #include <map>
+#include <mutex>
 #include <tuple>
 #include <vector>
 
@@ -19,6 +20,7 @@ NK_LOG_USE_SCOPE(types);
 
 static std::deque<NkType> s_types;
 static std::map<ByteArray, nktype_t> s_typemap;
+static std::mutex s_mutex;
 
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, nk_typeclassid_t tclass, F const &create_vm_type) {
@@ -26,6 +28,8 @@ nktype_t getTypeByFingerprint(ByteArray fp, nk_typeclassid_t tclass, F const &cr
     NK_LOG_TRC(__func__);
 
     (void)tclass; // TODO Unused while we don't extend the actual vm type struct
+
+    std::lock_guard lk{s_mutex};
 
     auto it = s_typemap.find(fp);
     if (it == s_typemap.end()) {
