@@ -502,24 +502,22 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
             (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
             s_nk_bc_names[pinstr->code]);
         s_funcs[pinstr->code](*pinstr);
-        NK_LOG_DBG("res=%s", [&]() { // TODO Inefficient inspect in interp
-            char const *res = nullptr;
-            auto const &ref = pinstr->arg[0];
-            if (ref.ref_type != NkBcRef_None) {
-                NkStringBuilder sb = nksb_create();
-                defer {
+        NK_LOG_DBG(
+            "res=%s", (char const *)[&]() {
+                NkStringBuilder sb{};
+                char const *str{};
+                auto const &ref = pinstr->arg[0];
+                if (ref.ref_type != NkBcRef_None) {
+                    sb = nksb_create();
+                    nkval_inspect(_getValRef(ref), sb);
+                    nksb_printf(sb, ":");
+                    nkt_inspect(ref.type, sb);
+                    str = nksb_concat(sb).data;
+                }
+                return makeDeferrerWithData(str, [sb]() {
                     nksb_free(sb);
-                };
-                nkval_inspect(_getValRef(ref), sb);
-                nksb_printf(sb, ":");
-                nkt_inspect(ref.type, sb);
-                auto str = nksb_concat(sb);
-                static thread_local char buf[100];
-                std::copy_n(str.data, std::min(AR_SIZE(buf), str.size + 1), buf);
-                res = buf;
-            }
-            return res;
-        }());
+                });
+            }());
     }
 
     NK_LOG_TRC("exiting...");

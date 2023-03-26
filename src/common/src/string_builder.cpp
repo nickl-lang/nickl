@@ -28,8 +28,10 @@ NkStringBuilder nksb_create_alloc(NkAllocator alloc) {
 }
 
 void nksb_free(NkStringBuilder sb) {
-    nk_free(sb->alloc, sb->data);
-    nk_free(sb->alloc, sb);
+    if (sb) {
+        nk_free(sb->alloc, sb->data);
+        nk_free(sb->alloc, sb);
+    }
 }
 
 int nksb_printf(NkStringBuilder sb, char const *fmt, ...) {
