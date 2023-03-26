@@ -515,17 +515,14 @@ IndexResult calcTupleIndex(NklCompiler c, nktype_t type, size_t index) {
 }
 
 NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
-    NkIrRef ref{};
     if (node->id == cs2nkid("id")) {
-        auto name = node->token->text;
-        auto res = resolve(c, s2nkid(name));
+        auto const name = node->token->text;
+        auto const res = resolve(c, s2nkid(name));
         switch (res.kind) {
         case Decl_Local:
-            ref = nkir_makeFrameRef(c->ir, res.as.local.id);
-            break;
+            return nkir_makeFrameRef(c->ir, res.as.local.id);
         case Decl_Global:
-            ref = nkir_makeGlobalRef(c->ir, res.as.global.id);
-            break;
+            return nkir_makeGlobalRef(c->ir, res.as.global.id);
         case Decl_Undefined:
             return error(c, "`%.*s` is not defined", name.size, name.data), NkIrRef{};
         case Decl_Funct:
@@ -538,50 +535,55 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             return {};
         }
     } else if (node->id == cs2nkid("index")) {
-        ref = asRef(c, compile(c, narg0(node)));
-        auto type = ref.type;
-        auto index = compile(c, narg1(node));
+        auto const lhs_ref = asRef(c, compile(c, narg0(node)));
+        auto const type = lhs_ref.type;
+        auto const index = compile(c, narg1(node));
         if (index.type->tclass != NkType_Numeric) {
             return error(c, "expected number in index"), NkIrRef{};
         }
         // TODO Optimize array indexing
         // TODO Think about type correctness in array indexing
         if (type->tclass == NkType_Array) {
-            auto u64_t = nkl_get_numeric(Uint64);
-            auto u8_t = nkl_get_numeric(Uint8);
-            auto u8_ptr_t = nkl_get_ptr(u8_t);
-            auto ar_ref = asRef(c, makeInstr(nkir_make_lea({}, ref), u8_ptr_t));
-            auto mul = nkir_make_mul(
+            auto const u64_t = nkl_get_numeric(Uint64);
+            auto const u8_t = nkl_get_numeric(Uint8);
+            auto const u8_ptr_t = nkl_get_ptr(u8_t);
+            auto const data_ref = asRef(c, makeInstr(nkir_make_lea({}, lhs_ref), u8_ptr_t));
+            auto const mul = nkir_make_mul(
                 {},
                 asRef(c, index),
                 asRef(c, makeValue<uint64_t>(c, u64_t, type->as.arr.elem_type->size)));
-            auto offset_ref = asRef(c, makeInstr(mul, u64_t));
-            auto add = nkir_make_add({}, ar_ref, offset_ref);
-            ref = asRef(c, makeInstr(add, nkl_get_ptr(type->as.arr.elem_type)));
+            auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
+            auto const add = nkir_make_add({}, data_ref, offset_ref);
+            auto ref = asRef(c, makeInstr(add, nkl_get_ptr(type->as.arr.elem_type)));
             ref.is_indirect = true;
             ref.type = type->as.arr.elem_type;
+            return ref;
         } else if (type->tclass == NkType_Tuple) {
             if (!isKnown(index)) {
                 return error(c, "comptime value expected in tuple index"), NkIrRef{};
             }
             DEFINE(idx_res, calcTupleIndex(c, type, nkval_as(uint64_t, asValue(c, index))));
+            auto ref = lhs_ref;
             ref.post_offset += idx_res.offset;
             ref.type = idx_res.type;
+            return ref;
         } else if (type->tclass == NklType_Slice) {
-            auto u64_t = nkl_get_numeric(Uint64);
+            auto const u64_t = nkl_get_numeric(Uint64);
             // TODO Accessing slice info as tuple
-            auto elem_ptr_t = type->as.tuple.elems.data[0].type;
-            auto target_type = elem_ptr_t->as.ptr.target_type;
-            ref.type = elem_ptr_t;
-            auto mul = nkir_make_mul(
+            auto const elem_ptr_t = type->as.tuple.elems.data[0].type;
+            auto const target_type = elem_ptr_t->as.ptr.target_type;
+            auto data_ref = lhs_ref;
+            data_ref.type = elem_ptr_t;
+            auto const mul = nkir_make_mul(
                 {},
                 asRef(c, index),
                 asRef(c, makeValue<uint64_t>(c, u64_t, type->as.arr.elem_type->size)));
-            auto offset_ref = asRef(c, makeInstr(mul, u64_t));
-            auto add = nkir_make_add({}, ref, offset_ref);
-            ref = asRef(c, makeInstr(add, elem_ptr_t));
+            auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
+            auto const add = nkir_make_add({}, data_ref, offset_ref);
+            auto ref = asRef(c, makeInstr(add, elem_ptr_t));
             ref.is_indirect = true;
             ref.type = target_type;
+            return ref;
         } else {
             auto sb = nksb_create();
             defer {
@@ -593,17 +595,17 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
                    NkIrRef{};
         }
     } else if (node->id == cs2nkid("deref")) {
-        auto arg = compile(c, narg0(node));
+        auto const arg = compile(c, narg0(node));
         if (arg.type->tclass != NkType_Ptr) {
             return error(c, "pointer expected in dereference"), NkIrRef{};
         }
-        ref = asRef(c, arg);
+        auto ref = asRef(c, arg);
         ref.is_indirect = true;
         ref.type = arg.type->as.ptr.target_type;
+        return ref;
     } else {
         return error(c, "invalid lvalue"), NkIrRef{};
     }
-    return ref;
 }
 
 template <class F>
