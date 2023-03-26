@@ -414,13 +414,13 @@ void interp(NkBcInstr const &instr) {
     }
 
 #define _NUM_BIN_OP_EXT(NAME, OP, EXT, TYPE)                                                      \
-    case nkop_##NAME##_##EXT: {                                                                   \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                    \
         _getRef<TYPE>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
         break;                                                                                    \
     }
 
 #define NUM_BIN_OP(NAME, OP)                          \
-    case nkop_##NAME: {                               \
+    case CAT(nkop_, NAME): {                          \
         assert(!"generic bin op is not implemented"); \
         break;                                        \
     }                                                 \
@@ -436,7 +436,7 @@ void interp(NkBcInstr const &instr) {
         _NUM_BIN_OP_EXT(NAME, OP, f64, double)
 
 #define NUM_BIN_OP_INT(NAME, OP)                      \
-    case nkop_##NAME: {                               \
+    case CAT(nkop_, NAME): {                          \
         assert(!"generic bin op is not implemented"); \
         break;                                        \
     }                                                 \

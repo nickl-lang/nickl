@@ -823,47 +823,24 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         return makeValue<bool>(c, nkl_get_numeric(Uint8), true);
     }
 
-        // TODO Modeling type_t as *void
+    // TODO Modeling type_t as *void
 
-    case n_i8: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Int8));
+#define _COMPILE_NUMERIC(NAME, VALUE_TYPE)                                        \
+    case CAT(n_, NAME): {                                                         \
+        return makeValue<void *>(                                                 \
+            c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(VALUE_TYPE)); \
     }
 
-    case n_i16: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Int16));
-    }
-
-    case n_i32: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Int32));
-    }
-
-    case n_i64: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Int64));
-    }
-
-    case n_u8: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Uint8));
-    }
-
-    case n_u16: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Uint16));
-    }
-
-    case n_u32: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Uint32));
-    }
-
-    case n_u64: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Uint64));
-    }
-
-    case n_f32: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Float32));
-    }
-
-    case n_f64: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(Float64));
-    }
+        _COMPILE_NUMERIC(i8, Int8)
+        _COMPILE_NUMERIC(i16, Int16)
+        _COMPILE_NUMERIC(i32, Int32)
+        _COMPILE_NUMERIC(i64, Int64)
+        _COMPILE_NUMERIC(u8, Uint8)
+        _COMPILE_NUMERIC(u16, Uint16)
+        _COMPILE_NUMERIC(u32, Uint32)
+        _COMPILE_NUMERIC(u64, Uint64)
+        _COMPILE_NUMERIC(f32, Float32)
+        _COMPILE_NUMERIC(f64, Float64)
 
     case n_bool: {
         return makeValue<void *>(
@@ -929,115 +906,36 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         return makeValue(arg);
     }
 
-        // TODO Not doing type checks in arithmetic
+    // TODO Not doing type checks in arithmetic
 
-    case n_add: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_add({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
+#define _COMPILE_BIN(NAME)                                                                   \
+    case CAT(n_, NAME): {                                                                    \
+        DEFINE(lhs, compile(c, narg0(node)));                                                \
+        DEFINE(rhs, compile(c, narg1(node)));                                                \
+        return makeInstr(CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), lhs.type); \
     }
 
-    case n_sub: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_sub({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
+        _COMPILE_BIN(add)
+        _COMPILE_BIN(sub)
+        _COMPILE_BIN(mul)
+        _COMPILE_BIN(div)
+        _COMPILE_BIN(mod)
 
-    case n_mul: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_mul({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
+        _COMPILE_BIN(bitand)
+        _COMPILE_BIN(bitor)
+        _COMPILE_BIN(xor)
+        _COMPILE_BIN(lsh)
+        _COMPILE_BIN(rsh)
 
-    case n_div: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_div({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
+        _COMPILE_BIN(and)
+        _COMPILE_BIN(or)
 
-    case n_mod: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_mod({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_bitand: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_bitand({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_bitor: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_bitor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_xor: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_xor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_lsh: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_lsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_rsh: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_rsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_and: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_and({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_or: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_or({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_eq: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_eq({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_ge: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_ge({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_gt: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_gt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_le: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_le({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_lt: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_lt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
-
-    case n_ne: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        DEFINE(rhs, compile(c, narg1(node)));
-        return makeInstr(nkir_make_ne({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
-    }
+        _COMPILE_BIN(eq)
+        _COMPILE_BIN(ge)
+        _COMPILE_BIN(gt)
+        _COMPILE_BIN(le)
+        _COMPILE_BIN(lt)
+        _COMPILE_BIN(ne)
 
     case n_array_type: {
         // TODO Hardcoded array size type in array_type
@@ -1365,7 +1263,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto init_nodes = nargs1(node);
 
-        // TODO Ingnoreing named args in object literal, and copying values to a sperate array
+        // TODO Ignoring named args in object literal, and copying values to a sperate array
         std::vector<NklAstNode_T> nodes;
         nodes.reserve(init_nodes.size);
 
@@ -1379,7 +1277,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_assign: {
-        if (node->args->size > 1) {
+        if (nargs0(node).size > 1) {
             NK_LOG_WRN("TODO multiple assignment is not supported");
         }
         DEFINE(lhs_ref, getLvalueRef(c, narg0(node)));
