@@ -123,346 +123,353 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
     NK_LOG_DBG("pinstr=%p", ctx.pinstr);
 }
 
-#define INTERP(NAME) void _interp_##NAME(NkBcInstr const &instr)
-
-INTERP(nop) {
-    (void)instr;
-}
-
-INTERP(ret) {
-    (void)instr;
-
-    auto const fr = ctx.ctrl_stack.back();
-    ctx.ctrl_stack.pop_back();
-
-    nk_stack_popFrame(ctx.stack, ctx.stack_frame);
-
-    ctx.stack_frame = fr.stack_frame;
-    ctx.base.frame = fr.base_frame;
-    ctx.base.arg = fr.base_arg;
-    ctx.base.ret = fr.base_ret;
-    ctx.base.instr = fr.base_instr;
-
-    _jumpTo(fr.pinstr);
-}
-
-INTERP(enter) {
-    (void)instr;
-
-    ctx.stack_frames.emplace_back(nk_stack_getFrame(ctx.stack));
-}
-
-INTERP(leave) {
-    (void)instr;
-
-    nk_stack_popFrame(ctx.stack, ctx.stack_frames.back());
-    ctx.stack_frames.pop_back();
-}
-
-INTERP(jmp) {
-    _jumpTo(instr.arg[1]);
-}
-
-INTERP(jmpz) {
-    (void)instr;
-
-    assert(!"not implemented");
-}
-
-INTERP(jmpz_8) {
-    if (!_getRef<uint8_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+void interp(NkBcInstr const &instr) {
+    switch (instr.code) {
+    case nkop_nop: {
+        break;
     }
-}
 
-INTERP(jmpz_16) {
-    if (!_getRef<uint16_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_ret: {
+        auto const fr = ctx.ctrl_stack.back();
+        ctx.ctrl_stack.pop_back();
+
+        nk_stack_popFrame(ctx.stack, ctx.stack_frame);
+
+        ctx.stack_frame = fr.stack_frame;
+        ctx.base.frame = fr.base_frame;
+        ctx.base.arg = fr.base_arg;
+        ctx.base.ret = fr.base_ret;
+        ctx.base.instr = fr.base_instr;
+
+        _jumpTo(fr.pinstr);
+        break;
     }
-}
 
-INTERP(jmpz_32) {
-    if (!_getRef<uint32_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_enter: {
+        ctx.stack_frames.emplace_back(nk_stack_getFrame(ctx.stack));
+        break;
     }
-}
 
-INTERP(jmpz_64) {
-    if (!_getRef<uint64_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_leave: {
+        nk_stack_popFrame(ctx.stack, ctx.stack_frames.back());
+        ctx.stack_frames.pop_back();
+        break;
     }
-}
 
-INTERP(jmpnz) {
-    (void)instr;
-
-    assert(!"not implemented");
-}
-
-INTERP(jmpnz_8) {
-    if (_getRef<uint8_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_jmp: {
+        _jumpTo(instr.arg[1]);
+        break;
     }
-}
 
-INTERP(jmpnz_16) {
-    if (_getRef<uint16_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_jmpz: {
+        assert(!"not implemented");
+        break;
     }
-}
 
-INTERP(jmpnz_32) {
-    if (_getRef<uint32_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_jmpz_8: {
+        if (!_getRef<uint8_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
     }
-}
 
-INTERP(jmpnz_64) {
-    if (_getRef<uint64_t>(instr.arg[1])) {
-        _jumpTo(instr.arg[2]);
+    case nkop_jmpz_16: {
+        if (!_getRef<uint16_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
     }
-}
 
-INTERP(cast) {
-    (void)instr;
-    assert(!"cast not implemented");
+    case nkop_jmpz_32: {
+        if (!_getRef<uint32_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
+    }
 
-    // TODO auto dst = _getDynRef(instr.arg[0]);
-    // auto type = _getDynRef(instr.arg[1]);
-    // auto arg = _getDynRef(instr.arg[2]);
+    case nkop_jmpz_64: {
+        if (!_getRef<uint64_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
+    }
 
-    // assert(nkval_typeclassid(dst) == NkType_Numeric);
-    // assert(nkval_typeclassid(type) == Type_Ptr);
-    // assert(nkval_typeid(dst) == nkval_as(type_t, type)->id);
-    // assert(nkval_typeclassid(arg) == NkType_Numeric);
+    case nkop_jmpnz: {
+        assert(!"not implemented");
+        break;
+    }
 
-    // val_numeric_visit(dst, [&](auto &dst_val) {
-    //     using T = std::decay_t<decltype(dst_val)>;
-    //     val_numeric_visit(arg, [&](auto arg_val) {
-    //         dst_val = static_cast<T>(arg_val);
-    //     });
-    // });
-}
+    case nkop_jmpnz_8: {
+        if (_getRef<uint8_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
+    }
 
-INTERP(call) {
-    auto ret = _getValRef(instr.arg[0]);
-    auto fn_val = _getValRef(instr.arg[1]);
-    auto args = _getValRef(instr.arg[2]);
+    case nkop_jmpnz_16: {
+        if (_getRef<uint16_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
+    }
 
-    nkval_fn_invoke(fn_val, ret, args);
-}
+    case nkop_jmpnz_32: {
+        if (_getRef<uint32_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
+    }
 
-INTERP(call_jmp) {
-    auto ret = _getValRef(instr.arg[0]);
-    auto fn_val = _getValRef(instr.arg[1]);
-    auto args = _getValRef(instr.arg[2]);
+    case nkop_jmpnz_64: {
+        if (_getRef<uint64_t>(instr.arg[1])) {
+            _jumpTo(instr.arg[2]);
+        }
+        break;
+    }
 
-    _jumpCall(nkval_as(NkIrFunct, fn_val)->bc_funct, ret, args);
-}
+    case nkop_cast: {
+        assert(!"cast not implemented");
 
-INTERP(mov) {
-    auto dst = _getValRef(instr.arg[0]);
-    auto src = _getValRef(instr.arg[1]);
+        // TODO auto dst = _getDynRef(instr.arg[0]);
+        // auto type = _getDynRef(instr.arg[1]);
+        // auto arg = _getDynRef(instr.arg[2]);
 
-    assert(nkval_sizeof(dst) == nkval_sizeof(src));
+        // assert(nkval_typeclassid(dst) == NkType_Numeric);
+        // assert(nkval_typeclassid(type) == Type_Ptr);
+        // assert(nkval_typeid(dst) == nkval_as(type_t, type)->id);
+        // assert(nkval_typeclassid(arg) == NkType_Numeric);
 
-    std::memcpy(nkval_data(dst), nkval_data(src), nkval_sizeof(dst));
-}
+        // val_numeric_visit(dst, [&](auto &dst_val) {
+        //     using T = std::decay_t<decltype(dst_val)>;
+        //     val_numeric_visit(arg, [&](auto arg_val) {
+        //         dst_val = static_cast<T>(arg_val);
+        //     });
+        // });
+        break;
+    }
 
-INTERP(mov_8) {
-    _getRef<uint8_t>(instr.arg[0]) = _getRef<uint8_t>(instr.arg[1]);
-}
+    case nkop_call: {
+        auto ret = _getValRef(instr.arg[0]);
+        auto fn_val = _getValRef(instr.arg[1]);
+        auto args = _getValRef(instr.arg[2]);
 
-INTERP(mov_16) {
-    _getRef<uint16_t>(instr.arg[0]) = _getRef<uint16_t>(instr.arg[1]);
-}
+        nkval_fn_invoke(fn_val, ret, args);
+        break;
+    }
 
-INTERP(mov_32) {
-    _getRef<uint32_t>(instr.arg[0]) = _getRef<uint32_t>(instr.arg[1]);
-}
+    case nkop_call_jmp: {
+        auto ret = _getValRef(instr.arg[0]);
+        auto fn_val = _getValRef(instr.arg[1]);
+        auto args = _getValRef(instr.arg[2]);
 
-INTERP(mov_64) {
-    _getRef<uint64_t>(instr.arg[0]) = _getRef<uint64_t>(instr.arg[1]);
-}
+        _jumpCall(nkval_as(NkIrFunct, fn_val)->bc_funct, ret, args);
+        break;
+    }
 
-INTERP(lea) {
-    _getRef<void *>(instr.arg[0]) = &_getRef<uint8_t>(instr.arg[1]);
-}
+    case nkop_mov: {
+        auto dst = _getValRef(instr.arg[0]);
+        auto src = _getValRef(instr.arg[1]);
 
-INTERP(neg) {
-    auto dst = _getValRef(instr.arg[0]);
-    // auto arg = _getValRef(instr.arg[1]);
+        assert(nkval_sizeof(dst) == nkval_sizeof(src));
 
-    // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
-    assert(nkval_typeclassid(dst) == NkType_Numeric);
+        std::memcpy(nkval_data(dst), nkval_data(src), nkval_sizeof(dst));
+        break;
+    }
 
-    assert(!"not implemented");
-}
+    case nkop_mov_8: {
+        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint8_t>(instr.arg[1]);
+        break;
+    }
 
-INTERP(compl ) {
-    auto dst = _getValRef(instr.arg[0]);
-    // auto arg = _getValRef(instr.arg[1]);
+    case nkop_mov_16: {
+        _getRef<uint16_t>(instr.arg[0]) = _getRef<uint16_t>(instr.arg[1]);
+        break;
+    }
 
-    // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
-    assert(
-        nkval_typeclassid(dst) == NkType_Numeric && nkval_typeof(dst)->as.num.value_type < Float32);
+    case nkop_mov_32: {
+        _getRef<uint32_t>(instr.arg[0]) = _getRef<uint32_t>(instr.arg[1]);
+        break;
+    }
 
-    assert(!"not implemented");
-}
+    case nkop_mov_64: {
+        _getRef<uint64_t>(instr.arg[0]) = _getRef<uint64_t>(instr.arg[1]);
+        break;
+    }
 
-INTERP(not ) {
-    auto dst = _getValRef(instr.arg[0]);
-    // auto arg = _getValRef(instr.arg[1]);
+    case nkop_lea: {
+        _getRef<void *>(instr.arg[0]) = &_getRef<uint8_t>(instr.arg[1]);
+        break;
+    }
 
-    // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) == nkval_typeid(arg));
-    assert(nkval_typeclassid(dst) == NkType_Numeric);
+    case nkop_neg: {
+        auto dst = _getValRef(instr.arg[0]);
+        // auto arg = _getValRef(instr.arg[1]);
 
-    assert(!"not implemented");
-}
+        // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) ==
+        // nkval_typeid(arg));
+        assert(nkval_typeclassid(dst) == NkType_Numeric);
 
-INTERP(eq) {
-    auto dst = _getValRef(instr.arg[0]);
-    auto lhs = _getValRef(instr.arg[1]);
-    auto rhs = _getValRef(instr.arg[2]);
+        assert(!"not implemented");
+        break;
+    }
 
-    assert(nkval_sizeof(dst) == 1);
-    assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
+    case nkop_compl: {
+        auto dst = _getValRef(instr.arg[0]);
+        // auto arg = _getValRef(instr.arg[1]);
 
-    _getRef<int8_t>(instr.arg[0]) =
-        std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
-}
+        // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) ==
+        // nkval_typeid(arg));
+        assert(
+            nkval_typeclassid(dst) == NkType_Numeric &&
+            nkval_typeof(dst)->as.num.value_type < Float32);
 
-INTERP(eq_8) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint8_t>(instr.arg[1]) == _getRef<uint8_t>(instr.arg[2]);
-}
+        assert(!"not implemented");
+        break;
+    }
 
-INTERP(eq_16) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint16_t>(instr.arg[1]) == _getRef<uint16_t>(instr.arg[2]);
-}
+    case nkop_not: {
+        auto dst = _getValRef(instr.arg[0]);
+        // auto arg = _getValRef(instr.arg[1]);
 
-INTERP(eq_32) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint32_t>(instr.arg[1]) == _getRef<uint32_t>(instr.arg[2]);
-}
+        // TODO(replace nkval_typeid with nkl version) assert(nkval_typeid(dst) ==
+        // nkval_typeid(arg));
+        assert(nkval_typeclassid(dst) == NkType_Numeric);
 
-INTERP(eq_64) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint64_t>(instr.arg[1]) == _getRef<uint64_t>(instr.arg[2]);
-}
+        assert(!"not implemented");
+        break;
+    }
 
-INTERP(ne) {
-    auto dst = _getValRef(instr.arg[0]);
-    auto lhs = _getValRef(instr.arg[1]);
-    auto rhs = _getValRef(instr.arg[2]);
+    case nkop_eq: {
+        auto dst = _getValRef(instr.arg[0]);
+        auto lhs = _getValRef(instr.arg[1]);
+        auto rhs = _getValRef(instr.arg[2]);
 
-    assert(nkval_sizeof(dst) == 1);
-    assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
+        assert(nkval_sizeof(dst) == 1);
+        assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
-    _getRef<int8_t>(instr.arg[0]) =
-        std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
-}
+        _getRef<int8_t>(instr.arg[0]) =
+            std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
+        break;
+    }
 
-INTERP(ne_8) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint8_t>(instr.arg[1]) != _getRef<uint8_t>(instr.arg[2]);
-}
+    case nkop_eq_8: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint8_t>(instr.arg[1]) == _getRef<uint8_t>(instr.arg[2]);
+        break;
+    }
 
-INTERP(ne_16) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint16_t>(instr.arg[1]) != _getRef<uint16_t>(instr.arg[2]);
-}
+    case nkop_eq_16: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint16_t>(instr.arg[1]) == _getRef<uint16_t>(instr.arg[2]);
+        break;
+    }
 
-INTERP(ne_32) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint32_t>(instr.arg[1]) != _getRef<uint32_t>(instr.arg[2]);
-}
+    case nkop_eq_32: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint32_t>(instr.arg[1]) == _getRef<uint32_t>(instr.arg[2]);
+        break;
+    }
 
-INTERP(ne_64) {
-    _getRef<int8_t>(instr.arg[0]) =
-        _getRef<uint64_t>(instr.arg[1]) != _getRef<uint64_t>(instr.arg[2]);
-}
+    case nkop_eq_64: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint64_t>(instr.arg[1]) == _getRef<uint64_t>(instr.arg[2]);
+        break;
+    }
 
-template <class F>
-void _numericBinBc(NkBcInstr const &instr, F &&op) {
-    (void)instr;
-    (void)op;
+    case nkop_ne: {
+        auto dst = _getValRef(instr.arg[0]);
+        auto lhs = _getValRef(instr.arg[1]);
+        auto rhs = _getValRef(instr.arg[2]);
 
-    assert(!"not implemented");
-}
+        assert(nkval_sizeof(dst) == 1);
+        assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
-template <class F>
-void _numericBinBcInt(NkBcInstr const &instr, F &&op) {
-    (void)instr;
-    (void)op;
+        _getRef<int8_t>(instr.arg[0]) =
+            std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
+        break;
+    }
 
-    assert(!"not implemented");
-}
+    case nkop_ne_8: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint8_t>(instr.arg[1]) != _getRef<uint8_t>(instr.arg[2]);
+        break;
+    }
+
+    case nkop_ne_16: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint16_t>(instr.arg[1]) != _getRef<uint16_t>(instr.arg[2]);
+        break;
+    }
+
+    case nkop_ne_32: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint32_t>(instr.arg[1]) != _getRef<uint32_t>(instr.arg[2]);
+        break;
+    }
+
+    case nkop_ne_64: {
+        _getRef<int8_t>(instr.arg[0]) =
+            _getRef<uint64_t>(instr.arg[1]) != _getRef<uint64_t>(instr.arg[2]);
+        break;
+    }
 
 #define _NUM_BIN_OP_EXT(NAME, OP, EXT, TYPE)                                                      \
-    INTERP(NAME##_##EXT) {                                                                        \
+    case nkop_##NAME##_##EXT: {                                                                   \
         _getRef<TYPE>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
+        break;                                                                                    \
     }
 
 #define NUM_BIN_OP(NAME, OP)                          \
-    INTERP(NAME) {                                    \
-        _numericBinBc(instr, [](auto lhs, auto rhs) { \
-            return lhs OP rhs;                        \
-        });                                           \
+    case nkop_##NAME: {                               \
+        assert(!"generic bin op is not implemented"); \
+        break;                                        \
     }                                                 \
-    _NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)             \
-    _NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)            \
-    _NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)           \
-    _NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)          \
-    _NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)           \
-    _NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)          \
-    _NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)           \
-    _NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)          \
-    _NUM_BIN_OP_EXT(NAME, OP, f32, float)             \
-    _NUM_BIN_OP_EXT(NAME, OP, f64, double)
+        _NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)         \
+        _NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)        \
+        _NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)       \
+        _NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)      \
+        _NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)       \
+        _NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)      \
+        _NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)       \
+        _NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)      \
+        _NUM_BIN_OP_EXT(NAME, OP, f32, float)         \
+        _NUM_BIN_OP_EXT(NAME, OP, f64, double)
 
-#define NUM_BIN_OP_INT(NAME, OP)                         \
-    INTERP(NAME) {                                       \
-        _numericBinBcInt(instr, [](auto lhs, auto rhs) { \
-            return lhs OP rhs;                           \
-        });                                              \
-    }                                                    \
-    _NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)                \
-    _NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)               \
-    _NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)              \
-    _NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)             \
-    _NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)              \
-    _NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)             \
-    _NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)              \
-    _NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)
+#define NUM_BIN_OP_INT(NAME, OP)                      \
+    case nkop_##NAME: {                               \
+        assert(!"generic bin op is not implemented"); \
+        break;                                        \
+    }                                                 \
+        _NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)         \
+        _NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)        \
+        _NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)       \
+        _NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)      \
+        _NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)       \
+        _NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)      \
+        _NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)       \
+        _NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)
 
-NUM_BIN_OP(add, +)
-NUM_BIN_OP(sub, -)
-NUM_BIN_OP(mul, *)
-NUM_BIN_OP(div, /)
-NUM_BIN_OP_INT(mod, %)
+        NUM_BIN_OP(add, +)
+        NUM_BIN_OP(sub, -)
+        NUM_BIN_OP(mul, *)
+        NUM_BIN_OP(div, /)
+        NUM_BIN_OP_INT(mod, %)
 
-NUM_BIN_OP_INT(bitand, &)
-NUM_BIN_OP_INT(bitor, |)
-NUM_BIN_OP_INT(xor, ^)
-NUM_BIN_OP_INT(lsh, <<)
-NUM_BIN_OP_INT(rsh, >>)
+        NUM_BIN_OP_INT(bitand, &)
+        NUM_BIN_OP_INT(bitor, |)
+        NUM_BIN_OP_INT(xor, ^)
+        NUM_BIN_OP_INT(lsh, <<)
+        NUM_BIN_OP_INT(rsh, >>)
 
-NUM_BIN_OP(and, &&)
-NUM_BIN_OP(or, ||)
+        NUM_BIN_OP(and, &&)
+        NUM_BIN_OP(or, ||)
 
-NUM_BIN_OP(ge, >=)
-NUM_BIN_OP(gt, >)
-NUM_BIN_OP(le, <=)
-NUM_BIN_OP(lt, <)
-
-using InterpFunc = void (*)(NkBcInstr const &instr);
-
-InterpFunc s_funcs[] = {
-#define X(NAME) CAT(_interp_, NAME),
-#include "bytecode.inl"
-};
+        NUM_BIN_OP(ge, >=)
+        NUM_BIN_OP(gt, >)
+        NUM_BIN_OP(le, <=)
+        NUM_BIN_OP(lt, <)
+    }
+}
 
 } // namespace
 
@@ -501,7 +508,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
             "instr: %lx %s",
             (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
             s_nk_bc_names[pinstr->code]);
-        s_funcs[pinstr->code](*pinstr);
+        interp(*pinstr);
         NK_LOG_DBG(
             "res=%s", (char const *)[&]() {
                 NkStringBuilder sb{};

@@ -18,8 +18,6 @@ extern "C" {
 
 #define AR_SIZE(AR) sizeof(AR) / sizeof((AR)[0])
 
-#define NK_EXPORT __attribute__((__visibility__("default")))
-
 typedef size_t hash_t;
 
 extern inline size_t roundUp(size_t v, size_t m) {
