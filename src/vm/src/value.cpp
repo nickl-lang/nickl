@@ -19,8 +19,8 @@ NkType nkt_get_array(nktype_t elem_type, size_t elem_count) {
             .elem_count = elem_count,
         }},
         .size = elem_type->size * elem_count,
-        .alignment = elem_type->alignment,
-        .typeclass_id = NkType_Array,
+        .align = elem_type->align,
+        .tclass = NkType_Array,
     };
 }
 
@@ -33,8 +33,8 @@ NkType nkt_get_fn(NktFnInfo info) {
             .is_variadic = info.is_variadic,
         }},
         .size = sizeof(void *),
-        .alignment = sizeof(void *),
-        .typeclass_id = NkType_Fn,
+        .align = sizeof(void *),
+        .tclass = NkType_Fn,
     };
 }
 
@@ -44,8 +44,8 @@ NkType nkt_get_numeric(NkNumericValueType value_type) {
             .value_type = value_type,
         }},
         .size = (size_t)NUM_TYPE_SIZE(value_type),
-        .alignment = (uint8_t)NUM_TYPE_SIZE(value_type),
-        .typeclass_id = NkType_Numeric,
+        .align = (uint8_t)NUM_TYPE_SIZE(value_type),
+        .tclass = NkType_Numeric,
     };
 }
 
@@ -55,8 +55,8 @@ NkType nkt_get_ptr(nktype_t target_type) {
             .target_type = target_type,
         }},
         .size = sizeof(void *),
-        .alignment = alignof(void *),
-        .typeclass_id = NkType_Ptr,
+        .align = alignof(void *),
+        .tclass = NkType_Ptr,
     };
 }
 
@@ -67,8 +67,8 @@ NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, siz
             .elems = layout.info_ar,
         }},
         .size = layout.size,
-        .alignment = (uint8_t)layout.align,
-        .typeclass_id = NkType_Tuple,
+        .align = (uint8_t)layout.align,
+        .tclass = NkType_Tuple,
     };
 }
 
@@ -76,13 +76,13 @@ NkType nkt_get_void() {
     return NkType{
         .as{},
         .size = 0,
-        .alignment = 1,
-        .typeclass_id = NkType_Void,
+        .align = 1,
+        .tclass = NkType_Void,
     };
 }
 
 void nkt_inspect(nktype_t type, NkStringBuilder sb) {
-    switch (type->typeclass_id) {
+    switch (type->tclass) {
     case NkType_Array:
         nksb_printf(sb, "[%llu]", type->as.arr.elem_count);
         nkt_inspect(type->as.arr.elem_type, sb);
@@ -212,10 +212,10 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
         break;
     case NkType_Ptr: {
         nktype_t target_type = nkval_typeof(val)->as.ptr.target_type;
-        if (target_type->typeclass_id == NkType_Array) {
+        if (target_type->tclass == NkType_Array) {
             nktype_t elem_type = target_type->as.arr.elem_type;
             size_t elem_count = target_type->as.arr.elem_count;
-            if (elem_type->typeclass_id == NkType_Numeric) {
+            if (elem_type->tclass == NkType_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
                     nksb_printf(sb, "\"");
                     nksb_str_escape(sb, {nkval_as(char const *, val), elem_count});
@@ -301,9 +301,9 @@ NkTupleLayout nk_calcTupleLayout(
     for (size_t i = 0; i < count; i++) {
         nktype_t const type = types[i * stride];
 
-        alignment = maxu(alignment, type->alignment);
+        alignment = maxu(alignment, type->align);
 
-        offset = roundUpSafe(offset, type->alignment);
+        offset = roundUpSafe(offset, type->align);
         info_ar[i] = NkTupleElemInfo{type, offset};
         offset += type->size;
     }

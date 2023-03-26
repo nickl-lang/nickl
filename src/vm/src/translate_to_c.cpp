@@ -76,7 +76,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
     std::ostringstream tmp_s_suf;
     bool is_complex = false;
 
-    switch (type->typeclass_id) {
+    switch (type->tclass) {
     case NkType_Numeric:
         switch (type->as.num.value_type) {
         case Int8:
@@ -348,8 +348,8 @@ void _writeFnSig(
 
 // TODO Check if cast is needed
 void _writeCast(WriterCtx &ctx, std::ostream &src, nktype_t type) {
-    if (type->typeclass_id != NkType_Numeric && type->typeclass_id != NkType_Ptr &&
-        type->typeclass_id != NkType_Void) {
+    if (type->tclass != NkType_Numeric && type->tclass != NkType_Ptr &&
+        type->tclass != NkType_Void) {
         return;
     }
 
@@ -386,7 +386,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
         src << " var" << i++ << "={0};\n";
     }
 
-    if (ret_t->typeclass_id != NkType_Void) {
+    if (ret_t->tclass != NkType_Void) {
         _writeType(ctx, ret_t, src);
         src << " ret={0};\n";
     }
@@ -410,7 +410,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             } else if (ref.ref_type == NkIrRef_ExtSym) {
                 auto sym = ctx.ir->exsyms[ref.index];
                 src << sym.name;
-                if (sym.type->typeclass_id == NkType_Fn &&
+                if (sym.type->tclass == NkType_Fn &&
                     ctx.ext_syms_forward_declared.find(ref.index) ==
                         ctx.ext_syms_forward_declared.end()) {
                     ctx.forward_s << "extern ";
@@ -501,7 +501,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             switch (instr.code) {
             case nkir_ret:
                 src << "return";
-                if (ret_t->typeclass_id != NkType_Void) {
+                if (ret_t->tclass != NkType_Void) {
                     src << " ret";
                 }
                 break;
@@ -527,7 +527,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 break;
             case nkir_call: {
                 auto fn_t = instr.arg[1].ref.type;
-                assert(fn_t->typeclass_id == NkType_Fn);
+                assert(fn_t->tclass == NkType_Fn);
                 _writeRef(instr.arg[1].ref);
                 src << "(";
                 if (instr.arg[2].ref.ref_type != NkIrRef_None) {

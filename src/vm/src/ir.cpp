@@ -305,7 +305,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrBlockId label) {
 }
 
 NkIrInstr nkir_make_cast(NkIrRef dst, nktype_t type, NkIrRef arg) {
-    assert(type->typeclass_id == NkType_Numeric && "numeric type expected in cast");
+    assert(type->tclass == NkType_Numeric && "numeric type expected in cast");
     return {{_arg(dst), _arg(type->as.num.value_type), _arg(arg)}, nkir_cast};
 }
 

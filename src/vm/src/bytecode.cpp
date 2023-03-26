@@ -177,8 +177,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case NkIrRef_Const:
                 arg.ref_type = NkBcRef_Abs;
                 arg.offset = (size_t)ref.data;
-                if (ref.type->typeclass_id == NkType_Fn &&
-                    ref.type->as.fn.call_conv == NkCallConv_Nk) {
+                if (ref.type->tclass == NkType_Fn && ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
                     for (auto f : ir.functs) {
                         if (*(void **)ref.data == (void *)f) { // TODO Manual search for fn
@@ -214,7 +213,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 referenced_functs.emplace_back((NkIrFunct)ref.data);
                 arg.ref_type = NkBcRef_Abs;
                 auto fn_t = ref.type;
-                if (fn_t->typeclass_id == NkType_Tuple && fn_t->as.tuple.elems.size == 1) {
+                if (fn_t->tclass == NkType_Tuple && fn_t->as.tuple.elems.size == 1) {
                     fn_t = fn_t->as.tuple.elems.data[0].type;
                 }
                 arg.offset += (size_t)&ref.data;
@@ -258,8 +257,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 if (arg1.ref.ref_type == NkIrRef_Funct) {
                     code = nkop_call_jmp;
                 } else if (
-                    arg1.ref.ref_type == NkIrRef_Const &&
-                    arg1.ref.type->typeclass_id == NkType_Fn &&
+                    arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
                     for (auto f : ir.functs) {
@@ -285,10 +283,10 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 #define NUM_X(NAME) case CAT(nkir_, NAME):
 #define NUM_INT_X(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
-                if (arg1.ref.type->typeclass_id == NkType_Ptr) {
+                if (arg1.ref.type->tclass == NkType_Ptr) {
                     code += 1 + NUM_TYPE_INDEX(Uint64);
                 } else {
-                    assert(arg1.ref.type->typeclass_id == NkType_Numeric);
+                    assert(arg1.ref.type->tclass == NkType_Numeric);
                     code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 }
                 break;

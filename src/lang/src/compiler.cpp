@@ -411,7 +411,7 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     case v_instr: {
         auto instr = val.as.instr;
         auto &dst = instr.arg[0].ref;
-        if (dst.ref_type == NkIrRef_None && val.type->typeclass_id != NkType_Void) {
+        if (dst.ref_type == NkIrRef_None && val.type->tclass != NkType_Void) {
             dst = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, val.type));
         }
         gen(c, instr);
@@ -447,7 +447,7 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
 }
 
 ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
-    if (val.type->typeclass_id != NkType_Void) {
+    if (val.type->tclass != NkType_Void) {
         if (val.kind == v_instr && val.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
             val.as.instr.arg[0].ref = dst;
         } else {
@@ -541,12 +541,12 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
         ref = asRef(c, compile(c, node->args[0].data));
         auto type = ref.type;
         auto index = compile(c, node->args[1].data);
-        if (index.type->typeclass_id != NkType_Numeric) {
+        if (index.type->tclass != NkType_Numeric) {
             return error(c, "expected number in index"), NkIrRef{};
         }
         // TODO Optimize array indexing
         // TODO Think about type correctness in array indexing
-        if (type->typeclass_id == NkType_Array) {
+        if (type->tclass == NkType_Array) {
             auto u64_t = nkl_get_numeric(Uint64);
             auto u8_t = nkl_get_numeric(Uint8);
             auto u8_ptr_t = nkl_get_ptr(u8_t);
@@ -570,14 +570,14 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
                     nkl_get_ptr(type->as.arr.elem_type)));
             ref.is_indirect = true;
             ref.type = type->as.arr.elem_type;
-        } else if (type->typeclass_id == NkType_Tuple) {
+        } else if (type->tclass == NkType_Tuple) {
             if (!isKnown(index)) {
                 return error(c, "comptime value expected in tuple index"), NkIrRef{};
             }
             DEFINE(idx_res, calcTupleIndex(c, type, nkval_as(uint64_t, asValue(c, index))));
             ref.post_offset += idx_res.offset;
             ref.type = idx_res.type;
-        } else if (type->typeclass_id == NklType_Slice) {
+        } else if (type->tclass == NklType_Slice) {
             auto u64_t = nkl_get_numeric(Uint64);
             // TODO Accessing slice info as tuple
             auto elem_ptr_t = type->as.tuple.elems.data[0].type;
@@ -615,7 +615,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
         }
     } else if (node->id == cs2nkid("deref")) {
         auto arg = compile(c, node->args[0].data);
-        if (arg.type->typeclass_id != NkType_Ptr) {
+        if (arg.type->tclass != NkType_Ptr) {
             return error(c, "pointer expected in dereference"), NkIrRef{};
         }
         ref = asRef(c, arg);
@@ -1384,7 +1384,7 @@ COMPILE(object_literal) {
 
     // TODO Modeling type_t as *void
     if (nkval_typeclassid(type_val) != NkType_Ptr ||
-        nkval_typeof(type_val)->as.ptr.target_type->typeclass_id != NkType_Void) {
+        nkval_typeof(type_val)->as.ptr.target_type->tclass != NkType_Void) {
         return error(c, "type expected in object literal"), ValueInfo{};
     }
 

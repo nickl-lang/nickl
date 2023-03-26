@@ -63,7 +63,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             s_typearena = nk_create_arena();
         }
 
-        switch (type->typeclass_id) {
+        switch (type->tclass) {
         case NkType_Array: {
             auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
             ffi_type **elements = (ffi_type **)nk_allocate(
@@ -72,7 +72,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             elements[type->as.arr.elem_count] = nullptr;
             ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
                 .size = type->size,
-                .alignment = type->alignment,
+                .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
                 .elements = elements,
             };
@@ -130,7 +130,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             elements[type->as.tuple.elems.size] = nullptr;
             ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
                 .size = type->size,
-                .alignment = type->alignment,
+                .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
                 .elements = elements,
             };

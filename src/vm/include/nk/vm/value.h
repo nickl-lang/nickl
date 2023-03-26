@@ -91,8 +91,8 @@ typedef struct NkType {
         _nk_type_tuple tuple;
     } as;
     uint64_t size;
-    uint8_t alignment;
-    nk_typeclassid_t typeclass_id;
+    uint8_t align;
+    nk_typeclassid_t tclass;
 } NkType;
 
 NkType nkt_get_array(nktype_t elem_type, size_t elem_count);
@@ -151,7 +151,7 @@ inline nktype_t nkval_typeof(nkval_t val) {
 }
 
 inline nk_typeclassid_t nkval_typeclassid(nkval_t val) {
-    return nkval_typeof(val)->typeclass_id;
+    return nkval_typeof(val)->tclass;
 }
 
 inline size_t nkval_sizeof(nkval_t val) {
@@ -159,7 +159,7 @@ inline size_t nkval_sizeof(nkval_t val) {
 }
 
 inline size_t nkval_alignof(nkval_t val) {
-    return nkval_typeof(val)->alignment;
+    return nkval_typeof(val)->align;
 }
 
 inline nkval_t nkval_reinterpret_cast(nktype_t type, nkval_t val) {
