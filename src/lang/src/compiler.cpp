@@ -538,9 +538,9 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             return {};
         }
     } else if (node->id == cs2nkid("index")) {
-        ref = asRef(c, compile(c, node->args[0].data));
+        ref = asRef(c, compile(c, narg0(node)));
         auto type = ref.type;
-        auto index = compile(c, node->args[1].data);
+        auto index = compile(c, narg1(node));
         if (index.type->tclass != NkType_Numeric) {
             return error(c, "expected number in index"), NkIrRef{};
         }
@@ -593,7 +593,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
                    NkIrRef{};
         }
     } else if (node->id == cs2nkid("deref")) {
-        auto arg = compile(c, node->args[0].data);
+        auto arg = compile(c, narg0(node));
         if (arg.type->tclass != NkType_Ptr) {
             return error(c, "pointer expected in dereference"), NkIrRef{};
         }
@@ -608,7 +608,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
 
 template <class F>
 ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compile_cnst) {
-    auto names = node->args[0];
+    auto names = nargs0(node);
     if (names.size > 1) {
         return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
@@ -716,7 +716,7 @@ COMPILE(void) {
 }
 
 COMPILE(addr) {
-    DEFINE(arg, compile(c, node->args[0].data));
+    DEFINE(arg, compile(c, narg0(node)));
     return makeInstr(nkir_make_lea({}, asRef(c, arg)), nkl_get_ptr(arg.type));
 }
 
@@ -726,8 +726,8 @@ COMPILE(deref) {
 }
 
 COMPILE(return) {
-    if (node->args[0].size) {
-        DEFINE(arg, compile(c, node->args[0].data));
+    if (nargs0(node).size) {
+        DEFINE(arg, compile(c, narg0(node))); // TODO ignoring multiple return values
         store(c, nkir_makeRetRef(c->ir), arg);
     }
     gen(c, nkir_make_ret());
@@ -735,20 +735,20 @@ COMPILE(return) {
 }
 
 COMPILE(ptr_type) {
-    DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
     auto target_type = nkval_as(nktype_t, val);
     return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_ptr(target_type));
 }
 
 COMPILE(const_ptr_type) {
     // TODO Ignoring const in const_ptr_type
-    DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
     auto target_type = nkval_as(nktype_t, val);
     return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_ptr(target_type));
 }
 
 COMPILE(slice_type) {
-    DEFINE(val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
     auto target_type = nkval_as(nktype_t, val);
     return makeValue<void *>(
         c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_slice(c->arena, target_type));
@@ -760,129 +760,129 @@ COMPILE(scope) {
     // defer {
     //     gen(c, nkir_make_leave());
     // };
-    return compile(c, node->args[0].data);
+    return compile(c, narg0(node));
 }
 
 COMPILE(run) {
-    DEFINE(arg, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(arg, comptimeCompileNodeGetValue(c, narg0(node)));
     return makeValue(arg);
 }
 
 // TODO Not doing type checks in arithmetic
 
 COMPILE(add) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_add({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(sub) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_sub({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mul) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_mul({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(div) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_div({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(mod) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_mod({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(bitand) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_bitand({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(bitor) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_bitor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(xor) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_xor({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(lsh) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_lsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(rsh) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_rsh({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(and) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_and({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(or) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_or({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(eq) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_eq({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ge) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_ge({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(gt) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_gt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(le) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_le({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(lt) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_lt({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(ne) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs, compile(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return makeInstr(nkir_make_ne({}, asRef(c, lhs), asRef(c, rhs)), lhs.type);
 }
 
 COMPILE(array_type) {
     // TODO Hardcoded array size type in array_type
-    DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
     auto type = nkval_as(nktype_t, type_val);
-    DEFINE(size_val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    DEFINE(size_val, comptimeCompileNodeGetValue(c, narg1(node)));
     auto size = nkval_as(int64_t, size_val);
     return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_array(type, size));
 }
@@ -892,9 +892,9 @@ COMPILE(while) {
     auto l_endloop = nkir_makeBlock(c->ir);
     nkir_startBlock(c->ir, l_loop, irBlockName(c, "loop"));
     gen(c, nkir_make_enter());
-    DEFINE(cond, compile(c, node->args[0].data));
+    DEFINE(cond, compile(c, narg0(node)));
     gen(c, nkir_make_jmpz(asRef(c, cond), l_endloop));
-    CHECK(compileStmt(c, node->args[1].data));
+    CHECK(compileStmt(c, narg1(node)));
     gen(c, nkir_make_leave());
     gen(c, nkir_make_jmp(l_loop));
     nkir_startBlock(c->ir, l_endloop, irBlockName(c, "endloop"));
@@ -909,21 +909,21 @@ COMPILE(index) {
 COMPILE(if) {
     auto l_endif = nkir_makeBlock(c->ir);
     NkIrBlockId l_else;
-    if (node->args[2].data && node->args[2].data->id) {
+    if (narg2(node) && narg2(node)->id) {
         l_else = nkir_makeBlock(c->ir);
     } else {
         l_else = l_endif;
     }
-    DEFINE(cond, compile(c, node->args[0].data));
+    DEFINE(cond, compile(c, narg0(node)));
     gen(c, nkir_make_jmpz(asRef(c, cond), l_else));
     {
         pushScope(c);
         defer {
             popScope(c);
         };
-        CHECK(compileStmt(c, node->args[1].data));
+        CHECK(compileStmt(c, narg1(node)));
     }
-    if (node->args[2].data && node->args[2].data->id) {
+    if (narg2(node) && narg2(node)->id) {
         gen(c, nkir_make_jmp(l_endif));
         nkir_startBlock(c->ir, l_else, irBlockName(c, "else"));
         {
@@ -931,7 +931,7 @@ COMPILE(if) {
             defer {
                 popScope(c);
             };
-            CHECK(compileStmt(c, node->args[2].data));
+            CHECK(compileStmt(c, narg2(node)));
         }
     }
     nkir_startBlock(c->ir, l_endif, irBlockName(c, "endif"));
@@ -939,7 +939,7 @@ COMPILE(if) {
 }
 
 COMPILE(block) {
-    auto nodes = node->args[0];
+    auto nodes = nargs0(node);
     for (size_t i = 0; i < nodes.size; i++) {
         CHECK(compileStmt(c, &nodes.data[i]));
     }
@@ -947,7 +947,7 @@ COMPILE(block) {
 }
 
 COMPILE(tuple_type) {
-    auto nodes = node->args[0];
+    auto nodes = nargs0(node);
     std::vector<nktype_t> types;
     types.reserve(nodes.size);
     for (size_t i = 0; i < nodes.size; i++) {
@@ -962,7 +962,7 @@ COMPILE(tuple_type) {
 
 COMPILE(import) {
     NK_LOG_WRN("TODO import implementation not finished");
-    auto name = node->args[0].data->token->text;
+    auto name = narg0(node)->token->text;
     std::string filename = std_str(name) + ".nkl";
     auto stdlib_path = fs::path{c->stdlib_dir};
     if (!stdlib_path.is_absolute()) {
@@ -1056,8 +1056,8 @@ COMPILE(escaped_string) {
 }
 
 COMPILE(member) {
-    DEFINE(lhs, compile(c, node->args[0].data));
-    auto name = s2nkid(node->args[1].data->token->text);
+    DEFINE(lhs, compile(c, narg0(node)));
+    auto name = s2nkid(narg1(node)->token->text);
     if (isKnown(lhs)) {
         auto lhs_val = asValue(c, lhs);
         if (nkval_typeclassid(lhs_val) == NkType_Fn &&
@@ -1090,18 +1090,18 @@ ValueInfo compileFn(
     std::vector<nkid> params_names;
     std::vector<nktype_t> params_types;
 
-    auto params = node->args[0];
+    auto params = nargs0(node);
 
     for (size_t i = 0; i < params.size; i++) {
-        auto const &param = params.data[i];
-        params_names.emplace_back(s2nkid(param.args[0].data->token->text));
-        DEFINE(val, comptimeCompileNodeGetValue(c, param.args[1].data));
+        auto const param = &params.data[i];
+        params_names.emplace_back(s2nkid(narg0(param)->token->text));
+        DEFINE(val, comptimeCompileNodeGetValue(c, narg1(param)));
         params_types.emplace_back(nkval_as(nktype_t, val));
     }
 
     nktype_t ret_t;
-    if (node->args[1].data) {
-        DEFINE(val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    if (narg1(node)) {
+        DEFINE(val, comptimeCompileNodeGetValue(c, narg1(node)));
         ret_t = nkval_as(nktype_t, val);
     } else {
         ret_t = nkl_get_void();
@@ -1134,7 +1134,7 @@ ValueInfo compileFn(
         CHECK(defineArg(c, params_names[i], i, params_types[i]));
     }
 
-    CHECK(compileStmt(c, node->args[2].data));
+    CHECK(compileStmt(c, narg2(node)));
     gen(c, nkir_make_ret());
 
     NK_LOG_INF(
@@ -1170,16 +1170,16 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
 
     // TODO Boilerplate between compileFn and compileFnType
 
-    auto params = node->args[0];
+    auto params = nargs0(node);
 
     for (size_t i = 0; i < params.size; i++) {
-        auto const &param = params.data[i];
-        params_names.emplace_back(s2nkid(param.args[0].data->token->text));
-        DEFINE(val, comptimeCompileNodeGetValue(c, param.args[1].data));
+        auto const param = &params.data[i];
+        params_names.emplace_back(s2nkid(narg0(param)->token->text));
+        DEFINE(val, comptimeCompileNodeGetValue(c, narg1(param)));
         params_types.emplace_back(nkval_as(nktype_t, val));
     }
 
-    DEFINE(ret_t_val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    DEFINE(ret_t_val, comptimeCompileNodeGetValue(c, narg1(node)));
     auto ret_t = nkval_as(nktype_t, ret_t_val);
     nktype_t args_t = nkl_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
@@ -1200,19 +1200,19 @@ COMPILE(fn_type_var) {
 COMPILE(tag) {
     NK_LOG_WRN("TODO Only handling #link and #extern tags");
 
-    auto n_tag_name = node->args[0];
-    auto n_args = node->args[1];
-    auto n_def = node->args[2];
+    auto n_tag_name = narg0(node);
+    auto n_args = nargs1(node);
+    auto n_def = narg2(node);
 
-    std::string tag_name{n_tag_name.data->token->text.data, n_tag_name.data->token->text.size};
+    std::string tag_name{n_tag_name->token->text.data, n_tag_name->token->text.size};
 
-    if (n_def.data->id != n_comptime_const_def) {
+    if (n_def->id != n_comptime_const_def) {
         return error(c, "TODO comptime const def assumed in tag"), ValueInfo{};
     }
 
     if (tag_name == "#link") {
         assert(n_args.size == 1 || n_args.size == 2);
-        DEFINE(soname_val, comptimeCompileNodeGetValue(c, n_args.data[0].args[1].data));
+        DEFINE(soname_val, comptimeCompileNodeGetValue(c, narg1(&n_args.data[0])));
         std::string soname = nkval_as(char const *, soname_val);
         if (soname == "c" || soname == "C") {
             soname = c->libc_name;
@@ -1221,32 +1221,30 @@ COMPILE(tag) {
         }
         std::string link_prefix;
         if (n_args.size == 2) {
-            DEFINE(link_prefix_val, comptimeCompileNodeGetValue(c, n_args.data[1].args[1].data));
+            DEFINE(link_prefix_val, comptimeCompileNodeGetValue(c, narg1(&n_args.data[1])));
             link_prefix = nkval_as(char const *, link_prefix_val);
         }
 
         auto so = nkir_makeShObj(c->ir, cs2s(soname.c_str())); // TODO Creating so every time
 
-        auto sym_name = n_def.data->args[0].data->token->text;
+        auto sym_name = narg0(n_def)->token->text;
         auto sym_name_with_prefix_std_str = link_prefix + std_str(sym_name);
         nkstr sym_name_with_prefix{
             sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
 
-        DEFINE(fn_t_val, comptimeCompileNodeGetValue(c, n_def.data->args[1].data));
+        DEFINE(fn_t_val, comptimeCompileNodeGetValue(c, narg1(n_def)));
         auto fn_t = nkval_as(nktype_t, fn_t_val);
 
         CHECK(defineExtSym(
             c, s2nkid(sym_name), nkir_makeExtSym(c->ir, so, sym_name_with_prefix, fn_t), fn_t));
     } else if (tag_name == "#extern") {
-        CHECK(compileComptimeConstDef(c, n_def.data, [=]() -> ComptimeConst {
-            auto const n_def_id = n_def.data->args[1].data->id;
+        CHECK(compileComptimeConstDef(c, n_def, [=]() -> ComptimeConst {
+            auto const n_def_id = narg1(n_def)->id;
             if (n_def_id != n_fn && n_def_id != n_fn_var) {
                 return error(c, "function expected in #extern"), ComptimeConst{};
             }
             bool const is_variadic = n_def_id == n_fn_var;
-            DEFINE(
-                fn_val,
-                asValue(c, compileFn(c, n_def.data->args[1].data, is_variadic, NkCallConv_Cdecl)));
+            DEFINE(fn_val, asValue(c, compileFn(c, narg1(n_def), is_variadic, NkCallConv_Cdecl)));
             return makeValueComptimeConst(fn_val);
         }));
     } else {
@@ -1256,15 +1254,15 @@ COMPILE(tag) {
 }
 
 COMPILE(call) {
-    DEFINE(lhs, compile(c, node->args[0].data));
+    DEFINE(lhs, compile(c, narg0(node)));
 
     std::vector<ValueInfo> args_info{};
     std::vector<nktype_t> args_types{};
 
-    auto nodes = node->args[1];
+    auto nodes = nargs1(node);
     for (size_t i = 0; i < nodes.size; i++) {
         // TODO Support named args in call
-        DEFINE(val_info, compile(c, nodes.data[i].args[1].data));
+        DEFINE(val_info, compile(c, narg1(&nodes.data[i])));
         args_info.emplace_back(val_info);
         args_types.emplace_back(val_info.type);
     }
@@ -1359,7 +1357,7 @@ void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
 COMPILE(object_literal) {
     // TODO Optimize object literal
 
-    DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[0].data));
+    DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
 
     // TODO Modeling type_t as *void
     if (nkval_typeclassid(type_val) != NkType_Ptr ||
@@ -1372,14 +1370,14 @@ COMPILE(object_literal) {
     nkval_t val{nk_allocate(c->arena, type->size), type};
     std::memset(nkval_data(val), 0, nkval_sizeof(val));
 
-    auto init_nodes = node->args[1];
+    auto init_nodes = nargs1(node);
 
     // TODO Ingnoreing named args in object literal, and copying values to a sperate array
     std::vector<NklAstNode_T> nodes;
     nodes.reserve(init_nodes.size);
 
     for (size_t i = 0; i < init_nodes.size; i++) {
-        nodes.emplace_back(init_nodes.data[i].args[1].data[0]);
+        nodes.emplace_back(narg1(&init_nodes.data[i])[0]);
     }
 
     CHECK(initFromAst(c, val, {nodes.data(), nodes.size()}));
@@ -1391,19 +1389,19 @@ COMPILE(assign) {
     if (node->args->size > 1) {
         NK_LOG_WRN("TODO multiple assignment is not supported");
     }
-    DEFINE(lhs_ref, getLvalueRef(c, node->args[0].data));
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(lhs_ref, getLvalueRef(c, narg0(node)));
+    DEFINE(rhs, compile(c, narg1(node)));
     return store(c, lhs_ref, rhs);
 }
 
 COMPILE(define) {
     // TODO Shadowing is not allowed
-    auto const &names = node->args[0];
+    auto const &names = nargs0(node);
     if (names.size > 1) {
         return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
     nkid name = s2nkid(names.data[0].token->text);
-    DEFINE(rhs, compile(c, node->args[1].data));
+    DEFINE(rhs, compile(c, narg1(node)));
     NkIrRef ref;
     if (curScope(c).is_top_level) {
         auto var = nkir_makeGlobalVar(c->ir, rhs.type);
@@ -1420,17 +1418,17 @@ COMPILE(define) {
 
 COMPILE(comptime_const_def) {
     return compileComptimeConstDef(c, node, [=]() {
-        return comptimeCompileNode(c, node->args[1].data);
+        return comptimeCompileNode(c, narg1(node));
     });
 }
 
 COMPILE(var_decl) {
-    auto const &names = node->args[0];
+    auto const &names = nargs0(node);
     if (names.size > 1) {
         return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
     nkid name = s2nkid(names.data[0].token->text);
-    DEFINE(type_val, comptimeCompileNodeGetValue(c, node->args[1].data));
+    DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(node)));
     auto type = nkval_as(nktype_t, type_val);
     NkIrRef ref;
     if (curScope(c).is_top_level) {
@@ -1442,8 +1440,8 @@ COMPILE(var_decl) {
         CHECK(defineLocal(c, name, var, type));
         ref = nkir_makeFrameRef(c->ir, var);
     }
-    if (node->args[2].data && node->args[2].data->id) {
-        DEFINE(val, compile(c, node->args[2].data));
+    if (narg2(node) && narg2(node)->id) {
+        DEFINE(val, compile(c, narg2(node)));
         store(c, ref, val);
     }
     return makeVoid();

@@ -47,6 +47,14 @@ NK_EXPORT NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
 
 NK_EXPORT void nkl_inspectNode(NklAstNode root, NkStringBuilder sb);
 
+#define nargs0(NODE) ((NODE)->args[0])
+#define nargs1(NODE) ((NODE)->args[1])
+#define nargs2(NODE) ((NODE)->args[2])
+
+#define narg0(NODE) (nargs0(NODE).data)
+#define narg1(NODE) (nargs1(NODE).data)
+#define narg2(NODE) (nargs2(NODE).data)
+
 #ifdef __cplusplus
 }
 #endif
