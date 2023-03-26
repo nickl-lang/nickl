@@ -550,24 +550,14 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             auto u64_t = nkl_get_numeric(Uint64);
             auto u8_t = nkl_get_numeric(Uint8);
             auto u8_ptr_t = nkl_get_ptr(u8_t);
-            ref = asRef(
-                c,
-                makeInstr(
-                    nkir_make_add(
-                        {},
-                        asRef(c, makeInstr(nkir_make_lea({}, ref), u8_ptr_t)),
-                        asRef(
-                            c,
-                            makeInstr(
-                                nkir_make_mul(
-                                    {},
-                                    asRef(c, index),
-                                    asRef(
-                                        c,
-                                        makeValue<uint64_t>(
-                                            c, u64_t, type->as.arr.elem_type->size))),
-                                u64_t))),
-                    nkl_get_ptr(type->as.arr.elem_type)));
+            auto ar_ref = asRef(c, makeInstr(nkir_make_lea({}, ref), u8_ptr_t));
+            auto mul = nkir_make_mul(
+                {},
+                asRef(c, index),
+                asRef(c, makeValue<uint64_t>(c, u64_t, type->as.arr.elem_type->size)));
+            auto offset_ref = asRef(c, makeInstr(mul, u64_t));
+            auto add = nkir_make_add({}, ar_ref, offset_ref);
+            ref = asRef(c, makeInstr(add, nkl_get_ptr(type->as.arr.elem_type)));
             ref.is_indirect = true;
             ref.type = type->as.arr.elem_type;
         } else if (type->tclass == NkType_Tuple) {
@@ -583,24 +573,13 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             auto elem_ptr_t = type->as.tuple.elems.data[0].type;
             auto target_type = elem_ptr_t->as.ptr.target_type;
             ref.type = elem_ptr_t;
-            ref = asRef(
-                c,
-                makeInstr(
-                    nkir_make_add(
-                        {},
-                        ref,
-                        asRef(
-                            c,
-                            makeInstr(
-                                nkir_make_mul(
-                                    {},
-                                    asRef(c, index),
-                                    asRef(
-                                        c,
-                                        makeValue<uint64_t>(
-                                            c, u64_t, type->as.arr.elem_type->size))),
-                                u64_t))),
-                    elem_ptr_t));
+            auto mul = nkir_make_mul(
+                {},
+                asRef(c, index),
+                asRef(c, makeValue<uint64_t>(c, u64_t, type->as.arr.elem_type->size)));
+            auto offset_ref = asRef(c, makeInstr(mul, u64_t));
+            auto add = nkir_make_add({}, ref, offset_ref);
+            ref = asRef(c, makeInstr(add, elem_ptr_t));
             ref.is_indirect = true;
             ref.type = target_type;
         } else {
