@@ -1,4 +1,4 @@
-runRaylib :: () -> i32 {
+runRaylib :: () -> i64 {
     import raylib;
 
     SCREEN_WIDTH  :: 800;

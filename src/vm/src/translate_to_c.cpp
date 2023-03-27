@@ -65,6 +65,44 @@ void _writePreabmle(std::ostream &src) {
     src << "#include <stdint.h>\n\n";
 }
 
+void _writeNumericType(NkNumericValueType value_type, std::ostream &src) {
+    switch (value_type) {
+    case Int8:
+        src << "char";
+        break;
+    case Int16:
+        src << "int16_t";
+        break;
+    case Int32:
+        src << "int32_t";
+        break;
+    case Int64:
+        src << "int64_t";
+        break;
+    case Uint8:
+        src << "uint8_t";
+        break;
+    case Uint16:
+        src << "uint16_t";
+        break;
+    case Uint32:
+        src << "uint32_t";
+        break;
+    case Uint64:
+        src << "uint64_t";
+        break;
+    case Float32:
+        src << "float";
+        break;
+    case Float64:
+        src << "double";
+        break;
+    default:
+        assert(!"unreachable");
+        break;
+    }
+}
+
 void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
     auto found_str = ctx.type_map.find(type);
     if (found_str != ctx.type_map.end()) {
@@ -78,41 +116,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
 
     switch (type->tclass) {
     case NkType_Numeric:
-        switch (type->as.num.value_type) {
-        case Int8:
-            tmp_s << "char";
-            break;
-        case Int16:
-            tmp_s << "int16_t";
-            break;
-        case Int32:
-            tmp_s << "int32_t";
-            break;
-        case Int64:
-            tmp_s << "int64_t";
-            break;
-        case Uint8:
-            tmp_s << "uint8_t";
-            break;
-        case Uint16:
-            tmp_s << "uint16_t";
-            break;
-        case Uint32:
-            tmp_s << "uint32_t";
-            break;
-        case Uint64:
-            tmp_s << "uint64_t";
-            break;
-        case Float32:
-            tmp_s << "float";
-            break;
-        case Float64:
-            tmp_s << "double";
-            break;
-        default:
-            assert(!"unreachable");
-            break;
-        }
+        _writeNumericType(type->as.num.value_type, tmp_s);
         break;
     case NkType_Ptr:
         _writeType(ctx, type->as.ptr.target_type, tmp_s);
@@ -519,9 +523,11 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
                 break;
             case nkir_cast:
+                assert(
+                    instr.arg[1].arg_type == NkIrArg_NumValType &&
+                    "numeric value type expected in cast");
                 src << "(";
-                assert(instr.arg[1].ref.ref_type == NkIrRef_Const && "type must be known for cast");
-                _writeType(ctx, *(nktype_t *)instr.arg[1].ref.data, src);
+                _writeNumericType((NkNumericValueType)instr.arg[1].id, src);
                 src << ")";
                 _writeRef(instr.arg[2].ref);
                 break;

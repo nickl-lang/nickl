@@ -99,9 +99,9 @@ main :: () -> i32 {
     prev_ts := getTimestamp();
 
     while s_quit != true {
-        c: u8 = 0;
+        c: u8;
 
-        c = std.getchar();
+        c = cast(u8) std.getchar();
 
         if      c ==  "q".*[0] s_quit = true;
         else if c ==  "w".*[0] s_cursor_x = pmod(s_cursor_x - 1, ROWS);
@@ -157,7 +157,7 @@ main :: () -> i32 {
 
     std.system("stty icanon echo");
 
-    return 0;
+    return i32{0};
 }
 
 import compiler;
