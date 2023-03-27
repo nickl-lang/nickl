@@ -27,7 +27,8 @@ typedef enum { // must preserve NkIrRefType order
     NkBcRef_Ret,
     NkBcRef_Reg,
 
-    NkBcRef_Abs,
+    NkBcRef_Rodata,
+    NkBcRef_Data,
     NkBcRef_Instr,
 
     NkBcRef_Count,

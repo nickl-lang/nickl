@@ -52,17 +52,20 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
         case NkBcRef_Reg:
             nksb_printf(sb, "reg+");
             break;
+        case NkBcRef_Rodata:
+            nkval_inspect({(void *)arg.offset, arg.type}, sb);
+            break;
+        case NkBcRef_Data:
+            nksb_printf(sb, "data+");
+            break;
         case NkBcRef_Instr:
             nksb_printf(sb, "instr+");
-            break;
-        case NkBcRef_Abs:
-            nkval_inspect({(void *)arg.offset, arg.type}, sb); // TODO Separate Const and Abs refs
             break;
         default:
             assert(!"unreachable");
             break;
         }
-        if (arg.ref_type != NkBcRef_Abs) {
+        if (arg.ref_type != NkBcRef_Rodata) {
             nksb_printf(sb, "%zx", arg.offset);
         }
         if (arg.is_indirect) {
@@ -162,7 +165,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case NkIrRef_Ret:
                 break;
             case NkIrRef_Global: {
-                arg.ref_type = NkBcRef_Abs;
+                arg.ref_type = NkBcRef_Data;
                 if (ref.index >= p->globals.size()) {
                     p->globals.resize(ref.index + 1, {});
                 }
@@ -175,7 +178,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 break;
             }
             case NkIrRef_Const:
-                arg.ref_type = NkBcRef_Abs;
+                arg.ref_type = NkBcRef_Rodata;
                 arg.offset = (size_t)ref.data;
                 if (ref.type->tclass == NkType_Fn && ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
@@ -194,7 +197,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.offset += ref.index * REG_SIZE;
                 break;
             case NkIrRef_ExtSym: {
-                arg.ref_type = NkBcRef_Abs;
+                arg.ref_type = NkBcRef_Rodata;
                 auto const &exsym = ir.exsyms[ref.index];
                 if (exsym.so_id.id >= p->shobjs.size()) {
                     p->shobjs.resize(exsym.so_id.id + 1, {});
@@ -211,7 +214,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             }
             case NkIrRef_Funct: {
                 referenced_functs.emplace_back((NkIrFunct)ref.data);
-                arg.ref_type = NkBcRef_Abs;
+                arg.ref_type = NkBcRef_Rodata;
                 auto fn_t = ref.type;
                 if (fn_t->tclass == NkType_Tuple && fn_t->as.tuple.elems.size == 1) {
                     fn_t = fn_t->as.tuple.elems.data[0].type;
