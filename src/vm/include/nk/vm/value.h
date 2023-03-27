@@ -59,6 +59,7 @@ typedef enum {
 
 #define NUM_TYPE_SIZE(value_type) (0xf & (value_type))
 #define NUM_TYPE_INDEX(value_type) ((0xf0 & (value_type)) >> 4)
+#define NUM_TYPE_COUNT 10
 
 typedef struct {
     NkNumericValueType value_type;

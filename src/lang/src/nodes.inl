@@ -45,12 +45,12 @@ N(void)
 // U(uminus)
 // U(uplus)
 
-U(addr) // (expr: node)
+U(addr)  // (expr: node)
 U(deref) // (ptr: node)
 
 // U(defer_stmt) // (expr: node)
 
-U(return ) // (expr: node)
+U(return) // (expr: node)
 
 U(ptr_type) // (target_type: node)
 U(const_ptr_type)
@@ -100,9 +100,9 @@ B(ne)
 // B(rsh_assign)
 
 B(array_type) // (type: node, count: node)
-// B(cast)       // (target_type: node, expr: node)
+B(cast)       // (target_type: node, expr: node)
 B(index)      // (lhs: node, index: node)
-B(while) // (cond: node, body: node)
+B(while)      // (cond: node, body: node)
 
 #undef B
 

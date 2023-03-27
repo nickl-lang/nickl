@@ -25,8 +25,34 @@ XE(jmpnz, 16)
 XE(jmpnz, 32)
 XE(jmpnz, 64)
 
-//@Todo Implement extensions for cast
 X(cast)
+
+#ifndef CAST_X
+#define CAST_X(TO)        \
+    XE(cast, i8_to_##TO)  \
+    XE(cast, u8_to_##TO)  \
+    XE(cast, i16_to_##TO) \
+    XE(cast, u16_to_##TO) \
+    XE(cast, i32_to_##TO) \
+    XE(cast, u32_to_##TO) \
+    XE(cast, i64_to_##TO) \
+    XE(cast, u64_to_##TO) \
+    XE(cast, f32_to_##TO) \
+    XE(cast, f64_to_##TO)
+#endif
+
+CAST_X(i8)
+CAST_X(u8)
+CAST_X(i16)
+CAST_X(u16)
+CAST_X(i32)
+CAST_X(u32)
+CAST_X(i64)
+CAST_X(u64)
+CAST_X(f32)
+CAST_X(f64)
+
+#undef CAST_X
 
 X(call)
 XE(call, jmp)

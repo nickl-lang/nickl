@@ -969,6 +969,24 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_array(type, size));
     }
 
+    case n_cast: {
+        DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
+        // TODO Modeling type_t as *void
+        if (nkval_typeclassid(type_val) != NkType_Ptr ||
+            nkval_typeof(type_val)->as.ptr.target_type->tclass != NkType_Void) {
+            return error(c, "type expected in cast"), ValueInfo{};
+        }
+        auto type = nkval_as(nktype_t, type_val);
+        DEFINE(arg, compile(c, narg1(node)));
+        if (type->tclass != NkType_Numeric) {
+            return error(c, "can only cast to numeric type"), ValueInfo{};
+        }
+        if (arg.type->tclass != NkType_Numeric) {
+            return error(c, "can only cast numeric values"), ValueInfo{};
+        }
+        return makeInstr(nkir_make_cast({}, type, asRef(c, arg)), type);
+    }
+
     case n_index: {
         DEFINE(arg, getLvalueRef(c, node));
         return makeRef(arg);

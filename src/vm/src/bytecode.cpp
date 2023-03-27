@@ -293,6 +293,13 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                     code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 }
                 break;
+
+            case nkir_cast:
+                assert(arg1.arg_type == NkIrArg_NumValType);
+                assert(ir_instr.arg[2].ref.type->tclass == NkType_Numeric);
+                code += 1 + NUM_TYPE_INDEX(arg1.id) * NUM_TYPE_COUNT +
+                        NUM_TYPE_INDEX(ir_instr.arg[2].ref.type->as.num.value_type);
+                break;
             }
 
             auto &instr = instrs.emplace_back();

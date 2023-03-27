@@ -229,25 +229,41 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_cast: {
-        assert(!"cast not implemented");
-
-        // TODO auto dst = _getDynRef(instr.arg[0]);
-        // auto type = _getDynRef(instr.arg[1]);
-        // auto arg = _getDynRef(instr.arg[2]);
-
-        // assert(nkval_typeclassid(dst) == NkType_Numeric);
-        // assert(nkval_typeclassid(type) == Type_Ptr);
-        // assert(nkval_typeid(dst) == nkval_as(type_t, type)->id);
-        // assert(nkval_typeclassid(arg) == NkType_Numeric);
-
-        // val_numeric_visit(dst, [&](auto &dst_val) {
-        //     using T = std::decay_t<decltype(dst_val)>;
-        //     val_numeric_visit(arg, [&](auto arg_val) {
-        //         dst_val = static_cast<T>(arg_val);
-        //     });
-        // });
+        assert(!"generic cast not implemented");
         break;
     }
+
+#define _CAST(FROM_NAME, FROM_TYPE, TO_NAME, TO_TYPE)                               \
+    case CAT(CAT(CAT(nkop_cast_, FROM_NAME), _to_), TO_NAME): {                     \
+        _getRef<TO_TYPE>(instr.arg[0]) = (TO_TYPE)_getRef<FROM_TYPE>(instr.arg[2]); \
+        break;                                                                      \
+    }
+
+#define CAST(TO_NAME, TO_TYPE)             \
+    _CAST(i8, int8_t, TO_NAME, TO_TYPE)    \
+    _CAST(u8, uint8_t, TO_NAME, TO_TYPE)   \
+    _CAST(i16, int16_t, TO_NAME, TO_TYPE)  \
+    _CAST(u16, uint16_t, TO_NAME, TO_TYPE) \
+    _CAST(i32, int32_t, TO_NAME, TO_TYPE)  \
+    _CAST(u32, uint32_t, TO_NAME, TO_TYPE) \
+    _CAST(i64, int64_t, TO_NAME, TO_TYPE)  \
+    _CAST(u64, uint64_t, TO_NAME, TO_TYPE) \
+    _CAST(f32, float, TO_NAME, TO_TYPE)    \
+    _CAST(f64, double, TO_NAME, TO_TYPE)
+
+        CAST(i8, int8_t)
+        CAST(u8, uint8_t)
+        CAST(i16, int16_t)
+        CAST(u16, uint16_t)
+        CAST(i32, int32_t)
+        CAST(u32, uint32_t)
+        CAST(i64, int64_t)
+        CAST(u64, uint64_t)
+        CAST(f32, float)
+        CAST(f64, double)
+
+#undef CAST
+#undef _CAST
 
     case nkop_call: {
         auto ret = _getValRef(instr.arg[0]);
@@ -469,6 +485,14 @@ void interp(NkBcInstr const &instr) {
         NUM_BIN_OP(gt, >)
         NUM_BIN_OP(le, <=)
         NUM_BIN_OP(lt, <)
+
+#undef NUM_BIN_OP
+#undef NUM_BIN_OP_INT
+#undef _NUM_BIN_OP_EXT
+
+    default:
+        assert(!"unknown opcode");
+        break;
     }
 }
 
