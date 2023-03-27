@@ -50,6 +50,13 @@ void pushVal(ByteArray &ar, T v) {
 
 } // namespace
 
+void nkl_types_clean() {
+    std::lock_guard lk{s_mutex};
+
+    s_types.clear();
+    s_typemap.clear();
+}
+
 nktype_t nkl_get_array(nktype_t elem_type, size_t elem_count) {
     auto const tclass = NkType_Array;
 

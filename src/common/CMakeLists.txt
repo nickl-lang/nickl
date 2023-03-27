@@ -24,6 +24,9 @@ endif()
 
 install(TARGETS nk_logger)
 
+# TODO Fixing id visibility
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default")
+
 add_library(nk_common
     src/allocator.cpp
     src/id.cpp

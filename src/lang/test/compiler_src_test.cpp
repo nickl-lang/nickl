@@ -11,6 +11,7 @@
 #include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
+#include "nkl/lang/types.h"
 
 namespace {
 
@@ -26,6 +27,8 @@ class compiler_src : public testing::Test {
 
     void TearDown() override {
         nkl_compiler_free(m_compiler);
+
+        nkl_types_clean();
     }
 
 protected:

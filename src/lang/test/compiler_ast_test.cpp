@@ -10,6 +10,7 @@
 #include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
+#include "nkl/lang/types.h"
 
 namespace {
 
@@ -29,6 +30,8 @@ class compiler_ast : public testing::Test {
         nk_free_arena(m_arena);
         nkl_compiler_free(m_compiler);
         nkl_ast_free(m_ast);
+
+        nkl_types_clean();
     }
 
 protected:
