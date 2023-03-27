@@ -447,12 +447,33 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
 }
 
 ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
+    // TODO Not complaining about different types in store, while we don't have type casts
+    // if (dst.type != val.type) {
+    //     // TODO A little clumsy error printing in store
+    //     auto dst_sb = nksb_create();
+    //     auto val_sb = nksb_create();
+    //     defer {
+    //         nksb_free(dst_sb);
+    //         nksb_free(val_sb);
+    //     };
+    //     nkt_inspect(dst.type, dst_sb);
+    //     nkt_inspect(val.type, val_sb);
+    //     auto dst_type_str = nksb_concat(dst_sb);
+    //     auto val_type_str = nksb_concat(val_sb);
+    //     return error(
+    //                c,
+    //                "cannot store value of type `%.*s` into a slot of type `%.*s`",
+    //                val_type_str.size,
+    //                val_type_str.data,
+    //                dst_type_str.size,
+    //                dst_type_str.data),
+    //            ValueInfo{};
+    // }
     if (val.type->tclass != NkType_Void) {
         if (val.kind == v_instr && val.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
             val.as.instr.arg[0].ref = dst;
         } else {
-            gen(c, nkir_make_mov(dst, asRef(c, val)));
-            return makeRef(dst);
+            val = makeInstr(nkir_make_mov(dst, asRef(c, val)), dst.type);
         }
     }
     return makeRef(asRef(c, val));
@@ -868,7 +889,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_return: {
         if (nargs0(node).size) {
             DEFINE(arg, compile(c, narg0(node))); // TODO ignoring multiple return values
-            store(c, nkir_makeRetRef(c->ir), arg);
+            CHECK(store(c, nkir_makeRetRef(c->ir), arg));
         }
         gen(c, nkir_make_ret());
         return makeVoid();
@@ -1241,7 +1262,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             auto arg_ref = args;
             arg_ref.offset += args_t->as.tuple.elems.data[i].offset;
             arg_ref.type = args_t->as.tuple.elems.data[i].type;
-            store(c, arg_ref, args_info[i]);
+            CHECK(store(c, arg_ref, args_info[i]));
         }
 
         return makeInstr(nkir_make_call({}, asRef(c, lhs), args), fn_t->as.fn.ret_t);
@@ -1284,7 +1305,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
         DEFINE(lhs_ref, getLvalueRef(c, narg0(node)));
         DEFINE(rhs, compile(c, narg1(node)));
-        return store(c, lhs_ref, rhs);
+        DEFINE(ref, store(c, lhs_ref, rhs));
+        return ref;
     }
 
     case n_define: {
@@ -1305,7 +1327,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             CHECK(defineLocal(c, name, var, rhs.type));
             ref = nkir_makeFrameRef(c->ir, var);
         }
-        store(c, ref, rhs);
+        CHECK(store(c, ref, rhs));
         return makeVoid();
     }
 
@@ -1335,7 +1357,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
         if (narg2(node) && narg2(node)->id) {
             DEFINE(val, compile(c, narg2(node)));
-            store(c, ref, val);
+            CHECK(store(c, ref, val));
         }
         return makeVoid();
     }
@@ -1371,7 +1393,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
 
         cnst = makeValueComptimeConst(asValue(c, cnst_val));
     } else {
-        store(c, nkir_makeRetRef(c->ir), cnst_val);
+        CHECK(store(c, nkir_makeRetRef(c->ir), cnst_val));
         gen(c, nkir_make_ret());
 
         cnst = makeFunctComptimeConst(fn);
