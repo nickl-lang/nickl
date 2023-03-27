@@ -43,7 +43,7 @@ main :: () -> i32 {
     ${ exec("Compile time threads!"); }
     exec("Run time threads!");
 
-    return 0;
+    return i32{0};
 }
 
 import compiler;

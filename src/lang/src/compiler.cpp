@@ -380,7 +380,7 @@ bool isKnown(ValueInfo const &val) {
 }
 
 nkval_t asValue(NklCompiler c, ValueInfo const &val) {
-    assert(isKnown(val) && "getting unknown value ");
+    assert(isKnown(val) && "getting unknown value");
     if (val.kind == v_val) {
         return {val.as.val, val.type};
     } else {
@@ -447,28 +447,28 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
 }
 
 ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
-    // TODO Not complaining about different types in store, while we don't have type casts
-    // if (dst.type != val.type) {
-    //     // TODO A little clumsy error printing in store
-    //     auto dst_sb = nksb_create();
-    //     auto val_sb = nksb_create();
-    //     defer {
-    //         nksb_free(dst_sb);
-    //         nksb_free(val_sb);
-    //     };
-    //     nkt_inspect(dst.type, dst_sb);
-    //     nkt_inspect(val.type, val_sb);
-    //     auto dst_type_str = nksb_concat(dst_sb);
-    //     auto val_type_str = nksb_concat(val_sb);
-    //     return error(
-    //                c,
-    //                "cannot store value of type `%.*s` into a slot of type `%.*s`",
-    //                val_type_str.size,
-    //                val_type_str.data,
-    //                dst_type_str.size,
-    //                dst_type_str.data),
-    //            ValueInfo{};
-    // }
+    if ((dst.type->tclass != NkType_Ptr || val.type->tclass != NkType_Ptr) &&
+        dst.type != val.type) {
+        // TODO A little clumsy error printing in store
+        auto dst_sb = nksb_create();
+        auto val_sb = nksb_create();
+        defer {
+            nksb_free(dst_sb);
+            nksb_free(val_sb);
+        };
+        nkt_inspect(dst.type, dst_sb);
+        nkt_inspect(val.type, val_sb);
+        auto dst_type_str = nksb_concat(dst_sb);
+        auto val_type_str = nksb_concat(val_sb);
+        return error(
+                   c,
+                   "cannot store value of type `%.*s` into a slot of type `%.*s`",
+                   val_type_str.size,
+                   val_type_str.data,
+                   dst_type_str.size,
+                   dst_type_str.data),
+               ValueInfo{};
+    }
     if (val.type->tclass != NkType_Void) {
         if (val.kind == v_instr && val.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
             val.as.instr.arg[0].ref = dst;
@@ -1243,8 +1243,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
                     return error(c, "function expected in #extern"), ComptimeConst{};
                 }
                 bool const is_variadic = n_def_id == n_fn_var;
-                DEFINE(
-                    fn_val, asValue(c, compileFn(c, narg1(n_def), is_variadic, NkCallConv_Cdecl)));
+                DEFINE(fn_info, compileFn(c, narg1(n_def), is_variadic, NkCallConv_Cdecl));
+                DEFINE(fn_val, asValue(c, fn_info));
                 return makeValueComptimeConst(fn_val);
             }));
         } else {
@@ -1785,6 +1785,11 @@ bool nkl_compiler_runSrc(NklCompiler c, nkstr src) {
     s_compiler = c;
     defer {
         s_compiler = prev_compiler;
+    };
+
+    c->file_stack.emplace("<anonymous>");
+    defer {
+        c->file_stack.pop();
     };
 
     DEFINE(fn, nkl_compileSrc(c, src));

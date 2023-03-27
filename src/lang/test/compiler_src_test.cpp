@@ -74,7 +74,7 @@ TEST_F(compiler_src, comptime_const_getter) {
 counter := 0;
 getVal :: () -> u32 {
     counter = counter + 1;
-    return 42;
+    return u32{42};
 }
 val :: getVal();
 val;

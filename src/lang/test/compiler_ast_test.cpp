@@ -155,7 +155,8 @@ TEST_F(compiler_ast, comptime_const_getter) {
                 _("block",
                   _({
                       _("assign", _("id", "counter"), _("add", _("id", "counter"), _("int", "1"))),
-                      _("return", _("int", "42")),
+                      _("return",
+                        _("object_literal", _("u32", "u32"), _("arg", {}, _("int", "42")))),
                   })))),
             _("comptime_const_def", _("id", "val"), _("call", _("id", "getVal"), _({}))),
             _("id", "val"),
