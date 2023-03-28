@@ -6,11 +6,6 @@ ar[0] = 4;
 ar[1] = 5;
 ar[2] = 6;
 
-slice: []i64;
+slice: []i64 = &ar;
 
-// TODO Initializing slice manually
-slice[0] = &ar;
-slice[1] = 3;
-
-std.printf("%p\n", &ar);
-std.printf("%p %li\n", slice[0], slice[1]);
+std.printf("%li %li %li\n", slice[0], slice[1], slice[2]);

@@ -447,6 +447,27 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
 }
 
 ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
+    // TODO accessing slice info as tuple
+    // TODO Comparing types by ptr
+    if (dst.type->tclass == NklType_Slice && val.type->tclass == NkType_Ptr &&
+        val.type->as.ptr.target_type->tclass == NkType_Array &&
+        dst.type->as.tuple.elems.data[0].type->as.ptr.target_type ==
+            val.type->as.ptr.target_type->as.arr.elem_type) {
+        auto const elem_ptr_t = dst.type->as.tuple.elems.data[0].type;
+        auto const u64_t = dst.type->as.tuple.elems.data[1].type;
+        auto ptr_ref = dst;
+        ptr_ref.type = elem_ptr_t;
+        auto size_ref = dst;
+        size_ref.type = u64_t;
+        size_ref.post_offset += elem_ptr_t->size;
+        store(c, ptr_ref, val);
+        store(
+            c,
+            size_ref,
+            makeValue<uint64_t>(c, u64_t, val.type->as.ptr.target_type->as.arr.elem_count));
+        return makeRef(dst);
+    }
+    // TODO Comparing types by ptr
     if ((dst.type->tclass != NkType_Ptr || val.type->tclass != NkType_Ptr) &&
         dst.type != val.type) {
         // TODO A little clumsy error printing in store
@@ -536,7 +557,7 @@ IndexResult calcTupleIndex(NklCompiler c, nktype_t type, size_t index) {
 }
 
 NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
-    if (node->id == cs2nkid("id")) {
+    if (node->id == n_id) {
         auto const name = node->token->text;
         auto const res = resolve(c, s2nkid(name));
         switch (res.kind) {
@@ -555,7 +576,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             assert(!"unreachable");
             return {};
         }
-    } else if (node->id == cs2nkid("index")) {
+    } else if (node->id == n_index) {
         auto const lhs_ref = asRef(c, compile(c, narg0(node)));
         auto const type = lhs_ref.type;
         auto const index = compile(c, narg1(node));
@@ -592,18 +613,16 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             auto const u64_t = nkl_get_numeric(Uint64);
             // TODO Accessing slice info as tuple
             auto const elem_ptr_t = type->as.tuple.elems.data[0].type;
-            auto const target_type = elem_ptr_t->as.ptr.target_type;
+            auto const elem_t = elem_ptr_t->as.ptr.target_type;
             auto data_ref = lhs_ref;
             data_ref.type = elem_ptr_t;
             auto const mul = nkir_make_mul(
-                {},
-                asRef(c, index),
-                asRef(c, makeValue<uint64_t>(c, u64_t, type->as.arr.elem_type->size)));
+                {}, asRef(c, index), asRef(c, makeValue<uint64_t>(c, u64_t, elem_t->size)));
             auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
             auto const add = nkir_make_add({}, data_ref, offset_ref);
             auto ref = asRef(c, makeInstr(add, elem_ptr_t));
             ref.is_indirect = true;
-            ref.type = target_type;
+            ref.type = elem_t;
             return ref;
         } else {
             auto sb = nksb_create();
@@ -615,7 +634,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             return error(c, "type `%.*s` is not indexable", type_str.size, type_str.data),
                    NkIrRef{};
         }
-    } else if (node->id == cs2nkid("deref")) {
+    } else if (node->id == n_deref) {
         auto const arg = compile(c, narg0(node));
         if (arg.type->tclass != NkType_Ptr) {
             return error(c, "pointer expected in dereference"), NkIrRef{};
@@ -764,7 +783,7 @@ void initFromAst(NklCompiler c, nkval_t val, NklAstNodeArray init_nodes) {
             return error(c, "too many values to init numeric");
         }
         auto const &node = init_nodes.data[0];
-        if (node.id != cs2nkid("int") && node.id != cs2nkid("float")) {
+        if (node.id != n_int && node.id != n_float) {
             return error(c, "invalid value to init numeric");
         }
         auto str = std_str(node.token->text);

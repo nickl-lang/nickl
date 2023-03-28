@@ -29,14 +29,13 @@ nktype_t getTypeByFingerprint(ByteArray fp, nk_typeclassid_t tclass, F const &cr
     EASY_FUNCTION(); // TODO Choose color
     NK_LOG_TRC(__func__);
 
-    (void)tclass; // TODO Unused while we don't extend the actual vm type struct
-
     std::lock_guard lk{s_mutex};
 
     auto it = s_typemap.find(fp);
     if (it == s_typemap.end()) {
         bool inserted = false;
         auto type = &s_types.emplace_back(create_vm_type());
+        type->tclass = tclass;
         std::tie(it, inserted) = s_typemap.emplace(std::move(fp), type);
         assert(inserted && "type duplication");
     }
