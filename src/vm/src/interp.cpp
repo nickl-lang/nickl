@@ -162,11 +162,6 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
-    case nkop_jmpz: {
-        assert(!"not implemented");
-        break;
-    }
-
     case nkop_jmpz_8: {
         if (!_getRef<uint8_t>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
@@ -195,11 +190,6 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
-    case nkop_jmpnz: {
-        assert(!"not implemented");
-        break;
-    }
-
     case nkop_jmpnz_8: {
         if (_getRef<uint8_t>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
@@ -225,11 +215,6 @@ void interp(NkBcInstr const &instr) {
         if (_getRef<uint64_t>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
-        break;
-    }
-
-    case nkop_cast: {
-        assert(!"generic cast not implemented");
         break;
     }
 
@@ -316,24 +301,12 @@ void interp(NkBcInstr const &instr) {
         break;                                                          \
     }
 
-#define NUM_UN_OP(NAME, OP)                          \
-    case CAT(nkop_, NAME): {                         \
-        assert(!"generic un op is not implemented"); \
-        break;                                       \
-    }                                                \
-        NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
+#define NUM_UN_OP(NAME, OP) NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
+#define NUM_UN_OP_INT(NAME, OP) NUMERIC_ITERATE_INT(NUM_UN_OP_IT, NAME, OP)
 
-#define NUM_UN_OP_INT(NAME, OP)                      \
-    case CAT(nkop_, NAME): {                         \
-        assert(!"generic un op is not implemented"); \
-        break;                                       \
-    }                                                \
-        NUMERIC_ITERATE_INT(NUM_UN_OP_IT, NAME, OP)
-
+        NUM_UN_OP(not, not )
+        NUM_UN_OP_INT(compl, compl )
         NUM_UN_OP(neg, -)
-        NUM_UN_OP(not, !)
-
-        NUM_UN_OP_INT(compl, ~)
 
 #undef NUM_UN_OP
 #undef NUM_UN_OP_INT
@@ -427,26 +400,9 @@ void interp(NkBcInstr const &instr) {
         break;                                                            \
     }
 
-#define NUM_BIN_OP(NAME, OP)                          \
-    case CAT(nkop_, NAME): {                          \
-        assert(!"generic bin op is not implemented"); \
-        break;                                        \
-    }                                                 \
-        NUMERIC_ITERATE(NUM_BIN_OP_IT, NAME, OP)
-
-#define NUM_BIN_BOOL_OP(NAME, OP)                          \
-    case CAT(nkop_, NAME): {                               \
-        assert(!"generic bin bool op is not implemented"); \
-        break;                                             \
-    }                                                      \
-        NUMERIC_ITERATE(NUM_BIN_BOOL_OP_IT, NAME, OP)
-
-#define NUM_BIN_OP_INT(NAME, OP)                      \
-    case CAT(nkop_, NAME): {                          \
-        assert(!"generic bin op is not implemented"); \
-        break;                                        \
-    }                                                 \
-        NUMERIC_ITERATE_INT(NUM_BIN_OP_IT, NAME, OP)
+#define NUM_BIN_OP(NAME, OP) NUMERIC_ITERATE(NUM_BIN_OP_IT, NAME, OP)
+#define NUM_BIN_BOOL_OP(NAME, OP) NUMERIC_ITERATE(NUM_BIN_BOOL_OP_IT, NAME, OP)
+#define NUM_BIN_OP_INT(NAME, OP) NUMERIC_ITERATE_INT(NUM_BIN_OP_IT, NAME, OP)
 
         NUM_BIN_OP(add, +)
         NUM_BIN_OP(sub, -)
