@@ -560,150 +560,51 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << "&";
                 _writeRef(instr.arg[1].ref);
                 break;
-            case nkir_neg:
-                src << "(";
-                src << "-";
-                _writeRef(instr.arg[1].ref);
-                src << ")";
-                break;
-            case nkir_compl:
-                src << "(";
-                src << "~";
-                _writeRef(instr.arg[1].ref);
-                src << ")";
-                break;
-            case nkir_not:
-                src << "(";
-                src << "!";
-                _writeRef(instr.arg[1].ref);
-                src << ")";
-                break;
-            case nkir_add:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " + ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_sub:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " - ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_mul:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " * ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_div:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " / ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_mod:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " % ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_bitand:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " & ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_bitor:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " | ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_xor:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " ^ ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_lsh:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " << ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_rsh:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " >> ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_and:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " && ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_or:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " || ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_eq:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " == ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_ge:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " >= ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_gt:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " > ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_le:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " <= ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_lt:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " < ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
-            case nkir_ne:
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << " != ";
-                _writeRef(instr.arg[2].ref);
-                src << ")";
-                break;
+
+#define UN_OP(NAME, OP)              \
+    case CAT(nkir_, NAME):           \
+        src << "(";                  \
+        src << #OP;                  \
+        _writeRef(instr.arg[1].ref); \
+        src << ")";                  \
+        break;
+
+                UN_OP(neg, -)
+                UN_OP(compl, ~)
+                UN_OP(not, !)
+
+#undef UN_OP
+
+#define BIN_OP(NAME, OP)             \
+    case CAT(nkir_, NAME):           \
+        src << "(";                  \
+        _writeRef(instr.arg[1].ref); \
+        src << " " #OP " ";          \
+        _writeRef(instr.arg[2].ref); \
+        src << ")";                  \
+        break;
+
+                BIN_OP(add, +)
+                BIN_OP(sub, -)
+                BIN_OP(mul, *)
+                BIN_OP(div, /)
+                BIN_OP(mod, %)
+                BIN_OP(bitand, &)
+                BIN_OP(bitor, |)
+                BIN_OP(xor, ^)
+                BIN_OP(lsh, <<)
+                BIN_OP(rsh, >>)
+                BIN_OP(and, &&)
+                BIN_OP(or, ||)
+                BIN_OP(eq, ==)
+                BIN_OP(ge, >=)
+                BIN_OP(gt, >)
+                BIN_OP(le, <=)
+                BIN_OP(lt, <)
+                BIN_OP(ne, !=)
+
+#undef BIN_OP
+
             default:
                 assert(!"unreachable");
             }
