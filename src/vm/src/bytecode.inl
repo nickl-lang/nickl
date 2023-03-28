@@ -27,32 +27,25 @@ XE(jmpnz, 64)
 
 X(cast)
 
-#ifndef CAST_X
-#define CAST_X(TO)        \
-    XE(cast, i8_to_##TO)  \
-    XE(cast, u8_to_##TO)  \
-    XE(cast, i16_to_##TO) \
-    XE(cast, u16_to_##TO) \
-    XE(cast, i32_to_##TO) \
-    XE(cast, u32_to_##TO) \
-    XE(cast, i64_to_##TO) \
-    XE(cast, u64_to_##TO) \
-    XE(cast, f32_to_##TO) \
-    XE(cast, f64_to_##TO)
+#ifndef CAST
+#define CAST_X(TNAME, VALUE_TYPE, CTYPE, TO) XE(cast, TNAME##_to_##TO)
+#define CAST(TO) NUMERIC_ITERATE(CAST_X, TO)
 #endif
 
-CAST_X(i8)
-CAST_X(u8)
-CAST_X(i16)
-CAST_X(u16)
-CAST_X(i32)
-CAST_X(u32)
-CAST_X(i64)
-CAST_X(u64)
-CAST_X(f32)
-CAST_X(f64)
+// TODO Figure out a way to compress CAST with NUMERIC_ITERATE
 
-#undef CAST_X
+CAST(i8)
+CAST(u8)
+CAST(i16)
+CAST(u16)
+CAST(i32)
+CAST(u32)
+CAST(i64)
+CAST(u64)
+CAST(f32)
+CAST(f64)
+
+#undef CAST
 
 X(call)
 XE(call, jmp)
@@ -65,57 +58,48 @@ XE(mov, 64)
 
 X(lea)
 
-#ifndef NUM_X
-#define NUM_X(NAME) \
-    X(NAME)         \
-    XE(NAME, i8)    \
-    XE(NAME, u8)    \
-    XE(NAME, i16)   \
-    XE(NAME, u16)   \
-    XE(NAME, i32)   \
-    XE(NAME, u32)   \
-    XE(NAME, i64)   \
-    XE(NAME, u64)   \
-    XE(NAME, f32)   \
-    XE(NAME, f64)
+#ifndef NUM
+#define NUM_IT(TNAME, VALUE_TYPE, CTYPE, NAME) XE(NAME, TNAME)
+#define NUM(NAME) \
+    X(NAME)       \
+    NUMERIC_ITERATE(NUM_IT, NAME)
 #endif
 
-#ifndef NUM_INT_X
-#define NUM_INT_X(NAME) \
-    X(NAME)             \
-    XE(NAME, i8)        \
-    XE(NAME, u8)        \
-    XE(NAME, i16)       \
-    XE(NAME, u16)       \
-    XE(NAME, i32)       \
-    XE(NAME, u32)       \
-    XE(NAME, i64)       \
-    XE(NAME, u64)
+#ifndef INT
+#define INT_IT(TNAME, VALUE_TYPE, CTYPE, NAME) XE(NAME, TNAME)
+#define INT(NAME) \
+    X(NAME)       \
+    NUMERIC_ITERATE_INT(INT_IT, NAME)
 #endif
 
-NUM_X(neg)
-NUM_INT_X(compl )
-NUM_X(not )
+NUM(neg)
+INT(compl )
+NUM(not )
 
-NUM_X(add)
-NUM_X(sub)
-NUM_X(mul)
-NUM_X(div)
-NUM_INT_X(mod)
+NUM(add)
+NUM(sub)
+NUM(mul)
+NUM(div)
+INT(mod)
 
-NUM_INT_X(bitand)
-NUM_INT_X(bitor)
-NUM_INT_X(xor)
-NUM_INT_X(lsh)
-NUM_INT_X(rsh)
+INT(bitand)
+INT(bitor)
+INT(xor)
+INT(lsh)
+INT(rsh)
 
-NUM_X(and)
-NUM_X(or)
+NUM(and)
+NUM(or)
 
-NUM_X(ge)
-NUM_X(gt)
-NUM_X(le)
-NUM_X(lt)
+NUM(ge)
+NUM(gt)
+NUM(le)
+NUM(lt)
+
+#undef NUM
+#undef NUM_IT
+#undef INT
+#undef INT_IT
 
 X(eq)
 XE(eq, 8)
@@ -131,6 +115,3 @@ XE(ne, 64)
 
 #undef X
 #undef XE
-
-#undef NUM_X
-#undef NUM_INT_X

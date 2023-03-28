@@ -57,9 +57,24 @@ typedef enum {
     Float64 = 0x98,
 } NkNumericValueType;
 
-#define NUM_TYPE_SIZE(value_type) (0xf & (value_type))
-#define NUM_TYPE_INDEX(value_type) ((0xf0 & (value_type)) >> 4)
+#define NUM_TYPE_SIZE(VALUE_TYPE) (0xf & (VALUE_TYPE))
+#define NUM_TYPE_INDEX(VALUE_TYPE) ((0xf0 & (VALUE_TYPE)) >> 4)
 #define NUM_TYPE_COUNT 10
+
+#define NUMERIC_ITERATE_INT(MACRO, ...)                     \
+    MACRO(i8, Int8, int8_t __VA_OPT__(, ) __VA_ARGS__)      \
+    MACRO(u8, Uint8, uint8_t __VA_OPT__(, ) __VA_ARGS__)    \
+    MACRO(i16, Int16, int16_t __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(u16, Uint16, uint16_t __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i32, Int32, int32_t __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(u32, Uint32, uint32_t __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i64, Int64, int64_t __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(u64, Uint64, uint64_t __VA_OPT__(, ) __VA_ARGS__)
+
+#define NUMERIC_ITERATE(MACRO, ...)                       \
+    NUMERIC_ITERATE_INT(MACRO __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(f32, Float32, float __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(f64, Float64, double __VA_OPT__(, ) __VA_ARGS__)
 
 typedef struct {
     NkNumericValueType value_type;

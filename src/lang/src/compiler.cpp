@@ -873,24 +873,13 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     // TODO Modeling type_t as *void
 
-#define COMPILE_NUMERIC(NAME, VALUE_TYPE)                                         \
+#define X(NAME, VALUE_TYPE, CTYPE)                                                \
     case CAT(n_, NAME): {                                                         \
         return makeValue<void *>(                                                 \
             c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(VALUE_TYPE)); \
     }
-
-        COMPILE_NUMERIC(i8, Int8)
-        COMPILE_NUMERIC(i16, Int16)
-        COMPILE_NUMERIC(i32, Int32)
-        COMPILE_NUMERIC(i64, Int64)
-        COMPILE_NUMERIC(u8, Uint8)
-        COMPILE_NUMERIC(u16, Uint16)
-        COMPILE_NUMERIC(u32, Uint32)
-        COMPILE_NUMERIC(u64, Uint64)
-        COMPILE_NUMERIC(f32, Float32)
-        COMPILE_NUMERIC(f64, Float64)
-
-#undef COMPILE_NUMERIC
+        NUMERIC_ITERATE(X)
+#undef X
 
     case n_bool: {
         return makeValue<void *>(

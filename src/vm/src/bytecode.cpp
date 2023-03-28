@@ -283,8 +283,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                     code += 1 + log2u(arg1.ref.type->size);
                 }
                 break;
-#define NUM_X(NAME) case CAT(nkir_, NAME):
-#define NUM_INT_X(NAME) case CAT(nkir_, NAME):
+#define NUM(NAME) case CAT(nkir_, NAME):
+#define INT(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
                 if (arg1.ref.type->tclass == NkType_Ptr) {
                     code += 1 + NUM_TYPE_INDEX(Uint64);

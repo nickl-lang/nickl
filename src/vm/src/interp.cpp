@@ -233,23 +233,15 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
-#define _CAST(FROM_NAME, FROM_TYPE, TO_NAME, TO_TYPE)                               \
-    case CAT(CAT(CAT(nkop_cast_, FROM_NAME), _to_), TO_NAME): {                     \
-        _getRef<TO_TYPE>(instr.arg[0]) = (TO_TYPE)_getRef<FROM_TYPE>(instr.arg[2]); \
-        break;                                                                      \
+#define _CAST(FROM_NAME, FROM_VALUE_TYPE, FROM_CTYPE, TO_NAME, TO_CTYPE)               \
+    case CAT(CAT(CAT(nkop_cast_, FROM_NAME), _to_), TO_NAME): {                        \
+        _getRef<TO_CTYPE>(instr.arg[0]) = (TO_CTYPE)_getRef<FROM_CTYPE>(instr.arg[2]); \
+        break;                                                                         \
     }
 
-#define CAST(TO_NAME, TO_TYPE)             \
-    _CAST(i8, int8_t, TO_NAME, TO_TYPE)    \
-    _CAST(u8, uint8_t, TO_NAME, TO_TYPE)   \
-    _CAST(i16, int16_t, TO_NAME, TO_TYPE)  \
-    _CAST(u16, uint16_t, TO_NAME, TO_TYPE) \
-    _CAST(i32, int32_t, TO_NAME, TO_TYPE)  \
-    _CAST(u32, uint32_t, TO_NAME, TO_TYPE) \
-    _CAST(i64, int64_t, TO_NAME, TO_TYPE)  \
-    _CAST(u64, uint64_t, TO_NAME, TO_TYPE) \
-    _CAST(f32, float, TO_NAME, TO_TYPE)    \
-    _CAST(f64, double, TO_NAME, TO_TYPE)
+#define CAST(TO_NAME, TO_CTYPE) NUMERIC_ITERATE(_CAST, TO_NAME, TO_CTYPE)
+
+        // TODO Figure out a way to compress CAST with NUMERIC_ITERATE
 
         CAST(i8, int8_t)
         CAST(u8, uint8_t)
@@ -318,43 +310,25 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
-#define NUM_UN_OP_EXT(NAME, OP, EXT, TYPE)                            \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                        \
-        _getRef<TYPE>(instr.arg[0]) = OP _getRef<TYPE>(instr.arg[1]); \
-        break;                                                        \
+#define NUM_UN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                  \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                          \
+        _getRef<CTYPE>(instr.arg[0]) = OP _getRef<CTYPE>(instr.arg[1]); \
+        break;                                                          \
     }
-
-    // TODO Optimize macros in interp
 
 #define NUM_UN_OP(NAME, OP)                          \
     case CAT(nkop_, NAME): {                         \
         assert(!"generic un op is not implemented"); \
         break;                                       \
     }                                                \
-        NUM_UN_OP_EXT(NAME, OP, i8, int8_t)          \
-        NUM_UN_OP_EXT(NAME, OP, u8, uint8_t)         \
-        NUM_UN_OP_EXT(NAME, OP, i16, int16_t)        \
-        NUM_UN_OP_EXT(NAME, OP, u16, uint16_t)       \
-        NUM_UN_OP_EXT(NAME, OP, i32, int32_t)        \
-        NUM_UN_OP_EXT(NAME, OP, u32, uint32_t)       \
-        NUM_UN_OP_EXT(NAME, OP, i64, int64_t)        \
-        NUM_UN_OP_EXT(NAME, OP, u64, uint64_t)       \
-        NUM_UN_OP_EXT(NAME, OP, f32, float)          \
-        NUM_UN_OP_EXT(NAME, OP, f64, double)
+        NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
 
 #define NUM_UN_OP_INT(NAME, OP)                      \
     case CAT(nkop_, NAME): {                         \
         assert(!"generic un op is not implemented"); \
         break;                                       \
     }                                                \
-        NUM_UN_OP_EXT(NAME, OP, i8, int8_t)          \
-        NUM_UN_OP_EXT(NAME, OP, u8, uint8_t)         \
-        NUM_UN_OP_EXT(NAME, OP, i16, int16_t)        \
-        NUM_UN_OP_EXT(NAME, OP, u16, uint16_t)       \
-        NUM_UN_OP_EXT(NAME, OP, i32, int32_t)        \
-        NUM_UN_OP_EXT(NAME, OP, u32, uint32_t)       \
-        NUM_UN_OP_EXT(NAME, OP, i64, int64_t)        \
-        NUM_UN_OP_EXT(NAME, OP, u64, uint64_t)
+        NUMERIC_ITERATE_INT(NUM_UN_OP_IT, NAME, OP)
 
         NUM_UN_OP(neg, -)
         NUM_UN_OP(not, !)
@@ -363,7 +337,7 @@ void interp(NkBcInstr const &instr) {
 
 #undef NUM_UN_OP
 #undef NUM_UN_OP_INT
-#undef NUM_UN_OP_EXT
+#undef NUM_UN_OP_IT
 
     case nkop_eq: {
         auto dst = _getValRef(instr.arg[0]);
@@ -439,17 +413,18 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
-#define NUM_BIN_OP_EXT(NAME, OP, EXT, TYPE)                                                       \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                    \
-        _getRef<TYPE>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
-        break;                                                                                    \
+#define NUM_BIN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                   \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                            \
+        _getRef<CTYPE>(instr.arg[0]) =                                    \
+            _getRef<CTYPE>(instr.arg[1]) OP _getRef<CTYPE>(instr.arg[2]); \
+        break;                                                            \
     }
 
-#define NUM_BIN_BOOL_OP_EXT(NAME, OP, EXT, TYPE)                        \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                          \
-        _getRef<uint8_t>(instr.arg[0]) =                                \
-            _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
-        break;                                                          \
+#define NUM_BIN_BOOL_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)              \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                            \
+        _getRef<uint8_t>(instr.arg[0]) =                                  \
+            _getRef<CTYPE>(instr.arg[1]) OP _getRef<CTYPE>(instr.arg[2]); \
+        break;                                                            \
     }
 
 #define NUM_BIN_OP(NAME, OP)                          \
@@ -457,46 +432,21 @@ void interp(NkBcInstr const &instr) {
         assert(!"generic bin op is not implemented"); \
         break;                                        \
     }                                                 \
-        NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)          \
-        NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)         \
-        NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)        \
-        NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)       \
-        NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)        \
-        NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)       \
-        NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)        \
-        NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)       \
-        NUM_BIN_OP_EXT(NAME, OP, f32, float)          \
-        NUM_BIN_OP_EXT(NAME, OP, f64, double)
+        NUMERIC_ITERATE(NUM_BIN_OP_IT, NAME, OP)
 
 #define NUM_BIN_BOOL_OP(NAME, OP)                          \
     case CAT(nkop_, NAME): {                               \
         assert(!"generic bin bool op is not implemented"); \
         break;                                             \
     }                                                      \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, i8, int8_t)          \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, u8, uint8_t)         \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, i16, int16_t)        \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, u16, uint16_t)       \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, i32, int32_t)        \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, u32, uint32_t)       \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, i64, int64_t)        \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, u64, uint64_t)       \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, f32, float)          \
-        NUM_BIN_BOOL_OP_EXT(NAME, OP, f64, double)
+        NUMERIC_ITERATE(NUM_BIN_BOOL_OP_IT, NAME, OP)
 
 #define NUM_BIN_OP_INT(NAME, OP)                      \
     case CAT(nkop_, NAME): {                          \
         assert(!"generic bin op is not implemented"); \
         break;                                        \
     }                                                 \
-        NUM_BIN_OP_EXT(NAME, OP, i8, int8_t)          \
-        NUM_BIN_OP_EXT(NAME, OP, u8, uint8_t)         \
-        NUM_BIN_OP_EXT(NAME, OP, i16, int16_t)        \
-        NUM_BIN_OP_EXT(NAME, OP, u16, uint16_t)       \
-        NUM_BIN_OP_EXT(NAME, OP, i32, int32_t)        \
-        NUM_BIN_OP_EXT(NAME, OP, u32, uint32_t)       \
-        NUM_BIN_OP_EXT(NAME, OP, i64, int64_t)        \
-        NUM_BIN_OP_EXT(NAME, OP, u64, uint64_t)
+        NUMERIC_ITERATE_INT(NUM_BIN_OP_IT, NAME, OP)
 
         NUM_BIN_OP(add, +)
         NUM_BIN_OP(sub, -)
@@ -520,9 +470,9 @@ void interp(NkBcInstr const &instr) {
 
 #undef NUM_BIN_OP
 #undef NUM_BIN_OP_INT
-#undef NUM_BIN_OP_EXT
+#undef NUM_BIN_OP_IT
 #undef NUM_BIN_BOOL_OP
-#undef NUM_BIN_BOOL_OP_EXT
+#undef NUM_BIN_BOOL_OP_IT
 
     default:
         assert(!"unknown opcode");

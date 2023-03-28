@@ -30,7 +30,7 @@ STDERR_FILENO :: 2;
 
 F_GETFL :: 3;
 F_SETFL :: 4;
-O_NONBLOCK :: 7640;
+O_NONBLOCK :: 2048; // TODO Cannot write octal 04000
 
 #link("c") fcntl :: (fildes: i32, cmd: i32, ...) -> i32;
 
