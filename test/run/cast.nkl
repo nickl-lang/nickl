@@ -1,13 +1,8 @@
-{
-    a := 256;
-    b := cast(u8) a;
-    @assert(b == cast(u8) 0);
-    @println("a={}, {}{a}={}", a, @typeof(b), b);
-}
+import std;
 
-{
-    a := 255;
-    b := cast(i8) a;
-    @assert(b == cast(i8) -1);
-    @println("a={}, {}{a}={}", a, @typeof(b), b);
-}
+std.printf( "i8{%li}=%hhi\n", 127,  cast(i8)  127);
+std.printf( "i8{%li}=%hhi\n", 128,  cast(i8)  128);
+std.printf( "u8{%li}=%hhu\n", 0-1,  cast(u8)  (0-1)); // TODO Cannot write neg
+std.printf( "u8{%li}=%hhu\n", 512,  cast(u8)  512);
+std.printf("u32{%lf}=%i\n",   3.14, cast(u32) 3.14);
+std.printf("f64{%li}=%lf\n",  42,   cast(f64) 42);
