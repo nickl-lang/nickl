@@ -1,0 +1,28 @@
+main :: () -> void {
+    import std;
+
+    ar: [2][2]i64;
+
+    ar[0][0] = 1;
+    ar[0][1] = 2;
+    ar[1][0] = 3;
+    ar[1][1] = 4;
+
+    ptr: *[4]i64 = &ar; // TODO Cannot cast pointers
+    sl: [4]i64 = ptr.*;
+
+    i := 0;
+    while i < 4 {
+        std.printf("%li", sl[i]);
+        i = i + 1;
+    }
+
+    std.puts("");
+}
+
+main();
+
+import compiler;
+builder := compiler.createBuilder();
+compiler.build(builder, main, "multiarrays");
+compiler.freeBuilder(builder);

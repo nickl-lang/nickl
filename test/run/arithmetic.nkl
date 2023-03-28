@@ -1,45 +1,51 @@
-fabs :: (x: float) -> float { return x < 0.0 ? -x : x; }
+import std;
 
-@assert(~5 == -6);
-@assert(~1 == -2);
-@assert(-1 == 0 - 1);
-@assert(+1 == 0 + 1);
+// TODO Implement assert
 
-@assert(2 + 2 == 4);
-@assert(3 - 4 == -1);
-@assert(3 * 4 == 12);
-@assert(4 / 2 == 2);
-@assert(1 / 2 == 0);
-@assert(fabs(1. / 2. - 0.5) < 1e-6);
-@assert(5 % 2 == 1);
+fabs :: (x: f64) -> f64 { if x < 0. return -x; else return x; }
 
-@assert(1 << 10 == 1024);
-@assert(256 >> 2 == 64);
+std.printf("%hhi", ~5 == -6);
+std.printf("%hhi", ~1 == -2);
+std.printf("%hhi", -1 == 0 - 1);
+std.printf("%hhi", +1 == 0 + 1);
 
-@assert((3 & 2) == 2);
-@assert((1 | 2) == 3);
-@assert((3 ^ 2) == 1);
+std.printf("%hhi", 2 + 2 == 4);
+std.printf("%hhi", 3 - 4 == -1);
+std.printf("%hhi", 3 * 4 == 12);
+std.printf("%hhi", 4 / 2 == 2);
+std.printf("%hhi", 1 / 2 == 0);
+std.printf("%hhi", fabs(1. / 2. - 0.5) < 1e-6);
+std.printf("%hhi", 5 % 2 == 1);
 
-@assert(bool != i8);
+std.printf("%hhi", 1 << 10 == 1024);
+std.printf("%hhi", 256 >> 2 == 64);
 
-@assert(@typeof(true) == bool);
-@assert(@typeof(false) == bool);
+std.printf("%hhi", (3 & 2) == 2);
+std.printf("%hhi", (1 | 2) == 3);
+std.printf("%hhi", (3 ^ 2) == 1);
 
-@assert((cast(i8) true & cast(i8) false) == 0);
-@assert((cast(i8) true & cast(i8) true) == 1);
+std.printf("%hhi", bool != i8);
 
-@assert(@typeof(!1) == bool);
-@assert(!1 == false);
-@assert(!0 == true);
+// TODO(typeof) std.printf("%hhi", @typeof(true) == bool);
+// TODO(typeof) std.printf("%hhi", @typeof(false) == bool);
 
-@assert(cast(bool) 0 != true);
-@assert(!(cast(bool) 1 != true));
+std.printf("%hhi", (cast(i8) true & cast(i8) false) == 0);
+std.printf("%hhi", (cast(i8) true & cast(i8) true) == 1);
 
-@assert((1 || 0) == true);
-@assert((1 && 0) == false);
+// TODO(typeof) std.printf("%hhi", @typeof(!1) == bool);
+std.printf("%hhi", !cast(bool) 1 == false);
+std.printf("%hhi", !cast(bool) 0 == true);
+
+std.printf("%hhi", cast(bool) 0 != true);
+std.printf("%hhi", !(cast(bool) 1 != true));
+
+std.printf("%hhi", (1 || 0) == true);
+std.printf("%hhi", (1 && 0) == false);
 
 a := false;
 toggle :: () -> void { a = !a; }
 false && toggle();
 true || toggle();
-@assert(!a);
+std.printf("%hhi", !a);
+
+std.puts("");

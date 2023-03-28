@@ -64,9 +64,6 @@ XE(mov, 32)
 XE(mov, 64)
 
 X(lea)
-X(neg)
-X(compl )
-X(not )
 
 #ifndef NUM_X
 #define NUM_X(NAME) \
@@ -95,6 +92,10 @@ X(not )
     XE(NAME, i64)       \
     XE(NAME, u64)
 #endif
+
+NUM_X(neg)
+NUM_INT_X(compl )
+NUM_X(not )
 
 NUM_X(add)
 NUM_X(sub)

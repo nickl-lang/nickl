@@ -826,13 +826,13 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_plus)) {
-            ASSIGN(node, nkl_makeNode1("uplus", _n_token, nkl_pushNode(m_ast, suffix())));
+            ASSIGN(node, nkl_makeNode1("uplus", _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_minus)) {
-            ASSIGN(node, nkl_makeNode1("uminus", _n_token, nkl_pushNode(m_ast, suffix())));
+            ASSIGN(node, nkl_makeNode1("uminus", _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_exclam)) {
-            ASSIGN(node, nkl_makeNode1("not", _n_token, nkl_pushNode(m_ast, suffix())));
+            ASSIGN(node, nkl_makeNode1("not", _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_tilde)) {
-            ASSIGN(node, nkl_makeNode1("compl", _n_token, nkl_pushNode(m_ast, suffix())));
+            ASSIGN(node, nkl_makeNode1("compl", _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_amper)) {
             ASSIGN(node, nkl_makeNode1("addr", _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_aster)) {
@@ -843,7 +843,7 @@ private:
                 ASSIGN(node, nkl_makeNode1("ptr_type", _n_token, nkl_pushNode(m_ast, prefix())));
             }
         } else if (accept(t_bracket_2x)) {
-            ASSIGN(node, nkl_makeNode1("slice_type", _n_token, nkl_pushNode(m_ast, suffix())));
+            ASSIGN(node, nkl_makeNode1("slice_type", _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_bracket_l)) {
             bool trailing_comma_provided = false;
             bool all_ids = false;
@@ -863,7 +863,7 @@ private:
                     nkl_makeNode2(
                         "array_type",
                         _n_token,
-                        nkl_pushNode(m_ast, suffix()),
+                        nkl_pushNode(m_ast, prefix()),
                         nkl_pushNode(m_ast, nodes.front())));
             }
         } else if (accept(t_cast)) {

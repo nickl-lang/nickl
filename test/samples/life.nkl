@@ -8,8 +8,7 @@ COLS :: 60;
 NS_IN_S :: 1000000000;
 FRAMETIME_NS :: NS_IN_S / FPS;
 
-// TODO Cannot do multidimensional arrays
-s_field: [ROWS * COLS * 2]u8;
+s_field: [2][ROWS * COLS]u8;
 
 s_cur_buf := 0;
 
@@ -31,7 +30,7 @@ swapBufs :: () -> void {
 }
 
 atBuf :: (x: i64, y: i64, buf: i64) -> *u8 {
-    return &s_field[(pmod(y, COLS) * ROWS + pmod(x, ROWS)) + buf * ROWS * COLS];
+    return &s_field[buf][(pmod(y, COLS) * ROWS + pmod(x, ROWS))];
 }
 
 at :: (x: i64, y: i64) -> *u8 {
@@ -64,8 +63,8 @@ step :: () -> void {
     x := 0; while x < ROWS {
         y := 0; while y < COLS {
             sum := 0;
-            dx := 0-1; while dx <= 1 { // TODO Cannot do neg
-                dy := 0-1; while dy <= 1 { // TODO Cannot do neg
+            dx := -1; while dx <= 1 {
+                dy := -1; while dy <= 1 {
                     sum = sum + get(x + dx, y + dy);
                     dy = dy + 1;
                 }

@@ -561,106 +561,148 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 _writeRef(instr.arg[1].ref);
                 break;
             case nkir_neg:
+                src << "(";
                 src << "-";
                 _writeRef(instr.arg[1].ref);
+                src << ")";
                 break;
             case nkir_compl:
+                src << "(";
                 src << "~";
                 _writeRef(instr.arg[1].ref);
+                src << ")";
                 break;
             case nkir_not:
+                src << "(";
                 src << "!";
                 _writeRef(instr.arg[1].ref);
+                src << ")";
                 break;
             case nkir_add:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " + ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_sub:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " - ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_mul:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " * ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_div:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " / ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_mod:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " % ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_bitand:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " & ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_bitor:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " | ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_xor:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " ^ ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_lsh:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " << ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_rsh:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " >> ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_and:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " && ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_or:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " || ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_eq:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " == ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_ge:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " >= ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_gt:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " > ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_le:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " <= ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_lt:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " < ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             case nkir_ne:
+                src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << " != ";
                 _writeRef(instr.arg[2].ref);
+                src << ")";
                 break;
             default:
                 assert(!"unreachable");

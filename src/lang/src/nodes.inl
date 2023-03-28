@@ -40,10 +40,10 @@ N(void)
 #define U(...) X(__VA_ARGS__)
 #endif
 
-// U(compl ) // (arg: node)
-// U(not )
-// U(uminus)
-// U(uplus)
+U(compl ) // (arg: node)
+U(not )
+U(uminus)
+U(uplus)
 
 U(addr)  // (expr: node)
 U(deref) // (ptr: node)

@@ -587,8 +587,11 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
         // TODO Think about type correctness in array indexing
         if (type->tclass == NkType_Array) {
             auto const u64_t = nkl_get_numeric(Uint64);
+            // TODO using u8 to correctly index array in c
             auto const u8_t = nkl_get_numeric(Uint8);
             auto const u8_ptr_t = nkl_get_ptr(u8_t);
+            auto const elem_t = type->as.arr.elem_type;
+            auto const elem_ptr_t = nkl_get_ptr(elem_t);
             auto const data_ref = asRef(c, makeInstr(nkir_make_lea({}, lhs_ref), u8_ptr_t));
             auto const mul = nkir_make_mul(
                 {},
@@ -596,9 +599,9 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
                 asRef(c, makeValue<uint64_t>(c, u64_t, type->as.arr.elem_type->size)));
             auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
             auto const add = nkir_make_add({}, data_ref, offset_ref);
-            auto ref = asRef(c, makeInstr(add, nkl_get_ptr(type->as.arr.elem_type)));
+            auto ref = asRef(c, makeInstr(add, elem_ptr_t));
             ref.is_indirect = true;
-            ref.type = type->as.arr.elem_type;
+            ref.type = elem_t;
             return ref;
         } else if (type->tclass == NkType_Tuple) {
             if (!isKnown(index)) {
@@ -611,11 +614,14 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             return ref;
         } else if (type->tclass == NklType_Slice) {
             auto const u64_t = nkl_get_numeric(Uint64);
+            // TODO using u8 to correctly index slice in c
+            auto const u8_t = nkl_get_numeric(Uint8);
+            auto const u8_ptr_t = nkl_get_ptr(u8_t);
             // TODO Accessing slice info as tuple
             auto const elem_ptr_t = type->as.tuple.elems.data[0].type;
             auto const elem_t = elem_ptr_t->as.ptr.target_type;
             auto data_ref = lhs_ref;
-            data_ref.type = elem_ptr_t;
+            data_ref.type = u8_ptr_t;
             auto const mul = nkir_make_mul(
                 {}, asRef(c, index), asRef(c, makeValue<uint64_t>(c, u64_t, elem_t->size)));
             auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
@@ -867,22 +873,24 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     // TODO Modeling type_t as *void
 
-#define _COMPILE_NUMERIC(NAME, VALUE_TYPE)                                        \
+#define COMPILE_NUMERIC(NAME, VALUE_TYPE)                                         \
     case CAT(n_, NAME): {                                                         \
         return makeValue<void *>(                                                 \
             c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(VALUE_TYPE)); \
     }
 
-        _COMPILE_NUMERIC(i8, Int8)
-        _COMPILE_NUMERIC(i16, Int16)
-        _COMPILE_NUMERIC(i32, Int32)
-        _COMPILE_NUMERIC(i64, Int64)
-        _COMPILE_NUMERIC(u8, Uint8)
-        _COMPILE_NUMERIC(u16, Uint16)
-        _COMPILE_NUMERIC(u32, Uint32)
-        _COMPILE_NUMERIC(u64, Uint64)
-        _COMPILE_NUMERIC(f32, Float32)
-        _COMPILE_NUMERIC(f64, Float64)
+        COMPILE_NUMERIC(i8, Int8)
+        COMPILE_NUMERIC(i16, Int16)
+        COMPILE_NUMERIC(i32, Int32)
+        COMPILE_NUMERIC(i64, Int64)
+        COMPILE_NUMERIC(u8, Uint8)
+        COMPILE_NUMERIC(u16, Uint16)
+        COMPILE_NUMERIC(u32, Uint32)
+        COMPILE_NUMERIC(u64, Uint64)
+        COMPILE_NUMERIC(f32, Float32)
+        COMPILE_NUMERIC(f64, Float64)
+
+#undef COMPILE_NUMERIC
 
     case n_bool: {
         return makeValue<void *>(
@@ -893,6 +901,39 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     case n_void: {
         return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_void());
+    }
+
+    case n_compl: {
+        DEFINE(arg, compile(c, narg0(node)));
+        if (arg.type->tclass != NkType_Numeric) {
+            return error(c, "expected number in two's complement"), ValueInfo{};
+        }
+        return makeInstr(nkir_make_compl({}, asRef(c, arg)), arg.type);
+    }
+
+    case n_not: {
+        DEFINE(arg, compile(c, narg0(node)));
+        // TODO Modeling bool as u8
+        if (arg.type->tclass != NkType_Numeric || arg.type->as.num.value_type != Uint8) {
+            return error(c, "expected bool in negation"), ValueInfo{};
+        }
+        return makeInstr(nkir_make_not({}, asRef(c, arg)), arg.type);
+    }
+
+    case n_uminus: {
+        DEFINE(arg, compile(c, narg0(node)));
+        if (arg.type->tclass != NkType_Numeric) {
+            return error(c, "expected number in unary minus"), ValueInfo{};
+        }
+        return makeInstr(nkir_make_neg({}, asRef(c, arg)), arg.type);
+    }
+
+    case n_uplus: {
+        DEFINE(arg, compile(c, narg0(node)));
+        if (arg.type->tclass != NkType_Numeric) {
+            return error(c, "expected number in unary plus"), ValueInfo{};
+        }
+        return compile(c, narg0(node));
     }
 
     case n_addr: {
@@ -950,34 +991,47 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     // TODO Not doing type checks in arithmetic
 
-#define _COMPILE_BIN(NAME)                                                                   \
+#define COMPILE_BIN(NAME)                                                                    \
     case CAT(n_, NAME): {                                                                    \
         DEFINE(lhs, compile(c, narg0(node)));                                                \
         DEFINE(rhs, compile(c, narg1(node)));                                                \
         return makeInstr(CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), lhs.type); \
     }
 
-        _COMPILE_BIN(add)
-        _COMPILE_BIN(sub)
-        _COMPILE_BIN(mul)
-        _COMPILE_BIN(div)
-        _COMPILE_BIN(mod)
+        COMPILE_BIN(add)
+        COMPILE_BIN(sub)
+        COMPILE_BIN(mul)
+        COMPILE_BIN(div)
+        COMPILE_BIN(mod)
 
-        _COMPILE_BIN(bitand)
-        _COMPILE_BIN(bitor)
-        _COMPILE_BIN(xor)
-        _COMPILE_BIN(lsh)
-        _COMPILE_BIN(rsh)
+        COMPILE_BIN(bitand)
+        COMPILE_BIN(bitor)
+        COMPILE_BIN(xor)
+        COMPILE_BIN(lsh)
+        COMPILE_BIN(rsh)
 
-        _COMPILE_BIN(and)
-        _COMPILE_BIN(or)
+#undef COMPILE_BIN
 
-        _COMPILE_BIN(eq)
-        _COMPILE_BIN(ge)
-        _COMPILE_BIN(gt)
-        _COMPILE_BIN(le)
-        _COMPILE_BIN(lt)
-        _COMPILE_BIN(ne)
+#define COMPILE_BOOL_BIN(NAME)                                                                \
+    case CAT(n_, NAME): {                                                                     \
+        DEFINE(lhs, compile(c, narg0(node)));                                                 \
+        DEFINE(rhs, compile(c, narg1(node)));                                                 \
+        /* TODO Modeling bool as u8 */                                                        \
+        return makeInstr(                                                                     \
+            CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), nkl_get_numeric(Uint8)); \
+    }
+
+        COMPILE_BOOL_BIN(and)
+        COMPILE_BOOL_BIN(or)
+
+        COMPILE_BOOL_BIN(eq)
+        COMPILE_BOOL_BIN(ge)
+        COMPILE_BOOL_BIN(gt)
+        COMPILE_BOOL_BIN(le)
+        COMPILE_BOOL_BIN(lt)
+        COMPILE_BOOL_BIN(ne)
+
+#undef COMPILE_BOOL_BIN
 
     case n_array_type: {
         // TODO Hardcoded array size type in array_type

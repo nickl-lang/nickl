@@ -1,5 +1,4 @@
-# def_run_test(NAME arithmetic)
-
+def_run_test(NAME arithmetic OUTPUT_REGEX "^11111111111111111111111111\n$")
 def_run_test(NAME arrays OUTPUT_REGEX "^ar\\[0\\]=1 ar\\[1\\]=2 ar\\[2\\]=4 \nar\\[0\\]=0 ar\\[1\\]=1 ar\\[2\\]=2 \n$")
 def_run_test(NAME cast OUTPUT_REGEX "^i8{127}=127\ni8{128}=-128\nu8{-1}=255\nu8{512}=0\nu32{3.140000}=3\nf64{42}=42.000000\n$")
 def_run_test(NAME comptime_run OUTPUT_REGEX "^comptime\nruntime\n$")

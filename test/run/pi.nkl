@@ -9,7 +9,7 @@ atan :: (x: f64, it: i64) -> f64 {
     while i < it {
         num = num * x * x;
         denom = denom + 2.0;
-        sign = sign * (0.0 - 1.0);
+        sign = sign * -1.0;
         sum = sum + sign * num / denom;
         i = i + 1;
     }
