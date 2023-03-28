@@ -22,7 +22,7 @@ NK_LOG_USE_SCOPE(types);
 
 static std::deque<NkType> s_types;
 static std::map<ByteArray, nktype_t> s_typemap;
-static std::mutex s_mutex;
+static std::recursive_mutex s_mutex;
 
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, nk_typeclassid_t tclass, F const &create_vm_type) {
