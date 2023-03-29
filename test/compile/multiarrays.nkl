@@ -1,18 +1,22 @@
 main :: () -> void {
     import std;
 
-    ar: [2][2]i64;
+    W :: 2;
+    H :: 2;
+    SIZE :: W * H;
+
+    ar: [W][H]i64;
 
     ar[0][0] = 1;
     ar[0][1] = 2;
     ar[1][0] = 3;
     ar[1][1] = 4;
 
-    ptr: *[4]i64 = &ar; // TODO Cannot cast pointers
-    sl: [4]i64 = ptr.*;
+    // TODO Cannot use slice, because translate_to_c doesn't support it yet
+    sl: [SIZE]i64 = (cast(*[SIZE]i64) &ar).*;
 
     i := 0;
-    while i < 4 {
+    while i < SIZE {
         std.printf("%li", sl[i]);
         i = i + 1;
     }

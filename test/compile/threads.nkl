@@ -16,7 +16,8 @@ LIBPTHREAD :: "libpthread.so.0";
 #link(LIBPTHREAD) pthread_join :: (thread: pthread_t, retval: **void) -> i32;
 #link(LIBPTHREAD) pthread_self :: () -> pthread_t;
 
-#extern("c") thread :: (arg: *void) -> *void {
+// TODO Cannot cast to *void, becase of translate_to_c, have to be explicit
+#extern("c") thread :: (arg: *void) -> *[6]u8 {
     std.printf("thread: arg='%s'\n", arg);
     std.printf("thread: id=%li\n", pthread_self());
     return "hello";

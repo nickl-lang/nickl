@@ -446,13 +446,13 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
-ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
+ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
     // TODO accessing slice info as tuple
     // TODO Comparing types by ptr
-    if (dst.type->tclass == NklType_Slice && val.type->tclass == NkType_Ptr &&
-        val.type->as.ptr.target_type->tclass == NkType_Array &&
+    if (dst.type->tclass == NklType_Slice && src.type->tclass == NkType_Ptr &&
+        src.type->as.ptr.target_type->tclass == NkType_Array &&
         dst.type->as.tuple.elems.data[0].type->as.ptr.target_type ==
-            val.type->as.ptr.target_type->as.arr.elem_type) {
+            src.type->as.ptr.target_type->as.arr.elem_type) {
         auto const elem_ptr_t = dst.type->as.tuple.elems.data[0].type;
         auto const u64_t = dst.type->as.tuple.elems.data[1].type;
         auto ptr_ref = dst;
@@ -460,44 +460,45 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo val) {
         auto size_ref = dst;
         size_ref.type = u64_t;
         size_ref.post_offset += elem_ptr_t->size;
-        store(c, ptr_ref, val);
+        auto src_ptr = src;
+        src_ptr.type = elem_ptr_t;
+        store(c, ptr_ref, src_ptr);
         store(
             c,
             size_ref,
-            makeValue<uint64_t>(c, u64_t, val.type->as.ptr.target_type->as.arr.elem_count));
+            makeValue<uint64_t>(c, u64_t, src.type->as.ptr.target_type->as.arr.elem_count));
         return makeRef(dst);
     }
     // TODO Comparing types by ptr
-    if ((dst.type->tclass != NkType_Ptr || val.type->tclass != NkType_Ptr) &&
-        dst.type != val.type) {
+    if (dst.type != src.type) {
         // TODO A little clumsy error printing in store
         auto dst_sb = nksb_create();
-        auto val_sb = nksb_create();
+        auto src_sb = nksb_create();
         defer {
             nksb_free(dst_sb);
-            nksb_free(val_sb);
+            nksb_free(src_sb);
         };
         nkt_inspect(dst.type, dst_sb);
-        nkt_inspect(val.type, val_sb);
+        nkt_inspect(src.type, src_sb);
         auto dst_type_str = nksb_concat(dst_sb);
-        auto val_type_str = nksb_concat(val_sb);
+        auto src_type_str = nksb_concat(src_sb);
         return error(
                    c,
                    "cannot store value of type `%.*s` into a slot of type `%.*s`",
-                   val_type_str.size,
-                   val_type_str.data,
+                   src_type_str.size,
+                   src_type_str.data,
                    dst_type_str.size,
                    dst_type_str.data),
                ValueInfo{};
     }
-    if (val.type->tclass != NkType_Void) {
-        if (val.kind == v_instr && val.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
-            val.as.instr.arg[0].ref = dst;
+    if (src.type->tclass != NkType_Void) {
+        if (src.kind == v_instr && src.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
+            src.as.instr.arg[0].ref = dst;
         } else {
-            val = makeInstr(nkir_make_mov(dst, asRef(c, val)), dst.type);
+            src = makeInstr(nkir_make_mov(dst, asRef(c, src)), dst.type);
         }
     }
-    return makeRef(asRef(c, val));
+    return makeRef(asRef(c, src));
 }
 
 ValueInfo declToValueInfo(Decl &decl) {
@@ -614,7 +615,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
             return makeRef(ref);
         } else if (type->tclass == NklType_Slice) {
             auto const u64_t = nkl_get_numeric(Uint64);
-            // TODO using u8 to correctly index slice in c
+            // TODO Using u8 to correctly index slice in c
             auto const u8_t = nkl_get_numeric(Uint8);
             auto const u8_ptr_t = nkl_get_ptr(u8_t);
             // TODO Accessing slice info as tuple
@@ -1031,21 +1032,80 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_cast: {
-        DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
+        DEFINE(const dst_type_val, comptimeCompileNodeGetValue(c, narg0(node)));
         // TODO Modeling type_t as *void
-        if (nkval_typeclassid(type_val) != NkType_Ptr ||
-            nkval_typeof(type_val)->as.ptr.target_type->tclass != NkType_Void) {
+        if (nkval_typeclassid(dst_type_val) != NkType_Ptr ||
+            nkval_typeof(dst_type_val)->as.ptr.target_type->tclass != NkType_Void) {
             return error(c, "type expected in cast"), ValueInfo{};
         }
-        auto type = nkval_as(nktype_t, type_val);
-        DEFINE(arg, compile(c, narg1(node)));
-        if (type->tclass != NkType_Numeric) {
-            return error(c, "can only cast to numeric type"), ValueInfo{};
+        auto const dst_type = nkval_as(nktype_t, dst_type_val);
+
+        DEFINE(src, compile(c, narg1(node)));
+        auto const src_type = src.type;
+
+        switch (dst_type->tclass) {
+        case NkType_Numeric: {
+            switch (src_type->tclass) {
+            case NkType_Numeric: {
+                return makeInstr(nkir_make_cast({}, dst_type, asRef(c, src)), dst_type);
+            }
+
+            case NkType_Ptr: {
+                if (dst_type->as.num.value_type != Uint64) {
+                    return error(c, "cannot cast pointer to any numeric type other than u64"),
+                           ValueInfo{};
+                }
+                src.type = dst_type;
+                return src;
+            }
+            }
+            break;
         }
-        if (arg.type->tclass != NkType_Numeric) {
-            return error(c, "can only cast numeric values"), ValueInfo{};
+
+        case NkType_Ptr: {
+            switch (src_type->tclass) {
+            case NkType_Numeric: {
+                if (src_type->as.num.value_type != Uint64) {
+                    return error(c, "cannot cast any numeric type other than u64 to a pointer"),
+                           ValueInfo{};
+                }
+                src.type = dst_type;
+                return src;
+            }
+
+            case NkType_Ptr: {
+                src.type = dst_type;
+                return src;
+            }
+            }
+            break;
         }
-        return makeInstr(nkir_make_cast({}, type, asRef(c, arg)), type);
+
+        case NkType_Void: {
+            (void)asRef(c, src);
+            return makeVoid();
+        }
+        }
+
+        // TODO Clumsy error printing again
+        auto dst_sb = nksb_create();
+        auto src_sb = nksb_create();
+        defer {
+            nksb_free(dst_sb);
+            nksb_free(src_sb);
+        };
+        nkt_inspect(dst_type, dst_sb);
+        nkt_inspect(src_type, src_sb);
+        auto dst_type_str = nksb_concat(dst_sb);
+        auto src_type_str = nksb_concat(src_sb);
+        return error(
+                   c,
+                   "cannot cast value of type `%.*s` to type `%.*s`",
+                   src_type_str.size,
+                   src_type_str.data,
+                   dst_type_str.size,
+                   dst_type_str.data),
+               ValueInfo{};
     }
 
     case n_index: {
