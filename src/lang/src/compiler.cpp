@@ -1376,6 +1376,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_call: {
         DEFINE(lhs, compile(c, narg0(node)));
 
+        if (lhs.type->tclass != NkType_Fn) {
+            return error(c, "function expected in call"), ValueInfo{};
+        }
+
         std::vector<ValueInfo> args_info{};
         std::vector<nktype_t> args_types{};
 
@@ -1747,6 +1751,25 @@ NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
     }
 }
 
+template <class T>
+T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
+    auto it = config.find(cs2nkid(name.c_str()));
+    ValueInfo val_info;
+    if (it == config.end()) {
+        error(c, "`%.*s` is missing in config", name.size(), name.c_str());
+    } else {
+        val_info = declToValueInfo(it->second);
+        if (!isKnown(val_info)) {
+            error(c, "`%.*s` value is not known", name.size(), name.c_str());
+        }
+    }
+    if (c->error_occurred) {
+        printError(c, "%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        return T{};
+    }
+    return nkval_as(T, asValue(c, val_info)); // TODO Reinterpret cast in compiler without check
+}
+
 } // namespace
 
 extern "C" NK_EXPORT Void nkl_compiler_declareLocal(char const *name, nktype_t type) {
@@ -1819,25 +1842,6 @@ void nkl_compiler_free(NklCompiler c) {
     nkir_deinitProgram(c->ir);
     c->~NklCompiler_T();
     nk_free(nk_default_allocator, c);
-}
-
-template <class T>
-T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
-    auto it = config.find(cs2nkid(name.c_str()));
-    ValueInfo val_info;
-    if (it == config.end()) {
-        error(c, "`%.*s` is missing in config", name.size(), name.c_str());
-    } else {
-        val_info = declToValueInfo(it->second);
-        if (!isKnown(val_info)) {
-            error(c, "`%.*s` value is not known", name.size(), name.c_str());
-        }
-    }
-    if (c->error_occurred) {
-        printError(c, "%.*s", (int)c->err_str.size(), c->err_str.c_str());
-        return T{};
-    }
-    return nkval_as(T, asValue(c, val_info)); // TODO Reinterpret cast in compiler without check
 }
 
 bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
