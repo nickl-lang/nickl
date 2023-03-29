@@ -141,7 +141,7 @@ nktype_t nkl_get_void() {
     });
 }
 
-nktype_t nkl_get_slice(NkAllocator alloc, nktype_t elem_type) {
+nktype_t nkl_get_slice(NkAllocator alloc, nktype_t elem_type, bool is_const) {
     auto const tclass = NklType_Slice;
 
     ByteArray fp{};
