@@ -556,21 +556,21 @@ IndexResult calcTupleIndex(NklCompiler c, nktype_t type, size_t index) {
     return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
 }
 
-NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
+ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
     if (node->id == n_id) {
         auto const name = node->token->text;
         auto const res = resolve(c, s2nkid(name));
         switch (res.kind) {
         case Decl_Local:
-            return nkir_makeFrameRef(c->ir, res.as.local.id);
+            return makeRef(nkir_makeFrameRef(c->ir, res.as.local.id));
         case Decl_Global:
-            return nkir_makeGlobalRef(c->ir, res.as.global.id);
+            return makeRef(nkir_makeGlobalRef(c->ir, res.as.global.id));
         case Decl_Undefined:
-            return error(c, "`%.*s` is not defined", name.size, name.data), NkIrRef{};
+            return error(c, "`%.*s` is not defined", name.size, name.data), ValueInfo{};
         case Decl_Funct:
         case Decl_ExtSym:
         case Decl_Arg:
-            return error(c, "cannot assign to `%.*s`", name.size, name.data), NkIrRef{};
+            return error(c, "cannot assign to `%.*s`", name.size, name.data), ValueInfo{};
         default:
             NK_LOG_ERR("unknown decl type");
             assert(!"unreachable");
@@ -581,7 +581,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
         auto const type = lhs_ref.type;
         auto const index = compile(c, narg1(node));
         if (index.type->tclass != NkType_Numeric) {
-            return error(c, "expected number in index"), NkIrRef{};
+            return error(c, "expected number in index"), ValueInfo{};
         }
         // TODO Optimize array indexing
         // TODO Think about type correctness in array indexing
@@ -602,16 +602,16 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             auto ref = asRef(c, makeInstr(add, elem_ptr_t));
             ref.is_indirect = true;
             ref.type = elem_t;
-            return ref;
+            return makeRef(ref);
         } else if (type->tclass == NkType_Tuple) {
             if (!isKnown(index)) {
-                return error(c, "comptime value expected in tuple index"), NkIrRef{};
+                return error(c, "comptime value expected in tuple index"), ValueInfo{};
             }
             DEFINE(idx_res, calcTupleIndex(c, type, nkval_as(uint64_t, asValue(c, index))));
             auto ref = lhs_ref;
             ref.post_offset += idx_res.offset;
             ref.type = idx_res.type;
-            return ref;
+            return makeRef(ref);
         } else if (type->tclass == NklType_Slice) {
             auto const u64_t = nkl_get_numeric(Uint64);
             // TODO using u8 to correctly index slice in c
@@ -629,7 +629,7 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             auto ref = asRef(c, makeInstr(add, elem_ptr_t));
             ref.is_indirect = true;
             ref.type = elem_t;
-            return ref;
+            return makeRef(ref);
         } else {
             auto sb = nksb_create();
             defer {
@@ -638,19 +638,19 @@ NkIrRef getLvalueRef(NklCompiler c, NklAstNode node) {
             nkt_inspect(type, sb);
             auto type_str = nksb_concat(sb);
             return error(c, "type `%.*s` is not indexable", type_str.size, type_str.data),
-                   NkIrRef{};
+                   ValueInfo{};
         }
     } else if (node->id == n_deref) {
         auto const arg = compile(c, narg0(node));
         if (arg.type->tclass != NkType_Ptr) {
-            return error(c, "pointer expected in dereference"), NkIrRef{};
+            return error(c, "pointer expected in dereference"), ValueInfo{};
         }
         auto ref = asRef(c, arg);
         ref.is_indirect = true;
         ref.type = arg.type->as.ptr.target_type;
-        return ref;
+        return makeRef(ref);
     } else {
-        return error(c, "invalid lvalue"), NkIrRef{};
+        return error(c, "invalid lvalue"), ValueInfo{};
     }
 }
 
@@ -931,8 +931,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_deref: {
-        DEFINE(arg, getLvalueRef(c, node));
-        return makeRef(arg);
+        return getLvalueRef(c, node);
     }
 
     case n_return: {
@@ -1050,8 +1049,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_index: {
-        DEFINE(arg, getLvalueRef(c, node));
-        return makeRef(arg);
+        return getLvalueRef(c, node);
     }
 
     case n_while: {
@@ -1383,9 +1381,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         if (nargs0(node).size > 1) {
             NK_LOG_WRN("TODO multiple assignment is not supported");
         }
-        DEFINE(lhs_ref, getLvalueRef(c, narg0(node)));
+        DEFINE(lhs, getLvalueRef(c, narg0(node)));
         DEFINE(rhs, compile(c, narg1(node)));
-        DEFINE(ref, store(c, lhs_ref, rhs));
+        DEFINE(ref, store(c, asRef(c, lhs), rhs));
         return ref;
     }
 
