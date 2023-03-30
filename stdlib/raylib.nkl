@@ -31,7 +31,12 @@ KEY_UP    :: 265;
 #link("libraylib.so") BeginDrawing :: () -> void;
 #link("libraylib.so") EndDrawing :: () -> void;
 
-Color :: #type (u8, u8, u8, u8);
+Color :: struct {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+};
 
 #link("libraylib.so") ClearBackground :: (color: Color) -> void;
 

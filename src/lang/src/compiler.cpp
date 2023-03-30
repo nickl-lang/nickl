@@ -908,9 +908,10 @@ void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
         }
         break;
     }
+    case NklType_Struct:
     case NkType_Tuple:
         if (init_nodes.size > nklval_tuple_size(val)) {
-            return error(c, "too many values to init array");
+            return error(c, "too many values to init tuple/struct");
         }
         for (size_t i = 0; i < nklval_tuple_size(val); i++) {
             initFromAst(c, nklval_tuple_at(val, i), {&init_nodes.data[i], 1});

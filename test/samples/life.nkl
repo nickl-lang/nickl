@@ -56,7 +56,7 @@ setNext :: (x: i64, y: i64, v: u8) -> void {
 getTimestamp :: () -> i64 {
     ts: std.timespec;
     std.clock_gettime(std.CLOCK_MONOTONIC, &ts);
-    return ts[0] * NS_IN_S + ts[1];
+    return ts.tv_sec * NS_IN_S + ts.tv_nsec;
 }
 
 step :: () -> void {
@@ -142,8 +142,8 @@ main :: () -> i32 {
         if elapsed_ns < FRAMETIME_NS {
             // TODO Cannot do runtime object literal
             sleep_ts: std.timespec;
-            sleep_ts[0] = 0;
-            sleep_ts[1] = FRAMETIME_NS - elapsed_ns;
+            sleep_ts.tv_sec = 0;
+            sleep_ts.tv_nsec = FRAMETIME_NS - elapsed_ns;
             std.nanosleep(&sleep_ts, 0);
         }
 

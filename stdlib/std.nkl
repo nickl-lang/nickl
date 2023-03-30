@@ -39,7 +39,10 @@ O_NONBLOCK :: 2048; // TODO Cannot write octal 04000
 CLOCK_MONOTONIC :: 1;
 
 clockid_t :: i32;
-timespec :: #type (i64, i64);
+timespec :: struct {
+    tv_sec: i64,
+    tv_nsec: i64,
+}
 
 #link("c") clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
 #link("c") nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
