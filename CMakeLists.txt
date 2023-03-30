@@ -99,7 +99,19 @@ endif()
 configure_file(config.nkl.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl)
 install(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl DESTINATION bin)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/stdlib DESTINATION ${CMAKE_BINARY_DIR})
+file(GLOB_RECURSE STDLIB_FILES
+    RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/stdlib/*.nkl
+    )
+
+foreach(STDLIB_FILE ${STDLIB_FILES})
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/${STDLIB_FILE}
+        ${CMAKE_BINARY_DIR}/${STDLIB_FILE}
+        COPYONLY
+        )
+endforeach()
+
 install(DIRECTORY ${CMAKE_BINARY_DIR}/stdlib DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 add_subdirectory(src)
