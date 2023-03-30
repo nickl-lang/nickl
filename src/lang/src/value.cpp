@@ -298,11 +298,11 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     pushVal(fp, is_const);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto ptr_t = nkl_get_vm_ptr(tovmt(elem_type));
-        auto u64_t = nkl_get_vm_numeric(Uint64);
-        nktype_t types[] = {ptr_t, u64_t};
+        auto ptr_t = nkl_get_ptr(elem_type);
+        auto u64_t = nkl_get_numeric(Uint64);
+        nkltype_t types[] = {ptr_t, u64_t};
         return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_tuple(alloc, types, AR_SIZE(types), 1),
+            .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t *)types, AR_SIZE(types), 1),
             .as{.slice{
                 .target_type = elem_type,
                 .is_const = is_const,

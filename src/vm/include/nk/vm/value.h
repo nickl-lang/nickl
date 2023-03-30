@@ -45,6 +45,8 @@ typedef struct {
     bool is_variadic;
 } _nk_type_fn;
 
+typedef _nk_type_fn NktFnInfo;
+
 // 0x<index><size>
 // Ordered in coercion order, max(lhs, rhs) is a common type
 typedef enum {
@@ -116,13 +118,6 @@ typedef struct NkType {
 } NkType;
 
 NkType nkt_get_array(nktype_t elem_type, size_t elem_count);
-
-typedef struct {
-    nktype_t ret_t;
-    nktype_t args_t;
-    NkCallConv call_conv;
-    bool is_variadic;
-} NktFnInfo;
 
 NkType nkt_get_fn(NktFnInfo info);
 

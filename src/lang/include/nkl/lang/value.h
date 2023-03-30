@@ -34,6 +34,8 @@ typedef struct {
     bool is_variadic;
 } _nkl_type_fn;
 
+typedef _nkl_type_fn NkltFnInfo;
+
 typedef struct {
     NkNumericValueType value_type;
 } _nkl_type_numeric;
@@ -80,13 +82,6 @@ typedef struct {
     void *data;
     nkltype_t type;
 } nklval_t;
-
-typedef struct {
-    nkltype_t ret_t;
-    nkltype_t args_t;
-    NkCallConv call_conv;
-    bool is_variadic;
-} NkltFnInfo;
 
 NK_EXPORT void nkl_types_clean();
 
