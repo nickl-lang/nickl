@@ -41,7 +41,6 @@ nkid cs2nkid(char const *str) {
 }
 
 void nkid_define(nkid id, nkstr str) {
-    // TODO Assert insertion of ids
     s_str2id.emplace(std_str(str), id);
     s_id2str.emplace(id, std_str(str));
 }

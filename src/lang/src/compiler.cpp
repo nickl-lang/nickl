@@ -37,7 +37,7 @@
 #include "nk/vm/value.h"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/token.h"
-#include "nkl/lang/types.h"
+#include "nkl/lang/value.h"
 #include "parser.hpp"
 
 #define CHECK(EXPR)              \
@@ -776,7 +776,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
 }
 
 void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
-    switch (nklval_typeclassid(val)) {
+    switch (nklval_tclass(val)) {
     case NkType_Array:
         if (init_nodes.size > nkval_tuple_size(tovmv(val))) {
             return error(c, "too many values to init array");
@@ -1034,7 +1034,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_cast: {
         DEFINE(const dst_type_val, comptimeCompileNodeGetValue(c, narg0(node)));
         // TODO Modeling type_t as *void
-        if (nklval_typeclassid(dst_type_val) != NkType_Ptr ||
+        if (nklval_tclass(dst_type_val) != NkType_Ptr ||
             nklval_typeof(dst_type_val)->as.ptr.target_type->tclass != NkType_Void) {
             return error(c, "type expected in cast"), ValueInfo{};
         }
@@ -1280,7 +1280,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         auto name = s2nkid(narg1(node)->token->text);
         if (isKnown(lhs)) {
             auto lhs_val = asValue(c, lhs);
-            if (nklval_typeclassid(lhs_val) == NkType_Fn &&
+            if (nklval_tclass(lhs_val) == NkType_Fn &&
                 nklval_typeof(lhs_val)->as.fn.call_conv == NkCallConv_Nk) {
                 auto scope_it = c->fn_scopes.find(*(NkIrFunct *)nklval_data(lhs_val));
                 if (scope_it != c->fn_scopes.end()) {
@@ -1419,7 +1419,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
 
         // TODO Modeling type_t as *void
-        if (nklval_typeclassid(type_val) != NkType_Ptr ||
+        if (nklval_tclass(type_val) != NkType_Ptr ||
             nklval_typeof(type_val)->as.ptr.target_type->tclass != NkType_Void) {
             return error(c, "type expected in object literal"), ValueInfo{};
         }

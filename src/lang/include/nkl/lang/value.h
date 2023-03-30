@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKL_LANG_TYPES
-#define HEADER_GUARD_NKL_LANG_TYPES
+#ifndef HEADER_GUARD_NKL_LANG_VALUE
+#define HEADER_GUARD_NKL_LANG_VALUE
 
 #include <stdint.h>
 
@@ -169,7 +169,7 @@ inline nkl_typeid_t nklval_typeid(nklval_t val) {
     return nklt_typeid(nklval_typeof(val));
 }
 
-inline nkl_typeclassid_t nklval_typeclassid(nklval_t val) {
+inline nkl_typeclassid_t nklval_tclass(nklval_t val) {
     return nklt_tclass(nklval_typeof(val));
 }
 
@@ -191,4 +191,4 @@ inline nklval_t nklval_reinterpret_cast(nkltype_t type, nklval_t val) {
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_LANG_TYPES
+#endif // HEADER_GUARD_NKL_LANG_VALUE

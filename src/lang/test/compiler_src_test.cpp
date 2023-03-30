@@ -11,7 +11,7 @@
 #include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
-#include "nkl/lang/types.h"
+#include "nkl/lang/value.h"
 
 namespace {
 

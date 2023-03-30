@@ -1,4 +1,4 @@
-#include "nkl/lang/types.h"
+#include "nkl/lang/value.h"
 
 #include <cstdint>
 #include <deque>
@@ -33,7 +33,7 @@ enum ETypeSubset {
 
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
-    EASY_FUNCTION(); // TODO Choose color
+    EASY_FUNCTION(::profiler::colors::Green200);
     NK_LOG_TRC(__func__);
 
     std::lock_guard lk{s_mtx};
@@ -314,11 +314,24 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
 }
 
 void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
-    // TODO nklt_inspect unfinished
-    nkt_inspect(tovmt(type), sb);
+    switch (nklt_tclass(type)) {
+    case NklType_Slice:
+        nksb_printf(sb, "[]");
+        nklt_inspect(type->as.slice.target_type, sb);
+        break;
+
+    default:
+        nkt_inspect(tovmt(type), sb);
+        break;
+    }
 }
 
 void nklval_inspect(nklval_t val, NkStringBuilder sb) {
-    // TODO nklval_inspect unfinished
-    nkval_inspect(tovmv(val), sb);
+    switch (nklval_tclass(val)) {
+    case NklType_Slice: // TODO Slice inspect unfinished
+
+    default:
+        nkval_inspect(tovmv(val), sb);
+        break;
+    }
 }
