@@ -14,6 +14,9 @@
 extern "C" {
 #endif
 
+typedef uint64_t nk_typeid_t;
+typedef uint8_t nk_typeclassid_t;
+
 typedef enum {
     NkType_Array,
     NkType_Fn,
@@ -109,6 +112,7 @@ typedef struct NkType {
     uint64_t size;
     uint8_t align;
     nk_typeclassid_t tclass;
+    nk_typeid_t id;
 } NkType;
 
 NkType nkt_get_array(nktype_t elem_type, size_t elem_count);
@@ -166,16 +170,36 @@ inline nktype_t nkval_typeof(nkval_t val) {
     return val.type;
 }
 
+inline nk_typeid_t nkt_typeid(nktype_t type) {
+    return type->id;
+}
+
+inline nk_typeclassid_t nkt_typeclassid(nktype_t type) {
+    return type->tclass;
+}
+
+inline size_t nkt_sizeof(nktype_t type) {
+    return type->size;
+}
+
+inline size_t nkt_alignof(nktype_t type) {
+    return type->align;
+}
+
+inline nk_typeid_t nkval_typeid(nkval_t val) {
+    return nkt_typeid(nkval_typeof(val));
+}
+
 inline nk_typeclassid_t nkval_typeclassid(nkval_t val) {
-    return nkval_typeof(val)->tclass;
+    return nkt_typeclassid(nkval_typeof(val));
 }
 
 inline size_t nkval_sizeof(nkval_t val) {
-    return nkval_typeof(val)->size;
+    return nkt_sizeof(nkval_typeof(val));
 }
 
 inline size_t nkval_alignof(nkval_t val) {
-    return nkval_typeof(val)->align;
+    return nkt_alignof(nkval_typeof(val));
 }
 
 inline nkval_t nkval_reinterpret_cast(nktype_t type, nkval_t val) {

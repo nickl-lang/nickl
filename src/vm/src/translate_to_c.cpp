@@ -29,7 +29,7 @@ NK_LOG_USE_SCOPE(translate_to_c);
 
 struct nkval_equal_to {
     bool operator()(nkval_t lhs, nkval_t rhs) const noexcept {
-        return nkval_data(lhs) == nkval_data(rhs) && nkval_typeof(lhs) == nkval_typeof(rhs);
+        return nkval_data(lhs) == nkval_data(rhs) && nkval_typeid(lhs) == nkval_typeid(rhs);
     }
 };
 

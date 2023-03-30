@@ -87,7 +87,7 @@ void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t) {
     nkir_activateFunct(funct->prog, funct);
 }
 
-void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info) {
+void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo const *fn_info) {
     funct->name = std_str(name);
 
     funct->fn_info = *fn_info;

@@ -12,8 +12,7 @@ main :: () -> void {
     ar[1][0] = 3;
     ar[1][1] = 4;
 
-    // TODO Cannot use slice, because translate_to_c doesn't support it yet
-    sl: [SIZE]i64 = (cast(*[SIZE]i64) &ar).*;
+    sl: []i64 = cast(*[SIZE]i64) &ar;
 
     i := 0;
     while i < SIZE {

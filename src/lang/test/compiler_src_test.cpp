@@ -119,7 +119,7 @@ TEST_F(compiler_src, comptime_declareLocal) {
 import std;
 import compiler;
 ${ compiler.declareLocal("str", *u8); }
-str = "hello";
+str = cast(*u8) "hello";
 std.puts(str);
 )");
 }

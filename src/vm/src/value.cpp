@@ -12,6 +12,8 @@
 #include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 
+static nk_typeid_t s_next_id = 1;
+
 NkType nkt_get_array(nktype_t elem_type, size_t elem_count) {
     return {
         .as{.arr{
@@ -21,6 +23,7 @@ NkType nkt_get_array(nktype_t elem_type, size_t elem_count) {
         .size = elem_type->size * elem_count,
         .align = elem_type->align,
         .tclass = NkType_Array,
+        .id = s_next_id++,
     };
 }
 
@@ -35,6 +38,7 @@ NkType nkt_get_fn(NktFnInfo info) {
         .size = sizeof(void *),
         .align = sizeof(void *),
         .tclass = NkType_Fn,
+        .id = s_next_id++,
     };
 }
 
@@ -46,6 +50,7 @@ NkType nkt_get_numeric(NkNumericValueType value_type) {
         .size = (size_t)NUM_TYPE_SIZE(value_type),
         .align = (uint8_t)NUM_TYPE_SIZE(value_type),
         .tclass = NkType_Numeric,
+        .id = s_next_id++,
     };
 }
 
@@ -57,6 +62,7 @@ NkType nkt_get_ptr(nktype_t target_type) {
         .size = sizeof(void *),
         .align = alignof(void *),
         .tclass = NkType_Ptr,
+        .id = s_next_id++,
     };
 }
 
@@ -69,6 +75,7 @@ NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, siz
         .size = layout.size,
         .align = (uint8_t)layout.align,
         .tclass = NkType_Tuple,
+        .id = s_next_id++,
     };
 }
 
@@ -78,6 +85,7 @@ NkType nkt_get_void() {
         .size = 0,
         .align = 1,
         .tclass = NkType_Void,
+        .id = s_next_id++,
     };
 }
 

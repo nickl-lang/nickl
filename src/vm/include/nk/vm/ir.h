@@ -103,7 +103,7 @@ NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct);
 
 void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t);
 
-void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo *fn_info);
+void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo const *fn_info);
 void nkir_finalizeIncompleteFunct(NkIrFunct funct, nktype_t fn_t);
 
 void nkir_discardFunct(NkIrFunct funct);
