@@ -93,6 +93,7 @@ typedef struct NklType {
     } as;
     nkl_typeclassid_t tclass;
     nkl_typeid_t id;
+    nkltype_t underlying_type = nullptr;
 } NklType;
 
 typedef struct {

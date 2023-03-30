@@ -558,6 +558,34 @@ IndexResult calcTupleIndex(NklCompiler c, nkltype_t type, size_t index) {
     return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
 }
 
+ValueInfo compileStructIndex(
+    NklCompiler c,
+    ValueInfo const &lhs,
+    nkltype_t struct_type,
+    nkid name) {
+    auto index = nklt_struct_index(struct_type, name);
+    if (index == -1ull) {
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+        nklt_inspect(lhs.type, sb);
+        auto type_str = nksb_concat(sb);
+        return error(
+                   c,
+                   "no field named `%s` in type `%.*s`",
+                   nkid2cs(name),
+                   type_str.size,
+                   type_str.data),
+               ValueInfo{};
+    }
+    auto ref = asRef(c, lhs);
+    // TODO Probably need a better way of accessing struct info
+    ref.type = tovmt(struct_type->as.strct.fields.data[index].type);
+    ref.post_offset += tovmt(struct_type)->as.tuple.elems.data[index].offset;
+    return makeRef(ref);
+}
+
 ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
     if (node->id == n_id) {
         auto const name = node->token->text;
@@ -683,55 +711,11 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         }
 
         case NklType_Struct: {
-            auto index = nklt_struct_index(lhs.type, name);
-            if (index == -1ull) {
-                auto sb = nksb_create();
-                defer {
-                    nksb_free(sb);
-                };
-                nklt_inspect(lhs.type, sb);
-                auto type_str = nksb_concat(sb);
-                return error(
-                           c,
-                           "no field named `%s` in type `%.*s`",
-                           nkid2cs(name),
-                           type_str.size,
-                           type_str.data),
-                       ValueInfo{};
-            }
-            auto ref = asRef(c, lhs);
-            // TODO Probably need a better way of accessing struct info
-            ref.type = tovmt(lhs.type)->as.tuple.elems.data[index].type;
-            ref.post_offset += tovmt(lhs.type)->as.tuple.elems.data[index].offset;
-            return makeRef(ref);
+            return compileStructIndex(c, lhs, lhs.type, name);
         }
 
         case NklType_Slice: {
-            if (name == cs2nkid("data")) {
-                auto ref = asRef(c, lhs);
-                ref.type = tovmt(nkl_get_ptr(lhs.type->as.slice.target_type));
-                return makeRef(ref);
-            } else if (name == cs2nkid("size")) {
-                auto ref = asRef(c, lhs);
-                ref.type = tovmt(nkl_get_numeric(Uint64));
-                ref.post_offset += tovmt(lhs.type)->as.tuple.elems.data[1].offset;
-                return makeRef(ref);
-            } else {
-                auto sb = nksb_create();
-                defer {
-                    nksb_free(sb);
-                };
-                nklt_inspect(lhs.type, sb);
-                auto type_str = nksb_concat(sb);
-                return error(
-                           c,
-                           "no field named `%s` in type `%.*s`",
-                           nkid2cs(name),
-                           type_str.size,
-                           type_str.data),
-                       ValueInfo{};
-            }
-            assert(!"unreachable");
+            return compileStructIndex(c, lhs, lhs.type->underlying_type, name);
         }
 
         default: {

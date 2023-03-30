@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "nk/common/allocator.h"
+#include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.h"
@@ -300,17 +301,28 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     pushVal(fp, is_const);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto ptr_t = nkl_get_ptr(elem_type);
-        auto u64_t = nkl_get_numeric(Uint64);
-        nkltype_t types[] = {ptr_t, u64_t};
+        auto const ptr_t = nkl_get_ptr(elem_type);
+        auto const u64_t = nkl_get_numeric(Uint64);
+        NklStructField const fields[] = {
+            {
+                .name = cs2nkid("data"),
+                .type = ptr_t,
+            },
+            {
+                .name = cs2nkid("size"),
+                .type = u64_t,
+            },
+        };
+        auto const underlying_type = nkl_get_struct(alloc, fields, AR_SIZE(fields));
         return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t *)types, AR_SIZE(types), 1),
+            .vm_type = *tovmt(underlying_type),
             .as{.slice{
                 .target_type = elem_type,
                 .is_const = is_const,
             }},
             .tclass = tclass,
             .id = s_next_id++,
+            .underlying_type = underlying_type,
         });
     });
 }
