@@ -1,12 +1,14 @@
 #include "nkl/lang/value.h"
 
 #include <cstdint>
+#include <cstring>
 #include <deque>
 #include <map>
 #include <mutex>
 #include <tuple>
 #include <vector>
 
+#include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.h"
@@ -313,6 +315,39 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     });
 }
 
+nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t count) {
+    auto const tclass = NklType_Struct;
+
+    ByteArray fp{};
+    pushVal(fp, NklTypeSubset);
+    pushVal(fp, tclass);
+    pushVal(fp, count);
+    for (size_t i = 0; i < count; i++) {
+        pushVal(fp, fields[i].name);
+        pushVal(fp, nklt_typeid(fields[i].type));
+    }
+
+    return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
+        auto fields_ar = (NklStructField *)nk_allocate(alloc, count * sizeof(NklStructField));
+        std::memcpy(fields_ar, fields, count * sizeof(NklStructField));
+        return &s_types.emplace_back(NklType{
+            .vm_type = *nkl_get_vm_tuple(
+                alloc,
+                (nktype_t *)&fields[0].type,
+                count,
+                sizeof(NklStructField) / sizeof(nkltype_t)),
+            .as{.strct{
+                .fields{
+                    .data = fields_ar,
+                    .size = count,
+                },
+            }},
+            .tclass = tclass,
+            .id = s_next_id++,
+        });
+    });
+}
+
 void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
     switch (nklt_tclass(type)) {
     case NklType_Slice:
@@ -334,4 +369,39 @@ void nklval_inspect(nklval_t val, NkStringBuilder sb) {
         nkval_inspect(tovmv(val), sb);
         break;
     }
+}
+
+size_t nklt_struct_index(nkltype_t type, nkid name) {
+    for (size_t i = 0; i < type->as.strct.fields.size; i++) {
+        if (name == type->as.strct.fields.data[i].name) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args) {
+    return nkval_fn_invoke(tovmv(fn), tovmv(ret), tovmv(args));
+}
+
+size_t nklval_array_size(nklval_t self) {
+    return nkval_array_size(tovmv(self));
+}
+
+nklval_t nklval_array_at(nklval_t self, size_t i) {
+    return fromvmv(nkval_array_at(tovmv(self), i));
+}
+
+size_t nklval_tuple_size(nklval_t self) {
+    return nkval_tuple_size(tovmv(self));
+}
+
+nklval_t nklval_tuple_at(nklval_t self, size_t i) {
+    return fromvmv(nkval_tuple_at(tovmv(self), i));
+}
+
+nklval_t nklval_struct_at(nklval_t val, nkid name) {
+    auto const type = nklval_typeof(val);
+    auto const i = nklt_struct_index(type, name);
+    return i == -1ull ? nklval_undefined() : nklval_tuple_at(val, i);
 }

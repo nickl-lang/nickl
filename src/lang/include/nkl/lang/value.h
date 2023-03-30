@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "nk/common/common.h"
+#include "nk/common/id.h"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
 
@@ -13,6 +14,7 @@ extern "C" {
 
 typedef enum {
     NklType_Slice = NkTypeclass_Count,
+    NklType_Struct,
 
     NklTypeclass_Count,
 } NklTypeclassId;
@@ -64,6 +66,20 @@ typedef struct {
     bool is_const;
 } _nkl_type_slice;
 
+typedef struct {
+    nkid name;
+    nkltype_t type;
+} NklStructField;
+
+typedef struct {
+    NklStructField *data;
+    size_t size;
+} NklStructFieldArray;
+
+typedef struct {
+    NklStructFieldArray fields;
+} _nkl_type_struct;
+
 typedef struct NklType {
     NkType vm_type;
     union {
@@ -73,6 +89,7 @@ typedef struct NklType {
         _nkl_type_ptr ptr;
         _nkl_type_tuple tuple;
         _nkl_type_slice slice;
+        _nkl_type_struct strct;
     } as;
     nkl_typeclassid_t tclass;
     nkl_typeid_t id;
@@ -94,9 +111,22 @@ nkl_get_tuple(NkAllocator alloc, nkltype_t const *types, size_t count, size_t st
 NK_EXPORT nkltype_t nkl_get_void();
 
 NK_EXPORT nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const = false);
+NK_EXPORT nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t count);
 
-void nklt_inspect(nkltype_t type, NkStringBuilder sb);
-void nklval_inspect(nklval_t val, NkStringBuilder sb);
+NK_EXPORT void nklt_inspect(nkltype_t type, NkStringBuilder sb);
+NK_EXPORT void nklval_inspect(nklval_t val, NkStringBuilder sb);
+
+NK_EXPORT size_t nklt_struct_index(nkltype_t type, nkid name);
+
+NK_EXPORT void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args);
+
+NK_EXPORT size_t nklval_array_size(nklval_t self);
+NK_EXPORT nklval_t nklval_array_at(nklval_t self, size_t i);
+
+NK_EXPORT size_t nklval_tuple_size(nklval_t self);
+NK_EXPORT nklval_t nklval_tuple_at(nklval_t self, size_t i);
+
+NK_EXPORT nklval_t nklval_struct_at(nklval_t val, nkid name);
 
 inline nklval_t nklval_undefined() {
     return nklval_t{};

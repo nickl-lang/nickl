@@ -650,6 +650,102 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         ref.is_indirect = true;
         ref.type = tovmt(arg.type->as.ptr.target_type);
         return makeRef(ref);
+    } else if (node->id == n_member) {
+        DEFINE(lhs, compile(c, narg0(node)));
+        auto name = s2nkid(narg1(node)->token->text);
+        switch (nklt_tclass(lhs.type)) {
+        case NkType_Fn: {
+            if (isKnown(lhs)) {
+                auto lhs_val = asValue(c, lhs);
+                if (nklval_typeof(lhs_val)->as.fn.call_conv == NkCallConv_Nk) {
+                    auto scope_it = c->fn_scopes.find(*(NkIrFunct *)nklval_data(lhs_val));
+                    if (scope_it != c->fn_scopes.end()) {
+                        auto &scope = *scope_it->second;
+                        auto member_it = scope.locals.find(name);
+                        if (member_it != scope.locals.end()) {
+                            auto &decl = member_it->second;
+                            return declToValueInfo(decl);
+                        } else {
+                            return error(c, "member `%s` not found", nkid2cs(name)), ValueInfo{};
+                        }
+                    }
+                } else {
+                    return error(
+                               c,
+                               "cannot subscript function with a calling convention other than "
+                               "nkl"),
+                           ValueInfo{};
+                }
+            } else {
+                return error(c, "cannot subscript a runtime function"), ValueInfo{};
+            }
+            assert(!"unreachable");
+        }
+
+        case NklType_Struct: {
+            auto index = nklt_struct_index(lhs.type, name);
+            if (index == -1ull) {
+                auto sb = nksb_create();
+                defer {
+                    nksb_free(sb);
+                };
+                nklt_inspect(lhs.type, sb);
+                auto type_str = nksb_concat(sb);
+                return error(
+                           c,
+                           "no field named `%s` in type `%.*s`",
+                           nkid2cs(name),
+                           type_str.size,
+                           type_str.data),
+                       ValueInfo{};
+            }
+            auto ref = asRef(c, lhs);
+            // TODO Probably need a better way of accessing struct info
+            ref.type = tovmt(lhs.type)->as.tuple.elems.data[index].type;
+            ref.post_offset += tovmt(lhs.type)->as.tuple.elems.data[index].offset;
+            return makeRef(ref);
+        }
+
+        case NklType_Slice: {
+            if (name == cs2nkid("data")) {
+                auto ref = asRef(c, lhs);
+                ref.type = tovmt(nkl_get_ptr(lhs.type->as.slice.target_type));
+                return makeRef(ref);
+            } else if (name == cs2nkid("size")) {
+                auto ref = asRef(c, lhs);
+                ref.type = tovmt(nkl_get_numeric(Uint64));
+                ref.post_offset += tovmt(lhs.type)->as.tuple.elems.data[1].offset;
+                return makeRef(ref);
+            } else {
+                auto sb = nksb_create();
+                defer {
+                    nksb_free(sb);
+                };
+                nklt_inspect(lhs.type, sb);
+                auto type_str = nksb_concat(sb);
+                return error(
+                           c,
+                           "no field named `%s` in type `%.*s`",
+                           nkid2cs(name),
+                           type_str.size,
+                           type_str.data),
+                       ValueInfo{};
+            }
+            assert(!"unreachable");
+        }
+
+        default: {
+            auto sb = nksb_create();
+            defer {
+                nksb_free(sb);
+            };
+            nklt_inspect(lhs.type, sb);
+            auto type_str = nksb_concat(sb);
+            return error(c, "type `%.*s` is not subscriptable", type_str.size, type_str.data),
+                   ValueInfo{};
+        }
+        }
+        assert(!"unreachable");
     } else {
         return error(c, "invalid lvalue"), ValueInfo{};
     }
@@ -778,11 +874,11 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
 void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
     switch (nklval_tclass(val)) {
     case NkType_Array:
-        if (init_nodes.size > nkval_tuple_size(tovmv(val))) {
+        if (init_nodes.size > nklval_tuple_size(val)) {
             return error(c, "too many values to init array");
         }
-        for (size_t i = 0; i < nkval_array_size(tovmv(val)); i++) {
-            initFromAst(c, fromvmv(nkval_array_at(tovmv(val), i)), {&init_nodes.data[i], 1});
+        for (size_t i = 0; i < nklval_array_size(val); i++) {
+            initFromAst(c, nklval_array_at(val, i), {&init_nodes.data[i], 1});
         }
         break;
     case NkType_Numeric: {
@@ -829,11 +925,11 @@ void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
         break;
     }
     case NkType_Tuple:
-        if (init_nodes.size > nkval_tuple_size(tovmv(val))) {
+        if (init_nodes.size > nklval_tuple_size(val)) {
             return error(c, "too many values to init array");
         }
-        for (size_t i = 0; i < nkval_tuple_size(tovmv(val)); i++) {
-            initFromAst(c, fromvmv(nkval_tuple_at(tovmv(val), i)), {&init_nodes.data[i], 1});
+        for (size_t i = 0; i < nklval_tuple_size(val); i++) {
+            initFromAst(c, nklval_tuple_at(val, i), {&init_nodes.data[i], 1});
         }
         break;
     default:
@@ -960,8 +1056,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_slice_type: {
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
-        return makeValue<void *>(
-            c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_slice(c->arena, target_type));
+        auto type = nkl_get_slice(c->arena, target_type);
+        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)type);
     }
 
     case n_scope: {
@@ -1172,6 +1268,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         types.reserve(nodes.size);
         for (size_t i = 0; i < nodes.size; i++) {
             DEFINE(val, comptimeCompileNodeGetValue(c, &nodes.data[i]));
+            // TODO Modeling type_t as *void
+            if (nklval_tclass(val) != NkType_Ptr ||
+                nklt_tclass(nklval_typeof(val)->as.ptr.target_type) != NkType_Void) {
+                return error(c, "type expected in tuple type"), ValueInfo{};
+            }
             types.emplace_back(nklval_as(nkltype_t, val));
         }
         return makeValue<void *>(
@@ -1276,28 +1377,29 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_member: {
-        DEFINE(lhs, compile(c, narg0(node)));
-        auto name = s2nkid(narg1(node)->token->text);
-        if (isKnown(lhs)) {
-            auto lhs_val = asValue(c, lhs);
-            if (nklval_tclass(lhs_val) == NkType_Fn &&
-                nklval_typeof(lhs_val)->as.fn.call_conv == NkCallConv_Nk) {
-                auto scope_it = c->fn_scopes.find(*(NkIrFunct *)nklval_data(lhs_val));
-                if (scope_it != c->fn_scopes.end()) {
-                    auto &scope = *scope_it->second;
-                    auto member_it = scope.locals.find(name);
-                    if (member_it != scope.locals.end()) {
-                        auto &decl = member_it->second;
-                        return declToValueInfo(decl);
-                    } else {
-                        return error(c, "member `%s` not found", nkid2cs(name)), ValueInfo{};
-                    }
-                }
+        return getLvalueRef(c, node);
+    }
+
+    case n_struct: {
+        std::vector<NklStructField> fields{};
+
+        auto nodes = nargs0(node);
+        for (size_t i = 0; i < nodes.size; i++) {
+            nkid name = s2nkid(narg0(&nodes.data[i])->token->text);
+            DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(&nodes.data[i])));
+            // TODO Modeling type_t as *void
+            if (nklval_tclass(type_val) != NkType_Ptr ||
+                nklt_tclass(nklval_typeof(type_val)->as.ptr.target_type) != NkType_Void) {
+                return error(c, "type expected in tuple type"), ValueInfo{};
             }
-        } else {
-            return error(c, "TODO  member implementation not finished"), ValueInfo{};
+            fields.emplace_back(NklStructField{
+                .name = name,
+                .type = nklval_as(nkltype_t, type_val),
+            });
         }
-        return makeVoid();
+
+        auto struct_type = nkl_get_struct(c->arena, fields.data(), fields.size());
+        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)struct_type);
     }
 
     case n_fn: {
@@ -1508,7 +1610,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     default:
-        return error(c, "TODO node compilation is not implemented"), ValueInfo{};
+        return error(c, "unknown ast node"), ValueInfo{};
     }
 }
 

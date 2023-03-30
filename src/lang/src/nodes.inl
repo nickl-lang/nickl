@@ -129,7 +129,7 @@ X(escaped_string) // (value: token)
 
 X(member) // (lhs: node, name: token)
 
-// X(struct) // (fields: [(id=mut|const name: token, type: node, value: node)])
+X(struct) // (fields: [(id=mut|const name: token, type: node, value: node)])
 // X(union)
 // X(enum)
 // X(packed_struct)

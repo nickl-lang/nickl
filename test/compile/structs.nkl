@@ -1,0 +1,22 @@
+main :: () -> void {
+    import std;
+
+    ivec2 :: struct {
+        x: i64,
+        y: i64,
+    }
+
+    v: ivec2;
+
+    v.x = 4;
+    v.y = 5;
+
+    std.printf("x=%li y=%li\n", v.x, v.y);
+}
+
+main();
+
+import compiler;
+builder := compiler.createBuilder();
+compiler.build(builder, main, "structs");
+compiler.freeBuilder(builder);

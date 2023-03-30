@@ -15,7 +15,7 @@ main :: () -> void {
     sl: []i64 = cast(*[SIZE]i64) &ar;
 
     i := 0;
-    while i < SIZE {
+    while i < sl.size {
         std.printf("%li", sl[i]);
         i = i + 1;
     }

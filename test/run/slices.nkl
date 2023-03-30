@@ -8,4 +8,14 @@ ar[2] = 6;
 
 slice: []i64 = &ar;
 
-std.printf("%li %li %li\n", slice[0], slice[1], slice[2]);
+i := 0;
+while i < slice.size {
+    endl: u8;                                  // TODO Cannot write ternary
+    if i < slice.size - 1 { endl = " ".*[0]; } // TODO Cannot write char literal
+    else { endl = "\n".*[0]; }                 // TODO Cannot write char literal
+    std.printf("%li%c", slice[i], endl);
+    i = i + 1;
+}
+
+// TODO(assert) assert(slice.data == &ar);
+slice.data;
