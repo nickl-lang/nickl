@@ -1,0 +1,16 @@
+object :: void;
+
+C_TO_STRING_PRETTY :: 1 << 1;
+
+#link("libjson-c.so", "json_") object_from_file :: (filename: *const i8) -> *object;
+#link("libjson-c.so", "json_") object_to_json_string_ext :: (obj: *object, flags: i32) -> *const i8;
+#link("libjson-c.so", "json_") object_put :: (obj: *object) -> i32;
+
+#link("libjson-c.so", "json_") object_object_get :: (obj: *object, key: *const i8) -> *object;
+
+#link("libjson-c.so", "json_") object_get_string :: (obj: *object) -> *const i8;
+#link("libjson-c.so", "json_") object_get_boolean :: (obj: *object) -> bool;
+#link("libjson-c.so", "json_") object_get_int :: (obj: *object) -> i32;
+
+#link("libjson-c.so", "json_") object_array_get_idx :: (obj: *object, idx: u64) -> *object;
+#link("libjson-c.so", "json_") object_array_length :: (obj: *object) -> u64;

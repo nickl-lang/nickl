@@ -1,0 +1,34 @@
+import std;
+import json;
+
+makeStruct :: (filename: []i8) {
+    root := json.object_from_file(filename.data);
+
+    if root {
+        fields := json.object_object_get(root, "fields");
+
+        i := u64{0};
+        while i < json.object_array_length(fields) {
+            field := json.object_array_get_idx(fields, i);
+
+            name := json.object_object_get(field, "name");
+            type := json.object_object_get(field, "type");
+
+            std.printf("name: %s\n", json.object_get_string(name));
+            std.printf("type: %s\n", json.object_get_string(type));
+
+            i = i + 1;
+        }
+    }
+
+    json.object_put(root);
+}
+
+main :: () -> void {
+    ${ makeStruct("./struct.json"); }
+}
+
+import compiler;
+builder := compiler.createBuilder();
+compiler.build(builder, cast(compiler.EntryPoint) main, "struct_from_json");
+compiler.freeBuilder(builder);

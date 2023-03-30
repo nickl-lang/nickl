@@ -1295,8 +1295,6 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
         auto it = c->imports.find(filepath);
         if (it == c->imports.end()) {
-            if (!fs::exists(filepath)) {
-            }
             DEFINE(fn, nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()}));
             std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
         }
