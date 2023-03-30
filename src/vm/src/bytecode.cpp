@@ -171,8 +171,9 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 }
                 auto &val = p->globals[ref.index];
                 if (!val.data) {
-                    val = {nk_allocate(p->arena, ref.type->size), arg.type};
-                    std::memset(val.data, 0, ref.type->size);
+                    auto const type = ir.globals[ref.index];
+                    val = {nk_allocate(p->arena, type->size), type};
+                    std::memset(val.data, 0, type->size);
                 }
                 arg.offset += (size_t)val.data;
                 break;
