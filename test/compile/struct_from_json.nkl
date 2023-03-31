@@ -26,9 +26,9 @@ makeStruct :: (filename: []i8) -> type_t {
             i = i + 1;
         }
 
+        type := compiler.makeStruct(&field_ar);
         json.object_put(root);
-
-        return compiler.makeStruct(&field_ar);
+        return type;
     }
 
     return struct {};
