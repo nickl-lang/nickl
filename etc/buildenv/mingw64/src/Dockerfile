@@ -1,6 +1,7 @@
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++-mingw-w64-x86-64 \
     mingw-w64-x86-64-dev \
+    wget \
     zstd \
  && rm -rf /var/lib/apt/lists/*
 
