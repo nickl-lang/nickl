@@ -619,9 +619,10 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
             return {};
         }
     } else if (node->id == n_index) {
-        auto const lhs_ref = asRef(c, compile(c, narg0(node)));
+        DEFINE(lhs, compile(c, narg0(node)));
+        auto const lhs_ref = asRef(c, lhs);
         auto const type = fromvmt(lhs_ref.type);
-        auto const index = compile(c, narg1(node));
+        DEFINE(index, compile(c, narg1(node)));
         if (index.type->tclass != NkType_Numeric) {
             return error(c, "expected number in index"), ValueInfo{};
         }
@@ -682,7 +683,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
                    ValueInfo{};
         }
     } else if (node->id == n_deref) {
-        auto const arg = compile(c, narg0(node));
+        DEFINE(arg, compile(c, narg0(node)));
         if (arg.type->tclass != NkType_Ptr) {
             return error(c, "pointer expected in dereference"), ValueInfo{};
         }
@@ -1493,11 +1494,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             // TODO Support named args in call
             DEFINE(val_info, compile(c, narg1(&nodes.data[i])));
             args_info.emplace_back(val_info);
-            args_types.emplace_back(val_info.type);
-            // TODO(cannot check call args yet) args_types.emplace_back(
-            //     i < fn_t->as.fn.args_t->as.tuple.elems.size
-            //         ? fn_t->as.fn.args_t->as.tuple.elems.data[i].type
-            //         : val_info.type);
+            args_types.emplace_back(
+                i < fn_t->as.fn.args_t->as.tuple.elems.size
+                    ? fn_t->as.fn.args_t->as.tuple.elems.data[i].type
+                    : val_info.type);
         }
 
         auto args_t = nkl_get_tuple(c->arena, args_types.data(), args_types.size(), 1);

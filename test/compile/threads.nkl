@@ -26,12 +26,15 @@ exec :: (name: *i8) -> void {
     thread_id: pthread_t;
     ret: *i8;
 
-    if pthread_create(&thread_id, u64{0}, thread, name) != 0 {
+    if pthread_create(&thread_id,
+           cast(*pthread_attr_t) u64{0},
+           cast(ThreadFunc) thread,
+           cast(*void) name) != 0 {
         std.printf("error: pthread_create() error");
         return;
     }
 
-    if pthread_join(thread_id, &ret) != 0 {
+    if pthread_join(thread_id, cast(**void) &ret) != 0 {
         std.printf("error: pthread_join() error");
         return;
     }

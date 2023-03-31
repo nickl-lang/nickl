@@ -80,7 +80,7 @@ step :: () -> void {
 }
 
 // TODO Cannot do char literals
-ESC :: 27;
+ESC :: i32{27};
 
 main :: () -> i32 {
     std.system("stty -icanon -echo");
@@ -91,7 +91,7 @@ main :: () -> i32 {
     std.putchar(ESC); std.printf("[?25l");
 
     empty_row: [COLS]u8;
-    std.memset(&empty_row, ".".*[0], COLS);
+    std.memset(cast(*void) &empty_row, cast(i32) ".".*[0], cast(u64) COLS);
 
     running := false;
 
@@ -107,9 +107,9 @@ main :: () -> i32 {
         else if c ==  "a".*[0] s_cursor_y = pmod(s_cursor_y - 1, COLS);
         else if c ==  "s".*[0] s_cursor_x = pmod(s_cursor_x + 1, ROWS);
         else if c ==  "d".*[0] s_cursor_y = pmod(s_cursor_y + 1, COLS);
-        else if c ==  " ".*[0] set(s_cursor_x, s_cursor_y, 1 - get(s_cursor_x, s_cursor_y));
+        else if c ==  " ".*[0] set(s_cursor_x, s_cursor_y, u8{1} - get(s_cursor_x, s_cursor_y));
         else if c == "\n".*[0] running = running ^ 1;
-        else if c ==  "c".*[0] std.memset(at(0, 0), 0, ROWS * COLS);
+        else if c ==  "c".*[0] std.memset(cast(*void) at(0, 0), i32{0}, cast(u64) (ROWS * COLS));
         else if c ==  "e".*[0] step();
 
         if running {
@@ -129,7 +129,7 @@ main :: () -> i32 {
                 }
                 y = y + 1;
             }
-            std.putchar("\n".*[0]);
+            std.putchar(cast(i32) "\n".*[0]);
             x = x + 1;
         }
 
@@ -144,7 +144,7 @@ main :: () -> i32 {
             sleep_ts: std.timespec;
             sleep_ts.tv_sec = 0;
             sleep_ts.tv_nsec = FRAMETIME_NS - elapsed_ns;
-            std.nanosleep(&sleep_ts, 0);
+            std.nanosleep(&sleep_ts, cast(*std.timespec) u64{0});
         }
 
         prev_ts = ts;

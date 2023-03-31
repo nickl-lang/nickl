@@ -1,17 +1,17 @@
 runRaylib :: () -> i64 {
     import raylib;
 
-    SCREEN_WIDTH  :: 800;
-    SCREEN_HEIGHT :: 450;
+    SCREEN_WIDTH  :: i32{800};
+    SCREEN_HEIGHT :: i32{450};
 
     raylib.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib");
     raylib.SetWindowState(raylib.FLAG_WINDOW_RESIZABLE);
 
-    x: i64 = SCREEN_WIDTH / 2;
-    y: i64 = SCREEN_HEIGHT / 2;
+    x := SCREEN_WIDTH / i32{2};
+    y := SCREEN_HEIGHT / i32{2};
     dist := 0;
 
-    raylib.SetTargetFPS(60);
+    raylib.SetTargetFPS(i32{60});
 
     while 0 == raylib.WindowShouldClose() {
         STEP :: 10;
@@ -30,9 +30,9 @@ runRaylib :: () -> i64 {
         raylib.BeginDrawing();
             raylib.ClearBackground(WHITE);
             raylib.DrawCircle(x, y, RADIUS, MAROON);
-            raylib.DrawFPS(10, 10);
-            raylib.DrawText("move the ball with arrow keys", 10, 30, 20, DARKGRAY);
-            raylib.DrawText(raylib.TextFormat("distance traveled: %i pix", dist), 10, 50, 20, DARKGRAY);
+            raylib.DrawFPS(i32{10}, i32{10});
+            raylib.DrawText("move the ball with arrow keys", i32{10}, i32{30}, i32{20}, DARKGRAY);
+            raylib.DrawText(raylib.TextFormat("distance traveled: %i pix", dist), i32{10}, i32{50}, i32{20}, DARKGRAY);
         raylib.EndDrawing();
     }
 
