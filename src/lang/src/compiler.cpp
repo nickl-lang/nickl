@@ -403,7 +403,7 @@ nkltype_t comptimeConstType(ComptimeConst cnst) {
 NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     switch (val.kind) {
     case v_val:
-        return nkir_makeConstRef(c->ir, {val.as.val, tovmt(val.type)});
+        return nkir_makeConstRef(c->ir, nkir_makeConst(c->ir, {val.as.val, tovmt(val.type)}));
 
     case v_ref:
         return val.as.ref;
@@ -423,7 +423,8 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
         switch (decl.kind) {
         case Decl_ComptimeConst:
             return nkir_makeConstRef(
-                c->ir, tovmv(comptimeConstGetValue(c, decl.as.comptime_const)));
+                c->ir,
+                nkir_makeConst(c->ir, tovmv(comptimeConstGetValue(c, decl.as.comptime_const))));
         case Decl_Local:
             return nkir_makeFrameRef(c->ir, decl.as.local.id);
         case Decl_Global:

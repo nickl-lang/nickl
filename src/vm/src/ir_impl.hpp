@@ -53,6 +53,7 @@ struct NkIrProg_T {
     std::vector<NkIrInstr> instrs;
     std::vector<std::string> shobjs;
     std::vector<nktype_t> globals;
+    std::vector<nkval_t> consts;
     std::vector<IrExSym> exsyms;
 
     NkBcProg bc;

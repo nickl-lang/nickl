@@ -162,6 +162,12 @@ NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nktype_t type) {
     return id;
 }
 
+NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val) {
+    NkIrConstId id{p->consts.size()};
+    p->consts.emplace_back(val);
+    return id;
+}
+
 NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type) {
     NkIrExtSymId id{p->exsyms.size()};
     p->exsyms.emplace_back(IrExSym{
@@ -230,12 +236,12 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var) {
     };
 }
 
-NkIrRef nkir_makeConstRef(NkIrProg, nkval_t val) {
+NkIrRef nkir_makeConstRef(NkIrProg p, NkIrConstId cnst) {
     return {
-        .data = nkval_data(val),
+        .data = nkval_data(p->consts[cnst.id]),
         .offset = 0,
         .post_offset = 0,
-        .type = nkval_typeof(val),
+        .type = nkval_typeof(p->consts[cnst.id]),
         .ref_type = NkIrRef_Const,
         .is_indirect = false,
     };

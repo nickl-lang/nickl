@@ -111,7 +111,10 @@ TEST_F(ir, nested_functions) {
     nkir_startFunct(getFour, cs2s("getFour"), getFour_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
-    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_4, i32_t})));
+    nkir_gen(
+        p,
+        nkir_make_mov(
+            nkir_makeRetRef(p), nkir_makeConstRef(p, nkir_makeConst(p, {&const_4, i32_t}))));
     nkir_gen(p, nkir_make_ret());
 
     nkir_activateFunct(p, getEight);
@@ -119,7 +122,10 @@ TEST_F(ir, nested_functions) {
     auto var = nkir_makeFrameRef(p, nkir_makeLocalVar(p, i32_t));
 
     nkir_gen(p, nkir_make_call(var, nkir_makeFunctRef(getFour), {}));
-    nkir_gen(p, nkir_make_mul(nkir_makeRetRef(p), var, nkir_makeConstRef(p, {&const_2, i32_t})));
+    nkir_gen(
+        p,
+        nkir_make_mul(
+            nkir_makeRetRef(p), var, nkir_makeConstRef(p, nkir_makeConst(p, {&const_2, i32_t}))));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);
@@ -153,12 +159,23 @@ TEST_F(ir, isEven) {
 
     auto var = nkir_makeFrameRef(p, nkir_makeLocalVar(p, i32_t));
 
-    nkir_gen(p, nkir_make_mod(var, nkir_makeArgRef(p, 0), nkir_makeConstRef(p, {&const_2, i32_t})));
+    nkir_gen(
+        p,
+        nkir_make_mod(
+            var,
+            nkir_makeArgRef(p, 0),
+            nkir_makeConstRef(p, nkir_makeConst(p, {&const_2, i32_t}))));
     nkir_gen(p, nkir_make_jmpnz(var, l_else));
-    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_1, i32_t})));
+    nkir_gen(
+        p,
+        nkir_make_mov(
+            nkir_makeRetRef(p), nkir_makeConstRef(p, nkir_makeConst(p, {&const_1, i32_t}))));
     nkir_gen(p, nkir_make_jmp(l_end));
     nkir_startBlock(p, l_else, cs2s("else"));
-    nkir_gen(p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_0, i32_t})));
+    nkir_gen(
+        p,
+        nkir_make_mov(
+            nkir_makeRetRef(p), nkir_makeConstRef(p, nkir_makeConst(p, {&const_0, i32_t}))));
     nkir_startBlock(p, l_end, cs2s("end"));
     nkir_gen(p, nkir_make_ret());
 
@@ -218,7 +235,7 @@ TEST_F(ir, native_call) {
         nkir_make_call(
             {},
             nkir_makeExtSymRef(p, print_fn),
-            nkir_makeConstRef(p, {&const_str, actual_args_t})));
+            nkir_makeConstRef(p, nkir_makeConst(p, {&const_str, actual_args_t}))));
     nkir_gen(p, nkir_make_ret());
 
     inspect(p);
@@ -302,7 +319,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
         nkir_make_call(
             nkir_makeRetRef(p),
             nkir_makeExtSymRef(p, log2_fn),
-            nkir_makeConstRef(p, {&const_64, log2_args_t})));
+            nkir_makeConstRef(p, nkir_makeConst(p, {&const_64, log2_args_t}))));
     nkir_gen(p, nkir_make_ret());
 
     uint64_t ar_size = 0; // Must be aligned to 8
@@ -326,7 +343,10 @@ TEST_F(ir, nested_functions_call_while_compiling) {
     size_arg.offset = args_t->as.tuple.elems.data[1].offset;
 
     nkir_gen(p, nkir_make_lea(buf_arg, ar));
-    nkir_gen(p, nkir_make_mov(size_arg, nkir_makeConstRef(p, {(void *)&ar_t->size, u32_t})));
+    nkir_gen(
+        p,
+        nkir_make_mov(
+            size_arg, nkir_makeConstRef(p, nkir_makeConst(p, {(void *)&ar_t->size, u32_t}))));
     nkir_gen(p, nkir_make_call({}, nkir_makeExtSymRef(p, fillAr_fn), args));
     nkir_gen(p, nkir_make_call({}, nkir_makeExtSymRef(p, printAr_fn), args));
     nkir_gen(p, nkir_make_ret());
@@ -394,7 +414,10 @@ TEST_F(ir, callback) {
     auto actual_args_t = alloct(nkt_get_tuple(m_arena, &str_t, 1, 1));
 
     nkir_gen(
-        p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, {&const_str, actual_args_t})));
+        p,
+        nkir_make_mov(
+            nkir_makeRetRef(p),
+            nkir_makeConstRef(p, nkir_makeConst(p, {&const_str, actual_args_t}))));
     nkir_gen(p, nkir_make_ret());
 
     auto test = nkir_makeFunct(p);
@@ -459,7 +482,7 @@ TEST_F(ir, callback_from_native) {
     nkir_startFunct(test, cs2s("test"), test_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
-    auto cb_arg = nkir_makeConstRef(p, {nativeAdd_cl, nativeAdd_fn_t});
+    auto cb_arg = nkir_makeConstRef(p, nkir_makeConst(p, {nativeAdd_cl, nativeAdd_fn_t}));
     cb_arg.type = nativeCallback_args_t;
 
     nkir_gen(
