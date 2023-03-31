@@ -12,3 +12,7 @@ RUN git clone https://github.com/yse/easy_profiler.git -b v2.1.0 \
  && cd ../.. \
  && rm -rf easy_profiler \
  ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libjson-c-dev \
+ && rm -rf /var/lib/apt/lists/*

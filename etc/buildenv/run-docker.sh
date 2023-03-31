@@ -16,7 +16,7 @@ mkdir -p $DOCKERHOME
 
 if [ -z "$(docker images -q $IMAGE 2> /dev/null)" ]; then
     URL=ghcr.io/nk4rter
-    if docker pull $URL/$IMAGE; then
+    if docker pull $URL/$IMAGE 2> /dev/null; then
         docker image tag $URL/$IMAGE $IMAGE
         docker image rm $URL/$IMAGE
     else
