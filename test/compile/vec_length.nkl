@@ -20,8 +20,8 @@ main :: (argc: i32, argv: **i8) -> i32 {
     return i32{0};
 }
 
-main(0, 0);
+main();
 
 builder := compiler.createBuilder();
-compiler.build(builder, main, "vec_length");
+compiler.build(builder, cast(compiler.EntryPoint) main, "vec_length");
 compiler.freeBuilder(builder);

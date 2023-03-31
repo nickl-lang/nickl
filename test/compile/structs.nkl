@@ -18,5 +18,5 @@ main();
 
 import compiler;
 builder := compiler.createBuilder();
-compiler.build(builder, main, "structs");
+compiler.build(builder, cast(compiler.EntryPoint) main, "structs");
 compiler.freeBuilder(builder);

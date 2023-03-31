@@ -16,18 +16,17 @@ LIBPTHREAD :: "libpthread.so.0";
 #link(LIBPTHREAD) pthread_join :: (thread: pthread_t, retval: **void) -> i32;
 #link(LIBPTHREAD) pthread_self :: () -> pthread_t;
 
-// TODO Cannot cast to *void, becase of translate_to_c, have to be explicit
-#extern("c") thread :: (arg: *void) -> *[6]u8 {
+#extern("c") thread :: (arg: *void) -> *i8 {
     std.printf("thread: arg='%s'\n", arg);
     std.printf("thread: id=%li\n", pthread_self());
     return "hello";
 }
 
-exec :: (name: *u8) -> void {
+exec :: (name: *i8) -> void {
     thread_id: pthread_t;
-    ret: *u8;
+    ret: *i8;
 
-    if pthread_create(&thread_id, 0, thread, name) != 0 {
+    if pthread_create(&thread_id, u64{0}, thread, name) != 0 {
         std.printf("error: pthread_create() error");
         return;
     }
@@ -50,5 +49,5 @@ main :: () -> i32 {
 import compiler;
 builder := compiler.createBuilder();
 compiler.link(builder, LIBPTHREAD);
-compiler.build(builder, main, "threads");
+compiler.build(builder, cast(compiler.EntryPoint) main, "threads");
 compiler.freeBuilder(builder);

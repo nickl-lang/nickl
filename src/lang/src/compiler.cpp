@@ -471,7 +471,11 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
             makeValue<uint64_t>(c, u64_t, src_type->as.ptr.target_type->as.arr.elem_count));
         return makeRef(dst);
     }
-    if (nklt_typeid(dst_type) != nklt_typeid(src_type)) {
+    if (nklt_typeid(dst_type) != nklt_typeid(src_type) &&
+        !(nklt_tclass(dst_type) == NkType_Ptr && nklt_tclass(src_type) == NkType_Ptr &&
+          nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
+          nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type) ==
+              nklt_typeid(dst_type->as.ptr.target_type))) {
         // TODO A little clumsy error printing in store
         auto dst_sb = nksb_create();
         auto src_sb = nksb_create();
@@ -1162,6 +1166,16 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             break;
         }
 
+        case NkType_Fn: {
+            switch (src_type->tclass) {
+            case NkType_Fn: {
+                src.type = dst_type;
+                return src;
+            }
+            }
+            break;
+        }
+
         case NkType_Void: {
             (void)asRef(c, src);
             return makeVoid();
@@ -1329,8 +1343,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_string: {
         auto size = node->token->text.size;
 
-        auto u8_t = nkl_get_numeric(Uint8);
-        auto ar_t = nkl_get_array(u8_t, size + 1);
+        auto i8_t = nkl_get_numeric(Int8);
+        auto ar_t = nkl_get_array(i8_t, size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
         auto str = (char *)nk_allocate(c->arena, size + 1);
@@ -1350,8 +1364,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto size = unescaped_str.size;
 
-        auto u8_t = nkl_get_numeric(Uint8);
-        auto ar_t = nkl_get_array(u8_t, size + 1);
+        auto i8_t = nkl_get_numeric(Int8);
+        auto ar_t = nkl_get_array(i8_t, size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
         auto str = (char *)nk_allocate(c->arena, unescaped_str.size + 1);
@@ -1470,6 +1484,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             return error(c, "function expected in call"), ValueInfo{};
         }
 
+        auto const fn_t = lhs.type;
+
         std::vector<ValueInfo> args_info{};
         std::vector<nkltype_t> args_types{};
 
@@ -1479,6 +1495,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             DEFINE(val_info, compile(c, narg1(&nodes.data[i])));
             args_info.emplace_back(val_info);
             args_types.emplace_back(val_info.type);
+            // TODO(cannot check call args yet) args_types.emplace_back(
+            //     i < fn_t->as.fn.args_t->as.tuple.elems.size
+            //         ? fn_t->as.fn.args_t->as.tuple.elems.data[i].type
+            //         : val_info.type);
         }
 
         auto args_t = nkl_get_tuple(c->arena, args_types.data(), args_types.size(), 1);
@@ -1487,8 +1507,6 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         if (nklt_sizeof(args_t)) {
             args = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(args_t)));
         }
-
-        auto fn_t = lhs.type;
 
         for (size_t i = 0; i < args_info.size(); i++) {
             auto arg_ref = args;

@@ -15,9 +15,9 @@ main :: (argc: i32, argv: **i8) -> i32 {
             return 0;
         }
 
-        BUF_SIZE :: 64;
+        BUF_SIZE :: u64{64};
         buf: [BUF_SIZE+1]i8;
-        bytes_read := std.fread(&buf, 1, BUF_SIZE, file);
+        bytes_read := std.fread(&buf, u64{1}, BUF_SIZE, file);
         if BUF_SIZE == bytes_read {
             std.puts("error: not enough memory in buffer");
             return 0;
@@ -40,5 +40,5 @@ main :: (argc: i32, argv: **i8) -> i32 {
 
 import compiler;
 builder := compiler.createBuilder();
-compiler.build(builder, main, "configured");
+compiler.build(builder, cast(compiler.EntryPoint) main, "configured");
 compiler.freeBuilder(builder);

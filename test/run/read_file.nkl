@@ -1,11 +1,13 @@
 import std;
 
-BUF_SIZE :: 64;
-buf: [BUF_SIZE]u8;
+BUF_SIZE :: u64{64};
+buf: [BUF_SIZE]i8;
 
 file := std.fopen("file.txt", "r");
 
-std.fread(&buf, BUF_SIZE, BUF_SIZE, file);
-std.printf("%s", &buf);
+if file {
+    std.fread(&buf, BUF_SIZE, BUF_SIZE, file);
+    std.printf("%s", &buf);
 
-std.fclose(file);
+    std.fclose(file);
+}

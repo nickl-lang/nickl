@@ -34,7 +34,7 @@ O_NONBLOCK :: 2048; // TODO Cannot write octal 04000
 
 #link("c") fcntl :: (fildes: i32, cmd: i32, ...) -> i32;
 
-#link("c") system :: (cmd: *u8) -> i32;
+#link("c") system :: (cmd: *i8) -> i32;
 
 CLOCK_MONOTONIC :: 1;
 
