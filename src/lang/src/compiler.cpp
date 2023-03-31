@@ -1878,11 +1878,12 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
 
 } // namespace
 
-extern "C" NK_EXPORT Void nkl_compiler_declareLocal(char const *name, nkltype_t type) {
+extern "C" NK_EXPORT Void nkl_compiler_declareLocal(nkstr name, nkltype_t type) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
     NklCompiler c = s_compiler;
-    CHECK(defineLocal(c, cs2nkid(name), nkir_makeLocalVar(c->ir, tovmt(type)), type));
+    // TODO Treating slice as cstring, while we include excess zero charater
+    CHECK(defineLocal(c, cs2nkid(std_str(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
     return {};
 }
 
@@ -1903,16 +1904,16 @@ extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
     nk_free(nk_default_allocator, b);
 }
 
-extern "C" NK_EXPORT void nkl_compiler_link(NklCompilerBuilder *b, char const *lib) {
+extern "C" NK_EXPORT void nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
     NK_LOG_TRC(__func__);
 
-    b->libs.emplace_back(lib);
+    b->libs.emplace_back(std_view(lib));
 }
 
 extern "C" NK_EXPORT bool nkl_compiler_build(
     NklCompilerBuilder *b,
     NkIrFunct entry,
-    char const *exe_name) {
+    nkstr exe_name) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
@@ -1929,7 +1930,7 @@ extern "C" NK_EXPORT bool nkl_compiler_build(
     NkIrCompilerConfig conf{
         .compiler_binary = {c->c_compiler.c_str(), c->c_compiler.size()},
         .additional_flags = {flags.c_str(), flags.size()},
-        .output_filename = cs2s(exe_name),
+        .output_filename = exe_name,
         .echo_src = 0,
         .quiet = 0,
     };

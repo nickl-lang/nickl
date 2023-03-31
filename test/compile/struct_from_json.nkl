@@ -28,10 +28,7 @@ makeStruct :: (filename: []i8) -> type_t {
 
         json.object_put(root);
 
-        fields_slice: []compiler.StructField;
-        fields_slice.data = &field_ar;
-        fields_slice.size = FIELD_COUNT;
-        return compiler.makeStruct(fields_slice);
+        return compiler.makeStruct(&field_ar);
     }
 
     return struct {};

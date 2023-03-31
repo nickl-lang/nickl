@@ -62,7 +62,7 @@ pi :: 3.14;
 
 TEST_F(compiler_src, fn) {
     test(R"(
-add :: (lhs: u32, rhs: u32) -> u32 {
+add :: (lhs: i64, rhs: i64) -> i64 {
     return lhs + rhs;
 }
 add(4, 5);
@@ -72,9 +72,9 @@ add(4, 5);
 TEST_F(compiler_src, comptime_const_getter) {
     test(R"(
 counter := 0;
-getVal :: () -> u32 {
+getVal :: () -> i64 {
     counter = counter + 1;
-    return u32{42};
+    return 42;
 }
 val :: getVal();
 val;
