@@ -178,22 +178,24 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.offset += (size_t)val.data;
                 break;
             }
-            case NkIrRef_Const:
+            case NkIrRef_Const: {
                 arg.ref_type = NkBcRef_Rodata;
-                arg.offset = (size_t)ref.data;
+                auto const_data = nkval_data(ir.consts[ref.index]);
+                arg.offset = (size_t)const_data;
                 if (ref.type->tclass == NkType_Fn && ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
                     for (auto f : ir.functs) {
-                        if (*(void **)ref.data == (void *)f) { // TODO Manual search for fn
+                        if (*(void **)const_data == (void *)f) { // TODO Manual search for fn
                             found = true;
                             break;
                         }
                     }
                     if (found) {
-                        referenced_functs.emplace_back((NkIrFunct) * (void **)ref.data);
+                        referenced_functs.emplace_back((NkIrFunct) * (void **)const_data);
                     }
                 }
                 break;
+            }
             case NkIrRef_Reg:
                 arg.offset += ref.index * REG_SIZE;
                 break;
@@ -265,7 +267,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
                     for (auto f : ir.functs) {
-                        if (*(void **)arg1.ref.data == (void *)f) { // TODO Manual search for fn
+                        // TODO Manual search for fn
+                        if (*(void **)nkval_data(ir.consts[arg1.ref.index]) == (void *)f) {
                             found = true;
                             break;
                         }

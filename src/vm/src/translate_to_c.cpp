@@ -255,7 +255,8 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         break;
     }
     case NkType_Ptr:
-        tmp_s << "&";
+        is_complex = true;
+        tmp_s << "& ";
         _writeConst(
             ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
         break;
@@ -373,6 +374,8 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
     auto args_t = fn_t->as.fn.args_t;
     auto ret_t = fn_t->as.fn.ret_t;
 
+    auto const &ir = fn->prog;
+
     _writeFnSig(ctx, ctx.forward_s, fn->name, ret_t, args_t);
     ctx.forward_s << ";\n";
 
@@ -404,12 +407,16 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
         auto _writeRef = [&](NkIrRef const &ref) {
             if (ref.ref_type == NkIrRef_Const) {
-                auto ptr = (uint8_t *)ref.data + ref.offset;
+                auto const val = nkir_constGetValue(ir, {ref.index});
+                auto type = nkval_typeof(val);
+                auto ptr = (uint8_t *)nkval_data(val) + ref.offset;
                 if (ref.is_indirect) {
+                    assert(nkt_typeclassid(type) == NkType_Ptr);
+                    type = type->as.ptr.target_type;
                     ptr = *(uint8_t **)ptr;
                 }
                 ptr += ref.post_offset;
-                _writeConst(ctx, {ptr, ref.type}, src);
+                _writeConst(ctx, {ptr, type}, src);
                 return;
             } else if (ref.ref_type == NkIrRef_ExtSym) {
                 auto sym = ctx.ir->exsyms[ref.index];
@@ -440,7 +447,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << "((uint8_t*)";
             }
             if (!ref.is_indirect) {
-                src << "&";
+                src << "& ";
             }
             switch (ref.ref_type) {
             case NkIrRef_Frame:
@@ -557,7 +564,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 _writeRef(instr.arg[1].ref);
                 break;
             case nkir_lea:
-                src << "&";
+                src << "& ";
                 _writeRef(instr.arg[1].ref);
                 break;
 

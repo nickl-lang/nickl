@@ -381,6 +381,10 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t
 
 void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
     switch (nklt_tclass(type)) {
+    case NklType_Typeref:
+        nksb_printf(sb, "type_t");
+        break;
+
     case NklType_Slice:
         nksb_printf(sb, "[]");
         nklt_inspect(type->as.slice.target_type, sb);

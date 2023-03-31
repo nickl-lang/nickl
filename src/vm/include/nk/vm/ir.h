@@ -112,6 +112,8 @@ void nkir_discardFunct(NkIrFunct funct);
 nktype_t nkir_functGetType(NkIrFunct funct);
 NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct);
 
+nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst);
+
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name);
 
 void nkir_activateFunct(NkIrProg p, NkIrFunct funct);

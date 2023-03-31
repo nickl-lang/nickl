@@ -130,7 +130,7 @@ enum EValueKind {
 
 struct ValueInfo {
     union Var {
-        void *val;
+        NkIrConstId cnst;
         NkIrRef ref;
         NkIrInstr instr;
         Decl *decl;
@@ -340,11 +340,15 @@ Decl &resolve(NklCompiler c, nkid name) {
 
 template <class T, class... TArgs>
 ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
-    return {{.val = new (nk_allocate(c->arena, sizeof(T))) T{args...}}, type, v_val};
+    return {
+        {.cnst = nkir_makeConst(
+             c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
+        type,
+        v_val};
 }
 
-ValueInfo makeValue(nklval_t val) {
-    return {{.val = nklval_data(val)}, val.type, v_val};
+ValueInfo makeValue(NklCompiler c, nklval_t val) {
+    return {{.cnst = nkir_makeConst(c->ir, tovmv(val))}, nklval_typeof(val), v_val};
 }
 
 ValueInfo makeInstr(NkIrInstr const &instr, nkltype_t type) {
@@ -382,7 +386,7 @@ bool isKnown(ValueInfo const &val) {
 nklval_t asValue(NklCompiler c, ValueInfo const &val) {
     assert(isKnown(val) && "getting unknown value");
     if (val.kind == v_val) {
-        return {val.as.val, val.type};
+        return nklval_reinterpret_cast(val.type, fromvmv(nkir_constGetValue(c->ir, val.as.cnst)));
     } else {
         return comptimeConstGetValue(c, val.as.decl->as.comptime_const);
     }
@@ -402,8 +406,11 @@ nkltype_t comptimeConstType(ComptimeConst cnst) {
 
 NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     switch (val.kind) {
-    case v_val:
-        return nkir_makeConstRef(c->ir, nkir_makeConst(c->ir, {val.as.val, tovmt(val.type)}));
+    case v_val: {
+        auto ref = nkir_makeConstRef(c->ir, val.as.cnst);
+        ref.type = tovmt(val.type);
+        return ref;
+    }
 
     case v_ref:
         return val.as.ref;
@@ -1062,7 +1069,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     case n_run: {
         DEFINE(arg, comptimeCompileNodeGetValue(c, narg0(node)));
-        return makeValue(arg);
+        return makeValue(c, arg);
     }
 
     // TODO Not doing type checks in arithmetic
@@ -1300,7 +1307,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
         }
         auto fn = it->second;
-        auto fn_val = asValue(c, makeValue<void *>(c, fromvmt(nkir_functGetType(fn)), (void *)fn));
+        auto fn_val = asValue(c, makeValue<decltype(fn)>(c, fromvmt(nkir_functGetType(fn)), fn));
         CHECK(defineComptimeConst(c, s2nkid(name), makeValueComptimeConst(fn_val)));
         return makeVoid();
     }
@@ -1536,7 +1543,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         CHECK(initFromAst(c, val, {nodes.data(), nodes.size()}));
 
-        return makeValue(val);
+        return makeValue(c, val);
     }
 
     case n_assign: {

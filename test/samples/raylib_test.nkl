@@ -42,11 +42,13 @@ runRaylib :: () -> i64 {
 }
 
 main :: (argc: i32, argv: **i8) -> i32 {
+    //runRaylib();
     import std;
     std.printf("distance traveled: %i pix\n", ${ runRaylib(); });
 }
 
 import compiler;
 builder := compiler.createBuilder();
-compiler.build(builder, main, "raylib_test");
+//compiler.link(builder, "../raylib/build/raylib/libraylib.so");
+compiler.build(builder, cast(compiler.EntryPoint) main, "raylib_test");
 compiler.freeBuilder(builder);

@@ -127,6 +127,11 @@ NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct) {
     return &funct->fn_info;
 }
 
+nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst) {
+    assert(cnst.id < p->consts.size() && "invalid const");
+    return p->consts[cnst.id];
+}
+
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
     assert(p->cur_funct && "no current function");
     assert(block_id.id < p->blocks.size() && "invalid block");
@@ -238,7 +243,7 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var) {
 
 NkIrRef nkir_makeConstRef(NkIrProg p, NkIrConstId cnst) {
     return {
-        .data = nkval_data(p->consts[cnst.id]),
+        .index = cnst.id,
         .offset = 0,
         .post_offset = 0,
         .type = nkval_typeof(p->consts[cnst.id]),
@@ -378,7 +383,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         nksb_printf(sb, "$global%llu", ref.index);
         break;
     case NkIrRef_Const: {
-        auto ptr = (uint8_t *)ref.data + ref.offset;
+        auto ptr = (uint8_t *)nkval_data(p->consts[ref.index]) + ref.offset;
         if (ref.is_indirect) {
             ptr = *(uint8_t **)ptr;
         }
