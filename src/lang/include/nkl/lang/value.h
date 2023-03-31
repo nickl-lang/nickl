@@ -13,7 +13,8 @@ extern "C" {
 #endif
 
 typedef enum {
-    NklType_Slice = NkTypeclass_Count,
+    NklType_Typeref = NkTypeclass_Count,
+    NklType_Slice,
     NklType_Struct,
 
     NklTypeclass_Count,
@@ -111,6 +112,7 @@ NK_EXPORT nkltype_t
 nkl_get_tuple(NkAllocator alloc, nkltype_t const *types, size_t count, size_t stride);
 NK_EXPORT nkltype_t nkl_get_void();
 
+NK_EXPORT nkltype_t nkl_get_typeref();
 NK_EXPORT nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const = false);
 NK_EXPORT nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t count);
 

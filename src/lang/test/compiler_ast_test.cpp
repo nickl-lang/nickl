@@ -174,7 +174,7 @@ TEST_F(compiler_ast, native_puts) {
                 _("comptime_const_def",
                   _("id", "puts"),
                   _("fn_type",
-                    _("param", _("id", "str"), _("ptr_type", _("u8", "u8"))),
+                    _("param", _("id", "str"), _("ptr_type", _("i8", "i8"))),
                     _("void", "void")))),
               _("call", _("id", "puts"), _("arg", {}, _("string", "Hello, World!"))),
           })));
@@ -224,7 +224,7 @@ TEST_F(compiler_ast, comptime_declareLocal) {
                   _("member", _("id", "compiler"), _("id", "declareLocal")),
                   _({
                       _("arg", {}, _("string", "str")),
-                      _("arg", {}, _("ptr_type", _("u8", "u8"))),
+                      _("arg", {}, _("ptr_type", _("i8", "i8"))),
                   }))),
               _("assign", _("id", "str"), _("string", "hello")),
               _("call", _("member", _("id", "std"), _("id", "puts")), _("arg", {}, _("id", "str"))),

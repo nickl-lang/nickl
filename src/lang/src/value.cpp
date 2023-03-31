@@ -291,6 +291,25 @@ nkltype_t nkl_get_void() {
     });
 }
 
+nkltype_t nkl_get_typeref() {
+    auto const tclass = NklType_Typeref;
+
+    ByteArray fp{};
+    pushVal(fp, NklTypeSubset);
+    pushVal(fp, tclass);
+
+    return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
+        auto const void_ptr_t = nkl_get_ptr(nkl_get_void());
+        return &s_types.emplace_back(NklType{
+            .vm_type = *tovmt(void_ptr_t),
+            .as{},
+            .tclass = tclass,
+            .id = s_next_id++,
+            .underlying_type = void_ptr_t,
+        });
+    });
+}
+
 nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     auto const tclass = NklType_Slice;
 

@@ -856,7 +856,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
     auto fn_t =
         nkl_get_fn({ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #link
 
-    return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)fn_t);
+    return makeValue<nkltype_t>(c, nkl_get_typeref(), fn_t);
 }
 
 void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
@@ -957,25 +957,26 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         return makeValue<bool>(c, nkl_get_numeric(Uint8), true);
     }
 
-    // TODO Modeling type_t as *void
-
-#define X(NAME, VALUE_TYPE, CTYPE)                                                \
-    case CAT(n_, NAME): {                                                         \
-        return makeValue<void *>(                                                 \
-            c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_numeric(VALUE_TYPE)); \
+#define X(NAME, VALUE_TYPE, CTYPE)                                                      \
+    case CAT(n_, NAME): {                                                               \
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_numeric(VALUE_TYPE)); \
     }
         NUMERIC_ITERATE(X)
 #undef X
 
     case n_bool: {
-        return makeValue<void *>(
+        return makeValue<nkltype_t>(
             c,
-            nkl_get_ptr(nkl_get_void()),
-            (void *)nkl_get_numeric(Uint8)); // TODO Modeling bool as u8
+            nkl_get_typeref(),
+            nkl_get_numeric(Uint8)); // TODO Modeling bool as u8
+    }
+
+    case n_type_t: {
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_typeref());
     }
 
     case n_void: {
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_void());
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_void());
     }
 
     case n_compl: {
@@ -1032,21 +1033,21 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_ptr_type: {
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_ptr(target_type));
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_ptr(target_type));
     }
 
     case n_const_ptr_type: {
         // TODO Ignoring const in const_ptr_type
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_ptr(target_type));
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_ptr(target_type));
     }
 
     case n_slice_type: {
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
         auto type = nkl_get_slice(c->arena, target_type);
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)type);
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), type);
     }
 
     case n_scope: {
@@ -1113,14 +1114,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         auto type = nklval_as(nkltype_t, type_val);
         DEFINE(size_val, comptimeCompileNodeGetValue(c, narg1(node)));
         auto size = nklval_as(int64_t, size_val);
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)nkl_get_array(type, size));
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_array(type, size));
     }
 
     case n_cast: {
         DEFINE(const dst_type_val, comptimeCompileNodeGetValue(c, narg0(node)));
-        // TODO Modeling type_t as *void
-        if (nklval_tclass(dst_type_val) != NkType_Ptr ||
-            nklval_typeof(dst_type_val)->as.ptr.target_type->tclass != NkType_Void) {
+        if (nklval_tclass(dst_type_val) != NklType_Typeref) {
             return error(c, "type expected in cast"), ValueInfo{};
         }
         auto const dst_type = nklval_as(nkltype_t, dst_type_val);
@@ -1267,17 +1266,13 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         types.reserve(nodes.size);
         for (size_t i = 0; i < nodes.size; i++) {
             DEFINE(val, comptimeCompileNodeGetValue(c, &nodes.data[i]));
-            // TODO Modeling type_t as *void
-            if (nklval_tclass(val) != NkType_Ptr ||
-                nklt_tclass(nklval_typeof(val)->as.ptr.target_type) != NkType_Void) {
+            if (nklval_tclass(val) != NklType_Typeref) {
                 return error(c, "type expected in tuple type"), ValueInfo{};
             }
             types.emplace_back(nklval_as(nkltype_t, val));
         }
-        return makeValue<void *>(
-            c,
-            nkl_get_ptr(nkl_get_void()),
-            (void *)nkl_get_tuple(c->arena, types.data(), types.size(), 1));
+        return makeValue<nkltype_t>(
+            c, nkl_get_typeref(), nkl_get_tuple(c->arena, types.data(), types.size(), 1));
     }
 
     case n_import: {
@@ -1386,9 +1381,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         for (size_t i = 0; i < nodes.size; i++) {
             nkid name = s2nkid(narg0(&nodes.data[i])->token->text);
             DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(&nodes.data[i])));
-            // TODO Modeling type_t as *void
-            if (nklval_tclass(type_val) != NkType_Ptr ||
-                nklt_tclass(nklval_typeof(type_val)->as.ptr.target_type) != NkType_Void) {
+            if (nklval_tclass(type_val) != NklType_Typeref) {
                 return error(c, "type expected in tuple type"), ValueInfo{};
             }
             fields.emplace_back(NklStructField{
@@ -1398,7 +1391,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
 
         auto struct_type = nkl_get_struct(c->arena, fields.data(), fields.size());
-        return makeValue<void *>(c, nkl_get_ptr(nkl_get_void()), (void *)struct_type);
+        return makeValue<nkltype_t>(c, nkl_get_typeref(), struct_type);
     }
 
     case n_fn: {
@@ -1523,9 +1516,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
 
-        // TODO Modeling type_t as *void
-        if (nklval_tclass(type_val) != NkType_Ptr ||
-            nklval_typeof(type_val)->as.ptr.target_type->tclass != NkType_Void) {
+        if (nklval_tclass(type_val) != NklType_Typeref) {
             return error(c, "type expected in object literal"), ValueInfo{};
         }
 

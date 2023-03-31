@@ -31,7 +31,7 @@ N(f64)
 
 // N(any_t)
 N(bool)
-// N(type_t)
+N(type_t)
 N(void)
 
 #undef N

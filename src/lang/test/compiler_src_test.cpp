@@ -85,7 +85,7 @@ val;
 TEST_F(compiler_src, native_puts) {
     test(R"(
 #link("c")
-puts :: (str: *u8) -> void;
+puts :: (str: *i8) -> void;
 puts("Hello, World!");
 )");
 }
@@ -118,8 +118,8 @@ TEST_F(compiler_src, comptime_declareLocal) {
     test(R"(
 import std;
 import compiler;
-${ compiler.declareLocal("str", *u8); }
-str = cast(*u8) "hello";
+${ compiler.declareLocal("str", *i8); }
+str = "hello";
 std.puts(str);
 )");
 }
