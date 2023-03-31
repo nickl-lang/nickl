@@ -15,7 +15,7 @@ DOCKERHOME=$PROJECTDIR/out/home
 mkdir -p $DOCKERHOME
 
 if [ -z "$(docker images -q $IMAGE 2> /dev/null)" ]; then
-    URL=ghcr.io/nk4rter
+    URL=ghcr.io/nickl-lang
     if docker pull $URL/$IMAGE 2> /dev/null; then
         docker image tag $URL/$IMAGE $IMAGE
         docker image rm $URL/$IMAGE
