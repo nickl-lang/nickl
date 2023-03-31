@@ -1928,6 +1928,24 @@ extern "C" NK_EXPORT bool nkl_compiler_build(
     return nkir_compile(conf, c->ir, entry);
 }
 
+struct StructField {
+    nkstr name;
+    nkltype_t type;
+};
+
+extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(nkslice<StructField> fields_raw) {
+    NklCompiler c = s_compiler;
+    std::vector<NklStructField> fields;
+    fields.reserve(fields_raw.size());
+    for (auto const &field : fields_raw) {
+        fields.emplace_back(NklStructField{
+            .name = s2nkid(field.name),
+            .type = field.type,
+        });
+    }
+    return nkl_get_struct(c->arena, fields.data(), fields.size());
+}
+
 NklCompiler nkl_compiler_create() {
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),

@@ -1,7 +1,7 @@
 #link("c") printf :: (format: *i8, ...) -> i32;
 #link("c") puts :: (str: *i8) -> i32;
 
-FILE :: void; // TODO Defining FILE as void in stdlib
+FILE :: struct { }
 
 STDIN_FILENO  :: 0;
 STDOUT_FILENO :: 1;
@@ -27,6 +27,9 @@ STDERR_FILENO :: 2;
 #link("c") atoi :: (str: *i8) -> i32;
 
 #link("c") memset :: (s: *void, c: i32, n: u64) -> *void;
+#link("c") memcmp :: (lhs: *const void, rhs: *const void, count: u64) -> i32;
+#link("c") strcmp :: (lhs: *const i8, rhs: *const i8) -> i32;
+#link("c") strlen :: (str: *const i8) -> u64;
 
 F_GETFL :: 3;
 F_SETFL :: 4;

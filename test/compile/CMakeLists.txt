@@ -1,9 +1,11 @@
 configure_file(config.txt ${COMPILE_TEST_OUT_DIR}/config.txt COPYONLY)
+configure_file(struct.json ${COMPILE_TEST_OUT_DIR}/struct.json COPYONLY)
 
 def_compile_test(NAME configured OUTPUT_REGEX "^main\ni=0\ni=1\ni=2\n$")
 def_compile_test(NAME multiarrays OUTPUT_REGEX "^1234\n$")
 def_compile_test(NAME printf OUTPUT_REGEX "^hello world\n$")
 def_compile_test(NAME simple)
+def_compile_test(NAME struct_from_json OUTPUT_REGEX "^x=1.23 y=4.56\n$")
 def_compile_test(NAME structs OUTPUT_REGEX "^x=4 y=5\n$")
 def_compile_test(NAME threads OUTPUT_REGEX "^thread: arg='Run time threads!'\nthread: id=[0-9]*\nexec: ret='hello'\n$")
 def_compile_test(NAME vec_length OUTPUT_REGEX "^1.654321\n$")

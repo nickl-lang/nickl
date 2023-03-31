@@ -1,34 +1,72 @@
 import std;
 import json;
+import compiler;
 
-makeStruct :: (filename: []i8) {
+basicTypeFromString :: (str: *i8) -> type_t {
+    if 0 == std.strcmp("i8",  str) return i8;
+    if 0 == std.strcmp("i16", str) return i16;
+    if 0 == std.strcmp("i32", str) return i32;
+    if 0 == std.strcmp("i64", str) return i64;
+    if 0 == std.strcmp("u8",  str) return u8;
+    if 0 == std.strcmp("u16", str) return u16;
+    if 0 == std.strcmp("u32", str) return u32;
+    if 0 == std.strcmp("u64", str) return u64;
+    if 0 == std.strcmp("f32", str) return f32;
+    if 0 == std.strcmp("f64", str) return f64;
+    return void;
+}
+
+makeStruct :: (filename: []i8) -> type_t {
+    Empty :: struct { };
+
     root := json.object_from_file(filename.data);
 
     if root {
+        FIELD_COUNT :: u64{2};
+        field_ar: [FIELD_COUNT]compiler.StructField;
+
         fields := json.object_object_get(root, "fields");
+        len := json.object_array_length(fields);
+        if len != FIELD_COUNT return Empty;
 
         i := u64{0};
-        while i < json.object_array_length(fields) {
+        while i < len {
             field := json.object_array_get_idx(fields, i);
 
-            name := json.object_object_get(field, "name");
-            type := json.object_object_get(field, "type");
+            type_cstr := json.object_get_string(json.object_object_get(field, "type"));
+            name_cstr := json.object_get_string(json.object_object_get(field, "name"));
 
-            std.printf("name: %s\n", json.object_get_string(name));
-            std.printf("type: %s\n", json.object_get_string(type));
+            field_ar[i].name.data = name_cstr;
+            field_ar[i].name.size = std.strlen(name_cstr);
+            field_ar[i].type = basicTypeFromString(type_cstr);
 
             i = i + 1;
         }
+
+        json.object_put(root);
+
+        fields_slice: []compiler.StructField;
+        fields_slice.data = &field_ar;
+        fields_slice.size = FIELD_COUNT;
+
+        return compiler.makeStruct(fields_slice);
     }
 
-    json.object_put(root);
+    return Empty;
 }
 
 main :: () -> void {
-    ${ makeStruct("./struct.json"); }
+    MyStruct :: makeStruct("./struct.json");
+
+    obj: MyStruct;
+    obj.x = 1.23;
+    obj.y = 4.56;
+
+    std.printf("x=%g y=%g\n", obj.x, obj.y);
 }
 
-import compiler;
+main();
+
 builder := compiler.createBuilder();
 compiler.build(builder, cast(compiler.EntryPoint) main, "struct_from_json");
 compiler.freeBuilder(builder);
