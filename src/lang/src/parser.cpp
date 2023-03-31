@@ -239,12 +239,11 @@ private:
         }
 
         auto node =
-            nodes.size() == 0
-                ? nkl_makeNode0("nop", _n_token)
-                : nodes.size() == 1
-                      ? nodes.front()
-                      : nkl_makeNode1(
-                            "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+            nodes.size() == 0 ? nkl_makeNode0("nop", _n_token)
+            : nodes.size() == 1
+                ? nodes.front()
+                : nkl_makeNode1(
+                      "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1("scope", _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -390,7 +389,8 @@ private:
             }
         }
 
-        if (m_last_token->id != t_semi && m_last_token->id != t_brace_r) {
+        if (m_last_token->id != t_semi && m_last_token->id != t_brace_r &&
+            m_last_token->id != t_brace_2x) {
             EXPECT(t_semi);
         }
         while (accept(t_semi)) {
@@ -517,16 +517,18 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_struct)) {
-            EXPECT(t_brace_l);
             ParseFieldsResult res{};
-            CHECK(parseFields(
-                res,
-                t_brace_r,
-                {
-                    .accept_const = true,
-                    .accept_init = true,
-                    .allow_tuple_mode = false,
-                }));
+            if (!accept(t_brace_2x)) {
+                EXPECT(t_brace_l);
+                CHECK(parseFields(
+                    res,
+                    t_brace_r,
+                    {
+                        .accept_const = true,
+                        .accept_init = true,
+                        .allow_tuple_mode = false,
+                    }));
+            }
             node = nkl_makeNode1(
                 "struct", _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
         } else if (accept(t_union)) {

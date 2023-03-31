@@ -1,4 +1,4 @@
-object :: void;
+object :: struct {};
 
 C_TO_STRING_PRETTY :: 1 << 1;
 

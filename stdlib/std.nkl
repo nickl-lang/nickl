@@ -1,7 +1,7 @@
 #link("c") printf :: (format: *i8, ...) -> i32;
 #link("c") puts :: (str: *i8) -> i32;
 
-FILE :: struct { }
+FILE :: struct {}
 
 STDIN_FILENO  :: 0;
 STDOUT_FILENO :: 1;
