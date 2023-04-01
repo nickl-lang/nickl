@@ -215,16 +215,6 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.offset += (size_t)&sym;
                 break;
             }
-            case NkIrRef_Funct: {
-                referenced_functs.emplace_back((NkIrFunct)ref.data);
-                arg.ref_type = NkBcRef_Rodata;
-                auto fn_t = ref.type;
-                if (fn_t->tclass == NkType_Tuple && fn_t->as.tuple.elems.size == 1) {
-                    fn_t = fn_t->as.tuple.elems.data[0].type;
-                }
-                arg.offset += (size_t)&ref.data;
-                break;
-            }
             default:
                 assert(!"unreachable");
             case NkIrRef_None:
@@ -260,10 +250,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
             switch (ir_instr.code) {
             case nkir_call:
-                if (arg1.ref.ref_type == NkIrRef_Funct) {
-                    code = nkop_call_jmp;
-                } else if (
-                    arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
+                if (arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
                     bool found = false;
                     for (auto f : ir.functs) {

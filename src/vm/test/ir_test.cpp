@@ -121,7 +121,9 @@ TEST_F(ir, nested_functions) {
 
     auto var = nkir_makeFrameRef(p, nkir_makeLocalVar(p, i32_t));
 
-    nkir_gen(p, nkir_make_call(var, nkir_makeFunctRef(getFour), {}));
+    nkir_gen(
+        p,
+        nkir_make_call(var, nkir_makeConstRef(p, nkir_makeConst(p, {&getFour, getFour_fn_t})), {}));
     nkir_gen(
         p,
         nkir_make_mul(
@@ -426,7 +428,7 @@ TEST_F(ir, callback) {
     nkir_startFunct(test, cs2s("test"), test_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), cs2s("start"));
 
-    auto getName_arg = nkir_makeFunctRef(getName);
+    auto getName_arg = nkir_makeConstRef(p, nkir_makeConst(p, {&getName, getName_fn_t}));
     getName_arg.type = args_t;
 
     nkir_gen(p, nkir_make_call({}, nkir_makeExtSymRef(p, sayHello_fn), getName_arg));

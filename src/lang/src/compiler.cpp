@@ -82,7 +82,6 @@ enum EDeclKind {
     Decl_ComptimeConst,
     Decl_Local,
     Decl_Global,
-    Decl_Funct,
     Decl_ExtSym,
     Decl_Arg,
 };
@@ -320,11 +319,6 @@ void defineGlobal(NklCompiler c, nkid name, NkIrGlobalVarId id, nkltype_t type) 
     makeDecl(c, name) = {{.global{id, type}}, Decl_Global};
 }
 
-// TODO(unused) void defineFunct(NklCompiler c, nkid name, NkIrFunct funct, nkltype_t fn_t) {
-//     NK_LOG_DBG("defining funct `%.*s`", nkid2s(name).size, nkid2s(name).data);
-//     makeDecl(c, name) = {{.funct{funct, fn_t}}, Decl_Funct};
-// }
-
 void defineExtSym(NklCompiler c, nkid name, NkIrExtSymId id, nkltype_t type) {
     NK_LOG_DBG("defining ext sym `%.*s`", nkid2s(name).size, nkid2s(name).data);
     makeDecl(c, name) = {{.ext_sym{.id = id, .type = type}}, Decl_ExtSym};
@@ -452,8 +446,6 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
             return nkir_makeFrameRef(c->ir, decl.as.local.id);
         case Decl_Global:
             return nkir_makeGlobalRef(c->ir, decl.as.global.id);
-        case Decl_Funct:
-            return nkir_makeFunctRef(decl.as.funct.id);
         case Decl_ExtSym:
             return nkir_makeExtSymRef(c->ir, decl.as.ext_sym.id);
         case Decl_Arg:
@@ -471,7 +463,6 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
-// TODO Transition store from handling NkIrRef directly to a wrapper
 ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
     auto const dst_type = fromvmt(dst.type);
     auto const src_type = src.type;
@@ -537,8 +528,6 @@ ValueInfo declToValueInfo(Decl &decl) {
         return {{.decl = &decl}, decl.as.local.type, v_decl};
     case Decl_Global:
         return {{.decl = &decl}, decl.as.global.type, v_decl};
-    case Decl_Funct:
-        return {{.decl = &decl}, decl.as.funct.fn_t, v_decl};
     case Decl_ExtSym:
         return {{.decl = &decl}, decl.as.ext_sym.type, v_decl};
     case Decl_Arg:
@@ -624,7 +613,6 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
             return makeRef(nkir_makeGlobalRef(c->ir, res.as.global.id));
         case Decl_Undefined:
             return error(c, "`%.*s` is not defined", name.size, name.data), ValueInfo{};
-        case Decl_Funct:
         case Decl_ExtSym:
         case Decl_Arg:
             return error(c, "cannot assign to `%.*s`", name.size, name.data), ValueInfo{};

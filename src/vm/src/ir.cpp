@@ -275,18 +275,6 @@ NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym) {
     };
 }
 
-NkIrRef nkir_makeFunctRef(NkIrFunct funct) {
-    assert(funct->state == NkIrFunct_Complete && "referencing incomplete function");
-    return {
-        .data = funct,
-        .offset = 0,
-        .post_offset = 0,
-        .type = funct->fn_t,
-        .ref_type = NkIrRef_Funct,
-        .is_indirect = false,
-    };
-}
-
 NkIrInstr nkir_make_nop() {
     return {{}, nkir_nop};
 }
@@ -396,9 +384,6 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         break;
     case NkIrRef_ExtSym:
         nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
-        break;
-    case NkIrRef_Funct:
-        nksb_printf(sb, "%s", ((NkIrFunct)ref.data)->name.c_str());
         break;
     default:
         break;

@@ -471,9 +471,6 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             case NkIrRef_Reg:
                 src << "*((uint8_t*)&reg+" << ref.index * REG_SIZE << ")";
                 break;
-            case NkIrRef_Funct:
-                assert(!"funct ref not implemented");
-                break;
             case NkIrRef_Const:
             case NkIrRef_ExtSym:
             case NkIrRef_None:

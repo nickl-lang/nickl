@@ -46,7 +46,6 @@ typedef enum {
     NkIrRef_Global,
     NkIrRef_Const,
     NkIrRef_ExtSym,
-    NkIrRef_Funct,
 } NkIrRefType;
 
 typedef struct {
@@ -132,8 +131,6 @@ NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var);
 NkIrRef nkir_makeConstRef(NkIrProg p, NkIrConstId cnst);
 NkIrRef nkir_makeRegRef(NkIrProg p, NkIrRegister reg, nktype_t type);
 NkIrRef nkir_makeExtSymRef(NkIrProg p, NkIrExtSymId sym);
-
-NkIrRef nkir_makeFunctRef(NkIrFunct funct);
 
 NkIrInstr nkir_make_nop();
 NkIrInstr nkir_make_enter();

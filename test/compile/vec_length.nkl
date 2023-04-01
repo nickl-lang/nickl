@@ -12,9 +12,9 @@ vecLength :: (vec: Vec3) -> f64 {
 main :: (argc: i32, argv: **i8) -> i32 {
     // TODO Cannot do runtime object literal
     vec: Vec3;
-    vec[0] = f64{0};
-    vec[1] = std.sqrt(f64{3}) / f64{2};
-    vec[2] = f64{0.5};
+    vec[0] = 0.;
+    vec[1] = std.sqrt(3.) / 2.;
+    vec[2] = 0.5;
     len := vecLength(vec);
     std.printf("%lf\n", len + MAGIC);
     return i32{0};
