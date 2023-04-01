@@ -88,29 +88,25 @@ void nkl_ast_free(NklAst ast) {
     nk_free(nk_default_allocator, ast);
 }
 
-NklAstNode_T nkl_makeNode0(char const *id, NklTokenRef token) {
-    return {.args{{}, {}, {}}, .token = token, .id = cs2nkid(id)};
+NklAstNode_T nkl_makeNode0(nkid id, NklTokenRef token) {
+    return {.args{{}, {}, {}}, .token = token, .id = id};
 }
 
-NklAstNode_T nkl_makeNode1(char const *id, NklTokenRef token, NklAstNodeArray arg0) {
-    return {.args{arg0, {}, {}}, .token = token, .id = cs2nkid(id)};
+NklAstNode_T nkl_makeNode1(nkid id, NklTokenRef token, NklAstNodeArray arg0) {
+    return {.args{arg0, {}, {}}, .token = token, .id = id};
 }
 
-NklAstNode_T nkl_makeNode2(
-    char const *id,
-    NklTokenRef token,
-    NklAstNodeArray arg0,
-    NklAstNodeArray arg1) {
-    return {.args{arg0, arg1, {}}, .token = token, .id = cs2nkid(id)};
+NklAstNode_T nkl_makeNode2(nkid id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1) {
+    return {.args{arg0, arg1, {}}, .token = token, .id = id};
 }
 
 NklAstNode_T nkl_makeNode3(
-    char const *id,
+    nkid id,
     NklTokenRef token,
     NklAstNodeArray arg0,
     NklAstNodeArray arg1,
     NklAstNodeArray arg2) {
-    return {.args{arg0, arg1, arg2}, .token = token, .id = cs2nkid(id)};
+    return {.args{arg0, arg1, arg2}, .token = token, .id = id};
 }
 
 NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node) {

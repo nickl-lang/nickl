@@ -12,8 +12,8 @@ N(none) // ()
 
 N(nop)
 
-// N(break)
-// N(continue)
+N(break)
+N(continue)
 
 N(false)
 N(true)
@@ -29,7 +29,7 @@ N(u64)
 N(f32)
 N(f64)
 
-// N(any_t)
+N(any_t)
 N(bool)
 N(type_t)
 N(void)
@@ -48,7 +48,7 @@ U(uplus)
 U(addr)  // (expr: node)
 U(deref) // (ptr: node)
 
-// U(defer_stmt) // (expr: node)
+U(defer_stmt) // (expr: node)
 
 U(return) // (expr: node)
 
@@ -87,17 +87,17 @@ B(le)
 B(lt)
 B(ne)
 
-// B(add_assign)
-// B(sub_assign)
-// B(mul_assign)
-// B(div_assign)
-// B(mod_assign)
+B(add_assign)
+B(sub_assign)
+B(mul_assign)
+B(div_assign)
+B(mod_assign)
 
-// B(bitand_assign)
-// B(bitor_assign)
-// B(xor_assign)
-// B(lsh_assign)
-// B(rsh_assign)
+B(bitand_assign)
+B(bitor_assign)
+B(xor_assign)
+B(lsh_assign)
+B(rsh_assign)
 
 B(array_type) // (type: node, count: node)
 B(cast)       // (target_type: node, expr: node)
@@ -107,17 +107,17 @@ B(while)      // (cond: node, body: node)
 #undef B
 
 X(if) // (cond: node, then_clause: node, else_clause: node)
-// X(ternary)
+X(ternary)
 
-// X(array) // (nodes: [node])
+X(array) // (nodes: [node])
 X(block)
-// X(tuple)
+X(tuple)
 X(tuple_type)
 
 X(import) // (names: [{name: token}])
 
-X(id) // (name: token)
-// X(intrinsic)              // (name: token)
+X(id)             // (name: token)
+X(intrinsic)      // (name: token)
 X(float)          // (value: token)
 X(int)            // (value: token)
 X(string)         // (value: token)
@@ -130,9 +130,9 @@ X(escaped_string) // (value: token)
 X(member) // (lhs: node, name: token)
 
 X(struct) // (fields: [(id=mut|const name: token, type: node, value: node)])
-// X(union)
-// X(enum)
-// X(packed_struct)
+X(union)
+X(enum)
+X(packed_struct)
 
 X(fn) // (params: [(id=mut|const name: token, type: node, value: node)], ret_t: node, body: ?node)
 X(fn_type)
@@ -149,9 +149,12 @@ X(assign) // (lhs: [node], value: node)
 X(define) // (names: [{name: token}], value: node)
 
 X(comptime_const_def) // (name: token, value: node)
-// X(tag_def)
+X(tag_def)
 
 X(var_decl) // (name: token, type: node, value: ?node)
-// X(const_decl)
+X(const_decl)
+
+// Aux
+X(name)
 
 #undef X

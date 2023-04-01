@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include "ast_impl.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
@@ -136,7 +137,7 @@ private:
         }
         if (tuple_mode) {
             if (check(t_id)) {
-                ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0("id", identifier())));
+                ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier())));
             }
             if (accept(t_colon)) {
                 tuple_mode = false;
@@ -148,7 +149,7 @@ private:
                 ASSIGN(field.args[1], nkl_pushNode(m_ast, expr()));
             }
         } else {
-            ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0("id", identifier())));
+            ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier())));
             EXPECT(t_colon);
             ASSIGN(field.args[1], nkl_pushNode(m_ast, expr(Expr_Type)));
             if (cfg.accept_init && accept(t_eq)) {
@@ -179,7 +180,7 @@ private:
                 if (cfg.accept_const && accept(t_const)) {
                     field.id = cs2nkid("const_field");
                 }
-                ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0("id", identifier())));
+                ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier())));
                 EXPECT(t_colon);
                 ASSIGN(field.args[1], nkl_pushNode(m_ast, expr(Expr_Type)));
                 if (cfg.accept_init && accept(t_eq)) {
@@ -210,7 +211,7 @@ private:
                 auto id = m_cur_token;
                 getToken();
                 if (accept(t_eq)) {
-                    arg.args[0] = nkl_pushNode(m_ast, nkl_makeNode0("id", id));
+                    arg.args[0] = nkl_pushNode(m_ast, nkl_makeNode0(n_id, id));
                 } else {
                     m_cur_token--;
                 }
@@ -239,13 +240,13 @@ private:
         }
 
         auto node =
-            nodes.size() == 0 ? nkl_makeNode0("nop", _n_token)
+            nodes.size() == 0 ? nkl_makeNode0(n_nop, _n_token)
             : nodes.size() == 1
                 ? nodes.front()
                 : nkl_makeNode1(
-                      "block", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+                      n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
-        return capture_brace ? nkl_makeNode1("scope", _n_token, nkl_pushNode(m_ast, node)) : node;
+        return capture_brace ? nkl_makeNode1(n_scope, _n_token, nkl_pushNode(m_ast, node)) : node;
     }
 
     NklTokenRef identifier() {
@@ -264,21 +265,21 @@ private:
 
         if (accept(t_return)) {
             if (check(t_semi)) {
-                node = nkl_makeNode0("return", _n_token);
+                node = nkl_makeNode0(n_return, _n_token);
             } else {
                 DEFINE(arg, statement());
-                node = nkl_makeNode1("return", _n_token, nkl_pushNode(m_ast, arg));
+                node = nkl_makeNode1(n_return, _n_token, nkl_pushNode(m_ast, arg));
             }
         } else if (accept(t_break)) {
-            node = nkl_makeNode0("break", _n_token);
+            node = nkl_makeNode0(n_break, _n_token);
         } else if (accept(t_continue)) {
-            node = nkl_makeNode0("continue", _n_token);
+            node = nkl_makeNode0(n_continue, _n_token);
         } else if (accept(t_if)) {
             DEFINE(cond, expr(Expr_Bool));
             DEFINE(then_body, statement());
             DEFINE(else_body, accept(t_else) ? statement() : NklAstNode_T{});
             node = nkl_makeNode3(
-                "if",
+                n_if,
                 _n_token,
                 nkl_pushNode(m_ast, cond),
                 nkl_pushNode(m_ast, then_body),
@@ -287,16 +288,16 @@ private:
             DEFINE(cond, expr(Expr_Bool));
             DEFINE(body, statement());
             node = nkl_makeNode2(
-                "while", _n_token, nkl_pushNode(m_ast, cond), nkl_pushNode(m_ast, body));
+                n_while, _n_token, nkl_pushNode(m_ast, cond), nkl_pushNode(m_ast, body));
         } else if (check(t_brace_l)) {
             ASSIGN(node, block());
         } else if (accept(t_defer)) {
-            ASSIGN(node, nkl_makeNode1("defer", _n_token, nkl_pushNode(m_ast, assignment())));
+            ASSIGN(node, nkl_makeNode1(n_defer_stmt, _n_token, nkl_pushNode(m_ast, assignment())));
         } else if (accept(t_import)) {
             ASSIGN(
                 node,
                 nkl_makeNode1(
-                    "import", _n_token, nkl_pushNode(m_ast, nkl_makeNode0("id", identifier()))));
+                    n_import, _n_token, nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier()))));
             // } else if (accept(t_for)) {
             //     DEFINE(it, identifier());
             //     bool const by_ptr = accept(t_period_aster);
@@ -317,9 +318,9 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "tag_def",
+                        n_tag_def,
                         _n_token,
-                        nkl_pushNode(m_ast, nkl_makeNode0("id", tag)),
+                        nkl_pushNode(m_ast, nkl_makeNode0(n_id, tag)),
                         nkl_pushNode(m_ast, tuple())));
             } else {
                 std::vector<NklAstNode_T> args{};
@@ -336,19 +337,19 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode3(
-                        "tag",
+                        n_tag,
                         _n_token,
-                        nkl_pushNode(m_ast, nkl_makeNode0("name", tag)),
+                        nkl_pushNode(m_ast, nkl_makeNode0(n_name, tag)),
                         nkl_pushNodeAr(m_ast, {args.data(), args.size()}),
                         nkl_pushNode(m_ast, statement())));
             }
         } else if (accept(t_const)) {
             //@Boilerplate in const var decl
-            DEFINE(name, nkl_makeNode0("id", identifier()));
+            DEFINE(name, nkl_makeNode0(n_id, identifier()));
             DEFINE(type, expr(Expr_Type));
             DEFINE(value, accept(t_eq) ? tuple() : NklAstNode_T{});
             node = nkl_makeNode3(
-                "var_decl",
+                n_var_decl,
                 _n_token,
                 nkl_pushNode(m_ast, name),
                 nkl_pushNode(m_ast, type),
@@ -364,7 +365,7 @@ private:
             if (accept(t_colon_eq)) {
                 DEFINE(rhs, tuple());
                 node = nkl_makeNode2(
-                    "define", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, rhs));
+                    n_define, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, rhs));
             } else if (accept(t_colon_2x)) {
                 NklAstNode_T rhs{};
                 // if (accept(t_import)) {
@@ -373,7 +374,7 @@ private:
                 ASSIGN(rhs, tuple());
                 // }
                 node = nkl_makeNode2(
-                    "comptime_const_def",
+                    n_comptime_const_def,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, rhs));
@@ -381,7 +382,7 @@ private:
                 DEFINE(type, expr(Expr_Type));
                 DEFINE(value, accept(t_eq) ? tuple() : NklAstNode_T{});
                 node = nkl_makeNode3(
-                    "var_decl",
+                    n_var_decl,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, type),
@@ -408,12 +409,12 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "assign", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, logicOr())));
+                    n_assign, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, logicOr())));
         } else if (accept(t_plus_eq)) {
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "add_assign",
+                    n_add_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -421,7 +422,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "sub_assign",
+                    n_sub_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -429,7 +430,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "mul_assign",
+                    n_mul_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -437,7 +438,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "div_assign",
+                    n_div_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -445,7 +446,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "mod_assign",
+                    n_mod_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -453,7 +454,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "lsh_assign",
+                    n_lsh_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -461,7 +462,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "rsh_assign",
+                    n_rsh_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -469,7 +470,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "bitor_assign",
+                    n_bitor_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -477,7 +478,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "xor_assign",
+                    n_xor_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -485,7 +486,7 @@ private:
             ASSIGN(
                 node,
                 nkl_makeNode2(
-                    "bitand_assign",
+                    n_bitand_assign,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, tuple())));
@@ -502,7 +503,7 @@ private:
         CHECK(sequence(nodes, &trailing_comma_provided, &all_ids));
         return (nodes.size() > 1 || trailing_comma_provided)
                    ? nkl_makeNode1(
-                         "tuple", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}))
+                         n_tuple, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}))
                    : nodes.front();
     }
 
@@ -530,7 +531,7 @@ private:
                     }));
             }
             node = nkl_makeNode1(
-                "struct", _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
+                n_struct, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
         } else if (accept(t_union)) {
             EXPECT(t_brace_l);
             ParseFieldsResult res{};
@@ -543,7 +544,7 @@ private:
                     .allow_tuple_mode = false,
                 }));
             node = nkl_makeNode1(
-                "uniton", _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
+                n_union, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
         } else if (accept(t_enum)) {
             EXPECT(t_brace_l);
             ParseFieldsResult res{};
@@ -556,7 +557,7 @@ private:
                     .allow_tuple_mode = false,
                 }));
             node = nkl_makeNode1(
-                "enum", _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
+                n_enum, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
         } else if (check(t_tag) && std_view(m_cur_token->text) == "#type") {
             getToken();
             ASSIGN(node, expr(Expr_Type));
@@ -577,7 +578,7 @@ private:
                 EXPECT(t_colon);
                 DEFINE(else_body, logicOr());
                 node = nkl_makeNode3(
-                    "ternary",
+                    n_ternary,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNode(m_ast, then_body),
@@ -599,7 +600,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "or", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, logicOr())));
+                        n_or, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, logicOr())));
 
             } else {
                 break;
@@ -618,7 +619,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "and", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, bitOr())));
+                        n_and, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, bitOr())));
             } else {
                 break;
             }
@@ -636,7 +637,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "bitor",
+                        n_bitor,
                         _n_token,
                         nkl_pushNode(m_ast, node),
                         nkl_pushNode(m_ast, bitXor())));
@@ -657,7 +658,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "xor", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, bitAnd())));
+                        n_xor, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, bitAnd())));
             } else {
                 break;
             }
@@ -675,7 +676,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "bitand",
+                        n_bitand,
                         _n_token,
                         nkl_pushNode(m_ast, node),
                         nkl_pushNode(m_ast, equality())));
@@ -696,7 +697,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "eq",
+                        n_eq,
                         _n_token,
                         nkl_pushNode(m_ast, node),
                         nkl_pushNode(m_ast, relation())));
@@ -704,7 +705,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "ne",
+                        n_ne,
                         _n_token,
                         nkl_pushNode(m_ast, node),
                         nkl_pushNode(m_ast, relation())));
@@ -725,22 +726,22 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "lt", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
+                        n_lt, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
             } else if (accept(t_less_eq)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "le", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
+                        n_le, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
             } else if (accept(t_greater)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "gt", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
+                        n_gt, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
             } else if (accept(t_greater_eq)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "ge", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
+                        n_ge, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, shift())));
             } else {
                 break;
             }
@@ -758,12 +759,12 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "lsh", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, addSub())));
+                        n_lsh, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, addSub())));
             } else if (accept(t_greater_2x)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "rsh", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, addSub())));
+                        n_rsh, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, addSub())));
             } else {
                 break;
             }
@@ -781,12 +782,12 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "add", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, mulDiv())));
+                        n_add, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, mulDiv())));
             } else if (accept(t_minus)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "sub", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, mulDiv())));
+                        n_sub, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, mulDiv())));
             } else {
                 break;
             }
@@ -804,17 +805,17 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "mul", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, prefix())));
+                        n_mul, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, prefix())));
             } else if (accept(t_slash)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "div", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, prefix())));
+                        n_div, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, prefix())));
             } else if (accept(t_percent)) {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "mod", _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, prefix())));
+                        n_mod, _n_token, nkl_pushNode(m_ast, node), nkl_pushNode(m_ast, prefix())));
             } else {
                 break;
             }
@@ -828,24 +829,24 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_plus)) {
-            ASSIGN(node, nkl_makeNode1("uplus", _n_token, nkl_pushNode(m_ast, prefix())));
+            ASSIGN(node, nkl_makeNode1(n_uplus, _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_minus)) {
-            ASSIGN(node, nkl_makeNode1("uminus", _n_token, nkl_pushNode(m_ast, prefix())));
+            ASSIGN(node, nkl_makeNode1(n_uminus, _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_exclam)) {
-            ASSIGN(node, nkl_makeNode1("not", _n_token, nkl_pushNode(m_ast, prefix())));
+            ASSIGN(node, nkl_makeNode1(n_not, _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_tilde)) {
-            ASSIGN(node, nkl_makeNode1("compl", _n_token, nkl_pushNode(m_ast, prefix())));
+            ASSIGN(node, nkl_makeNode1(n_compl, _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_amper)) {
-            ASSIGN(node, nkl_makeNode1("addr", _n_token, nkl_pushNode(m_ast, prefix())));
+            ASSIGN(node, nkl_makeNode1(n_addr, _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_aster)) {
             if (accept(t_const)) {
                 ASSIGN(
-                    node, nkl_makeNode1("const_ptr_type", _n_token, nkl_pushNode(m_ast, prefix())));
+                    node, nkl_makeNode1(n_const_ptr_type, _n_token, nkl_pushNode(m_ast, prefix())));
             } else {
-                ASSIGN(node, nkl_makeNode1("ptr_type", _n_token, nkl_pushNode(m_ast, prefix())));
+                ASSIGN(node, nkl_makeNode1(n_ptr_type, _n_token, nkl_pushNode(m_ast, prefix())));
             }
         } else if (accept(t_bracket_2x)) {
-            ASSIGN(node, nkl_makeNode1("slice_type", _n_token, nkl_pushNode(m_ast, prefix())));
+            ASSIGN(node, nkl_makeNode1(n_slice_type, _n_token, nkl_pushNode(m_ast, prefix())));
         } else if (accept(t_bracket_l)) {
             bool trailing_comma_provided = false;
             bool all_ids = false;
@@ -858,12 +859,12 @@ private:
             if (nodes.size() > 1 || check(t_par_r) || check(t_bracket_r) || check(t_bracket_r) ||
                 check(t_comma) || check(t_semi)) {
                 node = nkl_makeNode1(
-                    "array", _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+                    n_array, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
             } else {
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "array_type",
+                        n_array_type,
                         _n_token,
                         nkl_pushNode(m_ast, prefix()),
                         nkl_pushNode(m_ast, nodes.front())));
@@ -874,7 +875,7 @@ private:
             EXPECT(t_par_r);
             DEFINE(rhs, prefix());
             node =
-                nkl_makeNode2("cast", _n_token, nkl_pushNode(m_ast, lhs), nkl_pushNode(m_ast, rhs));
+                nkl_makeNode2(n_cast, _n_token, nkl_pushNode(m_ast, lhs), nkl_pushNode(m_ast, rhs));
         } else {
             ASSIGN(node, suffix());
         }
@@ -888,7 +889,7 @@ private:
         while (true) {
             auto _n_token = m_cur_token;
             if (accept(t_period_aster)) {
-                node = nkl_makeNode1("deref", _n_token, nkl_pushNode(m_ast, node));
+                node = nkl_makeNode1(n_deref, _n_token, nkl_pushNode(m_ast, node));
             } else if (accept(t_par_l)) {
                 std::vector<NklAstNode_T> args{};
                 CHECK(parseArgs(
@@ -898,7 +899,7 @@ private:
                         .allow_trailing_comma = true,
                     }));
                 node = nkl_makeNode2(
-                    "call",
+                    n_call,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNodeAr(m_ast, {args.data(), args.size()}));
@@ -911,7 +912,7 @@ private:
                         .allow_trailing_comma = true,
                     }));
                 node = nkl_makeNode2(
-                    "object_literal",
+                    n_object_literal,
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNodeAr(m_ast, {args.data(), args.size()}));
@@ -919,7 +920,7 @@ private:
                 ASSIGN(
                     node,
                     nkl_makeNode2(
-                        "index",
+                        n_index,
                         _n_token,
                         nkl_pushNode(m_ast, node),
                         nkl_pushNode(m_ast, check(t_bracket_r) ? NklAstNode_T{} : expr())));
@@ -927,10 +928,10 @@ private:
             } else if (accept(t_period)) {
                 DEFINE(name, identifier());
                 node = nkl_makeNode2(
-                    "member",
+                    n_member,
                     _n_token,
                     nkl_pushNode(m_ast, node),
-                    nkl_pushNode(m_ast, nkl_makeNode0("id", name)));
+                    nkl_pushNode(m_ast, nkl_makeNode0(n_id, name)));
             } else {
                 break;
             }
@@ -945,61 +946,61 @@ private:
 
         if (accept(t_int)) {
             NK_LOG_DBG("accept(int, \"%.*s\")", _n_token->text.size, _n_token->text.data);
-            node = nkl_makeNode0("int", _n_token);
+            node = nkl_makeNode0(n_int, _n_token);
         } else if (accept(t_float)) {
             NK_LOG_DBG("accept(float, \"%.*s\"", _n_token->text.size, _n_token->text.data);
-            node = nkl_makeNode0("float", _n_token);
+            node = nkl_makeNode0(n_float, _n_token);
         } else if (accept(t_string)) {
             NK_LOG_DBG("accept(string, \"%.*s\")", _n_token->text.size, _n_token->text.data);
-            node = nkl_makeNode0("string", _n_token);
+            node = nkl_makeNode0(n_string, _n_token);
         } else if (accept(t_escaped_string)) {
             NK_LOG_DBG(
                 "accept(escaped_string, \"%.*s\")", _n_token->text.size, _n_token->text.data);
-            node = nkl_makeNode0("escaped_string", _n_token);
+            node = nkl_makeNode0(n_escaped_string, _n_token);
         }
 
         else if (check(t_id)) {
-            ASSIGN(node, nkl_makeNode0("id", identifier()));
+            ASSIGN(node, nkl_makeNode0(n_id, identifier()));
         } else if (accept(t_intrinsic)) {
-            node = nkl_makeNode0("intrinsic", _n_token);
+            node = nkl_makeNode0(n_intrinsic, _n_token);
         }
 
         else if (accept(t_u8)) {
-            node = nkl_makeNode0("u8", _n_token);
+            node = nkl_makeNode0(n_u8, _n_token);
         } else if (accept(t_u16)) {
-            node = nkl_makeNode0("u16", _n_token);
+            node = nkl_makeNode0(n_u16, _n_token);
         } else if (accept(t_u32)) {
-            node = nkl_makeNode0("u32", _n_token);
+            node = nkl_makeNode0(n_u32, _n_token);
         } else if (accept(t_u64)) {
-            node = nkl_makeNode0("u64", _n_token);
+            node = nkl_makeNode0(n_u64, _n_token);
         } else if (accept(t_i8)) {
-            node = nkl_makeNode0("i8", _n_token);
+            node = nkl_makeNode0(n_i8, _n_token);
         } else if (accept(t_i16)) {
-            node = nkl_makeNode0("i16", _n_token);
+            node = nkl_makeNode0(n_i16, _n_token);
         } else if (accept(t_i32)) {
-            node = nkl_makeNode0("i32", _n_token);
+            node = nkl_makeNode0(n_i32, _n_token);
         } else if (accept(t_i64)) {
-            node = nkl_makeNode0("i64", _n_token);
+            node = nkl_makeNode0(n_i64, _n_token);
         } else if (accept(t_f32)) {
-            node = nkl_makeNode0("f32", _n_token);
+            node = nkl_makeNode0(n_f32, _n_token);
         } else if (accept(t_f64)) {
-            node = nkl_makeNode0("f64", _n_token);
+            node = nkl_makeNode0(n_f64, _n_token);
         }
 
         else if (accept(t_any_t)) {
-            node = nkl_makeNode0("any_t", _n_token);
+            node = nkl_makeNode0(n_any_t, _n_token);
         } else if (accept(t_bool)) {
-            node = nkl_makeNode0("bool", _n_token);
+            node = nkl_makeNode0(n_bool, _n_token);
         } else if (accept(t_type_t)) {
-            node = nkl_makeNode0("type_t", _n_token);
+            node = nkl_makeNode0(n_type_t, _n_token);
         } else if (accept(t_void)) {
-            node = nkl_makeNode0("void", _n_token);
+            node = nkl_makeNode0(n_void, _n_token);
         }
 
         else if (accept(t_true)) {
-            node = nkl_makeNode0("true", _n_token);
+            node = nkl_makeNode0(n_true, _n_token);
         } else if (accept(t_false)) {
-            node = nkl_makeNode0("false", _n_token);
+            node = nkl_makeNode0(n_false, _n_token);
         }
 
         else if (accept(t_par_l)) {
@@ -1020,14 +1021,14 @@ private:
                 if (m_cur_expr_kind == Expr_Regular && check(t_brace_l)) {
                     DEFINE(body, block());
                     node = nkl_makeNode3(
-                        res.variadic_parsed ? "fn_var" : "fn",
+                        res.variadic_parsed ? n_fn_var : n_fn,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
                         ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{},
                         nkl_pushNode(m_ast, body));
                 } else {
                     node = nkl_makeNode2(
-                        res.variadic_parsed ? "fn_type_var" : "fn_type",
+                        res.variadic_parsed ? n_fn_type_var : n_fn_type,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
                         ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{});
@@ -1042,20 +1043,20 @@ private:
                     }
                     if (m_cur_expr_kind == Expr_Type) {
                         node = nkl_makeNode1(
-                            "tuple_type",
+                            n_tuple_type,
                             _n_token,
                             nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
                     } else {
                         node = nodes.size() == 1 && !res.trailing_comma_parsed
                                    ? nodes.front()
                                    : nkl_makeNode1(
-                                         "tuple",
+                                         n_tuple,
                                          _n_token,
                                          nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
                     }
                 } else {
                     node = nkl_makeNode1(
-                        "packed_struct",
+                        n_packed_struct,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
                 }
@@ -1063,7 +1064,7 @@ private:
         }
 
         else if (accept(t_dollar)) {
-            ASSIGN(node, nkl_makeNode1("run", _n_token, nkl_pushNode(m_ast, block())));
+            ASSIGN(node, nkl_makeNode1(n_run, _n_token, nkl_pushNode(m_ast, block())));
         }
 
         else if (check(t_eof)) {

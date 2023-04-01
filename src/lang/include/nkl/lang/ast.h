@@ -33,12 +33,12 @@ NK_EXPORT void nkl_ast_init();
 NK_EXPORT NklAst nkl_ast_create();
 NK_EXPORT void nkl_ast_free(NklAst ast);
 
-NK_EXPORT NklAstNode_T nkl_makeNode0(char const *id, NklTokenRef token);
-NK_EXPORT NklAstNode_T nkl_makeNode1(char const *id, NklTokenRef token, NklAstNodeArray arg0);
+NK_EXPORT NklAstNode_T nkl_makeNode0(nkid id, NklTokenRef token);
+NK_EXPORT NklAstNode_T nkl_makeNode1(nkid id, NklTokenRef token, NklAstNodeArray arg0);
 NK_EXPORT NklAstNode_T
-nkl_makeNode2(char const *id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1);
+nkl_makeNode2(nkid id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1);
 NK_EXPORT NklAstNode_T nkl_makeNode3(
-    char const *id,
+    nkid id,
     NklTokenRef token,
     NklAstNodeArray arg0,
     NklAstNodeArray arg1,
