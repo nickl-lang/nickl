@@ -132,6 +132,20 @@ nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst) {
     return p->consts[cnst.id];
 }
 
+nkval_t nkir_constRefDeref(NkIrProg p, NkIrRef ref) {
+    assert(ref.ref_type == NkIrRef_Const && "const ref expected");
+    auto const val = nkir_constGetValue(p, {ref.index});
+    auto type = nkval_typeof(val);
+    auto data = (uint8_t *)nkval_data(val) + ref.offset;
+    if (ref.is_indirect) {
+        assert(nkt_typeclassid(type) == NkType_Ptr);
+        type = type->as.ptr.target_type;
+        data = *(uint8_t **)data;
+    }
+    data += ref.post_offset;
+    return {data, type};
+}
+
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
     assert(p->cur_funct && "no current function");
     assert(block_id.id < p->blocks.size() && "invalid block");
@@ -370,15 +384,9 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     case NkIrRef_Global:
         nksb_printf(sb, "$global%llu", ref.index);
         break;
-    case NkIrRef_Const: {
-        auto ptr = (uint8_t *)nkval_data(p->consts[ref.index]) + ref.offset;
-        if (ref.is_indirect) {
-            ptr = *(uint8_t **)ptr;
-        }
-        ptr += ref.post_offset;
-        nkval_inspect({ptr, ref.type}, sb);
+    case NkIrRef_Const:
+        nkval_inspect(nkir_constRefDeref(p, ref), sb);
         break;
-    }
     case NkIrRef_Reg:
         nksb_printf(sb, "$r%c", (char)('a' + ref.index));
         break;

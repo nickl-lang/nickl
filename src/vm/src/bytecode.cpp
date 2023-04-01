@@ -240,18 +240,18 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case nkir_call:
                 if (arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
-                    auto const_data = nkval_data(ir.consts[arg1.ref.index]);
+                    auto const fn = nkval_as(NkIrFunct, nkir_constRefDeref(p->ir, arg1.ref));
                     bool found = false;
                     // TODO Manual search for fn
                     for (auto f : ir.functs) {
-                        if (*(void **)const_data == (void *)f) {
+                        if (fn == f) {
                             found = true;
                             break;
                         }
                     }
                     if (found) {
                         code = nkop_call_jmp;
-                        referenced_functs.emplace_back((NkIrFunct) * (void **)const_data);
+                        referenced_functs.emplace_back(fn);
                     }
                 }
                 break;

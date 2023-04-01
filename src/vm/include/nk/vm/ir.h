@@ -112,6 +112,7 @@ nktype_t nkir_functGetType(NkIrFunct funct);
 NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct);
 
 nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst);
+nkval_t nkir_constRefDeref(NkIrProg p, NkIrRef ref);
 
 void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name);
 

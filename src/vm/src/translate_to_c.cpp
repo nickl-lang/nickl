@@ -407,16 +407,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
         auto _writeRef = [&](NkIrRef const &ref) {
             if (ref.ref_type == NkIrRef_Const) {
-                auto const val = nkir_constGetValue(ir, {ref.index});
-                auto type = nkval_typeof(val);
-                auto ptr = (uint8_t *)nkval_data(val) + ref.offset;
-                if (ref.is_indirect) {
-                    assert(nkt_typeclassid(type) == NkType_Ptr);
-                    type = type->as.ptr.target_type;
-                    ptr = *(uint8_t **)ptr;
-                }
-                ptr += ref.post_offset;
-                _writeConst(ctx, {ptr, type}, src);
+                _writeConst(ctx, nkir_constRefDeref(ir, ref), src);
                 return;
             } else if (ref.ref_type == NkIrRef_ExtSym) {
                 auto sym = ctx.ir->exsyms[ref.index];
