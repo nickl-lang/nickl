@@ -71,11 +71,12 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
 
 } // namespace
 
-NklAst nkl_ast_create() {
-    // TODO Defining ast node ids every time
+NK_EXPORT void nkl_ast_init() {
 #define X(ID) nkid_define(CAT(n_, ID), cs2s(#ID));
 #include "nodes.inl"
+}
 
+NklAst nkl_ast_create() {
     return new (nk_allocate(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{
         .arena = nk_create_arena(),
     };

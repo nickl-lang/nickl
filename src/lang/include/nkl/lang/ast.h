@@ -28,6 +28,8 @@ struct NklAstNode_T {
 
 typedef struct NklAst_T *NklAst;
 
+NK_EXPORT void nkl_ast_init();
+
 NK_EXPORT NklAst nkl_ast_create();
 NK_EXPORT void nkl_ast_free(NklAst ast);
 

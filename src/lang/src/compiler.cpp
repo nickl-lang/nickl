@@ -54,6 +54,22 @@
 
 namespace {
 
+nkltype_t u8_t;
+nkltype_t u16_t;
+nkltype_t u32_t;
+nkltype_t u64_t;
+nkltype_t i8_t;
+nkltype_t i16_t;
+nkltype_t i32_t;
+nkltype_t i64_t;
+nkltype_t f32_t;
+nkltype_t f64_t;
+
+nkltype_t typeref_t;
+nkltype_t void_t;
+nkltype_t bool_t;
+nkltype_t u8_ptr_t;
+
 struct Void {};
 
 namespace fs = std::filesystem;
@@ -265,7 +281,7 @@ void gen(NklCompiler c, NkIrInstr const &instr) {
 }
 
 ValueInfo makeVoid() {
-    return {{}, nkl_get_void(), v_none};
+    return {{}, void_t, v_none};
 }
 
 Decl &makeDecl(NklCompiler c, nkid name) {
@@ -464,7 +480,6 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         nklt_typeid(dst_type->as.slice.target_type) ==
             nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type)) {
         auto const elem_ptr_t = nkl_get_ptr(dst_type->as.slice.target_type);
-        auto const u64_t = nkl_get_numeric(Uint64);
         auto ptr_ref = dst;
         ptr_ref.type = tovmt(elem_ptr_t);
         auto size_ref = dst;
@@ -629,10 +644,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         // TODO Optimize array indexing
         // TODO Think about type correctness in array indexing
         if (type->tclass == NkType_Array) {
-            auto const u64_t = nkl_get_numeric(Uint64);
             // TODO using u8 to correctly index array in c
-            auto const u8_t = nkl_get_numeric(Uint8);
-            auto const u8_ptr_t = nkl_get_ptr(u8_t);
             auto const elem_t = type->as.arr.elem_type;
             auto const elem_ptr_t = nkl_get_ptr(elem_t);
             auto const data_ref = asRef(c, makeInstr(nkir_make_lea({}, lhs_ref), u8_ptr_t));
@@ -656,10 +668,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
             ref.type = tovmt(idx_res.type);
             return makeRef(ref);
         } else if (type->tclass == NklType_Slice) {
-            auto const u64_t = nkl_get_numeric(Uint64);
             // TODO Using u8 to correctly index slice in c
-            auto const u8_t = nkl_get_numeric(Uint8);
-            auto const u8_ptr_t = nkl_get_ptr(u8_t);
             auto const elem_t = type->as.slice.target_type;
             auto const elem_ptr_t = nkl_get_ptr(type->as.slice.target_type);
             auto data_ref = lhs_ref;
@@ -791,7 +800,7 @@ ValueInfo compileFn(
         DEFINE(val, comptimeCompileNodeGetValue(c, narg1(node)));
         ret_t = nklval_as(nkltype_t, val);
     } else {
-        ret_t = nkl_get_void();
+        ret_t = void_t;
     }
     nkltype_t args_t = nkl_get_tuple(c->arena, params_types.data(), params_types.size(), 1);
 
@@ -865,7 +874,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic) {
     auto fn_t =
         nkl_get_fn({ret_t, args_t, NkCallConv_Cdecl, is_variadic}); // TODO CallConv Hack for #link
 
-    return makeValue<nkltype_t>(c, nkl_get_typeref(), fn_t);
+    return makeValue<nkltype_t>(c, typeref_t, fn_t);
 }
 
 void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
@@ -959,33 +968,30 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_false: {
-        return makeValue<bool>(c, nkl_get_numeric(Uint8), false);
+        return makeValue<bool>(c, bool_t, false);
     }
 
     case n_true: {
-        return makeValue<bool>(c, nkl_get_numeric(Uint8), true);
+        return makeValue<bool>(c, bool_t, true);
     }
 
-#define X(NAME, VALUE_TYPE, CTYPE)                                                      \
-    case CAT(n_, NAME): {                                                               \
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_numeric(VALUE_TYPE)); \
+#define X(NAME, VALUE_TYPE, CTYPE)                                \
+    case CAT(n_, NAME): {                                         \
+        return makeValue<nkltype_t>(c, typeref_t, CAT(NAME, _t)); \
     }
         NUMERIC_ITERATE(X)
 #undef X
 
     case n_bool: {
-        return makeValue<nkltype_t>(
-            c,
-            nkl_get_typeref(),
-            nkl_get_numeric(Uint8)); // TODO Modeling bool as u8
+        return makeValue<nkltype_t>(c, typeref_t, bool_t);
     }
 
     case n_type_t: {
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_typeref());
+        return makeValue<nkltype_t>(c, typeref_t, typeref_t);
     }
 
     case n_void: {
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_void());
+        return makeValue<nkltype_t>(c, typeref_t, void_t);
     }
 
     case n_compl: {
@@ -1042,21 +1048,21 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_ptr_type: {
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_ptr(target_type));
+        return makeValue<nkltype_t>(c, typeref_t, nkl_get_ptr(target_type));
     }
 
     case n_const_ptr_type: {
         // TODO Ignoring const in const_ptr_type
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_ptr(target_type));
+        return makeValue<nkltype_t>(c, typeref_t, nkl_get_ptr(target_type));
     }
 
     case n_slice_type: {
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
         auto target_type = nklval_as(nkltype_t, val);
         auto type = nkl_get_slice(c->arena, target_type);
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), type);
+        return makeValue<nkltype_t>(c, typeref_t, type);
     }
 
     case n_scope: {
@@ -1096,13 +1102,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
 #undef COMPILE_BIN
 
-#define COMPILE_BOOL_BIN(NAME)                                                                \
-    case CAT(n_, NAME): {                                                                     \
-        DEFINE(lhs, compile(c, narg0(node)));                                                 \
-        DEFINE(rhs, compile(c, narg1(node)));                                                 \
-        /* TODO Modeling bool as u8 */                                                        \
-        return makeInstr(                                                                     \
-            CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), nkl_get_numeric(Uint8)); \
+#define COMPILE_BOOL_BIN(NAME)                                                             \
+    case CAT(n_, NAME): {                                                                  \
+        DEFINE(lhs, compile(c, narg0(node)));                                              \
+        DEFINE(rhs, compile(c, narg1(node)));                                              \
+        return makeInstr(CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), bool_t); \
     }
 
         COMPILE_BOOL_BIN(and)
@@ -1123,7 +1127,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         auto type = nklval_as(nkltype_t, type_val);
         DEFINE(size_val, comptimeCompileNodeGetValue(c, narg1(node)));
         auto size = nklval_as(int64_t, size_val);
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), nkl_get_array(type, size));
+        return makeValue<nkltype_t>(c, typeref_t, nkl_get_array(type, size));
     }
 
     case n_cast: {
@@ -1281,7 +1285,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             types.emplace_back(nklval_as(nkltype_t, val));
         }
         return makeValue<nkltype_t>(
-            c, nkl_get_typeref(), nkl_get_tuple(c->arena, types.data(), types.size(), 1));
+            c, typeref_t, nkl_get_tuple(c->arena, types.data(), types.size(), 1));
     }
 
     case n_import: {
@@ -1330,7 +1334,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         int res = std::sscanf(node->token->text.data, "%lf", &value);
         (void)res;
         assert(res > 0 && res != EOF && "integer constant parsing failed");
-        return makeValue<double>(c, nkl_get_numeric(Float64), value);
+        return makeValue<double>(c, f64_t, value);
     }
 
     case n_int: {
@@ -1339,13 +1343,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         int res = std::sscanf(node->token->text.data, "%ld", &value);
         (void)res;
         assert(res > 0 && res != EOF && "integer constant parsing failed");
-        return makeValue<int64_t>(c, nkl_get_numeric(Int64), value);
+        return makeValue<int64_t>(c, i64_t, value);
     }
 
     case n_string: {
         auto size = node->token->text.size;
 
-        auto i8_t = nkl_get_numeric(Int8);
         auto ar_t = nkl_get_array(i8_t, size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
@@ -1366,7 +1369,6 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto size = unescaped_str.size;
 
-        auto i8_t = nkl_get_numeric(Int8);
         auto ar_t = nkl_get_array(i8_t, size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
@@ -1398,7 +1400,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
 
         auto struct_type = nkl_get_struct(c->arena, fields.data(), fields.size());
-        return makeValue<nkltype_t>(c, nkl_get_typeref(), struct_type);
+        return makeValue<nkltype_t>(c, typeref_t, struct_type);
     }
 
     case n_fn: {
@@ -1694,7 +1696,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     auto pop_fn = pushFn(c, fn);
 
     auto top_level_fn_t =
-        nkl_get_fn({nkl_get_void(), nkl_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false});
+        nkl_get_fn({void_t, nkl_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false});
 
     nkir_startFunct(fn, cs2s("#top_level"), tovmt(top_level_fn_t));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
@@ -1883,7 +1885,8 @@ extern "C" NK_EXPORT Void nkl_compiler_declareLocal(nkstr name, nkltype_t type) 
     NK_LOG_TRC(__func__);
     NklCompiler c = s_compiler;
     // TODO Treating slice as cstring, while we include excess zero charater
-    CHECK(defineLocal(c, cs2nkid(std_str(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
+    CHECK(defineLocal(
+        c, cs2nkid(std_str(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
     return {};
 }
 
@@ -1956,6 +1959,24 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(nkslice<StructField> fiel
 }
 
 NklCompiler nkl_compiler_create() {
+    nkl_ast_init();
+
+    u8_t = nkl_get_numeric(Uint8);
+    u16_t = nkl_get_numeric(Uint16);
+    u32_t = nkl_get_numeric(Uint32);
+    u64_t = nkl_get_numeric(Uint64);
+    i8_t = nkl_get_numeric(Int8);
+    i16_t = nkl_get_numeric(Int16);
+    i32_t = nkl_get_numeric(Int32);
+    i64_t = nkl_get_numeric(Int64);
+    f32_t = nkl_get_numeric(Float32);
+    f64_t = nkl_get_numeric(Float64);
+
+    typeref_t = nkl_get_typeref();
+    void_t = nkl_get_void();
+    bool_t = u8_t; // Modeling bool as u8
+    u8_ptr_t = nkl_get_ptr(u8_t);
+
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
         .arena = nk_create_arena(),
