@@ -141,8 +141,6 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     std::vector<Reloc> relocs{};
 
-    std::vector<NkIrFunct> referenced_functs;
-
     auto _compileArg = [&](size_t ii, size_t ai, NkBcRef &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.arg_type) {
         case NkIrArg_None:
@@ -182,18 +180,6 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 arg.ref_type = NkBcRef_Rodata;
                 auto const_data = nkval_data(ir.consts[ref.index]);
                 arg.offset = (size_t)const_data;
-                if (ref.type->tclass == NkType_Fn && ref.type->as.fn.call_conv == NkCallConv_Nk) {
-                    bool found = false;
-                    for (auto f : ir.functs) {
-                        if (*(void **)const_data == (void *)f) { // TODO Manual search for fn
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) {
-                        referenced_functs.emplace_back((NkIrFunct) * (void **)const_data);
-                    }
-                }
                 break;
             }
             case NkIrRef_Reg:
@@ -236,6 +222,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         }
     };
 
+    std::vector<NkIrFunct> referenced_functs;
+
     for (auto block_id : fn->blocks) {
         auto const &block = ir.blocks[block_id];
 
@@ -252,16 +240,18 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case nkir_call:
                 if (arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
+                    auto const_data = nkval_data(ir.consts[arg1.ref.index]);
                     bool found = false;
+                    // TODO Manual search for fn
                     for (auto f : ir.functs) {
-                        // TODO Manual search for fn
-                        if (*(void **)nkval_data(ir.consts[arg1.ref.index]) == (void *)f) {
+                        if (*(void **)const_data == (void *)f) {
                             found = true;
                             break;
                         }
                     }
                     if (found) {
                         code = nkop_call_jmp;
+                        referenced_functs.emplace_back((NkIrFunct) * (void **)const_data);
                     }
                 }
                 break;
