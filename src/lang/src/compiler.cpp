@@ -170,6 +170,7 @@ struct NklCompiler_T {
     std::string err_str{};
     NklTokenRef err_token{};
     bool error_occurred = false;
+    bool error_reported = false;
 
     std::string compiler_dir{};
     std::string stdlib_dir{};
@@ -1746,6 +1747,10 @@ void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
 }
 
 void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
+    if (c->error_reported) {
+        return;
+    }
+
     // TODO Refactor coloring
     // TODO Add option to control coloring from CLI
     bool const to_color = nksys_isatty();
@@ -1769,9 +1774,14 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     printQuote(src, token, to_color);
 
     c->error_occurred = true;
+    c->error_reported = true;
 }
 
 void printError(NklCompiler c, char const *fmt, ...) {
+    if (c->error_reported) {
+        return;
+    }
+
     va_list ap;
     va_start(ap, fmt);
     auto str = string_vformat(fmt, ap);
@@ -1788,6 +1798,7 @@ void printError(NklCompiler c, char const *fmt, ...) {
         str.c_str());
 
     c->error_occurred = true;
+    c->error_reported = true;
 }
 
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
