@@ -1055,6 +1055,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_scope: {
+        pushScope(c);
+        defer {
+            popScope(c);
+        };
         // TODO scope compilation is disabled
         // gen(c, nkir_make_enter());
         // defer {

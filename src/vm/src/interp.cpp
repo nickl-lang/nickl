@@ -443,9 +443,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     NK_LOG_TRC(__func__);
 
-    auto const &prog = *fn->prog;
-
-    NK_LOG_DBG("program @%p", &prog);
+    NK_LOG_DBG("program @%p", fn->prog);
 
     if (!ctx.is_initialized) {
         NK_LOG_TRC("initializing stack...");

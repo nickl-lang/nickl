@@ -1,0 +1,15 @@
+import std;
+
+var := 1;
+{
+    var := 2;
+    {
+        var := 3;
+        std.printf("%li", var);
+    }
+    std.printf("%li", var);
+}
+
+std.printf("%li", var);
+
+std.puts("");
