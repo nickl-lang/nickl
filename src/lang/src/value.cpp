@@ -310,6 +310,37 @@ nkltype_t nkl_get_typeref() {
     });
 }
 
+nkltype_t nkl_get_any(NkAllocator alloc) {
+    auto const tclass = NklType_Any;
+
+    ByteArray fp{};
+    pushVal(fp, NklTypeSubset);
+    pushVal(fp, tclass);
+
+    return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
+        auto const data_t = nkl_get_ptr(nkl_get_void()); // TODO Using *void as data in any_t
+        auto const type_t = nkl_get_typeref();
+        NklStructField const fields[] = {
+            {
+                .name = cs2nkid("data"),
+                .type = data_t,
+            },
+            {
+                .name = cs2nkid("type"),
+                .type = type_t,
+            },
+        };
+        auto const underlying_type = nkl_get_struct(alloc, fields, AR_SIZE(fields));
+        return &s_types.emplace_back(NklType{
+            .vm_type = *tovmt(underlying_type),
+            .as{},
+            .tclass = tclass,
+            .id = s_next_id++,
+            .underlying_type = underlying_type,
+        });
+    });
+}
+
 nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     auto const tclass = NklType_Slice;
 
@@ -385,6 +416,10 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
         nksb_printf(sb, "type_t");
         break;
 
+    case NklType_Any:
+        nksb_printf(sb, "any_t");
+        break;
+
     case NklType_Slice:
         nksb_printf(sb, "[]");
         nklt_inspect(type->as.slice.target_type, sb);
@@ -398,7 +433,9 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
 
 void nklval_inspect(nklval_t val, NkStringBuilder sb) {
     switch (nklval_tclass(val)) {
-    case NklType_Slice: // TODO Slice inspect unfinished
+    case NklType_Typeref: // TODO type_t inspect not implemented
+    case NklType_Any:     // TODO any_t inspect not implemented
+    case NklType_Slice:   // TODO Slice inspect not implemented
 
     default:
         nkval_inspect(tovmv(val), sb);

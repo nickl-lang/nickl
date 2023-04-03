@@ -232,7 +232,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
                 }
             }
         }
-        nksb_printf(sb, "%p", nkval_data(val));
+        nksb_printf(sb, "%p", nkval_as(void *, val));
         break;
     }
     case NkType_Tuple:

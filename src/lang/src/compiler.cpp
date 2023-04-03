@@ -65,8 +65,10 @@ nkltype_t i64_t;
 nkltype_t f32_t;
 nkltype_t f64_t;
 
+nkltype_t any_t;
 nkltype_t typeref_t;
 nkltype_t void_t;
+nkltype_t void_ptr_t;
 nkltype_t bool_t;
 nkltype_t u8_ptr_t;
 
@@ -472,6 +474,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         nklt_typeid(dst_type->as.slice.target_type) ==
             nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type)) {
         auto const elem_ptr_t = nkl_get_ptr(dst_type->as.slice.target_type);
+        // TODO Generalizing offsetting into a struct
         auto ptr_ref = dst;
         ptr_ref.type = tovmt(elem_ptr_t);
         auto size_ref = dst;
@@ -484,6 +487,19 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
             c,
             size_ref,
             makeValue<uint64_t>(c, u64_t, src_type->as.ptr.target_type->as.arr.elem_count));
+        return makeRef(dst);
+    }
+    if (nklt_tclass(dst_type) == NklType_Any && nklt_tclass(src_type) == NkType_Ptr) {
+        // TODO Generalizing offsetting into a struct
+        auto data_ref = dst;
+        data_ref.type = tovmt(void_ptr_t);
+        auto type_ref = dst;
+        type_ref.type = tovmt(typeref_t);
+        type_ref.post_offset += nklt_sizeof(void_ptr_t);
+        auto src_ptr = src;
+        src_ptr.type = void_ptr_t;
+        store(c, data_ref, src_ptr);
+        store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type));
         return makeRef(dst);
     }
     if (nklt_typeid(dst_type) != nklt_typeid(src_type) &&
@@ -729,6 +745,10 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
             return compileStructIndex(c, lhs, lhs.type->underlying_type, name);
         }
 
+        case NklType_Any: {
+            return compileStructIndex(c, lhs, lhs.type->underlying_type, name);
+        }
+
         default: {
             auto sb = nksb_create();
             defer {
@@ -970,6 +990,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
         NUMERIC_ITERATE(X)
 #undef X
+
+    case n_any_t: {
+        return makeValue<nkltype_t>(c, typeref_t, any_t);
+    }
 
     case n_bool: {
         return makeValue<nkltype_t>(c, typeref_t, bool_t);
@@ -1321,6 +1345,17 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
     }
 
+    case n_intrinsic: {
+        nkstr name_str = node->token->text;
+        nkid name = s2nkid(name_str);
+        if (name == cs2nkid("@typeof")) {
+            return error(c, "invalid use of `%.*s` intrinsic", name_str.size, name_str.data),
+                   ValueInfo{};
+        } else {
+            return error(c, "invalid intrinsic `%.*s`", name_str.size, name_str.data), ValueInfo{};
+        }
+    }
+
     case n_float: {
         double value = 0.0;
         // TODO Replace sscanf in Compiler
@@ -1473,6 +1508,38 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_call: {
+        if (narg0(node)->id == n_intrinsic) {
+            nkid name = s2nkid(narg0(node)->token->text);
+            if (name == cs2nkid("@typeof")) {
+                auto arg_nodes = nargs1(node);
+                if (arg_nodes.size != 1) {
+                    return error(c, "@typeof expects exactly one argument"), ValueInfo{};
+                }
+
+                // TODO Boilerplate with comptime compilation in @typeof
+                auto fn = nkir_makeFunct(c->ir);
+                auto pop_fn = pushFn(c, fn);
+                nkir_startFunct(
+                    fn,
+                    cs2s("#comptime"),
+                    tovmt(nkl_get_fn(NkltFnInfo{
+                        void_t, nkl_get_tuple(c->arena, nullptr, 0, 1), NkCallConv_Nk, false})));
+                nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
+
+                pushFnScope(c, fn);
+                defer {
+                    popScope(c);
+                };
+
+                DEFINE(val, compile(c, narg1(&arg_nodes.data[0])));
+
+                nkir_discardFunct(fn);
+                c->fn_scopes.erase(fn); // TODO Actually delete persistent scopes
+
+                return makeValue<nkltype_t>(c, typeref_t, val.type);
+            }
+        }
+
         DEFINE(lhs, compile(c, narg0(node)));
 
         if (lhs.type->tclass != NkType_Fn) {
@@ -1484,10 +1551,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         std::vector<ValueInfo> args_info{};
         std::vector<nkltype_t> args_types{};
 
-        auto nodes = nargs1(node);
-        for (size_t i = 0; i < nodes.size; i++) {
+        auto arg_nodes = nargs1(node);
+        for (size_t i = 0; i < arg_nodes.size; i++) {
             // TODO Support named args in call
-            DEFINE(val_info, compile(c, narg1(&nodes.data[i])));
+            DEFINE(val_info, compile(c, narg1(&arg_nodes.data[i])));
             args_info.emplace_back(val_info);
             args_types.emplace_back(
                 i < fn_t->as.fn.args_t->as.tuple.elems.size
@@ -1497,19 +1564,19 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto args_t = nkl_get_tuple(c->arena, args_types.data(), args_types.size(), 1);
 
-        NkIrRef args{};
+        NkIrRef args_ref{};
         if (nklt_sizeof(args_t)) {
-            args = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(args_t)));
+            args_ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(args_t)));
         }
 
         for (size_t i = 0; i < args_info.size(); i++) {
-            auto arg_ref = args;
+            auto arg_ref = args_ref;
             arg_ref.offset += args_t->as.tuple.elems.data[i].offset;
             arg_ref.type = tovmt(args_t->as.tuple.elems.data[i].type);
             CHECK(store(c, arg_ref, args_info[i]));
         }
 
-        return makeInstr(nkir_make_call({}, asRef(c, lhs), args), fn_t->as.fn.ret_t);
+        return makeInstr(nkir_make_call({}, asRef(c, lhs), args_ref), fn_t->as.fn.ret_t);
     }
 
     case n_object_literal: {
@@ -1964,6 +2031,8 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(nkslice<StructField> fiel
 NklCompiler nkl_compiler_create() {
     nkl_ast_init();
 
+    auto arena = nk_create_arena();
+
     u8_t = nkl_get_numeric(Uint8);
     u16_t = nkl_get_numeric(Uint16);
     u32_t = nkl_get_numeric(Uint32);
@@ -1975,14 +2044,16 @@ NklCompiler nkl_compiler_create() {
     f32_t = nkl_get_numeric(Float32);
     f64_t = nkl_get_numeric(Float64);
 
+    any_t = nkl_get_any(arena);
     typeref_t = nkl_get_typeref();
     void_t = nkl_get_void();
+    void_ptr_t = nkl_get_ptr(void_t);
     bool_t = u8_t; // Modeling bool as u8
     u8_ptr_t = nkl_get_ptr(u8_t);
 
     return new (nk_allocate(nk_default_allocator, sizeof(NklCompiler_T))) NklCompiler_T{
         .ir = nkir_createProgram(),
-        .arena = nk_create_arena(),
+        .arena = arena,
     };
 }
 

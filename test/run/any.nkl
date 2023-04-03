@@ -1,0 +1,11 @@
+import std;
+
+any: any_t;
+
+var := 42;
+any = &var;
+
+std.printf("%i", any.data == &var);
+std.printf("%i", any.type == @typeof(var));
+
+std.printf(" %i\n", (cast(*@typeof(var)) any.data).*);

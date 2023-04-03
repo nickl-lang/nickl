@@ -26,13 +26,13 @@ std.printf("%hhi", (3 ^ 2) == 1);
 
 std.printf("%hhi", bool != i8);
 
-// TODO(typeof) std.printf("%hhi", @typeof(true) == bool);
-// TODO(typeof) std.printf("%hhi", @typeof(false) == bool);
+std.printf("%hhi", @typeof(true) == bool);
+std.printf("%hhi", @typeof(false) == bool);
 
 std.printf("%hhi", (cast(i8) true & cast(i8) false) == 0);
 std.printf("%hhi", (cast(i8) true & cast(i8) true) == 1);
 
-// TODO(typeof) std.printf("%hhi", @typeof(!1) == bool);
+std.printf("%hhi", @typeof(!cast(bool) 1) == bool);
 std.printf("%hhi", !cast(bool) 1 == false);
 std.printf("%hhi", !cast(bool) 0 == true);
 
