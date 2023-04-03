@@ -466,6 +466,14 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     };
 }
 
+ValueInfo cast(nkltype_t type, ValueInfo val) {
+    val.type = type;
+    if (val.kind == v_ref) {
+        val.as.ref.type = tovmt(type);
+    }
+    return val;
+}
+
 ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
     auto const dst_type = fromvmt(dst.type);
     auto const src_type = src.type;
@@ -480,9 +488,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         auto size_ref = dst;
         size_ref.type = tovmt(u64_t);
         size_ref.post_offset += nklt_sizeof(elem_ptr_t);
-        auto src_ptr = src;
-        src_ptr.type = elem_ptr_t;
-        store(c, ptr_ref, src_ptr);
+        store(c, ptr_ref, cast(elem_ptr_t, src));
         store(
             c,
             size_ref,
@@ -496,9 +502,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         auto type_ref = dst;
         type_ref.type = tovmt(typeref_t);
         type_ref.post_offset += nklt_sizeof(void_ptr_t);
-        auto src_ptr = src;
-        src_ptr.type = void_ptr_t;
-        store(c, data_ref, src_ptr);
+        store(c, data_ref, cast(void_ptr_t, src));
         store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type));
         return makeRef(dst);
     }
@@ -619,6 +623,19 @@ ValueInfo compileStructIndex(
     return makeRef(ref);
 }
 
+ValueInfo deref(NklCompiler c, NkIrRef ref) {
+    assert(nklt_tclass(fromvmt(ref.type)) == NkType_Ptr);
+    auto const type = ref.type->as.ptr.target_type;
+    if (ref.is_indirect) {
+        ref = asRef(
+            c,
+            store(c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, ref.type)), makeRef(ref)));
+    }
+    ref.is_indirect = true;
+    ref.type = type;
+    return makeRef(ref);
+}
+
 ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
     if (node->id == n_id) {
         auto const name = node->token->text;
@@ -649,7 +666,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         // TODO Optimize array indexing
         // TODO Think about type correctness in array indexing
         if (type->tclass == NkType_Array) {
-            // TODO using u8 to correctly index array in c
+            // TODO Using u8 to correctly index array in c
             auto const elem_t = type->as.arr.elem_type;
             auto const elem_ptr_t = nkl_get_ptr(elem_t);
             auto const data_ref = asRef(c, makeInstr(nkir_make_lea({}, lhs_ref), u8_ptr_t));
@@ -659,10 +676,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
                 asRef(c, makeValue<uint64_t>(c, u64_t, nklt_sizeof(type->as.arr.elem_type))));
             auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
             auto const add = nkir_make_add({}, data_ref, offset_ref);
-            auto ref = asRef(c, makeInstr(add, elem_ptr_t));
-            ref.is_indirect = true;
-            ref.type = tovmt(elem_t);
-            return makeRef(ref);
+            return deref(c, asRef(c, makeInstr(add, elem_ptr_t)));
         } else if (type->tclass == NkType_Tuple) {
             if (!isKnown(index)) {
                 return error(c, "comptime value expected in tuple index"), ValueInfo{};
@@ -682,10 +696,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
                 {}, asRef(c, index), asRef(c, makeValue<uint64_t>(c, u64_t, nklt_sizeof(elem_t))));
             auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
             auto const add = nkir_make_add({}, data_ref, offset_ref);
-            auto ref = asRef(c, makeInstr(add, elem_ptr_t));
-            ref.is_indirect = true;
-            ref.type = tovmt(elem_t);
-            return makeRef(ref);
+            return deref(c, asRef(c, makeInstr(add, elem_ptr_t)));
         } else {
             auto sb = nksb_create();
             defer {
@@ -701,10 +712,7 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         if (arg.type->tclass != NkType_Ptr) {
             return error(c, "pointer expected in dereference"), ValueInfo{};
         }
-        auto ref = asRef(c, arg);
-        ref.is_indirect = true;
-        ref.type = tovmt(arg.type->as.ptr.target_type);
-        return makeRef(ref);
+        return deref(c, asRef(c, arg));
     } else if (node->id == n_member) {
         DEFINE(lhs, compile(c, narg0(node)));
         auto name = s2nkid(narg1(node)->token->text);
@@ -1154,7 +1162,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
         auto const dst_type = nklval_as(nkltype_t, dst_type_val);
 
-        DEFINE(src, compile(c, narg1(node)));
+        DEFINE(const src, compile(c, narg1(node)));
         auto const src_type = src.type;
 
         switch (dst_type->tclass) {
@@ -1169,8 +1177,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
                     return error(c, "cannot cast pointer to any numeric type other than u64"),
                            ValueInfo{};
                 }
-                src.type = dst_type;
-                return src;
+                return cast(dst_type, src);
             }
             }
             break;
@@ -1183,13 +1190,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
                     return error(c, "cannot cast any numeric type other than u64 to a pointer"),
                            ValueInfo{};
                 }
-                src.type = dst_type;
-                return src;
+                return cast(dst_type, src);
             }
 
             case NkType_Ptr: {
-                src.type = dst_type;
-                return src;
+                return cast(dst_type, src);
             }
             }
             break;
@@ -1198,8 +1203,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         case NkType_Fn: {
             switch (src_type->tclass) {
             case NkType_Fn: {
-                src.type = dst_type;
-                return src;
+                return cast(dst_type, src);
             }
             }
             break;

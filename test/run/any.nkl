@@ -8,4 +8,4 @@ any = &var;
 std.printf("%i", any.data == &var);
 std.printf("%i", any.type == @typeof(var));
 
-std.printf(" %i\n", (cast(*@typeof(var)) any.data).*);
+std.printf(" %li\n", (cast(*i64) any.data).*);

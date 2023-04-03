@@ -392,12 +392,10 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto fields_ar = (NklStructField *)nk_allocate(alloc, count * sizeof(NklStructField));
         std::memcpy(fields_ar, fields, count * sizeof(NklStructField));
+        auto underlying_type = nkl_get_tuple(
+            alloc, &fields[0].type, count, sizeof(NklStructField) / sizeof(nkltype_t));
         return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_tuple(
-                alloc,
-                (nktype_t *)&fields[0].type,
-                count,
-                sizeof(NklStructField) / sizeof(nkltype_t)),
+            .vm_type = *tovmt(underlying_type),
             .as{.strct{
                 .fields{
                     .data = fields_ar,
@@ -406,6 +404,7 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t
             }},
             .tclass = tclass,
             .id = s_next_id++,
+            .underlying_type = underlying_type,
         });
     });
 }
