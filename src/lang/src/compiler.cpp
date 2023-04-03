@@ -1,6 +1,7 @@
 #include "nkl/lang/compiler.h"
 
 #include <algorithm>
+#include <cinttypes>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -866,6 +867,7 @@ ValueInfo compileFn(
         return makeValue<void *>(c, fn_t, *(void **)cl);
     } else {
         assert(!"invalid calling convention");
+        return {};
     }
 }
 
@@ -1372,7 +1374,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     case n_int: {
         int64_t value = 0;
         // TODO Replace sscanf in Compiler
-        int res = std::sscanf(node->token->text.data, "%ld", &value);
+        int res = std::sscanf(node->token->text.data, "%" SCNi64, &value);
         (void)res;
         assert(res > 0 && res != EOF && "integer constant parsing failed");
         return makeValue<int64_t>(c, i64_t, value);
@@ -1599,7 +1601,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto init_nodes = nargs1(node);
 
-        // TODO Ignoring named args in object literal, and copying values to a sperate array
+        // TODO Ignoring named args in object literal, and copying values to a separate array
         std::vector<NklAstNode_T> nodes;
         nodes.reserve(init_nodes.size);
 
