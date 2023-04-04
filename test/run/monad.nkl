@@ -1,0 +1,55 @@
+import std;
+
+string :: []i8; // TODO String type
+
+Nothing :: u64{0}; // TODO Hardcoded Nothing index
+
+MaybeInt :: enum {
+    Nothing: u8, // TODO Explicit void
+    Just: i32,
+}
+
+MaybeStr :: enum {
+    Nothing: u8,
+    Just: string,
+}
+
+buf: [100]i8;
+intToMaybeStr :: (x: i32) -> MaybeStr {
+    std.itoa(x, &buf, i32{10});
+    str: string; // TODO Manual slice construction
+    str.data = &buf;
+    str.size = std.strlen(&buf);
+    return MaybeStr{Just = str};
+};
+
+F :: @typeof(intToMaybeStr); // TODO Function type hack
+
+bind :: (self: *const MaybeInt, f: F) -> MaybeStr {
+    if self.*.tag == Nothing {            // TODO Manual dereference
+        return MaybeStr{Nothing = u8{0}}; // TODO void literal
+    } else {
+        return f(self.*.data.Just); // TODO Manual dereference
+    }
+}
+
+maybeGetInt :: () -> MaybeInt {
+    if (std.rand() % i32{2}) { // TODO Forced parentheses
+        return MaybeInt{Nothing = u8{0}};
+    } else {
+        return MaybeInt{Just = i32{42}};
+    }
+}
+
+main :: () -> void {
+    std.srand(std.time(cast(*std.time_t) u64{0}));
+    maybe_str := bind(&maybeGetInt(), intToMaybeStr); // TODO Manual address
+    if maybe_str.tag == Nothing {
+        std.puts("(nothing)");
+    } else {
+        str := maybe_str.data.Just;
+        std.printf("str=`%.*s`\n", str.size, str.data);
+    }
+}
+
+main();
