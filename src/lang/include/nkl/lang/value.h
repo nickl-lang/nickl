@@ -18,6 +18,7 @@ typedef enum {
     NklType_Slice,
     NklType_Struct,
     NklType_Union,
+    NklType_Enum,
 
     NklTypeclass_Count,
 } NklTypeclassId;
@@ -123,6 +124,7 @@ NK_EXPORT nkltype_t nkl_get_any(NkAllocator alloc);
 NK_EXPORT nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const = false);
 NK_EXPORT nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields);
 NK_EXPORT nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields);
+NK_EXPORT nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields);
 
 NK_EXPORT void nklt_inspect(nkltype_t type, NkStringBuilder sb);
 NK_EXPORT void nklval_inspect(nklval_t val, NkStringBuilder sb);

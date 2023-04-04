@@ -450,6 +450,42 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
     });
 }
 
+nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields) {
+    auto const tclass = NklType_Enum;
+
+    ByteArray fp{};
+    pushVal(fp, NklTypeSubset);
+    pushVal(fp, tclass);
+    pushVal(fp, fields.size);
+    for (size_t i = 0; i < fields.size; i++) {
+        pushVal(fp, fields.data[i].name);
+        pushVal(fp, nklt_typeid(fields.data[i].type));
+    }
+
+    return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
+        auto const data_t = nkl_get_union(alloc, fields);
+        auto const tag_t = nkl_get_numeric(Uint64);
+        NklField const enum_fields[] = {
+            {
+                .name = cs2nkid("data"),
+                .type = data_t,
+            },
+            {
+                .name = cs2nkid("tag"),
+                .type = tag_t,
+            },
+        };
+        auto const underlying_type = nkl_get_struct(alloc, {enum_fields, AR_SIZE(enum_fields)});
+        return &s_types.emplace_back(NklType{
+            .vm_type = *tovmt(underlying_type),
+            .as{},
+            .tclass = tclass,
+            .id = s_next_id++,
+            .underlying_type = underlying_type,
+        });
+    });
+}
+
 void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
     switch (nklt_tclass(type)) {
     case NklType_Typeref:
@@ -473,6 +509,10 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
         nksb_printf(sb, "union");
         break;
 
+    case NklType_Enum: // TODO Enum type inspect not implemented
+        nksb_printf(sb, "enum");
+        break;
+
     default:
         nkt_inspect(tovmt(type), sb);
         break;
@@ -486,6 +526,7 @@ void nklval_inspect(nklval_t val, NkStringBuilder sb) {
     case NklType_Slice:   // TODO Slice value inspect not implemented
     case NklType_Struct:  // TODO Struct value inspect not implemented
     case NklType_Union:   // TODO Union value inspect not implemented
+    case NklType_Enum:    // TODO Enum value inspect not implemented
 
     default:
         nkval_inspect(tovmv(val), sb);

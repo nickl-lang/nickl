@@ -1,0 +1,20 @@
+import std;
+
+IntOrFloat :: enum {
+    Int: i64,
+    Float: f64,
+}
+
+x: IntOrFloat;
+
+x = IntOrFloat{Int = 42};
+std.printf("%i", x.tag == u64{0});
+std.printf("%i", x.data.Int == 42);
+
+x = IntOrFloat{Float = 3.14};
+std.printf("%i", x.tag == u64{1});
+std.printf("%i", x.data.Float == 3.14);
+
+std.printf("%i", @sizeof(x) == 16);
+
+std.puts("");

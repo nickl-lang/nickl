@@ -50,6 +50,15 @@ timespec :: struct {
 #link("c") clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
 #link("c") nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
 
+#link("c") rand :: () -> i32;
+#link("c") srand :: (seed: u32) -> void;
+
+time_t :: u32; // TODO Check that
+
+#link("c") time :: (timer: *time_t) -> time_t;
+
+#link("c") itoa :: (value: i32, str: *i8, base: i32) -> *i8;
+
 #link("m") sqrt :: (x: f64) -> f64;
 #link("m") sqrtf :: (x: f32) -> f32;
 

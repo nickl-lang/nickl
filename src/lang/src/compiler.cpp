@@ -615,11 +615,7 @@ IndexResult calcTupleIndex(NklCompiler c, nkltype_t type, size_t index) {
     return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
 }
 
-ValueInfo compileStructIndex(
-    NklCompiler c,
-    ValueInfo const &lhs,
-    nkltype_t struct_type,
-    nkid name) {
+ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_type, nkid name) {
     auto index = nklt_struct_index(struct_type, name);
     if (index == -1ull) {
         auto sb = nksb_create();
@@ -643,8 +639,8 @@ ValueInfo compileStructIndex(
     return makeRef(ref);
 }
 
-ValueInfo compileUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_type, nkid name) {
-    // TODO  Boilerplate between compileStructIndex and compileUnionIndex
+ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_type, nkid name) {
+    // TODO  Boilerplate between getStructIndex and getUnionIndex
     auto index = nklt_struct_index(struct_type, name);
     if (index == -1ull) {
         auto sb = nksb_create();
@@ -786,21 +782,16 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
             assert(!"unreachable");
         }
 
-        case NklType_Struct: {
-            return compileStructIndex(c, lhs, lhs.type, name);
-        }
+        case NklType_Struct:
+            return getStructIndex(c, lhs, lhs.type, name);
 
-        case NklType_Union: {
-            return compileUnionIndex(c, lhs, lhs.type, name);
-        }
+        case NklType_Enum:
+        case NklType_Slice:
+        case NklType_Any:
+            return getStructIndex(c, lhs, lhs.type->underlying_type, name);
 
-        case NklType_Slice: {
-            return compileStructIndex(c, lhs, lhs.type->underlying_type, name);
-        }
-
-        case NklType_Any: {
-            return compileStructIndex(c, lhs, lhs.type->underlying_type, name);
-        }
+        case NklType_Union:
+            return getUnionIndex(c, lhs, lhs.type, name);
 
         default: {
             auto sb = nksb_create();
@@ -1031,6 +1022,26 @@ ValueInfo compileAndDiscard(NklCompiler c, NklAstNode node) {
     c->fn_scopes.erase(fn); // TODO Actually delete persistent scopes
 
     return val;
+}
+
+template <class F>
+ValueInfo compileCompositeType(NklCompiler c, NklAstNode node, F const &create_type) {
+    std::vector<NklField> fields{};
+
+    auto nodes = nargs0(node);
+    for (size_t i = 0; i < nodes.size; i++) {
+        nkid name = s2nkid(narg0(&nodes.data[i])->token->text);
+        DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(&nodes.data[i])));
+        if (nklval_tclass(type_val) != NklType_Typeref) {
+            return error(c, "type expected in tuple type"), ValueInfo{};
+        }
+        fields.emplace_back(NklField{
+            .name = name,
+            .type = nklval_as(nkltype_t, type_val),
+        });
+    }
+
+    return makeValue<nkltype_t>(c, typeref_t, create_type({fields.data(), fields.size()}));
 }
 
 ValueInfo compile(NklCompiler c, NklAstNode node) {
@@ -1486,45 +1497,22 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_struct: {
-        std::vector<NklField> fields{};
-
-        auto nodes = nargs0(node);
-        for (size_t i = 0; i < nodes.size; i++) {
-            nkid name = s2nkid(narg0(&nodes.data[i])->token->text);
-            DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(&nodes.data[i])));
-            if (nklval_tclass(type_val) != NklType_Typeref) {
-                return error(c, "type expected in tuple type"), ValueInfo{};
-            }
-            fields.emplace_back(NklField{
-                .name = name,
-                .type = nklval_as(nkltype_t, type_val),
-            });
-        }
-
-        auto type = nkl_get_struct(c->arena, {fields.data(), fields.size()});
-        return makeValue<nkltype_t>(c, typeref_t, type);
+        return compileCompositeType(c, node, [c](NklFieldArray fields) {
+            return nkl_get_struct(c->arena, fields);
+        });
     }
 
     case n_union: {
-        // TODO Boilerplate between n_struct and n_union
-        std::vector<NklField> fields{};
-
-        auto nodes = nargs0(node);
-        for (size_t i = 0; i < nodes.size; i++) {
-            nkid name = s2nkid(narg0(&nodes.data[i])->token->text);
-            DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(&nodes.data[i])));
-            if (nklval_tclass(type_val) != NklType_Typeref) {
-                return error(c, "type expected in tuple type"), ValueInfo{};
-            }
-            fields.emplace_back(NklField{
-                .name = name,
-                .type = nklval_as(nkltype_t, type_val),
-            });
-        }
-
-        auto type = nkl_get_union(c->arena, {fields.data(), fields.size()});
-        return makeValue<nkltype_t>(c, typeref_t, type);
+        return compileCompositeType(c, node, [c](NklFieldArray fields) {
+            return nkl_get_union(c->arena, fields);
+        });
     }
+
+    case n_enum: {
+        return compileCompositeType(c, node, [c](NklFieldArray fields) {
+            return nkl_get_enum(c->arena, fields);
+        });
+    };
 
     case n_fn: {
         return compileFn(c, node, false);
@@ -1672,22 +1660,56 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto type = nklval_as(nkltype_t, type_val);
 
-        nklval_t val{nk_allocate(c->arena, nklt_sizeof(type)), type};
-        std::memset(nklval_data(val), 0, nklval_sizeof(val));
-
         auto init_nodes = nargs1(node);
 
-        // TODO Ignoring named args in object literal, and copying values to a separate array
-        std::vector<NklAstNode_T> nodes;
-        nodes.reserve(init_nodes.size);
-
-        for (size_t i = 0; i < init_nodes.size; i++) {
-            nodes.emplace_back(narg1(&init_nodes.data[i])[0]);
+        switch (nklt_tclass(type)) {
+        case NklType_Enum: {
+            // TODO Support compile time enum literal
+            if (init_nodes.size != 1) {
+                return error(c, "single value expected in enum literal"), ValueInfo{};
+            }
+            auto init_node = &init_nodes.data[0];
+            auto name_node = narg0(init_node);
+            if (!name_node || !name_node->id) {
+                return error(c, "name expected in enum literal"), ValueInfo{};
+            }
+            auto const name = s2nkid(name_node->token->text);
+            auto const struct_t = type->underlying_type;
+            auto const union_t = struct_t->as.strct.fields.data[0].type;
+            // TODO Can we not create a local variable undonditionally in enum literal?
+            auto const enum_ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            auto data_ref = enum_ref;
+            data_ref.type = tovmt(union_t);
+            auto tag_ref = enum_ref;
+            tag_ref.type = tovmt(u64_t);
+            tag_ref.post_offset += nklt_sizeof(union_t);
+            DEFINE(field_ref, getUnionIndex(c, makeRef(data_ref), union_t, name));
+            DEFINE(value, compile(c, narg1(init_node)));
+            store(c, asRef(c, field_ref), value);
+            // TODO Indexing union twice in enum literal
+            auto const index = nklt_struct_index(union_t, name);
+            store(c, tag_ref, makeValue<uint64_t>(c, u64_t, index));
+            return makeRef(enum_ref);
         }
 
-        CHECK(initFromAst(c, val, {nodes.data(), nodes.size()}));
+        default: {
+            nklval_t val{nk_allocate(c->arena, nklt_sizeof(type)), type};
+            std::memset(nklval_data(val), 0, nklval_sizeof(val));
 
-        return makeValue(c, val);
+            // TODO Ignoring named args in object literal, and copying values to a separate
+            // array
+            std::vector<NklAstNode_T> nodes;
+            nodes.reserve(init_nodes.size);
+
+            for (size_t i = 0; i < init_nodes.size; i++) {
+                nodes.emplace_back(narg1(&init_nodes.data[i])[0]);
+            }
+
+            CHECK(initFromAst(c, val, {nodes.data(), nodes.size()}));
+
+            return makeValue(c, val);
+        }
+        }
     }
 
     case n_assign: {
