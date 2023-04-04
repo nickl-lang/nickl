@@ -247,21 +247,21 @@ nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const) {
     });
 }
 
-nkltype_t nkl_get_tuple(NkAllocator alloc, nkltype_t const *types, size_t count, size_t stride) {
+nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride) {
     auto const tclass = NkType_Tuple;
 
     ByteArray fp{};
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
-    pushVal(fp, count);
-    for (size_t i = 0; i < count; i++) {
-        pushVal(fp, nklt_typeid(types[i * stride]));
+    pushVal(fp, types.size);
+    for (size_t i = 0; i < types.size; i++) {
+        pushVal(fp, nklt_typeid(types.data[i * stride]));
     }
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto layout = nk_calcTupleLayout((nktype_t const *)types, count, alloc, stride);
+        auto layout = nk_calcTupleLayout((nktype_t const *)types.data, types.size, alloc, stride);
         return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t const *)types, count, stride),
+            .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t const *)types.data, types.size, stride),
             .as{.tuple{
                 .elems{
                     .data = (NklTupleElemInfo *)layout.info_ar.data,
@@ -320,7 +320,7 @@ nkltype_t nkl_get_any(NkAllocator alloc) {
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto const data_t = nkl_get_ptr(nkl_get_void()); // TODO Using *void as data in any_t
         auto const type_t = nkl_get_typeref();
-        NklStructField const fields[] = {
+        NklField const fields[] = {
             {
                 .name = cs2nkid("data"),
                 .type = data_t,
@@ -330,7 +330,7 @@ nkltype_t nkl_get_any(NkAllocator alloc) {
                 .type = type_t,
             },
         };
-        auto const underlying_type = nkl_get_struct(alloc, fields, AR_SIZE(fields));
+        auto const underlying_type = nkl_get_struct(alloc, {fields, AR_SIZE(fields)});
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{},
@@ -353,7 +353,7 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto const ptr_t = nkl_get_ptr(elem_type);
         auto const u64_t = nkl_get_numeric(Uint64);
-        NklStructField const fields[] = {
+        NklField const fields[] = {
             {
                 .name = cs2nkid("data"),
                 .type = ptr_t,
@@ -363,7 +363,7 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
                 .type = u64_t,
             },
         };
-        auto const underlying_type = nkl_get_struct(alloc, fields, AR_SIZE(fields));
+        auto const underlying_type = nkl_get_struct(alloc, {fields, AR_SIZE(fields)});
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{.slice{
@@ -377,34 +377,75 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
     });
 }
 
-nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t count) {
+nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields) {
     auto const tclass = NklType_Struct;
 
     ByteArray fp{};
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
-    pushVal(fp, count);
-    for (size_t i = 0; i < count; i++) {
-        pushVal(fp, fields[i].name);
-        pushVal(fp, nklt_typeid(fields[i].type));
+    pushVal(fp, fields.size);
+    for (size_t i = 0; i < fields.size; i++) {
+        pushVal(fp, fields.data[i].name);
+        pushVal(fp, nklt_typeid(fields.data[i].type));
     }
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto fields_ar = (NklStructField *)nk_allocate(alloc, count * sizeof(NklStructField));
-        std::memcpy(fields_ar, fields, count * sizeof(NklStructField));
+        auto fields_data = (NklField *)nk_allocate(alloc, fields.size * sizeof(NklField));
+        std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
         auto underlying_type = nkl_get_tuple(
-            alloc, &fields[0].type, count, sizeof(NklStructField) / sizeof(nkltype_t));
+            alloc, {&fields.data[0].type, fields.size}, sizeof(NklField) / sizeof(nkltype_t));
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{.strct{
                 .fields{
-                    .data = fields_ar,
-                    .size = count,
+                    .data = fields_data,
+                    .size = fields.size,
                 },
             }},
             .tclass = tclass,
             .id = s_next_id++,
             .underlying_type = underlying_type,
+        });
+    });
+}
+
+nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
+    auto const tclass = NklType_Union;
+
+    ByteArray fp{};
+    pushVal(fp, NklTypeSubset);
+    pushVal(fp, tclass);
+    pushVal(fp, fields.size);
+    for (size_t i = 0; i < fields.size; i++) {
+        pushVal(fp, fields.data[i].name);
+        pushVal(fp, nklt_typeid(fields.data[i].type));
+    }
+
+    return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
+        auto fields_data = (NklField *)nk_allocate(alloc, fields.size * sizeof(NklField));
+        std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
+        nkltype_t largest_type = nkl_get_void();
+        uint8_t max_align = 0;
+        for (size_t i = 0; i < fields.size; i++) {
+            auto const type = fields.data[i].type;
+            if (nklt_sizeof(type) > nklt_sizeof(largest_type)) {
+                largest_type = type;
+            }
+            max_align = maxu(max_align, nklt_alignof(type));
+        }
+        // TODO Not sure if modifying vm_type alignment like this is ok
+        auto vm_type = *tovmt(largest_type);
+        vm_type.align = max_align;
+        return &s_types.emplace_back(NklType{
+            .vm_type = vm_type,
+            .as{.strct{
+                .fields{
+                    .data = fields_data,
+                    .size = fields.size,
+                },
+            }},
+            .tclass = tclass,
+            .id = s_next_id++,
         });
     });
 }
@@ -424,6 +465,14 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
         nklt_inspect(type->as.slice.target_type, sb);
         break;
 
+    case NklType_Struct: // TODO Struct type inspect not implemented
+        nksb_printf(sb, "struct");
+        break;
+
+    case NklType_Union: // TODO Union type inspect not implemented
+        nksb_printf(sb, "union");
+        break;
+
     default:
         nkt_inspect(tovmt(type), sb);
         break;
@@ -432,9 +481,11 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
 
 void nklval_inspect(nklval_t val, NkStringBuilder sb) {
     switch (nklval_tclass(val)) {
-    case NklType_Typeref: // TODO type_t inspect not implemented
-    case NklType_Any:     // TODO any_t inspect not implemented
-    case NklType_Slice:   // TODO Slice inspect not implemented
+    case NklType_Typeref: // TODO type_t value inspect not implemented
+    case NklType_Any:     // TODO any_t value inspect not implemented
+    case NklType_Slice:   // TODO Slice value inspect not implemented
+    case NklType_Struct:  // TODO Struct value inspect not implemented
+    case NklType_Union:   // TODO Union value inspect not implemented
 
     default:
         nkval_inspect(tovmv(val), sb);

@@ -17,6 +17,7 @@ typedef enum {
     NklType_Any,
     NklType_Slice,
     NklType_Struct,
+    NklType_Union,
 
     NklTypeclass_Count,
 } NklTypeclassId;
@@ -71,15 +72,15 @@ typedef struct {
 typedef struct {
     nkid name;
     nkltype_t type;
-} NklStructField;
+} NklField;
 
 typedef struct {
-    NklStructField *data;
+    NklField const *data;
     size_t size;
-} NklStructFieldArray;
+} NklFieldArray;
 
 typedef struct {
-    NklStructFieldArray fields;
+    NklFieldArray fields;
 } _nkl_type_struct;
 
 typedef struct NklType {
@@ -103,20 +104,25 @@ typedef struct {
     nkltype_t type;
 } nklval_t;
 
+typedef struct {
+    nkltype_t const *data;
+    size_t size;
+} NklTypeArray;
+
 NK_EXPORT void nkl_types_clean();
 
 NK_EXPORT nkltype_t nkl_get_array(nkltype_t elem_type, size_t elem_count);
 NK_EXPORT nkltype_t nkl_get_fn(NkltFnInfo info);
 NK_EXPORT nkltype_t nkl_get_numeric(NkNumericValueType value_type);
 NK_EXPORT nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const = false);
-NK_EXPORT nkltype_t
-nkl_get_tuple(NkAllocator alloc, nkltype_t const *types, size_t count, size_t stride);
+NK_EXPORT nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride);
 NK_EXPORT nkltype_t nkl_get_void();
 
 NK_EXPORT nkltype_t nkl_get_typeref();
 NK_EXPORT nkltype_t nkl_get_any(NkAllocator alloc);
 NK_EXPORT nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const = false);
-NK_EXPORT nkltype_t nkl_get_struct(NkAllocator alloc, NklStructField const *fields, size_t count);
+NK_EXPORT nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields);
+NK_EXPORT nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields);
 
 NK_EXPORT void nklt_inspect(nkltype_t type, NkStringBuilder sb);
 NK_EXPORT void nklval_inspect(nklval_t val, NkStringBuilder sb);

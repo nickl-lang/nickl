@@ -1,0 +1,24 @@
+T :: i64;
+
+Vec3 :: struct {
+    x: T,
+    y: T,
+    z: T,
+}
+
+U :: union {
+    data: [3]T,
+    vec: Vec3,
+}
+
+v := Vec3{1, 2, 3};
+u: U = v;
+
+import std;
+
+std.printf("%li%li%li", u.data[0], u.data[1], u.data[2]);
+std.printf("%i", @typeof(u.data) == [3]T);
+std.printf("%i", @typeof(u.vec) == Vec3);
+std.printf("%i", @sizeof(u.vec) == @sizeof(v));
+
+std.puts("");
