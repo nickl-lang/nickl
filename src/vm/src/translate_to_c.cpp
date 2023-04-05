@@ -529,7 +529,9 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             case nkir_call: {
                 auto fn_t = instr.arg[1].ref.type;
                 assert(fn_t->tclass == NkType_Fn);
+                src << "(";
                 _writeRef(instr.arg[1].ref);
+                src << ")";
                 src << "(";
                 if (instr.arg[2].ref.ref_type != NkIrRef_None) {
                     auto args_t = instr.arg[2].ref.type;

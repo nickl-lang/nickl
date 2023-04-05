@@ -1,0 +1,65 @@
+import std;
+
+string :: []i8;    // TODO String type
+Nothing :: u64{0}; // TODO Hardcoded Nothing index
+
+MaybeInt :: enum {
+    Nothing: void, // TODO Explicit void
+    Just: i32,
+}
+
+MaybeStr :: enum {
+    Nothing: void,
+    Just: string,
+}
+
+BUF_SIZE :: u64{100};
+buf: [BUF_SIZE]i8;
+intToMaybeStr :: (x: i32) -> MaybeStr {
+    std.snprintf(&buf, BUF_SIZE, "%i", x);
+    str: string; // TODO Manual slice construction
+    str.data = &buf;
+    str.size = std.strlen(&buf);
+    return MaybeStr{Just=str};
+};
+
+bind :: (self: *const MaybeInt, f: @typeof(intToMaybeStr)) -> MaybeStr { // TODO Function type hack
+    if self.*.tag == Nothing {            // TODO Manual dereference
+        return MaybeStr{Nothing=void{ }}; // TODO void literal
+    } else {
+        return f(self.*.data.Just); // TODO Manual dereference
+    }
+}
+
+random :: () -> i32 {
+    //ts: std.timespec;
+    //std.clock_gettime(std.CLOCK_MONOTONIC, &ts);
+    //std.srand(cast(u32) ts.tv_nsec);
+    //return std.rand();
+    return i32{4}; // Chosen by a fair dice roll
+}
+
+maybeGetInt :: () -> MaybeInt {
+    if (random() % i32{2}) { // TODO Forced parentheses
+        return MaybeInt{Nothing=void{ }};
+    } else {
+        return MaybeInt{Just=i32{42}};
+    }
+}
+
+main :: () -> void {
+    maybe_str := bind(&maybeGetInt(), intToMaybeStr); // TODO Manual address
+    if maybe_str.tag == Nothing {
+        std.puts("(nothing)");
+    } else {
+        str := maybe_str.data.Just;
+        std.printf("str=`%.*s`\n", str.size, str.data);
+    }
+}
+
+main();
+
+import compiler;
+builder := compiler.createBuilder();
+compiler.build(builder, cast(compiler.EntryPoint) main, "monad");
+compiler.freeBuilder(builder);

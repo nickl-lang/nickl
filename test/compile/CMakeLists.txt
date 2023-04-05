@@ -2,6 +2,7 @@ configure_file(config.txt ${COMPILE_TEST_OUT_DIR}/config.txt COPYONLY)
 configure_file(struct.json ${COMPILE_TEST_OUT_DIR}/struct.json COPYONLY)
 
 def_compile_test(NAME configured OUTPUT_REGEX "^main\ni=0\ni=1\ni=2\n$")
+def_compile_test(NAME monad OUTPUT_REGEX "^str=`42`\n$")
 def_compile_test(NAME multiarrays OUTPUT_REGEX "^1234\n$")
 def_compile_test(NAME printf OUTPUT_REGEX "^hello world\n$")
 def_compile_test(NAME simple)

@@ -498,7 +498,8 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         ptr_ref.type = tovmt(elem_ptr_t);
         auto size_ref = dst;
         size_ref.type = tovmt(u64_t);
-        size_ref.post_offset += nklt_sizeof(elem_ptr_t);
+        size_ref.post_offset +=
+            dst_type->underlying_type->underlying_type->as.tuple.elems.data[1].offset;
         store(c, ptr_ref, cast(elem_ptr_t, src));
         store(
             c,
@@ -512,7 +513,8 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         data_ref.type = tovmt(void_ptr_t);
         auto type_ref = dst;
         type_ref.type = tovmt(typeref_t);
-        type_ref.post_offset += nklt_sizeof(void_ptr_t);
+        type_ref.post_offset +=
+            dst_type->underlying_type->underlying_type->as.tuple.elems.data[1].offset;
         store(c, data_ref, cast(void_ptr_t, src));
         store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type));
         return makeRef(dst);
@@ -991,6 +993,11 @@ void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
         }
         for (size_t i = 0; i < nklval_tuple_size(val); i++) {
             initFromAst(c, nklval_tuple_at(val, i), {&init_nodes.data[i], 1});
+        }
+        break;
+    case NkType_Void:
+        if (init_nodes.size > 0) {
+            return error(c, "too many values to init void");
         }
         break;
     default:
@@ -1682,7 +1689,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             data_ref.type = tovmt(union_t);
             auto tag_ref = enum_ref;
             tag_ref.type = tovmt(u64_t);
-            tag_ref.post_offset += nklt_sizeof(union_t);
+            tag_ref.post_offset += struct_t->underlying_type->as.tuple.elems.data[1].offset;
             DEFINE(field_ref, getUnionIndex(c, makeRef(data_ref), union_t, name));
             DEFINE(value, compile(c, narg1(init_node)));
             store(c, asRef(c, field_ref), value);
