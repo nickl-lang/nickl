@@ -1,0 +1,32 @@
+Vec3 :: struct {
+    x: i64,
+    y: i64,
+    z: i64,
+}
+
+Result :: enum {
+    Ok: Vec3,
+    Err: []i8,
+}
+
+getVec :: () -> Result { return Result{Ok=Vec3{1,2,3}}; }
+getErr :: () -> Result { return Result{Err="whoops"}; }
+
+res: Result;
+
+main :: () -> void {
+    import std;
+
+    res = getVec();
+    std.printf("%lu", res.tag);
+    std.printf("%li%li%li", res.data.Ok.x, res.data.Ok.y, res.data.Ok.z);
+
+    res = getErr();
+    std.printf("%lu", res.tag);
+    std.printf("%s\n", res.data.Err.data);
+}
+
+import compiler;
+builder := compiler.createBuilder();
+compiler.build(builder, cast(compiler.EntryPoint) main, "result_enum");
+compiler.freeBuilder(builder);
