@@ -424,7 +424,6 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     switch (val.kind) {
     case v_val: {
         ref = nkir_makeConstRef(c->ir, val.as.cnst);
-        ref.type = tovmt(val.type);
         break;
     }
 
@@ -480,6 +479,14 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     return ref;
 }
 
+NkIrRef tupleIndex(NkIrRef ref, size_t i) {
+    auto const tuple_t = ref.type;
+    assert(i < tuple_t->as.tuple.elems.size);
+    ref.type = tuple_t->as.tuple.elems.data[i].type;
+    ref.post_offset += tuple_t->as.tuple.elems.data[i].offset;
+    return ref;
+}
+
 ValueInfo cast(nkltype_t type, ValueInfo val) {
     val.type = type;
     return val;
@@ -492,15 +499,9 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
         nklt_typeid(dst_type->as.slice.target_type) ==
             nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type)) {
-        auto const elem_ptr_t = nkl_get_ptr(dst_type->as.slice.target_type);
-        // TODO Generalizing offsetting into a struct
-        auto ptr_ref = dst;
-        ptr_ref.type = tovmt(elem_ptr_t);
-        auto size_ref = dst;
-        size_ref.type = tovmt(u64_t);
-        size_ref.post_offset +=
-            dst_type->underlying_type->underlying_type->as.tuple.elems.data[1].offset;
-        CHECK(store(c, ptr_ref, cast(elem_ptr_t, src)));
+        auto ptr_ref = tupleIndex(dst, 0);
+        auto size_ref = tupleIndex(dst, 1);
+        CHECK(store(c, ptr_ref, cast(nkl_get_ptr(dst_type->as.slice.target_type), src)));
         CHECK(store(
             c,
             size_ref,
@@ -508,13 +509,8 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         return makeRef(dst);
     }
     if (nklt_tclass(dst_type) == NklType_Any && nklt_tclass(src_type) == NkType_Ptr) {
-        // TODO Generalizing offsetting into a struct
-        auto data_ref = dst;
-        data_ref.type = tovmt(void_ptr_t);
-        auto type_ref = dst;
-        type_ref.type = tovmt(typeref_t);
-        type_ref.post_offset +=
-            dst_type->underlying_type->underlying_type->as.tuple.elems.data[1].offset;
+        auto data_ref = tupleIndex(dst, 0);
+        auto type_ref = tupleIndex(dst, 1);
         CHECK(store(c, data_ref, cast(void_ptr_t, src)));
         CHECK(store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type)));
         return makeRef(dst);
@@ -522,6 +518,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
     if (nklt_tclass(dst_type) == NklType_Union) {
         for (size_t i = 0; i < dst_type->as.strct.fields.size; i++) {
             if (nklt_typeid(dst_type->as.strct.fields.data[i].type) == nklt_typeid(src_type)) {
+                // TODO Implement cast for refs
                 auto dst_ref = dst;
                 dst_ref.type = tovmt(src_type);
                 return store(c, dst_ref, src);
@@ -595,30 +592,8 @@ nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node);
 ValueInfo compile(NklCompiler c, NklAstNode node);
 Void compileStmt(NklCompiler c, NklAstNode node);
 
-struct IndexResult {
-    size_t offset;
-    nkltype_t type;
-};
-
-// TODO IndexResult calcArrayIndex(NklCompiler c, nkltype_t type, size_t index) {
-//     size_t elem_count = type->as.arr.elem_count;
-//     size_t elem_size = type->as.arr.elem_type->size;
-//     if (index >= elem_count) {
-//         return error(c, "array index out of range"), IndexResult{};
-//     }
-//     return {elem_size * index, type->as.arr.elem_type};
-// }
-
-IndexResult calcTupleIndex(NklCompiler c, nkltype_t type, size_t index) {
-    size_t elem_count = type->as.tuple.elems.size;
-    if (index >= elem_count) {
-        return error(c, "tuple index out of range"), IndexResult{};
-    }
-    return {type->as.tuple.elems.data[index].offset, type->as.tuple.elems.data[index].type};
-}
-
-ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_type, nkid name) {
-    auto index = nklt_struct_index(struct_type, name);
+ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
+    auto index = nklt_struct_index(struct_t, name);
     if (index == -1ull) {
         auto sb = nksb_create();
         defer {
@@ -634,16 +609,12 @@ ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t
                    type_str.data),
                ValueInfo{};
     }
-    auto ref = asRef(c, lhs);
-    // TODO Probably need a better way of accessing struct info
-    ref.type = tovmt(struct_type->as.strct.fields.data[index].type);
-    ref.post_offset += tovmt(struct_type)->as.tuple.elems.data[index].offset;
-    return makeRef(ref);
+    return makeRef(tupleIndex(asRef(c, lhs), index));
 }
 
-ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_type, nkid name) {
+ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
     // TODO  Boilerplate between getStructIndex and getUnionIndex
-    auto index = nklt_struct_index(struct_type, name);
+    auto index = nklt_struct_index(struct_t, name);
     if (index == -1ull) {
         auto sb = nksb_create();
         defer {
@@ -659,7 +630,7 @@ ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_ty
                    type_str.data),
                ValueInfo{};
     }
-    return cast(struct_type->as.strct.fields.data[index].type, lhs);
+    return cast(struct_t->as.strct.fields.data[index].type, lhs);
 }
 
 ValueInfo deref(NklCompiler c, NkIrRef ref) {
@@ -756,11 +727,11 @@ ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) 
         if (!isKnown(index)) {
             return error(c, "comptime value expected in tuple index"), ValueInfo{};
         }
-        DEFINE(idx_res, calcTupleIndex(c, lhs.type, nklval_as(uint64_t, asValue(c, index))));
-        auto ref = asRef(c, lhs);
-        ref.post_offset += idx_res.offset;
-        ref.type = tovmt(idx_res.type);
-        return makeRef(ref);
+        auto const i = nklval_as(uint64_t, asValue(c, index));
+        if (i >= lhs.type->as.tuple.elems.size) {
+            return error(c, "tuple index out of range"), ValueInfo{};
+        }
+        return makeRef(tupleIndex(asRef(c, lhs), i));
     }
 
     case NklType_Slice: {
@@ -1669,10 +1640,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
 
         for (size_t i = 0; i < args_info.size(); i++) {
-            auto arg_ref = args_ref;
-            arg_ref.offset += args_t->as.tuple.elems.data[i].offset;
-            arg_ref.type = tovmt(args_t->as.tuple.elems.data[i].type);
-            CHECK(store(c, arg_ref, args_info[i]));
+            CHECK(store(c, tupleIndex(args_ref, i), args_info[i]));
         }
 
         return makeInstr(nkir_make_call({}, asRef(c, lhs), args_ref), fn_t->as.fn.ret_t);
@@ -1706,35 +1674,27 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         // TODO Support compile time object literals
 
-        switch (nklt_tclass(type)) {
-        case NklType_Struct: {
-            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            if (values.size() != type->as.strct.fields.size) {
+        auto const init_tuple_ref = [&](NkIrRef ref, nkltype_t type) -> ValueInfo {
+            if (values.size() != type->as.tuple.elems.size) {
                 return error(c, "invalid number of values in struct literal"), ValueInfo{};
             }
             for (size_t i = 0; i < values.size(); i++) {
-                auto field_ref = ref;
-                field_ref.type = tovmt(type->underlying_type->as.tuple.elems.data[i].type);
-                field_ref.post_offset += type->underlying_type->as.tuple.elems.data[i].offset;
-                CHECK(store(c, field_ref, values[i]));
+                CHECK(store(c, tupleIndex(ref, i), values[i]));
             }
             return makeRef(ref);
-        }
+        };
 
-        case NkType_Tuple: {
-            // TODO Boilerplate between NklType_Struct and NkType_Tuple
-            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            if (values.size() != type->as.strct.fields.size) {
-                return error(c, "invalid number of values in tuple literal"), ValueInfo{};
-            }
-            for (size_t i = 0; i < values.size(); i++) {
-                auto field_ref = ref;
-                field_ref.type = tovmt(type->as.tuple.elems.data[i].type);
-                field_ref.post_offset += type->as.tuple.elems.data[i].offset;
-                CHECK(store(c, field_ref, values[i]));
-            }
-            return makeRef(ref);
-        }
+        switch (nklt_tclass(type)) {
+        case NklType_Struct:
+            return init_tuple_ref(
+                nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))),
+                type->underlying_type);
+
+        case NkType_Tuple:
+        case NklType_Any:
+        case NklType_Slice:
+            return init_tuple_ref(
+                nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))), type);
 
         case NklType_Enum: {
             if (values.size() != 1) {
@@ -1747,11 +1707,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             auto const union_t = struct_t->as.strct.fields.data[0].type;
             // TODO Can we not create a local variable undonditionally in enum literal?
             auto const enum_ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            auto data_ref = enum_ref;
-            data_ref.type = tovmt(union_t);
-            auto tag_ref = enum_ref;
-            tag_ref.type = tovmt(u64_t);
-            tag_ref.post_offset += struct_t->underlying_type->as.tuple.elems.data[1].offset;
+            auto const data_ref = tupleIndex(enum_ref, 0);
+            auto const tag_ref = tupleIndex(enum_ref, 1);
             auto const name = names[0];
             DEFINE(field_ref, getUnionIndex(c, makeRef(data_ref), union_t, name));
             CHECK(store(c, asRef(c, field_ref), values[0]));
@@ -1765,10 +1722,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             nklval_t val{nk_allocate(c->arena, nklt_sizeof(type)), type};
             std::memset(nklval_data(val), 0, nklval_sizeof(val));
 
-            // TODO Ignoring named args in object literal, and copying values to a separate array
+            // TODO Ignoring named args in object literal
             std::vector<NklAstNode_T> nodes;
             nodes.reserve(init_nodes.size);
-
             for (size_t i = 0; i < init_nodes.size; i++) {
                 nodes.emplace_back(narg1(&init_nodes.data[i])[0]);
             }
