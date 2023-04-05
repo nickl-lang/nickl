@@ -56,6 +56,13 @@ struct ScanEngine {
     void scan() {
         skipSpaces();
 
+        if (m_pos == 0 && on('#') && on('!', 1)) {
+            while (chr() && !on('\n')) {
+                advance();
+            }
+            skipSpaces();
+        }
+
         while (on('/') && on('/', 1)) {
             while (chr() && !on('\n')) {
                 advance();
