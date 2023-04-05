@@ -487,6 +487,14 @@ NkIrRef tupleIndex(NkIrRef ref, size_t i) {
     return ref;
 }
 
+NkIrRef arrayIndex(NkIrRef ref, size_t i) {
+    auto const array_t = ref.type;
+    assert(i < array_t->as.arr.elem_count);
+    ref.type = array_t->as.arr.elem_type;
+    ref.post_offset += nkt_sizeof(array_t->as.arr.elem_type) * i;
+    return ref;
+}
+
 ValueInfo cast(nkltype_t type, ValueInfo val) {
     val.type = type;
     return val;
@@ -1676,7 +1684,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto const init_tuple_ref = [&](NkIrRef ref, nkltype_t type) -> ValueInfo {
             if (values.size() != type->as.tuple.elems.size) {
-                return error(c, "invalid number of values in struct literal"), ValueInfo{};
+                return error(c, "invalid number of values in object literal"), ValueInfo{};
             }
             for (size_t i = 0; i < values.size(); i++) {
                 CHECK(store(c, tupleIndex(ref, i), values[i]));
@@ -1695,6 +1703,17 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         case NklType_Slice:
             return init_tuple_ref(
                 nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))), type);
+
+        case NkType_Array: {
+            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            if (values.size() != type->as.tuple.elems.size) {
+                return error(c, "invalid number of values in array"), ValueInfo{};
+            }
+            for (size_t i = 0; i < values.size(); i++) {
+                CHECK(store(c, arrayIndex(ref, i), values[i]));
+            }
+            return makeRef(ref);
+        }
 
         case NklType_Enum: {
             if (values.size() != 1) {
