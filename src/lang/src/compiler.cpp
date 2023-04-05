@@ -500,11 +500,11 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         size_ref.type = tovmt(u64_t);
         size_ref.post_offset +=
             dst_type->underlying_type->underlying_type->as.tuple.elems.data[1].offset;
-        store(c, ptr_ref, cast(elem_ptr_t, src));
-        store(
+        CHECK(store(c, ptr_ref, cast(elem_ptr_t, src)));
+        CHECK(store(
             c,
             size_ref,
-            makeValue<uint64_t>(c, u64_t, src_type->as.ptr.target_type->as.arr.elem_count));
+            makeValue<uint64_t>(c, u64_t, src_type->as.ptr.target_type->as.arr.elem_count)));
         return makeRef(dst);
     }
     if (nklt_tclass(dst_type) == NklType_Any && nklt_tclass(src_type) == NkType_Ptr) {
@@ -515,8 +515,8 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         type_ref.type = tovmt(typeref_t);
         type_ref.post_offset +=
             dst_type->underlying_type->underlying_type->as.tuple.elems.data[1].offset;
-        store(c, data_ref, cast(void_ptr_t, src));
-        store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type));
+        CHECK(store(c, data_ref, cast(void_ptr_t, src)));
+        CHECK(store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type)));
         return makeRef(dst);
     }
     if (nklt_tclass(dst_type) == NklType_Union) {
@@ -666,9 +666,10 @@ ValueInfo deref(NklCompiler c, NkIrRef ref) {
     assert(nklt_tclass(fromvmt(ref.type)) == NkType_Ptr);
     auto const type = ref.type->as.ptr.target_type;
     if (ref.is_indirect) {
-        ref = asRef(
-            c,
+        DEFINE(
+            val,
             store(c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, ref.type)), makeRef(ref)));
+        ref = asRef(c, val);
     }
     ref.is_indirect = true;
     ref.type = type;
@@ -1678,30 +1679,70 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_object_literal: {
-        // TODO Optimize object literal
-
         DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
 
         if (nklval_tclass(type_val) != NklType_Typeref) {
             return error(c, "type expected in object literal"), ValueInfo{};
         }
 
-        auto type = nklval_as(nkltype_t, type_val);
+        auto const type = nklval_as(nkltype_t, type_val);
 
-        auto init_nodes = nargs1(node);
+        auto const init_nodes = nargs1(node);
+
+        std::vector<nkid> names;
+        names.reserve(init_nodes.size);
+        std::vector<ValueInfo> values;
+        values.reserve(init_nodes.size);
+        // TODO bool all_known = true;
+        for (size_t i = 0; i < init_nodes.size; i++) {
+            auto const init_node = &init_nodes.data[i];
+            auto const name_node = narg0(init_node);
+            names.emplace_back((name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
+            APPEND(values, compile(c, narg1(init_node)));
+            // TODO if (!isKnown(values.back())) {
+            //     all_known = false;
+            // }
+        }
+
+        // TODO Support compile time object literals
 
         switch (nklt_tclass(type)) {
+        case NklType_Struct: {
+            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            if (values.size() != type->as.strct.fields.size) {
+                return error(c, "invalid number of values in struct literal"), ValueInfo{};
+            }
+            for (size_t i = 0; i < values.size(); i++) {
+                auto field_ref = ref;
+                field_ref.type = tovmt(type->underlying_type->as.tuple.elems.data[i].type);
+                field_ref.post_offset += type->underlying_type->as.tuple.elems.data[i].offset;
+                CHECK(store(c, field_ref, values[i]));
+            }
+            return makeRef(ref);
+        }
+
+        case NkType_Tuple: {
+            // TODO Boilerplate between NklType_Struct and NkType_Tuple
+            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            if (values.size() != type->as.strct.fields.size) {
+                return error(c, "invalid number of values in tuple literal"), ValueInfo{};
+            }
+            for (size_t i = 0; i < values.size(); i++) {
+                auto field_ref = ref;
+                field_ref.type = tovmt(type->as.tuple.elems.data[i].type);
+                field_ref.post_offset += type->as.tuple.elems.data[i].offset;
+                CHECK(store(c, field_ref, values[i]));
+            }
+            return makeRef(ref);
+        }
+
         case NklType_Enum: {
-            // TODO Support compile time enum literal
-            if (init_nodes.size != 1) {
+            if (values.size() != 1) {
                 return error(c, "single value expected in enum literal"), ValueInfo{};
             }
-            auto init_node = &init_nodes.data[0];
-            auto name_node = narg0(init_node);
-            if (!name_node || !name_node->id) {
+            if (!names[0]) {
                 return error(c, "name expected in enum literal"), ValueInfo{};
             }
-            auto const name = s2nkid(name_node->token->text);
             auto const struct_t = type->underlying_type;
             auto const union_t = struct_t->as.strct.fields.data[0].type;
             // TODO Can we not create a local variable undonditionally in enum literal?
@@ -1711,12 +1752,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             auto tag_ref = enum_ref;
             tag_ref.type = tovmt(u64_t);
             tag_ref.post_offset += struct_t->underlying_type->as.tuple.elems.data[1].offset;
+            auto const name = names[0];
             DEFINE(field_ref, getUnionIndex(c, makeRef(data_ref), union_t, name));
-            DEFINE(value, compile(c, narg1(init_node)));
-            store(c, asRef(c, field_ref), value);
+            CHECK(store(c, asRef(c, field_ref), values[0]));
             // TODO Indexing union twice in enum literal
             auto const index = nklt_struct_index(union_t, name);
-            store(c, tag_ref, makeValue<uint64_t>(c, u64_t, index));
+            CHECK(store(c, tag_ref, makeValue<uint64_t>(c, u64_t, index)));
             return makeRef(enum_ref);
         }
 
@@ -1724,8 +1765,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             nklval_t val{nk_allocate(c->arena, nklt_sizeof(type)), type};
             std::memset(nklval_data(val), 0, nklval_sizeof(val));
 
-            // TODO Ignoring named args in object literal, and copying values to a separate
-            // array
+            // TODO Ignoring named args in object literal, and copying values to a separate array
             std::vector<NklAstNode_T> nodes;
             nodes.reserve(init_nodes.size);
 

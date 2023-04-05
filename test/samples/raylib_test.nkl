@@ -21,9 +21,9 @@ runRaylib :: () -> i64 {
         if raylib.IsKeyDown(raylib.KEY_UP)    { y = y - STEP; dist = dist + STEP; }
         if raylib.IsKeyDown(raylib.KEY_DOWN)  { y = y + STEP; dist = dist + STEP; }
 
-        WHITE    :: raylib.Color{255, 255, 255, 255};
-        MAROON   :: raylib.Color{190, 30,  55,  255};
-        DARKGRAY :: raylib.Color{80,  80,  80,  255};
+        WHITE    :: raylib.Color{u8{255}, u8{255}, u8{255}, u8{255}};
+        MAROON   :: raylib.Color{u8{190}, u8{30},  u8{55},  u8{255}};
+        DARKGRAY :: raylib.Color{u8{80},  u8{80},  u8{80},  u8{255}};
 
         RADIUS :: f32{50};
 
