@@ -675,6 +675,122 @@ ValueInfo deref(NklCompiler c, NkIrRef ref) {
     return makeRef(ref);
 }
 
+ValueInfo getMember(NklCompiler c, ValueInfo const &lhs, nkid name) {
+    switch (nklt_tclass(lhs.type)) {
+    case NkType_Fn: {
+        if (isKnown(lhs)) {
+            auto lhs_val = asValue(c, lhs);
+            if (nklval_typeof(lhs_val)->as.fn.call_conv == NkCallConv_Nk) {
+                auto scope_it = c->fn_scopes.find(*(NkIrFunct *)nklval_data(lhs_val));
+                if (scope_it != c->fn_scopes.end()) {
+                    auto &scope = *scope_it->second;
+                    auto member_it = scope.locals.find(name);
+                    if (member_it != scope.locals.end()) {
+                        auto &decl = member_it->second;
+                        return declToValueInfo(decl);
+                    } else {
+                        return error(c, "member `%s` not found", nkid2cs(name)), ValueInfo{};
+                    }
+                }
+            } else {
+                return error(
+                           c,
+                           "cannot subscript function with a calling convention other than "
+                           "nkl"),
+                       ValueInfo{};
+            }
+        } else {
+            return error(c, "cannot subscript a runtime function"), ValueInfo{};
+        }
+        assert(!"unreachable");
+    }
+
+    case NklType_Struct:
+        return getStructIndex(c, lhs, lhs.type, name);
+
+    case NklType_Enum:
+    case NklType_Slice:
+    case NklType_Any:
+        return getStructIndex(c, lhs, lhs.type->underlying_type, name);
+
+    case NklType_Union:
+        return getUnionIndex(c, lhs, lhs.type, name);
+
+    case NkType_Ptr: {
+        return getMember(c, deref(c, asRef(c, lhs)), name);
+    }
+
+    default: {
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+        nklt_inspect(lhs.type, sb);
+        auto type_str = nksb_concat(sb);
+        return error(c, "type `%.*s` is not subscriptable", type_str.size, type_str.data),
+               ValueInfo{};
+    }
+    }
+}
+
+ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) {
+    switch (nklt_tclass(lhs.type)) {
+    case NkType_Array: {
+        // TODO Optimize array indexing
+        // TODO Think about type correctness in array indexing
+        // TODO Using u8 to correctly index array in c
+        auto const elem_t = lhs.type->as.arr.elem_type;
+        auto const elem_ptr_t = nkl_get_ptr(elem_t);
+        auto const data_ref = asRef(c, makeInstr(nkir_make_lea({}, asRef(c, lhs)), u8_ptr_t));
+        auto const mul = nkir_make_mul(
+            {},
+            asRef(c, index),
+            asRef(c, makeValue<uint64_t>(c, u64_t, nklt_sizeof(lhs.type->as.arr.elem_type))));
+        auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
+        auto const add = nkir_make_add({}, data_ref, offset_ref);
+        return deref(c, asRef(c, makeInstr(add, elem_ptr_t)));
+    }
+
+    case NkType_Tuple: {
+        if (!isKnown(index)) {
+            return error(c, "comptime value expected in tuple index"), ValueInfo{};
+        }
+        DEFINE(idx_res, calcTupleIndex(c, lhs.type, nklval_as(uint64_t, asValue(c, index))));
+        auto ref = asRef(c, lhs);
+        ref.post_offset += idx_res.offset;
+        ref.type = tovmt(idx_res.type);
+        return makeRef(ref);
+    }
+
+    case NklType_Slice: {
+        // TODO Using u8 to correctly index slice in c
+        auto const elem_t = lhs.type->as.slice.target_type;
+        auto const elem_ptr_t = nkl_get_ptr(lhs.type->as.slice.target_type);
+        auto data_ref = asRef(c, lhs);
+        data_ref.type = tovmt(u8_ptr_t);
+        auto const mul = nkir_make_mul(
+            {}, asRef(c, index), asRef(c, makeValue<uint64_t>(c, u64_t, nklt_sizeof(elem_t))));
+        auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
+        auto const add = nkir_make_add({}, data_ref, offset_ref);
+        return deref(c, asRef(c, makeInstr(add, elem_ptr_t)));
+    }
+
+    case NkType_Ptr: {
+        return getIndex(c, deref(c, asRef(c, lhs)), index);
+    }
+
+    default: {
+        auto sb = nksb_create();
+        defer {
+            nksb_free(sb);
+        };
+        nklt_inspect(lhs.type, sb);
+        auto type_str = nksb_concat(sb);
+        return error(c, "type `%.*s` is not indexable", type_str.size, type_str.data), ValueInfo{};
+    }
+    }
+}
+
 ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
     if (node->id == n_id) {
         auto const name = node->token->text;
@@ -696,56 +812,11 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         }
     } else if (node->id == n_index) {
         DEFINE(lhs, compile(c, narg0(node)));
-        auto const lhs_ref = asRef(c, lhs);
-        auto const type = fromvmt(lhs_ref.type);
         DEFINE(index, compile(c, narg1(node)));
         if (index.type->tclass != NkType_Numeric) {
             return error(c, "expected number in index"), ValueInfo{};
         }
-        // TODO Optimize array indexing
-        // TODO Think about type correctness in array indexing
-        if (type->tclass == NkType_Array) {
-            // TODO Using u8 to correctly index array in c
-            auto const elem_t = type->as.arr.elem_type;
-            auto const elem_ptr_t = nkl_get_ptr(elem_t);
-            auto const data_ref = asRef(c, makeInstr(nkir_make_lea({}, lhs_ref), u8_ptr_t));
-            auto const mul = nkir_make_mul(
-                {},
-                asRef(c, index),
-                asRef(c, makeValue<uint64_t>(c, u64_t, nklt_sizeof(type->as.arr.elem_type))));
-            auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
-            auto const add = nkir_make_add({}, data_ref, offset_ref);
-            return deref(c, asRef(c, makeInstr(add, elem_ptr_t)));
-        } else if (type->tclass == NkType_Tuple) {
-            if (!isKnown(index)) {
-                return error(c, "comptime value expected in tuple index"), ValueInfo{};
-            }
-            DEFINE(idx_res, calcTupleIndex(c, type, nklval_as(uint64_t, asValue(c, index))));
-            auto ref = lhs_ref;
-            ref.post_offset += idx_res.offset;
-            ref.type = tovmt(idx_res.type);
-            return makeRef(ref);
-        } else if (type->tclass == NklType_Slice) {
-            // TODO Using u8 to correctly index slice in c
-            auto const elem_t = type->as.slice.target_type;
-            auto const elem_ptr_t = nkl_get_ptr(type->as.slice.target_type);
-            auto data_ref = lhs_ref;
-            data_ref.type = tovmt(u8_ptr_t);
-            auto const mul = nkir_make_mul(
-                {}, asRef(c, index), asRef(c, makeValue<uint64_t>(c, u64_t, nklt_sizeof(elem_t))));
-            auto const offset_ref = asRef(c, makeInstr(mul, u64_t));
-            auto const add = nkir_make_add({}, data_ref, offset_ref);
-            return deref(c, asRef(c, makeInstr(add, elem_ptr_t)));
-        } else {
-            auto sb = nksb_create();
-            defer {
-                nksb_free(sb);
-            };
-            nklt_inspect(type, sb);
-            auto type_str = nksb_concat(sb);
-            return error(c, "type `%.*s` is not indexable", type_str.size, type_str.data),
-                   ValueInfo{};
-        }
+        return getIndex(c, lhs, index);
     } else if (node->id == n_deref) {
         DEFINE(arg, compile(c, narg0(node)));
         if (arg.type->tclass != NkType_Ptr) {
@@ -753,59 +824,9 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         }
         return deref(c, asRef(c, arg));
     } else if (node->id == n_member) {
-        DEFINE(lhs, compile(c, narg0(node)));
-        auto name = s2nkid(narg1(node)->token->text);
-        switch (nklt_tclass(lhs.type)) {
-        case NkType_Fn: {
-            if (isKnown(lhs)) {
-                auto lhs_val = asValue(c, lhs);
-                if (nklval_typeof(lhs_val)->as.fn.call_conv == NkCallConv_Nk) {
-                    auto scope_it = c->fn_scopes.find(*(NkIrFunct *)nklval_data(lhs_val));
-                    if (scope_it != c->fn_scopes.end()) {
-                        auto &scope = *scope_it->second;
-                        auto member_it = scope.locals.find(name);
-                        if (member_it != scope.locals.end()) {
-                            auto &decl = member_it->second;
-                            return declToValueInfo(decl);
-                        } else {
-                            return error(c, "member `%s` not found", nkid2cs(name)), ValueInfo{};
-                        }
-                    }
-                } else {
-                    return error(
-                               c,
-                               "cannot subscript function with a calling convention other than "
-                               "nkl"),
-                           ValueInfo{};
-                }
-            } else {
-                return error(c, "cannot subscript a runtime function"), ValueInfo{};
-            }
-            assert(!"unreachable");
-        }
-
-        case NklType_Struct:
-            return getStructIndex(c, lhs, lhs.type, name);
-
-        case NklType_Enum:
-        case NklType_Slice:
-        case NklType_Any:
-            return getStructIndex(c, lhs, lhs.type->underlying_type, name);
-
-        case NklType_Union:
-            return getUnionIndex(c, lhs, lhs.type, name);
-
-        default: {
-            auto sb = nksb_create();
-            defer {
-                nksb_free(sb);
-            };
-            nklt_inspect(lhs.type, sb);
-            auto type_str = nksb_concat(sb);
-            return error(c, "type `%.*s` is not subscriptable", type_str.size, type_str.data),
-                   ValueInfo{};
-        }
-        }
+        DEFINE(const lhs, compile(c, narg0(node)));
+        auto const name = s2nkid(narg1(node)->token->text);
+        return getMember(c, lhs, name);
         assert(!"unreachable");
     } else {
         return error(c, "invalid lvalue"), ValueInfo{};

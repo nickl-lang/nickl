@@ -91,7 +91,7 @@ main :: () -> i32 {
     std.putchar(ESC); std.printf("[?25l");
 
     empty_row: [COLS]u8;
-    std.memset(cast(*void) &empty_row, cast(i32) ".".*[0], cast(u64) COLS);
+    std.memset(cast(*void) &empty_row, cast(i32) "."[0], cast(u64) COLS);
 
     running := false;
 
@@ -102,15 +102,15 @@ main :: () -> i32 {
 
         c = cast(u8) std.getchar();
 
-        if      c ==  "q".*[0] s_quit = true;
-        else if c ==  "w".*[0] s_cursor_x = pmod(s_cursor_x - 1, ROWS);
-        else if c ==  "a".*[0] s_cursor_y = pmod(s_cursor_y - 1, COLS);
-        else if c ==  "s".*[0] s_cursor_x = pmod(s_cursor_x + 1, ROWS);
-        else if c ==  "d".*[0] s_cursor_y = pmod(s_cursor_y + 1, COLS);
-        else if c ==  " ".*[0] set(s_cursor_x, s_cursor_y, u8{1} - get(s_cursor_x, s_cursor_y));
-        else if c == "\n".*[0] running = running ^ 1;
-        else if c ==  "c".*[0] std.memset(cast(*void) at(0, 0), i32{0}, cast(u64) (ROWS * COLS));
-        else if c ==  "e".*[0] step();
+        if      c ==  "q"[0] s_quit = true;
+        else if c ==  "w"[0] s_cursor_x = pmod(s_cursor_x - 1, ROWS);
+        else if c ==  "a"[0] s_cursor_y = pmod(s_cursor_y - 1, COLS);
+        else if c ==  "s"[0] s_cursor_x = pmod(s_cursor_x + 1, ROWS);
+        else if c ==  "d"[0] s_cursor_y = pmod(s_cursor_y + 1, COLS);
+        else if c ==  " "[0] set(s_cursor_x, s_cursor_y, u8{1} - get(s_cursor_x, s_cursor_y));
+        else if c == "\n"[0] running = running ^ 1;
+        else if c ==  "c"[0] std.memset(cast(*void) at(0, 0), i32{0}, cast(u64) (ROWS * COLS));
+        else if c ==  "e"[0] step();
 
         if running {
             step();
@@ -129,7 +129,7 @@ main :: () -> i32 {
                 }
                 y = y + 1;
             }
-            std.putchar(cast(i32) "\n".*[0]);
+            std.putchar(cast(i32) "\n"[0]);
             x = x + 1;
         }
 

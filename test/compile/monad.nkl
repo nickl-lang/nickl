@@ -24,10 +24,10 @@ intToMaybeStr :: (x: i32) -> MaybeStr {
 };
 
 bind :: (self: *const MaybeInt, f: @typeof(intToMaybeStr)) -> MaybeStr { // TODO Function type hack
-    if self.*.tag == Nothing {            // TODO Manual dereference
+    if self.tag == Nothing {
         return MaybeStr{Nothing=void{ }}; // TODO void literal
     } else {
-        return f(self.*.data.Just); // TODO Manual dereference
+        return f(self.data.Just);
     }
 }
 
