@@ -1052,6 +1052,16 @@ ValueInfo compileCompositeType(NklCompiler c, NklAstNode node, F const &create_t
     return makeValue<nkltype_t>(c, typeref_t, create_type({fields.data(), fields.size()}));
 }
 
+ValueInfo initTupleRef(NklCompiler c, NkIrRef ref, nkltype_t type, nkslice<ValueInfo> values) {
+    if (values.size() != type->as.tuple.elems.size) {
+        return error(c, "invalid number of values in composite literal"), ValueInfo{};
+    }
+    for (size_t i = 0; i < values.size(); i++) {
+        CHECK(store(c, tupleIndex(ref, i), values[i]));
+    }
+    return makeRef(ref);
+}
+
 ValueInfo compile(NklCompiler c, NklAstNode node) {
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
@@ -1148,7 +1158,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     case n_return: {
         if (nargs0(node).size) {
-            DEFINE(arg, compile(c, narg0(node))); // TODO ignoring multiple return values
+            DEFINE(arg, compile(c, narg0(node)));
             CHECK(store(c, nkir_makeRetRef(c->ir), arg));
         }
         gen(c, nkir_make_ret());
@@ -1381,6 +1391,20 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             CHECK(compileStmt(c, &nodes.data[i]));
         }
         return makeVoid();
+    }
+
+    case n_tuple: {
+        auto nodes = nargs0(node);
+        std::vector<nkltype_t> types;
+        std::vector<ValueInfo> values;
+        values.reserve(nodes.size);
+        for (size_t i = 0; i < nodes.size; i++) {
+            APPEND(values, compile(c, &nodes.data[i]));
+            types.emplace_back(values.back().type);
+        }
+        auto tuple_t = nkl_get_tuple(c->arena, {types.data(), types.size()}, 1);
+        return initTupleRef(
+            c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(tuple_t))), tuple_t, values);
     }
 
     case n_tuple_type: {
@@ -1682,27 +1706,19 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         // TODO Support compile time object literals
 
-        auto const init_tuple_ref = [&](NkIrRef ref, nkltype_t type) -> ValueInfo {
-            if (values.size() != type->as.tuple.elems.size) {
-                return error(c, "invalid number of values in object literal"), ValueInfo{};
-            }
-            for (size_t i = 0; i < values.size(); i++) {
-                CHECK(store(c, tupleIndex(ref, i), values[i]));
-            }
-            return makeRef(ref);
-        };
-
         switch (nklt_tclass(type)) {
         case NklType_Struct:
-            return init_tuple_ref(
+            return initTupleRef(
+                c,
                 nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))),
-                type->underlying_type);
+                type->underlying_type,
+                values);
 
         case NkType_Tuple:
         case NklType_Any:
         case NklType_Slice:
-            return init_tuple_ref(
-                nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))), type);
+            return initTupleRef(
+                c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))), type, values);
 
         case NkType_Array: {
             auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
@@ -1756,13 +1772,28 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_assign: {
-        if (nargs0(node).size > 1) {
-            NK_LOG_WRN("TODO multiple assignment is not supported");
+        std::vector<ValueInfo> lhss;
+        auto lhs_nodes = nargs0(node);
+        lhss.reserve(lhs_nodes.size);
+        for (size_t i = 0; i < lhs_nodes.size; i++) {
+            APPEND(lhss, getLvalueRef(c, &lhs_nodes.data[i]));
         }
-        DEFINE(lhs, getLvalueRef(c, narg0(node)));
         DEFINE(rhs, compile(c, narg1(node)));
-        DEFINE(ref, store(c, asRef(c, lhs), rhs));
-        return ref;
+        if (lhss.size() == 1) {
+            return store(c, asRef(c, lhss[0]), rhs);
+        } else {
+            if (nklt_tclass(rhs.type) != NkType_Tuple) {
+                return error(c, "tuple expected in multiple assignment"), ValueInfo{};
+            }
+            if (rhs.type->as.tuple.elems.size != lhss.size()) {
+                return error(c, "invalid number of values in multiple assignment"), ValueInfo{};
+            }
+            for (size_t i = 0; i < lhss.size(); i++) {
+                auto rhs_ref = asRef(c, rhs);
+                store(c, asRef(c, lhss[i]), makeRef(tupleIndex(rhs_ref, i)));
+            }
+            return makeVoid();
+        }
     }
 
     case n_define: {
