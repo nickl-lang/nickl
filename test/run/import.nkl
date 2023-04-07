@@ -1,0 +1,5 @@
+import "imported.nkl";
+imported.doStuff();
+
+imp :: import "imported.nkl";
+imp.doStuff();

@@ -50,7 +50,7 @@ U(deref) // (ptr: node)
 
 U(defer_stmt) // (expr: node)
 
-U(return) // (expr: node)
+U(return ) // (expr: node)
 
 U(ptr_type) // (target_type: node)
 U(const_ptr_type)
@@ -122,7 +122,7 @@ X(float)          // (value: token)
 X(int)            // (value: token)
 X(string)         // (value: token)
 X(escaped_string) // (value: token)
-// X(import_path)            // (path: token)
+X(import_path)    // (path: token)
 
 // X(for) // (it: token, range: node, body: node)
 // X(for_by_ptr)

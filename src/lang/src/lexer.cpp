@@ -81,8 +81,7 @@ struct ScanEngine {
         if (!chr()) {
             m_token.id = t_eof;
         } else if (on('"')) {
-            advance();
-            m_token.text.data++;
+            accept();
 
             bool escaped = false;
 
@@ -121,7 +120,7 @@ struct ScanEngine {
 
             m_token.id = escaped ? t_escaped_string : t_string;
 
-            advance();
+            accept();
         } else if (chk<std::isdigit>()) {
             if (on('0') && on('x', 1)) {
                 m_token.id = t_int_hex;

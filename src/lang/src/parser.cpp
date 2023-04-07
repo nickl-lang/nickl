@@ -240,11 +240,12 @@ private:
         }
 
         auto node =
-            nodes.size() == 0 ? nkl_makeNode0(n_nop, _n_token)
-            : nodes.size() == 1
-                ? nodes.front()
-                : nkl_makeNode1(
-                      n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+            nodes.size() == 0
+                ? nkl_makeNode0(n_nop, _n_token)
+                : nodes.size() == 1
+                      ? nodes.front()
+                      : nkl_makeNode1(
+                            n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1(n_scope, _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -293,11 +294,6 @@ private:
             ASSIGN(node, block());
         } else if (accept(t_defer)) {
             ASSIGN(node, nkl_makeNode1(n_defer_stmt, _n_token, nkl_pushNode(m_ast, assignment())));
-        } else if (accept(t_import)) {
-            ASSIGN(
-                node,
-                nkl_makeNode1(
-                    n_import, _n_token, nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier()))));
             // } else if (accept(t_for)) {
             //     DEFINE(it, identifier());
             //     bool const by_ptr = accept(t_period_aster);
@@ -1065,6 +1061,27 @@ private:
 
         else if (accept(t_dollar)) {
             ASSIGN(node, nkl_makeNode1(n_run, _n_token, nkl_pushNode(m_ast, block())));
+        }
+
+        else if (accept(t_import)) {
+            auto _n_token = m_cur_token;
+            if (check(t_id)) {
+                ASSIGN(
+                    node,
+                    nkl_makeNode1(
+                        n_import,
+                        _n_token,
+                        nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier()))));
+            } else if (accept(t_string)) {
+                ASSIGN(
+                    node,
+                    nkl_makeNode1(
+                        n_import_path,
+                        _n_token,
+                        nkl_pushNode(m_ast, nkl_makeNode0(n_string, _n_token))));
+            } else {
+                return error("identifier or string constant expected in import"), NklAstNode_T{};
+            }
         }
 
         else if (check(t_eof)) {

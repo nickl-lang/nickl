@@ -49,8 +49,8 @@ main :: () -> i32 {
     return i32{0};
 }
 
-import compiler;
-builder := compiler.createBuilder();
-compiler.link(builder, LIBPTHREAD);
-compiler.build(builder, cast(compiler.EntryPoint) main, "threads");
-compiler.freeBuilder(builder);
+c :: import compiler;
+builder := c.createBuilder();
+c.link(builder, LIBPTHREAD);
+c.build(builder, cast(c.EntryPoint) main, "threads");
+c.freeBuilder(builder);

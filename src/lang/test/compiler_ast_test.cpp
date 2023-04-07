@@ -169,7 +169,7 @@ TEST_F(compiler_ast, native_puts) {
           _({
               _("tag",
                 _("name", "#link"),
-                _("arg", {}, _("string", "")),
+                _("arg", {}, _("string", "\"\"")),
                 _("comptime_const_def",
                   _("id", "puts"),
                   _("fn_type",

@@ -1,0 +1,4 @@
+doStuff :: () -> void {
+    import std;
+    std.puts("done");
+}

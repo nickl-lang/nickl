@@ -1061,6 +1061,27 @@ ValueInfo initTupleRef(NklCompiler c, NkIrRef ref, nkltype_t type, nkslice<Value
     return makeRef(ref);
 }
 
+ValueInfo import(NklCompiler c, fs::path filepath) {
+    if (!fs::exists(filepath)) {
+        auto const str = filepath.string();
+        return error(c, "imported file `%.*s` doesn't exist", str.size(), str.c_str()), ValueInfo{};
+    }
+    filepath = fs::canonical(filepath);
+    auto it = c->imports.find(filepath);
+    if (it == c->imports.end()) {
+        auto const str = filepath.string();
+        DEFINE(fn, nkl_compileFile(c, {str.c_str(), str.size()}));
+        std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
+    }
+    auto fn = it->second;
+    auto fn_val_info = makeValue<decltype(fn)>(c, fromvmt(nkir_functGetType(fn)), fn);
+    auto fn_val = asValue(c, fn_val_info);
+    auto stem = filepath.stem().string();
+    CHECK(defineComptimeConst(
+        c, s2nkid({stem.c_str(), stem.size()}), makeValueComptimeConst(fn_val)));
+    return fn_val_info;
+}
+
 ValueInfo compile(NklCompiler c, NklAstNode node) {
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
@@ -1421,32 +1442,24 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_import: {
-        NK_LOG_WRN("TODO import implementation not finished");
-        auto name = narg0(node)->token->text;
-        std::string filename = std_str(name) + ".nkl";
+        auto const name = narg0(node)->token->text;
+        std::string const filename = std_str(name) + ".nkl";
         auto stdlib_path = fs::path{c->stdlib_dir};
         if (!stdlib_path.is_absolute()) {
             stdlib_path = fs::path{c->compiler_dir} / stdlib_path;
         }
-        auto filepath = stdlib_path / filename;
-        auto filepath_str = filepath.string();
-        if (!fs::exists(filepath)) {
-            return error(
-                       c,
-                       "imported file `%.*s` doesn't exist",
-                       filepath_str.size(),
-                       filepath_str.c_str()),
-                   ValueInfo{};
+        auto const filepath = (stdlib_path / filename).lexically_normal();
+        return import(c, filepath);
+    }
+
+    case n_import_path: {
+        nkstr const text{node->token->text.data + 1, node->token->text.size - 2};
+        auto const name = text;
+        auto filepath = fs::path(std_view(name)).lexically_normal();
+        if (!filepath.is_absolute()) {
+            filepath = (c->file_stack.top().parent_path() / filepath).lexically_normal();
         }
-        auto it = c->imports.find(filepath);
-        if (it == c->imports.end()) {
-            DEFINE(fn, nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()}));
-            std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
-        }
-        auto fn = it->second;
-        auto fn_val = asValue(c, makeValue<decltype(fn)>(c, fromvmt(nkir_functGetType(fn)), fn));
-        CHECK(defineComptimeConst(c, s2nkid(name), makeValueComptimeConst(fn_val)));
-        return makeVoid();
+        return import(c, filepath);
     }
 
     case n_id: {
@@ -1490,24 +1503,26 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_string: {
-        auto size = node->token->text.size;
+        nkstr const text{node->token->text.data + 1, node->token->text.size - 2};
 
-        auto ar_t = nkl_get_array(i8_t, size + 1);
+        auto ar_t = nkl_get_array(i8_t, text.size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
-        auto str = (char *)nk_allocate(c->arena, size + 1);
-        std::memcpy(str, node->token->text.data, size);
-        str[size] = '\0';
+        auto str = (char *)nk_allocate(c->arena, text.size + 1);
+        std::memcpy(str, text.data, text.size);
+        str[text.size] = '\0';
 
         return makeValue<void *>(c, str_t, (void *)str);
     }
 
     case n_escaped_string: {
+        nkstr const text{node->token->text.data + 1, node->token->text.size - 2};
+
         auto sb = nksb_create();
         defer {
             nksb_free(sb);
         };
-        nksb_str_unescape(sb, node->token->text);
+        nksb_str_unescape(sb, text);
         auto unescaped_str = nksb_concat(sb);
 
         auto size = unescaped_str.size;
