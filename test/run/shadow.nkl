@@ -9,7 +9,6 @@ var := 1;
     }
     std.printf("%li", var);
 }
-
 std.printf("%li", var);
 
 std.puts("");

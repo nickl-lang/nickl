@@ -1,9 +1,7 @@
 import std;
 import compiler;
 
-${
-    compiler.declareLocal("str", *i8);
-}
+${ compiler.declareLocal("str", *i8); }
 
 str = "hello";
 std.puts(str);

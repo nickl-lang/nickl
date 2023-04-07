@@ -1,4 +1,4 @@
-vec2 :: (T: type_t) -> type_t {
+Vec2 :: (T: type_t) -> type_t {
     import compiler;
     F :: compiler.StructField;
     return compiler.makeStruct(&([2]F){
@@ -7,15 +7,11 @@ vec2 :: (T: type_t) -> type_t {
     });
 }
 
-ivec2 :: vec2(i64);
-svec2 :: vec2([]i8);
-
-iv :: ivec2{1, 2};
-sv :: svec2{"one", "two"};
+iv :: Vec2(i64){1, 2};
+sv :: Vec2([]i8){"one", "two"};
 
 import std;
-std.printf("%li %li %.*s %.*s\n",
+std.printf("%li %li %s %s\n",
     iv.x, iv.y,
-    sv.x.size, sv.x.data,
-    sv.y.size, sv.y.data,
+    sv.x.data, sv.y.data,
 );
