@@ -15,7 +15,7 @@ main :: (argc: i32, argv: **i8) -> i32 {
     return i32{0};
 }
 
-main();
+main(i32{0}, cast(**i8) u64{0});
 
 builder := compiler.createBuilder();
 compiler.build(builder, cast(compiler.EntryPoint) main, "vec_length");

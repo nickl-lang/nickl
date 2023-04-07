@@ -353,7 +353,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
     return {
         {.cnst = nkir_makeConst(
              c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
@@ -538,24 +538,23 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
           nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
           nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type) ==
               nklt_typeid(dst_type->as.ptr.target_type))) {
-        // TODO A little clumsy error printing in store
-        auto dst_sb = nksb_create();
-        auto src_sb = nksb_create();
-        defer {
-            nksb_free(dst_sb);
-            nksb_free(src_sb);
-        };
-        nklt_inspect(dst_type, dst_sb);
-        nklt_inspect(src_type, src_sb);
-        auto dst_type_str = nksb_concat(dst_sb);
-        auto src_type_str = nksb_concat(src_sb);
         return error(
                    c,
-                   "cannot store value of type `%.*s` into a slot of type `%.*s`",
-                   src_type_str.size,
-                   src_type_str.data,
-                   dst_type_str.size,
-                   dst_type_str.data),
+                   "cannot store value of type `%s` into a slot of type `%s`",
+                   (char const *)[&]() {
+                       auto sb = nksb_create();
+                       nklt_inspect(src_type, sb);
+                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                           nksb_free(sb);
+                       });
+                   }(),
+                   (char const *)[&]() {
+                       auto sb = nksb_create();
+                       nklt_inspect(dst_type, sb);
+                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                           nksb_free(sb);
+                       });
+                   }()),
                ValueInfo{};
     }
     if (src_type->tclass != NkType_Void) {
@@ -1314,24 +1313,23 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
         }
 
-        // TODO Clumsy error printing again
-        auto dst_sb = nksb_create();
-        auto src_sb = nksb_create();
-        defer {
-            nksb_free(dst_sb);
-            nksb_free(src_sb);
-        };
-        nklt_inspect(dst_type, dst_sb);
-        nklt_inspect(src_type, src_sb);
-        auto dst_type_str = nksb_concat(dst_sb);
-        auto src_type_str = nksb_concat(src_sb);
         return error(
                    c,
-                   "cannot cast value of type `%.*s` to type `%.*s`",
-                   src_type_str.size,
-                   src_type_str.data,
-                   dst_type_str.size,
-                   dst_type_str.data),
+                   "cannot cast value of type `%s` to type `%s`",
+                   (char const *)[&]() {
+                       auto sb = nksb_create();
+                       nklt_inspect(src_type, sb);
+                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                           nksb_free(sb);
+                       });
+                   }(),
+                   (char const *)[&]() {
+                       auto sb = nksb_create();
+                       nklt_inspect(dst_type, sb);
+                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                           nksb_free(sb);
+                       });
+                   }()),
                ValueInfo{};
     }
 
@@ -1650,10 +1648,31 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto const fn_t = lhs.type;
 
+        auto arg_nodes = nargs1(node);
+
+        if (fn_t->as.fn.is_variadic) {
+            if (arg_nodes.size < fn_t->as.fn.args_t->as.tuple.elems.size) {
+                return error(
+                           c,
+                           "invalid number of arguments, expected at least `%lu`, provided `%lu`",
+                           fn_t->as.fn.args_t->as.tuple.elems.size,
+                           arg_nodes.size),
+                       ValueInfo{};
+            }
+        } else {
+            if (arg_nodes.size != fn_t->as.fn.args_t->as.tuple.elems.size) {
+                return error(
+                           c,
+                           "invalid number of arguments, expected `%lu`, provided `%lu`",
+                           fn_t->as.fn.args_t->as.tuple.elems.size,
+                           arg_nodes.size),
+                       ValueInfo{};
+            }
+        }
+
         std::vector<ValueInfo> args_info{};
         std::vector<nkltype_t> args_types{};
 
-        auto arg_nodes = nargs1(node);
         for (size_t i = 0; i < arg_nodes.size; i++) {
             // TODO Support named args in call
             DEFINE(val_info, compile(c, narg1(&arg_nodes.data[i])));
@@ -1723,7 +1742,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         case NkType_Array: {
             auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
             if (values.size() != type->as.tuple.elems.size) {
-                return error(c, "invalid number of values in array"), ValueInfo{};
+                return error(c, "invalid number of values in array literal"), ValueInfo{};
             }
             for (size_t i = 0; i < values.size(); i++) {
                 CHECK(store(c, arrayIndex(ref, i), values[i]));
@@ -2199,7 +2218,8 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(nkslice<StructField> fiel
     fields.reserve(fields_raw.size());
     for (auto const &field : fields_raw) {
         fields.emplace_back(NklField{
-            .name = s2nkid(field.name),
+            // TODO Treating slice as cstring, while we include excess zero charater
+            .name = cs2nkid(field.name.data),
             .type = field.type,
         });
     }

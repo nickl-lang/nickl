@@ -368,42 +368,48 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         nksb_printf(sb, "{}");
         return;
     }
-    if (ref.is_indirect) {
-        nksb_printf(sb, "[");
-    }
-    switch (ref.ref_type) {
-    case NkIrRef_Frame:
-        nksb_printf(sb, "$%llu", ref.index);
-        break;
-    case NkIrRef_Arg:
-        nksb_printf(sb, "$arg%llu", ref.index);
-        break;
-    case NkIrRef_Ret:
-        nksb_printf(sb, "$ret");
-        break;
-    case NkIrRef_Global:
-        nksb_printf(sb, "$global%llu", ref.index);
-        break;
-    case NkIrRef_Const:
-        nkval_inspect(nkir_constRefDeref(p, ref), sb);
-        break;
-    case NkIrRef_Reg:
-        nksb_printf(sb, "$r%c", (char)('a' + ref.index));
-        break;
-    case NkIrRef_ExtSym:
-        nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
-        break;
-    default:
-        break;
-    }
-    if (ref.offset) {
-        nksb_printf(sb, "+%llu", ref.offset);
-    }
-    if (ref.is_indirect) {
-        nksb_printf(sb, "]");
-    }
-    if (ref.post_offset) {
-        nksb_printf(sb, "+%llu", ref.post_offset);
+    if (ref.ref_type == NkIrRef_Const) {
+        auto val = nkir_constRefDeref(p, ref);
+        val.type = ref.type;
+        nkval_inspect(val, sb);
+    } else {
+        if (ref.is_indirect) {
+            nksb_printf(sb, "[");
+        }
+        switch (ref.ref_type) {
+        case NkIrRef_Frame:
+            nksb_printf(sb, "$%llu", ref.index);
+            break;
+        case NkIrRef_Arg:
+            nksb_printf(sb, "$arg%llu", ref.index);
+            break;
+        case NkIrRef_Ret:
+            nksb_printf(sb, "$ret");
+            break;
+        case NkIrRef_Global:
+            nksb_printf(sb, "$global%llu", ref.index);
+            break;
+        case NkIrRef_Reg:
+            nksb_printf(sb, "$r%c", (char)('a' + ref.index));
+            break;
+        case NkIrRef_ExtSym:
+            nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
+            break;
+        case NkIrRef_None:
+        case NkIrRef_Const:
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        if (ref.offset) {
+            nksb_printf(sb, "+%llu", ref.offset);
+        }
+        if (ref.is_indirect) {
+            nksb_printf(sb, "]");
+        }
+        if (ref.post_offset) {
+            nksb_printf(sb, "+%llu", ref.post_offset);
+        }
     }
     nksb_printf(sb, ":");
     nkt_inspect(ref.type, sb);
