@@ -1,0 +1,19 @@
+import std;
+
+std.printf("3");
+
+foo :: () -> void {
+    std.printf("2");
+}
+
+bar :: () -> void {
+    std.printf("4");
+
+    ${
+        std.printf("1");
+        foo();
+    }
+}
+
+bar();
+std.puts("");
