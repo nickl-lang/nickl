@@ -6,7 +6,7 @@ Vec3 :: struct {
 
 Result :: enum {
     Ok: Vec3,
-    Err: []i8,
+    Err: string,
 }
 
 getVec :: () -> Result { return Result{Ok=Vec3{1,2,3}}; }

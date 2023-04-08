@@ -353,7 +353,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(
              c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
@@ -829,7 +829,7 @@ ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compi
     return makeVoid();
 }
 
-NkIrFunct nkl_compileFile(NklCompiler c, nkstr path);
+NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope = true);
 
 ValueInfo compileFn(
     NklCompiler c,
@@ -1069,8 +1069,7 @@ ValueInfo import(NklCompiler c, fs::path filepath) {
     filepath = fs::canonical(filepath);
     auto it = c->imports.find(filepath);
     if (it == c->imports.end()) {
-        auto const str = filepath.string();
-        DEFINE(fn, nkl_compileFile(c, {str.c_str(), str.size()}));
+        DEFINE(fn, nkl_compileFile(c, filepath));
         std::tie(it, std::ignore) = c->imports.emplace(filepath, fn);
     }
     auto fn = it->second;
@@ -1960,7 +1959,7 @@ Void compileStmt(NklCompiler c, NklAstNode node) {
     return {};
 }
 
-NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
+NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
@@ -1973,9 +1972,13 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root) {
     nkir_startFunct(fn, cs2s("#top_level"), tovmt(top_level_fn_t));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
-    pushTopLevelFnScope(c, fn);
+    if (create_scope) {
+        pushTopLevelFnScope(c, fn);
+    }
     defer {
-        popScope(c);
+        if (create_scope) {
+            popScope(c);
+        }
     };
 
     if (root) {
@@ -2084,7 +2087,7 @@ void printError(NklCompiler c, char const *fmt, ...) {
     c->error_reported = true;
 }
 
-NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
+NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src, bool create_scope = true) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
@@ -2113,7 +2116,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
         return {};
     }
 
-    auto fn = nkl_compile(c, root);
+    auto fn = nkl_compile(c, root, create_scope);
     if (c->error_occurred) {
         printError(c, c->err_token, err_str);
         return {};
@@ -2122,21 +2125,29 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src) {
     return fn;
 }
 
-NkIrFunct nkl_compileFile(NklCompiler c, nkstr path) {
+NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC(__func__);
 
-    c->file_stack.emplace(fs::relative(fs::path{std_str(path)}));
+    if (!fs::exists(path)) {
+        auto const path_str = path.string();
+        printError(c, "file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
+        return {};
+    }
+    path = fs::canonical(path);
+
+    c->file_stack.emplace(fs::relative(path));
     defer {
         c->file_stack.pop();
     };
 
-    std::ifstream file{std_str(path)};
+    std::ifstream file{path};
     if (file) {
         std::string src{std::istreambuf_iterator<char>{file}, {}};
-        return nkl_compileSrc(c, {src.data(), src.size()});
+        return nkl_compileSrc(c, {src.data(), src.size()}, create_scope);
     } else {
-        printError(c, "failed to open file `%.*s`", (int)path.size, path.data);
+        auto const path_str = path.string();
+        printError(c, "failed to open file `%.*s`", (int)path_str.size(), path_str.c_str());
         return {};
     }
 }
@@ -2282,14 +2293,25 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     NK_LOG_TRC(__func__);
     NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
     c->compiler_dir = std_str(config_dir);
-    auto config_filepath = fs::path{c->compiler_dir} / "config.nkl";
-    auto filepath_str = config_filepath.string();
-    if (!fs::exists(config_filepath)) {
-        printError(
-            c, "config file `%.*s` doesn't exist", (int)filepath_str.size(), filepath_str.c_str());
+
+    pushScope(c);
+    auto preload_filepath = fs::path{c->compiler_dir} / "preload.nkl";
+    if (!fs::exists(preload_filepath)) {
+        auto const path_str = preload_filepath.string();
+        printError(c, "preload file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
         return false;
     }
-    auto fn = nkl_compileFile(c, {filepath_str.c_str(), filepath_str.size()});
+    if (!nkl_compileFile(c, preload_filepath, false)) {
+        return false;
+    }
+
+    auto config_filepath = fs::path{c->compiler_dir} / "config.nkl";
+    if (!fs::exists(config_filepath)) {
+        auto const path_str = config_filepath.string();
+        printError(c, "config file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
+        return false;
+    }
+    auto fn = nkl_compileFile(c, config_filepath);
     if (!fn) {
         return false;
     }
@@ -2363,7 +2385,7 @@ bool nkl_compiler_runFile(NklCompiler c, nkstr path) {
         s_compiler = prev_compiler;
     };
 
-    DEFINE(fn, nkl_compileFile(c, path));
+    DEFINE(fn, nkl_compileFile(c, fs::path{std_view(path)}));
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
     return true;
 }

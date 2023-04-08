@@ -2,7 +2,7 @@ import std;
 import json;
 import compiler;
 
-makeStruct :: (filename: []i8) -> type_t {
+makeStruct :: (filename: string) -> type_t {
     root := json.object_from_file(filename.data);
 
     if root {

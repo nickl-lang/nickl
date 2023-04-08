@@ -1,6 +1,5 @@
 import std;
 
-string :: []i8;    // TODO String type
 Nothing :: u64{0}; // TODO Hardcoded Nothing index
 
 MaybeInt :: enum {

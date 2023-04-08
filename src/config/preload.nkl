@@ -1,0 +1,4 @@
+int :: i64;
+float :: f64;
+
+string :: []i8;

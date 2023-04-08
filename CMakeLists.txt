@@ -79,41 +79,6 @@ message("Build time: ${BUILD_TIME}")
 include(Package)
 add_package_target("${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}" "${DEPLOY_PREFIX}")
 
-set(STDLIB_DIR "../stdlib")
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(LIBC_NAME libc.so.6)
-    set(LIBM_NAME libm.so.6)
-
-    install(
-        PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/etc/scripts/${PROJECT_NAME}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}
-        )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(LIBC_NAME msvcrt.dll)
-    set(LIBM_NAME msvcrt.dll)
-else()
-    message(FATAL_ERROR "Platform is not supported")
-endif()
-
-configure_file(config.nkl.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl)
-install(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/config.nkl DESTINATION bin)
-
-file(GLOB_RECURSE STDLIB_FILES
-    RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/stdlib/*.nkl
-    )
-
-foreach(STDLIB_FILE ${STDLIB_FILES})
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/${STDLIB_FILE}
-        ${CMAKE_BINARY_DIR}/${STDLIB_FILE}
-        COPYONLY
-        )
-endforeach()
-
-install(DIRECTORY ${CMAKE_BINARY_DIR}/stdlib DESTINATION ${CMAKE_INSTALL_PREFIX})
-
 add_subdirectory(src)
 
 if(BUILD_TESTS)
