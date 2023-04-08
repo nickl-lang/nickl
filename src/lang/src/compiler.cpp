@@ -178,6 +178,11 @@ static thread_local NklCompiler s_compiler;
 
 } // namespace
 
+struct NodeInfo {
+    NklAstNode node;
+    nkltype_t type;
+};
+
 struct NklCompiler_T {
     NkIrProg ir;
     NkAllocator arena;
@@ -204,9 +209,8 @@ struct NklCompiler_T {
 
     std::map<fs::path, NkIrFunct> imports{};
 
-    std::stack<nkltype_t> type_stack{};
+    std::vector<NodeInfo> node_stack{};
     std::stack<std::string> comptime_const_names{};
-    std::vector<NklAstNode> node_stack{};
     size_t fn_counter{};
 
     std::unordered_map<nkid, size_t> id2blocknum{};
@@ -226,7 +230,7 @@ void error(NklCompiler c, char const *fmt, ...) {
     va_end(ap);
 
     if (!c->node_stack.empty()) {
-        c->err_token = c->node_stack.back()->token;
+        c->err_token = c->node_stack.back().node->token;
     }
 
     c->error_occurred = true;
@@ -878,7 +882,8 @@ ValueInfo compileFn(
     auto pop_fn = pushFn(c, fn);
 
     std::string fn_name;
-    if (c->node_stack.size() >= 2 && (*(c->node_stack.rbegin() + 1))->id == n_comptime_const_def) {
+    if (c->node_stack.size() >= 2 &&
+        (*(c->node_stack.rbegin() + 1)).node->id == n_comptime_const_def) {
         fn_name = c->comptime_const_names.top();
     } else {
         // TODO Fix not finding the name of #extern function
@@ -1111,14 +1116,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
     EASY_BLOCK(block_name.c_str(), ::profiler::colors::DeepPurple100);
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
 
-    c->node_stack.emplace_back(node);
+    c->node_stack.emplace_back(NodeInfo{
+        .node = node,
+        .type = type,
+    });
     defer {
         c->node_stack.pop_back();
-    };
-
-    c->type_stack.push(type);
-    defer {
-        c->type_stack.pop();
     };
 
     switch (node->id) {
@@ -1515,8 +1518,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
 
     case n_float: {
         NkNumericValueType value_type =
-            (c->type_stack.top() && nklt_tclass(c->type_stack.top()) == NkType_Numeric)
-                ? c->type_stack.top()->as.num.value_type
+            (c->node_stack.back().type && nklt_tclass(c->node_stack.back().type) == NkType_Numeric)
+                ? c->node_stack.back().type->as.num.value_type
                 : Float64;
         auto const text = node->token->text;
         switch (value_type) {
@@ -1530,8 +1533,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
 
     case n_int: {
         NkNumericValueType value_type =
-            (c->type_stack.top() && nklt_tclass(c->type_stack.top()) == NkType_Numeric)
-                ? c->type_stack.top()->as.num.value_type
+            (c->node_stack.back().type && nklt_tclass(c->node_stack.back().type) == NkType_Numeric)
+                ? c->node_stack.back().type->as.num.value_type
                 : Int64;
         auto const text = node->token->text;
 #define X(NAME, VALUE_TYPE, CTYPE) \
