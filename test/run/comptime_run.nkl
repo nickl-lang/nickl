@@ -1,8 +1,8 @@
-import std;
+import libc;
 
 foo :: () -> void { // TODO Fix parsing for `() {}`
-    std.puts("runtime");
-    ${ std.puts("comptime"); }
+    libc.puts("runtime");
+    ${ libc.puts("comptime"); }
 }
 
 foo();

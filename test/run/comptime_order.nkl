@@ -1,19 +1,19 @@
-import std;
+import libc;
 
-std.printf("3");
+libc.printf("3");
 
 foo :: () -> void {
-    std.printf("2");
+    libc.printf("2");
 }
 
 bar :: () -> void {
-    std.printf("4");
+    libc.printf("4");
 
     ${
-        std.printf("1");
+        libc.printf("1");
         foo();
     }
 }
 
 bar();
-std.puts("");
+libc.puts("");

@@ -1,5 +1,5 @@
 main :: () -> void {
-    import std;
+    import libc;
 
     ivec2 :: struct {
         x: i64,
@@ -11,7 +11,7 @@ main :: () -> void {
     v.x = 4;
     v.y = 5;
 
-    std.printf("x=%li y=%li\n", v.x, v.y);
+    libc.printf("x=%li y=%li\n", v.x, v.y);
 }
 
 main();

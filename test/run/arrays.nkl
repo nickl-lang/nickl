@@ -1,4 +1,4 @@
-import std;
+import libc;
 
 AR_SIZE :: 3;
 
@@ -10,18 +10,18 @@ ar[2] = 4;
 
 i := 0;
 while i < AR_SIZE {
-    std.printf("ar[%li]=%li ", i, ar[i]);
+    libc.printf("ar[%li]=%li ", i, ar[i]);
     i = i + 1;
 }
 
-std.puts("");
+libc.puts("");
 
 ar = ([AR_SIZE]i64){0, 1, 2};
 
 i = 0;
 while i < AR_SIZE {
-    std.printf("ar[%li]=%li ", i, ar[i]);
+    libc.printf("ar[%li]=%li ", i, ar[i]);
     i = i + 1;
 }
 
-std.puts("");
+libc.puts("");

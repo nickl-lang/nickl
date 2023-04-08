@@ -1,7 +1,7 @@
 i := 0;
 
 while i < 3 {
-    import std;
-    std.printf("i=%li\n", i);
+    import libc;
+    libc.printf("i=%li\n", i);
     i = i + 1;
 }

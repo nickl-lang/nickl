@@ -1,4 +1,4 @@
-import std;
+import libc;
 
 pthread_t :: u64;
 pthread_attr_t :: u64;
@@ -17,8 +17,8 @@ LIBPTHREAD :: "libpthread.so.0";
 #link(LIBPTHREAD) pthread_self :: () -> pthread_t;
 
 #extern("c") thread :: (arg: *void) -> *i8 {
-    std.printf("thread: arg='%s'\n", arg);
-    std.printf("thread: id=%li\n", pthread_self());
+    libc.printf("thread: arg='%s'\n", arg);
+    libc.printf("thread: id=%li\n", pthread_self());
     return "hello";
 }
 
@@ -30,16 +30,16 @@ exec :: (name: *i8) -> void {
            cast(*pthread_attr_t) u64{0},
            cast(ThreadFunc) thread,
            cast(*void) name) != 0 {
-        std.printf("error: pthread_create() error");
+        libc.printf("error: pthread_create() error");
         return;
     }
 
     if pthread_join(thread_id, cast(**void) &ret) != 0 {
-        std.printf("error: pthread_join() error");
+        libc.printf("error: pthread_join() error");
         return;
     }
 
-    std.printf("exec: ret='%s'\n", ret);
+    libc.printf("exec: ret='%s'\n", ret);
 }
 
 main :: () -> i32 {

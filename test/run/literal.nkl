@@ -1,14 +1,14 @@
-import std;
+import libc;
 
 ivec2 :: #type (i64, i64);
 vec := ivec2{4, 5};
-std.printf("%lli %lli\n", vec[0], vec[1]);
+libc.printf("%lli %lli\n", vec[0], vec[1]);
 
 Color :: [4]u8; // rgba
 red: Color = Color{u8{255}, u8{0}, u8{0}, u8{255}};
 
 printColor :: (c: Color) {
-    std.printf("[r=%hhu g=%hhu b=%hhu a=%hhu]\n", c[0], c[1], c[2], c[3]);
+    libc.printf("[r=%hhu g=%hhu b=%hhu a=%hhu]\n", c[0], c[1], c[2], c[3]);
 }
 
 printColor(red);

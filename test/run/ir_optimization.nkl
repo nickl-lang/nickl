@@ -1,5 +1,5 @@
-import std;
-std.printf("%li\n",cast(i64) (1e6 * (
+import libc;
+libc.printf("%li\n",cast(i64) (1e6 * (
       3.
     + 1.   / 8.
     + 9.   / 640.

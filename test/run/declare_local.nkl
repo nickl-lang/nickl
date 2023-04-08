@@ -1,7 +1,7 @@
-import std;
+import libc;
 import compiler;
 
 ${ compiler.declareLocal("str", *i8); }
 
 str = "hello";
-std.puts(str);
+libc.puts(str);

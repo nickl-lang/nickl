@@ -1,4 +1,4 @@
-import std;
+import libc;
 
 ar: [3]i64;
 
@@ -13,7 +13,7 @@ while i < slice.size {
     endl: i8;                                // TODO Cannot write ternary
     if i < slice.size - 1 { endl = " "[0]; } // TODO Cannot write char literal
     else { endl = "\n"[0]; }                 // TODO Cannot write char literal
-    std.printf("%li%c", slice[i], endl);
+    libc.printf("%li%c", slice[i], endl);
     i = i + 1;
 }
 

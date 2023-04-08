@@ -169,13 +169,13 @@ TEST_F(compiler_ast, native_puts) {
           _({
               _("tag",
                 _("name", "#link"),
-                _("arg", {}, _("string", "\"\"")),
+                _("arg", {}, _("string", R"("")")),
                 _("comptime_const_def",
                   _("id", "puts"),
                   _("fn_type",
                     _("param", _("id", "str"), _("ptr_type", _("i8", "i8"))),
                     _("void", "void")))),
-              _("call", _("id", "puts"), _("arg", {}, _("string", "Hello, World!"))),
+              _("call", _("id", "puts"), _("arg", {}, _("string", R"("Hello, World!")"))),
           })));
 }
 
@@ -205,27 +205,27 @@ TEST_F(compiler_ast, import) {
     test(
         _("block",
           _({
-              _("import", _("id", "std")),
+              _("import", _("id", "libc")),
               _("call",
-                _("member", _("id", "std"), _("id", "puts")),
-                _("arg", {}, _("string", "Hello, World!"))),
+                _("member", _("id", "libc"), _("id", "puts")),
+                _("arg", {}, _("string", R"("Hello, World!")"))),
           })));
 }
 
 TEST_F(compiler_ast, comptime_declareLocal) {
-    test(
-        _("block",
-          _({
-              _("import", _("id", "std")),
-              _("import", _("id", "compiler")),
-              _("run",
-                _("call",
-                  _("member", _("id", "compiler"), _("id", "declareLocal")),
-                  _({
-                      _("arg", {}, _("string", "str")),
-                      _("arg", {}, _("ptr_type", _("i8", "i8"))),
-                  }))),
-              _("assign", _("id", "str"), _("string", "hello")),
-              _("call", _("member", _("id", "std"), _("id", "puts")), _("arg", {}, _("id", "str"))),
-          })));
+    test(_(
+        "block",
+        _({
+            _("import", _("id", "libc")),
+            _("import", _("id", "compiler")),
+            _("run",
+              _("call",
+                _("member", _("id", "compiler"), _("id", "declareLocal")),
+                _({
+                    _("arg", {}, _("string", R"("str")")),
+                    _("arg", {}, _("ptr_type", _("i8", "i8"))),
+                }))),
+            _("assign", _("id", "str"), _("string", R"("hello")")),
+            _("call", _("member", _("id", "libc"), _("id", "puts")), _("arg", {}, _("id", "str"))),
+        })));
 }

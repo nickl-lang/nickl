@@ -1,4 +1,4 @@
-import std;
+import libc;
 
 IntOrFloat :: enum {
     Int: i64,
@@ -8,13 +8,13 @@ IntOrFloat :: enum {
 x: IntOrFloat;
 
 x = IntOrFloat{Int = 42};
-std.printf("%i", x.tag == u64{0});
-std.printf("%i", x.data.Int == 42);
+libc.printf("%i", x.tag == u64{0});
+libc.printf("%i", x.data.Int == 42);
 
 x = IntOrFloat{Float = 3.14};
-std.printf("%i", x.tag == u64{1});
-std.printf("%i", x.data.Float == 3.14);
+libc.printf("%i", x.tag == u64{1});
+libc.printf("%i", x.data.Float == 3.14);
 
-std.printf("%i", @sizeof(x) == 16);
+libc.printf("%i", @sizeof(x) == 16);
 
-std.puts("");
+libc.puts("");

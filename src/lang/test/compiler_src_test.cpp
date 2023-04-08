@@ -109,17 +109,17 @@ while n != 0 {
 
 TEST_F(compiler_src, import) {
     test(R"(
-import std;
-std.puts("Hello, World!");
+import libc;
+libc.puts("Hello, World!");
 )");
 }
 
 TEST_F(compiler_src, comptime_declareLocal) {
     test(R"(
-import std;
+import libc;
 import compiler;
 ${ compiler.declareLocal("str", *i8); }
 str = "hello";
-std.puts(str);
+libc.puts(str);
 )");
 }

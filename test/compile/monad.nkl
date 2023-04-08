@@ -1,4 +1,4 @@
-import std;
+import libc;
 
 Nothing :: u64{0}; // TODO Hardcoded Nothing index
 
@@ -15,10 +15,10 @@ MaybeStr :: enum {
 BUF_SIZE :: u64{100};
 buf: [BUF_SIZE]i8;
 intToMaybeStr :: (x: i32) -> MaybeStr {
-    std.snprintf(&buf, BUF_SIZE, "%i", x);
+    libc.snprintf(&buf, BUF_SIZE, "%i", x);
     str: string; // TODO Manual slice construction
     str.data = &buf;
-    str.size = std.strlen(&buf);
+    str.size = libc.strlen(&buf);
     return MaybeStr{Just=str};
 };
 
@@ -31,10 +31,10 @@ bind :: (self: *const MaybeInt, f: @typeof(intToMaybeStr)) -> MaybeStr { // TODO
 }
 
 random :: () -> i32 {
-    //ts: std.timespec;
-    //std.clock_gettime(std.CLOCK_MONOTONIC, &ts);
-    //std.srand(cast(u32) ts.tv_nsec);
-    //return std.rand();
+    //ts: libc.timespec;
+    //libc.clock_gettime(libc.CLOCK_MONOTONIC, &ts);
+    //libc.srand(cast(u32) ts.tv_nsec);
+    //return libc.rand();
     return i32{4}; // Chosen by a fair dice roll
 }
 
@@ -49,10 +49,10 @@ maybeGetInt :: () -> MaybeInt {
 main :: () -> void {
     maybe_str := bind(&maybeGetInt(), intToMaybeStr); // TODO Manual address
     if maybe_str.tag == Nothing {
-        std.puts("(nothing)");
+        libc.puts("(nothing)");
     } else {
         str := maybe_str.data.Just;
-        std.printf("str=`%.*s`\n", str.size, str.data);
+        libc.printf("str=`%.*s`\n", str.size, str.data);
     }
 }
 

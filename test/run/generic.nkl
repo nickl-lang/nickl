@@ -10,8 +10,8 @@ Vec2 :: (T: type_t) -> type_t {
 iv :: Vec2(i64){1, 2};
 sv :: Vec2([]i8){"one", "two"};
 
-import std;
-std.printf("%li %li %s %s\n",
+import libc;
+libc.printf("%li %li %s %s\n",
     iv.x, iv.y,
     sv.x.data, sv.y.data,
 );

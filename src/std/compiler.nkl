@@ -17,16 +17,16 @@ StructField :: struct {
 #link("", "nkl_compiler_") makeStruct :: (fields: []StructField) -> type_t;
 
 basicTypeFromString :: (str: *i8) -> type_t {
-    import std;
-    if 0 == std.strcmp("i8",  str) return i8;
-    if 0 == std.strcmp("i16", str) return i16;
-    if 0 == std.strcmp("i32", str) return i32;
-    if 0 == std.strcmp("i64", str) return i64;
-    if 0 == std.strcmp("u8",  str) return u8;
-    if 0 == std.strcmp("u16", str) return u16;
-    if 0 == std.strcmp("u32", str) return u32;
-    if 0 == std.strcmp("u64", str) return u64;
-    if 0 == std.strcmp("f32", str) return f32;
-    if 0 == std.strcmp("f64", str) return f64;
+    import libc;
+    if 0 == libc.strcmp("i8",  str) return i8;
+    if 0 == libc.strcmp("i16", str) return i16;
+    if 0 == libc.strcmp("i32", str) return i32;
+    if 0 == libc.strcmp("i64", str) return i64;
+    if 0 == libc.strcmp("u8",  str) return u8;
+    if 0 == libc.strcmp("u16", str) return u16;
+    if 0 == libc.strcmp("u32", str) return u32;
+    if 0 == libc.strcmp("u64", str) return u64;
+    if 0 == libc.strcmp("f32", str) return f32;
+    if 0 == libc.strcmp("f64", str) return f64;
     return void;
 }

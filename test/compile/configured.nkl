@@ -1,37 +1,37 @@
-import std;
+import libc;
 
 main :: (argc: i32, argv: **i8) -> i32 {
-    std.puts("main");
+    libc.puts("main");
 
     ITERATION_COUNT :: () -> i64 {
         CONFIG_FILENAME :: "config.txt";
 
-        std.puts("reading config");
+        libc.puts("reading config");
 
-        file := std.fopen(CONFIG_FILENAME, "r");
+        file := libc.fopen(CONFIG_FILENAME, "r");
 
         if 0 == file {
-            std.printf("error: failed to read config file `%s`\n", CONFIG_FILENAME);
+            libc.printf("error: failed to read config file `%s`\n", CONFIG_FILENAME);
             return 0;
         }
 
         BUF_SIZE :: u64{64};
         buf: [BUF_SIZE+1]i8;
-        bytes_read := std.fread(&buf, u64{1}, BUF_SIZE, file);
+        bytes_read := libc.fread(&buf, u64{1}, BUF_SIZE, file);
         if BUF_SIZE == bytes_read {
-            std.puts("error: not enough memory in buffer");
+            libc.puts("error: not enough memory in buffer");
             return 0;
         }
-        val := cast(i64) std.atoi(&buf);
+        val := cast(i64) libc.atoi(&buf);
 
-        std.fclose(file);
+        libc.fclose(file);
 
         return val;
     }();
 
     i := 0;
     while i < ITERATION_COUNT {
-        std.printf("i=%li\n", i);
+        libc.printf("i=%li\n", i);
         i = i + 1;
     }
 

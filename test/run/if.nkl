@@ -1,9 +1,9 @@
-import std;
+import libc;
 
 a := true;
 
 if a {
-    std.printf("a is true!\n");
+    libc.printf("a is true!\n");
 } else {
-    std.printf("a is false!\n");
+    libc.printf("a is false!\n");
 }

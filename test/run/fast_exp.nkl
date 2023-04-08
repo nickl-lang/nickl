@@ -15,5 +15,5 @@ while n != 0 {
     c = c * c;
 }
 
-import std;
-std.printf("%li\n", a);
+import libc;
+libc.printf("%li\n", a);

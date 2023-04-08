@@ -1,4 +1,4 @@
 doStuff :: () -> void {
-    import std;
-    std.puts("done");
+    import libc;
+    libc.puts("done");
 }

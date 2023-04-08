@@ -1,14 +1,14 @@
-import std;
+import libc;
 
 var := 1;
 {
     var := 2;
     {
         var := 3;
-        std.printf("%li", var);
+        libc.printf("%li", var);
     }
-    std.printf("%li", var);
+    libc.printf("%li", var);
 }
-std.printf("%li", var);
+libc.printf("%li", var);
 
-std.puts("");
+libc.puts("");

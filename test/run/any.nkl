@@ -1,11 +1,11 @@
-import std;
+import libc;
 
 any: any_t;
 
 var := 42;
 any = &var;
 
-std.printf("%i", any.data == &var);
-std.printf("%i", any.type == @typeof(var));
+libc.printf("%i", any.data == &var);
+libc.printf("%i", any.type == @typeof(var));
 
-std.printf(" %li\n", (cast(*i64) any.data).*);
+libc.printf(" %li\n", (cast(*i64) any.data).*);

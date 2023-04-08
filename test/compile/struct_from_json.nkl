@@ -1,4 +1,4 @@
-import std;
+import libc;
 import json;
 import compiler;
 
@@ -20,7 +20,7 @@ makeStruct :: (filename: string) -> type_t {
             name_cstr := json.object_get_string(json.object_object_get(field, "name"));
 
             field_ar[i].name.data = name_cstr;
-            field_ar[i].name.size = std.strlen(name_cstr);
+            field_ar[i].name.size = libc.strlen(name_cstr);
             field_ar[i].type = compiler.basicTypeFromString(type_cstr);
 
             i = i + 1;
@@ -39,7 +39,7 @@ main :: () -> void {
     obj.x = 1.23;
     obj.y = 4.56;
 
-    std.printf("x=%g y=%g\n", obj.x, obj.y);
+    libc.printf("x=%g y=%g\n", obj.x, obj.y);
 }
 
 builder := compiler.createBuilder();

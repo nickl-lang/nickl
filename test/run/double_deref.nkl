@@ -1,6 +1,6 @@
 deref :: (p: **i64) -> void {
-    import std;
-    std.printf("%li\n", p.*.*);
+    import libc;
+    libc.printf("%li\n", p.*.*);
 }
 
 val: i64 = 42;

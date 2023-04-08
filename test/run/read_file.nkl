@@ -1,13 +1,13 @@
-import std;
+import libc;
 
 BUF_SIZE :: u64{64};
 buf: [BUF_SIZE]i8;
 
-file := std.fopen("file.txt", "r");
+file := libc.fopen("file.txt", "r");
 
 if file {
-    std.fread(&buf, BUF_SIZE, BUF_SIZE, file);
-    std.printf("%s", &buf);
+    libc.fread(&buf, BUF_SIZE, BUF_SIZE, file);
+    libc.printf("%s", &buf);
 
-    std.fclose(file);
+    libc.fclose(file);
 }

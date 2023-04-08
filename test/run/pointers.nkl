@@ -7,8 +7,8 @@ pv[0] = 1.23;
 pv[1] = 4.56;
 
 printVec2 :: (v: *const Vec2) -> void {
-    import std;
-    std.printf("v.x=%g v.y=%g\n", v[0], v[1]);
+    import libc;
+    libc.printf("v.x=%g v.y=%g\n", v[0], v[1]);
 }
 
 printVec2(pv);

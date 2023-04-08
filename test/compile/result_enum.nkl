@@ -15,15 +15,15 @@ getErr :: () -> Result { return Result{Err="whoops"}; }
 res: Result;
 
 main :: () -> void {
-    import std;
+    import libc;
 
     res = getVec();
-    std.printf("%lu", res.tag);
-    std.printf("%li%li%li", res.data.Ok.x, res.data.Ok.y, res.data.Ok.z);
+    libc.printf("%lu", res.tag);
+    libc.printf("%li%li%li", res.data.Ok.x, res.data.Ok.y, res.data.Ok.z);
 
     res = getErr();
-    std.printf("%lu", res.tag);
-    std.printf("%s\n", res.data.Err.data);
+    libc.printf("%lu", res.tag);
+    libc.printf("%s\n", res.data.Err.data);
 }
 
 import compiler;
