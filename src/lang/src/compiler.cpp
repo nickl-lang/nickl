@@ -217,6 +217,8 @@ struct NklCompiler_T {
 
     std::stack<fs::path> file_stack{};
     std::stack<nkstr> src_stack{};
+
+    std::unordered_map<nkl_typeid_t, std::unordered_map<nkid, ValueInfo>> struct_inits{};
 };
 
 namespace {
@@ -1050,33 +1052,33 @@ ValueInfo compileAndDiscard(NklCompiler c, NklAstNode node) {
 }
 
 template <class F>
-ValueInfo compileCompositeType(NklCompiler c, NklAstNode node, F const &create_type) {
+ValueInfo compileCompositeType(
+    NklCompiler c,
+    NklAstNode node,
+    F const &create_type,
+    std::unordered_map<nkid, ValueInfo> *out_inits = nullptr) {
     std::vector<NklField> fields{};
 
     auto nodes = nargs0(node);
     for (size_t i = 0; i < nodes.size; i++) {
-        nkid name = s2nkid(narg0(&nodes.data[i])->token->text);
-        DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(&nodes.data[i])));
+        auto field_node = &nodes.data[i];
+        nkid name = s2nkid(narg0(field_node)->token->text);
+        DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(field_node)));
         if (nklval_tclass(type_val) != NklType_Typeref) {
             return error(c, "type expected in tuple type"), ValueInfo{};
         }
+        auto type = nklval_as(nkltype_t, type_val);
         fields.emplace_back(NklField{
             .name = name,
-            .type = nklval_as(nkltype_t, type_val),
+            .type = type,
         });
+        if (out_inits && narg2(field_node) && narg2(field_node)->id) {
+            DEFINE(init_val, comptimeCompileNodeGetValue(c, narg2(field_node), type));
+            (*out_inits)[name] = makeValue(c, init_val);
+        }
     }
 
     return makeValue<nkltype_t>(c, typeref_t, create_type({fields.data(), fields.size()}));
-}
-
-ValueInfo initTupleRef(NklCompiler c, NkIrRef ref, nkltype_t type, nkslice<ValueInfo> values) {
-    if (values.size() != type->as.tuple.elems.size) {
-        return error(c, "invalid number of values in composite literal"), ValueInfo{};
-    }
-    for (size_t i = 0; i < values.size(); i++) {
-        CHECK(store(c, tupleIndex(ref, i), values[i]));
-    }
-    return makeRef(ref);
 }
 
 ValueInfo import(NklCompiler c, fs::path filepath) {
@@ -1259,7 +1261,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
 
 #define COMPILE_BIN(NAME)                                                                    \
     case CAT(n_, NAME): {                                                                    \
-        DEFINE(lhs, compile(c, narg0(node)));                                                \
+        DEFINE(lhs, compile(c, narg0(node), c->node_stack.back().type));                     \
         DEFINE(rhs, compile(c, narg1(node), lhs.type));                                      \
         return makeInstr(CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), lhs.type); \
     }
@@ -1454,8 +1456,14 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
             types.emplace_back(values.back().type);
         }
         auto tuple_t = nkl_get_tuple(c->arena, {types.data(), types.size()}, 1);
-        return initTupleRef(
-            c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(tuple_t))), tuple_t, values);
+        auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(tuple_t)));
+        if (values.size() != tuple_t->as.tuple.elems.size) {
+            return error(c, "invalid number of values in tuple literal"), ValueInfo{};
+        }
+        for (size_t i = 0; i < values.size(); i++) {
+            CHECK(store(c, tupleIndex(ref, i), values[i]));
+        }
+        return makeRef(ref);
     }
 
     case n_tuple_type: {
@@ -1586,9 +1594,21 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
     }
 
     case n_struct: {
-        return compileCompositeType(c, node, [c](NklFieldArray fields) {
-            return nkl_get_struct(c->arena, fields);
-        });
+        std::unordered_map<nkid, ValueInfo> inits;
+        DEFINE(
+            type_val,
+            compileCompositeType(
+                c,
+                node,
+                [c](NklFieldArray fields) {
+                    return nkl_get_struct(c->arena, fields);
+                },
+                &inits));
+        if (!inits.empty()) {
+            c->struct_inits[nklt_typeid(nklval_as(nkltype_t, asValue(c, type_val)))] =
+                std::move(inits);
+        }
+        return type_val;
     }
 
     case n_union: {
@@ -1774,16 +1794,47 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
 
         switch (nklt_tclass(type)) {
         case NklType_Struct: {
+            auto const value_count = init_nodes.size;
             std::vector<nkid> names;
-            names.reserve(init_nodes.size);
             std::vector<ValueInfo> values;
-            values.reserve(init_nodes.size);
+            names.reserve(value_count);
+            values.reserve(value_count);
             // TODO bool all_known = true;
-            for (size_t i = 0; i < init_nodes.size; i++) {
+            for (size_t i = 0; i < value_count; i++) {
                 auto const init_node = &init_nodes.data[i];
                 auto const name_node = narg0(init_node);
-                names.emplace_back(
-                    (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
+                // TODO Some boilerplate with node_stack
+                if (name_node && name_node->id) {
+                    c->node_stack.emplace_back(NodeInfo{
+                        .node = name_node,
+                        .type = nullptr,
+                    });
+                }
+                defer {
+                    if (name_node && name_node->id) {
+                        c->node_stack.pop_back();
+                    }
+                };
+                auto const name = (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0;
+                if (name &&
+                    std::find(std::begin(names), std::end(names), name) != std::end(names)) {
+                    return error(c, "duplicate names"), ValueInfo{};
+                }
+                if (name && nklt_struct_index(type, name) == -1lu) {
+                    return error(
+                               c,
+                               "no field named `%s` in type `struct`",
+                               nkid2cs(name),
+                               (char const *)[&]() {
+                                   auto sb = nksb_create();
+                                   nklt_inspect(type, sb);
+                                   return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
+                                       nksb_free(sb);
+                                   });
+                               }()),
+                           ValueInfo{};
+                }
+                names.emplace_back(name);
                 APPEND(
                     values,
                     compile(
@@ -1792,22 +1843,71 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                 //     all_known = false;
                 // }
             }
-            return initTupleRef(
-                c,
-                nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))),
-                type->underlying_type,
-                values);
+            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            auto const fields = type->as.strct.fields;
+            std::vector<bool> initted;
+            initted.resize(fields.size);
+            size_t last_positional = 0;
+            for (size_t vi = 0; vi < value_count; vi++) {
+                auto const init_node = &init_nodes.data[vi];
+                auto const name_node = narg0(init_node);
+                // TODO Some boilerplate with node_stack
+                if (name_node && name_node->id) {
+                    c->node_stack.emplace_back(NodeInfo{
+                        .node = name_node,
+                        .type = nullptr,
+                    });
+                }
+                defer {
+                    if (name_node && name_node->id) {
+                        c->node_stack.pop_back();
+                    }
+                };
+                if (vi >= fields.size) {
+                    return error(c, "too many values"), ValueInfo{};
+                }
+                auto fi = names[vi] ? nklt_struct_index(type, names[vi]) : vi;
+                if (names[vi]) {
+                    if (fi < last_positional) {
+                        return error(c, "named argument conflicts with positional"), ValueInfo{};
+                    }
+                } else {
+                    last_positional++;
+                }
+                CHECK(store(c, tupleIndex(ref, fi), values[vi]));
+                initted.at(fi) = true;
+            }
+            auto const it = c->struct_inits.find(nklt_typeid(type));
+            if (it != c->struct_inits.end()) {
+                auto const &inits = it->second;
+                for (size_t fi = 0; fi < fields.size; fi++) {
+                    if (!initted[fi]) {
+                        auto it = inits.find(fields.data[fi].name);
+                        if (it != inits.end()) {
+                            CHECK(store(c, tupleIndex(ref, fi), it->second));
+                            initted.at(fi) = true;
+                        }
+                    }
+                }
+            }
+            if (!std::all_of(std::begin(initted), std::end(initted), [](bool x) {
+                    return x;
+                })) {
+                return error(c, "not all fields are initialized"), ValueInfo{};
+            }
+            return makeRef(ref);
         }
 
         case NkType_Tuple:
         case NklType_Any:
         case NklType_Slice: {
+            auto const value_count = init_nodes.size;
             std::vector<nkid> names;
-            names.reserve(init_nodes.size);
             std::vector<ValueInfo> values;
-            values.reserve(init_nodes.size);
+            names.reserve(value_count);
+            values.reserve(value_count);
             // TODO bool all_known = true;
-            for (size_t i = 0; i < init_nodes.size; i++) {
+            for (size_t i = 0; i < value_count; i++) {
                 auto const init_node = &init_nodes.data[i];
                 auto const name_node = narg0(init_node);
                 names.emplace_back(
@@ -1817,17 +1917,28 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                 //     all_known = false;
                 // }
             }
-            return initTupleRef(
-                c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))), type, values);
+            auto const tuple_t = type;
+            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            if (value_count != tuple_t->as.tuple.elems.size) {
+                return error(c, "invalid number of values in composite literal"), ValueInfo{};
+            }
+            for (size_t i = 0; i < value_count; i++) {
+                CHECK(store(c, tupleIndex(ref, i), values[i]));
+            }
+            return makeRef(ref);
         }
 
         case NkType_Array: {
+            auto const value_count = init_nodes.size;
+            if (value_count != type->as.arr.elem_count) {
+                return error(c, "invalid number of values in array literal"), ValueInfo{};
+            }
             std::vector<nkid> names;
-            names.reserve(init_nodes.size);
             std::vector<ValueInfo> values;
-            values.reserve(init_nodes.size);
+            names.reserve(value_count);
+            values.reserve(value_count);
             // TODO bool all_known = true;
-            for (size_t i = 0; i < init_nodes.size; i++) {
+            for (size_t i = 0; i < value_count; i++) {
                 auto const init_node = &init_nodes.data[i];
                 auto const name_node = narg0(init_node);
                 names.emplace_back(
@@ -1838,10 +1949,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                 // }
             }
             auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            if (values.size() != type->as.arr.elem_count) {
-                return error(c, "invalid number of values in array literal"), ValueInfo{};
-            }
-            for (size_t i = 0; i < values.size(); i++) {
+            for (size_t i = 0; i < value_count; i++) {
                 CHECK(store(c, arrayIndex(ref, i), values[i]));
             }
             return makeRef(ref);

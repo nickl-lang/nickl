@@ -24,7 +24,7 @@ intToMaybeStr :: (x: i32) -> MaybeStr {
 
 bind :: (self: *const MaybeInt, f: @typeof(intToMaybeStr)) -> MaybeStr { // TODO Function type hack
     if self.tag == Nothing {
-        return MaybeStr{Nothing=void{ }}; // TODO void literal
+        return MaybeStr{Nothing=void{}}; // TODO void literal
     } else {
         return f(self.data.Just);
     }
@@ -40,7 +40,7 @@ random :: () -> i32 {
 
 maybeGetInt :: () -> MaybeInt {
     if (random() % i32{2}) { // TODO Forced parentheses
-        return MaybeInt{Nothing=void{ }};
+        return MaybeInt{Nothing=void{}};
     } else {
         return MaybeInt{Just=42};
     }

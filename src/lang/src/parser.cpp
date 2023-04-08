@@ -200,17 +200,23 @@ private:
         if (accept(closer)) {
             return {};
         }
+        bool named_mode = false;
         do {
             if (cfg.allow_trailing_comma && check(closer)) {
                 break;
             }
             NklAstNode_T &arg = args.emplace_back();
             arg.id = cs2nkid("arg");
-            if (check(t_id)) {
+            if (named_mode || check(t_id)) {
                 NK_LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
                 auto id = m_cur_token;
                 getToken();
+                if (named_mode && !check(t_eq)) {
+                    m_cur_token--;
+                    return error("cannot use positional arguments after named ones"), Void{};
+                }
                 if (accept(t_eq)) {
+                    named_mode = true;
                     arg.args[0] = nkl_pushNode(m_ast, nkl_makeNode0(n_id, id));
                 } else {
                     m_cur_token--;
@@ -240,12 +246,11 @@ private:
         }
 
         auto node =
-            nodes.size() == 0
-                ? nkl_makeNode0(n_nop, _n_token)
-                : nodes.size() == 1
-                      ? nodes.front()
-                      : nkl_makeNode1(
-                            n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+            nodes.size() == 0 ? nkl_makeNode0(n_nop, _n_token)
+            : nodes.size() == 1
+                ? nodes.front()
+                : nkl_makeNode1(
+                      n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1(n_scope, _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -899,14 +904,17 @@ private:
                     _n_token,
                     nkl_pushNode(m_ast, node),
                     nkl_pushNodeAr(m_ast, {args.data(), args.size()}));
-            } else if (m_cur_expr_kind == Expr_Regular && accept(t_brace_l)) {
+            } else if (m_cur_expr_kind == Expr_Regular && (check(t_brace_l) || check(t_brace_2x))) {
                 std::vector<NklAstNode_T> args{};
-                CHECK(parseArgs(
-                    args,
-                    t_brace_r,
-                    {
-                        .allow_trailing_comma = true,
-                    }));
+                if (!accept(t_brace_2x)) {
+                    accept(t_brace_l);
+                    CHECK(parseArgs(
+                        args,
+                        t_brace_r,
+                        {
+                            .allow_trailing_comma = true,
+                        }));
+                }
                 node = nkl_makeNode2(
                     n_object_literal,
                     _n_token,
