@@ -12,7 +12,7 @@ makeStruct :: (filename: string) -> type_t {
         fields := json.object_object_get(root, "fields");
         len := json.object_array_length(fields);
 
-        i := u64{0};
+        i: u64 = 0;
         while i < len {
             field := json.object_array_get_idx(fields, i);
 

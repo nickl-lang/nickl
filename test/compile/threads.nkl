@@ -46,7 +46,7 @@ main :: () -> i32 {
     ${ exec("Compile time threads!"); }
     exec("Run time threads!");
 
-    return i32{0};
+    return 0;
 }
 
 c :: import compiler;

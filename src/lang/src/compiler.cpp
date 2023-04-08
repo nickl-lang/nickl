@@ -1,6 +1,7 @@
 #include "nkl/lang/compiler.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cinttypes>
 #include <cmath>
 #include <cstddef>
@@ -52,6 +53,9 @@
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(AR.emplace_back(VAL))
+
+#define SCNf32 "f"
+#define SCNf64 "lf"
 
 namespace {
 
@@ -192,6 +196,7 @@ struct NklCompiler_T {
 
     std::map<fs::path, NkIrFunct> imports{};
 
+    std::stack<nkltype_t> type_stack{};
     std::stack<std::string> comptime_const_names{};
     std::vector<NklAstNode> node_stack{};
     size_t fn_counter{};
@@ -594,9 +599,9 @@ ValueInfo declToValueInfo(Decl &decl) {
     });
 }
 
-ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node);
-nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node);
-ValueInfo compile(NklCompiler c, NklAstNode node);
+ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type = nullptr);
+nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t type = nullptr);
+ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type = nullptr);
 Void compileStmt(NklCompiler c, NklAstNode node);
 
 ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
@@ -1081,15 +1086,31 @@ ValueInfo import(NklCompiler c, fs::path filepath) {
     return fn_val_info;
 }
 
-ValueInfo compile(NklCompiler c, NklAstNode node) {
+template <class T>
+ValueInfo makeNumeric(NklCompiler c, nkltype_t type, nkstr str, char const *fmt) {
+    T value = 0;
+    // TODO Replace sscanf in compiler
+    int res = std::sscanf(str.data, fmt, &value);
+    (void)res;
+    assert(res > 0 && res != EOF && "numeric constant parsing failed");
+    return makeValue<T>(c, type, value);
+}
+
+ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
 #endif // BUILD_WITH_EASY_PROFILER
     EASY_BLOCK(block_name.c_str(), ::profiler::colors::DeepPurple100);
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
+
     c->node_stack.emplace_back(node);
     defer {
         c->node_stack.pop_back();
+    };
+
+    c->type_stack.push(type);
+    defer {
+        c->type_stack.pop();
     };
 
     switch (node->id) {
@@ -1177,8 +1198,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
     case n_return: {
         if (nargs0(node).size) {
-            DEFINE(arg, compile(c, narg0(node)));
-            CHECK(store(c, nkir_makeRetRef(c->ir), arg));
+            auto const ret_ref = nkir_makeRetRef(c->ir);
+            DEFINE(arg, compile(c, narg0(node), fromvmt(ret_ref.type)));
+            CHECK(store(c, ret_ref, arg));
         }
         gen(c, nkir_make_ret());
         return makeVoid();
@@ -1227,7 +1249,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 #define COMPILE_BIN(NAME)                                                                    \
     case CAT(n_, NAME): {                                                                    \
         DEFINE(lhs, compile(c, narg0(node)));                                                \
-        DEFINE(rhs, compile(c, narg1(node)));                                                \
+        DEFINE(rhs, compile(c, narg1(node), lhs.type));                                      \
         return makeInstr(CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), lhs.type); \
     }
 
@@ -1248,7 +1270,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 #define COMPILE_BOOL_BIN(NAME)                                                             \
     case CAT(n_, NAME): {                                                                  \
         DEFINE(lhs, compile(c, narg0(node)));                                              \
-        DEFINE(rhs, compile(c, narg1(node)));                                              \
+        DEFINE(rhs, compile(c, narg1(node), lhs.type));                                    \
         return makeInstr(CAT(nkir_make_, NAME)({}, asRef(c, lhs), asRef(c, rhs)), bool_t); \
     }
 
@@ -1484,21 +1506,32 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 
     case n_float: {
-        double value = 0.0;
-        // TODO Replace sscanf in Compiler
-        int res = std::sscanf(node->token->text.data, "%lf", &value);
-        (void)res;
-        assert(res > 0 && res != EOF && "integer constant parsing failed");
-        return makeValue<double>(c, f64_t, value);
+        NkNumericValueType value_type =
+            (c->type_stack.top() && nklt_tclass(c->type_stack.top()) == NkType_Numeric)
+                ? c->type_stack.top()->as.num.value_type
+                : Float64;
+        auto const text = node->token->text;
+        switch (value_type) {
+        case Float32:
+            return makeNumeric<float>(c, f32_t, text, "%" SCNf32);
+        default:
+        case Float64:
+            return makeNumeric<double>(c, f64_t, text, "%" SCNf64);
+        }
     }
 
     case n_int: {
-        int64_t value = 0;
-        // TODO Replace sscanf in Compiler
-        int res = std::sscanf(node->token->text.data, "%" SCNi64, &value);
-        (void)res;
-        assert(res > 0 && res != EOF && "integer constant parsing failed");
-        return makeValue<int64_t>(c, i64_t, value);
+        NkNumericValueType value_type =
+            (c->type_stack.top() && nklt_tclass(c->type_stack.top()) == NkType_Numeric)
+                ? c->type_stack.top()->as.num.value_type
+                : Int64;
+        auto const text = node->token->text;
+#define X(NAME, VALUE_TYPE, CTYPE) \
+    case VALUE_TYPE:               \
+        return makeNumeric<CTYPE>(c, CAT(NAME, _t), text, "%" CAT(SCN, NAME));
+        switch (value_type) { NUMERIC_ITERATE(X) }
+        assert(!"unreachable");
+#undef X
     }
 
     case n_string: {
@@ -1687,14 +1720,17 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         std::vector<ValueInfo> args_info{};
         std::vector<nkltype_t> args_types{};
 
+        args_info.reserve(arg_nodes.size);
+        args_types.reserve(arg_nodes.size);
+
         for (size_t i = 0; i < arg_nodes.size; i++) {
+            auto param_t = i < fn_t->as.fn.args_t->as.tuple.elems.size
+                               ? fn_t->as.fn.args_t->as.tuple.elems.data[i].type
+                               : nullptr;
             // TODO Support named args in call
-            DEFINE(val_info, compile(c, narg1(&arg_nodes.data[i])));
+            DEFINE(val_info, compile(c, narg1(&arg_nodes.data[i]), param_t));
             args_info.emplace_back(val_info);
-            args_types.emplace_back(
-                i < fn_t->as.fn.args_t->as.tuple.elems.size
-                    ? fn_t->as.fn.args_t->as.tuple.elems.data[i].type
-                    : val_info.type);
+            args_types.emplace_back(param_t ? param_t : val_info.type);
         }
 
         auto args_t = nkl_get_tuple(c->arena, {args_types.data(), args_types.size()}, 1);
@@ -1722,40 +1758,75 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
 
         auto const init_nodes = nargs1(node);
 
-        std::vector<nkid> names;
-        names.reserve(init_nodes.size);
-        std::vector<ValueInfo> values;
-        values.reserve(init_nodes.size);
-        // TODO bool all_known = true;
-        for (size_t i = 0; i < init_nodes.size; i++) {
-            auto const init_node = &init_nodes.data[i];
-            auto const name_node = narg0(init_node);
-            names.emplace_back((name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
-            APPEND(values, compile(c, narg1(init_node)));
-            // TODO if (!isKnown(values.back())) {
-            //     all_known = false;
-            // }
-        }
-
         // TODO Support compile time object literals
 
         switch (nklt_tclass(type)) {
-        case NklType_Struct:
+        case NklType_Struct: {
+            std::vector<nkid> names;
+            names.reserve(init_nodes.size);
+            std::vector<ValueInfo> values;
+            values.reserve(init_nodes.size);
+            // TODO bool all_known = true;
+            for (size_t i = 0; i < init_nodes.size; i++) {
+                auto const init_node = &init_nodes.data[i];
+                auto const name_node = narg0(init_node);
+                names.emplace_back(
+                    (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
+                APPEND(
+                    values,
+                    compile(
+                        c, narg1(init_node), type->underlying_type->as.tuple.elems.data[i].type));
+                // TODO if (!isKnown(values.back())) {
+                //     all_known = false;
+                // }
+            }
             return initTupleRef(
                 c,
                 nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))),
                 type->underlying_type,
                 values);
+        }
 
         case NkType_Tuple:
         case NklType_Any:
-        case NklType_Slice:
+        case NklType_Slice: {
+            std::vector<nkid> names;
+            names.reserve(init_nodes.size);
+            std::vector<ValueInfo> values;
+            values.reserve(init_nodes.size);
+            // TODO bool all_known = true;
+            for (size_t i = 0; i < init_nodes.size; i++) {
+                auto const init_node = &init_nodes.data[i];
+                auto const name_node = narg0(init_node);
+                names.emplace_back(
+                    (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
+                APPEND(values, compile(c, narg1(init_node), type->as.tuple.elems.data[i].type));
+                // TODO if (!isKnown(values.back())) {
+                //     all_known = false;
+                // }
+            }
             return initTupleRef(
                 c, nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type))), type, values);
+        }
 
         case NkType_Array: {
+            std::vector<nkid> names;
+            names.reserve(init_nodes.size);
+            std::vector<ValueInfo> values;
+            values.reserve(init_nodes.size);
+            // TODO bool all_known = true;
+            for (size_t i = 0; i < init_nodes.size; i++) {
+                auto const init_node = &init_nodes.data[i];
+                auto const name_node = narg0(init_node);
+                names.emplace_back(
+                    (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
+                APPEND(values, compile(c, narg1(init_node), type->as.arr.elem_type));
+                // TODO if (!isKnown(values.back())) {
+                //     all_known = false;
+                // }
+            }
             auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            if (values.size() != type->as.tuple.elems.size) {
+            if (values.size() != type->as.arr.elem_count) {
                 return error(c, "invalid number of values in array literal"), ValueInfo{};
             }
             for (size_t i = 0; i < values.size(); i++) {
@@ -1765,21 +1836,24 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         }
 
         case NklType_Enum: {
-            if (values.size() != 1) {
+            if (init_nodes.size != 1) {
                 return error(c, "single value expected in enum literal"), ValueInfo{};
             }
-            if (!names[0]) {
+            auto const init_node = &init_nodes.data[0];
+            auto const name_node = narg0(init_node);
+            if (!name_node || !name_node->id) {
                 return error(c, "name expected in enum literal"), ValueInfo{};
             }
+            auto const name = s2nkid(name_node->token->text);
             auto const struct_t = type->underlying_type;
             auto const union_t = struct_t->as.strct.fields.data[0].type;
             // TODO Can we not create a local variable undonditionally in enum literal?
             auto const enum_ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
             auto const data_ref = tupleIndex(enum_ref, 0);
             auto const tag_ref = tupleIndex(enum_ref, 1);
-            auto const name = names[0];
             DEFINE(field_ref, getUnionIndex(c, makeRef(data_ref), union_t, name));
-            CHECK(store(c, asRef(c, field_ref), values[0]));
+            DEFINE(value, compile(c, narg1(init_node), field_ref.type));
+            CHECK(store(c, asRef(c, field_ref), value));
             // TODO Indexing union twice in enum literal
             auto const index = nklt_struct_index(union_t, name);
             CHECK(store(c, tag_ref, makeValue<uint64_t>(c, u64_t, index)));
@@ -1811,7 +1885,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
         for (size_t i = 0; i < lhs_nodes.size; i++) {
             APPEND(lhss, getLvalueRef(c, &lhs_nodes.data[i]));
         }
-        DEFINE(rhs, compile(c, narg1(node)));
+        DEFINE(rhs, compile(c, narg1(node), lhss.size() == 1 ? lhss[0].type : nullptr));
         if (lhss.size() == 1) {
             return store(c, asRef(c, lhss[0]), rhs);
         } else {
@@ -1876,7 +1950,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
             ref = nkir_makeFrameRef(c->ir, var);
         }
         if (narg2(node) && narg2(node)->id) {
-            DEFINE(val, compile(c, narg2(node)));
+            DEFINE(val, compile(c, narg2(node), type));
             CHECK(store(c, ref, val));
         }
         return makeVoid();
@@ -1887,7 +1961,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node) {
     }
 }
 
-ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
+ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type) {
     auto fn = nkir_makeFunct(c->ir);
     NkltFnInfo fn_info{nullptr, nkl_get_tuple(c->arena, {nullptr, 0}, 1), NkCallConv_Nk, false};
 
@@ -1902,7 +1976,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
         popScope(c);
     };
 
-    DEFINE(cnst_val, compile(c, node));
+    DEFINE(cnst_val, compile(c, node, type));
     nkir_incompleteFunctGetInfo(fn)->ret_t = tovmt(cnst_val.type);
     nkir_finalizeIncompleteFunct(fn, tovmt(nkl_get_fn(fromvmf(*nkir_incompleteFunctGetInfo(fn)))));
 
@@ -1932,8 +2006,8 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node) {
     return cnst;
 }
 
-nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node) {
-    DEFINE(cnst, comptimeCompileNode(c, node));
+nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t type) {
+    DEFINE(cnst, comptimeCompileNode(c, node, type));
     // TODO Probably should have a way of controlling, whether we want to
     // automatically invoke code at compile time here
     return comptimeConstGetValue(c, cnst);

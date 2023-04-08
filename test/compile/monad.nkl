@@ -35,14 +35,14 @@ random :: () -> i32 {
     //libc.clock_gettime(libc.CLOCK_MONOTONIC, &ts);
     //libc.srand(cast(u32) ts.tv_nsec);
     //return libc.rand();
-    return i32{4}; // Chosen by a fair dice roll
+    return 4; // Chosen by a fair dice roll
 }
 
 maybeGetInt :: () -> MaybeInt {
     if (random() % i32{2}) { // TODO Forced parentheses
         return MaybeInt{Nothing=void{ }};
     } else {
-        return MaybeInt{Just=i32{42}};
+        return MaybeInt{Just=42};
     }
 }
 

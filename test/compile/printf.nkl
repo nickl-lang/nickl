@@ -3,7 +3,7 @@ import compiler;
 
 main :: (argc: i32, argv: **i8) -> i32 {
     libc.printf("hello %s\n", "world");
-    return i32{0};
+    return 0;
 }
 
 builder := compiler.createBuilder();

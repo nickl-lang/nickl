@@ -7,11 +7,11 @@ runRaylib :: () -> i64 {
     rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib");
     rl.SetWindowState(rl.FLAG_WINDOW_RESIZABLE);
 
-    x := SCREEN_WIDTH / i32{2};
-    y := SCREEN_HEIGHT / i32{2};
+    x := SCREEN_WIDTH / 2;
+    y := SCREEN_HEIGHT / 2;
     dist := 0;
 
-    rl.SetTargetFPS(i32{60});
+    rl.SetTargetFPS(60);
 
     while 0 == rl.WindowShouldClose() {
         STEP :: 10;
@@ -21,18 +21,18 @@ runRaylib :: () -> i64 {
         if rl.IsKeyDown(rl.KEY_UP)    { y = y - STEP; dist = dist + STEP; }
         if rl.IsKeyDown(rl.KEY_DOWN)  { y = y + STEP; dist = dist + STEP; }
 
-        WHITE    :: rl.Color{u8{255}, u8{255}, u8{255}, u8{255}};
-        MAROON   :: rl.Color{u8{190}, u8{30},  u8{55},  u8{255}};
-        DARKGRAY :: rl.Color{u8{80},  u8{80},  u8{80},  u8{255}};
+        WHITE    :: rl.Color{255, 255, 255, 255};
+        MAROON   :: rl.Color{190, 30,  55,  255};
+        DARKGRAY :: rl.Color{80,  80,  80,  255};
 
         RADIUS :: f32{50};
 
         rl.BeginDrawing();
             rl.ClearBackground(WHITE);
             rl.DrawCircle(x, y, RADIUS, MAROON);
-            rl.DrawFPS(i32{10}, i32{10});
-            rl.DrawText("move the ball with arrow keys", i32{10}, i32{30}, i32{20}, DARKGRAY);
-            rl.DrawText(rl.TextFormat("distance traveled: %i pix", dist), i32{10}, i32{50}, i32{20}, DARKGRAY);
+            rl.DrawFPS(10, 10);
+            rl.DrawText("move the ball with arrow keys", 10, 30, 20, DARKGRAY);
+            rl.DrawText(rl.TextFormat("distance traveled: %i pix", dist), 10, 50, 20, DARKGRAY);
         rl.EndDrawing();
     }
 
