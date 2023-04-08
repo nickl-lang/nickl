@@ -1,4 +1,4 @@
-import libc;
+c :: import libc;
 
 FPS :: 30;
 
@@ -8,7 +8,7 @@ COLS :: 60;
 NS_IN_S :: 1000000000;
 FRAMETIME_NS :: NS_IN_S / FPS;
 
-s_field: [2][ROWS * COLS]u8;
+s_field: [2][ROWS * COLS]bool;
 
 s_cur_buf := 0;
 
@@ -29,33 +29,33 @@ swapBufs :: () -> void {
     s_cur_buf = nextBuf();
 }
 
-atBuf :: (x: i64, y: i64, buf: i64) -> *u8 {
+atBuf :: (x: i64, y: i64, buf: i64) -> *bool {
     return &s_field[buf][(pmod(y, COLS) * ROWS + pmod(x, ROWS))];
 }
 
-at :: (x: i64, y: i64) -> *u8 {
+at :: (x: i64, y: i64) -> *bool {
     return atBuf(x, y, s_cur_buf);
 }
 
-nextAt :: (x: i64, y: i64) -> *u8 {
+nextAt :: (x: i64, y: i64) -> *bool {
     return atBuf(x, y, nextBuf());
 }
 
-get :: (x: i64, y: i64) -> u8 {
+get :: (x: i64, y: i64) -> bool {
     return at(x, y).*;
 }
 
-set :: (x: i64, y: i64, v: u8) -> void {
+set :: (x: i64, y: i64, v: bool) -> void {
     at(x, y).* = v;
 }
 
-setNext :: (x: i64, y: i64, v: u8) -> void {
+setNext :: (x: i64, y: i64, v: bool) -> void {
     nextAt(x, y).* = v;
 }
 
 getTimestamp :: () -> i64 {
-    ts: libc.timespec;
-    libc.clock_gettime(libc.CLOCK_MONOTONIC, &ts);
+    ts: c.timespec;
+    c.clock_gettime(c.CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * NS_IN_S + ts.tv_nsec;
 }
 
@@ -79,38 +79,53 @@ step :: () -> void {
     swapBufs();
 }
 
+randomize :: () -> void {
+    x := 0; while x < ROWS {
+        y := 0; while y < COLS {
+            set(x, y, cast(bool) (c.rand() % 2));
+            y = y + 1;
+        }
+        x = x + 1;
+    }
+}
+
 // TODO Cannot do char literals
 ESC :: i32{27};
 
 main :: () -> i32 {
-    libc.system("stty -icanon -echo");
+    ts: c.timespec;
+    c.clock_gettime(c.CLOCK_MONOTONIC, &ts);
+    c.srand(cast(u32) ts.tv_nsec);
 
-    fl := libc.fcntl(libc.STDIN_FILENO, libc.F_GETFL, 0);
-    libc.fcntl(libc.STDIN_FILENO, libc.F_SETFL, fl | libc.O_NONBLOCK);
+    c.system("stty -icanon -echo");
 
-    libc.putchar(ESC); libc.printf("[?25l");
+    fl := c.fcntl(c.STDIN_FILENO, c.F_GETFL, 0);
+    c.fcntl(c.STDIN_FILENO, c.F_SETFL, fl | c.O_NONBLOCK);
 
-    empty_row: [COLS]u8;
-    libc.memset(cast(*void) &empty_row, cast(i32) "."[0], cast(u64) COLS);
+    c.putchar(ESC); c.printf("[?25l");
+
+    empty_row: [COLS]bool;
+    c.memset(cast(*void) &empty_row, cast(i32) "."[0], cast(u64) COLS);
 
     running := false;
 
     prev_ts := getTimestamp();
 
     while s_quit != true {
-        c: u8;
+        ch: i8;
 
-        c = cast(u8) libc.getchar();
+        ch = cast(i8) c.getchar();
 
-        if      c ==  "q"[0] s_quit = true;
-        else if c ==  "w"[0] s_cursor_x = pmod(s_cursor_x - 1, ROWS);
-        else if c ==  "a"[0] s_cursor_y = pmod(s_cursor_y - 1, COLS);
-        else if c ==  "s"[0] s_cursor_x = pmod(s_cursor_x + 1, ROWS);
-        else if c ==  "d"[0] s_cursor_y = pmod(s_cursor_y + 1, COLS);
-        else if c ==  " "[0] set(s_cursor_x, s_cursor_y, u8{1} - get(s_cursor_x, s_cursor_y));
-        else if c == "\n"[0] running = running ^ 1;
-        else if c ==  "c"[0] libc.memset(cast(*void) at(0, 0), i32{0}, cast(u64) (ROWS * COLS));
-        else if c ==  "e"[0] step();
+        if      ch ==  "q"[0] s_quit = true;
+        else if ch ==  "w"[0] s_cursor_x = pmod(s_cursor_x - 1, ROWS);
+        else if ch ==  "a"[0] s_cursor_y = pmod(s_cursor_y - 1, COLS);
+        else if ch ==  "s"[0] s_cursor_x = pmod(s_cursor_x + 1, ROWS);
+        else if ch ==  "d"[0] s_cursor_y = pmod(s_cursor_y + 1, COLS);
+        else if ch ==  " "[0] set(s_cursor_x, s_cursor_y, !get(s_cursor_x, s_cursor_y));
+        else if ch == "\n"[0] running = running ^ 1;
+        else if ch ==  "c"[0] c.memset(cast(*void) at(0, 0), i32{0}, cast(u64) (ROWS * COLS));
+        else if ch ==  "e"[0] step();
+        else if ch ==  "r"[0] randomize();
 
         if running {
             step();
@@ -119,38 +134,38 @@ main :: () -> i32 {
         x := 0; while x < ROWS {
             y := 0; while y < COLS {
                 if running == false && x == s_cursor_x && y == s_cursor_y {
-                    libc.putchar(ESC); libc.printf("[30m");
-                    libc.putchar(ESC); libc.printf("[47m");
+                    c.putchar(ESC); c.printf("[30m");
+                    c.putchar(ESC); c.printf("[47m");
                 }
-                if get(x, y) libc.printf("#"); else libc.printf(".");
+                if get(x, y) c.printf("#"); else c.printf(".");
                 if running == false && x == s_cursor_x && y == s_cursor_y {
-                    libc.putchar(ESC); libc.printf("[49m");
-                    libc.putchar(ESC); libc.printf("[39m");
+                    c.putchar(ESC); c.printf("[49m");
+                    c.putchar(ESC); c.printf("[39m");
                 }
                 y = y + 1;
             }
-            libc.putchar(cast(i32) "\n"[0]);
+            c.putchar(cast(i32) "\n"[0]);
             x = x + 1;
         }
 
-        libc.putchar(ESC); libc.printf("[0G", ROWS);
-        libc.putchar(ESC); libc.printf("[%iA", ROWS);
+        c.putchar(ESC); c.printf("[0G", ROWS);
+        c.putchar(ESC); c.printf("[%iA", ROWS);
 
         ts := getTimestamp();
         elapsed_ns := ts - prev_ts;
 
         if elapsed_ns < FRAMETIME_NS {
-            libc.nanosleep(&libc.timespec{0, FRAMETIME_NS - elapsed_ns}, cast(*libc.timespec) u64{0});
+            c.nanosleep(&c.timespec{0, FRAMETIME_NS - elapsed_ns}, cast(*c.timespec) u64{0});
         }
 
         prev_ts = ts;
     }
 
-    libc.putchar(ESC); libc.printf("[?25h");
+    c.putchar(ESC); c.printf("[?25h");
 
-    libc.fcntl(libc.STDIN_FILENO, libc.F_SETFL, fl);
+    c.fcntl(c.STDIN_FILENO, c.F_SETFL, fl);
 
-    libc.system("stty icanon echo");
+    c.system("stty icanon echo");
 
     return i32{0};
 }
