@@ -54,6 +54,14 @@
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(AR.emplace_back(VAL))
 
+#ifndef SCNi8
+#define SCNi8 "hhi"
+#endif // SCNi8
+
+#ifndef SCNu8
+#define SCNu8 "hhu"
+#endif // SCNu8
+
 #define SCNf32 "f"
 #define SCNf64 "lf"
 
@@ -1531,6 +1539,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
         return makeNumeric<CTYPE>(c, CAT(NAME, _t), text, "%" CAT(SCN, NAME));
         switch (value_type) { NUMERIC_ITERATE(X) }
         assert(!"unreachable");
+        return {};
 #undef X
     }
 
