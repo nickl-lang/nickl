@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NKL_LANG_VALUE
 
 #include <stdint.h>
+#include <string.h>
 
 #include "nk/common/common.h"
 #include "nk/common/id.h"
@@ -221,6 +222,11 @@ inline size_t nklval_alignof(nklval_t val) {
 
 inline nklval_t nklval_reinterpret_cast(nkltype_t type, nklval_t val) {
     return nklval_t{nklval_data(val), type};
+}
+
+inline nklval_t nklval_copy(void *dst, nklval_t src) {
+    memcpy(dst, nklval_data(src), nklval_sizeof(src));
+    return nklval_t{dst, nklval_typeof(src)};
 }
 
 #define nklval_as(TYPE, VAL) (*(TYPE *)nklval_data(VAL))

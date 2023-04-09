@@ -384,6 +384,13 @@ ValueInfo makeValue(NklCompiler c, nklval_t val) {
     return {{.cnst = nkir_makeConst(c->ir, tovmv(val))}, nklval_typeof(val), v_val};
 }
 
+ValueInfo makeValue(NklCompiler c, nkltype_t type) {
+    return {
+        {.cnst = nkir_makeConst(c->ir, {nk_allocate(c->arena, nklt_sizeof(type)), tovmt(type)})},
+        type,
+        v_val};
+}
+
 ValueInfo makeInstr(NkIrInstr const &instr, nkltype_t type) {
     return {{.instr{instr}}, type, v_instr};
 }
@@ -1640,19 +1647,27 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
     }
 
     case n_tag: {
-        NK_LOG_WRN("TODO Only handling #link and #extern tags");
+        auto const n_name = narg0(node);
+        auto const n_args = nargs1(node);
+        auto const n_def = narg2(node);
 
-        auto n_tag_name = narg0(node);
-        auto n_args = nargs1(node);
-        auto n_def = narg2(node);
+        auto const name = s2nkid(n_name->token->text);
 
-        std::string tag_name{n_tag_name->token->text.data, n_tag_name->token->text.size};
+        auto &decl = resolve(c, name);
+        if (decl.kind == Decl_Undefined) {
+            return error(c, "undefined tag"), ValueInfo{};
+        }
+        assert(decl.kind == Decl_ComptimeConst && "tag must be a comptime const");
 
-        if (n_def->id != n_comptime_const_def) {
-            return error(c, "TODO comptime const def assumed in tag"), ValueInfo{};
+        auto const type_val = comptimeConstGetValue(c, decl.as.comptime_const);
+        assert(nklt_tclass(type_val.type) == NklType_Typeref && "tag must be a type");
+
+        auto const type = nklval_as(nkltype_t, type_val);
+        if (nklt_tclass(type) != NklType_Struct) {
+            return error(c, "TODO For now tag only can be a struct"), ValueInfo{};
         }
 
-        if (tag_name == "#link") {
+        if (std_view(nkid2s(name)) == "#link") {
             assert(n_args.size == 1 || n_args.size == 2);
             DEFINE(soname_val, comptimeCompileNodeGetValue(c, narg1(&n_args.data[0])));
             std::string soname = nklval_as(char const *, soname_val);
@@ -1682,7 +1697,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                 s2nkid(sym_name),
                 nkir_makeExtSym(c->ir, so, sym_name_with_prefix, tovmt(fn_t)),
                 fn_t));
-        } else if (tag_name == "#extern") {
+        } else if (std_view(nkid2s(name)) == "#extern") {
             CHECK(compileComptimeConstDef(c, n_def, [=]() -> ComptimeConst {
                 auto const n_def_id = narg1(n_def)->id;
                 if (n_def_id != n_fn && n_def_id != n_fn_var) {
@@ -1790,7 +1805,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
 
         auto const init_nodes = nargs1(node);
 
-        // TODO Support compile time object literals
+        // TODO Support compile time object literals other than struct
 
         switch (nklt_tclass(type)) {
         case NklType_Struct: {
@@ -1799,7 +1814,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
             std::vector<ValueInfo> values;
             names.reserve(value_count);
             values.reserve(value_count);
-            // TODO bool all_known = true;
+            bool all_known = true;
             for (size_t i = 0; i < value_count; i++) {
                 auto const init_node = &init_nodes.data[i];
                 auto const name_node = narg0(init_node);
@@ -1839,11 +1854,19 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                     values,
                     compile(
                         c, narg1(init_node), type->underlying_type->as.tuple.elems.data[i].type));
-                // TODO if (!isKnown(values.back())) {
-                //     all_known = false;
-                // }
+                if (!isKnown(values.back())) {
+                    all_known = false;
+                }
             }
-            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            NkIrRef ref{};
+            nklval_t val{};
+            ValueInfo val_info{};
+            if (all_known) {
+                val_info = makeValue(c, type);
+                ASSIGN(val, asValue(c, val_info));
+            } else {
+                ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+            }
             auto const fields = type->as.strct.fields;
             std::vector<bool> initted;
             initted.resize(fields.size);
@@ -1874,7 +1897,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                 } else {
                     last_positional++;
                 }
-                CHECK(store(c, tupleIndex(ref, fi), values[vi]));
+                if (all_known) {
+                    nklval_copy(nklval_data(nklval_tuple_at(val, fi)), asValue(c, values[vi]));
+                } else {
+                    CHECK(store(c, tupleIndex(ref, fi), values[vi]));
+                }
                 initted.at(fi) = true;
             }
             auto const it = c->struct_inits.find(nklt_typeid(type));
@@ -1884,7 +1911,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                     if (!initted[fi]) {
                         auto it = inits.find(fields.data[fi].name);
                         if (it != inits.end()) {
-                            CHECK(store(c, tupleIndex(ref, fi), it->second));
+                            if (all_known) {
+                                nklval_copy(
+                                    nklval_data(nklval_tuple_at(val, fi)), asValue(c, it->second));
+                            } else {
+                                CHECK(store(c, tupleIndex(ref, fi), it->second));
+                            }
                             initted.at(fi) = true;
                         }
                     }
@@ -1895,7 +1927,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
                 })) {
                 return error(c, "not all fields are initialized"), ValueInfo{};
             }
-            return makeRef(ref);
+            if (all_known) {
+                return val_info;
+            } else {
+                return makeRef(ref);
+            }
         }
 
         case NkType_Tuple:
