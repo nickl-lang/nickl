@@ -6,11 +6,15 @@ makeStruct :: (filename: string) -> type_t {
     root := json.object_from_file(filename.data);
 
     if root {
-        FIELD_COUNT :: u64{2}; // TODO Hardcoded field count
+        FIELD_COUNT :: u64{10};
         field_ar: [FIELD_COUNT]compiler.StructField;
 
         fields := json.object_object_get(root, "fields");
         len := json.object_array_length(fields);
+
+        if len > FIELD_COUNT {
+            return struct {};
+        }
 
         i: u64 = 0;
         while i < len {
@@ -26,7 +30,8 @@ makeStruct :: (filename: string) -> type_t {
             i = i + 1;
         }
 
-        type := compiler.makeStruct(&field_ar);
+        // TODO Manual array slicing
+        type := compiler.makeStruct(([]compiler.StructField){&field_ar, len});
         json.object_put(root);
         return type;
     }

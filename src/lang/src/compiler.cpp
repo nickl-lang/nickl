@@ -389,7 +389,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
     return {
         {.cnst = nkir_makeConst(
              c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
@@ -1302,6 +1302,36 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
     }
 }
 
+ValueInfo compileTupleLiteral(
+    NklCompiler c,
+    nkltype_t type,
+    nkltype_t tuple_t,
+    NklAstNodeArray init_nodes) {
+    auto const value_count = init_nodes.size;
+    std::vector<nkid> names;
+    std::vector<ValueInfo> values;
+    names.reserve(value_count);
+    values.reserve(value_count);
+    // TODO bool all_known = true;
+    for (size_t i = 0; i < value_count; i++) {
+        auto const init_node = &init_nodes.data[i];
+        auto const name_node = narg0(init_node);
+        names.emplace_back((name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
+        APPEND(values, compile(c, narg1(init_node), type->as.tuple.elems.data[i].type));
+        // TODO if (!isKnown(values.back())) {
+        //     all_known = false;
+        // }
+    }
+    auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+    if (value_count != tuple_t->as.tuple.elems.size) {
+        return error(c, "invalid number of values in composite literal"), ValueInfo{};
+    }
+    for (size_t i = 0; i < value_count; i++) {
+        CHECK(store(c, tupleIndex(ref, i), values[i]));
+    }
+    return makeRef(ref);
+}
+
 ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInfo const> tags) {
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
@@ -1962,7 +1992,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             return error(c, "type expected in object literal"), ValueInfo{};
         }
 
-        auto const type = nklval_as(nkltype_t, type_val);
+        auto type = nklval_as(nkltype_t, type_val);
         auto const init_nodes = nargs1(node);
 
         // TODO Support compile time object literals other than struct
@@ -1972,34 +2002,13 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             return compileStructLiteral(c, type, init_nodes);
         }
 
-        case NkType_Tuple:
         case NklType_Any:
         case NklType_Slice: {
-            auto const value_count = init_nodes.size;
-            std::vector<nkid> names;
-            std::vector<ValueInfo> values;
-            names.reserve(value_count);
-            values.reserve(value_count);
-            // TODO bool all_known = true;
-            for (size_t i = 0; i < value_count; i++) {
-                auto const init_node = &init_nodes.data[i];
-                auto const name_node = narg0(init_node);
-                names.emplace_back(
-                    (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
-                APPEND(values, compile(c, narg1(init_node), type->as.tuple.elems.data[i].type));
-                // TODO if (!isKnown(values.back())) {
-                //     all_known = false;
-                // }
-            }
-            auto const tuple_t = type;
-            auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            if (value_count != tuple_t->as.tuple.elems.size) {
-                return error(c, "invalid number of values in composite literal"), ValueInfo{};
-            }
-            for (size_t i = 0; i < value_count; i++) {
-                CHECK(store(c, tupleIndex(ref, i), values[i]));
-            }
-            return makeRef(ref);
+            return compileTupleLiteral(c, type, type->underlying_type, init_nodes);
+        }
+
+        case NkType_Tuple: {
+            return compileTupleLiteral(c, type, type, init_nodes);
         }
 
         case NkType_Array: {
