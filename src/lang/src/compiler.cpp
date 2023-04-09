@@ -2440,10 +2440,15 @@ extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
     nk_free(nk_default_allocator, b);
 }
 
-extern "C" NK_EXPORT void nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
+extern "C" NK_EXPORT bool nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
     NK_LOG_TRC(__func__);
 
-    b->libs.emplace_back(std_view(lib));
+    auto path = fs::path{std_view(lib)};
+    if (fs::exists(path)) {
+        path = fs::canonical(path);
+    }
+    b->libs.emplace_back(std::move(path));
+    return true;
 }
 
 extern "C" NK_EXPORT bool nkl_compiler_build(
@@ -2459,6 +2464,7 @@ extern "C" NK_EXPORT bool nkl_compiler_build(
     for (auto const &lib : b->libs) {
         if (!lib.parent_path().empty()) {
             flags += " -L" + lib.parent_path().string();
+            flags += " -Wl,-rpath=" + lib.parent_path().string();
         }
         flags += " -l:" + lib.filename().string();
     }

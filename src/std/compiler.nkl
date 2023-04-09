@@ -4,7 +4,7 @@ EntryPoint :: (argc: i32, argv: **i8) -> i32;
 #link("", "nkl_compiler_") createBuilder :: () -> *Builder;
 #link("", "nkl_compiler_") freeBuilder :: (b: *Builder) -> void;
 
-#link("", "nkl_compiler_") link :: (b: *Builder, lib: string) -> void;
+#link("", "nkl_compiler_") link :: (b: *Builder, lib: string) -> bool;
 #link("", "nkl_compiler_") build :: (b: *Builder, entry: EntryPoint, exe_name: string) -> bool;
 
 #link("", "nkl_compiler_") declareLocal :: (name: string, type: type_t) -> void;
