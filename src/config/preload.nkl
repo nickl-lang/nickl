@@ -2,11 +2,11 @@ int :: i64;
 float :: f64;
 string :: []i8;
 
-// #link :: struct {
-//     libname: string,
-//     prefix: string = "",
-// };
+#link :: struct {
+    libname: string,
+    prefix: string = "",
+};
 
-// #extern :: struct {
-//     abi: string,
-// }
+#extern :: struct {
+    abi: string,
+}

@@ -2051,6 +2051,16 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type) {
         });
     }
 
+    case n_tag_def: {
+        return compileComptimeConstDef(c, node, [=]() {
+            auto cnst = comptimeCompileNode(c, narg1(node));
+            if (nklt_tclass(comptimeConstType(cnst)) != NklType_Typeref) {
+                return error(c, "type expected in tag definition"), ComptimeConst{};
+            }
+            return cnst;
+        });
+    }
+
     case n_var_decl: {
         auto const &names = nargs0(node);
         if (names.size > 1) {
