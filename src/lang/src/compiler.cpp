@@ -28,6 +28,7 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/slice.hpp"
 #include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
@@ -185,7 +186,7 @@ struct TagInfo {
 struct NodeInfo {
     NklAstNode node;
     nkltype_t type{};
-    std::vector<TagInfo> tags{};
+    nkslice<TagInfo const> tags{};
 };
 
 } // namespace
@@ -682,7 +683,11 @@ ValueInfo compile(
     NklAstNode node,
     nkltype_t type = nullptr,
     nkslice<TagInfo const> tags = {});
-Void compileStmt(NklCompiler c, NklAstNode node);
+Void compileStmt(
+    NklCompiler c,
+    NklAstNode node,
+    nkltype_t type = nullptr,
+    nkslice<TagInfo const> tags = {});
 
 ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
     auto index = nklt_struct_index(struct_t, name);
@@ -1307,7 +1312,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
     c->node_stack.emplace_back(NodeInfo{
         .node = node,
         .type = type,
-        .tags{std::begin(tags), std::end(tags)},
+        .tags = tags,
     });
     defer {
         c->node_stack.pop_back();
@@ -1829,7 +1834,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
     case n_tag: {
         auto const n_name = narg0(node);
         auto const n_args = nargs1(node);
-        auto const n_def = narg2(node);
+        auto const n_nodes = nargs2(node);
 
         auto const name = s2nkid(n_name->token->text);
 
@@ -1857,7 +1862,17 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             .val{asValue(c, val)},
         };
 
-        return compile(c, n_def, nullptr, {&tag, 1lu});
+        // TODO Support multiple tags
+        nkslice<TagInfo const> tags{&tag, 1lu};
+
+        if (n_nodes.size == 1) {
+            return compile(c, &n_nodes.data[0], nullptr, tags);
+        } else {
+            for (size_t i = 0; i < n_nodes.size; i++) {
+                CHECK(compileStmt(c, &n_nodes.data[i], nullptr, tags));
+            }
+            return makeVoid();
+        }
     }
 
     case n_call: {
@@ -2268,8 +2283,8 @@ nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t t
     return comptimeConstGetValue(c, cnst);
 }
 
-Void compileStmt(NklCompiler c, NklAstNode node) {
-    DEFINE(val, compile(c, node));
+Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInfo const> tags) {
+    DEFINE(val, compile(c, node, type, tags));
     auto ref = asRef(c, val);
     if (val.kind != v_none) {
         (void)ref;

@@ -18,5 +18,5 @@ main(0, cast(**i8) u64{0});
 
 import compiler;
 builder := compiler.createBuilder();
-compiler.build(builder, cast(compiler.EntryPoint) main, "vec_length");
+compiler.build(builder, main, "vec_length");
 compiler.freeBuilder(builder);

@@ -34,14 +34,16 @@ makeStruct :: (filename: string) -> type_t {
     return struct {};
 }
 
-main :: () -> void {
+main :: (argc: i32, argv: **i8) -> i32 {
     obj: makeStruct("./struct.json");
     obj.x = 1.23;
     obj.y = 4.56;
 
     libc.printf("x=%g y=%g\n", obj.x, obj.y);
+
+    return 0;
 }
 
 builder := compiler.createBuilder();
-compiler.build(builder, cast(compiler.EntryPoint) main, "struct_from_json");
+compiler.build(builder, main, "struct_from_json");
 compiler.freeBuilder(builder);

@@ -14,7 +14,7 @@ getErr :: () -> Result { return Result{Err="whoops"}; }
 
 res: Result;
 
-main :: () -> void {
+main :: (argc: i32, argv: **i8) -> i32 {
     import libc;
 
     res = getVec();
@@ -24,9 +24,11 @@ main :: () -> void {
     res = getErr();
     libc.printf("%lu", res.tag);
     libc.printf("%s\n", res.data.Err.data);
+
+    return 0;
 }
 
 import compiler;
 builder := compiler.createBuilder();
-compiler.build(builder, cast(compiler.EntryPoint) main, "result_enum");
+compiler.build(builder, main, "result_enum");
 compiler.freeBuilder(builder);

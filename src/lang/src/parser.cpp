@@ -228,7 +228,7 @@ private:
         return {};
     }
 
-    NklAstNode_T block(bool capture_brace = true) {
+    NklAstNode_T block(bool capture_brace = true, bool force_block_node = false) {
         // TODO Optimize node allocation in parser for nodes
         std::vector<NklAstNode_T> nodes{};
 
@@ -246,8 +246,8 @@ private:
         }
 
         auto node =
-            nodes.size() == 0 ? nkl_makeNode0(n_nop, _n_token)
-            : nodes.size() == 1
+            nodes.size() == 0 && !force_block_node ? nkl_makeNode0(n_nop, _n_token)
+            : nodes.size() == 1 && !force_block_node
                 ? nodes.front()
                 : nkl_makeNode1(
                       n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
@@ -335,6 +335,19 @@ private:
                             .allow_trailing_comma = true,
                         }));
                 }
+                NklAstNodeArray nodes{};
+                NklAstNode_T body{};
+                if (check(t_brace_l)) {
+                    ASSIGN(body, block(true, true));
+                } else {
+                    ASSIGN(body, statement());
+                }
+                // TODO A little hack with block node
+                if (body.id == n_scope) {
+                    nodes = nargs0(narg0(&body));
+                } else {
+                    nodes = {&body, 1};
+                }
                 ASSIGN(
                     node,
                     nkl_makeNode3(
@@ -342,7 +355,7 @@ private:
                         _n_token,
                         nkl_pushNode(m_ast, nkl_makeNode0(n_name, tag)),
                         nkl_pushNodeAr(m_ast, {args.data(), args.size()}),
-                        nkl_pushNode(m_ast, statement())));
+                        nkl_pushNodeAr(m_ast, nodes)));
             }
         } else if (accept(t_const)) {
             //@Boilerplate in const var decl

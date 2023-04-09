@@ -46,7 +46,7 @@ maybeGetInt :: () -> MaybeInt {
     }
 }
 
-main :: () -> void {
+main :: (argc: i32, argv: **i8) -> i32 {
     maybe_str := bind(&maybeGetInt(), intToMaybeStr); // TODO Manual address
     if maybe_str.tag == Nothing {
         libc.puts("(nothing)");
@@ -54,11 +54,13 @@ main :: () -> void {
         str := maybe_str.data.Just;
         libc.printf("str=`%.*s`\n", str.size, str.data);
     }
+
+    return 0;
 }
 
-main();
+main(0, cast(**i8) u64{0});
 
 import compiler;
 builder := compiler.createBuilder();
-compiler.build(builder, cast(compiler.EntryPoint) main, "monad");
+compiler.build(builder, main, "monad");
 compiler.freeBuilder(builder);

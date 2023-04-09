@@ -1,7 +1,9 @@
-#link("c") printf :: (format: *const i8, ...) -> i32;
-#link("c") puts :: (str: *const i8) -> i32;
+#link("c") {
 
-#link("c") snprintf :: (s: *i8, n: u64, format: *const i8, ...) -> i32;
+printf :: (format: *const i8, ...) -> i32;
+puts :: (str: *const i8) -> i32;
+
+snprintf :: (s: *i8, n: u64, format: *const i8, ...) -> i32;
 
 FILE :: struct {}
 
@@ -9,37 +11,37 @@ STDIN_FILENO  :: i32{0};
 STDOUT_FILENO :: i32{1};
 STDERR_FILENO :: i32{2};
 
-#link("c") fopen :: (path: *i8, mode: *i8) -> *FILE;
-#link("c") fdopen :: (fd: i32, mode: *i8) -> *FILE;
-#link("c") freopen :: (path: *i8, mode: *i8, stream: *FILE) -> *FILE;
+fopen :: (path: *i8, mode: *i8) -> *FILE;
+fdopen :: (fd: i32, mode: *i8) -> *FILE;
+freopen :: (path: *i8, mode: *i8, stream: *FILE) -> *FILE;
 
-#link("c") fclose :: (stream: *FILE) -> i32;
-#link("c") fflush :: (stream: *FILE) -> i32;
+fclose :: (stream: *FILE) -> i32;
+fflush :: (stream: *FILE) -> i32;
 
-#link("c") fprintf :: (stream: *FILE, format: *i8, ... ) -> i32;
-#link("c") fputs :: (str: *i8, stream: *FILE) -> i32;
+fprintf :: (stream: *FILE, format: *i8, ... ) -> i32;
+fputs :: (str: *i8, stream: *FILE) -> i32;
 
-#link("c") getchar :: () -> i32;
-#link("c") putchar :: (c: i32) -> i32;
+getchar :: () -> i32;
+putchar :: (c: i32) -> i32;
 
-#link("c") fgetc :: (stream: *FILE) -> i32;
+fgetc :: (stream: *FILE) -> i32;
 
-#link("c") fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
+fread :: (buffer: *i8, size: u64, count: u64, stream: *FILE) -> u64;
 
-#link("c") atoi :: (str: *i8) -> i32;
+atoi :: (str: *i8) -> i32;
 
-#link("c") memset :: (s: *void, c: i32, n: u64) -> *void;
-#link("c") memcmp :: (lhs: *const void, rhs: *const void, count: u64) -> i32;
-#link("c") strcmp :: (lhs: *const i8, rhs: *const i8) -> i32;
-#link("c") strlen :: (str: *const i8) -> u64;
+memset :: (s: *void, c: i32, n: u64) -> *void;
+memcmp :: (lhs: *const void, rhs: *const void, count: u64) -> i32;
+strcmp :: (lhs: *const i8, rhs: *const i8) -> i32;
+strlen :: (str: *const i8) -> u64;
 
 F_GETFL :: i32{3};
 F_SETFL :: i32{4};
 O_NONBLOCK :: i32{2048}; // TODO Cannot write octal 04000
 
-#link("c") fcntl :: (fildes: i32, cmd: i32, ...) -> i32;
+fcntl :: (fildes: i32, cmd: i32, ...) -> i32;
 
-#link("c") system :: (cmd: *i8) -> i32;
+system :: (cmd: *i8) -> i32;
 
 CLOCK_MONOTONIC :: i32{1};
 
@@ -49,16 +51,22 @@ timespec :: struct {
     tv_nsec: i64,
 }
 
-#link("c") clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
-#link("c") nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
+clock_gettime :: (clockid: clockid_t, tp: *timespec) -> i32;
+nanosleep :: (rqtp: *const timespec, rmtp: *timespec) -> i32;
 
-#link("c") rand :: () -> i32;
-#link("c") srand :: (seed: u32) -> void;
+rand :: () -> i32;
+srand :: (seed: u32) -> void;
 
 time_t :: i64;
-#link("c") time :: (timer: *time_t) -> time_t;
+time :: (timer: *time_t) -> time_t;
 
-#link("m") sqrt :: (x: f64) -> f64;
-#link("m") sqrtf :: (x: f32) -> f32;
+}
+
+#link("m") {
+
+sqrt :: (x: f64) -> f64;
+sqrtf :: (x: f32) -> f32;
+
+}
 
 puts("Hello from stdlib!");

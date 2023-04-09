@@ -3,8 +3,7 @@ import libc;
 pthread_t :: u64;
 pthread_attr_t :: u64;
 
-// TODO Add #extern("c") to ThreadFunc type
-ThreadFunc :: (arg: *void) -> *void;
+#extern("c") ThreadFunc :: (arg: *void) -> *void;
 
 LIBPTHREAD :: "libpthread.so.0";
 
@@ -16,10 +15,10 @@ LIBPTHREAD :: "libpthread.so.0";
 #link(LIBPTHREAD) pthread_join :: (thread: pthread_t, retval: **void) -> i32;
 #link(LIBPTHREAD) pthread_self :: () -> pthread_t;
 
-#extern("c") thread :: (arg: *void) -> *i8 {
+#extern("c") thread :: (arg: *void) -> *void {
     libc.printf("thread: arg='%s'\n", arg);
     libc.printf("thread: id=%li\n", pthread_self());
-    return "hello";
+    return cast(*void) "hello";
 }
 
 exec :: (name: *i8) -> void {
@@ -28,7 +27,7 @@ exec :: (name: *i8) -> void {
 
     if pthread_create(&thread_id,
            cast(*pthread_attr_t) u64{0},
-           cast(ThreadFunc) thread,
+           thread,
            cast(*void) name) != 0 {
         libc.printf("error: pthread_create() error");
         return;
@@ -42,7 +41,7 @@ exec :: (name: *i8) -> void {
     libc.printf("exec: ret='%s'\n", ret);
 }
 
-main :: () -> i32 {
+main :: (argc: i32, argv: **i8) -> i32 {
     ${ exec("Compile time threads!"); }
     exec("Run time threads!");
 
@@ -52,5 +51,5 @@ main :: () -> i32 {
 c :: import compiler;
 builder := c.createBuilder();
 c.link(builder, LIBPTHREAD);
-c.build(builder, cast(c.EntryPoint) main, "threads");
+c.build(builder, main, "threads");
 c.freeBuilder(builder);
