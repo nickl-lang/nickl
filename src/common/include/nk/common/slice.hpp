@@ -26,6 +26,11 @@ struct nkslice {
         , _size{cont.size()} {
     }
 
+    constexpr nkslice(T *data, size_t size)
+        : _data{data}
+        , _size{size} {
+    }
+
     constexpr iterator data() const {
         return _data;
     }
