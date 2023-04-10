@@ -122,6 +122,9 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             ffi_t = &ffi_type_pointer;
             break;
         case NkType_Tuple: {
+            if (!type->as.tuple.elems.size) {
+                return &ffi_type_void;
+            }
             ffi_type **elements = (ffi_type **)nk_allocate(
                 s_typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
             for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
@@ -136,9 +139,6 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             };
             break;
         }
-        case NkType_Void:
-            ffi_t = &ffi_type_void;
-            break;
         default:
             assert(!"unreachable");
             break;

@@ -389,7 +389,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
     return {
         {.cnst = nkir_makeConst(
              c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
@@ -477,7 +477,7 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     case v_instr: {
         auto instr = val.as.instr;
         auto &dst = instr.arg[0].ref;
-        if (dst.ref_type == NkIrRef_None && val.type->tclass != NkType_Void) {
+        if (dst.ref_type == NkIrRef_None && nklt_sizeof(val.type)) {
             dst = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(val.type)));
         }
         gen(c, instr);
@@ -522,19 +522,17 @@ NkIrRef asRef(NklCompiler c, ValueInfo const &val) {
     return ref;
 }
 
-NkIrRef tupleIndex(NkIrRef ref, size_t i) {
-    auto const tuple_t = ref.type;
+NkIrRef tupleIndex(NkIrRef ref, nkltype_t tuple_t, size_t i) {
     assert(i < tuple_t->as.tuple.elems.size);
-    ref.type = tuple_t->as.tuple.elems.data[i].type;
+    ref.type = tovmt(tuple_t->as.tuple.elems.data[i].type);
     ref.post_offset += tuple_t->as.tuple.elems.data[i].offset;
     return ref;
 }
 
-NkIrRef arrayIndex(NkIrRef ref, size_t i) {
-    auto const array_t = ref.type;
+NkIrRef arrayIndex(NkIrRef ref, nkltype_t array_t, size_t i) {
     assert(i < array_t->as.arr.elem_count);
-    ref.type = array_t->as.arr.elem_type;
-    ref.post_offset += nkt_sizeof(array_t->as.arr.elem_type) * i;
+    ref.type = tovmt(array_t->as.arr.elem_type);
+    ref.post_offset += nklt_sizeof(array_t->as.arr.elem_type) * i;
     return ref;
 }
 
@@ -588,8 +586,10 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
         nklt_typeid(dst_type->as.slice.target_type) ==
             nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type)) {
-        auto data_ref = tupleIndex(dst, 0);
-        auto size_ref = tupleIndex(dst, 1);
+        auto const struct_t = dst_type->underlying_type;
+        auto const tuple_t = struct_t->underlying_type;
+        auto data_ref = tupleIndex(dst, tuple_t, 0);
+        auto size_ref = tupleIndex(dst, tuple_t, 1);
         CHECK(store(c, data_ref, cast(nkl_get_ptr(dst_type->as.slice.target_type), src)));
         CHECK(store(
             c,
@@ -598,8 +598,10 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         return makeRef(dst);
     }
     if (nklt_tclass(dst_type) == NklType_Any && nklt_tclass(src_type) == NkType_Ptr) {
-        auto data_ref = tupleIndex(dst, 0);
-        auto type_ref = tupleIndex(dst, 1);
+        auto const struct_t = dst_type->underlying_type;
+        auto const tuple_t = struct_t->underlying_type;
+        auto data_ref = tupleIndex(dst, tuple_t, 0);
+        auto type_ref = tupleIndex(dst, tuple_t, 1);
         CHECK(store(c, data_ref, cast(void_ptr_t, src)));
         CHECK(store(c, type_ref, makeValue<nkltype_t>(c, typeref_t, src_type->as.ptr.target_type)));
         return makeRef(dst);
@@ -622,7 +624,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
               nklt_typeid(dst_type->as.ptr.target_type))) {
         return error(
                    c,
-                   "cannot store value of type `%s` into a slot of type `%s`",
+                   "cannot store value of type `%s` into a slot of type `%s` dst.id=%lu src.id=%lu",
                    (char const *)[&]() {
                        auto sb = nksb_create();
                        nklt_inspect(src_type, sb);
@@ -636,10 +638,12 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                        return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
                            nksb_free(sb);
                        });
-                   }()),
+                   }(),
+                   dst_type->id,
+                   src_type->id),
                ValueInfo{};
     }
-    if (src_type->tclass != NkType_Void) {
+    if (nklt_sizeof(src_type)) {
         if (src.kind == v_instr && src.as.instr.arg[0].ref.ref_type == NkIrRef_None) {
             src.as.instr.arg[0].ref = dst;
         } else {
@@ -706,7 +710,7 @@ ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t
                    type_str.data),
                ValueInfo{};
     }
-    return makeRef(tupleIndex(asRef(c, lhs), index));
+    return makeRef(tupleIndex(asRef(c, lhs), struct_t->underlying_type, index));
 }
 
 ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
@@ -828,7 +832,7 @@ ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) 
         if (i >= lhs.type->as.tuple.elems.size) {
             return error(c, "tuple index out of range"), ValueInfo{};
         }
-        return makeRef(tupleIndex(asRef(c, lhs), i));
+        return makeRef(tupleIndex(asRef(c, lhs), lhs.type, i));
     }
 
     case NklType_Slice: {
@@ -1089,11 +1093,6 @@ void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
             initFromAst(c, nklval_tuple_at(val, i), {&init_nodes.data[i], 1});
         }
         break;
-    case NkType_Void:
-        if (init_nodes.size > 0) {
-            return error(c, "too many values to init void");
-        }
-        break;
     default:
         NK_LOG_ERR("initFromAst is not implemented for this type");
         assert(!"unreachable");
@@ -1191,7 +1190,7 @@ ValueInfo makeNumeric(NklCompiler c, nkltype_t type, nkstr str, char const *fmt)
     return makeValue<T>(c, type, value);
 }
 
-ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray init_nodes) {
+ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArray init_nodes) {
     auto const value_count = init_nodes.size;
     std::vector<nkid> names;
     std::vector<ValueInfo> values;
@@ -1214,14 +1213,14 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
         if (name && std::find(std::begin(names), std::end(names), name) != std::end(names)) {
             return error(c, "duplicate names"), ValueInfo{};
         }
-        if (name && nklt_struct_index(type, name) == -1lu) {
+        if (name && nklt_struct_index(struct_t, name) == -1lu) {
             return error(
                        c,
                        "no field named `%s` in type `struct`",
                        nkid2cs(name),
                        (char const *)[&]() {
                            auto sb = nksb_create();
-                           nklt_inspect(type, sb);
+                           nklt_inspect(struct_t, sb);
                            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
                                nksb_free(sb);
                            });
@@ -1231,7 +1230,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
         names.emplace_back(name);
         APPEND(
             values,
-            compile(c, narg1(init_node), type->underlying_type->as.tuple.elems.data[i].type));
+            compile(c, narg1(init_node), struct_t->underlying_type->as.tuple.elems.data[i].type));
         if (!isKnown(values.back())) {
             all_known = false;
         }
@@ -1240,12 +1239,12 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
     nklval_t val{};
     ValueInfo val_info{};
     if (all_known) {
-        val_info = makeValue(c, type);
+        val_info = makeValue(c, struct_t);
         ASSIGN(val, asValue(c, val_info));
     } else {
-        ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
+        ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(struct_t)));
     }
-    auto const fields = type->as.strct.fields;
+    auto const fields = struct_t->as.strct.fields;
     std::vector<bool> initted;
     initted.resize(fields.size);
     size_t last_positional = 0;
@@ -1264,7 +1263,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
         if (vi >= fields.size) {
             return error(c, "too many values"), ValueInfo{};
         }
-        auto fi = names[vi] ? nklt_struct_index(type, names[vi]) : vi;
+        auto fi = names[vi] ? nklt_struct_index(struct_t, names[vi]) : vi;
         if (names[vi]) {
             if (fi < last_positional) {
                 return error(c, "named argument conflicts with positional"), ValueInfo{};
@@ -1275,11 +1274,11 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
         if (all_known) {
             comptimeStore(c, nklval_tuple_at(val, fi), asValue(c, values[vi]));
         } else {
-            CHECK(store(c, tupleIndex(ref, fi), values[vi]));
+            CHECK(store(c, tupleIndex(ref, struct_t->underlying_type, fi), values[vi]));
         }
         initted.at(fi) = true;
     }
-    auto const it = c->struct_inits.find(nklt_typeid(type));
+    auto const it = c->struct_inits.find(nklt_typeid(struct_t));
     if (it != c->struct_inits.end()) {
         auto const &inits = it->second;
         for (size_t fi = 0; fi < fields.size; fi++) {
@@ -1289,7 +1288,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t type, NklAstNodeArray in
                     if (all_known) {
                         comptimeStore(c, nklval_tuple_at(val, fi), asValue(c, it->second));
                     } else {
-                        CHECK(store(c, tupleIndex(ref, fi), it->second));
+                        CHECK(store(c, tupleIndex(ref, struct_t->underlying_type, fi), it->second));
                     }
                     initted.at(fi) = true;
                 }
@@ -1333,7 +1332,7 @@ ValueInfo compileTupleLiteral(
         return error(c, "invalid number of values in composite literal"), ValueInfo{};
     }
     for (size_t i = 0; i < value_count; i++) {
-        CHECK(store(c, tupleIndex(ref, i), values[i]));
+        CHECK(store(c, tupleIndex(ref, tuple_t, i), values[i]));
     }
     return makeRef(ref);
 }
@@ -1589,11 +1588,6 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             }
             break;
         }
-
-        case NkType_Void: {
-            (void)asRef(c, src);
-            return makeVoid();
-        }
         }
 
         return error(
@@ -1689,7 +1683,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             return error(c, "invalid number of values in tuple literal"), ValueInfo{};
         }
         for (size_t i = 0; i < values.size(); i++) {
-            CHECK(store(c, tupleIndex(ref, i), values[i]));
+            CHECK(store(c, tupleIndex(ref, tuple_t, i), values[i]));
         }
         return makeRef(ref);
     }
@@ -1985,7 +1979,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
         }
 
         for (size_t i = 0; i < args_info.size(); i++) {
-            CHECK(store(c, tupleIndex(args_ref, i), args_info[i]));
+            auto const arg_ref = tupleIndex(args_ref, args_t, i);
+            CHECK(store(c, arg_ref, args_info[i]));
         }
 
         return makeInstr(nkir_make_call({}, asRef(c, lhs), args_ref), fn_t->as.fn.ret_t);
@@ -2010,7 +2005,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
 
         case NklType_Any:
         case NklType_Slice: {
-            return compileTupleLiteral(c, type, type->underlying_type, init_nodes);
+            auto const struct_t = type->underlying_type;
+            auto const tuple_t = struct_t->underlying_type;
+            return compileTupleLiteral(c, type, tuple_t, init_nodes);
         }
 
         case NkType_Tuple: {
@@ -2039,7 +2036,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             }
             auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
             for (size_t i = 0; i < value_count; i++) {
-                CHECK(store(c, arrayIndex(ref, i), values[i]));
+                CHECK(store(c, arrayIndex(ref, type, i), values[i]));
             }
             return makeRef(ref);
         }
@@ -2058,8 +2055,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             auto const union_t = struct_t->as.strct.fields.data[0].type;
             // TODO Can we not create a local variable undonditionally in enum literal?
             auto const enum_ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(type)));
-            auto const data_ref = tupleIndex(enum_ref, 0);
-            auto const tag_ref = tupleIndex(enum_ref, 1);
+            auto const data_ref = tupleIndex(enum_ref, struct_t->underlying_type, 0);
+            auto const tag_ref = tupleIndex(enum_ref, struct_t->underlying_type, 1);
             DEFINE(field_ref, getUnionIndex(c, makeRef(data_ref), union_t, name));
             DEFINE(value, compile(c, narg1(init_node), field_ref.type));
             CHECK(store(c, asRef(c, field_ref), value));
@@ -2106,7 +2103,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             }
             for (size_t i = 0; i < lhss.size(); i++) {
                 auto rhs_ref = asRef(c, rhs);
-                store(c, asRef(c, lhss[i]), makeRef(tupleIndex(rhs_ref, i)));
+                store(c, asRef(c, lhss[i]), makeRef(tupleIndex(rhs_ref, rhs.type, i)));
             }
             return makeVoid();
         }

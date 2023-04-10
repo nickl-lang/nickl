@@ -23,7 +23,6 @@ typedef enum {
     NkType_Numeric,
     NkType_Ptr,
     NkType_Tuple,
-    NkType_Void,
 
     NkTypeclass_Count,
 } NkTypeclassId;

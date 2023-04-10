@@ -14,7 +14,7 @@ MaybeStr :: enum {
 
 bind :: (self: *const MaybeInt, f: (x: i32) -> MaybeStr) -> MaybeStr {
     if self.tag == Nothing {
-        return MaybeStr{Nothing=void{}}; // TODO void literal
+        return MaybeStr{Nothing=()};
     } else {
         return f(self.data.Just);
     }
@@ -30,7 +30,7 @@ random :: () -> i32 {
 
 maybeGetInt :: () -> MaybeInt {
     if random() % 2 {
-        return MaybeInt{Nothing=void{}};
+        return MaybeInt{Nothing=()};
     } else {
         return MaybeInt{Just=42};
     }

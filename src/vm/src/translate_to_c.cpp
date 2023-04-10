@@ -103,7 +103,12 @@ void _writeNumericType(NkNumericValueType value_type, std::ostream &src) {
     }
 }
 
-void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
+void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src, bool allow_void = false) {
+    if (type->size == 0 && allow_void) {
+        src << "void";
+        return;
+    }
+
     auto found_str = ctx.type_map.find(type);
     if (found_str != ctx.type_map.end()) {
         src << found_str->second;
@@ -121,9 +126,6 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
     case NkType_Ptr:
         _writeType(ctx, type->as.ptr.target_type, tmp_s);
         tmp_s << "*";
-        break;
-    case NkType_Void:
-        tmp_s << "void";
         break;
     case NkType_Tuple: {
         is_complex = true;
@@ -148,7 +150,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src) {
         auto const ret_t = type->as.fn.ret_t;
         auto const args_t = type->as.fn.args_t;
         auto const is_variadic = type->as.fn.is_variadic;
-        _writeType(ctx, ret_t, tmp_s);
+        _writeType(ctx, ret_t, tmp_s, true);
         tmp_s << " (*";
         tmp_s_suf << ")(";
         for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
@@ -280,10 +282,6 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         tmp_s << "}";
         break;
     }
-    case NkType_Void: {
-        assert(!"trying to write void const");
-        break;
-    }
     case NkType_Fn: {
         NkIrFunct fn;
         switch (nkval_typeof(val)->as.fn.call_conv) {
@@ -335,7 +333,7 @@ void _writeFnSig(
     nktype_t ret_t,
     nktype_t args_t,
     bool va = false) {
-    _writeType(ctx, ret_t, src);
+    _writeType(ctx, ret_t, src, true);
     src << " " << name << "(";
 
     for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
@@ -353,8 +351,7 @@ void _writeFnSig(
 
 // TODO Check if cast is needed
 void _writeCast(WriterCtx &ctx, std::ostream &src, nktype_t type) {
-    if (type->tclass != NkType_Numeric && type->tclass != NkType_Ptr &&
-        type->tclass != NkType_Void) {
+    if (type->tclass != NkType_Numeric && type->tclass != NkType_Ptr && type->size) {
         return;
     }
 
@@ -390,10 +387,14 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
     for (size_t i = 0; auto type : fn->locals) {
         _writeType(ctx, type, src);
-        src << " var" << i++ << "={0};\n";
+        src << " var" << i++ << "={";
+        if (type->size) {
+            src << "0";
+        }
+        src << "};\n";
     }
 
-    if (ret_t->tclass != NkType_Void) {
+    if (ret_t->size) {
         _writeType(ctx, ret_t, src);
         src << " ret={0};\n";
     }
@@ -454,8 +455,13 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << "global" << ref.index;
                 if (ctx.globals_forward_declared.find(ref.index) ==
                     ctx.globals_forward_declared.end()) {
-                    _writeType(ctx, ref.type, ctx.forward_s);
-                    ctx.forward_s << " global" << ref.index << "={0};\n";
+                    auto const type = ir->globals[ref.index];
+                    _writeType(ctx, type, ctx.forward_s);
+                    ctx.forward_s << " global" << ref.index << "={";
+                    if (type->size) {
+                        ctx.forward_s << "0";
+                    }
+                    ctx.forward_s << "};\n";
                     ctx.globals_forward_declared.emplace(ref.index);
                 }
                 break;
@@ -500,7 +506,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             switch (instr.code) {
             case nkir_ret:
                 src << "return";
-                if (ret_t->tclass != NkType_Void) {
+                if (ret_t->size) {
                     src << " ret";
                 }
                 break;

@@ -84,7 +84,7 @@ NkType nkt_get_void() {
         .as{},
         .size = 0,
         .align = 1,
-        .tclass = NkType_Void,
+        .tclass = NkType_Tuple,
         .id = s_next_id++,
     };
 }
@@ -148,9 +148,6 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
         nksb_printf(sb, ")");
         break;
     }
-    case NkType_Void:
-        nksb_printf(sb, "void");
-        break;
     default:
         nksb_printf(sb, "type{%p}", type);
         break;
@@ -245,9 +242,6 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
             nksb_printf(sb, ",");
         }
         nksb_printf(sb, ")");
-        break;
-    case NkType_Void:
-        nksb_printf(sb, "void{}");
         break;
     default: {
         nksb_printf(sb, "value{data=%p, type=", nkval_data(val));

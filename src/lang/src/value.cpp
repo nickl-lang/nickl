@@ -13,6 +13,7 @@
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.h"
+#include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
 
@@ -134,11 +135,12 @@ nktype_t nkl_get_vm_tuple(NkAllocator alloc, nktype_t const *types, size_t count
 }
 
 nktype_t nkl_get_vm_void() {
-    auto const tclass = NkType_Void;
+    auto const tclass = NkType_Tuple;
 
     ByteArray fp{};
     pushVal(fp, NkTypeSubset);
     pushVal(fp, tclass);
+    pushVal(fp, (size_t)0);
 
     return getTypeByFingerprint(std::move(fp), [=]() {
         return &s_vm_types.emplace_back(nkt_get_void());
@@ -275,11 +277,12 @@ nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride) {
 }
 
 nkltype_t nkl_get_void() {
-    auto const tclass = NkType_Void;
+    auto const tclass = NkType_Tuple;
 
     ByteArray fp{};
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
+    pushVal(fp, (size_t)0);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         return &s_types.emplace_back(NklType{
@@ -433,7 +436,6 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
             }
             max_align = maxu(max_align, nklt_alignof(type));
         }
-        // TODO Not sure if modifying vm_type alignment like this is ok
         auto vm_type = *tovmt(largest_type);
         vm_type.align = max_align;
         return &s_types.emplace_back(NklType{
@@ -521,12 +523,15 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
 
 void nklval_inspect(nklval_t val, NkStringBuilder sb) {
     switch (nklval_tclass(val)) {
-    case NklType_Typeref: // TODO type_t value inspect not implemented
-    case NklType_Any:     // TODO any_t value inspect not implemented
-    case NklType_Slice:   // TODO Slice value inspect not implemented
-    case NklType_Struct:  // TODO Struct value inspect not implemented
-    case NklType_Union:   // TODO Union value inspect not implemented
-    case NklType_Enum:    // TODO Enum value inspect not implemented
+    case NklType_Any:    // TODO any_t value inspect not implemented
+    case NklType_Slice:  // TODO Slice value inspect not implemented
+    case NklType_Struct: // TODO Struct value inspect not implemented
+    case NklType_Union:  // TODO Union value inspect not implemented
+    case NklType_Enum:   // TODO Enum value inspect not implemented
+
+    case NklType_Typeref:
+        nklt_inspect(nklval_as(nkltype_t, val), sb);
+        break;
 
     default:
         nkval_inspect(tovmv(val), sb);
