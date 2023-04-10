@@ -96,6 +96,13 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
         nkt_inspect(type->as.arr.elem_type, sb);
         break;
     case NkType_Fn: {
+        switch (type->as.fn.call_conv) {
+        case NkCallConv_Nk:
+            break;
+        case NkCallConv_Cdecl:
+            nksb_printf(sb, "(cdecl)");
+            break;
+        }
         nksb_printf(sb, "(");
         nktype_t const params = type->as.fn.args_t;
         for (size_t i = 0; i < params->as.tuple.elems.size; i++) {

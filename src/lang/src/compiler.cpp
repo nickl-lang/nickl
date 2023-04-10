@@ -69,16 +69,9 @@
 
 namespace {
 
-nkltype_t u8_t;
-nkltype_t u16_t;
-nkltype_t u32_t;
-nkltype_t u64_t;
-nkltype_t i8_t;
-nkltype_t i16_t;
-nkltype_t i32_t;
-nkltype_t i64_t;
-nkltype_t f32_t;
-nkltype_t f64_t;
+#define X(NAME, VALUE_TYPE, CTYPE) nkltype_t CAT(NAME, _t);
+NUMERIC_ITERATE(X)
+#undef X
 
 nkltype_t any_t;
 nkltype_t typeref_t;
@@ -2619,16 +2612,9 @@ NklCompiler nkl_compiler_create() {
 
     auto arena = nk_create_arena();
 
-    u8_t = nkl_get_numeric(Uint8);
-    u16_t = nkl_get_numeric(Uint16);
-    u32_t = nkl_get_numeric(Uint32);
-    u64_t = nkl_get_numeric(Uint64);
-    i8_t = nkl_get_numeric(Int8);
-    i16_t = nkl_get_numeric(Int16);
-    i32_t = nkl_get_numeric(Int32);
-    i64_t = nkl_get_numeric(Int64);
-    f32_t = nkl_get_numeric(Float32);
-    f64_t = nkl_get_numeric(Float64);
+#define X(NAME, VALUE_TYPE, CTYPE) CAT(NAME, _t) = nkl_get_numeric(VALUE_TYPE);
+    NUMERIC_ITERATE(X)
+#undef X
 
     any_t = nkl_get_any(arena);
     typeref_t = nkl_get_typeref();
