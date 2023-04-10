@@ -123,6 +123,7 @@ struct Decl { // TODO Compact the Decl struct
         struct {
             NkIrLocalVarId id;
             nkltype_t type;
+            NkIrFunct fn;
         } local;
         struct {
             NkIrGlobalVarId id;
@@ -139,6 +140,7 @@ struct Decl { // TODO Compact the Decl struct
         struct {
             size_t index;
             nkltype_t type;
+            NkIrFunct fn;
         } arg;
     } as;
     EDeclKind kind;
@@ -166,6 +168,7 @@ struct ValueInfo {
 
 struct Scope {
     bool is_top_level;
+    NkIrFunct cur_fn;
     std::unordered_map<nkid, Decl> locals{};
 };
 
@@ -268,30 +271,23 @@ Scope &curScope(NklCompiler c) {
 }
 
 void pushScope(NklCompiler c) {
+    NkIrFunct cur_fn = c->scopes.size() ? c->scopes.back()->cur_fn : nullptr;
     NK_LOG_DBG("entering scope=%lu", c->scopes.size());
-    auto scope = &c->nonpersistent_scope_stack.emplace(Scope{false});
+    auto scope = &c->nonpersistent_scope_stack.emplace(Scope{false, cur_fn});
     c->scopes.emplace_back(scope);
-}
-
-void pushPersistentScope(NklCompiler c) {
-    NK_LOG_DBG("entering persistent scope=%lu", c->scopes.size());
-    auto scope = &c->persistent_scopes.emplace_back(Scope{false});
-    c->scopes.emplace_back(scope);
-}
-
-void pushTopLevelScope(NklCompiler c) {
-    NK_LOG_DBG("entering top level scope=%lu", c->scopes.size());
-    auto scope = &c->persistent_scopes.emplace_back(Scope{true});
-    c->scopes.emplace_back(scope);
-}
-
-void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
-    pushTopLevelScope(c);
-    c->fn_scopes.emplace(fn, &curScope(c));
 }
 
 void pushFnScope(NklCompiler c, NkIrFunct fn) {
-    pushPersistentScope(c);
+    NK_LOG_DBG("entering persistent scope=%lu", c->scopes.size());
+    auto scope = &c->persistent_scopes.emplace_back(Scope{false, fn});
+    c->scopes.emplace_back(scope);
+    c->fn_scopes.emplace(fn, &curScope(c));
+}
+
+void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
+    NK_LOG_DBG("entering top level scope=%lu", c->scopes.size());
+    auto scope = &c->persistent_scopes.emplace_back(Scope{true, fn});
+    c->scopes.emplace_back(scope);
     c->fn_scopes.emplace(fn, &curScope(c));
 }
 
@@ -344,7 +340,7 @@ void defineComptimeConst(NklCompiler c, nkid name, ComptimeConst cnst) {
 
 void defineLocal(NklCompiler c, nkid name, NkIrLocalVarId id, nkltype_t type) {
     NK_LOG_DBG("defining local `%.*s`", nkid2s(name).size, nkid2s(name).data);
-    makeDecl(c, name) = {{.local{id, type}}, Decl_Local};
+    makeDecl(c, name) = {{.local{id, type, curScope(c).cur_fn}}, Decl_Local};
 }
 
 void defineGlobal(NklCompiler c, nkid name, NkIrGlobalVarId id, nkltype_t type) {
@@ -359,7 +355,7 @@ void defineExtSym(NklCompiler c, nkid name, NkIrExtSymId id, nkltype_t type) {
 
 void defineArg(NklCompiler c, nkid name, size_t index, nkltype_t type) {
     NK_LOG_DBG("defining arg `%.*s`", nkid2s(name).size, nkid2s(name).data);
-    makeDecl(c, name) = {{.arg{index, type}}, Decl_Arg};
+    makeDecl(c, name) = {{.arg{index, type, curScope(c).cur_fn}}, Decl_Arg};
 }
 
 // TODO Restrict resolving local through stack frame boundaries
@@ -769,6 +765,7 @@ ValueInfo getMember(NklCompiler c, ValueInfo const &lhs, nkid name) {
             return error(c, "cannot subscript a runtime function"), ValueInfo{};
         }
         assert(!"unreachable");
+        return {};
     }
 
     case NklType_Struct:
@@ -1723,6 +1720,15 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
         auto &decl = resolve(c, name);
         if (decl.kind == Decl_Undefined) {
             return error(c, "`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
+        } else if (
+            (decl.kind == Decl_Arg && decl.as.arg.fn != curScope(c).cur_fn) ||
+            (decl.kind == Decl_Local && decl.as.local.fn != curScope(c).cur_fn)) {
+            return error(
+                       c,
+                       "cannot reference `%.*s` through procedure frame boundary",
+                       name_str.size,
+                       name_str.data),
+                   ValueInfo{};
         } else {
             return declToValueInfo(decl);
         }
