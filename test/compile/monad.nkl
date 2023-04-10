@@ -1,28 +1,18 @@
-import libc;
+c :: import libc;
 
 Nothing :: u64{0}; // TODO Hardcoded Nothing index
 
 MaybeInt :: enum {
-    Nothing: void, // TODO Explicit void
+    Nothing,
     Just: i32,
 }
 
 MaybeStr :: enum {
-    Nothing: void,
+    Nothing,
     Just: string,
 }
 
-BUF_SIZE :: u64{100};
-buf: [BUF_SIZE]i8;
-intToMaybeStr :: (x: i32) -> MaybeStr {
-    libc.snprintf(&buf, BUF_SIZE, "%i", x);
-    str: string; // TODO Manual slice construction
-    str.data = &buf;
-    str.size = libc.strlen(&buf);
-    return MaybeStr{Just=str};
-};
-
-bind :: (self: *const MaybeInt, f: @typeof(intToMaybeStr)) -> MaybeStr { // TODO Function type hack
+bind :: (self: *const MaybeInt, f: (x: i32) -> MaybeStr) -> MaybeStr {
     if self.tag == Nothing {
         return MaybeStr{Nothing=void{}}; // TODO void literal
     } else {
@@ -31,28 +21,34 @@ bind :: (self: *const MaybeInt, f: @typeof(intToMaybeStr)) -> MaybeStr { // TODO
 }
 
 random :: () -> i32 {
-    //ts: libc.timespec;
-    //libc.clock_gettime(libc.CLOCK_MONOTONIC, &ts);
-    //libc.srand(cast(u32) ts.tv_nsec);
-    //return libc.rand();
+    //ts: c.timespec;
+    //c.clock_gettime(c.CLOCK_MONOTONIC, &ts);
+    //c.srand(cast(u32) ts.tv_nsec);
+    //return c.rand();
     return 4; // Chosen by a fair dice roll
 }
 
 maybeGetInt :: () -> MaybeInt {
-    if (random() % i32{2}) { // TODO Forced parentheses
+    if random() % 2 {
         return MaybeInt{Nothing=void{}};
     } else {
         return MaybeInt{Just=42};
     }
 }
 
+BUF_SIZE :: u64{100};
+s_buf: [BUF_SIZE]i8;
+
 main :: (argc: i32, argv: **i8) -> i32 {
-    maybe_str := bind(&maybeGetInt(), intToMaybeStr); // TODO Manual address
+    maybe_str := bind(&maybeGetInt(), (x: i32) -> MaybeStr { // TODO Manual address
+        c.snprintf(&s_buf, BUF_SIZE, "%i", x);
+        return MaybeStr{Just=string{&s_buf, c.strlen(&s_buf)}}; // TODO Manual slice construction
+    });
     if maybe_str.tag == Nothing {
-        libc.puts("(nothing)");
+        c.puts("(nothing)");
     } else {
         str := maybe_str.data.Just;
-        libc.printf("str=`%.*s`\n", str.size, str.data);
+        c.printf("str=`%.*s`\n", str.size, str.data);
     }
 
     return 0;

@@ -115,6 +115,7 @@ private:
         bool accept_const = true;
         bool accept_init = true;
         bool allow_tuple_mode = false;
+        bool allow_omit_type = false;
     };
 
     struct ParseFieldsResult {
@@ -125,6 +126,7 @@ private:
     };
 
     Void parseFields(ParseFieldsResult &res, ETokenId closer, ParseFieldsConfig const &cfg) {
+        assert(!cfg.allow_omit_type || !cfg.allow_tuple_mode);
         bool &tuple_mode = res.tuple_parsed = cfg.allow_tuple_mode;
         if (accept(closer)) {
             return {};
@@ -150,10 +152,12 @@ private:
             }
         } else {
             ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier())));
-            EXPECT(t_colon);
-            ASSIGN(field.args[1], nkl_pushNode(m_ast, expr(Expr_Type)));
-            if (cfg.accept_init && accept(t_eq)) {
-                ASSIGN(field.args[2], nkl_pushNode(m_ast, expr()));
+            if (!cfg.allow_omit_type || check(t_colon)) {
+                EXPECT(t_colon);
+                ASSIGN(field.args[1], nkl_pushNode(m_ast, expr(Expr_Type)));
+                if (cfg.accept_init && accept(t_eq)) {
+                    ASSIGN(field.args[2], nkl_pushNode(m_ast, expr()));
+                }
             }
         }
         if (tuple_mode) {
@@ -542,6 +546,7 @@ private:
                         .accept_const = true,
                         .accept_init = true,
                         .allow_tuple_mode = false,
+                        .allow_omit_type = false,
                     }));
             }
             node = nkl_makeNode1(
@@ -556,6 +561,7 @@ private:
                     .accept_const = false,
                     .accept_init = false,
                     .allow_tuple_mode = false,
+                    .allow_omit_type = false,
                 }));
             node = nkl_makeNode1(
                 n_union, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
@@ -569,6 +575,7 @@ private:
                     .accept_const = false,
                     .accept_init = false,
                     .allow_tuple_mode = false,
+                    .allow_omit_type = true,
                 }));
             node = nkl_makeNode1(
                 n_enum, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
@@ -1029,6 +1036,7 @@ private:
                     .accept_const = false,
                     .accept_init = true,
                     .allow_tuple_mode = true,
+                    .allow_omit_type = false,
                 }));
             if (check(t_minus_greater) || (!res.tuple_parsed && check(t_brace_l))) {
                 NklAstNode_T ret_type{};

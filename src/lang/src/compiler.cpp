@@ -389,7 +389,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(
              c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
@@ -1135,19 +1135,25 @@ ValueInfo compileCompositeType(
 
     auto nodes = nargs0(node);
     for (size_t i = 0; i < nodes.size; i++) {
-        auto field_node = &nodes.data[i];
-        nkid name = s2nkid(narg0(field_node)->token->text);
-        DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(field_node)));
-        if (nklval_tclass(type_val) != NklType_Typeref) {
-            return error(c, "type expected in tuple type"), ValueInfo{};
+        auto const field_node = &nodes.data[i];
+        auto const name_node = narg0(field_node);
+        auto const type_node = narg1(field_node);
+        auto const init_node = narg2(field_node);
+        nkid const name = s2nkid(name_node->token->text);
+        nkltype_t type = void_t;
+        if (type_node && type_node->id) {
+            DEFINE(type_val, comptimeCompileNodeGetValue(c, type_node));
+            if (nklval_tclass(type_val) != NklType_Typeref) {
+                return error(c, "type expected in tuple type"), ValueInfo{};
+            }
+            type = nklval_as(nkltype_t, type_val);
         }
-        auto type = nklval_as(nkltype_t, type_val);
         fields.emplace_back(NklField{
             .name = name,
             .type = type,
         });
-        if (out_inits && narg2(field_node) && narg2(field_node)->id) {
-            DEFINE(init_val, comptimeCompileNodeGetValue(c, narg2(field_node), type));
+        if (out_inits && init_node && init_node->id) {
+            DEFINE(init_val, comptimeCompileNodeGetValue(c, init_node, type));
             (*out_inits)[name] = makeValue(c, init_val);
         }
     }
