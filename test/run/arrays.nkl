@@ -1,6 +1,6 @@
 import libc;
 
-AR_SIZE :: 3;
+AR_SIZE :: u64{3};
 
 ar: [AR_SIZE]i64;
 

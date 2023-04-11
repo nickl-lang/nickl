@@ -1,8 +1,8 @@
 main :: (argc: i32, argv: **i8) -> i32 {
     import libc;
 
-    W :: 2;
-    H :: 2;
+    W :: u64{2};
+    H :: u64{2};
     SIZE :: W * H;
 
     ar: [W][H]i64;

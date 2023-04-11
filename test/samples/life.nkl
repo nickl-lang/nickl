@@ -8,9 +8,9 @@ COLS :: 60;
 NS_IN_S :: 1000000000;
 FRAMETIME_NS :: NS_IN_S / FPS;
 
-s_field: [2][ROWS * COLS]bool;
+s_field: [2][cast(u64) (ROWS * COLS)]bool;
 
-s_cur_buf := 0;
+s_cur_buf := u64{0};
 
 s_cursor_x := 0;
 s_cursor_y := 0;
@@ -21,7 +21,7 @@ pmod :: (x: i64, n: i64) -> i64 {
     return (x % n + n) % n;
 }
 
-nextBuf :: () -> i64 {
+nextBuf :: () -> u64 {
     return (s_cur_buf + 1) % 2;
 }
 
@@ -29,8 +29,8 @@ swapBufs :: () -> void {
     s_cur_buf = nextBuf();
 }
 
-atBuf :: (x: i64, y: i64, buf: i64) -> *bool {
-    return &s_field[buf][(pmod(y, COLS) * ROWS + pmod(x, ROWS))];
+atBuf :: (x: i64, y: i64, buf: u64) -> *bool {
+    return &s_field[buf][cast(u64) (pmod(y, COLS) * ROWS + pmod(x, ROWS))];
 }
 
 at :: (x: i64, y: i64) -> *bool {
@@ -62,7 +62,7 @@ getTimestamp :: () -> i64 {
 step :: () -> void {
     x := 0; while x < ROWS {
         y := 0; while y < COLS {
-            sum := 0;
+            sum := u64{0};
             dx := -1; while dx <= 1 {
                 dy := -1; while dy <= 1 {
                     sum = sum + get(x + dx, y + dy);
@@ -104,7 +104,7 @@ main :: () -> i32 {
 
     c.putchar(ESC); c.printf("[?25l");
 
-    empty_row: [COLS]bool;
+    empty_row: [cast(u64) COLS]bool;
     c.memset(cast(*void) &empty_row, cast(i32) "."[0], cast(u64) COLS);
 
     running := false;

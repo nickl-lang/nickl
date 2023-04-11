@@ -613,7 +613,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
               nklt_typeid(dst_type->as.ptr.target_type))) {
         return error(
                    c,
-                   "cannot store value of type `%s` into a slot of type `%s` dst.id=%lu src.id=%lu",
+                   "cannot store value of type `%s` into a slot of type `%s`",
                    (char const *)[&]() {
                        auto sb = nksb_create();
                        nklt_inspect(src_type, sb);
@@ -627,9 +627,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                        return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
                            nksb_free(sb);
                        });
-                   }(),
-                   dst_type->id,
-                   src_type->id),
+                   }()),
                ValueInfo{};
     }
     if (nklt_sizeof(src_type)) {
@@ -666,6 +664,17 @@ ValueInfo declToValueInfo(Decl &decl) {
     return makeDeferrer([=]() {
         c->cur_fn = prev_fn;
         nkir_activateFunct(c->ir, c->cur_fn);
+    });
+}
+
+[[nodiscard]] auto pushNode(NklCompiler c, NklAstNode node) {
+    if (node && node->id) {
+        c->node_stack.emplace_back(NodeInfo{.node = node});
+    }
+    return makeDeferrer([=]() {
+        if (node && node->id) {
+            c->node_stack.pop_back();
+        }
     });
 }
 
@@ -929,14 +938,23 @@ ValueInfo compileFn(
 
     for (size_t i = 0; i < params.size; i++) {
         auto const param = &params.data[i];
-        params_names.emplace_back(s2nkid(narg0(param)->token->text));
-        DEFINE(val, comptimeCompileNodeGetValue(c, narg1(param)));
+        auto const name_node = narg0(param);
+        auto const type_node = narg1(param);
+        params_names.emplace_back(s2nkid(name_node->token->text));
+        auto const pop_node = pushNode(c, type_node);
+        DEFINE(val, comptimeCompileNodeGetValue(c, type_node));
+        if (nklt_tclass(val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         params_types.emplace_back(nklval_as(nkltype_t, val));
     }
 
     nkltype_t ret_t;
     if (narg1(node)) {
         DEFINE(val, comptimeCompileNodeGetValue(c, narg1(node)));
+        if (nklt_tclass(val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         ret_t = nklval_as(nkltype_t, val);
     } else {
         ret_t = void_t;
@@ -1007,12 +1025,21 @@ ValueInfo compileFnType(
 
     for (size_t i = 0; i < params.size; i++) {
         auto const param = &params.data[i];
-        params_names.emplace_back(s2nkid(narg0(param)->token->text));
-        DEFINE(val, comptimeCompileNodeGetValue(c, narg1(param)));
+        auto const name_node = narg0(param);
+        auto const type_node = narg1(param);
+        params_names.emplace_back(s2nkid(name_node->token->text));
+        auto const pop_node = pushNode(c, type_node);
+        DEFINE(val, comptimeCompileNodeGetValue(c, type_node));
+        if (nklt_tclass(val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         params_types.emplace_back(nklval_as(nkltype_t, val));
     }
 
     DEFINE(ret_t_val, comptimeCompileNodeGetValue(c, narg1(node)));
+    if (nklt_tclass(ret_t_val.type) != NklType_Typeref) {
+        return error(c, "type expected"), ValueInfo{};
+    }
     auto ret_t = nklval_as(nkltype_t, ret_t_val);
     nkltype_t args_t = nkl_get_tuple(c->arena, {params_types.data(), params_types.size()}, 1);
 
@@ -1021,23 +1048,23 @@ ValueInfo compileFnType(
     return makeValue<nkltype_t>(c, typeref_t, fn_t);
 }
 
-void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
+Void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
     switch (nklval_tclass(val)) {
     case NkType_Array:
         if (init_nodes.size > nklval_tuple_size(val)) {
-            return error(c, "too many values to init array");
+            return error(c, "too many values to init array"), Void{};
         }
         for (size_t i = 0; i < nklval_array_size(val); i++) {
-            initFromAst(c, nklval_array_at(val, i), {&init_nodes.data[i], 1});
+            CHECK(initFromAst(c, nklval_array_at(val, i), {&init_nodes.data[i], 1}));
         }
         break;
     case NkType_Numeric: {
         if (init_nodes.size > 1) {
-            return error(c, "too many values to init numeric");
+            return error(c, "too many values to init numeric"), Void{};
         }
         auto const &node = init_nodes.data[0];
         if (node.id != n_int && node.id != n_float) {
-            return error(c, "invalid value to init numeric");
+            return error(c, "invalid value to init numeric"), Void{};
         }
         auto str = std_str(node.token->text);
         switch (nklval_typeof(val)->as.num.value_type) {
@@ -1077,10 +1104,10 @@ void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
     case NklType_Struct:
     case NkType_Tuple:
         if (init_nodes.size > nklval_tuple_size(val)) {
-            return error(c, "too many values to init tuple/struct");
+            return error(c, "too many values to init tuple/struct"), Void{};
         }
         for (size_t i = 0; i < nklval_tuple_size(val); i++) {
-            initFromAst(c, nklval_tuple_at(val, i), {&init_nodes.data[i], 1});
+            CHECK(initFromAst(c, nklval_tuple_at(val, i), {&init_nodes.data[i], 1}));
         }
         break;
     default:
@@ -1088,6 +1115,7 @@ void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
         assert(!"unreachable");
         break;
     }
+    return {};
 }
 
 ValueInfo compileAndDiscard(NklCompiler c, NklAstNode node) {
@@ -1131,9 +1159,10 @@ ValueInfo compileCompositeType(
         nkid const name = s2nkid(name_node->token->text);
         nkltype_t type = void_t;
         if (type_node && type_node->id) {
+            auto const pop_node = pushNode(c, type_node);
             DEFINE(type_val, comptimeCompileNodeGetValue(c, type_node));
             if (nklval_tclass(type_val) != NklType_Typeref) {
-                return error(c, "type expected in tuple type"), ValueInfo{};
+                return error(c, "type expected in composite type"), ValueInfo{};
             }
             type = nklval_as(nkltype_t, type_val);
         }
@@ -1142,6 +1171,7 @@ ValueInfo compileCompositeType(
             .type = type,
         });
         if (out_inits && init_node && init_node->id) {
+            auto const pop_node = pushNode(c, init_node);
             DEFINE(init_val, comptimeCompileNodeGetValue(c, init_node, type));
             (*out_inits)[name] = makeValue(c, init_val);
         }
@@ -1190,15 +1220,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
     for (size_t i = 0; i < value_count; i++) {
         auto const init_node = &init_nodes.data[i];
         auto const name_node = narg0(init_node);
-        // TODO Some boilerplate with node_stack
-        if (name_node && name_node->id) {
-            c->node_stack.emplace_back(NodeInfo{.node = name_node});
-        }
-        defer {
-            if (name_node && name_node->id) {
-                c->node_stack.pop_back();
-            }
-        };
+        auto const pop_node = pushNode(c, name_node);
         auto const name = (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0;
         if (name && std::find(std::begin(names), std::end(names), name) != std::end(names)) {
             return error(c, "duplicate names"), ValueInfo{};
@@ -1241,15 +1263,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
     for (size_t vi = 0; vi < value_count; vi++) {
         auto const init_node = &init_nodes.data[vi];
         auto const name_node = narg0(init_node);
-        // TODO Some boilerplate with node_stack
-        if (name_node && name_node->id) {
-            c->node_stack.emplace_back(NodeInfo{.node = name_node});
-        }
-        defer {
-            if (name_node && name_node->id) {
-                c->node_stack.pop_back();
-            }
-        };
+        auto const pop_node = pushNode(c, name_node);
         if (vi >= fields.size) {
             return error(c, "too many values"), ValueInfo{};
         }
@@ -1311,8 +1325,10 @@ ValueInfo compileTupleLiteral(
     for (size_t i = 0; i < value_count; i++) {
         auto const init_node = &init_nodes.data[i];
         auto const name_node = narg0(init_node);
+        auto const val_node = narg1(init_node);
         names.emplace_back((name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
-        APPEND(values, compile(c, narg1(init_node), type->as.tuple.elems.data[i].type));
+        auto const pop_node = pushNode(c, val_node);
+        APPEND(values, compile(c, val_node, type->as.tuple.elems.data[i].type));
         // TODO if (!isKnown(values.back())) {
         //     all_known = false;
         // }
@@ -1437,20 +1453,32 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
     }
 
     case n_ptr_type: {
+        auto const pop_node = pushNode(c, narg0(node));
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
+        if (nklt_tclass(val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         auto target_type = nklval_as(nkltype_t, val);
         return makeValue<nkltype_t>(c, typeref_t, nkl_get_ptr(target_type));
     }
 
     case n_const_ptr_type: {
         // TODO Ignoring const in const_ptr_type
+        auto const pop_node = pushNode(c, narg0(node));
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
+        if (nklt_tclass(val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         auto target_type = nklval_as(nkltype_t, val);
         return makeValue<nkltype_t>(c, typeref_t, nkl_get_ptr(target_type));
     }
 
     case n_slice_type: {
+        auto const pop_node = pushNode(c, narg0(node));
         DEFINE(val, comptimeCompileNodeGetValue(c, narg0(node)));
+        if (nklt_tclass(val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         auto target_type = nklval_as(nkltype_t, val);
         auto type = nkl_get_slice(c->arena, target_type);
         return makeValue<nkltype_t>(c, typeref_t, type);
@@ -1517,11 +1545,19 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
 #undef COMPILE_BOOL_BIN
 
     case n_array_type: {
-        // TODO Hardcoded array size type in array_type
+        auto const pop_node = pushNode(c, narg0(node));
         DEFINE(type_val, comptimeCompileNodeGetValue(c, narg0(node)));
+        if (nklt_tclass(type_val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         auto type = nklval_as(nkltype_t, type_val);
-        DEFINE(size_val, comptimeCompileNodeGetValue(c, narg1(node)));
-        auto size = nklval_as(int64_t, size_val);
+        auto const pop_node2 = pushNode(c, narg1(node));
+        DEFINE(size_val, comptimeCompileNodeGetValue(c, narg1(node), u64_t));
+        if (nklt_tclass(size_val.type) != NkType_Numeric ||
+            size_val.type->as.num.value_type != Uint64) {
+            return error(c, "u64 expected"), ValueInfo{};
+        }
+        auto size = nklval_as(uint64_t, size_val);
         return makeValue<nkltype_t>(c, typeref_t, nkl_get_array(type, size));
     }
 
@@ -2026,9 +2062,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             for (size_t i = 0; i < value_count; i++) {
                 auto const init_node = &init_nodes.data[i];
                 auto const name_node = narg0(init_node);
+                auto const val_node = narg1(init_node);
                 names.emplace_back(
                     (name_node && name_node->id) ? s2nkid(name_node->token->text) : 0);
-                APPEND(values, compile(c, narg1(init_node), type->as.arr.elem_type));
+                auto const pop_node = pushNode(c, val_node);
+                APPEND(values, compile(c, val_node, type->as.arr.elem_type));
                 // TODO if (!isKnown(values.back())) {
                 //     all_known = false;
                 // }
@@ -2218,7 +2256,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
         }
         nkid name = s2nkid(names.data[0].token->text);
+        auto const pop_node = pushNode(c, narg1(node));
         DEFINE(type_val, comptimeCompileNodeGetValue(c, narg1(node)));
+        if (nklt_tclass(type_val.type) != NklType_Typeref) {
+            return error(c, "type expected"), ValueInfo{};
+        }
         auto type = nklval_as(nkltype_t, type_val);
         NkIrRef ref;
         if (curScope(c).is_top_level) {
