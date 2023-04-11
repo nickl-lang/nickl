@@ -3,11 +3,6 @@ set(STDLIB_DIR "../std")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(LIBC_NAME libc.so.6)
     set(LIBM_NAME libm.so.6)
-
-    install(
-        PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/etc/scripts/${PROJECT_NAME}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}
-        )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(LIBC_NAME msvcrt.dll)
     set(LIBM_NAME msvcrt.dll)

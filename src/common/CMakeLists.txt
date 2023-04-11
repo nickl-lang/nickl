@@ -22,7 +22,9 @@ else()
         )
 endif()
 
-install(TARGETS nk_logger)
+install(TARGETS nk_logger
+    RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
+    )
 
 # TODO Fixing id visibility
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default")

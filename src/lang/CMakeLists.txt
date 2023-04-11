@@ -23,7 +23,9 @@ if(NOT DEV_BUILD)
         )
 endif()
 
-install(TARGETS ${LIB})
+install(TARGETS ${LIB}
+    RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
+    )
 
 set(EXE nickl)
 
