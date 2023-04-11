@@ -1,1 +1,1 @@
-IMAGE=buildenv-nickl-mingw64:0.2
+IMAGE=buildenv-nickl-mingw64:0.2.1
