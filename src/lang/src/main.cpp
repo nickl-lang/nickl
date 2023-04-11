@@ -18,7 +18,8 @@ void printErrorUsage() {
 
 void printUsage() {
     printf(
-        "Usage: %s [options] file"
+        "Usage: " NKL_BINARY_NAME
+        " [options] file"
         "\nOptions:"
 #ifdef ENABLE_LOGGING
         "\n    -c, --color {auto,always,never}                      Choose when to color output"
@@ -26,13 +27,11 @@ void printUsage() {
 #endif // ENABLE_LOGGING
         "\n    -h, --help                                           Display this message and exit"
         "\n    -v, --version                                        Show version information"
-        "\n",
-        NKL_BINARY_NAME);
+        "\n");
 }
 
 void printVersion() {
-    printf(
-        "%s v%i.%i.%i\n", NKL_BINARY_NAME, NKL_VERSION_MAJOR, NKL_VERSION_MINOR, NKL_VERSION_PATCH);
+    printf(NKL_BINARY_NAME " " NKL_BUILD_VERSION " " NKL_BUILD_TIME "\n");
 }
 
 bool eql(char const *lhs, char const *rhs) {

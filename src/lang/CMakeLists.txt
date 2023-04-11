@@ -43,9 +43,8 @@ install(TARGETS ${EXE})
 
 target_compile_definitions(${EXE}
     PUBLIC NKL_BINARY_NAME="${EXE}"
-    PUBLIC NKL_VERSION_MAJOR=0
-    PUBLIC NKL_VERSION_MINOR=1
-    PUBLIC NKL_VERSION_PATCH=0
+    PUBLIC NKL_BUILD_VERSION="${BUILD_VERSION}"
+    PUBLIC NKL_BUILD_TIME="${BUILD_TIME}"
     )
 
 target_link_libraries(${EXE}
