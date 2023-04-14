@@ -31,10 +31,10 @@ typedef struct {
     NkColorMode color_mode;
 } NkLoggerOptions;
 
-NK_EXPORT bool _nk_loggerCheck(NkLogLevel log_level);
-NK_EXPORT void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
+bool _nk_loggerCheck(NkLogLevel log_level);
+void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
-NK_EXPORT void _nk_loggerInit(NkLoggerOptions opt);
+void _nk_loggerInit(NkLoggerOptions opt);
 
 #define _NK_LOG_CHK(LEVEL, ...)                                 \
     if (_nk_loggerCheck(LEVEL)) {                               \

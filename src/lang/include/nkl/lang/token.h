@@ -19,7 +19,7 @@ typedef struct {
     size_t id;
 } NklToken;
 
-typedef NklToken const* NklTokenRef;
+typedef NklToken const *NklTokenRef;
 
 #ifdef __cplusplus
 }

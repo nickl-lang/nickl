@@ -1,6 +1,6 @@
-set(LIB nkl_lang)
+set(EXE nickl)
 
-add_library(${LIB} SHARED
+add_library(nkl_lang
     src/ast.cpp
     src/compiler.cpp
     src/lexer.cpp
@@ -8,29 +8,46 @@ add_library(${LIB} SHARED
     src/value.cpp
     )
 
-target_include_directories(${LIB}
+target_include_directories(nkl_lang
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
-target_link_libraries(${LIB}
-    PUBLIC nk_vm
+target_link_libraries(nkl_lang
+    PUBLIC nk_common
     PUBLIC nk_sys
+    PUBLIC nk_vm
+    )
+
+add_library(nkl SHARED
+    src/main.cpp
+    )
+
+target_compile_definitions(nkl
+    PUBLIC NKL_BINARY_NAME="${EXE}"
+    PUBLIC NKL_BUILD_VERSION="${BUILD_VERSION}"
+    PUBLIC NKL_BUILD_TIME="${BUILD_TIME}"
+    )
+
+target_link_libraries(nkl
+    PUBLIC nkl_lang
     )
 
 if(NOT DEV_BUILD)
-    target_link_options(${LIB}
+    target_link_options(nkl
         PRIVATE -s
         )
 endif()
 
-install(TARGETS ${LIB}
+install(TARGETS nkl
     RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
     )
 
-set(EXE nickl)
-
 add_executable(${EXE}
-    src/main.cpp
+    src/entry.cpp
+    )
+
+target_link_libraries(${EXE}
+    PRIVATE nkl
     )
 
 if(NOT DEV_BUILD)
@@ -39,17 +56,9 @@ if(NOT DEV_BUILD)
         )
 endif()
 
+set_target_properties(${EXE} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
+
 install(TARGETS ${EXE})
-
-target_compile_definitions(${EXE}
-    PUBLIC NKL_BINARY_NAME="${EXE}"
-    PUBLIC NKL_BUILD_VERSION="${BUILD_VERSION}"
-    PUBLIC NKL_BUILD_TIME="${BUILD_TIME}"
-    )
-
-target_link_libraries(${EXE}
-    PRIVATE nkl_lang
-    )
 
 if(CMAKE_TESTING_ENABLED)
     add_subdirectory(test)

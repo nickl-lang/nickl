@@ -51,11 +51,6 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(SYSTEM_INSTALL_DIR lib)
-
-    install(
-        PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/etc/scripts/${PROJECT_NAME}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}
-        )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(SYSTEM_INSTALL_DIR bin)
 else()

@@ -111,36 +111,36 @@ typedef struct {
     size_t size;
 } NklTypeArray;
 
-NK_EXPORT void nkl_types_clean();
+void nkl_types_clean();
 
-NK_EXPORT nkltype_t nkl_get_array(nkltype_t elem_type, size_t elem_count);
-NK_EXPORT nkltype_t nkl_get_fn(NkltFnInfo info);
-NK_EXPORT nkltype_t nkl_get_numeric(NkNumericValueType value_type);
-NK_EXPORT nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const = false);
-NK_EXPORT nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride);
-NK_EXPORT nkltype_t nkl_get_void();
+nkltype_t nkl_get_array(nkltype_t elem_type, size_t elem_count);
+nkltype_t nkl_get_fn(NkltFnInfo info);
+nkltype_t nkl_get_numeric(NkNumericValueType value_type);
+nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const = false);
+nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride);
+nkltype_t nkl_get_void();
 
-NK_EXPORT nkltype_t nkl_get_typeref();
-NK_EXPORT nkltype_t nkl_get_any(NkAllocator alloc);
-NK_EXPORT nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const = false);
-NK_EXPORT nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields);
-NK_EXPORT nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields);
-NK_EXPORT nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields);
+nkltype_t nkl_get_typeref();
+nkltype_t nkl_get_any(NkAllocator alloc);
+nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const = false);
+nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields);
+nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields);
+nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields);
 
-NK_EXPORT void nklt_inspect(nkltype_t type, NkStringBuilder sb);
-NK_EXPORT void nklval_inspect(nklval_t val, NkStringBuilder sb);
+void nklt_inspect(nkltype_t type, NkStringBuilder sb);
+void nklval_inspect(nklval_t val, NkStringBuilder sb);
 
-NK_EXPORT size_t nklt_struct_index(nkltype_t type, nkid name);
+size_t nklt_struct_index(nkltype_t type, nkid name);
 
-NK_EXPORT void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args);
+void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args);
 
-NK_EXPORT size_t nklval_array_size(nklval_t self);
-NK_EXPORT nklval_t nklval_array_at(nklval_t self, size_t i);
+size_t nklval_array_size(nklval_t self);
+nklval_t nklval_array_at(nklval_t self, size_t i);
 
-NK_EXPORT size_t nklval_tuple_size(nklval_t self);
-NK_EXPORT nklval_t nklval_tuple_at(nklval_t self, size_t i);
+size_t nklval_tuple_size(nklval_t self);
+nklval_t nklval_tuple_at(nklval_t self, size_t i);
 
-NK_EXPORT nklval_t nklval_struct_at(nklval_t val, nkid name);
+nklval_t nklval_struct_at(nklval_t val, nkid name);
 
 inline nklval_t nklval_undefined() {
     return nklval_t{};

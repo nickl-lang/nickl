@@ -20,4 +20,5 @@ set(SYSTEM_DEPS
     /usr/${TOOLCHAIN_PREFIX}/lib/libwinpthread-1.dll
     )
 
+# TODO set(PLATFORM_CXX_FLAGS "-fstack-protector -static-libstdc++ -static-libgcc -Wl,-Bstatic,--whole-archive -lwinpthread -lssp -Wl,-Bdynamic,--no-whole-archive")
 set(PLATFORM_CXX_FLAGS "-fstack-protector")

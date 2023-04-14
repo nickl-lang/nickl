@@ -1,3 +1,5 @@
+#include "main.h"
+
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -40,7 +42,7 @@ bool eql(char const *lhs, char const *rhs) {
 
 } // namespace
 
-int main(int argc, char const *const *argv) {
+int nkl_main(int argc, char const *const *argv) {
 #ifdef BUILD_WITH_EASY_PROFILER
     EASY_PROFILER_ENABLE;
     ::profiler::startListen(EASY_PROFILER_PORT);

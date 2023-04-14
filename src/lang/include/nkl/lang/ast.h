@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-NK_EXPORT extern char const *s_nkl_ast_node_names[];
+extern char const *s_nkl_ast_node_names[];
 
 typedef struct NklAstNode_T const *NklAstNode;
 
@@ -28,26 +28,25 @@ struct NklAstNode_T {
 
 typedef struct NklAst_T *NklAst;
 
-NK_EXPORT void nkl_ast_init();
+void nkl_ast_init();
 
-NK_EXPORT NklAst nkl_ast_create();
-NK_EXPORT void nkl_ast_free(NklAst ast);
+NklAst nkl_ast_create();
+void nkl_ast_free(NklAst ast);
 
-NK_EXPORT NklAstNode_T nkl_makeNode0(nkid id, NklTokenRef token);
-NK_EXPORT NklAstNode_T nkl_makeNode1(nkid id, NklTokenRef token, NklAstNodeArray arg0);
-NK_EXPORT NklAstNode_T
-nkl_makeNode2(nkid id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1);
-NK_EXPORT NklAstNode_T nkl_makeNode3(
+NklAstNode_T nkl_makeNode0(nkid id, NklTokenRef token);
+NklAstNode_T nkl_makeNode1(nkid id, NklTokenRef token, NklAstNodeArray arg0);
+NklAstNode_T nkl_makeNode2(nkid id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1);
+NklAstNode_T nkl_makeNode3(
     nkid id,
     NklTokenRef token,
     NklAstNodeArray arg0,
     NklAstNodeArray arg1,
     NklAstNodeArray arg2);
 
-NK_EXPORT NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
-NK_EXPORT NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
+NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
+NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
 
-NK_EXPORT void nkl_inspectNode(NklAstNode root, NkStringBuilder sb);
+void nkl_inspectNode(NklAstNode root, NkStringBuilder sb);
 
 #define nargs0(NODE) ((NODE)->args[0])
 #define nargs1(NODE) ((NODE)->args[1])
