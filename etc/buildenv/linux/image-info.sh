@@ -1,1 +1,4 @@
-IMAGE=buildenv-nickl-linux:0.6.1
+IMAGE_NAME=buildenv-nickl-linux
+IMAGE_VERSION=0.6.1
+
+IMAGE=$IMAGE_NAME:$IMAGE_VERSION

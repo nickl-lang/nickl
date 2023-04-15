@@ -7,6 +7,7 @@ if [ -z ${PLATFORM+x} ]; then
     PLATFORM=linux
 fi
 
+. $DIR/common/common-info.sh
 . $DIR/$PLATFORM/image-info.sh
 
 PROJECTDIR=$(realpath $DIR/../..)
@@ -21,10 +22,9 @@ else
 fi
 
 if [ -z "$(docker images -q $IMAGE 2> /dev/null)" ]; then
-    URL=ghcr.io/nickl-lang
-    if docker pull $URL/$IMAGE 2> /dev/null; then
-        docker image tag $URL/$IMAGE $IMAGE
-        docker image rm $URL/$IMAGE
+    if docker pull $DOCKER_REGISTRY_URL/$IMAGE 2> /dev/null; then
+        docker image tag $DOCKER_REGISTRY_URL/$IMAGE $IMAGE
+        docker image rm $DOCKER_REGISTRY_URL/$IMAGE
     else
         $DIR/build-image.sh
     fi
