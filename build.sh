@@ -27,7 +27,8 @@ if [ -f /.dockerenv ]; then
             -DDEPLOY_PREFIX=$PROJ_ROOT/out/deploy-$PLATFORM_SUFFIX \
             -DPLATFORM=$PLATFORM \
             -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-            ${DEV_BUILD+-DDEV_BUILD=$DEV_BUILD}
+            ${DEV_BUILD+-DDEV_BUILD=$DEV_BUILD} \
+            $EXTRA_CMAKE_ARGS
     fi
 
     ninja -C $BIN_DIR "$@"

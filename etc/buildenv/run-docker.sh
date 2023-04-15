@@ -14,6 +14,12 @@ DOCKERHOME=$PROJECTDIR/out/home
 
 mkdir -p $DOCKERHOME
 
+if [ -t 0 ]; then
+    TTY_ARG="-ti"
+else
+    TTY_ARG=""
+fi
+
 if [ -z "$(docker images -q $IMAGE 2> /dev/null)" ]; then
     URL=ghcr.io/nickl-lang
     if docker pull $URL/$IMAGE 2> /dev/null; then
@@ -27,7 +33,7 @@ fi
 echo "Running docker image $IMAGE"
 
 docker run \
-    -ti \
+    $TTY_ARG \
     --rm \
     -h $(hostname) \
     --device=/dev/dri/card0:/dev/dri/card0 \
@@ -41,6 +47,7 @@ docker run \
     -e PLATFORM \
     -e DEV_BUILD \
     -e BUILD_TYPE \
+    -e EXTRA_CMAKE_ARGS \
     -u $(id -u):$(id -g) \
     -w $PROJECTDIR \
     -v $DOCKERHOME:$HOME \
