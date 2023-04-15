@@ -13,4 +13,7 @@ set_target_properties(Dl PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
-set(SYSTEM_DEPS)
+set(SYSTEM_DEPS
+    # /lib/x86_64-linux-gnu/libstdc++.so.6
+    # /lib/x86_64-linux-gnu/libgcc_s.so.1
+    )

@@ -42,3 +42,17 @@ function(strip_binary)
             )
     endif()
 endfunction()
+
+# Example usage:
+#include(Strip)
+#set(STRIP_STAMPS)
+#foreach(DEP ${SYSTEM_DEPS})
+#    strip_binary(
+#        FILE "${DEP}"
+#        CACHE_DIR "${CMAKE_BINARY_DIR}/system_deps"
+#        INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEM_INSTALL_DIR}"
+#        OUT_STAMP_FILE STAMP_FILE
+#        )
+#    list(APPEND STRIP_STAMPS "${STAMP_FILE}")
+#endforeach()
+#add_custom_target(strip_system_deps ALL DEPENDS ${STRIP_STAMPS})

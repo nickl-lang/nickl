@@ -14,11 +14,10 @@ set_target_properties(Dl PROPERTIES
     )
 
 set(SYSTEM_DEPS
-    /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libgcc_s_seh-1.dll
-    /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libssp-0.dll
-    /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libstdc++-6.dll
-    /usr/${TOOLCHAIN_PREFIX}/lib/libwinpthread-1.dll
+    # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libgcc_s_seh-1.dll
+    # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libssp-0.dll
+    # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libstdc++-6.dll
+    # /usr/${TOOLCHAIN_PREFIX}/lib/libwinpthread-1.dll
     )
 
-# TODO set(PLATFORM_CXX_FLAGS "-fstack-protector -static-libstdc++ -static-libgcc -Wl,-Bstatic,--whole-archive -lwinpthread -lssp -Wl,-Bdynamic,--no-whole-archive")
-set(PLATFORM_CXX_FLAGS "-fstack-protector")
+set(PLATFORM_CXX_FLAGS "-fstack-protector -static-libstdc++")
