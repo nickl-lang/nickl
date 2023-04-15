@@ -35,7 +35,9 @@ function(def_test)
         ${ARG_LINK}
         )
 
-    gtest_discover_tests(${TARGET_NAME})
+    if(NOT CMAKE_CROSSCOMPILING)
+        gtest_discover_tests(${TARGET_NAME})
+    endif()
 endfunction()
 
 function(def_run_test)
