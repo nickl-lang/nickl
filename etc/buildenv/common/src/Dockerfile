@@ -6,7 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     cmake \
-    fakeroot \
     gdb \
     git \
     less \
