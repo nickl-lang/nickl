@@ -65,16 +65,16 @@ struct InterpContext {
     NkBcInstr const *pinstr;
     Registers reg;
     bool is_initialized;
+
+    ~InterpContext() {
+        NK_LOG_TRC("deinitializing stack...");
+        assert(nk_stack_getFrame(stack).size == 0 && "nonempty stack at exit");
+        nk_free_stack(stack);
+        is_initialized = false;
+    }
 };
 
 thread_local InterpContext ctx;
-
-thread_local auto s_deinit_ctx = makeDeferrer([]() {
-    NK_LOG_TRC("deinitializing stack...");
-    assert(nk_stack_getFrame(ctx.stack).size == 0 && "nonempty stack at exit");
-    nk_free_stack(ctx.stack);
-    ctx.is_initialized = false;
-});
 
 template <class T>
 T &_getRef(NkBcRef const &ref) {

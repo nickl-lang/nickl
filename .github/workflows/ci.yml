@@ -2,9 +2,9 @@ name: Nickl CI
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: ["develop", "master"]
   pull_request:
-    branches: [ "develop" ]
+    branches: ["develop", "master"]
 
 permissions:
   contents: read
