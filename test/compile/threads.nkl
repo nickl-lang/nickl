@@ -1,39 +1,25 @@
 import libc;
-
-pthread_t :: u64;
-pthread_attr_t :: u64;
-
-#extern("c") ThreadFunc :: (arg: *void) -> *void;
-
-LIBPTHREAD :: "libpthread.so.0";
-
-#link(LIBPTHREAD) pthread_create :: (
-    thread: *pthread_t,
-    attr: *const pthread_attr_t,
-    start_routine: ThreadFunc,
-    arg: *void) -> i32;
-#link(LIBPTHREAD) pthread_join :: (thread: pthread_t, retval: **void) -> i32;
-#link(LIBPTHREAD) pthread_self :: () -> pthread_t;
+pt :: import pthread;
 
 #extern("c") thread :: (arg: *void) -> *void {
     libc.printf("thread: arg='%s'\n", arg);
-    libc.printf("thread: id=%li\n", pthread_self());
+    libc.printf("thread: id=%li\n", pt.self());
     return cast(*void) "hello";
 }
 
 exec :: (name: *i8) -> void {
-    thread_id: pthread_t;
+    thread_id: pt.pthread_t;
     ret: *i8;
 
-    if pthread_create(&thread_id,
-           cast(*pthread_attr_t) u64{0},
+    if pt.create(&thread_id,
+           cast(*pt.pthread_attr_t) u64{0},
            thread,
            cast(*void) name) != 0 {
         libc.printf("error: pthread_create() error");
         return;
     }
 
-    if pthread_join(thread_id, cast(**void) &ret) != 0 {
+    if pt.join(thread_id, cast(**void) &ret) != 0 {
         libc.printf("error: pthread_join() error");
         return;
     }
@@ -50,6 +36,6 @@ main :: (argc: i32, argv: **i8) -> i32 {
 
 c :: import compiler;
 builder := c.createBuilder();
-c.link(builder, LIBPTHREAD);
+c.link(builder, pt.LIBPTHREAD);
 c.build(builder, main, "threads");
 c.freeBuilder(builder);

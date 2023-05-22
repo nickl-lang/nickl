@@ -1,0 +1,55 @@
+c  :: import libc;
+pt :: import pthread;
+
+Context :: struct {
+    counter: *u64,
+    mtx: *pt.pthread_mutex_t,
+    num_iter: u64,
+}
+
+#extern("c") thread :: (arg: *void) -> *void {
+    if arg == 0 return;
+    ctx := cast(*Context) arg;
+    i := 0;
+    while i < ctx.num_iter {
+        pt.mutex_lock(ctx.mtx);
+        ctx.counter.* = ctx.counter.* + 1;
+        pt.mutex_unlock(ctx.mtx);
+        i = i + 1;
+    }
+    return cast(*void) u64{0};
+}
+
+main :: (argc: i32, argv: **i8) -> i32 {
+    counter: u64;
+    mtx: pt.pthread_mutex_t;
+
+    pt.mutex_init(&mtx, cast(*pt.pthread_mutexattr_t) u64{0});
+
+    thread_id_1: pt.pthread_t;
+    thread_id_2: pt.pthread_t;
+
+    arg_1 := Context{&counter, &mtx, 10110};
+    arg_2 := Context{&counter, &mtx, 11001};
+
+    pt.create(&thread_id_1, cast(*pt.pthread_attr_t) u64{0}, thread, cast(*void) &arg_1);
+    pt.create(&thread_id_2, cast(*pt.pthread_attr_t) u64{0}, thread, cast(*void) &arg_2);
+
+    pt.join(thread_id_1, cast(**void) u64{0});
+    pt.join(thread_id_2, cast(**void) u64{0});
+
+    pt.mutex_destroy(&mtx);
+
+    c.printf("%llu\n", counter);
+
+    return 0;
+}
+
+thread(cast(*void) u64{0}); // TODO Need to translate early
+main(0, cast(**i8) u64{0});
+
+// import compiler;
+// builder := compiler.createBuilder();
+// compiler.link(builder, pt.LIBPTHREAD);
+// compiler.build(builder, main, "mutex");
+// compiler.freeBuilder(builder);

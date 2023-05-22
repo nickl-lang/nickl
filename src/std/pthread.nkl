@@ -1,0 +1,26 @@
+pthread_t           :: u64;
+pthread_attr_t      :: struct { __data: [7]u64 };
+pthread_mutex_t     :: struct { __data: [5]u64 };
+pthread_mutexattr_t :: u64;
+
+#extern("c") ThreadFunc :: (arg: *void) -> *void;
+
+LIBPTHREAD :: "libpthread.so.0";
+
+#link(LIBPTHREAD, "pthread_") {
+
+create :: (
+    thread: *pthread_t,
+    attr: *const pthread_attr_t,
+    start_routine: ThreadFunc,
+    arg: *void) -> i32;
+
+join :: (thread: pthread_t, retval: **void) -> i32;
+self :: () -> pthread_t;
+
+mutex_init    :: (__mutex: *pthread_mutex_t, __mutexattr: *pthread_mutexattr_t) -> i32;
+mutex_destroy :: (__mutex: *pthread_mutex_t) -> i32;
+mutex_lock    :: (__mutex: *pthread_mutex_t) -> i32;
+mutex_unlock  :: (__mutex: *pthread_mutex_t) -> i32;
+
+}
