@@ -261,7 +261,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case nkir_eq:
             case nkir_ne:
                 if (arg1.ref.type->size <= REG_SIZE && isZeroOrPowerOf2(arg1.ref.type->size)) {
-                    code += 1 + log2u(arg1.ref.type->size);
+                    code += 1 + log2u64(arg1.ref.type->size);
                 }
                 break;
 #define NUM(NAME) case CAT(nkir_, NAME):

@@ -248,7 +248,7 @@ TEST_F(ir, native_call) {
 }
 
 extern "C" NK_EXPORT uint32_t _test_log2(uint32_t x) {
-    return log2u(x);
+    return log2u32(x);
 }
 
 extern "C" NK_EXPORT void _test_fillAr(uint8_t *buf, uint32_t size) {
