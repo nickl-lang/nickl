@@ -11,10 +11,7 @@ exec :: (name: *i8) -> void {
     thread_id: pt.pthread_t;
     ret: *i8;
 
-    if pt.create(&thread_id,
-           cast(*pt.pthread_attr_t) u64{0},
-           thread,
-           cast(*void) name) != 0 {
+    if pt.create(&thread_id, null, thread, cast(*void) name) != 0 {
         libc.printf("error: pthread_create() error");
         return;
     }

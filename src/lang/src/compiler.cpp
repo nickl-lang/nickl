@@ -378,7 +378,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(
              c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
@@ -1375,6 +1375,15 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
 
     case n_true: {
         return makeValue<bool>(c, bool_t, true);
+    }
+
+    case n_null: {
+        return makeValue<void *>(
+            c,
+            (c->node_stack.back().type && nklt_tclass(c->node_stack.back().type) == NkType_Ptr)
+                ? c->node_stack.back().type
+                : void_t,
+            nullptr);
     }
 
 #define X(NAME, VALUE_TYPE, CTYPE)                                \

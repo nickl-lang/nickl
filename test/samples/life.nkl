@@ -155,7 +155,7 @@ main :: () -> i32 {
         elapsed_ns := ts - prev_ts;
 
         if elapsed_ns < FRAMETIME_NS {
-            c.nanosleep(&c.timespec{0, FRAMETIME_NS - elapsed_ns}, cast(*c.timespec) u64{0});
+            c.nanosleep(&c.timespec{0, FRAMETIME_NS - elapsed_ns}, null);
         }
 
         prev_ts = ts;

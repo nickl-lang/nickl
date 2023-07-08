@@ -1025,6 +1025,8 @@ private:
             node = nkl_makeNode0(n_true, _n_token);
         } else if (accept(t_false)) {
             node = nkl_makeNode0(n_false, _n_token);
+        } else if (accept(t_null)) {
+            node = nkl_makeNode0(n_null, _n_token);
         }
 
         else if (accept(t_par_l)) {

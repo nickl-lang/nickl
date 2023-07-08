@@ -62,7 +62,11 @@ struct WriterCtx {
 };
 
 void _writePreabmle(std::ostream &src) {
-    src << "#include <stdint.h>\n\n";
+    src << R"(
+#include <stddef.h>
+#include <stdint.h>
+
+)";
 }
 
 void _writeNumericType(NkNumericValueType value_type, std::ostream &src) {
@@ -257,10 +261,14 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         break;
     }
     case NkType_Ptr:
-        is_complex = true;
-        tmp_s << "& ";
-        _writeConst(
-            ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
+        if (nkval_as(void *, val)) {
+            is_complex = true;
+            tmp_s << "& ";
+            _writeConst(
+                ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
+        } else {
+            tmp_s << "NULL";
+        }
         break;
     case NkType_Tuple: {
         is_complex = true;

@@ -17,14 +17,14 @@ Context :: struct {
         pt.mutex_unlock(ctx.mtx);
         i = i + 1;
     }
-    return cast(*void) u64{0};
+    return null;
 }
 
 main :: (argc: i32, argv: **i8) -> i32 {
     counter: u64;
     mtx: pt.pthread_mutex_t;
 
-    pt.mutex_init(&mtx, cast(*pt.pthread_mutexattr_t) u64{0});
+    pt.mutex_init(&mtx, null);
 
     thread_id_1: pt.pthread_t;
     thread_id_2: pt.pthread_t;
@@ -32,11 +32,11 @@ main :: (argc: i32, argv: **i8) -> i32 {
     arg_1 := Context{&counter, &mtx, 10110};
     arg_2 := Context{&counter, &mtx, 11001};
 
-    pt.create(&thread_id_1, cast(*pt.pthread_attr_t) u64{0}, thread, cast(*void) &arg_1);
-    pt.create(&thread_id_2, cast(*pt.pthread_attr_t) u64{0}, thread, cast(*void) &arg_2);
+    pt.create(&thread_id_1, null, thread, cast(*void) &arg_1);
+    pt.create(&thread_id_2, null, thread, cast(*void) &arg_2);
 
-    pt.join(thread_id_1, cast(**void) u64{0});
-    pt.join(thread_id_2, cast(**void) u64{0});
+    pt.join(thread_id_1, null);
+    pt.join(thread_id_2, null);
 
     pt.mutex_destroy(&mtx);
 
@@ -45,8 +45,8 @@ main :: (argc: i32, argv: **i8) -> i32 {
     return 0;
 }
 
-thread(cast(*void) u64{0}); // TODO Need to translate early
-main(0, cast(**i8) u64{0});
+thread(null); // TODO Need to translate early
+main(0, null);
 
 // import compiler;
 // builder := compiler.createBuilder();

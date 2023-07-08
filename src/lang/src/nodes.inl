@@ -17,6 +17,7 @@ N(continue)
 
 N(false)
 N(true)
+N(null)
 
 N(i8)
 N(i16)
