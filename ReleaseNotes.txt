@@ -1,3 +1,9 @@
+v0.2.3
+    - Add null keyword
+    - Refactor pthread stuff
+    - Add 64bit log2
+    - Fix defects
+
 v0.2.2
     - Add CI
 
