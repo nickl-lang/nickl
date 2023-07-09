@@ -68,5 +68,3 @@ sqrt :: (x: f64) -> f64;
 sqrtf :: (x: f32) -> f32;
 
 }
-
-puts("Hello from stdlib!");
