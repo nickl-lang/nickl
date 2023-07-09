@@ -3,6 +3,7 @@ add_subdirectory(config)
 add_subdirectory(lang)
 add_subdirectory(sys)
 add_subdirectory(vm)
+add_subdirectory(vmnew)
 
 set(CORELIB_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/corelib)
 set(CORELIB_DST_DIR ${CMAKE_BINARY_DIR}/core)
