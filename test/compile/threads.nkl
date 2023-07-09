@@ -1,27 +1,27 @@
-import libc;
+c  :: import libc;
 pt :: import pthread;
 
 #extern("c") thread :: (arg: *void) -> *void {
-    libc.printf("thread: arg='%s'\n", arg);
-    libc.printf("thread: id=%li\n", pt.self());
+    c.printf("thread: arg='%s'\n", arg);
+    c.printf("thread: id=%li\n", pt.self());
     return cast(*void) "hello";
 }
 
-exec :: (name: *i8) -> void {
+exec :: (name: string) -> void {
     thread_id: pt.pthread_t;
     ret: *i8;
 
-    if pt.create(&thread_id, null, thread, cast(*void) name) != 0 {
-        libc.printf("error: pthread_create() error");
+    if pt.create(&thread_id, null, thread, cast(*void) name.data) != 0 {
+        c.puts("error: pthread_create() error");
         return;
     }
 
     if pt.join(thread_id, cast(**void) &ret) != 0 {
-        libc.printf("error: pthread_join() error");
+        c.puts("error: pthread_join() error");
         return;
     }
 
-    libc.printf("exec: ret='%s'\n", ret);
+    c.printf("main: ret='%s'\n", ret);
 }
 
 main :: (argc: i32, argv: **i8) -> i32 {
@@ -31,8 +31,8 @@ main :: (argc: i32, argv: **i8) -> i32 {
     return 0;
 }
 
-c :: import compiler;
-builder := c.createBuilder();
-c.link(builder, pt.LIBPTHREAD);
-c.build(builder, main, "threads");
-c.freeBuilder(builder);
+import compiler;
+builder := compiler.createBuilder();
+compiler.link(builder, pt.LIBPTHREAD);
+compiler.build(builder, main, "threads");
+compiler.freeBuilder(builder);
