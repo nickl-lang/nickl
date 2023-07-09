@@ -197,7 +197,7 @@ struct NklCompiler_T {
     bool error_reported = false;
 
     std::string compiler_dir{};
-    std::string stdlib_dir{};
+    std::string corelib_dir{};
     std::string libc_name{};
     std::string libm_name{};
     std::string c_compiler{};
@@ -1741,11 +1741,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
     case n_import: {
         auto const name = narg0(node)->token->text;
         std::string const filename = std_str(name) + ".nkl";
-        auto stdlib_path = fs::path{c->stdlib_dir};
-        if (!stdlib_path.is_absolute()) {
-            stdlib_path = fs::path{c->compiler_dir} / stdlib_path;
+        auto corelib_path = fs::path{c->corelib_dir};
+        if (!corelib_path.is_absolute()) {
+            corelib_path = fs::path{c->compiler_dir} / corelib_path;
         }
-        auto const filepath = (stdlib_path / filename).lexically_normal();
+        auto const filepath = (corelib_path / filename).lexically_normal();
         return import(c, filepath);
     }
 
@@ -2722,9 +2722,9 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     }
     auto &config = c->fn_scopes[fn]->locals;
 
-    DEFINE(stdlib_dir_str, getConfigValue<char const *>(c, "stdlib_dir", config));
-    c->stdlib_dir = stdlib_dir_str;
-    NK_LOG_DBG("stdlib_dir=`%.*s`", c->stdlib_dir.size(), c->stdlib_dir.c_str());
+    DEFINE(corelib_dir_str, getConfigValue<char const *>(c, "corelib_dir", config));
+    c->corelib_dir = corelib_dir_str;
+    NK_LOG_DBG("corelib_dir=`%.*s`", c->corelib_dir.size(), c->corelib_dir.c_str());
 
     DEFINE(libc_name_str, getConfigValue<char const *>(c, "libc_name", config));
     c->libc_name = libc_name_str;

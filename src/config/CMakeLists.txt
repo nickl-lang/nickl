@@ -1,4 +1,4 @@
-set(STDLIB_DIR "../std")
+set(CORELIB_DIR "../core")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(LIBC_NAME libc.so.6)
