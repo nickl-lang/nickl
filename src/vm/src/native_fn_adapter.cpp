@@ -30,15 +30,17 @@ namespace {
 
 NK_LOG_USE_SCOPE(native_fn_adapter);
 
-std::unordered_map<nktype_t, ffi_type *> s_typemap;
-NkAllocator s_typearena;
-std::recursive_mutex s_mtx;
+struct Context {
+    std::unordered_map<nktype_t, ffi_type *> typemap;
+    std::recursive_mutex mtx;
+    NkArenaAllocator typearena{};
 
-auto s_deinit_typearena = makeDeferrer([]() {
-    if (s_typearena) {
-        nk_free_arena(s_typearena);
+    ~Context() {
+        nk_free_arena(&typearena);
     }
-});
+};
+
+Context ctx;
 
 // TODO Integer promotion works only on little-endian
 ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
@@ -50,27 +52,23 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         return &ffi_type_void;
     }
 
-    std::lock_guard lk{s_mtx};
+    std::lock_guard lk{ctx.mtx};
 
     ffi_type *ffi_t = nullptr;
 
-    auto it = s_typemap.find(type);
-    if (it != s_typemap.end()) {
+    auto it = ctx.typemap.find(type);
+    if (it != ctx.typemap.end()) {
         NK_LOG_DBG("Found existing ffi type=%p", it->second);
         ffi_t = it->second;
     } else {
-        if (!s_typearena) {
-            s_typearena = nk_create_arena();
-        }
-
         switch (type->tclass) {
         case NkType_Array: {
             auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
-            ffi_type **elements = (ffi_type **)nk_allocate(
-                s_typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
+            ffi_type **elements = (ffi_type **)nk_arena_alloc(
+                &ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
             std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
             elements[type->as.arr.elem_count] = nullptr;
-            ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
+            ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
                 .size = type->size,
                 .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
@@ -125,13 +123,13 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             if (!type->as.tuple.elems.size) {
                 return &ffi_type_void;
             }
-            ffi_type **elements = (ffi_type **)nk_allocate(
-                s_typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
+            ffi_type **elements = (ffi_type **)nk_arena_alloc(
+                &ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
             for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
                 elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
             }
             elements[type->as.tuple.elems.size] = nullptr;
-            ffi_t = new (nk_allocate(s_typearena, sizeof(ffi_type))) ffi_type{
+            ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
                 .size = type->size,
                 .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
@@ -144,7 +142,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             break;
         }
 
-        s_typemap.emplace(type, ffi_t);
+        ctx.typemap.emplace(type, ffi_t);
     }
 
     NK_LOG_DBG(

@@ -41,7 +41,7 @@ struct nkval_hash {
 
 struct WriterCtx {
     NkIrProg ir;
-    NkAllocator arena;
+    NkArenaAllocator arena;
 
     std::ostream &types_s;
     std::ostream &data_s;
@@ -651,7 +651,7 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
     };
 
     defer {
-        nk_free_arena(ctx.arena);
+        nk_free_arena(&ctx.arena);
     };
 
     _writePreabmle(ctx.types_s);

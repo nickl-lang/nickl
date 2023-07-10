@@ -25,19 +25,4 @@
 
 #endif // BUILD_WITH_EASY_PROFILER
 
-struct ProfilerWrapper {
-    ProfilerWrapper() {
-#ifdef BUILD_WITH_EASY_PROFILER
-        EASY_PROFILER_ENABLE;
-        ::profiler::startListen(EASY_PROFILER_PORT);
-#endif // BUILD_WITH_EASY_PROFILER
-    }
-
-    ~ProfilerWrapper() {
-#ifdef BUILD_WITH_EASY_PROFILER
-        ::profiler::dumpBlocksToFile("profiler_events.prof");
-#endif // BUILD_WITH_EASY_PROFILER
-    }
-};
-
 #endif // HEADER_GUARD_NK_COMMON_PROFILER

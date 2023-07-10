@@ -189,7 +189,7 @@ struct NodeInfo {
 
 struct NklCompiler_T {
     NkIrProg ir;
-    NkAllocator arena;
+    NkArenaAllocator arena;
 
     std::string err_str{};
     NklTokenRef err_token{};
@@ -258,7 +258,7 @@ nkstr irBlockName(NklCompiler c, char const *name) {
     char buf[1024];
     size_t size = std::snprintf(buf, AR_SIZE(buf), "%s%zu", name, num);
 
-    auto str = (char *)nk_allocate(c->arena, size + 1);
+    auto str = (char *)nk_arena_alloc(&c->arena, size + 1);
     std::memcpy(str, buf, size);
     str[size] = '\0';
 
@@ -381,7 +381,7 @@ template <class T, class... TArgs>
 ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(
-             c->ir, {new (nk_allocate(c->arena, sizeof(T))) T{args...}, tovmt(type)})},
+             c->ir, {new (nk_arena_alloc(&c->arena, sizeof(T))) T{args...}, tovmt(type)})},
         type,
         v_val};
 }
@@ -392,7 +392,8 @@ ValueInfo makeValue(NklCompiler c, nklval_t val) {
 
 ValueInfo makeValue(NklCompiler c, nkltype_t type) {
     return {
-        {.cnst = nkir_makeConst(c->ir, {nk_allocate(c->arena, nklt_sizeof(type)), tovmt(type)})},
+        {.cnst =
+             nkir_makeConst(c->ir, {nk_arena_alloc(&c->arena, nklt_sizeof(type)), tovmt(type)})},
         type,
         v_val};
 }
@@ -414,7 +415,7 @@ nklval_t comptimeConstGetValue(NklCompiler c, ComptimeConst &cnst) {
         NK_LOG_DBG("getting comptime const from funct");
         auto fn_t = nkir_functGetType(cnst.funct);
         auto type = fromvmt(fn_t->as.fn.ret_t);
-        nklval_t val{nk_allocate(c->arena, nklt_sizeof(type)), type};
+        nklval_t val{nk_arena_alloc(&c->arena, nklt_sizeof(type)), type};
         nkir_invoke({&cnst.funct, fn_t}, tovmv(val), {});
         cnst = makeValueComptimeConst(val);
         return val;
@@ -959,7 +960,8 @@ ValueInfo compileFn(
     } else {
         ret_t = void_t;
     }
-    nkltype_t args_t = nkl_get_tuple(c->arena, {params_types.data(), params_types.size()}, 1);
+    nkltype_t args_t = nkl_get_tuple(
+        nk_arena_getAllocator(&c->arena), {params_types.data(), params_types.size()}, 1);
 
     auto fn_t = nkl_get_fn({ret_t, args_t, call_conv, is_variadic});
 
@@ -1041,7 +1043,8 @@ ValueInfo compileFnType(
         return error(c, "type expected"), ValueInfo{};
     }
     auto ret_t = nklval_as(nkltype_t, ret_t_val);
-    nkltype_t args_t = nkl_get_tuple(c->arena, {params_types.data(), params_types.size()}, 1);
+    nkltype_t args_t = nkl_get_tuple(
+        nk_arena_getAllocator(&c->arena), {params_types.data(), params_types.size()}, 1);
 
     auto fn_t = nkl_get_fn({ret_t, args_t, call_conv, is_variadic});
 
@@ -1125,8 +1128,11 @@ ValueInfo compileAndDiscard(NklCompiler c, NklAstNode node) {
     nkir_startFunct(
         fn,
         cs2s("#comptime"),
-        tovmt(nkl_get_fn(
-            NkltFnInfo{void_t, nkl_get_tuple(c->arena, {nullptr, 0}, 1), NkCallConv_Nk, false})));
+        tovmt(nkl_get_fn(NkltFnInfo{
+            void_t,
+            nkl_get_tuple(nk_arena_getAllocator(&c->arena), {nullptr, 0}, 1),
+            NkCallConv_Nk,
+            false})));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     pushFnScope(c, fn);
@@ -1489,7 +1495,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             return error(c, "type expected"), ValueInfo{};
         }
         auto target_type = nklval_as(nkltype_t, val);
-        auto type = nkl_get_slice(c->arena, target_type);
+        auto type = nkl_get_slice(nk_arena_getAllocator(&c->arena), target_type);
         return makeValue<nkltype_t>(c, typeref_t, type);
     }
 
@@ -1712,7 +1718,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             APPEND(values, compile(c, &nodes.data[i]));
             types.emplace_back(values.back().type);
         }
-        auto tuple_t = nkl_get_tuple(c->arena, {types.data(), types.size()}, 1);
+        auto tuple_t =
+            nkl_get_tuple(nk_arena_getAllocator(&c->arena), {types.data(), types.size()}, 1);
         auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(tuple_t)));
         if (values.size() != tuple_t->as.tuple.elems.size) {
             return error(c, "invalid number of values in tuple literal"), ValueInfo{};
@@ -1735,7 +1742,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             types.emplace_back(nklval_as(nkltype_t, val));
         }
         return makeValue<nkltype_t>(
-            c, typeref_t, nkl_get_tuple(c->arena, {types.data(), types.size()}, 1));
+            c,
+            typeref_t,
+            nkl_get_tuple(nk_arena_getAllocator(&c->arena), {types.data(), types.size()}, 1));
     }
 
     case n_import: {
@@ -1826,7 +1835,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
         auto ar_t = nkl_get_array(i8_t, text.size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
-        auto str = (char *)nk_allocate(c->arena, text.size + 1);
+        auto str = (char *)nk_arena_alloc(&c->arena, text.size + 1);
         std::memcpy(str, text.data, text.size);
         str[text.size] = '\0';
 
@@ -1848,7 +1857,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
         auto ar_t = nkl_get_array(i8_t, size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
-        auto str = (char *)nk_allocate(c->arena, unescaped_str.size + 1);
+        auto str = (char *)nk_arena_alloc(&c->arena, unescaped_str.size + 1);
         std::memcpy(str, unescaped_str.data, size);
         str[size] = '\0';
 
@@ -1867,7 +1876,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
                 c,
                 node,
                 [c](NklFieldArray fields) {
-                    return nkl_get_struct(c->arena, fields);
+                    return nkl_get_struct(nk_arena_getAllocator(&c->arena), fields);
                 },
                 &inits));
         if (!inits.empty()) {
@@ -1879,13 +1888,13 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
 
     case n_union: {
         return compileCompositeType(c, node, [c](NklFieldArray fields) {
-            return nkl_get_union(c->arena, fields);
+            return nkl_get_union(nk_arena_getAllocator(&c->arena), fields);
         });
     }
 
     case n_enum: {
         return compileCompositeType(c, node, [c](NklFieldArray fields) {
-            return nkl_get_enum(c->arena, fields);
+            return nkl_get_enum(nk_arena_getAllocator(&c->arena), fields);
         });
     };
 
@@ -2015,7 +2024,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
             args_types.emplace_back(param_t ? param_t : val_info.type);
         }
 
-        auto args_t = nkl_get_tuple(c->arena, {args_types.data(), args_types.size()}, 1);
+        auto args_t = nkl_get_tuple(
+            nk_arena_getAllocator(&c->arena), {args_types.data(), args_types.size()}, 1);
 
         NkIrRef args_ref{};
         if (nklt_sizeof(args_t)) {
@@ -2113,7 +2123,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
         }
 
         default: {
-            nklval_t val{nk_allocate(c->arena, nklt_sizeof(type)), type};
+            nklval_t val{nk_arena_alloc(&c->arena, nklt_sizeof(type)), type};
             std::memset(nklval_data(val), 0, nklval_sizeof(val));
 
             // TODO Ignoring named args in object literal
@@ -2295,7 +2305,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, nkslice<TagInf
 
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type) {
     auto fn = nkir_makeFunct(c->ir);
-    NkltFnInfo fn_info{nullptr, nkl_get_tuple(c->arena, {nullptr, 0}, 1), NkCallConv_Nk, false};
+    NkltFnInfo fn_info{
+        nullptr,
+        nkl_get_tuple(nk_arena_getAllocator(&c->arena), {nullptr, 0}, 1),
+        NkCallConv_Nk,
+        false};
 
     auto pop_fn = pushFn(c, fn);
 
@@ -2372,8 +2386,11 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
 
-    auto top_level_fn_t =
-        nkl_get_fn({void_t, nkl_get_tuple(c->arena, {nullptr, 0}, 1), NkCallConv_Nk, false});
+    auto top_level_fn_t = nkl_get_fn(
+        {void_t,
+         nkl_get_tuple(nk_arena_getAllocator(&c->arena), {nullptr, 0}, 1),
+         NkCallConv_Nk,
+         false});
 
     nkir_startFunct(fn, cs2s("#top_level"), tovmt(top_level_fn_t));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
@@ -2661,7 +2678,7 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(nkslice<StructField> fiel
             .type = field.type,
         });
     }
-    return nkl_get_struct(c->arena, {fields.data(), fields.size()});
+    return nkl_get_struct(nk_arena_getAllocator(&c->arena), {fields.data(), fields.size()});
 }
 
 NklCompiler nkl_compiler_create() {
@@ -2673,7 +2690,7 @@ NklCompiler nkl_compiler_create() {
     NUMERIC_ITERATE(X)
 #undef X
 
-    any_t = nkl_get_any(arena);
+    any_t = nkl_get_any(nk_arena_getAllocator(&arena));
     typeref_t = nkl_get_typeref();
     void_t = nkl_get_void();
     void_ptr_t = nkl_get_ptr(void_t);
@@ -2687,7 +2704,7 @@ NklCompiler nkl_compiler_create() {
 }
 
 void nkl_compiler_free(NklCompiler c) {
-    nk_free_arena(c->arena);
+    nk_free_arena(&c->arena);
     nkir_deinitProgram(c->ir);
     c->~NklCompiler_T();
     nk_free(nk_default_allocator, c);

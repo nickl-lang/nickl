@@ -1,101 +1,85 @@
 #include "nk/common/allocator.h"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdlib>
-#include <deque>
 #include <new>
 
 namespace {
 
-void *defaultAllocate(NkAllocator, size_t size) {
-    return std::malloc(size);
+void *defaultAllocatorProc(
+    void * /*data*/,
+    NkAllocatorMode mode,
+    size_t size,
+    void *old_mem,
+    size_t /*old_size*/) {
+    switch (mode) {
+    case NkAllocator_Alloc:
+        return std::malloc(size);
+
+    case NkAllocator_Free:
+        std::free(old_mem);
+        return nullptr;
+
+    case NkAllocator_Realloc:
+        return std::realloc(old_mem, size);
+
+    default:
+        assert(!"unreachable");
+        return nullptr;
+    }
 }
 
-void defaultFree(NkAllocator, void *ptr) {
-    std::free(ptr);
-}
+void *arenaAllocatorProc(
+    void *data,
+    NkAllocatorMode mode,
+    size_t size,
+    void *old_mem,
+    size_t old_size) {
+    auto arena = (NkArenaAllocator *)data;
 
-NkAllocator_T s_default_allocator = {
-    .allocate = defaultAllocate,
-    .free = defaultFree,
-};
+    if (!arena->data) {
+        // TODO Fixed sized arena
+        arena->data = (uint8_t *)nk_allocate(nk_default_allocator, 10000000);
+        arena->size = 0;
+    }
 
-struct ArenaAllocator {
-    NkAllocator_T base;
-    uint8_t *data;
-    size_t size;
-};
+    switch (mode) {
+    case NkAllocator_Realloc: {
+        assert((arena->data + arena->size == (uint8_t *)old_mem + old_size) && "invalid realloc");
+        arena->size -= old_size;
+        [[fallthrough]];
+    }
 
-void *arenaAllocate(NkAllocator alloc, size_t size) {
-    auto arena = (ArenaAllocator *)alloc;
-    auto mem = arena->data + arena->size;
-    arena->size += size;
-    return mem;
-}
+    case NkAllocator_Alloc: {
+        auto mem = arena->data + arena->size;
+        arena->size += size;
+        return mem;
+    }
 
-void arenaFree(NkAllocator, void *) {
-}
+    default:
+        assert(!"unreachable");
 
-struct StackAllocator {
-    NkStackAllocator_T base;
-    uint8_t *data;
-    size_t size;
-};
-
-void *stackAllocate(NkStackAllocator alloc, size_t size) {
-    auto stack = (StackAllocator *)alloc;
-    auto mem = stack->data + stack->size;
-    stack->size += size;
-    return mem;
-}
-
-NkStackAllocatorFrame stackGetFrame(NkStackAllocator alloc) {
-    auto stack = (StackAllocator *)alloc;
-    return {stack->size};
-}
-
-void stackPopFrame(NkStackAllocator alloc, NkStackAllocatorFrame frame) {
-    auto stack = (StackAllocator *)alloc;
-    stack->size = frame.size;
+    case NkAllocator_Free:
+        return nullptr;
+    }
 }
 
 } // namespace
 
-NkAllocator nk_default_allocator = &s_default_allocator;
+NkAllocator nk_default_allocator = {
+    .data = nullptr,
+    .proc = defaultAllocatorProc,
+};
 
-NkAllocator nk_create_arena() {
-    return (NkAllocator) new (
-        nk_allocate(nk_default_allocator, sizeof(ArenaAllocator))) ArenaAllocator{
-        .base{
-            .allocate = arenaAllocate,
-            .free = arenaFree,
-        },
-        .data = (uint8_t *)nk_allocate(nk_default_allocator, 10000000), //@TODO Fixed sized arena
-        .size = 0,
-    };
-}
-
-void nk_free_arena(NkAllocator alloc) {
-    auto arena = (ArenaAllocator *)alloc;
+void nk_free_arena(NkArenaAllocator *arena) {
     nk_free(nk_default_allocator, arena->data);
-    nk_free(nk_default_allocator, arena);
+    *arena = {};
 }
 
-NkStackAllocator nk_create_stack() {
-    return (NkStackAllocator) new (
-        nk_allocate(nk_default_allocator, sizeof(StackAllocator))) StackAllocator{
-        .base{
-            .allocate = stackAllocate,
-            .getFrame = stackGetFrame,
-            .popFrame = stackPopFrame,
-        },
-        .data = (uint8_t *)nk_allocate(nk_default_allocator, 10000000), //@TODO Fixed sized stack
-        .size = 0,
+NkAllocator nk_arena_getAllocator(NkArenaAllocator *arena) {
+    return {
+        .data = arena,
+        .proc = arenaAllocatorProc,
     };
-}
-
-void nk_free_stack(NkStackAllocator alloc) {
-    auto stack = (StackAllocator *)alloc;
-    nk_free(nk_default_allocator, stack->data);
-    nk_free(nk_default_allocator, stack);
 }

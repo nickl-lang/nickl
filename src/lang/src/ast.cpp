@@ -17,7 +17,7 @@ char const *s_nkl_ast_node_names[] = {
 };
 
 struct NklAst_T {
-    NkAllocator arena;
+    NkArenaAllocator arena{};
 };
 
 namespace {
@@ -77,13 +77,11 @@ NK_EXPORT void nkl_ast_init() {
 }
 
 NklAst nkl_ast_create() {
-    return new (nk_allocate(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{
-        .arena = nk_create_arena(),
-    };
+    return new (nk_allocate(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{};
 }
 
 void nkl_ast_free(NklAst ast) {
-    nk_free_arena(ast->arena);
+    nk_free_arena(&ast->arena);
     ast->~NklAst_T();
     nk_free(nk_default_allocator, ast);
 }
@@ -110,12 +108,12 @@ NklAstNode_T nkl_makeNode3(
 }
 
 NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node) {
-    return {new (nk_allocate(ast->arena, sizeof(NklAstNode_T))) NklAstNode_T{node}, 1};
+    return {new (nk_arena_alloc(&ast->arena, sizeof(NklAstNode_T))) NklAstNode_T{node}, 1};
 }
 
 NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
     auto new_ar =
-        new (nk_allocate(ast->arena, sizeof(NklAstNode_T) * ar.size)) NklAstNode_T[ar.size];
+        new (nk_arena_alloc(&ast->arena, sizeof(NklAstNode_T) * ar.size)) NklAstNode_T[ar.size];
     std::memcpy(new_ar, ar.data, sizeof(NklAstNode_T) * ar.size);
     return {new_ar, ar.size};
 }

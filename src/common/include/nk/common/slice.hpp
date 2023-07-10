@@ -7,13 +7,14 @@
 
 template <class T>
 struct nkslice {
-    T *_data;
-    size_t _size;
-
     using value_type = T;
-    using iterator = T *;
+    using pointer = value_type *;
+    using iterator = pointer;
     using reference = value_type &;
     using size_type = size_t;
+
+    pointer _data;
+    size_type _size;
 
     constexpr nkslice()
         : _data{}
@@ -26,7 +27,7 @@ struct nkslice {
         , _size{cont.size()} {
     }
 
-    constexpr nkslice(T *data, size_t size)
+    constexpr nkslice(pointer data, size_type size)
         : _data{data}
         , _size{size} {
     }
@@ -35,7 +36,7 @@ struct nkslice {
         return _data;
     }
 
-    constexpr size_t size() const {
+    constexpr size_type size() const {
         return _size;
     }
 

@@ -170,7 +170,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 auto &val = p->globals[ref.index];
                 if (!val.data) {
                     auto const type = ir.globals[ref.index];
-                    val = {nk_allocate(p->arena, type->size), type};
+                    val = {nk_arena_alloc(&p->arena, type->size), type};
                     std::memset(val.data, 0, type->size);
                 }
                 arg.offset += (size_t)val.data;
@@ -326,7 +326,6 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 NkBcProg nkbc_createProgram(NkIrProg ir) {
     auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
-        .arena = nk_create_arena(),
     };
     return prog;
 }
@@ -337,7 +336,7 @@ void nkbc_deinitProgram(NkBcProg p) {
             nkdl_close(dl);
         }
 
-        nk_free_arena(p->arena);
+        nk_free_arena(&p->arena);
 
         p->~NkBcProg_T();
         nk_free(nk_default_allocator, p);

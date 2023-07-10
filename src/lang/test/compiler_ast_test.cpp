@@ -27,7 +27,7 @@ class compiler_ast : public testing::Test {
     }
 
     void TearDown() override {
-        nk_free_arena(m_arena);
+        nk_free_arena(&m_arena);
         nkl_compiler_free(m_compiler);
         nkl_ast_free(m_ast);
 
@@ -48,7 +48,7 @@ protected:
     }
 
     NklToken const *mkt(char const *text) {
-        return new (nk_allocate(m_arena, sizeof(NklToken))) NklToken{
+        return new (nk_arena_alloc(&m_arena, sizeof(NklToken))) NklToken{
             .text = text ? cs2s(text) : nkstr{},
             .pos = 0,
             .lin = 0,
@@ -103,7 +103,7 @@ protected:
 protected:
     NklAst m_ast;
     NklCompiler m_compiler;
-    NkAllocator m_arena;
+    NkArenaAllocator m_arena;
 };
 
 } // namespace

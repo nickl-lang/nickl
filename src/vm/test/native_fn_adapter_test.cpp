@@ -88,7 +88,7 @@ class native_fn_adapter : public testing::Test {
 
         m_arena = nk_create_arena();
 
-        auto void_t = alloct(nkt_get_tuple(m_arena, nullptr, 0, 1));
+        auto void_t = alloct(nkt_get_tuple(nk_arena_getAllocator(&m_arena), nullptr, 0, 1));
 
         i8_t = alloct(nkt_get_numeric(Int8));
         i16_t = alloct(nkt_get_numeric(Int16));
@@ -98,10 +98,12 @@ class native_fn_adapter : public testing::Test {
         f64_t = alloct(nkt_get_numeric(Float64));
 
         nktype_t ivec3_types[] = {i64_t, i64_t, i64_t};
-        ivec3_t = alloct(nkt_get_tuple(m_arena, ivec3_types, AR_SIZE(ivec3_types), 1));
+        ivec3_t = alloct(
+            nkt_get_tuple(nk_arena_getAllocator(&m_arena), ivec3_types, AR_SIZE(ivec3_types), 1));
 
         nktype_t dvec3_types[] = {f64_t, f64_t, f64_t};
-        dvec3_t = alloct(nkt_get_tuple(m_arena, dvec3_types, AR_SIZE(dvec3_types), 1));
+        dvec3_t = alloct(
+            nkt_get_tuple(nk_arena_getAllocator(&m_arena), dvec3_types, AR_SIZE(dvec3_types), 1));
 
         set_i8_t = alloct(nkt_get_fn({void_t, i8_t, NkCallConv_Cdecl, false}));
         set_i16_t = alloct(nkt_get_fn({void_t, i16_t, NkCallConv_Cdecl, false}));
@@ -122,22 +124,23 @@ class native_fn_adapter : public testing::Test {
         get_dvec3_t = alloct(nkt_get_fn({dvec3_t, void_t, NkCallConv_Cdecl, false}));
 
         str_t = alloct(nkt_get_ptr(i8_t));
-        auto set_variadic_args_t = alloct(nkt_get_tuple(m_arena, &str_t, 1, 1));
+        auto set_variadic_args_t =
+            alloct(nkt_get_tuple(nk_arena_getAllocator(&m_arena), &str_t, 1, 1));
 
         set_variadic_t = alloct(nkt_get_fn({void_t, set_variadic_args_t, NkCallConv_Cdecl, true}));
     }
 
     void TearDown() override {
-        nk_free_arena(m_arena);
+        nk_free_arena(&m_arena);
     }
 
 protected:
     nktype_t alloct(NkType type) {
-        return new (nk_allocate(m_arena, sizeof(NkType))) NkType{type};
+        return new (nk_arena_alloc(&m_arena, sizeof(NkType))) NkType{type};
     }
 
 protected:
-    NkAllocator m_arena;
+    NkArenaAllocator m_arena;
 
     nktype_t str_t;
 
@@ -193,12 +196,12 @@ protected:
 
 } // namespace
 
-#define SET_TEST(TYPE, VAL)                                                        \
-    do {                                                                           \
-        TYPE _val = VAL;                                                           \
-        auto args_t = alloct(nkt_get_tuple(m_arena, &TYPE##_t, 1, 1));             \
-        nk_native_invoke({&set_##TYPE##_fn, set_##TYPE##_t}, {}, {&_val, args_t}); \
-        EXPECT_EQ(s_##TYPE##_val, VAL);                                            \
+#define SET_TEST(TYPE, VAL)                                                                    \
+    do {                                                                                       \
+        TYPE _val = VAL;                                                                       \
+        auto args_t = alloct(nkt_get_tuple(nk_arena_getAllocator(&m_arena), &TYPE##_t, 1, 1)); \
+        nk_native_invoke({&set_##TYPE##_fn, set_##TYPE##_t}, {}, {&_val, args_t});             \
+        EXPECT_EQ(s_##TYPE##_val, VAL);                                                        \
     } while (0)
 
 TEST_F(native_fn_adapter, set) {
@@ -237,13 +240,14 @@ struct VariadicArgs {
     T val;
 };
 
-#define SET_VARIADIC_TEST(TYPE, VAL)                                                \
-    do {                                                                            \
-        nktype_t types[] = {str_t, TYPE##_t};                                       \
-        auto args_t = alloct(nkt_get_tuple(m_arena, types, AR_SIZE(types), 1));     \
-        VariadicArgs<TYPE> _args{#TYPE, VAL};                                       \
-        nk_native_invoke({&set_variadic_fn, set_variadic_t}, {}, {&_args, args_t}); \
-        EXPECT_EQ(s_##TYPE##_val, VAL);                                             \
+#define SET_VARIADIC_TEST(TYPE, VAL)                                                          \
+    do {                                                                                      \
+        nktype_t types[] = {str_t, TYPE##_t};                                                 \
+        auto args_t =                                                                         \
+            alloct(nkt_get_tuple(nk_arena_getAllocator(&m_arena), types, AR_SIZE(types), 1)); \
+        VariadicArgs<TYPE> _args{#TYPE, VAL};                                                 \
+        nk_native_invoke({&set_variadic_fn, set_variadic_t}, {}, {&_args, args_t});           \
+        EXPECT_EQ(s_##TYPE##_val, VAL);                                                       \
     } while (0)
 
 TEST_F(native_fn_adapter, set_variadic) {

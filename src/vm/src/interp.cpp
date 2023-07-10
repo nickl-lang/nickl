@@ -25,7 +25,7 @@ struct ProgramFrame {
 };
 
 struct ControlFrame {
-    NkStackAllocatorFrame stack_frame;
+    NkArenaAllocatorFrame stack_frame;
     uint8_t *base_frame;
     uint8_t *base_arg;
     uint8_t *base_ret;
@@ -58,18 +58,18 @@ struct InterpContext {
         uint8_t *base_ar[NkBcRef_Count];
         Base base;
     };
-    NkStackAllocator stack;
+    NkArenaAllocator stack;
     std::vector<ControlFrame> ctrl_stack;
-    std::vector<NkStackAllocatorFrame> stack_frames;
-    NkStackAllocatorFrame stack_frame;
+    std::vector<NkArenaAllocatorFrame> stack_frames;
+    NkArenaAllocatorFrame stack_frame;
     NkBcInstr const *pinstr;
     Registers reg;
     bool is_initialized;
 
     ~InterpContext() {
         NK_LOG_TRC("deinitializing stack...");
-        assert(nk_stack_getFrame(stack).size == 0 && "nonempty stack at exit");
-        nk_free_stack(stack);
+        assert(nk_arena_grab(&stack).size == 0 && "nonempty stack at exit");
+        nk_free_arena(&stack);
         is_initialized = false;
     }
 };
@@ -108,8 +108,8 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
         .pinstr = ctx.pinstr,
     });
 
-    ctx.stack_frame = nk_stack_getFrame(ctx.stack);
-    ctx.base.frame = (uint8_t *)nk_stack_allocate(ctx.stack, fn->frame_size); // TODO not aligned
+    ctx.stack_frame = nk_arena_grab(&ctx.stack);
+    ctx.base.frame = (uint8_t *)nk_arena_alloc(&ctx.stack, fn->frame_size); // TODO not aligned
     std::memset(ctx.base.frame, 0, fn->frame_size);
     ctx.base.arg = (uint8_t *)nkval_data(args);
     ctx.base.ret = (uint8_t *)nkval_data(ret);
@@ -134,7 +134,7 @@ void interp(NkBcInstr const &instr) {
         auto const fr = ctx.ctrl_stack.back();
         ctx.ctrl_stack.pop_back();
 
-        nk_stack_popFrame(ctx.stack, ctx.stack_frame);
+        nk_arena_pop(&ctx.stack, ctx.stack_frame);
 
         ctx.stack_frame = fr.stack_frame;
         ctx.base.frame = fr.base_frame;
@@ -147,12 +147,12 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_enter: {
-        ctx.stack_frames.emplace_back(nk_stack_getFrame(ctx.stack));
+        ctx.stack_frames.emplace_back(nk_arena_grab(&ctx.stack));
         break;
     }
 
     case nkop_leave: {
-        nk_stack_popFrame(ctx.stack, ctx.stack_frames.back());
+        nk_arena_pop(&ctx.stack, ctx.stack_frames.back());
         ctx.stack_frames.pop_back();
         break;
     }
@@ -448,7 +448,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     if (!ctx.is_initialized) {
         NK_LOG_TRC("initializing stack...");
         // TODO ctx.stack.reserve(1024);
-        ctx.stack = nk_create_stack();
+        ctx.stack = nk_create_arena();
         ctx.is_initialized = true;
     }
 
