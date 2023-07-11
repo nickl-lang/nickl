@@ -74,8 +74,7 @@ protected:
         ss >> msg.level;
         ss >> msg.scope;
 
-        msg.text =
-            std::string{std::istreambuf_iterator<char>{ss}, std::istreambuf_iterator<char>{}};
+        msg.text = std::string{std::istreambuf_iterator<char>{ss}, std::istreambuf_iterator<char>{}};
 
         return msg;
     }

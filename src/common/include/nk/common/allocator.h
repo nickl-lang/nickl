@@ -14,16 +14,14 @@ typedef enum {
     NkAllocator_Realloc,
 } NkAllocatorMode;
 
-typedef void *(
-    *NkAllocateProc)(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size);
+typedef void *(*NkAllocateProc)(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size);
 
 typedef struct {
     void *data;
     NkAllocateProc proc;
 } NkAllocator;
 
-// TODO Rename nk_allocate to nk_alloc
-inline void *nk_allocate(NkAllocator alloc, size_t size) {
+inline void *nk_alloc(NkAllocator alloc, size_t size) {
     return alloc.proc(alloc.data, NkAllocator_Alloc, size, NULL, 0);
 }
 
@@ -42,19 +40,13 @@ typedef struct {
     size_t size;
 } NkArenaAllocator;
 
-// TODO Remove nk_create_arena
-inline NkArenaAllocator nk_create_arena() {
-    return {};
-}
-
 NkAllocator nk_arena_getAllocator(NkArenaAllocator *arena);
 
 inline void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
-    return nk_allocate(nk_arena_getAllocator(arena), size);
+    return nk_alloc(nk_arena_getAllocator(arena), size);
 }
 
-// TODO Rename nk_free_arena to nk_arena_free
-void nk_free_arena(NkArenaAllocator *arena);
+void nk_arena_free(NkArenaAllocator *arena);
 
 typedef struct {
     size_t size;

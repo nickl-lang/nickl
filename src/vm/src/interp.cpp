@@ -69,7 +69,7 @@ struct InterpContext {
     ~InterpContext() {
         NK_LOG_TRC("deinitializing stack...");
         assert(nk_arena_grab(&stack).size == 0 && "nonempty stack at exit");
-        nk_free_arena(&stack);
+        nk_arena_free(&stack);
         is_initialized = false;
     }
 };
@@ -448,7 +448,6 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     if (!ctx.is_initialized) {
         NK_LOG_TRC("initializing stack...");
         // TODO ctx.stack.reserve(1024);
-        ctx.stack = nk_create_arena();
         ctx.is_initialized = true;
     }
 

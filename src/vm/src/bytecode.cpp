@@ -324,7 +324,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 } // namespace
 
 NkBcProg nkbc_createProgram(NkIrProg ir) {
-    auto prog = new (nk_allocate(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
+    auto prog = new (nk_alloc(nk_default_allocator, sizeof(NkBcProg_T))) NkBcProg_T{
         .ir = ir,
     };
     return prog;
@@ -336,7 +336,7 @@ void nkbc_deinitProgram(NkBcProg p) {
             nkdl_close(dl);
         }
 
-        nk_free_arena(&p->arena);
+        nk_arena_free(&p->arena);
 
         p->~NkBcProg_T();
         nk_free(nk_default_allocator, p);

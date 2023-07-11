@@ -30,7 +30,7 @@ void _makeCmdStr(NkStringBuilder sb, nkstr cmd, bool quiet) {
 }
 
 popen_filebuf *_createFileBuf(FILE *file) {
-    return new (nk_allocate(nk_default_allocator, sizeof(popen_filebuf))) popen_filebuf{file};
+    return new (nk_alloc(nk_default_allocator, sizeof(popen_filebuf))) popen_filebuf{file};
 }
 
 } // namespace

@@ -18,9 +18,9 @@ NkStringBuilder nksb_create() {
 }
 
 NkStringBuilder nksb_create_alloc(NkAllocator alloc) {
-    NkStringBuilder sb = new (nk_allocate(alloc, sizeof(*sb))) NkStringBuilder_T{
+    NkStringBuilder sb = new (nk_alloc(alloc, sizeof(*sb))) NkStringBuilder_T{
         .alloc = alloc,
-        .data = (char *)nk_allocate(alloc, 1),
+        .data = (char *)nk_alloc(alloc, 1),
         .size = 0,
     };
     sb->data[0] = 0;
@@ -53,7 +53,7 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
 
     size_t const new_size = sb->size + printf_res;
 
-    char *new_data = (char *)nk_allocate(sb->alloc, new_size + 1);
+    char *new_data = (char *)nk_alloc(sb->alloc, new_size + 1);
     std::memcpy(new_data, sb->data, sb->size);
 
     va_copy(ap_copy, ap);

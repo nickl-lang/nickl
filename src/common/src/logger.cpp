@@ -65,13 +65,12 @@ static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
 
 bool _nk_loggerCheck(NkLogLevel log_level) {
     char const *env_log_level = getenv(ENV_VAR);
-    return s_logger.initialized &&
-           log_level <= (env_log_level ? parseEnvLogLevel(env_log_level) : s_logger.log_level);
+    return s_logger.initialized && log_level <= (env_log_level ? parseEnvLogLevel(env_log_level) : s_logger.log_level);
 }
 
 void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
-    bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
-                          (s_logger.color_mode == NkLog_Color_Auto && nksys_isatty());
+    bool const to_color =
+        s_logger.color_mode == NkLog_Color_Always || (s_logger.color_mode == NkLog_Color_Auto && nksys_isatty());
 
     auto now = std::chrono::steady_clock::now();
     auto ts = std::chrono::duration<double>{now - s_logger.start_time}.count();
@@ -82,8 +81,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
         fprintf(stderr, TERM_COLOR_NONE "%s", c_color_map[log_level]);
     }
 
-    fprintf(
-        stderr, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
+    fprintf(stderr, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
 
     va_list ap;
     va_start(ap, fmt);

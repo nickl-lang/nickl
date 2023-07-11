@@ -36,7 +36,7 @@ struct Context {
     NkArenaAllocator typearena{};
 
     ~Context() {
-        nk_free_arena(&typearena);
+        nk_arena_free(&typearena);
     }
 };
 
@@ -184,7 +184,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 
     size_t argc = fn_t->as.fn.args_t->as.tuple.elems.size;
 
-    void *argv = (void *)nk_allocate(nk_default_allocator, fn_t->as.fn.args_t->size);
+    void *argv = (void *)nk_alloc(nk_default_allocator, fn_t->as.fn.args_t->size);
     defer {
         nk_free(nk_default_allocator, argv);
     };
@@ -218,7 +218,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     ffi_cif cif;
     _ffiPrepareCif(&cif, fn_t->as.fn.args_t->as.tuple.elems.size, is_variadic, rtype, atypes, argc);
 
-    void **argv = (void **)nk_allocate(nk_default_allocator, argc * sizeof(void *));
+    void **argv = (void **)nk_alloc(nk_default_allocator, argc * sizeof(void *));
     defer {
         nk_free(nk_default_allocator, argv);
     };
@@ -239,7 +239,7 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC(__func__);
 
-    auto cl = (NkIrNativeClosure)nk_allocate(nk_default_allocator, sizeof(NkIrNativeClosure_T));
+    auto cl = (NkIrNativeClosure)nk_alloc(nk_default_allocator, sizeof(NkIrNativeClosure_T));
     cl->fn = fn;
 
     size_t const argc = fn->fn_t->as.fn.args_t->as.tuple.elems.size;

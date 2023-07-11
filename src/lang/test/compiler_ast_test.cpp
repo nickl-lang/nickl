@@ -23,11 +23,10 @@ class compiler_ast : public testing::Test {
         m_ast = nkl_ast_create();
         m_compiler = nkl_compiler_create();
         nkl_compiler_configure(m_compiler, cs2s(CONFIG_DIR));
-        m_arena = nk_create_arena();
     }
 
     void TearDown() override {
-        nk_free_arena(&m_arena);
+        nk_arena_free(&m_arena);
         nkl_compiler_free(m_compiler);
         nkl_ast_free(m_ast);
 
@@ -103,7 +102,7 @@ protected:
 protected:
     NklAst m_ast;
     NklCompiler m_compiler;
-    NkArenaAllocator m_arena;
+    NkArenaAllocator m_arena{};
 };
 
 } // namespace

@@ -35,7 +35,7 @@ NkIrArg _arg(NkNumericValueType value_type) {
 } // namespace
 
 NkIrProg nkir_createProgram() {
-    return new (nk_allocate(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{};
+    return new (nk_alloc(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{};
 }
 
 void nkir_deinitProgram(NkIrProg p) {
@@ -52,7 +52,7 @@ void nkir_deinitProgram(NkIrProg p) {
 }
 
 NkIrFunct nkir_makeFunct(NkIrProg p) {
-    return p->functs.emplace_back(new (nk_allocate(nk_default_allocator, sizeof(NkIrFunct_T)))
+    return p->functs.emplace_back(new (nk_alloc(nk_default_allocator, sizeof(NkIrFunct_T)))
                                       NkIrFunct_T{
                                           .prog = p,
                                           .fn_t{},

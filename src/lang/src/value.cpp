@@ -393,7 +393,7 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields) {
     }
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto fields_data = (NklField *)nk_allocate(alloc, fields.size * sizeof(NklField));
+        auto fields_data = (NklField *)nk_alloc(alloc, fields.size * sizeof(NklField));
         std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
         auto underlying_type = nkl_get_tuple(
             alloc, {&fields.data[0].type, fields.size}, sizeof(NklField) / sizeof(nkltype_t));
@@ -425,7 +425,7 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
     }
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto fields_data = (NklField *)nk_allocate(alloc, fields.size * sizeof(NklField));
+        auto fields_data = (NklField *)nk_alloc(alloc, fields.size * sizeof(NklField));
         std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
         nkltype_t largest_type = nkl_get_void();
         uint8_t max_align = 0;

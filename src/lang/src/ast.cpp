@@ -77,11 +77,11 @@ NK_EXPORT void nkl_ast_init() {
 }
 
 NklAst nkl_ast_create() {
-    return new (nk_allocate(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{};
+    return new (nk_alloc(nk_default_allocator, sizeof(NklAst_T))) NklAst_T{};
 }
 
 void nkl_ast_free(NklAst ast) {
-    nk_free_arena(&ast->arena);
+    nk_arena_free(&ast->arena);
     ast->~NklAst_T();
     nk_free(nk_default_allocator, ast);
 }

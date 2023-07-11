@@ -41,12 +41,13 @@ struct nkval_hash {
 
 struct WriterCtx {
     NkIrProg ir;
-    NkArenaAllocator arena;
 
     std::ostream &types_s;
     std::ostream &data_s;
     std::ostream &forward_s;
     std::ostream &main_s;
+
+    NkArenaAllocator arena{};
 
     std::unordered_map<nktype_t, std::string> type_map{};
     size_t typedecl_count{};
@@ -642,7 +643,6 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
 
     WriterCtx ctx{
         .ir = ir,
-        .arena = nk_create_arena(),
 
         .types_s = types_s,
         .data_s = data_s,
@@ -651,7 +651,7 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
     };
 
     defer {
-        nk_free_arena(&ctx.arena);
+        nk_arena_free(&ctx.arena);
     };
 
     _writePreabmle(ctx.types_s);

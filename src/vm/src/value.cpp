@@ -304,8 +304,7 @@ NkTupleLayout nk_calcTupleLayout(
     size_t alignment = 0;
     size_t offset = 0;
 
-    NkTupleElemInfo *info_ar =
-        (NkTupleElemInfo *)nk_allocate(alloc, sizeof(NkTupleElemInfo) * count);
+    NkTupleElemInfo *info_ar = (NkTupleElemInfo *)nk_alloc(alloc, sizeof(NkTupleElemInfo) * count);
 
     for (size_t i = 0; i < count; i++) {
         nktype_t const type = types[i * stride];
