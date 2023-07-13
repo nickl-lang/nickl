@@ -56,6 +56,10 @@ struct nkslice {
         return _data[_size - 1];
     }
 
+    constexpr reference operator*() const {
+        return _data[0];
+    }
+
     constexpr iterator begin() const noexcept {
         return _data;
     }
@@ -64,7 +68,7 @@ struct nkslice {
         return _data + _size;
     }
 
-    operator nkslice<T const>() const {
+    constexpr operator nkslice<T const>() const {
         return {_data, _size};
     }
 };

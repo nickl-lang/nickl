@@ -37,8 +37,9 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 
     switch (mode) {
     case NkAllocator_Realloc:
-        assert((arena->data + arena->size == (uint8_t *)old_mem + old_size) && "invalid realloc");
-        arena->size -= old_size;
+        if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
+            arena->size -= old_size;
+        }
         [[fallthrough]];
 
     case NkAllocator_Alloc: {
