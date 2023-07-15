@@ -45,6 +45,8 @@ std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     _makeCmdStr(sb, cmd, quiet);
     auto str = nksb_concat(sb);
 
+    NK_LOG_DBG("popen(\"%.*s\", \"r\")", str.size, str.data);
+
     auto file = popen(str.data, "r");
     return std::istream{_createFileBuf(file)};
 }
@@ -58,6 +60,8 @@ std::ostream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     };
     _makeCmdStr(sb, cmd, quiet);
     auto str = nksb_concat(sb);
+
+    NK_LOG_DBG("popen(\"%.*s\", \"w\")", str.size, str.data);
 
     auto file = popen(str.data, "w");
     return std::ostream{_createFileBuf(file)};

@@ -37,10 +37,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         conf.additional_flags.size,
         conf.additional_flags.data);
 
-    auto cmd = nksb_concat(sb);
-
-    NK_LOG_DBG("cmd: %.*s", cmd.size, cmd.data);
-
+    auto const cmd = nksb_concat(sb);
     return nk_pipe_streamWrite(cmd, conf.quiet);
 }
 

@@ -1,5 +1,6 @@
 #include "cc_adapter.hpp"
 
+#include <filesystem>
 #include <iterator>
 
 #include <gtest/gtest.h>
@@ -21,14 +22,15 @@ class cc_adapter : public testing::Test {
         m_output_filename_sb = nksb_create();
         nksb_printf(
             m_output_filename_sb,
-            TEST_FILES_DIR "%s_test.out",
+            "%s%s_test" TEST_EXECUTABLE_EXT,
+            std::filesystem::exists(TEST_FILES_DIR) ? TEST_FILES_DIR : "",
             testing::UnitTest::GetInstance()->current_test_info()->name());
 
         m_conf = {
             .compiler_binary = cs2s(TEST_CC),
             .additional_flags = cs2s(TEST_CC_FLAGS),
             .output_filename = nksb_concat(m_output_filename_sb),
-            .echo_src = !TEST_QUIET,
+            .echo_src = false,
             .quiet = TEST_QUIET,
         };
     }
