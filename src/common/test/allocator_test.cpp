@@ -23,13 +23,13 @@ protected:
 };
 
 TEST_F(allocator, default) {
-    auto ptr = nk_alloc<int>(nk_default_allocator);
+    auto ptr = nk_alloc_t<int>(nk_default_allocator);
     *ptr = 42;
-    nk_free(nk_default_allocator, ptr);
+    nk_free_t(nk_default_allocator, ptr);
 }
 
 TEST_F(allocator, basic) {
-    char *ptr = nk_alloc<char>(m_alloc);
+    char *ptr = nk_alloc_t<char>(m_alloc);
     ASSERT_TRUE(ptr);
     *ptr = 'a';
 }
@@ -43,7 +43,7 @@ TEST_F(allocator, frames) {
     nk_alloc(m_alloc, 100);
     EXPECT_EQ(m_arena.size, 200);
 
-    nk_arena_pop(&m_arena, frame);
+    nk_arena_popFrame(&m_arena, frame);
     EXPECT_EQ(m_arena.size, 100);
 }
 
@@ -53,12 +53,12 @@ TEST_F(allocator, align) {
         std::max_align_t b;
     };
 
-    auto ptr = nk_alloc<A>(m_alloc);
+    auto ptr = nk_alloc_t<A>(m_alloc);
     EXPECT_EQ((size_t)ptr % alignof(A), 0);
 }
 
 TEST_F(allocator, clear) {
-    int *ptr = nk_alloc<int>(m_alloc, 5);
+    int *ptr = nk_alloc_t<int>(m_alloc, 5);
     ASSERT_TRUE(ptr);
 
     size_t const sz = sizeof(*ptr) * 5;
@@ -66,7 +66,7 @@ TEST_F(allocator, clear) {
 
     EXPECT_EQ(m_arena.size, sz);
 
-    nk_arena_pop(&m_arena, {0});
+    nk_arena_popFrame(&m_arena, {0});
 
     EXPECT_EQ(m_arena.size, 0);
 }

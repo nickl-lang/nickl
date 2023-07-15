@@ -1,5 +1,6 @@
 add_library(nk_common
     src/allocator.cpp
+    src/arena.cpp
     src/id.cpp
     src/string.cpp
     src/string_builder.cpp

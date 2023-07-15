@@ -64,8 +64,8 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         switch (type->tclass) {
         case NkType_Array: {
             auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
-            ffi_type **elements = (ffi_type **)nk_arena_alloc(
-                &ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
+            ffi_type **elements =
+                (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
             std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
             elements[type->as.arr.elem_count] = nullptr;
             ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
@@ -123,8 +123,8 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             if (!type->as.tuple.elems.size) {
                 return &ffi_type_void;
             }
-            ffi_type **elements = (ffi_type **)nk_arena_alloc(
-                &ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
+            ffi_type **elements =
+                (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
             for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
                 elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
             }
@@ -186,16 +186,14 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 
     void *argv = (void *)nk_alloc(nk_default_allocator, fn_t->as.fn.args_t->size);
     defer {
-        nk_free(nk_default_allocator, argv);
+        nk_free(nk_default_allocator, argv, fn_t->as.fn.args_t->size);
     };
 
     nkval_t args_val{argv, fn_t->as.fn.args_t};
 
     for (size_t i = 0; i < argc; i++) {
         std::memcpy(
-            nkval_data(nkval_tuple_at(args_val, i)),
-            args[i],
-            fn_t->as.fn.args_t->as.tuple.elems.data[i].type->size);
+            nkval_data(nkval_tuple_at(args_val, i)), args[i], fn_t->as.fn.args_t->as.tuple.elems.data[i].type->size);
     }
 
     nkir_invoke({(void *)&cl.fn, fn_t}, {resp, fn_t->as.fn.ret_t}, args_val);
@@ -220,7 +218,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
 
     void **argv = (void **)nk_alloc(nk_default_allocator, argc * sizeof(void *));
     defer {
-        nk_free(nk_default_allocator, argv);
+        nk_free(nk_default_allocator, argv, argc * sizeof(void *));
     };
 
     if (nkval_data(args)) {
@@ -264,5 +262,5 @@ void nk_native_free_closure(NkIrNativeClosure cl) {
     NK_LOG_TRC(__func__);
 
     ffi_closure_free(cl->closure);
-    nk_free(nk_default_allocator, cl);
+    nk_free(nk_default_allocator, cl, sizeof(*cl));
 }

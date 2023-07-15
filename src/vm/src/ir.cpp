@@ -42,21 +42,20 @@ void nkir_deinitProgram(NkIrProg p) {
     nkbc_deinitProgram(p->bc);
     for (auto funct : p->functs) {
         funct->~NkIrFunct_T();
-        nk_free(nk_default_allocator, funct);
+        nk_free(nk_default_allocator, funct, sizeof(*funct));
     }
     for (auto cl : p->closures) {
         nk_native_free_closure(cl);
     }
     p->~NkIrProg_T();
-    nk_free(nk_default_allocator, p);
+    nk_free(nk_default_allocator, p, sizeof(*p));
 }
 
 NkIrFunct nkir_makeFunct(NkIrProg p) {
-    return p->functs.emplace_back(new (nk_alloc(nk_default_allocator, sizeof(NkIrFunct_T)))
-                                      NkIrFunct_T{
-                                          .prog = p,
-                                          .fn_t{},
-                                      });
+    return p->functs.emplace_back(new (nk_alloc(nk_default_allocator, sizeof(NkIrFunct_T))) NkIrFunct_T{
+        .prog = p,
+        .fn_t{},
+    });
 }
 
 NkIrBlockId nkir_makeBlock(NkIrProg p) {
@@ -114,7 +113,7 @@ void nkir_discardFunct(NkIrFunct funct) {
         p->functs.erase(it);
     }
     funct->~NkIrFunct_T();
-    nk_free(nk_default_allocator, funct);
+    nk_free(nk_default_allocator, funct, sizeof(*funct));
 }
 
 nktype_t nkir_functGetType(NkIrFunct funct) {
@@ -214,8 +213,8 @@ NkIrRef nkir_makeArgRef(NkIrProg p, size_t index) {
     assert(
         (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.args_t) &&
         "referencing incomplete function args type");
-    auto const args_t = p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.args_t
-                                                                  : p->cur_funct->fn_info.args_t;
+    auto const args_t =
+        p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.args_t : p->cur_funct->fn_info.args_t;
     assert(index < args_t->as.tuple.elems.size && "arg index out of range");
     return {
         .index = index,
@@ -232,8 +231,8 @@ NkIrRef nkir_makeRetRef(NkIrProg p) {
     assert(
         (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.ret_t) &&
         "referencing incomplete function ret type");
-    auto const ret_t = p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.ret_t
-                                                                 : p->cur_funct->fn_info.ret_t;
+    auto const ret_t =
+        p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.ret_t : p->cur_funct->fn_info.ret_t;
     return {
         .data = {},
         .offset = 0,
@@ -326,10 +325,8 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef fn, NkIrRef args) {
     return {{_arg(dst), _arg(fn), _arg(args)}, nkir_call};
 }
 
-#define U(NAME)                                            \
-    NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg) { \
-        return {{_arg(dst), _arg(arg), {}}, nkir_##NAME};  \
-    }
+#define U(NAME) \
+    NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg) { return {{_arg(dst), _arg(arg), {}}, nkir_##NAME}; }
 #define B(NAME)                                                         \
     NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
         return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_##NAME};        \

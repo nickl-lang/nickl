@@ -25,9 +25,8 @@ inline void *nk_alloc(NkAllocator alloc, size_t size) {
     return alloc.proc(alloc.data, NkAllocator_Alloc, size, NULL, 0);
 }
 
-inline void nk_free(NkAllocator alloc, void *ptr) {
-    // TODO Accept old_size for nk_free
-    alloc.proc(alloc.data, NkAllocator_Free, 0, ptr, 0);
+inline void nk_free(NkAllocator alloc, void *ptr, size_t size) {
+    alloc.proc(alloc.data, NkAllocator_Free, 0, ptr, size);
 }
 
 inline void *nk_realloc(NkAllocator alloc, size_t size, void *old_mem, size_t old_size) {
@@ -43,9 +42,8 @@ typedef struct {
 
 NkAllocator nk_arena_getAllocator(NkArenaAllocator *arena);
 
-inline void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
-    return nk_alloc(nk_arena_getAllocator(arena), size);
-}
+void *nk_arena_alloc(NkArenaAllocator *arena, size_t size);
+void nk_arena_pop(NkArenaAllocator *arena, size_t size);
 
 void nk_arena_free(NkArenaAllocator *arena);
 
@@ -57,7 +55,7 @@ inline NkArenaAllocatorFrame nk_arena_grab(NkArenaAllocator *arena) {
     return {arena->size};
 }
 
-inline void nk_arena_pop(NkArenaAllocator *arena, NkArenaAllocatorFrame frame) {
+inline void nk_arena_popFrame(NkArenaAllocator *arena, NkArenaAllocatorFrame frame) {
     arena->size = frame.size;
 }
 

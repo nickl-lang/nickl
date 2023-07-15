@@ -69,6 +69,6 @@ bool nk_pipe_streamClose(std::ios const &stream) {
     auto buf = (popen_filebuf *)stream.rdbuf();
     auto res = pclose(buf->file());
     buf->~popen_filebuf();
-    nk_free(nk_default_allocator, buf);
+    nk_free(nk_default_allocator, buf, sizeof(*buf));
     return !res;
 }

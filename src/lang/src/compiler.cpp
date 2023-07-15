@@ -2522,7 +2522,7 @@ extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
     NK_LOG_TRC(__func__);
 
     b->~NklCompilerBuilder();
-    nk_free(nk_default_allocator, b);
+    nk_free(nk_default_allocator, b, sizeof(*b));
 }
 
 extern "C" NK_EXPORT bool nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
@@ -2608,7 +2608,7 @@ void nkl_compiler_free(NklCompiler c) {
     nk_arena_free(&c->arena);
     nkir_deinitProgram(c->ir);
     c->~NklCompiler_T();
-    nk_free(nk_default_allocator, c);
+    nk_free(nk_default_allocator, c, sizeof(*c));
 }
 
 bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {

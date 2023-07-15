@@ -106,10 +106,9 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     auto const &ir = *p->ir;
 
-    auto frame_layout =
-        nk_calcTupleLayout(fn->locals.data(), fn->locals.size(), nk_default_allocator, 1);
+    auto frame_layout = nk_calcTupleLayout(fn->locals.data(), fn->locals.size(), nk_default_allocator, 1);
     defer {
-        nk_free(nk_default_allocator, frame_layout.info_ar.data);
+        nk_free(nk_default_allocator, frame_layout.info_ar.data, frame_layout.info_ar.size);
     };
 
     auto &instrs = p->instrs.emplace_back();
@@ -339,7 +338,7 @@ void nkbc_deinitProgram(NkBcProg p) {
         nk_arena_free(&p->arena);
 
         p->~NkBcProg_T();
-        nk_free(nk_default_allocator, p);
+        nk_free(nk_default_allocator, p, sizeof(*p));
     }
 }
 

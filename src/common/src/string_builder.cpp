@@ -29,8 +29,8 @@ NkStringBuilder nksb_create_alloc(NkAllocator alloc) {
 
 void nksb_free(NkStringBuilder sb) {
     if (sb) {
-        nk_free(sb->alloc, sb->data);
-        nk_free(sb->alloc, sb);
+        nk_free(sb->alloc, sb->data, sb->size);
+        nk_free(sb->alloc, sb, sizeof(*sb));
     }
 }
 
@@ -62,7 +62,7 @@ int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
 
     new_data[new_size] = 0;
 
-    nk_free(sb->alloc, sb->data);
+    nk_free(sb->alloc, sb->data, sb->size);
 
     sb->data = new_data;
     sb->size = new_size;

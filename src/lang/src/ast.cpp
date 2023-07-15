@@ -83,7 +83,7 @@ NklAst nkl_ast_create() {
 void nkl_ast_free(NklAst ast) {
     nk_arena_free(&ast->arena);
     ast->~NklAst_T();
-    nk_free(nk_default_allocator, ast);
+    nk_free(nk_default_allocator, ast, sizeof(*ast));
 }
 
 NklAstNode_T nkl_makeNode0(nkid id, NklTokenRef token) {
@@ -112,8 +112,7 @@ NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node) {
 }
 
 NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
-    auto new_ar =
-        new (nk_arena_alloc(&ast->arena, sizeof(NklAstNode_T) * ar.size)) NklAstNode_T[ar.size];
+    auto new_ar = new (nk_arena_alloc(&ast->arena, sizeof(NklAstNode_T) * ar.size)) NklAstNode_T[ar.size];
     std::memcpy(new_ar, ar.data, sizeof(NklAstNode_T) * ar.size);
     return {new_ar, ar.size};
 }

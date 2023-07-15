@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstring>
 
-#include "nk/common/allocator.h"
+#include "nk/common/allocator.hpp"
 #include "nk/common/slice.hpp"
 #include "nk/common/utils.hpp"
 
@@ -22,14 +22,14 @@ struct nkarray : nkslice<T> {
     }
 
     void deinit() {
-        nk_free(_alloc, _data);
+        nk_free_t(_alloc, _data, _capacity);
         *this = {};
     }
 
     void reserve(size_t n) {
         if (_size + n > _capacity) {
             auto const new_capacity = ceilToPowerOf2(_size + n);
-            auto const new_data = (T *)nk_realloc(_alloc, new_capacity * sizeof(T), _data, _capacity * sizeof(T));
+            auto const new_data = nk_realloc_t(_alloc, new_capacity, _data, _capacity);
             assert(new_data && "allocation failed");
             _data = new_data;
             _capacity = new_capacity;
