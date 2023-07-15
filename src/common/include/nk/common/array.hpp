@@ -26,20 +26,26 @@ struct nkarray : nkslice<T> {
         *this = {};
     }
 
-    void reserve(size_t n) {
+    bool reserve(size_t n) {
         if (_size + n > _capacity) {
             auto const new_capacity = ceilToPowerOf2(_size + n);
             auto const new_data = nk_realloc_t(_alloc, new_capacity, _data, _capacity);
-            assert(new_data && "allocation failed");
+            if (!new_data) {
+                return false;
+            }
             _data = new_data;
             _capacity = new_capacity;
         }
+        return true;
     }
 
     nkslice<T> push(size_t n = 1) {
-        reserve(n);
-        _size += n;
-        return {_data + _size - n, n};
+        if (reserve(n)) {
+            _size += n;
+            return {_data + _size - n, n};
+        } else {
+            return {};
+        }
     }
 
     void pop(size_t n = 1) {

@@ -23,7 +23,7 @@ TEST_F(array, init) {
         ar.deinit();
     };
 
-    ar.reserve(1);
+    EXPECT_TRUE(ar.reserve(1));
 
     EXPECT_EQ(ar.size(), 0);
     EXPECT_EQ(ar.capacity(), 1);
@@ -73,7 +73,7 @@ TEST_F(array, zero_capacity) {
         ar.deinit();
     };
 
-    ar.reserve(0);
+    EXPECT_TRUE(ar.reserve(0));
 
     EXPECT_EQ(ar.capacity(), 0);
     EXPECT_EQ(ar.size(), 0);
@@ -121,9 +121,9 @@ TEST_F(array, multiple_reserves) {
 
     size_t sz = 1;
 
-    ar.reserve(sz *= 10);
-    ar.reserve(sz *= 10);
-    ar.reserve(sz *= 10);
+    EXPECT_TRUE(ar.reserve(sz *= 10));
+    EXPECT_TRUE(ar.reserve(sz *= 10));
+    EXPECT_TRUE(ar.reserve(sz *= 10));
 
     auto data = ar.push(sz);
     std::memset(data.data(), 0, sz * sizeof(decltype(ar)::value_type));
