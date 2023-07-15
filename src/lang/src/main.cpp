@@ -19,17 +19,16 @@ void printErrorUsage() {
 }
 
 void printUsage() {
-    printf(
-        "Usage: " NKL_BINARY_NAME
-        " [options] file"
-        "\nOptions:"
+    printf("Usage: " NKL_BINARY_NAME
+           " [options] file"
+           "\nOptions:"
 #ifdef ENABLE_LOGGING
-        "\n    -c, --color {auto,always,never}                      Choose when to color output"
-        "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
+           "\n    -c, --color {auto,always,never}                      Choose when to color output"
+           "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
 #endif // ENABLE_LOGGING
-        "\n    -h, --help                                           Display this message and exit"
-        "\n    -v, --version                                        Show version information"
-        "\n");
+           "\n    -h, --help                                           Display this message and exit"
+           "\n    -v, --version                                        Show version information"
+           "\n");
 }
 
 void printVersion() {
@@ -152,7 +151,7 @@ int nkl_main(int argc, char const *const *argv) {
     NK_LOGGER_INIT(logger_options);
 
     auto compiler = nkl_compiler_create();
-    if (!nkl_compiler_configure(compiler, cs2s(nksys_appDir().string().c_str()))) {
+    if (!nkl_compiler_configure(compiler, cs2s(nk_appDir().string().c_str()))) {
         return 1;
     }
     defer {

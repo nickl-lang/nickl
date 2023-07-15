@@ -3,6 +3,6 @@
 
 #include <filesystem>
 
-std::filesystem::path nksys_appDir();
+std::filesystem::path nk_appDir();
 
 #endif // HEADER_GUARD_NK_SYS_APP

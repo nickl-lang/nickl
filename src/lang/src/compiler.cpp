@@ -371,7 +371,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc(&c->arena, sizeof(T))) T{args...}, tovmt(type)})},
         type,
@@ -2365,7 +2365,7 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
 
     // TODO Refactor coloring
     // TODO Add option to control coloring from CLI
-    bool const to_color = nksys_isatty();
+    bool const to_color = nk_isatty();
     assert(!c->file_stack.empty());
     std::fprintf(
         stderr,
@@ -2399,7 +2399,7 @@ void printError(NklCompiler c, char const *fmt, ...) {
     auto str = string_vformat(fmt, ap);
     va_end(ap);
 
-    bool const to_color = nksys_isatty();
+    bool const to_color = nk_isatty();
 
     std::fprintf(
         stderr,

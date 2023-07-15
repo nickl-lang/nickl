@@ -17,7 +17,7 @@ extern "C" {
 #define TERM_COLOR_CYAN "\x1b[1;36m"
 #define TERM_COLOR_WHITE "\x1b[1;37m"
 
-bool nksys_isatty();
+bool nk_isatty();
 
 #ifdef __cplusplus
 }

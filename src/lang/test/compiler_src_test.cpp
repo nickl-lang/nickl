@@ -9,6 +9,7 @@
 #include "nk/common/logger.h"
 #include "nk/common/string.h"
 #include "nk/common/utils.hpp"
+#include "nk/sys/app.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
@@ -22,7 +23,7 @@ class compiler_src : public testing::Test {
         NK_LOGGER_INIT({});
 
         m_compiler = nkl_compiler_create();
-        nkl_compiler_configure(m_compiler, cs2s(CONFIG_DIR));
+        nkl_compiler_configure(m_compiler, cs2s(nk_appDir().string().c_str()));
     }
 
     void TearDown() override {

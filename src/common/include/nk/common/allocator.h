@@ -26,6 +26,7 @@ inline void *nk_alloc(NkAllocator alloc, size_t size) {
 }
 
 inline void nk_free(NkAllocator alloc, void *ptr) {
+    // TODO Accept old_size for nk_free
     alloc.proc(alloc.data, NkAllocator_Free, 0, ptr, 0);
 }
 

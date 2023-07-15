@@ -70,7 +70,7 @@ bool _nk_loggerCheck(NkLogLevel log_level) {
 
 void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
     bool const to_color =
-        s_logger.color_mode == NkLog_Color_Always || (s_logger.color_mode == NkLog_Color_Auto && nksys_isatty());
+        s_logger.color_mode == NkLog_Color_Always || (s_logger.color_mode == NkLog_Color_Auto && nk_isatty());
 
     auto now = std::chrono::steady_clock::now();
     auto ts = std::chrono::duration<double>{now - s_logger.start_time}.count();

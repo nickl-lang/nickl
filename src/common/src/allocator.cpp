@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "nk/sys/mem.h"
+
 namespace {
 
 void *defaultAllocatorProc(void * /*data*/, NkAllocatorMode mode, size_t size, void *old_mem, size_t /*old_size*/) {
@@ -24,6 +26,8 @@ void *defaultAllocatorProc(void * /*data*/, NkAllocatorMode mode, size_t size, v
     }
 }
 
+static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16Mib
+
 void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size) {
     (void)old_mem;
 
@@ -31,7 +35,7 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 
     if (!arena->data) {
         // TODO Fixed sized arena
-        arena->data = (uint8_t *)nk_alloc(nk_default_allocator, 1 << 24); // 16Mib
+        arena->data = (uint8_t *)nk_mmap(FIXED_ARENA_SIZE);
         arena->size = 0;
     }
 
@@ -64,7 +68,9 @@ NkAllocator nk_default_allocator = {
 };
 
 void nk_arena_free(NkArenaAllocator *arena) {
-    nk_free(nk_default_allocator, arena->data);
+    if (arena->data) {
+        nk_munmap(arena->data, FIXED_ARENA_SIZE);
+    }
     *arena = {};
 }
 

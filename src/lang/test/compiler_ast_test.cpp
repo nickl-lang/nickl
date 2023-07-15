@@ -8,6 +8,7 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
+#include "nk/sys/app.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
@@ -22,7 +23,7 @@ class compiler_ast : public testing::Test {
 
         m_ast = nkl_ast_create();
         m_compiler = nkl_compiler_create();
-        nkl_compiler_configure(m_compiler, cs2s(CONFIG_DIR));
+        nkl_compiler_configure(m_compiler, cs2s(nk_appDir().string().c_str()));
     }
 
     void TearDown() override {
@@ -68,11 +69,7 @@ protected:
         return _(id, arg0, arg1, {});
     }
 
-    NklAstNodeArray _(
-        char const *id,
-        NklAstNodeArray arg0,
-        NklAstNodeArray arg1,
-        NklAstNodeArray arg2) {
+    NklAstNodeArray _(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1, NklAstNodeArray arg2) {
         return _(id, {}, arg0, arg1, arg2);
     }
 
@@ -142,24 +139,24 @@ TEST_F(compiler_ast, fn) {
 }
 
 TEST_F(compiler_ast, comptime_const_getter) {
-    test(_(
-        "block",
-        _({
-            _("define", _("id", "counter"), _("int", "0")),
-            _("comptime_const_def",
-              _("id", "getVal"),
-              _("fn",
-                _({}),
-                _("i64", "i64"),
-                _("block",
-                  _({
-                      _("assign", _("id", "counter"), _("add", _("id", "counter"), _("int", "1"))),
-                      _("return", _("int", "42")),
-                  })))),
-            _("comptime_const_def", _("id", "val"), _("call", _("id", "getVal"), _({}))),
-            _("id", "val"),
-            _("id", "val"),
-        })));
+    test(
+        _("block",
+          _({
+              _("define", _("id", "counter"), _("int", "0")),
+              _("comptime_const_def",
+                _("id", "getVal"),
+                _("fn",
+                  _({}),
+                  _("i64", "i64"),
+                  _("block",
+                    _({
+                        _("assign", _("id", "counter"), _("add", _("id", "counter"), _("int", "1"))),
+                        _("return", _("int", "42")),
+                    })))),
+              _("comptime_const_def", _("id", "val"), _("call", _("id", "getVal"), _({}))),
+              _("id", "val"),
+              _("id", "val"),
+          })));
 }
 
 TEST_F(compiler_ast, native_puts) {
@@ -171,9 +168,7 @@ TEST_F(compiler_ast, native_puts) {
                 _("arg", {}, _("string", R"("")")),
                 _("comptime_const_def",
                   _("id", "puts"),
-                  _("fn_type",
-                    _("param", _("id", "str"), _("ptr_type", _("i8", "i8"))),
-                    _("void", "void")))),
+                  _("fn_type", _("param", _("id", "str"), _("ptr_type", _("i8", "i8"))), _("void", "void")))),
               _("call", _("id", "puts"), _("arg", {}, _("string", R"("Hello, World!")"))),
           })));
 }
@@ -205,26 +200,24 @@ TEST_F(compiler_ast, import) {
         _("block",
           _({
               _("import", _("id", "libc")),
-              _("call",
-                _("member", _("id", "libc"), _("id", "puts")),
-                _("arg", {}, _("string", R"("Hello, World!")"))),
+              _("call", _("member", _("id", "libc"), _("id", "puts")), _("arg", {}, _("string", R"("Hello, World!")"))),
           })));
 }
 
 TEST_F(compiler_ast, comptime_declareLocal) {
-    test(_(
-        "block",
-        _({
-            _("import", _("id", "libc")),
-            _("import", _("id", "compiler")),
-            _("run",
-              _("call",
-                _("member", _("id", "compiler"), _("id", "declareLocal")),
-                _({
-                    _("arg", {}, _("string", R"("str")")),
-                    _("arg", {}, _("ptr_type", _("i8", "i8"))),
-                }))),
-            _("assign", _("id", "str"), _("string", R"("hello")")),
-            _("call", _("member", _("id", "libc"), _("id", "puts")), _("arg", {}, _("id", "str"))),
-        })));
+    test(
+        _("block",
+          _({
+              _("import", _("id", "libc")),
+              _("import", _("id", "compiler")),
+              _("run",
+                _("call",
+                  _("member", _("id", "compiler"), _("id", "declareLocal")),
+                  _({
+                      _("arg", {}, _("string", R"("str")")),
+                      _("arg", {}, _("ptr_type", _("i8", "i8"))),
+                  }))),
+              _("assign", _("id", "str"), _("string", R"("hello")")),
+              _("call", _("member", _("id", "libc"), _("id", "puts")), _("arg", {}, _("id", "str"))),
+          })));
 }
