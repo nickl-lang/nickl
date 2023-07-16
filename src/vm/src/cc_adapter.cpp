@@ -24,7 +24,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         nksb_free(sb);
     };
 
-    auto echo_cmd = cs2s(conf.echo_src ? "tee /dev/stderr |" : "");
+    auto echo_cmd = nk_mkstr(conf.echo_src ? "tee /dev/stderr |" : "");
     nksb_printf(
         sb,
         "%.*s %.*s -x c - -o %.*s -lm %.*s",

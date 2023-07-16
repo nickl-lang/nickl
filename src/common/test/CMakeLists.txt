@@ -1,5 +1,7 @@
 def_test(GROUP common NAME allocator LINK nk_common)
 def_test(GROUP common NAME array LINK nk_common)
+def_test(GROUP common NAME hash_map LINK nk_common)
+def_test(GROUP common NAME hash_set LINK nk_common)
 def_test(GROUP common NAME id LINK nk_common)
 def_test(GROUP common NAME log_array LINK nk_common)
 def_test(GROUP common NAME string_builder LINK nk_common)

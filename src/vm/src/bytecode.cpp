@@ -191,12 +191,12 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                     p->shobjs.resize(exsym.so_id.id + 1, {});
                 }
                 auto &dl = p->shobjs[exsym.so_id.id];
-                dl = nkdl_open(cs2s(ir.shobjs[exsym.so_id.id].c_str()));
+                dl = nkdl_open(nk_mkstr(ir.shobjs[exsym.so_id.id].c_str()));
                 if (ref.index >= p->exsyms.size()) {
                     p->exsyms.resize(ref.index + 1, {});
                 }
                 auto &sym = p->exsyms[ref.index];
-                sym = nkdl_sym(dl, cs2s(exsym.name.c_str()));
+                sym = nkdl_sym(dl, nk_mkstr(exsym.name.c_str()));
                 arg.offset += (size_t)&sym;
                 break;
             }

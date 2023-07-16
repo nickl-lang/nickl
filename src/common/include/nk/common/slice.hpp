@@ -2,8 +2,13 @@
 #define HEADER_GUARD_NK_COMMON_SLICE
 
 #include <cstddef>
+#include <cstring>
+#include <functional>
 #include <iterator>
 #include <memory>
+#include <type_traits>
+
+#include "nk/common/utils.hpp"
 
 template <class T>
 struct NkSlice {
@@ -15,22 +20,6 @@ struct NkSlice {
 
     pointer _data;
     size_type _size;
-
-    constexpr NkSlice()
-        : _data{}
-        , _size{} {
-    }
-
-    template <class TContainer>
-    constexpr NkSlice(TContainer &cont)
-        : _data{std::addressof(*std::begin(cont))}
-        , _size{cont.size()} {
-    }
-
-    constexpr NkSlice(pointer data, size_type size)
-        : _data{data}
-        , _size{size} {
-    }
 
     constexpr iterator data() const {
         return _data;
@@ -72,5 +61,25 @@ struct NkSlice {
         return {_data, _size};
     }
 };
+
+namespace std {
+
+template <class T>
+struct hash<::NkSlice<T>> {
+    size_t operator()(::NkSlice<T> slice) {
+        static_assert(is_trivial_v<T>, "T should be trivial");
+        return ::hash_array((uint8_t *)&slice[0], (uint8_t *)&slice[slice.size()]);
+    }
+};
+
+template <class T>
+struct equal_to<::NkSlice<T>> {
+    size_t operator()(::NkSlice<T> lhs, ::NkSlice<T> rhs) {
+        static_assert(is_trivial_v<T>, "T should be trivial");
+        return lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0;
+    }
+};
+
+} // namespace std
 
 #endif // HEADER_GUARD_NK_COMMON_SLICE

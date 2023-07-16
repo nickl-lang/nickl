@@ -105,12 +105,12 @@ TEST_F(array, append) {
         ar.deinit();
     };
 
-    auto const c_test_str = cs2s("hello world");
+    auto const c_test_str = nk_mkstr("hello world");
     ar.append({c_test_str.data, c_test_str.size});
 
     EXPECT_EQ(ar.capacity(), ceilToPowerOf2(c_test_str.size));
     EXPECT_EQ(ar.size(), c_test_str.size);
-    EXPECT_EQ(std_str({ar.data(), ar.size()}), std_str(c_test_str));
+    EXPECT_EQ(std_str(ar), std_str(c_test_str));
 }
 
 TEST_F(array, multiple_reserves) {

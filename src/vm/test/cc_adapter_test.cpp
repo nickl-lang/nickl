@@ -27,8 +27,8 @@ class cc_adapter : public testing::Test {
             testing::UnitTest::GetInstance()->current_test_info()->name());
 
         m_conf = {
-            .compiler_binary = cs2s(TEST_CC),
-            .additional_flags = cs2s(TEST_CC_FLAGS),
+            .compiler_binary = nk_mkstr(TEST_CC),
+            .additional_flags = nk_mkstr(TEST_CC_FLAGS),
             .output_filename = nksb_concat(m_output_filename_sb),
             .echo_src = false,
             .quiet = TEST_QUIET,

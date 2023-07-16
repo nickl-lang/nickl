@@ -23,7 +23,7 @@ class compiler_ast : public testing::Test {
 
         m_ast = nkl_ast_create();
         m_compiler = nkl_compiler_create();
-        nkl_compiler_configure(m_compiler, cs2s(nk_appDir().string().c_str()));
+        nkl_compiler_configure(m_compiler, nk_mkstr(nk_appDir().string().c_str()));
     }
 
     void TearDown() override {
@@ -49,7 +49,7 @@ protected:
 
     NklToken const *mkt(char const *text) {
         return new (nk_arena_alloc(&m_arena, sizeof(NklToken))) NklToken{
-            .text = text ? cs2s(text) : nkstr{},
+            .text = text ? nk_mkstr(text) : nkstr{},
             .pos = 0,
             .lin = 0,
             .col = 0,

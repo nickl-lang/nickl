@@ -1069,7 +1069,7 @@ ValueInfo compileAndDiscard(NklCompiler c, NklAstNode node) {
     auto pop_fn = pushFn(c, fn);
     nkir_startFunct(
         fn,
-        cs2s("#comptime"),
+        nk_mkstr("#comptime"),
         tovmt(nkl_get_fn(NkltFnInfo{void_t, nkl_get_tuple(c->alloc, {nullptr, 0}, 1), NkCallConv_Nk, false})));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
@@ -2130,7 +2130,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
             // TODO Treating slice as cstring, while we include excess zero charater
             auto link_prefix = std::string{std_str(link.prefix).c_str()};
 
-            auto so = nkir_makeShObj(c->ir, cs2s(soname.c_str())); // TODO Creating so every time
+            auto so = nkir_makeShObj(c->ir, nk_mkstr(soname.c_str())); // TODO Creating so every time
 
             auto sym_name = narg0(node)->token->text;
             auto sym_name_with_prefix_std_str = link_prefix + std_str(sym_name);
@@ -2221,7 +2221,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
     auto pop_fn = pushFn(c, fn);
 
     auto const vm_fn_info = tovmf(fn_info);
-    nkir_startIncompleteFunct(fn, cs2s("#comptime"), &vm_fn_info);
+    nkir_startIncompleteFunct(fn, nk_mkstr("#comptime"), &vm_fn_info);
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     pushFnScope(c, fn);
@@ -2295,7 +2295,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
 
     auto top_level_fn_t = nkl_get_fn({void_t, nkl_get_tuple(c->alloc, {nullptr, 0}, 1), NkCallConv_Nk, false});
 
-    nkir_startFunct(fn, cs2s("#top_level"), tovmt(top_level_fn_t));
+    nkir_startFunct(fn, nk_mkstr("#top_level"), tovmt(top_level_fn_t));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     if (create_scope) {
@@ -2436,7 +2436,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src, bool create_scope = true) {
     defer {
         nkl_ast_free(ast);
     };
-    auto root = nkl_parse(ast, tokens, err_str, err_token);
+    auto root = nkl_parse(ast, {tokens.data(), tokens.size()}, err_str, err_token);
     if (!root) {
         printError(c, err_token, err_str);
         return {};

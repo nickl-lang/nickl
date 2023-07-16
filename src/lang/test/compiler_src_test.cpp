@@ -23,7 +23,7 @@ class compiler_src : public testing::Test {
         NK_LOGGER_INIT({});
 
         m_compiler = nkl_compiler_create();
-        nkl_compiler_configure(m_compiler, cs2s(nk_appDir().string().c_str()));
+        nkl_compiler_configure(m_compiler, nk_mkstr(nk_appDir().string().c_str()));
     }
 
     void TearDown() override {
@@ -35,7 +35,7 @@ class compiler_src : public testing::Test {
 protected:
     void test(char const *src) {
         NK_LOG_INF("src:\n%s", src);
-        nkl_compiler_runSrc(m_compiler, cs2s(src));
+        nkl_compiler_runSrc(m_compiler, nk_mkstr(src));
     }
 
 protected:

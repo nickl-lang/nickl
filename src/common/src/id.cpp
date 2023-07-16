@@ -37,7 +37,7 @@ nkid s2nkid(nkstr str) {
 }
 
 nkid cs2nkid(char const *str) {
-    return s2nkid(cs2s(str));
+    return s2nkid(nk_mkstr(str));
 }
 
 void nkid_define(nkid id, nkstr str) {

@@ -12,7 +12,7 @@ typedef struct {
     size_t size;
 } nkstr;
 
-nkstr cs2s(char const *str);
+nkstr nk_mkstr(char const *str);
 
 #ifdef __cplusplus
 }
