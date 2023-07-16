@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NK_COMMON_STRING_H
 
 #include <stddef.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +13,9 @@ typedef struct {
     size_t size;
 } nkstr;
 
-nkstr nk_mkstr(char const *str);
+inline nkstr nk_mkstr(char const *str) {
+    return {str, ::strlen(str)};
+}
 
 #ifdef __cplusplus
 }

@@ -79,3 +79,24 @@ TEST_F(HashSet, iteration) {
     }
     EXPECT_EQ(sum, 6);
 }
+
+TEST_F(HashSet, allocator) {
+    using set_t = NkHashSet<int>;
+
+    NkArenaAllocator arena{};
+    set_t set{nk_arena_getAllocator(&arena)};
+    defer {
+        set.deinit();
+        nk_arena_free(&arena);
+    };
+
+    static constexpr int c_test_val = 42;
+
+    set.insert(c_test_val);
+
+    EXPECT_EQ(set.size(), 1);
+
+    auto found = set.find(c_test_val);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(*found, c_test_val);
+}

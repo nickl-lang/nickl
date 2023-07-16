@@ -412,3 +412,24 @@ TEST_F(HashMap, const_iteration) {
 
     EXPECT_EQ(sum, 6);
 }
+
+TEST_F(HashMap, allocator) {
+    using key_t = NkString;
+    using val_t = uint64_t;
+    using hashmap_t = NkHashMap<key_t, val_t>;
+
+    NkArenaAllocator arena{};
+    hashmap_t hm{nk_arena_getAllocator(&arena)};
+    defer {
+        hm.deinit();
+        nk_arena_free(&arena);
+    };
+
+    EXPECT_EQ(hm.size(), 0);
+
+    EXPECT_TRUE(hm.insert(nk_mkstring("one"), 1));
+    EXPECT_TRUE(hm.insert(nk_mkstring("two"), 2));
+    EXPECT_TRUE(hm.insert(nk_mkstring("three"), 3));
+
+    EXPECT_EQ(hm.size(), 3);
+}

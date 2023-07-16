@@ -32,7 +32,15 @@ private:
     };
 
 public:
-    NkAllocator _alloc{nk_default_allocator};
+    explicit NkHashSet()
+        : m_alloc{nk_default_allocator} {
+    }
+
+    explicit NkHashSet(NkAllocator alloc)
+        : m_alloc{alloc} {
+    }
+
+    NkHashSet(NkHashSet const &) = default;
 
     template <class TValue>
     struct TIterator {
@@ -91,8 +99,12 @@ public:
     }
 
     void deinit() {
-        nk_free_t(_alloc, m_entries, m_capacity);
-        *this = {};
+        nk_free_t(m_alloc, m_entries, m_capacity);
+
+        m_entries = nullptr;
+        m_size = 0;
+        m_capacity = 0;
+        m_max_probe_dist = 0;
     }
 
     T &insert(T const &val) {
@@ -166,12 +178,12 @@ private:
         static_assert(std::is_trivial_v<_Entry>, "Entry should be trivial");
 
         m_capacity = ceilToPowerOf2(maxu(cap, 1));
-        m_entries = (_Entry *)nk_alloc_t<_Entry>(_alloc, m_capacity);
+        m_entries = (_Entry *)nk_alloc_t<_Entry>(m_alloc, m_capacity);
         std::memset(&m_entries[0], 0, m_capacity * sizeof(_Entry));
     }
 
     void _rehash() {
-        NkHashSet new_hs{};
+        NkHashSet new_hs{m_alloc};
         new_hs._allocate(m_capacity << 1);
 
         for (size_t i = 0; i < m_capacity; i++) {
@@ -182,7 +194,11 @@ private:
         }
 
         deinit();
-        *this = new_hs;
+
+        m_entries = new_hs.m_entries;
+        m_size = new_hs.m_size;
+        m_capacity = new_hs.m_capacity;
+        m_max_probe_dist = new_hs.m_max_probe_dist;
     }
 
     _Entry *_insert(hash_t hash, T const &val) {
@@ -219,10 +235,11 @@ private:
     }
 
 private:
-    _Entry *m_entries;
-    size_t m_size;
-    size_t m_capacity;
-    size_t m_max_probe_dist;
+    NkAllocator const m_alloc;
+    _Entry *m_entries{};
+    size_t m_size{};
+    size_t m_capacity{};
+    size_t m_max_probe_dist{};
 };
 
 #endif // HEADER_GUARD_NK_COMMON_HASH_SET

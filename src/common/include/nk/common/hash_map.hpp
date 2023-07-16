@@ -35,6 +35,11 @@ private:
     using _EntrySet = NkHashSet<_Entry, _HashSetContext>;
 
 public:
+    explicit NkHashMap() = default;
+    explicit NkHashMap(NkAllocator alloc)
+        : m_entries{alloc} {
+    }
+
     using iterator = typename _EntrySet::template TIterator<_TEntry<K const, V>>;
     using const_iterator = typename _EntrySet::template TIterator<_TEntry<K const, V const>>;
 
