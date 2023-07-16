@@ -18,7 +18,7 @@ class array : public testing::Test {
 };
 
 TEST_F(array, init) {
-    nkarray<uint8_t> ar{};
+    NkArray<uint8_t> ar{};
     defer {
         ar.deinit();
     };
@@ -33,7 +33,7 @@ TEST_F(array, init) {
 TEST_F(array, basic) {
     using ValueType = uint16_t;
 
-    nkarray<ValueType> ar{};
+    NkArray<ValueType> ar{};
     defer {
         ar.deinit();
     };
@@ -56,7 +56,7 @@ TEST_F(array, basic) {
 }
 
 TEST_F(array, capacity) {
-    nkarray<uint8_t> ar{};
+    NkArray<uint8_t> ar{};
     defer {
         ar.deinit();
     };
@@ -68,7 +68,7 @@ TEST_F(array, capacity) {
 }
 
 TEST_F(array, zero_capacity) {
-    nkarray<uint8_t> ar{};
+    NkArray<uint8_t> ar{};
     defer {
         ar.deinit();
     };
@@ -87,7 +87,7 @@ TEST_F(array, zero_capacity) {
 }
 
 TEST_F(array, zero_init) {
-    nkarray<uint8_t> ar{};
+    NkArray<uint8_t> ar{};
     defer {
         ar.deinit();
     };
@@ -100,7 +100,7 @@ TEST_F(array, zero_init) {
 }
 
 TEST_F(array, append) {
-    nkarray<char> ar{};
+    NkArray<char> ar{};
     defer {
         ar.deinit();
     };
@@ -114,7 +114,7 @@ TEST_F(array, append) {
 }
 
 TEST_F(array, multiple_reserves) {
-    nkarray<int> ar{};
+    NkArray<int> ar{};
     defer {
         ar.deinit();
     };

@@ -165,7 +165,7 @@ TEST_F(LogArray, zero_init) {
 }
 
 TEST_F(LogArray, multiple_reserves) {
-    nkarray<int> ar{};
+    NkArray<int> ar{};
     defer {
         ar.deinit();
     };

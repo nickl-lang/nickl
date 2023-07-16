@@ -11,9 +11,9 @@
 #include "nk/common/utils.hpp"
 
 template <class T>
-struct nkarray : nkslice<T> {
-    using nkslice<T>::_data;
-    using nkslice<T>::_size;
+struct NkArray : NkSlice<T> {
+    using NkSlice<T>::_data;
+    using NkSlice<T>::_size;
     size_t _capacity{};
     NkAllocator _alloc{nk_default_allocator};
 
@@ -39,7 +39,7 @@ struct nkarray : nkslice<T> {
         return true;
     }
 
-    nkslice<T> push(size_t n = 1) {
+    NkSlice<T> push(size_t n = 1) {
         if (reserve(n)) {
             _size += n;
             return {_data + _size - n, n};
@@ -57,7 +57,7 @@ struct nkarray : nkslice<T> {
         pop(_size);
     }
 
-    void append(nkslice<T const> slice) {
+    void append(NkSlice<T const> slice) {
         std::memcpy(&*push(slice.size()), slice.data(), slice.size() * sizeof(T));
     }
 };

@@ -6,7 +6,7 @@
 #include <memory>
 
 template <class T>
-struct nkslice {
+struct NkSlice {
     using value_type = T;
     using pointer = value_type *;
     using iterator = pointer;
@@ -16,18 +16,18 @@ struct nkslice {
     pointer _data;
     size_type _size;
 
-    constexpr nkslice()
+    constexpr NkSlice()
         : _data{}
         , _size{} {
     }
 
     template <class TContainer>
-    constexpr nkslice(TContainer &cont)
+    constexpr NkSlice(TContainer &cont)
         : _data{std::addressof(*std::begin(cont))}
         , _size{cont.size()} {
     }
 
-    constexpr nkslice(pointer data, size_type size)
+    constexpr NkSlice(pointer data, size_type size)
         : _data{data}
         , _size{size} {
     }
@@ -68,7 +68,7 @@ struct nkslice {
         return _data + _size;
     }
 
-    constexpr operator nkslice<T const>() const {
+    constexpr operator NkSlice<T const>() const {
         return {_data, _size};
     }
 };

@@ -16,7 +16,7 @@ struct NkLogArray {
     using _block_ptr = T *;
 
     size_t _size;
-    nkarray<_block_ptr> _block_table;
+    NkArray<_block_ptr> _block_table;
     size_t _bi; // block index
     size_t _ic; // initial capacity
     NkAllocator _alloc{nk_default_allocator};
@@ -60,7 +60,7 @@ struct NkLogArray {
         }
     }
 
-    nkslice<T> push(size_t n = 1) {
+    NkSlice<T> push(size_t n = 1) {
         reserve(n);
         _size += n;
         return {_top() - n, n};
@@ -76,7 +76,7 @@ struct NkLogArray {
         pop(_size);
     }
 
-    void append(nkslice<T const> slice) {
+    void append(NkSlice<T const> slice) {
         std::memcpy(&*push(slice.size()), slice.data(), slice.size() * sizeof(T));
     }
 
