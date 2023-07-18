@@ -15,18 +15,20 @@ struct NkLogArray {
 
     using _block_ptr = T *;
 
-    size_t _size;
-    NkArray<_block_ptr> _block_table;
-    size_t _bi; // block index
-    size_t _ic; // initial capacity
+    size_t _size{};
+    _block_ptr *_block_table{};
+    size_t _block_table_size{};
+    size_t _block_table_capacity{};
+    size_t _bi{}; // block index
+    size_t _ic{}; // initial capacity
     NkAllocator _alloc{nk_default_allocator};
 
     void deinit() {
-        for (size_t bi = 0; bi < _block_table.size(); bi++) {
+        for (size_t bi = 0; bi < _block_table_size; bi++) {
             nk_free_t(_alloc, _block_table[bi], _blockDataSize(bi));
         }
 
-        _block_table.deinit();
+        nk_free_t(_alloc, _block_table, _block_table_capacity);
     }
 
     size_t size() const {
@@ -43,8 +45,9 @@ struct NkLogArray {
 
     void reserve(size_t n) {
         if (!_enoughSpace(n)) {
-            if (!_block_table.data()) {
-                _block_table.reserve(INIT_BLOCK_TAB_CAPACITY);
+            if (!_block_table) {
+                _block_table_capacity = INIT_BLOCK_TAB_CAPACITY;
+                _block_table = nk_alloc_t<_block_ptr>(_alloc, _block_table_capacity);
                 _ic = ceilToPowerOf2(n);
             }
 
@@ -54,7 +57,7 @@ struct NkLogArray {
             }
             _size = _precedingBlocksSize(_bi);
 
-            for (size_t bi = _block_table.size(); bi <= _bi; bi++) {
+            for (size_t bi = _block_table_size; bi <= _bi; bi++) {
                 _allocateBlock(bi);
             }
         }
@@ -104,11 +107,15 @@ private:
     }
 
     void _allocateBlock(size_t bi) {
-        *_block_table.push() = nk_alloc_t<T>(_alloc, _blockDataSize(bi));
+        if (_block_table_size == _block_table_capacity) {
+            _block_table_capacity <<= 1;
+            _block_table = nk_realloc_t(_alloc, _block_table_capacity, _block_table, _block_table_capacity >> 1);
+        }
+        _block_table[_block_table_size++] = nk_alloc_t<T>(_alloc, _blockDataSize(bi));
     }
 
     T *_top() const {
-        return _block_table.data() ? (_size == 0 ? &at(0) : &at(_size - 1) + 1) : 0;
+        return _block_table ? (_size == 0 ? &at(0) : &at(_size - 1) + 1) : 0;
     }
 
     bool _enoughSpace(size_t n) const {

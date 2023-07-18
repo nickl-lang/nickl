@@ -178,7 +178,7 @@ private:
         static_assert(std::is_trivial_v<_Entry>, "Entry should be trivial");
 
         m_capacity = ceilToPowerOf2(maxu(cap, 1));
-        m_entries = (_Entry *)nk_alloc_t<_Entry>(m_alloc, m_capacity);
+        m_entries = nk_alloc_t<_Entry>(m_alloc, m_capacity);
         std::memset(&m_entries[0], 0, m_capacity * sizeof(_Entry));
     }
 
