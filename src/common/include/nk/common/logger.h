@@ -32,7 +32,7 @@ typedef struct {
 } NkLoggerOptions;
 
 bool _nk_loggerCheck(NkLogLevel log_level);
-void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
+NK_PRINTF_LIKE(3, 4) void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
 void _nk_loggerInit(NkLoggerOptions opt);
 

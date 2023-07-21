@@ -7,4 +7,6 @@
 #define NK_EXPORT __attribute__((__visibility__("default")))
 #endif
 
+#define NK_PRINTF_LIKE(FMT_POS, ARGS_POS) __attribute__((format(printf, FMT_POS, ARGS_POS)))
+
 #endif // HEADER_GUARD_NK_COMMON_COMMON

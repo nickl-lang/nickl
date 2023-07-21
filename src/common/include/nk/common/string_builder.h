@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 #include "nk/common/allocator.h"
+#include "nk/common/common.h"
 #include "nk/common/string.h"
 
 #ifdef __cplusplus
@@ -17,7 +18,7 @@ NkStringBuilder nksb_create_alloc(NkAllocator alloc);
 
 void nksb_free(NkStringBuilder sb);
 
-int nksb_printf(NkStringBuilder sb, char const *fmt, ...);
+NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder sb, char const *fmt, ...);
 int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap);
 
 nkstr nksb_concat(NkStringBuilder sb);
