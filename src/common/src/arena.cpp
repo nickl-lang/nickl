@@ -42,7 +42,7 @@ static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16Mib
 void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
     if (!arena->data) {
         // TODO Fixed sized arena
-        arena->data = (uint8_t *)nk_mmap(FIXED_ARENA_SIZE);
+        arena->data = (uint8_t *)nk_valloc(FIXED_ARENA_SIZE);
         arena->size = 0;
     }
 
@@ -57,7 +57,7 @@ void nk_arena_pop(NkArenaAllocator *arena, size_t size) {
 
 void nk_arena_free(NkArenaAllocator *arena) {
     if (arena->data) {
-        nk_munmap(arena->data, FIXED_ARENA_SIZE);
+        nk_vfree(arena->data, FIXED_ARENA_SIZE);
     }
     *arena = {};
 }

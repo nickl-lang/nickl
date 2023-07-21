@@ -17,10 +17,10 @@ bool nk_isatty() {
     return ::isatty(fileno(stdout));
 }
 
-void *nk_mmap(size_t len) {
+void *nk_valloc(size_t len) {
     return VirtualAlloc(NULL, len, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
-void nk_munmap(void *addr, size_t len) {
+void nk_vfree(void *addr, size_t) {
     VirtualFree(addr, 0, MEM_RELEASE);
 }
