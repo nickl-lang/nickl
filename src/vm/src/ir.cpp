@@ -375,16 +375,16 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
         }
         switch (ref.ref_type) {
         case NkIrRef_Frame:
-            nksb_printf(sb, "$%llu", ref.index);
+            nksb_printf(sb, "$%" PRIu64 "", ref.index);
             break;
         case NkIrRef_Arg:
-            nksb_printf(sb, "$arg%llu", ref.index);
+            nksb_printf(sb, "$arg%" PRIu64 "", ref.index);
             break;
         case NkIrRef_Ret:
             nksb_printf(sb, "$ret");
             break;
         case NkIrRef_Global:
-            nksb_printf(sb, "$global%llu", ref.index);
+            nksb_printf(sb, "$global%" PRIu64 "", ref.index);
             break;
         case NkIrRef_Reg:
             nksb_printf(sb, "$r%c", (char)('a' + ref.index));
@@ -399,13 +399,13 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
             break;
         }
         if (ref.offset) {
-            nksb_printf(sb, "+%llu", ref.offset);
+            nksb_printf(sb, "+%" PRIu64 "", ref.offset);
         }
         if (ref.is_indirect) {
             nksb_printf(sb, "]");
         }
         if (ref.post_offset) {
-            nksb_printf(sb, "+%llu", ref.post_offset);
+            nksb_printf(sb, "+%" PRIu64 "", ref.post_offset);
         }
     }
     nksb_printf(sb, ":");
@@ -432,7 +432,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
         if (i) {
             nksb_printf(sb, ", ");
         }
-        nksb_printf(sb, "$arg%llu:", i);
+        nksb_printf(sb, "$arg%" PRIu64 ":", i);
         nkt_inspect(funct->fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
     }
 
@@ -442,7 +442,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
     if (!funct->locals.empty()) {
         nksb_printf(sb, "\n\n");
         for (size_t i = 0; i < funct->locals.size(); i++) {
-            nksb_printf(sb, "$%llu: ", i);
+            nksb_printf(sb, "$%" PRIu64 ": ", i);
             nkt_inspect(funct->locals[i], sb);
             nksb_printf(sb, "\n");
         }
@@ -468,7 +468,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
                 nksb_printf(sb, " := ");
             }
 
-            nksb_printf(sb, s_nk_ir_names[instr.code]);
+            nksb_printf(sb, "%s", s_nk_ir_names[instr.code]);
 
             for (size_t i = 1; i < 3; i++) {
                 auto &arg = instr.arg[i];
@@ -485,7 +485,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
                     if (arg.id < p->blocks.size() && !p->blocks[arg.id].name.empty()) {
                         nksb_printf(sb, "%%%s", p->blocks[arg.id].name.c_str());
                     } else {
-                        nksb_printf(sb, "%(null)");
+                        nksb_printf(sb, "%%(null)");
                     }
                     break;
                 case NkIrArg_NumValType:
@@ -510,7 +510,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
                         assert(!"unreachable");
                         break;
                     }
-                    nksb_printf(sb, "%llu", (size_t)NUM_TYPE_SIZE(arg.id) * 8);
+                    nksb_printf(sb, "%" PRIu64 "", (size_t)NUM_TYPE_SIZE(arg.id) * 8);
                     break;
                 case NkIrArg_None:
                 default:

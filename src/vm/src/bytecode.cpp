@@ -88,7 +88,7 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
             nksb_printf(sb, " := ");
         }
 
-        nksb_printf(sb, s_nk_bc_names[instr.code]);
+        nksb_printf(sb, "%s", s_nk_bc_names[instr.code]);
 
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].ref_type != NkBcRef_None) {

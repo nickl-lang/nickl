@@ -38,7 +38,7 @@ enum ETypeSubset {
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
     EASY_FUNCTION(::profiler::colors::Green200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{s_mtx};
 
@@ -395,8 +395,8 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields) {
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto fields_data = (NklField *)nk_alloc(alloc, fields.size * sizeof(NklField));
         std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
-        auto underlying_type = nkl_get_tuple(
-            alloc, {&fields.data[0].type, fields.size}, sizeof(NklField) / sizeof(nkltype_t));
+        auto underlying_type =
+            nkl_get_tuple(alloc, {&fields.data[0].type, fields.size}, sizeof(NklField) / sizeof(nkltype_t));
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{.strct{

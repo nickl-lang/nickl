@@ -50,7 +50,7 @@ protected:
         nkir_inspect(p, sb);
         auto str = nksb_concat(sb);
 
-        NK_LOG_INF("ir:\n%.*s", str.size, str.data);
+        NK_LOG_INF("ir:\n%.*s", (int)str.size, str.data);
     }
 
 protected:
@@ -261,8 +261,8 @@ TEST_F(ir, nested_functions_call_while_compiling) {
     auto so = nkir_makeShObj(p, nk_mkstr(""));
 
     auto log2_args_t = alloct(nkt_get_tuple(m_alloc, &u32_t, 1, 1));
-    auto log2_fn =
-        nkir_makeExtSym(p, so, nk_mkstr("_test_log2"), alloct(nkt_get_fn({u32_t, log2_args_t, NkCallConv_Cdecl, false})));
+    auto log2_fn = nkir_makeExtSym(
+        p, so, nk_mkstr("_test_log2"), alloct(nkt_get_fn({u32_t, log2_args_t, NkCallConv_Cdecl, false})));
 
     nktype_t args_types[] = {u8_ptr_t, u32_t};
     auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, AR_SIZE(args_types), 1));
@@ -270,8 +270,8 @@ TEST_F(ir, nested_functions_call_while_compiling) {
     auto fillAr_fn =
         nkir_makeExtSym(p, so, nk_mkstr("_test_fillAr"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
 
-    auto printAr_fn =
-        nkir_makeExtSym(p, so, nk_mkstr("_test_printAr"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
+    auto printAr_fn = nkir_makeExtSym(
+        p, so, nk_mkstr("_test_printAr"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
 
     auto test = nkir_makeFunct(p);
     auto test_fn_t = alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
@@ -365,8 +365,8 @@ TEST_F(ir, callback) {
 
     auto args_t = alloct(nkt_get_tuple(m_alloc, &getName_fn_t, 1, 1));
 
-    auto sayHello_fn =
-        nkir_makeExtSym(p, so, nk_mkstr("_test_sayHello"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
+    auto sayHello_fn = nkir_makeExtSym(
+        p, so, nk_mkstr("_test_sayHello"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
 
     auto getName = nkir_makeFunct(p);
     nkir_startFunct(getName, nk_mkstr("getName"), getName_fn_t);

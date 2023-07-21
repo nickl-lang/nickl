@@ -12,7 +12,7 @@ NK_LOG_USE_SCOPE(mem);
 void *defaultAllocatorProc(void * /*data*/, NkAllocatorMode mode, size_t size, void *old_mem, size_t /*old_size*/) {
     switch (mode) {
     case NkAllocator_Alloc:
-        NK_LOG_TRC("malloc(%lu)", size);
+        NK_LOG_TRC("malloc(%" PRIu64 ")", size);
         return std::malloc(size);
 
     case NkAllocator_Free:
@@ -21,7 +21,7 @@ void *defaultAllocatorProc(void * /*data*/, NkAllocatorMode mode, size_t size, v
         return nullptr;
 
     case NkAllocator_Realloc:
-        NK_LOG_TRC("realloc(%lu, %p)", size, old_mem);
+        NK_LOG_TRC("realloc(%" PRIu64 ", %p)", size, old_mem);
         return std::realloc(old_mem, size);
 
     default:

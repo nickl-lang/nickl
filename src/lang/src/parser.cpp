@@ -206,7 +206,7 @@ private:
             NklAstNode_T &arg = args.emplace_back();
             arg.id = cs2nkid("arg");
             if (named_mode || check(t_id)) {
-                NK_LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
+                NK_LOG_DBG("accept(id, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
                 auto id = m_cur_token;
                 getToken();
                 if (named_mode && !check(t_eq)) {
@@ -255,7 +255,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), NklTokenRef{};
         }
-        NK_LOG_DBG("accept(id, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
+        NK_LOG_DBG("accept(id, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
         auto id = m_cur_token;
         getToken();
         return id;
@@ -307,7 +307,7 @@ private:
             //     }
         } else if (check(t_tag)) {
             //@Todo Refactor token debug prints
-            NK_LOG_DBG("accept(tag, \"%.*s\")", m_cur_token->text.size, m_cur_token->text.data);
+            NK_LOG_DBG("accept(tag, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
             auto tag = m_cur_token;
             getToken();
             if (accept(t_colon_2x)) {
@@ -820,16 +820,16 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_int)) {
-            NK_LOG_DBG("accept(int, \"%.*s\")", _n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(int, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
             node = nkl_makeNode0(n_int, _n_token);
         } else if (accept(t_float)) {
-            NK_LOG_DBG("accept(float, \"%.*s\"", _n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(float, \"%.*s\"", (int)_n_token->text.size, _n_token->text.data);
             node = nkl_makeNode0(n_float, _n_token);
         } else if (accept(t_string)) {
-            NK_LOG_DBG("accept(string, \"%.*s\")", _n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(string, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
             node = nkl_makeNode0(n_string, _n_token);
         } else if (accept(t_escaped_string)) {
-            NK_LOG_DBG("accept(escaped_string, \"%.*s\")", _n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(escaped_string, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
             node = nkl_makeNode0(n_escaped_string, _n_token);
         }
 
@@ -977,7 +977,7 @@ private:
 
 NklAstNode nkl_parse(NklAst ast, NkSlice<NklToken const> tokens, std::string &err_str, NklTokenRef &err_token) {
     EASY_FUNCTION(::profiler::colors::Teal200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     assert(tokens.size() && "empty token array");
 

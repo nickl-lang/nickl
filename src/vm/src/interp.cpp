@@ -90,7 +90,7 @@ nkval_t _getValRef(NkBcRef const &ref) {
 }
 
 void _jumpTo(NkBcInstr const *pinstr) {
-    NK_LOG_DBG("jumping to instr@%p", pinstr);
+    NK_LOG_DBG("jumping to instr@%p", (void *)pinstr);
     ctx.pinstr = pinstr;
 }
 
@@ -117,11 +117,11 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     _jumpTo(fn->instrs);
 
-    NK_LOG_DBG("stack_frame=%lu", ctx.stack_frame.size);
-    NK_LOG_DBG("frame=%p", ctx.base.frame);
-    NK_LOG_DBG("arg=%p", ctx.base.arg);
-    NK_LOG_DBG("ret=%p", ctx.base.ret);
-    NK_LOG_DBG("pinstr=%p", ctx.pinstr);
+    NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
+    NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
+    NK_LOG_DBG("arg=%p", (void *)ctx.base.arg);
+    NK_LOG_DBG("ret=%p", (void *)ctx.base.ret);
+    NK_LOG_DBG("pinstr=%p", (void *)ctx.pinstr);
 }
 
 void interp(NkBcInstr const &instr) {
@@ -429,9 +429,9 @@ void interp(NkBcInstr const &instr) {
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     EASY_FUNCTION(::profiler::colors::Red200);
 
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
-    NK_LOG_DBG("program @%p", fn->prog);
+    NK_LOG_DBG("program @%p", (void *)fn->prog);
 
     if (!ctx.is_initialized) {
         NK_LOG_TRC("initializing stack...");
@@ -447,7 +447,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
     ctx.base.reg = (uint8_t *)&ctx.reg;
     ctx.pinstr = nullptr;
 
-    NK_LOG_DBG("instr=%p", ctx.base.instr);
+    NK_LOG_DBG("instr=%p", (void *)ctx.base.instr);
 
     _jumpCall(fn, ret, args);
 
@@ -455,7 +455,9 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         auto pinstr = ctx.pinstr++;
         assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
-            "instr: %lx %s", (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr), s_nk_bc_names[pinstr->code]);
+            "instr: %" PRIx64 " %s",
+            (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
+            s_nk_bc_names[pinstr->code]);
         interp(*pinstr);
         NK_LOG_DBG(
             "res=%s", (char const *)[&]() {

@@ -178,8 +178,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src, bool allow_voi
     auto type_str = tmp_s.str();
 
     if (is_complex) {
-        ctx.types_s << "typedef " << type_str << " type" << ctx.typedecl_count << tmp_s_suf.str()
-                    << ";\n";
+        ctx.types_s << "typedef " << type_str << " type" << ctx.typedecl_count << tmp_s_suf.str() << ";\n";
         type_str = "type" + std::to_string(ctx.typedecl_count);
         ctx.typedecl_count++;
     }
@@ -249,8 +248,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
             break;
         }
         if (value_type < Float32) {
-            if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 ||
-                value_type == Uint64) {
+            if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
                 tmp_s << "u";
             }
             if (nkval_sizeof(val) == 4) {
@@ -265,8 +263,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         if (nkval_as(void *, val)) {
             is_complex = true;
             tmp_s << "& ";
-            _writeConst(
-                ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
+            _writeConst(ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
         } else {
             tmp_s << "NULL";
         }
@@ -300,8 +297,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         }
         case NkCallConv_Cdecl: {
             auto it = ctx.ir->closureCode2IrFunct.find(nkval_as(void *, val));
-            assert(
-                it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
+            assert(it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
             fn = it->second;
             break;
         }
@@ -370,7 +366,7 @@ void _writeCast(WriterCtx &ctx, std::ostream &src, nktype_t type) {
 }
 
 void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     ctx.translated.emplace(fn);
 
@@ -423,8 +419,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 auto sym = ctx.ir->exsyms[ref.index];
                 src << sym.name;
                 if (sym.type->tclass == NkType_Fn &&
-                    ctx.ext_syms_forward_declared.find(ref.index) ==
-                        ctx.ext_syms_forward_declared.end()) {
+                    ctx.ext_syms_forward_declared.find(ref.index) == ctx.ext_syms_forward_declared.end()) {
                     ctx.forward_s << "extern ";
                     _writeFnSig(
                         ctx,
@@ -462,8 +457,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 break;
             case NkIrRef_Global:
                 src << "global" << ref.index;
-                if (ctx.globals_forward_declared.find(ref.index) ==
-                    ctx.globals_forward_declared.end()) {
+                if (ctx.globals_forward_declared.find(ref.index) == ctx.globals_forward_declared.end()) {
                     auto const type = ir->globals[ref.index];
                     _writeType(ctx, type, ctx.forward_s);
                     ctx.forward_s << " global" << ref.index << "={";
@@ -533,9 +527,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
                 break;
             case nkir_cast:
-                assert(
-                    instr.arg[1].arg_type == NkIrArg_NumValType &&
-                    "numeric value type expected in cast");
+                assert(instr.arg[1].arg_type == NkIrArg_NumValType && "numeric value type expected in cast");
                 src << "(";
                 _writeNumericType((NkNumericValueType)instr.arg[1].id, src);
                 src << ")";
@@ -634,7 +626,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
 void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
     EASY_FUNCTION(::profiler::colors::Amber200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     std::ostringstream types_s;
     std::ostringstream data_s;

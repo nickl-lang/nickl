@@ -24,7 +24,7 @@ namespace {
 
 void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
     auto const _newline = [&]() {
-        nksb_printf(sb, "\n%*s", depth * 2, "");
+        nksb_printf(sb, "\n%*s", (int)(depth * 2), "");
     };
 
     if (nodes.size > 1) {
@@ -45,7 +45,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
         if (node->id) {
             _newline();
             auto id_str = nkid2s(node->id);
-            nksb_printf(sb, "#%.*s", id_str.size, id_str.data);
+            nksb_printf(sb, "#%.*s", (int)id_str.size, id_str.data);
         } else {
             _newline();
             nksb_printf(sb, "(null)");

@@ -183,8 +183,8 @@ struct ScanEngine {
             }
 
             auto it = std::begin(s_keywords) + 1;
-            for (; it != std::end(s_keywords) &&
-                   (m_token.text.size != std::strlen(*it) || *it != std_view(m_token.text));
+            for (;
+                 it != std::end(s_keywords) && (m_token.text.size != std::strlen(*it) || *it != std_view(m_token.text));
                  ++it) {
             }
 
@@ -291,18 +291,14 @@ private:
 
 bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str) {
     EASY_FUNCTION(::profiler::colors::Lime200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     ScanEngine engine{src, err_str};
 
     do {
         engine.scan();
         tokens.emplace_back(engine.m_token);
-        NK_LOG_DBG(
-            "%s: \"%.*s\"",
-            s_token_id[tokens.back().id],
-            tokens.back().text.size,
-            tokens.back().text.data);
+        NK_LOG_DBG("%s: \"%.*s\"", s_token_id[tokens.back().id], (int)tokens.back().text.size, tokens.back().text.data);
         if (engine.m_token.id == t_error) {
             return false;
         }

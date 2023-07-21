@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cinttypes>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -273,20 +272,20 @@ Scope &curScope(NklCompiler c) {
 
 void pushScope(NklCompiler c) {
     NkIrFunct cur_fn = c->scopes.size() ? c->scopes.back()->cur_fn : nullptr;
-    NK_LOG_DBG("entering scope=%lu", c->scopes.size());
+    NK_LOG_DBG("entering scope=%" PRIu64, c->scopes.size());
     auto scope = &c->nonpersistent_scope_stack.emplace(Scope{false, cur_fn});
     c->scopes.emplace_back(scope);
 }
 
 void pushFnScope(NklCompiler c, NkIrFunct fn) {
-    NK_LOG_DBG("entering persistent scope=%lu", c->scopes.size());
+    NK_LOG_DBG("entering persistent scope=%" PRIu64, c->scopes.size());
     auto scope = &c->persistent_scopes.emplace_back(Scope{false, fn});
     c->scopes.emplace_back(scope);
     c->fn_scopes.emplace(fn, &curScope(c));
 }
 
 void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
-    NK_LOG_DBG("entering top level scope=%lu", c->scopes.size());
+    NK_LOG_DBG("entering top level scope=%" PRIu64, c->scopes.size());
     auto scope = &c->persistent_scopes.emplace_back(Scope{true, fn});
     c->scopes.emplace_back(scope);
     c->fn_scopes.emplace(fn, &curScope(c));
@@ -301,7 +300,7 @@ void popScope(NklCompiler c) {
         }
     }
     c->scopes.pop_back();
-    NK_LOG_DBG("exiting scope=%lu", c->scopes.size());
+    NK_LOG_DBG("exiting scope=%" PRIu64, c->scopes.size());
 }
 
 void gen(NklCompiler c, NkIrInstr const &instr) {
@@ -316,7 +315,11 @@ ValueInfo makeVoid() {
 Decl &makeDecl(NklCompiler c, nkid name) {
     auto &locals = curScope(c).locals;
 
-    NK_LOG_DBG("making declaration name=`%.*s` scope=%lu", nkid2s(name).size, nkid2s(name).data, c->scopes.size() - 1);
+    NK_LOG_DBG(
+        "making declaration name=`%.*s` scope=%" PRIu64,
+        (int)nkid2s(name).size,
+        nkid2s(name).data,
+        c->scopes.size() - 1);
 
     auto it = locals.find(name);
     if (it != locals.end()) {
@@ -331,33 +334,33 @@ Decl &makeDecl(NklCompiler c, nkid name) {
 }
 
 void defineComptimeConst(NklCompiler c, nkid name, ComptimeConst cnst) {
-    NK_LOG_DBG("defining comptime const `%.*s`", nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining comptime const `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
     makeDecl(c, name) = {{.comptime_const{cnst}}, Decl_ComptimeConst};
 }
 
 void defineLocal(NklCompiler c, nkid name, NkIrLocalVarId id, nkltype_t type) {
-    NK_LOG_DBG("defining local `%.*s`", nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining local `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
     makeDecl(c, name) = {{.local{id, type, curScope(c).cur_fn}}, Decl_Local};
 }
 
 void defineGlobal(NklCompiler c, nkid name, NkIrGlobalVarId id, nkltype_t type) {
-    NK_LOG_DBG("defining global `%.*s`", nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining global `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
     makeDecl(c, name) = {{.global{id, type}}, Decl_Global};
 }
 
 void defineExtSym(NklCompiler c, nkid name, NkIrExtSymId id, nkltype_t type) {
-    NK_LOG_DBG("defining ext sym `%.*s`", nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining ext sym `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
     makeDecl(c, name) = {{.ext_sym{.id = id, .type = type}}, Decl_ExtSym};
 }
 
 void defineArg(NklCompiler c, nkid name, size_t index, nkltype_t type) {
-    NK_LOG_DBG("defining arg `%.*s`", nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining arg `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
     makeDecl(c, name) = {{.arg{index, type, curScope(c).cur_fn}}, Decl_Arg};
 }
 
 // TODO Restrict resolving local through stack frame boundaries
 Decl &resolve(NklCompiler c, nkid name) {
-    NK_LOG_DBG("resolving name=`%.*s` scope=%lu", nkid2s(name).size, nkid2s(name).data, c->scopes.size() - 1);
+    NK_LOG_DBG("resolving name=`%.*s` scope=%" PRIu64, (int)nkid2s(name).size, nkid2s(name).data, c->scopes.size() - 1);
 
     for (size_t i = c->scopes.size(); i > 0; i--) {
         auto &scope = *c->scopes[i - 1];
@@ -1910,7 +1913,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
             if (arg_nodes.size < fn_t->as.fn.args_t->as.tuple.elems.size) {
                 return error(
                            c,
-                           "invalid number of arguments, expected at least `%lu`, provided `%lu`",
+                           "invalid number of arguments, expected at least `%" PRIu64 "`, provided `%" PRIu64 "`",
                            fn_t->as.fn.args_t->as.tuple.elems.size,
                            arg_nodes.size),
                        ValueInfo{};
@@ -1919,7 +1922,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
             if (arg_nodes.size != fn_t->as.fn.args_t->as.tuple.elems.size) {
                 return error(
                            c,
-                           "invalid number of arguments, expected `%lu`, provided `%lu`",
+                           "invalid number of arguments, expected `%" PRIu64 "`, provided `%" PRIu64 "`",
                            fn_t->as.fn.args_t->as.tuple.elems.size,
                            arg_nodes.size),
                        ValueInfo{};
@@ -2288,7 +2291,7 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInfo
 
 NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
@@ -2415,7 +2418,7 @@ void printError(NklCompiler c, char const *fmt, ...) {
 
 NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src, bool create_scope = true) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     c->src_stack.emplace(src);
     defer {
@@ -2453,7 +2456,7 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nkstr src, bool create_scope = true) {
 
 NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     if (!fs::exists(path)) {
         auto const path_str = path.string();
@@ -2501,7 +2504,7 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
 
 extern "C" NK_EXPORT Void nkl_compiler_declareLocal(nkstr name, nkltype_t type) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
     NklCompiler c = s_compiler;
     // TODO Treating slice as cstring, while we include excess zero charater
     CHECK(defineLocal(c, cs2nkid(std_str(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
@@ -2513,20 +2516,20 @@ struct NklCompilerBuilder {
 };
 
 extern "C" NK_EXPORT NklCompilerBuilder *nkl_compiler_createBuilder() {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     return new (nk_alloc(nk_default_allocator, sizeof(NklCompilerBuilder))) NklCompilerBuilder{};
 }
 
 extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     b->~NklCompilerBuilder();
     nk_free(nk_default_allocator, b, sizeof(*b));
 }
 
 extern "C" NK_EXPORT bool nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto path = fs::path{std_view(lib)};
     if (fs::exists(path)) {
@@ -2538,7 +2541,7 @@ extern "C" NK_EXPORT bool nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
 
 extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct entry, nkstr exe_name) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     NklCompiler c = s_compiler;
 
@@ -2613,8 +2616,8 @@ void nkl_compiler_free(NklCompiler c) {
 
 bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
-    NK_LOG_TRC(__func__);
-    NK_LOG_DBG("config_dir=`%.*s`", config_dir.size, config_dir.data);
+    NK_LOG_TRC("%s", __func__);
+    NK_LOG_DBG("config_dir=`%.*s`", (int)config_dir.size, config_dir.data);
     c->compiler_dir = std_str(config_dir);
 
     pushScope(c);
@@ -2642,23 +2645,23 @@ bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
 
     DEFINE(corelib_dir_str, getConfigValue<char const *>(c, "corelib_dir", config));
     c->corelib_dir = corelib_dir_str;
-    NK_LOG_DBG("corelib_dir=`%.*s`", c->corelib_dir.size(), c->corelib_dir.c_str());
+    NK_LOG_DBG("corelib_dir=`%.*s`", (int)c->corelib_dir.size(), c->corelib_dir.c_str());
 
     DEFINE(libc_name_str, getConfigValue<char const *>(c, "libc_name", config));
     c->libc_name = libc_name_str;
-    NK_LOG_DBG("libc_name=`%.*s`", c->libc_name.size(), c->libc_name.c_str());
+    NK_LOG_DBG("libc_name=`%.*s`", (int)c->libc_name.size(), c->libc_name.c_str());
 
     DEFINE(libm_name_str, getConfigValue<char const *>(c, "libm_name", config));
     c->libm_name = libm_name_str;
-    NK_LOG_DBG("libm_name=`%.*s`", c->libm_name.size(), c->libm_name.c_str());
+    NK_LOG_DBG("libm_name=`%.*s`", (int)c->libm_name.size(), c->libm_name.c_str());
 
     DEFINE(c_compiler_str, getConfigValue<char const *>(c, "c_compiler", config));
     c->c_compiler = c_compiler_str;
-    NK_LOG_DBG("c_compiler=`%.*s`", c->c_compiler.size(), c->c_compiler.c_str());
+    NK_LOG_DBG("c_compiler=`%.*s`", (int)c->c_compiler.size(), c->c_compiler.c_str());
 
     DEFINE(c_compiler_flags_str, getConfigValue<char const *>(c, "c_compiler_flags", config));
     c->c_compiler_flags = c_compiler_flags_str;
-    NK_LOG_DBG("c_compiler_flags=`%.*s`", c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
+    NK_LOG_DBG("c_compiler_flags=`%.*s`", (int)c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
 
     return true;
 }

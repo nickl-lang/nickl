@@ -275,13 +275,13 @@ TEST_F(HashMap, stress) {
         if (gen() % 2 || std_map.empty()) {
             key_t key = gen() % 100;
             val_t val = gen();
-            NK_LOG_INF("add: key=%lu, val=%lu", key, val);
+            NK_LOG_INF("add: key=%" PRIu64 ", val=%" PRIu64, key, val);
             std_map[key] = val;
             hm.insert(key, val);
         } else {
             auto it = std::next(std::begin(std_map), gen() % std_map.size());
             key_t key = it->first;
-            NK_LOG_INF("del: key=%lu", key);
+            NK_LOG_INF("del: key=%" PRIu64, key);
             std_map.erase(it);
             hm.remove(key);
         }

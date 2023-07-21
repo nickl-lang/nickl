@@ -20,13 +20,13 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 #ifdef ENABLE_LOGGING
     switch (mode) {
     case NkAllocator_Alloc:
-        NK_LOG_TRC("alloc(%lu)", size);
+        NK_LOG_TRC("alloc(%" PRIu64 ")", size);
         break;
     case NkAllocator_Free:
-        NK_LOG_TRC("free(%p, %lu)", old_mem, old_size);
+        NK_LOG_TRC("free(%p, %" PRIu64 ")", old_mem, old_size);
         break;
     case NkAllocator_Realloc:
-        NK_LOG_TRC("realloc(%lu, %p, %lu)", size, old_mem, old_size);
+        NK_LOG_TRC("realloc(%" PRIu64 ", %p, %" PRIu64 ")", size, old_mem, old_size);
         break;
     default:
         assert(!"unreachable");

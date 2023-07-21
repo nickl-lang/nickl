@@ -22,7 +22,7 @@ namespace {
 NK_LOG_USE_SCOPE(pipe_stream);
 
 void _makeCmdStr(NkStringBuilder sb, nkstr cmd, bool quiet) {
-    nksb_printf(sb, "%.*s", cmd.size, cmd.data);
+    nksb_printf(sb, "%.*s", (int)cmd.size, cmd.data);
     if (quiet) {
         nksb_printf(sb, " >/dev/null 2>&1");
     }
@@ -36,7 +36,7 @@ popen_filebuf *_createFileBuf(FILE *file) {
 } // namespace
 
 std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto sb = nksb_create();
     defer {
@@ -45,14 +45,14 @@ std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     _makeCmdStr(sb, cmd, quiet);
     auto str = nksb_concat(sb);
 
-    NK_LOG_DBG("popen(\"%.*s\", \"r\")", str.size, str.data);
+    NK_LOG_DBG("popen(\"%.*s\", \"r\")", (int)str.size, str.data);
 
     auto file = popen(str.data, "r");
     return std::istream{_createFileBuf(file)};
 }
 
 std::ostream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto sb = nksb_create();
     defer {
@@ -61,14 +61,14 @@ std::ostream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     _makeCmdStr(sb, cmd, quiet);
     auto str = nksb_concat(sb);
 
-    NK_LOG_DBG("popen(\"%.*s\", \"w\")", str.size, str.data);
+    NK_LOG_DBG("popen(\"%.*s\", \"w\")", (int)str.size, str.data);
 
     auto file = popen(str.data, "w");
     return std::ostream{_createFileBuf(file)};
 }
 
 bool nk_pipe_streamClose(std::ios const &stream) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto buf = (popen_filebuf *)stream.rdbuf();
     auto res = pclose(buf->file());

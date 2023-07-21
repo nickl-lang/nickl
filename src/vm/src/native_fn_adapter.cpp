@@ -45,7 +45,7 @@ Context ctx;
 // TODO Integer promotion works only on little-endian
 ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
     EASY_FUNCTION(::profiler::colors::Orange200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     if (!type) {
         NK_LOG_DBG("ffi(null) -> void");
@@ -58,7 +58,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
 
     auto it = ctx.typemap.find(type);
     if (it != ctx.typemap.end()) {
-        NK_LOG_DBG("Found existing ffi type=%p", it->second);
+        NK_LOG_DBG("Found existing ffi type=%p", (void *)it->second);
         ffi_t = it->second;
     } else {
         switch (type->tclass) {
@@ -154,7 +154,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
                 nksb_free(sb);
             });
         }(),
-        ffi_t);
+        (void *)ffi_t);
 
     return ffi_t;
 }
@@ -176,7 +176,7 @@ void _ffiPrepareCif(
 }
 
 void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto const &cl = *(NkIrNativeClosure)userdata;
 
@@ -203,7 +203,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     EASY_FUNCTION(::profiler::colors::Orange200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     size_t const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
 
@@ -235,7 +235,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
 
 NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
     EASY_FUNCTION(::profiler::colors::Orange200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto cl = (NkIrNativeClosure)nk_alloc(nk_default_allocator, sizeof(NkIrNativeClosure_T));
     cl->fn = fn;
@@ -259,7 +259,7 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
 
 void nk_native_free_closure(NkIrNativeClosure cl) {
     EASY_FUNCTION(::profiler::colors::Orange200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     ffi_closure_free(cl->closure);
     nk_free(nk_default_allocator, cl, sizeof(*cl));

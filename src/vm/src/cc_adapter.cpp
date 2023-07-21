@@ -17,7 +17,7 @@ NK_LOG_USE_SCOPE(cc_adapter);
 
 std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     EASY_FUNCTION(::profiler::colors::Amber200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto sb = nksb_create();
     defer {
@@ -28,13 +28,13 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     nksb_printf(
         sb,
         "%.*s %.*s -x c - -o %.*s -lm %.*s",
-        echo_cmd.size,
+        (int)echo_cmd.size,
         echo_cmd.data,
-        conf.compiler_binary.size,
+        (int)conf.compiler_binary.size,
         conf.compiler_binary.data,
-        conf.output_filename.size,
+        (int)conf.output_filename.size,
         conf.output_filename.data,
-        conf.additional_flags.size,
+        (int)conf.additional_flags.size,
         conf.additional_flags.data);
 
     auto const cmd = nksb_concat(sb);
@@ -43,14 +43,14 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
 
 bool nkcc_streamClose(std::ostream const &stream) {
     EASY_FUNCTION(::profiler::colors::Amber200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     return nk_pipe_streamClose(stream);
 }
 
 bool nkir_compile(NkIrCompilerConfig conf, NkIrProg ir, NkIrFunct entry_point) {
     EASY_FUNCTION(::profiler::colors::Amber200);
-    NK_LOG_TRC(__func__);
+    NK_LOG_TRC("%s", __func__);
 
     auto src = nkcc_streamOpen(conf);
     nkir_translateToC(ir, entry_point, src);

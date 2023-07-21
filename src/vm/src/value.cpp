@@ -92,7 +92,7 @@ NkType nkt_get_void() {
 void nkt_inspect(nktype_t type, NkStringBuilder sb) {
     switch (type->tclass) {
     case NkType_Array:
-        nksb_printf(sb, "[%llu]", type->as.arr.elem_count);
+        nksb_printf(sb, "[%" PRIu64 "]", type->as.arr.elem_count);
         nkt_inspect(type->as.arr.elem_type, sb);
         break;
     case NkType_Fn: {
@@ -137,7 +137,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
             assert(!"unreachable");
             break;
         }
-        nksb_printf(sb, "%llu", (size_t)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
+        nksb_printf(sb, "%" PRIu64, (size_t)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
         break;
     case NkType_Ptr:
         nksb_printf(sb, "*");
@@ -156,7 +156,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
         break;
     }
     default:
-        nksb_printf(sb, "type{%p}", type);
+        nksb_printf(sb, "type{%p}", (void *)type);
         break;
     }
 }
@@ -205,17 +205,16 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
             nksb_printf(sb, "%u", nkval_as(uint32_t, val));
             break;
         case Int64:
-            nksb_printf(sb, "%lli", nkval_as(int64_t, val));
+            nksb_printf(sb, "%" PRIi64, nkval_as(int64_t, val));
             break;
         case Uint64:
-            nksb_printf(sb, "%llu", nkval_as(uint64_t, val));
+            nksb_printf(sb, "%" PRIu64, nkval_as(uint64_t, val));
             break;
         case Float32:
             nksb_printf(sb, "%.*g", std::numeric_limits<float>::max_digits10, nkval_as(float, val));
             break;
         case Float64:
-            nksb_printf(
-                sb, "%.*g", std::numeric_limits<double>::max_digits10, nkval_as(double, val));
+            nksb_printf(sb, "%.*g", std::numeric_limits<double>::max_digits10, nkval_as(double, val));
             break;
         default:
             assert(!"unreachable");
@@ -296,11 +295,7 @@ nkval_t nkval_tuple_at(nkval_t self, size_t i) {
     };
 }
 
-NkTupleLayout nk_calcTupleLayout(
-    nktype_t const *types,
-    size_t count,
-    NkAllocator alloc,
-    size_t stride) {
+NkTupleLayout nk_calcTupleLayout(nktype_t const *types, size_t count, NkAllocator alloc, size_t stride) {
     size_t alignment = 0;
     size_t offset = 0;
 

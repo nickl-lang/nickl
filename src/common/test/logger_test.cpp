@@ -45,7 +45,7 @@ protected:
         dummy = std::freopen("/dev/null", "a", stdout);
         (void)dummy;
 
-        _NK_LOG_CHK(level, msg);
+        _NK_LOG_CHK(level, "%s", msg);
 
         // Flush any test msg data
         std::fflush(stderr);
