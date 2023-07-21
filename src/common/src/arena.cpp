@@ -3,14 +3,36 @@
 #include <cstdlib>
 
 #include "nk/common/allocator.h"
+#include "nk/common/logger.h"
+#include "nk/common/string_builder.h"
+#include "nk/common/utils.hpp"
 #include "nk/sys/mem.h"
 
 namespace {
+
+NK_LOG_USE_SCOPE(arena);
 
 void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size) {
     (void)old_mem;
 
     auto arena = (NkArenaAllocator *)data;
+
+#ifdef ENABLE_LOGGING
+    switch (mode) {
+    case NkAllocator_Alloc:
+        NK_LOG_TRC("alloc(%lu)", size);
+        break;
+    case NkAllocator_Free:
+        NK_LOG_TRC("free(%p, %lu)", old_mem, old_size);
+        break;
+    case NkAllocator_Realloc:
+        NK_LOG_TRC("realloc(%lu, %p, %lu)", size, old_mem, old_size);
+        break;
+    default:
+        assert(!"unreachable");
+        break;
+    }
+#endif // ENABLE_LOGGING
 
     switch (mode) {
     case NkAllocator_Realloc:

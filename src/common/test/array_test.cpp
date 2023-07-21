@@ -10,7 +10,7 @@
 
 class array : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({NkLog_Trace, NkLog_Color_Auto});
+        NK_LOGGER_INIT({});
     }
 
     void TearDown() override {

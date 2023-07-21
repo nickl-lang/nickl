@@ -8,7 +8,7 @@
 
 class id : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT(NkLoggerOptions{});
+        NK_LOGGER_INIT({});
     }
 
     void TearDown() override {
