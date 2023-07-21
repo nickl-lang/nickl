@@ -70,3 +70,25 @@ TEST_F(allocator, clear) {
 
     EXPECT_EQ(m_arena.size, 0);
 }
+
+TEST_F(allocator, realloc) {
+    EXPECT_EQ(m_arena.size, 0);
+
+    void *ptr = nk_alloc(m_alloc, 100);
+    EXPECT_EQ(m_arena.size, 100);
+
+    nk_realloc(m_alloc, 200, ptr, 100);
+    EXPECT_EQ(m_arena.size, 200);
+}
+
+TEST_F(allocator, failed_realloc) {
+    EXPECT_EQ(m_arena.size, 0);
+
+    void *ptr = nk_alloc(m_alloc, 100);
+    EXPECT_EQ(m_arena.size, 100);
+
+    nk_alloc(m_alloc, 1);
+
+    nk_realloc(m_alloc, 200, ptr, 100);
+    EXPECT_EQ(m_arena.size, 301);
+}
