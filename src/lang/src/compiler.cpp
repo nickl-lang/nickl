@@ -236,7 +236,7 @@ struct ExternTag {
     nkstr abi;
 };
 
-void error(NklCompiler c, char const *fmt, ...) {
+NK_PRINTF_LIKE(2, 3) void error(NklCompiler c, char const *fmt, ...) {
     assert(!c->error_occurred && "compiler error already initialized");
 
     va_list ap;
@@ -325,7 +325,7 @@ Decl &makeDecl(NklCompiler c, nkid name) {
     if (it != locals.end()) {
         nkstr name_str = nkid2s(name);
         static Decl s_dummy_decl{};
-        return error(c, "`%.*s` is already defined", name_str.size, name_str.data), s_dummy_decl;
+        return error(c, "`%.*s` is already defined", (int)name_str.size, name_str.data), s_dummy_decl;
     } else {
         std::tie(it, std::ignore) = locals.emplace(name, Decl{});
     }
@@ -674,7 +674,8 @@ ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t
         };
         nklt_inspect(lhs.type, sb);
         auto type_str = nksb_concat(sb);
-        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), type_str.size, type_str.data), ValueInfo{};
+        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)type_str.size, type_str.data),
+               ValueInfo{};
     }
     return makeRef(tupleIndex(asRef(c, lhs), struct_t->underlying_type, index));
 }
@@ -689,7 +690,8 @@ ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t,
         };
         nklt_inspect(lhs.type, sb);
         auto type_str = nksb_concat(sb);
-        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), type_str.size, type_str.data), ValueInfo{};
+        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)type_str.size, type_str.data),
+               ValueInfo{};
     }
     return cast(struct_t->as.strct.fields.data[index].type, lhs);
 }
@@ -759,7 +761,7 @@ ValueInfo getMember(NklCompiler c, ValueInfo const &lhs, nkid name) {
         };
         nklt_inspect(lhs.type, sb);
         auto type_str = nksb_concat(sb);
-        return error(c, "type `%.*s` is not subscriptable", type_str.size, type_str.data), ValueInfo{};
+        return error(c, "type `%.*s` is not subscriptable", (int)type_str.size, type_str.data), ValueInfo{};
     }
     }
 }
@@ -815,7 +817,7 @@ ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) 
         };
         nklt_inspect(lhs.type, sb);
         auto type_str = nksb_concat(sb);
-        return error(c, "type `%.*s` is not indexable", type_str.size, type_str.data), ValueInfo{};
+        return error(c, "type `%.*s` is not indexable", (int)type_str.size, type_str.data), ValueInfo{};
     }
     }
 }
@@ -830,10 +832,10 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         case Decl_Global:
             return makeRef(nkir_makeGlobalRef(c->ir, res.as.global.id));
         case Decl_Undefined:
-            return error(c, "`%.*s` is not defined", name.size, name.data), ValueInfo{};
+            return error(c, "`%.*s` is not defined", (int)name.size, name.data), ValueInfo{};
         case Decl_ExtSym:
         case Decl_Arg:
-            return error(c, "cannot assign to `%.*s`", name.size, name.data), ValueInfo{};
+            return error(c, "cannot assign to `%.*s`", (int)name.size, name.data), ValueInfo{};
         default:
             NK_LOG_ERR("unknown decl type");
             assert(!"unreachable");
@@ -1130,7 +1132,7 @@ ValueInfo compileCompositeType(
 ValueInfo import(NklCompiler c, fs::path filepath) {
     if (!fs::exists(filepath)) {
         auto const str = filepath.string();
-        return error(c, "imported file `%.*s` doesn't exist", str.size(), str.c_str()), ValueInfo{};
+        return error(c, "imported file `%.*s` doesn't exist", (int)str.size(), str.c_str()), ValueInfo{};
     }
     filepath = fs::canonical(filepath);
     auto it = c->imports.find(filepath);
@@ -1174,7 +1176,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
         if (name && nklt_struct_index(struct_t, name) == -1lu) {
             return error(
                        c,
-                       "no field named `%s` in type `struct`",
+                       "no field named `%s` in type `%s`",
                        nkid2cs(name),
                        (char const *)[&]() {
                            auto sb = nksb_create();
@@ -1700,11 +1702,15 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         nkid name = s2nkid(name_str);
         auto &decl = resolve(c, name);
         if (decl.kind == Decl_Undefined) {
-            return error(c, "`%.*s` is not defined", name_str.size, name_str.data), ValueInfo{};
+            return error(c, "`%.*s` is not defined", (int)name_str.size, name_str.data), ValueInfo{};
         } else if (
             (decl.kind == Decl_Arg && decl.as.arg.fn != curScope(c).cur_fn) ||
             (decl.kind == Decl_Local && decl.as.local.fn != curScope(c).cur_fn)) {
-            return error(c, "cannot reference `%.*s` through procedure frame boundary", name_str.size, name_str.data),
+            return error(
+                       c,
+                       "cannot reference `%.*s` through procedure frame boundary",
+                       (int)name_str.size,
+                       name_str.data),
                    ValueInfo{};
         } else {
             return declToValueInfo(decl);
@@ -1715,9 +1721,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         nkstr name_str = node->token->text;
         nkid name = s2nkid(name_str);
         if (name == cs2nkid("@typeof")) {
-            return error(c, "invalid use of `%.*s` intrinsic", name_str.size, name_str.data), ValueInfo{};
+            return error(c, "invalid use of `%.*s` intrinsic", (int)name_str.size, name_str.data), ValueInfo{};
         } else {
-            return error(c, "invalid intrinsic `%.*s`", name_str.size, name_str.data), ValueInfo{};
+            return error(c, "invalid intrinsic `%.*s`", (int)name_str.size, name_str.data), ValueInfo{};
         }
     }
 
@@ -2392,7 +2398,7 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     c->error_reported = true;
 }
 
-void printError(NklCompiler c, char const *fmt, ...) {
+NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
     if (c->error_reported) {
         return;
     }
@@ -2486,11 +2492,11 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
     auto it = config.find(cs2nkid(name.c_str()));
     ValueInfo val_info;
     if (it == config.end()) {
-        error(c, "`%.*s` is missing in config", name.size(), name.c_str());
+        error(c, "`%.*s` is missing in config", (int)name.size(), name.c_str());
     } else {
         val_info = declToValueInfo(it->second);
         if (!isKnown(val_info)) {
-            error(c, "`%.*s` value is not known", name.size(), name.c_str());
+            error(c, "`%.*s` value is not known", (int)name.size(), name.c_str());
         }
     }
     if (c->error_occurred) {

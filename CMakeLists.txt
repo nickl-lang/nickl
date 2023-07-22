@@ -32,7 +32,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include(Dependencies)
 
-set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic -Werror=unused-result -fvisibility=hidden")
+set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic -Werror=unused-result -Werror=format -fvisibility=hidden")
 if(ENABLE_ASAN)
     set(FLAGS "${FLAGS} -g -fsanitize=address -fsanitize=leak")
 endif()

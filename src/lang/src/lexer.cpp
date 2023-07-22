@@ -278,7 +278,7 @@ private:
         m_token.text.size += n;
     }
 
-    void error(char const *fmt, ...) {
+    NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
         m_err_str = string_vformat(fmt, ap);

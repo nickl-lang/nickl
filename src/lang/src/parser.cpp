@@ -84,7 +84,7 @@ private:
         if (!accept(id)) {
             // TODO Improve token quote for string constants etc.
             return error(
-                "expected `%s` before `%.*s`", s_token_text[id], m_cur_token->text.size, m_cur_token->text.data);
+                "expected `%s` before `%.*s`", s_token_text[id], (int)m_cur_token->text.size, m_cur_token->text.data);
         }
     }
 
@@ -955,13 +955,14 @@ private:
             m_cur_token--;
             return error("unexpected end of file"), NklAstNode_T{};
         } else {
-            return error("unexpected token `%.*s`", m_cur_token->text.size, m_cur_token->text.data), NklAstNode_T{};
+            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data),
+                   NklAstNode_T{};
         }
 
         return node;
     }
 
-    void error(char const *fmt, ...) {
+    NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         assert(!m_error_occurred && "Parser error already initialized");
 
         va_list ap;
