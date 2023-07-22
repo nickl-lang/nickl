@@ -187,22 +187,22 @@ void nkval_inspect(nkval_t val, NkStringBuilder sb) {
     case NkType_Numeric:
         switch (nkval_typeof(val)->as.num.value_type) {
         case Int8:
-            nksb_printf(sb, "%hhi", nkval_as(int8_t, val));
+            nksb_printf(sb, "%" PRIi8, nkval_as(int8_t, val));
             break;
         case Uint8:
-            nksb_printf(sb, "%hhu", nkval_as(uint8_t, val));
+            nksb_printf(sb, "%" PRIu8, nkval_as(uint8_t, val));
             break;
         case Int16:
-            nksb_printf(sb, "%hi", nkval_as(int16_t, val));
+            nksb_printf(sb, "%" PRIi16, nkval_as(int16_t, val));
             break;
         case Uint16:
-            nksb_printf(sb, "%hu", nkval_as(uint16_t, val));
+            nksb_printf(sb, "%" PRIu16, nkval_as(uint16_t, val));
             break;
         case Int32:
-            nksb_printf(sb, "%i", nkval_as(int32_t, val));
+            nksb_printf(sb, "%" PRIi32, nkval_as(int32_t, val));
             break;
         case Uint32:
-            nksb_printf(sb, "%u", nkval_as(uint32_t, val));
+            nksb_printf(sb, "%" PRIu32, nkval_as(uint32_t, val));
             break;
         case Int64:
             nksb_printf(sb, "%" PRIi64, nkval_as(int64_t, val));
