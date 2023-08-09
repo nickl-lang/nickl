@@ -1,0 +1,13 @@
+import libc;
+libc.puts("Hello, World!");
+
+/* @comptime
+Hello, World!
+  /@comptime */
+
+/* @runtime
+as
+das
+dass
+asd
+  /@runtime */
