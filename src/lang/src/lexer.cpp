@@ -63,9 +63,21 @@ struct ScanEngine {
             skipSpaces();
         }
 
-        while (on('/') && on('/', 1)) {
-            while (chr() && !on('\n')) {
-                advance();
+        while ((on('/') && on('/', 1)) || (on('/') && on('*', 1))) {
+            if (on('/', 1)) {
+                while (!on('\n')) {
+                    advance();
+                }
+            } else {
+                advance(2);
+                while (chr()) {
+                    if (on('*') && on('/', 1)) {
+                        advance(2);
+                        break;
+                    } else {
+                        advance();
+                    }
+                }
             }
             skipSpaces();
         }
