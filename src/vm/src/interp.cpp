@@ -147,13 +147,13 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_enter: {
-        ctx.stack_frames.emplace_back(nk_arena_grab(&ctx.stack));
+        // ctx.stack_frames.emplace_back(nk_arena_grab(&ctx.stack));
         break;
     }
 
     case nkop_leave: {
-        nk_arena_popFrame(&ctx.stack, ctx.stack_frames.back());
-        ctx.stack_frames.pop_back();
+        // nk_arena_popFrame(&ctx.stack, ctx.stack_frames.back());
+        // ctx.stack_frames.pop_back();
         break;
     }
 
