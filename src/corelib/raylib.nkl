@@ -49,4 +49,10 @@ DrawFPS :: (posX: i32, posY: i32) -> void;
 
 TextFormat :: (text: *i8, ...) -> *i8;
 
+DrawPixel :: (x: i32, y: i32, color: Color) -> void;
+GetMouseWheelMove :: () -> f32;
+
+GetScreenWidth :: () -> i32;
+GetScreenHeight :: () -> i32;
+
 }
