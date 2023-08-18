@@ -160,6 +160,8 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
+    puts("Hello, World!");
+
 #ifdef BUILD_WITH_EASY_PROFILER
     puts("press any key to exit");
     getchar();
