@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_IR_IMPL
-#define HEADER_GUARD_NK_VM_IR_IMPL
+#ifndef HEADER_GUARD_NKB_IR_IMPL
+#define HEADER_GUARD_NKB_IR_IMPL
 
 #include <cstddef>
 #include <string>
@@ -61,4 +61,4 @@ struct NkIrProg_T {
     std::unordered_map<void *, NkIrProc> closureCode2IrProc;
 };
 
-#endif // HEADER_GUARD_NK_VM_IR_IMPL
+#endif // HEADER_GUARD_NKB_IR_IMPL

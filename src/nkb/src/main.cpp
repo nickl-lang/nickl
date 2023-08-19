@@ -11,11 +11,11 @@
 namespace {
 
 void printErrorUsage() {
-    fprintf(stderr, "See `%s --help` for usage information\n", NKL_BINARY_NAME);
+    fprintf(stderr, "See `%s --help` for usage information\n", NK_BINARY_NAME);
 }
 
 void printUsage() {
-    printf("Usage: " NKL_BINARY_NAME
+    printf("Usage: " NK_BINARY_NAME
            " [options] file"
            "\nOptions:"
            "\n    -o, --output                                         Output file path"
@@ -29,7 +29,7 @@ void printUsage() {
 }
 
 void printVersion() {
-    printf(NKL_BINARY_NAME " " NKL_BUILD_VERSION " " NKL_BUILD_TIME "\n");
+    printf(NK_BINARY_NAME " " NK_BUILD_VERSION " " NK_BUILD_TIME "\n");
 }
 
 bool eql(char const *lhs, char const *rhs) {

@@ -1,10 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
-project(vmnew)
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
-include(NewTest)
-
-set(LIB nk_vmnew)
+set(LIB nkb)
 
 add_library(${LIB}
     src/ir.cpp
@@ -20,20 +14,20 @@ target_link_libraries(${LIB}
     PRIVATE Dl
     )
 
-set(EXE nickl_irc)
+set(EXE nkirc)
 
 add_executable(${EXE}
     src/main.cpp
     )
 
 target_link_libraries(${EXE}
-    PRIVATE nk_vmnew
+    PRIVATE nkb
     )
 
 target_compile_definitions(${EXE}
-    PUBLIC NKL_BINARY_NAME="${EXE}"
-    PUBLIC NKL_BUILD_VERSION="${BUILD_VERSION}"
-    PUBLIC NKL_BUILD_TIME="${BUILD_TIME}"
+    PUBLIC NK_BINARY_NAME="${EXE}"
+    PUBLIC NK_BUILD_VERSION="${BUILD_VERSION}"
+    PUBLIC NK_BUILD_TIME="${BUILD_TIME}"
     )
 
 if(CMAKE_TESTING_ENABLED)

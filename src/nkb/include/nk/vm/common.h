@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_COMMON
-#define HEADER_GUARD_NK_VM_COMMON
+#ifndef HEADER_GUARD_NKB_COMMON
+#define HEADER_GUARD_NKB_COMMON
 
 #include <stddef.h>
 #include <stdint.h>
@@ -75,4 +75,4 @@ typedef struct NkIrType {
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_COMMON
+#endif // HEADER_GUARD_NKB_COMMON

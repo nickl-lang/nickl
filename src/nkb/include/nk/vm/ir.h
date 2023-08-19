@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_IR
-#define HEADER_GUARD_NK_VM_IR
+#ifndef HEADER_GUARD_NKB_IR
+#define HEADER_GUARD_NKB_IR
 
 #include <stddef.h>
 #include <stdint.h>
@@ -250,4 +250,4 @@ void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_IR
+#endif // HEADER_GUARD_NKB_IR
