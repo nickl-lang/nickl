@@ -8,6 +8,15 @@
 extern "C" {
 #endif
 
+typedef enum {
+    NkbOutput_None,
+
+    NkbOutput_Object,
+    NkbOutput_Static,
+    NkbOutput_Shared,
+    NkbOutput_Executable,
+} NkbOutputKind;
+
 typedef struct NkIrType const *nktype_t;
 
 typedef enum {

@@ -1,4 +1,4 @@
-#include "nk/vm/ir.h"
+#include "nkb/ir.h"
 
 #include <algorithm>
 #include <cassert>
@@ -9,12 +9,12 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
-#include "nk/vm/common.h"
-// #include "nk/vm/value.h"
+#include "nkb/common.h"
+// #include "nkb/value.h"
 
 // char const *s_nk_ir_names[] = {
 // #define X(NAME) #NAME,
-// #include "nk/vm/ir.inl"
+// #include "nkb/ir.inl"
 // };
 
 namespace {
@@ -346,6 +346,15 @@ NkIrInstr nkir_make_cmp_ge(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
 }
 
 NkIrInstr nkir_make_label(NkIrLabel label) {
+}
+
+void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath) {
+}
+
+NkIrRunCtx nkir_createRunCtx(NkIrProg ir) {
+}
+
+void nkir_freeRunCtx(NkIrRunCtx ctx) {
 }
 
 void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) {

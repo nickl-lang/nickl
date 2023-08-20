@@ -7,8 +7,8 @@
 #include <vector>
 
 // #include "bytecode.h"
-#include "nk/vm/ir.h"
-// #include "nk/vm/value.h"
+#include "nkb/ir.h"
+// #include "nkb/value.h"
 
 enum ENkIrProcState {
     NkIrProc_Incomplete,

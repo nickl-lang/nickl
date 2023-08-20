@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "nk/common/string.h"
-#include "nk/vm/common.h"
+#include "nkb/common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -221,16 +221,7 @@ NkIrInstr nkir_make_label(NkIrLabel label);
 
 // Output
 
-typedef enum {
-    NkIrOutput_None,
-
-    NkIrOutput_Object,
-    NkIrOutput_Static,
-    NkIrOutput_Shared,
-    NkIrOutput_Executable,
-} NkIrOutputKind;
-
-void nkir_write(NkIrProg ir, NkIrOutputKind kind, nkstr filepath);
+void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath);
 
 // Execution
 

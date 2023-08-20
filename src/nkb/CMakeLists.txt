@@ -2,6 +2,7 @@ set(LIB nkb)
 
 add_library(${LIB}
     src/ir.cpp
+    src/nkb.cpp
     )
 
 target_include_directories(${LIB}
