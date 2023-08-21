@@ -2,7 +2,7 @@ set(LIB nkb)
 
 add_library(${LIB}
     src/ir.cpp
-    src/nkb.cpp
+    src/irc.cpp
     )
 
 target_include_directories(${LIB}
@@ -11,6 +11,7 @@ target_include_directories(${LIB}
 
 target_link_libraries(${LIB}
     PUBLIC nk_common
+    PRIVATE nk_sys
     PRIVATE Ffi
     PRIVATE Dl
     )

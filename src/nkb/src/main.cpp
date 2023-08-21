@@ -8,7 +8,7 @@
 #include "nk/common/profiler.hpp"
 #include "nk/common/utils.hpp"
 #include "nkb/common.h"
-#include "nkb/nkb.h"
+#include "nkb/irc.h"
 
 namespace {
 
@@ -20,14 +20,15 @@ void printUsage() {
     printf("Usage: " NK_BINARY_NAME
            " [options] file"
            "\nOptions:"
-           "\n    -o, --output                                         Output file path"
-           "\n    -k, --kind {run,executable,shared,static,object}     Output file kind"
+           "\n    -o, --output                                           Output file path"
+           "\n    -k, --kind {run,executable,shared,static,object}       Output file kind"
+           "\n    -c, --color {auto,always,never}                        Choose when to color output"
+           "\n    -h, --help                                             Display this message and exit"
+           "\n    -v, --version                                          Show version information"
 #ifdef ENABLE_LOGGING
-           "\n    -c, --color {auto,always,never}                      Choose when to color output"
-           "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
+           "\nDeveloper options:"
+           "\n    -l, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-           "\n    -h, --help                                           Display this message and exit"
-           "\n    -v, --version                                        Show version information"
            "\n");
 }
 
@@ -55,9 +56,11 @@ int main(int argc, char const *const *argv) {
     bool help = false;
     bool version = false;
 
+    NkIrcOptions nkirc_opts{};
+
 #ifdef ENABLE_LOGGING
-    NkLoggerOptions logger_options{};
-    logger_options.log_level = NkLog_Error;
+    NkLoggerOptions logger_opts{};
+    logger_opts.log_level = NkLog_Error;
 #endif // ENABLE_LOGGING
 
     for (int i = 1; i < argc;) {
@@ -101,65 +104,68 @@ int main(int argc, char const *const *argv) {
                     printErrorUsage();
                     return 1;
                 }
-            } else {
-#ifdef ENABLE_LOGGING
-                if (eql(arg, "-c") || eql(arg, "--color")) {
-                    if (!argv[i]) {
-                        fprintf(stderr, "error: argument required\n");
-                        printErrorUsage();
-                        return 1;
-                    }
-                    auto const color_mode_str = argv[i++];
-                    if (eql(color_mode_str, "auto")) {
-                        logger_options.color_mode = NkLog_Color_Auto;
-                    } else if (eql(color_mode_str, "always")) {
-                        logger_options.color_mode = NkLog_Color_Always;
-                    } else if (eql(color_mode_str, "never")) {
-                        logger_options.color_mode = NkLog_Color_Never;
-                    } else {
-                        fprintf(
-                            stderr,
-                            "error: invalid color mode `%s`. Possible values are `auto`, `always`, "
-                            "`never`\n",
-                            color_mode_str);
-                        printErrorUsage();
-                        return 1;
-                    }
-                } else if (eql(arg, "-l") || eql(arg, "--loglevel")) {
-                    if (!argv[i]) {
-                        fprintf(stderr, "error: argument required\n");
-                        printErrorUsage();
-                        return 1;
-                    }
-                    auto const log_level_str = argv[i++];
-                    if (eql(log_level_str, "none")) {
-                        logger_options.log_level = NkLog_None;
-                    } else if (eql(log_level_str, "error")) {
-                        logger_options.log_level = NkLog_Error;
-                    } else if (eql(log_level_str, "warning")) {
-                        logger_options.log_level = NkLog_Warning;
-                    } else if (eql(log_level_str, "info")) {
-                        logger_options.log_level = NkLog_Info;
-                    } else if (eql(log_level_str, "debug")) {
-                        logger_options.log_level = NkLog_Debug;
-                    } else if (eql(log_level_str, "trace")) {
-                        logger_options.log_level = NkLog_Trace;
-                    } else {
-                        fprintf(
-                            stderr,
-                            "error: invalid loglevel `%s`. Possible values are `none`, `error`, "
-                            "`warning`, `info`, `debug`, `trace`\n",
-                            log_level_str);
-                        printErrorUsage();
-                        return 1;
-                    }
-                } else
-#endif // ENABLE_LOGGING
-                {
-                    fprintf(stderr, "error: invalid argument `%s`\n", arg);
+            } else if (eql(arg, "-c") || eql(arg, "--color")) {
+                if (!argv[i]) {
+                    fprintf(stderr, "error: argument required\n");
                     printErrorUsage();
                     return 1;
                 }
+                auto const color_mode_str = argv[i++];
+                if (eql(color_mode_str, "auto")) {
+                    nkirc_opts.color_policy = NkIrcColor_Auto;
+                } else if (eql(color_mode_str, "always")) {
+                    nkirc_opts.color_policy = NkIrcColor_Always;
+                } else if (eql(color_mode_str, "never")) {
+                    nkirc_opts.color_policy = NkIrcColor_Never;
+                } else {
+                    fprintf(
+                        stderr,
+                        "error: invalid color mode `%s`. Possible values are `auto`, `always`, `never`\n",
+                        color_mode_str);
+                    printErrorUsage();
+                    return 1;
+                }
+#ifdef ENABLE_LOGGING
+                if (eql(color_mode_str, "auto")) {
+                    logger_opts.color_mode = NkLog_Color_Auto;
+                } else if (eql(color_mode_str, "always")) {
+                    logger_opts.color_mode = NkLog_Color_Always;
+                } else if (eql(color_mode_str, "never")) {
+                    logger_opts.color_mode = NkLog_Color_Never;
+                }
+            } else if (eql(arg, "-l") || eql(arg, "--loglevel")) {
+                if (!argv[i]) {
+                    fprintf(stderr, "error: argument required\n");
+                    printErrorUsage();
+                    return 1;
+                }
+                auto const log_level_str = argv[i++];
+                if (eql(log_level_str, "none")) {
+                    logger_opts.log_level = NkLog_None;
+                } else if (eql(log_level_str, "error")) {
+                    logger_opts.log_level = NkLog_Error;
+                } else if (eql(log_level_str, "warning")) {
+                    logger_opts.log_level = NkLog_Warning;
+                } else if (eql(log_level_str, "info")) {
+                    logger_opts.log_level = NkLog_Info;
+                } else if (eql(log_level_str, "debug")) {
+                    logger_opts.log_level = NkLog_Debug;
+                } else if (eql(log_level_str, "trace")) {
+                    logger_opts.log_level = NkLog_Trace;
+                } else {
+                    fprintf(
+                        stderr,
+                        "error: invalid loglevel `%s`. Possible values are `none`, `error`, `warning`, `info`, "
+                        "`debug`, `trace`\n",
+                        log_level_str);
+                    printErrorUsage();
+                    return 1;
+                }
+#endif // ENABLE_LOGGING
+            } else {
+                fprintf(stderr, "error: invalid argument `%s`\n", arg);
+                printErrorUsage();
+                return 1;
             }
         } else if (!in_file) {
             in_file = arg;
@@ -190,12 +196,18 @@ int main(int argc, char const *const *argv) {
         out_file = "a.out";
     }
 
-    NK_LOGGER_INIT(logger_options);
+    NK_LOGGER_INIT(logger_opts);
 
+    auto const c = nkirc_create(nkirc_opts);
+    defer {
+        nkirc_free(c);
+    };
+
+    int code;
     if (run) {
-        nkb_run(nk_mkstr(in_file));
+        code = nkir_run(c, nk_mkstr(in_file));
     } else {
-        nkb_compile(nk_mkstr(in_file), nk_mkstr(out_file), output_kind);
+        code = nkir_compile(c, nk_mkstr(in_file), nk_mkstr(out_file), output_kind);
     }
 
 #ifdef BUILD_WITH_EASY_PROFILER
@@ -203,5 +215,5 @@ int main(int argc, char const *const *argv) {
     getchar();
 #endif // BUILD_WITH_EASY_PROFILER
 
-    return 0;
+    return code;
 }
