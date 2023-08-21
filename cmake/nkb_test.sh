@@ -2,6 +2,18 @@
 
 set -e
 
+printErrorUsage() {
+    echo "See $(basename $0) --help for usage information" >&2
+}
+
+printUsage() {
+    echo "Usage: $(basename $0) [options...]"
+    echo "Options:"
+    echo "    --file=<filepath>   Path to the test file"
+    echo "    --exe=<filepath>    Path to the nkirc executable"
+    echo "    -h,--help           Display this message"
+}
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --file=*)
@@ -10,15 +22,27 @@ while [ $# -gt 0 ]; do
         --exe=*)
             ARG_EXE="${1#*=}"
             ;;
+        -h|--help)
+            printUsage
+            exit 0
+            ;;
         *)
-            echo 'error: invalid arguments'
+            echo "error: invalid argument '$1'" >&2
+            printErrorUsage
             exit 1
     esac
     shift
 done
 
 if [ -z $ARG_FILE ]; then
-    echo 'error: missing `file` argument'
+    echo 'error: missing `file` argument' >&2
+    printErrorUsage
+    exit 1
+fi
+
+if [ -z $ARG_EXE ]; then
+    echo 'error: missing `exe` argument' >&2
+    printErrorUsage
     exit 1
 fi
 
