@@ -55,26 +55,41 @@ extract_output() {
 EXPECTED_OUTPUTX="$(extract_output; echo x)"
 EXPECTED_OUTPUT="${EXPECTED_OUTPUTX%x}"
 
-COMMAND="$ARG_EXE $ARG_FILE"
-echo "Running '$COMMAND'"
+runTest() {
+    COMMAND=$1
+    echo "Test '$COMMAND'"
 
-RESULTX="$(set +e; $COMMAND; echo x$?)"
-RETURNCODE=${RESULTX##*x}
-OUTPUT="${RESULTX%x*}"
+    RESULTX="$(set +e; $COMMAND; echo x$?)"
+    RETURNCODE=${RESULTX##*x}
+    OUTPUT="${RESULTX%x*}"
 
-if [ "$EXPECTED_OUTPUT" != "$OUTPUT" ]; then
-    echo "TEST FAILED:
-Expected output:
-    \"$EXPECTED_OUTPUT\"
-Actual output:
-    \"$OUTPUT\""
-    exit 1
-fi
+    if [ $RETURNCODE -ne 0 ]; then
+        echo "TEST FAILED:
+    Command returned nonzero code"
+        exit 1
+    fi
 
-if [ $RETURNCODE -ne 0 ]; then
-    echo "TEST FAILED:
-Command returned nonzero code"
-    exit 1
-fi
+    if [ "$EXPECTED_OUTPUT" != "$OUTPUT" ]; then
+        echo "TEST FAILED:
+    Expected output:
+        \"$EXPECTED_OUTPUT\"
+    Actual output:
+        \"$OUTPUT\""
+        exit 1
+    fi
+}
+
+run() {
+    $ARG_EXE -k run $ARG_FILE
+}
+
+compile() {
+    OUT_FILE=$(basename $ARG_FILE | cut -d. -f1)_test_out
+    $ARG_EXE -k executable $ARG_FILE -o $OUT_FILE
+    ./$OUT_FILE
+}
+
+runTest run
+runTest compile
 
 echo 'TEST PASSED'

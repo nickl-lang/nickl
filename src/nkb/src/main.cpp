@@ -21,7 +21,7 @@ void printUsage() {
            " [options] file"
            "\nOptions:"
            "\n    -o, --output                                         Output file path"
-           "\n    -k, --kind {executable,shared,static,object}         Output file kind"
+           "\n    -k, --kind {run,executable,shared,static,object}     Output file kind"
 #ifdef ENABLE_LOGGING
            "\n    -c, --color {auto,always,never}                      Choose when to color output"
            "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
@@ -49,6 +49,7 @@ int main(int argc, char const *const *argv) {
 
     char const *in_file = nullptr;
     char const *out_file = nullptr;
+    bool run = false;
     NkbOutputKind output_kind = NkbOutput_Executable;
 
     bool help = false;
@@ -81,7 +82,9 @@ int main(int argc, char const *const *argv) {
                     return 1;
                 }
                 auto const output_kind_str = argv[i++];
-                if (eql(output_kind_str, "executable")) {
+                if (eql(output_kind_str, "run")) {
+                    run = true;
+                } else if (eql(output_kind_str, "executable")) {
                     output_kind = NkbOutput_Executable;
                 } else if (eql(output_kind_str, "shared")) {
                     output_kind = NkbOutput_Shared;
@@ -189,7 +192,11 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
-    nkb_compile(nk_mkstr(in_file), nk_mkstr(out_file), output_kind);
+    if (run) {
+        nkb_run(nk_mkstr(in_file));
+    } else {
+        nkb_compile(nk_mkstr(in_file), nk_mkstr(out_file), output_kind);
+    }
 
 #ifdef BUILD_WITH_EASY_PROFILER
     puts("press any key to exit");

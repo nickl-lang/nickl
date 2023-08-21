@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 void nkb_compile(nkstr in_file, nkstr out_file, NkbOutputKind output_kind);
+void nkb_run(nkstr in_file);
 
 #ifdef __cplusplus
 }
