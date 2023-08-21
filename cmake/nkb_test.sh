@@ -57,7 +57,6 @@ EXPECTED_OUTPUT="${EXPECTED_OUTPUTX%x}"
 
 runTest() {
     COMMAND=$1
-    echo "Test '$COMMAND'"
 
     RESULTX="$(set +e; $COMMAND; echo x$?)"
     RETURNCODE=${RESULTX##*x}
@@ -79,14 +78,20 @@ runTest() {
     fi
 }
 
+runCommand() {
+    COMMAND=$1
+    echo "Running '$COMMAND'" >&2
+    $COMMAND
+}
+
 run() {
-    $ARG_EXE -k run $ARG_FILE
+    runCommand "$ARG_EXE -k run $ARG_FILE"
 }
 
 compile() {
     OUT_FILE=$(basename $ARG_FILE | cut -d. -f1)_test_out
-    $ARG_EXE -k executable $ARG_FILE -o $OUT_FILE
-    ./$OUT_FILE
+    runCommand "$ARG_EXE -k exe -o $OUT_FILE $ARG_FILE" &&
+    runCommand "./$OUT_FILE"
 }
 
 runTest run

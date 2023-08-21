@@ -20,11 +20,11 @@ void printUsage() {
     printf("Usage: " NK_BINARY_NAME
            " [options] file"
            "\nOptions:"
-           "\n    -o, --output                                           Output file path"
-           "\n    -k, --kind {run,executable,shared,static,object}       Output file kind"
-           "\n    -c, --color {auto,always,never}                        Choose when to color output"
-           "\n    -h, --help                                             Display this message and exit"
-           "\n    -v, --version                                          Show version information"
+           "\n    -o, --output                             Output file path"
+           "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
+           "\n    -c, --color {auto,always,never}          Choose when to color output"
+           "\n    -h, --help                               Display this message and exit"
+           "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
            "\nDeveloper options:"
            "\n    -l, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
@@ -87,13 +87,13 @@ int main(int argc, char const *const *argv) {
                 auto const output_kind_str = argv[i++];
                 if (eql(output_kind_str, "run")) {
                     run = true;
-                } else if (eql(output_kind_str, "executable")) {
+                } else if (eql(output_kind_str, "exe")) {
                     output_kind = NkbOutput_Executable;
                 } else if (eql(output_kind_str, "shared")) {
                     output_kind = NkbOutput_Shared;
                 } else if (eql(output_kind_str, "static")) {
                     output_kind = NkbOutput_Static;
-                } else if (eql(output_kind_str, "object")) {
+                } else if (eql(output_kind_str, "obj")) {
                     output_kind = NkbOutput_Object;
                 } else {
                     fprintf(
