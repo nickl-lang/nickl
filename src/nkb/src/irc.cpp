@@ -3,20 +3,24 @@
 #include <cstdio>
 #include <new>
 
+#include "lexer.h"
 #include "nk/common/allocator.hpp"
 #include "nk/common/file.h"
 #include "nk/common/logger.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/sys/term.h"
+#include "nkb/ir.h"
 
 struct NkIrCompiler_T {
     NkIrcOptions opts;
+    NkIrProg ir{};
+    NkArenaAllocator arena{};
 };
 
 namespace {
 
-NK_LOG_USE_SCOPE(nkb);
+NK_LOG_USE_SCOPE(nkirc);
 
 NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
     va_list ap;
@@ -27,13 +31,34 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
     bool const to_color =
         c->opts.color_policy == NkIrcColor_Always || (c->opts.color_policy == NkIrcColor_Auto && nk_isatty());
 
-    std::fprintf(
+    fprintf(
         stderr,
         "%serror:%s %.*s\n",
         to_color ? NK_TERM_COLOR_RED : "",
         to_color ? NK_TERM_COLOR_NONE : "",
         (int)str.size(),
         str.c_str());
+}
+
+bool compileProgram(NkIrCompiler c, nkstr in_file) {
+    NK_LOG_TRC("%s", __func__);
+
+    auto read_res = nk_readFile(nk_default_allocator, in_file);
+    if (!read_res.ok) {
+        printError(c, "failed to read file `%.*s`", (int)in_file.size, in_file.data);
+        return false;
+    }
+    defer {
+        nk_free(nk_default_allocator, (void *)read_res.bytes.data, read_res.bytes.size);
+    };
+
+    auto const lex_res = nkir_lex(nk_arena_getAllocator(&c->arena), read_res.bytes);
+    if (!lex_res.ok) {
+        printError(c, "%.*s", (int)lex_res.error_msg.size, lex_res.error_msg.data);
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace
@@ -50,6 +75,13 @@ void nkirc_free(NkIrCompiler c) {
 
 int nkir_compile(NkIrCompiler c, nkstr in_file, nkstr out_file, NkbOutputKind output_kind) {
     NK_LOG_TRC("%s", __func__);
+
+    // TODO Support different output formats
+    (void)output_kind;
+
+    if (!compileProgram(c, in_file)) {
+        return 1;
+    }
 
     auto sb = nksb_create();
     defer {
@@ -75,15 +107,9 @@ int nkir_compile(NkIrCompiler c, nkstr in_file, nkstr out_file, NkbOutputKind ou
 int nkir_run(NkIrCompiler c, nkstr in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    auto res = nk_readFile(nk_default_allocator, in_file);
-    if (!res.ok) {
-        printError(c, "failed to read file `%.*s`", (int)in_file.size, in_file.data);
+    if (!compileProgram(c, in_file)) {
         return 1;
     }
-    defer {
-        nk_free(nk_default_allocator, (void *)res.data.data, res.data.size);
-    };
-    NK_LOG_INF("%.*s", (int)res.data.size, res.data.data);
 
     puts("Hello, World!");
 

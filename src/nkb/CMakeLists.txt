@@ -3,6 +3,7 @@ set(LIB nkb)
 add_library(${LIB}
     src/ir.cpp
     src/irc.cpp
+    src/lexer.cpp
     )
 
 target_include_directories(${LIB}
