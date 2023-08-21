@@ -16,12 +16,12 @@ int fileno(FILE *);
 #define ENV_VAR "NK_LOG_LEVEL"
 
 static char const *c_color_map[] = {
-    NULL,               // None
-    TERM_COLOR_RED,     // Error
-    TERM_COLOR_YELLOW,  // Warning
-    TERM_COLOR_BLUE,    // Info
-    TERM_COLOR_GREEN,   // Debug
-    TERM_COLOR_MAGENTA, // Trace
+    NULL,                  // None
+    NK_TERM_COLOR_RED,     // Error
+    NK_TERM_COLOR_YELLOW,  // Warning
+    NK_TERM_COLOR_BLUE,    // Info
+    NK_TERM_COLOR_GREEN,   // Debug
+    NK_TERM_COLOR_MAGENTA, // Trace
 };
 
 static char const *c_log_level_map[] = {
@@ -78,7 +78,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     std::lock_guard<std::mutex> lk{s_logger.mutex};
 
     if (to_color) {
-        fprintf(stderr, TERM_COLOR_NONE "%s", c_color_map[log_level]);
+        fprintf(stderr, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
     }
 
     fprintf(stderr, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
@@ -89,7 +89,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     va_end(ap);
 
     if (to_color) {
-        fprintf(stderr, TERM_COLOR_NONE);
+        fprintf(stderr, NK_TERM_COLOR_NONE);
     }
 
     fputc('\n', stderr);

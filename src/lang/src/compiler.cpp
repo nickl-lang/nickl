@@ -2350,13 +2350,13 @@ void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
         token->lin,
         (int)(token->pos - prev_newline),
         src.data() + prev_newline,
-        to_color ? TERM_COLOR_RED : "",
+        to_color ? NK_TERM_COLOR_RED : "",
         (int)(token->text.size),
         src.data() + token->pos,
-        to_color ? TERM_COLOR_NONE : "",
+        to_color ? NK_TERM_COLOR_NONE : "",
         (int)(next_newline - token->pos - token->text.size),
         src.data() + token->pos + token->text.size,
-        to_color ? TERM_COLOR_RED : "",
+        to_color ? NK_TERM_COLOR_RED : "",
         (int)(token->col + std::log10(token->lin) + 4),
         "^");
     if (token->text.size) {
@@ -2364,7 +2364,7 @@ void printQuote(std::string_view src, NklTokenRef token, bool to_color) {
             std::fprintf(stderr, "%c", '~');
         }
     }
-    std::fprintf(stderr, "%s\n", to_color ? TERM_COLOR_NONE : "");
+    std::fprintf(stderr, "%s\n", to_color ? NK_TERM_COLOR_NONE : "");
 }
 
 void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
@@ -2379,13 +2379,13 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     std::fprintf(
         stderr,
         "%s%s:%zu:%zu:%s %serror:%s %.*s\n",
-        to_color ? TERM_COLOR_WHITE : "",
+        to_color ? NK_TERM_COLOR_WHITE : "",
         c->file_stack.top().string().c_str(),
         token->lin,
         token->col,
-        to_color ? TERM_COLOR_NONE : "",
-        to_color ? TERM_COLOR_RED : "",
-        to_color ? TERM_COLOR_NONE : "",
+        to_color ? NK_TERM_COLOR_NONE : "",
+        to_color ? NK_TERM_COLOR_RED : "",
+        to_color ? NK_TERM_COLOR_NONE : "",
         (int)err_str.size(),
         err_str.data());
 
@@ -2413,8 +2413,8 @@ NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
     std::fprintf(
         stderr,
         "%serror:%s %.*s\n",
-        to_color ? TERM_COLOR_RED : "",
-        to_color ? TERM_COLOR_NONE : "",
+        to_color ? NK_TERM_COLOR_RED : "",
+        to_color ? NK_TERM_COLOR_NONE : "",
         (int)str.size(),
         str.c_str());
 
