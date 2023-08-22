@@ -19,7 +19,7 @@ jobs:
     env:
       PLATFORM: ${{matrix.platform}}
       BUILD_TYPE: ${{matrix.build_type}}
-      EXTRA_CMAKE_ARGS: -DBUILD_TESTS=ON -DENABLE_LOGGING=ON
+      EXTRA_CMAKE_ARGS: -DBUILD_TESTS=ON
     steps:
       - name: Checkout
         uses: actions/checkout@v3
