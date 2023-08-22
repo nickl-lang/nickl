@@ -46,6 +46,8 @@ struct NkIrBlock {
 // };
 
 struct NkIrProg_T {
+    NkAllocator alloc;
+
     NkIrProc cur_proc;
 
     std::vector<NkIrProc> procs;

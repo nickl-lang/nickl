@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "nk/common/allocator.h"
 #include "nk/common/string.h"
 #include "nkb/common.h"
 
@@ -140,7 +141,7 @@ typedef struct {
 
 typedef struct NkIrProg_T *NkIrProg;
 
-NkIrProg nkir_createProgram();
+NkIrProg nkir_createProgram(NkAllocator alloc);
 void nkir_freeProgram(NkIrProg ir);
 
 // Code Generation

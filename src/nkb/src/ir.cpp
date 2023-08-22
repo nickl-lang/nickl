@@ -36,8 +36,10 @@ NkIrArg _arg(NkIrRefArray args) {
 char const *nkirOpcodeName(NkIrOpcode code) {
 }
 
-NkIrProg nkir_createProgram() {
-    return new (nk_alloc(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{};
+NkIrProg nkir_createProgram(NkAllocator alloc) {
+    return new (nk_alloc(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{
+        .alloc = alloc,
+    };
 }
 
 void nkir_freeProgram(NkIrProg ir) {
