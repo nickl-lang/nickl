@@ -1,6 +1,7 @@
 #include "lexer.h"
 
 #include <cctype>
+#include <cinttypes>
 #include <cstdarg>
 #include <cstddef>
 #include <cstdint>
@@ -43,6 +44,7 @@ struct LexerState {
     size_t m_col = 1;
 
     NkIrToken m_token{};
+    nkstr m_err_str{};
 
     void scan() {
         skipSpaces();
@@ -111,7 +113,11 @@ struct LexerState {
                             m_token.text.size = 2;
                             m_token.lin = m_lin;
                             m_token.col = m_col - 1;
-                            return error("invalid escape sequence `\\%c`", chr());
+                            if (isprint(chr())) {
+                                return error("invalid escape sequence `\\%c`", chr());
+                            } else {
+                                return error("invalid escape sequence `\\\\x%" PRIx8 "`", chr() & 0xff);
+                            }
                         }
                     }
                 }
@@ -204,7 +210,11 @@ struct LexerState {
                 m_token.id = (ETokenId)(t_operator_marker + op_index);
             } else {
                 accept();
-                return error("unknown token `%c`", chr(-1));
+                if (isprint(chr(-1))) {
+                    return error("unexpected character `%c`", chr(-1));
+                } else {
+                    return error("unexpected byte `\\x%" PRIx8 "`", chr(-1) & 0xff);
+                }
             }
         }
     }
@@ -257,7 +267,13 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        // TODO("Report errors") m_err_str = string_vformat(fmt, ap);
+        // TODO("Optimize error reporting")
+        auto sb = nksb_create_alloc(m_alloc);
+        defer {
+            nksb_free(sb);
+        };
+        nksb_vprintf(sb, fmt, ap);
+        m_err_str = nksb_concat(sb);
         va_end(ap);
         m_token.id = t_error;
     }
@@ -288,7 +304,7 @@ NkIrLexerResult nkir_lex(NkAllocator alloc, nkstr src) {
         if (lexer.m_token.id == t_error) {
             return {
                 .tokens{},
-                .error_msg{}, // TODO("Report error")
+                .error_msg = lexer.m_err_str,
                 .ok = false,
             };
         }

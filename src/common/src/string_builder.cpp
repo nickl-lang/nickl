@@ -1,5 +1,7 @@
 #include "nk/common/string_builder.h"
 
+#include <cctype>
+#include <cinttypes>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
@@ -108,7 +110,11 @@ void nksb_str_escape(NkStringBuilder sb, nkstr str) {
             nksb_printf(sb, "\\\\");
             break;
         default:
-            nksb_printf(sb, "%c", str.data[i]);
+            if (isprint(str.data[i])) {
+                nksb_printf(sb, "%c", str.data[i]);
+            } else {
+                nksb_printf(sb, "\\x%" PRIx8, str.data[i] & 0xff);
+            }
             break;
         }
     }
