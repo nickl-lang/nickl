@@ -8,6 +8,15 @@
 extern "C" {
 #endif
 
+enum ETokenId {
+#define OP(ID, TEXT) t_##ID,
+#define KW(ID) t_##ID,
+#define SP(ID, TEXT) t_##ID,
+#include "tokens.inl"
+
+    Token_Count,
+};
+
 typedef struct {
     nkstr text;
     size_t id;
