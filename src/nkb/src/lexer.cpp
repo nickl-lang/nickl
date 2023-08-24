@@ -85,7 +85,9 @@ struct LexerState {
         if (!chr()) {
             m_token.id = t_eof;
         } else if (on('\n')) {
-            accept();
+            while (on('\n')) {
+                accept();
+            }
             m_token.id = t_newline;
         } else if (on('"')) {
             accept();
@@ -267,13 +269,13 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        // TODO("Optimize error reporting")
-        auto sb = nksb_create_alloc(m_alloc);
+        NkStringBuilder_T sb;
+        nksb_init_alloc(&sb, m_alloc);
         defer {
-            nksb_free(sb);
+            nksb_deinit(&sb);
         };
-        nksb_vprintf(sb, fmt, ap);
-        m_err_str = nksb_concat(sb);
+        nksb_vprintf(&sb, fmt, ap);
+        m_err_str = nksb_concat(&sb);
         va_end(ap);
         m_token.id = t_error;
     }
@@ -293,12 +295,12 @@ NkIrLexerResult nkir_lex(NkAllocator alloc, nkstr src) {
         lexer.scan();
         // TODO("Append tokens") tokens.emplace_back(engine.m_token);
         NK_LOG_DBG(
-            "%s: \"%s\"", s_token_id[lexer.m_token.id], (char const *)[&]() {
-                // TODO("Optimize sb stuff")
-                auto sb = nksb_create();
-                nksb_str_escape(sb, lexer.m_token.text);
-                return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                    nksb_free(sb);
+            "%s: \"%s\"", s_token_id[lexer.m_token.id], (char const *)[&]() mutable {
+                NkStringBuilder_T sb;
+                nksb_init_alloc(&sb, alloc);
+                nksb_str_escape(&sb, lexer.m_token.text);
+                return makeDeferrerWithData(nksb_concat(&sb).data, [sb]() mutable {
+                    nksb_deinit(&sb);
                 });
             }());
         if (lexer.m_token.id == t_error) {

@@ -7,36 +7,44 @@
 #include <cstring>
 #include <new>
 
-#include "nk/common/allocator.h"
+#include "nk/common/array.hpp"
 
-typedef struct NkStringBuilder_T {
-    NkAllocator alloc;
-    char *data;
-    size_t size;
-} NkStringBuilder_T;
-
-NkStringBuilder nksb_create() {
+NkStringBuilder_T *nksb_create() {
     return nksb_create_alloc(nk_default_allocator);
 }
 
-NkStringBuilder nksb_create_alloc(NkAllocator alloc) {
-    NkStringBuilder sb = new (nk_alloc(alloc, sizeof(*sb))) NkStringBuilder_T{
-        .alloc = alloc,
-        .data = (char *)nk_alloc(alloc, 1),
-        .size = 0,
-    };
-    sb->data[0] = 0;
+NkStringBuilder_T *nksb_create_alloc(NkAllocator alloc) {
+    NkStringBuilder_T *sb = new (nk_alloc(alloc, sizeof(*sb))) NkStringBuilder_T{};
+    nksb_init_alloc(sb, alloc);
     return sb;
 }
 
-void nksb_free(NkStringBuilder sb) {
+void nksb_init(NkStringBuilder_T *sb) {
+    nksb_init_alloc(sb, nk_default_allocator);
+}
+
+void nksb_init_alloc(NkStringBuilder_T *sb, NkAllocator alloc) {
+    *sb = {
+        .data = {},
+        .size = {},
+        .capacity = {},
+        .alloc = alloc,
+    };
+}
+
+void nksb_deinit(NkStringBuilder_T *sb) {
+    auto &ar = (NkArray<char> &)(*sb);
+    ar.deinit();
+}
+
+void nksb_free(NkStringBuilder_T *sb) {
     if (sb) {
-        nk_free(sb->alloc, sb->data, sb->size);
+        nksb_deinit(sb);
         nk_free(sb->alloc, sb, sizeof(*sb));
     }
 }
 
-int nksb_printf(NkStringBuilder sb, char const *fmt, ...) {
+int nksb_printf(NkStringBuilder_T *sb, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     int res = nksb_vprintf(sb, fmt, ap);
@@ -45,38 +53,35 @@ int nksb_printf(NkStringBuilder sb, char const *fmt, ...) {
     return res;
 }
 
-// TODO Performance. Incredibly inefficient nksb_vprintf
-int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap) {
+int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap) {
+    auto &ar = (NkArray<char> &)(*sb);
+
+    if (!ar.capacity()) {
+        ar.reserve(4000);
+    }
+
     va_list ap_copy;
 
     va_copy(ap_copy, ap);
-    int const printf_res = std::vsnprintf(NULL, 0, fmt, ap_copy);
+    int const printf_res = vsnprintf(nullptr, 0, fmt, ap_copy);
     va_end(ap_copy);
 
-    size_t const new_size = sb->size + printf_res;
-
-    char *new_data = (char *)nk_alloc(sb->alloc, new_size + 1);
-    std::memcpy(new_data, sb->data, sb->size);
+    size_t const alloc_size = printf_res + 1;
+    auto const slice = ar.push(alloc_size);
+    ar.pop(1);
 
     va_copy(ap_copy, ap);
-    std::vsnprintf(new_data + sb->size, printf_res + 1, fmt, ap_copy);
+    vsnprintf(slice.data(), alloc_size, fmt, ap_copy);
     va_end(ap_copy);
-
-    new_data[new_size] = 0;
-
-    nk_free(sb->alloc, sb->data, sb->size);
-
-    sb->data = new_data;
-    sb->size = new_size;
 
     return printf_res;
 }
 
-nkstr nksb_concat(NkStringBuilder sb) {
+nkstr nksb_concat(NkStringBuilder_T *sb) {
     return {sb->data, sb->size};
 }
 
-void nksb_str_escape(NkStringBuilder sb, nkstr str) {
+void nksb_str_escape(NkStringBuilder_T *sb, nkstr str) {
     for (size_t i = 0; i < str.size; i++) {
         switch (str.data[i]) {
         case '\a':
@@ -120,7 +125,7 @@ void nksb_str_escape(NkStringBuilder sb, nkstr str) {
     }
 }
 
-void nksb_str_unescape(NkStringBuilder sb, nkstr str) {
+void nksb_str_unescape(NkStringBuilder_T *sb, nkstr str) {
     for (size_t i = 0; i < str.size; i++) {
         if (str.data[i] == '\\' && i < str.size - 1) {
             switch (str.data[++i]) {

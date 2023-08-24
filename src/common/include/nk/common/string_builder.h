@@ -11,20 +11,29 @@
 extern "C" {
 #endif
 
-typedef struct NkStringBuilder_T *NkStringBuilder;
+typedef struct NkStringBuilder_T {
+    char *data;
+    size_t size;
+    size_t capacity;
+    NkAllocator alloc;
+} *NkStringBuilder;
 
-NkStringBuilder nksb_create();
-NkStringBuilder nksb_create_alloc(NkAllocator alloc);
+NkStringBuilder_T *nksb_create();
+NkStringBuilder_T *nksb_create_alloc(NkAllocator alloc);
 
-void nksb_free(NkStringBuilder sb);
+void nksb_init(NkStringBuilder_T *sb);
+void nksb_init_alloc(NkStringBuilder_T *sb, NkAllocator alloc);
 
-NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder sb, char const *fmt, ...);
-int nksb_vprintf(NkStringBuilder sb, char const *fmt, va_list ap);
+void nksb_deinit(NkStringBuilder_T *sb);
+void nksb_free(NkStringBuilder_T *sb);
 
-nkstr nksb_concat(NkStringBuilder sb);
+NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder_T *sb, char const *fmt, ...);
+int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap);
 
-void nksb_str_escape(NkStringBuilder sb, nkstr str);
-void nksb_str_unescape(NkStringBuilder sb, nkstr str);
+nkstr nksb_concat(NkStringBuilder_T *sb);
+
+void nksb_str_escape(NkStringBuilder_T *sb, nkstr str);
+void nksb_str_unescape(NkStringBuilder_T *sb, nkstr str);
 
 #ifdef __cplusplus
 }

@@ -70,6 +70,7 @@ NkIrCompiler nkirc_create(NkIrcOptions opts) {
 }
 
 void nkirc_free(NkIrCompiler c) {
+    nk_arena_free(&c->arena);
     nk_free_t(nk_default_allocator, c);
 }
 
