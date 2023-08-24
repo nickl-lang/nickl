@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "nk/common/allocator.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,7 +16,13 @@ typedef struct {
 } nkstr;
 
 inline nkstr nk_mkstr(char const *str) {
-    return {str, ::strlen(str)};
+    return {str, strlen(str)};
+}
+
+inline nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
+    auto mem = nk_alloc(alloc, src.size);
+    memcpy(mem, src.data, src.size);
+    return {(char *)mem, src.size};
 }
 
 #ifdef __cplusplus

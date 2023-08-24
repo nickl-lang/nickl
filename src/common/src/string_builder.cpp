@@ -57,7 +57,7 @@ int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap) {
     auto &ar = (NkArray<char> &)(*sb);
 
     if (!ar.capacity()) {
-        ar.reserve(4000);
+        ar.reserve(1000);
     }
 
     va_list ap_copy;

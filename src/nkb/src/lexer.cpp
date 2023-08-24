@@ -10,6 +10,7 @@
 #include <cstring>
 #include <iterator>
 
+#include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
@@ -275,7 +276,7 @@ private:
             nksb_deinit(&sb);
         };
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = nksb_concat(&sb);
+        m_err_str = nk_strcpy(m_alloc, nksb_concat(&sb));
         va_end(ap);
         m_token.id = t_error;
     }
@@ -291,16 +292,23 @@ NkIrLexerResult nkir_lex(NkAllocator alloc, nkstr src) {
         .m_alloc = alloc,
     };
 
+#ifdef ENABLE_LOGGING
+    NkArenaAllocator log_arena{};
+    defer {
+        nk_arena_free(&log_arena);
+    };
+    NkStringBuilder_T log_sb{};
+    nksb_init_alloc(&log_sb, nk_arena_getAllocator(&log_arena));
+#endif // ENABLE_LOGGING
+
     do {
         lexer.scan();
         // TODO("Append tokens") tokens.emplace_back(engine.m_token);
         NK_LOG_DBG(
-            "%s: \"%s\"", s_token_id[lexer.m_token.id], (char const *)[&]() mutable {
-                NkStringBuilder_T sb;
-                nksb_init_alloc(&sb, alloc);
-                nksb_str_escape(&sb, lexer.m_token.text);
-                return makeDeferrerWithData(nksb_concat(&sb).data, [sb]() mutable {
-                    nksb_deinit(&sb);
+            "%s: \"%s\"", s_token_id[lexer.m_token.id], (char const *)[&]() {
+                nksb_str_escape(&log_sb, lexer.m_token.text);
+                return makeDeferrerWithData(nksb_concat(&log_sb).data, [&]() {
+                    nksb_deinit(&log_sb);
                 });
             }());
         if (lexer.m_token.id == t_error) {

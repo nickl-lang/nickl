@@ -23,7 +23,10 @@ struct NkArray : NkSlice<T> {
 
     void deinit() {
         nk_free_t(_alloc, _data, _capacity);
-        *this = {};
+
+        _data = {};
+        _size = {};
+        _capacity = {};
     }
 
     bool reserve(size_t n) {
