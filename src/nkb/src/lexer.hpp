@@ -5,10 +5,6 @@
 #include "nk/common/array.hpp"
 #include "nk/common/string.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum ETokenId {
 #define OP(ID, TEXT) t_##ID,
 #define KW(ID) t_##ID,
@@ -32,9 +28,5 @@ typedef struct {
 } NkIrLexerState;
 
 void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // HEADER_GUARD_NKB_LEXER

@@ -45,7 +45,7 @@ struct ScannerState {
     size_t m_col = 1;
 
     NkIrToken m_token{};
-    nkstr m_err_str{};
+    nkstr m_error_msg{};
 
     void scan() {
         skipSpaces();
@@ -276,7 +276,7 @@ private:
             nksb_deinit(&sb);
         };
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = nk_strcpy(m_tmp_alloc, nksb_concat(&sb));
+        m_error_msg = nk_strcpy(m_tmp_alloc, nksb_concat(&sb));
         va_end(ap);
         m_token.id = t_error;
     }
@@ -310,7 +310,7 @@ void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src) {
             }());
         if (scanner.m_token.id == t_error) {
             lexer->ok = false;
-            lexer->error_msg = scanner.m_err_str;
+            lexer->error_msg = scanner.m_error_msg;
         }
     } while (scanner.m_token.id != t_eof);
 }

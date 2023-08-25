@@ -11,6 +11,7 @@
 #include "nk/common/utils.hpp"
 #include "nk/sys/term.h"
 #include "nkb/ir.h"
+#include "parser.hpp"
 
 struct NkIrCompiler_T {
     NkIrcOptions opts;
@@ -53,17 +54,29 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         return false;
     }
 
+    NkIrLexerState lexer{};
+    lexer.tokens._alloc = file_alloc;
     {
         auto frame = nk_arena_grab(&c->tmp_arena);
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-
-        NkIrLexerState lexer{};
-        lexer.tokens._alloc = file_alloc;
         nkir_lex(&lexer, tmp_alloc, read_res.bytes);
         if (!lexer.ok) {
             printError(c, "%.*s", (int)lexer.error_msg.size, lexer.error_msg.data);
+            return false;
+        }
+    }
+
+    NkIrParserState parser{};
+    {
+        auto frame = nk_arena_grab(&c->tmp_arena);
+        defer {
+            nk_arena_popFrame(&c->tmp_arena, frame);
+        };
+        nkir_parse(&parser, tmp_alloc, lexer.tokens);
+        if (!parser.ok) {
+            printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
             return false;
         }
     }
