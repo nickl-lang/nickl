@@ -1,4 +1,4 @@
-#include "lexer.h"
+#include "lexer.hpp"
 
 #include <cctype>
 #include <cinttypes>
@@ -36,9 +36,9 @@ char const *s_keywords[] = {
 #include "tokens.inl"
 };
 
-struct LexerState {
+struct ScannerState {
     nkstr const m_src;
-    NkAllocator m_alloc;
+    NkAllocator m_tmp_alloc;
 
     size_t m_pos = 0;
     size_t m_lin = 1;
@@ -271,12 +271,12 @@ private:
         va_list ap;
         va_start(ap, fmt);
         NkStringBuilder_T sb;
-        nksb_init_alloc(&sb, m_alloc);
+        nksb_init_alloc(&sb, m_tmp_alloc);
         defer {
             nksb_deinit(&sb);
         };
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = nk_strcpy(m_alloc, nksb_concat(&sb));
+        m_err_str = nk_strcpy(m_tmp_alloc, nksb_concat(&sb));
         va_end(ap);
         m_token.id = t_error;
     }
@@ -284,45 +284,33 @@ private:
 
 } // namespace
 
-NkIrLexerResult nkir_lex(NkAllocator alloc, nkstr src) {
+void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src) {
     NK_LOG_TRC("%s", __func__);
 
-    LexerState lexer{
-        .m_src = src,
-        .m_alloc = alloc,
-    };
+    lexer->tokens.deinit();
+    lexer->error_msg = {};
+    lexer->ok = true;
 
-#ifdef ENABLE_LOGGING
-    NkArenaAllocator log_arena{};
-    defer {
-        nk_arena_free(&log_arena);
+    ScannerState scanner{
+        .m_src = src,
+        .m_tmp_alloc = tmp_alloc,
     };
-    NkStringBuilder_T log_sb{};
-    nksb_init_alloc(&log_sb, nk_arena_getAllocator(&log_arena));
-#endif // ENABLE_LOGGING
 
     do {
-        lexer.scan();
-        // TODO("Append tokens") tokens.emplace_back(engine.m_token);
+        scanner.scan();
+        *lexer->tokens.push() = scanner.m_token;
         NK_LOG_DBG(
-            "%s: \"%s\"", s_token_id[lexer.m_token.id], (char const *)[&]() {
-                nksb_str_escape(&log_sb, lexer.m_token.text);
-                return makeDeferrerWithData(nksb_concat(&log_sb).data, [&]() {
-                    nksb_deinit(&log_sb);
+            "%s: \"%s\"", s_token_id[scanner.m_token.id], (char const *)[&]() {
+                NkStringBuilder_T sb{};
+                nksb_init_alloc(&sb, tmp_alloc);
+                nksb_str_escape(&sb, scanner.m_token.text);
+                return makeDeferrerWithData(nksb_concat(&sb).data, [=]() mutable {
+                    nksb_deinit(&sb);
                 });
             }());
-        if (lexer.m_token.id == t_error) {
-            return {
-                .tokens{},
-                .error_msg = lexer.m_err_str,
-                .ok = false,
-            };
+        if (scanner.m_token.id == t_error) {
+            lexer->ok = false;
+            lexer->error_msg = scanner.m_err_str;
         }
-    } while (lexer.m_token.id != t_eof);
-
-    return {
-        .tokens{},
-        .error_msg{},
-        .ok = true,
-    };
+    } while (scanner.m_token.id != t_eof);
 }

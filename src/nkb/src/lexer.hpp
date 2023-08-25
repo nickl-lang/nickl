@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NKB_LEXER
 
 #include "nk/common/allocator.h"
+#include "nk/common/array.hpp"
 #include "nk/common/string.h"
 
 #ifdef __cplusplus
@@ -25,17 +26,12 @@ typedef struct {
 } NkIrToken;
 
 typedef struct {
-    NkIrToken const *data;
-    size_t size;
-} NkIrTokenArray;
-
-typedef struct {
-    NkIrTokenArray tokens;
+    NkArray<NkIrToken> tokens;
     nkstr error_msg;
     bool ok;
-} NkIrLexerResult;
+} NkIrLexerState;
 
-NkIrLexerResult nkir_lex(NkAllocator alloc, nkstr src);
+void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src);
 
 #ifdef __cplusplus
 }
