@@ -5,12 +5,14 @@
 #include "nk/common/allocator.h"
 #include "nk/common/slice.hpp"
 #include "nk/common/string.h"
+#include "nkb/ir.h"
 
 typedef struct {
+    NkIrProg ir;
     nkstr error_msg;
     bool ok;
 } NkIrParserState;
 
-void nkir_parse(NkIrParserState *parser, NkAllocator tmp_alloc, NkSlice<NkIrToken> tokens);
+void nkir_parse(NkIrParserState *parser, NkAllocator alloc, NkAllocator tmp_alloc, NkSlice<NkIrToken> tokens);
 
 #endif // HEADER_GUARD_NKB_PARSER

@@ -69,12 +69,15 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
     }
 
     NkIrParserState parser{};
+    defer {
+        nkir_freeProgram(parser.ir);
+    };
     {
         auto frame = nk_arena_grab(&c->tmp_arena);
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, tmp_alloc, lexer.tokens);
+        nkir_parse(&parser, file_alloc, tmp_alloc, lexer.tokens);
         if (!parser.ok) {
             printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
             return false;

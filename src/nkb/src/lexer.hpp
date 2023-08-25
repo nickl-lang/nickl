@@ -21,6 +21,9 @@ typedef struct {
     size_t col;
 } NkIrToken;
 
+extern const char *s_token_id[];
+extern const char *s_token_text[];
+
 typedef struct {
     NkArray<NkIrToken> tokens;
     nkstr error_msg;

@@ -15,16 +15,23 @@
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 
-namespace {
-
-NK_LOG_USE_SCOPE(lexer);
-
 const char *s_token_id[] = {
 #define OP(ID, TEXT) #ID,
 #define KW(ID) #ID,
 #define SP(ID, TEXT) #ID,
 #include "tokens.inl"
 };
+
+const char *s_token_text[] = {
+#define OP(ID, TEXT) TEXT,
+#define KW(ID) #ID,
+#define SP(ID, TEXT) TEXT,
+#include "tokens.inl"
+};
+
+namespace {
+
+NK_LOG_USE_SCOPE(lexer);
 
 char const *s_operators[] = {
 #define OP(id, text) text,
