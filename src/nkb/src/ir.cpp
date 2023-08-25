@@ -19,6 +19,8 @@
 
 namespace {
 
+NK_LOG_USE_SCOPE(nkirc);
+
 NkIrArg _arg(NkIrRef ref) {
     return {{.ref = ref}, NkIrArg_Ref};
 }
@@ -37,12 +39,16 @@ char const *nkirOpcodeName(NkIrOpcode code) {
 }
 
 NkIrProg nkir_createProgram(NkAllocator alloc) {
+    NK_LOG_TRC("%s", __func__);
+
     return new (nk_alloc(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{
         .alloc = alloc,
     };
 }
 
 void nkir_freeProgram(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
     // nkbc_free(ir->bc);
     // for (auto proc : ir->procs) {
     //     proc->~NkIrProc_T();
@@ -53,6 +59,8 @@ void nkir_freeProgram(NkIrProg ir) {
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
     // return ir->procs.emplace_back(new (nk_alloc(nk_default_allocator, sizeof(NkIrProc_T))) NkIrProc_T{
     //     .ir = ir,
     //     .proc_t{},
@@ -60,12 +68,16 @@ NkIrProc nkir_createProc(NkIrProg ir) {
 }
 
 NkIrLabel nkir_createLabel(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
     NkIrLabel id{ir->blocks.size()};
     ir->blocks.emplace_back(NkIrBlock{});
     return id;
 }
 
 void nkir_startProc(NkIrProc proc, nkstr name, NkIrProcInfo proc_info) {
+    NK_LOG_TRC("%s", __func__);
+
     // proc->name = std_str(name);
 
     // proc->proc_t = proc_t;
@@ -75,15 +87,21 @@ void nkir_startProc(NkIrProc proc, nkstr name, NkIrProcInfo proc_info) {
 }
 
 void nkir_activateProc(NkIrProg ir, NkIrProc proc) {
+    NK_LOG_TRC("%s", __func__);
+
     // ir->cur_proc = proc;
 }
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(cnst.id < ir->consts.size() && "invalid const");
     // return ir->consts[cnst.id];
 }
 
 void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(ref.kind == NkIrRef_Const && "const ref expected");
     // auto const val = nkir_constGetValue(ir, {ref.index});
     // auto type = nkval_typeof(val);
@@ -98,6 +116,8 @@ void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
 }
 
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(ir->cur_proc && "no current procedure");
     // assert(ir->cur_proc->cur_block < ir->blocks.size() && "no current block");
     // assert(
@@ -132,6 +152,8 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs) {
 // }
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nktype_t type) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(ir->cur_proc && "no current procedure");
     // NkIrLocalVar id{ir->cur_proc->locals.size()};
     // ir->cur_proc->locals.emplace_back(type);
@@ -139,21 +161,27 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nktype_t type) {
 }
 
 NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nktype_t type) {
+    NK_LOG_TRC("%s", __func__);
+
     NkIrGlobalVar id{ir->globals.size()};
     ir->globals.emplace_back(type);
     return id;
 }
 
 NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type) {
+    NK_LOG_TRC("%s", __func__);
+
     // NkIrConst id{ir->consts.size()};
     // ir->consts.emplace_back(val);
     // return id;
 }
 
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkstr name, nktype_t type) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, NkIrProcInfo proc_info) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 // NkIrExtSymId nkir_makeExtSym(NkIrProg ir, NkIrExternLib lib, nkstr name, nktype_t type) {
@@ -167,6 +195,8 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, NkIrProcInfo proc_in
 // }
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(ir->cur_proc && "no current procedure");
     // return {
     //     .index = var.id,
@@ -178,6 +208,8 @@ NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
 }
 
 NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(ir->cur_proc && "no current procedure");
     // assert(
     //     (ir->cur_proc->state == NkIrProc_Complete || ir->cur_proc->proc_info.args_t.) &&
@@ -195,6 +227,8 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
 }
 
 NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
+    NK_LOG_TRC("%s", __func__);
+
     // assert(ir->cur_proc && "no current procedure");
     // assert(
     //     (ir->cur_proc->state == NkIrProc_Complete || ir->cur_proc->proc_info.ret_t) &&
@@ -212,6 +246,8 @@ NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
 }
 
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var) {
+    NK_LOG_TRC("%s", __func__);
+
     return {
         .index = var.id,
         .offset = 0,
@@ -222,6 +258,8 @@ NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var) {
 }
 
 NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst) {
+    NK_LOG_TRC("%s", __func__);
+
     // return {
     //     .index = cnst.id,
     //     .offset = 0,
@@ -232,12 +270,15 @@ NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst) {
 }
 
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData var) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 // NkIrRef nkir_makeExtSymRef(NkIrProg ir, NkIrExtSymId sym) {
@@ -251,115 +292,150 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
 // }
 
 NkIrInstr nkir_make_nop() {
+    NK_LOG_TRC("%s", __func__);
     return {{}, nkir_nop};
 }
 
 NkIrInstr nkir_make_ret() {
+    NK_LOG_TRC("%s", __func__);
     return {{}, nkir_ret};
 }
 
 NkIrInstr nkir_make_jmp(NkIrLabel label) {
+    NK_LOG_TRC("%s", __func__);
     return {{{}, _arg(label)}, nkir_jmp};
 }
 
 NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrLabel label) {
+    NK_LOG_TRC("%s", __func__);
     return {{{}, _arg(cond), _arg(label)}, nkir_jmpz};
 }
 
 NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label) {
+    NK_LOG_TRC("%s", __func__);
     return {{{}, _arg(cond), _arg(label)}, nkir_jmpnz};
 }
 
 NkIrInstr nkir_make_ext(NkIrRef dst, NkIrRef src) {
+    NK_LOG_TRC("%s", __func__);
     return {{_arg(dst), _arg(src)}, nkir_ext};
 }
 
 NkIrInstr nkir_make_trunc(NkIrRef dst, NkIrRef src) {
+    NK_LOG_TRC("%s", __func__);
     return {{_arg(dst), _arg(src)}, nkir_trunc};
 }
 
 NkIrInstr nkir_make_fp2i(NkIrRef dst, NkIrRef src) {
+    NK_LOG_TRC("%s", __func__);
     return {{_arg(dst), _arg(src)}, nkir_fp2i};
 }
 
 NkIrInstr nkir_make_i2fp(NkIrRef dst, NkIrRef src) {
+    NK_LOG_TRC("%s", __func__);
     return {{_arg(dst), _arg(src)}, nkir_i2fp};
 }
 
 NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args) {
+    NK_LOG_TRC("%s", __func__);
     return {{_arg(dst), _arg(proc), _arg(args)}, nkir_call};
 }
 
 NkIrInstr nkir_make_mov(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_lea(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_neg(NkIrRef dst, NkIrRef arg) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_add(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_sub(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_mul(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_div(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_mod(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_and(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_or(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_xor(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_lsh(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_rsh(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_cmp_eq(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_cmp_ne(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_cmp_lt(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_cmp_le(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_cmp_gt(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_cmp_ge(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrInstr nkir_make_label(NkIrLabel label) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 void nkir_freeRunCtx(NkIrRunCtx ctx) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
+    NK_LOG_TRC("%s", __func__);
+
     // auto proc = nkval_as(NkIrProc, proc_val);
 
     // if (!proc->ir->bc) {
