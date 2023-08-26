@@ -75,7 +75,7 @@ NkIrLabel nkir_createLabel(NkIrProg ir) {
     return id;
 }
 
-void nkir_startProc(NkIrProc proc, nkstr name, NkIrProcInfo proc_info) {
+void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, NkIrProcInfo proc_info) {
     NK_LOG_TRC("%s", __func__);
 
     // proc->name = std_str(name);

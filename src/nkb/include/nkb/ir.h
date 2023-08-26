@@ -136,7 +136,7 @@ typedef struct {
     NkTypeArray args_t;
     NkTypeArray ret_t;
     NkCallConv call_conv;
-    NkProcFlags flags;
+    uint8_t flags;
 } NkIrProcInfo;
 
 typedef struct NkIrProg_T *NkIrProg;
@@ -149,7 +149,7 @@ void nkir_freeProgram(NkIrProg ir);
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir);
 
-void nkir_startProc(NkIrProc proc, nkstr name, NkIrProcInfo proc_info);
+void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, NkIrProcInfo proc_info);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);

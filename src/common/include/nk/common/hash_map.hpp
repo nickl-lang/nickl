@@ -35,8 +35,8 @@ private:
     using _EntrySet = NkHashSet<_Entry, _HashSetContext>;
 
 public:
-    explicit NkHashMap() = default;
-    explicit NkHashMap(NkAllocator alloc)
+    NkHashMap() = default;
+    NkHashMap(NkAllocator alloc)
         : m_entries{alloc} {
     }
 

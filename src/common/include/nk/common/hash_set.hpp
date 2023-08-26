@@ -32,11 +32,11 @@ private:
     };
 
 public:
-    explicit NkHashSet()
+    NkHashSet()
         : m_alloc{nk_default_allocator} {
     }
 
-    explicit NkHashSet(NkAllocator alloc)
+    NkHashSet(NkAllocator alloc)
         : m_alloc{alloc} {
     }
 

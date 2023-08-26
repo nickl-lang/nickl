@@ -3,8 +3,10 @@
 #include <cassert>
 
 #include "nk/common/array.hpp"
+#include "nk/common/hash_map.hpp"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nkb/common.h"
 
@@ -38,22 +40,55 @@ struct GeneratorState {
 
     NkIrToken *m_cur_token{};
 
+    struct ProcRecord {
+        NkIrProc proc;
+        NkHashMap<nkid, nktype_t> locals;
+    };
+
+    NkHashMap<nkid, ProcRecord> m_procs{};
+
     Void generate() {
         assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens[0];
 
         while (!check(t_eof)) {
             if (check(t_proc)) {
-                parseProcSignature();
+                DEFINE(sig, parseProcSignature());
+                auto proc = nkir_createProc(m_ir);
+                nkir_startProc(
+                    m_ir,
+                    proc,
+                    sig.name,
+                    {
+                        .args_t{sig.args_t.data(), sig.args_t.size()},
+                        .ret_t{&sig.ret_t, 1},
+                        .call_conv = NkCallConv_Nk,
+                        .flags = 0,
+                    });
+                auto &rec = m_procs.insert(
+                    s2nkid(sig.name),
+                    {
+                        .proc = proc,
+                        .locals{m_alloc},
+                    });
                 EXPECT(t_brace_l);
-                while (!check(t_brace_r)) {
-                    // TODO Parse proc body
-                    NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
-                    getToken();
+                while (!check(t_brace_r) && !check(t_eof)) {
+                    if (check(t_id)) {
+                        DEFINE(token, parseId());
+                        auto const name = s2nkid(token->text);
+                        DEFINE(type, parseType());
+                        rec.locals.insert(name, type);
+                    } else {
+                        DEFINE(instr, parseInstr());
+                        nkir_gen(m_ir, {&instr, 1});
+                    }
+                    EXPECT(t_newline);
+                    while (accept(t_newline)) {
+                    }
                 }
                 EXPECT(t_brace_r);
             } else if (accept(t_extern)) {
-                while (!check(t_newline)) {
+                while (!check(t_newline) && !check(t_eof)) {
                     // TODO Parse extern
                     NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
                     getToken();
@@ -81,27 +116,25 @@ private:
         return id;
     }
 
-    struct Field {
-        nkid name;
-        nktype_t type;
-    };
-
     struct ProcSignatureParseResult {
-        nkid name;
-        NkArray<Field> params;
-        nktype_t return_type;
+        nkstr name;
+        NkArray<nkid> arg_names;
+        NkArray<nktype_t> args_t;
+        nktype_t ret_t;
     };
 
     ProcSignatureParseResult parseProcSignature(bool expect_names = true) {
         EXPECT(t_proc);
         accept(t_proc);
         DEFINE(token, parseId());
-        auto name = s2nkid(token->text);
-        NkArray<Field> params;
-        params._alloc = m_tmp_alloc;
+        auto const name = token->text;
+        NkArray<nktype_t> args_t{};
+        args_t._alloc = m_tmp_alloc;
+        NkArray<nkid> arg_names{};
+        arg_names._alloc = m_tmp_alloc;
         EXPECT(t_par_l);
         do {
-            if (check(t_par_r)) {
+            if (check(t_par_r) || check(t_eof)) {
                 break;
             }
             nkid name = nkid_empty;
@@ -110,17 +143,16 @@ private:
                 name = s2nkid(token->text);
             }
             DEFINE(type, parseType());
-            *params.push() = {
-                .name = name,
-                .type = type,
-            };
+            *args_t.push() = type;
+            *arg_names.push() = name;
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        DEFINE(return_type, parseType());
+        DEFINE(ret_t, parseType());
         return {
             .name = name,
-            .params = params,
-            .return_type = return_type,
+            .arg_names = arg_names,
+            .args_t = args_t,
+            .ret_t = ret_t,
         };
     }
 
@@ -151,6 +183,15 @@ private:
         } else {
             return error("type expected"), nullptr;
         }
+    }
+
+    NkIrInstr parseInstr() {
+        while (!check(t_newline) && !check(t_eof)) {
+            // TODO Parse extern
+            NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
+            getToken();
+        }
+        return {};
     }
 
     nktype_t makeBasicType(NkIrBasicValueType value_type) {
@@ -224,8 +265,11 @@ void nkir_parse(NkIrParserState *parser, NkAllocator alloc, NkAllocator tmp_allo
     GeneratorState gen{
         .m_ir = parser->ir,
         .m_tokens = tokens,
+
         .m_alloc = alloc,
         .m_tmp_alloc = tmp_alloc,
+
+        .m_procs{alloc},
     };
 
     gen.generate();

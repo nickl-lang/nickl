@@ -99,7 +99,7 @@ SP(escaped_string, "string constant")
 SP(label, "label")
 
 SP(empty, "")
-SP(error, "")
-SP(eof, "")
+SP(error, "error")
+SP(eof, "end of file")
 
 #undef SP
