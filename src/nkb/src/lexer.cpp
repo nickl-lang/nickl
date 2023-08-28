@@ -306,18 +306,19 @@ void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src) {
     do {
         scanner.scan();
         *lexer->tokens.push() = scanner.m_token;
-        NK_LOG_DBG(
-            "%s: \"%s\"", s_token_id[scanner.m_token.id], (char const *)[&]() {
-                NkStringBuilder_T sb{};
-                nksb_init_alloc(&sb, tmp_alloc);
-                nksb_str_escape(&sb, scanner.m_token.text);
-                return makeDeferrerWithData(nksb_concat(&sb).data, [=]() mutable {
-                    nksb_deinit(&sb);
-                });
-            }());
+
         if (scanner.m_token.id == t_error) {
             lexer->ok = false;
             lexer->error_msg = scanner.m_error_msg;
+            break;
         }
+
+#ifdef ENABLE_LOGGING
+        uint8_t token_str[256];
+        NkArenaAllocator log_arena{token_str, 0, sizeof(token_str)};
+        NkStringBuilder_T sb{0, 0, 0, nk_arena_getAllocator(&log_arena)};
+        nksb_str_escape(&sb, scanner.m_token.text);
+        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], token_str);
+#endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 }

@@ -24,6 +24,13 @@ void *defaultAllocatorProc(void * /*data*/, NkAllocatorMode mode, size_t size, v
         NK_LOG_TRC("realloc(%" PRIu64 ", %p)", size, old_mem);
         return std::realloc(old_mem, size);
 
+    case NkAllocator_QuerySpaceLeft:
+        *(NkAllocatorSpaceLeftQueryResult *)old_mem = {
+            .kind = NkAllocatorSpaceLeft_Unknown,
+            .bytes_left = 0,
+        };
+        return nullptr;
+
     default:
         assert(!"unreachable");
         return nullptr;

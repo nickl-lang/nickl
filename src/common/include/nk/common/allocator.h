@@ -12,6 +12,7 @@ typedef enum {
     NkAllocator_Alloc,
     NkAllocator_Free,
     NkAllocator_Realloc,
+    NkAllocator_QuerySpaceLeft,
 } NkAllocatorMode;
 
 typedef void *(*NkAllocateProc)(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size);
@@ -20,6 +21,16 @@ typedef struct {
     void *data;
     NkAllocateProc proc;
 } NkAllocator;
+
+typedef enum {
+    NkAllocatorSpaceLeft_Unknown,
+    NkAllocatorSpaceLeft_Limited,
+} NkAllocatorSpaceLeftQueryResultKind;
+
+typedef struct {
+    NkAllocatorSpaceLeftQueryResultKind kind;
+    size_t bytes_left;
+} NkAllocatorSpaceLeftQueryResult;
 
 inline void *nk_alloc(NkAllocator alloc, size_t size) {
     return alloc.proc(alloc.data, NkAllocator_Alloc, size, NULL, 0);
@@ -33,11 +44,16 @@ inline void *nk_realloc(NkAllocator alloc, size_t size, void *old_mem, size_t ol
     return alloc.proc(alloc.data, NkAllocator_Realloc, size, old_mem, old_size);
 }
 
+inline void *nk_alloc_querySpaceLeft(NkAllocator alloc, NkAllocatorSpaceLeftQueryResult *result) {
+    return alloc.proc(alloc.data, NkAllocator_QuerySpaceLeft, 0, result, 0);
+}
+
 extern NkAllocator nk_default_allocator;
 
 typedef struct {
     uint8_t *data;
     size_t size;
+    size_t capacity;
 } NkArenaAllocator;
 
 NkAllocator nk_arena_getAllocator(NkArenaAllocator *arena);

@@ -12,6 +12,8 @@ namespace {
 
 NK_LOG_USE_SCOPE(arena);
 
+static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16Mib
+
 void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size) {
     (void)old_mem;
 
@@ -20,16 +22,17 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 #ifdef ENABLE_LOGGING
     switch (mode) {
     case NkAllocator_Alloc:
-        NK_LOG_TRC("alloc(%" PRIu64 ")", size);
+        NK_LOG_TRC("arena=%p alloc(%" PRIu64 ")", data, size);
         break;
     case NkAllocator_Free:
-        NK_LOG_TRC("free(%p, %" PRIu64 ")", old_mem, old_size);
+        NK_LOG_TRC("arena=%p free(%p, %" PRIu64 ")", data, old_mem, old_size);
         break;
     case NkAllocator_Realloc:
-        NK_LOG_TRC("realloc(%" PRIu64 ", %p, %" PRIu64 ")", size, old_mem, old_size);
+        NK_LOG_TRC("arena=%p realloc(%" PRIu64 ", %p, %" PRIu64 ")", data, size, old_mem, old_size);
         break;
     default:
         assert(!"unreachable");
+    case NkAllocator_QuerySpaceLeft:
         break;
     }
 #endif // ENABLE_LOGGING
@@ -41,14 +44,20 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
         }
         [[fallthrough]];
 
-    case NkAllocator_Alloc: {
+    case NkAllocator_Alloc:
         return nk_arena_alloc(arena, size);
-    }
 
     case NkAllocator_Free:
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_pop(arena, old_size);
         }
+        return nullptr;
+
+    case NkAllocator_QuerySpaceLeft:
+        *(NkAllocatorSpaceLeftQueryResult *)old_mem = {
+            .kind = NkAllocatorSpaceLeft_Limited,
+            .bytes_left = (arena->data ? arena->capacity : FIXED_ARENA_SIZE) - arena->size,
+        };
         return nullptr;
 
     default:
@@ -57,8 +66,6 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
     }
 }
 
-static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16Mib
-
 } // namespace
 
 void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
@@ -66,6 +73,7 @@ void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
         // TODO Fixed sized arena
         arena->data = (uint8_t *)nk_valloc(FIXED_ARENA_SIZE);
         arena->size = 0;
+        arena->capacity = FIXED_ARENA_SIZE;
     }
 
     auto mem = arena->data + arena->size;
