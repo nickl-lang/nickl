@@ -32,15 +32,15 @@ private:
     };
 
 public:
-    NkHashSet()
-        : m_alloc{nk_default_allocator} {
+    static NkHashSet create() {
+        return create({});
     }
 
-    NkHashSet(NkAllocator alloc)
-        : m_alloc{alloc} {
+    static NkHashSet create(NkAllocator alloc) {
+        NkHashSet set{};
+        set.m_alloc = alloc;
+        return set;
     }
-
-    NkHashSet(NkHashSet const &) = default;
 
     template <class TValue>
     struct TIterator {
@@ -99,7 +99,7 @@ public:
     }
 
     void deinit() {
-        nk_free_t(m_alloc, m_entries, m_capacity);
+        nk_free_t(alloc(), m_entries, m_capacity);
 
         m_entries = nullptr;
         m_size = 0;
@@ -178,12 +178,12 @@ private:
         static_assert(std::is_trivial_v<_Entry>, "Entry should be trivial");
 
         m_capacity = ceilToPowerOf2(maxu(cap, 1));
-        m_entries = nk_alloc_t<_Entry>(m_alloc, m_capacity);
+        m_entries = nk_alloc_t<_Entry>(alloc(), m_capacity);
         std::memset(&m_entries[0], 0, m_capacity * sizeof(_Entry));
     }
 
     void _rehash() {
-        NkHashSet new_hs{m_alloc};
+        auto new_hs = create(m_alloc);
         new_hs._allocate(m_capacity << 1);
 
         for (size_t i = 0; i < m_capacity; i++) {
@@ -234,12 +234,20 @@ private:
         return nullptr;
     }
 
+    NkAllocator alloc() const {
+        if (m_alloc.proc) {
+            return m_alloc;
+        } else {
+            return nk_default_allocator;
+        }
+    }
+
 private:
-    NkAllocator const m_alloc;
-    _Entry *m_entries{};
-    size_t m_size{};
-    size_t m_capacity{};
-    size_t m_max_probe_dist{};
+    NkAllocator m_alloc;
+    _Entry *m_entries;
+    size_t m_size;
+    size_t m_capacity;
+    size_t m_max_probe_dist;
 };
 
 #endif // HEADER_GUARD_NK_COMMON_HASH_SET

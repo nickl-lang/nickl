@@ -69,7 +69,7 @@ struct GeneratorState {
                     s2nkid(sig.name),
                     {
                         .proc = proc,
-                        .locals{m_alloc},
+                        .locals = decltype(ProcRecord::locals)::create(m_alloc),
                     });
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
@@ -269,7 +269,7 @@ void nkir_parse(NkIrParserState *parser, NkAllocator alloc, NkAllocator tmp_allo
         .m_alloc = alloc,
         .m_tmp_alloc = tmp_alloc,
 
-        .m_procs{alloc},
+        .m_procs = decltype(GeneratorState::m_procs)::create(alloc),
     };
 
     gen.generate();

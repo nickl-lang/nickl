@@ -419,7 +419,7 @@ TEST_F(HashMap, allocator) {
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     NkArenaAllocator arena{};
-    hashmap_t hm{nk_arena_getAllocator(&arena)};
+    auto hm = hashmap_t::create(nk_arena_getAllocator(&arena));
     defer {
         hm.deinit();
         nk_arena_free(&arena);
