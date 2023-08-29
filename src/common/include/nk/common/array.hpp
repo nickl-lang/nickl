@@ -14,15 +14,26 @@ template <class T>
 struct NkArray : NkSlice<T> {
     using NkSlice<T>::_data;
     using NkSlice<T>::_size;
-    size_t _capacity{};
-    NkAllocator _alloc{nk_default_allocator};
+    size_t _capacity;
+    NkAllocator _alloc;
+
+    static NkArray create() {
+        return create({});
+    }
+
+    static NkArray create(NkAllocator alloc) {
+        NkArray ar{};
+        ar._alloc = alloc;
+        return ar;
+    }
 
     size_t capacity() const {
         return _capacity;
     }
 
     void deinit() {
-        nk_free_t(_alloc, _data, _capacity);
+        auto const alloc = _alloc.proc ? _alloc : nk_default_allocator;
+        nk_free_t(alloc, _data, _capacity);
 
         _data = {};
         _size = {};
@@ -32,7 +43,8 @@ struct NkArray : NkSlice<T> {
     bool reserve(size_t n) {
         if (_size + n > _capacity) {
             auto const new_capacity = ceilToPowerOf2(_size + n);
-            auto const new_data = nk_realloc_t(_alloc, new_capacity, _data, _capacity);
+            auto const alloc = _alloc.proc ? _alloc : nk_default_allocator;
+            auto const new_data = nk_realloc_t(alloc, new_capacity, _data, _capacity);
             if (!new_data) {
                 return false;
             }

@@ -13,6 +13,10 @@ typedef struct {
     bool ok;
 } NkIrParserState;
 
-void nkir_parse(NkIrParserState *parser, NkAllocator alloc, NkAllocator tmp_alloc, NkSlice<NkIrToken> tokens);
+void nkir_parse(
+    NkIrParserState *parser,
+    NkArenaAllocator *file_arena,
+    NkArenaAllocator *tmp_arena,
+    NkSlice<NkIrToken> tokens);
 
 #endif // HEADER_GUARD_NKB_PARSER

@@ -80,12 +80,14 @@ int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap) {
             new_capacity = minu(new_capacity, sb->capacity + query_res.bytes_left);
         }
 
-        auto const new_data = (char *)nk_realloc(alloc, new_capacity, sb->data, sb->capacity);
-        if (!new_data) {
-            return -1;
+        if (new_capacity > sb->capacity) {
+            auto const new_data = (char *)nk_realloc(alloc, new_capacity, sb->data, sb->capacity);
+            if (!new_data) {
+                return -1;
+            }
+            sb->data = new_data;
+            sb->capacity = new_capacity;
         }
-        sb->data = new_data;
-        sb->capacity = new_capacity;
     }
 
     size_t const alloc_size = minu(required_size, sb->capacity - sb->size);

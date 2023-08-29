@@ -45,7 +45,7 @@ char const *s_keywords[] = {
 
 struct ScannerState {
     nkstr const m_src;
-    NkAllocator m_tmp_alloc;
+    NkArenaAllocator *m_tmp_arena;
 
     size_t m_pos = 0;
     size_t m_lin = 1;
@@ -278,12 +278,9 @@ private:
         va_list ap;
         va_start(ap, fmt);
         NkStringBuilder_T sb;
-        nksb_init_alloc(&sb, m_tmp_alloc);
-        defer {
-            nksb_deinit(&sb);
-        };
+        nksb_init_alloc(&sb, nk_arena_getAllocator(m_tmp_arena));
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = nk_strcpy(m_tmp_alloc, nksb_concat(&sb));
+        m_error_msg = nksb_concat(&sb);
         va_end(ap);
         m_token.id = t_error;
     }
@@ -291,16 +288,18 @@ private:
 
 } // namespace
 
-void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src) {
+void nkir_lex(NkIrLexerState *lexer, NkArenaAllocator *file_arena, NkArenaAllocator *tmp_arena, nkstr src) {
     NK_LOG_TRC("%s", __func__);
 
-    lexer->tokens.deinit();
+    lexer->tokens = decltype(lexer->tokens)::create(nk_arena_getAllocator(file_arena));
+    lexer->tokens.reserve(1000);
+
     lexer->error_msg = {};
     lexer->ok = true;
 
     ScannerState scanner{
         .m_src = src,
-        .m_tmp_alloc = tmp_alloc,
+        .m_tmp_arena = tmp_arena,
     };
 
     do {
@@ -316,7 +315,12 @@ void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src) {
 #ifdef ENABLE_LOGGING
         uint8_t token_str[256];
         NkArenaAllocator log_arena{token_str, 0, sizeof(token_str)};
-        NkStringBuilder_T sb{0, 0, 0, nk_arena_getAllocator(&log_arena)};
+        NkStringBuilder_T sb{
+            (char *)nk_arena_alloc(&log_arena, sizeof(token_str)),
+            0,
+            sizeof(token_str),
+            nk_arena_getAllocator(&log_arena),
+        };
         nksb_str_escape(&sb, scanner.m_token.text);
         NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], token_str);
 #endif // ENABLE_LOGGING

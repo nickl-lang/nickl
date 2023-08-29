@@ -4,6 +4,7 @@
 #include <new>
 
 #include "lexer.hpp"
+#include "nk/common/allocator.h"
 #include "nk/common/allocator.hpp"
 #include "nk/common/file.h"
 #include "nk/common/logger.h"
@@ -45,8 +46,12 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 bool compileProgram(NkIrCompiler c, nkstr in_file) {
     NK_LOG_TRC("%s", __func__);
 
+    auto frame = nk_arena_grab(&c->file_arena);
+    defer {
+        nk_arena_popFrame(&c->file_arena, frame);
+    };
+
     auto file_alloc = nk_arena_getAllocator(&c->file_arena);
-    auto tmp_alloc = nk_arena_getAllocator(&c->tmp_arena);
 
     auto read_res = nk_readFile(file_alloc, in_file);
     if (!read_res.ok) {
@@ -55,13 +60,12 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
     }
 
     NkIrLexerState lexer{};
-    lexer.tokens._alloc = file_alloc;
     {
         auto frame = nk_arena_grab(&c->tmp_arena);
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_lex(&lexer, tmp_alloc, read_res.bytes);
+        nkir_lex(&lexer, &c->file_arena, &c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
             printError(c, "%.*s", (int)lexer.error_msg.size, lexer.error_msg.data);
             return false;
@@ -77,7 +81,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, file_alloc, tmp_alloc, lexer.tokens);
+        nkir_parse(&parser, &c->file_arena, &c->tmp_arena, lexer.tokens);
         if (!parser.ok) {
             printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
             return false;
@@ -96,8 +100,9 @@ NkIrCompiler nkirc_create(NkIrcOptions opts) {
 }
 
 void nkirc_free(NkIrCompiler c) {
-    nk_arena_free(&c->tmp_arena);
     nk_arena_free(&c->file_arena);
+    nk_arena_free(&c->tmp_arena);
+
     nk_free_t(nk_default_allocator, c);
 }
 

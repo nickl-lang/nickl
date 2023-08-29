@@ -30,6 +30,6 @@ typedef struct {
     bool ok;
 } NkIrLexerState;
 
-void nkir_lex(NkIrLexerState *lexer, NkAllocator tmp_alloc, nkstr src);
+void nkir_lex(NkIrLexerState *lexer, NkArenaAllocator *file_arena, NkArenaAllocator *tmp_arena, nkstr src);
 
 #endif // HEADER_GUARD_NKB_LEXER

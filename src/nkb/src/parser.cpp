@@ -32,8 +32,10 @@ NK_LOG_USE_SCOPE(parser);
 struct GeneratorState {
     NkIrProg m_ir;
     NkSlice<NkIrToken> const m_tokens;
-    NkAllocator m_alloc;
-    NkAllocator m_tmp_alloc;
+
+    NkArenaAllocator *m_file_arena;
+    NkArenaAllocator *m_tmp_arena;
+    NkArenaAllocator m_parse_arena{};
 
     nkstr m_error_msg{};
     bool m_error_occurred{};
@@ -48,6 +50,8 @@ struct GeneratorState {
     NkHashMap<nkid, ProcRecord> m_procs{};
 
     Void generate() {
+        m_procs = decltype(m_procs)::create(nk_arena_getAllocator(&m_parse_arena));
+
         assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens[0];
 
@@ -69,7 +73,7 @@ struct GeneratorState {
                     s2nkid(sig.name),
                     {
                         .proc = proc,
-                        .locals = decltype(ProcRecord::locals)::create(m_alloc),
+                        .locals = decltype(ProcRecord::locals)::create(nk_arena_getAllocator(&m_parse_arena)),
                     });
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
@@ -100,6 +104,8 @@ struct GeneratorState {
             EXPECT(t_newline);
             while (accept(t_newline)) {
             }
+
+            nk_arena_pop(m_tmp_arena, m_tmp_arena->size);
         }
 
         return {};
@@ -128,10 +134,8 @@ private:
         accept(t_proc);
         DEFINE(token, parseId());
         auto const name = token->text;
-        NkArray<nktype_t> args_t{};
-        args_t._alloc = m_tmp_alloc;
-        NkArray<nkid> arg_names{};
-        arg_names._alloc = m_tmp_alloc;
+        auto args_t = NkArray<nktype_t>::create(nk_arena_getAllocator(m_tmp_arena));
+        auto arg_names = NkArray<nkid>::create(nk_arena_getAllocator(m_tmp_arena));
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -195,7 +199,7 @@ private:
     }
 
     nktype_t makeBasicType(NkIrBasicValueType value_type) {
-        auto type = nk_alloc_t<NkIrType>(m_alloc);
+        auto type = nk_alloc_t<NkIrType>(nk_arena_getAllocator(m_file_arena));
         *type = {
             .as{
                 .basic{
@@ -240,13 +244,10 @@ private:
 
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder_T sb;
-        nksb_init_alloc(&sb, m_tmp_alloc);
-        defer {
-            nksb_deinit(&sb);
-        };
+        NkStringBuilder_T sb{};
+        nksb_init_alloc(&sb, nk_arena_getAllocator(m_tmp_arena));
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = nk_strcpy(m_tmp_alloc, nksb_concat(&sb));
+        m_error_msg = nksb_concat(&sb);
         va_end(ap);
 
         m_error_occurred = true;
@@ -255,10 +256,14 @@ private:
 
 } // namespace
 
-void nkir_parse(NkIrParserState *parser, NkAllocator alloc, NkAllocator tmp_alloc, NkSlice<NkIrToken> tokens) {
+void nkir_parse(
+    NkIrParserState *parser,
+    NkArenaAllocator *file_arena,
+    NkArenaAllocator *tmp_arena,
+    NkSlice<NkIrToken> tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    parser->ir = nkir_createProgram(alloc);
+    parser->ir = nkir_createProgram(nk_arena_getAllocator(file_arena));
     parser->error_msg = {};
     parser->ok = true;
 
@@ -266,13 +271,13 @@ void nkir_parse(NkIrParserState *parser, NkAllocator alloc, NkAllocator tmp_allo
         .m_ir = parser->ir,
         .m_tokens = tokens,
 
-        .m_alloc = alloc,
-        .m_tmp_alloc = tmp_alloc,
-
-        .m_procs = decltype(GeneratorState::m_procs)::create(alloc),
+        .m_file_arena = file_arena,
+        .m_tmp_arena = tmp_arena,
     };
 
     gen.generate();
+
+    nk_arena_free(&gen.m_parse_arena);
 
     if (gen.m_error_occurred) {
         parser->error_msg = gen.m_error_msg;
