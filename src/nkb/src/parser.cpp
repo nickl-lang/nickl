@@ -45,9 +45,11 @@ struct GeneratorState {
     struct ProcRecord {
         NkIrProc proc;
         NkHashMap<nkid, nktype_t> locals;
+        NkHashMap<nkid, NkIrLabel> labels;
     };
 
     NkHashMap<nkid, ProcRecord> m_procs{};
+    ProcRecord *m_cur_proc;
 
     Void generate() {
         m_procs = decltype(m_procs)::create(nk_arena_getAllocator(&m_parse_arena));
@@ -69,11 +71,12 @@ struct GeneratorState {
                         .call_conv = NkCallConv_Nk,
                         .flags = 0,
                     });
-                auto &rec = m_procs.insert(
+                m_cur_proc = &m_procs.insert(
                     s2nkid(sig.name),
                     {
                         .proc = proc,
                         .locals = decltype(ProcRecord::locals)::create(nk_arena_getAllocator(&m_parse_arena)),
+                        .labels = decltype(ProcRecord::labels)::create(nk_arena_getAllocator(&m_parse_arena)),
                     });
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
@@ -81,7 +84,7 @@ struct GeneratorState {
                         DEFINE(token, parseId());
                         auto const name = s2nkid(token->text);
                         DEFINE(type, parseType());
-                        rec.locals.insert(name, type);
+                        m_cur_proc->locals.insert(name, type);
                     } else {
                         DEFINE(instr, parseInstr());
                         nkir_gen(m_ir, {&instr, 1});
@@ -190,11 +193,22 @@ private:
     }
 
     NkIrInstr parseInstr() {
-        while (!check(t_newline) && !check(t_eof)) {
-            // TODO Parse extern
-            NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
+        if (check(t_label)) {
+            auto label = nkir_createLabel(m_ir);
+            m_cur_proc->labels.insert(s2nkid(m_cur_token->text), label);
             getToken();
+            return nkir_make_label(label);
         }
+
+        else if (accept(t_call)) {
+            NK_LOG_WRN("Skipping `call`");
+            while (!check(t_newline) && !check(t_eof)) {
+                // TODO Parse extern
+                NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
+                getToken();
+            }
+        }
+
         return {};
     }
 
