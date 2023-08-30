@@ -1,11 +1,11 @@
+extern proc puts(: i64): i32
+
 proc main(argc: i32, argv: i64): i32 {
 
 @start
-    call puts, "Hello, World!"
+    call puts, {"Hello, World!"}
 
 }
-
-extern proc puts(: i64): i32
 
 /* @output
 Hello, World!

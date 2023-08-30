@@ -1,6 +1,7 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <new>
 
 #include "nk/common/array.hpp"
 #include "nk/common/hash_map.hpp"
@@ -9,6 +10,7 @@
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nkb/common.h"
+#include "nkb/ir.h"
 
 namespace {
 
@@ -48,11 +50,28 @@ struct GeneratorState {
         NkHashMap<nkid, NkIrLabel> labels;
     };
 
-    NkHashMap<nkid, ProcRecord> m_procs{};
-    ProcRecord *m_cur_proc;
+    enum EDeclKind {
+        Decl_None,
+
+        Decl_Proc,
+        Decl_LocalVar,
+        Decl_GlobalVar,
+        Decl_ExternData,
+        Decl_ExternProc,
+    };
+
+    struct Decl {
+        union {
+            ProcRecord proc;
+        } as;
+        EDeclKind kind;
+    };
+
+    NkHashMap<nkid, Decl *> m_decls{};
+    ProcRecord *m_cur_proc{};
 
     Void generate() {
-        m_procs = decltype(m_procs)::create(nk_arena_getAllocator(&m_parse_arena));
+        m_decls = decltype(m_decls)::create(nk_arena_getAllocator(&m_parse_arena));
 
         assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens[0];
@@ -71,13 +90,16 @@ struct GeneratorState {
                         .call_conv = NkCallConv_Nk,
                         .flags = 0,
                     });
-                m_cur_proc = &m_procs.insert(
-                    s2nkid(sig.name),
-                    {
+                auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
+                    {.proc{
                         .proc = proc,
                         .locals = decltype(ProcRecord::locals)::create(nk_arena_getAllocator(&m_parse_arena)),
                         .labels = decltype(ProcRecord::labels)::create(nk_arena_getAllocator(&m_parse_arena)),
-                    });
+                    }},
+                    Decl_Proc,
+                };
+                m_decls.insert(s2nkid(sig.name), decl);
+                m_cur_proc = &decl->as.proc;
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
                     if (check(t_id)) {
@@ -108,7 +130,7 @@ struct GeneratorState {
             while (accept(t_newline)) {
             }
 
-            nk_arena_pop(m_tmp_arena, m_tmp_arena->size);
+            nk_arena_clear(m_tmp_arena);
         }
 
         return {};
@@ -201,15 +223,31 @@ private:
         }
 
         else if (accept(t_call)) {
-            NK_LOG_WRN("Skipping `call`");
-            while (!check(t_newline) && !check(t_eof)) {
-                // TODO Parse extern
-                NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
-                getToken();
-            }
+            NkIrRef dst{};
+            DEFINE(proc, parseRef());
+            EXPECT(t_comma);
+            DEFINE(args, parseRefArray());
+            return nkir_make_call(dst, proc, args);
         }
 
         return {};
+    }
+
+    NkIrRef parseRef() {
+        getToken();
+        return {};
+    }
+
+    NkIrRefArray parseRefArray() {
+        auto refs = NkArray<NkIrRef>::create(nk_arena_getAllocator(m_tmp_arena));
+        EXPECT(t_brace_l);
+        while (!check(t_brace_r) && !check(t_eof)) {
+            // TODO Parse extern
+            NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
+            getToken();
+        }
+        EXPECT(t_brace_r);
+        return {refs.data(), refs.size()};
     }
 
     nktype_t makeBasicType(NkIrBasicValueType value_type) {
@@ -270,11 +308,7 @@ private:
 
 } // namespace
 
-void nkir_parse(
-    NkIrParserState *parser,
-    NkArena *file_arena,
-    NkArena *tmp_arena,
-    NkSlice<NkIrToken> tokens) {
+void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NkSlice<NkIrToken> tokens) {
     NK_LOG_TRC("%s", __func__);
 
     parser->ir = nkir_createProgram(nk_arena_getAllocator(file_arena));

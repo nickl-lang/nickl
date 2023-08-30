@@ -81,10 +81,6 @@ void *nk_arena_alloc(NkArena *arena, size_t size) {
     return mem;
 }
 
-void nk_arena_pop(NkArena *arena, size_t size) {
-    arena->size -= size;
-}
-
 void nk_arena_free(NkArena *arena) {
     if (arena->data) {
         nk_vfree(arena->data, FIXED_ARENA_SIZE);

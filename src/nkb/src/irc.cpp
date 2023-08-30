@@ -74,6 +74,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
 
     NkIrParserState parser{};
     defer {
+        // TODO Remove nkir_freeProgram after fully moving to arenas
         nkir_freeProgram(parser.ir);
     };
     {

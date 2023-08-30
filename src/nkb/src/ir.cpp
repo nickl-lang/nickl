@@ -41,7 +41,7 @@ char const *nkirOpcodeName(NkIrOpcode code) {
 NkIrProg nkir_createProgram(NkAllocator alloc) {
     NK_LOG_TRC("%s", __func__);
 
-    return new (nk_alloc(nk_default_allocator, sizeof(NkIrProg_T))) NkIrProg_T{
+    return new (nk_alloc(alloc, sizeof(NkIrProg_T))) NkIrProg_T{
         .alloc = alloc,
     };
 }
@@ -54,8 +54,11 @@ void nkir_freeProgram(NkIrProg ir) {
     //     proc->~NkIrProc_T();
     //     nk_free(nk_default_allocator, proc, sizeof(NkIrProc_T));
     // }
+
+    auto alloc = ir->alloc;
+
     ir->~NkIrProg_T();
-    nk_free(nk_default_allocator, ir, sizeof(NkIrProg_T));
+    nk_free(alloc, ir, sizeof(NkIrProg_T));
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
