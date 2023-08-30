@@ -244,7 +244,7 @@ private:
 
     NkIrInstr parseInstr() {
         if (check(t_label)) {
-            auto label = nkir_createLabel(m_ir);
+            auto label = nkir_createLabel(m_ir, m_cur_token->text);
             m_cur_proc->labels.insert(s2nkid(m_cur_token->text), label);
             getToken();
             return nkir_make_label(label);

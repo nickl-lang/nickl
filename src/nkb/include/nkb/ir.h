@@ -148,7 +148,7 @@ void nkir_freeProgram(NkIrProg ir);
 // Code Generation
 
 NkIrProc nkir_createProc(NkIrProg ir);
-NkIrLabel nkir_createLabel(NkIrProg ir);
+NkIrLabel nkir_createLabel(NkIrProg ir, nkstr name);
 
 void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, NkIrProcInfo proc_info);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
@@ -177,7 +177,7 @@ NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index);
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var);
 NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
-NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData var);
+NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc);
 
 // Instructions

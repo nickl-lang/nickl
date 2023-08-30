@@ -76,6 +76,11 @@ void *nk_arena_alloc(NkArena *arena, size_t size) {
         arena->capacity = FIXED_ARENA_SIZE;
     }
 
+    if (size > arena->capacity - arena->size) {
+        NK_LOG_ERR("Out of memory");
+        std::abort();
+    }
+
     auto mem = arena->data + arena->size;
     arena->size += size;
     return mem;
