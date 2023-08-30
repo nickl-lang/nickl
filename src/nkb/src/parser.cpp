@@ -110,6 +110,8 @@ struct GeneratorState {
 
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
+                    while (accept(t_newline)) {
+                    }
                     if (check(t_id)) {
                         DEFINE(token, parseId());
                         auto const name = s2nkid(token->text);
@@ -256,7 +258,9 @@ private:
             return nkir_make_call(dst, proc, args);
         }
 
-        return {};
+        else {
+            return error("TODO instr not implemented"), NkIrInstr{};
+        }
     }
 
     NkIrRef parseRef() {

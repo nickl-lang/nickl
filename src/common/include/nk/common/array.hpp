@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 
 #include "nk/common/allocator.hpp"
 #include "nk/common/slice.hpp"
@@ -61,6 +62,11 @@ struct NkArray : NkSlice<T> {
         } else {
             return {};
         }
+    }
+
+    template <class... TArgs>
+    void emplace(TArgs &&...args) {
+        new (push().data()) T{std::forward<TArgs>(args)...};
     }
 
     void pop(size_t n = 1) {

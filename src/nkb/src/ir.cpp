@@ -5,21 +5,11 @@
 #include <new>
 
 #include "ir_impl.hpp"
-#include "nk/common/allocator.h"
-#include "nk/common/id.h"
 #include "nk/common/logger.h"
-#include "nk/common/string.hpp"
-#include "nkb/common.h"
-// #include "nkb/value.h"
-
-// char const *s_nk_ir_names[] = {
-// #define X(NAME) #NAME,
-// #include "nkb/ir.inl"
-// };
 
 namespace {
 
-NK_LOG_USE_SCOPE(nkirc);
+NK_LOG_USE_SCOPE(ir);
 
 NkIrArg _arg(NkIrRef ref) {
     return {{.ref = ref}, NkIrArg_Ref};
@@ -36,108 +26,188 @@ NkIrArg _arg(NkIrRefArray args) {
 } // namespace
 
 char const *nkirOpcodeName(NkIrOpcode code) {
+    // TODO Compact with X macro
+    switch (code) {
+    case nkir_nop:
+        return "nop";
+    case nkir_ret:
+        return "ret";
+    case nkir_jmp:
+        return "jmp";
+    case nkir_jmpz:
+        return "jmpz";
+    case nkir_jmpnz:
+        return "jmpnz";
+    case nkir_ext:
+        return "ext";
+    case nkir_trunc:
+        return "trunc";
+    case nkir_fp2i:
+        return "fp2i";
+    case nkir_i2fp:
+        return "i2fp";
+    case nkir_call:
+        return "call";
+    case nkir_mov:
+        return "mov";
+    case nkir_lea:
+        return "lea";
+    case nkir_neg:
+        return "neg";
+    case nkir_add:
+        return "add";
+    case nkir_sub:
+        return "sub";
+    case nkir_mul:
+        return "mul";
+    case nkir_div:
+        return "div";
+    case nkir_mod:
+        return "mod";
+    case nkir_and:
+        return "and";
+    case nkir_or:
+        return "or";
+    case nkir_xor:
+        return "xor";
+    case nkir_lsh:
+        return "lsh";
+    case nkir_rsh:
+        return "rsh";
+    case nkir_cmp_eq:
+        return "cmp eq";
+    case nkir_cmp_ne:
+        return "cmp ne";
+    case nkir_cmp_lt:
+        return "cmp lt";
+    case nkir_cmp_le:
+        return "cmp le";
+    case nkir_cmp_gt:
+        return "cmp gt";
+    case nkir_cmp_ge:
+        return "cmp ge";
+    case nkir_label:
+        return "label";
+    default:
+        return "";
+    }
 }
 
 NkIrProg nkir_createProgram(NkAllocator alloc) {
     NK_LOG_TRC("%s", __func__);
 
-    return new (nk_alloc(alloc, sizeof(NkIrProg_T))) NkIrProg_T{
+    auto ir = new (nk_alloc(alloc, sizeof(NkIrProg_T))) NkIrProg_T{
         .alloc = alloc,
     };
+    ir->procs = decltype(ir->procs)::create(alloc);
+    ir->blocks = decltype(ir->blocks)::create(alloc);
+    ir->instrs = decltype(ir->instrs)::create(alloc);
+    ir->globals = decltype(ir->globals)::create(alloc);
+    ir->consts = decltype(ir->consts)::create(alloc);
+    return ir;
 }
 
 void nkir_freeProgram(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
 
-    // nkbc_free(ir->bc);
-    // for (auto proc : ir->procs) {
-    //     proc->~NkIrProc_T();
-    //     nk_free(nk_default_allocator, proc, sizeof(NkIrProc_T));
-    // }
+    ir->procs.deinit();
+    ir->blocks.deinit();
+    ir->instrs.deinit();
+    ir->globals.deinit();
+    ir->consts.deinit();
 
-    auto alloc = ir->alloc;
-
-    ir->~NkIrProg_T();
-    nk_free(alloc, ir, sizeof(NkIrProg_T));
+    nk_free(ir->alloc, ir, sizeof(NkIrProg_T));
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
 
-    // return ir->procs.emplace_back(new (nk_alloc(nk_default_allocator, sizeof(NkIrProc_T))) NkIrProc_T{
-    //     .ir = ir,
-    //     .proc_t{},
-    // });
+    NkIrProc id{ir->procs.size()};
+    ir->procs.emplace(NkIrProc_T{
+        .blocks = decltype(NkIrProc_T::blocks)::create(ir->alloc),
+        .locals = decltype(NkIrProc_T::locals)::create(ir->alloc),
+    });
+    return id;
 }
 
 NkIrLabel nkir_createLabel(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrLabel id{ir->blocks.size()};
-    ir->blocks.emplace_back(NkIrBlock{});
+    ir->blocks.emplace(NkIrBlock{
+        .instrs = decltype(NkIrBlock::instrs)::create(ir->alloc),
+    });
     return id;
 }
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, NkIrProcInfo proc_info) {
+void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkstr name, NkIrProcInfo proc_info) {
     NK_LOG_TRC("%s", __func__);
 
-    // proc->name = std_str(name);
+    auto &proc = ir->procs[proc_id.id];
 
-    // proc->proc_t = proc_t;
-    // proc->state = NkIrProc_Complete;
+    proc.name = nk_strcpy(ir->alloc, name);
+    proc.proc_info = proc_info;
 
-    // nkir_activateProc(proc->ir, proc);
+    nkir_activateProc(ir, proc_id);
 }
 
-void nkir_activateProc(NkIrProg ir, NkIrProc proc) {
+void nkir_activateProc(NkIrProg ir, NkIrProc proc_id) {
     NK_LOG_TRC("%s", __func__);
 
-    // ir->cur_proc = proc;
+    ir->cur_proc = proc_id;
 }
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
     NK_LOG_TRC("%s", __func__);
 
-    // assert(cnst.id < ir->consts.size() && "invalid const");
-    // return ir->consts[cnst.id];
+    return ir->consts[cnst.id].data;
 }
 
 void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
     NK_LOG_TRC("%s", __func__);
 
-    // assert(ref.kind == NkIrRef_Const && "const ref expected");
-    // auto const val = nkir_constGetValue(ir, {ref.index});
-    // auto type = nkval_typeof(val);
-    // auto data = (uint8_t *)nkval_data(val) + ref.offset;
-    // if (ref.is_indirect) {
-    //     assert(nkt_typeclassid(type) == NkType_Ptr);
-    //     type = type->as.ptr.target_type;
-    //     data = *(uint8_t **)data;
-    // }
-    // data += ref.post_offset;
-    // return {data, type};
+    assert(ref.kind == NkIrRef_Rodata && "rodata ref expected");
+    auto const &cnst = ir->consts[ref.index];
+    auto data = (uint8_t *)cnst.data + ref.offset;
+    if (ref.is_indirect) {
+        data = *(uint8_t **)data;
+    }
+    data += ref.offset;
+    return data;
 }
 
-void nkir_gen(NkIrProg ir, NkIrInstrArray instrs) {
+void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
     NK_LOG_TRC("%s", __func__);
 
-    // assert(ir->cur_proc && "no current procedure");
-    // assert(ir->cur_proc->cur_block < ir->blocks.size() && "no current block");
-    // assert(
-    //     instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
-    //     (instr.arg[0].ref.kind != NkIrRef_Const && instr.arg[0].ref.kind !=
-    //     NkIrRef_Arg));
+    assert(ir->cur_proc.id < ir->procs.size() && "no current procedure");
+    auto &proc = ir->procs[ir->cur_proc.id];
 
-    // auto &instrs = ir->instrs;
-    // auto &block = ir->blocks[ir->cur_proc->cur_block].instrs;
+    for (size_t i = 0; i < instrs_array.size; i++) {
+        auto const &instr = instrs_array.data[i];
 
-    // if (instr.code == nkir_ret && block.size() && instrs[block.back()].code == nkir_ret) {
-    //     return;
-    // }
+        if (instr.code == nkir_label) {
+            proc.cur_block = instr.arg[1].id;
+            proc.blocks.emplace(proc.cur_block);
+            continue;
+        }
 
-    // size_t id = instrs.size();
-    // instrs.emplace_back(instr);
-    // block.emplace_back(id);
+        assert(proc.cur_block < ir->blocks.size() && "no current block");
+        auto &block = ir->blocks[proc.cur_block].instrs;
+
+        assert(
+            instr.arg[0].arg_kind != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
+            (instr.arg[0].ref.kind != NkIrRef_Rodata && instr.arg[0].ref.kind != NkIrRef_Arg));
+
+        auto &instrs = ir->instrs;
+
+        if (instr.code == nkir_ret && block.size() && instrs[block.back()].code == nkir_ret) {
+            continue;
+        }
+
+        size_t id = instrs.size();
+        instrs.emplace(instr);
+        block.emplace(id);
+    }
 }
 
 // void nkir_startBlock(NkIrProg ir, NkIrLabel block_id, nkstr name) {
@@ -167,7 +237,7 @@ NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrGlobalVar id{ir->globals.size()};
-    ir->globals.emplace_back(type);
+    ir->globals.emplace(type);
     return id;
 }
 
@@ -422,6 +492,7 @@ NkIrInstr nkir_make_cmp_ge(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
 
 NkIrInstr nkir_make_label(NkIrLabel label) {
     NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(label), {}}, nkir_label};
 }
 
 void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath) {
