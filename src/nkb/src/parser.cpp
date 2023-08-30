@@ -44,9 +44,11 @@ struct GeneratorState {
 
     NkIrToken *m_cur_token{};
 
+    struct Decl;
+
     struct ProcRecord {
         NkIrProc proc;
-        NkHashMap<nkid, nktype_t> locals;
+        NkHashMap<nkid, Decl *> locals;
         NkHashMap<nkid, NkIrLabel> labels;
     };
 
@@ -63,6 +65,8 @@ struct GeneratorState {
     struct Decl {
         union {
             ProcRecord proc;
+            NkIrLocalVar local;
+            NkIrExternProc extern_proc;
         } as;
         EDeclKind kind;
     };
@@ -79,6 +83,7 @@ struct GeneratorState {
         while (!check(t_eof)) {
             if (check(t_proc)) {
                 DEFINE(sig, parseProcSignature());
+
                 auto proc = nkir_createProc(m_ir);
                 nkir_startProc(
                     m_ir,
@@ -90,6 +95,7 @@ struct GeneratorState {
                         .call_conv = NkCallConv_Nk,
                         .flags = 0,
                     });
+
                 auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
                     {.proc{
                         .proc = proc,
@@ -100,13 +106,18 @@ struct GeneratorState {
                 };
                 m_decls.insert(s2nkid(sig.name), decl);
                 m_cur_proc = &decl->as.proc;
+
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
                     if (check(t_id)) {
                         DEFINE(token, parseId());
                         auto const name = s2nkid(token->text);
                         DEFINE(type, parseType());
-                        m_cur_proc->locals.insert(name, type);
+                        auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
+                            {.local = nkir_makeLocalVar(m_ir, type)},
+                            Decl_LocalVar,
+                        };
+                        m_cur_proc->locals.insert(name, decl);
                     } else {
                         DEFINE(instr, parseInstr());
                         nkir_gen(m_ir, {&instr, 1});
@@ -117,10 +128,24 @@ struct GeneratorState {
                 }
                 EXPECT(t_brace_r);
             } else if (accept(t_extern)) {
-                while (!check(t_newline) && !check(t_eof)) {
-                    // TODO Parse extern
-                    NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
-                    getToken();
+                if (check(t_proc)) {
+                    DEFINE(sig, parseProcSignature(false));
+
+                    auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
+                        {.extern_proc = nkir_makeExternProc(
+                             m_ir,
+                             sig.name,
+                             {
+                                 .args_t{sig.args_t.data(), sig.args_t.size()},
+                                 .ret_t{&sig.ret_t, 1},
+                                 .call_conv = NkCallConv_Nk,
+                                 .flags = 0,
+                             })},
+                        Decl_ExternProc,
+                    };
+                    m_decls.insert(s2nkid(sig.name), decl);
+                } else {
+                    return error("TODO extern kind not implemented"), Void{};
                 }
             } else {
                 return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
@@ -234,18 +259,53 @@ private:
     }
 
     NkIrRef parseRef() {
-        getToken();
-        return {};
+        if (check(t_id)) {
+            DEFINE(token, parseId());
+            auto const name = s2nkid(token->text);
+            auto decl = resolve(name);
+            if (!decl) {
+                return error("undeclated identifier `%.*s`", (int)token->text.size, token->text.data), NkIrRef{};
+            }
+            switch (decl->kind) {
+            case Decl_ExternProc:
+                return nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
+            default:
+                return error("TODO decl kind not handled"), NkIrRef{};
+            }
+        } else if (check(t_string)) {
+            // TODO Implement string ref
+            // auto cnst = nkir_makeConst(m_ir, nullptr, nullptr);
+            // auto ref = nkir_makeRodataRef(m_ir, cnst);
+            // ref.is_indirect = true;
+            // return ref;
+            getToken();
+            return {};
+        } else {
+            return error("TODO ref not implemented"), NkIrRef{};
+        }
+    }
+
+    Decl *resolve(nkid name) {
+        auto found = m_cur_proc->locals.find(name);
+        if (found) {
+            return *found;
+        }
+        found = m_decls.find(name);
+        if (found) {
+            return *found;
+        }
+        return nullptr;
     }
 
     NkIrRefArray parseRefArray() {
         auto refs = NkArray<NkIrRef>::create(nk_arena_getAllocator(m_tmp_arena));
         EXPECT(t_brace_l);
-        while (!check(t_brace_r) && !check(t_eof)) {
-            // TODO Parse extern
-            NK_LOG_WRN("Skipping " LOG_TOKEN(m_cur_token->id));
-            getToken();
-        }
+        do {
+            if (check(t_brace_r) || check(t_eof)) {
+                break;
+            }
+            APPEND(refs, parseRef());
+        } while (accept(t_comma));
         EXPECT(t_brace_r);
         return {refs.data(), refs.size()};
     }
