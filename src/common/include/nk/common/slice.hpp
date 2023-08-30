@@ -29,6 +29,10 @@ struct NkSlice {
         return _size;
     }
 
+    constexpr bool empty() const {
+        return size() == 0;
+    }
+
     constexpr reference at(size_type pos) const {
         return _data[pos];
     }

@@ -59,7 +59,7 @@ typedef enum {
     NkIrOpcode_Count,
 } NkIrOpcode;
 
-char const *nkirOpcodeName(NkIrOpcode code);
+char const *nkirOpcodeName(uint8_t code);
 
 typedef enum {
     NkIrRef_None = 0,
@@ -242,6 +242,8 @@ void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
 // Inspection
 
 void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb);
+void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStringBuilder sb);
+void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb);
 
 #ifdef __cplusplus
 }

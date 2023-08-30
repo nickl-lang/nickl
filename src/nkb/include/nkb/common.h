@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "nk/common/string_builder.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -73,6 +75,8 @@ typedef struct NkIrType {
     uint8_t align;
     NkIrTypeKind kind;
 } NkIrType;
+
+void nkt_inspect(nktype_t type, NkStringBuilder sb);
 
 // TODO Move somewhere
 #define DEFINE_ID_TYPE(NAME) \

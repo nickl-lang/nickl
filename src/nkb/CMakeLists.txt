@@ -1,6 +1,7 @@
 set(LIB nkb)
 
 add_library(${LIB}
+    src/common.cpp
     src/ir.cpp
     src/irc.cpp
     src/lexer.cpp

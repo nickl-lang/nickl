@@ -25,7 +25,7 @@ NkIrArg _arg(NkIrRefArray args) {
 
 } // namespace
 
-char const *nkirOpcodeName(NkIrOpcode code) {
+char const *nkirOpcodeName(uint8_t code) {
     // TODO Compact with X macro
     switch (code) {
     case nkir_nop:
@@ -541,5 +541,78 @@ void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) { // TODO
 }
 
 void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb) {
-    nksb_printf(sb, "TODO nkir_inspectProgram not implemented");
+    for (size_t i = 0; i < ir->procs.size(); i++) {
+        nkir_inspectProc(ir, {i}, sb);
+    }
+}
+
+void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
+    auto &proc = ir->procs[proc_id.id];
+
+    if (!proc.locals.empty()) {
+        nksb_printf(sb, "\n\n");
+        for (size_t i = 0; i < proc.locals.size(); i++) {
+            nksb_printf(sb, "$%" PRIu64 ": ", i);
+            nkt_inspect(proc.locals[i], sb);
+            nksb_printf(sb, "\n");
+        }
+        nksb_printf(sb, "\n");
+    } else {
+        nksb_printf(sb, " ");
+    }
+
+    nksb_printf(sb, "{\n\n");
+
+    for (auto block_id : proc.blocks) {
+        auto const &block = ir->blocks[block_id];
+
+        nksb_printf(sb, "%.*s\n", (int)block.name.size, block.name.data);
+
+        for (auto instr_id : block.instrs) {
+            auto const &instr = ir->instrs[instr_id];
+
+            nksb_printf(sb, "  ");
+
+            if (instr.arg[0].arg_kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
+                nkir_inspectRef(ir, instr.arg[0].ref, sb);
+                nksb_printf(sb, " := ");
+            }
+
+            nksb_printf(sb, "%s", nkirOpcodeName(instr.code));
+
+            for (size_t i = 1; i < 3; i++) {
+                auto &arg = instr.arg[i];
+                if (arg.arg_kind != NkIrArg_None) {
+                    nksb_printf(sb, ((i > 1) ? ", " : " "));
+                }
+                switch (arg.arg_kind) {
+                case NkIrArg_Ref: {
+                    auto &ref = arg.ref;
+                    nkir_inspectRef(ir, ref, sb);
+                    break;
+                }
+                case NkIrArg_Label:
+                    if (arg.id < ir->blocks.size() && ir->blocks[arg.id].name.size != 0) {
+                        nksb_printf(sb, "%%%.*s", (int)ir->blocks[arg.id].name.size, ir->blocks[arg.id].name.data);
+                    } else {
+                        nksb_printf(sb, "%%(null)");
+                    }
+                    break;
+                case NkIrArg_None:
+                default:
+                    break;
+                }
+            }
+
+            nksb_printf(sb, "\n");
+        }
+
+        nksb_printf(sb, "\n");
+    }
+
+    nksb_printf(sb, "}\n");
+}
+
+void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
+    nksb_printf(sb, "<TODO nkir_inspectRef not implemented>");
 }
