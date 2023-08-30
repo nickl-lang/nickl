@@ -6,6 +6,7 @@
 
 #include "nk/common/allocator.h"
 #include "nk/common/string.h"
+#include "nk/common/string_builder.h"
 #include "nkb/common.h"
 
 #ifdef __cplusplus

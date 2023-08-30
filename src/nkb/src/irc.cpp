@@ -51,9 +51,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         nk_arena_popFrame(&c->file_arena, frame);
     };
 
-    auto file_alloc = nk_arena_getAllocator(&c->file_arena);
-
-    auto read_res = nk_readFile(file_alloc, in_file);
+    auto read_res = nk_readFile(nk_arena_getAllocator(&c->file_arena), in_file);
     if (!read_res.ok) {
         printError(c, "failed to read file `%.*s`", (int)in_file.size, in_file.data);
         return false;

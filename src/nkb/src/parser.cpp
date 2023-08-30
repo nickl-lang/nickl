@@ -1,6 +1,7 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <cstring>
 #include <new>
 
 #include "nk/common/array.hpp"
@@ -273,13 +274,18 @@ private:
                 return error("TODO decl kind not handled"), NkIrRef{};
             }
         } else if (check(t_string)) {
-            // TODO Implement string ref
-            // auto cnst = nkir_makeConst(m_ir, nullptr, nullptr);
-            // auto ref = nkir_makeRodataRef(m_ir, cnst);
-            // ref.is_indirect = true;
-            // return ref;
+            auto const len = m_cur_token->text.size;
+
+            auto str = nk_alloc_t<char>(nk_arena_getAllocator(m_file_arena), len + 1);
+            memcpy(str, m_cur_token->text.data, len);
+            str[len] = '\0';
+
             getToken();
-            return {};
+
+            auto ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, makeArrayType(makeBasicType(Int8), len)));
+            ref.is_indirect = true;
+            ref.type = makeBasicType(Uint64);
+            return ref;
         } else {
             return error("TODO ref not implemented"), NkIrRef{};
         }
@@ -311,18 +317,32 @@ private:
     }
 
     nktype_t makeBasicType(NkIrBasicValueType value_type) {
-        auto type = nk_alloc_t<NkIrType>(nk_arena_getAllocator(m_file_arena));
-        *type = {
-            .as{
-                .basic{
-                    .value_type = value_type,
-                },
-            },
+        return new (nk_alloc_t<NkIrType>(nk_arena_getAllocator(m_file_arena))) NkIrType{
+            .as{.basic{
+                .value_type = value_type,
+            }},
             .size = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
             .align = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
             .kind = NkType_Basic,
         };
-        return type;
+    }
+
+    nktype_t makeArrayType(nktype_t elem_t, size_t count) {
+        return new (nk_alloc_t<NkIrType>(nk_arena_getAllocator(m_file_arena))) NkIrType{
+            .as{.aggregate{
+                .elems{
+                    new (nk_alloc_t<NkIrAggregateElemInfo>(nk_arena_getAllocator(m_file_arena))) NkIrAggregateElemInfo{
+                        .type = elem_t,
+                        .count = count,
+                        .offset = 0,
+                    },
+                    1,
+                },
+            }},
+            .size = elem_t->size * count,
+            .align = elem_t->align,
+            .kind = NkType_Aggregate,
+        };
     }
 
     void getToken() {
