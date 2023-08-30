@@ -21,7 +21,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(test);
 
-nktype_t alloct(NkArenaAllocator *arena, NkType type) {
+nktype_t alloct(NkArena *arena, NkType type) {
     return new (nk_arena_alloc(arena, sizeof(NkType))) NkType{type};
 }
 
@@ -54,7 +54,7 @@ protected:
     }
 
 protected:
-    NkArenaAllocator m_arena{};
+    NkArena m_arena{};
     NkAllocator m_alloc{};
 };
 
@@ -328,7 +328,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
 }
 
 extern "C" NK_EXPORT void _test_sayHello(void *getName) {
-    NkArenaAllocator arena{};
+    NkArena arena{};
     defer {
         nk_arena_free(&arena);
     };

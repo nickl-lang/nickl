@@ -45,7 +45,7 @@ char const *s_keywords[] = {
 
 struct ScannerState {
     nkstr const m_src;
-    NkArenaAllocator *m_tmp_arena;
+    NkArena *m_tmp_arena;
 
     size_t m_pos = 0;
     size_t m_lin = 1;
@@ -288,7 +288,7 @@ private:
 
 } // namespace
 
-void nkir_lex(NkIrLexerState *lexer, NkArenaAllocator *file_arena, NkArenaAllocator *tmp_arena, nkstr src) {
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkstr src) {
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = decltype(lexer->tokens)::create(nk_arena_getAllocator(file_arena));
@@ -314,7 +314,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArenaAllocator *file_arena, NkArenaAlloca
 
 #ifdef ENABLE_LOGGING
         uint8_t token_str[256];
-        NkArenaAllocator log_arena{token_str, 0, sizeof(token_str)};
+        NkArena log_arena{token_str, 0, sizeof(token_str)};
         NkStringBuilder_T sb{
             (char *)nk_arena_alloc(&log_arena, sizeof(token_str)),
             0,

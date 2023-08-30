@@ -17,8 +17,8 @@
 struct NkIrCompiler_T {
     NkIrcOptions opts;
     NkIrProg ir{};
-    NkArenaAllocator tmp_arena{};
-    NkArenaAllocator file_arena{};
+    NkArena tmp_arena{};
+    NkArena file_arena{};
 };
 
 namespace {

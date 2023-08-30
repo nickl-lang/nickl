@@ -15,8 +15,8 @@ typedef struct {
 
 void nkir_parse(
     NkIrParserState *parser,
-    NkArenaAllocator *file_arena,
-    NkArenaAllocator *tmp_arena,
+    NkArena *file_arena,
+    NkArena *tmp_arena,
     NkSlice<NkIrToken> tokens);
 
 #endif // HEADER_GUARD_NKB_PARSER

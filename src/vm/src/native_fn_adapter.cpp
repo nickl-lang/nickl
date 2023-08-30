@@ -33,7 +33,7 @@ NK_LOG_USE_SCOPE(native_fn_adapter);
 struct Context {
     std::unordered_map<nktype_t, ffi_type *> typemap;
     std::recursive_mutex mtx;
-    NkArenaAllocator typearena{};
+    NkArena typearena{};
 
     ~Context() {
         nk_arena_free(&typearena);

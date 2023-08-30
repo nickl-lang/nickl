@@ -17,7 +17,7 @@ static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16Mib
 void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size) {
     (void)old_mem;
 
-    auto arena = (NkArenaAllocator *)data;
+    auto arena = (NkArena *)data;
 
 #ifdef ENABLE_LOGGING
     switch (mode) {
@@ -68,7 +68,7 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 
 } // namespace
 
-void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
+void *nk_arena_alloc(NkArena *arena, size_t size) {
     if (!arena->data) {
         // TODO Fixed sized arena
         arena->data = (uint8_t *)nk_valloc(FIXED_ARENA_SIZE);
@@ -81,18 +81,18 @@ void *nk_arena_alloc(NkArenaAllocator *arena, size_t size) {
     return mem;
 }
 
-void nk_arena_pop(NkArenaAllocator *arena, size_t size) {
+void nk_arena_pop(NkArena *arena, size_t size) {
     arena->size -= size;
 }
 
-void nk_arena_free(NkArenaAllocator *arena) {
+void nk_arena_free(NkArena *arena) {
     if (arena->data) {
         nk_vfree(arena->data, FIXED_ARENA_SIZE);
     }
     *arena = {};
 }
 
-NkAllocator nk_arena_getAllocator(NkArenaAllocator *arena) {
+NkAllocator nk_arena_getAllocator(NkArena *arena) {
     return {
         .data = arena,
         .proc = arenaAllocatorProc,

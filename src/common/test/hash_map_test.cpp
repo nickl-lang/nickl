@@ -418,7 +418,7 @@ TEST_F(HashMap, allocator) {
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
-    NkArenaAllocator arena{};
+    NkArena arena{};
     auto hm = hashmap_t::create(nk_arena_getAllocator(&arena));
     defer {
         hm.deinit();

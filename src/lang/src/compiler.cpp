@@ -188,7 +188,7 @@ struct NodeInfo {
 
 struct NklCompiler_T {
     NkIrProg ir;
-    NkArenaAllocator arena;
+    NkArena arena;
     NkAllocator alloc{};
 
     std::string err_str{};
@@ -2592,7 +2592,7 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(NkSlice<StructField> fiel
 NklCompiler nkl_compiler_create() {
     nkl_ast_init();
 
-    NkArenaAllocator arena{};
+    NkArena arena{};
 
 #define X(NAME, VALUE_TYPE, CTYPE) CAT(NAME, _t) = nkl_get_numeric(VALUE_TYPE);
     NUMERIC_ITERATE(X)

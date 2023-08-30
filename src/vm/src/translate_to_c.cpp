@@ -47,7 +47,7 @@ struct WriterCtx {
     std::ostream &forward_s;
     std::ostream &main_s;
 
-    NkArenaAllocator arena{};
+    NkArena arena{};
 
     std::unordered_map<nktype_t, std::string> type_map{};
     size_t typedecl_count{};

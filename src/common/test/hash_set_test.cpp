@@ -83,7 +83,7 @@ TEST_F(HashSet, iteration) {
 TEST_F(HashSet, allocator) {
     using set_t = NkHashSet<int>;
 
-    NkArenaAllocator arena{};
+    NkArena arena{};
     auto set = set_t::create(nk_arena_getAllocator(&arena));
     defer {
         set.deinit();

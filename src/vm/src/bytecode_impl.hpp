@@ -58,7 +58,7 @@ struct NkBcFunct_T {
 struct NkBcProg_T {
     NkIrProg ir;
 
-    NkArenaAllocator arena{};
+    NkArena arena{};
 
     std::vector<nkval_t> globals{};
     std::deque<NkBcFunct_T> functs{};

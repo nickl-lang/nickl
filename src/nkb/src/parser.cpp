@@ -33,9 +33,9 @@ struct GeneratorState {
     NkIrProg m_ir;
     NkSlice<NkIrToken> const m_tokens;
 
-    NkArenaAllocator *m_file_arena;
-    NkArenaAllocator *m_tmp_arena;
-    NkArenaAllocator m_parse_arena{};
+    NkArena *m_file_arena;
+    NkArena *m_tmp_arena;
+    NkArena m_parse_arena{};
 
     nkstr m_error_msg{};
     bool m_error_occurred{};
@@ -272,8 +272,8 @@ private:
 
 void nkir_parse(
     NkIrParserState *parser,
-    NkArenaAllocator *file_arena,
-    NkArenaAllocator *tmp_arena,
+    NkArena *file_arena,
+    NkArena *tmp_arena,
     NkSlice<NkIrToken> tokens) {
     NK_LOG_TRC("%s", __func__);
 

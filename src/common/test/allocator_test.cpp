@@ -18,7 +18,7 @@ class allocator : public testing::Test {
     }
 
 protected:
-    NkArenaAllocator m_arena{};
+    NkArena m_arena{};
     NkAllocator m_alloc;
 };
 

@@ -99,7 +99,7 @@ protected:
 protected:
     NklAst m_ast;
     NklCompiler m_compiler;
-    NkArenaAllocator m_arena{};
+    NkArena m_arena{};
 };
 
 } // namespace

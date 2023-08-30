@@ -54,24 +54,24 @@ typedef struct {
     uint8_t *data;
     size_t size;
     size_t capacity;
-} NkArenaAllocator;
+} NkArena;
 
-NkAllocator nk_arena_getAllocator(NkArenaAllocator *arena);
+NkAllocator nk_arena_getAllocator(NkArena *arena);
 
-void *nk_arena_alloc(NkArenaAllocator *arena, size_t size);
-void nk_arena_pop(NkArenaAllocator *arena, size_t size);
+void *nk_arena_alloc(NkArena *arena, size_t size);
+void nk_arena_pop(NkArena *arena, size_t size);
 
-void nk_arena_free(NkArenaAllocator *arena);
+void nk_arena_free(NkArena *arena);
 
 typedef struct {
     size_t size;
-} NkArenaAllocatorFrame;
+} NkArenaFrame;
 
-inline NkArenaAllocatorFrame nk_arena_grab(NkArenaAllocator *arena) {
+inline NkArenaFrame nk_arena_grab(NkArena *arena) {
     return {arena->size};
 }
 
-inline void nk_arena_popFrame(NkArenaAllocator *arena, NkArenaAllocatorFrame frame) {
+inline void nk_arena_popFrame(NkArena *arena, NkArenaFrame frame) {
     arena->size = frame.size;
 }
 

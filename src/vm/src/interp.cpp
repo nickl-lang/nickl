@@ -25,7 +25,7 @@ struct ProgramFrame {
 };
 
 struct ControlFrame {
-    NkArenaAllocatorFrame stack_frame;
+    NkArenaFrame stack_frame;
     uint8_t *base_frame;
     uint8_t *base_arg;
     uint8_t *base_ret;
@@ -58,10 +58,10 @@ struct InterpContext {
         uint8_t *base_ar[NkBcRef_Count];
         Base base;
     };
-    NkArenaAllocator stack;
+    NkArena stack;
     std::vector<ControlFrame> ctrl_stack;
-    std::vector<NkArenaAllocatorFrame> stack_frames;
-    NkArenaAllocatorFrame stack_frame;
+    std::vector<NkArenaFrame> stack_frames;
+    NkArenaFrame stack_frame;
     NkBcInstr const *pinstr;
     Registers reg;
     bool is_initialized;
