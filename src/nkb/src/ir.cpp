@@ -447,3 +447,7 @@ void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
 
     // nkbc_invoke(proc->ir->bc, proc, ret, args);
 }
+
+void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb) {
+    nksb_printf(sb, "TODO nkir_inspectProgram not implemented");
+}

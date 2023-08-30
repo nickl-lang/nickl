@@ -87,6 +87,14 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         }
     }
 
+#ifdef ENABLE_LOGGING
+    NkStringBuilder_T sb{};
+    nksb_init_alloc(&sb, nk_arena_getAllocator(&c->tmp_arena));
+    nkir_inspectProgram(parser.ir, &sb);
+    auto ir_str = nksb_concat(&sb);
+    NK_LOG_INF("IR: %.*s", (int)ir_str.size, ir_str.data);
+#endif // ENABLE_LOGGING
+
     return true;
 }
 

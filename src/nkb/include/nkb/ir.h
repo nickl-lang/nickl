@@ -239,6 +239,10 @@ typedef struct {
 
 void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
 
+// Inspection
+
+void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb);
+
 #ifdef __cplusplus
 }
 #endif
