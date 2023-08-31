@@ -29,7 +29,7 @@ NK_LOG_USE_SCOPE(parser);
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
-#define APPEND(AR, VAL) CHECK(*AR.push() = (VAL))
+#define APPEND(AR, VAL) CHECK(AR.emplace(VAL))
 #define EXPECT(ID) CHECK(expect(ID))
 
 struct GeneratorState {
@@ -187,8 +187,8 @@ private:
         accept(t_proc);
         DEFINE(token, parseId());
         auto const name = token->text;
-        auto args_t = NkArray<nktype_t>::create(nk_arena_getAllocator(m_tmp_arena));
-        auto arg_names = NkArray<nkid>::create(nk_arena_getAllocator(m_tmp_arena));
+        auto args_t = NkArray<nktype_t>::create(nk_arena_getAllocator(m_file_arena));
+        auto arg_names = NkArray<nkid>::create(nk_arena_getAllocator(&m_parse_arena));
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -200,8 +200,8 @@ private:
                 name = s2nkid(token->text);
             }
             DEFINE(type, parseType());
-            *args_t.push() = type;
-            *arg_names.push() = name;
+            args_t.emplace(type);
+            arg_names.emplace(name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
         DEFINE(ret_t, parseType());
@@ -255,7 +255,10 @@ private:
             DEFINE(proc, parseRef());
             EXPECT(t_comma);
             DEFINE(args, parseRefArray());
-            return nkir_make_call(dst, proc, args);
+            if (accept(t_minus_greater)) {
+                ASSIGN(dst, parseRef());
+            }
+            return nkir_make_call(m_ir, dst, proc, args);
         }
 
         else {
@@ -272,6 +275,8 @@ private:
                 return error("undeclated identifier `%.*s`", (int)token->text.size, token->text.data), NkIrRef{};
             }
             switch (decl->kind) {
+            case Decl_LocalVar:
+                return nkir_makeFrameRef(m_ir, decl->as.local);
             case Decl_ExternProc:
                 return nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
             default:
@@ -287,7 +292,6 @@ private:
             getToken();
 
             auto ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, makeArrayType(makeBasicType(Int8), len)));
-            ref.is_indirect = true;
             ref.type = makeBasicType(Uint64);
             return ref;
         } else {

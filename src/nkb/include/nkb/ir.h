@@ -91,8 +91,8 @@ typedef enum {
     NkIrArg_None,
 
     NkIrArg_Ref,
-    NkIrArg_Label,
     NkIrArg_RefArray,
+    NkIrArg_Label,
 } NkIrArgKind;
 
 typedef struct {
@@ -194,7 +194,7 @@ NkIrInstr nkir_make_trunc(NkIrRef dst, NkIrRef src);
 NkIrInstr nkir_make_fp2i(NkIrRef dst, NkIrRef src);
 NkIrInstr nkir_make_i2fp(NkIrRef dst, NkIrRef src);
 
-NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
+NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
 NkIrInstr nkir_make_mov(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 NkIrInstr nkir_make_lea(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);

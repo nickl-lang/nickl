@@ -77,6 +77,7 @@ typedef struct NkIrType {
 } NkIrType;
 
 void nkt_inspect(nktype_t type, NkStringBuilder sb);
+void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb);
 
 // TODO Move somewhere
 #define DEFINE_ID_TYPE(NAME) \
