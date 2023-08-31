@@ -38,12 +38,6 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 #endif // ENABLE_LOGGING
 
     switch (mode) {
-    case NkAllocator_Realloc:
-        if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
-            nk_arena_pop(arena, old_size);
-        }
-        [[fallthrough]];
-
     case NkAllocator_Alloc:
         return nk_arena_alloc(arena, size);
 
@@ -52,6 +46,16 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
             nk_arena_pop(arena, old_size);
         }
         return nullptr;
+
+    case NkAllocator_Realloc:
+        if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
+            nk_arena_pop(arena, old_size);
+            return nk_arena_alloc(arena, size);
+        } else {
+            auto new_mem = nk_arena_alloc(arena, size);
+            memcpy(new_mem, old_mem, old_size);
+            return new_mem;
+        }
 
     case NkAllocator_QuerySpaceLeft:
         *(NkAllocatorSpaceLeftQueryResult *)old_mem = {
