@@ -291,7 +291,8 @@ private:
 
             getToken();
 
-            auto ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, makeArrayType(makeBasicType(Int8), len)));
+            auto ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, makeArrayType(makeBasicType(Int8), len + 1)));
+            // ref.is_indirect = true;
             ref.type = makeBasicType(Uint64);
             return ref;
         } else {
