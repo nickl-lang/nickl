@@ -75,6 +75,7 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 void *nk_arena_alloc(NkArena *arena, size_t size) {
     if (!arena->data) {
         // TODO Fixed sized arena
+        NK_LOG_TRC("arena=%p valloc(%" PRIu64 ")", (void *)arena, FIXED_ARENA_SIZE);
         arena->data = (uint8_t *)nk_valloc(FIXED_ARENA_SIZE);
         arena->size = 0;
         arena->capacity = FIXED_ARENA_SIZE;
@@ -92,6 +93,7 @@ void *nk_arena_alloc(NkArena *arena, size_t size) {
 
 void nk_arena_free(NkArena *arena) {
     if (arena->data) {
+        NK_LOG_TRC("arena=%p vfree(%p, %" PRIu64 ")", (void *)arena, (void *)arena->data, FIXED_ARENA_SIZE);
         nk_vfree(arena->data, FIXED_ARENA_SIZE);
     }
     *arena = {};
