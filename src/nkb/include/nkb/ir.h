@@ -235,12 +235,14 @@ typedef struct NkIrRunCtx_T *NkIrRunCtx;
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir);
 void nkir_freeRunCtx(NkIrRunCtx ctx);
 
+NkIrProc nkir_resolveProc(NkIrProg ir, nkstr name);
+
 typedef struct {
     void const *data;
     size_t size;
 } NkIrPtrArray;
 
-void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
+void nkir_invoke(NkIrProg ir, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
 
 // Inspection
 

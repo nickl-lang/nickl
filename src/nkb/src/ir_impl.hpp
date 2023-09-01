@@ -53,4 +53,8 @@ struct NkIrProg_T {
     NkIrProc cur_proc{};
 };
 
+struct NkIrRunCtx_T {
+    NkIrProg ir;
+};
+
 #endif // HEADER_GUARD_NKB_IR_IMPL

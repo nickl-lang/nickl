@@ -120,7 +120,7 @@ char const *nkirOpcodeName(uint8_t code) {
 NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t usize_t) {
     NK_LOG_TRC("%s", __func__);
 
-    return new (nk_alloc(alloc, sizeof(NkIrProg_T))) NkIrProg_T{
+    return new (nk_alloc_t<NkIrProg_T>(alloc)) NkIrProg_T{
         .usize_t = usize_t,
         .alloc = alloc,
 
@@ -144,7 +144,7 @@ void nkir_freeProgram(NkIrProg ir) {
     ir->globals.deinit();
     ir->consts.deinit();
 
-    nk_free(ir->alloc, ir, sizeof(NkIrProg_T));
+    nk_free_t(ir->alloc, ir);
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
@@ -571,15 +571,35 @@ void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath) { // TODO
     NK_LOG_TRC("%s", __func__);
 }
 
-NkIrRunCtx nkir_createRunCtx(NkIrProg ir) { // TODO
+NkIrRunCtx nkir_createRunCtx(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
+
+    return new (nk_alloc_t<NkIrRunCtx_T>(ir->alloc)) NkIrRunCtx_T{
+        .ir = ir,
+    };
 }
 
-void nkir_freeRunCtx(NkIrRunCtx ctx) { // TODO
+void nkir_freeRunCtx(NkIrRunCtx ctx) {
     NK_LOG_TRC("%s", __func__);
+
+    nk_free_t(ctx->ir->alloc, ctx);
 }
 
-void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) { // TODO
+NkIrProc nkir_resolveProc(NkIrProg ir, nkstr name) { // TODO
+    NK_LOG_TRC("%s", __func__);
+
+    for (size_t i = 0; i < ir->procs.size(); i++) {
+        auto const &proc = ir->procs[i];
+        if (std::equal_to<NkSlice<char const>>{}(
+                NkSlice<char const>{name.data, name.size}, NkSlice<char const>{proc.name.data, proc.name.size})) {
+            return {i};
+        }
+    }
+
+    return NkIrProc{-1ul};
+}
+
+void nkir_invoke(NkIrProg ir, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) { // TODO
     NK_LOG_TRC("%s", __func__);
 }
 

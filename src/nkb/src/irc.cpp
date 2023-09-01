@@ -46,11 +46,6 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 bool compileProgram(NkIrCompiler c, nkstr in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    auto frame = nk_arena_grab(&c->file_arena);
-    defer {
-        nk_arena_popFrame(&c->file_arena, frame);
-    };
-
     auto read_res = nk_readFile(nk_arena_getAllocator(&c->file_arena), in_file);
     if (!read_res.ok) {
         printError(c, "failed to read file `%.*s`", (int)in_file.size, in_file.data);
@@ -90,6 +85,8 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
     auto ir_str = nksb_concat(&sb);
     NK_LOG_INF("IR:\n\n%.*s", (int)ir_str.size, ir_str.data);
 #endif // ENABLE_LOGGING
+
+    c->ir = parser.ir;
 
     return true;
 }
@@ -147,7 +144,27 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
         return 1;
     }
 
+    auto run_ctx = nkir_createRunCtx(c->ir);
+    defer {
+        nkir_freeRunCtx(run_ctx);
+    };
+
+    static constexpr char const *c_entry_point_name = "main";
+    auto const entry_point = nkir_resolveProc(c->ir, nk_mkstr(c_entry_point_name));
+    if (entry_point.id == -1ul) { // TODO Come up with a better way of representing error state
+        printError(c, "entry point `%s` is not defined", c_entry_point_name);
+        return 1;
+    }
+
+    int argc = 1;
+    char const *argv[] = {""};
+    int ret_code = -1;
+
+    void *args[] = {&argc, &argv};
+    void *rets[] = {&ret_code};
+    nkir_invoke(c->ir, entry_point, {args, AR_SIZE(args)}, {rets, AR_SIZE(rets)});
+
     puts("Hello, World!");
 
-    return 0;
+    return ret_code;
 }
