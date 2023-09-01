@@ -38,6 +38,7 @@ struct NkIrExternProc_T {
 };
 
 struct NkIrProg_T {
+    nktype_t usize_t;
     NkAllocator alloc;
 
     NkArray<NkIrProc_T> procs;
@@ -47,9 +48,9 @@ struct NkIrProg_T {
     NkArray<NkIrConst_T> consts;
     NkArray<NkIrExternData_T> extern_data;
     NkArray<NkIrExternProc_T> extern_procs;
+    NkArray<NkIrRef> relocs;
 
     NkIrProc cur_proc{};
-
 };
 
 #endif // HEADER_GUARD_NKB_IR_IMPL

@@ -72,6 +72,7 @@ typedef enum {
     NkIrRef_Proc,
     NkIrRef_ExternData,
     NkIrRef_ExternProc,
+    NkIrRef_Reloc,
 } NkIrRefKind;
 
 typedef struct {
@@ -142,7 +143,7 @@ typedef struct {
 
 typedef struct NkIrProg_T *NkIrProg;
 
-NkIrProg nkir_createProgram(NkAllocator alloc);
+NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t usize_t);
 void nkir_freeProgram(NkIrProg ir);
 
 // Code Generation
@@ -179,6 +180,8 @@ NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
 NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc);
+
+NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref);
 
 // Instructions
 
@@ -242,6 +245,8 @@ void nkir_invoke(NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
 // Inspection
 
 void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb);
+void nkir_inspectData(NkIrProg ir, NkStringBuilder sb);
+void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb);
 void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStringBuilder sb);
 void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb);
 

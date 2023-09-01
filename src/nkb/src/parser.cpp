@@ -32,6 +32,38 @@ NK_LOG_USE_SCOPE(parser);
 #define APPEND(AR, VAL) CHECK(AR.emplace(VAL))
 #define EXPECT(ID) CHECK(expect(ID))
 
+#define SCNf32 "f"
+#define SCNf64 "lf"
+
+nktype_t makeBasicType(NkAllocator alloc, NkIrBasicValueType value_type) {
+    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+        .as{.basic{
+            .value_type = value_type,
+        }},
+        .size = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
+        .align = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
+        .kind = NkType_Basic,
+    };
+}
+
+nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
+    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+        .as{.aggregate{
+            .elems{
+                new (nk_alloc_t<NkIrAggregateElemInfo>(alloc)) NkIrAggregateElemInfo{
+                    .type = elem_t,
+                    .count = count,
+                    .offset = 0,
+                },
+                1,
+            },
+        }},
+        .size = elem_t->size * count,
+        .align = elem_t->align,
+        .kind = NkType_Aggregate,
+    };
+}
+
 struct GeneratorState {
     NkIrProg m_ir;
     NkSlice<NkIrToken> const m_tokens;
@@ -39,6 +71,10 @@ struct GeneratorState {
     NkArena *m_file_arena;
     NkArena *m_tmp_arena;
     NkArena m_parse_arena{};
+
+    NkAllocator m_file_alloc{nk_arena_getAllocator(m_file_arena)};
+    NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_tmp_arena)};
+    NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_parse_arena)};
 
     nkstr m_error_msg{};
     bool m_error_occurred{};
@@ -76,7 +112,7 @@ struct GeneratorState {
     ProcRecord *m_cur_proc{};
 
     Void generate() {
-        m_decls = decltype(m_decls)::create(nk_arena_getAllocator(&m_parse_arena));
+        m_decls = decltype(m_decls)::create(m_parse_alloc);
 
         assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens[0];
@@ -92,16 +128,16 @@ struct GeneratorState {
                     sig.name,
                     {
                         .args_t{sig.args_t.data(), sig.args_t.size()},
-                        .ret_t{&sig.ret_t, 1},
+                        .ret_t{sig.ret_t.data(), sig.ret_t.size()},
                         .call_conv = NkCallConv_Nk,
                         .flags = 0,
                     });
 
-                auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
+                auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
                     {.proc{
                         .proc = proc,
-                        .locals = decltype(ProcRecord::locals)::create(nk_arena_getAllocator(&m_parse_arena)),
-                        .labels = decltype(ProcRecord::labels)::create(nk_arena_getAllocator(&m_parse_arena)),
+                        .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
+                        .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
                     }},
                     Decl_Proc,
                 };
@@ -116,7 +152,7 @@ struct GeneratorState {
                         DEFINE(token, parseId());
                         auto const name = s2nkid(token->text);
                         DEFINE(type, parseType());
-                        auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
+                        auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
                             {.local = nkir_makeLocalVar(m_ir, type)},
                             Decl_LocalVar,
                         };
@@ -134,13 +170,13 @@ struct GeneratorState {
                 if (check(t_proc)) {
                     DEFINE(sig, parseProcSignature(false));
 
-                    auto decl = new (nk_alloc_t<Decl>(nk_arena_getAllocator(&m_parse_arena))) Decl{
+                    auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
                         {.extern_proc = nkir_makeExternProc(
                              m_ir,
                              sig.name,
                              {
                                  .args_t{sig.args_t.data(), sig.args_t.size()},
-                                 .ret_t{&sig.ret_t, 1},
+                                 .ret_t{sig.ret_t.data(), sig.ret_t.size()},
                                  .call_conv = NkCallConv_Nk,
                                  .flags = 0,
                              })},
@@ -179,7 +215,7 @@ private:
         nkstr name;
         NkArray<nkid> arg_names;
         NkArray<nktype_t> args_t;
-        nktype_t ret_t;
+        NkArray<nktype_t> ret_t;
     };
 
     ProcSignatureParseResult parseProcSignature(bool expect_names = true) {
@@ -187,8 +223,9 @@ private:
         accept(t_proc);
         DEFINE(token, parseId());
         auto const name = token->text;
-        auto args_t = NkArray<nktype_t>::create(nk_arena_getAllocator(m_file_arena));
-        auto arg_names = NkArray<nkid>::create(nk_arena_getAllocator(&m_parse_arena));
+        auto args_t = NkArray<nktype_t>::create(m_file_alloc);
+        auto ret_t = NkArray<nktype_t>::create(m_file_alloc);
+        auto arg_names = NkArray<nkid>::create(m_parse_alloc);
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -204,7 +241,7 @@ private:
             arg_names.emplace(name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        DEFINE(ret_t, parseType());
+        APPEND(ret_t, parseType());
         return {
             .name = name,
             .arg_names = arg_names,
@@ -216,25 +253,25 @@ private:
     nktype_t parseType() {
         EXPECT(t_colon);
         if (accept(t_f32)) {
-            return makeBasicType(Float32);
+            return makeBasicType(m_file_alloc, Float32);
         } else if (accept(t_f64)) {
-            return makeBasicType(Float64);
+            return makeBasicType(m_file_alloc, Float64);
         } else if (accept(t_i16)) {
-            return makeBasicType(Int16);
+            return makeBasicType(m_file_alloc, Int16);
         } else if (accept(t_i32)) {
-            return makeBasicType(Int32);
+            return makeBasicType(m_file_alloc, Int32);
         } else if (accept(t_i64)) {
-            return makeBasicType(Int64);
+            return makeBasicType(m_file_alloc, Int64);
         } else if (accept(t_i8)) {
-            return makeBasicType(Int8);
+            return makeBasicType(m_file_alloc, Int8);
         } else if (accept(t_u16)) {
-            return makeBasicType(Uint16);
+            return makeBasicType(m_file_alloc, Uint16);
         } else if (accept(t_u32)) {
-            return makeBasicType(Uint32);
+            return makeBasicType(m_file_alloc, Uint32);
         } else if (accept(t_u64)) {
-            return makeBasicType(Uint64);
+            return makeBasicType(m_file_alloc, Uint64);
         } else if (accept(t_u8)) {
-            return makeBasicType(Uint8);
+            return makeBasicType(m_file_alloc, Uint8);
         } else if (check(t_id)) {
             return error("TODO type identifiers not implemented"), nullptr;
         } else {
@@ -283,18 +320,35 @@ private:
                 return error("TODO decl kind not handled"), NkIrRef{};
             }
         } else if (check(t_string)) {
-            auto const len = m_cur_token->text.size;
-
-            auto str = nk_alloc_t<char>(nk_arena_getAllocator(m_file_arena), len + 1);
-            memcpy(str, m_cur_token->text.data, len);
-            str[len] = '\0';
+            auto const data = m_cur_token->text.data + 1;
+            auto const len = m_cur_token->text.size - 2;
 
             getToken();
 
-            auto ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, makeArrayType(makeBasicType(Int8), len + 1)));
-            // ref.is_indirect = true;
-            ref.type = makeBasicType(Uint64);
-            return ref;
+            auto str = nk_alloc_t<char>(m_file_alloc, len + 1);
+            memcpy(str, data, len);
+            str[len] = '\0';
+
+            auto str_t = makeArrayType(m_file_alloc, makeBasicType(m_file_alloc, Int8), len + 1);
+            return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, str_t)));
+        } else if (check(t_int)) {
+            auto value = nk_alloc_t<int64_t>(m_file_alloc);
+
+            int res = sscanf(m_cur_token->text.data, "%" SCNi64, value);
+            (void)res;
+            assert(res > 0 && res != EOF && "numeric constant parsing failed");
+            getToken();
+
+            return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeBasicType(m_file_alloc, Int64)));
+        } else if (check(t_float)) {
+            auto value = nk_alloc_t<double>(m_file_alloc);
+
+            int res = sscanf(m_cur_token->text.data, "%" SCNf64, value);
+            (void)res;
+            assert(res > 0 && res != EOF && "numeric constant parsing failed");
+            getToken();
+
+            return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeBasicType(m_file_alloc, Float64)));
         } else {
             return error("TODO ref not implemented"), NkIrRef{};
         }
@@ -313,45 +367,16 @@ private:
     }
 
     NkIrRefArray parseRefArray() {
-        auto refs = NkArray<NkIrRef>::create(nk_arena_getAllocator(m_tmp_arena));
-        EXPECT(t_brace_l);
+        auto refs = NkArray<NkIrRef>::create(m_tmp_alloc);
+        EXPECT(t_par_l);
         do {
-            if (check(t_brace_r) || check(t_eof)) {
+            if (check(t_par_r) || check(t_eof)) {
                 break;
             }
             APPEND(refs, parseRef());
         } while (accept(t_comma));
-        EXPECT(t_brace_r);
+        EXPECT(t_par_r);
         return {refs.data(), refs.size()};
-    }
-
-    nktype_t makeBasicType(NkIrBasicValueType value_type) {
-        return new (nk_alloc_t<NkIrType>(nk_arena_getAllocator(m_file_arena))) NkIrType{
-            .as{.basic{
-                .value_type = value_type,
-            }},
-            .size = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
-            .align = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
-            .kind = NkType_Basic,
-        };
-    }
-
-    nktype_t makeArrayType(nktype_t elem_t, size_t count) {
-        return new (nk_alloc_t<NkIrType>(nk_arena_getAllocator(m_file_arena))) NkIrType{
-            .as{.aggregate{
-                .elems{
-                    new (nk_alloc_t<NkIrAggregateElemInfo>(nk_arena_getAllocator(m_file_arena))) NkIrAggregateElemInfo{
-                        .type = elem_t,
-                        .count = count,
-                        .offset = 0,
-                    },
-                    1,
-                },
-            }},
-            .size = elem_t->size * count,
-            .align = elem_t->align,
-            .kind = NkType_Aggregate,
-        };
     }
 
     void getToken() {
@@ -386,7 +411,7 @@ private:
         va_list ap;
         va_start(ap, fmt);
         NkStringBuilder_T sb{};
-        nksb_init_alloc(&sb, nk_arena_getAllocator(m_tmp_arena));
+        nksb_init_alloc(&sb, m_tmp_alloc);
         nksb_vprintf(&sb, fmt, ap);
         m_error_msg = nksb_concat(&sb);
         va_end(ap);
@@ -400,7 +425,9 @@ private:
 void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NkSlice<NkIrToken> tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    parser->ir = nkir_createProgram(nk_arena_getAllocator(file_arena));
+    auto file_alloc = nk_arena_getAllocator(file_arena);
+
+    parser->ir = nkir_createProgram(file_alloc, makeBasicType(file_alloc, Uint64));
     parser->error_msg = {};
     parser->ok = true;
 

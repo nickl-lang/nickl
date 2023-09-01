@@ -51,10 +51,10 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
                 nksb_printf(sb, ", ");
             }
             auto const &elem = type->as.aggregate.elems.data[i];
-            nkt_inspect(elem.type, sb);
             if (elem.count > 0) {
                 nksb_printf(sb, "[%" PRIu64 "]", elem.count);
             }
+            nkt_inspect(elem.type, sb);
         }
         nksb_printf(sb, "}");
         break;
@@ -107,7 +107,29 @@ void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb) {
         }
         break;
     case NkType_Aggregate:
-        nksb_printf(sb, "<TODO inspect aggregate>");
+        for (size_t elemi = 0; elemi < type->as.aggregate.elems.size; elemi++) {
+            auto const &elem = type->as.aggregate.elems.data[elemi];
+            auto ptr = (uint8_t *)data + elem.offset;
+            if (elem.type->kind == NkType_Basic && elem.type->size == 1) {
+                nksb_printf(sb, "\"");
+                nksb_str_escape(sb, {(char const *)ptr, elem.count});
+                nksb_printf(sb, "\"");
+            } else {
+                if (elem.count) {
+                    nksb_printf(sb, "[");
+                }
+                for (size_t i = 0; i < elem.count; i++) {
+                    if (i) {
+                        nksb_printf(sb, ", ");
+                    }
+                    nkval_inspect(ptr, elem.type, sb);
+                    ptr += elem.type->size;
+                }
+                if (elem.count) {
+                    nksb_printf(sb, "]");
+                }
+            }
+        }
         break;
     default:
         assert(!"unreachable");

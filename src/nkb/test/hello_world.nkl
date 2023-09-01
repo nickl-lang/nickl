@@ -5,7 +5,7 @@ proc main(argc: i32, argv: i64): i32 {
 var: i32
 
 @start
-    call puts, {"Hello, World!"} -> var
+    call puts, ("Hello, World!") -> var
 
 }
 
