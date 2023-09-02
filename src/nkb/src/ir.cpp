@@ -435,26 +435,7 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     return true;
 }
 
-NkIrRunCtx nkir_createRunCtx(NkIrProg ir) {
-    NK_LOG_TRC("%s", __func__);
-
-    return new (nk_alloc_t<NkIrRunCtx_T>(ir->alloc)) NkIrRunCtx_T{
-        .ir = ir,
-    };
-}
-
-void nkir_freeRunCtx(NkIrRunCtx ctx) {
-    NK_LOG_TRC("%s", __func__);
-
-    nk_free_t(ctx->ir->alloc, ctx);
-}
-
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) { // TODO
-    NK_LOG_TRC("%s", __func__);
-
-    puts("Hello, World!");
-}
-
+#ifdef ENABLE_LOGGING
 void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb) {
     for (size_t i = 0; i < ir->procs.size(); i++) {
         nkir_inspectProc(ir, {i}, sb);
@@ -648,3 +629,4 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
         nkt_inspect(ref.type, sb);
     }
 }
+#endif // ENABLE_LOGGING
