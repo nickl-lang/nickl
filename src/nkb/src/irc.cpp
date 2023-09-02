@@ -17,6 +17,7 @@
 struct NkIrCompiler_T {
     NkIrcOptions opts;
     NkIrProg ir{};
+    NkIrProc entry_point{};
     NkArena tmp_arena{};
     NkArena file_arena{};
 };
@@ -87,6 +88,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
 #endif // ENABLE_LOGGING
 
     c->ir = parser.ir;
+    c->entry_point = parser.entry_point;
 
     return true;
 }
@@ -109,30 +111,13 @@ void nkirc_free(NkIrCompiler c) {
 int nkir_compile(NkIrCompiler c, nkstr in_file, nkstr out_file, NkbOutputKind output_kind) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO Support different output formats
-    (void)output_kind;
-
     if (!compileProgram(c, in_file)) {
         return 1;
     }
 
-    auto sb = nksb_create();
-    defer {
-        nksb_free(sb);
-    };
-
-    nksb_printf(sb, "gcc -x c -O2 -o %.*s -", (int)out_file.size, out_file.data);
-    auto compile_cmd = nksb_concat(sb);
-
-    auto pipe = popen(compile_cmd.data, "w");
-    fprintf(pipe, R"(
-        #include <stdio.h>
-        int main(int argc, char** argv) {
-            puts("Hello, World!");
-            return 0;
-        }
-    )");
-    pclose(pipe);
+    if (!nkir_write(c->ir, output_kind, out_file)) {
+        return 1;
+    }
 
     return 0;
 }
@@ -149,22 +134,13 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
         nkir_freeRunCtx(run_ctx);
     };
 
-    static constexpr char const *c_entry_point_name = "main";
-    auto const entry_point = nkir_resolveProc(c->ir, nk_mkstr(c_entry_point_name));
-    if (entry_point.id == -1ul) { // TODO Come up with a better way of representing error state
-        printError(c, "entry point `%s` is not defined", c_entry_point_name);
-        return 1;
-    }
-
     int argc = 1;
     char const *argv[] = {""};
     int ret_code = -1;
 
     void *args[] = {&argc, &argv};
     void *rets[] = {&ret_code};
-    nkir_invoke(c->ir, entry_point, {args, AR_SIZE(args)}, {rets, AR_SIZE(rets)});
-
-    puts("Hello, World!");
+    nkir_invoke(run_ctx, c->entry_point, {args, AR_SIZE(args)}, {rets, AR_SIZE(rets)});
 
     return ret_code;
 }

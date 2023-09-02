@@ -35,6 +35,8 @@ NK_LOG_USE_SCOPE(parser);
 #define SCNf32 "f"
 #define SCNf64 "lf"
 
+static constexpr char const *c_entry_point_name = "main";
+
 nktype_t makeBasicType(NkAllocator alloc, NkIrBasicValueType value_type) {
     return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
         .as{.basic{
@@ -65,7 +67,8 @@ nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
 }
 
 struct GeneratorState {
-    NkIrProg m_ir;
+    NkIrProg &m_ir;
+    NkIrProc &m_entry_point;
     NkSlice<NkIrToken> const m_tokens;
 
     NkArena *m_file_arena;
@@ -122,6 +125,12 @@ struct GeneratorState {
                 DEFINE(sig, parseProcSignature());
 
                 auto proc = nkir_createProc(m_ir);
+
+                static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
+                if (s2nkid(sig.name) == c_entry_point_id) {
+                    m_entry_point = proc;
+                }
+
                 nkir_startProc(
                     m_ir,
                     proc,
@@ -195,6 +204,10 @@ struct GeneratorState {
             }
 
             nk_arena_clear(m_tmp_arena);
+        }
+
+        if (m_entry_point.id == INVALID_ID) {
+            return error("entry point `%s` is not defined", c_entry_point_name), Void{};
         }
 
         return {};
@@ -428,23 +441,27 @@ void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena
     auto file_alloc = nk_arena_getAllocator(file_arena);
 
     parser->ir = nkir_createProgram(file_alloc, makeBasicType(file_alloc, Uint64));
+    parser->entry_point.id = INVALID_ID;
     parser->error_msg = {};
     parser->ok = true;
 
     GeneratorState gen{
         .m_ir = parser->ir,
+        .m_entry_point = parser->entry_point,
         .m_tokens = tokens,
 
         .m_file_arena = file_arena,
         .m_tmp_arena = tmp_arena,
     };
+    defer {
+        nk_arena_free(&gen.m_parse_arena);
+    };
 
     gen.generate();
-
-    nk_arena_free(&gen.m_parse_arena);
 
     if (gen.m_error_occurred) {
         parser->error_msg = gen.m_error_msg;
         parser->ok = false;
+        return;
     }
 }

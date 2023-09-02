@@ -85,6 +85,11 @@ void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb);
         size_t id;           \
     } NAME
 
+#define INVALID_ID \
+    size_t {       \
+        -1ul       \
+    }
+
 #ifdef __cplusplus
 }
 #endif

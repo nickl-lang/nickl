@@ -226,7 +226,7 @@ NkIrInstr nkir_make_label(NkIrLabel label);
 
 // Output
 
-void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath);
+bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file);
 
 // Execution
 
@@ -235,14 +235,12 @@ typedef struct NkIrRunCtx_T *NkIrRunCtx;
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir);
 void nkir_freeRunCtx(NkIrRunCtx ctx);
 
-NkIrProc nkir_resolveProc(NkIrProg ir, nkstr name);
-
 typedef struct {
     void const *data;
     size_t size;
 } NkIrPtrArray;
 
-void nkir_invoke(NkIrProg ir, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
 
 // Inspection
 

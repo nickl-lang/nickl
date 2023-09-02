@@ -567,8 +567,28 @@ NkIrInstr nkir_make_label(NkIrLabel label) {
     return {{{}, _arg(label), {}}, nkir_label};
 }
 
-void nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr filepath) { // TODO
+bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     NK_LOG_TRC("%s", __func__);
+
+    auto sb = nksb_create();
+    defer {
+        nksb_free(sb);
+    };
+
+    nksb_printf(sb, "gcc -x c -O2 -o %.*s -", (int)out_file.size, out_file.data);
+    auto compile_cmd = nksb_concat(sb);
+
+    auto pipe = popen(compile_cmd.data, "w");
+    fprintf(pipe, R"(
+        #include <stdio.h>
+        int main(int argc, char** argv) {
+            puts("Hello, World!");
+            return 0;
+        }
+    )");
+    pclose(pipe);
+
+    return true;
 }
 
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir) {
@@ -585,22 +605,10 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
     nk_free_t(ctx->ir->alloc, ctx);
 }
 
-NkIrProc nkir_resolveProc(NkIrProg ir, nkstr name) { // TODO
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) { // TODO
     NK_LOG_TRC("%s", __func__);
 
-    for (size_t i = 0; i < ir->procs.size(); i++) {
-        auto const &proc = ir->procs[i];
-        if (std::equal_to<NkSlice<char const>>{}(
-                NkSlice<char const>{name.data, name.size}, NkSlice<char const>{proc.name.data, proc.name.size})) {
-            return {i};
-        }
-    }
-
-    return NkIrProc{-1ul};
-}
-
-void nkir_invoke(NkIrProg ir, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret) { // TODO
-    NK_LOG_TRC("%s", __func__);
+    puts("Hello, World!");
 }
 
 void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb) {
