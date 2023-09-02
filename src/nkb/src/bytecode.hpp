@@ -5,6 +5,8 @@
 
 #include "nk/common/allocator.h"
 #include "nk/common/array.hpp"
+#include "nk/common/hash_map.hpp"
+#include "nk/common/id.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 
@@ -42,20 +44,20 @@ struct NkBcInstr {
     uint16_t code;
 };
 
-typedef struct NkBcProg_T *NkBcProg;
 typedef struct NkBcProc_T *NkBcProc;
 
 struct NkBcProc_T {
-    NkBcProg prog;
+    NkIrRunCtx ctx;
     size_t frame_size;
-    NkBcInstr *instrs;
+    NkArray<NkBcInstr> instrs;
 };
 
 struct NkIrRunCtx_T {
     NkIrProg ir;
+    NkArena *tmp_arena;
 
     NkArray<NkBcProc> procs;
-    NkArray<NkArray<NkBcInstr>> instrs;
+    NkHashMap<nkid, void *> extern_syms;
 };
 
 #endif // HEADER_GUARD_NKB_BYTECODE

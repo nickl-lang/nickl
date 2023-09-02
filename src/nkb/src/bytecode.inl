@@ -8,6 +8,7 @@
 
 #ifndef SIZ_OP
 #define SIZ_OP(NAME) \
+    OP(NAME)         \
     OPX(NAME, 8)     \
     OPX(NAME, 16)    \
     OPX(NAME, 32)    \
@@ -16,6 +17,7 @@
 
 #ifndef INT_OP
 #define INT_OP(NAME) \
+    OP(NAME)         \
     OPX(NAME, i8)    \
     OPX(NAME, u8)    \
     OPX(NAME, i16)   \
@@ -44,36 +46,69 @@ SIZ_OP(jmpnz)
 OP(call)
 OPX(call, jmp)
 
+OP(ext)
 OPX(ext, i8_16)
 OPX(ext, i8_32)
 OPX(ext, i8_64)
 OPX(ext, i16_32)
 OPX(ext, i16_64)
 OPX(ext, i32_64)
-
 OPX(ext, u8_16)
 OPX(ext, u8_32)
 OPX(ext, u8_64)
 OPX(ext, u16_32)
 OPX(ext, u16_64)
 OPX(ext, u32_64)
-
 OPX(ext, f32_f64)
 
+OP(trunc)
 OPX(trunc, u16_8)
 OPX(trunc, u32_8)
 OPX(trunc, u32_16)
 OPX(trunc, u64_8)
 OPX(trunc, u64_16)
 OPX(trunc, u64_32)
-
 OPX(trunc, f64_32)
 
-INT_OP(fp2i_f32)
-INT_OP(fp2i_f64)
+OP(fp2i)
 
-INT_OP(i2fp_f32)
-INT_OP(i2fp_f64)
+OPX(fp2i_f32, i8)
+OPX(fp2i_f32, u8)
+OPX(fp2i_f32, i16)
+OPX(fp2i_f32, u16)
+OPX(fp2i_f32, i32)
+OPX(fp2i_f32, u32)
+OPX(fp2i_f32, i64)
+OPX(fp2i_f32, u64)
+
+OPX(fp2i_f64, i8)
+OPX(fp2i_f64, u8)
+OPX(fp2i_f64, i16)
+OPX(fp2i_f64, u16)
+OPX(fp2i_f64, i32)
+OPX(fp2i_f64, u32)
+OPX(fp2i_f64, i64)
+OPX(fp2i_f64, u64)
+
+OP(i2fp)
+
+OPX(i2fp_f32, i8)
+OPX(i2fp_f32, u8)
+OPX(i2fp_f32, i16)
+OPX(i2fp_f32, u16)
+OPX(i2fp_f32, i32)
+OPX(i2fp_f32, u32)
+OPX(i2fp_f32, i64)
+OPX(i2fp_f32, u64)
+
+OPX(i2fp_f64, i8)
+OPX(i2fp_f64, u8)
+OPX(i2fp_f64, i16)
+OPX(i2fp_f64, u16)
+OPX(i2fp_f64, i32)
+OPX(i2fp_f64, u32)
+OPX(i2fp_f64, i64)
+OPX(i2fp_f64, u64)
 
 NUM_OP(neg)
 
@@ -98,6 +133,8 @@ NUM_OP(cmp_lt)
 NUM_OP(cmp_le)
 NUM_OP(cmp_gt)
 NUM_OP(cmp_ge)
+
+OP(label)
 
 #undef NUM_OP
 #undef INT_OP

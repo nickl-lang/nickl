@@ -129,10 +129,13 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
         return 1;
     }
 
-    auto run_ctx = nkir_createRunCtx(c->ir);
+    auto run_ctx = nkir_createRunCtx(c->ir, &c->tmp_arena);
     defer {
         nkir_freeRunCtx(run_ctx);
     };
+
+    // TODO Hardcoded extern symbol
+    nkir_defineExternSym(run_ctx, nk_mkstr("puts"), (void *)puts);
 
     int argc = 1;
     char const *argv[] = {""};

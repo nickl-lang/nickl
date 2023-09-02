@@ -3,6 +3,7 @@ set(LIB nkb)
 add_library(${LIB}
     src/bytecode.cpp
     src/common.cpp
+    src/interp.cpp
     src/ir.cpp
     src/irc.cpp
     src/lexer.cpp

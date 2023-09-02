@@ -3,8 +3,12 @@
 #include <cassert>
 #include <cctype>
 #include <limits>
+#include <new>
 
-void nkt_inspect(nktype_t type, NkStringBuilder sb) {
+#include "nk/common/allocator.hpp"
+#include "nk/common/utils.h"
+
+void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
     if (!type) {
         nksb_printf(sb, "(null)");
         return;
@@ -54,7 +58,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
             if (elem.count > 0) {
                 nksb_printf(sb, "[%" PRIu64 "]", elem.count);
             }
-            nkt_inspect(elem.type, sb);
+            nkirt_inspect(elem.type, sb);
         }
         nksb_printf(sb, "}");
         break;
@@ -63,7 +67,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
     }
 }
 
-void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb) {
+void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
     if (!data) {
         nksb_printf(sb, "(null)");
         return;
@@ -122,7 +126,7 @@ void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb) {
                     if (i) {
                         nksb_printf(sb, ", ");
                     }
-                    nkval_inspect(ptr, elem.type, sb);
+                    nkirv_inspect(ptr, elem.type, sb);
                     ptr += elem.type->size;
                 }
                 if (elem.count) {
@@ -134,4 +138,33 @@ void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb) {
     default:
         assert(!"unreachable");
     }
+}
+
+NkIrAggregateLayout nkir_calcAggregateLayout(
+    NkAllocator alloc,
+    nktype_t const *elem_types,
+    size_t const *elem_counts,
+    size_t n,
+    size_t stride) {
+    size_t alignment = 0;
+    size_t offset = 0;
+
+    auto info_ar = new (nk_alloc_t<NkIrAggregateElemInfo>(alloc, n)) NkIrAggregateElemInfo{};
+
+    for (size_t i = 0; i < n; i++) {
+        auto const type = elem_types[i * stride];
+        auto const elem_count = elem_counts[i * stride];
+
+        alignment = maxu(alignment, type->align);
+
+        offset = roundUpSafe(offset, type->align);
+        info_ar[i] = {
+            type,
+            elem_count,
+            offset,
+        };
+        offset += type->size * elem_count;
+    }
+
+    return NkIrAggregateLayout{{info_ar, n}, roundUpSafe(offset, alignment), alignment};
 }

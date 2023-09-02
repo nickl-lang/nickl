@@ -25,7 +25,7 @@ NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
     return {{.refs{refs, args.size}}, NkIrArg_RefArray};
 }
 
-void _inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
+void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
     nksb_printf(sb, "(");
 
     for (size_t i = 0; i < proc_info.args_t.size; i++) {
@@ -33,7 +33,7 @@ void _inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
             nksb_printf(sb, ", ");
         }
         nksb_printf(sb, "arg%" PRIu64 ": ", i);
-        nkt_inspect(proc_info.args_t.data[i], sb);
+        nkirt_inspect(proc_info.args_t.data[i], sb);
     }
 
     nksb_printf(sb, ")");
@@ -43,7 +43,7 @@ void _inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
             nksb_printf(sb, ",");
         }
         nksb_printf(sb, ": ");
-        nkt_inspect(proc_info.ret_t.data[i], sb);
+        nkirt_inspect(proc_info.ret_t.data[i], sb);
     }
 }
 
@@ -449,7 +449,7 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder sb) {
     if (ir->globals.size()) {
         for (size_t i = 0; i < ir->globals.size(); i++) {
             nksb_printf(sb, "\ndata global%" PRIu64 ": ", i);
-            nkt_inspect(ir->globals[i], sb);
+            nkirt_inspect(ir->globals[i], sb);
         }
         nksb_printf(sb, "\n");
     }
@@ -459,9 +459,9 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder sb) {
             auto const &cnst = ir->consts[i];
             if (cnst.type->kind == NkType_Aggregate) {
                 nksb_printf(sb, "\nconst const%" PRIu64 ": ", i);
-                nkt_inspect(cnst.type, sb);
+                nkirt_inspect(cnst.type, sb);
                 nksb_printf(sb, " = ");
-                nkval_inspect(cnst.data, cnst.type, sb);
+                nkirv_inspect(cnst.data, cnst.type, sb);
             }
         }
         nksb_printf(sb, "\n");
@@ -472,7 +472,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
     if (ir->extern_data.size()) {
         for (auto const &data : ir->extern_data) {
             nksb_printf(sb, "\nextern data %.*s: ", (int)data.name.size, data.name.data);
-            nkt_inspect(data.type, sb);
+            nkirt_inspect(data.type, sb);
         }
         nksb_printf(sb, "\n");
     }
@@ -480,7 +480,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
     if (ir->extern_procs.size()) {
         for (auto const &proc : ir->extern_procs) {
             nksb_printf(sb, "\nextern proc %.*s", (int)proc.name.size, proc.name.data);
-            _inspectProcSignature(proc.proc_info, sb);
+            inspectProcSignature(proc.proc_info, sb);
         }
         nksb_printf(sb, "\n");
     }
@@ -490,14 +490,14 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
     auto const &proc = ir->procs[proc_id.id];
 
     nksb_printf(sb, "proc %.*s", (int)proc.name.size, proc.name.data);
-    _inspectProcSignature(proc.proc_info, sb);
+    inspectProcSignature(proc.proc_info, sb);
 
     nksb_printf(sb, " {\n\n");
 
     if (!proc.locals.empty()) {
         for (size_t i = 0; i < proc.locals.size(); i++) {
             nksb_printf(sb, "var%" PRIu64 ": ", i);
-            nkt_inspect(proc.locals[i], sb);
+            nkirt_inspect(proc.locals[i], sb);
             nksb_printf(sb, "\n");
         }
         nksb_printf(sb, "\n");
@@ -587,7 +587,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
     case NkIrRef_Rodata:
         if (ref.type->kind == NkType_Basic) {
             void *data = nkir_constRefDeref(ir, ref);
-            nkval_inspect(data, ref.type, sb);
+            nkirv_inspect(data, ref.type, sb);
         } else {
             nksb_printf(sb, "const%" PRIu64 "", ref.index);
         }
@@ -626,7 +626,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
     }
     if (ref.kind != NkIrRef_Reloc) {
         nksb_printf(sb, ":");
-        nkt_inspect(ref.type, sb);
+        nkirt_inspect(ref.type, sb);
     }
 }
 #endif // ENABLE_LOGGING

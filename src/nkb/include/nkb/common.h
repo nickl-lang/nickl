@@ -76,8 +76,8 @@ typedef struct NkIrType {
     NkIrTypeKind kind;
 } NkIrType;
 
-void nkt_inspect(nktype_t type, NkStringBuilder sb);
-void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb);
+void nkirt_inspect(nktype_t type, NkStringBuilder sb);
+void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb);
 
 // TODO Move somewhere
 #define DEFINE_ID_TYPE(NAME) \
@@ -89,6 +89,19 @@ void nkval_inspect(void *data, nktype_t type, NkStringBuilder sb);
     size_t {       \
         -1ul       \
     }
+
+typedef struct {
+    NkIrAggregateElemInfoArray info_ar;
+    size_t size;
+    size_t align;
+} NkIrAggregateLayout;
+
+NkIrAggregateLayout nkir_calcAggregateLayout(
+    NkAllocator alloc,
+    nktype_t const *elem_types,
+    size_t const *elem_counts,
+    size_t n,
+    size_t stride);
 
 #ifdef __cplusplus
 }

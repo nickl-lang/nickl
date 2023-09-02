@@ -170,8 +170,10 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file);
 
 typedef struct NkIrRunCtx_T *NkIrRunCtx;
 
-NkIrRunCtx nkir_createRunCtx(NkIrProg ir);
+NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena);
 void nkir_freeRunCtx(NkIrRunCtx ctx);
+
+void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data);
 
 typedef struct {
     void const *data;
