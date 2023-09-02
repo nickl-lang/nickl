@@ -47,6 +47,21 @@ typedef enum {
 #define NKIR_BASIC_TYPE_INDEX(VALUE_TYPE) ((0xf0 & (VALUE_TYPE)) >> 4)
 #define NKIR_BASIC_TYPE_COUNT 10
 
+#define NKIR_NUMERIC_ITERATE_INT(MACRO, ...)                \
+    MACRO(i8, Int8, int8_t __VA_OPT__(, ) __VA_ARGS__)      \
+    MACRO(u8, Uint8, uint8_t __VA_OPT__(, ) __VA_ARGS__)    \
+    MACRO(i16, Int16, int16_t __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(u16, Uint16, uint16_t __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i32, Int32, int32_t __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(u32, Uint32, uint32_t __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i64, Int64, int64_t __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(u64, Uint64, uint64_t __VA_OPT__(, ) __VA_ARGS__)
+
+#define NKIR_NUMERIC_ITERATE(MACRO, ...)                       \
+    NKIR_NUMERIC_ITERATE_INT(MACRO __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(f32, Float32, float __VA_OPT__(, ) __VA_ARGS__)      \
+    MACRO(f64, Float64, double __VA_OPT__(, ) __VA_ARGS__)
+
 typedef struct {
     nktype_t type;
     size_t count;

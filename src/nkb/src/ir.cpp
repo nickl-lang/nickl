@@ -144,7 +144,7 @@ void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
 
     assert(ref.kind == NkIrRef_Rodata && "rodata ref expected");
     auto const &cnst = ir->consts[ref.index];
-    auto data = (uint8_t *)cnst.data + ref.offset;
+    auto data = (uint8_t *)cnst.data;
     if (ref.is_indirect) {
         data = *(uint8_t **)data;
     }
