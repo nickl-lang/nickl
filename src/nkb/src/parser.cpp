@@ -311,6 +311,13 @@ private:
             return nkir_make_call(m_ir, dst, proc, args);
         }
 
+        else if (accept(t_mov)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_mov(dst, src);
+        }
+
         else {
             return error("TODO instr not implemented"), NkIrInstr{};
         }
@@ -362,6 +369,9 @@ private:
             getToken();
 
             return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeBasicType(m_file_alloc, Float64)));
+        } else if (accept(t_ret)) {
+            // TODO Support multiple return values
+            return nkir_makeRetRef(m_ir, 0);
         } else {
             return error("TODO ref not implemented"), NkIrRef{};
         }

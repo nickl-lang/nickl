@@ -31,8 +31,8 @@ UNA_IR(i2fp)  // i2fp  src -> dst
 
 UNA_IR(neg) // neg arg -> dst
 
-BIN_IR(mov) // mov src -> dst
-BIN_IR(lea) // lea src -> dst
+UNA_IR(mov) // mov src -> dst
+UNA_IR(lea) // lea src -> dst
 
 BIN_IR(add) // add lhs, rhs -> dst
 BIN_IR(sub) // sub lhs, rhs -> dst
