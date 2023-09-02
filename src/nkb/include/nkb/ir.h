@@ -7,6 +7,7 @@
 #include "nk/common/allocator.h"
 #include "nk/common/string.h"
 #include "nk/common/string_builder.h"
+#include "nk/common/utils.h"
 #include "nkb/common.h"
 
 #ifdef __cplusplus
@@ -14,47 +15,8 @@ extern "C" {
 #endif
 
 typedef enum {
-    nkir_nop = 0,
-
-    nkir_ret,
-
-    nkir_jmp,   // jmp         %label
-    nkir_jmpz,  // jmpz  cond, %label
-    nkir_jmpnz, // jmpnz cond, %label
-
-    nkir_ext,   // ext   src -> dst
-    nkir_trunc, // trunc src -> dst
-    nkir_fp2i,  // fp2i  src -> dst
-    nkir_i2fp,  // i2fp  src -> dst
-
-    nkir_call, // call proc, (args, ...)
-
-    nkir_mov, // mov src -> dst
-    nkir_lea, // lea src -> dst
-
-    nkir_neg, // neg arg      -> dst
-    nkir_add, // add lhs, rhs -> dst
-    nkir_sub, // sub lhs, rhs -> dst
-    nkir_mul, // mul lhs, rhs -> dst
-    nkir_div, // div lhs, rhs -> dst
-    nkir_mod, // mod lhs, rhs -> dst
-
-    nkir_and, // and lhs, rhs -> dst
-    nkir_or,  // or  lhs, rhs -> dst
-    nkir_xor, // xor lhs, rhs -> dst
-    nkir_lsh, // lsh lhs, rhs -> dst
-    nkir_rsh, // rsh lhs, rhs -> dst
-
-    nkir_cmp_eq, // cmp eq lhs, rhs -> dst
-    nkir_cmp_ne, // cmp ne lhs, rhs -> dst
-    nkir_cmp_lt, // cmp lt lhs, rhs -> dst
-    nkir_cmp_le, // cmp le lhs, rhs -> dst
-    nkir_cmp_gt, // cmp gt lhs, rhs -> dst
-    nkir_cmp_ge, // cmp ge lhs, rhs -> dst
-
-    // nkir_cmpxchg,
-
-    nkir_label,
+#define IR(NAME) CAT(nkir_, NAME),
+#include "nkb/ir.inl"
 
     NkIrOpcode_Count,
 } NkIrOpcode;
@@ -192,37 +154,13 @@ NkIrInstr nkir_make_jmp(NkIrLabel label);
 NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrLabel label);
 NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label);
 
-NkIrInstr nkir_make_ext(NkIrRef dst, NkIrRef src);
-NkIrInstr nkir_make_trunc(NkIrRef dst, NkIrRef src);
-NkIrInstr nkir_make_fp2i(NkIrRef dst, NkIrRef src);
-NkIrInstr nkir_make_i2fp(NkIrRef dst, NkIrRef src);
-
 NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
-NkIrInstr nkir_make_mov(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_lea(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-
-NkIrInstr nkir_make_neg(NkIrRef dst, NkIrRef arg);
-NkIrInstr nkir_make_add(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_sub(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_mul(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_div(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_mod(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-
-NkIrInstr nkir_make_and(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_or(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_xor(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_lsh(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_rsh(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-
-NkIrInstr nkir_make_cmp_eq(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_cmp_ne(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_cmp_lt(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_cmp_le(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_cmp_gt(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-NkIrInstr nkir_make_cmp_ge(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-
 NkIrInstr nkir_make_label(NkIrLabel label);
+
+#define UNA_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg);
+#define BIN_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+#include "nkb/ir.inl"
 
 // Output
 

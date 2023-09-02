@@ -50,68 +50,15 @@ void _inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
 } // namespace
 
 char const *nkirOpcodeName(uint8_t code) {
-    // TODO Compact with X macro
     switch (code) {
-    case nkir_nop:
-        return "nop";
-    case nkir_ret:
-        return "ret";
-    case nkir_jmp:
-        return "jmp";
-    case nkir_jmpz:
-        return "jmpz";
-    case nkir_jmpnz:
-        return "jmpnz";
-    case nkir_ext:
-        return "ext";
-    case nkir_trunc:
-        return "trunc";
-    case nkir_fp2i:
-        return "fp2i";
-    case nkir_i2fp:
-        return "i2fp";
-    case nkir_call:
-        return "call";
-    case nkir_mov:
-        return "mov";
-    case nkir_lea:
-        return "lea";
-    case nkir_neg:
-        return "neg";
-    case nkir_add:
-        return "add";
-    case nkir_sub:
-        return "sub";
-    case nkir_mul:
-        return "mul";
-    case nkir_div:
-        return "div";
-    case nkir_mod:
-        return "mod";
-    case nkir_and:
-        return "and";
-    case nkir_or:
-        return "or";
-    case nkir_xor:
-        return "xor";
-    case nkir_lsh:
-        return "lsh";
-    case nkir_rsh:
-        return "rsh";
-    case nkir_cmp_eq:
-        return "cmp eq";
-    case nkir_cmp_ne:
-        return "cmp ne";
-    case nkir_cmp_lt:
-        return "cmp lt";
-    case nkir_cmp_le:
-        return "cmp le";
-    case nkir_cmp_gt:
-        return "cmp gt";
-    case nkir_cmp_ge:
-        return "cmp ge";
-    case nkir_label:
-        return "label";
+#define IR(NAME)           \
+    case CAT(nkir_, NAME): \
+        return #NAME;
+#define DBL_IR(NAME1, NAME2)                    \
+    case CAT(nkir_, CAT(NAME1, CAT(_, NAME2))): \
+        return #NAME1 " " #NAME2;
+#include "nkb/ir.inl"
+
     default:
         return "";
     }
@@ -442,130 +389,27 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label) {
     return {{{}, _arg(cond), _arg(label)}, nkir_jmpnz};
 }
 
-NkIrInstr nkir_make_ext(NkIrRef dst, NkIrRef src) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(src)}, nkir_ext};
-}
-
-NkIrInstr nkir_make_trunc(NkIrRef dst, NkIrRef src) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(src)}, nkir_trunc};
-}
-
-NkIrInstr nkir_make_fp2i(NkIrRef dst, NkIrRef src) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(src)}, nkir_fp2i};
-}
-
-NkIrInstr nkir_make_i2fp(NkIrRef dst, NkIrRef src) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(src)}, nkir_i2fp};
-}
-
 NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args) {
     NK_LOG_TRC("%s", __func__);
     return {{_arg(dst), _arg(proc), _arg(ir, args)}, nkir_call};
-}
-
-NkIrInstr nkir_make_mov(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_mov};
-}
-
-NkIrInstr nkir_make_lea(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_lea};
-}
-
-NkIrInstr nkir_make_neg(NkIrRef dst, NkIrRef arg) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(arg), {}}, nkir_neg};
-}
-
-NkIrInstr nkir_make_add(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_add};
-}
-
-NkIrInstr nkir_make_sub(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_sub};
-}
-
-NkIrInstr nkir_make_mul(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_mul};
-}
-
-NkIrInstr nkir_make_div(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_div};
-}
-
-NkIrInstr nkir_make_mod(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_mod};
-}
-
-NkIrInstr nkir_make_and(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_and};
-}
-
-NkIrInstr nkir_make_or(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_or};
-}
-
-NkIrInstr nkir_make_xor(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_xor};
-}
-
-NkIrInstr nkir_make_lsh(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_lsh};
-}
-
-NkIrInstr nkir_make_rsh(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_rsh};
-}
-
-NkIrInstr nkir_make_cmp_eq(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_cmp_eq};
-}
-
-NkIrInstr nkir_make_cmp_ne(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_cmp_ne};
-}
-
-NkIrInstr nkir_make_cmp_lt(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_cmp_lt};
-}
-
-NkIrInstr nkir_make_cmp_le(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_cmp_le};
-}
-
-NkIrInstr nkir_make_cmp_gt(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_cmp_gt};
-}
-
-NkIrInstr nkir_make_cmp_ge(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) {
-    NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_cmp_ge};
 }
 
 NkIrInstr nkir_make_label(NkIrLabel label) {
     NK_LOG_TRC("%s", __func__);
     return {{{}, _arg(label), {}}, nkir_label};
 }
+
+#define UNA_IR(NAME)                                            \
+    NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg) { \
+        NK_LOG_TRC("%s", __func__);                             \
+        return {{_arg(dst), _arg(arg), {}}, CAT(nkir_, NAME)};  \
+    }
+#define BIN_IR(NAME)                                                         \
+    NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
+        NK_LOG_TRC("%s", __func__);                                          \
+        return {{_arg(dst), _arg(lhs), _arg(rhs)}, CAT(nkir_, NAME)};        \
+    }
+#include "nkb/ir.inl"
 
 bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     NK_LOG_TRC("%s", __func__);
