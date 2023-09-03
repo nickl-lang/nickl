@@ -311,11 +311,53 @@ private:
             return nkir_make_call(m_ir, dst, proc, args);
         }
 
-        else if (accept(t_mov)) {
+        else if (accept(t_neg)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_neg(dst, src);
+        } else if (accept(t_mov)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
             return nkir_make_mov(dst, src);
+        } else if (accept(t_lea)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_lea(dst, src);
+        }
+
+        else if (false) {
+        }
+#define BIN_IR(NAME)                                 \
+    else if (accept(CAT(t_, NAME))) {                \
+        DEFINE(lhs, parseRef());                     \
+        EXPECT(t_comma);                             \
+        DEFINE(rhs, parseRef());                     \
+        EXPECT(t_minus_greater);                     \
+        DEFINE(dst, parseRef());                     \
+        return CAT(nkir_make_, NAME)(dst, lhs, rhs); \
+    }
+#include "nkb/ir.inl"
+
+        else if (accept(t_cmp)) {
+            if (false) {
+            }
+#define CMP_IR(NAME)                                     \
+    else if (accept(CAT(t_, NAME))) {                    \
+        DEFINE(lhs, parseRef());                         \
+        EXPECT(t_comma);                                 \
+        DEFINE(rhs, parseRef());                         \
+        EXPECT(t_minus_greater);                         \
+        DEFINE(dst, parseRef());                         \
+        return CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs); \
+    }
+#include "nkb/ir.inl"
+            else {
+                return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data),
+                       NkIrInstr{};
+            }
         }
 
         else {
@@ -332,6 +374,8 @@ private:
                 return error("undeclated identifier `%.*s`", (int)token->text.size, token->text.data), NkIrRef{};
             }
             switch (decl->kind) {
+            case Decl_Proc:
+                return nkir_makeProcRef(m_ir, decl->as.proc.proc);
             case Decl_LocalVar:
                 return nkir_makeFrameRef(m_ir, decl->as.local);
             case Decl_ExternProc:

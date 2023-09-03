@@ -409,6 +409,11 @@ NkIrInstr nkir_make_label(NkIrLabel label) {
         NK_LOG_TRC("%s", __func__);                                          \
         return {{_arg(dst), _arg(lhs), _arg(rhs)}, CAT(nkir_, NAME)};        \
     }
+#define DBL_IR(NAME1, NAME2)                                                                      \
+    NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
+        NK_LOG_TRC("%s", __func__);                                                               \
+        return {{_arg(dst), _arg(lhs), _arg(rhs)}, CAT(nkir_, CAT(NAME1, CAT(_, NAME2)))};        \
+    }
 #include "nkb/ir.inl"
 
 bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
@@ -511,7 +516,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
         for (auto instr_id : block.instrs) {
             auto const &instr = ir->instrs[instr_id];
 
-            nksb_printf(sb, "  %s", nkirOpcodeName(instr.code));
+            nksb_printf(sb, "  %10s", nkirOpcodeName(instr.code));
 
             for (size_t i = 1; i < 3; i++) {
                 auto const &arg = instr.arg[i];

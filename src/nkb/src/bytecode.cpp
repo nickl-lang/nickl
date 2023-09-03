@@ -56,9 +56,8 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
     };
 
     for (auto const &instr : instrs) {
-        nksb_printf(sb, "%zx\t", (&instr - instrs.data()) * sizeof(NkBcInstr));
-
-        nksb_printf(sb, "%s", nkbcOpcodeName(instr.code));
+        nksb_printf(sb, "%5zx ", (&instr - instrs.data()) * sizeof(NkBcInstr));
+        nksb_printf(sb, "%15s", nkbcOpcodeName(instr.code));
 
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcRef_None) {
@@ -112,6 +111,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
     enum ERelocType {
         Reloc_Block,
+        Reloc_Proc,
     };
 
     struct Reloc {
@@ -164,8 +164,13 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 break;
             }
             case NkIrRef_Proc: {
-                arg.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_Proc translation not implemented");
+                arg.kind = NkBcRef_Rodata;
+                relocs.emplace(Reloc{
+                    .instr_index = ii,
+                    .arg = ai,
+                    .target_id = ref.index,
+                    .reloc_type = Reloc_Proc,
+                });
                 break;
             };
             case NkIrRef_ExternData: {
@@ -174,8 +179,15 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 break;
             }
             case NkIrRef_ExternProc: {
-                arg.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_ExternData translation not implemented");
+                auto proc = ir.extern_procs[ref.index];
+
+                auto found = ctx->extern_syms.find(s2nkid(proc.name));
+                assert(found && "extern proc not found");
+                auto sym_addr = nk_alloc_t<void *>(ir.alloc);
+                *sym_addr = *found;
+
+                arg.kind = NkBcRef_Rodata;
+                arg.offset += (size_t)sym_addr;
                 break;
             }
             case NkIrRef_Reloc: {
@@ -220,30 +232,32 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
             uint16_t code = s_ir2opcode[ir_instr.code];
 
-            auto const &arg1 = ir_instr.arg[1];
+            auto const &arg0 = ir_instr.arg[0];
 
             switch (ir_instr.code) {
             case nkir_call: {
-                NK_LOG_WRN("TODO nkir_call translation not implemented");
+                auto const &arg1 = ir_instr.arg[1];
+                if (arg1.ref.kind == NkIrRef_Proc) {
+                    code = nkop_call_jmp;
+                    referenced_procs.emplace(NkIrProc{arg1.ref.index});
+                } else if (arg1.ref.kind == NkIrRef_ExternProc) {
+                    code = nkop_call_ext;
+                }
                 break;
             }
 
 #define SIZ_OP(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
-                if (arg1.ref.type->size <= 8 && isZeroOrPowerOf2(arg1.ref.type->size)) {
-                    code += 1 + log2u64(arg1.ref.type->size);
+                if (arg0.ref.type->size <= 8 && isZeroOrPowerOf2(arg0.ref.type->size)) {
+                    code += 1 + log2u64(arg0.ref.type->size);
                 }
                 break;
 
 #define NUM_OP(NAME) case CAT(nkir_, NAME):
 #define INT_OP(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
-                assert(arg1.ref.type->kind == NkType_Basic);
-                code += 1 + NKIR_BASIC_TYPE_INDEX(arg1.ref.type->as.basic.value_type);
-                break;
-
-            default:
-                assert(!"unreachable");
+                assert(arg0.ref.type->kind == NkType_Basic);
+                code += 1 + NKIR_BASIC_TYPE_INDEX(arg0.ref.type->as.basic.value_type);
                 break;
             }
 
@@ -255,13 +269,24 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         }
     }
 
+    for (auto proc : referenced_procs) {
+        translateProc(ctx, proc);
+    }
+
     for (auto const &reloc : relocs) {
         NkBcRef &arg = bc_proc.instrs[reloc.instr_index].arg[reloc.arg];
 
         switch (reloc.reloc_type) {
-        case Reloc_Block:
+        case Reloc_Block: {
             arg.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
             break;
+        }
+        case Reloc_Proc: {
+            auto sym_addr = nk_alloc_t<void *>(ir.alloc);
+            *sym_addr = ctx->procs[reloc.target_id];
+            arg.offset = (size_t)sym_addr;
+            break;
+        }
         }
     }
 
@@ -272,10 +297,6 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     auto ir_str = nksb_concat(&sb);
     NK_LOG_INF("Bytecode:\n\n%.*s", (int)ir_str.size, ir_str.data);
 #endif // ENABLE_LOGGING
-
-    for (auto proc : referenced_procs) {
-        translateProc(ctx, proc);
-    }
 }
 
 } // namespace

@@ -45,6 +45,7 @@ SIZ_OP(jmpnz)
 
 OP(call)
 OPX(call, jmp)
+OPX(call, ext)
 
 OP(ext)
 OPX(ext, i8_16)

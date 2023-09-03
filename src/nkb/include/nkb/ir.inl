@@ -2,16 +2,20 @@
 #define IR(NAME)
 #endif
 
-#ifndef DBL_IR
-#define DBL_IR(NAME1, NAME2) IR(NAME1##_##NAME2)
-#endif
-
 #ifndef UNA_IR
 #define UNA_IR(NAME) IR(NAME)
 #endif
 
 #ifndef BIN_IR
 #define BIN_IR(NAME) IR(NAME)
+#endif
+
+#ifndef DBL_IR
+#define DBL_IR(NAME1, NAME2) IR(NAME1##_##NAME2)
+#endif
+
+#ifndef CMP_IR
+#define CMP_IR(NAME) DBL_IR(cmp, NAME)
 #endif
 
 IR(nop)
@@ -46,19 +50,20 @@ BIN_IR(xor) // xor lhs, rhs -> dst
 BIN_IR(lsh) // lsh lhs, rhs -> dst
 BIN_IR(rsh) // rsh lhs, rhs -> dst
 
-DBL_IR(cmp, eq) // cmp eq lhs, rhs -> dst
-DBL_IR(cmp, ne) // cmp ne lhs, rhs -> dst
-DBL_IR(cmp, lt) // cmp lt lhs, rhs -> dst
-DBL_IR(cmp, le) // cmp le lhs, rhs -> dst
-DBL_IR(cmp, gt) // cmp gt lhs, rhs -> dst
-DBL_IR(cmp, ge) // cmp ge lhs, rhs -> dst
+CMP_IR(eq) // cmp eq lhs, rhs -> dst
+CMP_IR(ne) // cmp ne lhs, rhs -> dst
+CMP_IR(lt) // cmp lt lhs, rhs -> dst
+CMP_IR(le) // cmp le lhs, rhs -> dst
+CMP_IR(gt) // cmp gt lhs, rhs -> dst
+CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
 // IR(cmpxchg)
 
 IR(label)
 
+#undef CMP_IR
+#undef DBL_IR
 #undef BIN_IR
 #undef UNA_IR
-#undef DBL_IR
 
 #undef IR

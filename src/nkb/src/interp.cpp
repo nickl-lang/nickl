@@ -201,6 +201,11 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
+    case nkop_call_ext: {
+        NK_LOG_WRN("TODO nkop_call_ext execution not implemented");
+        break;
+    }
+
     case nkop_mov_8: {
         getRef<uint8_t>(instr.arg[0]) = getRef<uint8_t>(instr.arg[1]);
         break;
