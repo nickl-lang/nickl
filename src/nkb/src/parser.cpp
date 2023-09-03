@@ -300,6 +300,12 @@ private:
             return nkir_make_label(label);
         }
 
+        else if (accept(t_nop)) {
+            return nkir_make_nop();
+        } else if (accept(t_ret)) {
+            return nkir_make_ret();
+        }
+
         else if (accept(t_call)) {
             NkIrRef dst{};
             DEFINE(proc, parseRef());

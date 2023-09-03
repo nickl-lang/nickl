@@ -7,6 +7,7 @@ var: i32
 @start
     call puts, ("Hello, World!") -> var
     mov  0 -> ret
+    ret
 
 }
 

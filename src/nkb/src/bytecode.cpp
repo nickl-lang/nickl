@@ -81,7 +81,7 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
 
     for (auto const &instr : instrs) {
         nksb_printf(sb, "%5zu", (&instr - instrs.data()));
-        nksb_printf(sb, "%14s", nkbcOpcodeName(instr.code));
+        nksb_printf(sb, "%13s", nkbcOpcodeName(instr.code));
 
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
@@ -364,7 +364,7 @@ char const *nkbcOpcodeName(uint16_t code) {
         return #NAME;
 #define OPX(NAME, EXT)                       \
     case CAT(nkop_, CAT(NAME, CAT(_, EXT))): \
-        return #NAME " (" #EXT ")";
+        return #NAME "(" #EXT ")";
 #include "bytecode.inl"
 
     default:
