@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cctype>
 #include <limits>
-#include <new>
 
 #include "nk/common/allocator.hpp"
 #include "nk/common/utils.h"
@@ -149,7 +148,7 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     size_t alignment = 0;
     size_t offset = 0;
 
-    auto info_ar = new (nk_alloc_t<NkIrAggregateElemInfo>(alloc, n)) NkIrAggregateElemInfo{};
+    auto info_ar = nk_alloc_t<NkIrAggregateElemInfo>(alloc, n);
 
     for (size_t i = 0; i < n; i++) {
         auto const type = elem_types[i * stride];

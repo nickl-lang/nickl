@@ -137,13 +137,15 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     // TODO Hardcoded extern symbol
     nkir_defineExternSym(run_ctx, nk_mkstr("puts"), (void *)puts);
 
-    int argc = 1;
-    char const *argv[] = {""};
+    struct MainArgs {
+        int argc = 1;
+        char const *argv[1] = {""};
+    };
+
+    MainArgs args;
     int ret_code = -1;
 
-    void *args[] = {&argc, &argv};
-    void *rets[] = {&ret_code};
-    nkir_invoke(run_ctx, c->entry_point, {args, AR_SIZE(args)}, {rets, AR_SIZE(rets)});
+    nkir_invoke(run_ctx, c->entry_point, &args, &ret_code);
 
     return ret_code;
 }

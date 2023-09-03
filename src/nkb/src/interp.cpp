@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "bytecode.hpp"
+#include "ffi_adapter.hpp"
 #include "ir_impl.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
@@ -70,16 +71,16 @@ T &getRef(NkBcArg const &arg) {
     return *(T *)(ptr + arg.ref.offset);
 }
 
-void _jumpTo(NkBcInstr const *pinstr) {
+void jumpTo(NkBcInstr const *pinstr) {
     NK_LOG_DBG("jumping to instr@%p", (void *)pinstr);
     ctx.pinstr = pinstr;
 }
 
-void _jumpTo(NkBcArg const &arg) {
-    _jumpTo(&getRef<NkBcInstr>(arg));
+void jumpTo(NkBcArg const &arg) {
+    jumpTo(&getRef<NkBcInstr>(arg));
 }
 
-void _jumpCall(NkBcProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
+void jumpCall(NkBcProc proc, void *args, void *ret) {
     ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -92,11 +93,11 @@ void _jumpCall(NkBcProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
     ctx.stack_frame = nk_arena_grab(&ctx.stack);
     ctx.base.frame = (uint8_t *)nk_arena_alloc(&ctx.stack, proc->frame_size); // TODO not aligned
     std::memset(ctx.base.frame, 0, proc->frame_size);
-    ctx.base.arg = (uint8_t *)args.data;
-    ctx.base.ret = (uint8_t *)ret.data;
+    ctx.base.arg = (uint8_t *)args;
+    ctx.base.ret = (uint8_t *)ret;
     ctx.base.instr = (uint8_t *)proc->instrs.data();
 
-    _jumpTo(proc->instrs.data());
+    jumpTo(proc->instrs.data());
 
     NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
@@ -123,67 +124,67 @@ void interp(NkBcInstr const &instr) {
         ctx.base.ret = fr.base_ret;
         ctx.base.instr = fr.base_instr;
 
-        _jumpTo(fr.pinstr);
+        jumpTo(fr.pinstr);
         break;
     }
 
     case nkop_jmp: {
-        _jumpTo(instr.arg[1]);
+        jumpTo(instr.arg[1]);
         break;
     }
 
     case nkop_jmpz_8: {
         if (!getRef<uint8_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_16: {
         if (!getRef<uint16_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_32: {
         if (!getRef<uint32_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_64: {
         if (!getRef<uint64_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_8: {
         if (getRef<uint8_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_16: {
         if (getRef<uint16_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_32: {
         if (getRef<uint32_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_64: {
         if (getRef<uint64_t>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            jumpTo(instr.arg[2]);
         }
         break;
     }
@@ -194,12 +195,21 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_call_jmp: {
-        NK_LOG_WRN("TODO nkop_call_jmp execution not implemented");
+        auto ret = &getRef<uint8_t>(instr.arg[0]);
+        auto proc = getRef<NkBcProc>(instr.arg[1]);
+        auto args = &getRef<uint8_t>(instr.arg[2]);
+
+        jumpCall(proc, ret, args);
         break;
     }
 
     case nkop_call_ext: {
-        NK_LOG_WRN("TODO nkop_call_ext execution not implemented");
+        auto ret = &getRef<uint8_t>(instr.arg[0]);
+        auto proc = getRef<void *>(instr.arg[1]);
+
+        // void **argv = nk_arena_alloc(&ctx.stack, instr.arg[2].refs.size * sizeof());
+
+        // nk_native_invoke(proc, instr.arg[1].ref.type->);
         break;
     }
 
@@ -290,9 +300,8 @@ void interp(NkBcInstr const &instr) {
 
 } // namespace
 
-void nkir_interp_invoke(NkBcProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
+void nkir_interp_invoke(NkBcProc proc, void *args, void *ret) {
     puts("Hello, World!");
-    **(int **)ret.data = 0;
 
     EASY_FUNCTION(::profiler::colors::Red200);
 
@@ -308,7 +317,7 @@ void nkir_interp_invoke(NkBcProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
 
     NK_LOG_DBG("instr=%p", (void *)ctx.base.instr);
 
-    _jumpCall(proc, ret, args);
+    jumpCall(proc, args, ret);
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;

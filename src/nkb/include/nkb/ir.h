@@ -177,12 +177,7 @@ void nkir_freeRunCtx(NkIrRunCtx ctx);
 
 void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data);
 
-typedef struct {
-    void const *data;
-    size_t size;
-} NkIrPtrArray;
-
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, NkIrPtrArray args, NkIrPtrArray ret);
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void *args, void *ret);
 
 // Inspection
 

@@ -69,6 +69,9 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
         case NkBcArg_RefArray:
             nksb_printf(sb, "(");
             for (size_t i = 0; i < arg.refs.size; i++) {
+                if (i) {
+                    nksb_printf(sb, ", ");
+                }
                 inspect_ref(arg.refs.data[i]);
             }
             nksb_printf(sb, ")");
@@ -396,7 +399,7 @@ void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data) {
     ctx->extern_syms.insert(s2nkid(name), data);
 }
 
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, NkIrPtrArray args, NkIrPtrArray ret) {
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, void *args, void *ret) {
     NK_LOG_TRC("%s", __func__);
 
     translateProc(ctx, proc_id);
