@@ -2,6 +2,13 @@
 #include <cstdint>
 #include <cstdlib>
 
+#if defined(__SANITIZE_ADDRESS__)
+#include <sanitizer/asan_interface.h>
+#else
+#define ASAN_POISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
+#define ASAN_UNPOISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
+#endif
+
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/string_builder.h"
@@ -77,6 +84,8 @@ void *nk_arena_alloc(NkArena *arena, size_t size) {
         // TODO Fixed sized arena
         NK_LOG_TRC("arena=%p valloc(%" PRIu64 ")", (void *)arena, FIXED_ARENA_SIZE);
         arena->data = (uint8_t *)nk_valloc(FIXED_ARENA_SIZE);
+        // TODO Add redzones
+        ASAN_POISON_MEMORY_REGION(arena->data, FIXED_ARENA_SIZE);
         arena->size = 0;
         arena->capacity = FIXED_ARENA_SIZE;
     }
@@ -87,6 +96,7 @@ void *nk_arena_alloc(NkArena *arena, size_t size) {
     }
 
     auto mem = arena->data + arena->size;
+    ASAN_UNPOISON_MEMORY_REGION(mem, size);
     arena->size += size;
     return mem;
 }
