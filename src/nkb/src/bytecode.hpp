@@ -39,8 +39,28 @@ struct NkBcRef {
     bool is_indirect;
 };
 
+struct NkBcRefArray {
+    NkBcRef const *data;
+    size_t size;
+};
+
+typedef enum {
+    NkBcArg_None,
+
+    NkBcArg_Ref,
+    NkBcArg_RefArray,
+} NkBcArgKind;
+
+struct NkBcArg {
+    union {
+        NkBcRef ref;
+        NkBcRefArray refs;
+    };
+    NkBcArgKind kind;
+};
+
 struct NkBcInstr {
-    NkBcRef arg[3];
+    NkBcArg arg[3];
     uint16_t code;
 };
 

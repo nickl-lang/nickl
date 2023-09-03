@@ -64,12 +64,12 @@ struct InterpContext {
 thread_local InterpContext ctx;
 
 template <class T>
-T &getRef(NkBcRef const &ref) {
-    auto ptr = ctx.base_ar[ref.kind];
-    if (ref.is_indirect) {
+T &getRef(NkBcArg const &arg) {
+    auto ptr = ctx.base_ar[arg.ref.kind];
+    if (arg.ref.is_indirect) {
         ptr = *(uint8_t **)ptr;
     }
-    return *(T *)(ptr + ref.offset);
+    return *(T *)(ptr + arg.ref.offset);
 }
 
 void _jumpTo(NkBcInstr const *pinstr) {
@@ -77,8 +77,8 @@ void _jumpTo(NkBcInstr const *pinstr) {
     ctx.pinstr = pinstr;
 }
 
-void _jumpTo(NkBcRef const &ref) {
-    _jumpTo(&getRef<NkBcInstr>(ref));
+void _jumpTo(NkBcArg const &arg) {
+    _jumpTo(&getRef<NkBcInstr>(arg));
 }
 
 void _jumpCall(NkBcProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
@@ -332,12 +332,12 @@ void nkir_interp_invoke(NkBcProc proc, NkIrPtrArray args, NkIrPtrArray ret) {
             "res=%s", (char const *)[&]() {
                 NkStringBuilder sb{};
                 char const *str{};
-                auto const &ref = pinstr->arg[0];
-                if (ref.kind != NkBcRef_None) {
+                auto const &arg = pinstr->arg[0];
+                if (arg.ref.kind != NkBcRef_None) {
                     sb = nksb_create();
-                    nkirv_inspect(&getRef<uint8_t>(ref), ref.type, sb);
+                    nkirv_inspect(&getRef<uint8_t>(arg), arg.ref.type, sb);
                     nksb_printf(sb, ":");
-                    nkirt_inspect(ref.type, sb);
+                    nkirt_inspect(arg.ref.type, sb);
                     str = nksb_concat(sb).data;
                 }
                 return makeDeferrerWithData(str, [sb]() {

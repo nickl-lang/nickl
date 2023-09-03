@@ -61,10 +61,10 @@ typedef enum {
 typedef struct {
     union {
         NkIrRef ref;
-        size_t id;
         NkIrRefArray refs;
+        size_t id;
     };
-    NkIrArgKind arg_kind;
+    NkIrArgKind kind;
 } NkIrArg;
 
 typedef struct {

@@ -16,22 +16,26 @@ NkBcOpcode s_ir2opcode[] = {
 };
 
 void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
-    auto inspect_arg = [&](NkBcRef const &arg) {
-        if (arg.is_indirect) {
+    auto inspect_ref = [&](NkBcRef const &ref) {
+        if (ref.kind == NkBcRef_None) {
+            nksb_printf(sb, "(null)");
+            return;
+        }
+        if (ref.is_indirect) {
             nksb_printf(sb, "[");
         }
-        switch (arg.kind) {
+        switch (ref.kind) {
         case NkBcRef_Frame:
             nksb_printf(sb, "frame+");
             break;
         case NkBcRef_Arg:
-            nksb_printf(sb, "arg+");
+            nksb_printf(sb, "ref+");
             break;
         case NkBcRef_Ret:
             nksb_printf(sb, "ret+");
             break;
         case NkBcRef_Rodata:
-            nkirv_inspect((void *)arg.offset, arg.type, sb);
+            nkirv_inspect((void *)ref.offset, ref.type, sb);
             break;
         case NkBcRef_Data:
             nksb_printf(sb, "data+");
@@ -43,30 +47,50 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
             assert(!"unreachable");
             break;
         }
-        if (arg.is_indirect) {
+        if (ref.is_indirect) {
             nksb_printf(sb, "]");
         }
-        if (arg.kind != NkBcRef_Rodata) {
-            nksb_printf(sb, "%zx", arg.offset);
+        if (ref.kind != NkBcRef_Rodata) {
+            nksb_printf(sb, "%zx", ref.offset);
         }
-        if (arg.type) {
+        if (ref.type) {
             nksb_printf(sb, ":");
-            nkirt_inspect(arg.type, sb);
+            nkirt_inspect(ref.type, sb);
+        }
+    };
+
+    auto inspect_arg = [&](NkBcArg const &arg) {
+        switch (arg.kind) {
+        case NkBcArg_Ref: {
+            inspect_ref(arg.ref);
+            break;
+        }
+
+        case NkBcArg_RefArray:
+            nksb_printf(sb, "(");
+            for (size_t i = 0; i < arg.refs.size; i++) {
+                inspect_ref(arg.refs.data[i]);
+            }
+            nksb_printf(sb, ")");
+            break;
+
+        default:
+            break;
         }
     };
 
     for (auto const &instr : instrs) {
-        nksb_printf(sb, "%5zx ", (&instr - instrs.data()) * sizeof(NkBcInstr));
-        nksb_printf(sb, "%15s", nkbcOpcodeName(instr.code));
+        nksb_printf(sb, "%5zu", (&instr - instrs.data()));
+        nksb_printf(sb, "%14s", nkbcOpcodeName(instr.code));
 
         for (size_t i = 1; i < 3; i++) {
-            if (instr.arg[i].kind != NkBcRef_None) {
+            if (instr.arg[i].kind != NkBcArg_None) {
                 nksb_printf(sb, ((i > 1) ? ", " : " "));
                 inspect_arg(instr.arg[i]);
             }
         }
 
-        if (instr.arg[0].kind != NkBcRef_None) {
+        if (instr.arg[0].kind != NkBcArg_None) {
             nksb_printf(sb, " -> ");
             inspect_arg(instr.arg[0]);
         }
@@ -130,85 +154,98 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
     auto referenced_procs = NkArray<NkIrProc>::create(tmp_alloc);
 
-    auto translate_arg = [&](size_t ii, size_t ai, NkBcRef &arg, NkIrArg const &ir_arg) { // TODO
-        switch (ir_arg.arg_kind) {
-        case NkIrArg_None:
-            arg.kind = NkBcRef_None;
+    auto translate_ref = [&](size_t ii, size_t ai, NkBcRef &ref, NkIrRef const &ir_ref) {
+        ref.offset += ir_ref.offset;
+        ref.type = ir_ref.type;
+        ref.kind = (NkBcRefKind)ir_ref.kind;
+        ref.is_indirect = ir_ref.is_indirect;
+
+        switch (ir_ref.kind) {
+        case NkIrRef_Frame:
+            ref.offset += frame_layout.info_ar.data[ir_ref.index].offset;
             break;
+        case NkIrRef_Arg:
+            ref.kind = NkBcRef_None;
+            NK_LOG_WRN("TODO NkIrRef_Arg translation not implemented");
+            break;
+        case NkIrRef_Ret:
+            break;
+        case NkIrRef_Data: {
+            ref.kind = NkBcRef_None;
+            NK_LOG_WRN("TODO NkIrRef_Data translation not implemented");
+            break;
+        }
+        case NkIrRef_Rodata: {
+            ref.kind = NkBcRef_Rodata;
+            auto const_data = ir.consts[ir_ref.index].data;
+            ref.offset = (size_t)const_data;
+            break;
+        }
+        case NkIrRef_Proc: {
+            ref.kind = NkBcRef_Rodata;
+            relocs.emplace(Reloc{
+                .instr_index = ii,
+                .arg = ai,
+                .target_id = ir_ref.index,
+                .reloc_type = Reloc_Proc,
+            });
+            break;
+        };
+        case NkIrRef_ExternData: {
+            ref.kind = NkBcRef_None;
+            NK_LOG_WRN("TODO NkIrRef_ExternData translation not implemented");
+            break;
+        }
+        case NkIrRef_ExternProc: {
+            auto proc = ir.extern_procs[ir_ref.index];
 
-        case NkIrArg_Ref: {
-            auto const &ref = ir_arg.ref;
-            arg.offset += ref.offset;
-            arg.type = ref.type;
-            arg.kind = (NkBcRefKind)ref.kind;
-            arg.is_indirect = ref.is_indirect;
-            switch (ref.kind) {
-            case NkIrRef_Frame:
-                arg.offset += frame_layout.info_ar.data[ref.index].offset;
-                break;
-            case NkIrRef_Arg:
-                arg.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_Arg translation not implemented");
-                break;
-            case NkIrRef_Ret:
-                break;
-            case NkIrRef_Data: {
-                arg.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_Data translation not implemented");
-                break;
-            }
-            case NkIrRef_Rodata: {
-                arg.kind = NkBcRef_Rodata;
-                auto const_data = ir.consts[ref.index].data;
-                arg.offset = (size_t)const_data;
-                break;
-            }
-            case NkIrRef_Proc: {
-                arg.kind = NkBcRef_Rodata;
-                relocs.emplace(Reloc{
-                    .instr_index = ii,
-                    .arg = ai,
-                    .target_id = ref.index,
-                    .reloc_type = Reloc_Proc,
-                });
-                break;
-            };
-            case NkIrRef_ExternData: {
-                arg.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_ExternData translation not implemented");
-                break;
-            }
-            case NkIrRef_ExternProc: {
-                auto proc = ir.extern_procs[ref.index];
+            auto found = ctx->extern_syms.find(s2nkid(proc.name));
+            assert(found && "extern proc not found");
+            auto sym_addr = nk_alloc_t<void *>(ir.alloc);
+            *sym_addr = *found;
 
-                auto found = ctx->extern_syms.find(s2nkid(proc.name));
-                assert(found && "extern proc not found");
-                auto sym_addr = nk_alloc_t<void *>(ir.alloc);
-                *sym_addr = *found;
+            ref.kind = NkBcRef_Rodata;
+            ref.offset += (size_t)sym_addr;
+            break;
+        }
+        case NkIrRef_Reloc: {
+            ref.kind = NkBcRef_None;
+            NK_LOG_WRN("TODO NkIrRef_Reloc translation not implemented");
+            break;
+        }
+        default:
+            assert(!"unreachable");
+        case NkIrRef_None:
+            break;
+        }
+    };
 
-                arg.kind = NkBcRef_Rodata;
-                arg.offset += (size_t)sym_addr;
-                break;
-            }
-            case NkIrRef_Reloc: {
-                arg.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_Reloc translation not implemented");
-                break;
-            }
-            default:
-                assert(!"unreachable");
-            case NkIrRef_None:
-                break;
-            }
+    auto translate_arg = [&](size_t ii, size_t ai, NkBcArg &arg, NkIrArg const &ir_arg) {
+        switch (ir_arg.kind) {
+        case NkIrArg_None: {
+            arg.kind = NkBcArg_None;
             break;
         }
 
-        case NkIrArg_RefArray:
-            NK_LOG_WRN("TODO NkIrArg_RefArray translation not implemented");
+        case NkIrArg_Ref: {
+            arg.kind = NkBcArg_Ref;
+            translate_ref(ii, ai, arg.ref, ir_arg.ref);
             break;
+        }
 
-        case NkIrArg_Label:
-            arg.kind = NkBcRef_Instr;
+        case NkIrArg_RefArray: {
+            arg.kind = NkBcArg_RefArray;
+            auto refs = nk_alloc_t<NkBcRef>(ir.alloc, ir_arg.refs.size);
+            for (size_t i = 0; i < ir_arg.refs.size; i++) {
+                translate_ref(ii, ai, refs[i], ir_arg.refs.data[i]);
+            }
+            arg.refs = {refs, ir_arg.refs.size};
+            break;
+        }
+
+        case NkIrArg_Label: {
+            arg.kind = NkBcArg_Ref;
+            arg.ref.kind = NkBcRef_Instr;
             relocs.emplace(Reloc{
                 .instr_index = ii,
                 .arg = ai,
@@ -216,6 +253,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 .reloc_type = Reloc_Block,
             });
             break;
+        }
         }
     };
 
@@ -274,17 +312,17 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     }
 
     for (auto const &reloc : relocs) {
-        NkBcRef &arg = bc_proc.instrs[reloc.instr_index].arg[reloc.arg];
+        auto &ref = bc_proc.instrs[reloc.instr_index].arg[reloc.arg].ref;
 
         switch (reloc.reloc_type) {
         case Reloc_Block: {
-            arg.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
+            ref.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
             break;
         }
         case Reloc_Proc: {
             auto sym_addr = nk_alloc_t<void *>(ir.alloc);
             *sym_addr = ctx->procs[reloc.target_id];
-            arg.offset = (size_t)sym_addr;
+            ref.offset = (size_t)sym_addr;
             break;
         }
         }

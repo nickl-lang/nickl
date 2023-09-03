@@ -171,7 +171,7 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
         auto &block = ir->blocks[proc.cur_block].instrs;
 
         assert(
-            instr.arg[0].arg_kind != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
+            instr.arg[0].kind != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
             (instr.arg[0].ref.kind != NkIrRef_Rodata && instr.arg[0].ref.kind != NkIrRef_Arg));
 
         auto &instrs = ir->instrs;
@@ -516,14 +516,14 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
         for (auto instr_id : block.instrs) {
             auto const &instr = ir->instrs[instr_id];
 
-            nksb_printf(sb, "  %10s", nkirOpcodeName(instr.code));
+            nksb_printf(sb, "%5zu%8s", instr_id, nkirOpcodeName(instr.code));
 
             for (size_t i = 1; i < 3; i++) {
                 auto const &arg = instr.arg[i];
-                if (arg.arg_kind != NkIrArg_None) {
+                if (arg.kind != NkIrArg_None) {
                     nksb_printf(sb, ((i > 1) ? ", " : " "));
                 }
-                switch (arg.arg_kind) {
+                switch (arg.kind) {
                 case NkIrArg_Ref: {
                     auto const &ref = arg.ref;
                     nkir_inspectRef(ir, ref, sb);
@@ -554,7 +554,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
                 }
             }
 
-            if (instr.arg[0].arg_kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
+            if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
                 nksb_printf(sb, " -> ");
                 nkir_inspectRef(ir, instr.arg[0].ref, sb);
             }
