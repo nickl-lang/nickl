@@ -38,7 +38,7 @@ struct NkIrExternProc_T {
 };
 
 struct NkIrProg_T {
-    nktype_t usize_t;
+    nktype_t size_type;
     NkAllocator alloc;
 
     NkArray<NkIrProc_T> procs;

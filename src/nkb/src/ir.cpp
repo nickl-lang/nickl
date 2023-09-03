@@ -64,11 +64,11 @@ char const *nkirOpcodeName(uint8_t code) {
     }
 }
 
-NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t usize_t) {
+NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t size_type) {
     NK_LOG_TRC("%s", __func__);
 
     return new (nk_alloc_t<NkIrProg_T>(alloc)) NkIrProg_T{
-        .usize_t = usize_t,
+        .size_type = size_type,
         .alloc = alloc,
 
         .procs = decltype(NkIrProg_T::procs)::create(alloc),
@@ -317,7 +317,7 @@ NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc) {
     return {
         .index = proc.id,
         .offset = 0,
-        .type = ir->usize_t,
+        .type = ir->size_type,
         .kind = NkIrRef_Proc,
         .is_indirect = false,
     };
@@ -341,7 +341,7 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
     return {
         .index = proc.id,
         .offset = 0,
-        .type = ir->usize_t,
+        .type = ir->size_type,
         .kind = NkIrRef_ExternProc,
         .is_indirect = false,
     };
@@ -358,7 +358,7 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref) {
     return {
         .index = id,
         .offset = 0,
-        .type = ir->usize_t,
+        .type = ir->size_type,
         .kind = NkIrRef_Reloc,
         .is_indirect = false,
     };

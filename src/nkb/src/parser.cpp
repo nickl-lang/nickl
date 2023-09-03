@@ -494,7 +494,7 @@ void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena
 
     auto file_alloc = nk_arena_getAllocator(file_arena);
 
-    parser->ir = nkir_createProgram(file_alloc, makeBasicType(file_alloc, Uint64));
+    parser->ir = nkir_createProgram(file_alloc, makeBasicType(file_alloc, Int64));
     parser->entry_point.id = INVALID_ID;
     parser->error_msg = {};
     parser->ok = true;

@@ -105,7 +105,7 @@ typedef struct {
 
 typedef struct NkIrProg_T *NkIrProg;
 
-NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t usize_t);
+NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t size_type);
 void nkir_freeProgram(NkIrProg ir);
 
 // Code Generation
