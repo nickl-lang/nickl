@@ -62,13 +62,17 @@ struct InterpContext {
 
 thread_local InterpContext ctx;
 
-template <class T>
-T &getRef(NkBcArg const &arg) {
-    auto ptr = ctx.base_ar[arg.ref.kind];
-    if (arg.ref.is_indirect) {
+void *getRefAddr(NkBcRef const &ref) {
+    auto ptr = ctx.base_ar[ref.kind] + ref.offset;
+    if (ref.is_indirect) {
         ptr = *(uint8_t **)ptr;
     }
-    return *(T *)(ptr + arg.ref.offset);
+    return ptr + ref.post_offset;
+}
+
+template <class T>
+T &deref(NkBcArg const &arg) {
+    return *(T *)getRefAddr(arg.ref);
 }
 
 void jumpTo(NkBcInstr const *pinstr) {
@@ -77,7 +81,7 @@ void jumpTo(NkBcInstr const *pinstr) {
 }
 
 void jumpTo(NkBcArg const &arg) {
-    jumpTo(&getRef<NkBcInstr>(arg));
+    jumpTo(&deref<NkBcInstr>(arg));
 }
 
 void jumpCall(NkBcProc proc, void *args, void *ret) {
@@ -134,56 +138,56 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_jmpz_8: {
-        if (!getRef<uint8_t>(instr.arg[1])) {
+        if (!deref<uint8_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_16: {
-        if (!getRef<uint16_t>(instr.arg[1])) {
+        if (!deref<uint16_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_32: {
-        if (!getRef<uint32_t>(instr.arg[1])) {
+        if (!deref<uint32_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_64: {
-        if (!getRef<uint64_t>(instr.arg[1])) {
+        if (!deref<uint64_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_8: {
-        if (getRef<uint8_t>(instr.arg[1])) {
+        if (deref<uint8_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_16: {
-        if (getRef<uint16_t>(instr.arg[1])) {
+        if (deref<uint16_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_32: {
-        if (getRef<uint32_t>(instr.arg[1])) {
+        if (deref<uint32_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_64: {
-        if (getRef<uint64_t>(instr.arg[1])) {
+        if (deref<uint64_t>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
@@ -195,53 +199,80 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_call_jmp: {
-        auto ret = &getRef<uint8_t>(instr.arg[0]);
-        auto proc = getRef<NkBcProc>(instr.arg[1]);
-        auto args = &getRef<uint8_t>(instr.arg[2]);
-
-        jumpCall(proc, ret, args);
+        NK_LOG_WRN("TODO nkop_call_jmp execution not implemented");
         break;
     }
 
     case nkop_call_ext: {
-        auto ret = &getRef<uint8_t>(instr.arg[0]);
-        auto proc = getRef<void *>(instr.arg[1]);
+        auto proc = deref<void *>(instr.arg[1]);
 
-        // void **argv = nk_arena_alloc(&ctx.stack, instr.arg[2].refs.size * sizeof());
+        auto const frame = nk_arena_grab(&ctx.stack);
+        defer {
+            nk_arena_popFrame(&ctx.stack, frame);
+        };
 
-        // nk_native_invoke(proc, instr.arg[1].ref.type->);
+        size_t argc = instr.arg[2].refs.size;
+        auto argv = (void **)nk_arena_alloc(&ctx.stack, argc * sizeof(void *));
+        for (size_t i = 0; i < argc; i++) {
+            argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
+        }
+        void *retv = getRefAddr(instr.arg[0].ref);
+
+        // TODO Hardcoded proc_info
+        NkIrType i64{
+            .as{.basic{Int64}},
+            .size = 8,
+            .align = 8,
+            .kind = NkType_Basic,
+        };
+        nktype_t i64_ptr = &i64;
+        NkIrType i32{
+            .as{.basic{Int32}},
+            .size = 4,
+            .align = 4,
+            .kind = NkType_Basic,
+        };
+        nktype_t i32_ptr = &i32;
+        NkIrProcInfo proc_info{
+            .args_t{&i64_ptr, 1},
+            .ret_t{&i32_ptr, 1},
+            .call_conv = NkCallConv_Cdecl,
+            .flags = 0,
+        };
+
+        nk_native_invoke(proc, &proc_info, argv, argc, &retv);
         break;
     }
 
     case nkop_mov_8: {
-        getRef<uint8_t>(instr.arg[0]) = getRef<uint8_t>(instr.arg[1]);
+        deref<uint8_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_16: {
-        getRef<uint16_t>(instr.arg[0]) = getRef<uint16_t>(instr.arg[1]);
+        deref<uint16_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_32: {
-        getRef<uint32_t>(instr.arg[0]) = getRef<uint32_t>(instr.arg[1]);
+        deref<uint32_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_64: {
-        getRef<uint64_t>(instr.arg[0]) = getRef<uint64_t>(instr.arg[1]);
+        deref<uint64_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
         break;
     }
 
     case nkop_lea: {
-        getRef<void *>(instr.arg[0]) = &getRef<uint8_t>(instr.arg[1]);
+        deref<void *>(instr.arg[0]) = &deref<uint8_t>(instr.arg[1]);
         break;
     }
 
-#define NUM_UN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                        \
-        getRef<CTYPE>(instr.arg[0]) = OP getRef<CTYPE>(instr.arg[1]); \
-        break;                                                        \
+#define NUM_UN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)              \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                      \
+        deref<CTYPE>(instr.arg[0]) = OP deref<CTYPE>(instr.arg[1]); \
+        break;                                                      \
     }
 
 #define NUM_UN_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
@@ -251,16 +282,16 @@ void interp(NkBcInstr const &instr) {
 #undef NUM_UN_OP
 #undef NUM_UN_OP_IT
 
-#define NUM_BIN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                           \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                    \
-        getRef<CTYPE>(instr.arg[0]) = getRef<CTYPE>(instr.arg[1]) OP getRef<CTYPE>(instr.arg[2]); \
-        break;                                                                                    \
+#define NUM_BIN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                        \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                 \
+        deref<CTYPE>(instr.arg[0]) = deref<CTYPE>(instr.arg[1]) OP deref<CTYPE>(instr.arg[2]); \
+        break;                                                                                 \
     }
 
-#define NUM_BIN_BOOL_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                        \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                      \
-        getRef<uint8_t>(instr.arg[0]) = getRef<CTYPE>(instr.arg[1]) OP getRef<CTYPE>(instr.arg[2]); \
-        break;                                                                                      \
+#define NUM_BIN_BOOL_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                     \
+    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                   \
+        deref<uint8_t>(instr.arg[0]) = deref<CTYPE>(instr.arg[1]) OP deref<CTYPE>(instr.arg[2]); \
+        break;                                                                                   \
     }
 
 #define NUM_BIN_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_BIN_OP_IT, NAME, OP)
@@ -301,8 +332,6 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nkir_interp_invoke(NkBcProc proc, void *args, void *ret) {
-    puts("Hello, World!");
-
     EASY_FUNCTION(::profiler::colors::Red200);
 
     NK_LOG_TRC("%s", __func__);
@@ -331,7 +360,7 @@ void nkir_interp_invoke(NkBcProc proc, void *args, void *ret) {
                 auto const &arg = pinstr->arg[0];
                 if (arg.ref.kind != NkBcRef_None) {
                     sb = nksb_create();
-                    nkirv_inspect(&getRef<uint8_t>(arg), arg.ref.type, sb);
+                    nkirv_inspect(&deref<uint8_t>(arg), arg.ref.type, sb);
                     nksb_printf(sb, ":");
                     nkirt_inspect(arg.ref.type, sb);
                     str = nksb_concat(sb).data;

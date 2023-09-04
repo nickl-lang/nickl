@@ -34,6 +34,7 @@ enum NkBcRefKind { // must preserve NkIrRefKind order
 
 struct NkBcRef {
     size_t offset;
+    size_t post_offset;
     nktype_t type;
     NkBcRefKind kind;
     bool is_indirect;

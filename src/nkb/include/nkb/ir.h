@@ -40,6 +40,7 @@ typedef enum {
 typedef struct {
     size_t index;
     size_t offset;
+    size_t post_offset;
     nktype_t type;
     NkIrRefKind kind;
     bool is_indirect;

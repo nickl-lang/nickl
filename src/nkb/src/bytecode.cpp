@@ -47,11 +47,14 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
             assert(!"unreachable");
             break;
         }
+        if (ref.kind != NkBcRef_Rodata) {
+            nksb_printf(sb, "%zx", ref.offset);
+        }
         if (ref.is_indirect) {
             nksb_printf(sb, "]");
         }
-        if (ref.kind != NkBcRef_Rodata) {
-            nksb_printf(sb, "%zx", ref.offset);
+        if (ref.post_offset) {
+            nksb_printf(sb, "+%zx", ref.post_offset);
         }
         if (ref.type) {
             nksb_printf(sb, ":");
@@ -159,10 +162,13 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
     std::function<void(size_t, size_t, NkBcRef &, NkIrRef const &)> translate_ref =
         [&](size_t ii, size_t ai, NkBcRef &ref, NkIrRef const &ir_ref) {
-            ref.offset += ir_ref.offset;
-            ref.type = ir_ref.type;
-            ref.kind = (NkBcRefKind)ir_ref.kind;
-            ref.is_indirect = ir_ref.is_indirect;
+            ref = {
+                .offset = ir_ref.offset,
+                .post_offset = ir_ref.post_offset,
+                .type = ir_ref.type,
+                .kind = (NkBcRefKind)ir_ref.kind,
+                .is_indirect = ir_ref.is_indirect,
+            };
 
             switch (ir_ref.kind) {
             case NkIrRef_Frame:

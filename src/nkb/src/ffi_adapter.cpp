@@ -30,9 +30,6 @@ struct Context {
 
 Context ctx;
 
-ffi_type *getNativeHandle(NkTypeArray types, bool promote = false) {
-}
-
 // TODO Integer promotion works only on little-endian
 ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
     EASY_FUNCTION(::profiler::colors::Orange200);
@@ -53,20 +50,6 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
         ffi_t = it->second;
     } else {
         switch (type->kind) {
-        // case NkType_Array: {
-        //     auto native_elem_h = getNativeHandle(type->as.arr.elem_type);
-        //     ffi_type **elements =
-        //         (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
-        //     std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
-        //     elements[type->as.arr.elem_count] = nullptr;
-        //     ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
-        //         .size = type->size,
-        //         .alignment = type->align,
-        //         .type = FFI_TYPE_STRUCT,
-        //         .elements = elements,
-        //     };
-        //     break;
-        // }
         case NkType_Basic:
             switch (type->as.basic.value_type) {
             case Int8:
@@ -104,6 +87,23 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
                 break;
             }
             break;
+        case NkType_Aggregate:
+            NK_LOG_WRN("TODO NkType_Aggregate translation not implemented");
+            break;
+        // case NkType_Array: {
+        //     auto native_elem_h = getNativeHandle(type->as.arr.elem_type);
+        //     ffi_type **elements =
+        //         (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
+        //     std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
+        //     elements[type->as.arr.elem_count] = nullptr;
+        //     ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
+        //         .size = type->size,
+        //         .alignment = type->align,
+        //         .type = FFI_TYPE_STRUCT,
+        //         .elements = elements,
+        //     };
+        //     break;
+        // }
         // case NkType_Tuple: {
         //     if (!type->as.tuple.elems.size) {
         //         return &ffi_type_void;
@@ -144,19 +144,34 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
     return ffi_t;
 }
 
-void ffiPrepareCif(ffi_cif *cif, size_t actual_argc, bool is_variadic, ffi_type *rtype, ffi_type *atypes, size_t argc) {
+ffi_type **getNativeHandle(NkTypeArray types, bool promote = false) {
+    ffi_type **elements = (ffi_type **)nk_arena_alloc(&ctx.typearena, (types.size + 1) * sizeof(void *));
+    for (size_t i = 0; i < types.size; i++) {
+        elements[i] = getNativeHandle(types.data[i], promote);
+    }
+    elements[types.size] = nullptr;
+    return elements;
+}
+
+void ffiPrepareCif(
+    ffi_cif *cif,
+    size_t actual_argc,
+    bool is_variadic,
+    ffi_type *rtype,
+    ffi_type **atypes,
+    size_t argc) {
     ffi_status status;
     if (is_variadic) {
-        status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, actual_argc, argc, rtype, atypes->elements);
+        status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, actual_argc, argc, rtype, atypes);
     } else {
-        status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
+        status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes);
     }
     assert(status == FFI_OK && "ffi_prep_cif failed");
 }
 
 } // namespace
 
-void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, size_t argc, void *ret) {
+void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, size_t argc, void **ret) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
@@ -170,6 +185,6 @@ void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, si
 
     {
         EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
-        ffi_call(&cif, FFI_FN(proc), ret, argv);
+        ffi_call(&cif, FFI_FN(proc), *ret, argv);
     }
 }

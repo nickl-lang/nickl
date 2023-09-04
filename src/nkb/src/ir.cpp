@@ -144,11 +144,11 @@ void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
 
     assert(ref.kind == NkIrRef_Rodata && "rodata ref expected");
     auto const &cnst = ir->consts[ref.index];
-    auto data = (uint8_t *)cnst.data;
+    auto data = (uint8_t *)cnst.data + ref.offset;
     if (ref.is_indirect) {
         data = *(uint8_t **)data;
     }
-    data += ref.offset;
+    data += ref.post_offset;
     return data;
 }
 
@@ -247,6 +247,7 @@ NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
     return {
         .index = var.id,
         .offset = 0,
+        .post_offset = 0,
         .type = proc.locals[var.id],
         .kind = NkIrRef_Frame,
         .is_indirect = false,
@@ -264,6 +265,7 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
     return {
         .index = index,
         .offset = 0,
+        .post_offset = 0,
         .type = args_t.data[index],
         .kind = NkIrRef_Arg,
         .is_indirect = false,
@@ -281,6 +283,7 @@ NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
     return {
         .index = 0,
         .offset = 0,
+        .post_offset = 0,
         .type = ret_t.data[0],
         .kind = NkIrRef_Ret,
         .is_indirect = false,
@@ -293,6 +296,7 @@ NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var) {
     return {
         .index = var.id,
         .offset = 0,
+        .post_offset = 0,
         .type = ir->globals[var.id],
         .kind = NkIrRef_Data,
         .is_indirect = false,
@@ -305,6 +309,7 @@ NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst) {
     return {
         .index = cnst.id,
         .offset = 0,
+        .post_offset = 0,
         .type = ir->consts[cnst.id].type,
         .kind = NkIrRef_Rodata,
         .is_indirect = false,
@@ -317,6 +322,7 @@ NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc) {
     return {
         .index = proc.id,
         .offset = 0,
+        .post_offset = 0,
         .type = ir->size_type,
         .kind = NkIrRef_Proc,
         .is_indirect = false,
@@ -329,6 +335,7 @@ NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data) {
     return {
         .index = data.id,
         .offset = 0,
+        .post_offset = 0,
         .type = ir->extern_data[data.id].type,
         .kind = NkIrRef_ExternData,
         .is_indirect = false,
@@ -341,6 +348,7 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
     return {
         .index = proc.id,
         .offset = 0,
+        .post_offset = 0,
         .type = ir->size_type,
         .kind = NkIrRef_ExternProc,
         .is_indirect = false,
@@ -358,6 +366,7 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref) {
     return {
         .index = id,
         .offset = 0,
+        .post_offset = 0,
         .type = ir->size_type,
         .kind = NkIrRef_Reloc,
         .is_indirect = false,
@@ -623,11 +632,14 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
         assert(!"unreachable");
         break;
     }
+    if (ref.offset) {
+        nksb_printf(sb, "+%" PRIu64 "", ref.offset);
+    }
     if (ref.is_indirect) {
         nksb_printf(sb, "]");
     }
-    if (ref.offset) {
-        nksb_printf(sb, "+%" PRIu64 "", ref.offset);
+    if (ref.post_offset) {
+        nksb_printf(sb, "+%" PRIu64 "", ref.post_offset);
     }
     if (ref.kind != NkIrRef_Reloc) {
         nksb_printf(sb, ":");
