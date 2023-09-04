@@ -416,6 +416,21 @@ private:
 
             auto str_t = makeArrayType(m_file_alloc, makeBasicType(m_file_alloc, Int8), len + 1);
             return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, str_t)));
+        } else if (check(t_escaped_string)) {
+            auto const data = m_cur_token->text.data + 1;
+            auto const len = m_cur_token->text.size - 2;
+
+            getToken();
+
+            nkstr const text{data, len};
+
+            NkStringBuilder_T sb{};
+            nksb_init_alloc(&sb, m_file_alloc);
+            nksb_str_unescape(&sb, text);
+            auto str = nksb_concat(&sb).data;
+
+            auto str_t = makeArrayType(m_file_alloc, makeBasicType(m_file_alloc, Int8), len + 1);
+            return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str, str_t)));
         } else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
 

@@ -134,8 +134,9 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
         nkir_freeRunCtx(run_ctx);
     };
 
-    // TODO Hardcoded extern symbol
+    // TODO Hardcoded extern symbols
     nkir_defineExternSym(run_ctx, nk_mkstr("puts"), (void *)puts);
+    nkir_defineExternSym(run_ctx, nk_mkstr("printf"), (void *)printf);
 
     struct MainArgs {
         int argc = 1;

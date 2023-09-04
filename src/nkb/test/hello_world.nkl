@@ -1,11 +1,11 @@
-extern proc puts(: i64): i32
+extern proc printf(: i64): i32
 
 proc main(argc: i32, argv: i64): i32 {
 
 var: i32
 
 @start
-    call puts, ("Hello, World!") -> var
+    call printf, ("Hello, World!\n") -> var
     mov  0 -> ret
     ret
 
