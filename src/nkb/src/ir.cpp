@@ -469,6 +469,8 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder sb) {
     }
 
     if (ir->consts.size()) {
+        bool printed = false;
+
         for (size_t i = 0; i < ir->consts.size(); i++) {
             auto const &cnst = ir->consts[i];
             if (cnst.type->kind == NkType_Aggregate) {
@@ -476,9 +478,13 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder sb) {
                 nkirt_inspect(cnst.type, sb);
                 nksb_printf(sb, " = ");
                 nkirv_inspect(cnst.data, cnst.type, sb);
+
+                printed = true;
             }
         }
-        nksb_printf(sb, "\n");
+        if (printed) {
+            nksb_printf(sb, "\n");
+        }
     }
 }
 

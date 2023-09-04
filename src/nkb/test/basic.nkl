@@ -1,0 +1,11 @@
+proc main(): i32 {
+
+@start
+    mov 42 -> ret
+    ret
+
+}
+
+/* @retcode
+42
+@endretcode */

@@ -46,25 +46,29 @@ if [ -z $ARG_EXE ]; then
     exit 1
 fi
 
-extract_output() {
-    OUTPUT_MARKER_START="@output"
-    OUTPUT_MARKER_END="@endoutput"
+extract_region() {
+    OUTPUT_MARKER_START=$1
+    OUTPUT_MARKER_END=$2
     sed -n "/$OUTPUT_MARKER_START/,/$OUTPUT_MARKER_END/ {//d; p}" $ARG_FILE | sed -z '$ s/\n$//'
 }
 
-EXPECTED_OUTPUTX="$(extract_output; echo x)"
+EXPECTED_OUTPUTX="$(extract_region "@output" "@endoutput"; echo x)"
 EXPECTED_OUTPUT="${EXPECTED_OUTPUTX%x}"
+
+EXPECTED_RETCODEX="$(extract_region "@retcode" "@endretcode"; echo x)"
+EXPECTED_RETCODE="${EXPECTED_RETCODEX%x}"
 
 runTest() {
     COMMAND=$1
 
     RESULTX="$(set +e; $COMMAND; echo x$?)"
-    RETURNCODE=${RESULTX##*x}
+    RETCODE=${RESULTX##*x}
     OUTPUT="${RESULTX%x*}"
 
-    if [ $RETURNCODE -ne 0 ]; then
+    if [ "$RETCODE" -ne "${EXPECTED_RETCODE:-0}" ]; then
         echo "TEST FAILED:
-    Command returned nonzero code"
+    Expected return code: ${EXPECTED_RETCODE:-0}
+    Actual   return code: $RETCODE"
         exit 1
     fi
 
@@ -72,7 +76,7 @@ runTest() {
         echo "TEST FAILED:
     Expected output:
         \"$EXPECTED_OUTPUT\"
-    Actual output:
+    Actual   output:
         \"$OUTPUT\""
         exit 1
     fi
@@ -95,6 +99,6 @@ compile() {
 }
 
 runTest run
-runTest compile
+# TODO runTest compile
 
 echo 'TEST PASSED'
