@@ -29,7 +29,7 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
             nksb_printf(sb, "frame+");
             break;
         case NkBcRef_Arg:
-            nksb_printf(sb, "ref+");
+            nksb_printf(sb, "arg+");
             break;
         case NkBcRef_Ret:
             nksb_printf(sb, "ret+");
@@ -96,7 +96,7 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
             }
         }
 
-        if (instr.arg[0].kind != NkBcArg_None) {
+        if (instr.arg[0].ref.kind != NkBcRef_None) {
             nksb_printf(sb, " -> ");
             inspect_arg(instr.arg[0]);
         }
@@ -175,8 +175,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 ref.offset += frame_layout.info_ar.data[ir_ref.index].offset;
                 break;
             case NkIrRef_Arg:
-                ref.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_Arg translation not implemented");
+                ref.offset += ir_ref.index * sizeof(void *); // TODO Use sizeof(void*) or ir.size_type->size ?
                 break;
             case NkIrRef_Ret:
                 break;
@@ -365,7 +364,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     nksb_init_alloc(&sb, tmp_alloc);
     inspect(bc_proc.instrs, &sb);
     auto ir_str = nksb_concat(&sb);
-    NK_LOG_INF("Bytecode:\n\n%.*s", (int)ir_str.size, ir_str.data);
+    NK_LOG_INF("proc %.*s\n%.*s", (int)ir_proc.name.size, ir_proc.name.data, (int)ir_str.size, ir_str.data);
 #endif // ENABLE_LOGGING
 }
 
@@ -410,7 +409,7 @@ void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data) {
     ctx->extern_syms.insert(s2nkid(name), data);
 }
 
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, void *args, void *ret) {
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, void **args, void **ret) {
     NK_LOG_TRC("%s", __func__);
 
     translateProc(ctx, proc_id);

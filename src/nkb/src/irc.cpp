@@ -138,15 +138,13 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     nkir_defineExternSym(run_ctx, nk_mkstr("puts"), (void *)puts);
     nkir_defineExternSym(run_ctx, nk_mkstr("printf"), (void *)printf);
 
-    struct MainArgs {
-        int argc = 1;
-        char const *argv[1] = {""};
-    };
+    int argc = 1;
+    char const *argv[] = {""};
+    int ret_code = -1;
 
-    MainArgs args;
-    int64_t ret_code = -1;
-
-    nkir_invoke(run_ctx, c->entry_point, &args, &ret_code);
+    void *args[] = {&argc, &argv};
+    void *rets[] = {&ret_code};
+    nkir_invoke(run_ctx, c->entry_point, args, rets);
 
     return ret_code;
 }

@@ -63,7 +63,7 @@ struct InterpContext {
 thread_local InterpContext ctx;
 
 void *getRefAddr(NkBcRef const &ref) {
-    auto ptr = ctx.base_ar[ref.kind] + ref.offset;
+    uint8_t *ptr = ctx.base_ar[ref.kind] + ref.offset;
     if (ref.is_indirect) {
         ptr = *(uint8_t **)ptr;
     }
@@ -84,7 +84,7 @@ void jumpTo(NkBcArg const &arg) {
     jumpTo(&deref<NkBcInstr>(arg));
 }
 
-void jumpCall(NkBcProc proc, void *args, void *ret) {
+void jumpCall(NkBcProc proc, void **args, void **ret) {
     ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -199,7 +199,18 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_call_jmp: {
-        NK_LOG_WRN("TODO nkop_call_jmp execution not implemented");
+        auto proc = deref<NkBcProc>(instr.arg[1]);
+
+        // TODO Leaking memory! Need to somehow free call(jmp) args
+        size_t argc = instr.arg[2].refs.size;
+        auto argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
+        auto retv = argv + argc;
+        for (size_t i = 0; i < argc; i++) {
+            argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
+        }
+        retv[0] = getRefAddr(instr.arg[0].ref);
+
+        jumpCall(proc, argv, retv);
         break;
     }
 
@@ -212,11 +223,12 @@ void interp(NkBcInstr const &instr) {
         };
 
         size_t argc = instr.arg[2].refs.size;
-        auto argv = (void **)nk_arena_alloc(&ctx.stack, argc * sizeof(void *));
+        auto argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
+        auto retv = argv + argc;
         for (size_t i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
         }
-        void *retv = getRefAddr(instr.arg[0].ref);
+        retv[0] = getRefAddr(instr.arg[0].ref);
 
         // TODO Hardcoded proc_info
         NkIrType i64{
@@ -225,7 +237,7 @@ void interp(NkBcInstr const &instr) {
             .align = 8,
             .kind = NkType_Basic,
         };
-        nktype_t i64_ptr = &i64;
+        nktype_t i64_ptr[] = {&i64, &i64};
         NkIrType i32{
             .as{.basic{Int32}},
             .size = 4,
@@ -234,13 +246,13 @@ void interp(NkBcInstr const &instr) {
         };
         nktype_t i32_ptr = &i32;
         NkIrProcInfo proc_info{
-            .args_t{&i64_ptr, 1},
+            .args_t{i64_ptr, 2},
             .ret_t{&i32_ptr, 1},
             .call_conv = NkCallConv_Cdecl,
-            .flags = 0,
+            .flags = NkProcVariadic,
         };
 
-        nk_native_invoke(proc, &proc_info, argv, argc, &retv);
+        nk_native_invoke(proc, &proc_info, argv, argc, retv);
         break;
     }
 
@@ -331,7 +343,7 @@ void interp(NkBcInstr const &instr) {
 
 } // namespace
 
-void nkir_interp_invoke(NkBcProc proc, void *args, void *ret) {
+void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
     EASY_FUNCTION(::profiler::colors::Red200);
 
     NK_LOG_TRC("%s", __func__);
@@ -353,22 +365,25 @@ void nkir_interp_invoke(NkBcProc proc, void *args, void *ret) {
         assert(pinstr->code < NkBcOpcode_Count && "unknown instruction");
         NK_LOG_DBG("instr: %zu %s", (pinstr - (NkBcInstr *)ctx.base.instr), nkbcOpcodeName(pinstr->code));
         interp(*pinstr);
-        NK_LOG_DBG(
-            "res=%s", (char const *)[&]() {
-                NkStringBuilder sb{};
-                char const *str{};
-                auto const &arg = pinstr->arg[0];
-                if (arg.ref.kind != NkBcRef_None) {
-                    sb = nksb_create();
-                    nkirv_inspect(&deref<uint8_t>(arg), arg.ref.type, sb);
-                    nksb_printf(sb, ":");
-                    nkirt_inspect(arg.ref.type, sb);
-                    str = nksb_concat(sb).data;
-                }
-                return makeDeferrerWithData(str, [sb]() {
-                    nksb_free(sb);
-                });
-            }());
+#ifdef ENABLE_LOGGING
+        uint8_t res_str[256];
+        NkArena log_arena{res_str, 0, sizeof(res_str)};
+        NkStringBuilder_T sb{
+            (char *)nk_arena_alloc(&log_arena, sizeof(res_str)),
+            0,
+            sizeof(res_str),
+            nk_arena_getAllocator(&log_arena),
+        };
+        auto const &arg = pinstr->arg[0];
+        if (arg.kind == NkBcArg_Ref && arg.ref.kind != NkBcRef_None &&
+            pinstr->code != nkop_call_jmp // call(jmp) substitutes base pointers, invalidatring the dst ref
+        ) {
+            nkirv_inspect(getRefAddr(arg.ref), arg.ref.type, &sb);
+            nksb_printf(&sb, ":");
+            nkirt_inspect(arg.ref.type, &sb);
+            NK_LOG_DBG("res=%s", res_str);
+        }
+#endif // ENABLE_LOGGING
     }
 
     NK_LOG_TRC("exiting...");

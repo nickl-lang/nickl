@@ -1,0 +1,21 @@
+extern proc printf(: i64, ...): i32
+
+proc plus(a: i64, b: i64): i64 {
+@start
+    add a, b -> ret
+    ret
+}
+
+proc main(argc: i32, argv: i64): i32 {
+@start
+    res: i64
+    call plus, (4, 5) -> res
+    call printf, ("%zi\n", res)
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+9
+
+@endoutput */

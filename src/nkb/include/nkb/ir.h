@@ -178,7 +178,7 @@ void nkir_freeRunCtx(NkIrRunCtx ctx);
 
 void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data);
 
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void *args, void *ret);
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 
 // Inspection
 

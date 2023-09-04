@@ -36,6 +36,13 @@ void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
         nkirt_inspect(proc_info.args_t.data[i], sb);
     }
 
+    if (proc_info.flags & NkProcVariadic) {
+        if (proc_info.args_t.size) {
+            nksb_printf(sb, ", ");
+        }
+        nksb_printf(sb, "...");
+    }
+
     nksb_printf(sb, ")");
 
     for (size_t i = 0; i < proc_info.ret_t.size; i++) {
@@ -268,7 +275,7 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
         .post_offset = 0,
         .type = args_t.data[index],
         .kind = NkIrRef_Arg,
-        .is_indirect = false,
+        .is_indirect = true,
     };
 }
 
@@ -286,7 +293,7 @@ NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
         .post_offset = 0,
         .type = ret_t.data[0],
         .kind = NkIrRef_Ret,
-        .is_indirect = false,
+        .is_indirect = true,
     };
 }
 
@@ -523,6 +530,8 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
         nksb_printf(sb, "\n");
     }
 
+    size_t instr_index = 0;
+
     for (auto block_id : proc.blocks) {
         auto const &block = ir->blocks[block_id];
 
@@ -531,7 +540,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
         for (auto instr_id : block.instrs) {
             auto const &instr = ir->instrs[instr_id];
 
-            nksb_printf(sb, "%5zu%8s", instr_id, nkirOpcodeName(instr.code));
+            nksb_printf(sb, "%5zu%8s", instr_index++, nkirOpcodeName(instr.code));
 
             for (size_t i = 1; i < 3; i++) {
                 auto const &arg = instr.arg[i];

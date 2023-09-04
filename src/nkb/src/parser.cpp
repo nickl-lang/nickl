@@ -95,6 +95,7 @@ struct GeneratorState {
     enum EDeclKind {
         Decl_None,
 
+        Decl_Arg,
         Decl_Proc,
         Decl_LocalVar,
         Decl_GlobalVar,
@@ -104,6 +105,7 @@ struct GeneratorState {
 
     struct Decl {
         union {
+            size_t arg_index;
             ProcRecord proc;
             NkIrLocalVar local;
             NkIrExternProc extern_proc;
@@ -139,7 +141,7 @@ struct GeneratorState {
                         .args_t{sig.args_t.data(), sig.args_t.size()},
                         .ret_t{sig.ret_t.data(), sig.ret_t.size()},
                         .call_conv = NkCallConv_Nk,
-                        .flags = 0,
+                        .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                     });
 
                 auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
@@ -152,6 +154,14 @@ struct GeneratorState {
                 };
                 m_decls.insert(s2nkid(sig.name), decl);
                 m_cur_proc = &decl->as.proc;
+
+                for (size_t i = 0; i < sig.args_t.size(); i++) {
+                    auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                        {.arg_index = i},
+                        Decl_Arg,
+                    };
+                    m_cur_proc->locals.insert(sig.arg_names[i], decl);
+                }
 
                 EXPECT(t_brace_l);
                 while (!check(t_brace_r) && !check(t_eof)) {
@@ -186,8 +196,8 @@ struct GeneratorState {
                              {
                                  .args_t{sig.args_t.data(), sig.args_t.size()},
                                  .ret_t{sig.ret_t.data(), sig.ret_t.size()},
-                                 .call_conv = NkCallConv_Nk,
-                                 .flags = 0,
+                                 .call_conv = NkCallConv_Cdecl,
+                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                              })},
                         Decl_ExternProc,
                     };
@@ -229,19 +239,27 @@ private:
         NkArray<nkid> arg_names;
         NkArray<nktype_t> args_t;
         NkArray<nktype_t> ret_t;
+        bool is_variadic;
     };
 
     ProcSignatureParseResult parseProcSignature(bool expect_names = true) {
         EXPECT(t_proc);
         accept(t_proc);
         DEFINE(token, parseId());
-        auto const name = token->text;
-        auto args_t = NkArray<nktype_t>::create(m_file_alloc);
-        auto ret_t = NkArray<nktype_t>::create(m_file_alloc);
-        auto arg_names = NkArray<nkid>::create(m_parse_alloc);
+        ProcSignatureParseResult res{
+            .name = token->text,
+            .arg_names = NkArray<nkid>::create(m_parse_alloc),
+            .args_t = NkArray<nktype_t>::create(m_file_alloc),
+            .ret_t = NkArray<nktype_t>::create(m_file_alloc),
+            .is_variadic = false,
+        };
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
+                break;
+            }
+            if (accept(t_period_3x)) {
+                res.is_variadic = true;
                 break;
             }
             nkid name = nkid_empty;
@@ -250,17 +268,12 @@ private:
                 name = s2nkid(token->text);
             }
             DEFINE(type, parseType());
-            args_t.emplace(type);
-            arg_names.emplace(name);
+            res.args_t.emplace(type);
+            res.arg_names.emplace(name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        APPEND(ret_t, parseType());
-        return {
-            .name = name,
-            .arg_names = arg_names,
-            .args_t = args_t,
-            .ret_t = ret_t,
-        };
+        APPEND(res.ret_t, parseType());
+        return res;
     }
 
     nktype_t parseType() {
@@ -395,6 +408,8 @@ private:
                 return error("undeclated identifier `%.*s`", (int)token->text.size, token->text.data), NkIrRef{};
             }
             switch (decl->kind) {
+            case Decl_Arg:
+                return nkir_makeArgRef(m_ir, decl->as.arg_index);
             case Decl_Proc:
                 return nkir_makeProcRef(m_ir, decl->as.proc.proc);
             case Decl_LocalVar:

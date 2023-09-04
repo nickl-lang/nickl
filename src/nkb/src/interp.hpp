@@ -3,6 +3,6 @@
 
 #include "bytecode.hpp"
 
-void nkir_interp_invoke(NkBcProc proc, void *args, void *ret);
+void nkir_interp_invoke(NkBcProc proc, void **args, void **ret);
 
 #endif // HEADER_GUARD_NKB_INTERP
