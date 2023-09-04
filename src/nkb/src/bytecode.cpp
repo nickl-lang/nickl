@@ -298,6 +298,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             uint16_t code = s_ir2opcode[ir_instr.code];
 
             auto const &arg0 = ir_instr.arg[0];
+            auto const &arg1 = ir_instr.arg[1];
 
             switch (ir_instr.code) {
             case nkir_call: {
@@ -313,10 +314,14 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
 #define SIZ_OP(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
-                if (arg0.ref.type->size <= 8 && isZeroOrPowerOf2(arg0.ref.type->size)) {
-                    code += 1 + log2u64(arg0.ref.type->size);
+                {
+                    assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
+                    auto const ref_type = arg0.kind == NkIrArg_Ref ? arg0.ref.type : arg1.ref.type;
+                    if (ref_type->size <= 8 && isZeroOrPowerOf2(ref_type->size)) {
+                        code += 1 + log2u64(ref_type->size);
+                    }
+                    break;
                 }
-                break;
 
 #define NUM_OP(NAME) case CAT(nkir_, NAME):
 #define INT_OP(NAME) case CAT(nkir_, NAME):

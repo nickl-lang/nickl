@@ -144,7 +144,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
     return ffi_t;
 }
 
-ffi_type **getNativeHandle(NkTypeArray types, bool promote = false) {
+ffi_type **getNativeHandleArray(NkTypeArray types, bool promote = false) {
     ffi_type **elements = (ffi_type **)nk_arena_alloc(&ctx.typearena, (types.size + 1) * sizeof(void *));
     for (size_t i = 0; i < types.size; i++) {
         elements[i] = getNativeHandle(types.data[i], promote);
@@ -178,7 +178,14 @@ void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, si
     bool const is_variadic = proc_info->flags & NkProcVariadic;
 
     auto const rtype = getNativeHandle(proc_info->ret_t.data[0]);
-    auto const atypes = getNativeHandle(proc_info->args_t, is_variadic);
+
+    // TODO Temporary hack to free memory taken up by the atypes
+    auto const frame = nk_arena_grab(&ctx.typearena);
+    defer {
+        nk_arena_popFrame(&ctx.typearena, frame);
+    };
+
+    auto const atypes = getNativeHandleArray(proc_info->args_t, is_variadic);
 
     ffi_cif cif;
     ffiPrepareCif(&cif, proc_info->args_t.size, is_variadic, rtype, atypes, argc);

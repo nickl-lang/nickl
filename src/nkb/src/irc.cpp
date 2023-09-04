@@ -143,7 +143,7 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     };
 
     MainArgs args;
-    int ret_code = -1;
+    int64_t ret_code = -1;
 
     nkir_invoke(run_ctx, c->entry_point, &args, &ret_code);
 

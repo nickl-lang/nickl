@@ -306,6 +306,21 @@ private:
             return nkir_make_ret();
         }
 
+        else if (accept(t_jmp)) {
+            DEFINE(label, parseLabelRef());
+            return nkir_make_jmp(label);
+        } else if (accept(t_jmpz)) {
+            DEFINE(cond, parseRef());
+            EXPECT(t_comma);
+            DEFINE(label, parseLabelRef());
+            return nkir_make_jmpz(cond, label);
+        } else if (accept(t_jmpnz)) {
+            DEFINE(cond, parseRef());
+            EXPECT(t_comma);
+            DEFINE(label, parseLabelRef());
+            return nkir_make_jmpnz(cond, label);
+        }
+
         else if (accept(t_call)) {
             NkIrRef dst{};
             DEFINE(proc, parseRef());
@@ -425,6 +440,19 @@ private:
         } else {
             return error("TODO ref not implemented"), NkIrRef{};
         }
+    }
+
+    NkIrLabel parseLabelRef() {
+        if (!check(t_label)) {
+            return error("label expected"), NkIrLabel{};
+        }
+        // TODO Forward declare labels
+        auto found = m_cur_proc->labels.find(s2nkid(m_cur_token->text));
+        if (!found) {
+            return error("undefined label `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrLabel{};
+        }
+        getToken();
+        return *found;
     }
 
     Decl *resolve(nkid name) {
