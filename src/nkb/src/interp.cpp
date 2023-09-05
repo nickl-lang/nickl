@@ -362,25 +362,34 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
+
         assert(pinstr->code < NkBcOpcode_Count && "unknown instruction");
         NK_LOG_DBG("instr: %zu %s", (pinstr - (NkBcInstr *)ctx.base.instr), nkbcOpcodeName(pinstr->code));
-        interp(*pinstr);
+
 #ifdef ENABLE_LOGGING
-        uint8_t res_str[256];
-        NkArena log_arena{res_str, 0, sizeof(res_str)};
-        NkStringBuilder_T sb{
-            (char *)nk_arena_alloc(&log_arena, sizeof(res_str)),
-            0,
-            sizeof(res_str),
-            nk_arena_getAllocator(&log_arena),
-        };
-        auto const &arg = pinstr->arg[0];
-        if (arg.kind == NkBcArg_Ref && arg.ref.kind != NkBcRef_None &&
-            pinstr->code != nkop_call_jmp // call(jmp) substitutes base pointers, invalidatring the dst ref
-        ) {
-            nkirv_inspect(getRefAddr(arg.ref), arg.ref.type, &sb);
+        void *dst_ref_data = nullptr;
+        auto const &dst = pinstr->arg[0];
+        if (dst.kind == NkBcArg_Ref && dst.ref.kind != NkBcRef_None) {
+            dst_ref_data = getRefAddr(dst.ref);
+        }
+#endif // ENABLE_LOGGING
+
+        interp(*pinstr);
+
+#ifdef ENABLE_LOGGING
+        if (dst_ref_data) {
+            uint8_t res_str[256];
+            NkArena log_arena{res_str, 0, sizeof(res_str)};
+            NkStringBuilder_T sb{
+                (char *)nk_arena_alloc(&log_arena, sizeof(res_str)),
+                0,
+                sizeof(res_str),
+                nk_arena_getAllocator(&log_arena),
+            };
+
+            nkirv_inspect(dst_ref_data, dst.ref.type, &sb);
             nksb_printf(&sb, ":");
-            nkirt_inspect(arg.ref.type, &sb);
+            nkirt_inspect(dst.ref.type, &sb);
             NK_LOG_DBG("res=%s", res_str);
         }
 #endif // ENABLE_LOGGING

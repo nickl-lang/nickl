@@ -130,16 +130,19 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
         ctx.typemap.emplace(type, ffi_t);
     }
 
-    NK_LOG_DBG(
-        "ffi(type{name=%s}) -> %p",
-        (char const *)[&]() {
-            auto sb = nksb_create();
-            nkirt_inspect(type, sb);
-            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                nksb_free(sb);
-            });
-        }(),
-        (void *)ffi_t);
+#ifdef ENABLE_LOGGING
+    // TODO Boilerplate in logging
+    uint8_t type_str[256];
+    NkArena log_arena{type_str, 0, sizeof(type_str)};
+    NkStringBuilder_T sb{
+        (char *)nk_arena_alloc(&log_arena, sizeof(type_str)),
+        0,
+        sizeof(type_str),
+        nk_arena_getAllocator(&log_arena),
+    };
+    nkirt_inspect(type, &sb);
+    NK_LOG_DBG("ffi(type{name=%s}) -> %p", type_str, (void *)ffi_t);
+#endif // ENABLE_LOGGING
 
     return ffi_t;
 }
