@@ -43,7 +43,7 @@ typedef struct {
     size_t post_offset;
     nktype_t type;
     NkIrRefKind kind;
-    bool is_indirect;
+    uint8_t indir;
 } NkIrRef;
 
 typedef struct {

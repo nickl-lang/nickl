@@ -25,7 +25,7 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
             nksb_printf(sb, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
         }
-        if (ref.is_indirect) {
+        for (size_t i = 0; i < ref.indir; i++) {
             nksb_printf(sb, "[");
         }
         switch (ref.kind) {
@@ -53,7 +53,7 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
         if (ref.kind != NkBcRef_Rodata) {
             nksb_printf(sb, "%zx", ref.offset);
         }
-        if (ref.is_indirect) {
+        for (size_t i = 0; i < ref.indir; i++) {
             nksb_printf(sb, "]");
         }
         if (ref.post_offset) {
@@ -170,7 +170,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 .post_offset = ir_ref.post_offset,
                 .type = ir_ref.type,
                 .kind = (NkBcRefKind)ir_ref.kind,
-                .is_indirect = ir_ref.is_indirect,
+                .indir = ir_ref.indir,
             };
 
             switch (ir_ref.kind) {
