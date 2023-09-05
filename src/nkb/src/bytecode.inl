@@ -35,6 +35,10 @@
     OPX(NAME, f64)
 #endif
 
+#ifndef BOOL_NUM_OP
+#define BOOL_NUM_OP(NAME) NUM_OP(NAME)
+#endif
+
 OP(nop)
 
 OP(ret)
@@ -128,15 +132,16 @@ INT_OP(xor)
 INT_OP(lsh)
 INT_OP(rsh)
 
-NUM_OP(cmp_eq)
-NUM_OP(cmp_ne)
-NUM_OP(cmp_lt)
-NUM_OP(cmp_le)
-NUM_OP(cmp_gt)
-NUM_OP(cmp_ge)
+BOOL_NUM_OP(cmp_eq)
+BOOL_NUM_OP(cmp_ne)
+BOOL_NUM_OP(cmp_lt)
+BOOL_NUM_OP(cmp_le)
+BOOL_NUM_OP(cmp_gt)
+BOOL_NUM_OP(cmp_ge)
 
 OP(label)
 
+#undef BOOL_NUM_OP
 #undef NUM_OP
 #undef INT_OP
 #undef SIZ_OP
