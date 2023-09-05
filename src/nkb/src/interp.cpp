@@ -84,7 +84,7 @@ void jumpTo(NkBcArg const &arg) {
     jumpTo(&deref<NkBcInstr>(arg));
 }
 
-void jumpCall(NkBcProc proc, void **args, void **ret) {
+void jumpCall(NkBcProc proc, void **args, void **ret, NkArenaFrame stack_frame) {
     ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -94,7 +94,7 @@ void jumpCall(NkBcProc proc, void **args, void **ret) {
         .pinstr = ctx.pinstr,
     });
 
-    ctx.stack_frame = nk_arena_grab(&ctx.stack);
+    ctx.stack_frame = stack_frame;
     ctx.base.frame = (uint8_t *)nk_arena_alloc(&ctx.stack, proc->frame_size); // TODO not aligned
     std::memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (uint8_t *)args;
@@ -199,9 +199,8 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_call_jmp: {
-        auto proc = deref<NkBcProc>(instr.arg[1]);
+        auto const stack_frame = nk_arena_grab(&ctx.stack);
 
-        // TODO Leaking memory! Need to somehow free call(jmp) args
         size_t argc = instr.arg[2].refs.size;
         auto argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
         auto retv = argv + argc;
@@ -210,7 +209,9 @@ void interp(NkBcInstr const &instr) {
         }
         retv[0] = getRefAddr(instr.arg[0].ref);
 
-        jumpCall(proc, argv, retv);
+        auto const proc = deref<NkBcProc>(instr.arg[1]);
+        jumpCall(proc, argv, retv, stack_frame);
+
         break;
     }
 
@@ -358,7 +359,7 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 
     NK_LOG_DBG("instr=%p", (void *)ctx.base.instr);
 
-    jumpCall(proc, args, ret);
+    jumpCall(proc, args, ret, nk_arena_grab(&ctx.stack));
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
