@@ -307,8 +307,7 @@ private:
 
     NkIrInstr parseInstr() {
         if (check(t_label)) {
-            auto label = nkir_createLabel(m_ir, m_cur_token->text);
-            m_cur_proc->labels.insert(s2nkid(m_cur_token->text), label);
+            auto label = getLabel(s2nkid(m_cur_token->text));
             getToken();
             return nkir_make_label(label);
         }
@@ -472,13 +471,19 @@ private:
         if (!check(t_label)) {
             return error("label expected"), NkIrLabel{};
         }
-        // TODO Forward declare labels
+        auto label = getLabel(s2nkid(m_cur_token->text));
+        getToken();
+        return label;
+    }
+
+    NkIrLabel getLabel(nkid label_id) {
         auto found = m_cur_proc->labels.find(s2nkid(m_cur_token->text));
         if (!found) {
-            return error("undefined label `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrLabel{};
+            auto label = nkir_createLabel(m_ir, m_cur_token->text);
+            return m_cur_proc->labels.insert(label_id, label);
+        } else {
+            return *found;
         }
-        getToken();
-        return *found;
     }
 
     Decl *resolve(nkid name) {

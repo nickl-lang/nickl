@@ -1,3 +1,4 @@
 def_nkb_test(FILE basic.nkl)
 def_nkb_test(FILE hello_world.nkl)
+def_nkb_test(FILE loop.nkl)
 def_nkb_test(FILE proc.nkl)

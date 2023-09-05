@@ -5,6 +5,7 @@
 #include "interp.hpp"
 #include "ir_impl.hpp"
 #include "nk/common/logger.h"
+#include "nkb/ir.h"
 
 namespace {
 
@@ -19,6 +20,9 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
     auto inspect_ref = [&](NkBcRef const &ref) {
         if (ref.kind == NkBcRef_None) {
             nksb_printf(sb, "(null)");
+            return;
+        } else if (ref.kind == NkBcRef_Instr) {
+            nksb_printf(sb, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
         }
         if (ref.is_indirect) {
@@ -40,10 +44,9 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
         case NkBcRef_Data:
             nksb_printf(sb, "data+");
             break;
-        case NkBcRef_Instr:
-            nksb_printf(sb, "instr+");
-            break;
         default:
+        case NkBcRef_None:
+        case NkBcRef_Instr:
             assert(!"unreachable");
             break;
         }
