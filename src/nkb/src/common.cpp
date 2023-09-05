@@ -13,8 +13,22 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
         return;
     }
     switch (type->kind) {
+    case NkType_Aggregate:
+        nksb_printf(sb, "{");
+        for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+            if (i) {
+                nksb_printf(sb, ", ");
+            }
+            auto const &elem = type->as.aggr.elems.data[i];
+            if (elem.count > 0) {
+                nksb_printf(sb, "[%" PRIu64 "]", elem.count);
+            }
+            nkirt_inspect(elem.type, sb);
+        }
+        nksb_printf(sb, "}");
+        break;
     case NkType_Numeric:
-        switch (type->as.numeric.value_type) {
+        switch (type->as.num.value_type) {
         case Int8:
             nksb_printf(sb, "i8");
             break;
@@ -47,19 +61,9 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
             break;
         }
         break;
-    case NkType_Aggregate:
-        nksb_printf(sb, "{");
-        for (size_t i = 0; i < type->as.aggregate.elems.size; i++) {
-            if (i) {
-                nksb_printf(sb, ", ");
-            }
-            auto const &elem = type->as.aggregate.elems.data[i];
-            if (elem.count > 0) {
-                nksb_printf(sb, "[%" PRIu64 "]", elem.count);
-            }
-            nkirt_inspect(elem.type, sb);
-        }
-        nksb_printf(sb, "}");
+    case NkType_Pointer:
+        nksb_printf(sb, "*");
+        nkirt_inspect(type->as.ptr.target_type, sb);
         break;
     default:
         assert(!"unreachable");
@@ -72,46 +76,9 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
         return;
     }
     switch (type->kind) {
-    case NkType_Numeric:
-        switch (type->as.numeric.value_type) {
-        case Int8:
-            nksb_printf(sb, "%" PRIi8, *reinterpret_cast<int8_t *>(data));
-            break;
-        case Uint8:
-            nksb_printf(sb, "%" PRIu8, *reinterpret_cast<uint8_t *>(data));
-            break;
-        case Int16:
-            nksb_printf(sb, "%" PRIi16, *reinterpret_cast<int16_t *>(data));
-            break;
-        case Uint16:
-            nksb_printf(sb, "%" PRIu16, *reinterpret_cast<uint16_t *>(data));
-            break;
-        case Int32:
-            nksb_printf(sb, "%" PRIi32, *reinterpret_cast<int32_t *>(data));
-            break;
-        case Uint32:
-            nksb_printf(sb, "%" PRIu32, *reinterpret_cast<uint32_t *>(data));
-            break;
-        case Int64:
-            nksb_printf(sb, "%" PRIi64, *reinterpret_cast<int64_t *>(data));
-            break;
-        case Uint64:
-            nksb_printf(sb, "%" PRIu64, *reinterpret_cast<uint64_t *>(data));
-            break;
-        case Float32:
-            nksb_printf(sb, "%.*g", std::numeric_limits<float>::max_digits10, *reinterpret_cast<float *>(data));
-            break;
-        case Float64:
-            nksb_printf(sb, "%.*g", std::numeric_limits<double>::max_digits10, *reinterpret_cast<double *>(data));
-            break;
-        default:
-            assert(!"unreachable");
-            break;
-        }
-        break;
     case NkType_Aggregate:
-        for (size_t elemi = 0; elemi < type->as.aggregate.elems.size; elemi++) {
-            auto const &elem = type->as.aggregate.elems.data[elemi];
+        for (size_t elemi = 0; elemi < type->as.aggr.elems.size; elemi++) {
+            auto const &elem = type->as.aggr.elems.data[elemi];
             auto ptr = (uint8_t *)data + elem.offset;
             if (elem.type->kind == NkType_Numeric && elem.type->size == 1) {
                 nksb_printf(sb, "\"");
@@ -133,6 +100,46 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
                 }
             }
         }
+        break;
+    case NkType_Numeric:
+        switch (type->as.num.value_type) {
+        case Int8:
+            nksb_printf(sb, "%" PRIi8, *(int8_t *)data);
+            break;
+        case Uint8:
+            nksb_printf(sb, "%" PRIu8, *(uint8_t *)data);
+            break;
+        case Int16:
+            nksb_printf(sb, "%" PRIi16, *(int16_t *)data);
+            break;
+        case Uint16:
+            nksb_printf(sb, "%" PRIu16, *(uint16_t *)data);
+            break;
+        case Int32:
+            nksb_printf(sb, "%" PRIi32, *(int32_t *)data);
+            break;
+        case Uint32:
+            nksb_printf(sb, "%" PRIu32, *(uint32_t *)data);
+            break;
+        case Int64:
+            nksb_printf(sb, "%" PRIi64, *(int64_t *)data);
+            break;
+        case Uint64:
+            nksb_printf(sb, "%" PRIu64, *(uint64_t *)data);
+            break;
+        case Float32:
+            nksb_printf(sb, "%.*g", std::numeric_limits<float>::max_digits10, *(float *)data);
+            break;
+        case Float64:
+            nksb_printf(sb, "%.*g", std::numeric_limits<double>::max_digits10, *(double *)data);
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        break;
+    case NkType_Pointer:
+        nksb_printf(sb, "%p", *(void **)data);
         break;
     default:
         assert(!"unreachable");

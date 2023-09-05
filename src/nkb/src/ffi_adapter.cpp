@@ -51,7 +51,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
     } else {
         switch (type->kind) {
         case NkType_Numeric:
-            switch (type->as.numeric.value_type) {
+            switch (type->as.num.value_type) {
             case Int8:
                 ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint8;
                 break;
@@ -86,6 +86,9 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
                 assert(!"unreachable");
                 break;
             }
+            break;
+        case NkType_Pointer:
+            ffi_t = &ffi_type_pointer;
             break;
         case NkType_Aggregate:
             NK_LOG_WRN("TODO NkType_Aggregate translation not implemented");

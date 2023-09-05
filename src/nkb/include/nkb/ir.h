@@ -144,7 +144,7 @@ NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
 NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc);
 
-NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref);
+NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t);
 
 // Instructions
 

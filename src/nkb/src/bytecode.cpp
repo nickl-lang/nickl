@@ -330,13 +330,13 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 #define INT_OP(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
                 assert(arg0.ref.type->kind == NkType_Numeric);
-                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.numeric.value_type);
+                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
                 break;
 
 #define BOOL_NUM_OP(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
                 assert(arg1.ref.type->kind == NkType_Numeric);
-                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.numeric.value_type);
+                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 break;
             }
 

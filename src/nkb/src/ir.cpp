@@ -363,7 +363,7 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
     };
 }
 
-NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref) {
+NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
     NK_LOG_TRC("%s", __func__);
 
     assert((ref.kind == NkIrRef_Data || ref.kind == NkIrRef_Rodata) && "invalid address reference");
@@ -375,7 +375,7 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref) {
         .index = id,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->size_type,
+        .type = ptr_t,
         .kind = NkIrRef_Reloc,
         .indir = 0,
     };

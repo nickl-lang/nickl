@@ -22,8 +22,9 @@ typedef enum {
 typedef struct NkIrType const *nktype_t;
 
 typedef enum {
-    NkType_Numeric,
     NkType_Aggregate,
+    NkType_Numeric,
+    NkType_Pointer,
 
     NkTypeKind_Count,
 } NkIrTypeKind;
@@ -74,17 +75,22 @@ typedef struct {
 } NkIrAggregateElemInfoArray;
 
 typedef struct {
+    NkIrAggregateElemInfoArray elems;
+} NkIrAggregateTypeInfo;
+
+typedef struct {
     NkIrNumericValueType value_type;
 } NkIrNumericTypeInfo;
 
 typedef struct {
-    NkIrAggregateElemInfoArray elems;
-} NkIrAggregateTypeInfo;
+    nktype_t target_type;
+} NkIrPointerTypeInfo;
 
 typedef struct NkIrType {
     union {
-        NkIrNumericTypeInfo numeric;
-        NkIrAggregateTypeInfo aggregate;
+        NkIrAggregateTypeInfo aggr;
+        NkIrNumericTypeInfo num;
+        NkIrPointerTypeInfo ptr;
     } as;
     uint64_t size;
     uint8_t align;

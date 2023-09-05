@@ -39,7 +39,7 @@ static constexpr char const *c_entry_point_name = "main";
 
 nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
     return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.numeric{
+        .as{.num{
             .value_type = value_type,
         }},
         .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
@@ -48,9 +48,20 @@ nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
     };
 }
 
+nktype_t makePointerType(NkAllocator alloc, nktype_t target_type) {
+    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+        .as{.ptr{
+            .target_type = target_type,
+        }},
+        .size = (uint8_t)sizeof(void *),   // TODO Hardcoded size_type
+        .align = (uint8_t)alignof(void *), // TODO Hardcoded size_type
+        .kind = NkType_Pointer,
+    };
+}
+
 nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
     return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.aggregate{
+        .as{.aggr{
             .elems{
                 new (nk_alloc_t<NkIrAggregateElemInfo>(alloc)) NkIrAggregateElemInfo{
                     .type = elem_t,
@@ -428,7 +439,9 @@ private:
             str[len] = '\0';
 
             auto str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), len + 1);
-            return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, str_t)));
+            auto str_ref = nkir_makeAddressRef(
+                m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, str_t)), makePointerType(m_file_alloc, str_t));
+            return str_ref;
         } else if (check(t_escaped_string)) {
             auto const data = m_cur_token->text.data + 1;
             auto const len = m_cur_token->text.size - 2;
@@ -440,7 +453,11 @@ private:
             auto str = nksb_concat(&sb);
 
             auto str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
-            return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)));
+            auto str_ref = nkir_makeAddressRef(
+                m_ir,
+                nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)),
+                makePointerType(m_file_alloc, str_t));
+            return str_ref;
         } else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
 
