@@ -22,7 +22,7 @@ typedef enum {
 typedef struct NkIrType const *nktype_t;
 
 typedef enum {
-    NkType_Basic,
+    NkType_Numeric,
     NkType_Aggregate,
 
     NkTypeKind_Count,
@@ -41,11 +41,11 @@ typedef enum {
     Uint64 = 0x78,
     Float32 = 0x84,
     Float64 = 0x98,
-} NkIrBasicValueType;
+} NkIrNumericValueType;
 
-#define NKIR_BASIC_TYPE_SIZE(VALUE_TYPE) (0xf & (VALUE_TYPE))
-#define NKIR_BASIC_TYPE_INDEX(VALUE_TYPE) ((0xf0 & (VALUE_TYPE)) >> 4)
-#define NKIR_BASIC_TYPE_COUNT 10
+#define NKIR_NUMERIC_TYPE_SIZE(VALUE_TYPE) (0xf & (VALUE_TYPE))
+#define NKIR_NUMERIC_TYPE_INDEX(VALUE_TYPE) ((0xf0 & (VALUE_TYPE)) >> 4)
+#define NKIR_NUMERIC_TYPE_COUNT 10
 
 #define NKIR_NUMERIC_ITERATE_INT(MACRO, ...)                \
     MACRO(i8, Int8, int8_t __VA_OPT__(, ) __VA_ARGS__)      \
@@ -74,8 +74,8 @@ typedef struct {
 } NkIrAggregateElemInfoArray;
 
 typedef struct {
-    NkIrBasicValueType value_type;
-} NkIrBasicTypeInfo;
+    NkIrNumericValueType value_type;
+} NkIrNumericTypeInfo;
 
 typedef struct {
     NkIrAggregateElemInfoArray elems;
@@ -83,7 +83,7 @@ typedef struct {
 
 typedef struct NkIrType {
     union {
-        NkIrBasicTypeInfo basic;
+        NkIrNumericTypeInfo numeric;
         NkIrAggregateTypeInfo aggregate;
     } as;
     uint64_t size;

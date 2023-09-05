@@ -234,17 +234,17 @@ void interp(NkBcInstr const &instr) {
 
         // TODO Hardcoded proc_info
         NkIrType i64{
-            .as{.basic{Int64}},
+            .as{.numeric{Int64}},
             .size = 8,
             .align = 8,
-            .kind = NkType_Basic,
+            .kind = NkType_Numeric,
         };
         nktype_t i64_ptr[] = {&i64, &i64};
         NkIrType i32{
-            .as{.basic{Int32}},
+            .as{.numeric{Int32}},
             .size = 4,
             .align = 4,
-            .kind = NkType_Basic,
+            .kind = NkType_Numeric,
         };
         nktype_t i32_ptr = &i32;
         NkIrProcInfo proc_info{

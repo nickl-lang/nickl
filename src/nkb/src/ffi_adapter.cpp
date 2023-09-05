@@ -50,8 +50,8 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
         ffi_t = it->second;
     } else {
         switch (type->kind) {
-        case NkType_Basic:
-            switch (type->as.basic.value_type) {
+        case NkType_Numeric:
+            switch (type->as.numeric.value_type) {
             case Int8:
                 ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint8;
                 break;

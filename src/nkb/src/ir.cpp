@@ -615,7 +615,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
         nksb_printf(sb, "global%" PRIu64 "", ref.index);
         break;
     case NkIrRef_Rodata:
-        if (ref.type->kind == NkType_Basic) {
+        if (ref.type->kind == NkType_Numeric) {
             void *data = nkir_constRefDeref(ir, ref);
             nkirv_inspect(data, ref.type, sb);
         } else {

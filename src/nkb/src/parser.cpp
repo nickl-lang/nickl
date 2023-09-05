@@ -37,14 +37,14 @@ NK_LOG_USE_SCOPE(parser);
 
 static constexpr char const *c_entry_point_name = "main";
 
-nktype_t makeBasicType(NkAllocator alloc, NkIrBasicValueType value_type) {
+nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
     return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.basic{
+        .as{.numeric{
             .value_type = value_type,
         }},
-        .size = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
-        .align = (uint8_t)NKIR_BASIC_TYPE_SIZE(value_type),
-        .kind = NkType_Basic,
+        .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
+        .align = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
+        .kind = NkType_Numeric,
     };
 }
 
@@ -279,25 +279,25 @@ private:
     nktype_t parseType() {
         EXPECT(t_colon);
         if (accept(t_f32)) {
-            return makeBasicType(m_file_alloc, Float32);
+            return makeNumericType(m_file_alloc, Float32);
         } else if (accept(t_f64)) {
-            return makeBasicType(m_file_alloc, Float64);
+            return makeNumericType(m_file_alloc, Float64);
         } else if (accept(t_i16)) {
-            return makeBasicType(m_file_alloc, Int16);
+            return makeNumericType(m_file_alloc, Int16);
         } else if (accept(t_i32)) {
-            return makeBasicType(m_file_alloc, Int32);
+            return makeNumericType(m_file_alloc, Int32);
         } else if (accept(t_i64)) {
-            return makeBasicType(m_file_alloc, Int64);
+            return makeNumericType(m_file_alloc, Int64);
         } else if (accept(t_i8)) {
-            return makeBasicType(m_file_alloc, Int8);
+            return makeNumericType(m_file_alloc, Int8);
         } else if (accept(t_u16)) {
-            return makeBasicType(m_file_alloc, Uint16);
+            return makeNumericType(m_file_alloc, Uint16);
         } else if (accept(t_u32)) {
-            return makeBasicType(m_file_alloc, Uint32);
+            return makeNumericType(m_file_alloc, Uint32);
         } else if (accept(t_u64)) {
-            return makeBasicType(m_file_alloc, Uint64);
+            return makeNumericType(m_file_alloc, Uint64);
         } else if (accept(t_u8)) {
-            return makeBasicType(m_file_alloc, Uint8);
+            return makeNumericType(m_file_alloc, Uint8);
         } else if (check(t_id)) {
             return error("TODO type identifiers not implemented"), nullptr;
         } else {
@@ -427,7 +427,7 @@ private:
             memcpy(str, data, len);
             str[len] = '\0';
 
-            auto str_t = makeArrayType(m_file_alloc, makeBasicType(m_file_alloc, Int8), len + 1);
+            auto str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), len + 1);
             return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, str_t)));
         } else if (check(t_escaped_string)) {
             auto const data = m_cur_token->text.data + 1;
@@ -439,7 +439,7 @@ private:
             nksb_str_unescape(&sb, {data, len});
             auto str = nksb_concat(&sb);
 
-            auto str_t = makeArrayType(m_file_alloc, makeBasicType(m_file_alloc, Int8), str.size + 1);
+            auto str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
             return nkir_makeAddressRef(m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)));
         } else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
@@ -449,7 +449,7 @@ private:
             assert(res > 0 && res != EOF && "numeric constant parsing failed");
             getToken();
 
-            return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeBasicType(m_file_alloc, Int64)));
+            return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeNumericType(m_file_alloc, Int64)));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
 
@@ -458,7 +458,7 @@ private:
             assert(res > 0 && res != EOF && "numeric constant parsing failed");
             getToken();
 
-            return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeBasicType(m_file_alloc, Float64)));
+            return nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeNumericType(m_file_alloc, Float64)));
         } else if (accept(t_ret)) {
             // TODO Support multiple return values
             return nkir_makeRetRef(m_ir, 0);
@@ -559,7 +559,7 @@ void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena
 
     auto file_alloc = nk_arena_getAllocator(file_arena);
 
-    parser->ir = nkir_createProgram(file_alloc, makeBasicType(file_alloc, Int64));
+    parser->ir = nkir_createProgram(file_alloc, makeNumericType(file_alloc, Int64));
     parser->entry_point.id = INVALID_ID;
     parser->error_msg = {};
     parser->ok = true;

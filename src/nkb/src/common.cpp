@@ -13,8 +13,8 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
         return;
     }
     switch (type->kind) {
-    case NkType_Basic:
-        switch (type->as.basic.value_type) {
+    case NkType_Numeric:
+        switch (type->as.numeric.value_type) {
         case Int8:
             nksb_printf(sb, "i8");
             break;
@@ -72,8 +72,8 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
         return;
     }
     switch (type->kind) {
-    case NkType_Basic:
-        switch (type->as.basic.value_type) {
+    case NkType_Numeric:
+        switch (type->as.numeric.value_type) {
         case Int8:
             nksb_printf(sb, "%" PRIi8, *reinterpret_cast<int8_t *>(data));
             break;
@@ -113,7 +113,7 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
         for (size_t elemi = 0; elemi < type->as.aggregate.elems.size; elemi++) {
             auto const &elem = type->as.aggregate.elems.data[elemi];
             auto ptr = (uint8_t *)data + elem.offset;
-            if (elem.type->kind == NkType_Basic && elem.type->size == 1) {
+            if (elem.type->kind == NkType_Numeric && elem.type->size == 1) {
                 nksb_printf(sb, "\"");
                 nksb_str_escape(sb, {(char const *)ptr, elem.count});
                 nksb_printf(sb, "\"");
