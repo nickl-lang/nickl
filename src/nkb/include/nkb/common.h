@@ -25,6 +25,7 @@ typedef enum {
     NkType_Aggregate,
     NkType_Numeric,
     NkType_Pointer,
+    NkType_Procedure,
 
     NkTypeKind_Count,
 } NkIrTypeKind;
@@ -69,10 +70,33 @@ typedef struct {
     size_t offset;
 } NkIrAggregateElemInfo;
 
+typedef enum {
+    NkCallConv_Nk,
+    NkCallConv_Cdecl,
+
+    NkCallConv_Count,
+} NkCallConv;
+
+typedef enum {
+    NkProcVariadic = 1 << 0,
+} NkProcFlags;
+
+typedef struct {
+    nktype_t const *data;
+    size_t size;
+} NkTypeArray;
+
 typedef struct {
     NkIrAggregateElemInfo const *data;
     size_t size;
 } NkIrAggregateElemInfoArray;
+
+typedef struct {
+    NkTypeArray args_t;
+    NkTypeArray ret_t;
+    NkCallConv call_conv;
+    uint8_t flags;
+} NkIrProcInfo;
 
 typedef struct {
     NkIrAggregateElemInfoArray elems;
@@ -86,15 +110,21 @@ typedef struct {
     nktype_t target_type;
 } NkIrPointerTypeInfo;
 
+typedef struct {
+    NkIrProcInfo info;
+} NkIrProcTypeInfo;
+
 typedef struct NkIrType {
     union {
         NkIrAggregateTypeInfo aggr;
         NkIrNumericTypeInfo num;
         NkIrPointerTypeInfo ptr;
+        NkIrProcTypeInfo proc;
     } as;
     uint64_t size;
     uint8_t align;
     NkIrTypeKind kind;
+    uint64_t id;
 } NkIrType;
 
 void nkirt_inspect(nktype_t type, NkStringBuilder sb);

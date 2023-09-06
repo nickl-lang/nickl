@@ -12,7 +12,7 @@ struct NkIrProc_T {
     NkArray<nktype_t> locals;
 
     nkstr name{};
-    NkIrProcInfo proc_info{};
+    nktype_t proc_t{};
 
     size_t cur_block{};
 };
@@ -34,11 +34,10 @@ struct NkIrExternData_T {
 
 struct NkIrExternProc_T {
     nkstr name;
-    NkIrProcInfo proc_info;
+    nktype_t proc_t;
 };
 
 struct NkIrProg_T {
-    nktype_t size_type;
     NkAllocator alloc;
 
     NkArray<NkIrProc_T> procs;

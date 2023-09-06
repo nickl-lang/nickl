@@ -81,32 +81,9 @@ DEFINE_ID_TYPE(NkIrConst);
 DEFINE_ID_TYPE(NkIrExternData);
 DEFINE_ID_TYPE(NkIrExternProc);
 
-typedef enum {
-    NkCallConv_Nk,
-    NkCallConv_Cdecl,
-
-    NkCallConv_Count,
-} NkCallConv;
-
-typedef enum {
-    NkProcVariadic = 1 << 0,
-} NkProcFlags;
-
-typedef struct {
-    nktype_t const *data;
-    size_t size;
-} NkTypeArray;
-
-typedef struct {
-    NkTypeArray args_t;
-    NkTypeArray ret_t;
-    NkCallConv call_conv;
-    uint8_t flags;
-} NkIrProcInfo;
-
 typedef struct NkIrProg_T *NkIrProg;
 
-NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t size_type);
+NkIrProg nkir_createProgram(NkAllocator alloc);
 void nkir_freeProgram(NkIrProg ir);
 
 // Code Generation
@@ -114,7 +91,7 @@ void nkir_freeProgram(NkIrProg ir);
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir, nkstr name);
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, NkIrProcInfo proc_info);
+void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, nktype_t proc_t);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);
@@ -133,7 +110,7 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nktype_t type);
 NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nktype_t type);
 NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type);
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkstr name, nktype_t type);
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, NkIrProcInfo proc_info);
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index);

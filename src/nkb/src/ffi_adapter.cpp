@@ -88,6 +88,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
             }
             break;
         case NkType_Pointer:
+        case NkType_Procedure:
             ffi_t = &ffi_type_pointer;
             break;
         case NkType_Aggregate:

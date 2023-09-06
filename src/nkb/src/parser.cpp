@@ -45,6 +45,7 @@ nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
         .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
         .align = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
         .kind = NkType_Numeric,
+        .id = 0, // TODO Empty type id
     };
 }
 
@@ -56,6 +57,19 @@ nktype_t makePointerType(NkAllocator alloc, nktype_t target_type) {
         .size = (uint8_t)sizeof(void *),   // TODO Hardcoded size_type
         .align = (uint8_t)alignof(void *), // TODO Hardcoded size_type
         .kind = NkType_Pointer,
+        .id = 0, // TODO Empty type id
+    };
+}
+
+nktype_t makeProcedureType(NkAllocator alloc, NkIrProcInfo const &proc_info) {
+    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+        .as{.proc{
+            .info = proc_info,
+        }},
+        .size = (uint8_t)sizeof(void *),   // TODO Hardcoded size_type
+        .align = (uint8_t)alignof(void *), // TODO Hardcoded size_type
+        .kind = NkType_Procedure,
+        .id = 0, // TODO Empty type id
     };
 }
 
@@ -74,6 +88,7 @@ nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
         .size = elem_t->size * count,
         .align = elem_t->align,
         .kind = NkType_Aggregate,
+        .id = 0, // TODO Empty type id
     };
 }
 
@@ -148,12 +163,14 @@ struct GeneratorState {
                     m_ir,
                     proc,
                     sig.name,
-                    {
-                        .args_t{sig.args_t.data(), sig.args_t.size()},
-                        .ret_t{sig.ret_t.data(), sig.ret_t.size()},
-                        .call_conv = NkCallConv_Nk,
-                        .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                    });
+                    makeProcedureType(
+                        m_file_alloc,
+                        {
+                            .args_t{sig.args_t.data(), sig.args_t.size()},
+                            .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                            .call_conv = NkCallConv_Nk,
+                            .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                        }));
 
                 auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
                     {.proc{
@@ -204,12 +221,14 @@ struct GeneratorState {
                         {.extern_proc = nkir_makeExternProc(
                              m_ir,
                              sig.name,
-                             {
-                                 .args_t{sig.args_t.data(), sig.args_t.size()},
-                                 .ret_t{sig.ret_t.data(), sig.ret_t.size()},
-                                 .call_conv = NkCallConv_Cdecl,
-                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                             })},
+                             makeProcedureType(
+                                 m_file_alloc,
+                                 {
+                                     .args_t{sig.args_t.data(), sig.args_t.size()},
+                                     .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                                     .call_conv = NkCallConv_Cdecl,
+                                     .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                                 }))},
                         Decl_ExternProc,
                     };
                     m_decls.insert(s2nkid(sig.name), decl);
@@ -576,7 +595,7 @@ void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena
 
     auto file_alloc = nk_arena_getAllocator(file_arena);
 
-    parser->ir = nkir_createProgram(file_alloc, makeNumericType(file_alloc, Int64));
+    parser->ir = nkir_createProgram(file_alloc);
     parser->entry_point.id = INVALID_ID;
     parser->error_msg = {};
     parser->ok = true;

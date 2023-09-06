@@ -232,29 +232,7 @@ void interp(NkBcInstr const &instr) {
         }
         retv[0] = getRefAddr(instr.arg[0].ref);
 
-        // TODO Hardcoded proc_info
-        NkIrType i64{
-            .as{.num{Int64}},
-            .size = 8,
-            .align = 8,
-            .kind = NkType_Numeric,
-        };
-        nktype_t i64_ptr[] = {&i64, &i64};
-        NkIrType i32{
-            .as{.num{Int32}},
-            .size = 4,
-            .align = 4,
-            .kind = NkType_Numeric,
-        };
-        nktype_t i32_ptr = &i32;
-        NkIrProcInfo proc_info{
-            .args_t{i64_ptr, 2},
-            .ret_t{&i32_ptr, 1},
-            .call_conv = NkCallConv_Cdecl,
-            .flags = NkProcVariadic,
-        };
-
-        nk_native_invoke(proc, &proc_info, argv, argc, retv);
+        nk_native_invoke(proc, &instr.arg[1].ref.type->as.proc.info, argv, argc, retv);
         break;
     }
 

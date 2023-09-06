@@ -71,11 +71,10 @@ char const *nkirOpcodeName(uint8_t code) {
     }
 }
 
-NkIrProg nkir_createProgram(NkAllocator alloc, nktype_t size_type) {
+NkIrProg nkir_createProgram(NkAllocator alloc) {
     NK_LOG_TRC("%s", __func__);
 
     return new (nk_alloc_t<NkIrProg_T>(alloc)) NkIrProg_T{
-        .size_type = size_type,
         .alloc = alloc,
 
         .procs = decltype(NkIrProg_T::procs)::create(alloc),
@@ -123,13 +122,13 @@ NkIrLabel nkir_createLabel(NkIrProg ir, nkstr name) {
     return id;
 }
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkstr name, NkIrProcInfo proc_info) {
+void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkstr name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs[proc_id.id];
 
     proc.name = nk_strcpy(ir->alloc, name);
-    proc.proc_info = proc_info;
+    proc.proc_t = proc_t;
 
     nkir_activateProc(ir, proc_id);
 }
@@ -235,13 +234,13 @@ NkIrExternData nkir_makeExternData(NkIrProg ir, nkstr name, nktype_t type) {
     return id;
 }
 
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, NkIrProcInfo proc_info) {
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternProc id{ir->consts.size()};
     ir->extern_procs.emplace(NkIrExternProc_T{
         .name = nk_strcpy(ir->alloc, name),
-        .proc_info = proc_info,
+        .proc_t = proc_t,
     });
     return id;
 }
@@ -268,7 +267,7 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
     assert(ir->cur_proc.id < ir->procs.size() && "no current procedure");
     auto const &proc = ir->procs[ir->cur_proc.id];
 
-    auto const args_t = proc.proc_info.args_t;
+    auto const args_t = proc.proc_t->as.proc.info.args_t;
     assert(index < args_t.size && "arg index out of range");
     return {
         .index = index,
@@ -286,7 +285,7 @@ NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
     assert(ir->cur_proc.id < ir->procs.size() && "no current procedure");
     auto const &proc = ir->procs[ir->cur_proc.id];
 
-    auto const ret_t = proc.proc_info.ret_t;
+    auto const ret_t = proc.proc_t->as.proc.info.ret_t;
     assert(ret_t.size == 1 && "Multiple return values not implemented");
     return {
         .index = 0,
@@ -331,7 +330,7 @@ NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc) {
         .index = proc.id,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->size_type,
+        .type = ir->procs[proc.id].proc_t,
         .kind = NkIrRef_Proc,
         .indir = 0,
     };
@@ -357,7 +356,7 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
         .index = proc.id,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->size_type,
+        .type = ir->extern_procs[proc.id].proc_t,
         .kind = NkIrRef_ExternProc,
         .indir = 0,
     };
@@ -508,7 +507,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
     if (ir->extern_procs.size()) {
         for (auto const &proc : ir->extern_procs) {
             nksb_printf(sb, "\nextern proc %.*s", (int)proc.name.size, proc.name.data);
-            inspectProcSignature(proc.proc_info, sb);
+            inspectProcSignature(proc.proc_t->as.proc.info, sb);
         }
         nksb_printf(sb, "\n");
     }
@@ -518,7 +517,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
     auto const &proc = ir->procs[proc_id.id];
 
     nksb_printf(sb, "proc %.*s", (int)proc.name.size, proc.name.data);
-    inspectProcSignature(proc.proc_info, sb);
+    inspectProcSignature(proc.proc_t->as.proc.info, sb);
 
     nksb_printf(sb, " {\n\n");
 
