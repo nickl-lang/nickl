@@ -96,7 +96,7 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
     });
 
     ctx.stack_frame = stack_frame;
-    ctx.base.frame = (uint8_t *)nk_arena_alloc(&ctx.stack, proc->frame_size); // TODO not aligned
+    ctx.base.frame = (uint8_t *)nk_arena_allocAlignedRaw(&ctx.stack, proc->frame_size, alignof(max_align_t));
     std::memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (uint8_t *)args;
     ctx.base.ret = (uint8_t *)ret;

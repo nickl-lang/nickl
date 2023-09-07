@@ -19,7 +19,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(arena);
 
-static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16Mib
+static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16 Mib
 
 void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size) {
     (void)old_mem;
@@ -80,6 +80,17 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 } // namespace
 
 void *nk_arena_alloc(NkArena *arena, size_t size) {
+    return nk_arena_allocAlignedRaw(arena, size, 1);
+}
+
+void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align) {
+    NK_LOG_ERR("TODO nk_arena_allocAligned not implemented");
+    std::abort();
+}
+
+void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align) {
+    assert(align && isZeroOrPowerOf2(align) && "invalid alignment");
+
     if (!arena->data) {
         // TODO Fixed sized arena
         NK_LOG_TRC("arena=%p valloc(%" PRIu64 ")", (void *)arena, FIXED_ARENA_SIZE);
@@ -90,15 +101,22 @@ void *nk_arena_alloc(NkArena *arena, size_t size) {
         arena->capacity = FIXED_ARENA_SIZE;
     }
 
-    if (size > arena->capacity - arena->size) {
+    auto const mem = arena->data + arena->size;
+    auto const padding = (align - ((size_t)mem & (align - 1))) & (align - 1);
+
+    if (size + padding > arena->capacity - arena->size) {
         NK_LOG_ERR("Out of memory");
         std::abort();
     }
 
-    auto mem = arena->data + arena->size;
-    ASAN_UNPOISON_MEMORY_REGION(mem, size);
-    arena->size += size;
-    return mem;
+    ASAN_UNPOISON_MEMORY_REGION(mem + padding, size);
+    arena->size += size + padding;
+    return mem + padding;
+}
+
+void nk_arena_pop(NkArena *arena, size_t size) {
+    arena->size -= size;
+    ASAN_POISON_MEMORY_REGION(arena->data + arena->size, size);
 }
 
 void nk_arena_free(NkArena *arena) {
