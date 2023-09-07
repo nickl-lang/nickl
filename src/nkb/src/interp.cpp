@@ -85,7 +85,7 @@ void jumpTo(NkBcArg const &arg) {
     jumpTo(&deref<NkBcInstr>(arg));
 }
 
-void jumpCall(NkBcProc proc, void **args, void **ret, NkArenaFrame stack_frame) {
+void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame stack_frame) {
     ctx.ctrl_stack.emplace_back(ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
@@ -202,37 +202,45 @@ void interp(NkBcInstr const &instr) {
     case nkop_call_jmp: {
         auto const stack_frame = nk_arena_grab(&ctx.stack);
 
-        size_t argc = instr.arg[2].refs.size;
-        auto argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
-        auto retv = argv + argc;
+        auto const proc = deref<NkBcProc>(instr.arg[1]);
+
+        auto const argc = instr.arg[2].refs.size;
+        auto const argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
         for (size_t i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
         }
+
+        auto const retv = argv + argc;
         retv[0] = getRefAddr(instr.arg[0].ref);
 
-        auto const proc = deref<NkBcProc>(instr.arg[1]);
         jumpCall(proc, argv, retv, stack_frame);
 
         break;
     }
 
     case nkop_call_ext: {
-        auto proc = deref<void *>(instr.arg[1]);
-
         auto const frame = nk_arena_grab(&ctx.stack);
         defer {
             nk_arena_popFrame(&ctx.stack, frame);
         };
 
-        size_t argc = instr.arg[2].refs.size;
-        auto argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
-        auto retv = argv + argc;
+        auto const proc = deref<void *>(instr.arg[1]);
+        auto const &proc_info = &instr.arg[1].ref.type->as.proc.info;
+        auto const nfixedargs = proc_info->args_t.size;
+        auto const is_variadic = proc_info->flags & NkProcVariadic;
+
+        auto const argc = instr.arg[2].refs.size;
+        auto const argv = (void **)nk_arena_alloc(&ctx.stack, argc * sizeof(void *));
+        auto const argt = (nktype_t *)nk_arena_alloc(&ctx.stack, argc * sizeof(void *));
         for (size_t i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
+            argt[i] = instr.arg[2].refs.data[i].type;
         }
-        retv[0] = getRefAddr(instr.arg[0].ref);
 
-        nk_native_invoke(proc, &instr.arg[1].ref.type->as.proc.info, argv, argc, retv);
+        auto const retv = getRefAddr(instr.arg[0].ref);
+        auto const rett = instr.arg[0].ref.type;
+
+        nk_native_invoke(proc, nfixedargs, is_variadic, argv, argt, argc, retv, rett);
         break;
     }
 

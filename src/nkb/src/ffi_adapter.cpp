@@ -160,16 +160,10 @@ ffi_type **getNativeHandleArray(NkTypeArray types, bool promote = false) {
     return elements;
 }
 
-void ffiPrepareCif(
-    ffi_cif *cif,
-    size_t actual_argc,
-    bool is_variadic,
-    ffi_type *rtype,
-    ffi_type **atypes,
-    size_t argc) {
+void ffiPrepareCif(ffi_cif *cif, size_t nfixedargs, bool is_variadic, ffi_type *rtype, ffi_type **atypes, size_t argc) {
     ffi_status status;
     if (is_variadic) {
-        status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, actual_argc, argc, rtype, atypes);
+        status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, nfixedargs, argc, rtype, atypes);
     } else {
         status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes);
     }
@@ -178,13 +172,19 @@ void ffiPrepareCif(
 
 } // namespace
 
-void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, size_t argc, void **ret) {
+void nk_native_invoke(
+    void *proc,
+    size_t nfixedargs,
+    bool is_variadic,
+    void **argv,
+    nktype_t const *argt,
+    size_t argc,
+    void *ret,
+    nktype_t rett) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
-    bool const is_variadic = proc_info->flags & NkProcVariadic;
-
-    auto const rtype = getNativeHandle(proc_info->ret_t.data[0]);
+    auto const rtype = getNativeHandle(rett);
 
     // TODO Temporary hack to free memory taken up by the atypes
     auto const frame = nk_arena_grab(&ctx.typearena);
@@ -192,13 +192,13 @@ void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, si
         nk_arena_popFrame(&ctx.typearena, frame);
     };
 
-    auto const atypes = getNativeHandleArray(proc_info->args_t, is_variadic);
+    auto const atypes = getNativeHandleArray({argt, argc}, is_variadic);
 
     ffi_cif cif;
-    ffiPrepareCif(&cif, proc_info->args_t.size, is_variadic, rtype, atypes, argc);
+    ffiPrepareCif(&cif, nfixedargs, is_variadic, rtype, atypes, argc);
 
     {
         EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
-        ffi_call(&cif, FFI_FN(proc), *ret, argv);
+        ffi_call(&cif, FFI_FN(proc), ret, argv);
     }
 }

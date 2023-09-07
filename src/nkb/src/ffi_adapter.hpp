@@ -1,8 +1,16 @@
-#ifndef HEADER_GUARD_NKB_NATIVE_ADAPTER
-#define HEADER_GUARD_NKB_NATIVE_ADAPTER
+#ifndef HEADER_GUARD_NKB_FFI_ADAPTER
+#define HEADER_GUARD_NKB_FFI_ADAPTER
 
-#include "nkb/ir.h"
+#include "nkb/common.h"
 
-void nk_native_invoke(void *proc, NkIrProcInfo const *proc_info, void **argv, size_t argc, void **ret);
+void nk_native_invoke(
+    void *proc,
+    size_t nfixedargs,
+    bool is_variadic,
+    void **argv,
+    nktype_t const *argt,
+    size_t argc,
+    void *ret,
+    nktype_t rett);
 
-#endif // HEADER_GUARD_NKB_NATIVE_ADAPTER
+#endif // HEADER_GUARD_NKB_FFI_ADAPTER
