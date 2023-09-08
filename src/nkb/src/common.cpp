@@ -66,7 +66,26 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
         nkirt_inspect(type->as.ptr.target_type, sb);
         break;
     case NkType_Procedure:
-        nksb_printf(sb, "<TODO INSPECT PROCEDURE TYPE>");
+        nksb_printf(sb, "(");
+        for (size_t i = 0; i < type->as.proc.info.args_t.size; i++) {
+            if (i) {
+                nksb_printf(sb, ", ");
+            }
+            nkirt_inspect(type->as.proc.info.args_t.data[i], sb);
+        }
+        nksb_printf(sb, ")->");
+        if (type->as.proc.info.ret_t.size > 1) {
+            nksb_printf(sb, "(");
+        }
+        for (size_t i = 0; i < type->as.proc.info.ret_t.size; i++) {
+            if (i) {
+                nksb_printf(sb, ", ");
+            }
+            nkirt_inspect(type->as.proc.info.ret_t.data[i], sb);
+        }
+        if (type->as.proc.info.ret_t.size > 1) {
+            nksb_printf(sb, ")");
+        }
         break;
     default:
         assert(!"unreachable");
@@ -142,10 +161,8 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
         }
         break;
     case NkType_Pointer:
-        nksb_printf(sb, "%p", *(void **)data);
-        break;
     case NkType_Procedure:
-        nksb_printf(sb, "<TODO INSPECT PROCEDURE VALUE>");
+        nksb_printf(sb, "%p", *(void **)data);
         break;
     default:
         assert(!"unreachable");
