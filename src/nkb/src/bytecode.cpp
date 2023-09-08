@@ -201,6 +201,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                     .target_id = ir_ref.index,
                     .reloc_type = Reloc_Proc,
                 });
+                referenced_procs.emplace(NkIrProc{ir_ref.index});
                 break;
             };
             case NkIrRef_ExternData: {
@@ -307,7 +308,6 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 auto const &arg1 = ir_instr.arg[1];
                 if (arg1.ref.kind == NkIrRef_Proc) {
                     code = nkop_call_jmp;
-                    referenced_procs.emplace(NkIrProc{arg1.ref.index});
                 } else if (arg1.ref.kind == NkIrRef_ExternProc) {
                     code = nkop_call_ext;
                 }

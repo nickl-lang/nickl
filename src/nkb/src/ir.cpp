@@ -226,7 +226,7 @@ NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type) {
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkstr name, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
-    NkIrExternData id{ir->consts.size()};
+    NkIrExternData id{ir->extern_data.size()};
     ir->extern_data.emplace(NkIrExternData_T{
         .name = nk_strcpy(ir->alloc, name),
         .type = type,
@@ -237,7 +237,7 @@ NkIrExternData nkir_makeExternData(NkIrProg ir, nkstr name, nktype_t type) {
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
-    NkIrExternProc id{ir->consts.size()};
+    NkIrExternProc id{ir->extern_procs.size()};
     ir->extern_procs.emplace(NkIrExternProc_T{
         .name = nk_strcpy(ir->alloc, name),
         .proc_t = proc_t,
@@ -516,7 +516,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
 void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
     auto const &proc = ir->procs[proc_id.id];
 
-    nksb_printf(sb, "proc %.*s", (int)proc.name.size, proc.name.data);
+    nksb_printf(sb, "\nproc %.*s", (int)proc.name.size, proc.name.data);
     inspectProcSignature(proc.proc_t->as.proc.info, sb);
 
     nksb_printf(sb, " {\n\n");
