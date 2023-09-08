@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/logger.h"
+#include "nk/common/utils.hpp"
 
 class allocator : public testing::Test {
     void SetUp() override {
@@ -47,18 +48,8 @@ TEST_F(allocator, frames) {
     EXPECT_EQ(m_arena.size, 100);
 }
 
-TEST_F(allocator, align) {
-    struct A {
-        uint8_t a;
-        std::max_align_t b;
-    };
-
-    auto ptr = nk_alloc_t<A>(m_alloc);
-    EXPECT_EQ((size_t)ptr % alignof(A), 0);
-}
-
 TEST_F(allocator, clear) {
-    int *ptr = nk_alloc_t<int>(m_alloc, 5);
+    int *ptr = (int *)nk_alloc(m_alloc, 5 * sizeof(int));
     ASSERT_TRUE(ptr);
 
     size_t const sz = sizeof(*ptr) * 5;
@@ -91,4 +82,42 @@ TEST_F(allocator, failed_realloc) {
 
     nk_realloc(m_alloc, 200, ptr, 100);
     EXPECT_EQ(m_arena.size, 301);
+}
+
+TEST_F(allocator, align) {
+    struct A {
+        uint8_t a;
+        std::max_align_t b;
+    };
+
+    EXPECT_EQ(m_arena.size, 0);
+
+    auto ok = nk_alloc(m_alloc, 1);
+
+    auto ptr = nk_alloc_t<A>(m_alloc);
+    EXPECT_GT(m_arena.size, sizeof(A));
+    EXPECT_EQ((size_t)ptr % alignof(A), 0);
+
+    nk_free_t<A>(m_alloc, ptr);
+    nk_free(m_alloc, ok, 1);
+    EXPECT_EQ(m_arena.size, 0);
+}
+
+TEST_F(allocator, align_raw) {
+    EXPECT_EQ(m_arena.size, 0);
+    defer {
+        EXPECT_EQ(m_arena.size, 0);
+    };
+
+    auto const frame = nk_arena_grab(&m_arena);
+    defer {
+        nk_arena_popFrame(&m_arena, frame);
+    };
+
+    nk_arena_allocAlignedRaw(&m_arena, 1, 1);
+    EXPECT_EQ(m_arena.size, 1);
+
+    void *ptr = nk_arena_allocAlignedRaw(&m_arena, 8, 8);
+    EXPECT_EQ((size_t)ptr % 8, 0);
+    EXPECT_EQ(m_arena.size, 16);
 }

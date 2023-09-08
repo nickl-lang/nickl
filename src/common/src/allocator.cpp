@@ -9,7 +9,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(mem);
 
-void *defaultAllocatorProc(void * /*data*/, NkAllocatorMode mode, size_t size, void *old_mem, size_t /*old_size*/) {
+void *defaultAllocatorProc(void *, NkAllocatorMode mode, size_t size, uint8_t, void *old_mem, size_t) {
     switch (mode) {
     case NkAllocator_Alloc:
         NK_LOG_TRC("malloc(%" PRIu64 ")", size);

@@ -15,7 +15,8 @@ typedef enum {
     NkAllocator_QuerySpaceLeft,
 } NkAllocatorMode;
 
-typedef void *(*NkAllocateProc)(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size);
+typedef void *(
+    *NkAllocateProc)(void *data, NkAllocatorMode mode, size_t size, uint8_t align, void *old_mem, size_t old_size);
 
 typedef struct {
     void *data;
@@ -32,20 +33,32 @@ typedef struct {
     size_t bytes_left;
 } NkAllocatorSpaceLeftQueryResult;
 
+inline void *nk_allocAligned(NkAllocator alloc, size_t size, uint8_t align) {
+    return alloc.proc(alloc.data, NkAllocator_Alloc, size, align, NULL, 0);
+}
+
+inline void nk_freeAligned(NkAllocator alloc, void *ptr, size_t size, uint8_t align) {
+    alloc.proc(alloc.data, NkAllocator_Free, 0, align, ptr, size);
+}
+
+inline void *nk_reallocAligned(NkAllocator alloc, size_t size, uint8_t align, void *old_mem, size_t old_size) {
+    return alloc.proc(alloc.data, NkAllocator_Realloc, size, align, old_mem, old_size);
+}
+
 inline void *nk_alloc(NkAllocator alloc, size_t size) {
-    return alloc.proc(alloc.data, NkAllocator_Alloc, size, NULL, 0);
+    return nk_allocAligned(alloc, size, 1);
 }
 
 inline void nk_free(NkAllocator alloc, void *ptr, size_t size) {
-    alloc.proc(alloc.data, NkAllocator_Free, 0, ptr, size);
+    nk_freeAligned(alloc, ptr, size, 1);
 }
 
 inline void *nk_realloc(NkAllocator alloc, size_t size, void *old_mem, size_t old_size) {
-    return alloc.proc(alloc.data, NkAllocator_Realloc, size, old_mem, old_size);
+    return nk_reallocAligned(alloc, size, 1, old_mem, old_size);
 }
 
 inline void *nk_alloc_querySpaceLeft(NkAllocator alloc, NkAllocatorSpaceLeftQueryResult *result) {
-    return alloc.proc(alloc.data, NkAllocator_QuerySpaceLeft, 0, result, 0);
+    return alloc.proc(alloc.data, NkAllocator_QuerySpaceLeft, 0, 1, result, 0);
 }
 
 extern NkAllocator nk_default_allocator;
@@ -58,10 +71,14 @@ typedef struct {
 
 NkAllocator nk_arena_getAllocator(NkArena *arena);
 
-void *nk_arena_alloc(NkArena *arena, size_t size);
-void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align);
 void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align);
+void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align);
 
+inline void *nk_arena_alloc(NkArena *arena, size_t size) {
+    return nk_arena_allocAlignedRaw(arena, size, 1);
+}
+
+void nk_arena_popAligned(NkArena *arena, size_t size, uint8_t align);
 void nk_arena_pop(NkArena *arena, size_t size);
 
 inline void nk_arena_clear(NkArena *arena) {

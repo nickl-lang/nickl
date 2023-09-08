@@ -21,7 +21,7 @@ NK_LOG_USE_SCOPE(arena);
 
 static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16 Mib
 
-void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *old_mem, size_t old_size) {
+void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t align, void *old_mem, size_t old_size) {
     (void)old_mem;
 
     auto arena = (NkArena *)data;
@@ -29,13 +29,13 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 #ifdef ENABLE_LOGGING
     switch (mode) {
     case NkAllocator_Alloc:
-        NK_LOG_TRC("arena=%p alloc(%" PRIu64 ")", data, size);
+        NK_LOG_TRC("arena=%p alloc(%" PRIu64 ", %" PRIu8 ")", data, size, align);
         break;
     case NkAllocator_Free:
-        NK_LOG_TRC("arena=%p free(%p, %" PRIu64 ")", data, old_mem, old_size);
+        NK_LOG_TRC("arena=%p free(%p, %" PRIu64 ", %" PRIu8 ")", data, old_mem, old_size, align);
         break;
     case NkAllocator_Realloc:
-        NK_LOG_TRC("arena=%p realloc(%" PRIu64 ", %p, %" PRIu64 ")", data, size, old_mem, old_size);
+        NK_LOG_TRC("arena=%p realloc(%" PRIu64 ", %" PRIu8 ", %p, %" PRIu64 ")", data, size, align, old_mem, old_size);
         break;
     default:
         assert(!"unreachable");
@@ -46,20 +46,20 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 
     switch (mode) {
     case NkAllocator_Alloc:
-        return nk_arena_alloc(arena, size);
+        return nk_arena_allocAligned(arena, size, align);
 
     case NkAllocator_Free:
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
-            nk_arena_pop(arena, old_size);
+            nk_arena_popAligned(arena, old_size, align);
         }
         return nullptr;
 
     case NkAllocator_Realloc:
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
-            nk_arena_pop(arena, old_size);
-            return nk_arena_alloc(arena, size);
+            nk_arena_popAligned(arena, old_size, align);
+            return nk_arena_allocAligned(arena, size, align);
         } else {
-            auto new_mem = nk_arena_alloc(arena, size);
+            auto new_mem = nk_arena_allocAligned(arena, size, align);
             memcpy(new_mem, old_mem, old_size);
             return new_mem;
         }
@@ -79,13 +79,22 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, void *ol
 
 } // namespace
 
-void *nk_arena_alloc(NkArena *arena, size_t size) {
-    return nk_arena_allocAlignedRaw(arena, size, 1);
+NkAllocator nk_arena_getAllocator(NkArena *arena) {
+    return {
+        .data = arena,
+        .proc = arenaAllocatorProc,
+    };
 }
 
 void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align) {
-    NK_LOG_ERR("TODO nk_arena_allocAligned not implemented");
-    std::abort();
+    if (size && align > 1) {
+        auto const top = arena->data + arena->size;
+        auto const mem = (uint8_t *)nk_arena_allocAlignedRaw(arena, size + align, align);
+        *mem = top ? mem - top : 0;
+        return mem + align;
+    } else {
+        return nk_arena_allocAlignedRaw(arena, size, align);
+    }
 }
 
 void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align) {
@@ -119,17 +128,23 @@ void nk_arena_pop(NkArena *arena, size_t size) {
     ASAN_POISON_MEMORY_REGION(arena->data + arena->size, size);
 }
 
+void nk_arena_popAligned(NkArena *arena, size_t size, uint8_t align) {
+    if (size && align > 1) {
+        arena->size -= size + align;
+        auto mem = arena->data + arena->size;
+        uint8_t padding = *mem;
+        mem -= padding;
+        arena->size -= padding;
+        ASAN_POISON_MEMORY_REGION(mem, size + align + padding);
+    } else {
+        nk_arena_pop(arena, size);
+    }
+}
+
 void nk_arena_free(NkArena *arena) {
     if (arena->data) {
         NK_LOG_TRC("arena=%p vfree(%p, %" PRIu64 ")", (void *)arena, (void *)arena->data, FIXED_ARENA_SIZE);
         nk_vfree(arena->data, FIXED_ARENA_SIZE);
     }
     *arena = {};
-}
-
-NkAllocator nk_arena_getAllocator(NkArena *arena) {
-    return {
-        .data = arena,
-        .proc = arenaAllocatorProc,
-    };
 }
