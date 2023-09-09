@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/common/common.h"
 #include "nk/common/logger.h"
@@ -34,6 +35,7 @@ class ir : public testing::Test {
 
     void TearDown() override {
         nk_arena_free(&m_arena);
+        nk_native_adapterDeinit();
     }
 
 protected:
@@ -343,8 +345,8 @@ extern "C" NK_EXPORT void _test_sayHello(void *getName) {
     char const *name = nullptr;
     nkir_invoke({&getName, getName_fn_t}, {&name, u8_ptr_t}, {});
 
-    char buf[100];
-    std::snprintf(buf, AR_SIZE(buf), "Hello, %s!", name);
+    auto buf = new char[100];
+    std::snprintf(buf, 100, "Hello, %s!", name);
     _test_print(buf);
 }
 
@@ -398,6 +400,7 @@ TEST_F(ir, callback) {
     nkir_invoke({&test, test_fn_t}, {}, {});
 
     EXPECT_STREQ(s_test_print_str, "Hello, my name is ****!");
+    delete[] s_test_print_str;
 }
 
 extern "C" NK_EXPORT uint32_t _test_nativeCallback(uint32_t (*cb)(uint32_t, uint32_t)) {

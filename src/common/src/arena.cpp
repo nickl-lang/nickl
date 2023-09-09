@@ -55,6 +55,7 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t 
         return nullptr;
 
     case NkAllocator_Realloc:
+        assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_popAligned(arena, old_size, align);
             return nk_arena_allocAligned(arena, size, align);
