@@ -1,0 +1,32 @@
+proc extern puts(: i64, ...): i32
+
+proc extern pthread_create(:i64, :i64, :i64, :i64): i32
+proc extern pthread_join(:i64, :i64): i32
+
+proc cdecl threadProc(arg: i64): i64 {
+@start
+    call puts, ("hello")
+    ret
+}
+
+proc main(argc: i32, argv: i64): i32 {
+@start
+    thread: i64
+    thread_ptr: i64
+    lea thread -> thread_ptr
+
+    // TODO tmp. Storing ref on stack to avoid reloc logic wiping the args ref array
+    proc_addr: i64
+    mov threadProc -> proc_addr
+
+    call pthread_create, (thread_ptr, 0, proc_addr, 0)
+    call pthread_join, (thread, 0)
+
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+hello
+
+@endoutput */

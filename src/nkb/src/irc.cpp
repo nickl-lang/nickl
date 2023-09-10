@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <new>
 
+#include <pthread.h>
+
 #include "lexer.hpp"
 #include "nk/common/allocator.h"
 #include "nk/common/allocator.hpp"
@@ -137,6 +139,9 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     // TODO Hardcoded extern symbols
     nkir_defineExternSym(run_ctx, nk_mkstr("puts"), (void *)puts);
     nkir_defineExternSym(run_ctx, nk_mkstr("printf"), (void *)printf);
+    nkir_defineExternSym(run_ctx, nk_mkstr("pthread_create"), (void *)pthread_create);
+    nkir_defineExternSym(run_ctx, nk_mkstr("pthread_join"), (void *)pthread_join);
+    nkir_defineExternSym(run_ctx, nk_mkstr("pthread_exit"), (void *)pthread_exit);
 
     int argc = 1;
     char const *argv[] = {""};

@@ -20,6 +20,7 @@ target_link_libraries(${LIB}
     PRIVATE nk_sys
     PRIVATE Ffi
     PRIVATE Dl
+    PRIVATE pthread
     )
 
 set(EXE nkirc)

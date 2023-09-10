@@ -55,7 +55,7 @@ struct InterpContext {
 
     ~InterpContext() {
         NK_LOG_TRC("deinitializing stack...");
-        assert(nk_arena_grab(&stack).size == 0 && "nonempty stack at exit");
+        assert(stack.size == 0 && "nonempty stack at exit");
         nk_arena_free(&stack);
     }
 };

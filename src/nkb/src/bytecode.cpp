@@ -2,9 +2,11 @@
 
 #include <cassert>
 
+#include "ffi_adapter.hpp"
 #include "interp.hpp"
 #include "ir_impl.hpp"
 #include "nk/common/logger.h"
+#include "nkb/common.h"
 #include "nkb/ir.h"
 
 namespace {
@@ -145,6 +147,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     enum ERelocType {
         Reloc_Block,
         Reloc_Proc,
+        Reloc_Closure,
     };
 
     struct Reloc {
@@ -152,6 +155,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         size_t arg;
         size_t target_id;
         ERelocType reloc_type;
+        NkIrProcInfo const *proc_info{};
     };
 
     struct BlockInfo {
@@ -195,12 +199,22 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             }
             case NkIrRef_Proc: {
                 ref.kind = NkBcRef_Rodata;
-                relocs.emplace(Reloc{
-                    .instr_index = ii,
-                    .arg = ai,
-                    .target_id = ir_ref.index,
-                    .reloc_type = Reloc_Proc,
-                });
+                if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
+                    relocs.emplace(Reloc{
+                        .instr_index = ii,
+                        .arg = ai,
+                        .target_id = ir_ref.index,
+                        .reloc_type = Reloc_Closure,
+                        .proc_info = &ir_ref.type->as.proc.info,
+                    });
+                } else {
+                    relocs.emplace(Reloc{
+                        .instr_index = ii,
+                        .arg = ai,
+                        .target_id = ir_ref.index,
+                        .reloc_type = Reloc_Proc,
+                    });
+                }
                 referenced_procs.emplace(NkIrProc{ir_ref.index});
                 break;
             };
@@ -306,11 +320,13 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             switch (ir_instr.code) {
             case nkir_call: {
                 auto const &arg1 = ir_instr.arg[1];
-                if (arg1.ref.kind == NkIrRef_Proc) {
-                    code = nkop_call_jmp;
-                } else if (arg1.ref.kind == NkIrRef_ExternProc) {
+                if (arg1.ref.kind == NkIrRef_ExternProc ||
+                    (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
                     code = nkop_call_ext;
+                } else if (arg1.ref.kind == NkIrRef_Proc) {
+                    code = nkop_call_jmp;
                 }
+
                 break;
             }
 
@@ -364,6 +380,16 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             auto sym_addr = nk_alloc_t<void *>(ir.alloc);
             *sym_addr = ctx->procs[reloc.target_id];
             ref.offset = (size_t)sym_addr;
+            break;
+        }
+        case Reloc_Closure: {
+            ref.offset = (size_t)nk_native_makeClosure(
+                ir.alloc,
+                ctx->procs[reloc.target_id],
+                reloc.proc_info->flags & NkProcVariadic,
+                reloc.proc_info->args_t.data,
+                reloc.proc_info->args_t.size,
+                reloc.proc_info->ret_t.data[0]);
             break;
         }
         }

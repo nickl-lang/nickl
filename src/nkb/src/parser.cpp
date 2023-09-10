@@ -92,6 +92,16 @@ nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
     };
 }
 
+nktype_t makeVoidType(NkAllocator alloc) {
+    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+        .as{.aggr{.elems{nullptr, 0}}},
+        .size = 0,
+        .align = 1,
+        .kind = NkType_Aggregate,
+        .id = 0, // TODO Empty type id
+    };
+}
+
 struct GeneratorState {
     NkIrProg &m_ir;
     NkIrProc &m_entry_point;
@@ -152,71 +162,7 @@ struct GeneratorState {
             if (check(t_proc)) {
                 DEFINE(sig, parseProcSignature());
 
-                auto proc = nkir_createProc(m_ir);
-
-                static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
-                if (s2nkid(sig.name) == c_entry_point_id) {
-                    m_entry_point = proc;
-                }
-
-                nkir_startProc(
-                    m_ir,
-                    proc,
-                    sig.name,
-                    makeProcedureType(
-                        m_file_alloc,
-                        {
-                            .args_t{sig.args_t.data(), sig.args_t.size()},
-                            .ret_t{sig.ret_t.data(), sig.ret_t.size()},
-                            .call_conv = NkCallConv_Nk,
-                            .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                        }));
-
-                auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
-                    {.proc{
-                        .proc = proc,
-                        .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
-                        .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
-                    }},
-                    Decl_Proc,
-                };
-                m_decls.insert(s2nkid(sig.name), decl);
-                m_cur_proc = &decl->as.proc;
-
-                for (size_t i = 0; i < sig.args_t.size(); i++) {
-                    auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
-                        {.arg_index = i},
-                        Decl_Arg,
-                    };
-                    m_cur_proc->locals.insert(sig.arg_names[i], decl);
-                }
-
-                EXPECT(t_brace_l);
-                while (!check(t_brace_r) && !check(t_eof)) {
-                    while (accept(t_newline)) {
-                    }
-                    if (check(t_id)) {
-                        DEFINE(token, parseId());
-                        auto const name = s2nkid(token->text);
-                        DEFINE(type, parseType());
-                        auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
-                            {.local = nkir_makeLocalVar(m_ir, type)},
-                            Decl_LocalVar,
-                        };
-                        m_cur_proc->locals.insert(name, decl);
-                    } else {
-                        DEFINE(instr, parseInstr());
-                        nkir_gen(m_ir, {&instr, 1});
-                    }
-                    EXPECT(t_newline);
-                    while (accept(t_newline)) {
-                    }
-                }
-                EXPECT(t_brace_r);
-            } else if (accept(t_extern)) {
-                if (check(t_proc)) {
-                    DEFINE(sig, parseProcSignature(false));
-
+                if (sig.is_extern) {
                     auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
                         {.extern_proc = nkir_makeExternProc(
                              m_ir,
@@ -233,7 +179,67 @@ struct GeneratorState {
                     };
                     m_decls.insert(s2nkid(sig.name), decl);
                 } else {
-                    return error("TODO extern kind not implemented"), Void{};
+                    auto proc = nkir_createProc(m_ir);
+
+                    static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
+                    if (s2nkid(sig.name) == c_entry_point_id) {
+                        m_entry_point = proc;
+                    }
+
+                    nkir_startProc(
+                        m_ir,
+                        proc,
+                        sig.name,
+                        makeProcedureType(
+                            m_file_alloc,
+                            {
+                                .args_t{sig.args_t.data(), sig.args_t.size()},
+                                .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                                .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
+                                .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                            }));
+
+                    auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                        {.proc{
+                            .proc = proc,
+                            .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
+                            .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
+                        }},
+                        Decl_Proc,
+                    };
+                    m_decls.insert(s2nkid(sig.name), decl);
+                    m_cur_proc = &decl->as.proc;
+
+                    for (size_t i = 0; i < sig.args_t.size(); i++) {
+                        auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                            {.arg_index = i},
+                            Decl_Arg,
+                        };
+                        m_cur_proc->locals.insert(sig.arg_names[i], decl);
+                    }
+
+                    EXPECT(t_brace_l);
+                    while (!check(t_brace_r) && !check(t_eof)) {
+                        while (accept(t_newline)) {
+                        }
+                        if (check(t_id)) {
+                            DEFINE(token, parseId());
+                            auto const name = s2nkid(token->text);
+                            DEFINE(type, parseType());
+                            auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                                {.local = nkir_makeLocalVar(m_ir, type)},
+                                Decl_LocalVar,
+                            };
+                            m_cur_proc->locals.insert(name, decl);
+                        } else {
+                            DEFINE(instr, parseInstr());
+                            nkir_gen(m_ir, {&instr, 1});
+                        }
+                        EXPECT(t_newline);
+                        while (accept(t_newline)) {
+                        }
+                    }
+                    EXPECT(t_brace_r);
                 }
             } else {
                 return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
@@ -265,24 +271,29 @@ private:
     }
 
     struct ProcSignatureParseResult {
-        nkstr name;
         NkArray<nkid> arg_names;
         NkArray<nktype_t> args_t;
         NkArray<nktype_t> ret_t;
-        bool is_variadic;
+        nkstr name{};
+        bool is_variadic{};
+        bool is_extern{};
+        bool is_cdecl{};
     };
 
-    ProcSignatureParseResult parseProcSignature(bool expect_names = true) {
-        EXPECT(t_proc);
-        accept(t_proc);
-        DEFINE(token, parseId());
+    ProcSignatureParseResult parseProcSignature() {
         ProcSignatureParseResult res{
-            .name = token->text,
             .arg_names = NkArray<nkid>::create(m_parse_alloc),
             .args_t = NkArray<nktype_t>::create(m_file_alloc),
             .ret_t = NkArray<nktype_t>::create(m_file_alloc),
-            .is_variadic = false,
         };
+        EXPECT(t_proc);
+        if (accept(t_extern)) {
+            res.is_extern = true;
+        } else if (accept(t_cdecl)) {
+            res.is_cdecl = true;
+        }
+        DEFINE(name, parseId());
+        res.name = name->text;
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -293,7 +304,7 @@ private:
                 break;
             }
             nkid name = nkid_empty;
-            if (expect_names) {
+            if (!res.is_extern) {
                 DEFINE(token, parseId());
                 name = s2nkid(token->text);
             }
@@ -308,7 +319,12 @@ private:
 
     nktype_t parseType() {
         EXPECT(t_colon);
-        if (accept(t_f32)) {
+
+        if (accept(t_void)) {
+            return makeVoidType(m_file_alloc);
+        }
+
+        else if (accept(t_f32)) {
             return makeNumericType(m_file_alloc, Float32);
         } else if (accept(t_f64)) {
             return makeNumericType(m_file_alloc, Float64);
@@ -328,9 +344,13 @@ private:
             return makeNumericType(m_file_alloc, Uint64);
         } else if (accept(t_u8)) {
             return makeNumericType(m_file_alloc, Uint8);
-        } else if (check(t_id)) {
+        }
+
+        else if (check(t_id)) {
             return error("TODO type identifiers not implemented"), nullptr;
-        } else {
+        }
+
+        else {
             return error("type expected"), nullptr;
         }
     }

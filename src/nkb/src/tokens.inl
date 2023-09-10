@@ -27,6 +27,7 @@ KW(keyword_marker)
 
 KW(proc)
 KW(extern)
+KW(cdecl)
 
 KW(nop)
 
@@ -69,6 +70,8 @@ KW(gt)
 KW(ge)
 
 KW(typename_marker)
+
+KW(void)
 
 KW(f32)
 KW(f64)

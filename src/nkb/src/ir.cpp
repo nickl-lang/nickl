@@ -516,7 +516,12 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
 void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
     auto const &proc = ir->procs[proc_id.id];
 
-    nksb_printf(sb, "\nproc %.*s", (int)proc.name.size, proc.name.data);
+    nksb_printf(
+        sb,
+        "\nproc%s %.*s",
+        (proc.proc_t->as.proc.info.call_conv == NkCallConv_Cdecl ? " cdecl" : ""),
+        (int)proc.name.size,
+        proc.name.data);
     inspectProcSignature(proc.proc_t->as.proc.info, sb);
 
     nksb_printf(sb, " {\n\n");

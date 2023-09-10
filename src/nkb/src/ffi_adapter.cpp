@@ -6,7 +6,8 @@
 
 #include <ffi.h>
 
-#include "nk/common/allocator.h"
+#include "interp.hpp"
+#include "nk/common/allocator.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/string_builder.h"
@@ -20,10 +21,12 @@ NK_LOG_USE_SCOPE(ffi_adapter);
 
 struct Context {
     std::unordered_map<nktype_t, ffi_type *> typemap;
-    std::recursive_mutex mtx;
+    std::mutex mtx;
     NkArena typearena{};
 
     ~Context() {
+        std::lock_guard lk{mtx};
+
         nk_arena_free(&typearena);
     }
 };
@@ -39,8 +42,6 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
         NK_LOG_DBG("ffi(null) -> void");
         return &ffi_type_void;
     }
-
-    std::lock_guard lk{ctx.mtx};
 
     ffi_type *ffi_t = nullptr;
 
@@ -170,6 +171,20 @@ void ffiPrepareCif(ffi_cif *cif, size_t nfixedargs, bool is_variadic, ffi_type *
     assert(status == FFI_OK && "ffi_prep_cif failed");
 }
 
+struct NkIrNativeClosure_T {
+    void *code;
+    ffi_cif cif;
+    ffi_closure *closure;
+    NkBcProc proc;
+};
+
+void ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
+    NK_LOG_TRC("%s", __func__);
+
+    auto const &cl = *(NkIrNativeClosure_T *)userdata;
+    nkir_interp_invoke(cl.proc, args, &resp);
+}
+
 } // namespace
 
 void nk_native_invoke(
@@ -184,21 +199,57 @@ void nk_native_invoke(
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
-    auto const rtype = getNativeHandle(rett);
-
-    // TODO Temporary hack to free memory taken up by the atypes
-    auto const frame = nk_arena_grab(&ctx.typearena);
-    defer {
-        nk_arena_popFrame(&ctx.typearena, frame);
-    };
-
-    auto const atypes = getNativeHandleArray({argt, argc}, is_variadic);
-
     ffi_cif cif;
-    ffiPrepareCif(&cif, nfixedargs, is_variadic, rtype, atypes, argc);
+
+    {
+        std::lock_guard lk{ctx.mtx};
+
+        // TODO Temporary hack to free memory taken up by the atypes
+        auto const frame = nk_arena_grab(&ctx.typearena);
+        defer {
+            nk_arena_popFrame(&ctx.typearena, frame);
+        };
+
+        auto const rtype = getNativeHandle(rett);
+        auto const atypes = getNativeHandleArray({argt, argc}, is_variadic);
+
+        ffiPrepareCif(&cif, nfixedargs, is_variadic, rtype, atypes, argc);
+    }
 
     {
         EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
         ffi_call(&cif, FFI_FN(proc), ret, argv);
     }
+}
+
+void *nk_native_makeClosure(
+    NkAllocator alloc,
+    NkBcProc proc,
+    bool is_variadic,
+    nktype_t const *argt,
+    size_t argc,
+    nktype_t rett) {
+    EASY_FUNCTION(::profiler::colors::Orange200);
+    NK_LOG_TRC("%s", __func__);
+
+    NkIrNativeClosure_T *cl;
+
+    {
+        std::lock_guard lk{ctx.mtx};
+
+        cl = nk_alloc_t<NkIrNativeClosure_T>(alloc);
+        cl->proc = proc;
+
+        auto const rtype = getNativeHandle(rett);
+        auto const atypes = getNativeHandleArray({argt, argc}, is_variadic);
+
+        ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
+    }
+
+    cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
+
+    ffi_status status = ffi_prep_closure_loc(cl->closure, &cl->cif, ffiClosure, cl, cl->code);
+    assert(status == FFI_OK && "ffi_prep_closure_loc failed");
+
+    return cl;
 }
