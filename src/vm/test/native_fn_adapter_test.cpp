@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/allocator.h"
+#include "nk/common/allocator.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
@@ -133,7 +133,7 @@ class native_fn_adapter : public testing::Test {
 
 protected:
     nktype_t alloct(NkType type) {
-        return new (nk_arena_alloc(&m_arena, sizeof(NkType))) NkType{type};
+        return new (nk_arena_alloc_t<NkType>(&m_arena)) NkType{type};
     }
 
 protected:

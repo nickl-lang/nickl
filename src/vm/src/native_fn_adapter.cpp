@@ -71,11 +71,11 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         switch (type->tclass) {
         case NkType_Array: {
             auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
-            ffi_type **elements = (ffi_type **)nk_arena_allocAlignedRaw(
+            ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
                 &ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *), alignof(void *));
             std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
             elements[type->as.arr.elem_count] = nullptr;
-            ffi_t = new (nk_arena_allocAlignedRaw(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
+            ffi_t = new (nk_arena_allocAligned(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
                 .size = type->size,
                 .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
@@ -130,13 +130,13 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             if (!type->as.tuple.elems.size) {
                 return &ffi_type_void;
             }
-            ffi_type **elements = (ffi_type **)nk_arena_allocAlignedRaw(
+            ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
                 &ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *), alignof(void *));
             for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
                 elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
             }
             elements[type->as.tuple.elems.size] = nullptr;
-            ffi_t = new (nk_arena_allocAlignedRaw(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
+            ffi_t = new (nk_arena_allocAligned(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
                 .size = type->size,
                 .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,

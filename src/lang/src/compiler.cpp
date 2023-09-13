@@ -22,7 +22,7 @@
 
 #include "ast_impl.h"
 #include "lexer.hpp"
-#include "nk/common/allocator.h"
+#include "nk/common/allocator.hpp"
 #include "nk/common/common.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -258,7 +258,7 @@ nkstr irBlockName(NklCompiler c, char const *name) {
     char buf[1024];
     size_t size = std::snprintf(buf, AR_SIZE(buf), "%s%zu", name, num);
 
-    auto str = (char *)nk_arena_alloc(&c->arena, size + 1);
+    auto str = nk_arena_alloc_t<char>(&c->arena, size + 1);
     std::memcpy(str, buf, size);
     str[size] = '\0';
 
@@ -376,9 +376,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 template <class T, class... TArgs>
 ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
-        {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc(&c->arena, sizeof(T))) T{args...}, tovmt(type)})},
-        type,
-        v_val};
+        {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc_t<T>(&c->arena)) T{args...}, tovmt(type)})}, type, v_val};
 }
 
 ValueInfo makeValue(NklCompiler c, nklval_t val) {
@@ -1763,7 +1761,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         auto ar_t = nkl_get_array(i8_t, text.size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
-        auto str = (char *)nk_arena_alloc(&c->arena, text.size + 1);
+        auto str = nk_arena_alloc_t<char>(&c->arena, text.size + 1);
         std::memcpy(str, text.data, text.size);
         str[text.size] = '\0';
 
@@ -1785,7 +1783,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         auto ar_t = nkl_get_array(i8_t, size + 1);
         auto str_t = nkl_get_ptr(ar_t);
 
-        auto str = (char *)nk_arena_alloc(&c->arena, unescaped_str.size + 1);
+        auto str = nk_arena_alloc_t<char>(&c->arena, unescaped_str.size + 1);
         std::memcpy(str, unescaped_str.data, size);
         str[size] = '\0';
 

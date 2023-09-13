@@ -140,7 +140,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
     uint8_t type_str[256];
     NkArena log_arena{type_str, 0, sizeof(type_str)};
     NkStringBuilder_T sb{
-        (char *)nk_arena_alloc(&log_arena, sizeof(type_str)),
+        nk_arena_alloc_t<char>(&log_arena, sizeof(type_str)),
         0,
         sizeof(type_str),
         nk_arena_getAllocator(&log_arena),
@@ -153,7 +153,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
 }
 
 ffi_type **getNativeHandleArray(NkTypeArray types, bool promote = false) {
-    ffi_type **elements = (ffi_type **)nk_arena_alloc(&ctx.typearena, (types.size + 1) * sizeof(void *));
+    ffi_type **elements = nk_arena_alloc_t<ffi_type *>(&ctx.typearena, types.size + 1);
     for (size_t i = 0; i < types.size; i++) {
         elements[i] = getNativeHandle(types.data[i], promote);
     }

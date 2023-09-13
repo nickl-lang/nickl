@@ -96,7 +96,7 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
     });
 
     ctx.stack_frame = stack_frame;
-    ctx.base.frame = (uint8_t *)nk_arena_allocAlignedRaw(&ctx.stack, proc->frame_size, alignof(max_align_t));
+    ctx.base.frame = (uint8_t *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, alignof(max_align_t));
     std::memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (uint8_t *)args;
     ctx.base.ret = (uint8_t *)ret;
@@ -205,7 +205,7 @@ void interp(NkBcInstr const &instr) {
         auto const proc = deref<NkBcProc>(instr.arg[1]);
 
         auto const argc = instr.arg[2].refs.size;
-        auto const argv = (void **)nk_arena_alloc(&ctx.stack, (argc + 1) * sizeof(void *));
+        auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc + 1);
         for (size_t i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
         }
@@ -230,8 +230,8 @@ void interp(NkBcInstr const &instr) {
         auto const is_variadic = proc_info->flags & NkProcVariadic;
 
         auto const argc = instr.arg[2].refs.size;
-        auto const argv = (void **)nk_arena_alloc(&ctx.stack, argc * sizeof(void *));
-        auto const argt = (nktype_t *)nk_arena_alloc(&ctx.stack, argc * sizeof(void *));
+        auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc);
+        auto const argt = nk_arena_alloc_t<nktype_t>(&ctx.stack, argc);
         for (size_t i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
             argt[i] = instr.arg[2].refs.data[i].type;
@@ -369,7 +369,7 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
             uint8_t res_str[256];
             NkArena log_arena{res_str, 0, sizeof(res_str)};
             NkStringBuilder_T sb{
-                (char *)nk_arena_alloc(&log_arena, sizeof(res_str)),
+                nk_arena_alloc_t<char>(&log_arena, sizeof(res_str)),
                 0,
                 sizeof(res_str),
                 nk_arena_getAllocator(&log_arena),

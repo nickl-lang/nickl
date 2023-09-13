@@ -71,14 +71,12 @@ typedef struct {
 
 NkAllocator nk_arena_getAllocator(NkArena *arena);
 
-void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align);
 void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align);
 
 inline void *nk_arena_alloc(NkArena *arena, size_t size) {
-    return nk_arena_allocAlignedRaw(arena, size, 1);
+    return nk_arena_allocAligned(arena, size, 1);
 }
 
-void nk_arena_popAligned(NkArena *arena, size_t size, uint8_t align);
 void nk_arena_pop(NkArena *arena, size_t size);
 
 inline void nk_arena_clear(NkArena *arena) {

@@ -23,7 +23,7 @@ namespace {
 NK_LOG_USE_SCOPE(test);
 
 nktype_t alloct(NkArena *arena, NkType type) {
-    return new (nk_arena_allocAlignedRaw(arena, sizeof(NkType), alignof(NkType))) NkType{type};
+    return new (nk_arena_allocAligned(arena, sizeof(NkType), alignof(NkType))) NkType{type};
 }
 
 class ir : public testing::Test {

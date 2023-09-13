@@ -50,14 +50,14 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t 
 
     case NkAllocator_Free:
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
-            nk_arena_popAligned(arena, old_size, align);
+            nk_arena_pop(arena, old_size);
         }
         return nullptr;
 
     case NkAllocator_Realloc:
         assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
-            nk_arena_popAligned(arena, old_size, align);
+            nk_arena_pop(arena, old_size);
             return nk_arena_allocAligned(arena, size, align);
         } else {
             auto new_mem = nk_arena_allocAligned(arena, size, align);
@@ -88,17 +88,6 @@ NkAllocator nk_arena_getAllocator(NkArena *arena) {
 }
 
 void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align) {
-    if (size && align > 1) {
-        auto const top = arena->data + arena->size;
-        auto const mem = (uint8_t *)nk_arena_allocAlignedRaw(arena, size + align, align);
-        *mem = top ? mem - top : 0;
-        return mem + align;
-    } else {
-        return nk_arena_allocAlignedRaw(arena, size, align);
-    }
-}
-
-void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align) {
     assert(align && isZeroOrPowerOf2(align) && "invalid alignment");
 
     if (!arena->data) {
@@ -127,19 +116,6 @@ void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align) {
 void nk_arena_pop(NkArena *arena, size_t size) {
     arena->size -= size;
     ASAN_POISON_MEMORY_REGION(arena->data + arena->size, size);
-}
-
-void nk_arena_popAligned(NkArena *arena, size_t size, uint8_t align) {
-    if (size && align > 1) {
-        arena->size -= size + align;
-        auto mem = arena->data + arena->size;
-        uint8_t padding = *mem;
-        mem -= padding;
-        arena->size -= padding;
-        ASAN_POISON_MEMORY_REGION(mem, size + align + padding);
-    } else {
-        nk_arena_pop(arena, size);
-    }
 }
 
 void nk_arena_free(NkArena *arena) {

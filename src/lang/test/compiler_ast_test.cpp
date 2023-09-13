@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/allocator.h"
+#include "nk/common/allocator.hpp"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/utils.hpp"
@@ -48,7 +48,7 @@ protected:
     }
 
     NklToken const *mkt(char const *text) {
-        return new (nk_arena_alloc(&m_arena, sizeof(NklToken))) NklToken{
+        return new (nk_arena_alloc_t<NklToken>(&m_arena)) NklToken{
             .text = text ? nk_mkstr(text) : nkstr{},
             .pos = 0,
             .lin = 0,

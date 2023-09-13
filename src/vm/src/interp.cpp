@@ -109,7 +109,7 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
     });
 
     ctx.stack_frame = nk_arena_grab(&ctx.stack);
-    ctx.base.frame = (uint8_t *)nk_arena_alloc(&ctx.stack, fn->frame_size); // TODO not aligned
+    ctx.base.frame = (uint8_t *)nk_arena_allocAligned(&ctx.stack, fn->frame_size, alignof(max_align_t));
     std::memset(ctx.base.frame, 0, fn->frame_size);
     ctx.base.arg = (uint8_t *)nkval_data(args);
     ctx.base.ret = (uint8_t *)nkval_data(ret);

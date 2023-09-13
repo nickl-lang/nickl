@@ -6,7 +6,7 @@
 #include <new>
 
 #include "ast_impl.h"
-#include "nk/common/allocator.h"
+#include "nk/common/allocator.hpp"
 #include "nk/common/id.h"
 #include "nk/common/string_builder.h"
 #include "nkl/lang/token.h"
@@ -108,11 +108,11 @@ NklAstNode_T nkl_makeNode3(
 }
 
 NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node) {
-    return {new (nk_arena_alloc(&ast->arena, sizeof(NklAstNode_T))) NklAstNode_T{node}, 1};
+    return {new (nk_arena_alloc_t<NklAstNode_T>(&ast->arena)) NklAstNode_T{node}, 1};
 }
 
 NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
-    auto new_ar = new (nk_arena_alloc(&ast->arena, sizeof(NklAstNode_T) * ar.size)) NklAstNode_T[ar.size];
+    auto new_ar = new (nk_arena_alloc_t<NklAstNode_T>(&ast->arena, ar.size)) NklAstNode_T[ar.size];
     std::memcpy(new_ar, ar.data, sizeof(NklAstNode_T) * ar.size);
     return {new_ar, ar.size};
 }

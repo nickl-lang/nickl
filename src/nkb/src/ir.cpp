@@ -435,13 +435,13 @@ NkIrInstr nkir_make_label(NkIrLabel label) {
 bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     NK_LOG_TRC("%s", __func__);
 
-    auto sb = nksb_create();
+    NkStringBuilder_T sb{};
     defer {
-        nksb_free(sb);
+        nksb_deinit(&sb);
     };
 
-    nksb_printf(sb, "gcc -x c -O2 -o %.*s -", (int)out_file.size, out_file.data);
-    auto compile_cmd = nksb_concat(sb);
+    nksb_printf(&sb, "gcc -x c -O2 -o %.*s -", (int)out_file.size, out_file.data);
+    auto compile_cmd = nksb_concat(&sb);
 
     auto pipe = popen(compile_cmd.data, "w");
     fprintf(pipe, R"(

@@ -316,7 +316,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         uint8_t token_str[256];
         NkArena log_arena{token_str, 0, sizeof(token_str)};
         NkStringBuilder_T sb{
-            (char *)nk_arena_alloc(&log_arena, sizeof(token_str)),
+            nk_arena_alloc_t<char>(&log_arena, sizeof(token_str)),
             0,
             sizeof(token_str),
             nk_arena_getAllocator(&log_arena),

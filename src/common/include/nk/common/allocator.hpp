@@ -18,4 +18,9 @@ void nk_free_t(NkAllocator alloc, T *ptr, size_t n = 1) {
     nk_freeAligned(alloc, ptr, n * sizeof(T), alignof(T));
 }
 
+template <class T>
+T *nk_arena_alloc_t(NkArena *arena, size_t n = 1) {
+    return (T *)nk_arena_allocAligned(arena, n * sizeof(T), alignof(T));
+}
+
 #endif // HEADER_GUARD_NK_COMMON_ALLOCATOR_HPP
