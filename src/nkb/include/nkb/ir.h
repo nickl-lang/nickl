@@ -73,6 +73,16 @@ typedef struct {
     uint8_t code;
 } NkIrInstr;
 
+#define DEFINE_ID_TYPE(NAME) \
+    typedef struct {         \
+        size_t id;           \
+    } NAME
+
+#define INVALID_ID \
+    size_t {       \
+        -1ul       \
+    }
+
 DEFINE_ID_TYPE(NkIrProc);
 DEFINE_ID_TYPE(NkIrLabel);
 DEFINE_ID_TYPE(NkIrLocalVar);

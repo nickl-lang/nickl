@@ -1,3 +1,4 @@
+def_nkb_test(FILE aggregate.nkir)
 def_nkb_test(FILE basic.nkir)
 def_nkb_test(FILE ffi_closure.nkir)
 def_nkb_test(FILE hello_world.nkir)

@@ -1,5 +1,6 @@
 #include "nkb/irc.h"
 
+#include <cmath>
 #include <cstdio>
 #include <new>
 
@@ -142,6 +143,7 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     nkir_defineExternSym(run_ctx, nk_mkstr("pthread_create"), (void *)pthread_create);
     nkir_defineExternSym(run_ctx, nk_mkstr("pthread_join"), (void *)pthread_join);
     nkir_defineExternSym(run_ctx, nk_mkstr("pthread_exit"), (void *)pthread_exit);
+    nkir_defineExternSym(run_ctx, nk_mkstr("sqrt"), (void *)sqrt);
 
     int argc = 1;
     char const *argv[] = {""};

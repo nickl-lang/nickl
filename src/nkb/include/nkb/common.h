@@ -130,17 +130,6 @@ typedef struct NkIrType {
 void nkirt_inspect(nktype_t type, NkStringBuilder sb);
 void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb);
 
-// TODO Move somewhere
-#define DEFINE_ID_TYPE(NAME) \
-    typedef struct {         \
-        size_t id;           \
-    } NAME
-
-#define INVALID_ID \
-    size_t {       \
-        -1ul       \
-    }
-
 typedef struct {
     NkIrAggregateElemInfoArray info_ar;
     size_t size;

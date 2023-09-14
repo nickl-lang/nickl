@@ -194,11 +194,6 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
-    case nkop_call: {
-        NK_LOG_WRN("TODO nkop_call execution not implemented");
-        break;
-    }
-
     case nkop_call_jmp: {
         auto const stack_frame = nk_arena_grab(&ctx.stack);
 

@@ -2,7 +2,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword nkirKeyword null proc extern cdecl
+syn keyword nkirKeyword null proc extern cdecl type
 syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 int float void bool
 syn keyword nkirBoolean true false
 

@@ -183,7 +183,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 ref.offset += frame_layout.info_ar.data[ir_ref.index].offset;
                 break;
             case NkIrRef_Arg:
-                ref.offset += ir_ref.index * sizeof(void *); // TODO Use sizeof(void*) or ir.size_type->size ?
+                ref.offset += ir_ref.index * sizeof(void *);
                 break;
             case NkIrRef_Ret:
                 break;
