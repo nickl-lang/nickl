@@ -41,7 +41,7 @@ struct NkBcRef {
 };
 
 struct NkBcRefArray {
-    NkBcRef const *data;
+    NkBcRef *data;
     size_t size;
 };
 

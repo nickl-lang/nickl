@@ -15,11 +15,7 @@ proc main(argc: i32, argv: i64): i32 {
     thread_ptr: i64
     lea thread -> thread_ptr
 
-    // TODO tmp. Storing ref on stack to avoid reloc logic wiping the args ref array
-    proc_addr: i64
-    mov threadProc -> proc_addr
-
-    call pthread_create, (thread_ptr, 0, proc_addr, 0)
+    call pthread_create, (thread_ptr, 0, threadProc, 0)
     call pthread_join, (thread, 0)
 
     mov  0 -> ret

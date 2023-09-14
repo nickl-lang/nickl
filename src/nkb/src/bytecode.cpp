@@ -152,7 +152,8 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
     struct Reloc {
         size_t instr_index;
-        size_t arg;
+        size_t arg_index;
+        size_t ref_index;
         size_t target_id;
         ERelocType reloc_type;
         NkIrProcInfo const *proc_info{};
@@ -167,8 +168,8 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
     auto referenced_procs = NkArray<NkIrProc>::create(tmp_alloc);
 
-    std::function<void(size_t, size_t, NkBcRef &, NkIrRef const &)> translate_ref =
-        [&](size_t ii, size_t ai, NkBcRef &ref, NkIrRef const &ir_ref) {
+    auto const translate_ref =
+        [&](size_t instr_index, size_t arg_index, size_t ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
             ref = {
                 .offset = ir_ref.offset,
                 .post_offset = ir_ref.post_offset,
@@ -201,16 +202,18 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 ref.kind = NkBcRef_Rodata;
                 if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
                     relocs.emplace(Reloc{
-                        .instr_index = ii,
-                        .arg = ai,
+                        .instr_index = instr_index,
+                        .arg_index = arg_index,
+                        .ref_index = ref_index,
                         .target_id = ir_ref.index,
                         .reloc_type = Reloc_Closure,
                         .proc_info = &ir_ref.type->as.proc.info,
                     });
                 } else {
                     relocs.emplace(Reloc{
-                        .instr_index = ii,
-                        .arg = ai,
+                        .instr_index = instr_index,
+                        .arg_index = arg_index,
+                        .ref_index = ref_index,
                         .target_id = ir_ref.index,
                         .reloc_type = Reloc_Proc,
                     });
@@ -264,7 +267,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             }
         };
 
-    auto translate_arg = [&](size_t ii, size_t ai, NkBcArg &arg, NkIrArg const &ir_arg) {
+    auto const translate_arg = [&](size_t instr_index, size_t arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.kind) {
         case NkIrArg_None: {
             arg.kind = NkBcArg_None;
@@ -273,7 +276,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
         case NkIrArg_Ref: {
             arg.kind = NkBcArg_Ref;
-            translate_ref(ii, ai, arg.ref, ir_arg.ref);
+            translate_ref(instr_index, arg_index, -1ul, arg.ref, ir_arg.ref);
             break;
         }
 
@@ -281,7 +284,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             arg.kind = NkBcArg_RefArray;
             auto refs = nk_alloc_t<NkBcRef>(ir.alloc, ir_arg.refs.size);
             for (size_t i = 0; i < ir_arg.refs.size; i++) {
-                translate_ref(ii, ai, refs[i], ir_arg.refs.data[i]);
+                translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i]);
             }
             arg.refs = {refs, ir_arg.refs.size};
             break;
@@ -291,8 +294,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             arg.kind = NkBcArg_Ref;
             arg.ref.kind = NkBcRef_Instr;
             relocs.emplace(Reloc{
-                .instr_index = ii,
-                .arg = ai,
+                .instr_index = instr_index,
+                .arg_index = arg_index,
+                .ref_index = -1ul,
                 .target_id = ir_arg.id,
                 .reloc_type = Reloc_Block,
             });
@@ -369,7 +373,8 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     }
 
     for (auto const &reloc : relocs) {
-        auto &ref = bc_proc.instrs[reloc.instr_index].arg[reloc.arg].ref;
+        auto &arg = bc_proc.instrs[reloc.instr_index].arg[reloc.arg_index];
+        auto &ref = reloc.ref_index == -1ul ? arg.ref : arg.refs.data[reloc.ref_index];
 
         switch (reloc.reloc_type) {
         case Reloc_Block: {
