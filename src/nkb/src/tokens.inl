@@ -8,12 +8,15 @@ OP(operator_marker, "")
 
 OP(brace_l, "{")
 OP(brace_r, "}")
+OP(bracket_l, "[")
+OP(bracket_r, "]")
 OP(colon, ":")
 OP(comma, ",")
 OP(minus_greater, "->")
 OP(par_l, "(")
 OP(par_r, ")")
 OP(period_3x, "...")
+OP(plus, "+")
 
 #undef OP
 
@@ -28,6 +31,8 @@ KW(keyword_marker)
 KW(proc)
 KW(extern)
 KW(cdecl)
+KW(type)
+KW(data)
 
 KW(nop)
 

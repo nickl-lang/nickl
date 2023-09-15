@@ -1,14 +1,14 @@
 proc extern printf(: i64, ...): i32
 proc extern sqrt(: f64): f64
 
-// type Vec2 { [2]f64 }
+type Vec2: { [2]f64 }
 
-proc Vec2_length(x: f64, y: f64): f64 {
+proc Vec2_length(vec: Vec2): f64 {
 @start
     tmp: f64
     len_squared: f64
-    mul x, x -> len_squared
-    mul y, y -> tmp
+    mul vec+0:f64, vec+0:f64 -> len_squared
+    mul vec+8:f64, vec+8:f64 -> tmp
     add len_squared, tmp -> len_squared
     call sqrt, (len_squared) -> ret
     ret
