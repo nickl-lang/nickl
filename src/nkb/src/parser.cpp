@@ -604,7 +604,11 @@ private:
 
         if (accept(t_plus)) {
             DEFINE(value, parseInt());
-            result_ref.offset += value;
+            if (result_ref.indir) {
+                result_ref.post_offset += value;
+            } else {
+                result_ref.offset += value;
+            }
         }
 
         for (uint8_t i = 0; i < indir; i++) {
