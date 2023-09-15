@@ -347,14 +347,13 @@ private:
             if (!res.is_extern) {
                 DEFINE(token, parseId());
                 name = s2nkid(token->text);
+                EXPECT(t_colon);
             }
-            EXPECT(t_colon);
             DEFINE(type, parseType());
             res.args_t.emplace(type);
             res.arg_names.emplace(name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        EXPECT(t_colon);
         APPEND(res.ret_t, parseType());
         return res;
     }
@@ -430,7 +429,7 @@ private:
         }
 
         else {
-            return error("type expected"), nullptr;
+            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), nullptr;
         }
     }
 
