@@ -256,7 +256,7 @@ struct GeneratorState {
                 DEFINE(token, parseId());
                 EXPECT(t_colon);
                 DEFINE(type, parseType());
-                DEFINE(cnst, parseAggregateConst(type));
+                DEFINE(cnst, parseConst(type));
                 auto name = s2nkid(token->text);
                 new (makeGlobalDecl(name)) Decl{
                     {.cnst = cnst},
@@ -570,102 +570,101 @@ private:
         }
 
         else {
-            return error("TODO instr is not implemented"), NkIrInstr{};
+            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrInstr{};
         }
     }
 
-    Void parseAggregateValue(NkIrRef const &result_ref, nktype_t type) {
-        EXPECT(t_brace_l);
+    Void parseValue(NkIrRef const &result_ref, nktype_t type) {
+        switch (type->kind) {
+        case NkType_Aggregate: {
+            EXPECT(t_brace_l);
 
-        for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
-            if (i) {
-                EXPECT(t_comma);
-            }
-
-            auto const &elem = type->as.aggr.elems.data[i];
-
-            if (elem.count > 1) {
-                EXPECT(t_bracket_l);
-            }
-
-            for (size_t i = 0; i < elem.count; i++) {
-                auto ref = result_ref;
-                ref.post_offset += elem.offset + elem.type->size * i;
-                void *data = nkir_constRefDeref(m_ir, ref);
-
+            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
                 if (i) {
                     EXPECT(t_comma);
                 }
 
-                switch (elem.type->kind) {
-                case NkType_Aggregate:
-                    parseAggregateValue(ref, elem.type);
-                    break;
-                case NkType_Numeric:
-                    switch (elem.type->as.num.value_type) {
-                    case Int8:
-                        ASSIGN(*(int8_t *)data, parseInt());
-                        break;
-                    case Uint8:
-                        ASSIGN(*(uint8_t *)data, parseInt());
-                        break;
-                    case Int16:
-                        ASSIGN(*(int16_t *)data, parseInt());
-                        break;
-                    case Uint16:
-                        ASSIGN(*(uint16_t *)data, parseInt());
-                        break;
-                    case Int32:
-                        ASSIGN(*(int32_t *)data, parseInt());
-                        break;
-                    case Uint32:
-                        ASSIGN(*(uint32_t *)data, parseInt());
-                        break;
-                    case Int64:
-                        ASSIGN(*(int64_t *)data, parseInt());
-                        break;
-                    case Uint64:
-                        ASSIGN(*(uint64_t *)data, parseInt());
-                        break;
-                    case Float32:
-                        ASSIGN(*(float *)data, parseFloat());
-                        break;
-                    case Float64:
-                        ASSIGN(*(double *)data, parseFloat());
-                        break;
+                auto const &elem = type->as.aggr.elems.data[i];
+
+                if (elem.count > 1) {
+                    EXPECT(t_bracket_l);
+                }
+
+                for (size_t i = 0; i < elem.count; i++) {
+                    if (i) {
+                        EXPECT(t_comma);
                     }
-                    break;
-                case NkType_Pointer:
-                case NkType_Procedure:
-                default:
-                    assert(!"unreachable");
-                    break;
+                    auto ref = result_ref;
+                    ref.post_offset += elem.offset + elem.type->size * i;
+                    CHECK(parseValue(ref, elem.type));
+                }
+
+                if (elem.count > 1) {
+                    accept(t_comma);
+                    EXPECT(t_bracket_r);
                 }
             }
 
-            if (elem.count > 1) {
-                accept(t_comma);
-                EXPECT(t_bracket_r);
-            }
+            accept(t_comma);
+            EXPECT(t_brace_r);
+
+            break;
         }
 
-        accept(t_comma);
-        EXPECT(t_brace_r);
+        case NkType_Numeric: {
+            auto const data = nkir_constRefDeref(m_ir, result_ref);
+
+            switch (type->as.num.value_type) {
+            case Int8:
+                ASSIGN(*(int8_t *)data, parseInt());
+                break;
+            case Uint8:
+                ASSIGN(*(uint8_t *)data, parseInt());
+                break;
+            case Int16:
+                ASSIGN(*(int16_t *)data, parseInt());
+                break;
+            case Uint16:
+                ASSIGN(*(uint16_t *)data, parseInt());
+                break;
+            case Int32:
+                ASSIGN(*(int32_t *)data, parseInt());
+                break;
+            case Uint32:
+                ASSIGN(*(uint32_t *)data, parseInt());
+                break;
+            case Int64:
+                ASSIGN(*(int64_t *)data, parseInt());
+                break;
+            case Uint64:
+                ASSIGN(*(uint64_t *)data, parseInt());
+                break;
+            case Float32:
+                ASSIGN(*(float *)data, parseFloat());
+                break;
+            case Float64:
+                ASSIGN(*(double *)data, parseFloat());
+                break;
+            }
+
+            break;
+        }
+
+        case NkType_Pointer:
+        case NkType_Procedure:
+        default:
+            assert(!"unreachable");
+            return {};
+        }
 
         return {};
     }
 
-    NkIrConst parseAggregateConst(nktype_t type) {
-        if (type->kind != NkType_Aggregate) {
-            return error("type is not aggregate"), NkIrConst{};
-        }
-
+    NkIrConst parseConst(nktype_t type) {
         auto data = nk_alloc(m_file_alloc, type->size);
         std::memset(data, 0, type->size);
         auto const cnst = nkir_makeConst(m_ir, data, type);
-
-        CHECK(parseAggregateValue(nkir_makeRodataRef(m_ir, cnst), type));
-
+        CHECK(parseValue(nkir_makeRodataRef(m_ir, cnst), type));
         return cnst;
     }
 
@@ -738,7 +737,7 @@ private:
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(cnst, parseAggregateConst(type));
+            DEFINE(cnst, parseConst(type));
             result_ref = nkir_makeRodataRef(m_ir, cnst);
         }
 
