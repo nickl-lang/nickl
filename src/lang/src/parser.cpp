@@ -822,6 +822,9 @@ private:
         if (accept(t_int)) {
             NK_LOG_DBG("accept(int, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
             node = nkl_makeNode0(n_int, _n_token);
+        } else if (accept(t_int_hex)) {
+            NK_LOG_DBG("accept(int_hex, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
+            node = nkl_makeNode0(n_int_hex, _n_token);
         } else if (accept(t_float)) {
             NK_LOG_DBG("accept(float, \"%.*s\"", (int)_n_token->text.size, _n_token->text.data);
             node = nkl_makeNode0(n_float, _n_token);

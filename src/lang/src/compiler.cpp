@@ -63,8 +63,21 @@
 #define SCNu8 "hhu"
 #endif // SCNu8
 
+#ifndef SCNx8
+#define SCNx8 "hhx"
+#endif // SCNx8
+
 #define SCNf32 "f"
 #define SCNf64 "lf"
+
+#define SCNXi8 SCNx8
+#define SCNXu8 SCNx8
+#define SCNXi16 SCNx16
+#define SCNXu16 SCNx16
+#define SCNXi32 SCNx32
+#define SCNXu32 SCNx32
+#define SCNXi64 SCNx64
+#define SCNXu64 SCNx64
 
 namespace {
 
@@ -1147,10 +1160,10 @@ ValueInfo import(NklCompiler c, fs::path filepath) {
 }
 
 template <class T>
-ValueInfo makeNumeric(NklCompiler c, nkltype_t type, nkstr str, char const *fmt) {
+ValueInfo makeNumeric(NklCompiler c, nkltype_t type, char const *str, char const *fmt) {
     T value = 0;
     // TODO Replace sscanf in compiler
-    int res = std::sscanf(str.data, fmt, &value);
+    int res = std::sscanf(str, fmt, &value);
     (void)res;
     assert(res > 0 && res != EOF && "numeric constant parsing failed");
     return makeValue<T>(c, type, value);
@@ -1733,10 +1746,10 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         auto const text = node->token->text;
         switch (value_type) {
         case Float32:
-            return makeNumeric<float>(c, f32_t, text, "%" SCNf32);
+            return makeNumeric<float>(c, f32_t, text.data, "%" SCNf32);
         default:
         case Float64:
-            return makeNumeric<double>(c, f64_t, text, "%" SCNf64);
+            return makeNumeric<double>(c, f64_t, text.data, "%" SCNf64);
         }
     }
 
@@ -1748,8 +1761,33 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         auto const text = node->token->text;
 #define X(NAME, VALUE_TYPE, CTYPE) \
     case VALUE_TYPE:               \
-        return makeNumeric<CTYPE>(c, CAT(NAME, _t), text, "%" CAT(SCN, NAME));
-        switch (value_type) { NUMERIC_ITERATE(X) }
+        return makeNumeric<CTYPE>(c, CAT(NAME, _t), text.data, "%" CAT(SCN, NAME));
+        switch (value_type) {
+            NUMERIC_ITERATE_INT(X)
+        default:
+            assert(!"unreachable");
+            return {};
+        }
+        assert(!"unreachable");
+        return {};
+#undef X
+    }
+
+    case n_int_hex: {
+        NkNumericValueType value_type =
+            (c->node_stack.back().type && nklt_tclass(c->node_stack.back().type) == NkType_Numeric)
+                ? c->node_stack.back().type->as.num.value_type
+                : Int64;
+        auto const text = node->token->text;
+#define X(NAME, VALUE_TYPE, CTYPE) \
+    case VALUE_TYPE:               \
+        return makeNumeric<CTYPE>(c, CAT(NAME, _t), text.data + 2, "%" CAT(SCNX, NAME));
+        switch (value_type) {
+            NUMERIC_ITERATE_INT(X)
+        default:
+            assert(!"unreachable");
+            return {};
+        }
         assert(!"unreachable");
         return {};
 #undef X
