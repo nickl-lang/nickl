@@ -139,6 +139,7 @@ struct GeneratorState {
         Decl_ExternProc,
 
         Decl_Type,
+        Decl_Const
     };
 
     struct Decl {
@@ -148,6 +149,7 @@ struct GeneratorState {
             NkIrLocalVar local;
             NkIrExternProc extern_proc;
             nktype_t type;
+            NkIrConst cnst;
         } as;
         EDeclKind kind;
     };
@@ -166,7 +168,7 @@ struct GeneratorState {
                 DEFINE(sig, parseProcSignature());
 
                 if (sig.is_extern) {
-                    auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                    new (makeGlobalDecl(s2nkid(sig.name))) Decl{
                         {.extern_proc = nkir_makeExternProc(
                              m_ir,
                              sig.name,
@@ -180,7 +182,6 @@ struct GeneratorState {
                                  }))},
                         Decl_ExternProc,
                     };
-                    m_decls.insert(s2nkid(sig.name), decl);
                 } else {
                     auto proc = nkir_createProc(m_ir);
 
@@ -202,7 +203,7 @@ struct GeneratorState {
                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                             }));
 
-                    auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                    auto const decl = new (makeGlobalDecl(s2nkid(sig.name))) Decl{
                         {.proc{
                             .proc = proc,
                             .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
@@ -210,15 +211,13 @@ struct GeneratorState {
                         }},
                         Decl_Proc,
                     };
-                    m_decls.insert(s2nkid(sig.name), decl);
                     m_cur_proc = &decl->as.proc;
 
                     for (size_t i = 0; i < sig.args_t.size(); i++) {
-                        auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                        new (makeLocalDecl(sig.arg_names[i])) Decl{
                             {.arg_index = i},
                             Decl_Arg,
                         };
-                        m_cur_proc->locals.insert(sig.arg_names[i], decl);
                     }
 
                     EXPECT(t_brace_l);
@@ -230,11 +229,10 @@ struct GeneratorState {
                             auto const name = s2nkid(token->text);
                             EXPECT(t_colon);
                             DEFINE(type, parseType());
-                            auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                            new (makeLocalDecl(name)) Decl{
                                 {.local = nkir_makeLocalVar(m_ir, type)},
                                 Decl_LocalVar,
                             };
-                            m_cur_proc->locals.insert(name, decl);
                         } else {
                             DEFINE(instr, parseInstr());
                             nkir_gen(m_ir, {&instr, 1});
@@ -250,13 +248,22 @@ struct GeneratorState {
                 EXPECT(t_colon);
                 DEFINE(type, parseType());
                 auto name = s2nkid(token->text);
-                auto decl = new (nk_alloc_t<Decl>(m_parse_alloc)) Decl{
+                new (makeGlobalDecl(name)) Decl{
                     {.type = type},
                     Decl_Type,
                 };
-                m_decls.insert(name, decl);
+            } else if (accept(t_const)) {
+                DEFINE(token, parseId());
+                EXPECT(t_colon);
+                DEFINE(type, parseType());
+                DEFINE(cnst, parseAggregateConst(type));
+                auto name = s2nkid(token->text);
+                new (makeGlobalDecl(name)) Decl{
+                    {.cnst = cnst},
+                    Decl_Const,
+                };
             } else if (accept(t_data)) {
-                return error("TODO data definition not implemented"), Void{};
+                return error("TODO data definition is not implemented"), Void{};
             } else {
                 return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
             }
@@ -276,6 +283,24 @@ struct GeneratorState {
     }
 
 private:
+    Decl *makeGlobalDecl(nkid name) {
+        if (m_decls.find(name)) {
+            return error("global `%s` is already defined", nkid2cs(name)), nullptr;
+        }
+        auto const decl = nk_alloc_t<Decl>(m_parse_alloc);
+        m_decls.insert(name, decl);
+        return decl;
+    }
+
+    Decl *makeLocalDecl(nkid name) {
+        if (m_cur_proc->locals.find(name)) {
+            return error("local `%s` is already defined", nkid2cs(name)), nullptr;
+        }
+        auto const decl = nk_alloc_t<Decl>(m_parse_alloc);
+        m_cur_proc->locals.insert(name, decl);
+        return decl;
+    }
+
     NkIrToken *parseId() {
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
@@ -308,6 +333,29 @@ private:
         assert(res > 0 && res != EOF && "numeric constant parsing failed");
         getToken();
         return value;
+    }
+
+    nkstr parseString(NkAllocator alloc) {
+        auto const data = m_cur_token->text.data + 1;
+        auto const len = m_cur_token->text.size - 2;
+        getToken();
+
+        auto const str = nk_alloc_t<char>(alloc, len + 1);
+        memcpy(str, data, len);
+        str[len] = '\0';
+
+        return {str, len};
+    }
+
+    nkstr parseEspcaedString(NkAllocator alloc) {
+        auto const data = m_cur_token->text.data + 1;
+        auto const len = m_cur_token->text.size - 2;
+        getToken();
+
+        NkStringBuilder_T sb{};
+        nksb_init_alloc(&sb, alloc);
+        nksb_str_unescape(&sb, {data, len});
+        return nksb_concat(&sb);
     }
 
     struct ProcSignatureParseResult {
@@ -408,10 +456,10 @@ private:
                     if (!check(t_int)) {
                         return error("integer constant expected"), nullptr;
                     }
-                    APPEND(counts, parseInt());
+                    APPEND(counts, (size_t)parseInt());
                     EXPECT(t_bracket_r);
                 } else {
-                    counts.emplace(1);
+                    counts.emplace(1ull);
                 }
                 APPEND(types, parseType());
             } while (accept(t_comma));
@@ -522,8 +570,103 @@ private:
         }
 
         else {
-            return error("TODO instr not implemented"), NkIrInstr{};
+            return error("TODO instr is not implemented"), NkIrInstr{};
         }
+    }
+
+    Void parseAggregateValue(NkIrRef const &result_ref, nktype_t type) {
+        EXPECT(t_brace_l);
+
+        for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+            if (i) {
+                EXPECT(t_comma);
+            }
+
+            auto const &elem = type->as.aggr.elems.data[i];
+
+            if (elem.count > 1) {
+                EXPECT(t_bracket_l);
+            }
+
+            for (size_t i = 0; i < elem.count; i++) {
+                auto ref = result_ref;
+                ref.post_offset += elem.offset + elem.type->size * i;
+                void *data = nkir_constRefDeref(m_ir, ref);
+
+                if (i) {
+                    EXPECT(t_comma);
+                }
+
+                switch (elem.type->kind) {
+                case NkType_Aggregate:
+                    parseAggregateValue(ref, elem.type);
+                    break;
+                case NkType_Numeric:
+                    switch (elem.type->as.num.value_type) {
+                    case Int8:
+                        ASSIGN(*(int8_t *)data, parseInt());
+                        break;
+                    case Uint8:
+                        ASSIGN(*(uint8_t *)data, parseInt());
+                        break;
+                    case Int16:
+                        ASSIGN(*(int16_t *)data, parseInt());
+                        break;
+                    case Uint16:
+                        ASSIGN(*(uint16_t *)data, parseInt());
+                        break;
+                    case Int32:
+                        ASSIGN(*(int32_t *)data, parseInt());
+                        break;
+                    case Uint32:
+                        ASSIGN(*(uint32_t *)data, parseInt());
+                        break;
+                    case Int64:
+                        ASSIGN(*(int64_t *)data, parseInt());
+                        break;
+                    case Uint64:
+                        ASSIGN(*(uint64_t *)data, parseInt());
+                        break;
+                    case Float32:
+                        ASSIGN(*(float *)data, parseFloat());
+                        break;
+                    case Float64:
+                        ASSIGN(*(double *)data, parseFloat());
+                        break;
+                    }
+                    break;
+                case NkType_Pointer:
+                case NkType_Procedure:
+                default:
+                    assert(!"unreachable");
+                    break;
+                }
+            }
+
+            if (elem.count > 1) {
+                accept(t_comma);
+                EXPECT(t_bracket_r);
+            }
+        }
+
+        accept(t_comma);
+        EXPECT(t_brace_r);
+
+        return {};
+    }
+
+    NkIrConst parseAggregateConst(nktype_t type) {
+        if (type->kind != NkType_Aggregate) {
+            return error("type is not aggregate"), NkIrConst{};
+        }
+
+        auto data = nk_alloc(m_file_alloc, type->size);
+        std::memset(data, 0, type->size);
+        auto const cnst = nkir_makeConst(m_ir, data, type);
+
+        CHECK(parseAggregateValue(nkir_makeRodataRef(m_ir, cnst), type));
+
+        return cnst;
     }
 
     NkIrRef parseRef() {
@@ -554,39 +697,36 @@ private:
             case Decl_ExternProc:
                 result_ref = nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
                 break;
+            case Decl_Type:
+                return error("cannot reference a type"), NkIrRef{};
+            case Decl_Const:
+                result_ref = nkir_makeRodataRef(m_ir, decl->as.cnst);
+                break;
             default:
                 return error("TODO decl kind not handled"), NkIrRef{};
             }
-        } else if (check(t_string)) {
-            auto const data = m_cur_token->text.data + 1;
-            auto const len = m_cur_token->text.size - 2;
-            getToken();
+        } else if (accept(t_ret)) {
+            // TODO Support multiple return values
+            result_ref = nkir_makeRetRef(m_ir, 0);
+        }
 
-            auto str = nk_alloc_t<char>(m_file_alloc, len + 1);
-            memcpy(str, data, len);
-            str[len] = '\0';
-
-            auto str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), len + 1);
-            auto str_ref = nkir_makeAddressRef(
-                m_ir, nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, str, str_t)), makePointerType(m_file_alloc, str_t));
-            result_ref = str_ref;
-        } else if (check(t_escaped_string)) {
-            auto const data = m_cur_token->text.data + 1;
-            auto const len = m_cur_token->text.size - 2;
-            getToken();
-
-            NkStringBuilder_T sb{};
-            nksb_init_alloc(&sb, m_file_alloc);
-            nksb_str_unescape(&sb, {data, len});
-            auto str = nksb_concat(&sb);
-
-            auto str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
-            auto str_ref = nkir_makeAddressRef(
+        else if (check(t_string)) {
+            auto const str = parseString(m_file_alloc);
+            auto const str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
+            result_ref = nkir_makeAddressRef(
                 m_ir,
                 nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)),
                 makePointerType(m_file_alloc, str_t));
-            result_ref = str_ref;
-        } else if (check(t_int)) {
+        } else if (check(t_escaped_string)) {
+            auto const str = parseEspcaedString(m_file_alloc);
+            auto const str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
+            result_ref = nkir_makeAddressRef(
+                m_ir,
+                nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)),
+                makePointerType(m_file_alloc, str_t));
+        }
+
+        else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
             ASSIGN(*value, parseInt());
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeNumericType(m_file_alloc, Int64)));
@@ -594,11 +734,16 @@ private:
             auto value = nk_alloc_t<double>(m_file_alloc);
             ASSIGN(*value, parseFloat());
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeNumericType(m_file_alloc, Float64)));
-        } else if (accept(t_ret)) {
-            // TODO Support multiple return values
-            result_ref = nkir_makeRetRef(m_ir, 0);
-        } else {
-            return error("TODO ref not implemented"), NkIrRef{};
+        }
+
+        else if (accept(t_colon)) {
+            DEFINE(type, parseType());
+            DEFINE(cnst, parseAggregateConst(type));
+            result_ref = nkir_makeRodataRef(m_ir, cnst);
+        }
+
+        else {
+            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrRef{};
         }
 
         if (accept(t_plus)) {

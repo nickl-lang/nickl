@@ -99,6 +99,7 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
     }
     switch (type->kind) {
     case NkType_Aggregate:
+        nksb_printf(sb, "{");
         for (size_t elemi = 0; elemi < type->as.aggr.elems.size; elemi++) {
             auto const &elem = type->as.aggr.elems.data[elemi];
             auto ptr = (uint8_t *)data + elem.offset;
@@ -122,6 +123,7 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
                 }
             }
         }
+        nksb_printf(sb, "}");
         break;
     case NkType_Numeric:
         switch (type->as.num.value_type) {

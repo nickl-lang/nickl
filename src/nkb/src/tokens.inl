@@ -28,11 +28,12 @@ OP(plus, "+")
 
 KW(keyword_marker)
 
-KW(proc)
-KW(extern)
 KW(cdecl)
-KW(type)
+KW(const)
 KW(data)
+KW(extern)
+KW(proc)
+KW(type)
 
 KW(nop)
 
