@@ -232,7 +232,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 }
                 referenced_procs.emplace(NkIrProc{ir_ref.index});
                 break;
-            };
+            }
             case NkIrRef_ExternData: {
                 ref.kind = NkBcRef_None;
                 NK_LOG_WRN("TODO NkIrRef_ExternData translation not implemented");

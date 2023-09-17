@@ -33,8 +33,7 @@ struct Context {
 
 Context ctx;
 
-// TODO Integer promotion works only on little-endian
-ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
+ffi_type *getNativeHandle(nktype_t type) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
@@ -54,10 +53,10 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
         case NkType_Numeric:
             switch (type->as.num.value_type) {
             case Int8:
-                ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint8;
+                ffi_t = &ffi_type_sint8;
                 break;
             case Int16:
-                ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint16;
+                ffi_t = &ffi_type_sint16;
                 break;
             case Int32:
                 ffi_t = &ffi_type_sint32;
@@ -66,10 +65,10 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
                 ffi_t = &ffi_type_sint64;
                 break;
             case Uint8:
-                ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint8;
+                ffi_t = &ffi_type_uint8;
                 break;
             case Uint16:
-                ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint16;
+                ffi_t = &ffi_type_uint16;
                 break;
             case Uint32:
                 ffi_t = &ffi_type_uint32;
@@ -78,7 +77,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
                 ffi_t = &ffi_type_uint64;
                 break;
             case Float32:
-                ffi_t = promote ? &ffi_type_double : &ffi_type_float;
+                ffi_t = &ffi_type_float;
                 break;
             case Float64:
                 ffi_t = &ffi_type_double;
@@ -116,7 +115,7 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
         //     ffi_type **elements =
         //         (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
         //     for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
-        //         elements[i] = getNativeHandle(type->as.tuple.elems.data[i].type, promote);
+        //         elements[i] = getNativeHandle(type->as.tuple.elems.data[i].type);
         //     }
         //     elements[type->as.tuple.elems.size] = nullptr;
         //     ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
@@ -152,10 +151,10 @@ ffi_type *getNativeHandle(nktype_t type, bool promote = false) {
     return ffi_t;
 }
 
-ffi_type **getNativeHandleArray(NkTypeArray types, bool promote = false) {
+ffi_type **getNativeHandleArray(NkTypeArray types) {
     ffi_type **elements = nk_arena_alloc_t<ffi_type *>(&ctx.typearena, types.size + 1);
     for (size_t i = 0; i < types.size; i++) {
-        elements[i] = getNativeHandle(types.data[i], promote);
+        elements[i] = getNativeHandle(types.data[i]);
     }
     elements[types.size] = nullptr;
     return elements;
@@ -211,7 +210,7 @@ void nk_native_invoke(
         };
 
         auto const rtype = getNativeHandle(rett);
-        auto const atypes = getNativeHandleArray({argt, argc}, is_variadic);
+        auto const atypes = getNativeHandleArray({argt, argc});
 
         ffiPrepareCif(&cif, nfixedargs, is_variadic, rtype, atypes, argc);
     }
@@ -241,7 +240,7 @@ void *nk_native_makeClosure(
         cl->proc = proc;
 
         auto const rtype = getNativeHandle(rett);
-        auto const atypes = getNativeHandleArray({argt, argc}, is_variadic);
+        auto const atypes = getNativeHandleArray({argt, argc});
 
         ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
     }
