@@ -147,6 +147,7 @@ struct GeneratorState {
             size_t arg_index;
             ProcRecord proc;
             NkIrLocalVar local;
+            NkIrGlobalVar global;
             NkIrExternProc extern_proc;
             nktype_t type;
             NkIrConst cnst;
@@ -263,7 +264,14 @@ struct GeneratorState {
                     Decl_Const,
                 };
             } else if (accept(t_data)) {
-                return error("TODO data definition is not implemented"), Void{};
+                DEFINE(token, parseId());
+                EXPECT(t_colon);
+                DEFINE(type, parseType());
+                auto name = s2nkid(token->text);
+                new (makeGlobalDecl(name)) Decl{
+                    {.global = nkir_makeGlobalVar(m_ir, type)},
+                    Decl_GlobalVar,
+                };
             } else {
                 return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
             }
@@ -476,6 +484,11 @@ private:
             };
         }
 
+        else if (accept(t_aster)) {
+            DEFINE(target_type, parseType());
+            return makePointerType(m_file_alloc, target_type);
+        }
+
         else {
             return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), nullptr;
         }
@@ -672,6 +685,8 @@ private:
         NkIrRef result_ref{};
         uint8_t indir{};
 
+        bool const deref = accept(t_amper);
+
         while (accept(t_bracket_l)) {
             indir++;
         }
@@ -693,6 +708,11 @@ private:
             case Decl_LocalVar:
                 result_ref = nkir_makeFrameRef(m_ir, decl->as.local);
                 break;
+            case Decl_GlobalVar:
+                result_ref = nkir_makeDataRef(m_ir, decl->as.global);
+                break;
+            case Decl_ExternData:
+                return error("TODO Decl_ExternData ref is not implemented"), NkIrRef{};
             case Decl_ExternProc:
                 result_ref = nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
                 break;
@@ -702,7 +722,8 @@ private:
                 result_ref = nkir_makeRodataRef(m_ir, decl->as.cnst);
                 break;
             default:
-                return error("TODO decl kind not handled"), NkIrRef{};
+                assert(!"unreachable");
+                return {};
             }
         } else if (accept(t_ret)) {
             // TODO Support multiple return values
@@ -712,17 +733,11 @@ private:
         else if (check(t_string)) {
             auto const str = parseString(m_file_alloc);
             auto const str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
-            result_ref = nkir_makeAddressRef(
-                m_ir,
-                nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)),
-                makePointerType(m_file_alloc, str_t));
+            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
         } else if (check(t_escaped_string)) {
             auto const str = parseEspcaedString(m_file_alloc);
             auto const str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
-            result_ref = nkir_makeAddressRef(
-                m_ir,
-                nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t)),
-                makePointerType(m_file_alloc, str_t));
+            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
         }
 
         else if (check(t_int)) {
@@ -767,6 +782,14 @@ private:
 
         if (accept(t_colon)) {
             ASSIGN(result_ref.type, parseType());
+        }
+
+        if (indir && deref) {
+            return error("cannot have both dereference and address of"), NkIrRef{};
+        }
+
+        if (deref) {
+            result_ref = nkir_makeAddressRef(m_ir, result_ref, makePointerType(m_file_alloc, result_ref.type));
         }
 
         return result_ref;

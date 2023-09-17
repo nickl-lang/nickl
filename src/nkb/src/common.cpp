@@ -14,18 +14,22 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
     }
     switch (type->kind) {
     case NkType_Aggregate:
-        nksb_printf(sb, "{");
-        for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
-            if (i) {
-                nksb_printf(sb, ", ");
+        if (type->as.aggr.elems.size) {
+            nksb_printf(sb, "{");
+            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+                if (i) {
+                    nksb_printf(sb, ", ");
+                }
+                auto const &elem = type->as.aggr.elems.data[i];
+                if (elem.count > 0) {
+                    nksb_printf(sb, "[%" PRIu64 "]", elem.count);
+                }
+                nkirt_inspect(elem.type, sb);
             }
-            auto const &elem = type->as.aggr.elems.data[i];
-            if (elem.count > 0) {
-                nksb_printf(sb, "[%" PRIu64 "]", elem.count);
-            }
-            nkirt_inspect(elem.type, sb);
+            nksb_printf(sb, "}");
+        } else {
+            nksb_printf(sb, "void");
         }
-        nksb_printf(sb, "}");
         break;
     case NkType_Numeric:
         switch (type->as.num.value_type) {

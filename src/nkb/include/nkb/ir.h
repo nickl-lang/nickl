@@ -28,13 +28,13 @@ typedef enum {
     NkIrRef_Frame,
     NkIrRef_Arg,
     NkIrRef_Ret,
-
-    NkIrRef_Data,
     NkIrRef_Rodata,
+    NkIrRef_Data,
+
     NkIrRef_Proc,
     NkIrRef_ExternData,
     NkIrRef_ExternProc,
-    NkIrRef_Reloc,
+    NkIrRef_Address,
 } NkIrRefKind;
 
 typedef struct {

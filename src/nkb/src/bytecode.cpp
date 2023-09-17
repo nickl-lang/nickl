@@ -168,6 +168,19 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
     auto referenced_procs = NkArray<NkIrProc>::create(tmp_alloc);
 
+    auto const get_global_addr = [&](size_t index) {
+        while (index >= ctx->globals.size()) {
+            ctx->globals.emplace(nullptr);
+        }
+        auto &data = ctx->globals[index];
+        if (!data) {
+            auto const type = ir.globals[index];
+            data = nk_allocAligned(ir.alloc, type->size, type->align);
+            std::memset(data, 0, type->size);
+        }
+        return data;
+    };
+
     auto const translate_ref =
         [&](size_t instr_index, size_t arg_index, size_t ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
             ref = {
@@ -188,8 +201,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             case NkIrRef_Ret:
                 break;
             case NkIrRef_Data: {
-                ref.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_Data translation not implemented");
+                ref.offset += (size_t)get_global_addr(ir_ref.index);
                 break;
             }
             case NkIrRef_Rodata: {
@@ -238,26 +250,24 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 ref.offset += (size_t)sym_addr;
                 break;
             }
-            case NkIrRef_Reloc: {
+            case NkIrRef_Address: {
                 auto const &target_ref = ir.relocs[ir_ref.index];
+                auto ref_addr = nk_alloc_t<void *>(ir.alloc);
                 switch (target_ref.kind) {
                 case NkIrRef_Data:
-                    NK_LOG_WRN("TODO NkIrRef_Data reloc translation not implemented");
+                    *ref_addr = get_global_addr(target_ref.index);
                     break;
-
-                case NkIrRef_Rodata: {
-                    auto ref_addr = nk_alloc_t<void *>(ir.alloc);
+                case NkIrRef_Rodata:
                     *ref_addr = ir.consts[target_ref.index].data;
-
-                    ref.kind = NkBcRef_Rodata;
-                    ref.offset += (size_t)ref_addr;
                     break;
-                }
-
                 default:
                     assert(!"unreachable");
                     break;
                 }
+
+                ref.kind = NkBcRef_Rodata;
+                ref.offset += (size_t)ref_addr;
+
                 break;
             }
             default:
@@ -434,6 +444,7 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
         .tmp_arena = tmp_arena,
 
         .procs = decltype(NkIrRunCtx_T::procs)::create(ir->alloc),
+        .globals = decltype(NkIrRunCtx_T::globals)::create(ir->alloc),
         .extern_syms = decltype(NkIrRunCtx_T::extern_syms)::create(ir->alloc),
     };
 }

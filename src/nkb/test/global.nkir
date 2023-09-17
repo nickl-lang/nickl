@@ -1,0 +1,49 @@
+proc extern printf(i64, ...) i32
+
+data g_value: i64
+proc getValue() i64 {
+@start
+    mov g_value -> ret
+    ret
+}
+proc setValue(val: i64) void {
+@start
+    mov val -> g_value
+    ret
+}
+
+const c_value: i64 42
+proc writeValue(ptr: *i64) void {
+@start
+    mov c_value -> [ptr]
+    ret
+}
+
+proc printValue() void {
+@start
+    val: i64
+    call getValue, () -> val
+    call printf, (&"%zi\n", val)
+    ret
+}
+
+proc main(argc: i32, argv: i64) i32 {
+@start
+    call printValue, ()
+
+    call setValue, (24)
+    call printValue, ()
+
+    call writeValue, (&g_value)
+    call printValue, ()
+
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+0
+24
+42
+
+@endoutput */

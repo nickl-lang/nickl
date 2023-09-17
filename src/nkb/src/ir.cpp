@@ -25,14 +25,16 @@ NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
     return {{.refs{refs, args.size}}, NkIrArg_RefArray};
 }
 
-void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
+void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb, bool print_arg_names = true) {
     nksb_printf(sb, "(");
 
     for (size_t i = 0; i < proc_info.args_t.size; i++) {
         if (i) {
             nksb_printf(sb, ", ");
         }
-        nksb_printf(sb, "arg%" PRIu64 ": ", i);
+        if (print_arg_names) {
+            nksb_printf(sb, "arg%" PRIu64 ": ", i);
+        }
         nkirt_inspect(proc_info.args_t.data[i], sb);
     }
 
@@ -49,7 +51,7 @@ void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb) {
         if (i) {
             nksb_printf(sb, ",");
         }
-        nksb_printf(sb, ": ");
+        nksb_printf(sb, " ");
         nkirt_inspect(proc_info.ret_t.data[i], sb);
     }
 }
@@ -375,7 +377,7 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
         .offset = 0,
         .post_offset = 0,
         .type = ptr_t,
-        .kind = NkIrRef_Reloc,
+        .kind = NkIrRef_Address,
         .indir = 0,
     };
 }
@@ -507,7 +509,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
     if (ir->extern_procs.size()) {
         for (auto const &proc : ir->extern_procs) {
             nksb_printf(sb, "\nextern proc %.*s", (int)proc.name.size, proc.name.data);
-            inspectProcSignature(proc.proc_t->as.proc.info, sb);
+            inspectProcSignature(proc.proc_t->as.proc.info, sb, false);
         }
         nksb_printf(sb, "\n");
     }
@@ -641,7 +643,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
         nksb_printf(sb, "%.*s", (int)name.size, name.data);
         break;
     }
-    case NkIrRef_Reloc: {
+    case NkIrRef_Address: {
         nksb_printf(sb, "&");
         auto const &reloc_ref = ir->relocs[ref.index];
         nkir_inspectRef(ir, reloc_ref, sb);
@@ -661,7 +663,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
     if (ref.post_offset) {
         nksb_printf(sb, "+%" PRIu64 "", ref.post_offset);
     }
-    if (ref.kind != NkIrRef_Reloc) {
+    if (ref.kind != NkIrRef_Address) {
         nksb_printf(sb, ":");
         nkirt_inspect(ref.type, sb);
     }

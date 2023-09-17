@@ -10,7 +10,7 @@ proc main(argc: i32, argv: i64) i32 {
 @start
     res: i64
     call nativeProc, () -> res
-    call printf, ("%zi\n", res)
+    call printf, (&"%zi\n", res)
     mov  0 -> ret
     ret
 }
