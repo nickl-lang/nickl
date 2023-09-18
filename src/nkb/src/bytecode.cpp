@@ -399,6 +399,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         }
         case Reloc_Closure: {
             ref.offset = (size_t)nk_native_makeClosure(
+                &ctx->ffi_ctx,
                 ir.alloc,
                 ctx->procs[reloc.target_id],
                 reloc.proc_info->flags & NkProcVariadic,
@@ -446,11 +447,17 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
         .procs = decltype(NkIrRunCtx_T::procs)::create(ir->alloc),
         .globals = decltype(NkIrRunCtx_T::globals)::create(ir->alloc),
         .extern_syms = decltype(NkIrRunCtx_T::extern_syms)::create(ir->alloc),
+
+        .ffi_ctx{
+            .alloc = ir->alloc,
+        },
     };
 }
 
 void nkir_freeRunCtx(NkIrRunCtx ctx) {
     NK_LOG_TRC("%s", __func__);
+
+    ctx->ffi_ctx.typemap.deinit();
 
     nk_free_t(ctx->ir->alloc, ctx);
 }

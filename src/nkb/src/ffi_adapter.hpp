@@ -5,6 +5,7 @@
 #include "nkb/common.h"
 
 void nk_native_invoke(
+    NkFfiContext *ctx,
     void *proc,
     size_t nfixedargs,
     bool is_variadic,
@@ -15,6 +16,7 @@ void nk_native_invoke(
     nktype_t rett);
 
 void *nk_native_makeClosure(
+    NkFfiContext *ctx,
     NkAllocator alloc,
     NkBcProc proc,
     bool is_variadic,

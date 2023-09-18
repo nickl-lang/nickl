@@ -1,8 +1,7 @@
 #include "ffi_adapter.hpp"
 
 #include <cassert>
-#include <mutex>
-#include <unordered_map>
+#include <new>
 
 #include <ffi.h>
 
@@ -19,21 +18,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(ffi_adapter);
 
-struct Context {
-    std::unordered_map<nktype_t, ffi_type *> typemap;
-    std::mutex mtx;
-    NkArena typearena{};
-
-    ~Context() {
-        std::lock_guard lk{mtx};
-
-        nk_arena_free(&typearena);
-    }
-};
-
-Context ctx;
-
-ffi_type *getNativeHandle(nktype_t type) {
+ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
@@ -44,10 +29,10 @@ ffi_type *getNativeHandle(nktype_t type) {
 
     ffi_type *ffi_t = nullptr;
 
-    auto it = ctx.typemap.find(type);
-    if (it != ctx.typemap.end()) {
-        NK_LOG_DBG("Found existing ffi type=%p", (void *)it->second);
-        ffi_t = it->second;
+    auto found = ctx->typemap.find(type);
+    if (found) {
+        NK_LOG_DBG("Found existing ffi type=%p", *found);
+        ffi_t = (ffi_type *)*found;
     } else {
         switch (type->kind) {
         case NkType_Numeric:
@@ -99,15 +84,15 @@ ffi_type *getNativeHandle(nktype_t type) {
             for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
                 elem_count += type->as.aggr.elems.data[i].count;
             }
-            ffi_type **elems = (ffi_type **)nk_arena_alloc_t<void *>(&ctx.typearena, elem_count + 1);
+            ffi_type **elems = (ffi_type **)nk_alloc_t<void *>(ctx->alloc, elem_count + 1);
             size_t cur_elem = 0;
             for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
                 for (size_t j = 0; j < type->as.aggr.elems.data[i].count; j++) {
-                    elems[cur_elem++] = getNativeHandle(type->as.aggr.elems.data[i].type);
+                    elems[cur_elem++] = getNativeHandle(ctx, type->as.aggr.elems.data[i].type);
                 }
             }
             elems[elem_count] = nullptr;
-            ffi_t = new (nk_arena_alloc_t<ffi_type>(&ctx.typearena)) ffi_type{
+            ffi_t = new (nk_alloc_t<ffi_type>(ctx->alloc)) ffi_type{
                 .size = type->size,
                 .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
@@ -120,7 +105,7 @@ ffi_type *getNativeHandle(nktype_t type) {
             break;
         }
 
-        ctx.typemap.emplace(type, ffi_t);
+        ctx->typemap.insert(type, ffi_t);
     }
 
 #ifdef ENABLE_LOGGING
@@ -140,10 +125,10 @@ ffi_type *getNativeHandle(nktype_t type) {
     return ffi_t;
 }
 
-ffi_type **getNativeHandleArray(NkTypeArray types) {
-    ffi_type **elements = nk_arena_alloc_t<ffi_type *>(&ctx.typearena, types.size + 1);
+ffi_type **getNativeHandleArray(NkFfiContext *ctx, NkTypeArray types) {
+    ffi_type **elements = nk_alloc_t<ffi_type *>(ctx->alloc, types.size + 1);
     for (size_t i = 0; i < types.size; i++) {
-        elements[i] = getNativeHandle(types.data[i]);
+        elements[i] = getNativeHandle(ctx, types.data[i]);
     }
     elements[types.size] = nullptr;
     return elements;
@@ -176,6 +161,7 @@ void ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(
+    NkFfiContext *ctx,
     void *proc,
     size_t nfixedargs,
     bool is_variadic,
@@ -190,16 +176,10 @@ void nk_native_invoke(
     ffi_cif cif;
 
     {
-        std::lock_guard lk{ctx.mtx};
+        std::lock_guard lk{ctx->mtx};
 
-        // TODO Temporary hack to free memory taken up by the atypes
-        auto const frame = nk_arena_grab(&ctx.typearena);
-        defer {
-            nk_arena_popFrame(&ctx.typearena, frame);
-        };
-
-        auto const rtype = getNativeHandle(rett);
-        auto const atypes = getNativeHandleArray({argt, argc});
+        auto const rtype = getNativeHandle(ctx, rett);
+        auto const atypes = getNativeHandleArray(ctx, {argt, argc});
 
         ffiPrepareCif(&cif, nfixedargs, is_variadic, rtype, atypes, argc);
     }
@@ -211,6 +191,7 @@ void nk_native_invoke(
 }
 
 void *nk_native_makeClosure(
+    NkFfiContext *ctx,
     NkAllocator alloc,
     NkBcProc proc,
     bool is_variadic,
@@ -223,13 +204,13 @@ void *nk_native_makeClosure(
     NkIrNativeClosure_T *cl;
 
     {
-        std::lock_guard lk{ctx.mtx};
+        std::lock_guard lk{ctx->mtx};
 
         cl = nk_alloc_t<NkIrNativeClosure_T>(alloc);
         cl->proc = proc;
 
-        auto const rtype = getNativeHandle(rett);
-        auto const atypes = getNativeHandleArray({argt, argc});
+        auto const rtype = getNativeHandle(ctx, rett);
+        auto const atypes = getNativeHandleArray(ctx, {argt, argc});
 
         ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
     }

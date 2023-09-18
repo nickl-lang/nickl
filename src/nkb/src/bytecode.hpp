@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NKB_BYTECODE
 
 #include <cstddef>
+#include <mutex>
 
 #include "nk/common/allocator.h"
 #include "nk/common/array.hpp"
@@ -73,6 +74,12 @@ struct NkBcProc_T {
     NkArray<NkBcInstr> instrs;
 };
 
+struct NkFfiContext {
+    NkAllocator alloc;
+    NkHashMap<nktype_t, void *> typemap{};
+    std::mutex mtx{};
+};
+
 struct NkIrRunCtx_T {
     NkIrProg ir;
     NkArena *tmp_arena;
@@ -80,6 +87,8 @@ struct NkIrRunCtx_T {
     NkArray<NkBcProc> procs;
     NkArray<void *> globals;
     NkHashMap<nkid, void *> extern_syms;
+
+    NkFfiContext ffi_ctx;
 };
 
 #endif // HEADER_GUARD_NKB_BYTECODE

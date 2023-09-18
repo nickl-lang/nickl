@@ -21,6 +21,7 @@ NK_LOG_USE_SCOPE(interp);
 
 struct ProgramFrame {
     NkBcInstr const *pinstr;
+    NkFfiContext *ffi_ctx;
 };
 
 struct ControlFrame {
@@ -52,6 +53,7 @@ struct InterpContext {
     std::vector<NkArenaFrame> stack_frames;
     NkArenaFrame stack_frame;
     NkBcInstr const *pinstr;
+    NkFfiContext *ffi_ctx;
 
     ~InterpContext() {
         NK_LOG_TRC("deinitializing stack...");
@@ -235,7 +237,7 @@ void interp(NkBcInstr const &instr) {
         auto const retv = getRefAddr(instr.arg[0].ref);
         auto const rett = instr.arg[0].ref.type;
 
-        nk_native_invoke(proc, nfixedargs, is_variadic, argv, argt, argc, retv, rett);
+        nk_native_invoke(ctx.ffi_ctx, proc, nfixedargs, is_variadic, argv, argt, argc, retv, rett);
         break;
     }
 
@@ -335,9 +337,11 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 
     ProgramFrame pfr{
         .pinstr = ctx.pinstr,
+        .ffi_ctx = ctx.ffi_ctx,
     };
 
     ctx.pinstr = nullptr;
+    ctx.ffi_ctx = &proc->ctx->ffi_ctx;
 
     NK_LOG_DBG("instr=%p", (void *)ctx.base.instr);
 
@@ -381,4 +385,5 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
     NK_LOG_TRC("exiting...");
 
     ctx.pinstr = pfr.pinstr;
+    ctx.ffi_ctx = pfr.ffi_ctx;
 }
