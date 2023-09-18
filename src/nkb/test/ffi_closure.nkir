@@ -1,15 +1,18 @@
 proc extern printf(i64, ...) i32
 
-proc cdecl nativeProc() i64 {
+type ivec2: { [2]i64 }
+
+proc cdecl nativeAdd(vec: ivec2) i64 {
 @start
-    mov 42 -> ret
+    add vec+0:i64, ret -> ret
+    add vec+8:i64, ret -> ret
     ret
 }
 
 proc main(argc: i32, argv: i64) i32 {
 @start
     res: i64
-    call nativeProc, () -> res
+    call nativeAdd, (:ivec2 {[23, 19]}) -> res
     call printf, (&"%zi\n", res)
     mov  0 -> ret
     ret

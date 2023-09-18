@@ -91,41 +91,30 @@ ffi_type *getNativeHandle(nktype_t type) {
         case NkType_Procedure:
             ffi_t = &ffi_type_pointer;
             break;
-        case NkType_Aggregate:
-            NK_LOG_WRN("TODO NkType_Aggregate translation not implemented");
+        case NkType_Aggregate: {
+            if (!type->size) {
+                return &ffi_type_void;
+            }
+            size_t elem_count = 0;
+            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+                elem_count += type->as.aggr.elems.data[i].count;
+            }
+            ffi_type **elems = (ffi_type **)nk_arena_alloc_t<void *>(&ctx.typearena, elem_count + 1);
+            size_t cur_elem = 0;
+            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+                for (size_t j = 0; j < type->as.aggr.elems.data[i].count; j++) {
+                    elems[cur_elem++] = getNativeHandle(type->as.aggr.elems.data[i].type);
+                }
+            }
+            elems[elem_count] = nullptr;
+            ffi_t = new (nk_arena_alloc_t<ffi_type>(&ctx.typearena)) ffi_type{
+                .size = type->size,
+                .alignment = type->align,
+                .type = FFI_TYPE_STRUCT,
+                .elements = elems,
+            };
             break;
-        // case NkType_Array: {
-        //     auto native_elem_h = getNativeHandle(type->as.arr.elem_type);
-        //     ffi_type **elements =
-        //         (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *));
-        //     std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
-        //     elements[type->as.arr.elem_count] = nullptr;
-        //     ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
-        //         .size = type->size,
-        //         .alignment = type->align,
-        //         .type = FFI_TYPE_STRUCT,
-        //         .elements = elements,
-        //     };
-        //     break;
-        // }
-        // case NkType_Tuple: {
-        //     if (!type->as.tuple.elems.size) {
-        //         return &ffi_type_void;
-        //     }
-        //     ffi_type **elements =
-        //         (ffi_type **)nk_arena_alloc(&ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *));
-        //     for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
-        //         elements[i] = getNativeHandle(type->as.tuple.elems.data[i].type);
-        //     }
-        //     elements[type->as.tuple.elems.size] = nullptr;
-        //     ffi_t = new (nk_arena_alloc(&ctx.typearena, sizeof(ffi_type))) ffi_type{
-        //         .size = type->size,
-        //         .alignment = type->align,
-        //         .type = FFI_TYPE_STRUCT,
-        //         .elements = elements,
-        //     };
-        //     break;
-        // }
+        }
         default:
             assert(!"unreachable");
             break;
