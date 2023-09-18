@@ -4,6 +4,7 @@ type ivec2: { [2]i64 }
 
 proc cdecl nativeAdd(vec: ivec2) i64 {
 @start
+    // mov 0 -> ret
     add vec+0:i64, ret -> ret
     add vec+8:i64, ret -> ret
     ret
