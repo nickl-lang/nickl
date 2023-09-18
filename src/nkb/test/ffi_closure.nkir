@@ -1,4 +1,4 @@
-proc extern printf(i64, ...) i32
+proc extern printf(*i8, ...) i32
 
 type ivec2: { [2]i64 }
 
@@ -10,7 +10,7 @@ proc cdecl nativeAdd(vec: ivec2) i64 {
     ret
 }
 
-proc main(argc: i32, argv: i64) i32 {
+proc main(argc: i32, argv: **i8) i32 {
 @start
     res: i64
     call nativeAdd, (:ivec2 {[23, 19]}) -> res

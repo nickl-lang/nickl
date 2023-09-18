@@ -77,6 +77,9 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
             }
             nkirt_inspect(type->as.proc.info.args_t.data[i], sb);
         }
+        if (type->as.proc.info.flags & NkProcVariadic) {
+            nksb_printf(sb, ", ...");
+        }
         nksb_printf(sb, ")->");
         if (type->as.proc.info.ret_t.size > 1) {
             nksb_printf(sb, "(");
