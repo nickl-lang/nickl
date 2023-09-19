@@ -234,8 +234,13 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 break;
             }
             case NkIrRef_ExternData: {
-                ref.kind = NkBcRef_None;
-                NK_LOG_WRN("TODO NkIrRef_ExternData translation not implemented");
+                auto data = ir.extern_data[ir_ref.index];
+
+                auto found = ctx->extern_syms.find(s2nkid(data.name));
+                assert(found && "extern data not found");
+
+                ref.kind = NkBcRef_Data;
+                ref.offset += (size_t)*found;
                 break;
             }
             case NkIrRef_ExternProc: {

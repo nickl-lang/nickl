@@ -148,6 +148,7 @@ struct GeneratorState {
             ProcRecord proc;
             NkIrLocalVar local;
             NkIrGlobalVar global;
+            NkIrExternData extern_data;
             NkIrExternProc extern_proc;
             nktype_t type;
             NkIrConst cnst;
@@ -165,6 +166,9 @@ struct GeneratorState {
         m_cur_token = &m_tokens[0];
 
         while (!check(t_eof)) {
+            while (accept(t_newline)) {
+            }
+
             if (check(t_proc)) {
                 DEFINE(sig, parseProcSignature());
 
@@ -264,14 +268,22 @@ struct GeneratorState {
                     Decl_Const,
                 };
             } else if (accept(t_data)) {
+                bool is_extern = accept(t_extern);
                 DEFINE(token, parseId());
                 EXPECT(t_colon);
                 DEFINE(type, parseType());
                 auto name = s2nkid(token->text);
-                new (makeGlobalDecl(name)) Decl{
-                    {.global = nkir_makeGlobalVar(m_ir, type)},
-                    Decl_GlobalVar,
-                };
+                if (is_extern) {
+                    new (makeGlobalDecl(name)) Decl{
+                        {.extern_data = nkir_makeExternData(m_ir, token->text, type)},
+                        Decl_ExternData,
+                    };
+                } else {
+                    new (makeGlobalDecl(name)) Decl{
+                        {.global = nkir_makeGlobalVar(m_ir, type)},
+                        Decl_GlobalVar,
+                    };
+                }
             } else {
                 return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
             }
@@ -712,7 +724,8 @@ private:
                 result_ref = nkir_makeDataRef(m_ir, decl->as.global);
                 break;
             case Decl_ExternData:
-                return error("TODO Decl_ExternData ref is not implemented"), NkIrRef{};
+                result_ref = nkir_makeExternDataRef(m_ir, decl->as.extern_data);
+                break;
             case Decl_ExternProc:
                 result_ref = nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
                 break;

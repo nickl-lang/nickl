@@ -125,6 +125,13 @@ int nkir_compile(NkIrCompiler c, nkstr in_file, nkstr out_file, NkbOutputKind ou
     return 0;
 }
 
+extern "C" int64_t g_test_global_var;
+int64_t g_test_global_var;
+
+extern "C" void setTestGlobalVar(int64_t val) {
+    g_test_global_var = val;
+}
+
 int nkir_run(NkIrCompiler c, nkstr in_file) {
     NK_LOG_TRC("%s", __func__);
 
@@ -144,6 +151,8 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     nkir_defineExternSym(run_ctx, nk_mkstr("pthread_join"), (void *)pthread_join);
     nkir_defineExternSym(run_ctx, nk_mkstr("pthread_exit"), (void *)pthread_exit);
     nkir_defineExternSym(run_ctx, nk_mkstr("sqrt"), (void *)sqrt);
+    nkir_defineExternSym(run_ctx, nk_mkstr("g_test_global_var"), (void *)&g_test_global_var);
+    nkir_defineExternSym(run_ctx, nk_mkstr("setTestGlobalVar"), (void *)setTestGlobalVar);
 
     int argc = 1;
     char const *argv[] = {""};
