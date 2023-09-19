@@ -6,6 +6,7 @@
 #include <ffi.h>
 
 #include "interp.hpp"
+#include "nk/common/allocator.h"
 #include "nk/common/allocator.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
@@ -29,7 +30,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
 
     ffi_type *ffi_t = nullptr;
 
-    auto found = ctx->typemap.find(type);
+    auto found = ctx->typemap.find(type->id);
     if (found) {
         NK_LOG_DBG("Found existing ffi type=%p", *found);
         ffi_t = (ffi_type *)*found;
@@ -105,25 +106,25 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
             break;
         }
 
-        ctx->typemap.insert(type, ffi_t);
+        ctx->typemap.insert(type->id, ffi_t);
     }
 
 #ifdef ENABLE_LOGGING
     NK_DEFINE_STATIC_SB(sb, 256);
     nkirt_inspect(type, &sb);
-    NK_LOG_DBG("ffi(type{name=%s}) -> %p", nksb_concat(&sb).data, (void *)ffi_t);
+    NK_LOG_DBG("ffi(type{name=%s id=%" PRIu64 "}) -> %p", nksb_concat(&sb).data, type->id, (void *)ffi_t);
 #endif // ENABLE_LOGGING
 
     return ffi_t;
 }
 
-ffi_type **getNativeHandleArray(NkFfiContext *ctx, NkTypeArray types) {
-    ffi_type **elements = nk_alloc_t<ffi_type *>(ctx->alloc, types.size + 1);
+ffi_type **getNativeHandleArray(NkFfiContext *ctx, NkArena *stack, NkTypeArray types) {
+    ffi_type **elements = nk_arena_alloc_t<ffi_type *>(stack, types.size + 1);
     for (size_t i = 0; i < types.size; i++) {
         elements[i] = getNativeHandle(ctx, types.data[i]);
     }
     elements[types.size] = nullptr;
-    return elements;
+    return (ffi_type **)elements;
 }
 
 void ffiPrepareCif(ffi_cif *cif, size_t nfixedargs, bool is_variadic, ffi_type *rtype, ffi_type **atypes, size_t argc) {
@@ -152,16 +153,7 @@ void ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 
 } // namespace
 
-void nk_native_invoke(
-    NkFfiContext *ctx,
-    void *proc,
-    size_t nfixedargs,
-    bool is_variadic,
-    void **argv,
-    nktype_t const *argt,
-    size_t argc,
-    void *ret,
-    nktype_t rett) {
+void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
@@ -170,26 +162,19 @@ void nk_native_invoke(
     {
         std::lock_guard lk{ctx->mtx};
 
-        auto const rtype = getNativeHandle(ctx, rett);
-        auto const atypes = getNativeHandleArray(ctx, {argt, argc});
+        auto const rtype = getNativeHandle(ctx, call_data->rett);
+        auto const atypes = getNativeHandleArray(ctx, stack, {call_data->argt, call_data->argc});
 
-        ffiPrepareCif(&cif, nfixedargs, is_variadic, rtype, atypes, argc);
+        ffiPrepareCif(&cif, call_data->nfixedargs, call_data->is_variadic, rtype, atypes, call_data->argc);
     }
 
     {
         EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
-        ffi_call(&cif, FFI_FN(proc), ret, argv);
+        ffi_call(&cif, FFI_FN(call_data->proc.native), call_data->retv, call_data->argv);
     }
 }
 
-void *nk_native_makeClosure(
-    NkFfiContext *ctx,
-    NkAllocator alloc,
-    NkBcProc proc,
-    bool is_variadic,
-    nktype_t const *argt,
-    size_t argc,
-    nktype_t rett) {
+void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
@@ -199,12 +184,12 @@ void *nk_native_makeClosure(
         std::lock_guard lk{ctx->mtx};
 
         cl = nk_alloc_t<NkIrNativeClosure_T>(alloc);
-        cl->proc = proc;
+        cl->proc = call_data->proc.bytecode;
 
-        auto const rtype = getNativeHandle(ctx, rett);
-        auto const atypes = getNativeHandleArray(ctx, {argt, argc});
+        auto const rtype = getNativeHandle(ctx, call_data->rett);
+        auto const atypes = getNativeHandleArray(ctx, stack, {call_data->argt, call_data->argc});
 
-        ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
+        ffiPrepareCif(&cl->cif, call_data->nfixedargs, call_data->is_variadic, rtype, atypes, call_data->argc);
     }
 
     cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);

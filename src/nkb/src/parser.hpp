@@ -6,6 +6,7 @@
 #include "nk/common/slice.hpp"
 #include "nk/common/string.h"
 #include "nkb/ir.h"
+#include "types.hpp"
 
 typedef struct {
     NkIrProg ir;
@@ -16,7 +17,7 @@ typedef struct {
 
 void nkir_parse(
     NkIrParserState *parser,
-    uint8_t usize,
+    NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
     NkSlice<NkIrToken> tokens);

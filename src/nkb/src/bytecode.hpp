@@ -76,7 +76,7 @@ struct NkBcProc_T {
 
 struct NkFfiContext {
     NkAllocator alloc;
-    NkHashMap<nktype_t, void *> typemap{};
+    NkHashMap<uint64_t, void *> typemap{};
     std::mutex mtx{};
 };
 

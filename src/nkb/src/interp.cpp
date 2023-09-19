@@ -221,11 +221,6 @@ void interp(NkBcInstr const &instr) {
             nk_arena_popFrame(&ctx.stack, frame);
         };
 
-        auto const proc = deref<void *>(instr.arg[1]);
-        auto const &proc_info = &instr.arg[1].ref.type->as.proc.info;
-        auto const nfixedargs = proc_info->args_t.size;
-        auto const is_variadic = proc_info->flags & NkProcVariadic;
-
         auto const argc = instr.arg[2].refs.size;
         auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc);
         auto const argt = nk_arena_alloc_t<nktype_t>(&ctx.stack, argc);
@@ -234,10 +229,20 @@ void interp(NkBcInstr const &instr) {
             argt[i] = instr.arg[2].refs.data[i].type;
         }
 
-        auto const retv = getRefAddr(instr.arg[0].ref);
-        auto const rett = instr.arg[0].ref.type;
+        auto const &proc_info = &instr.arg[1].ref.type->as.proc.info;
 
-        nk_native_invoke(ctx.ffi_ctx, proc, nfixedargs, is_variadic, argv, argt, argc, retv, rett);
+        NkNativeCallData const call_data{
+            .proc{.native = deref<void *>(instr.arg[1])},
+            .nfixedargs = proc_info->args_t.size,
+            .is_variadic = (bool)(proc_info->flags & NkProcVariadic),
+            .argv = argv,
+            .argt = argt,
+            .argc = argc,
+            .retv = getRefAddr(instr.arg[0].ref),
+            .rett = instr.arg[0].ref.type,
+        };
+
+        nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
         break;
     }
 

@@ -9,6 +9,7 @@ add_library(${LIB}
     src/irc.cpp
     src/lexer.cpp
     src/parser.cpp
+    src/types.cpp
     )
 
 target_include_directories(${LIB}

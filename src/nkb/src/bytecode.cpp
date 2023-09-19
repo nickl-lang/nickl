@@ -403,14 +403,17 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             break;
         }
         case Reloc_Closure: {
-            ref.offset = (size_t)nk_native_makeClosure(
-                &ctx->ffi_ctx,
-                ir.alloc,
-                ctx->procs[reloc.target_id],
-                reloc.proc_info->flags & NkProcVariadic,
-                reloc.proc_info->args_t.data,
-                reloc.proc_info->args_t.size,
-                reloc.proc_info->ret_t.data[0]);
+            NkNativeCallData const call_data{
+                .proc{.bytecode = ctx->procs[reloc.target_id]},
+                .nfixedargs = reloc.proc_info->args_t.size,
+                .is_variadic = (bool)(reloc.proc_info->flags & NkProcVariadic),
+                .argv{},
+                .argt = reloc.proc_info->args_t.data,
+                .argc = reloc.proc_info->args_t.size,
+                .retv{},
+                .rett = reloc.proc_info->ret_t.data[0],
+            };
+            ref.offset = (size_t)nk_native_makeClosure(&ctx->ffi_ctx, ctx->tmp_arena, ir.alloc, &call_data);
             break;
         }
         }

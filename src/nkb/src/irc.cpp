@@ -16,6 +16,7 @@
 #include "nk/sys/term.h"
 #include "nkb/ir.h"
 #include "parser.hpp"
+#include "types.hpp"
 
 struct NkIrCompiler_T {
     NkIrcOptions opts;
@@ -23,6 +24,12 @@ struct NkIrCompiler_T {
     NkIrProc entry_point{};
     NkArena tmp_arena{};
     NkArena file_arena{};
+
+    NkIrTypeCache types{
+        .type_arena = &file_arena,
+        .tmp_arena = &tmp_arena,
+        .usize = sizeof(void *), // TODO Hardcoded usize
+    };
 };
 
 namespace {
@@ -69,14 +76,13 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         }
     }
 
-    uint8_t usize = sizeof(void *); // TODO Hardcoded usize
     NkIrParserState parser{};
     {
         auto frame = nk_arena_grab(&c->tmp_arena);
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, usize, &c->file_arena, &c->tmp_arena, lexer.tokens);
+        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, lexer.tokens);
         if (!parser.ok) {
             printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
             return false;
@@ -106,6 +112,8 @@ NkIrCompiler nkirc_create(NkIrcOptions opts) {
 }
 
 void nkirc_free(NkIrCompiler c) {
+    c->types.fpmap.deinit();
+
     nk_arena_free(&c->file_arena);
     nk_arena_free(&c->tmp_arena);
 

@@ -4,24 +4,21 @@
 #include "bytecode.hpp"
 #include "nkb/common.h"
 
-void nk_native_invoke(
-    NkFfiContext *ctx,
-    void *proc,
-    size_t nfixedargs,
-    bool is_variadic,
-    void **argv,
-    nktype_t const *argt,
-    size_t argc,
-    void *ret,
-    nktype_t rett);
+typedef struct {
+    union {
+        void *native;
+        NkBcProc bytecode;
+    } proc;
+    size_t nfixedargs;
+    bool is_variadic;
+    void **argv;
+    nktype_t const *argt;
+    size_t argc;
+    void *retv;
+    nktype_t rett;
+} NkNativeCallData;
 
-void *nk_native_makeClosure(
-    NkFfiContext *ctx,
-    NkAllocator alloc,
-    NkBcProc proc,
-    bool is_variadic,
-    nktype_t const *argt,
-    size_t argc,
-    nktype_t rett);
+void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data);
+void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data);
 
 #endif // HEADER_GUARD_NKB_FFI_ADAPTER

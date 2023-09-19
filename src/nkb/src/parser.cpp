@@ -42,7 +42,7 @@ struct GeneratorState {
     NkIrProc &m_entry_point;
     NkSlice<NkIrToken> const m_tokens;
 
-    uint8_t usize;
+    NkIrTypeCache *m_types;
 
     NkArena *m_file_arena;
     NkArena *m_tmp_arena;
@@ -114,8 +114,8 @@ struct GeneratorState {
                         {.extern_proc = nkir_makeExternProc(
                              m_ir,
                              sig.name,
-                             makeProcedureType(
-                                 m_file_alloc,
+                             nkir_makeProcedureType(
+                                 m_types,
                                  {
                                      .args_t{sig.args_t.data(), sig.args_t.size()},
                                      .ret_t{sig.ret_t.data(), sig.ret_t.size()},
@@ -136,8 +136,8 @@ struct GeneratorState {
                         m_ir,
                         proc,
                         sig.name,
-                        makeProcedureType(
-                            m_file_alloc,
+                        nkir_makeProcedureType(
+                            m_types,
                             {
                                 .args_t{sig.args_t.data(), sig.args_t.size()},
                                 .ret_t{sig.ret_t.data(), sig.ret_t.size()},
@@ -240,71 +240,6 @@ struct GeneratorState {
     }
 
 private:
-    nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
-        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-            .as{.num{
-                .value_type = value_type,
-            }},
-            .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
-            .align = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
-            .kind = NkType_Numeric,
-            .id = 0, // TODO Empty type id
-        };
-    }
-
-    nktype_t makePointerType(NkAllocator alloc, nktype_t target_type) {
-        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-            .as{.ptr{
-                .target_type = target_type,
-            }},
-            .size = usize,
-            .align = usize,
-            .kind = NkType_Pointer,
-            .id = 0, // TODO Empty type id
-        };
-    }
-
-    nktype_t makeProcedureType(NkAllocator alloc, NkIrProcInfo const &proc_info) {
-        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-            .as{.proc{
-                .info = proc_info,
-            }},
-            .size = usize,
-            .align = usize,
-            .kind = NkType_Procedure,
-            .id = 0, // TODO Empty type id
-        };
-    }
-
-    nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
-        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-            .as{.aggr{
-                .elems{
-                    new (nk_alloc_t<NkIrAggregateElemInfo>(alloc)) NkIrAggregateElemInfo{
-                        .type = elem_t,
-                        .count = count,
-                        .offset = 0,
-                    },
-                    1,
-                },
-            }},
-            .size = elem_t->size * count,
-            .align = elem_t->align,
-            .kind = NkType_Aggregate,
-            .id = 0, // TODO Empty type id
-        };
-    }
-
-    nktype_t makeVoidType(NkAllocator alloc) {
-        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-            .as{.aggr{.elems{nullptr, 0}}},
-            .size = 0,
-            .align = 1,
-            .kind = NkType_Aggregate,
-            .id = 0, // TODO Empty type id
-        };
-    }
-
     Decl *makeGlobalDecl(nkid name) {
         if (m_decls.find(name)) {
             return error("global `%s` is already defined", nkid2cs(name)), nullptr;
@@ -430,29 +365,29 @@ private:
 
     nktype_t parseType() {
         if (accept(t_void)) {
-            return makeVoidType(m_file_alloc);
+            return nkir_makeVoidType(m_types);
         }
 
         else if (accept(t_f32)) {
-            return makeNumericType(m_file_alloc, Float32);
+            return nkir_makeNumericType(m_types, Float32);
         } else if (accept(t_f64)) {
-            return makeNumericType(m_file_alloc, Float64);
+            return nkir_makeNumericType(m_types, Float64);
         } else if (accept(t_i16)) {
-            return makeNumericType(m_file_alloc, Int16);
+            return nkir_makeNumericType(m_types, Int16);
         } else if (accept(t_i32)) {
-            return makeNumericType(m_file_alloc, Int32);
+            return nkir_makeNumericType(m_types, Int32);
         } else if (accept(t_i64)) {
-            return makeNumericType(m_file_alloc, Int64);
+            return nkir_makeNumericType(m_types, Int64);
         } else if (accept(t_i8)) {
-            return makeNumericType(m_file_alloc, Int8);
+            return nkir_makeNumericType(m_types, Int8);
         } else if (accept(t_u16)) {
-            return makeNumericType(m_file_alloc, Uint16);
+            return nkir_makeNumericType(m_types, Uint16);
         } else if (accept(t_u32)) {
-            return makeNumericType(m_file_alloc, Uint32);
+            return nkir_makeNumericType(m_types, Uint32);
         } else if (accept(t_u64)) {
-            return makeNumericType(m_file_alloc, Uint64);
+            return nkir_makeNumericType(m_types, Uint64);
         } else if (accept(t_u8)) {
-            return makeNumericType(m_file_alloc, Uint8);
+            return nkir_makeNumericType(m_types, Uint8);
         }
 
         else if (check(t_id)) {
@@ -486,21 +421,12 @@ private:
                 APPEND(types, parseType());
             } while (accept(t_comma));
             EXPECT(t_brace_r);
-            auto layout = nkir_calcAggregateLayout(m_file_alloc, types.data(), counts.data(), types.size(), 1);
-            return new (nk_alloc_t<NkIrType>(m_file_alloc)) NkIrType{
-                .as{.aggr{
-                    .elems = layout.info_ar,
-                }},
-                .size = layout.size,
-                .align = (uint8_t)layout.align,
-                .kind = NkType_Aggregate,
-                .id = 0, // TODO Empty type id
-            };
+            return nkir_makeAggregateType(m_types, types.data(), counts.data(), types.size());
         }
 
         else if (accept(t_aster)) {
             DEFINE(target_type, parseType());
-            return makePointerType(m_file_alloc, target_type);
+            return nkir_makePointerType(m_types, target_type);
         }
 
         else {
@@ -747,22 +673,22 @@ private:
 
         else if (check(t_string)) {
             auto const str = parseString(m_file_alloc);
-            auto const str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
+            auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
         } else if (check(t_escaped_string)) {
             auto const str = parseEspcaedString(m_file_alloc);
-            auto const str_t = makeArrayType(m_file_alloc, makeNumericType(m_file_alloc, Int8), str.size + 1);
+            auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
         }
 
         else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
             ASSIGN(*value, parseInt());
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeNumericType(m_file_alloc, Int64)));
+            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, nkir_makeNumericType(m_types, Int64)));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
             ASSIGN(*value, parseFloat());
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, makeNumericType(m_file_alloc, Float64)));
+            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, nkir_makeNumericType(m_types, Float64)));
         }
 
         else if (accept(t_colon)) {
@@ -804,7 +730,7 @@ private:
         }
 
         if (deref) {
-            result_ref = nkir_makeAddressRef(m_ir, result_ref, makePointerType(m_file_alloc, result_ref.type));
+            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_types, result_ref.type));
         }
 
         return result_ref;
@@ -899,7 +825,7 @@ private:
 
 void nkir_parse(
     NkIrParserState *parser,
-    uint8_t usize,
+    NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
     NkSlice<NkIrToken> tokens) {
@@ -916,8 +842,7 @@ void nkir_parse(
         .m_ir = parser->ir,
         .m_entry_point = parser->entry_point,
         .m_tokens = tokens,
-        .usize = usize,
-
+        .m_types = types,
         .m_file_arena = file_arena,
         .m_tmp_arena = tmp_arena,
     };
