@@ -365,19 +365,11 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 
 #ifdef ENABLE_LOGGING
         if (dst_ref_data) {
-            uint8_t res_str[256];
-            NkArena log_arena{res_str, 0, sizeof(res_str)};
-            NkStringBuilder_T sb{
-                nk_arena_alloc_t<char>(&log_arena, sizeof(res_str)),
-                0,
-                sizeof(res_str),
-                nk_arena_getAllocator(&log_arena),
-            };
-
+            NK_DEFINE_STATIC_SB(sb, 256);
             nkirv_inspect(dst_ref_data, dst.ref.type, &sb);
             nksb_printf(&sb, ":");
             nkirt_inspect(dst.ref.type, &sb);
-            NK_LOG_DBG("res=%s", res_str);
+            NK_LOG_DBG("res=%s", nksb_concat(&sb).data);
         }
 #endif // ENABLE_LOGGING
     }

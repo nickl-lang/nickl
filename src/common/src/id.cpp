@@ -1,23 +1,29 @@
 #include "nk/common/id.h"
 
-#include <cassert>
-#include <map>
-#include <string>
-#include <unordered_map>
-
+#include "nk/common/hash_map.hpp"
 #include "nk/common/string.hpp"
 
 namespace {
 
-std::map<std::string, nkid> s_str2id;
-std::unordered_map<nkid, std::string> s_id2str;
-nkid s_next_id = 1000;
+struct Context {
+    NkArena string_arena{};
+    NkHashMap<NkString, nkid> str2id{};
+    NkHashMap<nkid, NkString> id2str{};
+    nkid next_id = 1000;
+
+    ~Context() {
+        str2id.deinit();
+        id2str.deinit();
+
+        nk_arena_free(&string_arena);
+    }
+} ctx;
 
 } // namespace
 
 nkstr nkid2s(nkid id) {
-    auto it = s_id2str.find(id);
-    return it != std::end(s_id2str) ? nkstr{it->second.c_str(), it->second.size()} : nkstr{};
+    auto found = ctx.id2str.find(id);
+    return found ? nkstr{found->data(), found->size()} : nkstr{};
 }
 
 char const *nkid2cs(nkid id) {
@@ -25,14 +31,14 @@ char const *nkid2cs(nkid id) {
 }
 
 nkid s2nkid(nkstr str) {
-    auto it = s_str2id.find(std_str(str));
+    auto found = ctx.str2id.find(nk_mkstring(str));
 
-    if (it == std::end(s_str2id)) {
-        nkid id = s_next_id++;
+    if (found) {
+        return *found;
+    } else {
+        nkid id = ctx.next_id++;
         nkid_define(id, str);
         return id;
-    } else {
-        return it->second;
     }
 }
 
@@ -41,6 +47,7 @@ nkid cs2nkid(char const *str) {
 }
 
 void nkid_define(nkid id, nkstr str) {
-    s_str2id.emplace(std_str(str), id);
-    s_id2str.emplace(id, std_str(str));
+    auto const str_copy = nk_mkstring(nk_strcpy(nk_arena_getAllocator(&ctx.string_arena), str));
+    ctx.str2id.insert(str_copy, id);
+    ctx.id2str.insert(id, str_copy);
 }

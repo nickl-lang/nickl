@@ -16,7 +16,7 @@ typedef struct NkStringBuilder_T {
     size_t size;
     size_t capacity;
     NkAllocator alloc;
-} *NkStringBuilder;
+} * NkStringBuilder;
 
 NkStringBuilder_T *nksb_create();
 NkStringBuilder_T *nksb_create_alloc(NkAllocator alloc);
@@ -34,6 +34,13 @@ nkstr nksb_concat(NkStringBuilder_T *sb);
 
 void nksb_str_escape(NkStringBuilder_T *sb, nkstr str);
 void nksb_str_unescape(NkStringBuilder_T *sb, nkstr str);
+
+#define NK_DEFINE_STATIC_SB(NAME, SIZE)                                                                      \
+    uint8_t _buf[SIZE];                                                                                      \
+    NkArena log_arena{_buf, 0, sizeof(_buf)};                                                                \
+    NkStringBuilder_T NAME {                                                                                 \
+        (char *)nk_arena_alloc(&log_arena, sizeof(_buf)), 0, sizeof(_buf), nk_arena_getAllocator(&log_arena) \
+    }
 
 #ifdef __cplusplus
 }

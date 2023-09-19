@@ -109,17 +109,9 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
     }
 
 #ifdef ENABLE_LOGGING
-    // TODO Boilerplate in logging
-    uint8_t type_str[256];
-    NkArena log_arena{type_str, 0, sizeof(type_str)};
-    NkStringBuilder_T sb{
-        nk_arena_alloc_t<char>(&log_arena, sizeof(type_str)),
-        0,
-        sizeof(type_str),
-        nk_arena_getAllocator(&log_arena),
-    };
+    NK_DEFINE_STATIC_SB(sb, 256);
     nkirt_inspect(type, &sb);
-    NK_LOG_DBG("ffi(type{name=%s}) -> %p", type_str, (void *)ffi_t);
+    NK_LOG_DBG("ffi(type{name=%s}) -> %p", nksb_concat(&sb).data, (void *)ffi_t);
 #endif // ENABLE_LOGGING
 
     return ffi_t;

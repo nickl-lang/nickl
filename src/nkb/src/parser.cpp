@@ -37,75 +37,12 @@ NK_LOG_USE_SCOPE(parser);
 
 static constexpr char const *c_entry_point_name = "main";
 
-nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
-    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.num{
-            .value_type = value_type,
-        }},
-        .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
-        .align = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
-        .kind = NkType_Numeric,
-        .id = 0, // TODO Empty type id
-    };
-}
-
-nktype_t makePointerType(NkAllocator alloc, nktype_t target_type) {
-    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.ptr{
-            .target_type = target_type,
-        }},
-        .size = (uint8_t)sizeof(void *),   // TODO Hardcoded size_type
-        .align = (uint8_t)alignof(void *), // TODO Hardcoded size_type
-        .kind = NkType_Pointer,
-        .id = 0, // TODO Empty type id
-    };
-}
-
-nktype_t makeProcedureType(NkAllocator alloc, NkIrProcInfo const &proc_info) {
-    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.proc{
-            .info = proc_info,
-        }},
-        .size = (uint8_t)sizeof(void *),   // TODO Hardcoded size_type
-        .align = (uint8_t)alignof(void *), // TODO Hardcoded size_type
-        .kind = NkType_Procedure,
-        .id = 0, // TODO Empty type id
-    };
-}
-
-nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
-    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.aggr{
-            .elems{
-                new (nk_alloc_t<NkIrAggregateElemInfo>(alloc)) NkIrAggregateElemInfo{
-                    .type = elem_t,
-                    .count = count,
-                    .offset = 0,
-                },
-                1,
-            },
-        }},
-        .size = elem_t->size * count,
-        .align = elem_t->align,
-        .kind = NkType_Aggregate,
-        .id = 0, // TODO Empty type id
-    };
-}
-
-nktype_t makeVoidType(NkAllocator alloc) {
-    return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
-        .as{.aggr{.elems{nullptr, 0}}},
-        .size = 0,
-        .align = 1,
-        .kind = NkType_Aggregate,
-        .id = 0, // TODO Empty type id
-    };
-}
-
 struct GeneratorState {
     NkIrProg &m_ir;
     NkIrProc &m_entry_point;
     NkSlice<NkIrToken> const m_tokens;
+
+    uint8_t usize;
 
     NkArena *m_file_arena;
     NkArena *m_tmp_arena;
@@ -303,6 +240,71 @@ struct GeneratorState {
     }
 
 private:
+    nktype_t makeNumericType(NkAllocator alloc, NkIrNumericValueType value_type) {
+        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+            .as{.num{
+                .value_type = value_type,
+            }},
+            .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
+            .align = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
+            .kind = NkType_Numeric,
+            .id = 0, // TODO Empty type id
+        };
+    }
+
+    nktype_t makePointerType(NkAllocator alloc, nktype_t target_type) {
+        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+            .as{.ptr{
+                .target_type = target_type,
+            }},
+            .size = usize,
+            .align = usize,
+            .kind = NkType_Pointer,
+            .id = 0, // TODO Empty type id
+        };
+    }
+
+    nktype_t makeProcedureType(NkAllocator alloc, NkIrProcInfo const &proc_info) {
+        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+            .as{.proc{
+                .info = proc_info,
+            }},
+            .size = usize,
+            .align = usize,
+            .kind = NkType_Procedure,
+            .id = 0, // TODO Empty type id
+        };
+    }
+
+    nktype_t makeArrayType(NkAllocator alloc, nktype_t elem_t, size_t count) {
+        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+            .as{.aggr{
+                .elems{
+                    new (nk_alloc_t<NkIrAggregateElemInfo>(alloc)) NkIrAggregateElemInfo{
+                        .type = elem_t,
+                        .count = count,
+                        .offset = 0,
+                    },
+                    1,
+                },
+            }},
+            .size = elem_t->size * count,
+            .align = elem_t->align,
+            .kind = NkType_Aggregate,
+            .id = 0, // TODO Empty type id
+        };
+    }
+
+    nktype_t makeVoidType(NkAllocator alloc) {
+        return new (nk_alloc_t<NkIrType>(alloc)) NkIrType{
+            .as{.aggr{.elems{nullptr, 0}}},
+            .size = 0,
+            .align = 1,
+            .kind = NkType_Aggregate,
+            .id = 0, // TODO Empty type id
+        };
+    }
+
     Decl *makeGlobalDecl(nkid name) {
         if (m_decls.find(name)) {
             return error("global `%s` is already defined", nkid2cs(name)), nullptr;
@@ -895,7 +897,12 @@ private:
 
 } // namespace
 
-void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NkSlice<NkIrToken> tokens) {
+void nkir_parse(
+    NkIrParserState *parser,
+    uint8_t usize,
+    NkArena *file_arena,
+    NkArena *tmp_arena,
+    NkSlice<NkIrToken> tokens) {
     NK_LOG_TRC("%s", __func__);
 
     auto file_alloc = nk_arena_getAllocator(file_arena);
@@ -909,6 +916,7 @@ void nkir_parse(NkIrParserState *parser, NkArena *file_arena, NkArena *tmp_arena
         .m_ir = parser->ir,
         .m_entry_point = parser->entry_point,
         .m_tokens = tokens,
+        .usize = usize,
 
         .m_file_arena = file_arena,
         .m_tmp_arena = tmp_arena,

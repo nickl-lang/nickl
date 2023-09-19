@@ -69,13 +69,14 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         }
     }
 
+    uint8_t usize = sizeof(void *); // TODO Hardcoded usize
     NkIrParserState parser{};
     {
         auto frame = nk_arena_grab(&c->tmp_arena);
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, &c->file_arena, &c->tmp_arena, lexer.tokens);
+        nkir_parse(&parser, usize, &c->file_arena, &c->tmp_arena, lexer.tokens);
         if (!parser.ok) {
             printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
             return false;

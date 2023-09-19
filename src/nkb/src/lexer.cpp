@@ -313,16 +313,9 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         }
 
 #ifdef ENABLE_LOGGING
-        uint8_t token_str[256];
-        NkArena log_arena{token_str, 0, sizeof(token_str)};
-        NkStringBuilder_T sb{
-            nk_arena_alloc_t<char>(&log_arena, sizeof(token_str)),
-            0,
-            sizeof(token_str),
-            nk_arena_getAllocator(&log_arena),
-        };
+        NK_DEFINE_STATIC_SB(sb, 256);
         nksb_str_escape(&sb, scanner.m_token.text);
-        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], token_str);
+        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], nksb_concat(&sb).data);
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 }
