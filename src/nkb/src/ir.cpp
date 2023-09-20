@@ -25,6 +25,7 @@ NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
     return {{.refs{refs, args.size}}, NkIrArg_RefArray};
 }
 
+#ifdef ENABLE_LOGGING
 void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb, bool print_arg_names = true) {
     nksb_printf(sb, "(");
 
@@ -55,6 +56,7 @@ void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb, boo
         nkirt_inspect(proc_info.ret_t.data[i], sb);
     }
 }
+#endif // ENABLE_LOGGING
 
 } // namespace
 

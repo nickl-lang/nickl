@@ -128,6 +128,7 @@ class native_fn_adapter : public testing::Test {
     }
 
     void TearDown() override {
+        nk_native_adapterDeinit();
         nk_arena_free(&m_arena);
     }
 

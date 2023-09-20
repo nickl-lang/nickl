@@ -44,6 +44,8 @@ protected:
     }
 
     void inspect(NkIrProg p) {
+        (void)p;
+#ifdef ENABLE_LOGGING
         auto sb = nksb_create();
         defer {
             nksb_free(sb);
@@ -53,6 +55,7 @@ protected:
         auto str = nksb_concat(sb);
 
         NK_LOG_INF("ir:\n%.*s", (int)str.size, str.data);
+#endif // ENABLE_LOGGING
     }
 
 protected:

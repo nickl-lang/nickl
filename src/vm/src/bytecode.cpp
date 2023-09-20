@@ -34,6 +34,7 @@ NkOpCode s_ir2opcode[] = {
 #include "nk/vm/ir.inl"
 };
 
+#ifdef ENABLE_LOGGING
 void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
     auto _inspectArg = [&](NkBcRef const &arg) {
         if (arg.is_indirect) {
@@ -100,6 +101,7 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
         nksb_printf(sb, "\n");
     }
 }
+#endif // ENABLE_LOGGING
 
 NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     NK_LOG_DBG("Translating funct `%s`", fn->name.c_str());

@@ -18,6 +18,7 @@ NkBcOpcode s_ir2opcode[] = {
 #include "nkb/ir.inl"
 };
 
+#ifdef ENABLE_LOGGING
 void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
     auto inspect_ref = [&](NkBcRef const &ref) {
         if (ref.kind == NkBcRef_None) {
@@ -109,6 +110,7 @@ void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
         nksb_printf(sb, "\n");
     }
 }
+#endif // ENABLE_LOGGING
 
 void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     while (proc_id.id >= ctx->procs.size()) {
