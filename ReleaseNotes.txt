@@ -1,3 +1,10 @@
+v0.2.4
+    - Rename std -> core
+    - Add hex int literals
+    - Add multiline comments
+    - Add nkirc -- a WIP IR compiler
+    - Improve stability / memory allocation patterns
+
 v0.2.3
     - Add null keyword
     - Refactor pthread stuff
