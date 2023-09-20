@@ -32,7 +32,7 @@ NK_LOG_USE_SCOPE(native_fn_adapter);
 
 struct Context {
     std::unordered_map<nktype_t, ffi_type *> typemap;
-    std::recursive_mutex mtx;
+    std::mutex mtx;
     NkArena typearena{};
 
     void deinit() {
@@ -47,7 +47,7 @@ struct Context {
     }
 };
 
-Context ctx;
+static Context ctx;
 
 // TODO Integer promotion works only on little-endian
 ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
@@ -58,8 +58,6 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         NK_LOG_DBG("ffi(null) -> void");
         return &ffi_type_void;
     }
-
-    std::lock_guard lk{ctx.mtx};
 
     ffi_type *ffi_t = nullptr;
 
@@ -217,11 +215,16 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     auto const fn_t = nkval_typeof(fn);
     bool const is_variadic = fn_t->as.fn.is_variadic;
 
-    auto const rtype = _getNativeHandle(nkval_typeof(ret));
-    auto const atypes = _getNativeHandle(nkval_typeof(args), is_variadic);
-
     ffi_cif cif;
-    _ffiPrepareCif(&cif, fn_t->as.fn.args_t->as.tuple.elems.size, is_variadic, rtype, atypes, argc);
+
+    {
+        std::lock_guard lk{ctx.mtx};
+
+        auto const rtype = _getNativeHandle(nkval_typeof(ret));
+        auto const atypes = _getNativeHandle(nkval_typeof(args), is_variadic);
+
+        _ffiPrepareCif(&cif, fn_t->as.fn.args_t->as.tuple.elems.size, is_variadic, rtype, atypes, argc);
+    }
 
     void **argv = (void **)nk_alloc(nk_default_allocator, argc * sizeof(void *));
     defer {
@@ -244,17 +247,23 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
     EASY_FUNCTION(::profiler::colors::Orange200);
     NK_LOG_TRC("%s", __func__);
 
-    auto cl = (NkIrNativeClosure)nk_alloc(nk_default_allocator, sizeof(NkIrNativeClosure_T));
-    cl->fn = fn;
+    NkIrNativeClosure cl;
 
-    size_t const argc = fn->fn_t->as.fn.args_t->as.tuple.elems.size;
+    {
+        std::lock_guard lk{ctx.mtx};
 
-    bool const is_variadic = fn->fn_t->as.fn.is_variadic;
+        cl = (NkIrNativeClosure)nk_alloc(nk_default_allocator, sizeof(NkIrNativeClosure_T));
+        cl->fn = fn;
 
-    auto const rtype = _getNativeHandle(fn->fn_t->as.fn.ret_t);
-    auto const atypes = _getNativeHandle(fn->fn_t->as.fn.args_t, is_variadic);
+        size_t const argc = fn->fn_t->as.fn.args_t->as.tuple.elems.size;
 
-    _ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
+        bool const is_variadic = fn->fn_t->as.fn.is_variadic;
+
+        auto const rtype = _getNativeHandle(fn->fn_t->as.fn.ret_t);
+        auto const atypes = _getNativeHandle(fn->fn_t->as.fn.args_t, is_variadic);
+
+        _ffiPrepareCif(&cl->cif, argc, is_variadic, rtype, atypes, argc);
+    }
 
     cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
 
