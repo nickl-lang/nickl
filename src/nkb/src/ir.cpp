@@ -6,6 +6,8 @@
 
 #include "ir_impl.hpp"
 #include "nk/common/logger.h"
+#include "nk/sys/file.h"
+#include "nk/sys/process.h"
 
 namespace {
 
@@ -447,15 +449,19 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     nksb_printf(&sb, "gcc -x c -O2 -o %.*s -", (int)out_file.size, out_file.data);
     auto compile_cmd = nksb_concat(&sb);
 
-    auto pipe = popen(compile_cmd.data, "w");
-    fprintf(pipe, R"(
+    auto in = nk_createPipe();
+    nkpid_t pid = 0;
+    nk_execAsync(compile_cmd.data, &pid, &in, nullptr);
+    char src[] = R"(
         #include <stdio.h>
         int main(int argc, char** argv) {
             puts("Hello, World!");
             return 0;
         }
-    )");
-    pclose(pipe);
+    )";
+    nk_write(in.write, src, sizeof(src) - 1);
+    nk_close(in.write);
+    nk_waitpid(pid, nullptr);
 
     return true;
 }
