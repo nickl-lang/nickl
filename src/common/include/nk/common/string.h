@@ -15,11 +15,11 @@ typedef struct {
     size_t size;
 } nkstr;
 
-inline nkstr nk_mkstr(char const *str) {
+NK_INLINE nkstr nk_mkstr(char const *str) {
     return {str, strlen(str)};
 }
 
-inline nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
+NK_INLINE nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
     auto mem = nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
     return {(char *)mem, src.size};

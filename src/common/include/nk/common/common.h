@@ -16,4 +16,10 @@
 #define NK_PRINTF_LIKE(FMT_POS, ARGS_POS) __attribute__((__format__(printf, FMT_POS, ARGS_POS)))
 #endif
 
+#ifdef __cplusplus
+#define LITERAL(T) T
+#else // __cplusplus
+#define LITERAL(T) (T)
+#endif // __cplusplus
+
 #endif // HEADER_GUARD_NK_COMMON_COMMON
