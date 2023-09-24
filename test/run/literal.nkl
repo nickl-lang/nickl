@@ -8,7 +8,8 @@ Color :: [4]u8; // rgba
 red: Color = Color{255, 0, 0, 255};
 
 printColor :: (c: Color) {
-    libc.printf("[r=%hhu g=%hhu b=%hhu a=%hhu]\n", c[0], c[1], c[2], c[3]);
+    // TODO Manual variadic promotion
+    libc.printf("[r=%hhu g=%hhu b=%hhu a=%hhu]\n", cast(u32) c[0], cast(u32) c[1], cast(u32) c[2], cast(u32) c[3]);
 }
 
 printColor(red);

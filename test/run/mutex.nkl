@@ -50,6 +50,6 @@ main(0, null);
 
 // import compiler;
 // builder := compiler.createBuilder();
-// compiler.link(builder, pt.LIBPTHREAD);
+// compiler.link(builder, "pthread");
 // compiler.build(builder, main, "mutex");
 // compiler.freeBuilder(builder);
