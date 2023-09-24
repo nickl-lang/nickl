@@ -6,8 +6,9 @@ EntryPoint :: (argc: i32, argv: **i8) -> i32;
 createBuilder :: () -> *Builder;
 freeBuilder :: (b: *Builder) -> void;
 
-link :: (b: *Builder, lib: string) -> bool;
-build :: (b: *Builder, entry: EntryPoint, exe_name: string) -> bool;
+link     :: (b: *Builder, lib: string) -> bool;
+linkFile :: (b: *Builder, lib: string) -> bool;
+build    :: (b: *Builder, entry: EntryPoint, exe_name: string) -> bool;
 
 declareLocal :: (name: string, type: type_t) -> void;
 

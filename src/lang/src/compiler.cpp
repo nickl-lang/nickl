@@ -387,7 +387,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
     return {
         {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc_t<T>(&c->arena)) T{args...}, tovmt(type)})}, type, v_val};
 }
@@ -2410,7 +2410,7 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
 
     // TODO Refactor coloring
     // TODO Add option to control coloring from CLI
-    bool const to_color = nk_isatty();
+    bool const to_color = nk_isatty(2);
     assert(!c->file_stack.empty());
     std::fprintf(
         stderr,
@@ -2444,7 +2444,7 @@ NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
     auto str = string_vformat(fmt, ap);
     va_end(ap);
 
-    bool const to_color = nk_isatty();
+    bool const to_color = nk_isatty(2);
 
     std::fprintf(
         stderr,
@@ -2553,8 +2553,13 @@ extern "C" NK_EXPORT Void nkl_compiler_declareLocal(nkstr name, nkltype_t type) 
     return {};
 }
 
+struct LinkedLib {
+    std::string lib_str;
+    bool is_file;
+};
+
 struct NklCompilerBuilder {
-    std::vector<fs::path> libs{};
+    std::vector<LinkedLib> libs{};
 };
 
 extern "C" NK_EXPORT NklCompilerBuilder *nkl_compiler_createBuilder() {
@@ -2572,12 +2577,13 @@ extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
 
 extern "C" NK_EXPORT bool nkl_compiler_link(NklCompilerBuilder *b, nkstr lib) {
     NK_LOG_TRC("%s", __func__);
+    b->libs.emplace_back(LinkedLib{std_str(lib), false});
+    return true;
+}
 
-    auto path = fs::path{std_view(lib)};
-    if (fs::exists(path)) {
-        path = fs::canonical(path);
-    }
-    b->libs.emplace_back(std::move(path));
+extern "C" NK_EXPORT bool nkl_compiler_linkFile(NklCompilerBuilder *b, nkstr lib) {
+    NK_LOG_TRC("%s", __func__);
+    b->libs.emplace_back(LinkedLib{std_str(lib), true});
     return true;
 }
 
@@ -2589,11 +2595,15 @@ extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct en
 
     std::string flags = c->c_compiler_flags;
     for (auto const &lib : b->libs) {
-        if (!lib.parent_path().empty()) {
-            flags += " -L" + lib.parent_path().string();
-            flags += " -Wl,-rpath=" + lib.parent_path().string();
+        fs::path path{lib.lib_str};
+        if (fs::exists(path)) {
+            path = fs::canonical(path);
         }
-        flags += " -l:" + lib.filename().string();
+        if (!path.parent_path().empty()) {
+            flags += " -L" + path.parent_path().string();
+            flags += " -Wl,-rpath=" + path.parent_path().string();
+        }
+        flags += (lib.is_file ? " -l:" : " -l") + path.filename().string();
     }
 
     NkIrCompilerConfig conf{

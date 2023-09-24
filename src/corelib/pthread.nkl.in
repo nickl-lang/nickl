@@ -5,7 +5,7 @@ pthread_mutexattr_t :: u64;
 
 #extern("c") ThreadFunc :: (arg: *void) -> *void;
 
-LIBPTHREAD :: "libpthread.so.0";
+LIBPTHREAD :: "@LIBPTHREAD@";
 
 #link(LIBPTHREAD, "pthread_") {
 

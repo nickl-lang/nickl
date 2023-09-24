@@ -13,4 +13,4 @@ PLATFORM_ROOT=$DIR/$PLATFORM
 . $PLATFORM_ROOT/image-info.sh
 
 cat $COMMON_ROOT/src/Dockerfile $PLATFORM_ROOT/src/Dockerfile |
-    DOCKER_BUILDKIT=1 docker build -t $IMAGE -f - $DIR
+    docker build -t $IMAGE -f - $DIR

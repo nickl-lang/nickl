@@ -35,9 +35,7 @@ function(def_test)
         ${ARG_LINK}
         )
 
-    if(NOT CMAKE_CROSSCOMPILING)
-        gtest_discover_tests(${TARGET_NAME})
-    endif()
+    gtest_discover_tests(${TARGET_NAME})
 endfunction()
 
 function(def_run_test)
@@ -84,8 +82,8 @@ function(def_compile_test)
         NAME compile.${ARG_NAME}
         COMMAND sh -c "\
             rm -f ./${ARG_NAME} \
-         && ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME} ${ABS_FILE} >/dev/null 2>&1 \
-         && ./${ARG_NAME}"
+         && ${CMAKE_CROSSCOMPILING_EMULATOR} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME} ${ABS_FILE} >/dev/null 2>&1 \
+         && ${CMAKE_CROSSCOMPILING_EMULATOR} ./${ARG_NAME}"
         WORKING_DIRECTORY "${COMPILE_TEST_OUT_DIR}"
         )
 

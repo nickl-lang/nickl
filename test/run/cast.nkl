@@ -1,8 +1,9 @@
 import libc;
 
-libc.printf( "i8{%li}=%hhi\n", 127,  cast(i8)  127);
-libc.printf( "i8{%li}=%hhi\n", 128,  cast(i8)  128);
-libc.printf( "u8{%li}=%hhu\n", -1,   cast(u8)  -1);
-libc.printf( "u8{%li}=%hhu\n", 512,  cast(u8)  512);
+// TODO Manual variadic promotion
+libc.printf( "i8{%li}=%hhi\n", 127,  cast(u32) cast(i8)  127);
+libc.printf( "i8{%li}=%hhi\n", 128,  cast(u32) cast(i8) 128);
+libc.printf( "u8{%li}=%hhu\n", -1,   cast(u32) cast(u8)  -1);
+libc.printf( "u8{%li}=%hhu\n", 512,  cast(u32) cast(u8)  512);
 libc.printf("u32{%lf}=%i\n",   3.14, cast(u32) 3.14);
 libc.printf("f64{%li}=%lf\n",  42,   cast(f64) 42);

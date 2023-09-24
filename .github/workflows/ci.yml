@@ -26,5 +26,4 @@ jobs:
       - name: Build
         run: ./build.sh
       - name: Test
-        if: matrix.platform == 'linux'
         run: ./build.sh test

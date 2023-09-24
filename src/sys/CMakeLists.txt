@@ -1,19 +1,14 @@
 set(LIB nk_sys)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(SYS_SRC
-        src/linux_sys.cpp
-        )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(SYS_SRC
-        src/windows_sys.cpp
-        )
-else()
-    message(FATAL_ERROR "Platform is not supported")
-endif()
+string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
 
 add_library(${LIB}
-    ${SYS_SRC}
+    src/${PLATFORM_DIR}/app.cpp
+    src/${PLATFORM_DIR}/error.c
+    src/${PLATFORM_DIR}/file.c
+    src/${PLATFORM_DIR}/mem.c
+    src/${PLATFORM_DIR}/process.c
+    src/${PLATFORM_DIR}/term.c
     )
 
 target_include_directories(${LIB}

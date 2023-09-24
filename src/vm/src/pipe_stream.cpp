@@ -1,21 +1,15 @@
 #include "pipe_stream.hpp"
 
 #include <new>
+#include <sstream>
 
-#include "nk/common/allocator.h"
+#include "nk/common/allocator.hpp"
 #include "nk/common/logger.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
-
-#ifdef __GNUC__
-#include <ext/stdio_sync_filebuf.h>
-using popen_filebuf = __gnu_cxx::stdio_sync_filebuf<char>;
-#elif _MSC_VER
-#include <fstream>
-using popen_filebuf = std::filebuf;
-#else
-static_assert(false, "filebuf is not available for this platform");
-#endif
+#include "nk/sys/error.h"
+#include "nk/sys/file.h"
+#include "nk/sys/process.h"
 
 namespace {
 
@@ -29,50 +23,132 @@ void _makeCmdStr(NkStringBuilder sb, nkstr cmd, bool quiet) {
     nksb_printf(sb, "%c", '\0');
 }
 
-popen_filebuf *_createFileBuf(FILE *file) {
-    return new (nk_alloc(nk_default_allocator, sizeof(popen_filebuf))) popen_filebuf{file};
-}
+struct FdBufBase : std::stringbuf {
+    explicit FdBufBase(nkfd_t fd, nkpid_t pid)
+        : m_fd{fd}
+        , m_pid{pid} {
+    }
+
+    virtual ~FdBufBase() {
+    }
+
+    int close() {
+        nk_close(m_fd);
+        int ret = 1;
+        if (m_pid > 0) {
+            nk_waitpid(m_pid, &ret);
+        }
+        return ret;
+    }
+
+    nkfd_t m_fd;
+    nkpid_t m_pid;
+};
+
+struct OutputFdBuf : FdBufBase {
+    explicit OutputFdBuf(nkfd_t fd, nkpid_t pid)
+        : FdBufBase{fd, pid} {
+    }
+
+    int sync() override {
+        auto const &data = this->str();
+        int n = nk_write(m_fd, data.c_str(), data.size());
+        this->str("");
+        return n;
+    }
+};
+
+struct InputFdBuf : FdBufBase {
+    static constexpr size_t c_buf_size = 4096;
+
+    explicit InputFdBuf(nkfd_t fd, nkpid_t pid)
+        : FdBufBase{fd, pid}
+        , m_buf{new char[c_buf_size]} {
+    }
+
+    ~InputFdBuf() {
+        delete[] m_buf;
+    }
+
+    int underflow() override {
+        if (this->gptr() == this->egptr()) {
+            int size = nk_read(m_fd, m_buf, c_buf_size);
+            this->setg(m_buf, m_buf, m_buf + size);
+        }
+        return this->gptr() == this->egptr() ? std::char_traits<char>::eof()
+                                             : std::char_traits<char>::to_int_type(*this->gptr());
+    }
+
+    char *m_buf;
+};
 
 } // namespace
 
 std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    auto sb = nksb_create();
+    NkStringBuilder_T sb{};
     defer {
-        nksb_free(sb);
+        nksb_deinit(&sb);
     };
-    _makeCmdStr(sb, cmd, quiet);
-    auto str = nksb_concat(sb);
+    _makeCmdStr(&sb, cmd, quiet);
+    auto str = nksb_concat(&sb);
 
-    NK_LOG_DBG("popen(\"%.*s\", \"r\")", (int)str.size, str.data);
+    NK_LOG_DBG("exec(\"%.*s\")", (int)str.size, str.data);
 
-    auto file = popen(str.data, "r");
-    return std::istream{_createFileBuf(file)};
+    nkpipe_t out = nk_createPipe();
+    nkpid_t pid = 0;
+    if (nk_execAsync(str.data, &pid, nullptr, &out) < 0) {
+        // TODO Report errors to the user
+        NK_LOG_ERR("exec(\"%.*s\") failed: %s", (int)str.size, str.data, nk_getLastErrorString());
+        if (pid > 0) {
+            nk_waitpid(pid, nullptr);
+        }
+        nk_close(out.read);
+        nk_close(out.write);
+        return std::istream{nullptr};
+    } else {
+        return std::istream{new (nk_alloc_t<InputFdBuf>(nk_default_allocator)) InputFdBuf{out.read, pid}};
+    }
 }
 
 std::ostream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    auto sb = nksb_create();
+    NkStringBuilder_T sb{};
     defer {
-        nksb_free(sb);
+        nksb_deinit(&sb);
     };
-    _makeCmdStr(sb, cmd, quiet);
-    auto str = nksb_concat(sb);
+    _makeCmdStr(&sb, cmd, quiet);
+    auto str = nksb_concat(&sb);
 
-    NK_LOG_DBG("popen(\"%.*s\", \"w\")", (int)str.size, str.data);
+    NK_LOG_DBG("exec(\"%.*s\")", (int)str.size, str.data);
 
-    auto file = popen(str.data, "w");
-    return std::ostream{_createFileBuf(file)};
+    nkpipe_t in = nk_createPipe();
+    nkpid_t pid = 0;
+    if (nk_execAsync(str.data, &pid, &in, nullptr) < 0) {
+        // TODO Report errors to the user
+        NK_LOG_ERR("exec(\"%.*s\") failed: %s", (int)str.size, str.data, nk_getLastErrorString());
+        if (pid > 0) {
+            nk_waitpid(pid, nullptr);
+        }
+        nk_close(in.read);
+        nk_close(in.write);
+        return std::ostream{nullptr};
+    }
+    return std::ostream{new (nk_alloc_t<OutputFdBuf>(nk_default_allocator)) OutputFdBuf{in.write, pid}};
 }
 
 bool nk_pipe_streamClose(std::ios const &stream) {
     NK_LOG_TRC("%s", __func__);
 
-    auto buf = (popen_filebuf *)stream.rdbuf();
-    auto res = pclose(buf->file());
-    buf->~popen_filebuf();
-    nk_free(nk_default_allocator, buf, sizeof(*buf));
-    return !res;
+    auto buf = (FdBufBase *)stream.rdbuf();
+    int code = 1;
+    if (buf) {
+        buf->pubsync();
+        code = buf->close();
+        buf->~FdBufBase();
+        nk_free_t(nk_default_allocator, buf);
+    }
+    return code == 0;
 }

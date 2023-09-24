@@ -23,6 +23,7 @@ function(def_nkb_test)
         COMMAND "${NKB_TEST_SCRIPT}"
             "--file=${TEST_FILE}"
             "--exe=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
+            "--emulator=${CMAKE_CROSSCOMPILING_EMULATOR}"
             WORKING_DIRECTORY "${NKB_TEST_OUT_DIR}"
         )
 endfunction()

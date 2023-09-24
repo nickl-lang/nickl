@@ -14,6 +14,11 @@ if [ -f /.dockerenv ]; then
         BUILD_TYPE=Debug
     fi
 
+    PLATFORM_ROOT=$PROJ_ROOT/etc/buildenv/$PLATFORM
+    if [ -f $PLATFORM_ROOT/scripts/prepare_buildenv.sh ]; then
+        $PLATFORM_ROOT/scripts/prepare_buildenv.sh
+    fi
+
     PLATFORM_SUFFIX=$PLATFORM-$(echo $BUILD_TYPE | tr '[:upper:]' '[:lower:]')
     BIN_DIR=$PROJ_ROOT/out/build-$PLATFORM_SUFFIX
     mkdir -p $BIN_DIR
@@ -22,7 +27,7 @@ if [ -f /.dockerenv ]; then
          ! -f $BIN_DIR/CMakeCache.txt -o \
          -n "$DEV_BUILD" ]; then
         cmake -S $PROJ_ROOT -B $BIN_DIR -GNinja \
-            -DCMAKE_TOOLCHAIN_FILE=$PROJ_ROOT/etc/buildenv/$PLATFORM/cmake/Toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=$PLATFORM_ROOT/cmake/Toolchain.cmake \
             -DCMAKE_INSTALL_PREFIX=$PROJ_ROOT/out/install-$PLATFORM_SUFFIX \
             -DDEPLOY_PREFIX=$PROJ_ROOT/out/deploy-$PLATFORM_SUFFIX \
             -DPLATFORM=$PLATFORM \

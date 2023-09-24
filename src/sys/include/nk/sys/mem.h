@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 void *nk_valloc(size_t len);
-void nk_vfree(void *addr, size_t len);
+int nk_vfree(void *addr, size_t len);
 
 #ifdef __cplusplus
 }

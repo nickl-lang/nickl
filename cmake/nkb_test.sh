@@ -11,8 +11,11 @@ printUsage() {
     echo "Options:"
     echo "    --file=<filepath>   Path to the test file"
     echo "    --exe=<filepath>    Path to the nkirc executable"
+    echo "    --emulator=<name>   Crosscompiling emulator"
     echo "    -h,--help           Display this message"
 }
+
+ARG_EMULATOR=
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -21,6 +24,9 @@ while [ $# -gt 0 ]; do
             ;;
         --exe=*)
             ARG_EXE="${1#*=}"
+            ;;
+        --emulator=*)
+            ARG_EMULATOR="${1#*=}"
             ;;
         -h|--help)
             printUsage
@@ -61,7 +67,7 @@ EXPECTED_RETCODE="${EXPECTED_RETCODEX%x}"
 runTest() {
     COMMAND=$1
 
-    RESULTX="$(set +e; $COMMAND; echo x$?)"
+    RESULTX="$(set +e; ($COMMAND; echo x$?) | tr -d '\r')"
     RETCODE=${RESULTX##*x}
     OUTPUT="${RESULTX%x*}"
 
@@ -85,7 +91,7 @@ runTest() {
 runCommand() {
     COMMAND=$1
     echo "Running '$COMMAND'" >&2
-    $COMMAND
+    $ARG_EMULATOR $COMMAND
 }
 
 run() {

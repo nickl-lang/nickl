@@ -1,9 +1,10 @@
+#link("c", "@SNPRINTF_PREFIX@")
+snprintf :: (s: *i8, n: u64, format: *const i8, ...) -> i32;
+
 #link("c") {
 
 printf :: (format: *const i8, ...) -> i32;
 puts :: (str: *const i8) -> i32;
-
-snprintf :: (s: *i8, n: u64, format: *const i8, ...) -> i32;
 
 FILE :: struct {}
 
