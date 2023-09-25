@@ -608,14 +608,14 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                    c,
                    "cannot store value of type `%s` into a slot of type `%s`",
                    (char const *)[&]() {
-                       NkStringBuilder_T sb{};
+                       NkStringBuilder sb{};
                        nklt_inspect(src_type, &sb);
                        return makeDeferrerWithData(sb.data, [sb]() {
                            nksb_free(&sb);
                        });
                    }(),
                    (char const *)[&]() {
-                       NkStringBuilder_T sb{};
+                       NkStringBuilder sb{};
                        nklt_inspect(dst_type, &sb);
                        return makeDeferrerWithData(sb.data, [sb]() {
                            nksb_free(&sb);
@@ -679,7 +679,7 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type = nullptr, NkSli
 ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
     auto index = nklt_struct_index(struct_t, name);
     if (index == -1ull) {
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };
@@ -693,7 +693,7 @@ ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t,
     // TODO  Boilerplate between getStructIndex and getUnionIndex
     auto index = nklt_struct_index(struct_t, name);
     if (index == -1ull) {
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };
@@ -762,7 +762,7 @@ ValueInfo getMember(NklCompiler c, ValueInfo const &lhs, nkid name) {
     }
 
     default: {
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };
@@ -817,7 +817,7 @@ ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) 
     }
 
     default: {
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };
@@ -952,7 +952,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic, NkCallConv
 
     NK_LOG_INF(
         "ir:\n%s", (char const *)[&]() {
-            NkStringBuilder_T sb{};
+            NkStringBuilder sb{};
             nkir_inspectFunct(fn, &sb);
             return makeDeferrerWithData(sb.data, [sb]() {
                 nksb_free(&sb);
@@ -1184,7 +1184,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
                        "no field named `%s` in type `%s`",
                        nkid2cs(name),
                        (char const *)[&]() {
-                           NkStringBuilder_T sb{};
+                           NkStringBuilder sb{};
                            nklt_inspect(struct_t, &sb);
                            return makeDeferrerWithData(sb.data, [sb]() {
                                nksb_free(&sb);
@@ -1573,14 +1573,14 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
                    c,
                    "cannot cast value of type `%s` to type `%s`",
                    (char const *)[&]() {
-                       NkStringBuilder_T sb{};
+                       NkStringBuilder sb{};
                        nklt_inspect(src_type, &sb);
                        return makeDeferrerWithData(sb.data, [sb]() {
                            nksb_free(&sb);
                        });
                    }(),
                    (char const *)[&]() {
-                       NkStringBuilder_T sb{};
+                       NkStringBuilder sb{};
                        nklt_inspect(dst_type, &sb);
                        return makeDeferrerWithData(sb.data, [sb]() {
                            nksb_free(&sb);
@@ -1803,7 +1803,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
     case n_escaped_string: {
         nkstr const text{node->token->text.data + 1, node->token->text.size - 2};
 
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };
@@ -2284,7 +2284,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
 
         NK_LOG_INF(
             "ir:\n%s", (char const *)[&]() {
-                NkStringBuilder_T sb{};
+                NkStringBuilder sb{};
                 nkir_inspectFunct(fn, &sb);
                 return makeDeferrerWithData(sb.data, [sb]() {
                     nksb_free(&sb);
@@ -2309,7 +2309,7 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInfo
         (void)ref;
         // TODO Boilerplate for debug printing
 #ifdef ENABLE_LOGGING
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };
@@ -2350,7 +2350,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
 
     NK_LOG_INF(
         "ir:\n%s", (char const *)[&]() {
-            NkStringBuilder_T sb{};
+            NkStringBuilder sb{};
             nkir_inspectFunct(fn, &sb);
             nkir_inspectExtSyms(c->ir, &sb);
             nksb_append_null(&sb);

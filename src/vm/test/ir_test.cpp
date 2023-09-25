@@ -46,7 +46,7 @@ protected:
     void inspect(NkIrProg p) {
         (void)p;
 #ifdef ENABLE_LOGGING
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         defer {
             nksb_free(&sb);
         };

@@ -28,7 +28,7 @@ NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
 }
 
 #ifdef ENABLE_LOGGING
-void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder sb, bool print_arg_names = true) {
+void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder *sb, bool print_arg_names = true) {
     nksb_printf(sb, "(");
 
     for (size_t i = 0; i < proc_info.args_t.size; i++) {
@@ -441,7 +441,7 @@ NkIrInstr nkir_make_label(NkIrLabel label) {
 bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     NK_LOG_TRC("%s", __func__);
 
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };
@@ -466,7 +466,7 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
 }
 
 #ifdef ENABLE_LOGGING
-void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb) {
+void nkir_inspectProgram(NkIrProg ir, NkStringBuilder *sb) {
     for (size_t i = 0; i < ir->procs.size(); i++) {
         nkir_inspectProc(ir, {i}, sb);
     }
@@ -475,7 +475,7 @@ void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb) {
     nkir_inspectExternSyms(ir, sb);
 }
 
-void nkir_inspectData(NkIrProg ir, NkStringBuilder sb) {
+void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
     if (ir->globals.size()) {
         for (size_t i = 0; i < ir->globals.size(); i++) {
             nksb_printf(sb, "\ndata global%" PRIu64 ": ", i);
@@ -504,7 +504,7 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder sb) {
     }
 }
 
-void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
+void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     if (ir->extern_data.size()) {
         for (auto const &data : ir->extern_data) {
             nksb_printf(sb, "\nextern data %.*s: ", (int)data.name.size, data.name.data);
@@ -522,7 +522,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb) {
     }
 }
 
-void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
+void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
     auto const &proc = ir->procs[proc_id.id];
 
     nksb_printf(
@@ -606,7 +606,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder sb) {
     nksb_printf(sb, "}\n");
 }
 
-void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb) {
+void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder *sb) {
     if (ref.kind == NkIrRef_None) {
         nksb_printf(sb, "{}");
         return;

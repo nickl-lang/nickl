@@ -22,7 +22,7 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
+void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
     auto const _newline = [&]() {
         nksb_printf(sb, "\n%*s", (int)(depth * 2), "");
     };
@@ -117,6 +117,6 @@ NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
     return {new_ar, ar.size};
 }
 
-void nkl_inspectNode(NklAstNode root, NkStringBuilder sb) {
+void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb) {
     _inspect({root, 1}, sb);
 }

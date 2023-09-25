@@ -38,7 +38,7 @@ protected:
     void test(NklAstNodeArray root) {
         NK_LOG_INF(
             "ast:%s\n", (char const *)[&]() {
-                NkStringBuilder_T sb{};
+                NkStringBuilder sb{};
                 nkl_inspectNode(root.data, &sb);
                 return makeDeferrerWithData(sb.data, [=]() {
                     nksb_free(&sb);

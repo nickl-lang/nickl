@@ -990,7 +990,7 @@ NklAstNode nkl_parse(NklAst ast, NkSlice<NklToken const> tokens, std::string &er
 
     NK_LOG_INF(
         "root: %s", (char const *)[&]() {
-            NkStringBuilder_T sb{};
+            NkStringBuilder sb{};
             nkl_inspectNode(root, &sb);
             return makeDeferrerWithData(sb.data, [sb]() {
                 nksb_free(&sb);

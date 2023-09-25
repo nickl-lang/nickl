@@ -18,16 +18,13 @@
 extern "C" {
 #endif
 
-nkar_typedef(char, NkStringBuilder_T);
+nkar_typedef(char, NkStringBuilder);
 
-// TODO Rename NkStringBuilder_T -> NkStringBuilder
-typedef NkStringBuilder_T *NkStringBuilder;
+NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
+int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
-NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder_T *sb, char const *fmt, ...);
-int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap);
-
-void nksb_str_escape(NkStringBuilder_T *sb, nkstr str);
-void nksb_str_unescape(NkStringBuilder_T *sb, nkstr str);
+void nksb_str_escape(NkStringBuilder *sb, nkstr str);
+void nksb_str_unescape(NkStringBuilder *sb, nkstr str);
 
 #ifdef __cplusplus
 }

@@ -19,7 +19,7 @@ NkBcOpcode s_ir2opcode[] = {
 };
 
 #ifdef ENABLE_LOGGING
-void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder sb) {
+void inspect(NkSlice<NkBcInstr> instrs, NkStringBuilder *sb) {
     auto inspect_ref = [&](NkBcRef const &ref) {
         if (ref.kind == NkBcRef_None) {
             nksb_printf(sb, "(null)");
@@ -422,7 +422,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     }
 
 #ifdef ENABLE_LOGGING
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
     inspect(bc_proc.instrs, &sb);
     NK_LOG_INF("proc %.*s\n%.*s", (int)ir_proc.name.size, ir_proc.name.data, (int)sb.size, sb.data);

@@ -461,7 +461,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         interp(*pinstr);
         NK_LOG_DBG(
             "res=%s", (char const *)[&]() {
-                NkStringBuilder_T sb{};
+                NkStringBuilder sb{};
                 auto const &ref = pinstr->arg[0];
                 if (ref.ref_type != NkBcRef_None) {
                     nkval_inspect(_getValRef(ref), &sb);

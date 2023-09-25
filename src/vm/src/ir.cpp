@@ -354,7 +354,7 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
     block.emplace_back(id);
 }
 
-void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
+void nkir_inspect(NkIrProg p, NkStringBuilder *sb) {
     for (auto funct : p->functs) {
         nkir_inspectFunct(funct, sb);
     }
@@ -362,7 +362,7 @@ void nkir_inspect(NkIrProg p, NkStringBuilder sb) {
     nkir_inspectExtSyms(p, sb);
 }
 
-void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
+void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder *sb) {
     if (ref.ref_type == NkIrRef_None) {
         nksb_printf(sb, "{}");
         return;
@@ -414,7 +414,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder sb) {
     nkt_inspect(ref.type, sb);
 }
 
-void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
+void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
     auto p = funct->prog;
 
     nksb_printf(sb, "\nfn ");
@@ -529,7 +529,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder sb) {
     nksb_printf(sb, "}\n");
 }
 
-void nkir_inspectExtSyms(NkIrProg p, NkStringBuilder sb) {
+void nkir_inspectExtSyms(NkIrProg p, NkStringBuilder *sb) {
     if (p->exsyms.size()) {
         for (auto const &sym : p->exsyms) {
             nksb_printf(sb, "\n\"%s\" %s:", p->shobjs[sym.so_id.id].c_str(), sym.name.c_str());

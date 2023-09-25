@@ -309,7 +309,7 @@ private:
         auto const len = m_cur_token->text.size - 2;
         getToken();
 
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         sb.alloc = alloc;
         nksb_str_unescape(&sb, {data, len});
         return {sb.data, sb.size};
@@ -811,7 +811,7 @@ private:
 
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
         m_error_msg = {sb.data, sb.size};

@@ -371,7 +371,7 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 #ifdef ENABLE_LOGGING
         if (dst_ref_data) {
             // TODO Implement static sb again???
-            NkStringBuilder_T sb{};
+            NkStringBuilder sb{};
             defer {
                 nksb_free(&sb);
             };

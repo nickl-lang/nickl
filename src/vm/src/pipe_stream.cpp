@@ -15,7 +15,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(pipe_stream);
 
-void _makeCmdStr(NkStringBuilder sb, nkstr cmd, bool quiet) {
+void _makeCmdStr(NkStringBuilder *sb, nkstr cmd, bool quiet) {
     nksb_printf(sb, "%.*s", (int)cmd.size, cmd.data);
     if (quiet) {
         nksb_printf(sb, " >/dev/null 2>&1");
@@ -87,7 +87,7 @@ struct InputFdBuf : FdBufBase {
 std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };
@@ -114,7 +114,7 @@ std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
 std::ostream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };

@@ -170,11 +170,11 @@ void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 // Inspection
 
 #ifdef ENABLE_LOGGING
-void nkir_inspectProgram(NkIrProg ir, NkStringBuilder sb);
-void nkir_inspectData(NkIrProg ir, NkStringBuilder sb);
-void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder sb);
-void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStringBuilder sb);
-void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder sb);
+void nkir_inspectProgram(NkIrProg ir, NkStringBuilder *sb);
+void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb);
+void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb);
+void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStringBuilder *sb);
+void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder *sb);
 #endif // ENABLE_LOGGING
 
 #ifdef __cplusplus

@@ -46,7 +46,7 @@ NklAstNode_T nkl_makeNode3(
 NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
 NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
 
-void nkl_inspectNode(NklAstNode root, NkStringBuilder sb);
+void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb);
 
 #define nargs0(NODE) ((NODE)->args[0])
 #define nargs1(NODE) ((NODE)->args[1])

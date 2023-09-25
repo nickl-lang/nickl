@@ -37,7 +37,7 @@ namespace {
 NK_LOG_USE_SCOPE(nkirc);
 
 NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };
@@ -95,7 +95,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
     }
 
 #ifdef ENABLE_LOGGING
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     sb.alloc = nk_arena_getAllocator(&c->tmp_arena);
     nkir_inspectProgram(parser.ir, &sb);
     NK_LOG_INF("IR:\n%.*s", (int)sb.size, sb.data);

@@ -129,8 +129,8 @@ NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, siz
 
 NkType nkt_get_void();
 
-void nkt_inspect(nktype_t type, NkStringBuilder sb);
-void nkval_inspect(nkval_t val, NkStringBuilder sb);
+void nkt_inspect(nktype_t type, NkStringBuilder *sb);
+void nkval_inspect(nkval_t val, NkStringBuilder *sb);
 
 void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 

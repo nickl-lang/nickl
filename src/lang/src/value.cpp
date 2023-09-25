@@ -488,7 +488,7 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields) {
     });
 }
 
-void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
+void nklt_inspect(nkltype_t type, NkStringBuilder *sb) {
     switch (nklt_tclass(type)) {
     case NklType_Typeref:
         nksb_printf(sb, "type_t");
@@ -521,7 +521,7 @@ void nklt_inspect(nkltype_t type, NkStringBuilder sb) {
     }
 }
 
-void nklval_inspect(nklval_t val, NkStringBuilder sb) {
+void nklval_inspect(nklval_t val, NkStringBuilder *sb) {
     switch (nklval_tclass(val)) {
     case NklType_Any:    // TODO any_t value inspect not implemented
     case NklType_Slice:  // TODO Slice value inspect not implemented

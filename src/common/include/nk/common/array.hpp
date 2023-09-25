@@ -65,7 +65,7 @@ struct NkArray : NkSlice<T> {
     }
 
     template <class... TArgs>
-    T &emplace(TArgs &&... args) {
+    T &emplace(TArgs &&...args) {
         return *new (push().data()) T{std::forward<TArgs>(args)...};
     }
 

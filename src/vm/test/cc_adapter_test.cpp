@@ -51,7 +51,7 @@ protected:
     }
 
 protected:
-    NkStringBuilder_T m_output_filename_sb{};
+    NkStringBuilder m_output_filename_sb{};
     NkIrCompilerConfig m_conf;
 };
 

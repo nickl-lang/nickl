@@ -277,7 +277,7 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
         sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
         m_error_msg = {sb.data, sb.size};
@@ -314,7 +314,10 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
 #ifdef ENABLE_LOGGING
         // TODO Implement static sb again???
-        NkStringBuilder_T sb{};
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
         nksb_str_escape(&sb, scanner.m_token.text);
         NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], sb.data);
 #endif // ENABLE_LOGGING

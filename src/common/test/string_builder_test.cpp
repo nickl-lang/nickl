@@ -18,7 +18,7 @@ protected:
 };
 
 TEST_F(string_builder, basic) {
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };
@@ -30,7 +30,7 @@ TEST_F(string_builder, basic) {
 }
 
 TEST_F(string_builder, counting) {
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };

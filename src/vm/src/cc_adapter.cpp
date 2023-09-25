@@ -19,7 +19,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     EASY_FUNCTION(::profiler::colors::Amber200);
     NK_LOG_TRC("%s", __func__);
 
-    NkStringBuilder_T sb{};
+    NkStringBuilder sb{};
     defer {
         nksb_free(&sb);
     };

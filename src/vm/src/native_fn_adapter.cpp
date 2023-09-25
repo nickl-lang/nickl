@@ -153,7 +153,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
     NK_LOG_DBG(
         "ffi(type{name=%s}) -> %p",
         (char const *)[&]() {
-            NkStringBuilder_T sb{};
+            NkStringBuilder sb{};
             nkt_inspect(type, &sb);
             return makeDeferrerWithData(sb.data, [sb]() {
                 nksb_free(&sb);

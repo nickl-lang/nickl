@@ -7,7 +7,7 @@
 #include "nk/common/allocator.hpp"
 #include "nk/common/utils.h"
 
-void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
+void nkirt_inspect(nktype_t type, NkStringBuilder *sb) {
     if (!type) {
         nksb_printf(sb, "(null)");
         return;
@@ -99,7 +99,7 @@ void nkirt_inspect(nktype_t type, NkStringBuilder sb) {
     }
 }
 
-void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb) {
+void nkirv_inspect(void *data, nktype_t type, NkStringBuilder *sb) {
     if (!data) {
         nksb_printf(sb, "(null)");
         return;

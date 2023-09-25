@@ -2,7 +2,7 @@
 
 #include <ctype.h>
 
-int nksb_printf(NkStringBuilder_T *sb, char const *fmt, ...) {
+int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     int res = nksb_vprintf(sb, fmt, ap);
@@ -11,7 +11,7 @@ int nksb_printf(NkStringBuilder_T *sb, char const *fmt, ...) {
     return res;
 }
 
-int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap) {
+int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
     va_list ap_copy;
 
     va_copy(ap_copy, ap);
@@ -35,7 +35,7 @@ int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap) {
     return printf_res;
 }
 
-void nksb_str_escape(NkStringBuilder_T *sb, nkstr str) {
+void nksb_str_escape(NkStringBuilder *sb, nkstr str) {
     for (size_t i = 0; i < str.size; i++) {
         switch (str.data[i]) {
         case '\a':
@@ -79,7 +79,7 @@ void nksb_str_escape(NkStringBuilder_T *sb, nkstr str) {
     }
 }
 
-void nksb_str_unescape(NkStringBuilder_T *sb, nkstr str) {
+void nksb_str_unescape(NkStringBuilder *sb, nkstr str) {
     for (size_t i = 0; i < str.size; i++) {
         if (str.data[i] == '\\' && i < str.size - 1) {
             switch (str.data[++i]) {
