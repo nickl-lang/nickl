@@ -37,9 +37,14 @@ namespace {
 NK_LOG_USE_SCOPE(nkirc);
 
 NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
+    NkStringBuilder_T sb{};
+    defer {
+        nksb_free(&sb);
+    };
+
     va_list ap;
     va_start(ap, fmt);
-    auto str = string_vformat(fmt, ap);
+    nksb_vprintf(&sb, fmt, ap);
     va_end(ap);
 
     bool const to_color =
@@ -50,8 +55,8 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
         "%serror:%s %.*s\n",
         to_color ? NK_TERM_COLOR_RED : "",
         to_color ? NK_TERM_COLOR_NONE : "",
-        (int)str.size(),
-        str.c_str());
+        (int)sb.size,
+        sb.data);
 }
 
 bool compileProgram(NkIrCompiler c, nkstr in_file) {

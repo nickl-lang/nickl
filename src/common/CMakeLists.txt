@@ -1,7 +1,6 @@
 add_library(nk_common
     src/allocator.c
-    src/allocator.cpp
-    src/arena.cpp
+    src/arena.c
     src/file.cpp
     src/id.cpp
     src/logger.cpp
