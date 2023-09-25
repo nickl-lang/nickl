@@ -443,15 +443,14 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
 
     NkStringBuilder_T sb{};
     defer {
-        nksb_deinit(&sb);
+        nksb_free(&sb);
     };
 
     nksb_printf(&sb, "gcc -x c -O2 -o %.*s -", (int)out_file.size, out_file.data);
-    auto compile_cmd = nksb_concat(&sb);
 
     auto in = nk_createPipe();
     nkpid_t pid = 0;
-    nk_execAsync(compile_cmd.data, &pid, &in, nullptr);
+    nk_execAsync(sb.data, &pid, &in, nullptr);
     char src[] = R"(
         #include <stdio.h>
         int main(int argc, char** argv) {

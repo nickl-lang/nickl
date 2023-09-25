@@ -17,13 +17,13 @@ typedef struct {
 } nkstr;
 
 NK_INLINE nkstr nk_mkstr(char const *str) {
-    return {str, strlen(str)};
+    return LITERAL(nkstr){str, strlen(str)};
 }
 
 NK_INLINE nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
-    auto mem = nk_alloc(alloc, src.size);
+    void *mem = nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
-    return {(char *)mem, src.size};
+    return LITERAL(nkstr){(char const *)mem, src.size};
 }
 
 #ifdef __cplusplus

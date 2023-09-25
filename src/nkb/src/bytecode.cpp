@@ -423,10 +423,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
 #ifdef ENABLE_LOGGING
     NkStringBuilder_T sb{};
-    nksb_init_alloc(&sb, tmp_alloc);
+    sb.alloc = tmp_alloc;
     inspect(bc_proc.instrs, &sb);
-    auto ir_str = nksb_concat(&sb);
-    NK_LOG_INF("proc %.*s\n%.*s", (int)ir_proc.name.size, ir_proc.name.data, (int)ir_str.size, ir_str.data);
+    NK_LOG_INF("proc %.*s\n%.*s", (int)ir_proc.name.size, ir_proc.name.data, (int)sb.size, sb.data);
 #endif // ENABLE_LOGGING
 }
 

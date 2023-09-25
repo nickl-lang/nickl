@@ -19,14 +19,14 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     EASY_FUNCTION(::profiler::colors::Amber200);
     NK_LOG_TRC("%s", __func__);
 
-    auto sb = nksb_create();
+    NkStringBuilder_T sb{};
     defer {
-        nksb_free(sb);
+        nksb_free(&sb);
     };
 
     auto echo_cmd = nk_mkstr(conf.echo_src ? "tee /dev/stderr | " : "");
     nksb_printf(
-        sb,
+        &sb,
         "%.*s%.*s -x c - -o %.*s -lm %.*s",
         (int)echo_cmd.size,
         echo_cmd.data,
@@ -37,8 +37,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         (int)conf.additional_flags.size,
         conf.additional_flags.data);
 
-    auto const cmd = nksb_concat(sb);
-    return nk_pipe_streamWrite(cmd, conf.quiet);
+    return nk_pipe_streamWrite({sb.data, sb.size}, conf.quiet);
 }
 
 bool nkcc_streamClose(std::ostream const &stream) {

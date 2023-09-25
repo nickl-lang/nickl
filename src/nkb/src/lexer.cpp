@@ -277,10 +277,10 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder_T sb;
-        nksb_init_alloc(&sb, nk_arena_getAllocator(m_tmp_arena));
+        NkStringBuilder_T sb{};
+        sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = nksb_concat(&sb);
+        m_error_msg = {sb.data, sb.size};
         va_end(ap);
         m_token.id = t_error;
     }
@@ -313,9 +313,10 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         }
 
 #ifdef ENABLE_LOGGING
-        NK_DEFINE_STATIC_SB(sb, 256);
+        // TODO Implement static sb again???
+        NkStringBuilder_T sb{};
         nksb_str_escape(&sb, scanner.m_token.text);
-        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], nksb_concat(&sb).data);
+        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], sb.data);
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 }

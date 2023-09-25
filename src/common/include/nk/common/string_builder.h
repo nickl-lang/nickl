@@ -3,44 +3,31 @@
 
 #include <stdarg.h>
 
-#include "nk/common/allocator.h"
+#include "nk/common/array.h"
 #include "nk/common/string.h"
 #include "nk/sys/common.h"
+
+#define nksb_reserve nkar_reserve
+#define nksb_append nkar_append
+#define nksb_append_many nkar_append_many
+#define nksb_free nkar_free
+
+#define nksb_append_null(sb) nksb_append((sb), '\0')
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct NkStringBuilder_T {
-    char *data;
-    size_t size;
-    size_t capacity;
-    NkAllocator alloc;
-} * NkStringBuilder;
+nkar_typedef(char, NkStringBuilder_T);
 
-NkStringBuilder_T *nksb_create();
-NkStringBuilder_T *nksb_create_alloc(NkAllocator alloc);
-
-void nksb_init(NkStringBuilder_T *sb);
-void nksb_init_alloc(NkStringBuilder_T *sb, NkAllocator alloc);
-
-void nksb_deinit(NkStringBuilder_T *sb);
-void nksb_free(NkStringBuilder_T *sb);
+// TODO Rename NkStringBuilder_T -> NkStringBuilder
+typedef NkStringBuilder_T *NkStringBuilder;
 
 NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder_T *sb, char const *fmt, ...);
 int nksb_vprintf(NkStringBuilder_T *sb, char const *fmt, va_list ap);
 
-nkstr nksb_concat(NkStringBuilder_T *sb);
-
 void nksb_str_escape(NkStringBuilder_T *sb, nkstr str);
 void nksb_str_unescape(NkStringBuilder_T *sb, nkstr str);
-
-#define NK_DEFINE_STATIC_SB(NAME, SIZE)                                                                      \
-    uint8_t _buf[SIZE];                                                                                      \
-    NkArena log_arena{_buf, 0, sizeof(_buf)};                                                                \
-    NkStringBuilder_T NAME {                                                                                 \
-        (char *)nk_arena_alloc(&log_arena, sizeof(_buf)), 0, sizeof(_buf), nk_arena_getAllocator(&log_arena) \
-    }
 
 #ifdef __cplusplus
 }

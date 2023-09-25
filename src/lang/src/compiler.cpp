@@ -387,7 +387,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc_t<T>(&c->arena)) T{args...}, tovmt(type)})}, type, v_val};
 }
@@ -608,17 +608,17 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                    c,
                    "cannot store value of type `%s` into a slot of type `%s`",
                    (char const *)[&]() {
-                       auto sb = nksb_create();
-                       nklt_inspect(src_type, sb);
-                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                           nksb_free(sb);
+                       NkStringBuilder_T sb{};
+                       nklt_inspect(src_type, &sb);
+                       return makeDeferrerWithData(sb.data, [sb]() {
+                           nksb_free(&sb);
                        });
                    }(),
                    (char const *)[&]() {
-                       auto sb = nksb_create();
-                       nklt_inspect(dst_type, sb);
-                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                           nksb_free(sb);
+                       NkStringBuilder_T sb{};
+                       nklt_inspect(dst_type, &sb);
+                       return makeDeferrerWithData(sb.data, [sb]() {
+                           nksb_free(&sb);
                        });
                    }()),
                ValueInfo{};
@@ -679,14 +679,12 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type = nullptr, NkSli
 ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
     auto index = nklt_struct_index(struct_t, name);
     if (index == -1ull) {
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-        nklt_inspect(lhs.type, sb);
-        auto type_str = nksb_concat(sb);
-        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)type_str.size, type_str.data),
-               ValueInfo{};
+        nklt_inspect(lhs.type, &sb);
+        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)sb.size, sb.data), ValueInfo{};
     }
     return makeRef(tupleIndex(asRef(c, lhs), struct_t->underlying_type, index));
 }
@@ -695,14 +693,12 @@ ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t,
     // TODO  Boilerplate between getStructIndex and getUnionIndex
     auto index = nklt_struct_index(struct_t, name);
     if (index == -1ull) {
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-        nklt_inspect(lhs.type, sb);
-        auto type_str = nksb_concat(sb);
-        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)type_str.size, type_str.data),
-               ValueInfo{};
+        nklt_inspect(lhs.type, &sb);
+        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)sb.size, sb.data), ValueInfo{};
     }
     return cast(struct_t->as.strct.fields.data[index].type, lhs);
 }
@@ -766,13 +762,12 @@ ValueInfo getMember(NklCompiler c, ValueInfo const &lhs, nkid name) {
     }
 
     default: {
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-        nklt_inspect(lhs.type, sb);
-        auto type_str = nksb_concat(sb);
-        return error(c, "type `%.*s` is not subscriptable", (int)type_str.size, type_str.data), ValueInfo{};
+        nklt_inspect(lhs.type, &sb);
+        return error(c, "type `%.*s` is not subscriptable", (int)sb.size, sb.data), ValueInfo{};
     }
     }
 }
@@ -822,13 +817,12 @@ ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) 
     }
 
     default: {
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-        nklt_inspect(lhs.type, sb);
-        auto type_str = nksb_concat(sb);
-        return error(c, "type `%.*s` is not indexable", (int)type_str.size, type_str.data), ValueInfo{};
+        nklt_inspect(lhs.type, &sb);
+        return error(c, "type `%.*s` is not indexable", (int)sb.size, sb.data), ValueInfo{};
     }
     }
 }
@@ -958,10 +952,10 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic, NkCallConv
 
     NK_LOG_INF(
         "ir:\n%s", (char const *)[&]() {
-            auto sb = nksb_create();
-            nkir_inspectFunct(fn, sb);
-            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                nksb_free(sb);
+            NkStringBuilder_T sb{};
+            nkir_inspectFunct(fn, &sb);
+            return makeDeferrerWithData(sb.data, [sb]() {
+                nksb_free(&sb);
             });
         }());
 
@@ -1190,10 +1184,10 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
                        "no field named `%s` in type `%s`",
                        nkid2cs(name),
                        (char const *)[&]() {
-                           auto sb = nksb_create();
-                           nklt_inspect(struct_t, sb);
-                           return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                               nksb_free(sb);
+                           NkStringBuilder_T sb{};
+                           nklt_inspect(struct_t, &sb);
+                           return makeDeferrerWithData(sb.data, [sb]() {
+                               nksb_free(&sb);
                            });
                        }()),
                    ValueInfo{};
@@ -1579,17 +1573,17 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
                    c,
                    "cannot cast value of type `%s` to type `%s`",
                    (char const *)[&]() {
-                       auto sb = nksb_create();
-                       nklt_inspect(src_type, sb);
-                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                           nksb_free(sb);
+                       NkStringBuilder_T sb{};
+                       nklt_inspect(src_type, &sb);
+                       return makeDeferrerWithData(sb.data, [sb]() {
+                           nksb_free(&sb);
                        });
                    }(),
                    (char const *)[&]() {
-                       auto sb = nksb_create();
-                       nklt_inspect(dst_type, sb);
-                       return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                           nksb_free(sb);
+                       NkStringBuilder_T sb{};
+                       nklt_inspect(dst_type, &sb);
+                       return makeDeferrerWithData(sb.data, [sb]() {
+                           nksb_free(&sb);
                        });
                    }()),
                ValueInfo{};
@@ -1809,21 +1803,18 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
     case n_escaped_string: {
         nkstr const text{node->token->text.data + 1, node->token->text.size - 2};
 
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-        nksb_str_unescape(sb, text);
-        auto unescaped_str = nksb_concat(sb);
+        nksb_str_unescape(&sb, text);
+        nksb_append_null(&sb);
 
-        auto size = unescaped_str.size;
-
-        auto ar_t = nkl_get_array(i8_t, size + 1);
+        auto ar_t = nkl_get_array(i8_t, sb.size);
         auto str_t = nkl_get_ptr(ar_t);
 
-        auto str = nk_arena_alloc_t<char>(&c->arena, unescaped_str.size + 1);
-        std::memcpy(str, unescaped_str.data, size);
-        str[size] = '\0';
+        auto str = nk_arena_alloc_t<char>(&c->arena, sb.size);
+        std::memcpy(str, sb.data, sb.size);
 
         return makeValue<void *>(c, str_t, (void *)str);
     }
@@ -2293,10 +2284,10 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
 
         NK_LOG_INF(
             "ir:\n%s", (char const *)[&]() {
-                auto sb = nksb_create();
-                nkir_inspectFunct(fn, sb);
-                return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                    nksb_free(sb);
+                NkStringBuilder_T sb{};
+                nkir_inspectFunct(fn, &sb);
+                return makeDeferrerWithData(sb.data, [sb]() {
+                    nksb_free(&sb);
                 });
             }());
     }
@@ -2318,15 +2309,13 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInfo
         (void)ref;
         // TODO Boilerplate for debug printing
 #ifdef ENABLE_LOGGING
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
+        nkir_inspectRef(c->ir, ref, &sb);
+        NK_LOG_DBG("value ignored: %s", sb.data);
 #endif // ENABLE_LOGGING
-        NK_LOG_DBG("value ignored: %s", [&]() {
-            nkir_inspectRef(c->ir, ref, sb);
-            return nksb_concat(sb).data;
-        }());
     }
     return {};
 }
@@ -2361,11 +2350,12 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
 
     NK_LOG_INF(
         "ir:\n%s", (char const *)[&]() {
-            auto sb = nksb_create();
-            nkir_inspectFunct(fn, sb);
-            nkir_inspectExtSyms(c->ir, sb);
-            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                nksb_free(sb);
+            NkStringBuilder_T sb{};
+            nkir_inspectFunct(fn, &sb);
+            nkir_inspectExtSyms(c->ir, &sb);
+            nksb_append_null(&sb);
+            return makeDeferrerWithData(sb.data, [sb]() {
+                nksb_free(&sb);
             });
         }());
 

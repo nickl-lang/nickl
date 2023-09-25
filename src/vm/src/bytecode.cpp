@@ -306,10 +306,10 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     NK_LOG_INF(
         "bytecode:\n%s", (char const *)[&]() {
-            auto sb = nksb_create();
-            _inspect(instrs, sb);
-            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                nksb_free(sb);
+            NkStringBuilder_T sb{};
+            _inspect(instrs, &sb);
+            return makeDeferrerWithData(sb.data, [sb]() {
+                nksb_free(&sb);
             });
         }());
 

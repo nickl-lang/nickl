@@ -46,15 +46,12 @@ protected:
     void inspect(NkIrProg p) {
         (void)p;
 #ifdef ENABLE_LOGGING
-        auto sb = nksb_create();
+        NkStringBuilder_T sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-
-        nkir_inspect(p, sb);
-        auto str = nksb_concat(sb);
-
-        NK_LOG_INF("ir:\n%.*s", (int)str.size, str.data);
+        nkir_inspect(p, &sb);
+        NK_LOG_INF("ir:\n%.*s", (int)sb.size, sb.data);
 #endif // ENABLE_LOGGING
     }
 

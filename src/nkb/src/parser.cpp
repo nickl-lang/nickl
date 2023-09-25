@@ -310,9 +310,9 @@ private:
         getToken();
 
         NkStringBuilder_T sb{};
-        nksb_init_alloc(&sb, alloc);
+        sb.alloc = alloc;
         nksb_str_unescape(&sb, {data, len});
-        return nksb_concat(&sb);
+        return {sb.data, sb.size};
     }
 
     struct ProcSignatureParseResult {
@@ -812,9 +812,9 @@ private:
         va_list ap;
         va_start(ap, fmt);
         NkStringBuilder_T sb{};
-        nksb_init_alloc(&sb, m_tmp_alloc);
+        sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = nksb_concat(&sb);
+        m_error_msg = {sb.data, sb.size};
         va_end(ap);
 
         m_error_occurred = true;

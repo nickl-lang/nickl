@@ -89,18 +89,17 @@ std::istream nk_pipe_streamRead(nkstr cmd, bool quiet) {
 
     NkStringBuilder_T sb{};
     defer {
-        nksb_deinit(&sb);
+        nksb_free(&sb);
     };
     _makeCmdStr(&sb, cmd, quiet);
-    auto str = nksb_concat(&sb);
 
-    NK_LOG_DBG("exec(\"%.*s\")", (int)str.size, str.data);
+    NK_LOG_DBG("exec(\"%.*s\")", (int)sb.size, sb.data);
 
     nkpipe_t out = nk_createPipe();
     nkpid_t pid = 0;
-    if (nk_execAsync(str.data, &pid, nullptr, &out) < 0) {
+    if (nk_execAsync(sb.data, &pid, nullptr, &out) < 0) {
         // TODO Report errors to the user
-        NK_LOG_ERR("exec(\"%.*s\") failed: %s", (int)str.size, str.data, nk_getLastErrorString());
+        NK_LOG_ERR("exec(\"%.*s\") failed: %s", (int)sb.size, sb.data, nk_getLastErrorString());
         if (pid > 0) {
             nk_waitpid(pid, nullptr);
         }
@@ -117,18 +116,17 @@ std::ostream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
 
     NkStringBuilder_T sb{};
     defer {
-        nksb_deinit(&sb);
+        nksb_free(&sb);
     };
     _makeCmdStr(&sb, cmd, quiet);
-    auto str = nksb_concat(&sb);
 
-    NK_LOG_DBG("exec(\"%.*s\")", (int)str.size, str.data);
+    NK_LOG_DBG("exec(\"%.*s\")", (int)sb.size, sb.data);
 
     nkpipe_t in = nk_createPipe();
     nkpid_t pid = 0;
-    if (nk_execAsync(str.data, &pid, &in, nullptr) < 0) {
+    if (nk_execAsync(sb.data, &pid, &in, nullptr) < 0) {
         // TODO Report errors to the user
-        NK_LOG_ERR("exec(\"%.*s\") failed: %s", (int)str.size, str.data, nk_getLastErrorString());
+        NK_LOG_ERR("exec(\"%.*s\") failed: %s", (int)sb.size, sb.data, nk_getLastErrorString());
         if (pid > 0) {
             nk_waitpid(pid, nullptr);
         }

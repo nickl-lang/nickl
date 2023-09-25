@@ -8,6 +8,14 @@
 #include "nk/common/allocator.h"
 #include "nk/common/utils.h"
 
+#define nkar_typedef(T, Name) \
+    typedef struct {          \
+        T *data;              \
+        size_t size;          \
+        size_t capacity;      \
+        NkAllocator alloc;    \
+    } Name
+
 #define nkar_reserve(ar, n)                                                                   \
     do {                                                                                      \
         if ((ar)->size + n > (ar)->capacity) {                                                \

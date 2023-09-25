@@ -80,7 +80,6 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t 
     case NkAllocator_Free:
         assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
         assert(((size_t)old_mem & (align - 1)) == 0 && "invalid alignment");
-        assert((old_size & (align - 1)) == 0 && "invalid alignment");
 
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_pop(arena, old_size);
@@ -90,7 +89,6 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t 
     case NkAllocator_Realloc:
         assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
         assert(((size_t)old_mem & (align - 1)) == 0 && "invalid alignment");
-        assert((old_size & (align - 1)) == 0 && "invalid alignment");
 
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_pop(arena, old_size);
