@@ -27,10 +27,8 @@
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/slice.hpp"
-#include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
-#include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
 #include "nk/sys/common.h"
 #include "nk/sys/term.h"
@@ -610,14 +608,14 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(src_type, &sb);
-                       return makeDeferrerWithData(sb.data, [sb]() {
+                       return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
                    }(),
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(dst_type, &sb);
-                       return makeDeferrerWithData(sb.data, [sb]() {
+                       return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
                    }()),
@@ -954,7 +952,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic, NkCallConv
         "ir:\n%s", (char const *)[&]() {
             NkStringBuilder sb{};
             nkir_inspectFunct(fn, &sb);
-            return makeDeferrerWithData(sb.data, [sb]() {
+            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });
         }());
@@ -1186,7 +1184,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
                        (char const *)[&]() {
                            NkStringBuilder sb{};
                            nklt_inspect(struct_t, &sb);
-                           return makeDeferrerWithData(sb.data, [sb]() {
+                           return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                                nksb_free(&sb);
                            });
                        }()),
@@ -1575,14 +1573,14 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(src_type, &sb);
-                       return makeDeferrerWithData(sb.data, [sb]() {
+                       return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
                    }(),
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(dst_type, &sb);
-                       return makeDeferrerWithData(sb.data, [sb]() {
+                       return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
                    }()),
@@ -2286,7 +2284,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
             "ir:\n%s", (char const *)[&]() {
                 NkStringBuilder sb{};
                 nkir_inspectFunct(fn, &sb);
-                return makeDeferrerWithData(sb.data, [sb]() {
+                return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                     nksb_free(&sb);
                 });
             }());
@@ -2354,7 +2352,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
             nkir_inspectFunct(fn, &sb);
             nkir_inspectExtSyms(c->ir, &sb);
             nksb_append_null(&sb);
-            return makeDeferrerWithData(sb.data, [sb]() {
+            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });
         }());
@@ -2516,7 +2514,7 @@ NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
 template <class T>
 T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals) &config) {
     auto it = config.find(cs2nkid(name.c_str()));
-    ValueInfo val_info;
+    ValueInfo val_info{};
     if (it == config.end()) {
         error(c, "`%.*s` is missing in config", (int)name.size(), name.c_str());
     } else {

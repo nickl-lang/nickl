@@ -49,6 +49,9 @@
     do {                                                                                                \
         NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator;               \
         nk_freeAligned(_alloc, (ar)->data, (ar)->capacity * sizeof(*(ar)->data), alignof(max_align_t)); \
+        (ar)->data = NULL;                                                                              \
+        (ar)->size = 0;                                                                                 \
+        (ar)->capacity = 0;                                                                             \
     } while (0)
 
 #ifdef __cplusplus

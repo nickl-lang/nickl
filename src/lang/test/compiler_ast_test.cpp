@@ -40,7 +40,7 @@ protected:
             "ast:%s\n", (char const *)[&]() {
                 NkStringBuilder sb{};
                 nkl_inspectNode(root.data, &sb);
-                return makeDeferrerWithData(sb.data, [=]() {
+                return makeDeferrerWithData((char const *)sb.data, [=]() mutable {
                     nksb_free(&sb);
                 });
             }());
