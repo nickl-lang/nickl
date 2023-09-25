@@ -1,6 +1,7 @@
 #include "nk/sys/app.hpp"
 
-#include "common.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 namespace fs = std::filesystem;
 

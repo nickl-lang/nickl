@@ -1,6 +1,7 @@
 #include "nk/sys/file.h"
 
-#include "common.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 int nk_read(nkfd_t fd, char *buf, size_t n) {
     DWORD nNumberOfBytesRead = 0;

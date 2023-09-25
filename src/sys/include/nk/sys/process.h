@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "nk/sys/common.h"
 #include "nk/sys/file.h"
 
 #ifdef __cplusplus

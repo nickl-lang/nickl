@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "nk/common/allocator.h"
+#include "nk/sys/common.h"
 
 #ifdef __cplusplus
 extern "C" {

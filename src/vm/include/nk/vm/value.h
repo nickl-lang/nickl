@@ -146,11 +146,7 @@ typedef struct {
     size_t align;
 } NkTupleLayout;
 
-NkTupleLayout nk_calcTupleLayout(
-    nktype_t const *types,
-    size_t count,
-    NkAllocator allocator,
-    size_t stride);
+NkTupleLayout nk_calcTupleLayout(nktype_t const *types, size_t count, NkAllocator allocator, size_t stride);
 
 inline nkval_t nkval_undefined() {
     return nkval_t{};

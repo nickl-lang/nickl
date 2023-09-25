@@ -1,6 +1,7 @@
 #include "nk/sys/error.h"
 
-#include "common.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 nkerr_t nk_getLastError(void) {
     return GetLastError();

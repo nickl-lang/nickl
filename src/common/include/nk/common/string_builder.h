@@ -4,8 +4,8 @@
 #include <stdarg.h>
 
 #include "nk/common/allocator.h"
-#include "nk/common/common.h"
 #include "nk/common/string.h"
+#include "nk/sys/common.h"
 
 #ifdef __cplusplus
 extern "C" {

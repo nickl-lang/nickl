@@ -172,9 +172,7 @@ TEST_F(HashMap, str_map) {
     static constexpr size_t c_key_size = 16;
     static constexpr size_t c_test_size = 100;
 
-    using key_t = struct {
-        uint8_t data[c_key_size];
-    };
+    using key_t = struct { uint8_t data[c_key_size]; };
     using val_t = uint64_t;
 
     struct HashMapContext {

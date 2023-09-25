@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "nk/common/common.h"
+#include "nk/sys/common.h"
 
 #ifdef __cplusplus
 extern "C" {

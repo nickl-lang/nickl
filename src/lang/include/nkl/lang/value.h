@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nk/common/common.h"
 #include "nk/common/id.h"
+#include "nk/sys/common.h"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
 

@@ -1,6 +1,7 @@
 #include "nk/sys/mem.h"
 
-#include "common.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 void *nk_valloc(size_t len) {
     return VirtualAlloc(

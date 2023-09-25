@@ -1,10 +1,10 @@
 #ifndef HEADER_GUARD_NKL_LANG_AST
 #define HEADER_GUARD_NKL_LANG_AST
 
-#include "nk/common/common.h"
 #include "nk/common/id.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
+#include "nk/sys/common.h"
 #include "nkl/lang/token.h"
 
 #ifdef __cplusplus

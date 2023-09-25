@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "nk/sys/common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -325,8 +325,10 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef fn, NkIrRef args) {
     return {{_arg(dst), _arg(fn), _arg(args)}, nkir_call};
 }
 
-#define U(NAME) \
-    NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg) { return {{_arg(dst), _arg(arg), {}}, nkir_##NAME}; }
+#define U(NAME)                                            \
+    NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg) { \
+        return {{_arg(dst), _arg(arg), {}}, nkir_##NAME};  \
+    }
 #define B(NAME)                                                         \
     NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
         return {{_arg(dst), _arg(lhs), _arg(rhs)}, nkir_##NAME};        \
