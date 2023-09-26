@@ -3,13 +3,16 @@
 
 #include <cstddef>
 
-#include "nk/common/array.hpp"
+#include "nk/common/array.h"
 #include "nk/common/string.h"
 #include "nkb/ir.h"
 
+nkar_typedef(size_t, nkar_size_t);
+nkar_typedef(nktype_t, nkar_nktype_t);
+
 struct NkIrProc_T {
-    NkArray<size_t> blocks;
-    NkArray<nktype_t> locals;
+    nkar_size_t blocks;
+    nkar_nktype_t locals;
 
     nkstr name{};
     nktype_t proc_t{};
@@ -19,7 +22,7 @@ struct NkIrProc_T {
 
 struct NkIrBlock {
     nkstr name;
-    NkArray<size_t> instrs;
+    nkar_size_t instrs;
 };
 
 struct NkIrConst_T {
@@ -37,17 +40,25 @@ struct NkIrExternProc_T {
     nktype_t proc_t;
 };
 
+nkar_typedef(NkIrProc_T, nkar_NkIrProc_T);
+nkar_typedef(NkIrBlock, nkar_NkIrBlock);
+nkar_typedef(NkIrInstr, nkar_NkIrInstr);
+nkar_typedef(NkIrConst_T, nkar_NkIrConst_T);
+nkar_typedef(NkIrExternData_T, nkar_NkIrExternData_T);
+nkar_typedef(NkIrExternProc_T, nkar_NkIrExternProc_T);
+nkar_typedef(NkIrRef, nkar_NkIrRef);
+
 struct NkIrProg_T {
     NkAllocator alloc;
 
-    NkArray<NkIrProc_T> procs;
-    NkArray<NkIrBlock> blocks;
-    NkArray<NkIrInstr> instrs;
-    NkArray<nktype_t> globals;
-    NkArray<NkIrConst_T> consts;
-    NkArray<NkIrExternData_T> extern_data;
-    NkArray<NkIrExternProc_T> extern_procs;
-    NkArray<NkIrRef> relocs;
+    nkar_NkIrProc_T procs;
+    nkar_NkIrBlock blocks;
+    nkar_NkIrInstr instrs;
+    nkar_nktype_t globals;
+    nkar_NkIrConst_T consts;
+    nkar_NkIrExternData_T extern_data;
+    nkar_NkIrExternProc_T extern_procs;
+    nkar_NkIrRef relocs;
 
     NkIrProc cur_proc{};
 };

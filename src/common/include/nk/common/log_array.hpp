@@ -6,7 +6,6 @@
 #include <cstdint>
 
 #include "nk/common/allocator.hpp"
-#include "nk/common/array.hpp"
 #include "nk/common/slice.hpp"
 
 template <class T>

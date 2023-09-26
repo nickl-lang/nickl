@@ -291,8 +291,8 @@ private:
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkstr src) {
     NK_LOG_TRC("%s", __func__);
 
-    lexer->tokens = decltype(lexer->tokens)::create(nk_arena_getAllocator(file_arena));
-    lexer->tokens.reserve(1000);
+    lexer->tokens = nkar_create(decltype(lexer->tokens), nk_arena_getAllocator(file_arena));
+    nkar_reserve(&lexer->tokens, 1000);
 
     lexer->error_msg = {};
     lexer->ok = true;
@@ -304,7 +304,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
     do {
         scanner.scan();
-        *lexer->tokens.push() = scanner.m_token;
+        nkar_append(&lexer->tokens, scanner.m_token);
 
         if (scanner.m_token.id == t_error) {
             lexer->ok = false;

@@ -4,7 +4,7 @@
 #include <cstring>
 #include <new>
 
-#include "nk/common/array.hpp"
+#include "nk/common/array.h"
 #include "nk/common/hash_map.hpp"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -29,7 +29,7 @@ NK_LOG_USE_SCOPE(parser);
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
-#define APPEND(AR, VAL) CHECK(AR.emplace(VAL))
+#define APPEND(AR, VAL) CHECK(nkar_append((AR), (VAL)))
 #define EXPECT(ID) CHECK(expect(ID))
 
 #define SCNf32 "f"
@@ -40,7 +40,7 @@ static constexpr char const *c_entry_point_name = "main";
 struct GeneratorState {
     NkIrProg &m_ir;
     NkIrProc &m_entry_point;
-    NkSlice<NkIrToken> const m_tokens;
+    nkslice_NkIrToken const m_tokens;
 
     NkIrTypeCache *m_types;
 
@@ -99,8 +99,8 @@ struct GeneratorState {
     Void generate() {
         m_decls = decltype(m_decls)::create(m_parse_alloc);
 
-        assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
-        m_cur_token = &m_tokens[0];
+        assert(m_tokens.size && nk_ar_last(m_tokens).id == t_eof && "ill-formed token stream");
+        m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
             while (accept(t_newline)) {
@@ -117,8 +117,8 @@ struct GeneratorState {
                              nkir_makeProcedureType(
                                  m_types,
                                  {
-                                     .args_t{sig.args_t.data(), sig.args_t.size()},
-                                     .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                                     .args_t{sig.args_t.data, sig.args_t.size},
+                                     .ret_t{sig.ret_t.data, sig.ret_t.size},
                                      .call_conv = NkCallConv_Cdecl,
                                      .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                                  }))},
@@ -139,8 +139,8 @@ struct GeneratorState {
                         nkir_makeProcedureType(
                             m_types,
                             {
-                                .args_t{sig.args_t.data(), sig.args_t.size()},
-                                .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                                .args_t{sig.args_t.data, sig.args_t.size},
+                                .ret_t{sig.ret_t.data, sig.ret_t.size},
                                 .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                             }));
@@ -155,8 +155,8 @@ struct GeneratorState {
                     };
                     m_cur_proc = &decl->as.proc;
 
-                    for (size_t i = 0; i < sig.args_t.size(); i++) {
-                        new (makeLocalDecl(sig.arg_names[i])) Decl{
+                    for (size_t i = 0; i < sig.args_t.size; i++) {
+                        new (makeLocalDecl(sig.arg_names.data[i])) Decl{
                             {.arg_index = i},
                             Decl_Arg,
                         };
@@ -316,9 +316,9 @@ private:
     }
 
     struct ProcSignatureParseResult {
-        NkArray<nkid> arg_names;
-        NkArray<nktype_t> args_t;
-        NkArray<nktype_t> ret_t;
+        nkar_type(nkid) arg_names;
+        nkar_type(nktype_t) args_t;
+        nkar_type(nktype_t) ret_t;
         nkstr name{};
         bool is_variadic{};
         bool is_extern{};
@@ -327,9 +327,9 @@ private:
 
     ProcSignatureParseResult parseProcSignature() {
         ProcSignatureParseResult res{
-            .arg_names = NkArray<nkid>::create(m_parse_alloc),
-            .args_t = NkArray<nktype_t>::create(m_file_alloc),
-            .ret_t = NkArray<nktype_t>::create(m_file_alloc),
+            .arg_names = nkar_create(decltype(ProcSignatureParseResult::arg_names), m_parse_alloc),
+            .args_t = nkar_create(decltype(ProcSignatureParseResult::args_t), m_file_alloc),
+            .ret_t = nkar_create(decltype(ProcSignatureParseResult::ret_t), m_file_alloc),
         };
         EXPECT(t_proc);
         if (accept(t_extern)) {
@@ -355,11 +355,11 @@ private:
                 EXPECT(t_colon);
             }
             DEFINE(type, parseType());
-            res.args_t.emplace(type);
-            res.arg_names.emplace(name);
+            nkar_append(&res.args_t, type);
+            nkar_append(&res.arg_names, name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        APPEND(res.ret_t, parseType());
+        APPEND(&res.ret_t, parseType());
         return res;
     }
 
@@ -403,8 +403,9 @@ private:
         }
 
         else if (accept(t_brace_l)) {
-            auto types = NkArray<nktype_t>::create(m_tmp_alloc);
-            auto counts = NkArray<size_t>::create(m_tmp_alloc);
+            nkar_type(nktype_t) types = nkar_create(decltype(types), m_tmp_alloc);
+            nkar_type(size_t) counts = nkar_create(decltype(counts), m_tmp_alloc);
+
             do {
                 if (check(t_par_r) || check(t_eof)) {
                     break;
@@ -413,15 +414,15 @@ private:
                     if (!check(t_int)) {
                         return error("integer constant expected"), nullptr;
                     }
-                    APPEND(counts, (size_t)parseInt());
+                    APPEND(&counts, (size_t)parseInt());
                     EXPECT(t_bracket_r);
                 } else {
-                    counts.emplace(1ull);
+                    nkar_append(&counts, 1ull);
                 }
-                APPEND(types, parseType());
+                APPEND(&types, parseType());
             } while (accept(t_comma));
             EXPECT(t_brace_r);
-            return nkir_makeAggregateType(m_types, types.data(), counts.data(), types.size());
+            return nkir_makeAggregateType(m_types, types.data, counts.data, types.size);
         }
 
         else if (accept(t_aster)) {
@@ -768,16 +769,16 @@ private:
     }
 
     NkIrRefArray parseRefArray() {
-        auto refs = NkArray<NkIrRef>::create(m_tmp_alloc);
+        nkar_type(NkIrRef) refs = nkar_create(decltype(refs), m_tmp_alloc);
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
                 break;
             }
-            APPEND(refs, parseRef());
+            APPEND(&refs, parseRef());
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        return {refs.data(), refs.size()};
+        return {refs.data, refs.size};
     }
 
     void getToken() {
@@ -828,7 +829,7 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
-    NkSlice<NkIrToken> tokens) {
+    nkslice_NkIrToken tokens) {
     NK_LOG_TRC("%s", __func__);
 
     auto file_alloc = nk_arena_getAllocator(file_arena);

@@ -47,4 +47,21 @@ template <class T, class F>
 
 std::string string_vformat(char const *fmt, va_list ap);
 
+#define nkslice_iterate(slice)                   \
+    _nk_slice_iterate_wrapper<decltype(slice)> { \
+        slice                                    \
+    }
+
+template <class TSlice>
+struct _nk_slice_iterate_wrapper {
+    TSlice _slice;
+    using pointer = decltype(TSlice::data);
+    pointer begin() {
+        return _slice.data;
+    }
+    pointer end() {
+        return _slice.data + _slice.size;
+    }
+};
+
 #endif // HEADER_GUARD_NK_COMMON_UTILS_HPP

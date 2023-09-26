@@ -3,7 +3,6 @@
 
 #include "lexer.hpp"
 #include "nk/common/allocator.h"
-#include "nk/common/slice.hpp"
 #include "nk/common/string.h"
 #include "nkb/ir.h"
 #include "types.hpp"
@@ -20,6 +19,6 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
-    NkSlice<NkIrToken> tokens);
+    nkslice_NkIrToken tokens);
 
 #endif // HEADER_GUARD_NKB_PARSER

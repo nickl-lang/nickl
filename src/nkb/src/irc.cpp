@@ -87,7 +87,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, lexer.tokens);
+        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, {lexer.tokens.data, lexer.tokens.size});
         if (!parser.ok) {
             printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
             return false;
