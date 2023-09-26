@@ -2,6 +2,8 @@
 
 #include <ctype.h>
 
+#include "nk/common/utils.h"
+
 int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -10,6 +12,8 @@ int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
 
     return res;
 }
+
+#define NKSB_INIT_CAP 1000
 
 int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
     va_list ap_copy;
@@ -24,13 +28,26 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
 
     size_t const required_size = printf_res + 1;
 
-    nksb_reserve(sb, required_size);
+    if (sb->size + required_size > sb->capacity) {
+        size_t new_capacity = ceilToPowerOf2(maxu(sb->size + required_size, NKSB_INIT_CAP));
 
+        NkAllocator const alloc = sb->alloc.proc ? sb->alloc : nk_default_allocator;
+        NkAllocatorSpaceLeftQueryResult query_res = {0};
+        nk_alloc_querySpaceLeft(alloc, &query_res);
+
+        if (query_res.kind == NkAllocatorSpaceLeft_Limited) {
+            new_capacity = minu(new_capacity, sb->capacity + query_res.bytes_left);
+        }
+
+        nkar_maybe_grow(sb, new_capacity);
+    }
+
+    size_t const alloc_size = minu(required_size, sb->capacity - sb->size);
     va_copy(ap_copy, ap);
-    vsnprintf(sb->data + sb->size, required_size, fmt, ap_copy);
+    vsnprintf(sb->data + sb->size, alloc_size, fmt, ap_copy);
     va_end(ap_copy);
 
-    sb->size += required_size - 1;
+    sb->size += alloc_size - 1;
 
     return printf_res;
 }

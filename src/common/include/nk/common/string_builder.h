@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 
+#include "nk/common/allocator.h"
 #include "nk/common/array.h"
 #include "nk/common/string.h"
 #include "nk/sys/common.h"
@@ -13,6 +14,16 @@
 #define nksb_free nkar_free
 
 #define nksb_append_null(sb) nksb_append((sb), '\0')
+
+#define NK_DEFINE_STATIC_SB(NAME, SIZE)                    \
+    uint8_t _buf[SIZE];                                    \
+    NkArena _log_arena = {_buf, 0, sizeof(_buf)};          \
+    NkStringBuilder NAME = {                               \
+        (char *)nk_arena_alloc(&_log_arena, sizeof(_buf)), \
+        0,                                                 \
+        sizeof(_buf),                                      \
+        nk_arena_getAllocator(&_log_arena),                \
+    }
 
 #ifdef __cplusplus
 extern "C" {

@@ -16,33 +16,38 @@
         NkAllocator alloc;    \
     } Name
 
-#define nkar_reserve(ar, n)                                                                   \
+#ifndef NKAR_INIT_CAP
+#define NKAR_INIT_CAP 16
+#endif // NKAR_INIT_CAP
+
+#define nkar_maybe_grow(ar, cap)                                                              \
     do {                                                                                      \
-        if ((ar)->size + n > (ar)->capacity) {                                                \
-            size_t const _new_capacity = ceilToPowerOf2((ar)->size + n);                      \
+        if ((cap) > (ar)->capacity) {                                                         \
             NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator; \
             void *const _new_data = nk_reallocAligned(                                        \
                 _alloc,                                                                       \
-                _new_capacity * sizeof(*(ar)->data),                                          \
+                (cap) * sizeof(*(ar)->data),                                                  \
                 alignof(max_align_t),                                                         \
                 (ar)->data,                                                                   \
                 (ar)->capacity * sizeof(*(ar)->data));                                        \
             nk_assign_void_ptr((ar)->data, _new_data);                                        \
-            (ar)->capacity = _new_capacity;                                                   \
+            (ar)->capacity = (cap);                                                           \
         }                                                                                     \
     } while (0)
 
-#define nkar_append(ar, item)              \
-    do {                                   \
-        nkar_reserve(ar, 1);               \
-        (ar)->data[(ar)->size++] = (item); \
+#define nkar_reserve(ar, cap) nkar_maybe_grow((ar), ceilToPowerOf2(maxu((cap), NKAR_INIT_CAP)))
+
+#define nkar_append(ar, item)               \
+    do {                                    \
+        nkar_reserve((ar), (ar)->size + 1); \
+        (ar)->data[(ar)->size++] = (item);  \
     } while (0)
 
-#define nkar_append_many(ar, items, count)                                   \
-    do {                                                                     \
-        nkar_reserve(ar, count);                                             \
-        memcpy((ar)->data + (ar)->size, items, count * sizeof(*(ar)->data)); \
-        (ar)->size += count;                                                 \
+#define nkar_append_many(ar, items, count)                                       \
+    do {                                                                         \
+        nkar_reserve(ar, (ar)->size + (count));                                  \
+        memcpy((ar)->data + (ar)->size, (items), (count) * sizeof(*(ar)->data)); \
+        (ar)->size += (count);                                                   \
     } while (0)
 
 #define nkar_free(ar)                                                                                   \
