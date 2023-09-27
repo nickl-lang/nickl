@@ -385,7 +385,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
     return {
         {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc_t<T>(&c->arena)) T{args...}, tovmt(type)})}, type, v_val};
 }

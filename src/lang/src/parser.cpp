@@ -243,10 +243,11 @@ private:
             EXPECT(t_brace_r);
         }
 
-        auto node = nodes.size() == 0 && !force_block_node ? nkl_makeNode0(n_nop, _n_token)
-                    : nodes.size() == 1 && !force_block_node
-                        ? nodes.front()
-                        : nkl_makeNode1(n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+        auto node = nodes.size() == 0 && !force_block_node
+                        ? nkl_makeNode0(n_nop, _n_token)
+                        : nodes.size() == 1 && !force_block_node
+                              ? nodes.front()
+                              : nkl_makeNode1(n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1(n_scope, _n_token, nkl_pushNode(m_ast, node)) : node;
     }

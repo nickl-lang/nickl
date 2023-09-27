@@ -39,20 +39,21 @@
 
 #define _nkar_maybe_grow(ar, cap)                                                             \
     do {                                                                                      \
-        if ((cap) > (ar)->capacity) {                                                         \
+        size_t _cap = (cap);                                                                  \
+        if (_cap > (ar)->capacity) {                                                          \
             NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator; \
             void *const _new_data = nk_reallocAligned(                                        \
                 _alloc,                                                                       \
-                (cap) * sizeof(*(ar)->data),                                                  \
+                _cap * sizeof(*(ar)->data),                                                   \
                 alignof(max_align_t),                                                         \
                 (ar)->data,                                                                   \
                 (ar)->capacity * sizeof(*(ar)->data));                                        \
-            nk_assign_void_ptr((ar)->data, _new_data);                                        \
-            (ar)->capacity = (cap);                                                           \
+            _nk_assign_void_ptr((ar)->data, _new_data);                                       \
+            (ar)->capacity = _cap;                                                            \
         }                                                                                     \
     } while (0)
 
-#define _nkar_reserve(ar, cap) nkar_maybe_grow((ar), ceilToPowerOf2(maxu((cap), NKAR_INIT_CAP)))
+#define _nkar_reserve(ar, cap) _nkar_maybe_grow((ar), ceilToPowerOf2(maxu((cap), NKAR_INIT_CAP)))
 
 #define _nkar_append(ar, item)              \
     do {                                    \
@@ -60,11 +61,12 @@
         (ar)->data[(ar)->size++] = (item);  \
     } while (0)
 
-#define _nkar_append_many(ar, items, count)                                      \
-    do {                                                                         \
-        nkar_reserve(ar, (ar)->size + (count));                                  \
-        memcpy((ar)->data + (ar)->size, (items), (count) * sizeof(*(ar)->data)); \
-        (ar)->size += (count);                                                   \
+#define _nkar_append_many(ar, items, count)                                     \
+    do {                                                                        \
+        size_t _count = (count);                                                \
+        nkar_reserve(ar, (ar)->size + _count);                                  \
+        memcpy((ar)->data + (ar)->size, (items), _count * sizeof(*(ar)->data)); \
+        (ar)->size += _count;                                                   \
     } while (0)
 
 #define _nkar_free(ar)                                                                                  \
@@ -76,63 +78,73 @@
         (ar)->capacity = 0;                                                                             \
     } while (0)
 
-#define _nkar_pop(ar, count)                                                        \
-    do {                                                                            \
-        assert((count) <= (ar)->size && "trying to pop more items than available"); \
-        (ar)->size -= (count);                                                      \
+#define _nkar_pop(ar, count)                                                       \
+    do {                                                                           \
+        size_t _count = (count);                                                   \
+        assert(_count <= (ar)->size && "trying to pop more items than available"); \
+        (ar)->size -= _count;                                                      \
     } while (0)
 
 #define _nkar_clear(ar) nkar_pop((ar), (ar)->size)
 
 #ifdef __cplusplus
-template <class T>
-void nk_assign_void_ptr(T *&dst, void *src) {
-    dst = (T *)src;
-}
-#else // __cplusplus
-#define nk_assign_void_ptr(dst, src) (dst) = (src)
-#endif // __cplusplus
-
-#ifdef __cplusplus
 
 #include <utility>
 
-template <class TArray>
-void nkar_maybe_grow(TArray *ar, size_t cap) {
+template <class T>
+void _nk_assign_void_ptr(T *&dst, void *src) {
+    dst = (T *)src;
+}
+
+template <class TAr>
+void nkar_maybe_grow(TAr *ar, size_t cap) {
     _nkar_maybe_grow(ar, cap);
 }
-
-template <class TArray>
-void nkar_reserve(TArray *ar, size_t cap) {
+template <class TAr>
+void nkar_reserve(TAr *ar, size_t cap) {
     _nkar_reserve(ar, cap);
 }
-
-template <class TArray, class T>
-void nkar_append(TArray *ar, T &&item) {
+template <class TAr, class T>
+void nkar_append(TAr *ar, T &&item) {
     _nkar_append(ar, std::forward<T>(item));
 }
-
-template <class TArray, class T>
-void nkar_append_many(TArray *ar, T *items, size_t count) {
+template <class TAr, class T>
+void nkar_append_many(TAr *ar, T *items, size_t count) {
     _nkar_append_many(ar, items, count);
 }
-
-template <class TArray>
-void nkar_free(TArray *ar) {
+template <class TAr>
+void nkar_free(TAr *ar) {
     _nkar_free(ar);
 }
-
-template <class TArray>
-void nkar_pop(TArray *ar, size_t count) {
+template <class TAr>
+void nkar_pop(TAr *ar, size_t count) {
     _nkar_pop(ar, count);
 }
-
-template <class TArray>
-void nkar_clear(TArray *ar) {
+template <class TAr>
+void nkar_clear(TAr *ar) {
     _nkar_clear(ar);
 }
 
+#define nk_iterate(ar)                  \
+    _nk_iterate_wrapper<decltype(ar)> { \
+        ar                              \
+    }
+
+template <class TAr>
+struct _nk_iterate_wrapper {
+    TAr _ar;
+    using pointer = decltype(TAr::data);
+    pointer begin() {
+        return _ar.data;
+    }
+    pointer end() {
+        return _ar.data + _ar.size;
+    }
+};
+
 #else // __cplusplus
+
+#define _nk_assign_void_ptr(dst, src) (dst) = (src)
 
 #define nkar_maybe_grow _nkar_maybe_grow
 #define nkar_reserve _nkar_reserve

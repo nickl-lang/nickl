@@ -522,7 +522,7 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
 
 void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     if (ir->extern_data.size) {
-        for (auto const &data : nkslice_iterate(ir->extern_data)) {
+        for (auto const &data : nk_iterate(ir->extern_data)) {
             nksb_printf(sb, "\nextern data %.*s: ", (int)data.name.size, data.name.data);
             nkirt_inspect(data.type, sb);
         }
@@ -530,7 +530,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     }
 
     if (ir->extern_procs.size) {
-        for (auto const &proc : nkslice_iterate(ir->extern_procs)) {
+        for (auto const &proc : nk_iterate(ir->extern_procs)) {
             nksb_printf(sb, "\nextern proc %.*s", (int)proc.name.size, proc.name.data);
             inspectProcSignature(proc.proc_t->as.proc.info, sb, false);
         }
@@ -562,12 +562,12 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
     size_t instr_index = 0;
 
-    for (auto block_id : nkslice_iterate(proc.blocks)) {
+    for (auto block_id : nk_iterate(proc.blocks)) {
         auto const &block = ir->blocks.data[block_id];
 
         nksb_printf(sb, "%.*s\n", (int)block.name.size, block.name.data);
 
-        for (auto instr_id : nkslice_iterate(block.instrs)) {
+        for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];
 
             nksb_printf(sb, "%5zu%8s", instr_index++, nkirOpcodeName(instr.code));

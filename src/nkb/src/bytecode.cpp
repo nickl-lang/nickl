@@ -94,7 +94,7 @@ void inspect(nkslice_NkBcInstr instrs, NkStringBuilder *sb) {
         }
     };
 
-    for (auto const &instr : nkslice_iterate(instrs)) {
+    for (auto const &instr : nk_iterate(instrs)) {
         nksb_printf(sb, "%5zu", (&instr - instrs.data));
         nksb_printf(sb, "%13s", nkbcOpcodeName(instr.code));
 
@@ -331,7 +331,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         }
     };
 
-    for (auto block_id : nkslice_iterate(ir_proc.blocks)) {
+    for (auto block_id : nk_iterate(ir_proc.blocks)) {
         auto const &block = ir.blocks.data[block_id];
 
         while (block_id >= block_info.size) {
@@ -339,7 +339,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         }
         block_info.data[block_id].first_instr = bc_proc.instrs.size;
 
-        for (auto const &ir_instr_id : nkslice_iterate(block.instrs)) {
+        for (auto const &ir_instr_id : nk_iterate(block.instrs)) {
             auto const &ir_instr = ir.instrs.data[ir_instr_id];
 
             uint16_t code = s_ir2opcode[ir_instr.code];
@@ -395,11 +395,11 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         }
     }
 
-    for (auto proc : nkslice_iterate(referenced_procs)) {
+    for (auto proc : nk_iterate(referenced_procs)) {
         translateProc(ctx, proc);
     }
 
-    for (auto const &reloc : nkslice_iterate(relocs)) {
+    for (auto const &reloc : nk_iterate(relocs)) {
         auto &arg = bc_proc.instrs.data[reloc.instr_index].arg[reloc.arg_index];
         auto &ref = reloc.ref_index == -1ul ? arg.ref : arg.refs.data[reloc.ref_index];
 
