@@ -19,6 +19,6 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
-    nkslice_NkIrToken tokens);
+    NkIrTokenView tokens);
 
 #endif // HEADER_GUARD_NKB_PARSER

@@ -40,7 +40,7 @@ static constexpr char const *c_entry_point_name = "main";
 struct GeneratorState {
     NkIrProg &m_ir;
     NkIrProc &m_entry_point;
-    nkslice_NkIrToken const m_tokens;
+    NkIrTokenView const m_tokens;
 
     NkIrTypeCache *m_types;
 
@@ -327,9 +327,9 @@ private:
 
     ProcSignatureParseResult parseProcSignature() {
         ProcSignatureParseResult res{
-            .arg_names = nkar_create(decltype(ProcSignatureParseResult::arg_names), m_parse_alloc),
-            .args_t = nkar_create(decltype(ProcSignatureParseResult::args_t), m_file_alloc),
-            .ret_t = nkar_create(decltype(ProcSignatureParseResult::ret_t), m_file_alloc),
+            .arg_names{0, 0, 0, m_parse_alloc},
+            .args_t{0, 0, 0, m_file_alloc},
+            .ret_t{0, 0, 0, m_file_alloc},
         };
         EXPECT(t_proc);
         if (accept(t_extern)) {
@@ -403,8 +403,8 @@ private:
         }
 
         else if (accept(t_brace_l)) {
-            nkar_type(nktype_t) types = nkar_create(decltype(types), m_tmp_alloc);
-            nkar_type(size_t) counts = nkar_create(decltype(counts), m_tmp_alloc);
+            nkar_type(nktype_t) types{0, 0, 0, m_tmp_alloc};
+            nkar_type(size_t) counts{0, 0, 0, m_tmp_alloc};
 
             do {
                 if (check(t_par_r) || check(t_eof)) {
@@ -769,7 +769,7 @@ private:
     }
 
     NkIrRefArray parseRefArray() {
-        nkar_type(NkIrRef) refs = nkar_create(decltype(refs), m_tmp_alloc);
+        nkar_type(NkIrRef) refs{0, 0, 0, m_tmp_alloc};
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -829,7 +829,7 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
-    nkslice_NkIrToken tokens) {
+    NkIrTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
     auto file_alloc = nk_arena_getAllocator(file_arena);

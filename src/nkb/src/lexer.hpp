@@ -24,11 +24,11 @@ typedef struct {
 extern const char *s_token_id[];
 extern const char *s_token_text[];
 
-nkar_typedef(NkIrToken, nkar_NkIrToken);
-nkslice_typedef(NkIrToken, nkslice_NkIrToken);
+nkar_typedef(NkIrToken, NkIrTokenArray);
+nkslice_typedef(NkIrToken, NkIrTokenView);
 
 typedef struct {
-    nkar_NkIrToken tokens;
+    NkIrTokenArray tokens;
     nkstr error_msg;
     bool ok;
 } NkIrLexerState;

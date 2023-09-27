@@ -86,14 +86,14 @@ NkIrProg nkir_createProgram(NkAllocator alloc) {
     return new (nk_alloc_t<NkIrProg_T>(alloc)) NkIrProg_T{
         .alloc = alloc,
 
-        .procs = nkar_create(decltype(NkIrProg_T::procs), alloc),
-        .blocks = nkar_create(decltype(NkIrProg_T::blocks), alloc),
-        .instrs = nkar_create(decltype(NkIrProg_T::instrs), alloc),
-        .globals = nkar_create(decltype(NkIrProg_T::globals), alloc),
-        .consts = nkar_create(decltype(NkIrProg_T::consts), alloc),
-        .extern_data = nkar_create(decltype(NkIrProg_T::extern_data), alloc),
-        .extern_procs = nkar_create(decltype(NkIrProg_T::extern_procs), alloc),
-        .relocs = nkar_create(decltype(NkIrProg_T::relocs), alloc),
+        .procs{0, 0, 0, alloc},
+        .blocks{0, 0, 0, alloc},
+        .instrs{0, 0, 0, alloc},
+        .globals{0, 0, 0, alloc},
+        .consts{0, 0, 0, alloc},
+        .extern_data{0, 0, 0, alloc},
+        .extern_procs{0, 0, 0, alloc},
+        .relocs{0, 0, 0, alloc},
     };
 }
 
@@ -119,8 +119,8 @@ NkIrProc nkir_createProc(NkIrProg ir) {
     nkar_append(
         &ir->procs,
         (NkIrProc_T{
-            .blocks = nkar_create(decltype(NkIrProc_T::blocks), ir->alloc),
-            .locals = nkar_create(decltype(NkIrProc_T::locals), ir->alloc),
+            .blocks{0, 0, 0, ir->alloc},
+            .locals{0, 0, 0, ir->alloc},
         }));
     return id;
 }
@@ -133,7 +133,7 @@ NkIrLabel nkir_createLabel(NkIrProg ir, nkstr name) {
         &ir->blocks,
         (NkIrBlock{
             .name = nk_strcpy(ir->alloc, name),
-            .instrs = nkar_create(decltype(NkIrBlock::instrs), ir->alloc),
+            .instrs{0, 0, 0, ir->alloc},
         }));
     return id;
 }

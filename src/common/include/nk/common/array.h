@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_COMMON_ARRAY_H
-#define HEADER_GUARD_NK_COMMON_ARRAY_H
+#ifndef HEADER_GUARD_NK_COMMON_ARRAY
+#define HEADER_GUARD_NK_COMMON_ARRAY
 
 #include <assert.h>
 #include <stdalign.h>
@@ -31,11 +31,6 @@
 #ifndef NKAR_INIT_CAP
 #define NKAR_INIT_CAP 16
 #endif // NKAR_INIT_CAP
-
-#define nkar_create(ar_t, allocator)                                 \
-    LITERAL(ar_t) {                                                  \
-        .data = NULL, .size = 0, .capacity = 0, .alloc = (allocator) \
-    }
 
 #define _nkar_maybe_grow(ar, cap)                                                             \
     do {                                                                                      \
@@ -160,4 +155,4 @@ struct _nk_iterate_wrapper {
 
 #define nkar_push nkar_append
 
-#endif // HEADER_GUARD_NK_COMMON_ARRAY_H
+#endif // HEADER_GUARD_NK_COMMON_ARRAY

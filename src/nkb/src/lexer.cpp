@@ -291,7 +291,7 @@ private:
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkstr src) {
     NK_LOG_TRC("%s", __func__);
 
-    lexer->tokens = nkar_create(decltype(lexer->tokens), nk_arena_getAllocator(file_arena));
+    lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
     nkar_reserve(&lexer->tokens, 1000);
 
     lexer->error_msg = {};

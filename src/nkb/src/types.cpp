@@ -44,7 +44,8 @@ void pushVal(ByteArray &ar, T const v) {
 nktype_t nkir_makeNumericType(NkIrTypeCache *cache, NkIrNumericValueType value_type) {
     auto const kind = NkType_Numeric;
 
-    auto fp = nkar_create(ByteArray, nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -67,7 +68,8 @@ nktype_t nkir_makeNumericType(NkIrTypeCache *cache, NkIrNumericValueType value_t
 nktype_t nkir_makePointerType(NkIrTypeCache *cache, nktype_t target_type) {
     auto const kind = NkType_Pointer;
 
-    auto fp = nkar_create(ByteArray, nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -90,7 +92,8 @@ nktype_t nkir_makePointerType(NkIrTypeCache *cache, nktype_t target_type) {
 nktype_t nkir_makeProcedureType(NkIrTypeCache *cache, NkIrProcInfo proc_info) {
     auto const kind = NkType_Procedure;
 
-    auto fp = nkar_create(ByteArray, nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -120,7 +123,8 @@ nktype_t nkir_makeProcedureType(NkIrTypeCache *cache, NkIrProcInfo proc_info) {
 nktype_t nkir_makeArrayType(NkIrTypeCache *cache, nktype_t elem_t, size_t count) {
     auto const kind = NkType_Aggregate;
 
-    auto fp = nkar_create(ByteArray, nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -152,7 +156,8 @@ nktype_t nkir_makeArrayType(NkIrTypeCache *cache, nktype_t elem_t, size_t count)
 nktype_t nkir_makeVoidType(NkIrTypeCache *cache) {
     auto const kind = NkType_Aggregate;
 
-    auto fp = nkar_create(ByteArray, nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -173,7 +178,8 @@ nktype_t nkir_makeVoidType(NkIrTypeCache *cache) {
 nktype_t nkir_makeAggregateType(NkIrTypeCache *cache, nktype_t const *elem_types, size_t const *elem_counts, size_t n) {
     auto const kind = NkType_Aggregate;
 
-    auto fp = nkar_create(ByteArray, nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
         nkar_free(&fp);
     };

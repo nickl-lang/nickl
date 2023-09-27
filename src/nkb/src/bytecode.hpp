@@ -68,12 +68,10 @@ struct NkBcInstr {
 
 typedef struct NkBcProc_T *NkBcProc;
 
-nkar_typedef(NkBcInstr, nkar_NkBcInstr);
-
 struct NkBcProc_T {
     NkIrRunCtx ctx;
     size_t frame_size;
-    nkar_NkBcInstr instrs;
+    nkar_type(NkBcInstr) instrs;
 };
 
 struct NkFfiContext {
@@ -82,15 +80,12 @@ struct NkFfiContext {
     std::mutex mtx{};
 };
 
-nkar_typedef(NkBcProc, nkar_NkBcProc);
-nkar_typedef(void *, nkar_void_ptr);
-
 struct NkIrRunCtx_T {
     NkIrProg ir;
     NkArena *tmp_arena;
 
-    nkar_NkBcProc procs;
-    nkar_void_ptr globals;
+    nkar_type(NkBcProc) procs;
+    nkar_type(void *) globals;
     NkHashMap<nkid, void *> extern_syms;
 
     NkFfiContext ffi_ctx;

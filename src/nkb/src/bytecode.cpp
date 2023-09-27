@@ -19,9 +19,9 @@ NkBcOpcode s_ir2opcode[] = {
 #include "nkb/ir.inl"
 };
 
+#ifdef ENABLE_LOGGING
 nkslice_typedef(NkBcInstr, nkslice_NkBcInstr);
 
-#ifdef ENABLE_LOGGING
 void inspect(nkslice_NkBcInstr instrs, NkStringBuilder *sb) {
     auto inspect_ref = [&](NkBcRef const &ref) {
         if (ref.kind == NkBcRef_None) {
@@ -146,7 +146,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         *(ctx->procs.data[proc_id.id] = new (nk_alloc_t<NkBcProc_T>(ir.alloc)) NkBcProc_T{
               .ctx = ctx,
               .frame_size = frame_layout.size,
-              .instrs = nkar_create(decltype(NkBcProc_T::instrs), ir.alloc),
+              .instrs{0, 0, 0, ir.alloc},
           });
 
     enum ERelocType {
@@ -168,10 +168,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         size_t first_instr;
     };
 
-    nkar_type(BlockInfo) block_info = nkar_create(decltype(block_info), tmp_alloc);
-    nkar_type(Reloc) relocs = nkar_create(decltype(relocs), tmp_alloc);
-
-    nkar_type(NkIrProc) referenced_procs = nkar_create(decltype(referenced_procs), tmp_alloc);
+    nkar_type(BlockInfo) block_info{0, 0, 0, tmp_alloc};
+    nkar_type(Reloc) relocs{0, 0, 0, tmp_alloc};
+    nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
     auto const get_global_addr = [&](size_t index) {
         while (index >= ctx->globals.size) {
@@ -463,8 +462,8 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
         .ir = ir,
         .tmp_arena = tmp_arena,
 
-        .procs = nkar_create(decltype(NkIrRunCtx_T::procs), ir->alloc),
-        .globals = nkar_create(decltype(NkIrRunCtx_T::globals), ir->alloc),
+        .procs{0, 0, 0, ir->alloc},
+        .globals{0, 0, 0, ir->alloc},
         .extern_syms = decltype(NkIrRunCtx_T::extern_syms)::create(ir->alloc),
 
         .ffi_ctx{
