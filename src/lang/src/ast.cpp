@@ -8,6 +8,7 @@
 #include "ast_impl.h"
 #include "nk/common/allocator.hpp"
 #include "nk/common/id.h"
+#include "nk/common/string.h"
 #include "nk/common/string_builder.h"
 #include "nkl/lang/token.h"
 
@@ -45,7 +46,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
         if (node->id) {
             _newline();
             auto id_str = nkid2s(node->id);
-            nksb_printf(sb, "#%.*s", (int)id_str.size, id_str.data);
+            nksb_printf(sb, "#" nkstr_Fmt, nkstr_Arg(id_str));
         } else {
             _newline();
             nksb_printf(sb, "(null)");

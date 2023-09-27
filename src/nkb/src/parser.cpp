@@ -222,7 +222,7 @@ struct GeneratorState {
                     };
                 }
             } else {
-                return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
+                return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), Void{};
             }
 
             EXPECT(t_newline);
@@ -262,7 +262,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }
-        NK_LOG_DBG("accept(id, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
+        NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -395,7 +395,7 @@ private:
             auto name = s2nkid(token->text);
             auto found = m_decls.find(name);
             if (!found) {
-                return error("undeclared identifier `%.*s`", (int)token->text.size, token->text.data), nullptr;
+                return error("undeclared identifier `" nkstr_Fmt "`", nkstr_Arg(token->text)), nullptr;
             } else if ((*found)->kind != Decl_Type) {
                 return error("type expected"), nullptr;
             }
@@ -431,7 +431,7 @@ private:
         }
 
         else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), nullptr;
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), nullptr;
         }
     }
 
@@ -518,13 +518,12 @@ private:
     }
 #include "nkb/ir.inl"
             else {
-                return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data),
-                       NkIrInstr{};
+                return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrInstr{};
             }
         }
 
         else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrInstr{};
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrInstr{};
         }
     }
 
@@ -637,7 +636,7 @@ private:
             auto const name = s2nkid(token->text);
             auto decl = resolve(name);
             if (!decl) {
-                return error("undeclared identifier `%.*s`", (int)token->text.size, token->text.data), NkIrRef{};
+                return error("undeclared identifier `" nkstr_Fmt "`", nkstr_Arg(token->text)), NkIrRef{};
             }
             switch (decl->kind) {
             case Decl_Arg:
@@ -699,7 +698,7 @@ private:
         }
 
         else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrRef{};
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrRef{};
         }
 
         if (accept(t_plus)) {
@@ -802,8 +801,7 @@ private:
 
     void expect(ETokenId id) {
         if (!accept(id)) {
-            return error(
-                "expected `%s` before `%.*s`", s_token_text[id], (int)m_cur_token->text.size, m_cur_token->text.data);
+            return error("expected `%s` before `" nkstr_Fmt "`", s_token_text[id], nkstr_Arg(m_cur_token->text));
         }
     }
 

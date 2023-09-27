@@ -10,6 +10,7 @@
 #include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
@@ -51,7 +52,7 @@ protected:
             nksb_free(&sb);
         };
         nkir_inspect(p, &sb);
-        NK_LOG_INF("ir:\n%.*s", (int)sb.size, sb.data);
+        NK_LOG_INF("ir:\n" nkstr_Fmt, nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
     }
 

@@ -26,6 +26,7 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
@@ -327,17 +328,13 @@ ValueInfo makeVoid() {
 Decl &makeDecl(NklCompiler c, nkid name) {
     auto &locals = curScope(c).locals;
 
-    NK_LOG_DBG(
-        "making declaration name=`%.*s` scope=%" PRIu64,
-        (int)nkid2s(name).size,
-        nkid2s(name).data,
-        c->scopes.size() - 1);
+    NK_LOG_DBG("making declaration name=`" nkstr_Fmt "` scope=%" PRIu64, nkstr_Arg(nkid2s(name)), c->scopes.size() - 1);
 
     auto it = locals.find(name);
     if (it != locals.end()) {
         nkstr name_str = nkid2s(name);
         static Decl s_dummy_decl{};
-        return error(c, "`%.*s` is already defined", (int)name_str.size, name_str.data), s_dummy_decl;
+        return error(c, "`" nkstr_Fmt "` is already defined", nkstr_Arg(name_str)), s_dummy_decl;
     } else {
         std::tie(it, std::ignore) = locals.emplace(name, Decl{});
     }
@@ -346,33 +343,33 @@ Decl &makeDecl(NklCompiler c, nkid name) {
 }
 
 void defineComptimeConst(NklCompiler c, nkid name, ComptimeConst cnst) {
-    NK_LOG_DBG("defining comptime const `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining comptime const `" nkstr_Fmt "`", nkstr_Arg(nkid2s(name)));
     makeDecl(c, name) = {{.comptime_const{cnst}}, Decl_ComptimeConst};
 }
 
 void defineLocal(NklCompiler c, nkid name, NkIrLocalVarId id, nkltype_t type) {
-    NK_LOG_DBG("defining local `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining local `" nkstr_Fmt "`", nkstr_Arg(nkid2s(name)));
     makeDecl(c, name) = {{.local{id, type, curScope(c).cur_fn}}, Decl_Local};
 }
 
 void defineGlobal(NklCompiler c, nkid name, NkIrGlobalVarId id, nkltype_t type) {
-    NK_LOG_DBG("defining global `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining global `" nkstr_Fmt "`", nkstr_Arg(nkid2s(name)));
     makeDecl(c, name) = {{.global{id, type}}, Decl_Global};
 }
 
 void defineExtSym(NklCompiler c, nkid name, NkIrExtSymId id, nkltype_t type) {
-    NK_LOG_DBG("defining ext sym `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining ext sym `" nkstr_Fmt "`", nkstr_Arg(nkid2s(name)));
     makeDecl(c, name) = {{.ext_sym{.id = id, .type = type}}, Decl_ExtSym};
 }
 
 void defineArg(NklCompiler c, nkid name, size_t index, nkltype_t type) {
-    NK_LOG_DBG("defining arg `%.*s`", (int)nkid2s(name).size, nkid2s(name).data);
+    NK_LOG_DBG("defining arg `" nkstr_Fmt "`", nkstr_Arg(nkid2s(name)));
     makeDecl(c, name) = {{.arg{index, type, curScope(c).cur_fn}}, Decl_Arg};
 }
 
 // TODO Restrict resolving local through stack frame boundaries
 Decl &resolve(NklCompiler c, nkid name) {
-    NK_LOG_DBG("resolving name=`%.*s` scope=%" PRIu64, (int)nkid2s(name).size, nkid2s(name).data, c->scopes.size() - 1);
+    NK_LOG_DBG("resolving name=`" nkstr_Fmt "` scope=%" PRIu64, nkstr_Arg(nkid2s(name)), c->scopes.size() - 1);
 
     for (size_t i = c->scopes.size(); i > 0; i--) {
         auto &scope = *c->scopes[i - 1];
@@ -683,7 +680,7 @@ ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t
             nksb_free(&sb);
         };
         nklt_inspect(lhs.type, &sb);
-        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)sb.size, sb.data), ValueInfo{};
+        return error(c, "no field named `%s` in type `" nkstr_Fmt "`", nkid2cs(name), nkstr_Arg(sb)), ValueInfo{};
     }
     return makeRef(tupleIndex(asRef(c, lhs), struct_t->underlying_type, index));
 }
@@ -697,7 +694,7 @@ ValueInfo getUnionIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t,
             nksb_free(&sb);
         };
         nklt_inspect(lhs.type, &sb);
-        return error(c, "no field named `%s` in type `%.*s`", nkid2cs(name), (int)sb.size, sb.data), ValueInfo{};
+        return error(c, "no field named `%s` in type `" nkstr_Fmt "`", nkid2cs(name), nkstr_Arg(sb)), ValueInfo{};
     }
     return cast(struct_t->as.strct.fields.data[index].type, lhs);
 }
@@ -766,7 +763,7 @@ ValueInfo getMember(NklCompiler c, ValueInfo const &lhs, nkid name) {
             nksb_free(&sb);
         };
         nklt_inspect(lhs.type, &sb);
-        return error(c, "type `%.*s` is not subscriptable", (int)sb.size, sb.data), ValueInfo{};
+        return error(c, "type `" nkstr_Fmt "` is not subscriptable", nkstr_Arg(sb)), ValueInfo{};
     }
     }
 }
@@ -821,7 +818,7 @@ ValueInfo getIndex(NklCompiler c, ValueInfo const &lhs, ValueInfo const &index) 
             nksb_free(&sb);
         };
         nklt_inspect(lhs.type, &sb);
-        return error(c, "type `%.*s` is not indexable", (int)sb.size, sb.data), ValueInfo{};
+        return error(c, "type `" nkstr_Fmt "` is not indexable", nkstr_Arg(sb)), ValueInfo{};
     }
     }
 }
@@ -836,10 +833,10 @@ ValueInfo getLvalueRef(NklCompiler c, NklAstNode node) {
         case Decl_Global:
             return makeRef(nkir_makeGlobalRef(c->ir, res.as.global.id));
         case Decl_Undefined:
-            return error(c, "`%.*s` is not defined", (int)name.size, name.data), ValueInfo{};
+            return error(c, "`" nkstr_Fmt "` is not defined", nkstr_Arg(name)), ValueInfo{};
         case Decl_ExtSym:
         case Decl_Arg:
-            return error(c, "cannot assign to `%.*s`", (int)name.size, name.data), ValueInfo{};
+            return error(c, "cannot assign to `" nkstr_Fmt "`", nkstr_Arg(name)), ValueInfo{};
         default:
             NK_LOG_ERR("unknown decl type");
             assert(!"unreachable");
@@ -1706,15 +1703,11 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
         nkid name = s2nkid(name_str);
         auto &decl = resolve(c, name);
         if (decl.kind == Decl_Undefined) {
-            return error(c, "`%.*s` is not defined", (int)name_str.size, name_str.data), ValueInfo{};
+            return error(c, "`" nkstr_Fmt "` is not defined", nkstr_Arg(name_str)), ValueInfo{};
         } else if (
             (decl.kind == Decl_Arg && decl.as.arg.fn != curScope(c).cur_fn) ||
             (decl.kind == Decl_Local && decl.as.local.fn != curScope(c).cur_fn)) {
-            return error(
-                       c,
-                       "cannot reference `%.*s` through procedure frame boundary",
-                       (int)name_str.size,
-                       name_str.data),
+            return error(c, "cannot reference `" nkstr_Fmt "` through procedure frame boundary", nkstr_Arg(name_str)),
                    ValueInfo{};
         } else {
             return declToValueInfo(decl);
@@ -1725,9 +1718,9 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
         nkstr name_str = node->token->text;
         nkid name = s2nkid(name_str);
         if (name == cs2nkid("@typeof")) {
-            return error(c, "invalid use of `%.*s` intrinsic", (int)name_str.size, name_str.data), ValueInfo{};
+            return error(c, "invalid use of `" nkstr_Fmt "` intrinsic", nkstr_Arg(name_str)), ValueInfo{};
         } else {
-            return error(c, "invalid intrinsic `%.*s`", (int)name_str.size, name_str.data), ValueInfo{};
+            return error(c, "invalid intrinsic `" nkstr_Fmt "`", nkstr_Arg(name_str)), ValueInfo{};
         }
     }
 
@@ -2525,7 +2518,7 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
         }
     }
     if (c->error_occurred) {
-        printError(c, "%.*s", (int)c->err_str.size(), c->err_str.c_str());
+        printError(c, nkstr_Fmt, (int)c->err_str.size(), c->err_str.c_str());
         return T{};
     }
     return nklval_as(T, asValue(c, val_info)); // TODO Reinterpret cast in compiler without check
@@ -2660,7 +2653,7 @@ void nkl_compiler_free(NklCompiler c) {
 bool nkl_compiler_configure(NklCompiler c, nkstr config_dir) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC("%s", __func__);
-    NK_LOG_DBG("config_dir=`%.*s`", (int)config_dir.size, config_dir.data);
+    NK_LOG_DBG("config_dir=`" nkstr_Fmt "`", nkstr_Arg(config_dir));
     c->compiler_dir = std_str(config_dir);
 
     pushScope(c);

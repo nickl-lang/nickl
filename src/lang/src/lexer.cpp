@@ -10,6 +10,7 @@
 
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
@@ -310,7 +311,7 @@ bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str) {
     do {
         engine.scan();
         tokens.emplace_back(engine.m_token);
-        NK_LOG_DBG("%s: \"%.*s\"", s_token_id[tokens.back().id], (int)tokens.back().text.size, tokens.back().text.data);
+        NK_LOG_DBG("%s: \"" nkstr_Fmt "\"", s_token_id[tokens.back().id], nkstr_Arg(tokens.back().text));
         if (engine.m_token.id == t_error) {
             return false;
         }

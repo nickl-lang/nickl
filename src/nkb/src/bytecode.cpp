@@ -7,6 +7,7 @@
 #include "ir_impl.hpp"
 #include "nk/common/array.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 
@@ -434,7 +435,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
     inspect({bc_proc.instrs.data, bc_proc.instrs.size}, &sb);
-    NK_LOG_INF("proc %.*s\n%.*s", (int)ir_proc.name.size, ir_proc.name.data, (int)sb.size, sb.data);
+    NK_LOG_INF("proc " nkstr_Fmt "\n" nkstr_Fmt "", nkstr_Arg(ir_proc.name), nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
 }
 

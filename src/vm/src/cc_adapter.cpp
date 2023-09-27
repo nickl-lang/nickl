@@ -27,15 +27,11 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     auto echo_cmd = nk_mkstr(conf.echo_src ? "tee /dev/stderr | " : "");
     nksb_printf(
         &sb,
-        "%.*s%.*s -x c - -o %.*s -lm %.*s",
-        (int)echo_cmd.size,
-        echo_cmd.data,
-        (int)conf.compiler_binary.size,
-        conf.compiler_binary.data,
-        (int)conf.output_filename.size,
-        conf.output_filename.data,
-        (int)conf.additional_flags.size,
-        conf.additional_flags.data);
+        nkstr_Fmt nkstr_Fmt " -x c - -o " nkstr_Fmt " -lm " nkstr_Fmt,
+        nkstr_Arg(echo_cmd),
+        nkstr_Arg(conf.compiler_binary),
+        nkstr_Arg(conf.output_filename),
+        nkstr_Arg(conf.additional_flags));
 
     return nk_pipe_streamWrite({sb.data, sb.size}, conf.quiet);
 }

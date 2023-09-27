@@ -11,6 +11,7 @@
 #include "nk/common/allocator.hpp"
 #include "nk/common/file.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/sys/term.h"
@@ -52,11 +53,10 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 
     fprintf(
         stderr,
-        "%serror:%s %.*s\n",
+        "%serror:%s " nkstr_Fmt "\n",
         to_color ? NK_TERM_COLOR_RED : "",
         to_color ? NK_TERM_COLOR_NONE : "",
-        (int)sb.size,
-        sb.data);
+        nkstr_Arg(sb));
 }
 
 bool compileProgram(NkIrCompiler c, nkstr in_file) {
@@ -64,7 +64,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
 
     auto read_res = nk_readFile(nk_arena_getAllocator(&c->file_arena), in_file);
     if (!read_res.ok) {
-        printError(c, "failed to read file `%.*s`", (int)in_file.size, in_file.data);
+        printError(c, "failed to read file `" nkstr_Fmt "`", nkstr_Arg(in_file));
         return false;
     }
 
@@ -76,7 +76,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         };
         nkir_lex(&lexer, &c->file_arena, &c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
-            printError(c, "%.*s", (int)lexer.error_msg.size, lexer.error_msg.data);
+            printError(c, nkstr_Fmt, nkstr_Arg(lexer.error_msg));
             return false;
         }
     }
@@ -89,7 +89,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         };
         nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, {lexer.tokens.data, lexer.tokens.size});
         if (!parser.ok) {
-            printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
+            printError(c, nkstr_Fmt, nkstr_Arg(parser.error_msg));
             return false;
         }
     }
@@ -98,7 +98,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
     NkStringBuilder sb{};
     sb.alloc = nk_arena_getAllocator(&c->tmp_arena);
     nkir_inspectProgram(parser.ir, &sb);
-    NK_LOG_INF("IR:\n%.*s", (int)sb.size, sb.data);
+    NK_LOG_INF("IR:\n" nkstr_Fmt, nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
 
     c->ir = parser.ir;

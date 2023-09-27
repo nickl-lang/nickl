@@ -24,6 +24,9 @@ NK_INLINE nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
     return LITERAL(nkstr){(char const *)mem, src.size};
 }
 
+#define nkstr_Fmt "%.*s"
+#define nkstr_Arg(str) (int)(str).size, (str).data
+
 #ifdef __cplusplus
 }
 #endif
