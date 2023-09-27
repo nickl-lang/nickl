@@ -26,7 +26,6 @@
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
-#include "nk/common/slice.hpp"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
@@ -189,10 +188,12 @@ struct TagInfo {
     nklval_t val;
 };
 
+nkslice_typedef(TagInfo const, TagInfoView);
+
 struct NodeInfo {
     NklAstNode node;
     nkltype_t type{};
-    NkSlice<TagInfo const> tags{};
+    TagInfoView tags{};
 };
 
 } // namespace
@@ -671,8 +672,8 @@ ValueInfo declToValueInfo(Decl &decl) {
 
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type = nullptr);
 nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t type = nullptr);
-ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type = nullptr, NkSlice<TagInfo const> tags = {});
-Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type = nullptr, NkSlice<TagInfo const> tags = {});
+ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type = nullptr, TagInfoView tags = {});
+Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type = nullptr, TagInfoView tags = {});
 
 ValueInfo getStructIndex(NklCompiler c, ValueInfo const &lhs, nkltype_t struct_t, nkid name) {
     auto index = nklt_struct_index(struct_t, name);
@@ -1288,7 +1289,7 @@ ValueInfo compileTupleLiteral(NklCompiler c, nkltype_t type, nkltype_t tuple_t, 
     return makeRef(ref);
 }
 
-ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInfo const> tags) {
+ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView tags) {
 #ifdef BUILD_WITH_EASY_PROFILER
     auto block_name = std::string{"compile: "} + s_nkl_ast_node_names[node->id];
 #endif // BUILD_WITH_EASY_PROFILER
@@ -1898,7 +1899,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         };
 
         // TODO Support multiple tags
-        NkSlice<TagInfo const> tags{&tag, 1lu};
+        TagInfoView tags{&tag, 1lu};
 
         if (n_nodes.size == 1) {
             return compile(c, &n_nodes.data[0], nullptr, tags);
@@ -2140,7 +2141,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInf
         std::optional<LinkTag> opt_link_tag{};
         std::optional<ExternTag> opt_extern_tag{};
 
-        for (auto const &tag : c->node_stack.back().tags) {
+        for (auto const &tag : nk_iterate(c->node_stack.back().tags)) {
             if (tag.name == cs2nkid("#link")) {
                 opt_link_tag = nklval_as(LinkTag, tag.val);
             } else if (tag.name == cs2nkid("#extern")) {
@@ -2300,7 +2301,7 @@ nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t t
     return comptimeConstGetValue(c, cnst);
 }
 
-Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, NkSlice<TagInfo const> tags) {
+Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView tags) {
     DEFINE(val, compile(c, node, type, tags));
     auto ref = asRef(c, val);
     if (val.kind != v_none) {
@@ -2609,11 +2610,13 @@ struct StructField {
     nkltype_t type;
 };
 
-extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(NkSlice<StructField> fields_raw) {
+nkslice_typedef(StructField, StructFieldView);
+
+extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(StructFieldView fields_raw) {
     NklCompiler c = s_compiler;
     std::vector<NklField> fields;
-    fields.reserve(fields_raw.size());
-    for (auto const &field : fields_raw) {
+    fields.reserve(fields_raw.size);
+    for (auto const &field : nk_iterate(fields_raw)) {
         fields.emplace_back(NklField{
             // TODO Treating slice as cstring, while we include excess zero charater
             .name = cs2nkid(std_str(field.name).c_str()),

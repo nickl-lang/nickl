@@ -199,7 +199,7 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
 
         auto &instrs = ir->instrs;
 
-        if (instr.code == nkir_ret && block.size && instrs.data[nk_ar_last(block)].code == nkir_ret) {
+        if (instr.code == nkir_ret && block.size && instrs.data[nkar_last(block)].code == nkir_ret) {
             continue;
         }
 

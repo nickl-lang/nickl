@@ -151,7 +151,7 @@ struct _nk_iterate_wrapper {
 
 #endif // __cplusplus
 
-#define nk_ar_last(ar) ((ar).data[(ar).size - 1])
+#define nkar_last(ar) ((ar).data[(ar).size - 1])
 
 #define nkar_push nkar_append
 

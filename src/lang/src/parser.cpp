@@ -33,7 +33,7 @@ namespace {
 NK_LOG_USE_SCOPE(parser);
 
 struct ParseEngine {
-    NkSlice<NklToken const> m_tokens;
+    NklTokenView m_tokens;
     NklAst m_ast;
     std::string &m_err_str;
 
@@ -51,9 +51,9 @@ struct ParseEngine {
     EExprKind m_cur_expr_kind = Expr_Regular;
 
     NklAstNode parse() {
-        assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
+        assert(m_tokens.size && nkar_last(m_tokens).id == t_eof && "ill-formed token stream");
 
-        m_cur_token = &m_tokens[0];
+        m_cur_token = &m_tokens.data[0];
         return nkl_pushNode(m_ast, block(false)).data;
     }
 
@@ -980,11 +980,11 @@ private:
 
 } // namespace
 
-NklAstNode nkl_parse(NklAst ast, NkSlice<NklToken const> tokens, std::string &err_str, NklTokenRef &err_token) {
+NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklTokenRef &err_token) {
     EASY_FUNCTION(::profiler::colors::Teal200);
     NK_LOG_TRC("%s", __func__);
 
-    assert(tokens.size() && "empty token array");
+    assert(tokens.size && "empty token array");
 
     ParseEngine engine{tokens, ast, err_str};
     NklAstNode root = engine.parse();

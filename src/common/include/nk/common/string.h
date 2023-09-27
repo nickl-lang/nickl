@@ -5,16 +5,14 @@
 #include <string.h>
 
 #include "nk/common/allocator.h"
+#include "nk/common/array.h"
 #include "nk/sys/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
-    char const *data;
-    size_t size;
-} nkstr;
+nkslice_typedef(char const, nkstr);
 
 NK_INLINE nkstr nk_mkstr(char const *str) {
     return LITERAL(nkstr){str, strlen(str)};

@@ -13,7 +13,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(types);
 
-nkar_typedef(uint8_t, ByteArray);
+nkar_typedef(char, ByteArray);
 
 template <class F>
 nktype_t getTypeByFp(NkIrTypeCache *cache, ByteArray fp, F const &make_type) {
@@ -26,9 +26,8 @@ nktype_t getTypeByFp(NkIrTypeCache *cache, ByteArray fp, F const &make_type) {
     if (found) {
         return *found;
     } else {
-        auto copy = nk_arena_alloc_t<uint8_t>(cache->type_arena, fp.size);
-        memcpy(copy, fp.data, fp.size);
-        return cache->fpmap.insert({copy, fp.size}, make_type());
+        auto copy = nk_strcpy(nk_arena_getAllocator(cache->type_arena), {fp.data, fp.size});
+        return cache->fpmap.insert(copy, make_type());
     }
 }
 

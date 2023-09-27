@@ -7,14 +7,14 @@
 #include <stdint.h>
 
 #include "nk/common/hash_map.hpp"
-#include "nk/common/slice.hpp"
+#include "nk/common/string.hpp"
 #include "nkb/common.h"
 
 typedef struct {
     NkArena *type_arena;
     NkArena *tmp_arena;
     uint8_t usize;
-    NkHashMap<NkSlice<uint8_t>, nktype_t> fpmap{};
+    NkHashMap<nkstr, nktype_t> fpmap{};
     uint64_t next_id{1};
     std::mutex mtx{};
 } NkIrTypeCache;
