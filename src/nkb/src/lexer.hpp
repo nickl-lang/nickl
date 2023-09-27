@@ -25,7 +25,7 @@ extern const char *s_token_id[];
 extern const char *s_token_text[];
 
 nkar_typedef(NkIrToken, NkIrTokenArray);
-nkslice_typedef(NkIrToken, NkIrTokenView);
+nkav_typedef(NkIrToken, NkIrTokenView);
 
 typedef struct {
     NkIrTokenArray tokens;

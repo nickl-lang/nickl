@@ -188,7 +188,7 @@ struct TagInfo {
     nklval_t val;
 };
 
-nkslice_typedef(TagInfo const, TagInfoView);
+nkav_typedef(TagInfo const, TagInfoView);
 
 struct NodeInfo {
     NklAstNode node;
@@ -2610,7 +2610,7 @@ struct StructField {
     nkltype_t type;
 };
 
-nkslice_typedef(StructField, StructFieldView);
+nkav_typedef(StructField, StructFieldView);
 
 extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(StructFieldView fields_raw) {
     NklCompiler c = s_compiler;

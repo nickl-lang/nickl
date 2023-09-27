@@ -10,13 +10,13 @@
 #include "nk/common/utils.h"
 #include "nk/sys/common.h"
 
-#define nkslice_type(T) \
-    struct {            \
-        T *data;        \
-        size_t size;    \
+#define nkav_type(T) \
+    struct {         \
+        T *data;     \
+        size_t size; \
     }
 
-#define nkslice_typedef(T, Name) typedef nkslice_type(T) Name
+#define nkav_typedef(T, Name) typedef nkav_type(T) Name
 
 #define nkar_type(T)       \
     struct {               \

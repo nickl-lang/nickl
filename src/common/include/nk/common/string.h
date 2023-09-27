@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-nkslice_typedef(char const, nkstr);
+nkav_typedef(char const, nkstr);
 
 NK_INLINE nkstr nk_mkstr(char const *str) {
     return LITERAL(nkstr){str, strlen(str)};

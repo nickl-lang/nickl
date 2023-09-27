@@ -20,9 +20,9 @@ NkBcOpcode s_ir2opcode[] = {
 };
 
 #ifdef ENABLE_LOGGING
-nkslice_typedef(NkBcInstr, nkslice_NkBcInstr);
+nkav_typedef(NkBcInstr, NkBcInstrView);
 
-void inspect(nkslice_NkBcInstr instrs, NkStringBuilder *sb) {
+void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
     auto inspect_ref = [&](NkBcRef const &ref) {
         if (ref.kind == NkBcRef_None) {
             nksb_printf(sb, "(null)");
