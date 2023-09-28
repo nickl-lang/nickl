@@ -1,5 +1,20 @@
 #include "nk/common/utils.h"
 
+#define HASH_ARRAY_STEP sizeof(size_t)
+
+hash_t hash_array(uint8_t const *begin, uint8_t const *end) {
+    hash_t hash = 0;
+    size_t i = 0;
+    while (begin + (i + 1) * HASH_ARRAY_STEP <= end) {
+        hash_combine(&hash, *(size_t const *)(begin + i++ * HASH_ARRAY_STEP));
+    }
+    i *= HASH_ARRAY_STEP;
+    while (begin + i < end) {
+        hash_combine(&hash, begin[i++]);
+    }
+    return hash;
+}
+
 extern inline size_t roundUp(size_t v, size_t m);
 extern inline size_t roundUpSafe(size_t v, size_t m);
 extern inline uint64_t ceilToPowerOf2(uint64_t n);

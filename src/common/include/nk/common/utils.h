@@ -110,8 +110,6 @@ NK_INLINE int64_t maxi(int64_t x, int64_t y) {
 
 #undef _MAGIC
 
-hash_t hash_seed(void);
-
 NK_INLINE void hash_combine(hash_t *seed, size_t n) {
     *seed ^= n + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
 }
