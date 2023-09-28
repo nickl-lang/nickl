@@ -4,6 +4,7 @@ add_library(nk_common
     src/file.cpp
     src/id.cpp
     src/logger.cpp
+    src/stream.c
     src/string_builder.c
     src/utils.c
     src/utils.cpp
@@ -20,6 +21,7 @@ target_include_directories(nk_common
     )
 
 target_link_libraries(nk_common
+    PRIVATE stb
     PUBLIC nk_sys
     )
 

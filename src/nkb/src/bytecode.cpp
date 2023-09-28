@@ -490,6 +490,7 @@ void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data) {
 void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, void **args, void **ret) {
     NK_LOG_TRC("%s", __func__);
 
+
     translateProc(ctx, proc_id);
     nkir_interp_invoke(ctx->procs.data[proc_id.id], args, ret);
 }

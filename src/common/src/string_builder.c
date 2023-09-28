@@ -3,6 +3,7 @@
 #include <ctype.h>
 
 #include "nk/common/utils.h"
+#include "stb/sprintf.h"
 
 int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
     va_list ap;
@@ -19,14 +20,14 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
     va_list ap_copy;
 
     va_copy(ap_copy, ap);
-    int const printf_res = vsnprintf(NULL, 0, fmt, ap_copy);
+    int const printf_res = stbsp_vsnprintf(NULL, 0, fmt, ap_copy);
     va_end(ap_copy);
 
     if (printf_res < 0) {
         return printf_res;
     }
 
-    size_t const required_size = printf_res + 1;
+    size_t const required_size = printf_res;
 
     if (sb->size + required_size > sb->capacity) {
         size_t new_capacity = ceilToPowerOf2(maxu(sb->size + required_size, NKSB_INIT_CAP));
@@ -44,10 +45,10 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
 
     size_t const alloc_size = minu(required_size, sb->capacity - sb->size);
     va_copy(ap_copy, ap);
-    vsnprintf(sb->data + sb->size, alloc_size, fmt, ap_copy);
+    stbsp_vsnprintf(sb->data + sb->size, alloc_size, fmt, ap_copy);
     va_end(ap_copy);
 
-    sb->size += alloc_size - 1;
+    sb->size += alloc_size;
 
     return printf_res;
 }
@@ -132,4 +133,15 @@ void nksb_str_unescape(NkStringBuilder *sb, nkstr str) {
             nksb_printf(sb, "%c", str.data[i]);
         }
     }
+}
+
+static nk_stream_buf nksb_ostreamProc(void *s, size_t size) {
+    NkStringBuilder *sb = (NkStringBuilder *)s;
+    nksb_reserve(sb, sb->capacity + size);
+    sb->size += size;
+    return (nk_stream_buf){sb->data + sb->size - size, size};
+}
+
+nk_ostream nksb_getStream(NkStringBuilder *sb) {
+    return (nk_ostream){sb, nksb_ostreamProc};
 }

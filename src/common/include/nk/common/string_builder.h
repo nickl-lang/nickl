@@ -5,6 +5,7 @@
 
 #include "nk/common/allocator.h"
 #include "nk/common/array.h"
+#include "nk/common/stream.h"
 #include "nk/common/string.h"
 #include "nk/sys/common.h"
 
@@ -36,6 +37,8 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
 void nksb_str_escape(NkStringBuilder *sb, nkstr str);
 void nksb_str_unescape(NkStringBuilder *sb, nkstr str);
+
+nk_ostream nksb_getStream(NkStringBuilder *sb);
 
 #ifdef __cplusplus
 }
