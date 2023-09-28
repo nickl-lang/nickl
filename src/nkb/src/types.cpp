@@ -22,11 +22,11 @@ nktype_t getTypeByFp(NkIrTypeCache *cache, ByteArray fp, F const &make_type) {
 
     std::lock_guard lk{cache->mtx};
 
-    auto found = cache->fpmap.find({fp.data, fp.size});
+    auto found = cache->fpmap.find({nkav_init(fp)});
     if (found) {
         return *found;
     } else {
-        auto copy = nk_strcpy(nk_arena_getAllocator(cache->type_arena), {fp.data, fp.size});
+        auto copy = nk_strcpy(nk_arena_getAllocator(cache->type_arena), {nkav_init(fp)});
         return cache->fpmap.insert(copy, make_type());
     }
 }

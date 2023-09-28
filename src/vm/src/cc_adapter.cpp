@@ -33,7 +33,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         nkstr_Arg(conf.output_filename),
         nkstr_Arg(conf.additional_flags));
 
-    return nk_pipe_streamWrite({sb.data, sb.size}, conf.quiet);
+    return nk_pipe_streamWrite({nkav_init(sb)}, conf.quiet);
 }
 
 bool nkcc_streamClose(std::ostream const &stream) {

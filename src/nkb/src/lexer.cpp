@@ -11,6 +11,7 @@
 #include <iterator>
 
 #include "nk/common/allocator.h"
+#include "nk/common/array.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
@@ -280,7 +281,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {sb.data, sb.size};
+        m_error_msg = {nkav_init(sb)};
         va_end(ap);
         m_token.id = t_error;
     }

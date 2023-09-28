@@ -434,7 +434,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
-    inspect({bc_proc.instrs.data, bc_proc.instrs.size}, &sb);
+    inspect({nkav_init(bc_proc.instrs)}, &sb);
     NK_LOG_INF("proc " nkstr_Fmt "\n" nkstr_Fmt "", nkstr_Arg(ir_proc.name), nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
 }

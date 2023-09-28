@@ -115,7 +115,7 @@ TEST_F(array, append) {
 
     EXPECT_EQ(ar.capacity, ceilToPowerOf2(c_test_str.size));
     EXPECT_EQ(ar.size, c_test_str.size);
-    EXPECT_EQ(std_str(nkstr{ar.data, ar.size}), std_str(c_test_str));
+    EXPECT_EQ(std_str({nkav_init(ar)}), std_str(c_test_str));
 }
 
 TEST_F(array, multiple_reserves) {

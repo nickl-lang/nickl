@@ -117,8 +117,8 @@ struct GeneratorState {
                              nkir_makeProcedureType(
                                  m_types,
                                  {
-                                     .args_t{sig.args_t.data, sig.args_t.size},
-                                     .ret_t{sig.ret_t.data, sig.ret_t.size},
+                                     .args_t{nkav_init(sig.args_t)},
+                                     .ret_t{nkav_init(sig.ret_t)},
                                      .call_conv = NkCallConv_Cdecl,
                                      .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                                  }))},
@@ -139,8 +139,8 @@ struct GeneratorState {
                         nkir_makeProcedureType(
                             m_types,
                             {
-                                .args_t{sig.args_t.data, sig.args_t.size},
-                                .ret_t{sig.ret_t.data, sig.ret_t.size},
+                                .args_t{nkav_init(sig.args_t)},
+                                .ret_t{nkav_init(sig.ret_t)},
                                 .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                             }));
@@ -312,7 +312,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = alloc;
         nksb_str_unescape(&sb, {data, len});
-        return {sb.data, sb.size};
+        return {nkav_init(sb)};
     }
 
     struct ProcSignatureParseResult {
@@ -777,7 +777,7 @@ private:
             APPEND(&refs, parseRef());
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        return {refs.data, refs.size};
+        return {nkav_init(refs)};
     }
 
     void getToken() {
@@ -813,7 +813,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {sb.data, sb.size};
+        m_error_msg = {nkav_init(sb)};
         va_end(ap);
 
         m_error_occurred = true;

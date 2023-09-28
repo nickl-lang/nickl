@@ -24,9 +24,8 @@ TEST_F(string_builder, basic) {
     };
 
     nksb_printf(&sb, "Hello, %s!", "World");
-    nkstr str{sb.data, sb.size};
 
-    EXPECT_EQ(std_view(str), "Hello, World!");
+    EXPECT_EQ(std_view({nkav_init(sb)}), "Hello, World!");
 }
 
 TEST_F(string_builder, counting) {
@@ -43,7 +42,5 @@ TEST_F(string_builder, counting) {
 
     nksb_printf(&sb, "]");
 
-    nkstr str{sb.data, sb.size};
-
-    EXPECT_EQ(std_view(str), "[0123456789]");
+    EXPECT_EQ(std_view({nkav_init(sb)}), "[0123456789]");
 }

@@ -28,7 +28,7 @@ class cc_adapter : public testing::Test {
         m_conf = {
             .compiler_binary = nk_mkstr(TEST_CC),
             .additional_flags = nk_mkstr(TEST_CC_FLAGS),
-            .output_filename{m_output_filename_sb.data, m_output_filename_sb.size},
+            .output_filename{nkav_init(m_output_filename_sb)},
             .echo_src = false,
             .quiet = TEST_QUIET,
         };

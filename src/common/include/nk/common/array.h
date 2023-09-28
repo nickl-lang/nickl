@@ -18,6 +18,8 @@
 
 #define nkav_typedef(T, Name) typedef nkav_type(T) Name
 
+#define nkav_init(obj) .data = (obj).data, .size = (obj).size,
+
 #define nkar_type(T)       \
     struct {               \
         T *data;           \
