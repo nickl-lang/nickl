@@ -1,3 +1,4 @@
+add_subdirectory(3rdparty/stb)
 add_subdirectory(common)
 add_subdirectory(config)
 add_subdirectory(lang)
