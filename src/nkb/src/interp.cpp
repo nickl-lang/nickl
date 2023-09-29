@@ -102,9 +102,9 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
     std::memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (uint8_t *)args;
     ctx.base.ret = (uint8_t *)ret;
-    ctx.base.instr = (uint8_t *)proc->instrs.data();
+    ctx.base.instr = (uint8_t *)proc->instrs.data;
 
-    jumpTo(proc->instrs.data());
+    jumpTo(proc->instrs.data);
 
     NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
@@ -374,7 +374,7 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
             nkirv_inspect(dst_ref_data, dst.ref.type, &sb);
             nksb_printf(&sb, ":");
             nkirt_inspect(dst.ref.type, &sb);
-            NK_LOG_DBG("res=%s", nksb_concat(&sb).data);
+            NK_LOG_DBG("res=%s", sb.data);
         }
 #endif // ENABLE_LOGGING
     }

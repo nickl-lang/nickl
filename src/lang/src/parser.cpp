@@ -33,7 +33,7 @@ namespace {
 NK_LOG_USE_SCOPE(parser);
 
 struct ParseEngine {
-    NkSlice<NklToken const> m_tokens;
+    NklTokenView m_tokens;
     NklAst m_ast;
     std::string &m_err_str;
 
@@ -51,9 +51,9 @@ struct ParseEngine {
     EExprKind m_cur_expr_kind = Expr_Regular;
 
     NklAstNode parse() {
-        assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
+        assert(m_tokens.size && nkar_last(m_tokens).id == t_eof && "ill-formed token stream");
 
-        m_cur_token = &m_tokens[0];
+        m_cur_token = &m_tokens.data[0];
         return nkl_pushNode(m_ast, block(false)).data;
     }
 
@@ -83,8 +83,7 @@ private:
     void expect(ETokenId id) {
         if (!accept(id)) {
             // TODO Improve token quote for string constants etc.
-            return error(
-                "expected `%s` before `%.*s`", s_token_text[id], (int)m_cur_token->text.size, m_cur_token->text.data);
+            return error("expected `%s` before `" nkstr_Fmt "`", s_token_text[id], nkstr_Arg(m_cur_token->text));
         }
     }
 
@@ -206,7 +205,7 @@ private:
             NklAstNode_T &arg = args.emplace_back();
             arg.id = cs2nkid("arg");
             if (named_mode || check(t_id)) {
-                NK_LOG_DBG("accept(id, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
+                NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
                 auto id = m_cur_token;
                 getToken();
                 if (named_mode && !check(t_eq)) {
@@ -243,10 +242,11 @@ private:
             EXPECT(t_brace_r);
         }
 
-        auto node = nodes.size() == 0 && !force_block_node ? nkl_makeNode0(n_nop, _n_token)
-                    : nodes.size() == 1 && !force_block_node
-                        ? nodes.front()
-                        : nkl_makeNode1(n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+        auto node = nodes.size() == 0 && !force_block_node
+                        ? nkl_makeNode0(n_nop, _n_token)
+                        : nodes.size() == 1 && !force_block_node
+                              ? nodes.front()
+                              : nkl_makeNode1(n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1(n_scope, _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -255,7 +255,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), NklTokenRef{};
         }
-        NK_LOG_DBG("accept(id, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
+        NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -307,7 +307,7 @@ private:
             //     }
         } else if (check(t_tag)) {
             //@Todo Refactor token debug prints
-            NK_LOG_DBG("accept(tag, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
+            NK_LOG_DBG("accept(tag, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
             auto tag = m_cur_token;
             getToken();
             if (accept(t_colon_2x)) {
@@ -820,19 +820,19 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_int)) {
-            NK_LOG_DBG("accept(int, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(int, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
             node = nkl_makeNode0(n_int, _n_token);
         } else if (accept(t_int_hex)) {
-            NK_LOG_DBG("accept(int_hex, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(int_hex, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
             node = nkl_makeNode0(n_int_hex, _n_token);
         } else if (accept(t_float)) {
-            NK_LOG_DBG("accept(float, \"%.*s\"", (int)_n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(float, \"" nkstr_Fmt "\"", nkstr_Arg(_n_token->text));
             node = nkl_makeNode0(n_float, _n_token);
         } else if (accept(t_string)) {
-            NK_LOG_DBG("accept(string, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(string, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
             node = nkl_makeNode0(n_string, _n_token);
         } else if (accept(t_escaped_string)) {
-            NK_LOG_DBG("accept(escaped_string, \"%.*s\")", (int)_n_token->text.size, _n_token->text.data);
+            NK_LOG_DBG("accept(escaped_string, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
             node = nkl_makeNode0(n_escaped_string, _n_token);
         }
 
@@ -958,8 +958,7 @@ private:
             m_cur_token--;
             return error("unexpected end of file"), NklAstNode_T{};
         } else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data),
-                   NklAstNode_T{};
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NklAstNode_T{};
         }
 
         return node;
@@ -979,21 +978,21 @@ private:
 
 } // namespace
 
-NklAstNode nkl_parse(NklAst ast, NkSlice<NklToken const> tokens, std::string &err_str, NklTokenRef &err_token) {
+NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklTokenRef &err_token) {
     EASY_FUNCTION(::profiler::colors::Teal200);
     NK_LOG_TRC("%s", __func__);
 
-    assert(tokens.size() && "empty token array");
+    assert(tokens.size && "empty token array");
 
     ParseEngine engine{tokens, ast, err_str};
     NklAstNode root = engine.parse();
 
     NK_LOG_INF(
         "root: %s", (char const *)[&]() {
-            auto sb = nksb_create();
-            nkl_inspectNode(root, sb);
-            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                nksb_free(sb);
+            NkStringBuilder sb{};
+            nkl_inspectNode(root, &sb);
+            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+                nksb_free(&sb);
             });
         }());
 

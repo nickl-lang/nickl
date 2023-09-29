@@ -11,6 +11,7 @@
 #include <iterator>
 
 #include "nk/common/allocator.h"
+#include "nk/common/array.h"
 #include "nk/common/logger.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
@@ -277,10 +278,10 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder_T sb;
-        nksb_init_alloc(&sb, nk_arena_getAllocator(m_tmp_arena));
+        NkStringBuilder sb{};
+        sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = nksb_concat(&sb);
+        m_error_msg = {nkav_init(sb)};
         va_end(ap);
         m_token.id = t_error;
     }
@@ -291,8 +292,8 @@ private:
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkstr src) {
     NK_LOG_TRC("%s", __func__);
 
-    lexer->tokens = decltype(lexer->tokens)::create(nk_arena_getAllocator(file_arena));
-    lexer->tokens.reserve(1000);
+    lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
+    nkar_reserve(&lexer->tokens, 1000);
 
     lexer->error_msg = {};
     lexer->ok = true;
@@ -304,7 +305,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
     do {
         scanner.scan();
-        *lexer->tokens.push() = scanner.m_token;
+        nkar_append(&lexer->tokens, scanner.m_token);
 
         if (scanner.m_token.id == t_error) {
             lexer->ok = false;
@@ -315,7 +316,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 #ifdef ENABLE_LOGGING
         NK_DEFINE_STATIC_SB(sb, 256);
         nksb_str_escape(&sb, scanner.m_token.text);
-        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], nksb_concat(&sb).data);
+        NK_LOG_DBG("%s: \"%s\"", s_token_id[scanner.m_token.id], sb.data);
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 }

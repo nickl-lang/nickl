@@ -6,8 +6,7 @@
 #include <cstdint>
 
 #include "nk/common/allocator.hpp"
-#include "nk/common/array.hpp"
-#include "nk/common/slice.hpp"
+#include "nk/common/utils.hpp"
 
 template <class T>
 struct NkLogArray {
@@ -63,10 +62,10 @@ struct NkLogArray {
         }
     }
 
-    NkSlice<T> push(size_t n = 1) {
+    T *push(size_t n = 1) {
         reserve(n);
         _size += n;
-        return {_top() - n, n};
+        return _top() - n;
     }
 
     void pop(size_t n = 1) {
@@ -77,10 +76,6 @@ struct NkLogArray {
 
     void clear() {
         pop(_size);
-    }
-
-    void append(NkSlice<T const> slice) {
-        std::memcpy(&*push(slice.size()), slice.data(), slice.size() * sizeof(T));
     }
 
 private:

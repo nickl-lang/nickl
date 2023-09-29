@@ -35,7 +35,9 @@ function(def_test)
         ${ARG_LINK}
         )
 
-    gtest_discover_tests(${TARGET_NAME})
+    gtest_discover_tests(${TARGET_NAME}
+        DISCOVERY_TIMEOUT 10
+        )
 endfunction()
 
 function(def_run_test)

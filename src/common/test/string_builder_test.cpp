@@ -18,32 +18,29 @@ protected:
 };
 
 TEST_F(string_builder, basic) {
-    auto sb = nksb_create();
+    NkStringBuilder sb{};
     defer {
-        nksb_free(sb);
+        nksb_free(&sb);
     };
 
-    nksb_printf(sb, "Hello, %s!", "World");
-    auto str = nksb_concat(sb);
+    nksb_printf(&sb, "Hello, %s!", "World");
 
-    EXPECT_EQ(std_view(str), "Hello, World!");
+    EXPECT_EQ(std_view({nkav_init(sb)}), "Hello, World!");
 }
 
 TEST_F(string_builder, counting) {
-    auto sb = nksb_create();
+    NkStringBuilder sb{};
     defer {
-        nksb_free(sb);
+        nksb_free(&sb);
     };
 
-    nksb_printf(sb, "[");
+    nksb_printf(&sb, "[");
 
     for (size_t i = 0; i < 10; i++) {
-        nksb_printf(sb, "%" PRIu64, i);
+        nksb_printf(&sb, "%" PRIu64, i);
     }
 
-    nksb_printf(sb, "]");
+    nksb_printf(&sb, "]");
 
-    auto str = nksb_concat(sb);
-
-    EXPECT_EQ(std_view(str), "[0123456789]");
+    EXPECT_EQ(std_view({nkav_init(sb)}), "[0123456789]");
 }

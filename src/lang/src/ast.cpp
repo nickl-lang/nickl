@@ -8,6 +8,7 @@
 #include "ast_impl.h"
 #include "nk/common/allocator.hpp"
 #include "nk/common/id.h"
+#include "nk/common/string.h"
 #include "nk/common/string_builder.h"
 #include "nkl/lang/token.h"
 
@@ -22,7 +23,7 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
+void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
     auto const _newline = [&]() {
         nksb_printf(sb, "\n%*s", (int)(depth * 2), "");
     };
@@ -45,7 +46,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder sb, size_t depth = 1) {
         if (node->id) {
             _newline();
             auto id_str = nkid2s(node->id);
-            nksb_printf(sb, "#%.*s", (int)id_str.size, id_str.data);
+            nksb_printf(sb, "#" nkstr_Fmt, nkstr_Arg(id_str));
         } else {
             _newline();
             nksb_printf(sb, "(null)");
@@ -117,6 +118,6 @@ NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
     return {new_ar, ar.size};
 }
 
-void nkl_inspectNode(NklAstNode root, NkStringBuilder sb) {
+void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb) {
     _inspect({root, 1}, sb);
 }

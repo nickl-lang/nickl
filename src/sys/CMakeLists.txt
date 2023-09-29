@@ -9,6 +9,7 @@ add_library(${LIB}
     src/${PLATFORM_DIR}/mem.c
     src/${PLATFORM_DIR}/process.c
     src/${PLATFORM_DIR}/term.c
+    src/${PLATFORM_DIR}/time.c
     )
 
 target_include_directories(${LIB}

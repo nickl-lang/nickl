@@ -4,6 +4,7 @@
 
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
+#include "nk/common/string.h"
 
 namespace {
 
@@ -18,7 +19,7 @@ NkDlHandle nkdl_open(nkstr name) {
     if (!dl) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly
     }
-    NK_LOG_DBG("dlopen(\"%.*s\") -> %p", (int)name.size, name.data, (void *)dl);
+    NK_LOG_DBG("dlopen(\"" nkstr_Fmt "\") -> %p", nkstr_Arg(name), (void *)dl);
     return dl;
 }
 
@@ -37,6 +38,6 @@ void *nkdl_sym(NkDlHandle dl, nkstr sym) {
     if (!ptr) {
         NK_LOG_ERR("error: %s\n", dlerror()); // TODO Report errors properly
     }
-    NK_LOG_DBG("dlsym(\"%.*s\") -> %p", (int)sym.size, sym.data, (void *)ptr);
+    NK_LOG_DBG("dlsym(\"" nkstr_Fmt "\") -> %p", nkstr_Arg(sym), (void *)ptr);
     return ptr;
 }

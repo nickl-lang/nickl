@@ -2,7 +2,7 @@
 #define HEADER_GUARD_NKB_LEXER
 
 #include "nk/common/allocator.h"
-#include "nk/common/array.hpp"
+#include "nk/common/array.h"
 #include "nk/common/string.h"
 
 enum ETokenId {
@@ -24,8 +24,11 @@ typedef struct {
 extern const char *s_token_id[];
 extern const char *s_token_text[];
 
+nkar_typedef(NkIrToken, NkIrTokenArray);
+nkav_typedef(NkIrToken, NkIrTokenView);
+
 typedef struct {
-    NkArray<NkIrToken> tokens;
+    NkIrTokenArray tokens;
     nkstr error_msg;
     bool ok;
 } NkIrLexerState;

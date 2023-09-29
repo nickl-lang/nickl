@@ -5,7 +5,7 @@
 #include <mutex>
 
 #include "nk/common/allocator.h"
-#include "nk/common/array.hpp"
+#include "nk/common/array.h"
 #include "nk/common/hash_map.hpp"
 #include "nk/common/id.h"
 #include "nkb/common.h"
@@ -71,7 +71,7 @@ typedef struct NkBcProc_T *NkBcProc;
 struct NkBcProc_T {
     NkIrRunCtx ctx;
     size_t frame_size;
-    NkArray<NkBcInstr> instrs;
+    nkar_type(NkBcInstr) instrs;
 };
 
 struct NkFfiContext {
@@ -84,8 +84,8 @@ struct NkIrRunCtx_T {
     NkIrProg ir;
     NkArena *tmp_arena;
 
-    NkArray<NkBcProc> procs;
-    NkArray<void *> globals;
+    nkar_type(NkBcProc) procs;
+    nkar_type(void *) globals;
     NkHashMap<nkid, void *> extern_syms;
 
     NkFfiContext ffi_ctx;

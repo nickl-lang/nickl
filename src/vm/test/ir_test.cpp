@@ -9,12 +9,13 @@
 
 #include "native_fn_adapter.h"
 #include "nk/common/allocator.h"
-#include "nk/common/common.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.h"
 #include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
 #include "nk/common/utils.hpp"
+#include "nk/sys/common.h"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
 
@@ -46,15 +47,12 @@ protected:
     void inspect(NkIrProg p) {
         (void)p;
 #ifdef ENABLE_LOGGING
-        auto sb = nksb_create();
+        NkStringBuilder sb{};
         defer {
-            nksb_free(sb);
+            nksb_free(&sb);
         };
-
-        nkir_inspect(p, sb);
-        auto str = nksb_concat(sb);
-
-        NK_LOG_INF("ir:\n%.*s", (int)str.size, str.data);
+        nkir_inspect(p, &sb);
+        NK_LOG_INF("ir:\n" nkstr_Fmt, nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
     }
 

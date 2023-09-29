@@ -19,9 +19,8 @@ class cc_adapter : public testing::Test {
     void SetUp() override {
         NK_LOGGER_INIT({});
 
-        m_output_filename_sb = nksb_create();
         nksb_printf(
-            m_output_filename_sb,
+            &m_output_filename_sb,
             "%s%s_test" TEST_EXECUTABLE_EXT,
             std::filesystem::exists(TEST_FILES_DIR) ? TEST_FILES_DIR : "",
             testing::UnitTest::GetInstance()->current_test_info()->name());
@@ -29,14 +28,14 @@ class cc_adapter : public testing::Test {
         m_conf = {
             .compiler_binary = nk_mkstr(TEST_CC),
             .additional_flags = nk_mkstr(TEST_CC_FLAGS),
-            .output_filename = nksb_concat(m_output_filename_sb),
+            .output_filename{nkav_init(m_output_filename_sb)},
             .echo_src = false,
             .quiet = TEST_QUIET,
         };
     }
 
     void TearDown() override {
-        nksb_free(m_output_filename_sb);
+        nksb_free(&m_output_filename_sb);
     }
 
 protected:
@@ -52,7 +51,7 @@ protected:
     }
 
 protected:
-    NkStringBuilder m_output_filename_sb;
+    NkStringBuilder m_output_filename_sb{};
     NkIrCompilerConfig m_conf;
 };
 

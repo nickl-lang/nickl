@@ -89,7 +89,7 @@ NkType nkt_get_void() {
     };
 }
 
-void nkt_inspect(nktype_t type, NkStringBuilder sb) {
+void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
     switch (type->tclass) {
     case NkType_Array:
         nksb_printf(sb, "[%" PRIu64 "]", type->as.arr.elem_count);
@@ -161,7 +161,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder sb) {
     }
 }
 
-void nkval_inspect(nkval_t val, NkStringBuilder sb) {
+void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
     switch (nkval_typeclassid(val)) {
     case NkType_Array:
         nksb_printf(sb, "[");

@@ -1,4 +1,6 @@
-#include "nk/common/array.hpp"
+#define NKAR_INIT_CAP 1
+
+#include "nk/common/array.h"
 
 #include <cstring>
 
@@ -17,116 +19,123 @@ class array : public testing::Test {
     }
 };
 
+nkar_typedef(uint8_t, nkar_uint8_t);
+nkar_typedef(uint16_t, nkar_uint16_t);
+nkar_typedef(int, nkar_int);
+nkar_typedef(char, nkar_char);
+
 TEST_F(array, init) {
-    NkArray<uint8_t> ar{};
+    nkar_uint8_t ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
-    EXPECT_TRUE(ar.reserve(1));
+    nkar_reserve(&ar, 1);
 
-    EXPECT_EQ(ar.size(), 0);
-    EXPECT_EQ(ar.capacity(), 1);
-    EXPECT_NE(ar.data(), nullptr);
+    EXPECT_EQ(ar.size, 0);
+    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_NE(ar.data, nullptr);
 }
 
 TEST_F(array, basic) {
-    using ValueType = uint16_t;
-
-    NkArray<ValueType> ar{};
+    nkar_uint16_t ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
-    *ar.push() = 0;
-    *ar.push() = 1;
-    *ar.push() = 2;
+    nkar_append(&ar, 0);
+    nkar_append(&ar, 1);
+    nkar_append(&ar, 2);
 
-    EXPECT_EQ(ar.size(), 3);
-    EXPECT_EQ(ar.capacity(), 4);
+    EXPECT_EQ(ar.size, 3);
+    EXPECT_EQ(ar.capacity, 4);
 
-    for (size_t i = 0; i < ar.size(); i++) {
-        EXPECT_EQ(ar[i], i);
+    for (size_t i = 0; i < ar.size; i++) {
+        EXPECT_EQ(ar.data[i], i);
     }
 
-    ar.clear();
+    nkar_clear(&ar);
 
-    EXPECT_EQ(ar.size(), 0);
-    EXPECT_EQ(ar.capacity(), 4);
+    EXPECT_EQ(ar.size, 0);
+    EXPECT_EQ(ar.capacity, 4);
 }
 
 TEST_F(array, capacity) {
-    NkArray<uint8_t> ar{};
+    nkar_uint8_t ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
     for (uint8_t i = 1; i < 60; i++) {
-        *ar.push() = i;
-        EXPECT_EQ(ar.capacity(), ceilToPowerOf2(i));
+        nkar_append(&ar, i);
+        EXPECT_EQ(ar.capacity, ceilToPowerOf2(i));
     }
 }
 
 TEST_F(array, zero_capacity) {
-    NkArray<uint8_t> ar{};
+    nkar_uint8_t ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
-    EXPECT_TRUE(ar.reserve(0));
+    nkar_reserve(&ar, 0);
 
-    EXPECT_EQ(ar.capacity(), 0);
-    EXPECT_EQ(ar.size(), 0);
-    EXPECT_EQ(ar.data(), nullptr);
+    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_EQ(ar.size, 0);
+    EXPECT_NE(ar.data, nullptr);
 
-    ar.push();
+    nkar_append(&ar, 0);
 
-    EXPECT_EQ(ar.capacity(), 1);
-    EXPECT_EQ(ar.size(), 1);
-    EXPECT_NE(ar.data(), nullptr);
+    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_EQ(ar.size, 1);
+    EXPECT_NE(ar.data, nullptr);
 }
 
 TEST_F(array, zero_init) {
-    NkArray<uint8_t> ar{};
+    nkar_uint8_t ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
-    *ar.push() = 42;
+    nkar_append(&ar, 42);
 
-    EXPECT_EQ(ar.capacity(), 1);
-    EXPECT_EQ(ar.size(), 1);
-    EXPECT_EQ(*ar, 42);
+    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_EQ(ar.size, 1);
+    EXPECT_EQ(*ar.data, 42);
 }
 
 TEST_F(array, append) {
-    NkArray<char> ar{};
+    nkar_char ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
     auto const c_test_str = nk_mkstr("hello world");
-    ar.append({c_test_str.data, c_test_str.size});
+    nkar_append_many(&ar, c_test_str.data, c_test_str.size);
 
-    EXPECT_EQ(ar.capacity(), ceilToPowerOf2(c_test_str.size));
-    EXPECT_EQ(ar.size(), c_test_str.size);
-    EXPECT_EQ(std_str(ar), std_str(c_test_str));
+    EXPECT_EQ(ar.capacity, ceilToPowerOf2(c_test_str.size));
+    EXPECT_EQ(ar.size, c_test_str.size);
+    EXPECT_EQ(std_str({nkav_init(ar)}), std_str(c_test_str));
 }
 
 TEST_F(array, multiple_reserves) {
-    NkArray<int> ar{};
+    nkar_int ar{};
     defer {
-        ar.deinit();
+        nkar_free(&ar);
     };
 
     size_t sz = 1;
 
-    EXPECT_TRUE(ar.reserve(sz *= 10));
-    EXPECT_TRUE(ar.reserve(sz *= 10));
-    EXPECT_TRUE(ar.reserve(sz *= 10));
+    sz *= 10;
+    nkar_reserve(&ar, sz);
+    sz *= 10;
+    nkar_reserve(&ar, sz);
+    sz *= 10;
+    nkar_reserve(&ar, sz);
 
-    auto data = ar.push(sz);
-    std::memset(data.data(), 0, sz * sizeof(decltype(ar)::value_type));
+    ar.size += sz;
+    memset(ar.data, 0, sz * sizeof(ar.data[0]));
 
-    EXPECT_EQ(ar.size(), sz);
+    EXPECT_EQ(ar.size, sz);
+    EXPECT_EQ(ar.capacity, ceilToPowerOf2(sz));
 }

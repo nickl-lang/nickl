@@ -462,17 +462,14 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         NK_LOG_DBG(
             "res=%s", (char const *)[&]() {
                 NkStringBuilder sb{};
-                char const *str{};
                 auto const &ref = pinstr->arg[0];
                 if (ref.ref_type != NkBcRef_None) {
-                    sb = nksb_create();
-                    nkval_inspect(_getValRef(ref), sb);
-                    nksb_printf(sb, ":");
-                    nkt_inspect(ref.type, sb);
-                    str = nksb_concat(sb).data;
+                    nkval_inspect(_getValRef(ref), &sb);
+                    nksb_printf(&sb, ":");
+                    nkt_inspect(ref.type, &sb);
                 }
-                return makeDeferrerWithData(str, [sb]() {
-                    nksb_free(sb);
+                return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+                    nksb_free(&sb);
                 });
             }());
     }

@@ -1,10 +1,11 @@
 add_library(nk_common
-    src/allocator.cpp
-    src/arena.cpp
+    src/allocator.c
+    src/arena.c
     src/file.cpp
     src/id.cpp
     src/logger.cpp
-    src/string_builder.cpp
+    src/string_builder.c
+    src/utils.c
     src/utils.cpp
     )
 
@@ -19,7 +20,7 @@ target_include_directories(nk_common
     )
 
 target_link_libraries(nk_common
-    PRIVATE nk_sys
+    PUBLIC nk_sys
     )
 
 if(ENABLE_PROFILING)

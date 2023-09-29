@@ -1,8 +1,8 @@
 #ifndef HEADER_GUARD_NKL_LANG_COMPILER
 #define HEADER_GUARD_NKL_LANG_COMPILER
 
-#include "nk/common/common.h"
 #include "nk/common/utils.h"
+#include "nk/sys/common.h"
 #include "nkl/lang/ast.h"
 
 #ifdef __cplusplus

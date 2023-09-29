@@ -5,25 +5,27 @@
 #include <string.h>
 
 #include "nk/common/allocator.h"
+#include "nk/common/array.h"
+#include "nk/sys/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
-    char const *data;
-    size_t size;
-} nkstr;
+nkav_typedef(char const, nkstr);
 
-inline nkstr nk_mkstr(char const *str) {
-    return {str, strlen(str)};
+NK_INLINE nkstr nk_mkstr(char const *str) {
+    return LITERAL(nkstr){str, strlen(str)};
 }
 
-inline nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
-    auto mem = nk_alloc(alloc, src.size);
+NK_INLINE nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
+    void *mem = nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
-    return {(char *)mem, src.size};
+    return LITERAL(nkstr){(char const *)mem, src.size};
 }
+
+#define nkstr_Fmt "%.*s"
+#define nkstr_Arg(str) (int)(str).size, (str).data
 
 #ifdef __cplusplus
 }

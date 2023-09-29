@@ -21,6 +21,8 @@ typedef struct {
 
 typedef NklToken const *NklTokenRef;
 
+nkav_typedef(NklToken const, NklTokenView);
+
 #ifdef __cplusplus
 }
 #endif

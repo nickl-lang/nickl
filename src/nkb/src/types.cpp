@@ -4,7 +4,7 @@
 #include <new>
 
 #include "nk/common/allocator.hpp"
-#include "nk/common/array.hpp"
+#include "nk/common/array.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
 #include "nkb/common.h"
@@ -13,7 +13,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(types);
 
-using ByteArray = NkArray<uint8_t>;
+nkar_typedef(char, ByteArray);
 
 template <class F>
 nktype_t getTypeByFp(NkIrTypeCache *cache, ByteArray fp, F const &make_type) {
@@ -22,19 +22,20 @@ nktype_t getTypeByFp(NkIrTypeCache *cache, ByteArray fp, F const &make_type) {
 
     std::lock_guard lk{cache->mtx};
 
-    auto found = cache->fpmap.find(fp);
+    auto found = cache->fpmap.find({nkav_init(fp)});
     if (found) {
         return *found;
     } else {
-        auto copy = nk_arena_alloc_t<uint8_t>(cache->type_arena, fp.size());
-        memcpy(copy, fp.data(), fp.size());
-        return cache->fpmap.insert({copy, fp.size()}, make_type());
+        auto copy = nk_strcpy(nk_arena_getAllocator(cache->type_arena), {nkav_init(fp)});
+        return cache->fpmap.insert(copy, make_type());
     }
 }
 
 template <class T>
 void pushVal(ByteArray &ar, T const v) {
-    memcpy(ar.push(sizeof(v)).data(), &v, sizeof(v));
+    nkar_reserve(&ar, ar.size + sizeof(v));
+    memcpy(ar.data + ar.size, &v, sizeof(v));
+    ar.size += sizeof(v);
 }
 
 } // namespace
@@ -42,9 +43,10 @@ void pushVal(ByteArray &ar, T const v) {
 nktype_t nkir_makeNumericType(NkIrTypeCache *cache, NkIrNumericValueType value_type) {
     auto const kind = NkType_Numeric;
 
-    auto fp = ByteArray::create(nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
-        fp.deinit();
+        nkar_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, value_type);
@@ -65,9 +67,10 @@ nktype_t nkir_makeNumericType(NkIrTypeCache *cache, NkIrNumericValueType value_t
 nktype_t nkir_makePointerType(NkIrTypeCache *cache, nktype_t target_type) {
     auto const kind = NkType_Pointer;
 
-    auto fp = ByteArray::create(nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
-        fp.deinit();
+        nkar_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, target_type->id);
@@ -88,9 +91,10 @@ nktype_t nkir_makePointerType(NkIrTypeCache *cache, nktype_t target_type) {
 nktype_t nkir_makeProcedureType(NkIrTypeCache *cache, NkIrProcInfo proc_info) {
     auto const kind = NkType_Procedure;
 
-    auto fp = ByteArray::create(nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
-        fp.deinit();
+        nkar_free(&fp);
     };
     pushVal(fp, kind);
     for (size_t i = 0; i < proc_info.args_t.size; i++) {
@@ -118,9 +122,10 @@ nktype_t nkir_makeProcedureType(NkIrTypeCache *cache, NkIrProcInfo proc_info) {
 nktype_t nkir_makeArrayType(NkIrTypeCache *cache, nktype_t elem_t, size_t count) {
     auto const kind = NkType_Aggregate;
 
-    auto fp = ByteArray::create(nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
-        fp.deinit();
+        nkar_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, size_t{1});
@@ -150,9 +155,10 @@ nktype_t nkir_makeArrayType(NkIrTypeCache *cache, nktype_t elem_t, size_t count)
 nktype_t nkir_makeVoidType(NkIrTypeCache *cache) {
     auto const kind = NkType_Aggregate;
 
-    auto fp = ByteArray::create(nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
-        fp.deinit();
+        nkar_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, size_t{});
@@ -171,9 +177,10 @@ nktype_t nkir_makeVoidType(NkIrTypeCache *cache) {
 nktype_t nkir_makeAggregateType(NkIrTypeCache *cache, nktype_t const *elem_types, size_t const *elem_counts, size_t n) {
     auto const kind = NkType_Aggregate;
 
-    auto fp = ByteArray::create(nk_arena_getAllocator(cache->tmp_arena));
+    ByteArray fp{};
+    fp.alloc = nk_arena_getAllocator(cache->tmp_arena);
     defer {
-        fp.deinit();
+        nkar_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, n);

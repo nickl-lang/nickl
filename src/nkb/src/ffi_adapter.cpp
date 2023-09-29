@@ -112,7 +112,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
 #ifdef ENABLE_LOGGING
     NK_DEFINE_STATIC_SB(sb, 256);
     nkirt_inspect(type, &sb);
-    NK_LOG_DBG("ffi(type{name=%s id=%" PRIu64 "}) -> %p", nksb_concat(&sb).data, type->id, (void *)ffi_t);
+    NK_LOG_DBG("ffi(type{name=%s id=%" PRIu64 "}) -> %p", sb.data, type->id, (void *)ffi_t);
 #endif // ENABLE_LOGGING
 
     return ffi_t;

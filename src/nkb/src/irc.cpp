@@ -11,6 +11,7 @@
 #include "nk/common/allocator.hpp"
 #include "nk/common/file.h"
 #include "nk/common/logger.h"
+#include "nk/common/string.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/sys/term.h"
@@ -37,9 +38,14 @@ namespace {
 NK_LOG_USE_SCOPE(nkirc);
 
 NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
+    NkStringBuilder sb{};
+    defer {
+        nksb_free(&sb);
+    };
+
     va_list ap;
     va_start(ap, fmt);
-    auto str = string_vformat(fmt, ap);
+    nksb_vprintf(&sb, fmt, ap);
     va_end(ap);
 
     bool const to_color =
@@ -47,11 +53,10 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 
     fprintf(
         stderr,
-        "%serror:%s %.*s\n",
+        "%serror:%s " nkstr_Fmt "\n",
         to_color ? NK_TERM_COLOR_RED : "",
         to_color ? NK_TERM_COLOR_NONE : "",
-        (int)str.size(),
-        str.c_str());
+        nkstr_Arg(sb));
 }
 
 bool compileProgram(NkIrCompiler c, nkstr in_file) {
@@ -59,7 +64,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
 
     auto read_res = nk_readFile(nk_arena_getAllocator(&c->file_arena), in_file);
     if (!read_res.ok) {
-        printError(c, "failed to read file `%.*s`", (int)in_file.size, in_file.data);
+        printError(c, "failed to read file `" nkstr_Fmt "`", nkstr_Arg(in_file));
         return false;
     }
 
@@ -71,7 +76,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         };
         nkir_lex(&lexer, &c->file_arena, &c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
-            printError(c, "%.*s", (int)lexer.error_msg.size, lexer.error_msg.data);
+            printError(c, nkstr_Fmt, nkstr_Arg(lexer.error_msg));
             return false;
         }
     }
@@ -82,19 +87,18 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, lexer.tokens);
+        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, {nkav_init(lexer.tokens)});
         if (!parser.ok) {
-            printError(c, "%.*s", (int)parser.error_msg.size, parser.error_msg.data);
+            printError(c, nkstr_Fmt, nkstr_Arg(parser.error_msg));
             return false;
         }
     }
 
 #ifdef ENABLE_LOGGING
-    NkStringBuilder_T sb{};
-    nksb_init_alloc(&sb, nk_arena_getAllocator(&c->tmp_arena));
+    NkStringBuilder sb{};
+    sb.alloc = nk_arena_getAllocator(&c->tmp_arena);
     nkir_inspectProgram(parser.ir, &sb);
-    auto ir_str = nksb_concat(&sb);
-    NK_LOG_INF("IR:\n%.*s", (int)ir_str.size, ir_str.data);
+    NK_LOG_INF("IR:\n" nkstr_Fmt, nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
 
     c->ir = parser.ir;

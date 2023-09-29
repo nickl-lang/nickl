@@ -38,10 +38,10 @@ protected:
     void test(NklAstNodeArray root) {
         NK_LOG_INF(
             "ast:%s\n", (char const *)[&]() {
-                auto sb = nksb_create();
-                nkl_inspectNode(root.data, sb);
-                return makeDeferrerWithData(nksb_concat(sb).data, [=]() {
-                    nksb_free(sb);
+                NkStringBuilder sb{};
+                nkl_inspectNode(root.data, &sb);
+                return makeDeferrerWithData((char const *)sb.data, [=]() mutable {
+                    nksb_free(&sb);
                 });
             }());
         nkl_compiler_run(m_compiler, root.data);

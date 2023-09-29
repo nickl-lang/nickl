@@ -1,12 +1,12 @@
-#include <cassert>
-#include <cstdint>
-#include <cstdlib>
+#include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/asan_interface.h>
-static constexpr size_t RED_ZONE_SIZE = 16 * 2;
+#define RED_ZONE_SIZE 32ul
 #else
-static constexpr size_t RED_ZONE_SIZE = 0;
+#define RED_ZONE_SIZE 0ull
 #define ASAN_POISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
 #define ASAN_UNPOISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
 #endif
@@ -14,17 +14,15 @@ static constexpr size_t RED_ZONE_SIZE = 0;
 #include "nk/common/allocator.h"
 #include "nk/common/logger.h"
 #include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
+#include "nk/common/utils.h"
 #include "nk/sys/mem.h"
-
-namespace {
 
 NK_LOG_USE_SCOPE(arena);
 
 // TODO Hardcoded arena size
-static constexpr size_t FIXED_ARENA_SIZE = 1 << 24; // 16 Mib
+#define FIXED_ARENA_SIZE ((size_t)(1 << 24)) // 16 Mib
 
-void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align, bool pad = true) {
+static void *allocAlignedRaw(NkArena *arena, size_t size, uint8_t align, bool pad) {
     assert(align && isZeroOrPowerOf2(align) && "invalid alignment");
 
     if (!arena->data) {
@@ -35,12 +33,12 @@ void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align, bool 
         arena->capacity = FIXED_ARENA_SIZE;
     }
 
-    auto mem = arena->data + arena->size;
+    uint8_t *mem = arena->data + arena->size;
     mem += pad * ((align - ((size_t)mem & (align - 1))) & (align - 1));
 
     if (mem + size > arena->data + arena->capacity) {
         NK_LOG_ERR("Out of memory");
-        std::abort();
+        abort();
     } else {
         mem += pad * minu(RED_ZONE_SIZE, arena->data + arena->capacity - mem - size);
     }
@@ -50,10 +48,16 @@ void *nk_arena_allocAlignedRaw(NkArena *arena, size_t size, uint8_t align, bool 
     return mem;
 }
 
-void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t align, void *old_mem, size_t old_size) {
+static void *arenaAllocatorProc(
+    void *data,
+    NkAllocatorMode mode,
+    size_t size,
+    uint8_t align,
+    void *old_mem,
+    size_t old_size) {
     (void)old_mem;
 
-    auto arena = (NkArena *)data;
+    NkArena *arena = (NkArena *)data;
 
 #ifdef ENABLE_LOGGING
     switch (mode) {
@@ -75,56 +79,52 @@ void *arenaAllocatorProc(void *data, NkAllocatorMode mode, size_t size, uint8_t 
 
     switch (mode) {
     case NkAllocator_Alloc:
-        return nk_arena_allocAlignedRaw(arena, size, align);
+        return allocAlignedRaw(arena, size, align, true);
 
     case NkAllocator_Free:
         assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
         assert(((size_t)old_mem & (align - 1)) == 0 && "invalid alignment");
-        assert((old_size & (align - 1)) == 0 && "invalid alignment");
 
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_pop(arena, old_size);
         }
-        return nullptr;
+        return NULL;
 
     case NkAllocator_Realloc:
         assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
         assert(((size_t)old_mem & (align - 1)) == 0 && "invalid alignment");
-        assert((old_size & (align - 1)) == 0 && "invalid alignment");
 
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_pop(arena, old_size);
-            return nk_arena_allocAlignedRaw(arena, size, align, false);
+            return allocAlignedRaw(arena, size, align, false);
         } else {
-            auto new_mem = nk_arena_allocAlignedRaw(arena, size, align);
+            void *new_mem = allocAlignedRaw(arena, size, align, true);
             memcpy(new_mem, old_mem, old_size);
             return new_mem;
         }
 
     case NkAllocator_QuerySpaceLeft:
-        *(NkAllocatorSpaceLeftQueryResult *)old_mem = {
+        *(NkAllocatorSpaceLeftQueryResult *)old_mem = (NkAllocatorSpaceLeftQueryResult){
             .kind = NkAllocatorSpaceLeft_Limited,
             .bytes_left = (arena->data ? arena->capacity : FIXED_ARENA_SIZE) - arena->size,
         };
-        return nullptr;
+        return NULL;
 
     default:
         assert(!"unreachable");
-        return nullptr;
+        return NULL;
     }
 }
 
-} // namespace
-
 NkAllocator nk_arena_getAllocator(NkArena *arena) {
-    return {
+    return (NkAllocator){
         .data = arena,
         .proc = arenaAllocatorProc,
     };
 }
 
 void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align) {
-    return nk_arena_allocAlignedRaw(arena, size, align);
+    return allocAlignedRaw(arena, size, align, true);
 }
 
 void nk_arena_pop(NkArena *arena, size_t size) {
@@ -137,5 +137,5 @@ void nk_arena_free(NkArena *arena) {
         NK_LOG_TRC("arena=%p vfree(%p, %" PRIu64 ")", (void *)arena, (void *)arena->data, FIXED_ARENA_SIZE);
         nk_vfree(arena->data, FIXED_ARENA_SIZE);
     }
-    *arena = {};
+    *arena = (NkArena){0};
 }

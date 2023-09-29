@@ -35,7 +35,7 @@ NkOpCode s_ir2opcode[] = {
 };
 
 #ifdef ENABLE_LOGGING
-void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder sb) {
+void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder *sb) {
     auto _inspectArg = [&](NkBcRef const &arg) {
         if (arg.is_indirect) {
             nksb_printf(sb, "[");
@@ -306,10 +306,10 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     NK_LOG_INF(
         "bytecode:\n%s", (char const *)[&]() {
-            auto sb = nksb_create();
-            _inspect(instrs, sb);
-            return makeDeferrerWithData(nksb_concat(sb).data, [sb]() {
-                nksb_free(sb);
+            NkStringBuilder sb{};
+            _inspect(instrs, &sb);
+            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+                nksb_free(&sb);
             });
         }());
 

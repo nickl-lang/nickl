@@ -127,8 +127,8 @@ typedef struct NkIrType {
     uint64_t id;
 } NkIrType;
 
-void nkirt_inspect(nktype_t type, NkStringBuilder sb);
-void nkirv_inspect(void *data, nktype_t type, NkStringBuilder sb);
+void nkirt_inspect(nktype_t type, NkStringBuilder *sb);
+void nkirv_inspect(void *data, nktype_t type, NkStringBuilder *sb);
 
 typedef struct {
     NkIrAggregateElemInfoArray info_ar;

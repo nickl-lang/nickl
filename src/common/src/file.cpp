@@ -3,7 +3,6 @@
 #include <fstream>
 
 #include "nk/common/allocator.hpp"
-#include "nk/common/array.hpp"
 #include "nk/common/string.hpp"
 
 NkReadFileResult nk_readFile(NkAllocator alloc, nkstr path) {

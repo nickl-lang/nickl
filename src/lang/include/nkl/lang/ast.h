@@ -1,10 +1,10 @@
 #ifndef HEADER_GUARD_NKL_LANG_AST
 #define HEADER_GUARD_NKL_LANG_AST
 
-#include "nk/common/common.h"
 #include "nk/common/id.h"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.h"
+#include "nk/sys/common.h"
 #include "nkl/lang/token.h"
 
 #ifdef __cplusplus
@@ -46,7 +46,7 @@ NklAstNode_T nkl_makeNode3(
 NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
 NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
 
-void nkl_inspectNode(NklAstNode root, NkStringBuilder sb);
+void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb);
 
 #define nargs0(NODE) ((NODE)->args[0])
 #define nargs1(NODE) ((NODE)->args[1])

@@ -7,8 +7,8 @@ namespace {
 
 struct Context {
     NkArena string_arena{};
-    NkHashMap<NkString, nkid> str2id{};
-    NkHashMap<nkid, NkString> id2str{};
+    NkHashMap<nkstr, nkid> str2id{};
+    NkHashMap<nkid, nkstr> id2str{};
     nkid next_id = 1000;
 
     ~Context() {
@@ -23,7 +23,7 @@ struct Context {
 
 nkstr nkid2s(nkid id) {
     auto found = ctx.id2str.find(id);
-    return found ? nkstr{found->data(), found->size()} : nkstr{};
+    return found ? *found : nkstr{};
 }
 
 char const *nkid2cs(nkid id) {
@@ -31,7 +31,7 @@ char const *nkid2cs(nkid id) {
 }
 
 nkid s2nkid(nkstr str) {
-    auto found = ctx.str2id.find(nk_mkstring(str));
+    auto found = ctx.str2id.find(str);
 
     if (found) {
         return *found;
@@ -47,7 +47,7 @@ nkid cs2nkid(char const *str) {
 }
 
 void nkid_define(nkid id, nkstr str) {
-    auto const str_copy = nk_mkstring(nk_strcpy(nk_arena_getAllocator(&ctx.string_arena), str));
+    auto const str_copy = nk_strcpy(nk_arena_getAllocator(&ctx.string_arena), str);
     ctx.str2id.insert(str_copy, id);
     ctx.id2str.insert(id, str_copy);
 }

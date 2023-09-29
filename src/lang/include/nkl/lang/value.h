@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nk/common/common.h"
 #include "nk/common/id.h"
+#include "nk/sys/common.h"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
 
@@ -127,8 +127,8 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields);
 nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields);
 nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields);
 
-void nklt_inspect(nkltype_t type, NkStringBuilder sb);
-void nklval_inspect(nklval_t val, NkStringBuilder sb);
+void nklt_inspect(nkltype_t type, NkStringBuilder *sb);
+void nklval_inspect(nklval_t val, NkStringBuilder *sb);
 
 size_t nklt_struct_index(nkltype_t type, nkid name);
 

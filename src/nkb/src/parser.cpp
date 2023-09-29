@@ -4,7 +4,7 @@
 #include <cstring>
 #include <new>
 
-#include "nk/common/array.hpp"
+#include "nk/common/array.h"
 #include "nk/common/hash_map.hpp"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
@@ -29,7 +29,7 @@ NK_LOG_USE_SCOPE(parser);
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
-#define APPEND(AR, VAL) CHECK(AR.emplace(VAL))
+#define APPEND(AR, VAL) CHECK(nkar_append((AR), (VAL)))
 #define EXPECT(ID) CHECK(expect(ID))
 
 #define SCNf32 "f"
@@ -40,7 +40,7 @@ static constexpr char const *c_entry_point_name = "main";
 struct GeneratorState {
     NkIrProg &m_ir;
     NkIrProc &m_entry_point;
-    NkSlice<NkIrToken> const m_tokens;
+    NkIrTokenView const m_tokens;
 
     NkIrTypeCache *m_types;
 
@@ -99,8 +99,8 @@ struct GeneratorState {
     Void generate() {
         m_decls = decltype(m_decls)::create(m_parse_alloc);
 
-        assert(m_tokens.size() && m_tokens.back().id == t_eof && "ill-formed token stream");
-        m_cur_token = &m_tokens[0];
+        assert(m_tokens.size && nkar_last(m_tokens).id == t_eof && "ill-formed token stream");
+        m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
             while (accept(t_newline)) {
@@ -117,8 +117,8 @@ struct GeneratorState {
                              nkir_makeProcedureType(
                                  m_types,
                                  {
-                                     .args_t{sig.args_t.data(), sig.args_t.size()},
-                                     .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                                     .args_t{nkav_init(sig.args_t)},
+                                     .ret_t{nkav_init(sig.ret_t)},
                                      .call_conv = NkCallConv_Cdecl,
                                      .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                                  }))},
@@ -139,8 +139,8 @@ struct GeneratorState {
                         nkir_makeProcedureType(
                             m_types,
                             {
-                                .args_t{sig.args_t.data(), sig.args_t.size()},
-                                .ret_t{sig.ret_t.data(), sig.ret_t.size()},
+                                .args_t{nkav_init(sig.args_t)},
+                                .ret_t{nkav_init(sig.ret_t)},
                                 .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                             }));
@@ -155,8 +155,8 @@ struct GeneratorState {
                     };
                     m_cur_proc = &decl->as.proc;
 
-                    for (size_t i = 0; i < sig.args_t.size(); i++) {
-                        new (makeLocalDecl(sig.arg_names[i])) Decl{
+                    for (size_t i = 0; i < sig.args_t.size; i++) {
+                        new (makeLocalDecl(sig.arg_names.data[i])) Decl{
                             {.arg_index = i},
                             Decl_Arg,
                         };
@@ -222,7 +222,7 @@ struct GeneratorState {
                     };
                 }
             } else {
-                return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), Void{};
+                return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), Void{};
             }
 
             EXPECT(t_newline);
@@ -262,7 +262,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }
-        NK_LOG_DBG("accept(id, \"%.*s\")", (int)m_cur_token->text.size, m_cur_token->text.data);
+        NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -309,16 +309,16 @@ private:
         auto const len = m_cur_token->text.size - 2;
         getToken();
 
-        NkStringBuilder_T sb{};
-        nksb_init_alloc(&sb, alloc);
+        NkStringBuilder sb{};
+        sb.alloc = alloc;
         nksb_str_unescape(&sb, {data, len});
-        return nksb_concat(&sb);
+        return {nkav_init(sb)};
     }
 
     struct ProcSignatureParseResult {
-        NkArray<nkid> arg_names;
-        NkArray<nktype_t> args_t;
-        NkArray<nktype_t> ret_t;
+        nkar_type(nkid) arg_names;
+        nkar_type(nktype_t) args_t;
+        nkar_type(nktype_t) ret_t;
         nkstr name{};
         bool is_variadic{};
         bool is_extern{};
@@ -327,9 +327,9 @@ private:
 
     ProcSignatureParseResult parseProcSignature() {
         ProcSignatureParseResult res{
-            .arg_names = NkArray<nkid>::create(m_parse_alloc),
-            .args_t = NkArray<nktype_t>::create(m_file_alloc),
-            .ret_t = NkArray<nktype_t>::create(m_file_alloc),
+            .arg_names{0, 0, 0, m_parse_alloc},
+            .args_t{0, 0, 0, m_file_alloc},
+            .ret_t{0, 0, 0, m_file_alloc},
         };
         EXPECT(t_proc);
         if (accept(t_extern)) {
@@ -355,11 +355,11 @@ private:
                 EXPECT(t_colon);
             }
             DEFINE(type, parseType());
-            res.args_t.emplace(type);
-            res.arg_names.emplace(name);
+            nkar_append(&res.args_t, type);
+            nkar_append(&res.arg_names, name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        APPEND(res.ret_t, parseType());
+        APPEND(&res.ret_t, parseType());
         return res;
     }
 
@@ -395,7 +395,7 @@ private:
             auto name = s2nkid(token->text);
             auto found = m_decls.find(name);
             if (!found) {
-                return error("undeclared identifier `%.*s`", (int)token->text.size, token->text.data), nullptr;
+                return error("undeclared identifier `" nkstr_Fmt "`", nkstr_Arg(token->text)), nullptr;
             } else if ((*found)->kind != Decl_Type) {
                 return error("type expected"), nullptr;
             }
@@ -403,8 +403,9 @@ private:
         }
 
         else if (accept(t_brace_l)) {
-            auto types = NkArray<nktype_t>::create(m_tmp_alloc);
-            auto counts = NkArray<size_t>::create(m_tmp_alloc);
+            nkar_type(nktype_t) types{0, 0, 0, m_tmp_alloc};
+            nkar_type(size_t) counts{0, 0, 0, m_tmp_alloc};
+
             do {
                 if (check(t_par_r) || check(t_eof)) {
                     break;
@@ -413,15 +414,15 @@ private:
                     if (!check(t_int)) {
                         return error("integer constant expected"), nullptr;
                     }
-                    APPEND(counts, (size_t)parseInt());
+                    APPEND(&counts, (size_t)parseInt());
                     EXPECT(t_bracket_r);
                 } else {
-                    counts.emplace(1ull);
+                    nkar_append(&counts, 1ull);
                 }
-                APPEND(types, parseType());
+                APPEND(&types, parseType());
             } while (accept(t_comma));
             EXPECT(t_brace_r);
-            return nkir_makeAggregateType(m_types, types.data(), counts.data(), types.size());
+            return nkir_makeAggregateType(m_types, types.data, counts.data, types.size);
         }
 
         else if (accept(t_aster)) {
@@ -430,7 +431,7 @@ private:
         }
 
         else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), nullptr;
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), nullptr;
         }
     }
 
@@ -517,13 +518,12 @@ private:
     }
 #include "nkb/ir.inl"
             else {
-                return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data),
-                       NkIrInstr{};
+                return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrInstr{};
             }
         }
 
         else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrInstr{};
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrInstr{};
         }
     }
 
@@ -636,7 +636,7 @@ private:
             auto const name = s2nkid(token->text);
             auto decl = resolve(name);
             if (!decl) {
-                return error("undeclared identifier `%.*s`", (int)token->text.size, token->text.data), NkIrRef{};
+                return error("undeclared identifier `" nkstr_Fmt "`", nkstr_Arg(token->text)), NkIrRef{};
             }
             switch (decl->kind) {
             case Decl_Arg:
@@ -698,7 +698,7 @@ private:
         }
 
         else {
-            return error("unexpected token `%.*s`", (int)m_cur_token->text.size, m_cur_token->text.data), NkIrRef{};
+            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrRef{};
         }
 
         if (accept(t_plus)) {
@@ -768,16 +768,16 @@ private:
     }
 
     NkIrRefArray parseRefArray() {
-        auto refs = NkArray<NkIrRef>::create(m_tmp_alloc);
+        nkar_type(NkIrRef) refs{0, 0, 0, m_tmp_alloc};
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
                 break;
             }
-            APPEND(refs, parseRef());
+            APPEND(&refs, parseRef());
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        return {refs.data(), refs.size()};
+        return {nkav_init(refs)};
     }
 
     void getToken() {
@@ -801,8 +801,7 @@ private:
 
     void expect(ETokenId id) {
         if (!accept(id)) {
-            return error(
-                "expected `%s` before `%.*s`", s_token_text[id], (int)m_cur_token->text.size, m_cur_token->text.data);
+            return error("expected `%s` before `" nkstr_Fmt "`", s_token_text[id], nkstr_Arg(m_cur_token->text));
         }
     }
 
@@ -811,10 +810,10 @@ private:
 
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder_T sb{};
-        nksb_init_alloc(&sb, m_tmp_alloc);
+        NkStringBuilder sb{};
+        sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = nksb_concat(&sb);
+        m_error_msg = {nkav_init(sb)};
         va_end(ap);
 
         m_error_occurred = true;
@@ -828,7 +827,7 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
-    NkSlice<NkIrToken> tokens) {
+    NkIrTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
     auto file_alloc = nk_arena_getAllocator(file_arena);
