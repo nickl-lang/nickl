@@ -18,7 +18,10 @@
 
 #define nkav_typedef(T, Name) typedef nkav_type(T) Name
 
-#define nkav_init(obj) .data = (obj).data, .size = (obj).size,
+#define nkav_init(obj) .data = (obj).data, .size = (obj).size
+
+#define nkav_begin(av) ((av)->data)
+#define nkav_end(av) ((av)->data + (av)->size)
 
 #define nkar_type(T)       \
     struct {               \
@@ -58,12 +61,12 @@
         (ar)->data[(ar)->size++] = (item);  \
     } while (0)
 
-#define _nkar_append_many(ar, items, count)                                     \
-    do {                                                                        \
-        size_t _count = (count);                                                \
-        nkar_reserve(ar, (ar)->size + _count);                                  \
-        memcpy((ar)->data + (ar)->size, (items), _count * sizeof(*(ar)->data)); \
-        (ar)->size += _count;                                                   \
+#define _nkar_append_many(ar, items, count)                          \
+    do {                                                             \
+        size_t _count = (count);                                     \
+        nkar_reserve(ar, (ar)->size + _count);                       \
+        memcpy(nkav_end(ar), (items), _count * sizeof(*(ar)->data)); \
+        (ar)->size += _count;                                        \
     } while (0)
 
 #define _nkar_free(ar)                                                                                  \
@@ -129,13 +132,12 @@ void nkar_clear(TAr *ar) {
 
 template <class TAr>
 struct _nk_iterate_wrapper {
-    TAr _ar;
-    using pointer = decltype(TAr::data);
-    pointer begin() {
-        return _ar.data;
+    TAr const &_ar;
+    auto begin() {
+        return nkav_begin(&_ar);
     }
-    pointer end() {
-        return _ar.data + _ar.size;
+    auto end() {
+        return nkav_end(&_ar);
     }
 };
 

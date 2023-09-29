@@ -6,7 +6,7 @@
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.h"
 #include "nk/vm/ir_compile.h"
-#include "pipe_stream.hpp"
+#include "pipe_stream.h"
 #include "translate_to_c.hpp"
 
 namespace {
@@ -15,7 +15,7 @@ NK_LOG_USE_SCOPE(cc_adapter);
 
 } // namespace
 
-std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
+nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     EASY_FUNCTION(::profiler::colors::Amber200);
     NK_LOG_TRC("%s", __func__);
 
@@ -36,7 +36,7 @@ std::ostream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
     return nk_pipe_streamWrite({nkav_init(sb)}, conf.quiet);
 }
 
-bool nkcc_streamClose(std::ostream const &stream) {
+int nkcc_streamClose(nk_stream stream) {
     EASY_FUNCTION(::profiler::colors::Amber200);
     NK_LOG_TRC("%s", __func__);
 

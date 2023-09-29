@@ -624,7 +624,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
 } // namespace
 
-void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
+void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src) {
     EASY_FUNCTION(::profiler::colors::Amber200);
     NK_LOG_TRC("%s", __func__);
 
@@ -656,8 +656,12 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, std::ostream &src) {
         _translateFunction(ctx, fn);
     }
 
-    src << types_s.str() << "\n"   //
-        << data_s.str() << "\n"    //
-        << forward_s.str() << "\n" //
-        << main_s.str();           //
+    nk_stream_printf(
+        src,
+        "%s\n%s\n%s\n%s",
+        types_s.str().c_str(),   //
+        data_s.str().c_str(),    //
+        forward_s.str().c_str(), //
+        main_s.str().c_str()     //
+    );
 }

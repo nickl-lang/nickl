@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "nk/common/stream.h"
 #include "nk/common/utils.h"
 #include "stb/sprintf.h"
 
@@ -41,7 +42,7 @@ static char *sprintfCallback(const char *buf, void *user, int len) {
     }
 
     size_t const alloc_size = minu(len, sb->capacity - sb->size);
-    memcpy(sb->data + sb->size, buf, alloc_size);
+    memcpy(nkav_end(sb), buf, alloc_size);
     return alloc_size < (size_t)len ? NULL : context->buf;
 }
 
@@ -135,12 +136,30 @@ void nksb_str_unescape(NkStringBuilder *sb, nkstr str) {
     }
 }
 
-static size_t nksb_ostreamProc(void *s, char const *buf, size_t size) {
-    NkStringBuilder *sb = (NkStringBuilder *)s;
-    nksb_append_many(sb, buf, size);
-    return size;
+static int nksb_streamProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
+    if (mode == nk_stream_mode_write) {
+        NkStringBuilder *sb = (NkStringBuilder *)stream_data;
+        nksb_append_many(sb, buf, size);
+        return size;
+    } else {
+        return -1;
+    }
 }
 
-nk_ostream nksb_getStream(NkStringBuilder *sb) {
-    return (nk_ostream){sb, nksb_ostreamProc};
+nk_stream nksb_getStream(NkStringBuilder *sb) {
+    return (nk_stream){sb, nksb_streamProc};
+}
+
+#define NKSB_STREAM_BUF_SIZE 1024
+
+void nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
+    for (;;) {
+        nksb_reserve(sb, sb->capacity + NKSB_STREAM_BUF_SIZE);
+        int res = nk_stream_read(in, nkav_end(sb), NKSB_STREAM_BUF_SIZE);
+        if (res > 0) {
+            sb->size += res;
+        } else {
+            break;
+        }
+    }
 }

@@ -7,7 +7,7 @@ add_library(${LIB}
     src/interp.cpp
     src/ir.cpp
     src/native_fn_adapter.cpp
-    src/pipe_stream.cpp
+    src/pipe_stream.c
     src/translate_to_c.cpp
     src/value.cpp
     )

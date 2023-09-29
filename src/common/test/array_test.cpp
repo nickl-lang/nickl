@@ -19,13 +19,8 @@ class array : public testing::Test {
     }
 };
 
-nkar_typedef(uint8_t, nkar_uint8_t);
-nkar_typedef(uint16_t, nkar_uint16_t);
-nkar_typedef(int, nkar_int);
-nkar_typedef(char, nkar_char);
-
 TEST_F(array, init) {
-    nkar_uint8_t ar{};
+    nkar_type(uint8_t) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -38,7 +33,7 @@ TEST_F(array, init) {
 }
 
 TEST_F(array, basic) {
-    nkar_uint16_t ar{};
+    nkar_type(uint16_t) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -61,7 +56,7 @@ TEST_F(array, basic) {
 }
 
 TEST_F(array, capacity) {
-    nkar_uint8_t ar{};
+    nkar_type(uint8_t) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -73,7 +68,7 @@ TEST_F(array, capacity) {
 }
 
 TEST_F(array, zero_capacity) {
-    nkar_uint8_t ar{};
+    nkar_type(uint8_t) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -92,7 +87,7 @@ TEST_F(array, zero_capacity) {
 }
 
 TEST_F(array, zero_init) {
-    nkar_uint8_t ar{};
+    nkar_type(uint8_t) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -105,7 +100,7 @@ TEST_F(array, zero_init) {
 }
 
 TEST_F(array, append) {
-    nkar_char ar{};
+    nkar_type(char) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -119,7 +114,7 @@ TEST_F(array, append) {
 }
 
 TEST_F(array, multiple_reserves) {
-    nkar_int ar{};
+    nkar_type(int) ar{};
     defer {
         nkar_free(&ar);
     };
