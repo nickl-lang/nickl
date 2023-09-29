@@ -64,13 +64,13 @@ API:
 ====
 int stbsp_sprintf( char * buf, char const * fmt, ... )
 int stbsp_snprintf( char * buf, int count, char const * fmt, ... )
-  Convert an arg list into a buffer.  stbsp_snprintf always returns
-  a zero-terminated string (unlike regular snprintf).
+  Convert an arg list into a buffer.
+  EDITED: stbsp_snprintf returns non-zero-terminated strings.
 
 int stbsp_vsprintf( char * buf, char const * fmt, va_list va )
 int stbsp_vsnprintf( char * buf, int count, char const * fmt, va_list va )
-  Convert a va_list arg list into a buffer.  stbsp_vsnprintf always returns
-  a zero-terminated string (unlike regular snprintf).
+  Convert a va_list arg list into a buffer.
+  EDITED: stbsp_vsnprintf returns non-zero-terminated strings.
 
 int stbsp_vsprintfcb( STBSP_SPRINTFCB * callback, void * user, char * buf, char const * fmt, va_list va )
     typedef char * STBSP_SPRINTFCB( char const * buf, void * user, int len );
@@ -591,7 +591,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
             s = (char *)"null";
          // get the length, limited to desired precision
          // always limit to ~0u chars since our counts are 32b
-         l = stbsp__strlen_limited(s, (pr >= 0) ? pr : ~0u);
+         l = stbsp__strlen_limited(s, (pr >= 0) ? (stbsp__uint32)pr : ~0u);
          lead[0] = 0;
          tail[0] = 0;
          pr = 0;
@@ -1439,19 +1439,11 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE( vsnprintf )( char * buf, int count, c
    }
    else
    {
-      int l;
-
       c.buf = buf;
       c.count = count;
       c.length = 0;
 
       STB_SPRINTF_DECORATE( vsprintfcb )( stbsp__clamp_callback, &c, stbsp__clamp_callback(0,&c,0), fmt, va );
-
-      // zero-terminate
-      l = (int)( c.buf - buf );
-      if ( l >= count ) // should never be greater, only equal (or less) than count
-         l = count - 1;
-      buf[l] = 0;
    }
 
    return c.length;
