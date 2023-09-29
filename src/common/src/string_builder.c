@@ -19,7 +19,7 @@ int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
 
 struct SprintfCallbackContext {
     NkStringBuilder *sb;
-    char* buf;
+    char *buf;
 };
 
 static char *sprintfCallback(const char *buf, void *user, int len) {
@@ -135,11 +135,10 @@ void nksb_str_unescape(NkStringBuilder *sb, nkstr str) {
     }
 }
 
-static nk_stream_buf nksb_ostreamProc(void *s, size_t size) {
+static size_t nksb_ostreamProc(void *s, char const *buf, size_t size) {
     NkStringBuilder *sb = (NkStringBuilder *)s;
-    nksb_reserve(sb, sb->capacity + size);
-    sb->size += size;
-    return (nk_stream_buf){sb->data + sb->size - size, size};
+    nksb_append_many(sb, buf, size);
+    return size;
 }
 
 nk_ostream nksb_getStream(NkStringBuilder *sb) {

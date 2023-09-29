@@ -10,13 +10,8 @@
 extern "C" {
 #endif
 
-typedef struct {
-    char *data;
-    size_t size;
-} nk_stream_buf;
-
-typedef size_t (*nk_istream_proc)(void *s, nk_stream_buf buf);
-typedef nk_stream_buf (*nk_ostream_proc)(void *s, size_t size);
+typedef size_t (*nk_istream_proc)(void *istream_data, char *buf, size_t size);
+typedef size_t (*nk_ostream_proc)(void *ostream_data, char const *buf, size_t size);
 
 typedef struct {
     void *data;
@@ -28,9 +23,8 @@ typedef struct {
     nk_istream_proc proc;
 } nk_istream;
 
-int nk_stream_vprintf(nk_ostream s, char const *fmt, va_list ap);
-
-NK_PRINTF_LIKE(2, 3) int nk_stream_printf(nk_ostream s, char const *fmt, ...);
+int nk_stream_vprintf(nk_ostream ostream, char const *fmt, va_list ap);
+NK_PRINTF_LIKE(2, 3) int nk_stream_printf(nk_ostream ostream, char const *fmt, ...);
 
 #ifdef __cplusplus
 }
