@@ -1,5 +1,7 @@
 #include "nk/common/stream.h"
 
+#include <string.h>
+
 #include "stb/sprintf.h"
 
 int nk_stream_printf(nk_ostream s, char const *fmt, ...) {
@@ -11,22 +13,20 @@ int nk_stream_printf(nk_ostream s, char const *fmt, ...) {
     return res;
 }
 
+struct SprintfCallbackContext {
+    nk_ostream stream;
+    char *buf;
+};
+
+static char *sprintfCallback(const char *buf, void *user, int len) {
+    struct SprintfCallbackContext *context = user;
+    nk_stream_buf dst = context->stream.proc(context->stream.data, len);
+    memcpy(dst.data, buf, minu(dst.size, len));
+    return dst.size < (size_t)len ? NULL : context->buf;
+}
+
 int nk_stream_vprintf(nk_ostream s, char const *fmt, va_list ap) {
-    va_list ap_copy;
-
-    va_copy(ap_copy, ap);
-    int const printf_res = stbsp_vsnprintf(NULL, 0, fmt, ap_copy);
-    va_end(ap_copy);
-
-    if (printf_res < 0) {
-        return printf_res;
-    }
-
-    nk_stream_buf buf = s.proc(s.data, printf_res);
-
-    va_copy(ap_copy, ap);
-    stbsp_vsnprintf(buf.data, buf.size, fmt, ap_copy);
-    va_end(ap_copy);
-
-    return printf_res;
+    char buf[STB_SPRINTF_MIN];
+    struct SprintfCallbackContext context = {s, buf};
+    return stbsp_vsprintfcb(sprintfCallback, &context, context.buf, fmt, ap);
 }

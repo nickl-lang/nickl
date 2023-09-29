@@ -1,6 +1,7 @@
 #include "nk/common/string_builder.h"
 
 #include <ctype.h>
+#include <string.h>
 
 #include "nk/common/utils.h"
 #include "stb/sprintf.h"
@@ -16,21 +17,17 @@ int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
 
 #define NKSB_INIT_CAP 1000
 
-int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
-    va_list ap_copy;
+struct SprintfCallbackContext {
+    NkStringBuilder *sb;
+    char* buf;
+};
 
-    va_copy(ap_copy, ap);
-    int const printf_res = stbsp_vsnprintf(NULL, 0, fmt, ap_copy);
-    va_end(ap_copy);
+static char *sprintfCallback(const char *buf, void *user, int len) {
+    struct SprintfCallbackContext *context = user;
+    NkStringBuilder *sb = context->sb;
 
-    if (printf_res < 0) {
-        return printf_res;
-    }
-
-    size_t const required_size = printf_res;
-
-    if (sb->size + required_size > sb->capacity) {
-        size_t new_capacity = ceilToPowerOf2(maxu(sb->size + required_size, NKSB_INIT_CAP));
+    if (sb->size + len > sb->capacity) {
+        size_t new_capacity = ceilToPowerOf2(maxu(sb->size + len, NKSB_INIT_CAP));
 
         NkAllocator const alloc = sb->alloc.proc ? sb->alloc : nk_default_allocator;
         NkAllocatorSpaceLeftQueryResult query_res = {0};
@@ -43,13 +40,16 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
         nkar_maybe_grow(sb, new_capacity);
     }
 
-    size_t const alloc_size = minu(required_size, sb->capacity - sb->size);
-    va_copy(ap_copy, ap);
-    stbsp_vsnprintf(sb->data + sb->size, alloc_size, fmt, ap_copy);
-    va_end(ap_copy);
+    size_t const alloc_size = minu(len, sb->capacity - sb->size);
+    memcpy(sb->data + sb->size, buf, alloc_size);
+    return alloc_size < (size_t)len ? NULL : context->buf;
+}
 
-    sb->size += alloc_size;
-
+int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
+    char buf[STB_SPRINTF_MIN];
+    struct SprintfCallbackContext context = {sb, buf};
+    int const printf_res = stbsp_vsprintfcb(sprintfCallback, &context, context.buf, fmt, ap);
+    sb->size += printf_res;
     return printf_res;
 }
 
