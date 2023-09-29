@@ -4,6 +4,7 @@ add_library(nk_common
     src/file.cpp
     src/id.cpp
     src/logger.cpp
+    src/pipe_stream.c
     src/stream.c
     src/string_builder.c
     src/utils.c

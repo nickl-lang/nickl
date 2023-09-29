@@ -29,8 +29,8 @@ NK_INLINE int nk_stream_write(nk_stream out, char const *buf, size_t size) {
     return out.proc(out.data, (char *)buf, size, nk_stream_mode_write);
 }
 
-int nk_stream_vprintf(nk_stream out, char const *fmt, va_list ap);
 NK_PRINTF_LIKE(2, 3) int nk_stream_printf(nk_stream out, char const *fmt, ...);
+int nk_stream_vprintf(nk_stream out, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }

@@ -1,12 +1,12 @@
 #include "cc_adapter.hpp"
 
 #include "nk/common/logger.h"
+#include "nk/common/pipe_stream.h"
 #include "nk/common/profiler.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.h"
 #include "nk/vm/ir_compile.h"
-#include "pipe_stream.h"
 #include "translate_to_c.hpp"
 
 namespace {
