@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "nk/common/string.h"
+
 nkpipe_t nk_createPipe(void) {
     nkpipe_t pip = {-1, -1};
 
@@ -22,37 +24,40 @@ nkpipe_t nk_createPipe(void) {
     return pip;
 }
 
-#define MAX_ARGS 32
-#define CMD_BUF_SIZE 4096
+#define MAX_ARGS 31
+#define CMD_BUF_SIZE 4095
 
 int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
-    char cmd_buf[CMD_BUF_SIZE];
+    char cmd_buf[CMD_BUF_SIZE + 1];
     size_t cmd_buf_pos = 0;
 
     char *args[MAX_ARGS + 1];
     size_t argc = 0;
 
-    char *arg = cmd_buf;
-    for (char const *pc = cmd;; pc++) {
-        if (cmd_buf_pos == CMD_BUF_SIZE) {
+    nkstr cmd_str = nk_mkstr(cmd);
+    for (;;) {
+        cmd_str = nks_trim_left(cmd_str);
+        if (!cmd_str.size) {
+            break;
+        }
+
+        if (argc == MAX_ARGS) {
             errno = E2BIG;
             return -1;
         }
-        // TODO Concatenate consecutive spaces
-        if (*pc && *pc != ' ') {
-            cmd_buf[cmd_buf_pos++] = *pc;
-        } else {
-            cmd_buf[cmd_buf_pos++] = '\0';
-            if (argc == MAX_ARGS) {
+        args[argc++] = &cmd_buf[cmd_buf_pos];
+
+        nkstr arg = nks_chop_by_delim(&cmd_str, ' ');
+        while (arg.size) {
+            if (cmd_buf_pos == CMD_BUF_SIZE) {
                 errno = E2BIG;
                 return -1;
             }
-            args[argc++] = arg;
-            arg = &cmd_buf[cmd_buf_pos];
-            if (!*pc) {
-                break;
-            }
+            cmd_buf[cmd_buf_pos++] = nkav_first(arg);
+            arg.size--;
+            arg.data++;
         }
+        cmd_buf[cmd_buf_pos++] = '\0';
     }
     args[argc++] = NULL;
 
