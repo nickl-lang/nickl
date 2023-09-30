@@ -1,4 +1,13 @@
+string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
+
 add_library(nk_common
+    src/sys/${PLATFORM_DIR}/app.cpp
+    src/sys/${PLATFORM_DIR}/error.c
+    src/sys/${PLATFORM_DIR}/file.c
+    src/sys/${PLATFORM_DIR}/mem.c
+    src/sys/${PLATFORM_DIR}/process.c
+    src/sys/${PLATFORM_DIR}/term.c
+    src/sys/${PLATFORM_DIR}/time.c
     src/allocator.c
     src/arena.c
     src/file.cpp
@@ -24,7 +33,6 @@ target_include_directories(nk_common
 
 target_link_libraries(nk_common
     PRIVATE stb
-    PUBLIC nk_sys
     )
 
 if(ENABLE_PROFILING)
