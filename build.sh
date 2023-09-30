@@ -36,6 +36,8 @@ if [ -f /.dockerenv ]; then
             $EXTRA_CMAKE_ARGS
     fi
 
+    export CTEST_PARALLEL_LEVEL=$(nproc)
+
     ninja -C $BIN_DIR "$@"
 else
     $PROJ_ROOT/etc/buildenv/run-docker.sh $DIR/build.sh "$@"
