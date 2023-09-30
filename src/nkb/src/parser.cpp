@@ -99,7 +99,7 @@ struct GeneratorState {
     Void generate() {
         m_decls = decltype(m_decls)::create(m_parse_alloc);
 
-        assert(m_tokens.size && nkar_last(m_tokens).id == t_eof && "ill-formed token stream");
+        assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {

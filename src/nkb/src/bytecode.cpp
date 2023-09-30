@@ -387,7 +387,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             }
 
             nkar_append(&bc_proc.instrs, NkBcInstr{});
-            auto &instr = nkar_last(bc_proc.instrs);
+            auto &instr = nkav_last(bc_proc.instrs);
             instr.code = code;
             for (size_t ai = 0; ai < 3; ai++) {
                 translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai]);

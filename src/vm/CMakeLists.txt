@@ -7,7 +7,6 @@ add_library(${LIB}
     src/interp.cpp
     src/ir.cpp
     src/native_fn_adapter.cpp
-    src/pipe_stream.cpp
     src/translate_to_c.cpp
     src/value.cpp
     )
@@ -18,7 +17,6 @@ target_include_directories(${LIB}
 
 target_link_libraries(${LIB}
     PUBLIC nk_common
-    PRIVATE nk_sys
     PRIVATE Ffi
     PRIVATE Dl
     )

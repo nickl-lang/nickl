@@ -1,8 +1,11 @@
 #include "nk/common/string_builder.h"
 
 #include <ctype.h>
+#include <string.h>
 
+#include "nk/common/stream.h"
 #include "nk/common/utils.h"
+#include "stb/sprintf.h"
 
 int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
     va_list ap;
@@ -15,40 +18,23 @@ int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
 
 #define NKSB_INIT_CAP 1000
 
+struct SprintfCallbackContext {
+    NkStringBuilder *sb;
+    char *buf;
+};
+
+static char *sprintfCallback(const char *buf, void *user, int len) {
+    struct SprintfCallbackContext *context = user;
+    NkStringBuilder *sb = context->sb;
+    size_t prev_size = sb->size;
+    nksb_try_append_many(sb, buf, len);
+    return (sb->size - prev_size) < (size_t)len ? NULL : context->buf;
+}
+
 int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
-    va_list ap_copy;
-
-    va_copy(ap_copy, ap);
-    int const printf_res = vsnprintf(NULL, 0, fmt, ap_copy);
-    va_end(ap_copy);
-
-    if (printf_res < 0) {
-        return printf_res;
-    }
-
-    size_t const required_size = printf_res + 1;
-
-    if (sb->size + required_size > sb->capacity) {
-        size_t new_capacity = ceilToPowerOf2(maxu(sb->size + required_size, NKSB_INIT_CAP));
-
-        NkAllocator const alloc = sb->alloc.proc ? sb->alloc : nk_default_allocator;
-        NkAllocatorSpaceLeftQueryResult query_res = {0};
-        nk_alloc_querySpaceLeft(alloc, &query_res);
-
-        if (query_res.kind == NkAllocatorSpaceLeft_Limited) {
-            new_capacity = minu(new_capacity, sb->capacity + query_res.bytes_left);
-        }
-
-        nkar_maybe_grow(sb, new_capacity);
-    }
-
-    size_t const alloc_size = minu(required_size, sb->capacity - sb->size);
-    va_copy(ap_copy, ap);
-    vsnprintf(sb->data + sb->size, alloc_size, fmt, ap_copy);
-    va_end(ap_copy);
-
-    sb->size += alloc_size - 1;
-
+    char buf[STB_SPRINTF_MIN];
+    struct SprintfCallbackContext context = {sb, buf};
+    int const printf_res = stbsp_vsprintfcb(sprintfCallback, &context, context.buf, fmt, ap);
     return printf_res;
 }
 
@@ -56,38 +42,38 @@ void nksb_str_escape(NkStringBuilder *sb, nkstr str) {
     for (size_t i = 0; i < str.size; i++) {
         switch (str.data[i]) {
         case '\a':
-            nksb_printf(sb, "\\a");
+            nksb_try_append_str(sb, "\\a");
             break;
         case '\b':
-            nksb_printf(sb, "\\b");
+            nksb_try_append_str(sb, "\\b");
             break;
         case '\f':
-            nksb_printf(sb, "\\f");
+            nksb_try_append_str(sb, "\\f");
             break;
         case '\n':
-            nksb_printf(sb, "\\n");
+            nksb_try_append_str(sb, "\\n");
             break;
         case '\r':
-            nksb_printf(sb, "\\r");
+            nksb_try_append_str(sb, "\\r");
             break;
         case '\t':
-            nksb_printf(sb, "\\t");
+            nksb_try_append_str(sb, "\\t");
             break;
         case '\v':
-            nksb_printf(sb, "\\v");
+            nksb_try_append_str(sb, "\\v");
             break;
         case '\0':
-            nksb_printf(sb, "\\0");
+            nksb_try_append_str(sb, "\\0");
             break;
         case '\"':
-            nksb_printf(sb, "\\\"");
+            nksb_try_append_str(sb, "\\\"");
             break;
         case '\\':
-            nksb_printf(sb, "\\\\");
+            nksb_try_append_str(sb, "\\\\");
             break;
         default:
             if (isprint(str.data[i])) {
-                nksb_printf(sb, "%c", str.data[i]);
+                nksb_try_append(sb, str.data[i]);
             } else {
                 nksb_printf(sb, "\\x%" PRIx8, str.data[i] & 0xff);
             }
@@ -101,35 +87,64 @@ void nksb_str_unescape(NkStringBuilder *sb, nkstr str) {
         if (str.data[i] == '\\' && i < str.size - 1) {
             switch (str.data[++i]) {
             case 'a':
-                nksb_printf(sb, "%c", '\a');
+                nksb_try_append(sb, '\a');
                 break;
             case 'b':
-                nksb_printf(sb, "%c", '\b');
+                nksb_try_append(sb, '\b');
                 break;
             case 'f':
-                nksb_printf(sb, "%c", '\f');
+                nksb_try_append(sb, '\f');
                 break;
             case 'n':
-                nksb_printf(sb, "%c", '\n');
+                nksb_try_append(sb, '\n');
                 break;
             case 'r':
-                nksb_printf(sb, "%c", '\r');
+                nksb_try_append(sb, '\r');
                 break;
             case 't':
-                nksb_printf(sb, "%c", '\t');
+                nksb_try_append(sb, '\t');
                 break;
             case 'v':
-                nksb_printf(sb, "%c", '\v');
+                nksb_try_append(sb, '\v');
                 break;
             case '0':
-                nksb_printf(sb, "%c", '\0');
+                nksb_try_append(sb, '\0');
                 break;
             default:
-                nksb_printf(sb, "%c", str.data[i]);
+                nksb_try_append(sb, str.data[i]);
                 break;
             }
         } else {
-            nksb_printf(sb, "%c", str.data[i]);
+            nksb_try_append(sb, str.data[i]);
+        }
+    }
+}
+
+static int nksb_streamProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
+    if (mode == nk_stream_mode_write) {
+        NkStringBuilder *sb = (NkStringBuilder *)stream_data;
+        size_t prev_size = sb->size;
+        nksb_try_append_many(sb, buf, size);
+        return sb->size - prev_size;
+    } else {
+        return -1;
+    }
+}
+
+nk_stream nksb_getStream(NkStringBuilder *sb) {
+    return (nk_stream){sb, nksb_streamProc};
+}
+
+#define NKSB_STREAM_BUF_SIZE 1024
+
+void nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
+    for (;;) {
+        nksb_reserve(sb, sb->capacity + NKSB_STREAM_BUF_SIZE);
+        int res = nk_stream_read(in, nkav_end(sb), NKSB_STREAM_BUF_SIZE);
+        if (res > 0) {
+            sb->size += res;
+        } else {
+            break;
         }
     }
 }

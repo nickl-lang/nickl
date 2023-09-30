@@ -23,6 +23,7 @@
 #include "ast_impl.h"
 #include "lexer.hpp"
 #include "nk/common/allocator.hpp"
+#include "nk/common/file.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
@@ -383,7 +384,7 @@ Decl &resolve(NklCompiler c, nkid name) {
 }
 
 template <class T, class... TArgs>
-ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&... args) {
+ValueInfo makeValue(NklCompiler c, nkltype_t type, TArgs &&...args) {
     return {
         {.cnst = nkir_makeConst(c->ir, {new (nk_arena_alloc_t<T>(&c->arena)) T{args...}, tovmt(type)})}, type, v_val};
 }
@@ -606,6 +607,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(src_type, &sb);
+                       nksb_append_null(&sb);
                        return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
@@ -613,6 +615,7 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(dst_type, &sb);
+                       nksb_append_null(&sb);
                        return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
@@ -950,6 +953,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic, NkCallConv
         "ir:\n%s", (char const *)[&]() {
             NkStringBuilder sb{};
             nkir_inspectFunct(fn, &sb);
+            nksb_append_null(&sb);
             return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });
@@ -1182,6 +1186,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
                        (char const *)[&]() {
                            NkStringBuilder sb{};
                            nklt_inspect(struct_t, &sb);
+                           nksb_append_null(&sb);
                            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                                nksb_free(&sb);
                            });
@@ -1571,6 +1576,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(src_type, &sb);
+                       nksb_append_null(&sb);
                        return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
@@ -1578,6 +1584,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
                    (char const *)[&]() {
                        NkStringBuilder sb{};
                        nklt_inspect(dst_type, &sb);
+                       nksb_append_null(&sb);
                        return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                            nksb_free(&sb);
                        });
@@ -2278,6 +2285,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
             "ir:\n%s", (char const *)[&]() {
                 NkStringBuilder sb{};
                 nkir_inspectFunct(fn, &sb);
+                nksb_append_null(&sb);
                 return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                     nksb_free(&sb);
                 });
@@ -2306,7 +2314,7 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView tag
             nksb_free(&sb);
         };
         nkir_inspectRef(c->ir, ref, &sb);
-        NK_LOG_DBG("value ignored: %s", sb.data);
+        NK_LOG_DBG("value ignored: " nkstr_Fmt, nkstr_Arg(sb));
 #endif // ENABLE_LOGGING
     }
     return {};
@@ -2489,17 +2497,17 @@ NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
     }
     path = fs::canonical(path);
 
+    auto const path_str = path.string();
+
     c->file_stack.emplace(fs::relative(path));
     defer {
         c->file_stack.pop();
     };
 
-    std::ifstream file{path};
-    if (file) {
-        std::string src{std::istreambuf_iterator<char>{file}, {}};
-        return nkl_compileSrc(c, {src.data(), src.size()}, create_scope);
+    auto res = nk_file_read(c->alloc, {path_str.c_str(), path_str.size()});
+    if (res.ok) {
+        return nkl_compileSrc(c, res.bytes, create_scope);
     } else {
-        auto const path_str = path.string();
         printError(c, "failed to open file `%.*s`", (int)path_str.size(), path_str.c_str());
         return {};
     }
@@ -2592,7 +2600,6 @@ extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct en
         .compiler_binary = {c->c_compiler.c_str(), c->c_compiler.size()},
         .additional_flags = {flags.c_str(), flags.size()},
         .output_filename = exe_name,
-        .echo_src = 0,
         .quiet = 0,
     };
     return nkir_compile(conf, c->ir, entry);

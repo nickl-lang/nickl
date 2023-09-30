@@ -308,6 +308,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         "bytecode:\n%s", (char const *)[&]() {
             NkStringBuilder sb{};
             _inspect(instrs, &sb);
+            nksb_append_null(&sb);
             return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });

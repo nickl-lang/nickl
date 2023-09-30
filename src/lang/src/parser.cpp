@@ -51,7 +51,7 @@ struct ParseEngine {
     EExprKind m_cur_expr_kind = Expr_Regular;
 
     NklAstNode parse() {
-        assert(m_tokens.size && nkar_last(m_tokens).id == t_eof && "ill-formed token stream");
+        assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");
 
         m_cur_token = &m_tokens.data[0];
         return nkl_pushNode(m_ast, block(false)).data;
@@ -242,11 +242,10 @@ private:
             EXPECT(t_brace_r);
         }
 
-        auto node = nodes.size() == 0 && !force_block_node
-                        ? nkl_makeNode0(n_nop, _n_token)
-                        : nodes.size() == 1 && !force_block_node
-                              ? nodes.front()
-                              : nkl_makeNode1(n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
+        auto node = nodes.size() == 0 && !force_block_node ? nkl_makeNode0(n_nop, _n_token)
+                    : nodes.size() == 1 && !force_block_node
+                        ? nodes.front()
+                        : nkl_makeNode1(n_block, _n_token, nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()}));
 
         return capture_brace ? nkl_makeNode1(n_scope, _n_token, nkl_pushNode(m_ast, node)) : node;
     }
@@ -991,6 +990,7 @@ NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklT
         "root: %s", (char const *)[&]() {
             NkStringBuilder sb{};
             nkl_inspectNode(root, &sb);
+            nksb_append_null(&sb);
             return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });

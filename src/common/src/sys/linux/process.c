@@ -4,11 +4,12 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <sys/types.h>
-#include <sys/wait.h>
+#include "nk/common/string.h"
 
 nkpipe_t nk_createPipe(void) {
     nkpipe_t pip = {-1, -1};
@@ -22,37 +23,40 @@ nkpipe_t nk_createPipe(void) {
     return pip;
 }
 
-#define MAX_ARGS 32
-#define CMD_BUF_SIZE 4096
+#define MAX_ARGS 31
+#define CMD_BUF_SIZE 4095
 
-int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
-    char cmd_buf[CMD_BUF_SIZE];
+int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
+    char cmd_buf[CMD_BUF_SIZE + 1];
     size_t cmd_buf_pos = 0;
 
     char *args[MAX_ARGS + 1];
     size_t argc = 0;
 
-    char *arg = cmd_buf;
-    for (char const *pc = cmd;; pc++) {
-        if (cmd_buf_pos == CMD_BUF_SIZE) {
+    nkstr cmd_str = nk_mkstr(cmd);
+    for (;;) {
+        cmd_str = nks_trim_left(cmd_str);
+        if (!cmd_str.size) {
+            break;
+        }
+
+        if (argc == MAX_ARGS) {
             errno = E2BIG;
             return -1;
         }
-        // TODO Concatenate consecutive spaces
-        if (*pc && *pc != ' ') {
-            cmd_buf[cmd_buf_pos++] = *pc;
-        } else {
-            cmd_buf[cmd_buf_pos++] = '\0';
-            if (argc == MAX_ARGS) {
+        args[argc++] = &cmd_buf[cmd_buf_pos];
+
+        nkstr arg = nks_chop_by_delim(&cmd_str, ' ');
+        while (arg.size) {
+            if (cmd_buf_pos == CMD_BUF_SIZE) {
                 errno = E2BIG;
                 return -1;
             }
-            args[argc++] = arg;
-            arg = &cmd_buf[cmd_buf_pos];
-            if (!*pc) {
-                break;
-            }
+            cmd_buf[cmd_buf_pos++] = nkav_first(arg);
+            arg.size--;
+            arg.data++;
         }
+        cmd_buf[cmd_buf_pos++] = '\0';
     }
     args[argc++] = NULL;
 
@@ -72,21 +76,24 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
         fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
 
         if (in) {
-            if (dup2(in->read, STDIN_FILENO) < 0) {
+            if (in->read >= 0 && dup2(in->read, STDIN_FILENO) < 0) {
                 goto error;
             }
-            if (close(in->write) < 0) {
-                goto error;
-            }
+            close(in->write);
         }
 
         if (out) {
-            if (dup2(out->write, STDOUT_FILENO) < 0) {
+            if (out->write >= 0 && dup2(out->write, STDOUT_FILENO) < 0) {
                 goto error;
             }
-            if (close(out->read) < 0) {
+            close(out->read);
+        }
+
+        if (err) {
+            if (err->write >= 0 && dup2(err->write, STDERR_FILENO) < 0) {
                 goto error;
             }
+            close(err->read);
         }
 
         execvp(args[0], (char *const *)args);
@@ -97,12 +104,16 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
         _exit(EX_OSERR);
 
     default:
-        if (in) {
+        if (in && in->read >= 0) {
             close(in->read);
         }
 
-        if (out) {
+        if (out && out->write >= 0) {
             close(out->write);
+        }
+
+        if (err && err->write >= 0) {
+            close(err->write);
         }
 
         close(err_pipe[1]);
@@ -137,4 +148,4 @@ int nk_waitpid(nkpid_t pid, int *exit_status) {
     }
 }
 
-extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, int *exit_status);
+extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, int *exit_status);

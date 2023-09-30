@@ -155,6 +155,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         (char const *)[&]() {
             NkStringBuilder sb{};
             nkt_inspect(type, &sb);
+            nksb_append_null(&sb);
             return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });

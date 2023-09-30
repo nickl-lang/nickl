@@ -14,7 +14,6 @@ target_include_directories(nkl_lang
 
 target_link_libraries(nkl_lang
     PUBLIC nk_common
-    PUBLIC nk_sys
     PUBLIC nk_vm
     )
 

@@ -467,6 +467,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
                     nkval_inspect(_getValRef(ref), &sb);
                     nksb_printf(&sb, ":");
                     nkt_inspect(ref.type, &sb);
+                    nksb_append_null(&sb);
                 }
                 return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                     nksb_free(&sb);

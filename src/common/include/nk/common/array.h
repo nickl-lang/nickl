@@ -18,7 +18,15 @@
 
 #define nkav_typedef(T, Name) typedef nkav_type(T) Name
 
-#define nkav_init(obj) .data = (obj).data, .size = (obj).size,
+#define nkav_init(obj) .data = (obj).data, .size = (obj).size
+
+#define nkav_begin(av) ((av)->data)
+#define nkav_end(av) ((av)->data + (av)->size)
+
+#define nkav_first(ar) ((ar).data[0])
+#define nkav_last(ar) ((ar).data[(ar).size - 1])
+
+#define nkar_push nkar_append
 
 #define nkar_type(T)       \
     struct {               \
@@ -39,31 +47,57 @@
         size_t _cap = (cap);                                                                  \
         if (_cap > (ar)->capacity) {                                                          \
             NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator; \
-            void *const _new_data = nk_reallocAligned(                                        \
-                _alloc,                                                                       \
-                _cap * sizeof(*(ar)->data),                                                   \
-                alignof(max_align_t),                                                         \
-                (ar)->data,                                                                   \
-                (ar)->capacity * sizeof(*(ar)->data));                                        \
-            _nk_assign_void_ptr((ar)->data, _new_data);                                       \
-            (ar)->capacity = _cap;                                                            \
+            NkAllocatorSpaceLeftQueryResult _query_res;                                       \
+            nk_alloc_querySpaceLeft(_alloc, &_query_res);                                     \
+            if (_query_res.kind == NkAllocatorSpaceLeft_Limited) {                            \
+                _cap = minu(_cap, (ar)->capacity + _query_res.bytes_left);                    \
+            }                                                                                 \
+            if (_cap > (ar)->capacity) {                                                      \
+                void *const _new_data = nk_reallocAligned(                                    \
+                    _alloc,                                                                   \
+                    _cap * sizeof(*(ar)->data),                                               \
+                    alignof(max_align_t),                                                     \
+                    (ar)->data,                                                               \
+                    (ar)->capacity * sizeof(*(ar)->data));                                    \
+                _nk_assign_void_ptr((ar)->data, _new_data);                                   \
+                (ar)->capacity = _cap;                                                        \
+            }                                                                                 \
         }                                                                                     \
     } while (0)
 
 #define _nkar_reserve(ar, cap) _nkar_maybe_grow((ar), ceilToPowerOf2(maxu((cap), NKAR_INIT_CAP)))
 
-#define _nkar_append(ar, item)              \
-    do {                                    \
-        nkar_reserve((ar), (ar)->size + 1); \
-        (ar)->data[(ar)->size++] = (item);  \
+#define _nkar_append(ar, item)                                       \
+    do {                                                             \
+        nkar_reserve((ar), (ar)->size + 1);                          \
+        assert((ar)->capacity - (ar)->size >= 1 && "no space left"); \
+        (ar)->data[(ar)->size++] = (item);                           \
     } while (0)
 
-#define _nkar_append_many(ar, items, count)                                     \
-    do {                                                                        \
-        size_t _count = (count);                                                \
-        nkar_reserve(ar, (ar)->size + _count);                                  \
-        memcpy((ar)->data + (ar)->size, (items), _count * sizeof(*(ar)->data)); \
-        (ar)->size += _count;                                                   \
+#define _nkar_try_append(ar, item)              \
+    do {                                        \
+        nkar_reserve((ar), (ar)->size + 1);     \
+        if ((ar)->capacity - (ar)->size >= 1) { \
+            (ar)->data[(ar)->size++] = (item);  \
+        }                                       \
+    } while (0)
+
+#define _nkar_append_many(ar, items, count)                               \
+    do {                                                                  \
+        size_t _count = (count);                                          \
+        nkar_reserve(ar, (ar)->size + _count);                            \
+        assert((ar)->capacity - (ar)->size >= _count && "no space left"); \
+        memcpy(nkav_end(ar), (items), _count * sizeof(*(ar)->data));      \
+        (ar)->size += _count;                                             \
+    } while (0)
+
+#define _nkar_try_append_many(ar, items, count)                      \
+    do {                                                             \
+        size_t _count = (count);                                     \
+        nkar_reserve(ar, (ar)->size + _count);                       \
+        _count = minu(_count, (ar)->capacity - (ar)->size);          \
+        memcpy(nkav_end(ar), (items), _count * sizeof(*(ar)->data)); \
+        (ar)->size += _count;                                        \
     } while (0)
 
 #define _nkar_free(ar)                                                                                  \
@@ -106,8 +140,16 @@ void nkar_append(TAr *ar, T &&item) {
     _nkar_append(ar, std::forward<T>(item));
 }
 template <class TAr, class T>
+void nkar_try_append(TAr *ar, T &&item) {
+    _nkar_try_append(ar, std::forward<T>(item));
+}
+template <class TAr, class T>
 void nkar_append_many(TAr *ar, T *items, size_t count) {
     _nkar_append_many(ar, items, count);
+}
+template <class TAr, class T>
+void nkar_try_append_many(TAr *ar, T *items, size_t count) {
+    _nkar_try_append_many(ar, items, count);
 }
 template <class TAr>
 void nkar_free(TAr *ar) {
@@ -129,13 +171,12 @@ void nkar_clear(TAr *ar) {
 
 template <class TAr>
 struct _nk_iterate_wrapper {
-    TAr _ar;
-    using pointer = decltype(TAr::data);
-    pointer begin() {
-        return _ar.data;
+    TAr const &_ar;
+    auto begin() {
+        return nkav_begin(&_ar);
     }
-    pointer end() {
-        return _ar.data + _ar.size;
+    auto end() {
+        return nkav_end(&_ar);
     }
 };
 
@@ -146,15 +187,13 @@ struct _nk_iterate_wrapper {
 #define nkar_maybe_grow _nkar_maybe_grow
 #define nkar_reserve _nkar_reserve
 #define nkar_append _nkar_append
+#define nkar_try_append _nkar_try_append
 #define nkar_append_many _nkar_append_many
+#define nkar_try_append_many _nkar_try_append_many
 #define nkar_free _nkar_free
 #define nkar_pop _nkar_pop
 #define nkar_clear _nkar_clear
 
 #endif // __cplusplus
-
-#define nkar_last(ar) ((ar).data[(ar).size - 1])
-
-#define nkar_push nkar_append
 
 #endif // HEADER_GUARD_NK_COMMON_ARRAY

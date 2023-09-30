@@ -34,7 +34,7 @@ nktype_t getTypeByFp(NkIrTypeCache *cache, ByteArray fp, F const &make_type) {
 template <class T>
 void pushVal(ByteArray &ar, T const v) {
     nkar_reserve(&ar, ar.size + sizeof(v));
-    memcpy(ar.data + ar.size, &v, sizeof(v));
+    memcpy(nkav_end(&ar), &v, sizeof(v));
     ar.size += sizeof(v);
 }
 

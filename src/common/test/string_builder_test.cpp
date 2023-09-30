@@ -44,3 +44,17 @@ TEST_F(string_builder, counting) {
 
     EXPECT_EQ(std_view({nkav_init(sb)}), "[0123456789]");
 }
+
+TEST_F(string_builder, stream) {
+    NkStringBuilder sb{};
+    defer {
+        nksb_free(&sb);
+    };
+
+    auto stream = nksb_getStream(&sb);
+
+    nk_stream_printf(stream, "Hello");
+    nk_stream_printf(stream, ", %s!", "World");
+
+    EXPECT_EQ(std_view({nkav_init(sb)}), "Hello, World!");
+}

@@ -8,10 +8,8 @@
 #include "nk/common/allocator.hpp"
 #include "nk/common/array.h"
 #include "nk/common/logger.h"
+#include "nk/common/pipe_stream.h"
 #include "nk/common/string.h"
-#include "nk/common/utils.hpp"
-#include "nk/sys/file.h"
-#include "nk/sys/process.h"
 
 namespace {
 
@@ -200,7 +198,7 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
 
         auto &instrs = ir->instrs;
 
-        if (instr.code == nkir_ret && block.size && instrs.data[nkar_last(block)].code == nkir_ret) {
+        if (instr.code == nkir_ret && block.size && instrs.data[nkav_last(block)].code == nkir_ret) {
             continue;
         }
 
@@ -458,16 +456,10 @@ NkIrInstr nkir_make_label(NkIrLabel label) {
 bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
     NK_LOG_TRC("%s", __func__);
 
-    NkStringBuilder sb{};
-    defer {
-        nksb_free(&sb);
-    };
-
+    nksb_fixed_buffer(sb, 256);
     nksb_printf(&sb, "gcc -x c -O2 -o " nkstr_Fmt " -", nkstr_Arg(out_file));
 
-    auto in = nk_createPipe();
-    nkpid_t pid = 0;
-    nk_execAsync(sb.data, &pid, &in, nullptr);
+    auto stream = nk_pipe_streamWrite({nkav_init(sb)}, false);
     char src[] = R"(
         #include <stdio.h>
         int main(int argc, char** argv) {
@@ -475,9 +467,8 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
             return 0;
         }
     )";
-    nk_write(in.write, src, sizeof(src) - 1);
-    nk_close(in.write);
-    nk_waitpid(pid, nullptr);
+    nk_stream_write(stream, src, sizeof(src) - 1);
+    nk_pipe_streamClose(stream);
 
     return true;
 }

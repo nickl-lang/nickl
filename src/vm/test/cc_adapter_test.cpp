@@ -6,10 +6,12 @@
 #include <gtest/gtest.h>
 
 #include "nk/common/logger.h"
+#include "nk/common/pipe_stream.h"
+#include "nk/common/stream.h"
+#include "nk/common/string.hpp"
 #include "nk/common/string_builder.h"
 #include "nk/common/utils.hpp"
 #include "nk/vm/ir.h"
-#include "pipe_stream.hpp"
 
 namespace {
 
@@ -29,7 +31,6 @@ class cc_adapter : public testing::Test {
             .compiler_binary = nk_mkstr(TEST_CC),
             .additional_flags = nk_mkstr(TEST_CC_FLAGS),
             .output_filename{nkav_init(m_output_filename_sb)},
-            .echo_src = false,
             .quiet = TEST_QUIET,
         };
     }
@@ -39,15 +40,19 @@ class cc_adapter : public testing::Test {
     }
 
 protected:
-    std::string _runGetStdout() {
-        auto in = nk_pipe_streamRead(m_conf.output_filename);
+    std::string runGetStdout() {
+        auto in = nk_pipe_streamRead(m_conf.output_filename, false);
         defer {
             nk_pipe_streamClose(in);
         };
 
-        std::string out_str{std::istreambuf_iterator<char>{in}, {}};
-        NK_LOG_DBG("out_str=%s", out_str.c_str());
-        return out_str;
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        nksb_readFromStream(&sb, in);
+        NK_LOG_DBG("out_str=\"" nkstr_Fmt "\"", nkstr_Arg(sb));
+        return std_str({nkav_init(sb)});
     }
 
 protected:
@@ -59,43 +64,43 @@ protected:
 
 TEST_F(cc_adapter, empty) {
     auto src = nkcc_streamOpen(m_conf);
-    EXPECT_FALSE(nkcc_streamClose(src));
+    EXPECT_TRUE(nkcc_streamClose(src));
 }
 
 TEST_F(cc_adapter, empty_main) {
     auto src = nkcc_streamOpen(m_conf);
 
-    src << "int main() {}\n";
+    nk_stream_printf(src, "%s", "int main() {}\n");
 
-    EXPECT_TRUE(nkcc_streamClose(src));
+    EXPECT_FALSE(nkcc_streamClose(src));
 
-    EXPECT_EQ(_runGetStdout(), "");
+    EXPECT_EQ(runGetStdout(), "");
 }
 
 TEST_F(cc_adapter, hello_world) {
     auto src = nkcc_streamOpen(m_conf);
 
-    src << R"(
+    nk_stream_printf(src, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
 }
-)";
+)");
 
-    EXPECT_TRUE(nkcc_streamClose(src));
+    EXPECT_FALSE(nkcc_streamClose(src));
 
-    EXPECT_EQ(_runGetStdout(), "Hello, World!");
+    EXPECT_EQ(runGetStdout(), "Hello, World!");
 }
 
 TEST_F(cc_adapter, undefined_var) {
     auto src = nkcc_streamOpen(m_conf);
 
-    src << R"(
-#include <stdio.h>"
+    nk_stream_printf(src, "%s", R"(
+#include <stdio.h>
 int main() {
     printf("%i", var);
 }
-)";
+)");
 
-    EXPECT_FALSE(nkcc_streamClose(src));
+    EXPECT_TRUE(nkcc_streamClose(src));
 }

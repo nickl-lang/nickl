@@ -57,7 +57,7 @@ static void *arenaAllocatorProc(
     size_t old_size) {
     (void)old_mem;
 
-    NkArena *arena = (NkArena *)data;
+    NkArena *arena = data;
 
 #ifdef ENABLE_LOGGING
     switch (mode) {
