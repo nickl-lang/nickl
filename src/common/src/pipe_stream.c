@@ -39,7 +39,7 @@ static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_
 nk_stream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    NK_DEFINE_STATIC_SB(sb, CMD_BUF_SIZE);
+    nksb_fixed_buffer(sb, CMD_BUF_SIZE);
     makeCmdStr(&sb, cmd);
 
     NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
@@ -84,7 +84,7 @@ static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk
 nk_stream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    NK_DEFINE_STATIC_SB(sb, CMD_BUF_SIZE);
+    nksb_fixed_buffer(sb, CMD_BUF_SIZE);
     makeCmdStr(&sb, cmd);
 
     NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));

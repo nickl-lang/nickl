@@ -314,7 +314,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         }
 
 #ifdef ENABLE_LOGGING
-        NK_DEFINE_STATIC_SB(sb, 256);
+        nksb_fixed_buffer(sb, 256);
         nksb_str_escape(&sb, scanner.m_token.text);
         NK_LOG_DBG("%s: \"" nkstr_Fmt "\"", s_token_id[scanner.m_token.id], nkstr_Arg(sb));
 #endif // ENABLE_LOGGING

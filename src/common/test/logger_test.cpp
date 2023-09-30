@@ -6,9 +6,8 @@
 #include <streambuf>
 #include <thread>
 
-#include <unistd.h>
-
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 NK_LOG_USE_SCOPE(test);
 

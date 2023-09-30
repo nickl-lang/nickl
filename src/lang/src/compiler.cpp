@@ -23,6 +23,7 @@
 #include "ast_impl.h"
 #include "lexer.hpp"
 #include "nk/common/allocator.hpp"
+#include "nk/common/file.h"
 #include "nk/common/id.h"
 #include "nk/common/logger.h"
 #include "nk/common/profiler.hpp"
@@ -2496,17 +2497,17 @@ NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
     }
     path = fs::canonical(path);
 
+    auto const path_str = path.string();
+
     c->file_stack.emplace(fs::relative(path));
     defer {
         c->file_stack.pop();
     };
 
-    std::ifstream file{path};
-    if (file) {
-        std::string src{std::istreambuf_iterator<char>{file}, {}};
-        return nkl_compileSrc(c, {src.data(), src.size()}, create_scope);
+    auto res = nk_file_read(c->alloc, {path_str.c_str(), path_str.size()});
+    if (res.ok) {
+        return nkl_compileSrc(c, res.bytes, create_scope);
     } else {
-        auto const path_str = path.string();
         printError(c, "failed to open file `%.*s`", (int)path_str.size(), path_str.c_str());
         return {};
     }

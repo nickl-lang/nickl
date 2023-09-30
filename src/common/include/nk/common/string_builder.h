@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NK_COMMON_STRING_BUILDER
 
 #include <stdarg.h>
+#include <stddef.h>
 
 #include "nk/common/allocator.h"
 #include "nk/common/array.h"
@@ -16,7 +17,9 @@
 
 #define nksb_append_null(sb) nksb_append((sb), '\0')
 
-#define NK_DEFINE_STATIC_SB(NAME, SIZE)                    \
+#define nksb_init(allocator) .data = NULL, .size = 0, .capacity = 0, .alloc = (allocator)
+
+#define nksb_fixed_buffer(NAME, SIZE)                      \
     uint8_t _buf[SIZE];                                    \
     NkArena _log_arena = {_buf, 0, sizeof(_buf)};          \
     NkStringBuilder NAME = {                               \

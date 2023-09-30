@@ -1,10 +1,9 @@
 #include "nk/sys/file.h"
 
 #include <fcntl.h>
-#include <unistd.h>
-
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 nkfd_t nk_invalid_fd = -1;
 char const *nk_null_file = "/dev/null";

@@ -62,7 +62,7 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 bool compileProgram(NkIrCompiler c, nkstr in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    auto read_res = nk_readFile(nk_arena_getAllocator(&c->file_arena), in_file);
+    auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file);
     if (!read_res.ok) {
         printError(c, "failed to read file `" nkstr_Fmt "`", nkstr_Arg(in_file));
         return false;

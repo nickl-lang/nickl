@@ -46,7 +46,7 @@ nkfd_t nk_open(char const *file, nk_open_flags flags) {
     DWORD dwCreationDisposition = (flags & nk_open_create)     ? CREATE_NEW
                                   : (flags & nk_open_truncate) ? TRUNCATE_EXISTING
                                                                : OPEN_EXISTING;
-    return (nkfd_t)CreateFile(
+    HANDLE hFile = CreateFile(
         file,                  // LPCSTR                lpFileName,
         dwDesiredAccess,       // DWORD                 dwDesiredAccess,
         dwShareMode,           // DWORD                 dwShareMode,
@@ -55,6 +55,11 @@ nkfd_t nk_open(char const *file, nk_open_flags flags) {
         FILE_ATTRIBUTE_NORMAL, // DWORD                 dwFlagsAndAttributes,
         NULL                   // HANDLE                hTemplateFile
     );
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return nk_invalid_fd;
+    } else {
+        return (nkfd_t)hFile;
+    }
 }
 
 int nk_close(nkfd_t fd) {

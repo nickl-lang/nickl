@@ -4,11 +4,10 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
-#include <unistd.h>
-
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sysexits.h>
+#include <unistd.h>
 
 #include "nk/common/string.h"
 

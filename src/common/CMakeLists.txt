@@ -10,7 +10,7 @@ add_library(nk_common
     src/sys/${PLATFORM_DIR}/time.c
     src/allocator.c
     src/arena.c
-    src/file.cpp
+    src/file.c
     src/id.cpp
     src/logger.cpp
     src/pipe_stream.c
