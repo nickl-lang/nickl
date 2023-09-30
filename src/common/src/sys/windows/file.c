@@ -3,9 +3,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-nkfd_t nk_invalidFd(void) {
-    return 0;
-}
+nkfd_t nk_invalid_fd = 0;
+char const *nk_null_file = "nul";
 
 int nk_read(nkfd_t fd, char *buf, size_t n) {
     DWORD nNumberOfBytesRead = 0;
@@ -40,17 +39,22 @@ int nk_write(nkfd_t fd, char const *buf, size_t n) {
     return bSuccess ? (int)nNumberOfBytesWritten : -1;
 }
 
-nkfd_t nk_openNullFile(void) {
-    HANDLE hFile = CreateFile(
-        "nul",                              // LPCSTR                lpFileName,
-        GENERIC_READ | GENERIC_WRITE,       // DWORD                 dwDesiredAccess,
-        FILE_SHARE_READ | FILE_SHARE_WRITE, // DWORD                 dwShareMode,
-        NULL,                               // LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-        OPEN_EXISTING,                      // DWORD                 dwCreationDisposition,
-        FILE_ATTRIBUTE_NORMAL,              // DWORD                 dwFlagsAndAttributes,
-        NULL                                // HANDLE                hTemplateFile
+nkfd_t nk_open(char const *file, nk_open_flags flags) {
+    DWORD dwDesiredAccess = ((flags & nk_open_read) ? GENERIC_READ : 0) | ((flags & nk_open_write) ? GENERIC_WRITE : 0);
+    DWORD dwShareMode =
+        ((flags & nk_open_read) ? FILE_SHARE_READ : 0) | ((flags & nk_open_write) ? FILE_SHARE_WRITE : 0);
+    DWORD dwCreationDisposition = (flags & nk_open_create)     ? CREATE_NEW
+                                  : (flags & nk_open_truncate) ? TRUNCATE_EXISTING
+                                                               : OPEN_EXISTING;
+    return (nkfd_t)CreateFile(
+        file,                  // LPCSTR                lpFileName,
+        dwDesiredAccess,       // DWORD                 dwDesiredAccess,
+        dwShareMode,           // DWORD                 dwShareMode,
+        NULL,                  // LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+        dwCreationDisposition, // DWORD                 dwCreationDisposition,
+        FILE_ATTRIBUTE_NORMAL, // DWORD                 dwFlagsAndAttributes,
+        NULL                   // HANDLE                hTemplateFile
     );
-    return (nkfd_t)hFile;
 }
 
 int nk_close(nkfd_t fd) {

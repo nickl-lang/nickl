@@ -45,7 +45,9 @@ nk_stream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
 
     nkpipe_t out = nk_createPipe();
-    nkpipe_t null_pipe = {quiet ? nk_openNullFile() : nk_invalidFd(), quiet ? nk_openNullFile() : nk_invalidFd()};
+    nkpipe_t null_pipe = {
+        quiet ? nk_open(nk_null_file, nk_open_write) : nk_invalid_fd,
+        quiet ? nk_open(nk_null_file, nk_open_write) : nk_invalid_fd};
     nkpid_t pid = 0;
     if (nk_execAsync(sb.data, &pid, NULL, &out, &null_pipe) < 0) {
         // TODO Report errors to the user
@@ -88,7 +90,7 @@ nk_stream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
 
     nkpipe_t in = nk_createPipe();
-    nkpipe_t null_pipe = {nk_invalidFd(), quiet ? nk_openNullFile() : nk_invalidFd()};
+    nkpipe_t null_pipe = {nk_invalid_fd, quiet ? nk_open(nk_null_file, nk_open_write) : nk_invalid_fd};
     nkpid_t pid = 0;
     if (nk_execAsync(sb.data, &pid, &in, &null_pipe, &null_pipe) < 0) {
         // TODO Report errors to the user
