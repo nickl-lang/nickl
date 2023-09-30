@@ -1752,18 +1752,18 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
                 ? c->node_stack.back().type->as.num.value_type
                 : Int64;
         auto const text = node->token->text;
+        switch (value_type) {
 #define X(NAME, VALUE_TYPE, CTYPE) \
     case VALUE_TYPE:               \
         return makeNumeric<CTYPE>(c, CAT(NAME, _t), text.data, "%" CAT(SCN, NAME));
-        switch (value_type) {
-            NUMERIC_ITERATE_INT(X)
+            NUMERIC_ITERATE(X)
+#undef X
         default:
             assert(!"unreachable");
             return {};
         }
         assert(!"unreachable");
         return {};
-#undef X
     }
 
     case n_int_hex: {
@@ -1772,18 +1772,18 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
                 ? c->node_stack.back().type->as.num.value_type
                 : Int64;
         auto const text = node->token->text;
+        switch (value_type) {
 #define X(NAME, VALUE_TYPE, CTYPE) \
     case VALUE_TYPE:               \
         return makeNumeric<CTYPE>(c, CAT(NAME, _t), text.data + 2, "%" CAT(SCNX, NAME));
-        switch (value_type) {
             NUMERIC_ITERATE_INT(X)
+#undef X
         default:
             assert(!"unreachable");
             return {};
         }
         assert(!"unreachable");
         return {};
-#undef X
     }
 
     case n_string: {
