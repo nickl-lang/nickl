@@ -51,7 +51,7 @@ struct ParseEngine {
     EExprKind m_cur_expr_kind = Expr_Regular;
 
     NklAstNode parse() {
-        assert(m_tokens.size && nkar_last(m_tokens).id == t_eof && "ill-formed token stream");
+        assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");
 
         m_cur_token = &m_tokens.data[0];
         return nkl_pushNode(m_ast, block(false)).data;
