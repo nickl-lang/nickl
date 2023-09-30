@@ -2599,7 +2599,6 @@ extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct en
         .compiler_binary = {c->c_compiler.c_str(), c->c_compiler.size()},
         .additional_flags = {flags.c_str(), flags.size()},
         .output_filename = exe_name,
-        .echo_src = 0,
         .quiet = 0,
     };
     return nkir_compile(conf, c->ir, entry);

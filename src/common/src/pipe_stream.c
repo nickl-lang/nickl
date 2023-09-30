@@ -10,12 +10,9 @@
 
 NK_LOG_USE_SCOPE(pipe_stream);
 
-static void makeCmdStr(NkStringBuilder *sb, nkstr cmd, bool quiet) {
+static void makeCmdStr(NkStringBuilder *sb, nkstr cmd) {
     nksb_printf(sb, nkstr_Fmt, nkstr_Arg(cmd));
-    if (quiet) {
-        nksb_printf(sb, " >/dev/null 2>&1");
-    }
-    nksb_printf(sb, "%c", '\0');
+    nksb_append_null(sb);
 }
 
 typedef struct {
@@ -37,19 +34,20 @@ static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_
     }
 }
 
+#define CMD_BUF_SIZE 4096
+
 nk_stream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    nk_stream in = {0};
-
-    NkStringBuilder sb = {0};
-    makeCmdStr(&sb, cmd, quiet);
+    NK_DEFINE_STATIC_SB(sb, CMD_BUF_SIZE);
+    makeCmdStr(&sb, cmd);
 
     NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
 
     nkpipe_t out = nk_createPipe();
+    nkpipe_t null_pipe = {quiet ? nk_openNullFile() : nk_invalidFd(), quiet ? nk_openNullFile() : nk_invalidFd()};
     nkpid_t pid = 0;
-    if (nk_execAsync(sb.data, &pid, NULL, &out) < 0) {
+    if (nk_execAsync(sb.data, &pid, NULL, &out, &null_pipe) < 0) {
         // TODO Report errors to the user
         NK_LOG_ERR("exec(\"" nkstr_Fmt "\") failed: %s", nkstr_Arg(sb), nk_getLastErrorString());
         if (pid > 0) {
@@ -58,18 +56,13 @@ nk_stream nk_pipe_streamRead(nkstr cmd, bool quiet) {
         nk_close(out.read);
         nk_close(out.write);
 
-        goto defer;
+        return (nk_stream){0};
     }
 
     PipeStreamContext *context = (PipeStreamContext *)nk_alloc(nk_default_allocator, sizeof(PipeStreamContext));
     *context = (PipeStreamContext){out.read, pid};
 
-    in.data = context;
-    in.proc = nk_pipe_streamReadProc;
-
-defer:
-    nksb_free(&sb);
-    return in;
+    return (nk_stream){context, nk_pipe_streamReadProc};
 }
 
 static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
@@ -89,16 +82,15 @@ static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk
 nk_stream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
-    nk_stream out = {0};
-
-    NkStringBuilder sb = {0};
-    makeCmdStr(&sb, cmd, quiet);
+    NK_DEFINE_STATIC_SB(sb, CMD_BUF_SIZE);
+    makeCmdStr(&sb, cmd);
 
     NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
 
     nkpipe_t in = nk_createPipe();
+    nkpipe_t null_pipe = {nk_invalidFd(), quiet ? nk_openNullFile() : nk_invalidFd()};
     nkpid_t pid = 0;
-    if (nk_execAsync(sb.data, &pid, &in, NULL) < 0) {
+    if (nk_execAsync(sb.data, &pid, &in, &null_pipe, &null_pipe) < 0) {
         // TODO Report errors to the user
         NK_LOG_ERR("exec(\"" nkstr_Fmt "\") failed: %s", nkstr_Arg(sb), nk_getLastErrorString());
         if (pid > 0) {
@@ -107,18 +99,13 @@ nk_stream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
         nk_close(in.read);
         nk_close(in.write);
 
-        goto defer;
+        return (nk_stream){0};
     }
 
     PipeStreamContext *context = (PipeStreamContext *)nk_alloc(nk_default_allocator, sizeof(PipeStreamContext));
     *context = (PipeStreamContext){in.write, pid};
 
-    out.data = context;
-    out.proc = nk_pipe_streamWriteProc;
-
-defer:
-    nksb_free(&sb);
-    return out;
+    return (nk_stream){context, nk_pipe_streamWriteProc};
 }
 
 int nk_pipe_streamClose(nk_stream stream) {

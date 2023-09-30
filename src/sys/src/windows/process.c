@@ -25,26 +25,32 @@ nkpipe_t nk_createPipe(void) {
     return pip;
 }
 
-int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
+int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
-    siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    siStartInfo.hStdOutput = out ? (HANDLE)out->write : GetStdHandle(STD_OUTPUT_HANDLE);
-    siStartInfo.hStdInput = in ? (HANDLE)in->read : GetStdHandle(STD_INPUT_HANDLE);
+    siStartInfo.hStdInput = (in && in->read) ? (HANDLE)in->read : GetStdHandle(STD_INPUT_HANDLE);
+    siStartInfo.hStdOutput = (out && out->write) ? (HANDLE)out->write : GetStdHandle(STD_OUTPUT_HANDLE);
+    siStartInfo.hStdError = (err && err->write) ? (HANDLE)err->write : GetStdHandle(STD_ERROR_HANDLE);
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     PROCESS_INFORMATION piProcInfo;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-    if (in) {
+    if (in && in->write) {
         if (!SetHandleInformation((HANDLE)in->write, HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (out) {
+    if (out && out->read) {
         if (!SetHandleInformation((HANDLE)out->read, HANDLE_FLAG_INHERIT, 0)) {
+            return -1;
+        }
+    }
+
+    if (err && err->read) {
+        if (!SetHandleInformation((HANDLE)err->read, HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
@@ -62,12 +68,16 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
         &piProcInfo   // LPPROCESS_INFORMATION lpProcessInformation
     );
 
-    if (in) {
+    if (in && in->read) {
         CloseHandle((HANDLE)in->read);
     }
 
-    if (out) {
+    if (out && out->write) {
         CloseHandle((HANDLE)out->write);
+    }
+
+    if (err && err->write) {
+        CloseHandle((HANDLE)err->write);
     }
 
     CloseHandle(piProcInfo.hThread);
@@ -105,4 +115,4 @@ int nk_waitpid(nkpid_t pid, int *exit_status) {
     return 0;
 }
 
-extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, int *exit_status);
+extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, int *exit_status);

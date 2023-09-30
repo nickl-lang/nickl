@@ -25,7 +25,7 @@ nkpipe_t nk_createPipe(void) {
 #define MAX_ARGS 32
 #define CMD_BUF_SIZE 4096
 
-int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
+int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
     char cmd_buf[CMD_BUF_SIZE];
     size_t cmd_buf_pos = 0;
 
@@ -72,21 +72,24 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
         fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
 
         if (in) {
-            if (dup2(in->read, STDIN_FILENO) < 0) {
+            if (in->read >= 0 && dup2(in->read, STDIN_FILENO) < 0) {
                 goto error;
             }
-            if (close(in->write) < 0) {
-                goto error;
-            }
+            close(in->write);
         }
 
         if (out) {
-            if (dup2(out->write, STDOUT_FILENO) < 0) {
+            if (out->write >= 0 && dup2(out->write, STDOUT_FILENO) < 0) {
                 goto error;
             }
-            if (close(out->read) < 0) {
+            close(out->read);
+        }
+
+        if (err) {
+            if (err->write >= 0 && dup2(err->write, STDERR_FILENO) < 0) {
                 goto error;
             }
+            close(err->read);
         }
 
         execvp(args[0], (char *const *)args);
@@ -97,12 +100,16 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out) {
         _exit(EX_OSERR);
 
     default:
-        if (in) {
+        if (in && in->read >= 0) {
             close(in->read);
         }
 
-        if (out) {
+        if (out && out->write >= 0) {
             close(out->write);
+        }
+
+        if (err && err->write >= 0) {
+            close(err->write);
         }
 
         close(err_pipe[1]);
@@ -137,4 +144,4 @@ int nk_waitpid(nkpid_t pid, int *exit_status) {
     }
 }
 
-extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, int *exit_status);
+extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, int *exit_status);

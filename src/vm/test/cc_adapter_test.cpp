@@ -31,7 +31,6 @@ class cc_adapter : public testing::Test {
             .compiler_binary = nk_mkstr(TEST_CC),
             .additional_flags = nk_mkstr(TEST_CC_FLAGS),
             .output_filename{nkav_init(m_output_filename_sb)},
-            .echo_src = false,
             .quiet = TEST_QUIET,
         };
     }
@@ -97,7 +96,7 @@ TEST_F(cc_adapter, undefined_var) {
     auto src = nkcc_streamOpen(m_conf);
 
     nk_stream_printf(src, "%s", R"(
-#include <stdio.h>"
+#include <stdio.h>
 int main() {
     printf("%i", var);
 }

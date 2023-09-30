@@ -24,11 +24,9 @@ nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         nksb_free(&sb);
     };
 
-    auto echo_cmd = nk_mkstr(conf.echo_src ? "tee /dev/stderr | " : "");
     nksb_printf(
         &sb,
-        nkstr_Fmt nkstr_Fmt " -x c - -o " nkstr_Fmt " -lm " nkstr_Fmt,
-        nkstr_Arg(echo_cmd),
+        nkstr_Fmt " -x c - -o " nkstr_Fmt " -lm " nkstr_Fmt,
         nkstr_Arg(conf.compiler_binary),
         nkstr_Arg(conf.output_filename),
         nkstr_Arg(conf.additional_flags));

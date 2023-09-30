@@ -3,6 +3,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+nkfd_t nk_invalidFd(void) {
+    return 0;
+}
+
 int nk_read(nkfd_t fd, char *buf, size_t n) {
     DWORD nNumberOfBytesRead = 0;
     BOOL bSuccess = ReadFile(
@@ -34,6 +38,19 @@ int nk_write(nkfd_t fd, char const *buf, size_t n) {
     );
 
     return bSuccess ? (int)nNumberOfBytesWritten : -1;
+}
+
+nkfd_t nk_openNullFile(void) {
+    HANDLE hFile = CreateFile(
+        "nul",                              // LPCSTR                lpFileName,
+        GENERIC_READ | GENERIC_WRITE,       // DWORD                 dwDesiredAccess,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, // DWORD                 dwShareMode,
+        NULL,                               // LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+        OPEN_EXISTING,                      // DWORD                 dwCreationDisposition,
+        FILE_ATTRIBUTE_NORMAL,              // DWORD                 dwFlagsAndAttributes,
+        NULL                                // HANDLE                hTemplateFile
+    );
+    return (nkfd_t)hFile;
 }
 
 int nk_close(nkfd_t fd) {

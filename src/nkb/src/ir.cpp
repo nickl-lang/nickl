@@ -467,7 +467,7 @@ bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file) { // TODO
 
     auto in = nk_createPipe();
     nkpid_t pid = 0;
-    nk_execAsync(sb.data, &pid, &in, nullptr);
+    nk_execAsync(sb.data, &pid, &in, nullptr, nullptr);
     char src[] = R"(
         #include <stdio.h>
         int main(int argc, char** argv) {
