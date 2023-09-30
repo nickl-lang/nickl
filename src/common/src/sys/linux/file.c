@@ -16,12 +16,12 @@ int nk_write(nkfd_t fd, char const *buf, size_t n) {
     return write(fd, buf, n);
 }
 
-nkfd_t nk_open(char const *file, nk_open_flags flags) {
+nkfd_t nk_open(char const *file, int flags) {
     int oflag = ((flags & nk_open_read) && (flags & nk_open_write) ? O_RDWR : 0) |
                 ((flags & nk_open_read) && !(flags & nk_open_write) ? O_RDONLY : 0) |
                 (!(flags & nk_open_read) && (flags & nk_open_write) ? O_WRONLY : 0) |
                 ((flags & nk_open_create) ? O_CREAT : 0) | ((flags & nk_open_truncate) ? O_TRUNC : 0);
-    return open(file, oflag);
+    return open(file, oflag, 0644);
 }
 
 int nk_close(nkfd_t fd) {

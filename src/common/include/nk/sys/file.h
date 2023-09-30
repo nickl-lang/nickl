@@ -16,14 +16,12 @@ extern char const *nk_null_file;
 int nk_read(nkfd_t fd, char *buf, size_t n);
 int nk_write(nkfd_t fd, char const *buf, size_t n);
 
-typedef enum {
-    nk_open_read = 1 << 0,
-    nk_open_write = 1 << 1,
-    nk_open_create = 1 << 2,
-    nk_open_truncate = 1 << 3,
-} nk_open_flags;
+#define nk_open_read 1
+#define nk_open_write 2
+#define nk_open_create 4
+#define nk_open_truncate 8
 
-nkfd_t nk_open(char const *file, nk_open_flags flags);
+nkfd_t nk_open(char const *file, int flags);
 
 int nk_close(nkfd_t fd);
 

@@ -23,6 +23,11 @@
 #define nkav_begin(av) ((av)->data)
 #define nkav_end(av) ((av)->data + (av)->size)
 
+#define nkav_first(ar) ((ar).data[0])
+#define nkav_last(ar) ((ar).data[(ar).size - 1])
+
+#define nkar_push nkar_append
+
 #define nkar_type(T)       \
     struct {               \
         T *data;           \
@@ -190,10 +195,5 @@ struct _nk_iterate_wrapper {
 #define nkar_clear _nkar_clear
 
 #endif // __cplusplus
-
-#define nkav_first(ar) ((ar).data[0])
-#define nkav_last(ar) ((ar).data[(ar).size - 1])
-
-#define nkar_push nkar_append
 
 #endif // HEADER_GUARD_NK_COMMON_ARRAY

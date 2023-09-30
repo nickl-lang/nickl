@@ -33,7 +33,7 @@ static int nk_file_streamProc(void *stream_data, char *buf, size_t size, nk_stre
 
 #define MAX_PATH 4096
 
-nk_stream nk_file_openStream(nkstr file, nk_open_flags flags) {
+nk_stream nk_file_openStream(nkstr file, int flags) {
     nksb_fixed_buffer(sb, MAX_PATH);
     nksb_try_append_many(&sb, file.data, file.size);
     nksb_try_append_null(&sb);

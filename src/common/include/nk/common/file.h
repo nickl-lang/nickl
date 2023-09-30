@@ -17,7 +17,7 @@ typedef struct {
 
 NkFileReadResult nk_file_read(NkAllocator alloc, nkstr file);
 
-nk_stream nk_file_openStream(nkstr file, nk_open_flags flags);
+nk_stream nk_file_openStream(nkstr file, int flags);
 void nk_file_closeStream(nk_stream stream);
 
 #ifdef __cplusplus

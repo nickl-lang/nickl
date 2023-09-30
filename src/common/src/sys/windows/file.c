@@ -39,11 +39,11 @@ int nk_write(nkfd_t fd, char const *buf, size_t n) {
     return bSuccess ? (int)nNumberOfBytesWritten : -1;
 }
 
-nkfd_t nk_open(char const *file, nk_open_flags flags) {
+nkfd_t nk_open(char const *file, int flags) {
     DWORD dwDesiredAccess = ((flags & nk_open_read) ? GENERIC_READ : 0) | ((flags & nk_open_write) ? GENERIC_WRITE : 0);
     DWORD dwShareMode =
         ((flags & nk_open_read) ? FILE_SHARE_READ : 0) | ((flags & nk_open_write) ? FILE_SHARE_WRITE : 0);
-    DWORD dwCreationDisposition = (flags & nk_open_create)     ? CREATE_NEW
+    DWORD dwCreationDisposition = (flags & nk_open_create)     ? CREATE_ALWAYS
                                   : (flags & nk_open_truncate) ? TRUNCATE_EXISTING
                                                                : OPEN_EXISTING;
     HANDLE hFile = CreateFile(
