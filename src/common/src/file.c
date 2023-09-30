@@ -31,12 +31,12 @@ static int nk_file_streamProc(void *stream_data, char *buf, size_t size, nk_stre
     }
 }
 
-#define MAX_PATH 1024
+#define MAX_PATH 4096
 
 nk_stream nk_file_openStream(nkstr file, nk_open_flags flags) {
     nksb_fixed_buffer(sb, MAX_PATH);
-    nksb_append_many(&sb, file.data, file.size);
-    nksb_append_null(&sb);
+    nksb_try_append_many(&sb, file.data, file.size);
+    nksb_try_append_null(&sb);
 
     nkfd_t fd = nk_open(sb.data, flags);
     if (fd == nk_invalid_fd) {

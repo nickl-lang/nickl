@@ -12,10 +12,27 @@
 
 #define nksb_reserve nkar_reserve
 #define nksb_append nkar_append
+#define nksb_try_append nkar_try_append
 #define nksb_append_many nkar_append_many
+#define nksb_try_append_many nkar_try_append_many
 #define nksb_free nkar_free
 
 #define nksb_append_null(sb) nksb_append((sb), '\0')
+#define nksb_try_append_null(sb) nksb_try_append((sb), '\0')
+
+#define _nksb_append_str(sb, str)           \
+    do {                                    \
+        char const *_str = (str);           \
+        size_t _len = strlen(_str);         \
+        nksb_append_many((sb), _str, _len); \
+    } while (0)
+
+#define _nksb_try_append_str(sb, str)           \
+    do {                                        \
+        char const *_str = (str);               \
+        size_t _len = strlen(_str);             \
+        nksb_try_append_many((sb), _str, _len); \
+    } while (0)
 
 #define nksb_init(allocator) .data = NULL, .size = 0, .capacity = 0, .alloc = (allocator)
 
@@ -48,5 +65,21 @@ void nksb_readFromStream(NkStringBuilder *sb, nk_stream in);
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __cplusplus
+
+inline void nksb_append_str(NkStringBuilder *sb, char const *str) {
+    _nksb_append_str(sb, str);
+}
+inline void nksb_try_append_str(NkStringBuilder *sb, char const *str) {
+    _nksb_try_append_str(sb, str);
+}
+
+#else //__cplusplus
+
+#define nksb_append_str _nksb_append_str
+#define nksb_try_append_str _nksb_try_append_str
+
+#endif //__cplusplus
 
 #endif // HEADER_GUARD_NK_COMMON_STRING_BUILDER
