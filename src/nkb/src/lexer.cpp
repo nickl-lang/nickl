@@ -45,7 +45,7 @@ char const *s_keywords[] = {
 };
 
 struct ScannerState {
-    nkstr const m_src;
+    nks const m_src;
     NkArena *m_tmp_arena;
 
     size_t m_pos = 0;
@@ -53,7 +53,7 @@ struct ScannerState {
     size_t m_col = 1;
 
     NkIrToken m_token{};
-    nkstr m_error_msg{};
+    nks m_error_msg{};
 
     void scan() {
         skipSpaces();
@@ -289,7 +289,7 @@ private:
 
 } // namespace
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkstr src) {
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src) {
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
@@ -316,7 +316,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 #ifdef ENABLE_LOGGING
         nksb_fixed_buffer(sb, 256);
         nksb_str_escape(&sb, scanner.m_token.text);
-        NK_LOG_DBG("%s: \"" nkstr_Fmt "\"", s_token_id[scanner.m_token.id], nkstr_Arg(sb));
+        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[scanner.m_token.id], nks_Arg(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 }

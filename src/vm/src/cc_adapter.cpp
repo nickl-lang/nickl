@@ -26,10 +26,10 @@ nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
 
     nksb_printf(
         &sb,
-        nkstr_Fmt " -x c - -o " nkstr_Fmt " -lm " nkstr_Fmt,
-        nkstr_Arg(conf.compiler_binary),
-        nkstr_Arg(conf.output_filename),
-        nkstr_Arg(conf.additional_flags));
+        nks_Fmt " -x c - -o " nks_Fmt " -lm " nks_Fmt,
+        nks_Arg(conf.compiler_binary),
+        nks_Arg(conf.output_filename),
+        nks_Arg(conf.additional_flags));
 
     return nk_pipe_streamWrite({nkav_init(sb)}, conf.quiet);
 }

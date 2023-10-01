@@ -10,7 +10,7 @@
 typedef struct {
     NkIrProg ir;
     NkIrProc entry_point;
-    nkstr error_msg;
+    nks error_msg;
     bool ok;
 } NkIrParserState;
 

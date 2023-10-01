@@ -10,8 +10,8 @@
 
 NK_LOG_USE_SCOPE(pipe_stream);
 
-static void makeCmdStr(NkStringBuilder *sb, nkstr cmd) {
-    nksb_printf(sb, nkstr_Fmt, nkstr_Arg(cmd));
+static void makeCmdStr(NkStringBuilder *sb, nks cmd) {
+    nksb_printf(sb, nks_Fmt, nks_Arg(cmd));
     nksb_append_null(sb);
 }
 
@@ -36,13 +36,13 @@ static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_
 
 #define CMD_BUF_SIZE 4096
 
-nk_stream nk_pipe_streamRead(nkstr cmd, bool quiet) {
+nk_stream nk_pipe_streamRead(nks cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, CMD_BUF_SIZE);
     makeCmdStr(&sb, cmd);
 
-    NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
+    NK_LOG_DBG("exec(\"" nks_Fmt "\")", nks_Arg(sb));
 
     nkpipe_t out = nk_createPipe();
     nkpipe_t null_pipe = {
@@ -51,7 +51,7 @@ nk_stream nk_pipe_streamRead(nkstr cmd, bool quiet) {
     nkpid_t pid = 0;
     if (nk_execAsync(sb.data, &pid, NULL, &out, &null_pipe) < 0) {
         // TODO Report errors to the user
-        NK_LOG_ERR("exec(\"" nkstr_Fmt "\") failed: %s", nkstr_Arg(sb), nk_getLastErrorString());
+        NK_LOG_ERR("exec(\"" nks_Fmt "\") failed: %s", nks_Arg(sb), nk_getLastErrorString());
         if (pid > 0) {
             nk_waitpid(pid, NULL);
         }
@@ -81,20 +81,20 @@ static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk
     }
 }
 
-nk_stream nk_pipe_streamWrite(nkstr cmd, bool quiet) {
+nk_stream nk_pipe_streamWrite(nks cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, CMD_BUF_SIZE);
     makeCmdStr(&sb, cmd);
 
-    NK_LOG_DBG("exec(\"" nkstr_Fmt "\")", nkstr_Arg(sb));
+    NK_LOG_DBG("exec(\"" nks_Fmt "\")", nks_Arg(sb));
 
     nkpipe_t in = nk_createPipe();
     nkpipe_t null_pipe = {nk_invalid_fd, quiet ? nk_open(nk_null_file, nk_open_write) : nk_invalid_fd};
     nkpid_t pid = 0;
     if (nk_execAsync(sb.data, &pid, &in, &null_pipe, &null_pipe) < 0) {
         // TODO Report errors to the user
-        NK_LOG_ERR("exec(\"" nkstr_Fmt "\") failed: %s", nkstr_Arg(sb), nk_getLastErrorString());
+        NK_LOG_ERR("exec(\"" nks_Fmt "\") failed: %s", nks_Arg(sb), nk_getLastErrorString());
         if (pid > 0) {
             nk_waitpid(pid, NULL);
         }

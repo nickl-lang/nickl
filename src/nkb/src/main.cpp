@@ -205,9 +205,9 @@ int main(int argc, char const *const *argv) {
 
     int code;
     if (run) {
-        code = nkir_run(c, nk_mkstr(in_file));
+        code = nkir_run(c, nk_cs2s(in_file));
     } else {
-        code = nkir_compile(c, nk_mkstr(in_file), nk_mkstr(out_file), output_kind);
+        code = nkir_compile(c, nk_cs2s(in_file), nk_cs2s(out_file), output_kind);
     }
 
 #ifdef BUILD_WITH_EASY_PROFILER

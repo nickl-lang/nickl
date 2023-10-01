@@ -105,7 +105,7 @@ TEST_F(array, append) {
         nkar_free(&ar);
     };
 
-    auto const c_test_str = nk_mkstr("hello world");
+    auto const c_test_str = nk_cs2s("hello world");
     nkar_append_many(&ar, c_test_str.data, c_test_str.size);
 
     EXPECT_EQ(ar.capacity, ceilToPowerOf2(c_test_str.size));

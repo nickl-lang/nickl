@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    nkstr text;
+    nks text;
 
     size_t pos;
     size_t lin;

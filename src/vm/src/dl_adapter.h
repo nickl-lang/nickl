@@ -9,10 +9,10 @@ extern "C" {
 
 typedef struct NkDlHandle_T *NkDlHandle;
 
-NkDlHandle nkdl_open(nkstr name);
+NkDlHandle nkdl_open(nks name);
 void nkdl_close(NkDlHandle dl);
 
-void *nkdl_sym(NkDlHandle dl, nkstr sym);
+void *nkdl_sym(NkDlHandle dl, nks sym);
 
 #ifdef __cplusplus
 }

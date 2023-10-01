@@ -14,7 +14,7 @@ typedef struct {
     NkArena *type_arena;
     NkArena *tmp_arena;
     uint8_t usize;
-    NkHashMap<nkstr, nktype_t> fpmap{};
+    NkHashMap<nks, nktype_t> fpmap{};
     uint64_t next_id{1};
     std::mutex mtx{};
 } NkIrTypeCache;

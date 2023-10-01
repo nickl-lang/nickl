@@ -7,6 +7,6 @@
 #include "nkl/lang/token.h"
 #include "ntk/string.h"
 
-bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str);
+bool nkl_lex(nks src, std::vector<NklToken> &tokens, std::string &err_str);
 
 #endif // HEADER_GUARD_NKL_LANG_LEXER

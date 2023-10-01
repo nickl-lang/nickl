@@ -14,11 +14,11 @@ typedef struct NklCompiler_T *NklCompiler;
 NklCompiler nkl_compiler_create();
 void nkl_compiler_free(NklCompiler c);
 
-bool nkl_compiler_configure(NklCompiler c, nkstr config_dir);
+bool nkl_compiler_configure(NklCompiler c, nks config_dir);
 
 bool nkl_compiler_run(NklCompiler c, NklAstNode root);
-bool nkl_compiler_runSrc(NklCompiler c, nkstr src);
-bool nkl_compiler_runFile(NklCompiler c, nkstr path);
+bool nkl_compiler_runSrc(NklCompiler c, nks src);
+bool nkl_compiler_runFile(NklCompiler c, nks path);
 
 #ifdef __cplusplus
 }

@@ -64,7 +64,7 @@ NkIrBlockId nkir_makeBlock(NkIrProg p) {
     return id;
 }
 
-NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name) {
+NkIrShObjId nkir_makeShObj(NkIrProg p, nks name) {
     NkIrShObjId shobj_id{p->shobjs.size()};
     p->shobjs.emplace_back(std_str(name));
     return shobj_id;
@@ -77,7 +77,7 @@ NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct) {
     return cl;
 }
 
-void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t) {
+void nkir_startFunct(NkIrFunct funct, nks name, nktype_t fn_t) {
     funct->name = std_str(name);
 
     funct->fn_t = fn_t;
@@ -86,7 +86,7 @@ void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t) {
     nkir_activateFunct(funct->prog, funct);
 }
 
-void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo const *fn_info) {
+void nkir_startIncompleteFunct(NkIrFunct funct, nks name, NktFnInfo const *fn_info) {
     funct->name = std_str(name);
 
     funct->fn_info = *fn_info;
@@ -145,7 +145,7 @@ nkval_t nkir_constRefDeref(NkIrProg p, NkIrRef ref) {
     return {data, type};
 }
 
-void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name) {
+void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nks name) {
     assert(p->cur_funct && "no current function");
     assert(block_id.id < p->blocks.size() && "invalid block");
 
@@ -186,7 +186,7 @@ NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val) {
     return id;
 }
 
-NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type) {
+NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nks name, nktype_t type) {
     NkIrExtSymId id{p->exsyms.size()};
     p->exsyms.emplace_back(IrExSym{
         .name = std_str(name),

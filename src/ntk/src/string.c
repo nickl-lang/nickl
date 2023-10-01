@@ -1,8 +1,8 @@
 #include "ntk/string.h"
 
-extern inline nkstr nk_strcpy(NkAllocator alloc, nkstr src);
-extern inline nkstr nk_mkstr(char const *str);
-extern inline nkstr nks_trim_left(nkstr str);
-extern inline nkstr nks_trim_right(nkstr str);
-extern inline nkstr nks_trim(nkstr str);
-extern inline nkstr nks_chop_by_delim(nkstr *str, char delim);
+extern inline nks nk_strcpy(NkAllocator alloc, nks src);
+extern inline nks nk_cs2s(char const *str);
+extern inline nks nks_trim_left(nks str);
+extern inline nks nks_trim_right(nks str);
+extern inline nks nks_trim(nks str);
+extern inline nks nks_chop_by_delim(nks *str, char delim);

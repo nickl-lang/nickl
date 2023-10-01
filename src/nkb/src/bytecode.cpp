@@ -435,7 +435,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
     inspect({nkav_init(bc_proc.instrs)}, &sb);
-    NK_LOG_INF("proc " nkstr_Fmt "\n" nkstr_Fmt "", nkstr_Arg(ir_proc.name), nkstr_Arg(sb));
+    NK_LOG_INF("proc " nks_Fmt "\n" nks_Fmt "", nks_Arg(ir_proc.name), nks_Arg(sb));
 #endif // ENABLE_LOGGING
 }
 
@@ -481,7 +481,7 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
     nk_free_t(ctx->ir->alloc, ctx);
 }
 
-void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data) {
+void nkir_defineExternSym(NkIrRunCtx ctx, nks name, void *data) {
     NK_LOG_TRC("%s", __func__);
 
     ctx->extern_syms.insert(s2nkid(name), data);

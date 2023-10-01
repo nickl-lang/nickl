@@ -99,9 +99,9 @@ void nkir_freeProgram(NkIrProg ir);
 // Code Generation
 
 NkIrProc nkir_createProc(NkIrProg ir);
-NkIrLabel nkir_createLabel(NkIrProg ir, nkstr name);
+NkIrLabel nkir_createLabel(NkIrProg ir, nks name);
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc, nkstr name, nktype_t proc_t);
+void nkir_startProc(NkIrProg ir, NkIrProc proc, nks name, nktype_t proc_t);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);
@@ -119,8 +119,8 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nktype_t type);
 NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nktype_t type);
 NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type);
-NkIrExternData nkir_makeExternData(NkIrProg ir, nkstr name, nktype_t type);
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkstr name, nktype_t proc_t);
+NkIrExternData nkir_makeExternData(NkIrProg ir, nks name, nktype_t type);
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, nks name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index);
@@ -154,7 +154,7 @@ NkIrInstr nkir_make_label(NkIrLabel label);
 
 // Output
 
-bool nkir_write(NkIrProg ir, NkbOutputKind kind, nkstr out_file);
+bool nkir_write(NkIrProg ir, NkbOutputKind kind, nks out_file);
 
 // Execution
 
@@ -163,7 +163,7 @@ typedef struct NkIrRunCtx_T *NkIrRunCtx;
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena);
 void nkir_freeRunCtx(NkIrRunCtx ctx);
 
-void nkir_defineExternSym(NkIrRunCtx ctx, nkstr name, void *data);
+void nkir_defineExternSym(NkIrRunCtx ctx, nks name, void *data);
 
 void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 

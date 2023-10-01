@@ -2,7 +2,7 @@
 
 #include "ntk/string_builder.h"
 
-NkFileReadResult nk_file_read(NkAllocator alloc, nkstr file) {
+NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     nk_stream stream = nk_file_openStream(file, nk_open_read);
     if (!stream.proc) {
         return (NkFileReadResult){0};
@@ -33,7 +33,7 @@ static int nk_file_streamProc(void *stream_data, char *buf, size_t size, nk_stre
 
 #define MAX_PATH 4096
 
-nk_stream nk_file_openStream(nkstr file, int flags) {
+nk_stream nk_file_openStream(nks file, int flags) {
     nksb_fixed_buffer(sb, MAX_PATH);
     nksb_try_append_many(&sb, file.data, file.size);
     nksb_try_append_null(&sb);

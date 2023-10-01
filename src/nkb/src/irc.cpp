@@ -53,18 +53,18 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 
     fprintf(
         stderr,
-        "%serror:%s " nkstr_Fmt "\n",
+        "%serror:%s " nks_Fmt "\n",
         to_color ? NK_TERM_COLOR_RED : "",
         to_color ? NK_TERM_COLOR_NONE : "",
-        nkstr_Arg(sb));
+        nks_Arg(sb));
 }
 
-bool compileProgram(NkIrCompiler c, nkstr in_file) {
+bool compileProgram(NkIrCompiler c, nks in_file) {
     NK_LOG_TRC("%s", __func__);
 
     auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file);
     if (!read_res.ok) {
-        printError(c, "failed to read file `" nkstr_Fmt "`", nkstr_Arg(in_file));
+        printError(c, "failed to read file `" nks_Fmt "`", nks_Arg(in_file));
         return false;
     }
 
@@ -76,7 +76,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         };
         nkir_lex(&lexer, &c->file_arena, &c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
-            printError(c, nkstr_Fmt, nkstr_Arg(lexer.error_msg));
+            printError(c, nks_Fmt, nks_Arg(lexer.error_msg));
             return false;
         }
     }
@@ -89,7 +89,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
         };
         nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, {nkav_init(lexer.tokens)});
         if (!parser.ok) {
-            printError(c, nkstr_Fmt, nkstr_Arg(parser.error_msg));
+            printError(c, nks_Fmt, nks_Arg(parser.error_msg));
             return false;
         }
     }
@@ -98,7 +98,7 @@ bool compileProgram(NkIrCompiler c, nkstr in_file) {
     NkStringBuilder sb{};
     sb.alloc = nk_arena_getAllocator(&c->tmp_arena);
     nkir_inspectProgram(parser.ir, &sb);
-    NK_LOG_INF("IR:\n" nkstr_Fmt, nkstr_Arg(sb));
+    NK_LOG_INF("IR:\n" nks_Fmt, nks_Arg(sb));
 #endif // ENABLE_LOGGING
 
     c->ir = parser.ir;
@@ -124,7 +124,7 @@ void nkirc_free(NkIrCompiler c) {
     nk_free_t(nk_default_allocator, c);
 }
 
-int nkir_compile(NkIrCompiler c, nkstr in_file, nkstr out_file, NkbOutputKind output_kind) {
+int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output_kind) {
     NK_LOG_TRC("%s", __func__);
 
     if (!compileProgram(c, in_file)) {
@@ -145,7 +145,7 @@ extern "C" void setTestGlobalVar(int64_t val) {
     g_test_global_var = val;
 }
 
-int nkir_run(NkIrCompiler c, nkstr in_file) {
+int nkir_run(NkIrCompiler c, nks in_file) {
     NK_LOG_TRC("%s", __func__);
 
     if (!compileProgram(c, in_file)) {
@@ -158,14 +158,14 @@ int nkir_run(NkIrCompiler c, nkstr in_file) {
     };
 
     // TODO Hardcoded extern symbols
-    nkir_defineExternSym(run_ctx, nk_mkstr("puts"), (void *)puts);
-    nkir_defineExternSym(run_ctx, nk_mkstr("printf"), (void *)printf);
-    nkir_defineExternSym(run_ctx, nk_mkstr("pthread_create"), (void *)pthread_create);
-    nkir_defineExternSym(run_ctx, nk_mkstr("pthread_join"), (void *)pthread_join);
-    nkir_defineExternSym(run_ctx, nk_mkstr("pthread_exit"), (void *)pthread_exit);
-    nkir_defineExternSym(run_ctx, nk_mkstr("sqrt"), (void *)sqrt);
-    nkir_defineExternSym(run_ctx, nk_mkstr("g_test_global_var"), (void *)&g_test_global_var);
-    nkir_defineExternSym(run_ctx, nk_mkstr("setTestGlobalVar"), (void *)setTestGlobalVar);
+    nkir_defineExternSym(run_ctx, nk_cs2s("puts"), (void *)puts);
+    nkir_defineExternSym(run_ctx, nk_cs2s("printf"), (void *)printf);
+    nkir_defineExternSym(run_ctx, nk_cs2s("pthread_create"), (void *)pthread_create);
+    nkir_defineExternSym(run_ctx, nk_cs2s("pthread_join"), (void *)pthread_join);
+    nkir_defineExternSym(run_ctx, nk_cs2s("pthread_exit"), (void *)pthread_exit);
+    nkir_defineExternSym(run_ctx, nk_cs2s("sqrt"), (void *)sqrt);
+    nkir_defineExternSym(run_ctx, nk_cs2s("g_test_global_var"), (void *)&g_test_global_var);
+    nkir_defineExternSym(run_ctx, nk_cs2s("setTestGlobalVar"), (void *)setTestGlobalVar);
 
     int argc = 1;
     char const *argv[] = {""};

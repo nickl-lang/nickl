@@ -15,7 +15,7 @@ enum ETokenId {
 };
 
 typedef struct {
-    nkstr text;
+    nks text;
     size_t id;
     size_t lin;
     size_t col;
@@ -29,10 +29,10 @@ nkav_typedef(NkIrToken, NkIrTokenView);
 
 typedef struct {
     NkIrTokenArray tokens;
-    nkstr error_msg;
+    nks error_msg;
     bool ok;
 } NkIrLexerState;
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkstr src);
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src);
 
 #endif // HEADER_GUARD_NKB_LEXER

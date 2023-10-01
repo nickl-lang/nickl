@@ -38,7 +38,7 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
     return printf_res;
 }
 
-void nksb_str_escape(NkStringBuilder *sb, nkstr str) {
+void nksb_str_escape(NkStringBuilder *sb, nks str) {
     for (size_t i = 0; i < str.size; i++) {
         switch (str.data[i]) {
         case '\a':
@@ -82,7 +82,7 @@ void nksb_str_escape(NkStringBuilder *sb, nkstr str) {
     }
 }
 
-void nksb_str_unescape(NkStringBuilder *sb, nkstr str) {
+void nksb_str_unescape(NkStringBuilder *sb, nks str) {
     for (size_t i = 0; i < str.size; i++) {
         if (str.data[i] == '\\' && i < str.size - 1) {
             switch (str.data[++i]) {

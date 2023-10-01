@@ -68,7 +68,7 @@ TEST_F(HashMap, basic) {
 }
 
 TEST_F(HashMap, insert) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -79,15 +79,15 @@ TEST_F(HashMap, insert) {
 
     EXPECT_EQ(hm.size(), 0);
 
-    EXPECT_TRUE(hm.insert(nk_mkstr("one"), 1));
-    EXPECT_TRUE(hm.insert(nk_mkstr("two"), 2));
-    EXPECT_TRUE(hm.insert(nk_mkstr("three"), 3));
+    EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1));
+    EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2));
+    EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3));
 
     EXPECT_EQ(hm.size(), 3);
 }
 
 TEST_F(HashMap, find) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -98,21 +98,21 @@ TEST_F(HashMap, find) {
 
     EXPECT_EQ(hm.size(), 0);
 
-    EXPECT_TRUE(hm.insert(nk_mkstr("one"), 1));
-    EXPECT_TRUE(hm.insert(nk_mkstr("two"), 2));
-    EXPECT_TRUE(hm.insert(nk_mkstr("three"), 3));
+    EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1));
+    EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2));
+    EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3));
 
     EXPECT_EQ(hm.size(), 3);
 
-    EXPECT_EQ(hm.find(nk_mkstr("four")), nullptr);
+    EXPECT_EQ(hm.find(nk_cs2s("four")), nullptr);
 
-    EXPECT_EQ(*hm.find(nk_mkstr("one")), 1);
-    EXPECT_EQ(*hm.find(nk_mkstr("two")), 2);
-    EXPECT_EQ(*hm.find(nk_mkstr("three")), 3);
+    EXPECT_EQ(*hm.find(nk_cs2s("one")), 1);
+    EXPECT_EQ(*hm.find(nk_cs2s("two")), 2);
+    EXPECT_EQ(*hm.find(nk_cs2s("three")), 3);
 }
 
 TEST_F(HashMap, remove) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -121,16 +121,16 @@ TEST_F(HashMap, remove) {
         hm.deinit();
     };
 
-    EXPECT_TRUE(hm.insert(nk_mkstr("value"), 42));
+    EXPECT_TRUE(hm.insert(nk_cs2s("value"), 42));
 
-    EXPECT_EQ(*hm.find(nk_mkstr("value")), 42);
+    EXPECT_EQ(*hm.find(nk_cs2s("value")), 42);
 
-    hm.remove(nk_mkstr("value"));
-    EXPECT_EQ(hm.find(nk_mkstr("value")), nullptr);
+    hm.remove(nk_cs2s("value"));
+    EXPECT_EQ(hm.find(nk_cs2s("value")), nullptr);
 }
 
 TEST_F(HashMap, overwrite) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -139,19 +139,19 @@ TEST_F(HashMap, overwrite) {
         hm.deinit();
     };
 
-    hm.insert(nk_mkstr("value"), 0);
-    EXPECT_EQ(*hm.find(nk_mkstr("value")), 0);
+    hm.insert(nk_cs2s("value"), 0);
+    EXPECT_EQ(*hm.find(nk_cs2s("value")), 0);
 
     EXPECT_EQ(hm.size(), 1);
 
-    hm.insert(nk_mkstr("value"), 42);
-    EXPECT_EQ(*hm.find(nk_mkstr("value")), 42);
+    hm.insert(nk_cs2s("value"), 42);
+    EXPECT_EQ(*hm.find(nk_cs2s("value")), 42);
 
     EXPECT_EQ(hm.size(), 1);
 }
 
 TEST_F(HashMap, ptr_key) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -160,10 +160,10 @@ TEST_F(HashMap, ptr_key) {
         hm.deinit();
     };
 
-    EXPECT_TRUE(hm.insert(nk_mkstr("________ whatever"), 42));
-    EXPECT_TRUE(hm.insert(nk_mkstr("________ something else"), 0xDEADBEEF));
+    EXPECT_TRUE(hm.insert(nk_cs2s("________ whatever"), 42));
+    EXPECT_TRUE(hm.insert(nk_cs2s("________ something else"), 0xDEADBEEF));
 
-    val_t *pval = hm.find(nk_mkstr("________ whatever"));
+    val_t *pval = hm.find(nk_cs2s("________ whatever"));
     ASSERT_TRUE(pval);
     EXPECT_EQ(*pval, 42);
 }
@@ -295,7 +295,7 @@ TEST_F(HashMap, stress) {
 }
 
 TEST_F(HashMap, zero_init) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -305,19 +305,19 @@ TEST_F(HashMap, zero_init) {
     };
 
     EXPECT_EQ(hm.size(), 0);
-    EXPECT_EQ(hm.find(nk_mkstr("val")), nullptr);
+    EXPECT_EQ(hm.find(nk_cs2s("val")), nullptr);
 
-    EXPECT_TRUE(hm.insert(nk_mkstr("val"), 42));
+    EXPECT_TRUE(hm.insert(nk_cs2s("val"), 42));
 
     EXPECT_EQ(hm.size(), 1);
-    auto found = hm.find(nk_mkstr("val"));
+    auto found = hm.find(nk_cs2s("val"));
     ASSERT_TRUE(found);
     EXPECT_EQ(*found, 42);
 }
 
 TEST_F(HashMap, index_operator) {
     using key_t = int;
-    using val_t = nkstr;
+    using val_t = nks;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -327,7 +327,7 @@ TEST_F(HashMap, index_operator) {
 
     val_t *found = nullptr;
 
-    hm[1] = nk_mkstr("one");
+    hm[1] = nk_cs2s("one");
 
     EXPECT_EQ(hm.size(), 1);
 
@@ -343,7 +343,7 @@ TEST_F(HashMap, index_operator) {
     ASSERT_TRUE(found);
     EXPECT_EQ(std_str(*found), "");
 
-    hm[42] = nk_mkstr("forty-two");
+    hm[42] = nk_cs2s("forty-two");
 
     EXPECT_EQ(hm.size(), 2);
 
@@ -412,7 +412,7 @@ TEST_F(HashMap, const_iteration) {
 }
 
 TEST_F(HashMap, allocator) {
-    using key_t = nkstr;
+    using key_t = nks;
     using val_t = uint64_t;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -425,9 +425,9 @@ TEST_F(HashMap, allocator) {
 
     EXPECT_EQ(hm.size(), 0);
 
-    EXPECT_TRUE(hm.insert(nk_mkstr("one"), 1));
-    EXPECT_TRUE(hm.insert(nk_mkstr("two"), 2));
-    EXPECT_TRUE(hm.insert(nk_mkstr("three"), 3));
+    EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1));
+    EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2));
+    EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3));
 
     EXPECT_EQ(hm.size(), 3);
 }

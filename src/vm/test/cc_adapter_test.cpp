@@ -28,8 +28,8 @@ class cc_adapter : public testing::Test {
             testing::UnitTest::GetInstance()->current_test_info()->name());
 
         m_conf = {
-            .compiler_binary = nk_mkstr(TEST_CC),
-            .additional_flags = nk_mkstr(TEST_CC_FLAGS),
+            .compiler_binary = nk_cs2s(TEST_CC),
+            .additional_flags = nk_cs2s(TEST_CC_FLAGS),
             .output_filename{nkav_init(m_output_filename_sb)},
             .quiet = TEST_QUIET,
         };
@@ -51,7 +51,7 @@ protected:
             nksb_free(&sb);
         };
         nksb_readFromStream(&sb, in);
-        NK_LOG_DBG("out_str=\"" nkstr_Fmt "\"", nkstr_Arg(sb));
+        NK_LOG_DBG("out_str=\"" nks_Fmt "\"", nks_Arg(sb));
         return std_str({nkav_init(sb)});
     }
 

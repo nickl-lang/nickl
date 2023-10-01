@@ -83,7 +83,7 @@ private:
     void expect(ETokenId id) {
         if (!accept(id)) {
             // TODO Improve token quote for string constants etc.
-            return error("expected `%s` before `" nkstr_Fmt "`", s_token_text[id], nkstr_Arg(m_cur_token->text));
+            return error("expected `%s` before `" nks_Fmt "`", s_token_text[id], nks_Arg(m_cur_token->text));
         }
     }
 
@@ -205,7 +205,7 @@ private:
             NklAstNode_T &arg = args.emplace_back();
             arg.id = cs2nkid("arg");
             if (named_mode || check(t_id)) {
-                NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
+                NK_LOG_DBG("accept(id, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
                 auto id = m_cur_token;
                 getToken();
                 if (named_mode && !check(t_eq)) {
@@ -254,7 +254,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), NklTokenRef{};
         }
-        NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
+        NK_LOG_DBG("accept(id, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -306,7 +306,7 @@ private:
             //     }
         } else if (check(t_tag)) {
             //@Todo Refactor token debug prints
-            NK_LOG_DBG("accept(tag, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
+            NK_LOG_DBG("accept(tag, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
             auto tag = m_cur_token;
             getToken();
             if (accept(t_colon_2x)) {
@@ -819,19 +819,19 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_int)) {
-            NK_LOG_DBG("accept(int, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
+            NK_LOG_DBG("accept(int, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
             node = nkl_makeNode0(n_int, _n_token);
         } else if (accept(t_int_hex)) {
-            NK_LOG_DBG("accept(int_hex, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
+            NK_LOG_DBG("accept(int_hex, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
             node = nkl_makeNode0(n_int_hex, _n_token);
         } else if (accept(t_float)) {
-            NK_LOG_DBG("accept(float, \"" nkstr_Fmt "\"", nkstr_Arg(_n_token->text));
+            NK_LOG_DBG("accept(float, \"" nks_Fmt "\"", nks_Arg(_n_token->text));
             node = nkl_makeNode0(n_float, _n_token);
         } else if (accept(t_string)) {
-            NK_LOG_DBG("accept(string, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
+            NK_LOG_DBG("accept(string, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
             node = nkl_makeNode0(n_string, _n_token);
         } else if (accept(t_escaped_string)) {
-            NK_LOG_DBG("accept(escaped_string, \"" nkstr_Fmt "\")", nkstr_Arg(_n_token->text));
+            NK_LOG_DBG("accept(escaped_string, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
             node = nkl_makeNode0(n_escaped_string, _n_token);
         }
 
@@ -957,7 +957,7 @@ private:
             m_cur_token--;
             return error("unexpected end of file"), NklAstNode_T{};
         } else {
-            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NklAstNode_T{};
+            return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NklAstNode_T{};
         }
 
         return node;

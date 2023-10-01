@@ -45,7 +45,7 @@ char const *s_keywords[] = {
 };
 
 struct ScanEngine {
-    nkstr const m_src;
+    nks const m_src;
     std::string &m_err_str;
 
     size_t m_pos = 0;
@@ -302,7 +302,7 @@ private:
 
 } // namespace
 
-bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str) {
+bool nkl_lex(nks src, std::vector<NklToken> &tokens, std::string &err_str) {
     EASY_FUNCTION(::profiler::colors::Lime200);
     NK_LOG_TRC("%s", __func__);
 
@@ -311,7 +311,7 @@ bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str) {
     do {
         engine.scan();
         tokens.emplace_back(engine.m_token);
-        NK_LOG_DBG("%s: \"" nkstr_Fmt "\"", s_token_id[tokens.back().id], nkstr_Arg(tokens.back().text));
+        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[tokens.back().id], nks_Arg(tokens.back().text));
         if (engine.m_token.id == t_error) {
             return false;
         }

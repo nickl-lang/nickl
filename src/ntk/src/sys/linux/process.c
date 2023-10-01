@@ -33,7 +33,7 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkp
     char *args[MAX_ARGS + 1];
     size_t argc = 0;
 
-    nkstr cmd_str = nk_mkstr(cmd);
+    nks cmd_str = nk_cs2s(cmd);
     for (;;) {
         cmd_str = nks_trim_left(cmd_str);
         if (!cmd_str.size) {
@@ -46,7 +46,7 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkp
         }
         args[argc++] = &cmd_buf[cmd_buf_pos];
 
-        nkstr arg = nks_chop_by_delim(&cmd_str, ' ');
+        nks arg = nks_chop_by_delim(&cmd_str, ' ');
         while (arg.size) {
             if (cmd_buf_pos == CMD_BUF_SIZE) {
                 errno = E2BIG;

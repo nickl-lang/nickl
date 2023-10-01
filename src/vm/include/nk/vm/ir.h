@@ -98,12 +98,12 @@ typedef struct NkIrNativeClosure_T *NkIrNativeClosure;
 
 NkIrFunct nkir_makeFunct(NkIrProg p);
 NkIrBlockId nkir_makeBlock(NkIrProg p);
-NkIrShObjId nkir_makeShObj(NkIrProg p, nkstr name);
+NkIrShObjId nkir_makeShObj(NkIrProg p, nks name);
 NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct);
 
-void nkir_startFunct(NkIrFunct funct, nkstr name, nktype_t fn_t);
+void nkir_startFunct(NkIrFunct funct, nks name, nktype_t fn_t);
 
-void nkir_startIncompleteFunct(NkIrFunct funct, nkstr name, NktFnInfo const *fn_info);
+void nkir_startIncompleteFunct(NkIrFunct funct, nks name, NktFnInfo const *fn_info);
 void nkir_finalizeIncompleteFunct(NkIrFunct funct, nktype_t fn_t);
 
 void nkir_discardFunct(NkIrFunct funct);
@@ -114,7 +114,7 @@ NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct);
 nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst);
 nkval_t nkir_constRefDeref(NkIrProg p, NkIrRef ref);
 
-void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nkstr name);
+void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nks name);
 
 void nkir_activateFunct(NkIrProg p, NkIrFunct funct);
 void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id);
@@ -123,7 +123,7 @@ NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type);
 NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nktype_t type);
 NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val);
 
-NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nkstr name, nktype_t type);
+NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nks name, nktype_t type);
 
 NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var);
 NkIrRef nkir_makeArgRef(NkIrProg p, size_t index);

@@ -46,7 +46,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
         if (node->id) {
             _newline();
             auto id_str = nkid2s(node->id);
-            nksb_printf(sb, "#" nkstr_Fmt, nkstr_Arg(id_str));
+            nksb_printf(sb, "#" nks_Fmt, nks_Arg(id_str));
         } else {
             _newline();
             nksb_printf(sb, "(null)");
@@ -73,7 +73,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
 } // namespace
 
 NK_EXPORT void nkl_ast_init() {
-#define X(ID) nkid_define(CAT(n_, ID), nk_mkstr(#ID));
+#define X(ID) nkid_define(CAT(n_, ID), nk_cs2s(#ID));
 #include "nodes.inl"
 }
 

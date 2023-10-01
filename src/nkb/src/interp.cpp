@@ -374,7 +374,7 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
             nkirv_inspect(dst_ref_data, dst.ref.type, &sb);
             nksb_printf(&sb, ":");
             nkirt_inspect(dst.ref.type, &sb);
-            NK_LOG_DBG("res=" nkstr_Fmt, nkstr_Arg(sb));
+            NK_LOG_DBG("res=" nks_Fmt, nks_Arg(sb));
         }
 #endif // ENABLE_LOGGING
     }

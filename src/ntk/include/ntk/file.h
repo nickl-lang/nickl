@@ -11,13 +11,13 @@ extern "C" {
 #endif
 
 typedef struct {
-    nkstr bytes;
+    nks bytes;
     bool ok;
 } NkFileReadResult;
 
-NkFileReadResult nk_file_read(NkAllocator alloc, nkstr file);
+NkFileReadResult nk_file_read(NkAllocator alloc, nks file);
 
-nk_stream nk_file_openStream(nkstr file, int flags);
+nk_stream nk_file_openStream(nks file, int flags);
 void nk_file_closeStream(nk_stream stream);
 
 #ifdef __cplusplus

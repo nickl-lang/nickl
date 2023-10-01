@@ -12,19 +12,19 @@
 extern "C" {
 #endif
 
-nkav_typedef(char const, nkstr);
+nkav_typedef(char const, nks);
 
-NK_INLINE nkstr nk_mkstr(char const *str) {
-    return LITERAL(nkstr){str, strlen(str)};
+NK_INLINE nks nk_cs2s(char const *str) {
+    return LITERAL(nks){str, strlen(str)};
 }
 
-NK_INLINE nkstr nk_strcpy(NkAllocator alloc, nkstr src) {
+NK_INLINE nks nk_strcpy(NkAllocator alloc, nks src) {
     void *mem = nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
-    return LITERAL(nkstr){(char const *)mem, src.size};
+    return LITERAL(nks){(char const *)mem, src.size};
 }
 
-NK_INLINE nkstr nks_trim_left(nkstr str) {
+NK_INLINE nks nks_trim_left(nks str) {
     while (str.size && nkav_first(str) == ' ') {
         str.size -= 1;
         str.data += 1;
@@ -32,24 +32,24 @@ NK_INLINE nkstr nks_trim_left(nkstr str) {
     return str;
 }
 
-NK_INLINE nkstr nks_trim_right(nkstr str) {
+NK_INLINE nks nks_trim_right(nks str) {
     while (str.size && nkav_last(str) == ' ') {
         str.size -= 1;
     }
     return str;
 }
 
-NK_INLINE nkstr nks_trim(nkstr str) {
+NK_INLINE nks nks_trim(nks str) {
     return nks_trim_right(nks_trim_left(str));
 }
 
-NK_INLINE nkstr nks_chop_by_delim(nkstr *str, char delim) {
+NK_INLINE nks nks_chop_by_delim(nks *str, char delim) {
     size_t i = 0;
     while (i < str->size && str->data[i] != delim) {
         i += 1;
     }
 
-    nkstr res = {str->data, i};
+    nks res = {str->data, i};
 
     if (i < str->size) {
         str->size -= i + 1;
@@ -62,8 +62,8 @@ NK_INLINE nkstr nks_chop_by_delim(nkstr *str, char delim) {
     return res;
 }
 
-#define nkstr_Fmt "%.*s"
-#define nkstr_Arg(str) (int)(str).size, (str).data
+#define nks_Fmt "%.*s"
+#define nks_Arg(str) (int)(str).size, (str).data
 
 #ifdef __cplusplus
 }

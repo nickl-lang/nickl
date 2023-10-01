@@ -52,7 +52,7 @@ struct GeneratorState {
     NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_tmp_arena)};
     NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_parse_arena)};
 
-    nkstr m_error_msg{};
+    nks m_error_msg{};
     bool m_error_occurred{};
 
     NkIrToken *m_cur_token{};
@@ -222,7 +222,7 @@ struct GeneratorState {
                     };
                 }
             } else {
-                return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), Void{};
+                return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
             }
 
             EXPECT(t_newline);
@@ -262,7 +262,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }
-        NK_LOG_DBG("accept(id, \"" nkstr_Fmt "\")", nkstr_Arg(m_cur_token->text));
+        NK_LOG_DBG("accept(id, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -292,7 +292,7 @@ private:
         return value;
     }
 
-    nkstr parseString(NkAllocator alloc) {
+    nks parseString(NkAllocator alloc) {
         auto const data = m_cur_token->text.data + 1;
         auto const len = m_cur_token->text.size - 2;
         getToken();
@@ -304,7 +304,7 @@ private:
         return {str, len};
     }
 
-    nkstr parseEspcaedString(NkAllocator alloc) {
+    nks parseEspcaedString(NkAllocator alloc) {
         auto const data = m_cur_token->text.data + 1;
         auto const len = m_cur_token->text.size - 2;
         getToken();
@@ -319,7 +319,7 @@ private:
         nkar_type(nkid) arg_names;
         nkar_type(nktype_t) args_t;
         nkar_type(nktype_t) ret_t;
-        nkstr name{};
+        nks name{};
         bool is_variadic{};
         bool is_extern{};
         bool is_cdecl{};
@@ -395,7 +395,7 @@ private:
             auto name = s2nkid(token->text);
             auto found = m_decls.find(name);
             if (!found) {
-                return error("undeclared identifier `" nkstr_Fmt "`", nkstr_Arg(token->text)), nullptr;
+                return error("undeclared identifier `" nks_Fmt "`", nks_Arg(token->text)), nullptr;
             } else if ((*found)->kind != Decl_Type) {
                 return error("type expected"), nullptr;
             }
@@ -431,7 +431,7 @@ private:
         }
 
         else {
-            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), nullptr;
+            return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), nullptr;
         }
     }
 
@@ -518,12 +518,12 @@ private:
     }
 #include "nkb/ir.inl"
             else {
-                return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrInstr{};
+                return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NkIrInstr{};
             }
         }
 
         else {
-            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrInstr{};
+            return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NkIrInstr{};
         }
     }
 
@@ -636,7 +636,7 @@ private:
             auto const name = s2nkid(token->text);
             auto decl = resolve(name);
             if (!decl) {
-                return error("undeclared identifier `" nkstr_Fmt "`", nkstr_Arg(token->text)), NkIrRef{};
+                return error("undeclared identifier `" nks_Fmt "`", nks_Arg(token->text)), NkIrRef{};
             }
             switch (decl->kind) {
             case Decl_Arg:
@@ -698,7 +698,7 @@ private:
         }
 
         else {
-            return error("unexpected token `" nkstr_Fmt "`", nkstr_Arg(m_cur_token->text)), NkIrRef{};
+            return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NkIrRef{};
         }
 
         if (accept(t_plus)) {
@@ -801,7 +801,7 @@ private:
 
     void expect(ETokenId id) {
         if (!accept(id)) {
-            return error("expected `%s` before `" nkstr_Fmt "`", s_token_text[id], nkstr_Arg(m_cur_token->text));
+            return error("expected `%s` before `" nks_Fmt "`", s_token_text[id], nks_Arg(m_cur_token->text));
         }
     }
 

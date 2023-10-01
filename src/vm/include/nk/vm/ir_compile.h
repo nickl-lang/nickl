@@ -9,9 +9,9 @@ extern "C" {
 #endif
 
 typedef struct {
-    nkstr compiler_binary;
-    nkstr additional_flags;
-    nkstr output_filename;
+    nks compiler_binary;
+    nks additional_flags;
+    nks output_filename;
     bool quiet;
 } NkIrCompilerConfig;
 

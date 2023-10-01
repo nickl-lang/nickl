@@ -151,13 +151,13 @@ int nkl_main(int argc, char const *const *argv) {
     NK_LOGGER_INIT(logger_options);
 
     auto compiler = nkl_compiler_create();
-    if (!nkl_compiler_configure(compiler, nk_mkstr(nk_appDir().string().c_str()))) {
+    if (!nkl_compiler_configure(compiler, nk_cs2s(nk_appDir().string().c_str()))) {
         return 1;
     }
     defer {
         nkl_compiler_free(compiler);
     };
-    if (!nkl_compiler_runFile(compiler, nk_mkstr(in_file))) {
+    if (!nkl_compiler_runFile(compiler, nk_cs2s(in_file))) {
         return 1;
     }
 

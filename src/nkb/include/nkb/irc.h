@@ -23,8 +23,8 @@ typedef struct {
 NkIrCompiler nkirc_create(NkIrcOptions opts);
 void nkirc_free(NkIrCompiler c);
 
-int nkir_compile(NkIrCompiler c, nkstr in_file, nkstr out_file, NkbOutputKind output_kind);
-int nkir_run(NkIrCompiler c, nkstr in_file);
+int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output_kind);
+int nkir_run(NkIrCompiler c, nks in_file);
 
 #ifdef __cplusplus
 }

@@ -55,8 +55,8 @@ nkar_typedef(char, NkStringBuilder);
 NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
 int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
-void nksb_str_escape(NkStringBuilder *sb, nkstr str);
-void nksb_str_unescape(NkStringBuilder *sb, nkstr str);
+void nksb_str_escape(NkStringBuilder *sb, nks str);
+void nksb_str_unescape(NkStringBuilder *sb, nks str);
 
 nk_stream nksb_getStream(NkStringBuilder *sb);
 
