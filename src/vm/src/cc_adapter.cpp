@@ -6,7 +6,7 @@
 #include "ntk/pipe_stream.h"
 #include "ntk/profiler.hpp"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 #include "translate_to_c.hpp"
 
 namespace {

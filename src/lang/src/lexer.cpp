@@ -11,9 +11,8 @@
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
 #include "ntk/string.h"
-#include "ntk/string.hpp"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 #include "token.hpp"
 
 const char *s_token_id[] = {

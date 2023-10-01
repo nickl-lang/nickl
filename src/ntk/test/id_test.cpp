@@ -3,8 +3,8 @@
 #include <gtest/gtest.h>
 
 #include "ntk/logger.h"
-#include "ntk/string.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/string.h"
+#include "ntk/utils.h"
 
 class id : public testing::Test {
     void SetUp() override {

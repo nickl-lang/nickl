@@ -10,7 +10,7 @@
 #include "nk/vm/common.h"
 #include "ntk/allocator.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 static nk_typeid_t s_next_id = 1;
 

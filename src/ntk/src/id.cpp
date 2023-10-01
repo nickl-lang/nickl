@@ -1,7 +1,7 @@
 #include "ntk/id.h"
 
 #include "ntk/hash_map.hpp"
-#include "ntk/string.hpp"
+#include "ntk/string.h"
 
 namespace {
 

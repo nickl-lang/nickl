@@ -9,9 +9,9 @@
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/stream.h"
-#include "ntk/string.hpp"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 namespace {
 

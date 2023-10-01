@@ -20,8 +20,8 @@
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
-#include "ntk/string.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/string.h"
+#include "ntk/utils.h"
 
 namespace {
 

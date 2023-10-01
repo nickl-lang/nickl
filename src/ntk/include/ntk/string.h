@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NTK_STRING_H
-#define HEADER_GUARD_NTK_STRING_H
+#ifndef HEADER_GUARD_NTK_STRING
+#define HEADER_GUARD_NTK_STRING
 
 #include <stddef.h>
 #include <string.h>
@@ -69,4 +69,43 @@ NK_INLINE nks nks_chop_by_delim(nks *str, char delim) {
 }
 #endif
 
-#endif // HEADER_GUARD_NTK_STRING_H
+#ifdef __cplusplus
+
+#include <functional>
+#include <iosfwd>
+#include <string>
+#include <string_view>
+
+inline std::string_view std_view(nks str) {
+    return std::string_view{str.data, str.size};
+}
+
+inline std::string std_str(nks str) {
+    return std::string{std_view(str)};
+}
+
+inline std::ostream &operator<<(std::ostream &stream, nks str) {
+    return stream << std::string_view{str.data, str.size};
+}
+
+namespace std {
+
+template <>
+struct hash<::nks> {
+    size_t operator()(::nks slice) {
+        return ::hash_array((uint8_t *)&slice.data[0], (uint8_t *)&slice.data[slice.size]);
+    }
+};
+
+template <>
+struct equal_to<::nks> {
+    size_t operator()(::nks lhs, ::nks rhs) {
+        return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
+    }
+};
+
+} // namespace std
+
+#endif // __cplusplus
+
+#endif // HEADER_GUARD_NTK_STRING

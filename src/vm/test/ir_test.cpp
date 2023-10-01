@@ -14,10 +14,8 @@
 #include "ntk/common.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
-#include "ntk/string.hpp"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
-#include "ntk/utils.hpp"
 
 namespace {
 

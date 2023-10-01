@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
-#include "ntk/string.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/string.h"
+#include "ntk/utils.h"
 
 class string_builder : public testing::Test {
     void SetUp() override {

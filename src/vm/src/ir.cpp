@@ -10,7 +10,7 @@
 #include "ntk/allocator.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/string.hpp"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 char const *s_nk_ir_names[] = {

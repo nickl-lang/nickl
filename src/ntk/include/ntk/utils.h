@@ -128,4 +128,48 @@ NK_INLINE hash_t hash_cstr(char const *str) {
 }
 #endif
 
+#ifdef __cplusplus
+
+#include <utility>
+
+#ifndef defer
+struct _DeferDummy {};
+template <class F>
+struct [[nodiscard]] _Deferrer {
+    F f;
+    ~_Deferrer() {
+        f();
+    }
+};
+template <class F>
+_Deferrer<F> operator*(_DeferDummy, F &&f) {
+    return {std::forward<F>(f)};
+}
+#define defer auto CAT(__defer, __LINE__) = _DeferDummy{} *[&]()
+#endif // defer
+
+template <class F>
+_Deferrer<F> makeDeferrer(F &&f) {
+    return {std::forward<F>(f)};
+}
+
+template <class T, class F>
+struct [[nodiscard]] _DeferrerWithData {
+    T data;
+    F f;
+    operator T() const {
+        return data;
+    }
+    ~_DeferrerWithData() {
+        f();
+    }
+};
+
+template <class T, class F>
+_DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
+    return {std::forward<T>(data), std::forward<F>(f)};
+}
+
+#endif // __cplusplus
+
 #endif // HEADER_GUARD_NTK_UTILS_H

@@ -5,8 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "ntk/allocator.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/allocator.h"
+#include "ntk/utils.h"
 
 template <class T>
 struct NkLogArray {

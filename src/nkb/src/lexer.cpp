@@ -13,7 +13,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
-#include "ntk/string.hpp"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 const char *s_token_id[] = {

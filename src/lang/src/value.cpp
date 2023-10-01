@@ -15,7 +15,6 @@
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
 #include "ntk/utils.h"
-#include "ntk/utils.hpp"
 
 // TODO @Optimization A bit excessive approach with type fingerprints
 using ByteArray = std::vector<uint8_t>;

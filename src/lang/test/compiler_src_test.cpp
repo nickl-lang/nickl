@@ -12,7 +12,7 @@
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/sys/app.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 namespace {
 

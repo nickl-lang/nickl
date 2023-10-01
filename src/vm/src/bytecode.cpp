@@ -17,7 +17,7 @@
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 char const *s_nk_bc_names[] = {
 #define X(NAME) #NAME,

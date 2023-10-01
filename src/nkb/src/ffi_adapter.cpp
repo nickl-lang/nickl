@@ -9,11 +9,10 @@
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
-#include "ntk/allocator.hpp"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 namespace {
 

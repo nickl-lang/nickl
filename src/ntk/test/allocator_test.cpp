@@ -1,11 +1,11 @@
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 
 #include <cstring>
 
 #include <gtest/gtest.h>
 
 #include "ntk/logger.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 class allocator : public testing::Test {
     void SetUp() override {

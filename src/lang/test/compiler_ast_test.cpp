@@ -7,11 +7,11 @@
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/sys/app.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 namespace {
 

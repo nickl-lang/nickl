@@ -4,7 +4,7 @@
 #include <new>
 
 #include "nkb/common.h"
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"

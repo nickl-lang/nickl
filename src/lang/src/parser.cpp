@@ -11,8 +11,8 @@
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
-#include "ntk/string.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/string.h"
+#include "ntk/utils.h"
 #include "token.hpp"
 
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_token_id[ID], s_token_text[ID]

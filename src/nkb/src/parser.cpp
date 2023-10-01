@@ -10,7 +10,7 @@
 #include "ntk/hash_map.hpp"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/string.hpp"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 namespace {

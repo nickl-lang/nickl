@@ -10,7 +10,7 @@
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
 #include "ntk/sys/app.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 namespace {
 

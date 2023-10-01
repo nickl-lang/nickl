@@ -5,7 +5,7 @@
 #include <new>
 
 #include "ir_impl.hpp"
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"

@@ -13,7 +13,6 @@
 #include "ntk/profiler.hpp"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
-#include "ntk/utils.hpp"
 
 namespace {
 

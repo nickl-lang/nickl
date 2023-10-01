@@ -4,7 +4,7 @@
 #include <cctype>
 #include <limits>
 
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 #include "ntk/utils.h"
 
 void nkirt_inspect(nktype_t type, NkStringBuilder *sb) {

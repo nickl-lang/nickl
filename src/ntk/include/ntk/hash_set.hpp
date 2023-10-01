@@ -8,9 +8,9 @@
 #include <functional>
 #include <type_traits>
 
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 #include "ntk/profiler.hpp"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 template <class T>
 struct NkHashSetDefaultCountext {

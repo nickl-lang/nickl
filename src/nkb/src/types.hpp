@@ -8,7 +8,7 @@
 
 #include "nkb/common.h"
 #include "ntk/hash_map.hpp"
-#include "ntk/string.hpp"
+#include "ntk/string.h"
 
 typedef struct {
     NkArena *type_arena;

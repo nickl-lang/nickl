@@ -17,7 +17,7 @@
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
 #include "ntk/string_builder.h"
-#include "ntk/utils.hpp"
+#include "ntk/utils.h"
 
 struct NkIrNativeClosure_T {
     void *code; // Assumed to be first field

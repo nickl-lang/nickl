@@ -7,7 +7,7 @@
 
 #include "ast_impl.h"
 #include "nkl/lang/token.h"
-#include "ntk/allocator.hpp"
+#include "ntk/allocator.h"
 #include "ntk/id.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
