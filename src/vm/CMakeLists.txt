@@ -16,7 +16,7 @@ target_include_directories(${LIB}
     )
 
 target_link_libraries(${LIB}
-    PUBLIC nk_common
+    PUBLIC ntk
     PRIVATE Ffi
     PRIVATE Dl
     )

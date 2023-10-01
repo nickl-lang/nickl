@@ -5,13 +5,13 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/pipe_stream.h"
-#include "nk/common/stream.h"
-#include "nk/common/string.hpp"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
 #include "nk/vm/ir.h"
+#include "ntk/logger.h"
+#include "ntk/pipe_stream.h"
+#include "ntk/stream.h"
+#include "ntk/string.hpp"
+#include "ntk/string_builder.h"
+#include "ntk/utils.hpp"
 
 namespace {
 

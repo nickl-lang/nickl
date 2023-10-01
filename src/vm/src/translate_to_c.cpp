@@ -14,14 +14,14 @@
 #include <vector>
 
 #include "ir_impl.hpp"
-#include "nk/common/allocator.h"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/string.hpp"
-#include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
+#include "ntk/allocator.h"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/string.hpp"
+#include "ntk/utils.hpp"
 
 namespace {
 

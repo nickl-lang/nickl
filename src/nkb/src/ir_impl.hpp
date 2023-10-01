@@ -3,9 +3,9 @@
 
 #include <cstddef>
 
-#include "nk/common/array.h"
-#include "nk/common/string.h"
 #include "nkb/ir.h"
+#include "ntk/array.h"
+#include "ntk/string.h"
 
 nkar_typedef(size_t, nkar_size_t);
 nkar_typedef(nktype_t, nkar_nktype_t);

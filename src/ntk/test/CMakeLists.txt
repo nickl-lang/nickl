@@ -1,0 +1,12 @@
+def_test(GROUP ntk NAME allocator LINK ntk)
+def_test(GROUP ntk NAME array LINK ntk)
+def_test(GROUP ntk NAME hash_map LINK ntk)
+def_test(GROUP ntk NAME hash_set LINK ntk)
+def_test(GROUP ntk NAME id LINK ntk)
+def_test(GROUP ntk NAME log_array LINK ntk)
+def_test(GROUP ntk NAME string_builder LINK ntk)
+def_test(GROUP ntk NAME utils LINK ntk)
+
+if(ENABLE_LOGGING)
+    def_test(GROUP ntk NAME logger LINK ntk)
+endif()

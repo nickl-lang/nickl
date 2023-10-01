@@ -7,13 +7,13 @@
 #include "bytecode.h"
 #include "bytecode_impl.hpp"
 #include "ir_impl.hpp"
-#include "nk/common/allocator.h"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.h"
-#include "nk/common/utils.hpp"
 #include "nk/vm/value.h"
+#include "ntk/allocator.h"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/string_builder.h"
+#include "ntk/utils.h"
+#include "ntk/utils.hpp"
 
 namespace {
 

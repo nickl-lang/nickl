@@ -1,8 +1,8 @@
 #ifndef HEADER_GUARD_NKB_IRC
 #define HEADER_GUARD_NKB_IRC
 
-#include "nk/common/string.h"
 #include "nkb/common.h"
+#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {

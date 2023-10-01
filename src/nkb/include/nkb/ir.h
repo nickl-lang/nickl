@@ -4,11 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "nk/common/allocator.h"
-#include "nk/common/string.h"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.h"
 #include "nkb/common.h"
+#include "ntk/allocator.h"
+#include "ntk/string.h"
+#include "ntk/string_builder.h"
+#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {

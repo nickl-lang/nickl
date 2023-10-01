@@ -2,9 +2,9 @@
 
 #include <dlfcn.h>
 
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/string.h"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/string.h"
 
 namespace {
 

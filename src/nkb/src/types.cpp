@@ -3,11 +3,11 @@
 #include <cstring>
 #include <new>
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/array.h"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
 #include "nkb/common.h"
+#include "ntk/allocator.hpp"
+#include "ntk/array.h"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
 
 namespace {
 

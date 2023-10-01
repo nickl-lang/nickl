@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "nk/common/string_builder.h"
+#include "ntk/string_builder.h"
 
 #ifdef __cplusplus
 extern "C" {

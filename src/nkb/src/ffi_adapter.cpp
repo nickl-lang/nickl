@@ -6,14 +6,14 @@
 #include <ffi.h>
 
 #include "interp.hpp"
-#include "nk/common/allocator.h"
-#include "nk/common/allocator.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
+#include "ntk/allocator.hpp"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/string_builder.h"
+#include "ntk/utils.hpp"
 
 namespace {
 

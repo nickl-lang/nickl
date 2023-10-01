@@ -6,12 +6,12 @@
 
 #include "ir_impl.hpp"
 #include "native_fn_adapter.h"
-#include "nk/common/allocator.h"
-#include "nk/common/id.h"
-#include "nk/common/logger.h"
-#include "nk/common/string.hpp"
-#include "nk/common/string_builder.h"
 #include "nk/vm/value.h"
+#include "ntk/allocator.h"
+#include "ntk/id.h"
+#include "ntk/logger.h"
+#include "ntk/string.hpp"
+#include "ntk/string_builder.h"
 
 char const *s_nk_ir_names[] = {
 #define X(NAME) #NAME,

@@ -5,12 +5,12 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/logger.h"
-#include "nk/common/utils.h"
-#include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
+#include "ntk/allocator.hpp"
+#include "ntk/logger.h"
+#include "ntk/utils.h"
+#include "ntk/utils.hpp"
 
 namespace {
 

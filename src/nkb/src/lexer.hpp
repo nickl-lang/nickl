@@ -1,9 +1,9 @@
 #ifndef HEADER_GUARD_NKB_LEXER
 #define HEADER_GUARD_NKB_LEXER
 
-#include "nk/common/allocator.h"
-#include "nk/common/array.h"
-#include "nk/common/string.h"
+#include "ntk/allocator.h"
+#include "ntk/array.h"
+#include "ntk/string.h"
 
 enum ETokenId {
 #define OP(ID, TEXT) t_##ID,

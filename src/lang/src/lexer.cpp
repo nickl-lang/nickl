@@ -8,12 +8,12 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/string.h"
-#include "nk/common/string.hpp"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/string.h"
+#include "ntk/string.hpp"
+#include "ntk/string_builder.h"
+#include "ntk/utils.hpp"
 #include "token.hpp"
 
 const char *s_token_id[] = {

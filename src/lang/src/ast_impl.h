@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NKL_LANG_AST_IMPL
 #define HEADER_GUARD_NKL_LANG_AST_IMPL
 
-#include "nk/common/utils.h"
+#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {

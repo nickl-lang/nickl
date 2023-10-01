@@ -8,9 +8,9 @@
 
 #include "bytecode.h"
 #include "dl_adapter.h"
-#include "nk/common/allocator.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
+#include "ntk/allocator.h"
 
 typedef enum {
 #define X(NAME) CAT(nkop_, NAME),

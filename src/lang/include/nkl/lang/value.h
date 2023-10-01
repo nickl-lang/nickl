@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nk/common/id.h"
-#include "nk/sys/common.h"
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
+#include "ntk/common.h"
+#include "ntk/id.h"
 
 #ifdef __cplusplus
 extern "C" {

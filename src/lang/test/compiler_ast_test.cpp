@@ -4,14 +4,14 @@
 
 #include <gtest/gtest.h>
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/id.h"
-#include "nk/common/logger.h"
-#include "nk/common/utils.hpp"
-#include "nk/sys/app.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
+#include "ntk/allocator.hpp"
+#include "ntk/id.h"
+#include "ntk/logger.h"
+#include "ntk/sys/app.hpp"
+#include "ntk/utils.hpp"
 
 namespace {
 

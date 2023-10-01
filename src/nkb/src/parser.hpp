@@ -2,9 +2,9 @@
 #define HEADER_GUARD_NKB_PARSER
 
 #include "lexer.hpp"
-#include "nk/common/allocator.h"
-#include "nk/common/string.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
+#include "ntk/string.h"
 #include "types.hpp"
 
 typedef struct {

@@ -4,11 +4,11 @@
 #include <cstring>
 #include <thread>
 
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/utils.hpp"
 #include "nkb/common.h"
 #include "nkb/irc.h"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/utils.hpp"
 
 namespace {
 

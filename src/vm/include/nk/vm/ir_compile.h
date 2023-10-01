@@ -1,8 +1,8 @@
 #ifndef HEADER_GUARD_NK_VM_IR_COMPILE
 #define HEADER_GUARD_NK_VM_IR_COMPILE
 
-#include "nk/common/string.h"
 #include "nk/vm/ir.h"
+#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -11,13 +11,13 @@
 #include "interp.hpp"
 #include "ir_impl.hpp"
 #include "native_fn_adapter.h"
-#include "nk/common/allocator.h"
-#include "nk/common/logger.h"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
+#include "ntk/allocator.h"
+#include "ntk/logger.h"
+#include "ntk/string_builder.h"
+#include "ntk/utils.hpp"
 
 char const *s_nk_bc_names[] = {
 #define X(NAME) #NAME,

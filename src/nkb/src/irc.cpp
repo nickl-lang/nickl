@@ -7,15 +7,15 @@
 #include <pthread.h>
 
 #include "lexer.hpp"
-#include "nk/common/allocator.h"
-#include "nk/common/allocator.hpp"
-#include "nk/common/file.h"
-#include "nk/common/logger.h"
-#include "nk/common/string.h"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
-#include "nk/sys/term.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
+#include "ntk/allocator.hpp"
+#include "ntk/file.h"
+#include "ntk/logger.h"
+#include "ntk/string.h"
+#include "ntk/string_builder.h"
+#include "ntk/sys/term.h"
+#include "ntk/utils.hpp"
 #include "parser.hpp"
 #include "types.hpp"
 

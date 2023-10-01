@@ -4,14 +4,14 @@
 #include <cstring>
 #include <new>
 
-#include "nk/common/array.h"
-#include "nk/common/hash_map.hpp"
-#include "nk/common/id.h"
-#include "nk/common/logger.h"
-#include "nk/common/string.hpp"
-#include "nk/common/string_builder.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/array.h"
+#include "ntk/hash_map.hpp"
+#include "ntk/id.h"
+#include "ntk/logger.h"
+#include "ntk/string.hpp"
+#include "ntk/string_builder.h"
 
 namespace {
 

@@ -6,13 +6,13 @@
 #include <vector>
 
 #include "ast_impl.h"
-#include "nk/common/id.h"
-#include "nk/common/logger.h"
-#include "nk/common/profiler.hpp"
-#include "nk/common/string.hpp"
-#include "nk/common/utils.hpp"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/token.h"
+#include "ntk/id.h"
+#include "ntk/logger.h"
+#include "ntk/profiler.hpp"
+#include "ntk/string.hpp"
+#include "ntk/utils.hpp"
 #include "token.hpp"
 
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_token_id[ID], s_token_text[ID]

@@ -5,11 +5,11 @@
 #include <new>
 
 #include "ir_impl.hpp"
-#include "nk/common/allocator.hpp"
-#include "nk/common/array.h"
-#include "nk/common/logger.h"
-#include "nk/common/pipe_stream.h"
-#include "nk/common/string.h"
+#include "ntk/allocator.hpp"
+#include "ntk/array.h"
+#include "ntk/logger.h"
+#include "ntk/pipe_stream.h"
+#include "ntk/string.h"
 
 namespace {
 

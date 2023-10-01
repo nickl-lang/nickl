@@ -4,8 +4,8 @@
 #include <cctype>
 #include <limits>
 
-#include "nk/common/allocator.hpp"
-#include "nk/common/utils.h"
+#include "ntk/allocator.hpp"
+#include "ntk/utils.h"
 
 void nkirt_inspect(nktype_t type, NkStringBuilder *sb) {
     if (!type) {

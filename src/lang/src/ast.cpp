@@ -6,11 +6,11 @@
 #include <new>
 
 #include "ast_impl.h"
-#include "nk/common/allocator.hpp"
-#include "nk/common/id.h"
-#include "nk/common/string.h"
-#include "nk/common/string_builder.h"
 #include "nkl/lang/token.h"
+#include "ntk/allocator.hpp"
+#include "ntk/id.h"
+#include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 char const *s_nkl_ast_node_names[] = {
 #define X(ID) #ID,

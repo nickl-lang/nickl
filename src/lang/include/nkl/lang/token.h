@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "nk/common/string.h"
+#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {

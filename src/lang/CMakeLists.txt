@@ -13,7 +13,7 @@ target_include_directories(nkl_lang
     )
 
 target_link_libraries(nkl_lang
-    PUBLIC nk_common
+    PUBLIC ntk
     PUBLIC nk_vm
     )
 

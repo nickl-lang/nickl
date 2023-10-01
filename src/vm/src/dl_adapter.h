@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NK_VM_DL_ADAPTER
 #define HEADER_GUARD_NK_VM_DL_ADAPTER
 
-#include "nk/common/string.h"
+#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {

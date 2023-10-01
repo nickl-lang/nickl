@@ -5,11 +5,11 @@
 #include "ffi_adapter.hpp"
 #include "interp.hpp"
 #include "ir_impl.hpp"
-#include "nk/common/array.h"
-#include "nk/common/logger.h"
-#include "nk/common/string.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/array.h"
+#include "ntk/logger.h"
+#include "ntk/string.h"
 
 namespace {
 

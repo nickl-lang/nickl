@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NKL_LANG_MAIN
 #define HEADER_GUARD_NKL_LANG_MAIN
 
-#include "nk/sys/common.h"
+#include "ntk/common.h"
 
 #ifdef __cplusplus
 extern "C" {

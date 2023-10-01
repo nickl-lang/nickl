@@ -6,9 +6,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "nk/common/hash_map.hpp"
-#include "nk/common/string.hpp"
 #include "nkb/common.h"
+#include "ntk/hash_map.hpp"
+#include "ntk/string.hpp"
 
 typedef struct {
     NkArena *type_arena;

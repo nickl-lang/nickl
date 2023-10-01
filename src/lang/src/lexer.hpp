@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "nk/common/string.h"
 #include "nkl/lang/token.h"
+#include "ntk/string.h"
 
 bool nkl_lex(nkstr src, std::vector<NklToken> &tokens, std::string &err_str);
 

@@ -4,12 +4,12 @@
 #include <cstddef>
 #include <mutex>
 
-#include "nk/common/allocator.h"
-#include "nk/common/array.h"
-#include "nk/common/hash_map.hpp"
-#include "nk/common/id.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
+#include "ntk/array.h"
+#include "ntk/hash_map.hpp"
+#include "ntk/id.h"
 
 enum NkBcOpcode {
 #define OP(NAME) CAT(nkop_, NAME),

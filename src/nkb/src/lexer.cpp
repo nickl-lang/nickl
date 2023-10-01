@@ -10,11 +10,11 @@
 #include <cstring>
 #include <iterator>
 
-#include "nk/common/allocator.h"
-#include "nk/common/array.h"
-#include "nk/common/logger.h"
-#include "nk/common/string.hpp"
-#include "nk/common/string_builder.h"
+#include "ntk/allocator.h"
+#include "ntk/array.h"
+#include "ntk/logger.h"
+#include "ntk/string.hpp"
+#include "ntk/string_builder.h"
 
 const char *s_token_id[] = {
 #define OP(ID, TEXT) #ID,

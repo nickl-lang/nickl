@@ -7,10 +7,10 @@
 
 #include "ir_impl.hpp"
 #include "native_fn_adapter.h"
-#include "nk/common/allocator.h"
-#include "nk/common/string_builder.h"
-#include "nk/common/utils.hpp"
 #include "nk/vm/common.h"
+#include "ntk/allocator.h"
+#include "ntk/string_builder.h"
+#include "ntk/utils.hpp"
 
 static nk_typeid_t s_next_id = 1;
 
