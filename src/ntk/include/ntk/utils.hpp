@@ -10,7 +10,7 @@
 #ifndef defer
 struct _DeferDummy {};
 template <class F>
-struct _Deferrer {
+struct [[nodiscard]] _Deferrer {
     F f;
     ~_Deferrer() {
         f();
@@ -24,12 +24,12 @@ _Deferrer<F> operator*(_DeferDummy, F &&f) {
 #endif // defer
 
 template <class F>
-[[nodiscard]] _Deferrer<F> makeDeferrer(F &&f) {
+_Deferrer<F> makeDeferrer(F &&f) {
     return {std::forward<F>(f)};
 }
 
 template <class T, class F>
-struct _DeferrerWithData {
+struct [[nodiscard]] _DeferrerWithData {
     T data;
     F f;
     operator T() const {
@@ -41,7 +41,7 @@ struct _DeferrerWithData {
 };
 
 template <class T, class F>
-[[nodiscard]] _DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
+_DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
     return {std::forward<T>(data), std::forward<F>(f)};
 }
 

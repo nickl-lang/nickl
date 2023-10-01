@@ -653,7 +653,7 @@ ValueInfo declToValueInfo(Decl &decl) {
     }
 }
 
-[[nodiscard]] auto pushFn(NklCompiler c, NkIrFunct fn) {
+auto pushFn(NklCompiler c, NkIrFunct fn) {
     auto prev_fn = c->cur_fn;
     c->cur_fn = fn;
     return makeDeferrer([=]() {
@@ -662,7 +662,7 @@ ValueInfo declToValueInfo(Decl &decl) {
     });
 }
 
-[[nodiscard]] auto pushNode(NklCompiler c, NklAstNode node) {
+auto pushNode(NklCompiler c, NklAstNode node) {
     if (node && node->id) {
         c->node_stack.emplace_back(NodeInfo{.node = node});
     }
