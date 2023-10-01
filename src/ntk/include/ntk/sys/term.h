@@ -17,7 +17,7 @@ extern "C" {
 #define NK_TERM_COLOR_CYAN "\x1b[1;36m"
 #define NK_TERM_COLOR_WHITE "\x1b[1;37m"
 
-bool nk_isatty(int fileno);
+bool nk_isatty(int fd);
 
 #ifdef __cplusplus
 }

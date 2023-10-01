@@ -1,7 +1,7 @@
 #include "ntk/sys/term.h"
 
-#include <unistd.h>
+#include <io.h>
 
-bool nk_isatty(int fileno) {
-    return isatty(fileno);
+bool nk_isatty(int fd) {
+    return _isatty(fd);
 }

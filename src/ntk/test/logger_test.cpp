@@ -1,7 +1,9 @@
 #include "ntk/logger.h"
 
+#include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 #include <streambuf>
 #include <thread>
@@ -11,48 +13,27 @@
 
 NK_LOG_USE_SCOPE(test);
 
-static constexpr std::size_t c_buffer_size = 4096;
+#define MSG_BUF_SIZE 4096
 
 class logger : public testing::Test {
     void SetUp() override {
-        // Assign test msg buffer to STDERR
-        setvbuf(stderr, m_msg_buffer, _IOFBF, c_buffer_size);
+        NK_LOGGER_INIT(NkLoggerOptions{NkLog_Trace, NkLog_Color_Never});
 
-        NK_LOGGER_INIT(NkLoggerOptions{NkLog_Trace, NkLog_Color_Auto});
+        setvbuf(stderr, m_msg_buffer, _IOFBF, MSG_BUF_SIZE); // Assign test msg buffer to STDERR
     }
 
     void TearDown() override {
-        // Reset STDERR buffer
-        setvbuf(stderr, nullptr, _IONBF, c_buffer_size);
+        setvbuf(stderr, nullptr, _IONBF, MSG_BUF_SIZE); // Reset STDERR buffer
     }
 
 protected:
     void writeTestMsg(NkLogLevel level, char const *msg) {
-        // Flush any existing data
-        std::fflush(stderr);
-        std::fflush(stdout);
-
-        // Clear the test msg buffer
-        std::memset(m_msg_buffer, 0, c_buffer_size);
-
-        // Save original streams
-        m_stderr_save = dup(STDERR_FILENO);
-        m_stdout_save = dup(STDOUT_FILENO);
-
-        // Redirect stdout to disable colored output
-        FILE *dummy;
-        dummy = std::freopen("/dev/null", "a", stdout);
-        (void)dummy;
+        fflush(stderr);                        // Flush any existing data
+        memset(m_msg_buffer, 0, MSG_BUF_SIZE); // Clear the test msg buffer
 
         _NK_LOG_CHK(level, "%s", msg);
 
-        // Flush any test msg data
-        std::fflush(stderr);
-        std::fflush(stdout);
-
-        // Restore original streams
-        dup2(m_stderr_save, STDERR_FILENO);
-        dup2(m_stdout_save, STDOUT_FILENO);
+        fflush(stderr); // Flush any test msg data
     }
 
     struct LogMsg {
@@ -78,11 +59,8 @@ protected:
         return msg;
     }
 
-protected: // fields
-    char m_msg_buffer[c_buffer_size];
-
-    int m_stderr_save;
-    int m_stdout_save;
+protected:
+    char m_msg_buffer[MSG_BUF_SIZE];
 };
 
 #define EXPECT_LOG_MSG(IDX, LEV, SCOPE, TEXT) \
@@ -116,7 +94,7 @@ TEST_F(logger, complex) {
 }
 
 TEST_F(logger, threads) {
-    bool stop = false;
+    std::atomic_bool stop = false;
     std::thread t1{[&]() {
         while (!stop) {
             NK_LOG_TRC("This is thread 1!");

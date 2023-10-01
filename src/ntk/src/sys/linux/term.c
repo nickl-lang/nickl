@@ -2,6 +2,6 @@
 
 #include <unistd.h>
 
-bool nk_isatty(int fileno) {
-    return isatty(fileno);
+bool nk_isatty(int fd) {
+    return isatty(fd);
 }

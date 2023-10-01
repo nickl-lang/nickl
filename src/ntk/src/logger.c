@@ -2,16 +2,15 @@
 
 #include "ntk/logger.h"
 
-#include <chrono>
-#include <cstdarg>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <mutex>
+#include <pthread.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "ntk/sys/term.h"
-
-int fileno(FILE *);
+#include "ntk/sys/time.h"
 
 #define ENV_VAR "NK_LOG_LEVEL"
 
@@ -42,16 +41,16 @@ static char const *c_env_log_level_map[] = {
     "trace",
 };
 
-typedef struct {
-    std::chrono::steady_clock::time_point start_time;
+struct LoggerState {
+    nktime_t start_time;
     NkLogLevel log_level;
     NkColorMode color_mode;
-    std::mutex mutex;
+    pthread_mutex_t mtx;
     size_t msg_count;
     bool initialized;
-} LoggerState;
+};
 
-static LoggerState s_logger;
+static struct LoggerState s_logger;
 
 static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
     size_t i = 0;
@@ -69,13 +68,13 @@ bool _nk_loggerCheck(NkLogLevel log_level) {
 }
 
 void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
-    bool const to_color =
-        s_logger.color_mode == NkLog_Color_Always || (s_logger.color_mode == NkLog_Color_Auto && nk_isatty(2));
+    bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
+                          (s_logger.color_mode == NkLog_Color_Auto && nk_isatty(STDERR_FILENO));
 
-    auto now = std::chrono::steady_clock::now();
-    auto ts = std::chrono::duration<double>{now - s_logger.start_time}.count();
+    nktime_t now = nk_getTimeNs();
+    double ts = (now - s_logger.start_time) / 1e9;
 
-    std::lock_guard<std::mutex> lk{s_logger.mutex};
+    pthread_mutex_lock(&s_logger.mtx);
 
     if (to_color) {
         fprintf(stderr, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
@@ -93,13 +92,19 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     }
 
     fputc('\n', stderr);
+
+    pthread_mutex_unlock(&s_logger.mtx);
 }
 
 void _nk_loggerInit(NkLoggerOptions opt) {
-    s_logger.start_time = std::chrono::steady_clock::now();
+    s_logger = (struct LoggerState){0};
+
+    s_logger.start_time = nk_getTimeNs();
 
     s_logger.log_level = opt.log_level;
     s_logger.color_mode = opt.color_mode;
+
+    pthread_mutex_init(&s_logger.mtx, NULL);
 
     s_logger.initialized = true;
 }
