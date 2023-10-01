@@ -19,6 +19,7 @@ target_link_libraries(${LIB}
     PUBLIC ntk
     PRIVATE Ffi
     PRIVATE Dl
+    PRIVATE pthread
     )
 
 if(CMAKE_TESTING_ENABLED)
