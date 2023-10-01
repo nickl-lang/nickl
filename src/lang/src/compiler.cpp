@@ -255,7 +255,10 @@ NK_PRINTF_LIKE(2, 3) void error(NklCompiler c, char const *fmt, ...) {
 
     va_list ap;
     va_start(ap, fmt);
-    c->err_str = string_vformat(fmt, ap);
+    NkStringBuilder sb{};
+    nksb_vprintf(&sb, fmt, ap);
+    c->err_str = std_str({nkav_init(sb)});
+    nksb_free(&sb);
     va_end(ap);
 
     if (!c->node_stack.empty()) {
@@ -2431,18 +2434,22 @@ NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
 
     va_list ap;
     va_start(ap, fmt);
-    auto str = string_vformat(fmt, ap);
+    NkStringBuilder sb{};
+    defer {
+        nksb_free(&sb);
+    };
+    nksb_vprintf(&sb, fmt, ap);
+    nks str{nkav_init(sb)};
     va_end(ap);
 
     bool const to_color = nk_isatty(2);
 
     std::fprintf(
         stderr,
-        "%serror:%s %.*s\n",
+        "%serror:%s " nks_Fmt "\n",
         to_color ? NK_TERM_COLOR_RED : "",
         to_color ? NK_TERM_COLOR_NONE : "",
-        (int)str.size(),
-        str.c_str());
+        nks_Arg(str));
 
     c->error_occurred = true;
     c->error_reported = true;

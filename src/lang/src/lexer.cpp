@@ -294,7 +294,10 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        m_err_str = string_vformat(fmt, ap);
+        NkStringBuilder sb{};
+        nksb_vprintf(&sb, fmt, ap);
+        m_err_str = std_str({nkav_init(sb)});
+        nksb_free(&sb);
         va_end(ap);
         m_token.id = t_error;
     }

@@ -45,6 +45,4 @@ template <class T, class F>
     return {std::forward<T>(data), std::forward<F>(f)};
 }
 
-std::string string_vformat(char const *fmt, va_list ap);
-
 #endif // HEADER_GUARD_NTK_UTILS_HPP

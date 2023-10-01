@@ -20,7 +20,6 @@ add_library(${LIB}
     src/string.c
     src/string_builder.c
     src/utils.c
-    src/utils.cpp
     )
 
 if(ENABLE_LOGGING)
