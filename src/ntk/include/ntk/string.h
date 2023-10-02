@@ -19,8 +19,15 @@ NK_INLINE nks nk_cs2s(char const *str) {
 }
 
 NK_INLINE nks nk_strcpy(NkAllocator alloc, nks src) {
-    void *mem = nk_alloc(alloc, src.size);
+    char *mem = (char *)nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
+    return LITERAL(nks){mem, src.size};
+}
+
+NK_INLINE nks nk_strcpy_nt(NkAllocator alloc, nks src) {
+    char *mem = (char *)nk_alloc(alloc, src.size + 1);
+    memcpy(mem, src.data, src.size);
+    mem[src.size] = '\0';
     return LITERAL(nks){(char const *)mem, src.size};
 }
 

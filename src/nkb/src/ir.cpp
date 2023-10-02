@@ -7,6 +7,7 @@
 #include "ir_impl.hpp"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
+#include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/string.h"
@@ -124,25 +125,25 @@ NkIrProc nkir_createProc(NkIrProg ir) {
     return id;
 }
 
-NkIrLabel nkir_createLabel(NkIrProg ir, nks name) {
+NkIrLabel nkir_createLabel(NkIrProg ir, nkid name) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrLabel id{ir->blocks.size};
     nkar_append(
         &ir->blocks,
         (NkIrBlock{
-            .name = nk_strcpy(ir->alloc, name),
+            .name = name,
             .instrs{0, 0, 0, ir->alloc},
         }));
     return id;
 }
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nks name, nktype_t proc_t) {
+void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkid name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[proc_id.id];
 
-    proc.name = nk_strcpy(ir->alloc, name);
+    proc.name = name;
     proc.proc_t = proc_t;
 
     nkir_activateProc(ir, proc_id);
@@ -240,27 +241,27 @@ NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type) {
     return id;
 }
 
-NkIrExternData nkir_makeExternData(NkIrProg ir, nks name, nktype_t type) {
+NkIrExternData nkir_makeExternData(NkIrProg ir, nkid name, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternData id{ir->extern_data.size};
     nkar_append(
         &ir->extern_data,
         (NkIrExternData_T{
-            .name = nk_strcpy(ir->alloc, name),
+            .name = name,
             .type = type,
         }));
     return id;
 }
 
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, nks name, nktype_t proc_t) {
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternProc id{ir->extern_procs.size};
     nkar_append(
         &ir->extern_procs,
         (NkIrExternProc_T{
-            .name = nk_strcpy(ir->alloc, name),
+            .name = name,
             .proc_t = proc_t,
         }));
     return id;
@@ -515,7 +516,7 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
 void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     if (ir->extern_data.size) {
         for (auto const &data : nk_iterate(ir->extern_data)) {
-            nksb_printf(sb, "\nextern data " nks_Fmt ": ", nks_Arg(data.name));
+            nksb_printf(sb, "\nextern data %s: ", nkid2cs(data.name));
             nkirt_inspect(data.type, sb);
         }
         nksb_printf(sb, "\n");
@@ -523,7 +524,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
 
     if (ir->extern_procs.size) {
         for (auto const &proc : nk_iterate(ir->extern_procs)) {
-            nksb_printf(sb, "\nextern proc " nks_Fmt, nks_Arg(proc.name));
+            nksb_printf(sb, "\nextern proc %s", nkid2cs(proc.name));
             inspectProcSignature(proc.proc_t->as.proc.info, sb, false);
         }
         nksb_printf(sb, "\n");
@@ -535,9 +536,9 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
     nksb_printf(
         sb,
-        "\nproc%s " nks_Fmt,
+        "\nproc%s %s",
         (proc.proc_t->as.proc.info.call_conv == NkCallConv_Cdecl ? " cdecl" : ""),
-        nks_Arg(proc.name));
+        nkid2cs(proc.name));
     inspectProcSignature(proc.proc_t->as.proc.info, sb);
 
     nksb_printf(sb, " {\n\n");
@@ -556,7 +557,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
     for (auto block_id : nk_iterate(proc.blocks)) {
         auto const &block = ir->blocks.data[block_id];
 
-        nksb_printf(sb, nks_Fmt "\n", nks_Arg(block.name));
+        nksb_printf(sb, "%s\n", nkid2cs(block.name));
 
         for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];
@@ -587,8 +588,9 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
                     break;
                 }
                 case NkIrArg_Label:
-                    if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name.size != 0) {
-                        nksb_printf(sb, nks_Fmt, nks_Arg(ir->blocks.data[arg.id].name));
+                    if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != nkid_empty) {
+                        auto const name = nkid2s(ir->blocks.data[arg.id].name);
+                        nksb_printf(sb, nks_Fmt, nks_Arg(name));
                     } else {
                         nksb_printf(sb, "(null)");
                     }
@@ -643,17 +645,17 @@ void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder *sb) {
         }
         break;
     case NkIrRef_Proc: {
-        auto const name = ir->procs.data[ref.index].name;
+        auto const name = nkid2s(ir->procs.data[ref.index].name);
         nksb_printf(sb, nks_Fmt, nks_Arg(name));
         break;
     }
     case NkIrRef_ExternData: {
-        auto const name = ir->extern_data.data[ref.index].name;
+        auto const name = nkid2s(ir->extern_data.data[ref.index].name);
         nksb_printf(sb, nks_Fmt, nks_Arg(name));
         break;
     }
     case NkIrRef_ExternProc: {
-        auto const name = ir->extern_procs.data[ref.index].name;
+        auto const name = nkid2s(ir->extern_procs.data[ref.index].name);
         nksb_printf(sb, nks_Fmt, nks_Arg(name));
         break;
     }

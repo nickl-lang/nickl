@@ -245,7 +245,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             case NkIrRef_ExternData: {
                 auto data = ir.extern_data.data[ir_ref.index];
 
-                auto found = ctx->extern_syms.find(s2nkid(data.name));
+                auto found = ctx->extern_syms.find(data.name);
                 assert(found && "extern data not found");
 
                 ref.kind = NkBcRef_Data;
@@ -255,7 +255,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
             case NkIrRef_ExternProc: {
                 auto proc = ir.extern_procs.data[ir_ref.index];
 
-                auto found = ctx->extern_syms.find(s2nkid(proc.name));
+                auto found = ctx->extern_syms.find(proc.name);
                 assert(found && "extern proc not found");
                 auto sym_addr = nk_alloc_t<void *>(ir.alloc);
                 *sym_addr = *found;
@@ -435,7 +435,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
     inspect({nkav_init(bc_proc.instrs)}, &sb);
-    NK_LOG_INF("proc " nks_Fmt "\n" nks_Fmt "", nks_Arg(ir_proc.name), nks_Arg(sb));
+    NK_LOG_INF("proc %s\n" nks_Fmt "", nkid2cs(ir_proc.name), nks_Arg(sb));
 #endif // ENABLE_LOGGING
 }
 
@@ -481,10 +481,10 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
     nk_free_t(ctx->ir->alloc, ctx);
 }
 
-void nkir_defineExternSym(NkIrRunCtx ctx, nks name, void *data) {
+void nkir_defineExternSym(NkIrRunCtx ctx, nkid name, void *data) {
     NK_LOG_TRC("%s", __func__);
 
-    ctx->extern_syms.insert(s2nkid(name), data);
+    ctx->extern_syms.insert(name, data);
 }
 
 void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, void **args, void **ret) {

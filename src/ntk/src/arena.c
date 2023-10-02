@@ -4,9 +4,9 @@
 
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/asan_interface.h>
-#define RED_ZONE_SIZE 32ul
+#define RED_ZONE_SIZE 32
 #else
-#define RED_ZONE_SIZE 0ull
+#define RED_ZONE_SIZE 0
 #define ASAN_POISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
 #define ASAN_UNPOISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
 #endif

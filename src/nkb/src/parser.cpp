@@ -110,7 +110,7 @@ struct GeneratorState {
                 DEFINE(sig, parseProcSignature());
 
                 if (sig.is_extern) {
-                    new (makeGlobalDecl(s2nkid(sig.name))) Decl{
+                    new (makeGlobalDecl(sig.name)) Decl{
                         {.extern_proc = nkir_makeExternProc(
                              m_ir,
                              sig.name,
@@ -128,7 +128,7 @@ struct GeneratorState {
                     auto proc = nkir_createProc(m_ir);
 
                     static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
-                    if (s2nkid(sig.name) == c_entry_point_id) {
+                    if (sig.name == c_entry_point_id) {
                         m_entry_point = proc;
                     }
 
@@ -145,7 +145,7 @@ struct GeneratorState {
                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                             }));
 
-                    auto const decl = new (makeGlobalDecl(s2nkid(sig.name))) Decl{
+                    auto const decl = new (makeGlobalDecl(sig.name)) Decl{
                         {.proc{
                             .proc = proc,
                             .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
@@ -212,7 +212,7 @@ struct GeneratorState {
                 auto name = s2nkid(token->text);
                 if (is_extern) {
                     new (makeGlobalDecl(name)) Decl{
-                        {.extern_data = nkir_makeExternData(m_ir, token->text, type)},
+                        {.extern_data = nkir_makeExternData(m_ir, s2nkid(token->text), type)},
                         Decl_ExternData,
                     };
                 } else {
@@ -319,7 +319,7 @@ private:
         nkar_type(nkid) arg_names;
         nkar_type(nktype_t) args_t;
         nkar_type(nktype_t) ret_t;
-        nks name{};
+        nkid name{};
         bool is_variadic{};
         bool is_extern{};
         bool is_cdecl{};
@@ -338,7 +338,7 @@ private:
             res.is_cdecl = true;
         }
         DEFINE(name, parseId());
-        res.name = name->text;
+        res.name = s2nkid(name->text);
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -748,7 +748,7 @@ private:
     NkIrLabel getLabel(nkid label_id) {
         auto found = m_cur_proc->labels.find(s2nkid(m_cur_token->text));
         if (!found) {
-            auto label = nkir_createLabel(m_ir, m_cur_token->text);
+            auto label = nkir_createLabel(m_ir, s2nkid(m_cur_token->text));
             return m_cur_proc->labels.insert(label_id, label);
         } else {
             return *found;

@@ -47,7 +47,7 @@ nkid cs2nkid(char const *str) {
 }
 
 void nkid_define(nkid id, nks str) {
-    auto const str_copy = nk_strcpy(nk_arena_getAllocator(&ctx.string_arena), str);
+    auto const str_copy = nk_strcpy_nt(nk_arena_getAllocator(&ctx.string_arena), str);
     ctx.str2id.insert(str_copy, id);
     ctx.id2str.insert(id, str_copy);
 }

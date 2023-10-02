@@ -5,7 +5,7 @@
 
 #include "nkb/ir.h"
 #include "ntk/array.h"
-#include "ntk/string.h"
+#include "ntk/id.h"
 
 nkar_typedef(size_t, nkar_size_t);
 nkar_typedef(nktype_t, nkar_nktype_t);
@@ -14,14 +14,14 @@ struct NkIrProc_T {
     nkar_size_t blocks;
     nkar_nktype_t locals;
 
-    nks name{};
+    nkid name{};
     nktype_t proc_t{};
 
     size_t cur_block{};
 };
 
 struct NkIrBlock {
-    nks name;
+    nkid name;
     nkar_size_t instrs;
 };
 
@@ -31,12 +31,12 @@ struct NkIrConst_T {
 };
 
 struct NkIrExternData_T {
-    nks name;
+    nkid name;
     nktype_t type;
 };
 
 struct NkIrExternProc_T {
-    nks name;
+    nkid name;
     nktype_t proc_t;
 };
 

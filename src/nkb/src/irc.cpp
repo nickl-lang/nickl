@@ -157,14 +157,14 @@ int nkir_run(NkIrCompiler c, nks in_file) {
     };
 
     // TODO Hardcoded extern symbols
-    nkir_defineExternSym(run_ctx, nk_cs2s("puts"), (void *)puts);
-    nkir_defineExternSym(run_ctx, nk_cs2s("printf"), (void *)printf);
-    nkir_defineExternSym(run_ctx, nk_cs2s("pthread_create"), (void *)pthread_create);
-    nkir_defineExternSym(run_ctx, nk_cs2s("pthread_join"), (void *)pthread_join);
-    nkir_defineExternSym(run_ctx, nk_cs2s("pthread_exit"), (void *)pthread_exit);
-    nkir_defineExternSym(run_ctx, nk_cs2s("sqrt"), (void *)sqrt);
-    nkir_defineExternSym(run_ctx, nk_cs2s("g_test_global_var"), (void *)&g_test_global_var);
-    nkir_defineExternSym(run_ctx, nk_cs2s("setTestGlobalVar"), (void *)setTestGlobalVar);
+    nkir_defineExternSym(run_ctx, cs2nkid("puts"), (void *)puts);
+    nkir_defineExternSym(run_ctx, cs2nkid("printf"), (void *)printf);
+    nkir_defineExternSym(run_ctx, cs2nkid("pthread_create"), (void *)pthread_create);
+    nkir_defineExternSym(run_ctx, cs2nkid("pthread_join"), (void *)pthread_join);
+    nkir_defineExternSym(run_ctx, cs2nkid("pthread_exit"), (void *)pthread_exit);
+    nkir_defineExternSym(run_ctx, cs2nkid("sqrt"), (void *)sqrt);
+    nkir_defineExternSym(run_ctx, cs2nkid("g_test_global_var"), (void *)&g_test_global_var);
+    nkir_defineExternSym(run_ctx, cs2nkid("setTestGlobalVar"), (void *)setTestGlobalVar);
 
     int argc = 1;
     char const *argv[] = {""};
