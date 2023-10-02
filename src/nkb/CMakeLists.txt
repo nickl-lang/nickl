@@ -2,6 +2,7 @@ set(LIB nkb)
 
 add_library(${LIB}
     src/bytecode.cpp
+    src/cc_adapter.c
     src/common.cpp
     src/ffi_adapter.cpp
     src/interp.cpp
@@ -48,5 +49,6 @@ target_compile_definitions(${EXE}
     )
 
 if(CMAKE_TESTING_ENABLED)
+    add_subdirectory(test/run)
     add_subdirectory(test)
 endif()
