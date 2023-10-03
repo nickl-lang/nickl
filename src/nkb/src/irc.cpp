@@ -130,7 +130,7 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return 1;
     }
 
-    if (!nkir_write(c->ir, output_kind, out_file)) {
+    if (!nkir_write(c->ir, c->entry_point, output_kind, out_file)) {
         return 1;
     }
 

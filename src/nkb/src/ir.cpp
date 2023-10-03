@@ -4,13 +4,14 @@
 #include <cassert>
 #include <new>
 
+#include "cc_adapter.h"
 #include "ir_impl.hpp"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/pipe_stream.h"
 #include "ntk/string.h"
+#include "translate2c.h"
 
 namespace {
 
@@ -463,24 +464,20 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     }
 #include "nkb/ir.inl"
 
-bool nkir_write(NkIrProg ir, NkbOutputKind kind, nks out_file) { // TODO
+bool nkir_write(NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
     NK_LOG_TRC("%s", __func__);
 
-    nksb_fixed_buffer(sb, 256);
-    nksb_printf(&sb, "gcc -x c -O2 -o " nks_Fmt " -", nks_Arg(out_file));
+    // TODO Hardcoded compiler config
+    NkIrCompilerConfig conf{
+        .compiler_binary = nk_cs2s("gcc"),
+        .additional_flags = nk_cs2s("-O2"),
+        .output_filename = out_file,
+        .quiet = false,
+    };
 
-    auto stream = nk_pipe_streamWrite({nkav_init(sb)}, false);
-    char src[] = R"(
-        #include <stdio.h>
-        int main(int argc, char** argv) {
-            puts("Hello, World!");
-            return 0;
-        }
-    )";
-    nk_stream_write(stream, src, sizeof(src) - 1);
-    nk_pipe_streamClose(stream);
-
-    return true;
+    nk_stream src = nkcc_streamOpen(conf);
+    nkir_translate2c(ir, entry_point, src);
+    return !nkcc_streamClose(src);
 }
 
 #ifdef ENABLE_LOGGING

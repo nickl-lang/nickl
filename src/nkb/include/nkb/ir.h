@@ -159,7 +159,7 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
 
 // Output
 
-bool nkir_write(NkIrProg ir, NkbOutputKind kind, nks out_file);
+bool nkir_write(NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file);
 
 // Execution
 
