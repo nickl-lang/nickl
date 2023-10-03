@@ -297,14 +297,10 @@ private:
         auto const len = m_cur_token->text.size - 2;
         getToken();
 
-        auto const str = nk_alloc_t<char>(alloc, len + 1);
-        memcpy(str, data, len);
-        str[len] = '\0';
-
-        return {str, len};
+        return nk_strcpy_nt(alloc, {data, len});
     }
 
-    nks parseEspcaedString(NkAllocator alloc) {
+    nks parseEscapedString(NkAllocator alloc) {
         auto const data = m_cur_token->text.data + 1;
         auto const len = m_cur_token->text.size - 2;
         getToken();
@@ -440,6 +436,16 @@ private:
             auto label = getLabel(s2nkid(m_cur_token->text));
             getToken();
             return nkir_make_label(label);
+        }
+
+        else if (accept(t_comment)) {
+            if (check(t_string)) {
+                return nkir_make_comment(m_ir, parseString(m_tmp_alloc));
+            } else if (check(t_escaped_string)) {
+                return nkir_make_comment(m_ir, parseEscapedString(m_tmp_alloc));
+            } else {
+                return error("string expected in comment"), NkIrInstr{};
+            }
         }
 
         else if (accept(t_nop)) {
@@ -676,7 +682,7 @@ private:
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
         } else if (check(t_escaped_string)) {
-            auto const str = parseEspcaedString(m_file_alloc);
+            auto const str = parseEscapedString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
         }

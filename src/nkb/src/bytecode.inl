@@ -140,6 +140,7 @@ BOOL_NUM_OP(cmp_gt)
 BOOL_NUM_OP(cmp_ge)
 
 OP(label)
+OP(comment)
 
 #undef BOOL_NUM_OP
 #undef NUM_OP

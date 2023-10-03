@@ -384,6 +384,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 assert(arg1.ref.type->kind == NkType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 break;
+
+            case nkir_comment:
+                continue;
             }
 
             nkar_append(&bc_proc.instrs, NkBcInstr{});

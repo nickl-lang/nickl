@@ -20,14 +20,18 @@ NkIrArg _arg(NkIrRef ref) {
     return {{.ref = ref}, NkIrArg_Ref};
 }
 
-NkIrArg _arg(NkIrLabel label) {
-    return {{.id = label.id}, NkIrArg_Label};
-}
-
 NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
     auto refs = nk_alloc_t<NkIrRef>(ir->alloc, args.size);
     memcpy(refs, args.data, args.size * sizeof(NkIrRef));
     return {{.refs{refs, args.size}}, NkIrArg_RefArray};
+}
+
+NkIrArg _arg(NkIrLabel label) {
+    return {{.id = label.id}, NkIrArg_Label};
+}
+
+NkIrArg _arg(NkIrProg ir, nks comment) {
+    return {{.comment = nk_strcpy(ir->alloc, comment)}, NkIrArg_Comment};
 }
 
 #ifdef ENABLE_LOGGING
@@ -437,6 +441,11 @@ NkIrInstr nkir_make_label(NkIrLabel label) {
     return {{{}, _arg(label), {}}, nkir_label};
 }
 
+NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
+    NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(ir, comment), {}}, nkir_comment};
+}
+
 #define UNA_IR(NAME)                                            \
     NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg) { \
         NK_LOG_TRC("%s", __func__);                             \
@@ -561,6 +570,11 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
         for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];
+
+            if (instr.code == nkir_comment) {
+                nksb_printf(sb, "%17s" nks_Fmt "\n", "// ", nks_Arg(instr.arg[1].comment));
+                continue;
+            }
 
             nksb_printf(sb, "%5zu%8s", instr_index++, nkirOpcodeName(instr.code));
 

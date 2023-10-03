@@ -31,6 +31,7 @@ OP(plus, "+")
 KW(keyword_marker)
 
 KW(cdecl)
+KW(comment)
 KW(const)
 KW(data)
 KW(extern)
