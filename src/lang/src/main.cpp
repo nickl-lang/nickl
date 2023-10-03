@@ -9,7 +9,7 @@
 #include "nkl/lang/compiler.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
-#include "ntk/sys/app.hpp"
+#include "ntk/sys/path.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -150,8 +150,15 @@ int nkl_main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_options);
 
+    char path_buf[NK_MAX_PATH];
+    int path_len = nk_getBinaryPath(path_buf, sizeof(path_buf));
+    if (path_len < 0) {
+        fprintf(stderr, "error: failed to get the compiler binary path\n");
+        return 1;
+    }
+
     auto compiler = nkl_compiler_create();
-    if (!nkl_compiler_configure(compiler, nk_cs2s(nk_appDir().string().c_str()))) {
+    if (!nkl_compiler_configure(compiler, {path_buf, (size_t)path_len})) {
         return 1;
     }
     defer {

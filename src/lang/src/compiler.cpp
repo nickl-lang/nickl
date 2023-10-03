@@ -2663,11 +2663,12 @@ void nkl_compiler_free(NklCompiler c) {
     nk_free(nk_default_allocator, c, sizeof(*c));
 }
 
-bool nkl_compiler_configure(NklCompiler c, nks config_dir) {
+bool nkl_compiler_configure(NklCompiler c, nks self_path) {
     EASY_FUNCTION(::profiler::colors::DeepPurple100);
     NK_LOG_TRC("%s", __func__);
-    NK_LOG_DBG("config_dir=`" nks_Fmt "`", nks_Arg(config_dir));
-    c->compiler_dir = std_str(config_dir);
+    NK_LOG_DBG("self_path=`" nks_Fmt "`", nks_Arg(self_path));
+
+    c->compiler_dir = fs::path(std_str(self_path)).parent_path().string();
 
     pushScope(c);
     auto preload_filepath = fs::path{c->compiler_dir} / "preload.nkl";

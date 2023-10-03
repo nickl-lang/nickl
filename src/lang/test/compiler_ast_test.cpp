@@ -10,7 +10,7 @@
 #include "ntk/allocator.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/sys/app.hpp"
+#include "ntk/sys/path.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -21,9 +21,15 @@ class compiler_ast : public testing::Test {
     void SetUp() override {
         NK_LOGGER_INIT({});
 
+        char path_buf[NK_MAX_PATH];
+        int path_len = nk_getBinaryPath(path_buf, sizeof(path_buf));
+        if (path_len < 0) {
+            FAIL() << "failed to get the compiler binary path";
+        }
+
         m_ast = nkl_ast_create();
         m_compiler = nkl_compiler_create();
-        nkl_compiler_configure(m_compiler, nk_cs2s(nk_appDir().string().c_str()));
+        nkl_compiler_configure(m_compiler, {path_buf, (size_t)path_len});
     }
 
     void TearDown() override {
