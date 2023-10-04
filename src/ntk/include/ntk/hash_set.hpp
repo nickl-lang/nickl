@@ -13,7 +13,7 @@
 #include "ntk/utils.h"
 
 template <class T>
-struct NkHashSetDefaultCountext {
+struct NkHashSetDefaultContext {
     static hash_t hash(T const &val) {
         return std::hash<T>{}(val);
     }
@@ -23,7 +23,7 @@ struct NkHashSetDefaultCountext {
     }
 };
 
-template <class T, class Context = NkHashSetDefaultCountext<T>>
+template <class T, class Context = NkHashSetDefaultContext<T>>
 struct NkHashSet {
 private:
     struct _Entry {

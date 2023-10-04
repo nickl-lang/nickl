@@ -328,6 +328,10 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 }));
             break;
         }
+
+        case NkIrArg_Comment:
+        default:
+            assert(!"unreachable");
         }
     };
 

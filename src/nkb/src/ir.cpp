@@ -465,13 +465,13 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     }
 #include "nkb/ir.inl"
 
-bool nkir_write(NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
+bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
     NK_LOG_TRC("%s", __func__);
 
     // TODO Hardcoded compiler config
     NkIrCompilerConfig conf{
         .compiler_binary = nk_cs2s("gcc"),
-        .additional_flags = nk_cs2s("-O2"),
+        .additional_flags = nk_cs2s("-lpthread -O2"),
         .output_filename = out_file,
         .quiet = false,
     };
@@ -479,7 +479,7 @@ bool nkir_write(NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_f
     nk_stream src{};
     bool res = nkcc_streamOpen(&src, conf);
     if (res) {
-        nkir_translate2c(ir, entry_point, src);
+        nkir_translate2c(arena, ir, entry_point, src);
         return !nkcc_streamClose(src);
     } else {
         // TODO Report errors to the user

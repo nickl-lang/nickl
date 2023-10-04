@@ -130,18 +130,11 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return 1;
     }
 
-    if (!nkir_write(c->ir, c->entry_point, output_kind, out_file)) {
+    if (!nkir_write(&c->tmp_arena, c->ir, c->entry_point, output_kind, out_file)) {
         return 1;
     }
 
     return 0;
-}
-
-extern "C" int64_t g_test_global_var;
-int64_t g_test_global_var;
-
-extern "C" void setTestGlobalVar(int64_t val) {
-    g_test_global_var = val;
 }
 
 int nkir_run(NkIrCompiler c, nks in_file) {
@@ -163,8 +156,6 @@ int nkir_run(NkIrCompiler c, nks in_file) {
     nkir_defineExternSym(run_ctx, cs2nkid("pthread_join"), (void *)pthread_join);
     nkir_defineExternSym(run_ctx, cs2nkid("pthread_exit"), (void *)pthread_exit);
     nkir_defineExternSym(run_ctx, cs2nkid("sqrt"), (void *)sqrt);
-    nkir_defineExternSym(run_ctx, cs2nkid("g_test_global_var"), (void *)&g_test_global_var);
-    nkir_defineExternSym(run_ctx, cs2nkid("setTestGlobalVar"), (void *)setTestGlobalVar);
 
     int argc = 1;
     char const *argv[] = {""};

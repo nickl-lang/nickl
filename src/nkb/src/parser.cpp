@@ -718,6 +718,11 @@ private:
 
         for (uint8_t i = 0; i < indir; i++) {
             EXPECT(t_bracket_r);
+
+            if (result_ref.type->kind != NkType_Pointer) {
+                return error("dereference of a non-pointer type"), NkIrRef{};
+            }
+            result_ref.type = result_ref.type->as.ptr.target_type;
         }
 
         result_ref.indir += indir;

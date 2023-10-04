@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-void nkir_translate2c(NkIrProg ir, NkIrProc entry_point, nk_stream src);
+void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrProc entry_point, nk_stream src);
 
 #ifdef __cplusplus
 }
