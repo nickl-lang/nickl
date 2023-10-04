@@ -7,7 +7,7 @@
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
-nk_stream nkcc_streamOpen(NkIrCompilerConfig conf) {
+bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, 4096);
@@ -18,7 +18,7 @@ nk_stream nkcc_streamOpen(NkIrCompilerConfig conf) {
         nks_Arg(conf.output_filename),
         nks_Arg(conf.additional_flags));
 
-    return nk_pipe_streamWrite((nks){nkav_init(sb)}, conf.quiet);
+    return nk_pipe_streamWrite(stream, (nks){nkav_init(sb)}, conf.quiet);
 }
 
 int nkcc_streamClose(nk_stream stream) {

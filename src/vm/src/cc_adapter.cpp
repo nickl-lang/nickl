@@ -31,7 +31,9 @@ nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
         nks_Arg(conf.output_filename),
         nks_Arg(conf.additional_flags));
 
-    return nk_pipe_streamWrite({nkav_init(sb)}, conf.quiet);
+    nk_stream src{};
+    nk_pipe_streamWrite(&src, {nkav_init(sb)}, conf.quiet);
+    return src;
 }
 
 int nkcc_streamClose(nk_stream stream) {

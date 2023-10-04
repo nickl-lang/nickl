@@ -11,6 +11,7 @@
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
+#include "ntk/sys/error.h"
 #include "translate2c.h"
 
 namespace {
@@ -475,9 +476,16 @@ bool nkir_write(NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_f
         .quiet = false,
     };
 
-    nk_stream src = nkcc_streamOpen(conf);
-    nkir_translate2c(ir, entry_point, src);
-    return !nkcc_streamClose(src);
+    nk_stream src{};
+    bool res = nkcc_streamOpen(&src, conf);
+    if (res) {
+        nkir_translate2c(ir, entry_point, src);
+        return !nkcc_streamClose(src);
+    } else {
+        // TODO Report errors to the user
+        NK_LOG_ERR("Failed to run compiler `" nks_Fmt "`: %s", nks_Arg(conf.compiler_binary), nk_getLastErrorString());
+        return false;
+    }
 }
 
 #ifdef ENABLE_LOGGING

@@ -41,18 +41,25 @@ class cc_adapter : public testing::Test {
 
 protected:
     std::string runGetStdout() {
-        auto in = nk_pipe_streamRead(m_conf.output_filename, false);
+        nk_stream in;
+        auto res = nk_pipe_streamRead(&in, m_conf.output_filename, false);
         defer {
             nk_pipe_streamClose(in);
         };
 
-        NkStringBuilder sb{};
-        defer {
-            nksb_free(&sb);
-        };
-        nksb_readFromStream(&sb, in);
-        NK_LOG_DBG("out_str=\"" nks_Fmt "\"", nks_Arg(sb));
-        return std_str({nkav_init(sb)});
+        EXPECT_TRUE(res);
+
+        if (res) {
+            NkStringBuilder sb{};
+            defer {
+                nksb_free(&sb);
+            };
+            nksb_readFromStream(&sb, in);
+            NK_LOG_DBG("out_str=\"" nks_Fmt "\"", nks_Arg(sb));
+            return std_str({nkav_init(sb)});
+        } else {
+            return "";
+        }
     }
 
 protected:

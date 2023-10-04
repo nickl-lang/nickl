@@ -19,6 +19,7 @@ typedef struct {
 } nkpipe_t;
 
 nkpipe_t nk_createPipe(void);
+void nk_closePipe(nkpipe_t pipe);
 
 int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err);
 int nk_waitpid(nkpid_t pid, int *exit_status);

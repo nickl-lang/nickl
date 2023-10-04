@@ -23,6 +23,11 @@ nkpipe_t nk_createPipe(void) {
     return pip;
 }
 
+void nk_closePipe(nkpipe_t pipe) {
+    nk_close(pipe.read);
+    nk_close(pipe.write);
+}
+
 #define MAX_ARGS 31
 #define CMD_BUF_SIZE 4095
 

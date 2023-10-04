@@ -7,6 +7,10 @@ nkerr_t nk_getLastError(void) {
     return GetLastError();
 }
 
+void nk_setLastError(nkerr_t err) {
+    SetLastError(err);
+}
+
 char const *nk_getErrorString(nkerr_t err) {
     _Thread_local static char buf[1024];
     FormatMessage(
