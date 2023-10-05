@@ -4,6 +4,7 @@
 #include "lexer.hpp"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
+#include "ntk/id.h"
 #include "ntk/string.h"
 #include "types.hpp"
 
@@ -19,6 +20,7 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
+    nkid file,
     NkIrTokenView tokens);
 
 #endif // HEADER_GUARD_NKB_PARSER

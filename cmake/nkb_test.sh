@@ -105,6 +105,6 @@ compile() {
 }
 
 runTest run
-# TODO runTest compile
+runTest compile
 
 echo 'TEST PASSED'

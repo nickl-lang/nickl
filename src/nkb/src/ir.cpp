@@ -4,13 +4,15 @@
 #include <cassert>
 #include <new>
 
+#include "cc_adapter.h"
 #include "ir_impl.hpp"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/pipe_stream.h"
 #include "ntk/string.h"
+#include "ntk/sys/error.h"
+#include "translate2c.h"
 
 namespace {
 
@@ -32,6 +34,10 @@ NkIrArg _arg(NkIrLabel label) {
 
 NkIrArg _arg(NkIrProg ir, nks comment) {
     return {{.comment = nk_strcpy(ir->alloc, comment)}, NkIrArg_Comment};
+}
+
+NkIrArg _arg(NkIrLine line) {
+    return {{.line = line}, NkIrArg_Line};
 }
 
 #ifdef ENABLE_LOGGING
@@ -192,6 +198,14 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
             proc.cur_block = instr.arg[1].id;
             nkar_append(&proc.blocks, proc.cur_block);
             continue;
+        }
+
+        if (instr.code == nkir_line) {
+            if (proc.last_line.file == instr.arg[1].line.file && proc.last_line.line == instr.arg[1].line.line) {
+                continue;
+            } else {
+                proc.last_line = instr.arg[1].line;
+            }
         }
 
         assert(proc.cur_block < ir->blocks.size && "no current block");
@@ -446,6 +460,11 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     return {{{}, _arg(ir, comment), {}}, nkir_comment};
 }
 
+NkIrInstr nkir_make_line(nkid file, size_t line) {
+    NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(NkIrLine{file, line}), {}}, nkir_line};
+}
+
 #define UNA_IR(NAME)                                            \
     NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg) { \
         NK_LOG_TRC("%s", __func__);                             \
@@ -463,24 +482,27 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     }
 #include "nkb/ir.inl"
 
-bool nkir_write(NkIrProg ir, NkbOutputKind kind, nks out_file) { // TODO
+bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
     NK_LOG_TRC("%s", __func__);
 
-    nksb_fixed_buffer(sb, 256);
-    nksb_printf(&sb, "gcc -x c -O2 -o " nks_Fmt " -", nks_Arg(out_file));
+    // TODO Hardcoded compiler config
+    NkIrCompilerConfig conf{
+        .compiler_binary = nk_cs2s("gcc"),
+        .additional_flags = nk_cs2s("-lpthread -g -O0"),
+        .output_filename = out_file,
+        .quiet = false,
+    };
 
-    auto stream = nk_pipe_streamWrite({nkav_init(sb)}, false);
-    char src[] = R"(
-        #include <stdio.h>
-        int main(int argc, char** argv) {
-            puts("Hello, World!");
-            return 0;
-        }
-    )";
-    nk_stream_write(stream, src, sizeof(src) - 1);
-    nk_pipe_streamClose(stream);
-
-    return true;
+    nk_stream src{};
+    bool res = nkcc_streamOpen(&src, conf);
+    if (res) {
+        nkir_translate2c(arena, ir, entry_point, src);
+        return !nkcc_streamClose(src);
+    } else {
+        // TODO Report errors to the user
+        NK_LOG_ERR("Failed to run compiler `" nks_Fmt "`: %s", nks_Arg(conf.compiler_binary), nk_getLastErrorString());
+        return false;
+    }
 }
 
 #ifdef ENABLE_LOGGING
@@ -573,6 +595,10 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
             if (instr.code == nkir_comment) {
                 nksb_printf(sb, "%17s" nks_Fmt "\n", "// ", nks_Arg(instr.arg[1].comment));
+                continue;
+            }
+
+            if (instr.code == nkir_line) {
                 continue;
             }
 

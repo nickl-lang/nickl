@@ -40,6 +40,7 @@ static constexpr char const *c_entry_point_name = "main";
 struct GeneratorState {
     NkIrProg &m_ir;
     NkIrProc &m_entry_point;
+    nkid m_file;
     NkIrTokenView const m_tokens;
 
     NkIrTypeCache *m_types;
@@ -176,7 +177,15 @@ struct GeneratorState {
                                 Decl_LocalVar,
                             };
                         } else {
+                            auto const cur_line = m_cur_token->lin;
+
                             DEFINE(instr, parseInstr());
+
+                            if (instr.code != nkir_label && instr.code != nkir_comment) {
+                                auto const line_instr = nkir_make_line(m_file, cur_line);
+                                nkir_gen(m_ir, {&line_instr, 1});
+                            }
+
                             nkir_gen(m_ir, {&instr, 1});
                         }
                         EXPECT(t_newline);
@@ -718,6 +727,11 @@ private:
 
         for (uint8_t i = 0; i < indir; i++) {
             EXPECT(t_bracket_r);
+
+            if (result_ref.type->kind != NkType_Pointer) {
+                return error("dereference of a non-pointer type"), NkIrRef{};
+            }
+            result_ref.type = result_ref.type->as.ptr.target_type;
         }
 
         result_ref.indir += indir;
@@ -833,6 +847,7 @@ void nkir_parse(
     NkIrTypeCache *types,
     NkArena *file_arena,
     NkArena *tmp_arena,
+    nkid file,
     NkIrTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
@@ -846,6 +861,7 @@ void nkir_parse(
     GeneratorState gen{
         .m_ir = parser->ir,
         .m_entry_point = parser->entry_point,
+        .m_file = file,
         .m_tokens = tokens,
         .m_types = types,
         .m_file_arena = file_arena,

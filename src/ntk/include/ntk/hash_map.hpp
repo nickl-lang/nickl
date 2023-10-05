@@ -3,7 +3,7 @@
 
 #include "ntk/hash_set.hpp"
 
-template <class K, class V, class Context = NkHashSetDefaultCountext<K>>
+template <class K, class V, class Context = NkHashSetDefaultContext<K>>
 struct NkHashMap {
 private:
     template <class TKey, class TValue>

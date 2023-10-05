@@ -25,6 +25,11 @@ nkpipe_t nk_createPipe(void) {
     return pip;
 }
 
+void nk_closePipe(nkpipe_t pipe) {
+    nk_close(pipe.read);
+    nk_close(pipe.write);
+}
+
 int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));

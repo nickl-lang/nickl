@@ -13,6 +13,8 @@ extern "C" {
 typedef uint32_t nkerr_t;
 
 nkerr_t nk_getLastError(void);
+void nk_setLastError(nkerr_t err);
+
 char const *nk_getErrorString(nkerr_t err);
 
 NK_INLINE char const *nk_getLastErrorString(void) {

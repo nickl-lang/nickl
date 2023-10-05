@@ -10,6 +10,7 @@ add_library(${LIB}
     src/irc.cpp
     src/lexer.cpp
     src/parser.cpp
+    src/translate2c.cpp
     src/types.cpp
     )
 

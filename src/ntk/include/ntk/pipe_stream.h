@@ -8,8 +8,8 @@
 extern "C" {
 #endif
 
-nk_stream nk_pipe_streamRead(nks cmd, bool quiet);
-nk_stream nk_pipe_streamWrite(nks cmd, bool quiet);
+bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet);
+bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet);
 
 int nk_pipe_streamClose(nk_stream stream);
 

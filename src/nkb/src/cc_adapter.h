@@ -15,7 +15,7 @@ typedef struct {
     bool quiet;
 } NkIrCompilerConfig;
 
-nk_stream nkcc_streamOpen(NkIrCompilerConfig conf);
+bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf);
 int nkcc_streamClose(nk_stream stream);
 
 #ifdef __cplusplus

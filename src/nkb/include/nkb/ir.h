@@ -59,7 +59,13 @@ typedef enum {
     NkIrArg_RefArray,
     NkIrArg_Label,
     NkIrArg_Comment,
+    NkIrArg_Line,
 } NkIrArgKind;
+
+typedef struct {
+    nkid file;
+    size_t line;
+} NkIrLine;
 
 typedef struct {
     union {
@@ -67,6 +73,7 @@ typedef struct {
         NkIrRefArray refs;
         size_t id;
         nks comment;
+        NkIrLine line;
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -150,6 +157,7 @@ NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray ar
 NkIrInstr nkir_make_label(NkIrLabel label);
 
 NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
+NkIrInstr nkir_make_line(nkid file, size_t line);
 
 #define UNA_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg);
 #define BIN_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
@@ -159,7 +167,7 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
 
 // Output
 
-bool nkir_write(NkIrProg ir, NkbOutputKind kind, nks out_file);
+bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file);
 
 // Execution
 
