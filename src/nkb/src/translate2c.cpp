@@ -516,7 +516,15 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
             switch (instr.code) {
             case nkir_nop:
+            case nkir_comment:
                 continue;
+
+            case nkir_line: {
+                auto const file_name = nkid2s(instr.arg[1].line.file);
+                nksb_printf(src, "#line %zu \"" nks_Fmt "\"\n", instr.arg[1].line.line, nks_Arg(file_name));
+                continue;
+            }
+
             default:
                 break;
             }

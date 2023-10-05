@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <new>
 
 #include <pthread.h>
@@ -61,11 +62,27 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 bool compileProgram(NkIrCompiler c, nks in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file);
-    if (!read_res.ok) {
-        printError(c, "failed to read file `" nks_Fmt "`", nks_Arg(in_file));
+    namespace fs = std::filesystem;
+    auto in_file_path = fs::path{std_str(in_file)};
+
+    if (!fs::exists(in_file_path)) {
+        auto const in_file_path_str = in_file_path.string();
+        printError(c, "file `%s` doesn't exist", in_file_path_str.c_str());
         return false;
     }
+
+    in_file_path = fs::canonical(in_file_path);
+    auto const in_file_path_str = in_file_path.string();
+
+    auto const in_file_s = nks{in_file_path_str.c_str(), in_file_path_str.size()};
+
+    auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file_s);
+    if (!read_res.ok) {
+        printError(c, "failed to read file `%s`", in_file_path_str.c_str());
+        return false;
+    }
+
+    auto const in_file_id = s2nkid(in_file_s);
 
     NkIrLexerState lexer{};
     {
@@ -86,7 +103,7 @@ bool compileProgram(NkIrCompiler c, nks in_file) {
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, {nkav_init(lexer.tokens)});
+        nkir_parse(&parser, &c->types, &c->file_arena, &c->tmp_arena, in_file_id, {nkav_init(lexer.tokens)});
         if (!parser.ok) {
             printError(c, nks_Fmt, nks_Arg(parser.error_msg));
             return false;

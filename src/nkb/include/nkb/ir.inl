@@ -61,6 +61,7 @@ CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
 IR(label)
 IR(comment)
+IR(line)
 
 #undef CMP_IR
 #undef DBL_IR

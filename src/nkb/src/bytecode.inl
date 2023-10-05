@@ -141,6 +141,7 @@ BOOL_NUM_OP(cmp_ge)
 
 OP(label)
 OP(comment)
+OP(line)
 
 #undef BOOL_NUM_OP
 #undef NUM_OP

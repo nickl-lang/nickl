@@ -36,6 +36,10 @@ NkIrArg _arg(NkIrProg ir, nks comment) {
     return {{.comment = nk_strcpy(ir->alloc, comment)}, NkIrArg_Comment};
 }
 
+NkIrArg _arg(NkIrLine line) {
+    return {{.line = line}, NkIrArg_Line};
+}
+
 #ifdef ENABLE_LOGGING
 void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder *sb, bool print_arg_names = true) {
     nksb_printf(sb, "(");
@@ -194,6 +198,14 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
             proc.cur_block = instr.arg[1].id;
             nkar_append(&proc.blocks, proc.cur_block);
             continue;
+        }
+
+        if (instr.code == nkir_line) {
+            if (proc.last_line.file == instr.arg[1].line.file && proc.last_line.line == instr.arg[1].line.line) {
+                continue;
+            } else {
+                proc.last_line = instr.arg[1].line;
+            }
         }
 
         assert(proc.cur_block < ir->blocks.size && "no current block");
@@ -448,6 +460,11 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     return {{{}, _arg(ir, comment), {}}, nkir_comment};
 }
 
+NkIrInstr nkir_make_line(nkid file, size_t line) {
+    NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(NkIrLine{file, line}), {}}, nkir_line};
+}
+
 #define UNA_IR(NAME)                                            \
     NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg) { \
         NK_LOG_TRC("%s", __func__);                             \
@@ -471,7 +488,7 @@ bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind
     // TODO Hardcoded compiler config
     NkIrCompilerConfig conf{
         .compiler_binary = nk_cs2s("gcc"),
-        .additional_flags = nk_cs2s("-lpthread -O2"),
+        .additional_flags = nk_cs2s("-lpthread -g -O0"),
         .output_filename = out_file,
         .quiet = false,
     };
@@ -578,6 +595,10 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
             if (instr.code == nkir_comment) {
                 nksb_printf(sb, "%17s" nks_Fmt "\n", "// ", nks_Arg(instr.arg[1].comment));
+                continue;
+            }
+
+            if (instr.code == nkir_line) {
                 continue;
             }
 
