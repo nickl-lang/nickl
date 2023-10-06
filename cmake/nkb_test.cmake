@@ -15,15 +15,23 @@ function(def_nkb_test)
     get_filename_component(BASE_NAME "${ARG_FILE}" NAME_WE)
     get_filename_component(TEST_FILE "${ARG_FILE}" ABSOLUTE)
 
-    set(TEST_NAME nkb_${BASE_NAME})
-
     make_directory("${NKB_TEST_OUT_DIR}")
     add_test(
-        NAME ${TEST_NAME}
+        NAME nkb.run.${BASE_NAME}
         COMMAND "${NKB_TEST_SCRIPT}"
             "--file=${TEST_FILE}"
             "--exe=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
             "--emulator=${CMAKE_CROSSCOMPILING_EMULATOR}"
+            "--mode=run"
+            WORKING_DIRECTORY "${NKB_TEST_OUT_DIR}"
+        )
+    add_test(
+        NAME nkb.compile.${BASE_NAME}
+        COMMAND "${NKB_TEST_SCRIPT}"
+            "--file=${TEST_FILE}"
+            "--exe=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
+            "--emulator=${CMAKE_CROSSCOMPILING_EMULATOR}"
+            "--mode=compile"
             WORKING_DIRECTORY "${NKB_TEST_OUT_DIR}"
         )
 endfunction()
