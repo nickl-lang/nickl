@@ -525,7 +525,9 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
             case nkir_line: {
                 auto const file_name = nkid2s(instr.arg[1].line.file);
-                nksb_printf(src, "#line %zu \"" nks_Fmt "\"\n", instr.arg[1].line.line, nks_Arg(file_name));
+                nksb_printf(src, "#line %zu \"", instr.arg[1].line.line);
+                nksb_str_escape(src, file_name);
+                nksb_printf(src, "\"\n");
                 continue;
             }
 
