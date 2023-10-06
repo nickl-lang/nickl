@@ -38,6 +38,14 @@
 
 #define nkar_typedef(T, Name) typedef nkar_type(T) Name
 
+#define _nkav_copy(alloc, dst, src)                                         \
+    do {                                                                    \
+        (dst)->size = (src).size;                                           \
+        void *_mem = nk_alloc((alloc), (dst)->size * sizeof(*(dst)->data)); \
+        memcpy(_mem, (src).data, (dst)->size * sizeof(*(dst)->data));       \
+        _nk_assign_void_ptr((dst)->data, _mem);                             \
+    } while (0)
+
 #ifndef NKAR_INIT_CAP
 #define NKAR_INIT_CAP 16
 #endif // NKAR_INIT_CAP
@@ -127,6 +135,11 @@ void _nk_assign_void_ptr(T *&dst, void *src) {
     dst = (T *)src;
 }
 
+template <class TDst, class TSrc>
+void nkav_copy(NkAllocator alloc, TDst *dst, TSrc src) {
+    _nkav_copy(alloc, dst, src);
+}
+
 template <class TAr>
 void nkar_maybe_grow(TAr *ar, size_t cap) {
     _nkar_maybe_grow(ar, cap);
@@ -183,6 +196,8 @@ struct _nk_iterate_wrapper {
 #else // __cplusplus
 
 #define _nk_assign_void_ptr(dst, src) (dst) = (src)
+
+#define nkav_copy _nkav_copy
 
 #define nkar_maybe_grow _nkar_maybe_grow
 #define nkar_reserve _nkar_reserve

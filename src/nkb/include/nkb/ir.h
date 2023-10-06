@@ -111,8 +111,12 @@ void nkir_freeProgram(NkIrProg ir);
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir, nkid name);
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc, nkid name, nktype_t proc_t);
+nkav_typedef(nkid, nkid_array);
+
+void nkir_startProc(NkIrProg ir, NkIrProc proc, nkid name, nktype_t proc_t, nkid_array arg_names, NkIrLine line);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
+
+void nkir_finishProc(NkIrProg ir, NkIrProc proc, NkIrLine line);
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);
 void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref);

@@ -41,7 +41,11 @@ NkIrArg _arg(NkIrLine line) {
 }
 
 #ifdef ENABLE_LOGGING
-void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder *sb, bool print_arg_names = true) {
+void inspectProcSignature(
+    NkIrProcInfo const &proc_info,
+    nkid_array arg_names,
+    NkStringBuilder *sb,
+    bool print_arg_names = true) {
     nksb_printf(sb, "(");
 
     for (size_t i = 0; i < proc_info.args_t.size; i++) {
@@ -49,7 +53,12 @@ void inspectProcSignature(NkIrProcInfo const &proc_info, NkStringBuilder *sb, bo
             nksb_printf(sb, ", ");
         }
         if (print_arg_names) {
-            nksb_printf(sb, "arg%" PRIu64 ": ", i);
+            if (i < arg_names.size && arg_names.data[i] != nkid_empty) {
+                auto const name = nkid2s(arg_names.data[i]);
+                nksb_printf(sb, nks_Fmt ": ", nks_Arg(name));
+            } else {
+                nksb_printf(sb, "arg%" PRIu64 ": ", i);
+            }
         }
         nkirt_inspect(proc_info.args_t.data[i], sb);
     }
@@ -148,13 +157,15 @@ NkIrLabel nkir_createLabel(NkIrProg ir, nkid name) {
     return id;
 }
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkid name, nktype_t proc_t) {
+void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkid name, nktype_t proc_t, nkid_array arg_names, NkIrLine line) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[proc_id.id];
 
     proc.name = name;
     proc.proc_t = proc_t;
+    nkav_copy(ir->alloc, &proc.arg_names, arg_names);
+    proc.start_line = line;
 
     nkir_activateProc(ir, proc_id);
 }
@@ -163,6 +174,14 @@ void nkir_activateProc(NkIrProg ir, NkIrProc proc_id) {
     NK_LOG_TRC("%s", __func__);
 
     ir->cur_proc = proc_id;
+}
+
+void nkir_finishProc(NkIrProg ir, NkIrProc proc_id, NkIrLine line) {
+    NK_LOG_TRC("%s", __func__);
+
+    auto &proc = ir->procs.data[proc_id.id];
+
+    proc.end_line = line;
 }
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
@@ -575,7 +594,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     if (ir->extern_procs.size) {
         for (auto const &proc : nk_iterate(ir->extern_procs)) {
             nksb_printf(sb, "\nextern proc %s", nkid2cs(proc.name));
-            inspectProcSignature(proc.type->as.proc.info, sb, false);
+            inspectProcSignature(proc.type->as.proc.info, {}, sb, false);
         }
         nksb_printf(sb, "\n");
     }
@@ -589,7 +608,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
         "\nproc%s %s",
         (proc.proc_t->as.proc.info.call_conv == NkCallConv_Cdecl ? " cdecl" : ""),
         nkid2cs(proc.name));
-    inspectProcSignature(proc.proc_t->as.proc.info, sb);
+    inspectProcSignature(proc.proc_t->as.proc.info, proc.arg_names, sb);
 
     nksb_printf(sb, " {\n\n");
 
@@ -597,11 +616,10 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
         for (size_t i = 0; i < proc.locals.size; i++) {
             if (proc.locals.data[i].name != nkid_empty) {
                 auto const local_name = nkid2s(proc.locals.data[i].name);
-                nksb_printf(sb, nks_Fmt, nks_Arg(local_name));
+                nksb_printf(sb, nks_Fmt ": ", nks_Arg(local_name));
             } else {
-                nksb_printf(sb, "var%" PRIu64, i);
+                nksb_printf(sb, "var%" PRIu64 ": ", i);
             }
-            nksb_printf(sb, ": ");
             nkirt_inspect(proc.locals.data[i].type, sb);
             nksb_printf(sb, "\n");
         }
@@ -701,13 +719,19 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
             auto const local_name = nkid2s(decl.name);
             nksb_printf(sb, nks_Fmt, nks_Arg(local_name));
         } else {
-            nksb_printf(sb, "var%" PRIu64 "", ref.index);
+            nksb_printf(sb, "var%" PRIu64, ref.index);
         }
         break;
     }
-    case NkIrRef_Arg:
-        nksb_printf(sb, "arg%" PRIu64 "", ref.index);
+    case NkIrRef_Arg: {
+        if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index] != nkid_empty) {
+            auto const name = nkid2s(proc.arg_names.data[ref.index]);
+            nksb_printf(sb, nks_Fmt, nks_Arg(name));
+        } else {
+            nksb_printf(sb, "arg%" PRIu64, ref.index);
+        }
         break;
+    }
     case NkIrRef_Ret:
         nksb_printf(sb, "ret");
         break;
@@ -717,7 +741,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
             auto const name = nkid2s(decl.name);
             nksb_printf(sb, nks_Fmt, nks_Arg(name));
         } else {
-            nksb_printf(sb, "global%" PRIu64 "", ref.index);
+            nksb_printf(sb, "global%" PRIu64, ref.index);
         }
         break;
     }
@@ -726,7 +750,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
             void *data = nkir_constRefDeref(ir, ref);
             nkirv_inspect(data, ref.type, sb);
         } else {
-            nksb_printf(sb, "const%" PRIu64 "", ref.index);
+            nksb_printf(sb, "const%" PRIu64, ref.index);
         }
         break;
     case NkIrRef_Proc: {
@@ -756,17 +780,17 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
         break;
     }
     if (ref.offset) {
-        nksb_printf(sb, "+%" PRIu64 "", ref.offset);
+        nksb_printf(sb, "+%" PRIu64, ref.offset);
     }
     for (size_t i = 0; i < indir; i++) {
         nksb_printf(sb, "]");
     }
     if (ref.post_offset) {
-        nksb_printf(sb, "+%" PRIu64 "", ref.post_offset);
+        nksb_printf(sb, "+%" PRIu64, ref.post_offset);
     }
     if (ref.kind != NkIrRef_Address) {
         nksb_printf(sb, ":");
         nkirt_inspect(ref.type, sb);
     }
 }
-#endif // ENABLE_LOGGING
+#endif // ENABLE_LOGGIN

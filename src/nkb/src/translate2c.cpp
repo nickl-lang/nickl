@@ -65,6 +65,35 @@ struct WriterCtx {
     NkHashSet<size_t> globals_forward_declared = decltype(globals_forward_declared)::create(alloc);
 };
 
+void writeLocalName(NkIrProc_T const &proc, size_t id, NkStringBuilder *src) {
+    auto const &decl = proc.locals.data[id];
+    if (decl.name != nkid_empty) {
+        auto const name = nkid2s(decl.name);
+        nksb_printf(src, nks_Fmt, nks_Arg(name));
+    } else {
+        nksb_printf(src, "_var_%zu", id);
+    }
+}
+
+void writeArgName(nkid_array arg_names, size_t id, NkStringBuilder *src) {
+    if (id < arg_names.size && arg_names.data[id] != nkid_empty) {
+        auto const name = nkid2s(arg_names.data[id]);
+        nksb_printf(src, nks_Fmt, nks_Arg(name));
+    } else {
+        nksb_printf(src, "_arg_%zu", id);
+    }
+}
+
+void writeGlobalName(NkIrProg ir, size_t id, NkStringBuilder *src) {
+    auto const &decl = ir->globals.data[id];
+    if (decl.name != nkid_empty) {
+        auto const name = nkid2s(decl.name);
+        nksb_printf(src, nks_Fmt, nks_Arg(name));
+    } else {
+        nksb_printf(src, "_global_%zu", id);
+    }
+}
+
 void writePreamble(NkStringBuilder *sb) {
     nksb_printf(sb, R"(
 #include <stddef.h>
@@ -317,6 +346,7 @@ void writeProcSignature(
     nks name,
     nktype_t ret_t,
     NkTypeArray args_t,
+    nkid_array arg_names,
     bool va = false) {
     writeType(ctx, ret_t, src, true);
     nksb_printf(src, " " nks_Fmt "(", nks_Arg(name));
@@ -326,7 +356,10 @@ void writeProcSignature(
             nksb_printf(src, ", ");
         }
         writeType(ctx, args_t.data[i], src);
-        nksb_printf(src, " arg%zi", i);
+        if (arg_names.size) {
+            nksb_printf(src, " ");
+            writeArgName(arg_names, i, src);
+        }
     }
     if (va) {
         nksb_printf(src, ", ...");
@@ -345,16 +378,27 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 }
 
 void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
-    nksb_printf(src, "global%zu", global_id);
+    writeGlobalName(ctx.ir, global_id, src);
     if (!ctx.globals_forward_declared.find(global_id)) {
         auto const &decl = ctx.ir->globals.data[global_id];
         writeType(ctx, decl.type, &ctx.forward_s);
-        nksb_printf(&ctx.forward_s, " global%zu={", global_id);
+        nksb_printf(&ctx.forward_s, " ");
+        writeGlobalName(ctx.ir, global_id, &ctx.forward_s);
+        nksb_printf(&ctx.forward_s, "={");
         if (decl.type->size) {
             nksb_printf(&ctx.forward_s, "0");
         }
         nksb_printf(&ctx.forward_s, "};\n");
         ctx.globals_forward_declared.insert(global_id);
+    }
+}
+
+void writeLineDirective(NkIrLine line, NkStringBuilder *src) {
+    if (line.file != nkid_empty) {
+        auto const file_name = nkid2s(line.file);
+        nksb_printf(src, "#line %zu \"", line.line);
+        nksb_str_escape(src, file_name);
+        nksb_printf(src, "\"\n");
     }
 }
 
@@ -376,16 +420,20 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
     auto src = &ctx.main_s;
 
-    writeProcSignature(ctx, &ctx.forward_s, nkid2s(proc.name), ret_t, args_t);
+    writeProcSignature(ctx, &ctx.forward_s, nkid2s(proc.name), ret_t, args_t, {});
     nksb_printf(&ctx.forward_s, ";\n");
 
     nksb_printf(src, "\n");
-    writeProcSignature(ctx, src, nkid2s(proc.name), ret_t, args_t);
+    writeLineDirective(proc.start_line, src);
+    writeProcSignature(ctx, src, nkid2s(proc.name), ret_t, args_t, proc.arg_names);
     nksb_printf(src, " {\n\n");
 
     for (size_t i = 0; auto decl : nk_iterate(proc.locals)) {
+        writeLineDirective(proc.start_line, src);
         writeType(ctx, decl.type, src);
-        nksb_printf(src, " var%zu={", i++);
+        nksb_printf(src, " ");
+        writeLocalName(proc, i++, src);
+        nksb_printf(src, "={");
         if (decl.type->size) {
             nksb_printf(src, "0");
         }
@@ -393,6 +441,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
     }
 
     if (ret_t->size) {
+        writeLineDirective(proc.start_line, src);
         writeType(ctx, ret_t, src);
         nksb_printf(src, " ret={0};\n");
     }
@@ -435,6 +484,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                         extern_proc_name,
                         extern_proc.type->as.proc.info.ret_t.data[0],
                         extern_proc.type->as.proc.info.args_t,
+                        {},
                         extern_proc.type->as.proc.info.flags & NkProcVariadic);
                     nksb_printf(&ctx.forward_s, ";\n");
                     ctx.ext_procs_forward_declared.insert(ref.index);
@@ -486,10 +536,10 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             }
             switch (ref.kind) {
             case NkIrRef_Frame:
-                nksb_printf(src, "var%zu", ref.index);
+                writeLocalName(proc, ref.index, src);
                 break;
             case NkIrRef_Arg:
-                nksb_printf(src, "arg%zu", ref.index);
+                writeArgName(proc.arg_names, ref.index, src);
                 break;
             case NkIrRef_Ret:
                 nksb_printf(src, "ret");
@@ -523,13 +573,9 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             case nkir_comment:
                 continue;
 
-            case nkir_line: {
-                auto const file_name = nkid2s(instr.arg[1].line.file);
-                nksb_printf(src, "#line %zu \"", instr.arg[1].line.line);
-                nksb_str_escape(src, file_name);
-                nksb_printf(src, "\"\n");
+            case nkir_line:
+                writeLineDirective(instr.arg[1].line, src);
                 continue;
-            }
 
             default:
                 break;
@@ -672,6 +718,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
         nksb_printf(src, "\n");
     }
 
+    writeLineDirective(proc.end_line, src);
     nksb_printf(src, "}\n");
 }
 

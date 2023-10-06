@@ -18,9 +18,11 @@ struct NkIrProc_T {
 
     nkid name{};
     nktype_t proc_t{};
+    nkid_array arg_names{};
+    NkIrLine start_line{};
+    NkIrLine end_line{};
 
     size_t cur_block{};
-
     NkIrLine last_line{};
 };
 

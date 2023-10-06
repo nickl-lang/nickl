@@ -108,6 +108,8 @@ struct GeneratorState {
             }
 
             if (check(t_proc)) {
+                size_t cur_line = m_cur_token->lin;
+
                 DEFINE(sig, parseProcSignature());
 
                 if (sig.is_extern) {
@@ -144,7 +146,9 @@ struct GeneratorState {
                                 .ret_t{nkav_init(sig.ret_t)},
                                 .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                                 .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                            }));
+                            }),
+                        {nkav_init(sig.arg_names)},
+                        {m_file, cur_line});
 
                     auto const decl = new (makeGlobalDecl(sig.name)) Decl{
                         {.proc{
@@ -192,6 +196,9 @@ struct GeneratorState {
                         while (accept(t_newline)) {
                         }
                     }
+
+                    nkir_finishProc(m_ir, proc, {m_file, m_cur_token->lin});
+
                     EXPECT(t_brace_r);
                 }
             } else if (accept(t_type)) {
