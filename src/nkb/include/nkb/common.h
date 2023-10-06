@@ -141,7 +141,8 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     nktype_t const *elem_types,
     size_t const *elem_counts,
     size_t n,
-    size_t stride);
+    size_t type_stride,
+    size_t count_stride);
 
 #ifdef __cplusplus
 }

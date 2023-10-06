@@ -347,10 +347,10 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
     nksb_printf(src, "global%zu", global_id);
     if (!ctx.globals_forward_declared.find(global_id)) {
-        auto const type = ctx.ir->globals.data[global_id];
-        writeType(ctx, type, &ctx.forward_s);
+        auto const &decl = ctx.ir->globals.data[global_id];
+        writeType(ctx, decl.type, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " global%zu={", global_id);
-        if (type->size) {
+        if (decl.type->size) {
             nksb_printf(&ctx.forward_s, "0");
         }
         nksb_printf(&ctx.forward_s, "};\n");
@@ -379,10 +379,10 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
     writeProcSignature(ctx, src, nkid2s(proc.name), ret_t, args_t);
     nksb_printf(src, " {\n\n");
 
-    for (size_t i = 0; auto type : nk_iterate(proc.locals)) {
-        writeType(ctx, type, src);
+    for (size_t i = 0; auto decl : nk_iterate(proc.locals)) {
+        writeType(ctx, decl.type, src);
         nksb_printf(src, " var%zu={", i++);
-        if (type->size) {
+        if (decl.type->size) {
             nksb_printf(src, "0");
         }
         nksb_printf(src, "};\n");
@@ -429,9 +429,9 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                         ctx,
                         &ctx.forward_s,
                         extern_proc_name,
-                        extern_proc.proc_t->as.proc.info.ret_t.data[0],
-                        extern_proc.proc_t->as.proc.info.args_t,
-                        extern_proc.proc_t->as.proc.info.flags & NkProcVariadic);
+                        extern_proc.type->as.proc.info.ret_t.data[0],
+                        extern_proc.type->as.proc.info.args_t,
+                        extern_proc.type->as.proc.info.flags & NkProcVariadic);
                     nksb_printf(&ctx.forward_s, ";\n");
                     ctx.ext_procs_forward_declared.insert(ref.index);
                 }

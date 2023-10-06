@@ -140,8 +140,13 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     for (size_t i = 0; i < ir_proc.locals.size; i++) {
         local_counts[i] = 1lu;
     }
-    auto const frame_layout =
-        nkir_calcAggregateLayout(tmp_alloc, ir_proc.locals.data, local_counts, ir_proc.locals.size, 1);
+    auto const frame_layout = nkir_calcAggregateLayout(
+        tmp_alloc,
+        &ir_proc.locals.data[0].type,
+        local_counts,
+        ir_proc.locals.size,
+        sizeof(NkIrDecl_T) / sizeof(nktype_t),
+        1);
 
     auto &bc_proc =
         *(ctx->procs.data[proc_id.id] = new (nk_alloc_t<NkBcProc_T>(ir.alloc)) NkBcProc_T{
@@ -179,9 +184,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         }
         auto &data = ctx->globals.data[index];
         if (!data) {
-            auto const type = ir.globals.data[index];
-            data = nk_allocAligned(ir.alloc, type->size, type->align);
-            std::memset(data, 0, type->size);
+            auto const &decl = ir.globals.data[index];
+            data = nk_allocAligned(ir.alloc, decl.type->size, decl.type->align);
+            std::memset(data, 0, decl.type->size);
         }
         return data;
     };

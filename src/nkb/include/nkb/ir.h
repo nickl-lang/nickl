@@ -126,8 +126,8 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 
 // References
 
-NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nktype_t type);
-NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nktype_t type);
+NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);
+NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type);
 NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type);
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkid name, nktype_t type);
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t);
@@ -187,7 +187,7 @@ void nkir_inspectProgram(NkIrProg ir, NkStringBuilder *sb);
 void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb);
 void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb);
 void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStringBuilder *sb);
-void nkir_inspectRef(NkIrProg ir, NkIrRef ref, NkStringBuilder *sb);
+void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, NkStringBuilder *sb);
 #endif // ENABLE_LOGGING
 
 #ifdef __cplusplus

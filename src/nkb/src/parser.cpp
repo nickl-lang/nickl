@@ -173,7 +173,7 @@ struct GeneratorState {
                             EXPECT(t_colon);
                             DEFINE(type, parseType());
                             new (makeLocalDecl(name)) Decl{
-                                {.local = nkir_makeLocalVar(m_ir, type)},
+                                {.local = nkir_makeLocalVar(m_ir, name, type)},
                                 Decl_LocalVar,
                             };
                         } else {
@@ -226,7 +226,7 @@ struct GeneratorState {
                     };
                 } else {
                     new (makeGlobalDecl(name)) Decl{
-                        {.global = nkir_makeGlobalVar(m_ir, type)},
+                        {.global = nkir_makeGlobalVar(m_ir, name, type)},
                         Decl_GlobalVar,
                     };
                 }

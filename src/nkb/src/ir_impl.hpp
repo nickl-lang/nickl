@@ -7,9 +7,14 @@
 #include "ntk/array.h"
 #include "ntk/id.h"
 
+struct NkIrDecl_T {
+    nkid name;
+    nktype_t type;
+};
+
 struct NkIrProc_T {
     nkar_type(size_t) blocks;
-    nkar_type(nktype_t) locals;
+    nkar_type(NkIrDecl_T) locals;
 
     nkid name{};
     nktype_t proc_t{};
@@ -29,26 +34,16 @@ struct NkIrConst_T {
     nktype_t type;
 };
 
-struct NkIrExternData_T {
-    nkid name;
-    nktype_t type;
-};
-
-struct NkIrExternProc_T {
-    nkid name;
-    nktype_t proc_t;
-};
-
 struct NkIrProg_T {
     NkAllocator alloc;
 
     nkar_type(NkIrProc_T) procs;
     nkar_type(NkIrBlock) blocks;
     nkar_type(NkIrInstr) instrs;
-    nkar_type(nktype_t) globals;
+    nkar_type(NkIrDecl_T) globals;
     nkar_type(NkIrConst_T) consts;
-    nkar_type(NkIrExternData_T) extern_data;
-    nkar_type(NkIrExternProc_T) extern_procs;
+    nkar_type(NkIrDecl_T) extern_data;
+    nkar_type(NkIrDecl_T) extern_procs;
     nkar_type(NkIrRef) relocs;
 
     NkIrProc cur_proc{};

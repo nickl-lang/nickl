@@ -191,7 +191,7 @@ nktype_t nkir_makeAggregateType(NkIrTypeCache *cache, nktype_t const *elem_types
 
     return getTypeByFp(cache, fp, [&]() {
         auto const layout =
-            nkir_calcAggregateLayout(nk_arena_getAllocator(cache->type_arena), elem_types, elem_counts, n, 1);
+            nkir_calcAggregateLayout(nk_arena_getAllocator(cache->type_arena), elem_types, elem_counts, n, 1, 1);
 
         return new (nk_arena_alloc_t<NkIrType>(cache->type_arena)) NkIrType{
             .as{.aggr{
