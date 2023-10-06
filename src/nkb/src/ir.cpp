@@ -475,10 +475,31 @@ NkIrInstr nkir_make_line(nkid file, size_t line) {
 bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO Hardcoded compiler config
+    // TODO Hardcoded compiler options
+    nksb_fixed_buffer(args, 2048);
+    nksb_append_str(&args, "-lpthread -lm -fPIC -g -O0");
+
+    switch (kind) {
+    case NkbOutput_Object:
+        nksb_append_str(&args, " -c");
+        break;
+    case NkbOutput_Static:
+        nksb_append_str(&args, " -static");
+        break;
+    case NkbOutput_Shared:
+        nksb_append_str(&args, " -shared");
+        break;
+    case NkbOutput_Executable:
+        break;
+
+    default:
+        assert(!"unreachable");
+        break;
+    }
+
     NkIrCompilerConfig conf{
         .compiler_binary = nk_cs2s("gcc"),
-        .additional_flags = nk_cs2s("-lpthread -g -O0"),
+        .additional_flags = {nkav_init(args)},
         .output_filename = out_file,
         .quiet = false,
     };

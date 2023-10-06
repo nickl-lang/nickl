@@ -241,10 +241,6 @@ struct GeneratorState {
             nk_arena_clear(m_tmp_arena);
         }
 
-        if (m_entry_point.id == INVALID_ID) {
-            return error("entry point `%s` is not defined", c_entry_point_name), Void{};
-        }
-
         return {};
     }
 

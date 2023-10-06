@@ -359,6 +359,10 @@ void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
 }
 
 void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
+    if (ctx.procs_translated.find(proc_id.id)) {
+        return;
+    }
+
     NK_LOG_TRC("%s", __func__);
     NK_LOG_DBG("proc_id=%zu", proc_id.id);
 
@@ -686,12 +690,18 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrProc entry_point, nk_stre
 
     writePreamble(&ctx.types_s);
 
-    translateProc(ctx, entry_point);
+    if (entry_point.id != INVALID_ID) {
+        translateProc(ctx, entry_point);
 
-    while (ctx.procs_to_translate.size()) {
-        auto proc = *ctx.procs_to_translate.begin();
-        ctx.procs_to_translate.remove(proc);
-        translateProc(ctx, {proc});
+        while (ctx.procs_to_translate.size()) {
+            auto proc = *ctx.procs_to_translate.begin();
+            ctx.procs_to_translate.remove(proc);
+            translateProc(ctx, {proc});
+        }
+    } else {
+        for (size_t i = 0; i < ir->procs.size; i++) {
+            translateProc(ctx, {i});
+        }
     }
 
     nk_stream_printf(
