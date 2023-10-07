@@ -402,6 +402,16 @@ void writeLineDirective(NkIrLine line, NkStringBuilder *src) {
     }
 }
 
+void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
+    auto const &block = ctx.ir->blocks.data[label_id];
+    auto name = nkid2s(block.name);
+    if (name.data[0] == '@') {
+        name.data++;
+        name.size--;
+    }
+    nksb_printf(src, "l_" nks_Fmt, nks_Arg(name));
+}
+
 void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
     if (ctx.procs_translated.find(proc_id.id)) {
         return;
@@ -448,124 +458,120 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
     nksb_printf(src, "\n");
 
-    for (auto bi : nk_iterate(proc.blocks)) {
-        auto const &b = ctx.ir->blocks.data[bi];
-
-        auto label_name = nkid2s(b.name);
-
-        if (label_name.data[0] == '@') {
-            label_name.data++;
-            label_name.size--;
-        }
-
-        nksb_printf(src, "l_" nks_Fmt ":\n", nks_Arg(label_name));
-
-        auto write_ref = [&](NkIrRef const &ref) {
-            if (ref.kind == NkIrRef_Proc) {
-                auto const &proc = ctx.ir->procs.data[ref.index];
-                auto const proc_name = nkid2s(proc.name);
-                nksb_printf(src, nks_Fmt, nks_Arg(proc_name));
-                if (!ctx.procs_translated.find(ref.index)) {
-                    ctx.procs_to_translate.insert(ref.index);
-                }
-                return;
-            } else if (ref.kind == NkIrRef_Rodata) {
-                auto const &cnst = ctx.ir->consts.data[ref.index];
-                writeConst(ctx, cnst.data, cnst.type, src);
-                return;
-            } else if (ref.kind == NkIrRef_ExternProc) {
-                auto const extern_proc = ctx.ir->extern_procs.data[ref.index];
-                auto const extern_proc_name = nkid2s(extern_proc.name);
-                nksb_printf(src, nks_Fmt, nks_Arg(extern_proc_name));
-                if (!ctx.ext_procs_forward_declared.find(ref.index)) {
-                    writeProcSignature(
-                        ctx,
-                        &ctx.forward_s,
-                        extern_proc_name,
-                        extern_proc.type->as.proc.info.ret_t.data[0],
-                        extern_proc.type->as.proc.info.args_t,
-                        {},
-                        extern_proc.type->as.proc.info.flags & NkProcVariadic);
-                    nksb_printf(&ctx.forward_s, ";\n");
-                    ctx.ext_procs_forward_declared.insert(ref.index);
-                }
-                return;
-            } else if (ref.kind == NkIrRef_ExternData) {
-                nksb_printf(src, "TODO NkIrRef_ExternData");
-                return;
-            } else if (ref.kind == NkIrRef_Address) {
-                nksb_printf(src, "&");
-                auto const &target_ref = ctx.ir->relocs.data[ref.index];
-                switch (target_ref.kind) {
-                case NkIrRef_Data:
-                    writeGlobal(ctx, target_ref.index, src);
-                    break;
-                case NkIrRef_Rodata: {
-                    auto const &cnst = ctx.ir->consts.data[target_ref.index];
-                    writeConst(ctx, cnst.data, cnst.type, src, true);
-                    break;
-                }
-                default:
-                    assert(!"unreachable");
-                    break;
-                }
-                return;
+    auto write_ref = [&](NkIrRef const &ref) {
+        if (ref.kind == NkIrRef_Proc) {
+            auto const &proc = ctx.ir->procs.data[ref.index];
+            auto const proc_name = nkid2s(proc.name);
+            nksb_printf(src, nks_Fmt, nks_Arg(proc_name));
+            if (!ctx.procs_translated.find(ref.index)) {
+                ctx.procs_to_translate.insert(ref.index);
             }
-
-            uint8_t indir = ref.indir;
-            if (ref.kind == NkIrRef_Arg || ref.kind == NkIrRef_Ret) {
-                indir--;
+            return;
+        } else if (ref.kind == NkIrRef_Rodata) {
+            auto const &cnst = ctx.ir->consts.data[ref.index];
+            writeConst(ctx, cnst.data, cnst.type, src);
+            return;
+        } else if (ref.kind == NkIrRef_ExternProc) {
+            auto const extern_proc = ctx.ir->extern_procs.data[ref.index];
+            auto const extern_proc_name = nkid2s(extern_proc.name);
+            nksb_printf(src, nks_Fmt, nks_Arg(extern_proc_name));
+            if (!ctx.ext_procs_forward_declared.find(ref.index)) {
+                writeProcSignature(
+                    ctx,
+                    &ctx.forward_s,
+                    extern_proc_name,
+                    extern_proc.type->as.proc.info.ret_t.data[0],
+                    extern_proc.type->as.proc.info.args_t,
+                    {},
+                    extern_proc.type->as.proc.info.flags & NkProcVariadic);
+                nksb_printf(&ctx.forward_s, ";\n");
+                ctx.ext_procs_forward_declared.insert(ref.index);
             }
-            for (uint8_t i = 0; i < maxu(indir, 1); i++) {
-                nksb_printf(src, "*");
-            }
-            nksb_printf(src, "(");
-            writeType(ctx, ref.type, src);
-            for (uint8_t i = 0; i < maxu(indir, 1); i++) {
-                nksb_printf(src, "*");
-            }
-            nksb_printf(src, ")");
-            if (ref.post_offset) {
-                nksb_printf(src, "((uint8_t*)");
-            }
-            if (ref.offset) {
-                nksb_printf(src, "((uint8_t*)");
-            }
-            if (indir == 0) {
-                nksb_printf(src, "& ");
-            }
-            switch (ref.kind) {
-            case NkIrRef_Frame:
-                writeLocalName(proc, ref.index, src);
-                break;
-            case NkIrRef_Arg:
-                writeArgName(proc.arg_names, ref.index, src);
-                break;
-            case NkIrRef_Ret:
-                nksb_printf(src, "ret");
-                break;
+            return;
+        } else if (ref.kind == NkIrRef_ExternData) {
+            nksb_printf(src, "TODO NkIrRef_ExternData");
+            return;
+        } else if (ref.kind == NkIrRef_Address) {
+            nksb_printf(src, "&");
+            auto const &target_ref = ctx.ir->relocs.data[ref.index];
+            switch (target_ref.kind) {
             case NkIrRef_Data:
-                writeGlobal(ctx, ref.index, src);
+                writeGlobal(ctx, target_ref.index, src);
                 break;
-            case NkIrRef_Proc:
-            case NkIrRef_Rodata:
-            case NkIrRef_ExternProc:
-            case NkIrRef_ExternData:
-            case NkIrRef_Address:
-            case NkIrRef_None:
+            case NkIrRef_Rodata: {
+                auto const &cnst = ctx.ir->consts.data[target_ref.index];
+                writeConst(ctx, cnst.data, cnst.type, src, true);
+                break;
+            }
             default:
                 assert(!"unreachable");
                 break;
             }
-            if (ref.offset) {
-                nksb_printf(src, "+%zu)", ref.offset);
-            }
-            if (ref.post_offset) {
-                nksb_printf(src, "+%zu)", ref.post_offset);
-            }
-        };
+            return;
+        }
 
-        for (auto ii : nk_iterate(b.instrs)) {
+        uint8_t indir = ref.indir;
+        if (ref.kind == NkIrRef_Arg || ref.kind == NkIrRef_Ret) {
+            indir--;
+        }
+        for (uint8_t i = 0; i < maxu(indir, 1); i++) {
+            nksb_printf(src, "*");
+        }
+        nksb_printf(src, "(");
+        writeType(ctx, ref.type, src);
+        for (uint8_t i = 0; i < maxu(indir, 1); i++) {
+            nksb_printf(src, "*");
+        }
+        nksb_printf(src, ")");
+        if (ref.post_offset) {
+            nksb_printf(src, "((uint8_t*)");
+        }
+        if (ref.offset) {
+            nksb_printf(src, "((uint8_t*)");
+        }
+        if (indir == 0) {
+            nksb_printf(src, "& ");
+        }
+        switch (ref.kind) {
+        case NkIrRef_Frame:
+            writeLocalName(proc, ref.index, src);
+            break;
+        case NkIrRef_Arg:
+            writeArgName(proc.arg_names, ref.index, src);
+            break;
+        case NkIrRef_Ret:
+            nksb_printf(src, "ret");
+            break;
+        case NkIrRef_Data:
+            writeGlobal(ctx, ref.index, src);
+            break;
+        case NkIrRef_Proc:
+        case NkIrRef_Rodata:
+        case NkIrRef_ExternProc:
+        case NkIrRef_ExternData:
+        case NkIrRef_Address:
+        case NkIrRef_None:
+        default:
+            assert(!"unreachable");
+            break;
+        }
+        if (ref.offset) {
+            nksb_printf(src, "+%zu)", ref.offset);
+        }
+        if (ref.post_offset) {
+            nksb_printf(src, "+%zu)", ref.post_offset);
+        }
+    };
+
+    for (auto bi : nk_iterate(proc.blocks)) {
+        auto const &block = ctx.ir->blocks.data[bi];
+
+        writeLabel(ctx, bi, src);
+        nksb_printf(src, ":\n");
+
+        NkIrLine last_line{};
+
+        for (auto ii : nk_iterate(block.instrs)) {
             auto const &instr = ctx.ir->instrs.data[ii];
 
             switch (instr.code) {
@@ -573,9 +579,14 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             case nkir_comment:
                 continue;
 
-            case nkir_line:
-                writeLineDirective(instr.arg[1].line, src);
+            case nkir_line: {
+                auto const cur_line = instr.arg[1].line;
+                if (cur_line.file != last_line.file || cur_line.line != last_line.line + 1) {
+                    writeLineDirective(cur_line, src);
+                }
+                last_line = cur_line;
                 continue;
+            }
 
             default:
                 break;
@@ -597,34 +608,24 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                 }
                 break;
             case nkir_jmp: {
-                auto label_name = nkid2s(ctx.ir->blocks.data[instr.arg[1].id].name);
-                if (label_name.data[0] == '@') {
-                    label_name.data++;
-                    label_name.size--;
-                }
-                nksb_printf(src, "goto l_" nks_Fmt, nks_Arg(label_name));
+                nksb_printf(src, "goto ");
+                writeLabel(ctx, instr.arg[1].id, src);
                 break;
             }
             case nkir_jmpz: {
-                auto label_name = nkid2s(ctx.ir->blocks.data[instr.arg[2].id].name);
-                if (label_name.data[0] == '@') {
-                    label_name.data++;
-                    label_name.size--;
-                }
                 nksb_printf(src, "if (0 == ");
                 write_ref(instr.arg[1].ref);
-                nksb_printf(src, ") { goto l_" nks_Fmt "; }", nks_Arg(label_name));
+                nksb_printf(src, ") { goto ");
+                writeLabel(ctx, instr.arg[2].id, src);
+                nksb_printf(src, "; }");
                 break;
             }
             case nkir_jmpnz: {
-                auto label_name = nkid2s(ctx.ir->blocks.data[instr.arg[2].id].name);
-                if (label_name.data[0] == '@') {
-                    label_name.data++;
-                    label_name.size--;
-                }
                 nksb_printf(src, "if (");
                 write_ref(instr.arg[1].ref);
-                nksb_printf(src, ") { goto l_" nks_Fmt "; }", nks_Arg(label_name));
+                nksb_printf(src, ") { goto ");
+                writeLabel(ctx, instr.arg[2].id, src);
+                nksb_printf(src, "; }");
                 break;
             }
             case nkir_call: {
@@ -752,6 +753,15 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrProc entry_point, nk_stre
             translateProc(ctx, {i});
         }
     }
+
+#if 0
+    printf(
+        nks_Fmt "\n" nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
+        nks_Arg(ctx.types_s),
+        nks_Arg(ctx.data_s),
+        nks_Arg(ctx.forward_s),
+        nks_Arg(ctx.main_s));
+#endif
 
     nk_stream_printf(
         src,
