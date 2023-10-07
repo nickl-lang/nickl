@@ -459,21 +459,6 @@ NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray ar
     return {{_arg(dst), _arg(proc), _arg(ir, args)}, nkir_call};
 }
 
-NkIrInstr nkir_make_label(NkIrLabel label) {
-    NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(label), {}}, nkir_label};
-}
-
-NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
-    NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(ir, comment), {}}, nkir_comment};
-}
-
-NkIrInstr nkir_make_line(nkid file, size_t line) {
-    NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(NkIrLine{file, line}), {}}, nkir_line};
-}
-
 #define UNA_IR(NAME)                                            \
     NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg) { \
         NK_LOG_TRC("%s", __func__);                             \
@@ -490,6 +475,26 @@ NkIrInstr nkir_make_line(nkid file, size_t line) {
         return {{_arg(dst), _arg(lhs), _arg(rhs)}, CAT(nkir_, CAT(NAME1, CAT(_, NAME2)))};        \
     }
 #include "nkb/ir.inl"
+
+NkIrInstr nkir_make_syscall(NkIrProg ir, NkIrRef dst, NkIrRef n, NkIrRefArray args) {
+    NK_LOG_TRC("%s", __func__);
+    return {{_arg(dst), _arg(n), _arg(ir, args)}, nkir_syscall};
+}
+
+NkIrInstr nkir_make_label(NkIrLabel label) {
+    NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(label), {}}, nkir_label};
+}
+
+NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
+    NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(ir, comment), {}}, nkir_comment};
+}
+
+NkIrInstr nkir_make_line(nkid file, size_t line) {
+    NK_LOG_TRC("%s", __func__);
+    return {{{}, _arg(NkIrLine{file, line}), {}}, nkir_line};
+}
 
 bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
     NK_LOG_TRC("%s", __func__);

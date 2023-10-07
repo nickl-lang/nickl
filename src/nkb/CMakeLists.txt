@@ -7,9 +7,6 @@ add_library(${LIB}
     src/ffi_adapter.cpp
     src/interp.cpp
     src/ir.cpp
-    src/irc.cpp
-    src/lexer.cpp
-    src/parser.cpp
     src/translate2c.cpp
     src/types.cpp
     )
@@ -28,7 +25,10 @@ target_link_libraries(${LIB}
 set(EXE nkirc)
 
 add_executable(${EXE}
+    src/irc.cpp
+    src/lexer.cpp
     src/main.cpp
+    src/parser.cpp
     )
 
 target_link_libraries(${EXE}

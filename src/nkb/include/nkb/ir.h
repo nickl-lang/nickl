@@ -158,16 +158,18 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label);
 
 NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
-NkIrInstr nkir_make_label(NkIrLabel label);
-
-NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
-NkIrInstr nkir_make_line(nkid file, size_t line);
-
 #define UNA_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg);
 #define BIN_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #define DBL_IR(NAME1, NAME2) \
     NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #include "nkb/ir.inl"
+
+NkIrInstr nkir_make_syscall(NkIrProg ir, NkIrRef dst, NkIrRef n, NkIrRefArray args);
+
+NkIrInstr nkir_make_label(NkIrLabel label);
+
+NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
+NkIrInstr nkir_make_line(nkid file, size_t line);
 
 // Output
 

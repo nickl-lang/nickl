@@ -540,6 +540,16 @@ private:
             }
         }
 
+        else if (accept(t_syscall)) {
+            NkIrRef dst{};
+            DEFINE(n, parseRef());
+            EXPECT(t_comma);
+            DEFINE(args, parseRefArray());
+            EXPECT(t_minus_greater);
+            ASSIGN(dst, parseRef());
+            return nkir_make_syscall(m_ir, dst, n, args);
+        }
+
         else {
             return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NkIrInstr{};
         }

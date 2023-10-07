@@ -78,6 +78,8 @@ KW(le)
 KW(gt)
 KW(ge)
 
+KW(syscall)
+
 KW(typename_marker)
 
 KW(void)

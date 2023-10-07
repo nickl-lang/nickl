@@ -8,6 +8,7 @@ add_library(${LIB}
     src/sys/${PLATFORM_DIR}/mem.c
     src/sys/${PLATFORM_DIR}/path.c
     src/sys/${PLATFORM_DIR}/process.c
+    src/sys/${PLATFORM_DIR}/syscall.c
     src/sys/${PLATFORM_DIR}/term.c
     src/sys/${PLATFORM_DIR}/time.c
     src/allocator.c

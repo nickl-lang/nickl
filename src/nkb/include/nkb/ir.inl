@@ -57,6 +57,8 @@ CMP_IR(le) // cmp le lhs, rhs -> dst
 CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
+IR(syscall) // syscall n, (args, ...)
+
 // IR(cmpxchg)
 
 IR(label)

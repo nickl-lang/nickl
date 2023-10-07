@@ -139,6 +139,16 @@ BOOL_NUM_OP(cmp_le)
 BOOL_NUM_OP(cmp_gt)
 BOOL_NUM_OP(cmp_ge)
 
+OP(syscall)
+
+OPX(syscall, 0)
+OPX(syscall, 1)
+OPX(syscall, 2)
+OPX(syscall, 3)
+OPX(syscall, 4)
+OPX(syscall, 5)
+OPX(syscall, 6)
+
 OP(label)
 OP(comment)
 OP(line)

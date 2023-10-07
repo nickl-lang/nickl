@@ -715,6 +715,19 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
 #undef BIN_OP
 
+                // TODO Detect if target platform supports syscalls
+            case nkir_syscall: {
+                nksb_printf(src, "syscall(");
+                write_ref(instr.arg[1].ref);
+                auto const args = instr.arg[2].refs;
+                for (size_t i = 0; i < args.size; i++) {
+                    nksb_printf(src, ", ");
+                    write_ref(args.data[i]);
+                }
+                nksb_printf(src, ")");
+                break;
+            }
+
             default:
                 assert(!"unreachable");
             }

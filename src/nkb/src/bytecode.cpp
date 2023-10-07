@@ -10,6 +10,7 @@
 #include "ntk/array.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
+#include "ntk/sys/syscall.h"
 
 namespace {
 
@@ -369,6 +370,16 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
                 break;
             }
+
+                // TODO Report errors from bytecode translation
+            case nkir_syscall:
+#if NK_SYSCALLS_AVAILABLE
+                code += 1 + ir_instr.arg[2].refs.size;
+#else  // NK_SYSCALLS_AVAILABLE
+                NK_LOG_ERR("syscalls are not available on the host platform");
+                abort();
+#endif // NK_SYSCALLS_AVAILABLE
+                break;
 
 #define SIZ_OP(NAME) case CAT(nkir_, NAME):
 #include "bytecode.inl"
