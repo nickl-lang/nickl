@@ -96,8 +96,14 @@ void writeGlobalName(NkIrProg ir, size_t id, NkStringBuilder *src) {
 
 void writePreamble(NkStringBuilder *sb) {
     nksb_printf(sb, R"(
-#include <stddef.h>
-#include <stdint.h>
+typedef signed char int8_t;
+typedef signed short int16_t;
+typedef signed long int32_t;
+typedef signed long long int64_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned long uint32_t;
+typedef unsigned long long uint64_t;
 
 )");
 }
@@ -105,7 +111,7 @@ void writePreamble(NkStringBuilder *sb) {
 void writeNumericType(NkIrNumericValueType value_type, NkStringBuilder *src) {
     switch (value_type) {
     case Int8:
-        nksb_printf(src, "char");
+        nksb_printf(src, "int8_t");
         break;
     case Int16:
         nksb_printf(src, "int16_t");

@@ -13,7 +13,7 @@ bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
     nksb_fixed_buffer(sb, 4096);
     nksb_printf(
         &sb,
-        nks_Fmt " -x c - -o " nks_Fmt " -lm " nks_Fmt,
+        nks_Fmt " -x c - -o " nks_Fmt " " nks_Fmt,
         nks_Arg(conf.compiler_binary),
         nks_Arg(conf.output_filename),
         nks_Arg(conf.additional_flags));
