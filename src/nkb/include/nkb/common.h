@@ -49,6 +49,11 @@ typedef enum {
 #define NKIR_NUMERIC_TYPE_INDEX(VALUE_TYPE) ((0xf0 & (VALUE_TYPE)) >> 4)
 #define NKIR_NUMERIC_TYPE_COUNT 10
 
+#define NKIR_NUMERIC_IS_FLOAT(VALUE_TYPE) ((VALUE_TYPE) >= Float32 && (VALUE_TYPE) <= Float64)
+#define NKIR_NUMERIC_IS_WHOLE(VALUE_TYPE) ((VALUE_TYPE) >= Int8 && (VALUE_TYPE) <= Uint64)
+
+#define NKIR_NUMERIC_IS_SIGNED(VALUE_TYPE) ((NKIR_NUMERIC_TYPE_INDEX(VALUE_TYPE) & 1) == 0)
+
 #define NKIR_NUMERIC_ITERATE_INT(MACRO, ...)                \
     MACRO(i8, Int8, int8_t __VA_OPT__(, ) __VA_ARGS__)      \
     MACRO(u8, Uint8, uint8_t __VA_OPT__(, ) __VA_ARGS__)    \

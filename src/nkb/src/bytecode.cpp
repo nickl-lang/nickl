@@ -371,6 +371,47 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 break;
             }
 
+            case nkir_ext: {
+                auto const &dst = ir_instr.arg[0].ref;
+                auto const &src = ir_instr.arg[1].ref;
+
+                assert(dst.type->kind == NkType_Numeric && src.type->kind == NkType_Numeric);
+                assert(
+                    NKIR_NUMERIC_TYPE_SIZE(dst.type->as.num.value_type) >
+                    NKIR_NUMERIC_TYPE_SIZE(src.type->as.num.value_type));
+
+                if (NKIR_NUMERIC_IS_WHOLE(dst.type->as.num.value_type)) {
+                    assert(NKIR_NUMERIC_IS_WHOLE(src.type->as.num.value_type));
+
+                    if (NKIR_NUMERIC_IS_SIGNED(dst.type->as.num.value_type)) {
+                        code = nkop_sext;
+                    } else {
+                        code = nkop_zext;
+                    }
+
+                    switch (NKIR_NUMERIC_TYPE_SIZE(src.type->as.num.value_type)) {
+                    case 1:
+                        code += 0 + log2u32(NKIR_NUMERIC_TYPE_SIZE(dst.type->as.num.value_type));
+                        break;
+                    case 2:
+                        code += 2 + log2u32(NKIR_NUMERIC_TYPE_SIZE(dst.type->as.num.value_type));
+                        break;
+                    case 4:
+                        code += 6;
+                        break;
+                    default:
+                        assert(!"unreachable");
+                        break;
+                    }
+                } else {
+                    assert(dst.type->as.num.value_type == Float64);
+                    assert(src.type->as.num.value_type == Float32);
+
+                    code = nkop_fext;
+                }
+                break;
+            }
+
                 // TODO Report errors from bytecode translation
             case nkir_syscall:
 #if NK_SYSCALLS_AVAILABLE

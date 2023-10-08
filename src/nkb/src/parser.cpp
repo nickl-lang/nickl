@@ -1,6 +1,7 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <new>
 
@@ -490,6 +491,28 @@ private:
                 ASSIGN(dst, parseRef());
             }
             return nkir_make_call(m_ir, dst, proc, args);
+        }
+
+        else if (accept(t_ext)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_ext(dst, src);
+        } else if (accept(t_trunc)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_trunc(dst, src);
+        } else if (accept(t_fp2i)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_fp2i(dst, src);
+        } else if (accept(t_i2fp)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_i2fp(dst, src);
         }
 
         else if (accept(t_neg)) {

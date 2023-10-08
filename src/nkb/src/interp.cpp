@@ -251,6 +251,61 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
+    case nkop_sext_8_16: {
+        deref<int16_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_8_32: {
+        deref<int32_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_8_64: {
+        deref<int64_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_16_32: {
+        deref<int32_t>(instr.arg[0]) = deref<int16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_16_64: {
+        deref<int64_t>(instr.arg[0]) = deref<int16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_32_64: {
+        deref<int64_t>(instr.arg[0]) = deref<int32_t>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_zext_8_16: {
+        deref<uint16_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_8_32: {
+        deref<uint32_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_8_64: {
+        deref<uint64_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_16_32: {
+        deref<uint32_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_16_64: {
+        deref<uint64_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_32_64: {
+        deref<uint64_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_fext: {
+        deref<double>(instr.arg[0]) = deref<float>(instr.arg[1]);
+        break;
+    }
+
     case nkop_mov_8: {
         deref<uint8_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
         break;
