@@ -371,30 +371,29 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 break;
             }
 
-            case nkir_ext: {
-                auto const &dst = ir_instr.arg[0].ref;
-                auto const &src = ir_instr.arg[1].ref;
+            case nkir_ext:
+            case nkir_trunc: {
+                auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
+                auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
 
-                assert(dst.type->kind == NkType_Numeric && src.type->kind == NkType_Numeric);
+                assert(max_ref.type->kind == NkType_Numeric && min_ref.type->kind == NkType_Numeric);
                 assert(
-                    NKIR_NUMERIC_TYPE_SIZE(dst.type->as.num.value_type) >
-                    NKIR_NUMERIC_TYPE_SIZE(src.type->as.num.value_type));
+                    NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
+                    NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
 
-                if (NKIR_NUMERIC_IS_WHOLE(dst.type->as.num.value_type)) {
-                    assert(NKIR_NUMERIC_IS_WHOLE(src.type->as.num.value_type));
+                if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
+                    assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
 
-                    if (NKIR_NUMERIC_IS_SIGNED(dst.type->as.num.value_type)) {
-                        code = nkop_sext;
-                    } else {
-                        code = nkop_zext;
+                    if (ir_instr.code == nkir_ext) {
+                        code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
                     }
 
-                    switch (NKIR_NUMERIC_TYPE_SIZE(src.type->as.num.value_type)) {
+                    switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
                     case 1:
-                        code += 0 + log2u32(NKIR_NUMERIC_TYPE_SIZE(dst.type->as.num.value_type));
+                        code += 0 + log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
                         break;
                     case 2:
-                        code += 2 + log2u32(NKIR_NUMERIC_TYPE_SIZE(dst.type->as.num.value_type));
+                        code += 2 + log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
                         break;
                     case 4:
                         code += 6;
@@ -404,10 +403,10 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                         break;
                     }
                 } else {
-                    assert(dst.type->as.num.value_type == Float64);
-                    assert(src.type->as.num.value_type == Float32);
+                    assert(max_ref.type->as.num.value_type == Float64);
+                    assert(min_ref.type->as.num.value_type == Float32);
 
-                    code = nkop_fext;
+                    code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
                 }
                 break;
             }

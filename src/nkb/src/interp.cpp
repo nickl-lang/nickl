@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -303,6 +304,36 @@ void interp(NkBcInstr const &instr) {
 
     case nkop_fext: {
         deref<double>(instr.arg[0]) = deref<float>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_trunc_16_8: {
+        deref<uint8_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_32_8: {
+        deref<uint8_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_64_8: {
+        deref<uint8_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_32_16: {
+        deref<uint16_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_64_16: {
+        deref<uint16_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_64_32: {
+        deref<uint32_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_ftrunc: {
+        deref<float>(instr.arg[0]) = deref<double>(instr.arg[1]);
         break;
     }
 
