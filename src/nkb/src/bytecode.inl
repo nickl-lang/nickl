@@ -28,6 +28,10 @@
     OPX(NAME, u64)
 #endif
 
+#ifndef FP2I_OP
+#define FP2I_OP INT_OP
+#endif
+
 #ifndef NUM_OP
 #define NUM_OP(NAME) \
     INT_OP(NAME)     \
@@ -83,43 +87,13 @@ OP(ftrunc)
 
 OP(fp2i)
 
-OPX(fp2i_f32, i8)
-OPX(fp2i_f32, u8)
-OPX(fp2i_f32, i16)
-OPX(fp2i_f32, u16)
-OPX(fp2i_f32, i32)
-OPX(fp2i_f32, u32)
-OPX(fp2i_f32, i64)
-OPX(fp2i_f32, u64)
-
-OPX(fp2i_f64, i8)
-OPX(fp2i_f64, u8)
-OPX(fp2i_f64, i16)
-OPX(fp2i_f64, u16)
-OPX(fp2i_f64, i32)
-OPX(fp2i_f64, u32)
-OPX(fp2i_f64, i64)
-OPX(fp2i_f64, u64)
+FP2I_OP(fp2i_32)
+FP2I_OP(fp2i_64)
 
 OP(i2fp)
 
-OPX(i2fp_f32, i8)
-OPX(i2fp_f32, u8)
-OPX(i2fp_f32, i16)
-OPX(i2fp_f32, u16)
-OPX(i2fp_f32, i32)
-OPX(i2fp_f32, u32)
-OPX(i2fp_f32, i64)
-OPX(i2fp_f32, u64)
-
-OPX(i2fp_f64, i8)
-OPX(i2fp_f64, u8)
-OPX(i2fp_f64, i16)
-OPX(i2fp_f64, u16)
-OPX(i2fp_f64, i32)
-OPX(i2fp_f64, u32)
-OPX(i2fp_f64, i64)
-OPX(i2fp_f64, u64)
+FP2I_OP(i2fp_32)
+FP2I_OP(i2fp_64)
 
 NUM_OP(neg)
 
@@ -161,6 +135,7 @@ OP(line)
 
 #undef BOOL_NUM_OP
 #undef NUM_OP
+#undef FP2I_OP
 #undef INT_OP
 #undef SIZ_OP
 

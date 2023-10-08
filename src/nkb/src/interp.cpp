@@ -337,6 +337,32 @@ void interp(NkBcInstr const &instr) {
         break;
     }
 
+#define FP2I_OP_IT(EXT, VALUE_TYPE, CTYPE, TYPE, SIZ)                  \
+    case CAT(CAT(CAT(nkop_fp2i_, SIZ), _), EXT): {                     \
+        deref<CTYPE>(instr.arg[0]) = (CTYPE)deref<TYPE>(instr.arg[1]); \
+        break;                                                         \
+    }
+
+#define I2FP_OP_IT(EXT, VALUE_TYPE, CTYPE, TYPE, SIZ)                 \
+    case CAT(CAT(CAT(nkop_i2fp_, SIZ), _), EXT): {                    \
+        deref<TYPE>(instr.arg[0]) = (TYPE)deref<CTYPE>(instr.arg[1]); \
+        break;                                                        \
+    }
+
+#define FP2I_OP(TYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(FP2I_OP_IT, TYPE, SIZ)
+#define I2FP_OP(TYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(I2FP_OP_IT, TYPE, SIZ)
+
+        FP2I_OP(float, 32)
+        FP2I_OP(double, 64)
+
+        I2FP_OP(float, 32)
+        I2FP_OP(double, 64)
+
+#undef I2FP_OP
+#undef FP2I_OP
+#undef I2FP_OP_IT
+#undef FP2I_OP_IT
+
     case nkop_mov_8: {
         deref<uint8_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
         break;

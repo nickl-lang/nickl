@@ -360,7 +360,6 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
             switch (ir_instr.code) {
             case nkir_call: {
-                auto const &arg1 = ir_instr.arg[1];
                 if (arg1.ref.kind == NkIrRef_ExternProc ||
                     (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
                     code = nkop_call_ext;
@@ -411,6 +410,17 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                 break;
             }
 
+            case nkir_fp2i: {
+                code = arg1.ref.type->as.num.value_type == Float32 ? nkop_fp2i_32 : nkop_fp2i_64;
+                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
+                break;
+            }
+            case nkir_i2fp: {
+                code = arg0.ref.type->as.num.value_type == Float32 ? nkop_i2fp_32 : nkop_i2fp_64;
+                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                break;
+            }
+
                 // TODO Report errors from bytecode translation
             case nkir_syscall:
 #if NK_SYSCALLS_AVAILABLE
@@ -435,6 +445,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 #define BOOL_NUM_OP(NAME)
 #define NUM_OP(NAME) case CAT(nkir_, NAME):
 #define INT_OP(NAME) case CAT(nkir_, NAME):
+#define FP2I_OP(NAME)
 #include "bytecode.inl"
                 assert(arg0.ref.type->kind == NkType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);

@@ -14,7 +14,7 @@ var_f32: f32
 var_f64: f64
 
 @start
-    trunc :i16 -1 -> var_i8
+    fp2i :f32 -3.14 -> var_i8
     ext var_i8 -> var_i32
     call printf, (&"%i\n", var_i32)
 
