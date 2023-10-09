@@ -1,5 +1,6 @@
 def_nkb_test(FILE aggregate.nkir)
 def_nkb_test(FILE basic.nkir)
+def_nkb_test(FILE casts.nkir)
 # TODO def_nkb_test(FILE extern_var.nkir)
 def_nkb_test(FILE ffi_closure.nkir)
 def_nkb_test(FILE global.nkir)
