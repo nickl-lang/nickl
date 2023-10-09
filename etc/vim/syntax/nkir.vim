@@ -2,8 +2,8 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword nkirKeyword null proc extern cdecl type data const
-syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 int float void bool
+syn keyword nkirKeyword null proc extern cdecl type data const pub local
+syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void
 syn keyword nkirBoolean true false
 
 syn match nkirComment    display '//.*$'

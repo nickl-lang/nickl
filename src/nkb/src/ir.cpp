@@ -157,7 +157,14 @@ NkIrLabel nkir_createLabel(NkIrProg ir, nkid name) {
     return id;
 }
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkid name, nktype_t proc_t, nkid_array arg_names, NkIrLine line) {
+void nkir_startProc(
+    NkIrProg ir,
+    NkIrProc proc_id,
+    nkid name,
+    nktype_t proc_t,
+    nkid_array arg_names,
+    NkIrLine line,
+    NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[proc_id.id];
@@ -166,6 +173,7 @@ void nkir_startProc(NkIrProg ir, NkIrProc proc_id, nkid name, nktype_t proc_t, n
     proc.proc_t = proc_t;
     nkav_copy(ir->alloc, &proc.arg_names, arg_names);
     proc.start_line = line;
+    proc.visibility = vis;
 
     nkir_activateProc(ir, proc_id);
 }
@@ -253,29 +261,23 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type) {
     auto &proc = ir->procs.data[ir->cur_proc.id];
 
     NkIrLocalVar id{proc.locals.size};
-    nkar_append(&proc.locals, NkIrDecl_T{name, type});
+    nkar_append(&proc.locals, (NkIrDecl_T{name, type}));
     return id;
 }
 
-NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type) {
+NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrGlobalVar id{ir->globals.size};
-    nkar_append(&ir->globals, NkIrDecl_T{name, type});
+    nkar_append(&ir->globals, (NkIrGlobal_T{name, type, vis}));
     return id;
 }
 
-NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type) {
+NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrConst id{ir->consts.size};
-    nkar_append(
-        &ir->consts,
-        (NkIrConst_T{
-            .name = name,
-            .data = data,
-            .type = type,
-        }));
+    nkar_append(&ir->consts, (NkIrConst_T{name, data, type, vis}));
     return id;
 }
 
@@ -283,7 +285,7 @@ NkIrExternData nkir_makeExternData(NkIrProg ir, nkid name, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternData id{ir->extern_data.size};
-    nkar_append(&ir->extern_data, NkIrDecl_T{name, type});
+    nkar_append(&ir->extern_data, (NkIrDecl_T{name, type}));
     return id;
 }
 
@@ -291,7 +293,7 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternProc id{ir->extern_procs.size};
-    nkar_append(&ir->extern_procs, NkIrDecl_T{name, proc_t});
+    nkar_append(&ir->extern_procs, (NkIrDecl_T{name, proc_t}));
     return id;
 }
 
@@ -502,7 +504,7 @@ bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind
 
     // TODO Hardcoded compiler options
     nksb_fixed_buffer(args, 2048);
-    nksb_append_str(&args, "-lpthread -lm -fPIC -g -O0");
+    nksb_append_str(&args, "-lpthread -lm -fPIC -g -O0 -fvisibility=hidden");
 
     switch (kind) {
     case NkbOutput_Object:

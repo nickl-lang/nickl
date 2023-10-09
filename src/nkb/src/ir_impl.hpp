@@ -21,6 +21,7 @@ struct NkIrProc_T {
     nkid_array arg_names{};
     NkIrLine start_line{};
     NkIrLine end_line{};
+    NkIrVisibility visibility{};
 
     size_t cur_block{};
     NkIrLine last_line{};
@@ -35,6 +36,13 @@ struct NkIrConst_T {
     nkid name;
     void *data;
     nktype_t type;
+    NkIrVisibility visibility;
+};
+
+struct NkIrGlobal_T {
+    nkid name;
+    nktype_t type;
+    NkIrVisibility visibility;
 };
 
 struct NkIrProg_T {
@@ -43,7 +51,7 @@ struct NkIrProg_T {
     nkar_type(NkIrProc_T) procs;
     nkar_type(NkIrBlock) blocks;
     nkar_type(NkIrInstr) instrs;
-    nkar_type(NkIrDecl_T) globals;
+    nkar_type(NkIrGlobal_T) globals;
     nkar_type(NkIrConst_T) consts;
     nkar_type(NkIrDecl_T) extern_data;
     nkar_type(NkIrDecl_T) extern_procs;

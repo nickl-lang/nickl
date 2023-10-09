@@ -36,6 +36,7 @@ KW(const)
 KW(data)
 KW(extern)
 KW(proc)
+KW(pub)
 KW(type)
 
 KW(nop)

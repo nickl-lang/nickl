@@ -105,136 +105,24 @@ struct GeneratorState {
             while (accept(t_newline)) {
             }
 
-            if (check(t_proc)) {
-                size_t cur_line = m_cur_token->lin;
-
-                DEFINE(sig, parseProcSignature());
-
-                if (sig.is_extern) {
-                    new (makeGlobalDecl(sig.name)) Decl{
-                        {.extern_proc = nkir_makeExternProc(
-                             m_ir,
-                             sig.name,
-                             nkir_makeProcedureType(
-                                 m_types,
-                                 {
-                                     .args_t{nkav_init(sig.args_t)},
-                                     .ret_t{nkav_init(sig.ret_t)},
-                                     .call_conv = NkCallConv_Cdecl,
-                                     .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                                 }))},
-                        Decl_ExternProc,
-                    };
+            if (accept(t_pub)) {
+                if (check(t_proc)) {
+                    CHECK(parseProc(NkIrVisibility_Default));
+                } else if (accept(t_const)) {
+                    CHECK(parseConstDef(NkIrVisibility_Default));
+                } else if (accept(t_data)) {
+                    CHECK(parseData(NkIrVisibility_Default));
                 } else {
-                    auto proc = nkir_createProc(m_ir);
-
-                    static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
-                    if (sig.name == c_entry_point_id) {
-                        m_entry_point = proc;
-                    }
-
-                    nkir_startProc(
-                        m_ir,
-                        proc,
-                        sig.name,
-                        nkir_makeProcedureType(
-                            m_types,
-                            {
-                                .args_t{nkav_init(sig.args_t)},
-                                .ret_t{nkav_init(sig.ret_t)},
-                                .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
-                                .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                            }),
-                        {nkav_init(sig.arg_names)},
-                        {m_file, cur_line});
-
-                    auto const decl = new (makeGlobalDecl(sig.name)) Decl{
-                        {.proc{
-                            .proc = proc,
-                            .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
-                            .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
-                        }},
-                        Decl_Proc,
-                    };
-                    m_cur_proc = &decl->as.proc;
-
-                    for (size_t i = 0; i < sig.args_t.size; i++) {
-                        new (makeLocalDecl(sig.arg_names.data[i])) Decl{
-                            {.arg_index = i},
-                            Decl_Arg,
-                        };
-                    }
-
-                    EXPECT(t_brace_l);
-                    while (!check(t_brace_r) && !check(t_eof)) {
-                        while (accept(t_newline)) {
-                        }
-                        if (check(t_id)) {
-                            DEFINE(token, parseId());
-                            auto const name = s2nkid(token->text);
-                            EXPECT(t_colon);
-                            DEFINE(type, parseType());
-                            new (makeLocalDecl(name)) Decl{
-                                {.local = nkir_makeLocalVar(m_ir, name, type)},
-                                Decl_LocalVar,
-                            };
-                        } else {
-                            auto const cur_line = m_cur_token->lin;
-
-                            DEFINE(instr, parseInstr());
-
-                            if (instr.code != nkir_label && instr.code != nkir_comment) {
-                                auto const line_instr = nkir_make_line(m_file, cur_line);
-                                nkir_gen(m_ir, {&line_instr, 1});
-                            }
-
-                            nkir_gen(m_ir, {&instr, 1});
-                        }
-                        EXPECT(t_newline);
-                        while (accept(t_newline)) {
-                        }
-                    }
-
-                    nkir_finishProc(m_ir, proc, {m_file, m_cur_token->lin});
-
-                    EXPECT(t_brace_r);
+                    return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
                 }
+            } else if (check(t_proc)) {
+                CHECK(parseProc(NkIrVisibility_Hidden));
             } else if (accept(t_type)) {
-                DEFINE(token, parseId());
-                EXPECT(t_colon);
-                DEFINE(type, parseType());
-                auto name = s2nkid(token->text);
-                new (makeGlobalDecl(name)) Decl{
-                    {.type = type},
-                    Decl_Type,
-                };
+                CHECK(parseTypeDef());
             } else if (accept(t_const)) {
-                DEFINE(token, parseId());
-                EXPECT(t_colon);
-                DEFINE(type, parseType());
-                auto name = s2nkid(token->text);
-                DEFINE(cnst, parseConst(name, type));
-                new (makeGlobalDecl(name)) Decl{
-                    {.cnst = cnst},
-                    Decl_Const,
-                };
+                CHECK(parseConstDef(NkIrVisibility_Hidden));
             } else if (accept(t_data)) {
-                bool is_extern = accept(t_extern);
-                DEFINE(token, parseId());
-                EXPECT(t_colon);
-                DEFINE(type, parseType());
-                auto name = s2nkid(token->text);
-                if (is_extern) {
-                    new (makeGlobalDecl(name)) Decl{
-                        {.extern_data = nkir_makeExternData(m_ir, s2nkid(token->text), type)},
-                        Decl_ExternData,
-                    };
-                } else {
-                    new (makeGlobalDecl(name)) Decl{
-                        {.global = nkir_makeGlobalVar(m_ir, name, type)},
-                        Decl_GlobalVar,
-                    };
-                }
+                CHECK(parseData(NkIrVisibility_Hidden));
             } else {
                 return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
             }
@@ -244,6 +132,153 @@ struct GeneratorState {
             }
 
             nk_arena_clear(m_tmp_arena);
+        }
+
+        return {};
+    }
+
+    Void parseProc(NkIrVisibility vis) {
+        size_t cur_line = m_cur_token->lin;
+
+        DEFINE(sig, parseProcSignature());
+
+        if (sig.is_extern) {
+            new (makeGlobalDecl(sig.name)) Decl{
+                {.extern_proc = nkir_makeExternProc(
+                     m_ir,
+                     sig.name,
+                     nkir_makeProcedureType(
+                         m_types,
+                         {
+                             .args_t{nkav_init(sig.args_t)},
+                             .ret_t{nkav_init(sig.ret_t)},
+                             .call_conv = NkCallConv_Cdecl,
+                             .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                         }))},
+                Decl_ExternProc,
+            };
+        } else {
+            auto proc = nkir_createProc(m_ir);
+
+            static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
+            if (sig.name == c_entry_point_id) {
+                m_entry_point = proc;
+            }
+
+            nkir_startProc(
+                m_ir,
+                proc,
+                sig.name,
+                nkir_makeProcedureType(
+                    m_types,
+                    {
+                        .args_t{nkav_init(sig.args_t)},
+                        .ret_t{nkav_init(sig.ret_t)},
+                        .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
+                        .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                    }),
+                {nkav_init(sig.arg_names)},
+                {m_file, cur_line},
+                vis);
+
+            auto const decl = new (makeGlobalDecl(sig.name)) Decl{
+                {.proc{
+                    .proc = proc,
+                    .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
+                    .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
+                }},
+                Decl_Proc,
+            };
+            m_cur_proc = &decl->as.proc;
+
+            for (size_t i = 0; i < sig.args_t.size; i++) {
+                new (makeLocalDecl(sig.arg_names.data[i])) Decl{
+                    {.arg_index = i},
+                    Decl_Arg,
+                };
+            }
+
+            EXPECT(t_brace_l);
+            while (!check(t_brace_r) && !check(t_eof)) {
+                while (accept(t_newline)) {
+                }
+                if (check(t_id)) {
+                    DEFINE(token, parseId());
+                    auto const name = s2nkid(token->text);
+                    EXPECT(t_colon);
+                    DEFINE(type, parseType());
+                    new (makeLocalDecl(name)) Decl{
+                        {.local = nkir_makeLocalVar(m_ir, name, type)},
+                        Decl_LocalVar,
+                    };
+                } else {
+                    auto const cur_line = m_cur_token->lin;
+
+                    DEFINE(instr, parseInstr());
+
+                    if (instr.code != nkir_label && instr.code != nkir_comment) {
+                        auto const line_instr = nkir_make_line(m_file, cur_line);
+                        nkir_gen(m_ir, {&line_instr, 1});
+                    }
+
+                    nkir_gen(m_ir, {&instr, 1});
+                }
+                EXPECT(t_newline);
+                while (accept(t_newline)) {
+                }
+            }
+
+            nkir_finishProc(m_ir, proc, {m_file, m_cur_token->lin});
+
+            EXPECT(t_brace_r);
+        }
+
+        return {};
+    }
+
+    Void parseTypeDef() {
+        DEFINE(token, parseId());
+        EXPECT(t_colon);
+        DEFINE(type, parseType());
+        auto name = s2nkid(token->text);
+        new (makeGlobalDecl(name)) Decl{
+            {.type = type},
+            Decl_Type,
+        };
+
+        return {};
+    }
+
+    Void parseConstDef(NkIrVisibility vis) {
+        DEFINE(token, parseId());
+        EXPECT(t_colon);
+        DEFINE(type, parseType());
+        auto name = s2nkid(token->text);
+        DEFINE(cnst, parseConst(name, type, vis));
+        new (makeGlobalDecl(name)) Decl{
+            {.cnst = cnst},
+            Decl_Const,
+        };
+
+        return {};
+    }
+
+    Void parseData(NkIrVisibility vis) {
+        bool is_extern = accept(t_extern);
+        DEFINE(token, parseId());
+        EXPECT(t_colon);
+        DEFINE(type, parseType());
+        auto name = s2nkid(token->text);
+        if (is_extern) {
+            new (makeGlobalDecl(name)) Decl{
+                {.extern_data = nkir_makeExternData(m_ir, s2nkid(token->text), type)},
+                Decl_ExternData,
+            };
+        } else {
+            new (makeGlobalDecl(name)) Decl{
+                {.global = nkir_makeGlobalVar(m_ir, name, type, vis)},
+                Decl_GlobalVar,
+            };
         }
 
         return {};
@@ -666,10 +701,10 @@ private:
         return {};
     }
 
-    NkIrConst parseConst(nkid name, nktype_t type) {
+    NkIrConst parseConst(nkid name, nktype_t type, NkIrVisibility vis) {
         auto data = nk_alloc(m_file_alloc, type->size);
         std::memset(data, 0, type->size);
-        auto const cnst = nkir_makeConst(m_ir, name, data, type);
+        auto const cnst = nkir_makeConst(m_ir, name, data, type, vis);
         CHECK(parseValue(nkir_makeRodataRef(m_ir, cnst), type));
         return cnst;
     }
@@ -727,28 +762,32 @@ private:
         else if (check(t_string)) {
             auto const str = parseString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t));
+            result_ref = nkir_makeRodataRef(
+                m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t, NkIrVisibility_Local));
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t));
+            result_ref = nkir_makeRodataRef(
+                m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t, NkIrVisibility_Local));
         }
 
         else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
             CHECK(parseNumeric(value, Int64));
-            result_ref =
-                nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Int64)));
+            result_ref = nkir_makeRodataRef(
+                m_ir,
+                nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Int64), NkIrVisibility_Local));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
             CHECK(parseNumeric(value, Float64));
             result_ref = nkir_makeRodataRef(
-                m_ir, nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Float64)));
+                m_ir,
+                nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Float64), NkIrVisibility_Local));
         }
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(cnst, parseConst(nkid_empty, type));
+            DEFINE(cnst, parseConst(nkid_empty, type, NkIrVisibility_Local));
             result_ref = nkir_makeRodataRef(m_ir, cnst);
         }
 
