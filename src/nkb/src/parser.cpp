@@ -1,6 +1,7 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <new>
 
@@ -31,9 +32,6 @@ NK_LOG_USE_SCOPE(parser);
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(nkar_append((AR), (VAL)))
 #define EXPECT(ID) CHECK(expect(ID))
-
-#define SCNf32 "f"
-#define SCNf64 "lf"
 
 static constexpr char const *c_entry_point_name = "main";
 
@@ -280,28 +278,64 @@ private:
         return id;
     }
 
-    int64_t parseInt() {
-        if (!check(t_int)) {
-            return error("integer constant expected"), 0;
+    Void parseNumeric(void *data, NkIrNumericValueType value_type) {
+        if (NKIR_NUMERIC_IS_WHOLE(value_type)) {
+            if (!check(t_int)) {
+                return error("integer constant expected"), Void{};
+            }
+        } else {
+            if (!check(t_float)) {
+                return error("float constant expected"), Void{};
+            }
         }
-        int64_t value{};
-        int res = sscanf(m_cur_token->text.data, "%" SCNi64, &value);
-        (void)res;
-        assert(res > 0 && res != EOF && "numeric constant parsing failed");
-        getToken();
-        return value;
-    }
 
-    double parseFloat() {
-        if (!check(t_float)) {
-            return error("float constant expected"), 0;
-        }
-        double value{};
-        int res = sscanf(m_cur_token->text.data, "%" SCNf64, &value);
-        (void)res;
-        assert(res > 0 && res != EOF && "numeric constant parsing failed");
+        nks str = m_cur_token->text;
+        char const *cstr = nk_strcpy_nt(m_tmp_alloc, str).data;
         getToken();
-        return value;
+
+        char *endptr = NULL;
+
+        switch (value_type) {
+        case Int8:
+            *(int8_t *)data = strtol(cstr, &endptr, 10);
+            break;
+        case Uint8:
+            *(uint8_t *)data = strtoul(cstr, &endptr, 10);
+            break;
+        case Int16:
+            *(int16_t *)data = strtol(cstr, &endptr, 10);
+            break;
+        case Uint16:
+            *(uint16_t *)data = strtoul(cstr, &endptr, 10);
+            break;
+        case Int32:
+            *(int32_t *)data = strtol(cstr, &endptr, 10);
+            break;
+        case Uint32:
+            *(uint32_t *)data = strtoul(cstr, &endptr, 10);
+            break;
+        case Int64:
+            *(int64_t *)data = strtoll(cstr, &endptr, 10);
+            break;
+        case Uint64:
+            *(uint64_t *)data = strtoull(cstr, &endptr, 10);
+            break;
+        case Float32:
+            *(float *)data = strtof(cstr, &endptr);
+            break;
+        case Float64:
+            *(double *)data = strtod(cstr, &endptr);
+            break;
+        default:
+            assert(!"unreachable");
+            break;
+        }
+
+        if (endptr != cstr + str.size) {
+            return error("failed to parse numeric constant"), Void{};
+        }
+
+        return {};
     }
 
     nks parseString(NkAllocator alloc) {
@@ -422,7 +456,9 @@ private:
                     if (!check(t_int)) {
                         return error("integer constant expected"), nullptr;
                     }
-                    APPEND(&counts, (size_t)parseInt());
+                    uint64_t count = 0;
+                    CHECK(parseNumeric(&count, Uint64));
+                    nkar_append(&counts, count);
                     EXPECT(t_bracket_r);
                 } else {
                     nkar_append(&counts, 1ull);
@@ -490,6 +526,28 @@ private:
                 ASSIGN(dst, parseRef());
             }
             return nkir_make_call(m_ir, dst, proc, args);
+        }
+
+        else if (accept(t_ext)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_ext(dst, src);
+        } else if (accept(t_trunc)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_trunc(dst, src);
+        } else if (accept(t_fp2i)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_fp2i(dst, src);
+        } else if (accept(t_i2fp)) {
+            DEFINE(src, parseRef());
+            EXPECT(t_minus_greater);
+            DEFINE(dst, parseRef());
+            return nkir_make_i2fp(dst, src);
         }
 
         else if (accept(t_neg)) {
@@ -594,40 +652,7 @@ private:
 
         case NkType_Numeric: {
             auto const data = nkir_constRefDeref(m_ir, result_ref);
-
-            switch (type->as.num.value_type) {
-            case Int8:
-                ASSIGN(*(int8_t *)data, parseInt());
-                break;
-            case Uint8:
-                ASSIGN(*(uint8_t *)data, parseInt());
-                break;
-            case Int16:
-                ASSIGN(*(int16_t *)data, parseInt());
-                break;
-            case Uint16:
-                ASSIGN(*(uint16_t *)data, parseInt());
-                break;
-            case Int32:
-                ASSIGN(*(int32_t *)data, parseInt());
-                break;
-            case Uint32:
-                ASSIGN(*(uint32_t *)data, parseInt());
-                break;
-            case Int64:
-                ASSIGN(*(int64_t *)data, parseInt());
-                break;
-            case Uint64:
-                ASSIGN(*(uint64_t *)data, parseInt());
-                break;
-            case Float32:
-                ASSIGN(*(float *)data, parseFloat());
-                break;
-            case Float64:
-                ASSIGN(*(double *)data, parseFloat());
-                break;
-            }
-
+            CHECK(parseNumeric(data, type->as.num.value_type));
             break;
         }
 
@@ -711,11 +736,11 @@ private:
 
         else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
-            ASSIGN(*value, parseInt());
+            CHECK(parseNumeric(value, Int64));
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, nkir_makeNumericType(m_types, Int64)));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
-            ASSIGN(*value, parseFloat());
+            CHECK(parseNumeric(value, Float64));
             result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, nkir_makeNumericType(m_types, Float64)));
         }
 
@@ -730,7 +755,8 @@ private:
         }
 
         if (accept(t_plus)) {
-            DEFINE(value, parseInt());
+            int64_t value = 0;
+            CHECK(parseNumeric(&value, Int64));
             if (result_ref.indir) {
                 result_ref.post_offset += value;
             } else {
@@ -750,7 +776,8 @@ private:
         result_ref.indir += indir;
 
         if (accept(t_plus)) {
-            DEFINE(value, parseInt());
+            int64_t value = 0;
+            CHECK(parseNumeric(&value, Int64));
             result_ref.post_offset += value;
         }
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -250,6 +251,117 @@ void interp(NkBcInstr const &instr) {
         nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
         break;
     }
+
+    case nkop_sext_8_16: {
+        deref<int16_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_8_32: {
+        deref<int32_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_8_64: {
+        deref<int64_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_16_32: {
+        deref<int32_t>(instr.arg[0]) = deref<int16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_16_64: {
+        deref<int64_t>(instr.arg[0]) = deref<int16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_sext_32_64: {
+        deref<int64_t>(instr.arg[0]) = deref<int32_t>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_zext_8_16: {
+        deref<uint16_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_8_32: {
+        deref<uint32_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_8_64: {
+        deref<uint64_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_16_32: {
+        deref<uint32_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_16_64: {
+        deref<uint64_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_zext_32_64: {
+        deref<uint64_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_fext: {
+        deref<double>(instr.arg[0]) = deref<float>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_trunc_16_8: {
+        deref<uint8_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_32_8: {
+        deref<uint8_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_64_8: {
+        deref<uint8_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_32_16: {
+        deref<uint16_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_64_16: {
+        deref<uint16_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        break;
+    }
+    case nkop_trunc_64_32: {
+        deref<uint32_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        break;
+    }
+
+    case nkop_ftrunc: {
+        deref<float>(instr.arg[0]) = deref<double>(instr.arg[1]);
+        break;
+    }
+
+#define FP2I_OP_IT(EXT, VALUE_TYPE, CTYPE, TYPE, SIZ)                  \
+    case CAT(CAT(CAT(nkop_fp2i_, SIZ), _), EXT): {                     \
+        deref<CTYPE>(instr.arg[0]) = (CTYPE)deref<TYPE>(instr.arg[1]); \
+        break;                                                         \
+    }
+
+#define I2FP_OP_IT(EXT, VALUE_TYPE, CTYPE, TYPE, SIZ)                 \
+    case CAT(CAT(CAT(nkop_i2fp_, SIZ), _), EXT): {                    \
+        deref<TYPE>(instr.arg[0]) = (TYPE)deref<CTYPE>(instr.arg[1]); \
+        break;                                                        \
+    }
+
+#define FP2I_OP(TYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(FP2I_OP_IT, TYPE, SIZ)
+#define I2FP_OP(TYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(I2FP_OP_IT, TYPE, SIZ)
+
+        FP2I_OP(float, 32)
+        FP2I_OP(double, 64)
+
+        I2FP_OP(float, 32)
+        I2FP_OP(double, 64)
+
+#undef I2FP_OP
+#undef FP2I_OP
+#undef I2FP_OP_IT
+#undef FP2I_OP_IT
 
     case nkop_mov_8: {
         deref<uint8_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);

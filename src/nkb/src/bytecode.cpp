@@ -360,7 +360,6 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 
             switch (ir_instr.code) {
             case nkir_call: {
-                auto const &arg1 = ir_instr.arg[1];
                 if (arg1.ref.kind == NkIrRef_ExternProc ||
                     (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
                     code = nkop_call_ext;
@@ -368,6 +367,57 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
                     code = nkop_call_jmp;
                 }
 
+                break;
+            }
+
+            case nkir_ext:
+            case nkir_trunc: {
+                auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
+                auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
+
+                assert(max_ref.type->kind == NkType_Numeric && min_ref.type->kind == NkType_Numeric);
+                assert(
+                    NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
+                    NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
+
+                if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
+                    assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
+
+                    if (ir_instr.code == nkir_ext) {
+                        code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
+                    }
+
+                    switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
+                    case 1:
+                        code += 0 + log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                        break;
+                    case 2:
+                        code += 2 + log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                        break;
+                    case 4:
+                        code += 6;
+                        break;
+                    default:
+                        assert(!"unreachable");
+                        break;
+                    }
+                } else {
+                    assert(max_ref.type->as.num.value_type == Float64);
+                    assert(min_ref.type->as.num.value_type == Float32);
+
+                    code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
+                }
+                break;
+            }
+
+            case nkir_fp2i: {
+                code = arg1.ref.type->as.num.value_type == Float32 ? nkop_fp2i_32 : nkop_fp2i_64;
+                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
+                break;
+            }
+            case nkir_i2fp: {
+                code = arg0.ref.type->as.num.value_type == Float32 ? nkop_i2fp_32 : nkop_i2fp_64;
+                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 break;
             }
 
@@ -395,6 +445,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
 #define BOOL_NUM_OP(NAME)
 #define NUM_OP(NAME) case CAT(nkir_, NAME):
 #define INT_OP(NAME) case CAT(nkir_, NAME):
+#define FP2I_OP(NAME)
 #include "bytecode.inl"
                 assert(arg0.ref.type->kind == NkType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);

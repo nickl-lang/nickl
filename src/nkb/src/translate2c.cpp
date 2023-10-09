@@ -262,7 +262,6 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
         }
         nksb_printf(&tmp_s, "}");
         break;
-        break;
     }
     case NkType_Numeric: {
         auto value_type = type->as.num.value_type;
@@ -660,17 +659,36 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                 write_ref(instr.arg[1].ref);
                 break;
 
-            case nkir_ext:
-                assert(!"TODO nkir_ext");
+            case nkir_ext: {
+                auto const dst_signed = NKIR_NUMERIC_IS_SIGNED(instr.arg[0].ref.type->as.num.value_type);
+                switch (instr.arg[1].ref.type->as.num.value_type) {
+                case Int8:
+                case Uint8:
+                    nksb_printf(src, dst_signed ? "(int8_t)" : "(uint8_t)");
+                    break;
+                case Int16:
+                case Uint16:
+                    nksb_printf(src, dst_signed ? "(int16_t)" : "(uint16_t)");
+                    break;
+                case Int32:
+                case Uint32:
+                    nksb_printf(src, dst_signed ? "(int32_t)" : "(uint32_t)");
+                    break;
+                case Int64:
+                case Uint64:
+                    nksb_printf(src, dst_signed ? "(int64_t)" : "(uint64_t)");
+                    break;
+                default:
+                    break;
+                }
+                write_ref(instr.arg[1].ref);
                 break;
+            }
+
             case nkir_trunc:
-                assert(!"TODO nkir_trunc");
-                break;
             case nkir_fp2i:
-                assert(!"TODO nkir_fp2i");
-                break;
             case nkir_i2fp:
-                assert(!"TODO nkir_i2fp");
+                write_ref(instr.arg[1].ref);
                 break;
 
 #define UN_OP(NAME, OP)              \
@@ -774,7 +792,8 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrProc entry_point, nk_stre
     }
 
 #if 0
-    printf(
+    fprintf(
+        stderr,
         nks_Fmt "\n" nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
         nks_Arg(ctx.types_s),
         nks_Arg(ctx.data_s),

@@ -142,7 +142,11 @@ struct ScannerState {
             m_token.id = escaped ? t_escaped_string : t_string;
 
             accept();
-        } else if (chk<isdigit>()) {
+        } else if (chk<isdigit>(on('-') ? 1 : 0)) {
+            if (on('-')) {
+                accept();
+            }
+
             m_token.id = t_int;
 
             while (chk<isdigit>()) {
