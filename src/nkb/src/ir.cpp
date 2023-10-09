@@ -265,13 +265,14 @@ NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type) {
     return id;
 }
 
-NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type) {
+NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrConst id{ir->consts.size};
     nkar_append(
         &ir->consts,
         (NkIrConst_T{
+            .name = name,
             .data = data,
             .type = type,
         }));
@@ -573,7 +574,12 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
         for (size_t i = 0; i < ir->consts.size; i++) {
             auto const &cnst = ir->consts.data[i];
             if (cnst.type->kind == NkType_Aggregate) {
-                nksb_printf(sb, "\nconst const%" PRIu64 ": ", i);
+                if (cnst.name != nkid_empty) {
+                    auto const const_name = nkid2s(cnst.name);
+                    nksb_printf(sb, "\nconst " nks_Fmt ": ", nks_Arg(const_name));
+                } else {
+                    nksb_printf(sb, "\nconst const%" PRIu64 ": ", i);
+                }
                 nkirt_inspect(cnst.type, sb);
                 nksb_printf(sb, " = ");
                 nkirv_inspect(cnst.data, cnst.type, sb);
@@ -755,7 +761,13 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
             void *data = nkir_constRefDeref(ir, ref);
             nkirv_inspect(data, ref.type, sb);
         } else {
-            nksb_printf(sb, "const%" PRIu64, ref.index);
+            auto const &cnst = ir->consts.data[ref.index];
+            if (cnst.name != nkid_empty) {
+                auto const const_name = nkid2s(cnst.name);
+                nksb_printf(sb, nks_Fmt, nks_Arg(const_name));
+            } else {
+                nksb_printf(sb, "const%" PRIu64, ref.index);
+            }
         }
         break;
     case NkIrRef_Proc: {

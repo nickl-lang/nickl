@@ -212,8 +212,8 @@ struct GeneratorState {
                 DEFINE(token, parseId());
                 EXPECT(t_colon);
                 DEFINE(type, parseType());
-                DEFINE(cnst, parseConst(type));
                 auto name = s2nkid(token->text);
+                DEFINE(cnst, parseConst(name, type));
                 new (makeGlobalDecl(name)) Decl{
                     {.cnst = cnst},
                     Decl_Const,
@@ -666,10 +666,10 @@ private:
         return {};
     }
 
-    NkIrConst parseConst(nktype_t type) {
+    NkIrConst parseConst(nkid name, nktype_t type) {
         auto data = nk_alloc(m_file_alloc, type->size);
         std::memset(data, 0, type->size);
-        auto const cnst = nkir_makeConst(m_ir, data, type);
+        auto const cnst = nkir_makeConst(m_ir, name, data, type);
         CHECK(parseValue(nkir_makeRodataRef(m_ir, cnst), type));
         return cnst;
     }
@@ -727,26 +727,28 @@ private:
         else if (check(t_string)) {
             auto const str = parseString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
+            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t));
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, (void *)str.data, str_t));
+            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t));
         }
 
         else if (check(t_int)) {
             auto value = nk_alloc_t<int64_t>(m_file_alloc);
             CHECK(parseNumeric(value, Int64));
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, nkir_makeNumericType(m_types, Int64)));
+            result_ref =
+                nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Int64)));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
             CHECK(parseNumeric(value, Float64));
-            result_ref = nkir_makeRodataRef(m_ir, nkir_makeConst(m_ir, value, nkir_makeNumericType(m_types, Float64)));
+            result_ref = nkir_makeRodataRef(
+                m_ir, nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Float64)));
         }
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(cnst, parseConst(type));
+            DEFINE(cnst, parseConst(nkid_empty, type));
             result_ref = nkir_makeRodataRef(m_ir, cnst);
         }
 

@@ -331,11 +331,12 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
     nks const_str{nkav_init(tmp_s)};
 
     if (is_complex) {
+        nksb_printf(&ctx.data_s, "static ");
         writeType(ctx, type, &ctx.data_s);
-        nksb_printf(&ctx.data_s, " const%zu = " nks_Fmt ";\n", ctx.const_count, nks_Arg(const_str));
+        nksb_printf(&ctx.data_s, " _const%zu = " nks_Fmt ";\n", ctx.const_count, nks_Arg(const_str));
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
-        nksb_printf(&sb, "const%zu", ctx.const_count);
+        nksb_printf(&sb, "_const%zu", ctx.const_count);
         const_str = nks{nkav_init(sb)};
 
         ctx.const_count++;

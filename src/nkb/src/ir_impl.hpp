@@ -32,6 +32,7 @@ struct NkIrBlock {
 };
 
 struct NkIrConst_T {
+    nkid name;
     void *data;
     nktype_t type;
 };

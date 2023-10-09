@@ -132,7 +132,7 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);
 NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type);
-NkIrConst nkir_makeConst(NkIrProg ir, void *data, nktype_t type);
+NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type);
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkid name, nktype_t type);
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t);
 
