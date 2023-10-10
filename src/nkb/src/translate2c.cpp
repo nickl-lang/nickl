@@ -418,6 +418,19 @@ void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
     nksb_printf(src, "l_" nks_Fmt, nks_Arg(name));
 }
 
+void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
+    switch (vis) {
+    case NkIrVisibility_Default:
+        nksb_printf(src, "__attribute__((visibility(\"default\"))) ");
+        break;
+    case NkIrVisibility_Hidden:
+        break;
+    case NkIrVisibility_Local:
+        nksb_printf(src, "static ");
+        break;
+    }
+}
+
 void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
     if (ctx.procs_translated.find(proc_id.id)) {
         return;
@@ -436,6 +449,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
     auto src = &ctx.main_s;
 
+    writeVisibilityAttr(proc.visibility, &ctx.forward_s);
     writeProcSignature(ctx, &ctx.forward_s, nkid2s(proc.name), ret_t, args_t, {});
     nksb_printf(&ctx.forward_s, ";\n");
 
@@ -482,6 +496,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             auto const extern_proc_name = nkid2s(extern_proc.name);
             nksb_printf(src, nks_Fmt, nks_Arg(extern_proc_name));
             if (!ctx.ext_procs_forward_declared.find(ref.index)) {
+                nksb_printf(&ctx.forward_s, "extern ");
                 writeProcSignature(
                     ctx,
                     &ctx.forward_s,
@@ -763,7 +778,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
 
 } // namespace
 
-void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrProc entry_point, nk_stream src) {
+void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
     NK_LOG_TRC("%s", __func__);
 
     auto frame = nk_arena_grab(arena);
@@ -778,17 +793,15 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrProc entry_point, nk_stre
 
     writePreamble(&ctx.types_s);
 
-    if (entry_point.id != INVALID_ID) {
-        translateProc(ctx, entry_point);
-
-        while (ctx.procs_to_translate.size()) {
-            auto proc = *ctx.procs_to_translate.begin();
-            ctx.procs_to_translate.remove(proc);
-            translateProc(ctx, {proc});
-        }
-    } else {
-        for (size_t i = 0; i < ir->procs.size; i++) {
+    for (size_t i = 0; i < ir->procs.size; i++) {
+        if (ir->procs.data[i].visibility == NkIrVisibility_Default) {
             translateProc(ctx, {i});
+
+            while (ctx.procs_to_translate.size()) {
+                auto proc = *ctx.procs_to_translate.begin();
+                ctx.procs_to_translate.remove(proc);
+                translateProc(ctx, {proc});
+            }
         }
     }
 

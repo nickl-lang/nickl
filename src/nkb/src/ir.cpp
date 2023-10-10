@@ -499,7 +499,7 @@ NkIrInstr nkir_make_line(nkid file, size_t line) {
     return {{{}, _arg(NkIrLine{file, line}), {}}, nkir_line};
 }
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file) {
+bool nkir_write(NkArena *arena, NkIrProg ir, NkbOutputKind kind, nks out_file) {
     NK_LOG_TRC("%s", __func__);
 
     // TODO Hardcoded compiler options
@@ -534,7 +534,7 @@ bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind
     nk_stream src{};
     bool res = nkcc_streamOpen(&src, conf);
     if (res) {
-        nkir_translate2c(arena, ir, entry_point, src);
+        nkir_translate2c(arena, ir, src);
         return !nkcc_streamClose(src);
     } else {
         // TODO Report errors to the user

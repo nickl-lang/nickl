@@ -186,7 +186,7 @@ NkIrInstr nkir_make_line(nkid file, size_t line);
 
 // Output
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file);
+bool nkir_write(NkArena *arena, NkIrProg ir, NkbOutputKind kind, nks out_file);
 
 // Execution
 

@@ -115,6 +115,16 @@ struct GeneratorState {
                 } else {
                     return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
                 }
+            } else if (accept(t_local)) {
+                if (check(t_proc)) {
+                    CHECK(parseProc(NkIrVisibility_Local));
+                } else if (accept(t_const)) {
+                    CHECK(parseConstDef(NkIrVisibility_Local));
+                } else if (accept(t_data)) {
+                    CHECK(parseData(NkIrVisibility_Local));
+                } else {
+                    return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
+                }
             } else if (check(t_proc)) {
                 CHECK(parseProc(NkIrVisibility_Hidden));
             } else if (accept(t_type)) {
@@ -162,6 +172,9 @@ struct GeneratorState {
 
             static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
             if (sig.name == c_entry_point_id) {
+                if (vis != NkIrVisibility_Default) {
+                    return error("entry point must be public"), Void{};
+                }
                 m_entry_point = proc;
             }
 
