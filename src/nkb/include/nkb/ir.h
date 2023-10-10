@@ -65,6 +65,8 @@ typedef enum {
 typedef enum {
     NkIrVisibility_Default,
     NkIrVisibility_Hidden,
+    NkIrVisibility_Protected,
+    NkIrVisibility_Internal,
     NkIrVisibility_Local,
 } NkIrVisibility;
 

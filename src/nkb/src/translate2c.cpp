@@ -115,6 +115,13 @@ void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
         break;
     case NkIrVisibility_Hidden:
         break;
+    case NkIrVisibility_Protected:
+        nksb_printf(src, "__attribute__((visibility(\"protected\"))) ");
+        break;
+    case NkIrVisibility_Internal:
+        nksb_printf(src, "__attribute__((visibility(\"internal\"))) ");
+        break;
+        break;
     case NkIrVisibility_Local:
         nksb_printf(src, "static ");
         break;
