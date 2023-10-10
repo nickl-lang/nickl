@@ -108,6 +108,19 @@ typedef unsigned long long uint64_t;
 )");
 }
 
+void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
+    switch (vis) {
+    case NkIrVisibility_Default:
+        nksb_printf(src, "__attribute__((visibility(\"default\"))) ");
+        break;
+    case NkIrVisibility_Hidden:
+        break;
+    case NkIrVisibility_Local:
+        nksb_printf(src, "static ");
+        break;
+    }
+}
+
 void writeNumericType(NkIrNumericValueType value_type, NkStringBuilder *src) {
     switch (value_type) {
     case Int8:
@@ -387,6 +400,7 @@ void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
     writeGlobalName(ctx.ir, global_id, src);
     if (!ctx.globals_forward_declared.find(global_id)) {
         auto const &decl = ctx.ir->globals.data[global_id];
+        writeVisibilityAttr(decl.visibility, &ctx.forward_s);
         writeType(ctx, decl.type, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " ");
         writeGlobalName(ctx.ir, global_id, &ctx.forward_s);
@@ -416,19 +430,6 @@ void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
         name.size--;
     }
     nksb_printf(src, "l_" nks_Fmt, nks_Arg(name));
-}
-
-void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
-    switch (vis) {
-    case NkIrVisibility_Default:
-        nksb_printf(src, "__attribute__((visibility(\"default\"))) ");
-        break;
-    case NkIrVisibility_Hidden:
-        break;
-    case NkIrVisibility_Local:
-        nksb_printf(src, "static ");
-        break;
-    }
 }
 
 void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
