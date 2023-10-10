@@ -40,48 +40,6 @@ NkIrArg _arg(NkIrLine line) {
     return {{.line = line}, NkIrArg_Line};
 }
 
-#ifdef ENABLE_LOGGING
-void inspectProcSignature(
-    NkIrProcInfo const &proc_info,
-    nkid_array arg_names,
-    NkStringBuilder *sb,
-    bool print_arg_names = true) {
-    nksb_printf(sb, "(");
-
-    for (size_t i = 0; i < proc_info.args_t.size; i++) {
-        if (i) {
-            nksb_printf(sb, ", ");
-        }
-        if (print_arg_names) {
-            if (i < arg_names.size && arg_names.data[i] != nkid_empty) {
-                auto const name = nkid2s(arg_names.data[i]);
-                nksb_printf(sb, nks_Fmt ": ", nks_Arg(name));
-            } else {
-                nksb_printf(sb, "arg%" PRIu64 ": ", i);
-            }
-        }
-        nkirt_inspect(proc_info.args_t.data[i], sb);
-    }
-
-    if (proc_info.flags & NkProcVariadic) {
-        if (proc_info.args_t.size) {
-            nksb_printf(sb, ", ");
-        }
-        nksb_printf(sb, "...");
-    }
-
-    nksb_printf(sb, ")");
-
-    for (size_t i = 0; i < proc_info.ret_t.size; i++) {
-        if (i) {
-            nksb_printf(sb, ",");
-        }
-        nksb_printf(sb, " ");
-        nkirt_inspect(proc_info.ret_t.data[i], sb);
-    }
-}
-#endif // ENABLE_LOGGING
-
 } // namespace
 
 char const *nkirOpcodeName(uint8_t code) {
@@ -592,6 +550,46 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
         if (printed) {
             nksb_printf(sb, "\n");
         }
+    }
+}
+
+void inspectProcSignature(
+    NkIrProcInfo const &proc_info,
+    nkid_array arg_names,
+    NkStringBuilder *sb,
+    bool print_arg_names = true) {
+    nksb_printf(sb, "(");
+
+    for (size_t i = 0; i < proc_info.args_t.size; i++) {
+        if (i) {
+            nksb_printf(sb, ", ");
+        }
+        if (print_arg_names) {
+            if (i < arg_names.size && arg_names.data[i] != nkid_empty) {
+                auto const name = nkid2s(arg_names.data[i]);
+                nksb_printf(sb, nks_Fmt ": ", nks_Arg(name));
+            } else {
+                nksb_printf(sb, "arg%" PRIu64 ": ", i);
+            }
+        }
+        nkirt_inspect(proc_info.args_t.data[i], sb);
+    }
+
+    if (proc_info.flags & NkProcVariadic) {
+        if (proc_info.args_t.size) {
+            nksb_printf(sb, ", ");
+        }
+        nksb_printf(sb, "...");
+    }
+
+    nksb_printf(sb, ")");
+
+    for (size_t i = 0; i < proc_info.ret_t.size; i++) {
+        if (i) {
+            nksb_printf(sb, ",");
+        }
+        nksb_printf(sb, " ");
+        nkirt_inspect(proc_info.ret_t.data[i], sb);
     }
 }
 

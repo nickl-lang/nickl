@@ -41,6 +41,15 @@ struct ConstFpHashSetContext {
     }
 };
 
+nkar_typedef(bool, flag_array);
+
+bool &getFlag(flag_array &ar, size_t i) {
+    while (i >= ar.size) {
+        nkar_append(&ar, false);
+    }
+    return ar.data[i];
+}
+
 struct WriterCtx {
     NkIrProg ir;
 
@@ -58,11 +67,12 @@ struct WriterCtx {
     NkHashMap<ConstFp, nks, ConstFpHashSetContext> const_map = decltype(const_map)::create(alloc);
     size_t const_count = 0;
 
-    NkHashSet<size_t> procs_translated = decltype(procs_translated)::create(alloc);
-    NkHashSet<size_t> procs_to_translate = decltype(procs_to_translate)::create(alloc);
+    flag_array procs_translated{0, 0, 0, alloc};
+    flag_array consts_translated{0, 0, 0, alloc};
+    flag_array globals_translated{0, 0, 0, alloc};
+    flag_array ext_procs_translated{0, 0, 0, alloc};
 
-    NkHashSet<size_t> ext_procs_forward_declared = decltype(ext_procs_forward_declared)::create(alloc);
-    NkHashSet<size_t> globals_forward_declared = decltype(globals_forward_declared)::create(alloc);
+    nkar_type(size_t) procs_to_translate{0, 0, 0, alloc};
 };
 
 #define LOCAL_CLASS "var"
@@ -234,7 +244,12 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     nksb_printf(src, nks_Fmt, nks_Arg(type_str));
 }
 
-void writeConst(WriterCtx &ctx, NkIrConst_T const &cnst, NkStringBuilder *src, bool is_complex = false) {
+void writeConst(
+    WriterCtx &ctx,
+    size_t const_id,
+    NkIrConst_T const &cnst,
+    NkStringBuilder *src,
+    bool is_complex = false) {
     ConstFp const_fp{cnst.data, cnst.type->id};
 
     auto found_str = ctx.const_map.find(const_fp);
@@ -258,6 +273,7 @@ void writeConst(WriterCtx &ctx, NkIrConst_T const &cnst, NkStringBuilder *src, b
             for (size_t c = 0; c < elem.count; c++) {
                 writeConst(
                     ctx,
+                    INVALID_ID,
                     NkIrConst_T{
                         .name = nkid_empty,
                         .data = (uint8_t *)cnst.data + offset,
@@ -342,7 +358,7 @@ void writeConst(WriterCtx &ctx, NkIrConst_T const &cnst, NkStringBuilder *src, b
 
     nks const_str{nkav_init(tmp_s)};
 
-    if (is_complex) {
+    if (is_complex && !getFlag(ctx.consts_translated, const_id)) {
         writeVisibilityAttr(cnst.visibility, &ctx.data_s);
         writeType(ctx, cnst.type, &ctx.data_s);
         nksb_printf(&ctx.data_s, " ");
@@ -354,6 +370,10 @@ void writeConst(WriterCtx &ctx, NkIrConst_T const &cnst, NkStringBuilder *src, b
         const_str = nks{nkav_init(sb)};
 
         ctx.const_count++;
+
+        if (const_id != INVALID_ID) {
+            getFlag(ctx.consts_translated, const_id) = true;
+        }
     }
 
     ctx.const_map.insert(const_fp, const_str);
@@ -378,7 +398,7 @@ void writeProcSignature(
         writeType(ctx, args_t.data[i], src);
         if (arg_names.size) {
             nksb_printf(src, " ");
-            writeName(i < arg_names.size ? arg_names.data[i] : nkid_empty, i, ARG_CLASS, src);
+            writeName(i < arg_names.size ? arg_names.data[i] : (nkid)nkid_empty, i, ARG_CLASS, src);
         }
     }
     if (va) {
@@ -400,7 +420,7 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
     auto const &decl = ctx.ir->globals.data[global_id];
     writeName(decl.name, global_id, GLOBAL_CLASS, src);
-    if (!ctx.globals_forward_declared.find(global_id)) {
+    if (!getFlag(ctx.globals_translated, global_id)) {
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
         writeType(ctx, decl.type, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " ");
@@ -410,7 +430,8 @@ void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
             nksb_printf(&ctx.forward_s, "0");
         }
         nksb_printf(&ctx.forward_s, "};\n");
-        ctx.globals_forward_declared.insert(global_id);
+
+        getFlag(ctx.globals_translated, global_id) = true;
     }
 }
 
@@ -433,17 +454,17 @@ void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
     nksb_printf(src, "l_" nks_Fmt, nks_Arg(name));
 }
 
-void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
-    if (ctx.procs_translated.find(proc_id.id)) {
+void translateProc(WriterCtx &ctx, size_t proc_id) {
+    if (getFlag(ctx.procs_translated, proc_id)) {
         return;
     }
 
     NK_LOG_TRC("%s", __func__);
-    NK_LOG_DBG("proc_id=%zu", proc_id.id);
+    NK_LOG_DBG("proc_id=%zu", proc_id);
 
-    ctx.procs_translated.insert(proc_id.id);
+    getFlag(ctx.procs_translated, proc_id) = true;
 
-    auto const &proc = ctx.ir->procs.data[proc_id.id];
+    auto const &proc = ctx.ir->procs.data[proc_id];
 
     auto proc_t = proc.proc_t;
     auto args_t = proc_t->as.proc.info.args_t;
@@ -485,15 +506,15 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             auto const &proc = ctx.ir->procs.data[ref.index];
             auto const proc_name = nkid2s(proc.name);
             nksb_printf(src, nks_Fmt, nks_Arg(proc_name));
-            if (!ctx.procs_translated.find(ref.index)) {
-                ctx.procs_to_translate.insert(ref.index);
+            if (!getFlag(ctx.procs_translated, ref.index)) {
+                nkar_append(&ctx.procs_to_translate, ref.index);
             }
             return;
         } else if (ref.kind == NkIrRef_ExternProc) {
             auto const extern_proc = ctx.ir->extern_procs.data[ref.index];
             auto const extern_proc_name = nkid2s(extern_proc.name);
             nksb_printf(src, nks_Fmt, nks_Arg(extern_proc_name));
-            if (!ctx.ext_procs_forward_declared.find(ref.index)) {
+            if (!getFlag(ctx.ext_procs_translated, ref.index)) {
                 nksb_printf(&ctx.forward_s, "extern ");
                 writeProcSignature(
                     ctx,
@@ -504,7 +525,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                     {},
                     extern_proc.type->as.proc.info.flags & NkProcVariadic);
                 nksb_printf(&ctx.forward_s, ";\n");
-                ctx.ext_procs_forward_declared.insert(ref.index);
+                getFlag(ctx.ext_procs_translated, ref.index) = true;
             }
             return;
         } else if (ref.kind == NkIrRef_ExternData) {
@@ -518,7 +539,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                 writeGlobal(ctx, target_ref.index, src);
                 break;
             case NkIrRef_Rodata: {
-                writeConst(ctx, ctx.ir->consts.data[target_ref.index], src, true);
+                writeConst(ctx, target_ref.index, ctx.ir->consts.data[target_ref.index], src, true);
                 break;
             }
             default:
@@ -561,7 +582,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             break;
         case NkIrRef_Arg:
             writeName(
-                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : nkid_empty,
+                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (nkid)nkid_empty,
                 ref.index,
                 ARG_CLASS,
                 src);
@@ -570,7 +591,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             nksb_printf(src, "_ret");
             break;
         case NkIrRef_Rodata: {
-            writeConst(ctx, ctx.ir->consts.data[ref.index], src);
+            writeConst(ctx, ref.index, ctx.ir->consts.data[ref.index], src);
             break;
         }
         case NkIrRef_Data:
@@ -806,13 +827,29 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 
     for (size_t i = 0; i < ir->procs.size; i++) {
         if (ir->procs.data[i].visibility == NkIrVisibility_Default) {
-            translateProc(ctx, {i});
+            translateProc(ctx, i);
 
-            while (ctx.procs_to_translate.size()) {
-                auto proc = *ctx.procs_to_translate.begin();
-                ctx.procs_to_translate.remove(proc);
-                translateProc(ctx, {proc});
+            while (ctx.procs_to_translate.size) {
+                auto proc = nkav_last(ctx.procs_to_translate);
+                nkar_pop(&ctx.procs_to_translate, 1);
+                translateProc(ctx, proc);
             }
+        }
+    }
+
+    for (size_t i = 0; i < ir->consts.size; i++) {
+        auto const &cnst = ir->consts.data[i];
+        if (!getFlag(ctx.consts_translated, i) && cnst.visibility == NkIrVisibility_Default) {
+            NkStringBuilder dummy_sb{0, 0, 0, ctx.alloc};
+            writeConst(ctx, i, cnst, &dummy_sb, true);
+        }
+    }
+
+    for (size_t i = 0; i < ir->globals.size; i++) {
+        auto const &decl = ir->globals.data[i];
+        if (!getFlag(ctx.consts_translated, i) && decl.visibility == NkIrVisibility_Default) {
+            NkStringBuilder dummy_sb{0, 0, 0, ctx.alloc};
+            writeGlobal(ctx, i, &dummy_sb);
         }
     }
 
