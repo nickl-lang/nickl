@@ -121,7 +121,6 @@ void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
     case NkIrVisibility_Internal:
         nksb_printf(src, "__attribute__((visibility(\"internal\"))) ");
         break;
-        break;
     case NkIrVisibility_Local:
         nksb_printf(src, "static ");
         break;
@@ -481,7 +480,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
     if (ret_t->size) {
         writeLineDirective(proc.start_line, src);
         writeType(ctx, ret_t, src);
-        nksb_printf(src, " ret={0};\n");
+        nksb_printf(src, " _ret={0};\n");
     }
 
     nksb_printf(src, "\n");
@@ -494,10 +493,6 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             if (!ctx.procs_translated.find(ref.index)) {
                 ctx.procs_to_translate.insert(ref.index);
             }
-            return;
-        } else if (ref.kind == NkIrRef_Rodata) {
-            auto const &cnst = ctx.ir->consts.data[ref.index];
-            writeConst(ctx, cnst.data, cnst.type, src);
             return;
         } else if (ref.kind == NkIrRef_ExternProc) {
             auto const extern_proc = ctx.ir->extern_procs.data[ref.index];
@@ -539,27 +534,32 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             return;
         }
 
-        uint8_t indir = ref.indir;
-        if (ref.kind == NkIrRef_Arg || ref.kind == NkIrRef_Ret) {
-            indir--;
-        }
-        for (uint8_t i = 0; i < maxu(indir, 1); i++) {
-            nksb_printf(src, "*");
-        }
-        nksb_printf(src, "(");
-        writeType(ctx, ref.type, src);
-        for (uint8_t i = 0; i < maxu(indir, 1); i++) {
-            nksb_printf(src, "*");
-        }
-        nksb_printf(src, ")");
-        if (ref.post_offset) {
-            nksb_printf(src, "((uint8_t*)");
-        }
-        if (ref.offset) {
-            nksb_printf(src, "((uint8_t*)");
-        }
-        if (indir == 0) {
-            nksb_printf(src, "& ");
+        bool const is_addressable =
+            !(ref.kind == NkIrRef_Rodata && ctx.ir->consts.data[ref.index].type->kind != NkType_Aggregate);
+
+        if (is_addressable) {
+            uint8_t indir = ref.indir;
+            if (ref.kind == NkIrRef_Arg || ref.kind == NkIrRef_Ret) {
+                indir--;
+            }
+            for (uint8_t i = 0; i < maxu(indir, 1); i++) {
+                nksb_printf(src, "*");
+            }
+            nksb_printf(src, "(");
+            writeType(ctx, ref.type, src);
+            for (uint8_t i = 0; i < maxu(indir, 1); i++) {
+                nksb_printf(src, "*");
+            }
+            nksb_printf(src, ")");
+            if (ref.post_offset) {
+                nksb_printf(src, "((uint8_t*)");
+            }
+            if (ref.offset) {
+                nksb_printf(src, "((uint8_t*)");
+            }
+            if (indir == 0) {
+                nksb_printf(src, "& ");
+            }
         }
         switch (ref.kind) {
         case NkIrRef_Frame:
@@ -569,13 +569,17 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             writeArgName(proc.arg_names, ref.index, src);
             break;
         case NkIrRef_Ret:
-            nksb_printf(src, "ret");
+            nksb_printf(src, "_ret");
             break;
+        case NkIrRef_Rodata: {
+            auto const &cnst = ctx.ir->consts.data[ref.index];
+            writeConst(ctx, cnst.data, cnst.type, src);
+            break;
+        }
         case NkIrRef_Data:
             writeGlobal(ctx, ref.index, src);
             break;
         case NkIrRef_Proc:
-        case NkIrRef_Rodata:
         case NkIrRef_ExternProc:
         case NkIrRef_ExternData:
         case NkIrRef_Address:
@@ -584,11 +588,13 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             assert(!"unreachable");
             break;
         }
-        if (ref.offset) {
-            nksb_printf(src, "+%zu)", ref.offset);
-        }
-        if (ref.post_offset) {
-            nksb_printf(src, "+%zu)", ref.post_offset);
+        if (is_addressable) {
+            if (ref.offset) {
+                nksb_printf(src, "+%zu)", ref.offset);
+            }
+            if (ref.post_offset) {
+                nksb_printf(src, "+%zu)", ref.post_offset);
+            }
         }
     };
 
@@ -633,7 +639,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
             case nkir_ret:
                 nksb_printf(src, "return");
                 if (ret_t->size) {
-                    nksb_printf(src, " ret");
+                    nksb_printf(src, " _ret");
                 }
                 break;
             case nkir_jmp: {
@@ -813,7 +819,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
         }
     }
 
-#if 0
+#if 1
     fprintf(
         stderr,
         nks_Fmt "\n" nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
