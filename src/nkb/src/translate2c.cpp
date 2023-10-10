@@ -65,32 +65,17 @@ struct WriterCtx {
     NkHashSet<size_t> globals_forward_declared = decltype(globals_forward_declared)::create(alloc);
 };
 
-void writeLocalName(NkIrProc_T const &proc, size_t id, NkStringBuilder *src) {
-    auto const &decl = proc.locals.data[id];
-    if (decl.name != nkid_empty) {
-        auto const name = nkid2s(decl.name);
-        nksb_printf(src, nks_Fmt, nks_Arg(name));
-    } else {
-        nksb_printf(src, "_var_%zu", id);
-    }
-}
+#define LOCAL_CLASS "var"
+#define ARG_CLASS "arg"
+#define CONST_CLASS "const"
+#define GLOBAL_CLASS "global"
 
-void writeArgName(nkid_array arg_names, size_t id, NkStringBuilder *src) {
-    if (id < arg_names.size && arg_names.data[id] != nkid_empty) {
-        auto const name = nkid2s(arg_names.data[id]);
-        nksb_printf(src, nks_Fmt, nks_Arg(name));
+void writeName(nkid name, size_t index, char const *obj_class, NkStringBuilder *src) {
+    if (name != nkid_empty) {
+        auto const str = nkid2s(name);
+        nksb_printf(src, nks_Fmt, nks_Arg(str));
     } else {
-        nksb_printf(src, "_arg_%zu", id);
-    }
-}
-
-void writeGlobalName(NkIrProg ir, size_t id, NkStringBuilder *src) {
-    auto const &decl = ir->globals.data[id];
-    if (decl.name != nkid_empty) {
-        auto const name = nkid2s(decl.name);
-        nksb_printf(src, nks_Fmt, nks_Arg(name));
-    } else {
-        nksb_printf(src, "_global_%zu", id);
+        nksb_printf(src, "_%s_%zu", obj_class, index);
     }
 }
 
@@ -249,8 +234,8 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     nksb_printf(src, nks_Fmt, nks_Arg(type_str));
 }
 
-void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src, bool is_complex = false) {
-    ConstFp const_fp{data, type->id};
+void writeConst(WriterCtx &ctx, NkIrConst_T const &cnst, NkStringBuilder *src, bool is_complex = false) {
+    ConstFp const_fp{cnst.data, cnst.type->id};
 
     auto found_str = ctx.const_map.find(const_fp);
     if (found_str) {
@@ -260,18 +245,26 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
 
     NkStringBuilder tmp_s{0, 0, 0, ctx.alloc};
 
-    switch (type->kind) {
+    switch (cnst.type->kind) {
     case NkType_Aggregate: {
         is_complex = true;
         nksb_printf(&tmp_s, "{ ");
-        for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
-            auto const &elem = type->as.aggr.elems.data[i];
+        for (size_t i = 0; i < cnst.type->as.aggr.elems.size; i++) {
+            auto const &elem = cnst.type->as.aggr.elems.data[i];
             if (elem.count > 1) {
                 nksb_printf(&tmp_s, "{ ");
             }
             size_t offset = elem.offset;
             for (size_t c = 0; c < elem.count; c++) {
-                writeConst(ctx, (uint8_t *)data + offset, elem.type, &tmp_s);
+                writeConst(
+                    ctx,
+                    NkIrConst_T{
+                        .name = nkid_empty,
+                        .data = (uint8_t *)cnst.data + offset,
+                        .type = elem.type,
+                        .visibility = NkIrVisibility_Local,
+                    },
+                    &tmp_s);
                 nksb_printf(&tmp_s, ", ");
                 offset += elem.type->size;
             }
@@ -283,34 +276,34 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
         break;
     }
     case NkType_Numeric: {
-        auto value_type = type->as.num.value_type;
+        auto value_type = cnst.type->as.num.value_type;
         switch (value_type) {
         case Int8:
-            nksb_printf(&tmp_s, "%" PRIi8, *(int8_t *)data);
+            nksb_printf(&tmp_s, "%" PRIi8, *(int8_t *)cnst.data);
             break;
         case Uint8:
-            nksb_printf(&tmp_s, "%" PRIu8, *(uint8_t *)data);
+            nksb_printf(&tmp_s, "%" PRIu8, *(uint8_t *)cnst.data);
             break;
         case Int16:
-            nksb_printf(&tmp_s, "%" PRIi16, *(int16_t *)data);
+            nksb_printf(&tmp_s, "%" PRIi16, *(int16_t *)cnst.data);
             break;
         case Uint16:
-            nksb_printf(&tmp_s, "%" PRIu16, *(uint16_t *)data);
+            nksb_printf(&tmp_s, "%" PRIu16, *(uint16_t *)cnst.data);
             break;
         case Int32:
-            nksb_printf(&tmp_s, "%" PRIi32, *(int32_t *)data);
+            nksb_printf(&tmp_s, "%" PRIi32, *(int32_t *)cnst.data);
             break;
         case Uint32:
-            nksb_printf(&tmp_s, "%" PRIu32, *(uint32_t *)data);
+            nksb_printf(&tmp_s, "%" PRIu32, *(uint32_t *)cnst.data);
             break;
         case Int64:
-            nksb_printf(&tmp_s, "%" PRIi64, *(int64_t *)data);
+            nksb_printf(&tmp_s, "%" PRIi64, *(int64_t *)cnst.data);
             break;
         case Uint64:
-            nksb_printf(&tmp_s, "%" PRIu64, *(uint64_t *)data);
+            nksb_printf(&tmp_s, "%" PRIu64, *(uint64_t *)cnst.data);
             break;
         case Float32: {
-            auto f_val = *(float *)data;
+            auto f_val = *(float *)cnst.data;
             nksb_printf(&tmp_s, "%.*f", std::numeric_limits<float>::max_digits10, f_val);
             if (f_val == round(f_val)) {
                 nksb_printf(&tmp_s, ".");
@@ -319,7 +312,7 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
             break;
         }
         case Float64: {
-            auto f_val = *(double *)data;
+            auto f_val = *(double *)cnst.data;
             nksb_printf(&tmp_s, "%.*lf", std::numeric_limits<double>::max_digits10, f_val);
             if (f_val == round(f_val)) {
                 nksb_printf(&tmp_s, ".");
@@ -334,9 +327,9 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
             if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
                 nksb_printf(&tmp_s, "u");
             }
-            if (type->size == 4) {
+            if (cnst.type->size == 4) {
                 nksb_printf(&tmp_s, "l");
-            } else if (type->size == 8) {
+            } else if (cnst.type->size == 8) {
                 nksb_printf(&tmp_s, "ll");
             }
         }
@@ -350,12 +343,14 @@ void writeConst(WriterCtx &ctx, void *data, nktype_t type, NkStringBuilder *src,
     nks const_str{nkav_init(tmp_s)};
 
     if (is_complex) {
-        nksb_printf(&ctx.data_s, "static ");
-        writeType(ctx, type, &ctx.data_s);
-        nksb_printf(&ctx.data_s, " _const%zu = " nks_Fmt ";\n", ctx.const_count, nks_Arg(const_str));
+        writeVisibilityAttr(cnst.visibility, &ctx.data_s);
+        writeType(ctx, cnst.type, &ctx.data_s);
+        nksb_printf(&ctx.data_s, " ");
+        writeName(cnst.name, ctx.const_count, CONST_CLASS, &ctx.data_s);
+        nksb_printf(&ctx.data_s, " = " nks_Fmt ";\n", nks_Arg(const_str));
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
-        nksb_printf(&sb, "_const%zu", ctx.const_count);
+        writeName(cnst.name, ctx.const_count, CONST_CLASS, &sb);
         const_str = nks{nkav_init(sb)};
 
         ctx.const_count++;
@@ -383,7 +378,7 @@ void writeProcSignature(
         writeType(ctx, args_t.data[i], src);
         if (arg_names.size) {
             nksb_printf(src, " ");
-            writeArgName(arg_names, i, src);
+            writeName(i < arg_names.size ? arg_names.data[i] : nkid_empty, i, ARG_CLASS, src);
         }
     }
     if (va) {
@@ -403,13 +398,13 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 }
 
 void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
-    writeGlobalName(ctx.ir, global_id, src);
+    auto const &decl = ctx.ir->globals.data[global_id];
+    writeName(decl.name, global_id, GLOBAL_CLASS, src);
     if (!ctx.globals_forward_declared.find(global_id)) {
-        auto const &decl = ctx.ir->globals.data[global_id];
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
         writeType(ctx, decl.type, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " ");
-        writeGlobalName(ctx.ir, global_id, &ctx.forward_s);
+        writeName(decl.name, global_id, GLOBAL_CLASS, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, "={");
         if (decl.type->size) {
             nksb_printf(&ctx.forward_s, "0");
@@ -469,7 +464,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
         writeLineDirective(proc.start_line, src);
         writeType(ctx, decl.type, src);
         nksb_printf(src, " ");
-        writeLocalName(proc, i++, src);
+        writeName(decl.name, i++, LOCAL_CLASS, src);
         nksb_printf(src, "={");
         if (decl.type->size) {
             nksb_printf(src, "0");
@@ -523,8 +518,7 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
                 writeGlobal(ctx, target_ref.index, src);
                 break;
             case NkIrRef_Rodata: {
-                auto const &cnst = ctx.ir->consts.data[target_ref.index];
-                writeConst(ctx, cnst.data, cnst.type, src, true);
+                writeConst(ctx, ctx.ir->consts.data[target_ref.index], src, true);
                 break;
             }
             default:
@@ -563,17 +557,20 @@ void translateProc(WriterCtx &ctx, NkIrProc proc_id) {
         }
         switch (ref.kind) {
         case NkIrRef_Frame:
-            writeLocalName(proc, ref.index, src);
+            writeName(proc.locals.data[ref.index].name, ref.index, LOCAL_CLASS, src);
             break;
         case NkIrRef_Arg:
-            writeArgName(proc.arg_names, ref.index, src);
+            writeName(
+                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : nkid_empty,
+                ref.index,
+                ARG_CLASS,
+                src);
             break;
         case NkIrRef_Ret:
             nksb_printf(src, "_ret");
             break;
         case NkIrRef_Rodata: {
-            auto const &cnst = ctx.ir->consts.data[ref.index];
-            writeConst(ctx, cnst.data, cnst.type, src);
+            writeConst(ctx, ctx.ir->consts.data[ref.index], src);
             break;
         }
         case NkIrRef_Data:
@@ -819,7 +816,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
         }
     }
 
-#if 1
+#if 0
     fprintf(
         stderr,
         nks_Fmt "\n" nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
