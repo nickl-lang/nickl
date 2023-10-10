@@ -152,7 +152,7 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return false;
     }
 
-    if (!nkir_write(&c->tmp_arena, c->ir, c->entry_point, output_kind, out_file)) {
+    if (!nkir_write(&c->tmp_arena, c->ir, output_kind, out_file)) {
         return 1;
     }
 

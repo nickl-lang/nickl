@@ -62,6 +62,14 @@ typedef enum {
     NkIrArg_Line,
 } NkIrArgKind;
 
+typedef enum {
+    NkIrVisibility_Default,
+    NkIrVisibility_Hidden,
+    NkIrVisibility_Protected,
+    NkIrVisibility_Internal,
+    NkIrVisibility_Local,
+} NkIrVisibility;
+
 typedef struct {
     nkid file;
     size_t line;
@@ -113,7 +121,14 @@ NkIrLabel nkir_createLabel(NkIrProg ir, nkid name);
 
 nkav_typedef(nkid, nkid_array);
 
-void nkir_startProc(NkIrProg ir, NkIrProc proc, nkid name, nktype_t proc_t, nkid_array arg_names, NkIrLine line);
+void nkir_startProc(
+    NkIrProg ir,
+    NkIrProc proc,
+    nkid name,
+    nktype_t proc_t,
+    nkid_array arg_names,
+    NkIrLine line,
+    NkIrVisibility vis);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, NkIrLine line);
@@ -131,8 +146,8 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 // References
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);
-NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type);
-NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type);
+NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
+NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIrVisibility vis);
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkid name, nktype_t type);
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t);
 
@@ -173,7 +188,7 @@ NkIrInstr nkir_make_line(nkid file, size_t line);
 
 // Output
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkIrProc entry_point, NkbOutputKind kind, nks out_file);
+bool nkir_write(NkArena *arena, NkIrProg ir, NkbOutputKind kind, nks out_file);
 
 // Execution
 
