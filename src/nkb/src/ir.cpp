@@ -279,7 +279,7 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
         .post_offset = 0,
         .type = args_t.data[index],
         .kind = NkIrRef_Arg,
-        .indir = 1,
+        .indir = 0,
     };
 }
 
@@ -295,7 +295,7 @@ NkIrRef nkir_makeRetRef(NkIrProg ir) {
         .post_offset = 0,
         .type = proc.proc_t->as.proc.info.ret_t,
         .kind = NkIrRef_Ret,
-        .indir = 1,
+        .indir = 0,
     };
 }
 
@@ -693,11 +693,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStringBuilder *
         nksb_printf(sb, "{}");
         return;
     }
-    uint8_t indir = ref.indir;
-    if (ref.kind == NkIrRef_Arg || ref.kind == NkIrRef_Ret) {
-        indir--;
-    }
-    for (size_t i = 0; i < indir; i++) {
+    for (size_t i = 0; i < ref.indir; i++) {
         nksb_printf(sb, "[");
     }
     switch (ref.kind) {
@@ -776,7 +772,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStringBuilder *
     if (ref.offset) {
         nksb_printf(sb, "+%" PRIu64, ref.offset);
     }
-    for (size_t i = 0; i < indir; i++) {
+    for (size_t i = 0; i < ref.indir; i++) {
         nksb_printf(sb, "]");
     }
     if (ref.post_offset) {

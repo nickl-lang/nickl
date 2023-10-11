@@ -208,8 +208,10 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 break;
             case NkIrRef_Arg:
                 ref.offset += ir_ref.index * sizeof(void *);
+                ref.indir++;
                 break;
             case NkIrRef_Ret:
+                ref.indir++;
                 break;
             case NkIrRef_Data: {
                 ref.offset += (size_t)get_global_addr(ir_ref.index);

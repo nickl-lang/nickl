@@ -555,16 +555,12 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
             !(ref.kind == NkIrRef_Rodata && ctx.ir->consts.data[ref.index].type->kind != NkType_Aggregate);
 
         if (is_addressable) {
-            uint8_t indir = ref.indir;
-            if (ref.kind == NkIrRef_Arg || ref.kind == NkIrRef_Ret) {
-                indir--;
-            }
-            for (uint8_t i = 0; i < maxu(indir, 1); i++) {
+            for (uint8_t i = 0; i < maxu(ref.indir, 1); i++) {
                 nksb_printf(src, "*");
             }
             nksb_printf(src, "(");
             writeType(ctx, ref.type, src);
-            for (uint8_t i = 0; i < maxu(indir, 1); i++) {
+            for (uint8_t i = 0; i < maxu(ref.indir, 1); i++) {
                 nksb_printf(src, "*");
             }
             nksb_printf(src, ")");
@@ -574,7 +570,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
             if (ref.offset) {
                 nksb_printf(src, "((uint8_t*)");
             }
-            if (indir == 0) {
+            if (ref.indir == 0) {
                 nksb_printf(src, "& ");
             }
         }

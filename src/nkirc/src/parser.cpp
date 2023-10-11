@@ -801,14 +801,12 @@ private:
             return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NkIrRef{};
         }
 
+        size_t offset = 0;
+
         if (accept(t_plus)) {
             int64_t value = 0;
             CHECK(parseNumeric(&value, Int64));
-            if (result_ref.indir) {
-                result_ref.post_offset += value;
-            } else {
-                result_ref.offset += value;
-            }
+            offset = value;
         }
 
         for (uint8_t i = 0; i < indir; i++) {
@@ -820,13 +818,17 @@ private:
             result_ref.type = result_ref.type->as.ptr.target_type;
         }
 
-        result_ref.indir += indir;
-
         if (accept(t_plus)) {
             int64_t value = 0;
             CHECK(parseNumeric(&value, Int64));
             result_ref.post_offset += value;
+
+            result_ref.offset += offset;
+        } else {
+            result_ref.post_offset += offset;
         }
+
+        result_ref.indir += indir;
 
         if (accept(t_colon)) {
             ASSIGN(result_ref.type, parseType());

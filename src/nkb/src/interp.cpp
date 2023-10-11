@@ -76,6 +76,7 @@ void *getRefAddr(NkBcRef const &ref) {
 
 template <class T>
 T &deref(NkBcArg const &arg) {
+    assert(arg.kind == NkBcArg_Ref);
     return *(T *)getRefAddr(arg.ref);
 }
 
