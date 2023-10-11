@@ -161,7 +161,7 @@ struct GeneratorState {
                          m_types,
                          {
                              .args_t{nkav_init(sig.args_t)},
-                             .ret_t{nkav_init(sig.ret_t)},
+                             .ret_t = sig.ret_t,
                              .call_conv = NkCallConv_Cdecl,
                              .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                          }))},
@@ -186,7 +186,7 @@ struct GeneratorState {
                     m_types,
                     {
                         .args_t{nkav_init(sig.args_t)},
-                        .ret_t{nkav_init(sig.ret_t)},
+                        .ret_t = sig.ret_t,
                         .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                         .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                     }),
@@ -402,7 +402,7 @@ private:
     struct ProcSignatureParseResult {
         nkar_type(nkid) arg_names;
         nkar_type(nktype_t) args_t;
-        nkar_type(nktype_t) ret_t;
+        nktype_t ret_t{};
         nkid name{};
         bool is_variadic{};
         bool is_extern{};
@@ -413,7 +413,6 @@ private:
         ProcSignatureParseResult res{
             .arg_names{0, 0, 0, m_parse_alloc},
             .args_t{0, 0, 0, m_file_alloc},
-            .ret_t{0, 0, 0, m_file_alloc},
         };
         EXPECT(t_proc);
         if (accept(t_extern)) {
@@ -443,7 +442,7 @@ private:
             nkar_append(&res.arg_names, name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        APPEND(&res.ret_t, parseType());
+        ASSIGN(res.ret_t, parseType());
         return res;
     }
 
@@ -762,8 +761,7 @@ private:
                 return {};
             }
         } else if (accept(t_ret)) {
-            // TODO Support multiple return values
-            result_ref = nkir_makeRetRef(m_ir, 0);
+            result_ref = nkir_makeRetRef(m_ir);
         }
 
         else if (check(t_string)) {

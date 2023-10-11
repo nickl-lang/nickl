@@ -100,9 +100,7 @@ nktype_t nkir_makeProcedureType(NkIrTypeCache *cache, NkIrProcInfo proc_info) {
     for (size_t i = 0; i < proc_info.args_t.size; i++) {
         pushVal(fp, proc_info.args_t.data[i]->id);
     }
-    for (size_t i = 0; i < proc_info.ret_t.size; i++) {
-        pushVal(fp, proc_info.ret_t.data[i]->id);
-    }
+    pushVal(fp, proc_info.ret_t->id);
     pushVal(fp, proc_info.call_conv);
     pushVal(fp, proc_info.flags);
 

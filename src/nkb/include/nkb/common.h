@@ -98,7 +98,7 @@ typedef struct {
 
 typedef struct {
     NkTypeArray args_t;
-    NkTypeArray ret_t;
+    nktype_t ret_t;
     NkCallConv call_conv;
     uint8_t flags;
 } NkIrProcInfo;

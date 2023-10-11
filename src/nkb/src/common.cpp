@@ -81,18 +81,7 @@ void nkirt_inspect(nktype_t type, NkStringBuilder *sb) {
             nksb_printf(sb, ", ...");
         }
         nksb_printf(sb, ")->");
-        if (type->as.proc.info.ret_t.size > 1) {
-            nksb_printf(sb, "(");
-        }
-        for (size_t i = 0; i < type->as.proc.info.ret_t.size; i++) {
-            if (i) {
-                nksb_printf(sb, ", ");
-            }
-            nkirt_inspect(type->as.proc.info.ret_t.data[i], sb);
-        }
-        if (type->as.proc.info.ret_t.size > 1) {
-            nksb_printf(sb, ")");
-        }
+        nkirt_inspect(type->as.proc.info.ret_t, sb);
         break;
     default:
         assert(!"unreachable");

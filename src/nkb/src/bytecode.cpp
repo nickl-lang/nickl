@@ -497,7 +497,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 .argt = reloc.proc_info->args_t.data,
                 .argc = reloc.proc_info->args_t.size,
                 .retv{},
-                .rett = reloc.proc_info->ret_t.data[0],
+                .rett = reloc.proc_info->ret_t,
             };
             ref.offset = (size_t)nk_native_makeClosure(&ctx->ffi_ctx, ctx->tmp_arena, ir.alloc, &call_data);
             break;

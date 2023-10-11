@@ -283,19 +283,17 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
     };
 }
 
-NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
+NkIrRef nkir_makeRetRef(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
 
     assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
-    auto const ret_t = proc.proc_t->as.proc.info.ret_t;
-    assert(ret_t.size == 1 && "Multiple return values not implemented");
     return {
         .index = 0,
         .offset = 0,
         .post_offset = 0,
-        .type = ret_t.data[0],
+        .type = proc.proc_t->as.proc.info.ret_t,
         .kind = NkIrRef_Ret,
         .indir = 1,
     };
@@ -571,15 +569,9 @@ void inspectProcSignature(
         nksb_printf(sb, "...");
     }
 
-    nksb_printf(sb, ")");
+    nksb_printf(sb, ") ");
 
-    for (size_t i = 0; i < proc_info.ret_t.size; i++) {
-        if (i) {
-            nksb_printf(sb, ",");
-        }
-        nksb_printf(sb, " ");
-        nkirt_inspect(proc_info.ret_t.data[i], sb);
-    }
+    nkirt_inspect(proc_info.ret_t, sb);
 }
 
 void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {

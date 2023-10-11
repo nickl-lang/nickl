@@ -200,7 +200,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         break;
     case NkType_Procedure: {
         is_complex = true;
-        auto const ret_t = type->as.proc.info.ret_t.data[0];
+        auto const ret_t = type->as.proc.info.ret_t;
         auto const args_t = type->as.proc.info.args_t;
         auto const is_variadic = type->as.proc.info.flags & NkProcVariadic;
         writeType(ctx, ret_t, &tmp_s, true);
@@ -470,7 +470,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
 
     auto proc_t = proc.proc_t;
     auto args_t = proc_t->as.proc.info.args_t;
-    auto ret_t = proc_t->as.proc.info.ret_t.data[0];
+    auto ret_t = proc_t->as.proc.info.ret_t;
 
     auto src = &ctx.main_s;
 
@@ -522,7 +522,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                     ctx,
                     &ctx.forward_s,
                     extern_proc_name,
-                    extern_proc.type->as.proc.info.ret_t.data[0],
+                    extern_proc.type->as.proc.info.ret_t,
                     extern_proc.type->as.proc.info.args_t,
                     {},
                     extern_proc.type->as.proc.info.flags & NkProcVariadic);

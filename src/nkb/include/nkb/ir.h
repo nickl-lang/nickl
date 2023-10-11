@@ -100,10 +100,7 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 #undef DEFINE_IDX_TYPE
 
-#define NKIR_INVALID_IDX \
-    size_t {             \
-        -1ul             \
-    }
+#define NKIR_INVALID_IDX ((size_t)-1ul)
 
 typedef struct NkIrProg_T *NkIrProg;
 
@@ -152,7 +149,7 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index);
-NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index);
+NkIrRef nkir_makeRetRef(NkIrProg ir);
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var);
 NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
