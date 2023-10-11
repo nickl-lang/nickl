@@ -21,7 +21,7 @@ nkid cs2nkid(char const *str);
 void nkid_define(nkid id, nks str);
 
 enum {
-    nkid_empty = 0,
+    nk_invalid_id = 0,
 };
 
 #ifdef __cplusplus

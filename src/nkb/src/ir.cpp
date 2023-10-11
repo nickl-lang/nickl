@@ -29,7 +29,7 @@ NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
 }
 
 NkIrArg _arg(NkIrLabel label) {
-    return {{.id = label.id}, NkIrArg_Label};
+    return {{.id = label.idx}, NkIrArg_Label};
 }
 
 NkIrArg _arg(NkIrProg ir, nks comment) {
@@ -117,7 +117,7 @@ NkIrLabel nkir_createLabel(NkIrProg ir, nkid name) {
 
 void nkir_startProc(
     NkIrProg ir,
-    NkIrProc proc_id,
+    NkIrProc _proc,
     nkid name,
     nktype_t proc_t,
     nkid_array arg_names,
@@ -125,7 +125,7 @@ void nkir_startProc(
     NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
-    auto &proc = ir->procs.data[proc_id.id];
+    auto &proc = ir->procs.data[_proc.idx];
 
     proc.name = name;
     proc.proc_t = proc_t;
@@ -133,19 +133,19 @@ void nkir_startProc(
     proc.start_line = line;
     proc.visibility = vis;
 
-    nkir_activateProc(ir, proc_id);
+    nkir_activateProc(ir, _proc);
 }
 
-void nkir_activateProc(NkIrProg ir, NkIrProc proc_id) {
+void nkir_activateProc(NkIrProg ir, NkIrProc _proc) {
     NK_LOG_TRC("%s", __func__);
 
-    ir->cur_proc = proc_id;
+    ir->cur_proc = _proc;
 }
 
-void nkir_finishProc(NkIrProg ir, NkIrProc proc_id, NkIrLine line) {
+void nkir_finishProc(NkIrProg ir, NkIrProc _proc, NkIrLine line) {
     NK_LOG_TRC("%s", __func__);
 
-    auto &proc = ir->procs.data[proc_id.id];
+    auto &proc = ir->procs.data[_proc.idx];
 
     proc.end_line = line;
 }
@@ -153,7 +153,7 @@ void nkir_finishProc(NkIrProg ir, NkIrProc proc_id, NkIrLine line) {
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
     NK_LOG_TRC("%s", __func__);
 
-    return ir->consts.data[cnst.id].data;
+    return ir->consts.data[cnst.idx].data;
 }
 
 void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
@@ -173,8 +173,8 @@ void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ir->cur_proc.id < ir->procs.size && "no current procedure");
-    auto &proc = ir->procs.data[ir->cur_proc.id];
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto &proc = ir->procs.data[ir->cur_proc.idx];
 
     for (size_t i = 0; i < instrs_array.size; i++) {
         auto const &instr = instrs_array.data[i];
@@ -215,8 +215,8 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ir->cur_proc.id < ir->procs.size && "no current procedure");
-    auto &proc = ir->procs.data[ir->cur_proc.id];
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto &proc = ir->procs.data[ir->cur_proc.idx];
 
     NkIrLocalVar id{proc.locals.size};
     nkar_append(&proc.locals, (NkIrDecl_T{name, type}));
@@ -258,14 +258,14 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t) {
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ir->cur_proc.id < ir->procs.size && "no current procedure");
-    auto const &proc = ir->procs.data[ir->cur_proc.id];
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
     return {
-        .index = var.id,
+        .index = var.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = proc.locals.data[var.id].type,
+        .type = proc.locals.data[var.idx].type,
         .kind = NkIrRef_Frame,
         .indir = 0,
     };
@@ -274,8 +274,8 @@ NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
 NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ir->cur_proc.id < ir->procs.size && "no current procedure");
-    auto const &proc = ir->procs.data[ir->cur_proc.id];
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
     auto const args_t = proc.proc_t->as.proc.info.args_t;
     assert(index < args_t.size && "arg index out of range");
@@ -292,8 +292,8 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
 NkIrRef nkir_makeRetRef(NkIrProg ir, size_t index) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ir->cur_proc.id < ir->procs.size && "no current procedure");
-    auto const &proc = ir->procs.data[ir->cur_proc.id];
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
     auto const ret_t = proc.proc_t->as.proc.info.ret_t;
     assert(ret_t.size == 1 && "Multiple return values not implemented");
@@ -311,10 +311,10 @@ NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var) {
     NK_LOG_TRC("%s", __func__);
 
     return {
-        .index = var.id,
+        .index = var.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->globals.data[var.id].type,
+        .type = ir->globals.data[var.idx].type,
         .kind = NkIrRef_Data,
         .indir = 0,
     };
@@ -324,10 +324,10 @@ NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst) {
     NK_LOG_TRC("%s", __func__);
 
     return {
-        .index = cnst.id,
+        .index = cnst.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->consts.data[cnst.id].type,
+        .type = ir->consts.data[cnst.idx].type,
         .kind = NkIrRef_Rodata,
         .indir = 0,
     };
@@ -337,10 +337,10 @@ NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc) {
     NK_LOG_TRC("%s", __func__);
 
     return {
-        .index = proc.id,
+        .index = proc.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->procs.data[proc.id].proc_t,
+        .type = ir->procs.data[proc.idx].proc_t,
         .kind = NkIrRef_Proc,
         .indir = 0,
     };
@@ -350,10 +350,10 @@ NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data) {
     NK_LOG_TRC("%s", __func__);
 
     return {
-        .index = data.id,
+        .index = data.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->extern_data.data[data.id].type,
+        .type = ir->extern_data.data[data.idx].type,
         .kind = NkIrRef_ExternData,
         .indir = 0,
     };
@@ -363,10 +363,10 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
     NK_LOG_TRC("%s", __func__);
 
     return {
-        .index = proc.id,
+        .index = proc.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->extern_procs.data[proc.id].type,
+        .type = ir->extern_procs.data[proc.idx].type,
         .kind = NkIrRef_ExternProc,
         .indir = 0,
     };
@@ -516,7 +516,7 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
         for (size_t i = 0; i < ir->globals.size; i++) {
             auto const &decl = ir->globals.data[i];
             nksb_printf(sb, "\ndata ");
-            if (decl.name != nkid_empty) {
+            if (decl.name != nk_invalid_id) {
                 auto const global_name = nkid2s(decl.name);
                 nksb_printf(sb, nks_Fmt, nks_Arg(global_name));
             } else {
@@ -534,7 +534,7 @@ void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb) {
         for (size_t i = 0; i < ir->consts.size; i++) {
             auto const &cnst = ir->consts.data[i];
             if (cnst.type->kind == NkType_Aggregate) {
-                if (cnst.name != nkid_empty) {
+                if (cnst.name != nk_invalid_id) {
                     auto const const_name = nkid2s(cnst.name);
                     nksb_printf(sb, "\nconst " nks_Fmt ": ", nks_Arg(const_name));
                 } else {
@@ -565,7 +565,7 @@ void inspectProcSignature(
             nksb_printf(sb, ", ");
         }
         if (print_arg_names) {
-            if (i < arg_names.size && arg_names.data[i] != nkid_empty) {
+            if (i < arg_names.size && arg_names.data[i] != nk_invalid_id) {
                 auto const name = nkid2s(arg_names.data[i]);
                 nksb_printf(sb, nks_Fmt ": ", nks_Arg(name));
             } else {
@@ -611,8 +611,8 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     }
 }
 
-void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
-    auto const &proc = ir->procs.data[proc_id.id];
+void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStringBuilder *sb) {
+    auto const &proc = ir->procs.data[_proc.idx];
 
     nksb_printf(
         sb,
@@ -625,7 +625,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
     if (proc.locals.size) {
         for (size_t i = 0; i < proc.locals.size; i++) {
-            if (proc.locals.data[i].name != nkid_empty) {
+            if (proc.locals.data[i].name != nk_invalid_id) {
                 auto const local_name = nkid2s(proc.locals.data[i].name);
                 nksb_printf(sb, nks_Fmt ": ", nks_Arg(local_name));
             } else {
@@ -666,7 +666,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
                 switch (arg.kind) {
                 case NkIrArg_Ref: {
                     auto const &ref = arg.ref;
-                    nkir_inspectRef(ir, proc_id, ref, sb);
+                    nkir_inspectRef(ir, _proc, ref, sb);
                     break;
                 }
                 case NkIrArg_RefArray: {
@@ -676,13 +676,13 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
                             nksb_printf(sb, ", ");
                         }
                         auto const &ref = arg.refs.data[i];
-                        nkir_inspectRef(ir, proc_id, ref, sb);
+                        nkir_inspectRef(ir, _proc, ref, sb);
                     }
                     nksb_printf(sb, ")");
                     break;
                 }
                 case NkIrArg_Label:
-                    if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != nkid_empty) {
+                    if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != nk_invalid_id) {
                         auto const name = nkid2s(ir->blocks.data[arg.id].name);
                         nksb_printf(sb, nks_Fmt, nks_Arg(name));
                     } else {
@@ -697,7 +697,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
 
             if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
                 nksb_printf(sb, " -> ");
-                nkir_inspectRef(ir, proc_id, instr.arg[0].ref, sb);
+                nkir_inspectRef(ir, _proc, instr.arg[0].ref, sb);
             }
 
             nksb_printf(sb, "\n");
@@ -709,8 +709,8 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc_id, NkStringBuilder *sb) {
     nksb_printf(sb, "}\n");
 }
 
-void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder *sb) {
-    auto const &proc = ir->procs.data[proc_id.id];
+void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStringBuilder *sb) {
+    auto const &proc = ir->procs.data[_proc.idx];
 
     if (ref.kind == NkIrRef_None) {
         nksb_printf(sb, "{}");
@@ -726,7 +726,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
     switch (ref.kind) {
     case NkIrRef_Frame: {
         auto const &decl = proc.locals.data[ref.index];
-        if (decl.name != nkid_empty) {
+        if (decl.name != nk_invalid_id) {
             auto const local_name = nkid2s(decl.name);
             nksb_printf(sb, nks_Fmt, nks_Arg(local_name));
         } else {
@@ -735,7 +735,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
         break;
     }
     case NkIrRef_Arg: {
-        if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index] != nkid_empty) {
+        if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index] != nk_invalid_id) {
             auto const name = nkid2s(proc.arg_names.data[ref.index]);
             nksb_printf(sb, nks_Fmt, nks_Arg(name));
         } else {
@@ -748,7 +748,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
         break;
     case NkIrRef_Data: {
         auto const &decl = ir->globals.data[ref.index];
-        if (decl.name != nkid_empty) {
+        if (decl.name != nk_invalid_id) {
             auto const name = nkid2s(decl.name);
             nksb_printf(sb, nks_Fmt, nks_Arg(name));
         } else {
@@ -762,7 +762,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
             nkirv_inspect(data, ref.type, sb);
         } else {
             auto const &cnst = ir->consts.data[ref.index];
-            if (cnst.name != nkid_empty) {
+            if (cnst.name != nk_invalid_id) {
                 auto const const_name = nkid2s(cnst.name);
                 nksb_printf(sb, nks_Fmt, nks_Arg(const_name));
             } else {
@@ -788,7 +788,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc proc_id, NkIrRef ref, NkStringBuilder
     case NkIrRef_Address: {
         nksb_printf(sb, "&");
         auto const &reloc_ref = ir->relocs.data[ref.index];
-        nkir_inspectRef(ir, proc_id, reloc_ref, sb);
+        nkir_inspectRef(ir, _proc, reloc_ref, sb);
         break;
     }
     case NkIrRef_None:

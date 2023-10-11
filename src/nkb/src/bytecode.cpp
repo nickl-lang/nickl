@@ -117,12 +117,12 @@ void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
 }
 #endif // ENABLE_LOGGING
 
-void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
-    while (proc_id.id >= ctx->procs.size) {
+void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
+    while (proc.idx >= ctx->procs.size) {
         nkar_append(&ctx->procs, nullptr);
     }
 
-    if (ctx->procs.data[proc_id.id]) {
+    if (ctx->procs.data[proc.idx]) {
         return;
     }
 
@@ -135,7 +135,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
     };
 
     auto const &ir = *ctx->ir;
-    auto const &ir_proc = ir.procs.data[proc_id.id];
+    auto const &ir_proc = ir.procs.data[proc.idx];
 
     auto const local_counts = nk_alloc_t<size_t>(tmp_alloc, ir_proc.locals.size);
     for (size_t i = 0; i < ir_proc.locals.size; i++) {
@@ -150,7 +150,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc_id) {
         1);
 
     auto &bc_proc =
-        *(ctx->procs.data[proc_id.id] = new (nk_alloc_t<NkBcProc_T>(ir.alloc)) NkBcProc_T{
+        *(ctx->procs.data[proc.idx] = new (nk_alloc_t<NkBcProc_T>(ir.alloc)) NkBcProc_T{
               .ctx = ctx,
               .frame_size = frame_layout.size,
               .instrs{0, 0, 0, ir.alloc},
@@ -563,9 +563,9 @@ void nkir_defineExternSym(NkIrRunCtx ctx, nkid name, void *data) {
     ctx->extern_syms.insert(name, data);
 }
 
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc_id, void **args, void **ret) {
+void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
     NK_LOG_TRC("%s", __func__);
 
-    translateProc(ctx, proc_id);
-    nkir_interp_invoke(ctx->procs.data[proc_id.id], args, ret);
+    translateProc(ctx, proc);
+    nkir_interp_invoke(ctx->procs.data[proc.idx], args, ret);
 }

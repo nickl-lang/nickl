@@ -147,7 +147,7 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return 1;
     }
 
-    if (output_kind == NkbOutput_Executable && c->entry_point.id == INVALID_ID) {
+    if (output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
         printError(c, "entry point is not defined");
         return false;
     }
@@ -166,7 +166,7 @@ int nkir_run(NkIrCompiler c, nks in_file) {
         return 1;
     }
 
-    if (c->entry_point.id == INVALID_ID) {
+    if (c->entry_point.idx == NKIR_INVALID_IDX) {
         printError(c, "entry point is not defined");
         return false;
     }

@@ -91,23 +91,25 @@ typedef struct {
     uint8_t code;
 } NkIrInstr;
 
-#define DEFINE_ID_TYPE(NAME) \
-    typedef struct {         \
-        size_t id;           \
+#define DEFINE_IDX_TYPE(NAME) \
+    typedef struct {          \
+        size_t idx;           \
     } NAME
 
-#define INVALID_ID \
-    size_t {       \
-        -1ul       \
-    }
+DEFINE_IDX_TYPE(NkIrProc);
+DEFINE_IDX_TYPE(NkIrLabel);
+DEFINE_IDX_TYPE(NkIrLocalVar);
+DEFINE_IDX_TYPE(NkIrGlobalVar);
+DEFINE_IDX_TYPE(NkIrConst);
+DEFINE_IDX_TYPE(NkIrExternData);
+DEFINE_IDX_TYPE(NkIrExternProc);
 
-DEFINE_ID_TYPE(NkIrProc);
-DEFINE_ID_TYPE(NkIrLabel);
-DEFINE_ID_TYPE(NkIrLocalVar);
-DEFINE_ID_TYPE(NkIrGlobalVar);
-DEFINE_ID_TYPE(NkIrConst);
-DEFINE_ID_TYPE(NkIrExternData);
-DEFINE_ID_TYPE(NkIrExternProc);
+#undef DEFINE_IDX_TYPE
+
+#define NKIR_INVALID_IDX \
+    size_t {             \
+        -1ul             \
+    }
 
 typedef struct NkIrProg_T *NkIrProg;
 

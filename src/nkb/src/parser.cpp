@@ -438,7 +438,7 @@ private:
                 res.is_variadic = true;
                 break;
             }
-            nkid name = nkid_empty;
+            nkid name = nk_invalid_id;
             if (!res.is_extern) {
                 DEFINE(token, parseId());
                 name = s2nkid(token->text);
@@ -776,12 +776,12 @@ private:
             auto const str = parseString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(
-                m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t, NkIrVisibility_Local));
+                m_ir, nkir_makeConst(m_ir, nk_invalid_id, (void *)str.data, str_t, NkIrVisibility_Local));
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_file_alloc);
             auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(
-                m_ir, nkir_makeConst(m_ir, nkid_empty, (void *)str.data, str_t, NkIrVisibility_Local));
+                m_ir, nkir_makeConst(m_ir, nk_invalid_id, (void *)str.data, str_t, NkIrVisibility_Local));
         }
 
         else if (check(t_int)) {
@@ -789,18 +789,19 @@ private:
             CHECK(parseNumeric(value, Int64));
             result_ref = nkir_makeRodataRef(
                 m_ir,
-                nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Int64), NkIrVisibility_Local));
+                nkir_makeConst(m_ir, nk_invalid_id, value, nkir_makeNumericType(m_types, Int64), NkIrVisibility_Local));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
             CHECK(parseNumeric(value, Float64));
             result_ref = nkir_makeRodataRef(
                 m_ir,
-                nkir_makeConst(m_ir, nkid_empty, value, nkir_makeNumericType(m_types, Float64), NkIrVisibility_Local));
+                nkir_makeConst(
+                    m_ir, nk_invalid_id, value, nkir_makeNumericType(m_types, Float64), NkIrVisibility_Local));
         }
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(cnst, parseConst(nkid_empty, type, NkIrVisibility_Local));
+            DEFINE(cnst, parseConst(nk_invalid_id, type, NkIrVisibility_Local));
             result_ref = nkir_makeRodataRef(m_ir, cnst);
         }
 
@@ -948,7 +949,7 @@ void nkir_parse(
     auto file_alloc = nk_arena_getAllocator(file_arena);
 
     parser->ir = nkir_createProgram(file_alloc);
-    parser->entry_point.id = INVALID_ID;
+    parser->entry_point.idx = NKIR_INVALID_IDX;
     parser->error_msg = {};
     parser->ok = true;
 

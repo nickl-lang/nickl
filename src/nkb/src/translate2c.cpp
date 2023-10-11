@@ -81,7 +81,7 @@ struct WriterCtx {
 #define GLOBAL_CLASS "global"
 
 void writeName(nkid name, size_t index, char const *obj_class, NkStringBuilder *src) {
-    if (name != nkid_empty) {
+    if (name != nk_invalid_id) {
         auto const str = nkid2s(name);
         nksb_printf(src, nks_Fmt, nks_Arg(str));
     } else {
@@ -273,9 +273,9 @@ void writeConst(
             for (size_t c = 0; c < elem.count; c++) {
                 writeConst(
                     ctx,
-                    INVALID_ID,
+                    NKIR_INVALID_IDX,
                     NkIrConst_T{
-                        .name = nkid_empty,
+                        .name = nk_invalid_id,
                         .data = (uint8_t *)cnst.data + offset,
                         .type = elem.type,
                         .visibility = NkIrVisibility_Local,
@@ -371,7 +371,7 @@ void writeConst(
 
         ctx.const_count++;
 
-        if (const_id != INVALID_ID) {
+        if (const_id != NKIR_INVALID_IDX) {
             getFlag(ctx.consts_translated, const_id) = true;
         }
     }
@@ -398,7 +398,7 @@ void writeProcSignature(
         writeType(ctx, args_t.data[i], src);
         if (arg_names.size) {
             nksb_printf(src, " ");
-            writeName(i < arg_names.size ? arg_names.data[i] : (nkid)nkid_empty, i, ARG_CLASS, src);
+            writeName(i < arg_names.size ? arg_names.data[i] : (nkid)nk_invalid_id, i, ARG_CLASS, src);
         }
     }
     if (va) {
@@ -436,7 +436,7 @@ void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
 }
 
 void writeLineDirective(NkIrLine line, NkStringBuilder *src) {
-    if (line.file != nkid_empty) {
+    if (line.file != nk_invalid_id) {
         auto const file_name = nkid2s(line.file);
         nksb_printf(src, "#line %zu \"", line.line);
         nksb_str_escape(src, file_name);
@@ -582,7 +582,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
             break;
         case NkIrRef_Arg:
             writeName(
-                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (nkid)nkid_empty,
+                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (nkid)nk_invalid_id,
                 ref.index,
                 ARG_CLASS,
                 src);
