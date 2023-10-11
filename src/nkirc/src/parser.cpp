@@ -191,7 +191,8 @@ struct GeneratorState {
                         .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
                     }),
                 {nkav_init(sig.arg_names)},
-                {m_file, cur_line},
+                m_file,
+                cur_line,
                 vis);
 
             auto const decl = new (makeGlobalDecl(sig.name)) Decl{
@@ -225,15 +226,8 @@ struct GeneratorState {
                         Decl_LocalVar,
                     };
                 } else {
-                    auto const cur_line = m_cur_token->lin;
-
+                    nkir_setLine(m_ir, m_cur_token->lin);
                     DEFINE(instr, parseInstr());
-
-                    if (instr.code != nkir_label && instr.code != nkir_comment) {
-                        auto const line_instr = nkir_make_line(m_file, cur_line);
-                        nkir_gen(m_ir, {&line_instr, 1});
-                    }
-
                     nkir_gen(m_ir, {&instr, 1});
                 }
                 EXPECT(t_newline);
@@ -241,7 +235,7 @@ struct GeneratorState {
                 }
             }
 
-            nkir_finishProc(m_ir, proc, {m_file, m_cur_token->lin});
+            nkir_finishProc(m_ir, proc, m_cur_token->lin);
 
             EXPECT(t_brace_r);
         }
@@ -545,24 +539,24 @@ private:
         }
 
         else if (accept(t_nop)) {
-            return nkir_make_nop();
+            return nkir_make_nop(m_ir);
         } else if (accept(t_ret)) {
-            return nkir_make_ret();
+            return nkir_make_ret(m_ir);
         }
 
         else if (accept(t_jmp)) {
             DEFINE(label, parseLabelRef());
-            return nkir_make_jmp(label);
+            return nkir_make_jmp(m_ir, label);
         } else if (accept(t_jmpz)) {
             DEFINE(cond, parseRef());
             EXPECT(t_comma);
             DEFINE(label, parseLabelRef());
-            return nkir_make_jmpz(cond, label);
+            return nkir_make_jmpz(m_ir, cond, label);
         } else if (accept(t_jmpnz)) {
             DEFINE(cond, parseRef());
             EXPECT(t_comma);
             DEFINE(label, parseLabelRef());
-            return nkir_make_jmpnz(cond, label);
+            return nkir_make_jmpnz(m_ir, cond, label);
         }
 
         else if (accept(t_call)) {
@@ -580,65 +574,65 @@ private:
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_ext(dst, src);
+            return nkir_make_ext(m_ir, dst, src);
         } else if (accept(t_trunc)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_trunc(dst, src);
+            return nkir_make_trunc(m_ir, dst, src);
         } else if (accept(t_fp2i)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_fp2i(dst, src);
+            return nkir_make_fp2i(m_ir, dst, src);
         } else if (accept(t_i2fp)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_i2fp(dst, src);
+            return nkir_make_i2fp(m_ir, dst, src);
         }
 
         else if (accept(t_neg)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_neg(dst, src);
+            return nkir_make_neg(m_ir, dst, src);
         } else if (accept(t_mov)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_mov(dst, src);
+            return nkir_make_mov(m_ir, dst, src);
         } else if (accept(t_lea)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());
-            return nkir_make_lea(dst, src);
+            return nkir_make_lea(m_ir, dst, src);
         }
 
         else if (false) {
         }
-#define BIN_IR(NAME)                                 \
-    else if (accept(CAT(t_, NAME))) {                \
-        DEFINE(lhs, parseRef());                     \
-        EXPECT(t_comma);                             \
-        DEFINE(rhs, parseRef());                     \
-        EXPECT(t_minus_greater);                     \
-        DEFINE(dst, parseRef());                     \
-        return CAT(nkir_make_, NAME)(dst, lhs, rhs); \
+#define BIN_IR(NAME)                                       \
+    else if (accept(CAT(t_, NAME))) {                      \
+        DEFINE(lhs, parseRef());                           \
+        EXPECT(t_comma);                                   \
+        DEFINE(rhs, parseRef());                           \
+        EXPECT(t_minus_greater);                           \
+        DEFINE(dst, parseRef());                           \
+        return CAT(nkir_make_, NAME)(m_ir, dst, lhs, rhs); \
     }
 #include "nkb/ir.inl"
 
         else if (accept(t_cmp)) {
             if (false) {
             }
-#define CMP_IR(NAME)                                     \
-    else if (accept(CAT(t_, NAME))) {                    \
-        DEFINE(lhs, parseRef());                         \
-        EXPECT(t_comma);                                 \
-        DEFINE(rhs, parseRef());                         \
-        EXPECT(t_minus_greater);                         \
-        DEFINE(dst, parseRef());                         \
-        return CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs); \
+#define CMP_IR(NAME)                                           \
+    else if (accept(CAT(t_, NAME))) {                          \
+        DEFINE(lhs, parseRef());                               \
+        EXPECT(t_comma);                                       \
+        DEFINE(rhs, parseRef());                               \
+        EXPECT(t_minus_greater);                               \
+        DEFINE(dst, parseRef());                               \
+        return CAT(nkir_make_cmp_, NAME)(m_ir, dst, lhs, rhs); \
     }
 #include "nkb/ir.inl"
             else {

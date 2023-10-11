@@ -36,10 +36,6 @@ NkIrArg _arg(NkIrProg ir, nks comment) {
     return {{.comment = nk_strcpy(ir->alloc, comment)}, NkIrArg_Comment};
 }
 
-NkIrArg _arg(NkIrLine line) {
-    return {{.line = line}, NkIrArg_Line};
-}
-
 } // namespace
 
 char const *nkirOpcodeName(uint8_t code) {
@@ -121,7 +117,8 @@ void nkir_startProc(
     nkid name,
     nktype_t proc_t,
     nkid_array arg_names,
-    NkIrLine line,
+    nkid file,
+    size_t line,
     NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
@@ -130,6 +127,7 @@ void nkir_startProc(
     proc.name = name;
     proc.proc_t = proc_t;
     nkav_copy(ir->alloc, &proc.arg_names, arg_names);
+    proc.file = file;
     proc.start_line = line;
     proc.visibility = vis;
 
@@ -142,7 +140,7 @@ void nkir_activateProc(NkIrProg ir, NkIrProc _proc) {
     ir->cur_proc = _proc;
 }
 
-void nkir_finishProc(NkIrProg ir, NkIrProc _proc, NkIrLine line) {
+void nkir_finishProc(NkIrProg ir, NkIrProc _proc, size_t line) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[_proc.idx];
@@ -185,14 +183,6 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
             continue;
         }
 
-        if (instr.code == nkir_line) {
-            if (proc.last_line.file == instr.arg[1].line.file && proc.last_line.line == instr.arg[1].line.line) {
-                continue;
-            } else {
-                proc.last_line = instr.arg[1].line;
-            }
-        }
-
         assert(proc.cur_block < ir->blocks.size && "no current block");
         auto &block = ir->blocks.data[proc.cur_block].instrs;
 
@@ -210,6 +200,10 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
         nkar_append(&instrs, instr);
         nkar_append(&block, id);
     }
+}
+
+void nkir_setLine(NkIrProg ir, size_t line) {
+    ir->cur_line = line;
 }
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type) {
@@ -390,71 +384,66 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
     };
 }
 
-NkIrInstr nkir_make_nop() {
+NkIrInstr nkir_make_nop(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
-    return {{}, nkir_nop};
+    return {{}, ir->cur_line, nkir_nop};
 }
 
-NkIrInstr nkir_make_ret() {
+NkIrInstr nkir_make_ret(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
-    return {{}, nkir_ret};
+    return {{}, ir->cur_line, nkir_ret};
 }
 
-NkIrInstr nkir_make_jmp(NkIrLabel label) {
+NkIrInstr nkir_make_jmp(NkIrProg ir, NkIrLabel label) {
     NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(label)}, nkir_jmp};
+    return {{{}, _arg(label)}, ir->cur_line, nkir_jmp};
 }
 
-NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrLabel label) {
+NkIrInstr nkir_make_jmpz(NkIrProg ir, NkIrRef cond, NkIrLabel label) {
     NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(cond), _arg(label)}, nkir_jmpz};
+    return {{{}, _arg(cond), _arg(label)}, ir->cur_line, nkir_jmpz};
 }
 
-NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label) {
+NkIrInstr nkir_make_jmpnz(NkIrProg ir, NkIrRef cond, NkIrLabel label) {
     NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(cond), _arg(label)}, nkir_jmpnz};
+    return {{{}, _arg(cond), _arg(label)}, ir->cur_line, nkir_jmpnz};
 }
 
 NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args) {
     NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(proc), _arg(ir, args)}, nkir_call};
+    return {{_arg(dst), _arg(proc), _arg(ir, args)}, ir->cur_line, nkir_call};
 }
 
-#define UNA_IR(NAME)                                            \
-    NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg) { \
-        NK_LOG_TRC("%s", __func__);                             \
-        return {{_arg(dst), _arg(arg), {}}, CAT(nkir_, NAME)};  \
-    }
-#define BIN_IR(NAME)                                                         \
-    NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
+#define UNA_IR(NAME)                                                         \
+    NkIrInstr CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef arg) { \
         NK_LOG_TRC("%s", __func__);                                          \
-        return {{_arg(dst), _arg(lhs), _arg(rhs)}, CAT(nkir_, NAME)};        \
+        return {{_arg(dst), _arg(arg), {}}, ir->cur_line, CAT(nkir_, NAME)}; \
     }
-#define DBL_IR(NAME1, NAME2)                                                                      \
-    NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
-        NK_LOG_TRC("%s", __func__);                                                               \
-        return {{_arg(dst), _arg(lhs), _arg(rhs)}, CAT(nkir_, CAT(NAME1, CAT(_, NAME2)))};        \
+#define BIN_IR(NAME)                                                                      \
+    NkIrInstr CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
+        NK_LOG_TRC("%s", __func__);                                                       \
+        return {{_arg(dst), _arg(lhs), _arg(rhs)}, ir->cur_line, CAT(nkir_, NAME)};       \
+    }
+#define DBL_IR(NAME1, NAME2)                                                                                   \
+    NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs) { \
+        NK_LOG_TRC("%s", __func__);                                                                            \
+        return {{_arg(dst), _arg(lhs), _arg(rhs)}, ir->cur_line, CAT(nkir_, CAT(NAME1, CAT(_, NAME2)))};       \
     }
 #include "nkb/ir.inl"
 
 NkIrInstr nkir_make_syscall(NkIrProg ir, NkIrRef dst, NkIrRef n, NkIrRefArray args) {
     NK_LOG_TRC("%s", __func__);
-    return {{_arg(dst), _arg(n), _arg(ir, args)}, nkir_syscall};
+    return {{_arg(dst), _arg(n), _arg(ir, args)}, ir->cur_line, nkir_syscall};
 }
 
 NkIrInstr nkir_make_label(NkIrLabel label) {
     NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(label), {}}, nkir_label};
+    return {{{}, _arg(label), {}}, 0, nkir_label};
 }
 
 NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(ir, comment), {}}, nkir_comment};
-}
-
-NkIrInstr nkir_make_line(nkid file, size_t line) {
-    NK_LOG_TRC("%s", __func__);
-    return {{{}, _arg(NkIrLine{file, line}), {}}, nkir_line};
+    return {{{}, _arg(ir, comment), {}}, 0, nkir_comment};
 }
 
 bool nkir_write(NkArena *arena, NkIrProg ir, NkbOutputKind kind, nks out_file) {
@@ -649,10 +638,6 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStringBuilder *sb) {
 
             if (instr.code == nkir_comment) {
                 nksb_printf(sb, "%17s" nks_Fmt "\n", "// ", nks_Arg(instr.arg[1].comment));
-                continue;
-            }
-
-            if (instr.code == nkir_line) {
                 continue;
             }
 

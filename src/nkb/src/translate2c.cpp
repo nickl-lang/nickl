@@ -228,13 +228,13 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     if (is_complex) {
         nksb_printf(
             &ctx.types_s,
-            "typedef " nks_Fmt " type%zu" nks_Fmt ";\n",
+            "typedef " nks_Fmt " _type%zu" nks_Fmt ";\n",
             nks_Arg(type_str),
             ctx.typedecl_count,
             nks_Arg(tmp_s_suf));
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
-        nksb_printf(&sb, "type%zu", ctx.typedecl_count);
+        nksb_printf(&sb, "_type%zu", ctx.typedecl_count);
         type_str = nks{nkav_init(sb)};
 
         ctx.typedecl_count++;
@@ -435,12 +435,14 @@ void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
     }
 }
 
-void writeLineDirective(NkIrLine line, NkStringBuilder *src) {
-    if (line.file != nk_invalid_id) {
-        auto const file_name = nkid2s(line.file);
-        nksb_printf(src, "#line %zu \"", line.line);
+void writeLineDirective(nkid file, size_t line, NkStringBuilder *src) {
+    if (file != nk_invalid_id) {
+        auto const file_name = nkid2s(file);
+        nksb_printf(src, "#line %zu \"", line);
         nksb_str_escape(src, file_name);
         nksb_printf(src, "\"\n");
+    } else {
+        nksb_printf(src, "#line %zu\n", line);
     }
 }
 
@@ -477,12 +479,12 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
     nksb_printf(&ctx.forward_s, ";\n");
 
     nksb_printf(src, "\n");
-    writeLineDirective(proc.start_line, src);
+    writeLineDirective(proc.file, proc.start_line, src);
     writeProcSignature(ctx, src, nkid2s(proc.name), ret_t, args_t, proc.arg_names);
     nksb_printf(src, " {\n\n");
 
     for (size_t i = 0; auto decl : nk_iterate(proc.locals)) {
-        writeLineDirective(proc.start_line, src);
+        writeLineDirective(nk_invalid_id, proc.start_line, src);
         writeType(ctx, decl.type, src);
         nksb_printf(src, " ");
         writeName(decl.name, i++, LOCAL_CLASS, src);
@@ -494,7 +496,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
     }
 
     if (ret_t->size) {
-        writeLineDirective(proc.start_line, src);
+        writeLineDirective(nk_invalid_id, proc.start_line, src);
         writeType(ctx, ret_t, src);
         nksb_printf(src, " _ret={0};\n");
     }
@@ -622,24 +624,20 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
         writeLabel(ctx, bi, src);
         nksb_printf(src, ":\n");
 
-        NkIrLine last_line{};
+        size_t last_line{};
 
         for (auto ii : nk_iterate(block.instrs)) {
             auto const &instr = ctx.ir->instrs.data[ii];
+
+            if (instr.line != last_line + 1) {
+                writeLineDirective(nk_invalid_id, instr.line, src);
+            }
+            last_line = instr.line;
 
             switch (instr.code) {
             case nkir_nop:
             case nkir_comment:
                 continue;
-
-            case nkir_line: {
-                auto const cur_line = instr.arg[1].line;
-                if (cur_line.file != last_line.file || cur_line.line != last_line.line + 1) {
-                    writeLineDirective(cur_line, src);
-                }
-                last_line = cur_line;
-                continue;
-            }
 
             default:
                 break;
@@ -804,7 +802,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
         nksb_printf(src, "\n");
     }
 
-    writeLineDirective(proc.end_line, src);
+    writeLineDirective(nk_invalid_id, proc.end_line, src);
     nksb_printf(src, "}\n");
 }
 

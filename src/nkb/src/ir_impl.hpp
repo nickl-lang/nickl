@@ -19,12 +19,13 @@ struct NkIrProc_T {
     nkid name{};
     nktype_t proc_t{};
     nkid_array arg_names{};
-    NkIrLine start_line{};
-    NkIrLine end_line{};
     NkIrVisibility visibility{};
 
+    nkid file{};
+    size_t start_line{};
+    size_t end_line{};
+
     size_t cur_block{};
-    NkIrLine last_line{};
 };
 
 struct NkIrBlock {
@@ -58,6 +59,7 @@ struct NkIrProg_T {
     nkar_type(NkIrRef) relocs;
 
     NkIrProc cur_proc{};
+    size_t cur_line{};
 };
 
 #endif // HEADER_GUARD_NKB_IR_IMPL

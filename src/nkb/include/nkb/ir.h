@@ -59,7 +59,6 @@ typedef enum {
     NkIrArg_RefArray,
     NkIrArg_Label,
     NkIrArg_Comment,
-    NkIrArg_Line,
 } NkIrArgKind;
 
 typedef enum {
@@ -71,23 +70,18 @@ typedef enum {
 } NkIrVisibility;
 
 typedef struct {
-    nkid file;
-    size_t line;
-} NkIrLine;
-
-typedef struct {
     union {
         NkIrRef ref;
         NkIrRefArray refs;
         size_t id;
         nks comment;
-        NkIrLine line;
     };
     NkIrArgKind kind;
 } NkIrArg;
 
 typedef struct {
     NkIrArg arg[3];
+    size_t line;
     uint8_t code;
 } NkIrInstr;
 
@@ -129,11 +123,12 @@ void nkir_startProc(
     nkid name,
     nktype_t proc_t,
     nkid_array arg_names,
-    NkIrLine line,
+    nkid file,
+    size_t line,
     NkIrVisibility vis);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
-void nkir_finishProc(NkIrProg ir, NkIrProc proc, NkIrLine line);
+void nkir_finishProc(NkIrProg ir, NkIrProc proc, size_t line);
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);
 void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref);
@@ -144,6 +139,8 @@ typedef struct {
 } NkIrInstrArray;
 
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
+
+void nkir_setLine(NkIrProg ir, size_t line);
 
 // References
 
@@ -166,19 +163,19 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t);
 
 // Instructions
 
-NkIrInstr nkir_make_nop();
-NkIrInstr nkir_make_ret();
+NkIrInstr nkir_make_nop(NkIrProg ir);
+NkIrInstr nkir_make_ret(NkIrProg ir);
 
-NkIrInstr nkir_make_jmp(NkIrLabel label);
-NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrLabel label);
-NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label);
+NkIrInstr nkir_make_jmp(NkIrProg ir, NkIrLabel label);
+NkIrInstr nkir_make_jmpz(NkIrProg ir, NkIrRef cond, NkIrLabel label);
+NkIrInstr nkir_make_jmpnz(NkIrProg ir, NkIrRef cond, NkIrLabel label);
 
 NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
-#define UNA_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg);
-#define BIN_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+#define UNA_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef arg);
+#define BIN_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #define DBL_IR(NAME1, NAME2) \
-    NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+    NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #include "nkb/ir.inl"
 
 NkIrInstr nkir_make_syscall(NkIrProg ir, NkIrRef dst, NkIrRef n, NkIrRefArray args);
@@ -186,7 +183,6 @@ NkIrInstr nkir_make_syscall(NkIrProg ir, NkIrRef dst, NkIrRef n, NkIrRefArray ar
 NkIrInstr nkir_make_label(NkIrLabel label);
 
 NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
-NkIrInstr nkir_make_line(nkid file, size_t line);
 
 // Output
 

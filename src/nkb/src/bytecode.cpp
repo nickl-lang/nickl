@@ -336,7 +336,6 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         }
 
         case NkIrArg_Comment:
-        case NkIrArg_Line:
         default:
             assert(!"unreachable");
         }
@@ -458,7 +457,6 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 break;
 
             case nkir_comment:
-            case nkir_line:
                 continue;
             }
 

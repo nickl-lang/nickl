@@ -63,7 +63,6 @@ IR(syscall) // syscall n, (args, ...)
 
 IR(label)
 IR(comment)
-IR(line)
 
 #undef CMP_IR
 #undef DBL_IR
