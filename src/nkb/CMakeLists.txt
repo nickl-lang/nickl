@@ -8,7 +8,6 @@ add_library(${LIB}
     src/interp.cpp
     src/ir.cpp
     src/translate2c.cpp
-    src/types.cpp
     )
 
 target_include_directories(${LIB}
@@ -22,34 +21,6 @@ target_link_libraries(${LIB}
     PRIVATE pthread
     )
 
-set(EXE nkirc)
-
-add_executable(${EXE}
-    src/irc.cpp
-    src/lexer.cpp
-    src/main.cpp
-    src/parser.cpp
-    )
-
-target_link_libraries(${EXE}
-    PRIVATE nkb
-    )
-
-if(NOT DEV_BUILD)
-    target_link_options(${EXE}
-        PRIVATE -s
-        )
-endif()
-
-install(TARGETS ${EXE})
-
-target_compile_definitions(${EXE}
-    PUBLIC NK_BINARY_NAME="${EXE}"
-    PUBLIC NK_BUILD_VERSION="${BUILD_VERSION}"
-    PUBLIC NK_BUILD_TIME="${BUILD_TIME}"
-    )
-
 if(CMAKE_TESTING_ENABLED)
-    add_subdirectory(test/run)
     add_subdirectory(test)
 endif()

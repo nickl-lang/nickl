@@ -1,4 +1,4 @@
-#include "nkb/irc.h"
+#include "irc.h"
 
 #include <cmath>
 #include <cstdio>

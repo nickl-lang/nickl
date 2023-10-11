@@ -4,8 +4,8 @@
 #include <cstring>
 #include <thread>
 
+#include "irc.h"
 #include "nkb/common.h"
-#include "nkb/irc.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
 #include "ntk/utils.h"

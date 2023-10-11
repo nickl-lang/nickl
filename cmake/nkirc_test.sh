@@ -110,6 +110,7 @@ run() {
 
 compile() {
   OUT_FILE=$(basename $ARG_FILE | cut -d. -f1)_test_out
+  runCommand "rm -f ./$OUT_FILE"
   runCommand "$ARG_EXE -k exe -o $OUT_FILE $ARG_FILE" &&
   runCommand "./$OUT_FILE"
 }
