@@ -58,6 +58,7 @@ NkIrCompiler nkirc_create(NkIrcOptions opts) {
 void nkirc_free(NkIrCompiler c) {
     c->fpmap.deinit();
 
+    nk_arena_free(&c->parser.parse_arena);
     nk_arena_free(&c->file_arena);
     nk_arena_free(&c->tmp_arena);
 
@@ -165,15 +166,14 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         }
     }
 
-    NkIrParserState parser{};
     {
         auto frame = nk_arena_grab(&c->tmp_arena);
         defer {
             nk_arena_popFrame(&c->tmp_arena, frame);
         };
-        nkir_parse(&parser, c, in_file_id, {nkav_init(lexer.tokens)});
-        if (!parser.ok) {
-            printError(c, nks_Fmt, nks_Arg(parser.error_msg));
+        nkir_parse(c, in_file_id, {nkav_init(lexer.tokens)});
+        if (!c->parser.ok) {
+            printError(c, nks_Fmt, nks_Arg(c->parser.error_msg));
             return false;
         }
     }
@@ -184,8 +184,6 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
     nkir_inspectProgram(c->ir, &sb);
     NK_LOG_INF("IR:\n" nks_Fmt, nks_Arg(sb));
 #endif // ENABLE_LOGGING
-
-    c->entry_point = parser.entry_point;
 
     return true;
 }

@@ -6,6 +6,7 @@
 
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/string.h"
 
@@ -13,22 +14,67 @@
 extern "C" {
 #endif
 
-typedef enum {
+enum NkIrcColorPolicy {
     NkIrcColor_Auto,
     NkIrcColor_Always,
     NkIrcColor_Never,
-} NkIrcColorPolicy;
+};
 
-typedef struct {
+struct NkIrcOptions {
     NkIrcColorPolicy color_policy;
-} NkIrcOptions;
+};
+
+struct Decl;
+
+struct ProcRecord {
+    NkIrProc proc;
+    NkHashMap<nkid, Decl *> locals;
+    NkHashMap<nkid, NkIrLabel> labels;
+};
+
+enum EDeclKind {
+    Decl_None,
+
+    Decl_Arg,
+    Decl_Proc,
+    Decl_LocalVar,
+    Decl_GlobalVar,
+    Decl_ExternData,
+    Decl_ExternProc,
+
+    Decl_Type,
+    Decl_Const
+};
+
+struct Decl {
+    union {
+        size_t arg_index;
+        ProcRecord proc;
+        NkIrLocalVar local;
+        NkIrGlobalVar global;
+        NkIrExternData extern_data;
+        NkIrExternProc extern_proc;
+        nktype_t type;
+        NkIrConst cnst;
+    } as;
+    EDeclKind kind;
+};
+
+struct NkIrParserState {
+    NkArena parse_arena{};
+    NkHashMap<nkid, Decl *> decls = decltype(decls)::create(nk_arena_getAllocator(&parse_arena));
+    nks error_msg{};
+    bool ok{};
+};
 
 typedef struct NkIrCompiler_T {
     NkIrcOptions opts;
-    NkIrProg ir;
-    NkIrProc entry_point{};
+    NkIrProg ir{};
+    NkIrProc entry_point{NKIR_INVALID_IDX};
     NkArena tmp_arena{};
     NkArena file_arena{};
+
+    NkIrParserState parser{};
 
     uint8_t usize = sizeof(void *);
     NkHashMap<nks, nktype_t> fpmap{};

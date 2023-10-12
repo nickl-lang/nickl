@@ -8,7 +8,6 @@
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/array.h"
-#include "ntk/hash_map.hpp"
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
@@ -39,63 +38,20 @@ static constexpr char const *c_entry_point_name = "main";
 struct GeneratorState {
     NkIrCompiler m_compiler;
     NkIrProg m_ir;
-    NkIrProc &m_entry_point;
     nkid m_file;
     NkIrTokenView const m_tokens;
 
-    NkArena m_parse_arena{};
-
     NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
     NkAllocator m_tmp_alloc{nk_arena_getAllocator(&m_compiler->tmp_arena)};
-    NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_parse_arena)};
+    NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_compiler->parser.parse_arena)};
 
     nks m_error_msg{};
     bool m_error_occurred{};
 
     NkIrToken *m_cur_token{};
-
-    struct Decl;
-
-    struct ProcRecord {
-        NkIrProc proc;
-        NkHashMap<nkid, Decl *> locals;
-        NkHashMap<nkid, NkIrLabel> labels;
-    };
-
-    enum EDeclKind {
-        Decl_None,
-
-        Decl_Arg,
-        Decl_Proc,
-        Decl_LocalVar,
-        Decl_GlobalVar,
-        Decl_ExternData,
-        Decl_ExternProc,
-
-        Decl_Type,
-        Decl_Const
-    };
-
-    struct Decl {
-        union {
-            size_t arg_index;
-            ProcRecord proc;
-            NkIrLocalVar local;
-            NkIrGlobalVar global;
-            NkIrExternData extern_data;
-            NkIrExternProc extern_proc;
-            nktype_t type;
-            NkIrConst cnst;
-        } as;
-        EDeclKind kind;
-    };
-
-    NkHashMap<nkid, Decl *> m_decls{};
     ProcRecord *m_cur_proc{};
 
     Void generate() {
-        m_decls = decltype(m_decls)::create(m_parse_alloc);
-
         assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens.data[0];
 
@@ -189,7 +145,7 @@ struct GeneratorState {
                 if (vis != NkIrVisibility_Default) {
                     return error("entry point must be public"), Void{};
                 }
-                m_entry_point = proc;
+                m_compiler->entry_point = proc;
             }
 
             nkir_startProc(
@@ -307,11 +263,11 @@ struct GeneratorState {
 
 private:
     Decl *makeGlobalDecl(nkid name) {
-        if (m_decls.find(name)) {
+        if (m_compiler->parser.decls.find(name)) {
             return error("global `%s` is already defined", nkid2cs(name)), nullptr;
         }
         auto const decl = nk_alloc_t<Decl>(m_parse_alloc);
-        m_decls.insert(name, decl);
+        m_compiler->parser.decls.insert(name, decl);
         return decl;
     }
 
@@ -490,7 +446,7 @@ private:
         else if (check(t_id)) {
             DEFINE(token, parseId());
             auto name = s2nkid(token->text);
-            auto found = m_decls.find(name);
+            auto found = m_compiler->parser.decls.find(name);
             if (!found) {
                 return error("undeclared identifier `" nks_Fmt "`", nks_Arg(token->text)), nullptr;
             } else if ((*found)->kind != Decl_Type) {
@@ -884,7 +840,7 @@ private:
         if (found) {
             return *found;
         }
-        found = m_decls.find(name);
+        found = m_compiler->parser.decls.find(name);
         if (found) {
             return *found;
         }
@@ -946,29 +902,24 @@ private:
 
 } // namespace
 
-void nkir_parse(NkIrParserState *parser, NkIrCompiler c, nkid file, NkIrTokenView tokens) {
+void nkir_parse(NkIrCompiler c, nkid file, NkIrTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    parser->entry_point.idx = NKIR_INVALID_IDX;
-    parser->error_msg = {};
-    parser->ok = true;
+    c->parser.error_msg = {};
+    c->parser.ok = true;
 
     GeneratorState gen{
         .m_compiler = c,
         .m_ir = c->ir,
-        .m_entry_point = parser->entry_point,
         .m_file = file,
         .m_tokens = tokens,
-    };
-    defer {
-        nk_arena_free(&gen.m_parse_arena);
     };
 
     gen.generate();
 
     if (gen.m_error_occurred) {
-        parser->error_msg = gen.m_error_msg;
-        parser->ok = false;
+        c->parser.error_msg = gen.m_error_msg;
+        c->parser.ok = false;
         return;
     }
 }
