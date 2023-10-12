@@ -13,6 +13,7 @@
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "types.hpp"
 
 namespace {
 
@@ -36,19 +37,16 @@ NK_LOG_USE_SCOPE(parser);
 static constexpr char const *c_entry_point_name = "main";
 
 struct GeneratorState {
-    NkIrProg &m_ir;
+    NkIrCompiler m_compiler;
+    NkIrProg m_ir;
     NkIrProc &m_entry_point;
     nkid m_file;
     NkIrTokenView const m_tokens;
 
-    NkIrTypeCache *m_types;
-
-    NkArena *m_file_arena;
-    NkArena *m_tmp_arena;
     NkArena m_parse_arena{};
 
-    NkAllocator m_file_alloc{nk_arena_getAllocator(m_file_arena)};
-    NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_tmp_arena)};
+    NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
+    NkAllocator m_tmp_alloc{nk_arena_getAllocator(&m_compiler->tmp_arena)};
     NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_parse_arena)};
 
     nks m_error_msg{};
@@ -115,7 +113,9 @@ struct GeneratorState {
                 } else {
                     return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
                 }
-            } else if (accept(t_local)) {
+            }
+
+            else if (accept(t_local)) {
                 if (check(t_proc)) {
                     CHECK(parseProc(NkIrVisibility_Local));
                 } else if (accept(t_const)) {
@@ -125,7 +125,9 @@ struct GeneratorState {
                 } else {
                     return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
                 }
-            } else if (check(t_proc)) {
+            }
+
+            else if (check(t_proc)) {
                 CHECK(parseProc(NkIrVisibility_Hidden));
             } else if (accept(t_type)) {
                 CHECK(parseTypeDef());
@@ -133,7 +135,19 @@ struct GeneratorState {
                 CHECK(parseConstDef(NkIrVisibility_Hidden));
             } else if (accept(t_data)) {
                 CHECK(parseData(NkIrVisibility_Hidden));
-            } else {
+            }
+
+            else if (accept(t_include)) {
+                if (!check(t_string)) {
+                    return error("string constant expected in include"), Void{};
+                }
+                auto const str = parseString(m_file_alloc);
+                if (!nkir_compileFile(m_compiler, nkid2s(m_file), str)) {
+                    return error("failed to include file `" nks_Fmt "`", nks_Arg(str)), Void{};
+                }
+            }
+
+            else {
                 return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
             }
 
@@ -141,7 +155,7 @@ struct GeneratorState {
             while (accept(t_newline)) {
             }
 
-            nk_arena_clear(m_tmp_arena);
+            nk_arena_clear(&m_compiler->tmp_arena);
         }
 
         return {};
@@ -158,7 +172,7 @@ struct GeneratorState {
                      m_ir,
                      sig.name,
                      nkir_makeProcedureType(
-                         m_types,
+                         m_compiler,
                          {
                              .args_t{nkav_init(sig.args_t)},
                              .ret_t = sig.ret_t,
@@ -183,7 +197,7 @@ struct GeneratorState {
                 proc,
                 sig.name,
                 nkir_makeProcedureType(
-                    m_types,
+                    m_compiler,
                     {
                         .args_t{nkav_init(sig.args_t)},
                         .ret_t = sig.ret_t,
@@ -448,29 +462,29 @@ private:
 
     nktype_t parseType() {
         if (accept(t_void)) {
-            return nkir_makeVoidType(m_types);
+            return nkir_makeVoidType(m_compiler);
         }
 
         else if (accept(t_f32)) {
-            return nkir_makeNumericType(m_types, Float32);
+            return nkir_makeNumericType(m_compiler, Float32);
         } else if (accept(t_f64)) {
-            return nkir_makeNumericType(m_types, Float64);
+            return nkir_makeNumericType(m_compiler, Float64);
         } else if (accept(t_i16)) {
-            return nkir_makeNumericType(m_types, Int16);
+            return nkir_makeNumericType(m_compiler, Int16);
         } else if (accept(t_i32)) {
-            return nkir_makeNumericType(m_types, Int32);
+            return nkir_makeNumericType(m_compiler, Int32);
         } else if (accept(t_i64)) {
-            return nkir_makeNumericType(m_types, Int64);
+            return nkir_makeNumericType(m_compiler, Int64);
         } else if (accept(t_i8)) {
-            return nkir_makeNumericType(m_types, Int8);
+            return nkir_makeNumericType(m_compiler, Int8);
         } else if (accept(t_u16)) {
-            return nkir_makeNumericType(m_types, Uint16);
+            return nkir_makeNumericType(m_compiler, Uint16);
         } else if (accept(t_u32)) {
-            return nkir_makeNumericType(m_types, Uint32);
+            return nkir_makeNumericType(m_compiler, Uint32);
         } else if (accept(t_u64)) {
-            return nkir_makeNumericType(m_types, Uint64);
+            return nkir_makeNumericType(m_compiler, Uint64);
         } else if (accept(t_u8)) {
-            return nkir_makeNumericType(m_types, Uint8);
+            return nkir_makeNumericType(m_compiler, Uint8);
         }
 
         else if (check(t_id)) {
@@ -507,12 +521,12 @@ private:
                 APPEND(&types, parseType());
             } while (accept(t_comma));
             EXPECT(t_brace_r);
-            return nkir_makeAggregateType(m_types, types.data, counts.data, types.size);
+            return nkir_makeAggregateType(m_compiler, types.data, counts.data, types.size);
         }
 
         else if (accept(t_aster)) {
             DEFINE(target_type, parseType());
-            return nkir_makePointerType(m_types, target_type);
+            return nkir_makePointerType(m_compiler, target_type);
         }
 
         else {
@@ -766,12 +780,12 @@ private:
 
         else if (check(t_string)) {
             auto const str = parseString(m_file_alloc);
-            auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
+            auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(
                 m_ir, nkir_makeConst(m_ir, nk_invalid_id, (void *)str.data, str_t, NkIrVisibility_Local));
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_file_alloc);
-            auto const str_t = nkir_makeArrayType(m_types, nkir_makeNumericType(m_types, Int8), str.size + 1);
+            auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
             result_ref = nkir_makeRodataRef(
                 m_ir, nkir_makeConst(m_ir, nk_invalid_id, (void *)str.data, str_t, NkIrVisibility_Local));
         }
@@ -781,14 +795,15 @@ private:
             CHECK(parseNumeric(value, Int64));
             result_ref = nkir_makeRodataRef(
                 m_ir,
-                nkir_makeConst(m_ir, nk_invalid_id, value, nkir_makeNumericType(m_types, Int64), NkIrVisibility_Local));
+                nkir_makeConst(
+                    m_ir, nk_invalid_id, value, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local));
         } else if (check(t_float)) {
             auto value = nk_alloc_t<double>(m_file_alloc);
             CHECK(parseNumeric(value, Float64));
             result_ref = nkir_makeRodataRef(
                 m_ir,
                 nkir_makeConst(
-                    m_ir, nk_invalid_id, value, nkir_makeNumericType(m_types, Float64), NkIrVisibility_Local));
+                    m_ir, nk_invalid_id, value, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local));
         }
 
         else if (accept(t_colon)) {
@@ -839,7 +854,7 @@ private:
         }
 
         if (deref) {
-            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_types, result_ref.type));
+            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler, result_ref.type));
         }
 
         return result_ref;
@@ -931,30 +946,19 @@ private:
 
 } // namespace
 
-void nkir_parse(
-    NkIrParserState *parser,
-    NkIrTypeCache *types,
-    NkArena *file_arena,
-    NkArena *tmp_arena,
-    nkid file,
-    NkIrTokenView tokens) {
+void nkir_parse(NkIrParserState *parser, NkIrCompiler c, nkid file, NkIrTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    auto file_alloc = nk_arena_getAllocator(file_arena);
-
-    parser->ir = nkir_createProgram(file_alloc);
     parser->entry_point.idx = NKIR_INVALID_IDX;
     parser->error_msg = {};
     parser->ok = true;
 
     GeneratorState gen{
-        .m_ir = parser->ir,
+        .m_compiler = c,
+        .m_ir = c->ir,
         .m_entry_point = parser->entry_point,
         .m_file = file,
         .m_tokens = tokens,
-        .m_types = types,
-        .m_file_arena = file_arena,
-        .m_tmp_arena = tmp_arena,
     };
     defer {
         nk_arena_free(&gen.m_parse_arena);

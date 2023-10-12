@@ -4,7 +4,7 @@
 #include <cstring>
 #include <thread>
 
-#include "irc.h"
+#include "irc.hpp"
 #include "nkb/common.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"

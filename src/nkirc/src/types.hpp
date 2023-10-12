@@ -1,29 +1,17 @@
 #ifndef HEADER_GUARD_NKB_TYPES
 #define HEADER_GUARD_NKB_TYPES
 
-#include <mutex>
+#include <cstddef>
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include "irc.hpp"
 #include "nkb/common.h"
-#include "ntk/hash_map.hpp"
 #include "ntk/string.h"
 
-typedef struct {
-    NkArena *type_arena;
-    NkArena *tmp_arena;
-    uint8_t usize;
-    NkHashMap<nks, nktype_t> fpmap{};
-    uint64_t next_id{1};
-    std::mutex mtx{};
-} NkIrTypeCache;
-
-nktype_t nkir_makeNumericType(NkIrTypeCache *cache, NkIrNumericValueType value_type);
-nktype_t nkir_makePointerType(NkIrTypeCache *cache, nktype_t target_type);
-nktype_t nkir_makeProcedureType(NkIrTypeCache *cache, NkIrProcInfo proc_info);
-nktype_t nkir_makeArrayType(NkIrTypeCache *cache, nktype_t elem_t, size_t count);
-nktype_t nkir_makeVoidType(NkIrTypeCache *cache);
-nktype_t nkir_makeAggregateType(NkIrTypeCache *cache, nktype_t const *elem_types, size_t const *elem_counts, size_t n);
+nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type);
+nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type);
+nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info);
+nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, size_t count);
+nktype_t nkir_makeVoidType(NkIrCompiler c);
+nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, size_t const *elem_counts, size_t n);
 
 #endif // HEADER_GUARD_NKB_TYPES
