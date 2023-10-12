@@ -444,37 +444,8 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     return {{{}, _arg(ir, comment), {}}, 0, nkir_comment};
 }
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkbOutputKind kind, nks out_file) {
+bool nkir_write(NkArena *arena, NkIrProg ir, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
-
-    // TODO Hardcoded compiler options
-    nksb_fixed_buffer(args, 2048);
-    nksb_append_str(&args, "-lpthread -lm -fPIC -g -O0 -fvisibility=hidden");
-
-    switch (kind) {
-    case NkbOutput_Object:
-        nksb_append_str(&args, " -c");
-        break;
-    case NkbOutput_Static:
-        nksb_append_str(&args, " -static");
-        break;
-    case NkbOutput_Shared:
-        nksb_append_str(&args, " -shared");
-        break;
-    case NkbOutput_Executable:
-        break;
-
-    default:
-        assert(!"unreachable");
-        break;
-    }
-
-    NkIrCompilerConfig conf{
-        .compiler_binary = nk_cs2s("gcc"),
-        .additional_flags = {nkav_init(args)},
-        .output_filename = out_file,
-        .quiet = false,
-    };
 
     nk_stream src{};
     bool res = nkcc_streamOpen(&src, conf);

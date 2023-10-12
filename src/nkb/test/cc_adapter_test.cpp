@@ -30,6 +30,7 @@ class cc_adapter : public testing::Test {
             .compiler_binary = nk_cs2s(TEST_CC),
             .additional_flags = nk_cs2s(TEST_CC_FLAGS),
             .output_filename{nkav_init(m_output_filename_sb)},
+            .output_kind = NkbOutput_Executable,
             .quiet = TEST_QUIET,
         };
     }

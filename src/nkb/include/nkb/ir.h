@@ -183,7 +183,15 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
 
 // Output
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkbOutputKind kind, nks out_file);
+typedef struct {
+    nks compiler_binary;
+    nks additional_flags;
+    nks output_filename;
+    NkbOutputKind output_kind;
+    bool quiet;
+} NkIrCompilerConfig;
+
+bool nkir_write(NkArena *arena, NkIrProg ir, NkIrCompilerConfig conf);
 
 // Execution
 

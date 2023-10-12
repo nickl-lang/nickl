@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "lexer.hpp"
+#include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/logger.h"
@@ -84,7 +85,16 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return false;
     }
 
-    if (!nkir_write(&c->tmp_arena, c->ir, output_kind, out_file)) {
+    if (!nkir_write(
+            &c->tmp_arena,
+            c->ir,
+            NkIrCompilerConfig{
+                .compiler_binary = nk_cs2s("gcc"), // # TODO Hardcoded compiler binary
+                .additional_flags = {},
+                .output_filename = out_file,
+                .output_kind = output_kind,
+                .quiet = false,
+            })) {
         return 1;
     }
 
