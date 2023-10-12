@@ -8,13 +8,13 @@ var: i64
 
 @start
     call foo, () -> var
-    call printf, (&"%zi", var)
+    call printf, (&"%zi\n", var)
     mov  0 -> ret
     ret
 
 }
 
 /* @output
-Hello, World!
+42
 
 @endoutput */

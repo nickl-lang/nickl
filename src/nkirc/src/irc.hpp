@@ -61,8 +61,7 @@ struct Decl {
 };
 
 struct NkIrParserState {
-    NkArena parse_arena{};
-    NkHashMap<nkid, Decl *> decls = decltype(decls)::create(nk_arena_getAllocator(&parse_arena));
+    NkHashMap<nkid, Decl *> decls;
     nks error_msg{};
     bool ok{};
 };
@@ -74,6 +73,7 @@ typedef struct NkIrCompiler_T {
     NkArena tmp_arena{};
     NkArena file_arena{};
 
+    NkArena parse_arena{};
     NkIrParserState parser{};
 
     uint8_t usize = sizeof(void *);

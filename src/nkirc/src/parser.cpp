@@ -43,7 +43,7 @@ struct GeneratorState {
 
     NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
     NkAllocator m_tmp_alloc{nk_arena_getAllocator(&m_compiler->tmp_arena)};
-    NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_compiler->parser.parse_arena)};
+    NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_compiler->parse_arena)};
 
     nks m_error_msg{};
     bool m_error_occurred{};

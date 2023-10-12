@@ -50,15 +50,17 @@ NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
 } // namespace
 
 NkIrCompiler nkirc_create(NkIrcOptions opts) {
-    return new (nk_alloc_t<NkIrCompiler_T>(nk_default_allocator)) NkIrCompiler_T{
+    NkIrCompiler c = new (nk_alloc_t<NkIrCompiler_T>(nk_default_allocator)) NkIrCompiler_T{
         .opts = opts,
     };
+    c->parser.decls = decltype(NkIrParserState::decls)::create(nk_arena_getAllocator(&c->parse_arena));
+    return c;
 }
 
 void nkirc_free(NkIrCompiler c) {
     c->fpmap.deinit();
 
-    nk_arena_free(&c->parser.parse_arena);
+    nk_arena_free(&c->parse_arena);
     nk_arena_free(&c->file_arena);
     nk_arena_free(&c->tmp_arena);
 
