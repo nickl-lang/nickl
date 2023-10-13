@@ -8,6 +8,7 @@
 #include "nkb/common.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
+#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -20,14 +21,16 @@ void printUsage() {
     printf("Usage: " NK_BINARY_NAME
            " [options] file"
            "\nOptions:"
-           "\n    -o, --output                             Output file path"
+           "\n    -o, --output <file>                      Output file path"
            "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
+           "\n    -l, --link <lib>                         Link the library <lib>"
+           "\n    -g                                       Add debug information"
            "\n    -c, --color {auto,always,never}          Choose when to color output"
            "\n    -h, --help                               Display this message and exit"
            "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
            "\nDeveloper options:"
-           "\n    -l, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+           "\n    -L, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
            "\n");
 }
@@ -52,6 +55,11 @@ int main(int argc, char const *const *argv) {
     char const *out_file = nullptr;
     bool run = false;
     NkbOutputKind output_kind = NkbOutput_Executable;
+
+    NkStringBuilder args{};
+    defer {
+        nksb_free(&args);
+    };
 
     bool help = false;
     bool version = false;
@@ -104,6 +112,16 @@ int main(int argc, char const *const *argv) {
                     printErrorUsage();
                     return 1;
                 }
+            } else if (eql(arg, "-l") || eql(arg, "--link")) {
+                if (!argv[i]) {
+                    fprintf(stderr, "error: argument required\n");
+                    printErrorUsage();
+                    return 1;
+                }
+                auto const arg_str = nk_cs2s(argv[i++]);
+                nksb_printf(&args, " -l" nks_Fmt, nks_Arg(arg_str));
+            } else if (eql(arg, "-g")) {
+                nksb_printf(&args, " -g");
             } else if (eql(arg, "-c") || eql(arg, "--color")) {
                 if (!argv[i]) {
                     fprintf(stderr, "error: argument required\n");
@@ -133,7 +151,7 @@ int main(int argc, char const *const *argv) {
                 } else if (eql(color_mode_str, "never")) {
                     logger_opts.color_mode = NkLog_Color_Never;
                 }
-            } else if (eql(arg, "-l") || eql(arg, "--loglevel")) {
+            } else if (eql(arg, "-L") || eql(arg, "--loglevel")) {
                 if (!argv[i]) {
                     fprintf(stderr, "error: argument required\n");
                     printErrorUsage();
@@ -207,7 +225,16 @@ int main(int argc, char const *const *argv) {
     if (run) {
         code = nkir_run(c, nk_cs2s(in_file));
     } else {
-        code = nkir_compile(c, nk_cs2s(in_file), nk_cs2s(out_file), output_kind);
+        code = nkir_compile(
+            c,
+            nk_cs2s(in_file),
+            NkIrCompilerConfig{
+                .compiler_binary = nk_cs2s("gcc"), // # TODO Hardcoded compiler binary
+                .additional_flags = {nkav_init(args)},
+                .output_filename = nk_cs2s(out_file),
+                .output_kind = output_kind,
+                .quiet = false,
+            });
     }
 
 #ifdef BUILD_WITH_EASY_PROFILER

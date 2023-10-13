@@ -68,7 +68,7 @@ void nkirc_free(NkIrCompiler c) {
     nk_free_t(nk_default_allocator, c);
 }
 
-int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output_kind) {
+int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     c->ir = nkir_createProgram(nk_arena_getAllocator(&c->file_arena));
@@ -80,21 +80,12 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return 1;
     }
 
-    if (output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
+    if (conf.output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
         printError(c, "entry point is not defined");
         return false;
     }
 
-    if (!nkir_write(
-            &c->tmp_arena,
-            c->ir,
-            NkIrCompilerConfig{
-                .compiler_binary = nk_cs2s("gcc"), // # TODO Hardcoded compiler binary
-                .additional_flags = {},
-                .output_filename = out_file,
-                .output_kind = output_kind,
-                .quiet = false,
-            })) {
+    if (!nkir_write(&c->tmp_arena, c->ir, conf)) {
         return 1;
     }
 

@@ -13,10 +13,12 @@ printUsage() {
   echo "    --exe=<filepath>    Path to the nkirc executable"
   echo "    --emulator=<name>   Crosscompiling emulator"
   echo "    --mode=<mode>       Test mode: {run, compile}"
+  echo "    --args=<args>       Additional compiler arguments"
   echo "    -h,--help           Display this message"
 }
 
 ARG_EMULATOR=
+ARG_ARGS=
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -31,6 +33,9 @@ while [ $# -gt 0 ]; do
       ;;
     --mode=*)
       ARG_MODE="${1#*=}"
+      ;;
+    --args=*)
+      ARG_ARGS="${1#*=}"
       ;;
     -h|--help)
       printUsage
@@ -111,7 +116,7 @@ run() {
 compile() {
   OUT_FILE=$(basename $ARG_FILE | cut -d. -f1)_test_out
   runCommand "rm -f ./$OUT_FILE"
-  runCommand "$ARG_EXE -k exe -o $OUT_FILE $ARG_FILE" &&
+  runCommand "$ARG_EXE -k exe -o $OUT_FILE $ARG_FILE $ARG_ARGS" &&
   runCommand "./$OUT_FILE"
 }
 
