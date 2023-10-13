@@ -53,17 +53,37 @@ NK_INLINE nks nks_trim(nks str) {
 NK_INLINE nks nks_chop_by_delim(nks *str, char delim) {
     size_t i = 0;
     while (i < str->size && str->data[i] != delim) {
-        i += 1;
+        i++;
     }
 
     nks res = {str->data, i};
 
     if (i < str->size) {
-        str->size -= i + 1;
         str->data += i + 1;
+        str->size -= i + 1;
     } else {
-        str->size -= i;
         str->data += i;
+        str->size -= i;
+    }
+
+    return res;
+}
+
+NK_INLINE nks nks_chop_by_delim_reverse(nks *str, char delim) {
+    nks res = *str;
+
+    while (str->size && nkav_last(*str) != delim) {
+        str->size--;
+    }
+
+    if (str->size) {
+        str->size--;
+
+        res.data += str->size + 1;
+        res.size -= str->size + 1;
+    } else {
+        res.data += str->size;
+        res.size -= str->size;
     }
 
     return res;

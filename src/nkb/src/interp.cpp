@@ -35,7 +35,7 @@ struct ControlFrame {
 };
 
 struct InterpContext {
-    struct Base { // repeats the layout of NkBcRefType
+    struct Base { // repeats the layout of NkBcRefKind
         uint8_t *none;
         uint8_t *frame;
         uint8_t *arg;

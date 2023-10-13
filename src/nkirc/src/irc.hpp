@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKB_IRC
-#define HEADER_GUARD_NKB_IRC
+#ifndef HEADER_GUARD_NKIRC_IRC
+#define HEADER_GUARD_NKIRC_IRC
 
 #include <cstdint>
 #include <mutex>
@@ -94,4 +94,4 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file);
 }
 #endif
 
-#endif // HEADER_GUARD_NKB_IRC
+#endif // HEADER_GUARD_NKIRC_IRC

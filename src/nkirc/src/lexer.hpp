@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKB_LEXER
-#define HEADER_GUARD_NKB_LEXER
+#ifndef HEADER_GUARD_NKIRC_LEXER
+#define HEADER_GUARD_NKIRC_LEXER
 
 #include "ntk/allocator.h"
 #include "ntk/array.h"
@@ -35,4 +35,4 @@ typedef struct {
 
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src);
 
-#endif // HEADER_GUARD_NKB_LEXER
+#endif // HEADER_GUARD_NKIRC_LEXER

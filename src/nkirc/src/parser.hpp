@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKB_PARSER
-#define HEADER_GUARD_NKB_PARSER
+#ifndef HEADER_GUARD_NKIRC_PARSER
+#define HEADER_GUARD_NKIRC_PARSER
 
 #include "irc.hpp"
 #include "lexer.hpp"
@@ -7,4 +7,4 @@
 
 void nkir_parse(NkIrCompiler c, nkid file, NkIrTokenView tokens);
 
-#endif // HEADER_GUARD_NKB_PARSER
+#endif // HEADER_GUARD_NKIRC_PARSER

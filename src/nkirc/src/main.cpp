@@ -4,11 +4,18 @@
 #include <cstring>
 #include <thread>
 
+#include "config.hpp"
 #include "irc.hpp"
 #include "nkb/common.h"
+#include "nkb/ir.h"
+#include "ntk/allocator.h"
+#include "ntk/array.h"
+#include "ntk/hash_map.hpp"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/sys/path.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -42,6 +49,8 @@ void printVersion() {
 bool eql(char const *lhs, char const *rhs) {
     return lhs && rhs && strcmp(lhs, rhs) == 0;
 }
+
+NK_LOG_USE_SCOPE(main);
 
 } // namespace
 
@@ -225,16 +234,54 @@ int main(int argc, char const *const *argv) {
     if (run) {
         code = nkir_run(c, nk_cs2s(in_file));
     } else {
-        code = nkir_compile(
-            c,
-            nk_cs2s(in_file),
-            NkIrCompilerConfig{
-                .compiler_binary = nk_cs2s("gcc"), // # TODO Hardcoded compiler binary
-                .additional_flags = {nkav_init(args)},
-                .output_filename = nk_cs2s(out_file),
-                .output_kind = output_kind,
-                .quiet = false,
-            });
+        NkArena arena{};
+        defer {
+            nk_arena_free(&arena);
+        };
+        NkIrCompilerConfig compiler_config{
+            .compiler_binary = {},
+            .additional_flags = {},
+            .output_filename = nk_cs2s(out_file),
+            .output_kind = output_kind,
+            .quiet = false,
+        };
+
+        auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
+        int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
+        if (compiler_path_len < 0) {
+            fprintf(stderr, "error: failed to get compiler binary path\n");
+            return 1;
+        }
+
+        nks compiler_dir{compiler_path_buf, (size_t)compiler_path_len};
+        nks_chop_by_delim_reverse(&compiler_dir, nk_path_separator);
+
+        NkStringBuilder config_path{0, 0, 0, nk_arena_getAllocator(&arena)};
+        nksb_printf(&config_path, nks_Fmt "%c" NK_BINARY_NAME ".conf", nks_Arg(compiler_dir), nk_path_separator);
+
+        NK_LOG_DBG("config_path=`" nks_Fmt "`", nks_Arg(config_path));
+
+        auto config = NkHashMap<nks, nks>::create(nk_arena_getAllocator(&arena));
+        if (!readConfig(config, nk_arena_getAllocator(&arena), {nkav_init(config_path)})) {
+            fprintf(stderr, "error: failed to read compiler config\n");
+            return 1;
+        }
+
+        auto c_compiler = config.find(nk_cs2s("c_compiler"));
+        if (!c_compiler) {
+            fprintf(stderr, "error: `c_compiler` field is missing in the config\n");
+            return 1;
+        }
+        compiler_config.compiler_binary = *c_compiler;
+
+        auto c_flags = config.find(nk_cs2s("c_flags"));
+        if (c_flags) {
+            nksb_printf(&args, " " nks_Fmt, nks_Arg(*c_flags));
+        }
+
+        compiler_config.additional_flags = {nkav_init(args)};
+
+        code = nkir_compile(c, nk_cs2s(in_file), compiler_config);
     }
 
 #ifdef BUILD_WITH_EASY_PROFILER
