@@ -101,7 +101,7 @@ void nkirv_inspect(void *data, nktype_t type, NkStringBuilder *sb) {
             auto ptr = (uint8_t *)data + elem.offset;
             if (elem.type->kind == NkType_Numeric && elem.type->size == 1) {
                 nksb_printf(sb, "\"");
-                nksb_str_escape(sb, {(char const *)ptr, elem.count});
+                nks_escape(nksb_getStream(sb), {(char const *)ptr, elem.count});
                 nksb_printf(sb, "\"");
             } else {
                 if (elem.count) {

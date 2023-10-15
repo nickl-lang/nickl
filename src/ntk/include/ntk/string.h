@@ -7,6 +7,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/common.h"
+#include "ntk/stream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,6 +95,9 @@ NK_INLINE nks nks_chop_by_delim_reverse(nks *str, char delim) {
 
     return res;
 }
+
+int nks_escape(nk_stream out, nks str);
+int nks_unescape(nk_stream out, nks str);
 
 #define nks_Fmt "%.*s"
 #define nks_Arg(str) (int)(str).size, (str).data

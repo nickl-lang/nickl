@@ -229,7 +229,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
             if (elem_type->tclass == NkType_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
                     nksb_printf(sb, "\"");
-                    nksb_str_escape(sb, {nkval_as(char const *, val), elem_count});
+                    nks_escape(nksb_getStream(sb), {nkval_as(char const *, val), elem_count});
                     nksb_printf(sb, "\"");
                     break;
                 }

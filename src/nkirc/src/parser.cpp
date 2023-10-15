@@ -365,7 +365,7 @@ private:
 
         NkStringBuilder sb{};
         sb.alloc = alloc;
-        nksb_str_unescape(&sb, {data, len});
+        nks_unescape(nksb_getStream(&sb), {data, len});
         return {nkav_init(sb)};
     }
 

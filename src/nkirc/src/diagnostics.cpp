@@ -1,8 +1,8 @@
 #include "diagnostics.h"
 
-#include <stdio.h>
-
+#include "ntk/file.h"
 #include "ntk/string.h"
+#include "ntk/sys/file.h"
 #include "ntk/sys/term.h"
 
 static NkIrcColorPolicy s_color_policy;
@@ -38,35 +38,37 @@ void nkirc_diag_printErrorQuote(nks src, nks file, size_t lin, size_t col, size_
 
 void nkirc_diag_vprintError(char const *fmt, va_list ap) {
     bool const to_color = toColor();
+    nk_stream out = nk_file_getStream(nk_stderr());
     if (to_color) {
-        fprintf(stderr, NK_TERM_COLOR_RED);
+        nk_stream_printf(out, NK_TERM_COLOR_RED);
     }
-    fprintf(stderr, "error:");
+    nk_stream_printf(out, "error:");
     if (to_color) {
-        fprintf(stderr, NK_TERM_COLOR_NONE);
+        nk_stream_printf(out, NK_TERM_COLOR_NONE);
     }
-    fprintf(stderr, " ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
+    nk_stream_printf(out, " ");
+    nk_stream_vprintf(out, fmt, ap);
+    nk_stream_printf(out, "\n");
 }
 
 void nkirc_diag_vprintErrorFile(nks file, size_t lin, size_t col, char const *fmt, va_list ap) {
     bool const to_color = toColor();
+    nk_stream out = nk_file_getStream(nk_stderr());
     if (to_color) {
-        fprintf(stderr, NK_TERM_COLOR_WHITE);
+        nk_stream_printf(out, NK_TERM_COLOR_WHITE);
     }
-    fprintf(stderr, nks_Fmt, nks_Arg(file));
+    nk_stream_printf(out, nks_Fmt, nks_Arg(file));
     if (lin) {
-        fprintf(stderr, ":%zu", lin);
+        nk_stream_printf(out, ":%zu", lin);
     }
     if (col) {
-        fprintf(stderr, ":%zu", col);
+        nk_stream_printf(out, ":%zu", col);
     }
-    fprintf(stderr, ":");
+    nk_stream_printf(out, ":");
     if (to_color) {
-        fprintf(stderr, NK_TERM_COLOR_NONE);
+        nk_stream_printf(out, NK_TERM_COLOR_NONE);
     }
-    fprintf(stderr, " ");
+    nk_stream_printf(out, " ");
 
     nkirc_diag_vprintError(fmt, ap);
 }
@@ -76,7 +78,7 @@ void nkirc_diag_vprintErrorFile(nks file, size_t lin, size_t col, char const *fm
 void nkirc_diag_vprintErrorQuote(nks src, nks file, size_t lin, size_t col, size_t len, char const *fmt, va_list ap) {
     nkirc_diag_vprintErrorFile(file, lin, col, fmt, ap);
 
-    // TODO Sanitize output
+    nk_stream out = nk_file_getStream(nk_stderr());
 
     bool const to_color = toColor();
 
@@ -99,36 +101,38 @@ void nkirc_diag_vprintErrorQuote(nks src, nks file, size_t lin, size_t col, size
         if (col && len && len > line.size - col) {
             len = line.size - col + 1;
         }
-        int line_offset = fprintf(stderr, "%5zu |", lin);
-        if (col && len && col <= line.size) {
-            fprintf(stderr, nks_Fmt, (int)col - 1, line.data);
+        int line_offset = nk_stream_printf(out, "%5zu |", lin);
+        int pointer_offset = col;
+        int actual_len = len;
+        if (col && col <= line.size && len) {
+            pointer_offset = nks_escape(out, {line.data, col - 1}) + 1;
             if (to_color) {
-                fprintf(stderr, NK_TERM_COLOR_RED);
+                nk_stream_printf(out, NK_TERM_COLOR_RED);
             }
-            fprintf(stderr, nks_Fmt, (int)len, line.data + col - 1);
+            actual_len = nks_escape(out, {line.data + col - 1, len});
             if (to_color) {
-                fprintf(stderr, NK_TERM_COLOR_NONE);
+                nk_stream_printf(out, NK_TERM_COLOR_NONE);
             }
-            fprintf(stderr, nks_Fmt, (int)(line.size - col + 1 - len), line.data + col - 1 + len);
-            fprintf(stderr, "\n");
+            nks_escape(out, {line.data + col - 1 + len, line.size - col + 1 - len});
         } else {
-            fprintf(stderr, nks_Fmt "\n", nks_Arg(line));
+            nks_escape(out, line);
         }
-        if (col && line_offset > 0) {
-            fprintf(stderr, "%*c", line_offset, '|');
+        nk_stream_printf(out, "\n");
+        if (col) {
+            nk_stream_printf(out, "%*c", line_offset, '|');
             if (to_color) {
-                fprintf(stderr, NK_TERM_COLOR_RED);
+                nk_stream_printf(out, NK_TERM_COLOR_RED);
             }
-            fprintf(stderr, "%*c", (int)col, '^');
-            if (len) {
-                for (size_t i = 0; i < len - 1; i++) {
-                    fprintf(stderr, "~");
+            nk_stream_printf(out, "%*c", pointer_offset, '^');
+            if (actual_len > 0) {
+                for (size_t i = 0; i < (size_t)actual_len - 1; i++) {
+                    nk_stream_printf(out, "~");
                 }
             }
             if (to_color) {
-                fprintf(stderr, NK_TERM_COLOR_NONE);
+                nk_stream_printf(out, NK_TERM_COLOR_NONE);
             }
-            fprintf(stderr, "\n");
+            nk_stream_printf(out, "\n");
         }
     }
 }

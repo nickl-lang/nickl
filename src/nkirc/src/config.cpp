@@ -5,6 +5,8 @@
 #include "ntk/string.h"
 #include "ntk/sys/error.h"
 
+#define MAX_LINE 4096
+
 bool readConfig(NkHashMap<nks, nks> &conf, NkAllocator alloc, nks file) {
     auto res = nk_file_read(alloc, file);
     if (!res.ok) {
@@ -18,12 +20,16 @@ bool readConfig(NkHashMap<nks, nks> &conf, NkAllocator alloc, nks file) {
     while (src.size) {
         nks line = nks_trim(nks_chop_by_delim(&src, '\n'));
         if (line.size) {
+            if (line.size > MAX_LINE) {
+                nkirc_diag_printErrorQuote(res.bytes, file, lin, 0, 0, "failed to read compiler config: line too long");
+                return false;
+            }
             if (nks_first(line) == '#') {
                 continue;
             }
             nks field = nks_chop_by_delim(&line, '=');
             if (!field.size || !line.size) {
-                nkirc_diag_printErrorQuote(res.bytes, file, lin, 0, 0, "failed to read compiler config");
+                nkirc_diag_printErrorQuote(res.bytes, file, lin, 0, 0, "failed to read compiler config: invalid line");
                 return false;
             }
             conf.insert(nk_strcpy(alloc, nks_trim(field)), nk_strcpy(alloc, nks_trim(line)));

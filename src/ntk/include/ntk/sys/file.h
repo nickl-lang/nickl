@@ -25,6 +25,10 @@ nkfd_t nk_open(char const *file, int flags);
 
 int nk_close(nkfd_t fd);
 
+nkfd_t nk_stdin();
+nkfd_t nk_stdout();
+nkfd_t nk_stderr();
+
 #ifdef __cplusplus
 }
 #endif

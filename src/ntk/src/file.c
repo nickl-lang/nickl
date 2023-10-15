@@ -1,16 +1,23 @@
 #include "ntk/file.h"
 
 #include "ntk/string_builder.h"
+#include "ntk/sys/file.h"
+#include "ntk/sys/path.h"
 
 NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
-    nk_stream stream = nk_file_openStream(file, nk_open_read);
-    if (!stream.proc) {
+    nksb_fixed_buffer(path, NK_MAX_PATH);
+    nksb_try_append_many(&path, file.data, file.size);
+    nksb_try_append_null(&path);
+
+    nkfd_t fd = nk_open(path.data, nk_open_read);
+
+    if (fd < 0) {
         return (NkFileReadResult){0};
     }
 
     NkStringBuilder sb = {nksb_init(alloc)};
-    nksb_readFromStream(&sb, stream);
-    nk_file_closeStream(stream);
+    nksb_readFromStream(&sb, nk_file_getStream(fd));
+    nk_close(fd);
 
     return (NkFileReadResult){
         .bytes = {nkav_init(sb)},
@@ -31,21 +38,6 @@ static int nk_file_streamProc(void *stream_data, char *buf, size_t size, nk_stre
     }
 }
 
-#define MAX_PATH 4096
-
-nk_stream nk_file_openStream(nks file, int flags) {
-    nksb_fixed_buffer(sb, MAX_PATH);
-    nksb_try_append_many(&sb, file.data, file.size);
-    nksb_try_append_null(&sb);
-
-    nkfd_t fd = nk_open(sb.data, flags);
-    if (fd == nk_invalid_fd) {
-        return (nk_stream){0};
-    } else {
-        return (nk_stream){(void *)fd, nk_file_streamProc};
-    }
-}
-
-void nk_file_closeStream(nk_stream stream) {
-    nk_close((nkfd_t)stream.data);
+nk_stream nk_file_getStream(nkfd_t fd) {
+    return (nk_stream){(void *)fd, nk_file_streamProc};
 }

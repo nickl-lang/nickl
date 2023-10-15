@@ -438,7 +438,7 @@ void writeLineDirective(nkid file, size_t line, NkStringBuilder *src) {
     if (file != nk_invalid_id) {
         auto const file_name = nkid2s(file);
         nksb_printf(src, "#line %zu \"", line);
-        nksb_str_escape(src, file_name);
+        nks_escape(nksb_getStream(src), file_name);
         nksb_printf(src, "\"\n");
     } else {
         nksb_printf(src, "#line %zu\n", line);
@@ -856,9 +856,5 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 #endif
 
     nk_stream_printf(
-        src,
-        nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
-        nks_Arg(ctx.types_s),
-        nks_Arg(ctx.forward_s),
-        nks_Arg(ctx.main_s));
+        src, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
 }

@@ -27,3 +27,15 @@ nkfd_t nk_open(char const *file, int flags) {
 int nk_close(nkfd_t fd) {
     return close(fd);
 }
+
+nkfd_t nk_stdin() {
+    return 0;
+}
+
+nkfd_t nk_stdout() {
+    return 1;
+}
+
+nkfd_t nk_stderr() {
+    return 2;
+}

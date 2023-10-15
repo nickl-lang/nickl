@@ -65,3 +65,15 @@ nkfd_t nk_open(char const *file, int flags) {
 int nk_close(nkfd_t fd) {
     return CloseHandle((HANDLE)fd) ? 0 : -1;
 }
+
+nkfd_t nk_stdin() {
+    return (nkfd_t)GetStdHandle(STD_INPUT_HANDLE);
+}
+
+nkfd_t nk_stdout() {
+    return (nkfd_t)GetStdHandle(STD_OUTPUT_HANDLE);
+}
+
+nkfd_t nk_stderr() {
+    return (nkfd_t)GetStdHandle(STD_ERROR_HANDLE);
+}
