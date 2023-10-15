@@ -14,6 +14,12 @@ extern "C" {
 
 nkav_typedef(char const, nks);
 
+#define nks_begin nkav_begin
+#define nks_end nkav_end
+
+#define nks_first nkav_first
+#define nks_last nkav_last
+
 NK_INLINE nks nk_cs2s(char const *str) {
     return LITERAL(nks){str, strlen(str)};
 }
@@ -32,7 +38,7 @@ NK_INLINE nks nk_strcpy_nt(NkAllocator alloc, nks src) {
 }
 
 NK_INLINE nks nks_trim_left(nks str) {
-    while (str.size && nkav_first(str) == ' ') {
+    while (str.size && nks_first(str) == ' ') {
         str.size -= 1;
         str.data += 1;
     }
@@ -40,7 +46,7 @@ NK_INLINE nks nks_trim_left(nks str) {
 }
 
 NK_INLINE nks nks_trim_right(nks str) {
-    while (str.size && nkav_last(str) == ' ') {
+    while (str.size && nks_last(str) == ' ') {
         str.size -= 1;
     }
     return str;
@@ -72,7 +78,7 @@ NK_INLINE nks nks_chop_by_delim(nks *str, char delim) {
 NK_INLINE nks nks_chop_by_delim_reverse(nks *str, char delim) {
     nks res = *str;
 
-    while (str->size && nkav_last(*str) != delim) {
+    while (str->size && nks_last(*str) != delim) {
         str->size--;
     }
 

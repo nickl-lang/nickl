@@ -44,7 +44,7 @@ nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type) {
     auto const kind = NkType_Numeric;
 
     ByteArray fp{};
-    fp.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -68,7 +68,7 @@ nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
     auto const kind = NkType_Pointer;
 
     ByteArray fp{};
-    fp.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -92,7 +92,7 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
     auto const kind = NkType_Procedure;
 
     ByteArray fp{};
-    fp.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -121,7 +121,7 @@ nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, size_t count) {
     auto const kind = NkType_Aggregate;
 
     ByteArray fp{};
-    fp.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -154,7 +154,7 @@ nktype_t nkir_makeVoidType(NkIrCompiler c) {
     auto const kind = NkType_Aggregate;
 
     ByteArray fp{};
-    fp.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
         nkar_free(&fp);
     };
@@ -176,7 +176,7 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, size
     auto const kind = NkType_Aggregate;
 
     ByteArray fp{};
-    fp.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
         nkar_free(&fp);
     };

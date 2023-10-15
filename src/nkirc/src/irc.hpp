@@ -14,16 +14,6 @@
 extern "C" {
 #endif
 
-enum NkIrcColorPolicy {
-    NkIrcColor_Auto,
-    NkIrcColor_Always,
-    NkIrcColor_Never,
-};
-
-struct NkIrcOptions {
-    NkIrcColorPolicy color_policy;
-};
-
 struct Decl;
 
 struct ProcRecord {
@@ -67,10 +57,9 @@ struct NkIrParserState {
 };
 
 typedef struct NkIrCompiler_T {
-    NkIrcOptions opts;
     NkIrProg ir{};
     NkIrProc entry_point{NKIR_INVALID_IDX};
-    NkArena tmp_arena{};
+    NkArena* tmp_arena{};
     NkArena file_arena{};
 
     NkArena parse_arena{};
@@ -82,7 +71,7 @@ typedef struct NkIrCompiler_T {
     std::mutex mtx{};
 } *NkIrCompiler;
 
-NkIrCompiler nkirc_create(NkIrcOptions opts);
+NkIrCompiler nkirc_create(NkArena*tmp_arena);
 void nkirc_free(NkIrCompiler c);
 
 int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf);

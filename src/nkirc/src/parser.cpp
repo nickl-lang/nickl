@@ -42,7 +42,7 @@ struct GeneratorState {
     NkIrTokenView const m_tokens;
 
     NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
-    NkAllocator m_tmp_alloc{nk_arena_getAllocator(&m_compiler->tmp_arena)};
+    NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_compiler->tmp_arena)};
     NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_compiler->parse_arena)};
 
     nks m_error_msg{};
@@ -111,7 +111,7 @@ struct GeneratorState {
             while (accept(t_newline)) {
             }
 
-            nk_arena_clear(&m_compiler->tmp_arena);
+            nk_arena_clear(m_compiler->tmp_arena);
         }
 
         return {};

@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "config.hpp"
+#include "diagnostics.h"
 #include "irc.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
@@ -73,8 +74,6 @@ int main(int argc, char const *const *argv) {
     bool help = false;
     bool version = false;
 
-    NkIrcOptions nkirc_opts{};
-
 #ifdef ENABLE_LOGGING
     NkLoggerOptions logger_opts{};
     logger_opts.log_level = NkLog_Error;
@@ -90,14 +89,14 @@ int main(int argc, char const *const *argv) {
                 version = true;
             } else if (eql(arg, "-o") || eql(arg, "--output")) {
                 if (!argv[i]) {
-                    fprintf(stderr, "error: argument required\n");
+                    nkirc_diag_printError("argument required");
                     printErrorUsage();
                     return 1;
                 }
                 out_file = argv[i++];
             } else if (eql(arg, "-k") || eql(arg, "--kind")) {
                 if (!argv[i]) {
-                    fprintf(stderr, "error: argument required\n");
+                    nkirc_diag_printError("argument required");
                     printErrorUsage();
                     return 1;
                 }
@@ -123,7 +122,7 @@ int main(int argc, char const *const *argv) {
                 }
             } else if (eql(arg, "-l") || eql(arg, "--link")) {
                 if (!argv[i]) {
-                    fprintf(stderr, "error: argument required\n");
+                    nkirc_diag_printError("argument required");
                     printErrorUsage();
                     return 1;
                 }
@@ -133,17 +132,17 @@ int main(int argc, char const *const *argv) {
                 nksb_printf(&args, " -g");
             } else if (eql(arg, "-c") || eql(arg, "--color")) {
                 if (!argv[i]) {
-                    fprintf(stderr, "error: argument required\n");
+                    nkirc_diag_printError("argument required");
                     printErrorUsage();
                     return 1;
                 }
                 auto const color_mode_str = argv[i++];
                 if (eql(color_mode_str, "auto")) {
-                    nkirc_opts.color_policy = NkIrcColor_Auto;
+                    nkirc_diag_init(NkIrcColor_Auto);
                 } else if (eql(color_mode_str, "always")) {
-                    nkirc_opts.color_policy = NkIrcColor_Always;
+                    nkirc_diag_init(NkIrcColor_Always);
                 } else if (eql(color_mode_str, "never")) {
-                    nkirc_opts.color_policy = NkIrcColor_Never;
+                    nkirc_diag_init(NkIrcColor_Never);
                 } else {
                     fprintf(
                         stderr,
@@ -162,7 +161,7 @@ int main(int argc, char const *const *argv) {
                 }
             } else if (eql(arg, "-L") || eql(arg, "--loglevel")) {
                 if (!argv[i]) {
-                    fprintf(stderr, "error: argument required\n");
+                    nkirc_diag_printError("argument required");
                     printErrorUsage();
                     return 1;
                 }
@@ -190,14 +189,14 @@ int main(int argc, char const *const *argv) {
                 }
 #endif // ENABLE_LOGGING
             } else {
-                fprintf(stderr, "error: invalid argument `%s`\n", arg);
+                nkirc_diag_printError("invalid argument `%s`", arg);
                 printErrorUsage();
                 return 1;
             }
         } else if (!in_file) {
             in_file = arg;
         } else {
-            fprintf(stderr, "error: extra argument `%s`\n", arg);
+            nkirc_diag_printError("extra argument `%s`", arg);
             printErrorUsage();
             return 1;
         }
@@ -214,7 +213,7 @@ int main(int argc, char const *const *argv) {
     }
 
     if (!in_file) {
-        fprintf(stderr, "error: no input file\n");
+        nkirc_diag_printError("no input file");
         printErrorUsage();
         return 1;
     }
@@ -225,7 +224,12 @@ int main(int argc, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_opts);
 
-    auto const c = nkirc_create(nkirc_opts);
+    NkArena arena{};
+    defer {
+        nk_arena_free(&arena);
+    };
+
+    auto const c = nkirc_create(&arena);
     defer {
         nkirc_free(c);
     };
@@ -234,10 +238,6 @@ int main(int argc, char const *const *argv) {
     if (run) {
         code = nkir_run(c, nk_cs2s(in_file));
     } else {
-        NkArena arena{};
-        defer {
-            nk_arena_free(&arena);
-        };
         NkIrCompilerConfig compiler_config{
             .compiler_binary = {},
             .additional_flags = {},
@@ -249,7 +249,7 @@ int main(int argc, char const *const *argv) {
         auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
         int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
         if (compiler_path_len < 0) {
-            fprintf(stderr, "error: failed to get compiler binary path\n");
+            nkirc_diag_printError("failed to get compiler binary path");
             return 1;
         }
 
@@ -263,19 +263,20 @@ int main(int argc, char const *const *argv) {
 
         auto config = NkHashMap<nks, nks>::create(nk_arena_getAllocator(&arena));
         if (!readConfig(config, nk_arena_getAllocator(&arena), {nkav_init(config_path)})) {
-            fprintf(stderr, "error: failed to read compiler config\n");
             return 1;
         }
 
         auto c_compiler = config.find(nk_cs2s("c_compiler"));
         if (!c_compiler) {
-            fprintf(stderr, "error: `c_compiler` field is missing in the config\n");
+            nkirc_diag_printError("`c_compiler` field is missing in the config");
             return 1;
         }
+        NK_LOG_DBG("c_compiler=`" nks_Fmt "`", nks_Arg(*c_compiler));
         compiler_config.compiler_binary = *c_compiler;
 
         auto c_flags = config.find(nk_cs2s("c_flags"));
         if (c_flags) {
+            NK_LOG_DBG("c_flags=`" nks_Fmt "`", nks_Arg(*c_flags));
             nksb_printf(&args, " " nks_Fmt, nks_Arg(*c_flags));
         }
 
