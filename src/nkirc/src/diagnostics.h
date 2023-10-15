@@ -10,22 +10,28 @@
 extern "C" {
 #endif
 
-enum NkIrcColorPolicy {
+typedef enum {
     NkIrcColor_Auto,
     NkIrcColor_Always,
     NkIrcColor_Never,
-};
+} NkIrcColorPolicy;
 
 void nkirc_diag_init(NkIrcColorPolicy color_policy);
 
+typedef struct {
+    nks file;
+    size_t lin;
+    size_t col;
+    size_t len;
+} NkIrcSourceLocation;
+
 NK_PRINTF_LIKE(1, 2) void nkirc_diag_printError(char const *fmt, ...);
-NK_PRINTF_LIKE(4, 5) void nkirc_diag_printErrorFile(nks file, size_t lin, size_t col, char const *fmt, ...);
-NK_PRINTF_LIKE(6, 7)
-void nkirc_diag_printErrorQuote(nks src, nks file, size_t lin, size_t col, size_t len, char const *fmt, ...);
+NK_PRINTF_LIKE(2, 3) void nkirc_diag_printErrorFile(NkIrcSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(3, 4) void nkirc_diag_printErrorQuote(nks src, NkIrcSourceLocation loc, char const *fmt, ...);
 
 void nkirc_diag_vprintError(char const *fmt, va_list ap);
-void nkirc_diag_vprintErrorFile(nks file, size_t lin, size_t col, char const *fmt, va_list ap);
-void nkirc_diag_vprintErrorQuote(nks src, nks file, size_t lin, size_t col, size_t len, char const *fmt, va_list ap);
+void nkirc_diag_vprintErrorFile(NkIrcSourceLocation loc, char const *fmt, va_list ap);
+void nkirc_diag_vprintErrorQuote(nks src, NkIrcSourceLocation loc, char const *fmt, va_list ap);
 
 #ifndef __cplusplus
 }
