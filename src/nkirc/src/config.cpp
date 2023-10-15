@@ -13,17 +13,17 @@ bool readConfig(NkHashMap<nks, nks> &conf, NkAllocator alloc, nks file) {
         return false;
     }
 
+    nks src = res.bytes;
     size_t lin = 1;
-    while (res.bytes.size) {
-        nks line = nks_trim(nks_chop_by_delim(&res.bytes, '\n'));
+    while (src.size) {
+        nks line = nks_trim(nks_chop_by_delim(&src, '\n'));
         if (line.size) {
             if (nks_first(line) == '#') {
                 continue;
             }
             nks field = nks_chop_by_delim(&line, '=');
             if (!field.size || !line.size) {
-                nkirc_diag_printError(
-                    "failed to read compiler config `" nks_Fmt "`: error at line %zu", nks_Arg(file), lin);
+                nkirc_diag_printErrorQuote(res.bytes, file, lin, 0, 0, "failed to read compiler config");
                 return false;
             }
             conf.insert(nk_strcpy(alloc, nks_trim(field)), nk_strcpy(alloc, nks_trim(line)));
