@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "config.hpp"
 #include "diagnostics.h"
 #include "irc.hpp"
@@ -72,13 +74,13 @@ int main(int, char const *const *argv) {
 
     for (argv++; *argv;) {
         nks key{};
-        nks value{};
-        NK_CLI_ARG_INIT(&argv, &key, &value);
+        nks val{};
+        NK_CLI_ARG_INIT(&argv, &key, &val);
 
 #define GET_VALUE                                                                               \
     do {                                                                                        \
         NK_CLI_ARG_GET_VALUE;                                                                   \
-        if (!value.size) {                                                                      \
+        if (!val.size) {                                                                        \
             nkirc_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
             printErrorUsage();                                                                  \
             return 1;                                                                           \
@@ -87,91 +89,83 @@ int main(int, char const *const *argv) {
 
 #define NO_VALUE                                                                                     \
     do {                                                                                             \
-        if (value.size) {                                                                            \
+        if (val.size) {                                                                              \
             nkirc_diag_printError("argument `" nks_Fmt "` doesn't accept parameters", nks_Arg(key)); \
             printErrorUsage();                                                                       \
             return 1;                                                                                \
         }                                                                                            \
     } while (0)
 
-        if (!key.size) {
-            if (!in_file.data) {
-                in_file = value;
-            } else {
-                nkirc_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(value));
-                printErrorUsage();
-                return 1;
-            }
-        } else {
+        if (key.size) {
             if (key == "-o" || key == "--output") {
                 GET_VALUE;
-                out_file = value;
+                out_file = val;
             } else if (key == "-k" || key == "--kind") {
                 GET_VALUE;
-                if (value == "run") {
+                if (val == "run") {
                     run = true;
-                } else if (value == "exe") {
+                } else if (val == "exe") {
                     output_kind = NkbOutput_Executable;
-                } else if (value == "shared") {
+                } else if (val == "shared") {
                     output_kind = NkbOutput_Shared;
-                } else if (value == "static") {
+                } else if (val == "static") {
                     output_kind = NkbOutput_Static;
-                } else if (value == "obj") {
+                } else if (val == "obj") {
                     output_kind = NkbOutput_Object;
                 } else {
                     nkirc_diag_printError(
                         "invalid output kind `" nks_Fmt
                         "`. Possible values are `run`, `executable`, `shared`, `static`, `object`",
-                        nks_Arg(value));
+                        nks_Arg(val));
                     printErrorUsage();
                     return 1;
                 }
             } else if (key == "-l" || key == "--link") {
                 GET_VALUE;
-                nksb_printf(&args, " -l" nks_Fmt, nks_Arg(value));
+                nksb_printf(&args, " -l" nks_Fmt, nks_Arg(val));
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
-                if (value == "auto") {
+                if (val == "auto") {
                     nkirc_diag_init(NkIrcColor_Auto);
-                } else if (value == "always") {
+                } else if (val == "always") {
                     nkirc_diag_init(NkIrcColor_Always);
-                } else if (value == "never") {
+                } else if (val == "never") {
                     nkirc_diag_init(NkIrcColor_Never);
                 } else {
                     nkirc_diag_printError(
                         "invalid color mode `" nks_Fmt "`. Possible values are `auto`, `always`, `never`",
-                        nks_Arg(value));
+                        nks_Arg(val));
                     printErrorUsage();
                     return 1;
                 }
 #ifdef ENABLE_LOGGING
-                if (value == "auto") {
+                if (val == "auto") {
                     logger_opts.color_mode = NkLog_Color_Auto;
-                } else if (value == "always") {
+                } else if (val == "always") {
                     logger_opts.color_mode = NkLog_Color_Always;
-                } else if (value == "never") {
+                } else if (val == "never") {
                     logger_opts.color_mode = NkLog_Color_Never;
                 }
             } else if (key == "-L" || key == "--loglevel") {
                 GET_VALUE;
-                if (value == "none") {
+                if (val == "none") {
                     logger_opts.log_level = NkLog_None;
-                } else if (value == "error") {
+                } else if (val == "error") {
                     logger_opts.log_level = NkLog_Error;
-                } else if (value == "warning") {
+                } else if (val == "warning") {
                     logger_opts.log_level = NkLog_Warning;
-                } else if (value == "info") {
+                } else if (val == "info") {
                     logger_opts.log_level = NkLog_Info;
-                } else if (value == "debug") {
+                } else if (val == "debug") {
                     logger_opts.log_level = NkLog_Debug;
-                } else if (value == "trace") {
+                } else if (val == "trace") {
                     logger_opts.log_level = NkLog_Trace;
                 } else {
                     nkirc_diag_printError(
                         "invalid loglevel `" nks_Fmt
                         "`. Possible values are `none`, `error`, `warning`, `info`, "
                         "`debug`, `trace`",
-                        nks_Arg(value));
+                        nks_Arg(val));
                     printErrorUsage();
                     return 1;
                 }
@@ -190,6 +184,12 @@ int main(int, char const *const *argv) {
                 printErrorUsage();
                 return 1;
             }
+        } else if (!in_file.size) {
+            in_file = val;
+        } else {
+            nkirc_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(val));
+            printErrorUsage();
+            return 1;
         }
     }
 
@@ -203,7 +203,7 @@ int main(int, char const *const *argv) {
         return 0;
     }
 
-    if (!in_file.data) {
+    if (!in_file.size) {
         nkirc_diag_printError("no input file");
         printErrorUsage();
         return 1;

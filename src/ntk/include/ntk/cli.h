@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NTK_CLI
 
 #include "ntk/string.h"
+#include "ntk/utils.h"
 
 #define NK_CLI_ARG_INIT(pargv, pkey, pval)                        \
     char const *const **_nk_cli_pargv = (pargv);                  \
