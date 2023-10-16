@@ -1,8 +1,8 @@
 #ifndef HEADER_GUARD_NTK_COMMON
 #define HEADER_GUARD_NTK_COMMON
 
-#include "inttypes.h"
-#include "stdio.h"
+#include <inttypes.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 #define NK_EXPORT __declspec(dllexport)

@@ -5,6 +5,7 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
+#include "ntk/cli.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
@@ -69,38 +70,19 @@ int main(int, char const *const *argv) {
     logger_opts.log_level = NkLog_Error;
 #endif // ENABLE_LOGGING
 
-    for (auto parg = argv + 1; *parg;) {
-        nks arg = nk_cs2s(*parg++);
-
-        nks value{};
+    for (argv++; *argv;) {
         nks key{};
+        nks value{};
+        NK_CLI_ARG_INIT(&argv, &key, &value);
 
-        if (nks_starts_with(arg, nk_cs2s("--"))) {
-            value = arg;
-            key = nks_chop_by_delim(&value, '=');
-        } else if (nks_first(arg) == '-') {
-            key = {arg.data, minu(arg.size, 2)};
-            if (arg.size > 2) {
-                value = {arg.data + 2, arg.size - 2};
-                if (nks_first(value) == '=') {
-                    value.data += 1;
-                    value.size -= 1;
-                }
-            }
-        } else {
-            value = arg;
-        }
-
-#define GET_VALUE                                                                                   \
-    do {                                                                                            \
-        if (!value.size) {                                                                          \
-            if (!*parg || (*parg)[0] == '-') {                                                      \
-                nkirc_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
-                printErrorUsage();                                                                  \
-                return 1;                                                                           \
-            }                                                                                       \
-            value = nk_cs2s(*parg++);                                                               \
-        }                                                                                           \
+#define GET_VALUE                                                                               \
+    do {                                                                                        \
+        NK_CLI_ARG_GET_VALUE;                                                                   \
+        if (!value.size) {                                                                      \
+            nkirc_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
+            printErrorUsage();                                                                  \
+            return 1;                                                                           \
+        }                                                                                       \
     } while (0)
 
 #define NO_VALUE                                                                                     \
@@ -204,7 +186,7 @@ int main(int, char const *const *argv) {
                 NO_VALUE;
                 nksb_printf(&args, " -g");
             } else {
-                nkirc_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(arg));
+                nkirc_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(key));
                 printErrorUsage();
                 return 1;
             }
