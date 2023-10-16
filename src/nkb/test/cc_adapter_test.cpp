@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include "nkb/ir.h"
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/stream.h"
@@ -26,9 +27,10 @@ class cc_adapter : public testing::Test {
             std::filesystem::exists(TEST_FILES_DIR) ? TEST_FILES_DIR : "",
             testing::UnitTest::GetInstance()->current_test_info()->name());
 
-        m_conf = {
+        static nks const additional_flags = nk_cs2s(TEST_CC_FLAGS);
+        m_conf = NkIrCompilerConfig{
             .compiler_binary = nk_cs2s(TEST_CC),
-            .additional_flags = nk_cs2s(TEST_CC_FLAGS),
+            .additional_flags{&additional_flags, 1},
             .output_filename{nkav_init(m_output_filename_sb)},
             .output_kind = NkbOutput_Executable,
             .quiet = TEST_QUIET,

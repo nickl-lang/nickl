@@ -185,7 +185,7 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
 
 typedef struct {
     nks compiler_binary;
-    nks additional_flags;
+    nkav_type(nks const) additional_flags;
     nks output_filename;
     NkbOutputKind output_kind;
     bool quiet;

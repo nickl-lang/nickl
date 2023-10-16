@@ -14,7 +14,7 @@ bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
 
     nksb_printf(
         &cmd,
-        nks_Fmt " -x c - -o " nks_Fmt " " nks_Fmt
+        nks_Fmt " -x c - -o " nks_Fmt
                 " -fPIC -fvisibility=hidden"
                 " -Wno-builtin-declaration-mismatch"
                 " -Wno-implicit-function-declaration"
@@ -22,8 +22,11 @@ bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
                 " -Wno-unused-label"
                 " -Wno-unused-parameter",
         nks_Arg(conf.compiler_binary),
-        nks_Arg(conf.output_filename),
-        nks_Arg(conf.additional_flags));
+        nks_Arg(conf.output_filename));
+
+    for (size_t i = 0; i < conf.additional_flags.size; i++) {
+        nksb_printf(&cmd, " " nks_Fmt, nks_Arg(conf.additional_flags.data[i]));
+    }
 
     switch (conf.output_kind) {
     case NkbOutput_Object:

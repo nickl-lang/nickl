@@ -59,13 +59,17 @@ int main(int /*argc*/, char const *const *argv) {
     bool run = false;
     NkbOutputKind output_kind = NkbOutput_Executable;
 
-    NkStringBuilder args{};
-    defer {
-        nksb_free(&args);
-    };
-
     bool help = false;
     bool version = false;
+    bool add_debug_info = false;
+
+    NkArena arena{};
+    defer {
+        nk_arena_free(&arena);
+    };
+
+    nkar_type(nks) link{0, 0, 0, nk_arena_getAllocator(&arena)};
+    nks opt{};
 
 #ifdef ENABLE_LOGGING
     NkLoggerOptions logger_opts{};
@@ -97,7 +101,13 @@ int main(int /*argc*/, char const *const *argv) {
     } while (0)
 
         if (key.size) {
-            if (key == "-o" || key == "--output") {
+            if (key == "-h" || key == "--help") {
+                NO_VALUE;
+                help = true;
+            } else if (key == "-v" || key == "--version") {
+                NO_VALUE;
+                version = true;
+            } else if (key == "-o" || key == "--output") {
                 GET_VALUE;
                 out_file = val;
             } else if (key == "-k" || key == "--kind") {
@@ -122,7 +132,13 @@ int main(int /*argc*/, char const *const *argv) {
                 }
             } else if (key == "-l" || key == "--link") {
                 GET_VALUE;
-                nksb_printf(&args, " -l" nks_Fmt, nks_Arg(val));
+                nkar_append(&link, val);
+            } else if (key == "-g") {
+                NO_VALUE;
+                add_debug_info = true;
+            } else if (key == "-O") {
+                GET_VALUE;
+                opt = val;
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
                 if (val == "auto") {
@@ -163,22 +179,12 @@ int main(int /*argc*/, char const *const *argv) {
                 } else {
                     nkirc_diag_printError(
                         "invalid loglevel `" nks_Fmt
-                        "`. Possible values are `none`, `error`, `warning`, `info`, "
-                        "`debug`, `trace`",
+                        "`. Possible values are `none`, `error`, `warning`, `info`, `debug`, `trace`",
                         nks_Arg(val));
                     printErrorUsage();
                     return 1;
                 }
 #endif // ENABLE_LOGGING
-            } else if (key == "-h" || key == "--help") {
-                NO_VALUE;
-                help = true;
-            } else if (key == "-v" || key == "--version") {
-                NO_VALUE;
-                version = true;
-            } else if (key == "-g") {
-                NO_VALUE;
-                nksb_printf(&args, " -g");
             } else {
                 nkirc_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(key));
                 printErrorUsage();
@@ -215,11 +221,6 @@ int main(int /*argc*/, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_opts);
 
-    NkArena arena{};
-    defer {
-        nk_arena_free(&arena);
-    };
-
     auto const c = nkirc_create(&arena);
     defer {
         nkirc_free(c);
@@ -229,14 +230,6 @@ int main(int /*argc*/, char const *const *argv) {
     if (run) {
         code = nkir_run(c, in_file);
     } else {
-        NkIrCompilerConfig compiler_config{
-            .compiler_binary = {},
-            .additional_flags = {},
-            .output_filename = out_file,
-            .output_kind = output_kind,
-            .quiet = false,
-        };
-
         auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
         int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
         if (compiler_path_len < 0) {
@@ -263,17 +256,41 @@ int main(int /*argc*/, char const *const *argv) {
             return 1;
         }
         NK_LOG_DBG("c_compiler=`" nks_Fmt "`", nks_Arg(*c_compiler));
-        compiler_config.compiler_binary = *c_compiler;
+
+        nkar_type(nks) additional_flags{0, 0, 0, nk_arena_getAllocator(&arena)};
 
         auto c_flags = config.find(nk_cs2s("c_flags"));
         if (c_flags) {
             NK_LOG_DBG("c_flags=`" nks_Fmt "`", nks_Arg(*c_flags));
-            nksb_printf(&args, " " nks_Fmt, nks_Arg(*c_flags));
+            nkar_append(&additional_flags, *c_flags);
         }
 
-        compiler_config.additional_flags = {nkav_init(args)};
+        if (add_debug_info) {
+            nkar_append(&additional_flags, nk_cs2s("-g"));
+        }
 
-        code = nkir_compile(c, in_file, compiler_config);
+        for (auto lib : nk_iterate(link)) {
+            NkStringBuilder sb{0, 0, 0, nk_arena_getAllocator(&arena)};
+            nksb_printf(&sb, "-l" nks_Fmt, nks_Arg(lib));
+            nkar_append(&additional_flags, nks{nkav_init(sb)});
+        }
+
+        if (opt.size) {
+            NkStringBuilder sb{0, 0, 0, nk_arena_getAllocator(&arena)};
+            nksb_printf(&sb, "-O" nks_Fmt, nks_Arg(opt));
+            nkar_append(&additional_flags, nks{nkav_init(sb)});
+        }
+
+        code = nkir_compile(
+            c,
+            in_file,
+            {
+                .compiler_binary = *c_compiler,
+                .additional_flags{nkav_init(additional_flags)},
+                .output_filename = out_file,
+                .output_kind = output_kind,
+                .quiet = false,
+            });
     }
 
 #ifdef BUILD_WITH_EASY_PROFILER

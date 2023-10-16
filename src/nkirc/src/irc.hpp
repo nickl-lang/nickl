@@ -59,7 +59,7 @@ struct NkIrParserState {
 typedef struct NkIrCompiler_T {
     NkIrProg ir{};
     NkIrProc entry_point{NKIR_INVALID_IDX};
-    NkArena* tmp_arena{};
+    NkArena *tmp_arena{};
     NkArena file_arena{};
 
     NkArena parse_arena{};
@@ -69,9 +69,9 @@ typedef struct NkIrCompiler_T {
     NkHashMap<nks, nktype_t> fpmap{};
     uint64_t next_id{1};
     std::mutex mtx{};
-} *NkIrCompiler;
+} * NkIrCompiler;
 
-NkIrCompiler nkirc_create(NkArena*tmp_arena);
+NkIrCompiler nkirc_create(NkArena *tmp_arena);
 void nkirc_free(NkIrCompiler c);
 
 int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf);
