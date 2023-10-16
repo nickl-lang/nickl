@@ -35,7 +35,7 @@ void printVersion() {
 
 } // namespace
 
-int nkl_main(int argc, char const *const *argv) {
+int nkl_main(int /*argc*/, char const *const *argv) {
 #ifdef BUILD_WITH_EASY_PROFILER
     EASY_PROFILER_ENABLE;
     ::profiler::startListen(EASY_PROFILER_PORT);

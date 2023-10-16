@@ -48,7 +48,7 @@ NK_LOG_USE_SCOPE(main);
 
 } // namespace
 
-int main(int, char const *const *argv) {
+int main(int /*argc*/, char const *const *argv) {
 #ifdef BUILD_WITH_EASY_PROFILER
     EASY_PROFILER_ENABLE;
     ::profiler::startListen(EASY_PROFILER_PORT);

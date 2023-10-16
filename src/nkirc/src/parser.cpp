@@ -7,6 +7,7 @@
 
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
@@ -56,6 +57,11 @@ struct GeneratorState {
         m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
+            auto frame = nk_arena_grab(m_compiler->tmp_arena);
+            defer {
+                nk_arena_popFrame(m_compiler->tmp_arena, frame);
+            };
+
             while (accept(t_newline)) {
             }
 
@@ -110,8 +116,6 @@ struct GeneratorState {
             EXPECT(t_newline);
             while (accept(t_newline)) {
             }
-
-            nk_arena_clear(m_compiler->tmp_arena);
         }
 
         return {};
