@@ -104,3 +104,5 @@ extern inline nks nks_trim_right(nks str);
 extern inline nks nks_trim(nks str);
 extern inline nks nks_chop_by_delim(nks *str, char delim);
 extern inline nks nks_chop_by_delim_reverse(nks *str, char delim);
+extern inline bool nks_equal(nks lhs, nks rhs);
+extern inline bool nks_starts_with(nks str, nks pref);

@@ -1,9 +1,3 @@
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <thread>
-
 #include "config.hpp"
 #include "diagnostics.h"
 #include "irc.hpp"
@@ -47,22 +41,18 @@ void printVersion() {
     printf(NK_BINARY_NAME " " NK_BUILD_VERSION " " NK_BUILD_TIME "\n");
 }
 
-bool eql(char const *lhs, char const *rhs) {
-    return lhs && rhs && strcmp(lhs, rhs) == 0;
-}
-
 NK_LOG_USE_SCOPE(main);
 
 } // namespace
 
-int main(int argc, char const *const *argv) {
+int main(int, char const *const *argv) {
 #ifdef BUILD_WITH_EASY_PROFILER
     EASY_PROFILER_ENABLE;
     ::profiler::startListen(EASY_PROFILER_PORT);
 #endif // BUILD_WITH_EASY_PROFILER
 
-    char const *in_file = nullptr;
-    char const *out_file = nullptr;
+    nks in_file{};
+    nks out_file{};
     bool run = false;
     NkbOutputKind output_kind = NkbOutput_Executable;
 
@@ -79,126 +69,145 @@ int main(int argc, char const *const *argv) {
     logger_opts.log_level = NkLog_Error;
 #endif // ENABLE_LOGGING
 
-    for (int i = 1; i < argc;) {
-        auto const arg = argv[i++];
+    for (auto parg = argv + 1; *parg;) {
+        nks arg = nk_cs2s(*parg++);
 
-        if (arg[0] == '-') {
-            if (eql(arg, "-h") || eql(arg, "--help")) {
-                help = true;
-            } else if (eql(arg, "-v") || eql(arg, "--version")) {
-                version = true;
-            } else if (eql(arg, "-o") || eql(arg, "--output")) {
-                if (!argv[i]) {
-                    nkirc_diag_printError("argument required");
-                    printErrorUsage();
-                    return 1;
+        nks value{};
+        nks key{};
+
+        if (nks_starts_with(arg, nk_cs2s("--"))) {
+            value = arg;
+            key = nks_chop_by_delim(&value, '=');
+        } else if (nks_first(arg) == '-') {
+            key = {arg.data, minu(arg.size, 2)};
+            if (arg.size > 2) {
+                value = {arg.data + 2, arg.size - 2};
+                if (nks_first(value) == '=') {
+                    value.data += 1;
+                    value.size -= 1;
                 }
-                out_file = argv[i++];
-            } else if (eql(arg, "-k") || eql(arg, "--kind")) {
-                if (!argv[i]) {
-                    nkirc_diag_printError("argument required");
-                    printErrorUsage();
-                    return 1;
-                }
-                auto const output_kind_str = argv[i++];
-                if (eql(output_kind_str, "run")) {
+            }
+        } else {
+            value = arg;
+        }
+
+#define GET_VALUE                                                                                   \
+    do {                                                                                            \
+        if (!value.size) {                                                                          \
+            if (!*parg || (*parg)[0] == '-') {                                                      \
+                nkirc_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
+                printErrorUsage();                                                                  \
+                return 1;                                                                           \
+            }                                                                                       \
+            value = nk_cs2s(*parg++);                                                               \
+        }                                                                                           \
+    } while (0)
+
+#define NO_VALUE                                                                                     \
+    do {                                                                                             \
+        if (value.size) {                                                                            \
+            nkirc_diag_printError("argument `" nks_Fmt "` doesn't accept parameters", nks_Arg(key)); \
+            printErrorUsage();                                                                       \
+            return 1;                                                                                \
+        }                                                                                            \
+    } while (0)
+
+        if (!key.size) {
+            if (!in_file.data) {
+                in_file = value;
+            } else {
+                nkirc_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(value));
+                printErrorUsage();
+                return 1;
+            }
+        } else {
+            if (key == "-o" || key == "--output") {
+                GET_VALUE;
+                out_file = value;
+            } else if (key == "-k" || key == "--kind") {
+                GET_VALUE;
+                if (value == "run") {
                     run = true;
-                } else if (eql(output_kind_str, "exe")) {
+                } else if (value == "exe") {
                     output_kind = NkbOutput_Executable;
-                } else if (eql(output_kind_str, "shared")) {
+                } else if (value == "shared") {
                     output_kind = NkbOutput_Shared;
-                } else if (eql(output_kind_str, "static")) {
+                } else if (value == "static") {
                     output_kind = NkbOutput_Static;
-                } else if (eql(output_kind_str, "obj")) {
+                } else if (value == "obj") {
                     output_kind = NkbOutput_Object;
                 } else {
-                    fprintf(
-                        stderr,
-                        "error: invalid output kind `%s`. Possible values are `executable`, `shared`, `static`, "
-                        "`object`\n",
-                        output_kind_str);
+                    nkirc_diag_printError(
+                        "invalid output kind `" nks_Fmt
+                        "`. Possible values are `run`, `executable`, `shared`, `static`, `object`",
+                        nks_Arg(value));
                     printErrorUsage();
                     return 1;
                 }
-            } else if (eql(arg, "-l") || eql(arg, "--link")) {
-                if (!argv[i]) {
-                    nkirc_diag_printError("argument required");
-                    printErrorUsage();
-                    return 1;
-                }
-                auto const arg_str = nk_cs2s(argv[i++]);
-                nksb_printf(&args, " -l" nks_Fmt, nks_Arg(arg_str));
-            } else if (eql(arg, "-g")) {
-                nksb_printf(&args, " -g");
-            } else if (eql(arg, "-c") || eql(arg, "--color")) {
-                if (!argv[i]) {
-                    nkirc_diag_printError("argument required");
-                    printErrorUsage();
-                    return 1;
-                }
-                auto const color_mode_str = argv[i++];
-                if (eql(color_mode_str, "auto")) {
+            } else if (key == "-l" || key == "--link") {
+                GET_VALUE;
+                nksb_printf(&args, " -l" nks_Fmt, nks_Arg(value));
+            } else if (key == "-c" || key == "--color") {
+                GET_VALUE;
+                if (value == "auto") {
                     nkirc_diag_init(NkIrcColor_Auto);
-                } else if (eql(color_mode_str, "always")) {
+                } else if (value == "always") {
                     nkirc_diag_init(NkIrcColor_Always);
-                } else if (eql(color_mode_str, "never")) {
+                } else if (value == "never") {
                     nkirc_diag_init(NkIrcColor_Never);
                 } else {
-                    fprintf(
-                        stderr,
-                        "error: invalid color mode `%s`. Possible values are `auto`, `always`, `never`\n",
-                        color_mode_str);
+                    nkirc_diag_printError(
+                        "invalid color mode `" nks_Fmt "`. Possible values are `auto`, `always`, `never`",
+                        nks_Arg(value));
                     printErrorUsage();
                     return 1;
                 }
 #ifdef ENABLE_LOGGING
-                if (eql(color_mode_str, "auto")) {
+                if (value == "auto") {
                     logger_opts.color_mode = NkLog_Color_Auto;
-                } else if (eql(color_mode_str, "always")) {
+                } else if (value == "always") {
                     logger_opts.color_mode = NkLog_Color_Always;
-                } else if (eql(color_mode_str, "never")) {
+                } else if (value == "never") {
                     logger_opts.color_mode = NkLog_Color_Never;
                 }
-            } else if (eql(arg, "-L") || eql(arg, "--loglevel")) {
-                if (!argv[i]) {
-                    nkirc_diag_printError("argument required");
-                    printErrorUsage();
-                    return 1;
-                }
-                auto const log_level_str = argv[i++];
-                if (eql(log_level_str, "none")) {
+            } else if (key == "-L" || key == "--loglevel") {
+                GET_VALUE;
+                if (value == "none") {
                     logger_opts.log_level = NkLog_None;
-                } else if (eql(log_level_str, "error")) {
+                } else if (value == "error") {
                     logger_opts.log_level = NkLog_Error;
-                } else if (eql(log_level_str, "warning")) {
+                } else if (value == "warning") {
                     logger_opts.log_level = NkLog_Warning;
-                } else if (eql(log_level_str, "info")) {
+                } else if (value == "info") {
                     logger_opts.log_level = NkLog_Info;
-                } else if (eql(log_level_str, "debug")) {
+                } else if (value == "debug") {
                     logger_opts.log_level = NkLog_Debug;
-                } else if (eql(log_level_str, "trace")) {
+                } else if (value == "trace") {
                     logger_opts.log_level = NkLog_Trace;
                 } else {
-                    fprintf(
-                        stderr,
-                        "error: invalid loglevel `%s`. Possible values are `none`, `error`, `warning`, `info`, "
-                        "`debug`, `trace`\n",
-                        log_level_str);
+                    nkirc_diag_printError(
+                        "invalid loglevel `" nks_Fmt
+                        "`. Possible values are `none`, `error`, `warning`, `info`, "
+                        "`debug`, `trace`",
+                        nks_Arg(value));
                     printErrorUsage();
                     return 1;
                 }
 #endif // ENABLE_LOGGING
+            } else if (key == "-h" || key == "--help") {
+                NO_VALUE;
+                help = true;
+            } else if (key == "-v" || key == "--version") {
+                NO_VALUE;
+                version = true;
+            } else if (key == "-g") {
+                NO_VALUE;
+                nksb_printf(&args, " -g");
             } else {
-                nkirc_diag_printError("invalid argument `%s`", arg);
+                nkirc_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(arg));
                 printErrorUsage();
                 return 1;
             }
-        } else if (!in_file) {
-            in_file = arg;
-        } else {
-            nkirc_diag_printError("extra argument `%s`", arg);
-            printErrorUsage();
-            return 1;
         }
     }
 
@@ -212,14 +221,14 @@ int main(int argc, char const *const *argv) {
         return 0;
     }
 
-    if (!in_file) {
+    if (!in_file.data) {
         nkirc_diag_printError("no input file");
         printErrorUsage();
         return 1;
     }
 
-    if (!out_file) {
-        out_file = "a.out";
+    if (!out_file.data) {
+        out_file = nk_cs2s("a.out");
     }
 
     NK_LOGGER_INIT(logger_opts);
@@ -236,12 +245,12 @@ int main(int argc, char const *const *argv) {
 
     int code;
     if (run) {
-        code = nkir_run(c, nk_cs2s(in_file));
+        code = nkir_run(c, in_file);
     } else {
         NkIrCompilerConfig compiler_config{
             .compiler_binary = {},
             .additional_flags = {},
-            .output_filename = nk_cs2s(out_file),
+            .output_filename = out_file,
             .output_kind = output_kind,
             .quiet = false,
         };
@@ -282,7 +291,7 @@ int main(int argc, char const *const *argv) {
 
         compiler_config.additional_flags = {nkav_init(args)};
 
-        code = nkir_compile(c, nk_cs2s(in_file), compiler_config);
+        code = nkir_compile(c, in_file, compiler_config);
     }
 
 #ifdef BUILD_WITH_EASY_PROFILER

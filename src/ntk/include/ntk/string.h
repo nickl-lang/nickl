@@ -96,6 +96,18 @@ NK_INLINE nks nks_chop_by_delim_reverse(nks *str, char delim) {
     return res;
 }
 
+NK_INLINE bool nks_equal(nks lhs, nks rhs) {
+    return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
+}
+
+NK_INLINE bool nks_starts_with(nks str, nks pref) {
+    if (pref.size > str.size) {
+        return false;
+    } else {
+        return nks_equal(LITERAL(nks){str.data, pref.size}, pref);
+    }
+}
+
 int nks_escape(nk_stream out, nks str);
 int nks_unescape(nk_stream out, nks str);
 
@@ -125,19 +137,24 @@ inline std::ostream &operator<<(std::ostream &stream, nks str) {
     return stream << std::string_view{str.data, str.size};
 }
 
+inline bool operator==(nks lhs, nks rhs) {
+    return nks_equal(lhs, rhs);
+}
+
+inline bool operator==(nks lhs, char const *rhs) {
+    return lhs == nk_cs2s(rhs);
+}
+
+inline bool operator==(char const *lhs, nks rhs) {
+    return nk_cs2s(lhs) == rhs;
+}
+
 namespace std {
 
 template <>
 struct hash<::nks> {
     size_t operator()(::nks slice) {
         return ::hash_array((uint8_t *)&slice.data[0], (uint8_t *)&slice.data[slice.size]);
-    }
-};
-
-template <>
-struct equal_to<::nks> {
-    size_t operator()(::nks lhs, ::nks rhs) {
-        return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
     }
 };
 
