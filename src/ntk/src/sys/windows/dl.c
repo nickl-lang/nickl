@@ -6,7 +6,7 @@
 #include <windows.h>
 
 nkdl_t nk_load_library(char const *name) {
-    return LoadLibrary(name);
+    return (name && name[0]) ? LoadLibrary(name) : GetModuleHandle(NULL);
 }
 
 void nk_free_library(nkdl_t dl) {

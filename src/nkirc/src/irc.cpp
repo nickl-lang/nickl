@@ -5,8 +5,6 @@
 #include <filesystem>
 #include <new>
 
-#include <pthread.h>
-
 #include "diagnostics.h"
 #include "lexer.hpp"
 #include "nkb/ir.h"
@@ -90,14 +88,6 @@ int nkir_run(NkIrCompiler c, nks in_file) {
     defer {
         nkir_freeRunCtx(run_ctx);
     };
-
-    // TODO Hardcoded extern symbols
-    nkir_defineExternSym(run_ctx, cs2nkid("puts"), (void *)puts);
-    nkir_defineExternSym(run_ctx, cs2nkid("printf"), (void *)printf);
-    nkir_defineExternSym(run_ctx, cs2nkid("pthread_create"), (void *)pthread_create);
-    nkir_defineExternSym(run_ctx, cs2nkid("pthread_join"), (void *)pthread_join);
-    nkir_defineExternSym(run_ctx, cs2nkid("pthread_exit"), (void *)pthread_exit);
-    nkir_defineExternSym(run_ctx, cs2nkid("sqrt"), (void *)sqrt);
 
     int argc = 1;
     char const *argv[] = {""};

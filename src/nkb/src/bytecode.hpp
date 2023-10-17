@@ -10,6 +10,7 @@
 #include "ntk/array.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/id.h"
+#include "ntk/sys/dl.h"
 
 enum NkBcOpcode {
 #define OP(NAME) CAT(nkop_, NAME),
@@ -86,6 +87,7 @@ struct NkIrRunCtx_T {
 
     nkar_type(NkBcProc) procs;
     nkar_type(void *) globals;
+    NkHashMap<nkid, nkdl_t> extern_libs;
     NkHashMap<nkid, void *> extern_syms;
 
     NkFfiContext ffi_ctx;

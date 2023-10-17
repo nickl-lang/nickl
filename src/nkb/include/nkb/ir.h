@@ -195,8 +195,6 @@ typedef struct NkIrRunCtx_T *NkIrRunCtx;
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena);
 void nkir_freeRunCtx(NkIrRunCtx ctx);
 
-void nkir_defineExternSym(NkIrRunCtx ctx, nkid name, void *data);
-
 void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 
 // Inspection
