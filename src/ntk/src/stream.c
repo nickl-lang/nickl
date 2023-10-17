@@ -30,3 +30,4 @@ int nk_stream_vprintf(nk_stream out, char const *fmt, va_list ap) {
 
 extern inline int nk_stream_read(nk_stream in, char *buf, size_t size);
 extern inline int nk_stream_write(nk_stream out, char const *buf, size_t size);
+extern inline int nk_stream_write_str(nk_stream out, char const *str);

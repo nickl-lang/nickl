@@ -1,18 +1,20 @@
-#include "parser.hpp"
+#include "parser.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <new>
 
+#include "irc_impl.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
-#include "types.hpp"
+#include "types.h"
 
 namespace {
 
@@ -42,7 +44,7 @@ struct GeneratorState {
     NkIrTokenView const m_tokens;
 
     NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
-    NkAllocator m_tmp_alloc{nk_arena_getAllocator(&m_compiler->tmp_arena)};
+    NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_compiler->tmp_arena)};
     NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_compiler->parse_arena)};
 
     nks m_error_msg{};
@@ -56,11 +58,16 @@ struct GeneratorState {
         m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
+            auto frame = nk_arena_grab(m_compiler->tmp_arena);
+            defer {
+                nk_arena_popFrame(m_compiler->tmp_arena, frame);
+            };
+
             while (accept(t_newline)) {
             }
 
             if (accept(t_pub)) {
-                if (check(t_proc)) {
+                if (accept(t_proc)) {
                     CHECK(parseProc(NkIrVisibility_Default));
                 } else if (accept(t_const)) {
                     CHECK(parseConstDef(NkIrVisibility_Default));
@@ -72,7 +79,7 @@ struct GeneratorState {
             }
 
             else if (accept(t_local)) {
-                if (check(t_proc)) {
+                if (accept(t_proc)) {
                     CHECK(parseProc(NkIrVisibility_Local));
                 } else if (accept(t_const)) {
                     CHECK(parseConstDef(NkIrVisibility_Local));
@@ -83,7 +90,32 @@ struct GeneratorState {
                 }
             }
 
-            else if (check(t_proc)) {
+            else if (accept(t_extern)) {
+                nkid lib = nk_invalid_id;
+
+                if (check(t_string)) {
+                    auto const lib_name = parseString(m_file_alloc);
+                    if (lib_name == "c" || lib_name == "C") {
+                        lib = m_compiler->conf.libc_name;
+                    } else if (lib_name == "m" || lib_name == "M") {
+                        lib = m_compiler->conf.libm_name;
+                    } else if (lib_name == "pthread" || lib_name == "PTHREAD") {
+                        lib = m_compiler->conf.libpthread_name;
+                    } else {
+                        lib = s2nkid(lib_name);
+                    }
+                }
+
+                if (accept(t_proc)) {
+                    CHECK(parseExternProc(lib));
+                } else if (accept(t_data)) {
+                    CHECK(parseExternData(lib));
+                } else {
+                    return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
+                }
+            }
+
+            else if (accept(t_proc)) {
                 CHECK(parseProc(NkIrVisibility_Hidden));
             } else if (accept(t_type)) {
                 CHECK(parseTypeDef());
@@ -110,8 +142,6 @@ struct GeneratorState {
             EXPECT(t_newline);
             while (accept(t_newline)) {
             }
-
-            nk_arena_clear(&m_compiler->tmp_arena);
         }
 
         return {};
@@ -120,95 +150,100 @@ struct GeneratorState {
     Void parseProc(NkIrVisibility vis) {
         size_t cur_line = m_cur_token->lin;
 
-        DEFINE(sig, parseProcSignature());
+        DEFINE(sig, parseProcSignature(true));
 
-        if (sig.is_extern) {
-            new (makeGlobalDecl(sig.name)) Decl{
-                {.extern_proc = nkir_makeExternProc(
-                     m_ir,
-                     sig.name,
-                     nkir_makeProcedureType(
-                         m_compiler,
-                         {
-                             .args_t{nkav_init(sig.args_t)},
-                             .ret_t = sig.ret_t,
-                             .call_conv = NkCallConv_Cdecl,
-                             .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                         }))},
-                Decl_ExternProc,
-            };
-        } else {
-            auto proc = nkir_createProc(m_ir);
+        auto proc = nkir_createProc(m_ir);
 
-            static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
-            if (sig.name == c_entry_point_id) {
-                if (vis != NkIrVisibility_Default) {
-                    return error("entry point must be public"), Void{};
-                }
-                m_compiler->entry_point = proc;
+        static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
+        if (sig.name == c_entry_point_id) {
+            if (vis != NkIrVisibility_Default) {
+                return error("entry point must be public"), Void{};
             }
-
-            nkir_startProc(
-                m_ir,
-                proc,
-                sig.name,
-                nkir_makeProcedureType(
-                    m_compiler,
-                    {
-                        .args_t{nkav_init(sig.args_t)},
-                        .ret_t = sig.ret_t,
-                        .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
-                        .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
-                    }),
-                {nkav_init(sig.arg_names)},
-                m_file,
-                cur_line,
-                vis);
-
-            auto const decl = new (makeGlobalDecl(sig.name)) Decl{
-                {.proc{
-                    .proc = proc,
-                    .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
-                    .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
-                }},
-                Decl_Proc,
-            };
-            m_cur_proc = &decl->as.proc;
-
-            for (size_t i = 0; i < sig.args_t.size; i++) {
-                new (makeLocalDecl(sig.arg_names.data[i])) Decl{
-                    {.arg_index = i},
-                    Decl_Arg,
-                };
-            }
-
-            EXPECT(t_brace_l);
-            while (!check(t_brace_r) && !check(t_eof)) {
-                while (accept(t_newline)) {
-                }
-                if (check(t_id)) {
-                    DEFINE(token, parseId());
-                    auto const name = s2nkid(token->text);
-                    EXPECT(t_colon);
-                    DEFINE(type, parseType());
-                    new (makeLocalDecl(name)) Decl{
-                        {.local = nkir_makeLocalVar(m_ir, name, type)},
-                        Decl_LocalVar,
-                    };
-                } else {
-                    nkir_setLine(m_ir, m_cur_token->lin);
-                    DEFINE(instr, parseInstr());
-                    nkir_gen(m_ir, {&instr, 1});
-                }
-                EXPECT(t_newline);
-                while (accept(t_newline)) {
-                }
-            }
-
-            nkir_finishProc(m_ir, proc, m_cur_token->lin);
-
-            EXPECT(t_brace_r);
+            m_compiler->entry_point = proc;
         }
+
+        nkir_startProc(
+            m_ir,
+            proc,
+            sig.name,
+            nkir_makeProcedureType(
+                m_compiler,
+                {
+                    .args_t{nkav_init(sig.args_t)},
+                    .ret_t = sig.ret_t,
+                    .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
+                    .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                }),
+            {nkav_init(sig.arg_names)},
+            m_file,
+            cur_line,
+            vis);
+
+        auto const decl = new (makeGlobalDecl(sig.name)) Decl{
+            {.proc{
+                .proc = proc,
+                .locals = decltype(ProcRecord::locals)::create(m_parse_alloc),
+                .labels = decltype(ProcRecord::labels)::create(m_parse_alloc),
+            }},
+            Decl_Proc,
+        };
+        m_cur_proc = &decl->as.proc;
+
+        for (size_t i = 0; i < sig.args_t.size; i++) {
+            new (makeLocalDecl(sig.arg_names.data[i])) Decl{
+                {.arg_index = i},
+                Decl_Arg,
+            };
+        }
+
+        EXPECT(t_brace_l);
+        while (!check(t_brace_r) && !check(t_eof)) {
+            while (accept(t_newline)) {
+            }
+            if (check(t_id)) {
+                DEFINE(token, parseId());
+                auto const name = s2nkid(token->text);
+                EXPECT(t_colon);
+                DEFINE(type, parseType());
+                new (makeLocalDecl(name)) Decl{
+                    {.local = nkir_makeLocalVar(m_ir, name, type)},
+                    Decl_LocalVar,
+                };
+            } else {
+                nkir_setLine(m_ir, m_cur_token->lin);
+                DEFINE(instr, parseInstr());
+                nkir_gen(m_ir, {&instr, 1});
+            }
+            EXPECT(t_newline);
+            while (accept(t_newline)) {
+            }
+        }
+
+        nkir_finishProc(m_ir, proc, m_cur_token->lin);
+
+        EXPECT(t_brace_r);
+
+        return {};
+    }
+
+    Void parseExternProc(nkid lib) {
+        DEFINE(sig, parseProcSignature(false));
+
+        new (makeGlobalDecl(sig.name)) Decl{
+            {.extern_proc = nkir_makeExternProc(
+                 m_ir,
+                 lib,
+                 sig.name,
+                 nkir_makeProcedureType(
+                     m_compiler,
+                     NkIrProcInfo{
+                         .args_t{nkav_init(sig.args_t)},
+                         .ret_t = sig.ret_t,
+                         .call_conv = NkCallConv_Cdecl,
+                         .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                     }))},
+            Decl_ExternProc,
+        };
 
         return {};
     }
@@ -241,23 +276,26 @@ struct GeneratorState {
     }
 
     Void parseData(NkIrVisibility vis) {
-        bool is_extern = accept(t_extern);
         DEFINE(token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
         auto name = s2nkid(token->text);
-        if (is_extern) {
-            new (makeGlobalDecl(name)) Decl{
-                {.extern_data = nkir_makeExternData(m_ir, s2nkid(token->text), type)},
-                Decl_ExternData,
-            };
-        } else {
-            new (makeGlobalDecl(name)) Decl{
-                {.global = nkir_makeGlobalVar(m_ir, name, type, vis)},
-                Decl_GlobalVar,
-            };
-        }
+        new (makeGlobalDecl(name)) Decl{
+            {.global = nkir_makeGlobalVar(m_ir, name, type, vis)},
+            Decl_GlobalVar,
+        };
+        return {};
+    }
 
+    Void parseExternData(nkid lib) {
+        DEFINE(token, parseId());
+        EXPECT(t_colon);
+        DEFINE(type, parseType());
+        auto name = s2nkid(token->text);
+        new (makeGlobalDecl(name)) Decl{
+            {.extern_data = nkir_makeExternData(m_ir, lib, s2nkid(token->text), type)},
+            Decl_ExternData,
+        };
         return {};
     }
 
@@ -365,7 +403,7 @@ private:
 
         NkStringBuilder sb{};
         sb.alloc = alloc;
-        nksb_str_unescape(&sb, {data, len});
+        nks_unescape(nksb_getStream(&sb), {data, len});
         return {nkav_init(sb)};
     }
 
@@ -375,19 +413,15 @@ private:
         nktype_t ret_t{};
         nkid name{};
         bool is_variadic{};
-        bool is_extern{};
         bool is_cdecl{};
     };
 
-    ProcSignatureParseResult parseProcSignature() {
+    ProcSignatureParseResult parseProcSignature(bool parse_names) {
         ProcSignatureParseResult res{
             .arg_names{0, 0, 0, m_parse_alloc},
             .args_t{0, 0, 0, m_file_alloc},
         };
-        EXPECT(t_proc);
-        if (accept(t_extern)) {
-            res.is_extern = true;
-        } else if (accept(t_cdecl)) {
+        if (accept(t_cdecl)) {
             res.is_cdecl = true;
         }
         DEFINE(name, parseId());
@@ -402,7 +436,7 @@ private:
                 break;
             }
             nkid name = nk_invalid_id;
-            if (!res.is_extern) {
+            if (parse_names) {
                 DEFINE(token, parseId());
                 name = s2nkid(token->text);
                 EXPECT(t_colon);

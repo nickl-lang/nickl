@@ -9,6 +9,8 @@ extern "C" {
 
 #define NK_MAX_PATH 4096
 
+extern char nk_path_separator;
+
 int nk_getBinaryPath(char *buf, size_t size);
 
 #ifdef __cplusplus

@@ -57,7 +57,7 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkp
                 errno = E2BIG;
                 return -1;
             }
-            cmd_buf[cmd_buf_pos++] = nkav_first(arg);
+            cmd_buf[cmd_buf_pos++] = nks_first(arg);
             arg.size--;
             arg.data++;
         }

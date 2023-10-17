@@ -1,13 +1,14 @@
-#include "irc.hpp"
+#include "irc.h"
 
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <new>
 
-#include <pthread.h>
-
-#include "lexer.hpp"
+#include "diagnostics.h"
+#include "irc_impl.hpp"
+#include "lexer.h"
+#include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/logger.h"
@@ -16,8 +17,8 @@
 #include "ntk/sys/path.h"
 #include "ntk/sys/term.h"
 #include "ntk/utils.h"
-#include "parser.hpp"
-#include "types.hpp"
+#include "parser.h"
+#include "types.h"
 
 namespace {
 
@@ -25,33 +26,12 @@ namespace fs = std::filesystem;
 
 NK_LOG_USE_SCOPE(nkirc);
 
-NK_PRINTF_LIKE(2, 3) void printError(NkIrCompiler c, char const *fmt, ...) {
-    NkStringBuilder sb{};
-    defer {
-        nksb_free(&sb);
-    };
-
-    va_list ap;
-    va_start(ap, fmt);
-    nksb_vprintf(&sb, fmt, ap);
-    va_end(ap);
-
-    bool const to_color =
-        c->opts.color_policy == NkIrcColor_Always || (c->opts.color_policy == NkIrcColor_Auto && nk_isatty(2));
-
-    fprintf(
-        stderr,
-        "%serror:%s " nks_Fmt "\n",
-        to_color ? NK_TERM_COLOR_RED : "",
-        to_color ? NK_TERM_COLOR_NONE : "",
-        nks_Arg(sb));
-}
-
 } // namespace
 
-NkIrCompiler nkirc_create(NkIrcOptions opts) {
+NkIrCompiler nkirc_create(NkArena *tmp_arena, NkIrcConfig conf) {
     NkIrCompiler c = new (nk_alloc_t<NkIrCompiler_T>(nk_default_allocator)) NkIrCompiler_T{
-        .opts = opts,
+        .tmp_arena = tmp_arena,
+        .conf = conf,
     };
     c->parser.decls = decltype(NkIrParserState::decls)::create(nk_arena_getAllocator(&c->parse_arena));
     return c;
@@ -62,12 +42,11 @@ void nkirc_free(NkIrCompiler c) {
 
     nk_arena_free(&c->parse_arena);
     nk_arena_free(&c->file_arena);
-    nk_arena_free(&c->tmp_arena);
 
     nk_free_t(nk_default_allocator, c);
 }
 
-int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output_kind) {
+int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     c->ir = nkir_createProgram(nk_arena_getAllocator(&c->file_arena));
@@ -79,12 +58,12 @@ int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output
         return 1;
     }
 
-    if (output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
-        printError(c, "entry point is not defined");
+    if (conf.output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
+        nkirc_diag_printError("entry point is not defined");
         return false;
     }
 
-    if (!nkir_write(&c->tmp_arena, c->ir, output_kind, out_file)) {
+    if (!nkir_write(c->tmp_arena, c->ir, conf)) {
         return 1;
     }
 
@@ -103,22 +82,14 @@ int nkir_run(NkIrCompiler c, nks in_file) {
     }
 
     if (c->entry_point.idx == NKIR_INVALID_IDX) {
-        printError(c, "entry point is not defined");
+        nkirc_diag_printError("entry point is not defined");
         return false;
     }
 
-    auto run_ctx = nkir_createRunCtx(c->ir, &c->tmp_arena);
+    auto run_ctx = nkir_createRunCtx(c->ir, c->tmp_arena);
     defer {
         nkir_freeRunCtx(run_ctx);
     };
-
-    // TODO Hardcoded extern symbols
-    nkir_defineExternSym(run_ctx, cs2nkid("puts"), (void *)puts);
-    nkir_defineExternSym(run_ctx, cs2nkid("printf"), (void *)printf);
-    nkir_defineExternSym(run_ctx, cs2nkid("pthread_create"), (void *)pthread_create);
-    nkir_defineExternSym(run_ctx, cs2nkid("pthread_join"), (void *)pthread_join);
-    nkir_defineExternSym(run_ctx, cs2nkid("pthread_exit"), (void *)pthread_exit);
-    nkir_defineExternSym(run_ctx, cs2nkid("sqrt"), (void *)sqrt);
 
     int argc = 1;
     char const *argv[] = {""};
@@ -138,7 +109,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 
     if (!fs::exists(in_file_path)) {
         auto const in_file_path_str = in_file_path.string();
-        printError(c, "file `%s` doesn't exist", in_file_path_str.c_str());
+        nkirc_diag_printError("file `%s` doesn't exist", in_file_path_str.c_str());
         return false;
     }
 
@@ -149,7 +120,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 
     auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file_s);
     if (!read_res.ok) {
-        printError(c, "failed to read file `%s`", in_file_path_str.c_str());
+        nkirc_diag_printError("failed to read file `%s`", in_file_path_str.c_str());
         return false;
     }
 
@@ -157,32 +128,32 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 
     NkIrLexerState lexer{};
     {
-        auto frame = nk_arena_grab(&c->tmp_arena);
+        auto frame = nk_arena_grab(c->tmp_arena);
         defer {
-            nk_arena_popFrame(&c->tmp_arena, frame);
+            nk_arena_popFrame(c->tmp_arena, frame);
         };
-        nkir_lex(&lexer, &c->file_arena, &c->tmp_arena, read_res.bytes);
+        nkir_lex(&lexer, &c->file_arena, c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
-            printError(c, nks_Fmt, nks_Arg(lexer.error_msg));
+            nkirc_diag_printError(nks_Fmt, nks_Arg(lexer.error_msg));
             return false;
         }
     }
 
     {
-        auto frame = nk_arena_grab(&c->tmp_arena);
+        auto frame = nk_arena_grab(c->tmp_arena);
         defer {
-            nk_arena_popFrame(&c->tmp_arena, frame);
+            nk_arena_popFrame(c->tmp_arena, frame);
         };
         nkir_parse(c, in_file_id, {nkav_init(lexer.tokens)});
         if (!c->parser.ok) {
-            printError(c, nks_Fmt, nks_Arg(c->parser.error_msg));
+            nkirc_diag_printError(nks_Fmt, nks_Arg(c->parser.error_msg));
             return false;
         }
     }
 
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{};
-    sb.alloc = nk_arena_getAllocator(&c->tmp_arena);
+    sb.alloc = nk_arena_getAllocator(c->tmp_arena);
     nkir_inspectProgram(c->ir, &sb);
     NK_LOG_INF("IR:\n" nks_Fmt, nks_Arg(sb));
 #endif // ENABLE_LOGGING

@@ -1,7 +1,7 @@
-proc extern puts(*i8, ...) i32
+extern "c" proc puts(*i8, ...) i32
 
-proc extern pthread_create(i64, i64, i64, i64) i32
-proc extern pthread_join(i64, i64) i32
+extern "pthread" proc pthread_create(i64, i64, i64, i64) i32
+extern "pthread" proc pthread_join(i64, i64) i32
 
 proc cdecl threadProc(arg: i64) i64 {
 @start

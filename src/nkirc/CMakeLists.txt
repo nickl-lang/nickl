@@ -1,6 +1,10 @@
+add_subdirectory(config)
+
 set(EXE nkirc)
 
 add_executable(${EXE}
+    src/config.cpp
+    src/diagnostics.cpp
     src/irc.cpp
     src/lexer.cpp
     src/main.cpp

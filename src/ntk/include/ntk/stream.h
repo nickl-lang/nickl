@@ -2,6 +2,7 @@
 #define HEADER_GUARD_NTK_STREAM
 
 #include <stdarg.h>
+#include <string.h>
 
 #include "ntk/common.h"
 
@@ -31,6 +32,10 @@ NK_INLINE int nk_stream_write(nk_stream out, char const *buf, size_t size) {
 
 NK_PRINTF_LIKE(2, 3) int nk_stream_printf(nk_stream out, char const *fmt, ...);
 int nk_stream_vprintf(nk_stream out, char const *fmt, va_list ap);
+
+NK_INLINE int nk_stream_write_str(nk_stream out, char const *str) {
+    return nk_stream_write(out, str, strlen(str));
+}
 
 #ifdef __cplusplus
 }

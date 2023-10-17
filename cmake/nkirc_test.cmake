@@ -3,7 +3,7 @@ set(NKIRC_TEST_SCRIPT "${PROJECT_SOURCE_DIR}/cmake/nkirc_test.sh")
 
 function(def_nkirc_test)
     set(options)
-    set(oneValueArgs FILE)
+    set(oneValueArgs FILE ARGS)
     set(multiValueArgs)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -32,6 +32,7 @@ function(def_nkirc_test)
             "--exe=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
             "--emulator=${CMAKE_CROSSCOMPILING_EMULATOR}"
             "--mode=compile"
+            "--args=${ARG_ARGS}"
             WORKING_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
         )
 endfunction()

@@ -1,9 +1,10 @@
-#ifndef HEADER_GUARD_NKB_IRC
-#define HEADER_GUARD_NKB_IRC
+#ifndef HEADER_GUARD_NKIRC_IRC_IMPL
+#define HEADER_GUARD_NKIRC_IRC_IMPL
 
 #include <cstdint>
 #include <mutex>
 
+#include "irc.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
@@ -13,16 +14,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-enum NkIrcColorPolicy {
-    NkIrcColor_Auto,
-    NkIrcColor_Always,
-    NkIrcColor_Never,
-};
-
-struct NkIrcOptions {
-    NkIrcColorPolicy color_policy;
-};
 
 struct Decl;
 
@@ -66,32 +57,24 @@ struct NkIrParserState {
     bool ok{};
 };
 
-typedef struct NkIrCompiler_T {
-    NkIrcOptions opts;
+struct NkIrCompiler_T {
+    NkArena *tmp_arena;
+    NkIrcConfig conf;
+
     NkIrProg ir{};
     NkIrProc entry_point{NKIR_INVALID_IDX};
-    NkArena tmp_arena{};
     NkArena file_arena{};
 
     NkArena parse_arena{};
     NkIrParserState parser{};
 
-    uint8_t usize = sizeof(void *);
     NkHashMap<nks, nktype_t> fpmap{};
     uint64_t next_id{1};
     std::mutex mtx{};
-} * NkIrCompiler;
-
-NkIrCompiler nkirc_create(NkIrcOptions opts);
-void nkirc_free(NkIrCompiler c);
-
-int nkir_compile(NkIrCompiler c, nks in_file, nks out_file, NkbOutputKind output_kind);
-int nkir_run(NkIrCompiler c, nks in_file);
-
-bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file);
+};
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKB_IRC
+#endif // HEADER_GUARD_NKIRC_IRC_IMPL

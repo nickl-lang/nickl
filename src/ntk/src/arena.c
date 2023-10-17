@@ -128,6 +128,7 @@ void *nk_arena_allocAligned(NkArena *arena, size_t size, uint8_t align) {
 }
 
 void nk_arena_pop(NkArena *arena, size_t size) {
+    assert(arena->size >= size && "trying to pop more bytes that available");
     arena->size -= size;
     ASAN_POISON_MEMORY_REGION(arena->data + arena->size, size);
 }

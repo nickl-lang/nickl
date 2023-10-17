@@ -1,0 +1,8 @@
+usize = 8
+
+c_compiler = gcc
+c_flags = -O2
+
+libc_name = @LIBC_NAME@
+libm_name = @LIBM_NAME@
+libpthread_name = @LIBPTHREAD_NAME@

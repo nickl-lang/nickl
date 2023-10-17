@@ -1,14 +1,12 @@
 #include "main.h"
 
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <thread>
+#include <stdio.h>
 
 #include "nkl/lang/compiler.h"
+#include "ntk/cli.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
+#include "ntk/string.h"
 #include "ntk/sys/path.h"
 #include "ntk/utils.h"
 
@@ -35,19 +33,15 @@ void printVersion() {
     printf(NKL_BINARY_NAME " " NKL_BUILD_VERSION " " NKL_BUILD_TIME "\n");
 }
 
-bool eql(char const *lhs, char const *rhs) {
-    return lhs && rhs && strcmp(lhs, rhs) == 0;
-}
-
 } // namespace
 
-int nkl_main(int argc, char const *const *argv) {
+int nkl_main(int /*argc*/, char const *const *argv) {
 #ifdef BUILD_WITH_EASY_PROFILER
     EASY_PROFILER_ENABLE;
     ::profiler::startListen(EASY_PROFILER_PORT);
 #endif // BUILD_WITH_EASY_PROFILER
 
-    char const *in_file = nullptr;
+    nks in_file{};
     bool help = false;
     bool version = false;
 
@@ -56,77 +50,87 @@ int nkl_main(int argc, char const *const *argv) {
     logger_options.log_level = NkLog_Error;
 #endif // ENABLE_LOGGING
 
-    for (int i = 1; i < argc; i++) {
-        char const *arg = argv[i];
+    for (argv++; *argv;) {
+        nks key{};
+        nks val{};
+        NK_CLI_ARG_INIT(&argv, &key, &val);
 
-        if (arg[0] == '-') {
-            if (eql(arg, "-h") || eql(arg, "--help")) {
+#define GET_VALUE                                                                                  \
+    do {                                                                                           \
+        NK_CLI_ARG_GET_VALUE;                                                                      \
+        if (!val.size) {                                                                           \
+            fprintf(stderr, "error: argument `" nks_Fmt "` requires a parameter\n", nks_Arg(key)); \
+            printErrorUsage();                                                                     \
+            return 1;                                                                              \
+        }                                                                                          \
+    } while (0)
+
+#define NO_VALUE                                                                                        \
+    do {                                                                                                \
+        if (val.size) {                                                                                 \
+            fprintf(stderr, "error: argument `" nks_Fmt "` doesn't accept parameters\n", nks_Arg(key)); \
+            printErrorUsage();                                                                          \
+            return 1;                                                                                   \
+        }                                                                                               \
+    } while (0)
+
+        if (key.size) {
+            if (key == "-h" || key == "--help") {
+                NO_VALUE;
                 help = true;
-            } else if (eql(arg, "-v") || eql(arg, "--version")) {
+            } else if (key == "-v" || key == "--version") {
+                NO_VALUE;
                 version = true;
-            } else {
 #ifdef ENABLE_LOGGING
-                i++;
-                if (eql(arg, "-c") || eql(arg, "--color")) {
-                    if (!argv[i]) {
-                        fprintf(stderr, "error: argument required\n");
-                        printErrorUsage();
-                        return 1;
-                    }
-                    if (eql(argv[i], "auto")) {
-                        logger_options.color_mode = NkLog_Color_Auto;
-                    } else if (eql(argv[i], "always")) {
-                        logger_options.color_mode = NkLog_Color_Always;
-                    } else if (eql(argv[i], "never")) {
-                        logger_options.color_mode = NkLog_Color_Never;
-                    } else {
-                        fprintf(
-                            stderr,
-                            "error: invalid color mode `%s`. Possible values are `auto`, `always`, "
-                            "`never`\n",
-                            argv[i]);
-                        printErrorUsage();
-                        return 1;
-                    }
-                } else if (eql(arg, "-l") || eql(arg, "--loglevel")) {
-                    if (!argv[i]) {
-                        fprintf(stderr, "error: argument required\n");
-                        printErrorUsage();
-                        return 1;
-                    }
-                    if (eql(argv[i], "none")) {
-                        logger_options.log_level = NkLog_None;
-                    } else if (eql(argv[i], "error")) {
-                        logger_options.log_level = NkLog_Error;
-                    } else if (eql(argv[i], "warning")) {
-                        logger_options.log_level = NkLog_Warning;
-                    } else if (eql(argv[i], "info")) {
-                        logger_options.log_level = NkLog_Info;
-                    } else if (eql(argv[i], "debug")) {
-                        logger_options.log_level = NkLog_Debug;
-                    } else if (eql(argv[i], "trace")) {
-                        logger_options.log_level = NkLog_Trace;
-                    } else {
-                        fprintf(
-                            stderr,
-                            "error: invalid loglevel `%s`. Possible values are `none`, `error`, "
-                            "`warning`, `info`, `debug`, `trace`\n",
-                            argv[i]);
-                        printErrorUsage();
-                        return 1;
-                    }
-                } else
-#endif // ENABLE_LOGGING
-                {
-                    fprintf(stderr, "error: invalid argument `%s`\n", arg);
+            } else if (key == "-c" || key == "--color") {
+                GET_VALUE;
+                if (val == "auto") {
+                    logger_options.color_mode = NkLog_Color_Auto;
+                } else if (val == "always") {
+                    logger_options.color_mode = NkLog_Color_Always;
+                } else if (val == "never") {
+                    logger_options.color_mode = NkLog_Color_Never;
+                } else {
+                    fprintf(
+                        stderr,
+                        "error: invalid color mode `" nks_Fmt "`. Possible values are `auto`, `always`, `never`\n",
+                        nks_Arg(val));
                     printErrorUsage();
                     return 1;
                 }
+            } else if (key == "-l" || key == "--loglevel") {
+                GET_VALUE;
+                if (val == "none") {
+                    logger_options.log_level = NkLog_None;
+                } else if (val == "error") {
+                    logger_options.log_level = NkLog_Error;
+                } else if (val == "warning") {
+                    logger_options.log_level = NkLog_Warning;
+                } else if (val == "info") {
+                    logger_options.log_level = NkLog_Info;
+                } else if (val == "debug") {
+                    logger_options.log_level = NkLog_Debug;
+                } else if (val == "trace") {
+                    logger_options.log_level = NkLog_Trace;
+                } else {
+                    fprintf(
+                        stderr,
+                        "error: invalid loglevel `" nks_Fmt
+                        "`. Possible values are `none`, `error`, `warning`, `info`, `debug`, `trace`\n",
+                        nks_Arg(val));
+                    printErrorUsage();
+                    return 1;
+                }
+#endif // ENABLE_LOGGING
+            } else {
+                fprintf(stderr, "error: invalid argument `" nks_Fmt "`\n", nks_Arg(key));
+                printErrorUsage();
+                return 1;
             }
-        } else if (!in_file) {
-            in_file = arg;
+        } else if (!in_file.size) {
+            in_file = val;
         } else {
-            fprintf(stderr, "error: extra argument `%s`\n", arg);
+            fprintf(stderr, "error: extra argument `" nks_Fmt "`\n", nks_Arg(val));
             printErrorUsage();
             return 1;
         }
@@ -142,7 +146,7 @@ int nkl_main(int argc, char const *const *argv) {
         return 0;
     }
 
-    if (!in_file) {
+    if (!in_file.size) {
         fprintf(stderr, "error: no input file\n");
         printErrorUsage();
         return 1;
@@ -164,7 +168,7 @@ int nkl_main(int argc, char const *const *argv) {
     defer {
         nkl_compiler_free(compiler);
     };
-    if (!nkl_compiler_runFile(compiler, nk_cs2s(in_file))) {
+    if (!nkl_compiler_runFile(compiler, in_file)) {
         return 1;
     }
 

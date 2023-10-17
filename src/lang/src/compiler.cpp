@@ -1808,7 +1808,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
         defer {
             nksb_free(&sb);
         };
-        nksb_str_unescape(&sb, text);
+        nks_unescape(nksb_getStream(&sb), text);
         nksb_append_null(&sb);
 
         auto ar_t = nkl_get_array(i8_t, sb.size);

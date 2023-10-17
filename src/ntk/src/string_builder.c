@@ -16,8 +16,6 @@ int nksb_printf(NkStringBuilder *sb, char const *fmt, ...) {
     return res;
 }
 
-#define NKSB_INIT_CAP 1000
-
 struct SprintfCallbackContext {
     NkStringBuilder *sb;
     char *buf;
@@ -36,88 +34,6 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
     struct SprintfCallbackContext context = {sb, buf};
     int const printf_res = stbsp_vsprintfcb(sprintfCallback, &context, context.buf, fmt, ap);
     return printf_res;
-}
-
-void nksb_str_escape(NkStringBuilder *sb, nks str) {
-    for (size_t i = 0; i < str.size; i++) {
-        switch (str.data[i]) {
-        case '\a':
-            nksb_try_append_str(sb, "\\a");
-            break;
-        case '\b':
-            nksb_try_append_str(sb, "\\b");
-            break;
-        case '\f':
-            nksb_try_append_str(sb, "\\f");
-            break;
-        case '\n':
-            nksb_try_append_str(sb, "\\n");
-            break;
-        case '\r':
-            nksb_try_append_str(sb, "\\r");
-            break;
-        case '\t':
-            nksb_try_append_str(sb, "\\t");
-            break;
-        case '\v':
-            nksb_try_append_str(sb, "\\v");
-            break;
-        case '\0':
-            nksb_try_append_str(sb, "\\0");
-            break;
-        case '\"':
-            nksb_try_append_str(sb, "\\\"");
-            break;
-        case '\\':
-            nksb_try_append_str(sb, "\\\\");
-            break;
-        default:
-            if (isprint(str.data[i])) {
-                nksb_try_append(sb, str.data[i]);
-            } else {
-                nksb_printf(sb, "\\x%" PRIx8, str.data[i] & 0xff);
-            }
-            break;
-        }
-    }
-}
-
-void nksb_str_unescape(NkStringBuilder *sb, nks str) {
-    for (size_t i = 0; i < str.size; i++) {
-        if (str.data[i] == '\\' && i < str.size - 1) {
-            switch (str.data[++i]) {
-            case 'a':
-                nksb_try_append(sb, '\a');
-                break;
-            case 'b':
-                nksb_try_append(sb, '\b');
-                break;
-            case 'f':
-                nksb_try_append(sb, '\f');
-                break;
-            case 'n':
-                nksb_try_append(sb, '\n');
-                break;
-            case 'r':
-                nksb_try_append(sb, '\r');
-                break;
-            case 't':
-                nksb_try_append(sb, '\t');
-                break;
-            case 'v':
-                nksb_try_append(sb, '\v');
-                break;
-            case '0':
-                nksb_try_append(sb, '\0');
-                break;
-            default:
-                nksb_try_append(sb, str.data[i]);
-                break;
-            }
-        } else {
-            nksb_try_append(sb, str.data[i]);
-        }
-    }
 }
 
 static int nksb_streamProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {

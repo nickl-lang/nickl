@@ -8,8 +8,10 @@
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/array.h"
+#include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
+#include "ntk/sys/dl.h"
 #include "ntk/sys/syscall.h"
 
 namespace {
@@ -116,6 +118,40 @@ void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
     }
 }
 #endif // ENABLE_LOGGING
+
+nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
+    auto found = ctx->extern_libs.find(name);
+    if (found) {
+        return *found;
+    } else {
+        auto const name_str = nkid2cs(name);
+        auto lib = nk_load_library(name_str);
+        if (!lib) {
+            // TODO Report errors from bytecode translation
+            NK_LOG_ERR("failed to load extern library `%s`: %s", name_str, nkdl_getLastErrorString());
+            abort();
+        }
+        NK_LOG_DBG("loaded extern library `%s`: %p", name_str, lib);
+        return ctx->extern_libs.insert(name, lib);
+    }
+}
+
+void *getExternSym(NkIrRunCtx ctx, nkid lib, nkid name) {
+    auto found = ctx->extern_syms.find(name);
+    if (found) {
+        return *found;
+    } else {
+        auto const name_str = nkid2cs(name);
+        auto sym = nk_resolve_symbol(getExternLib(ctx, lib), name_str);
+        if (!sym) {
+            // TODO Report errors from bytecode translation
+            NK_LOG_ERR("failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
+            abort();
+        }
+        NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
+        return ctx->extern_libs.insert(name, sym);
+    }
+}
 
 void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     while (proc.idx >= ctx->procs.size) {
@@ -252,21 +288,18 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             }
             case NkIrRef_ExternData: {
                 auto data = ir.extern_data.data[ir_ref.index];
-
-                auto found = ctx->extern_syms.find(data.name);
-                assert(found && "extern data not found");
+                auto sym = getExternSym(ctx, data.lib, data.name);
 
                 ref.kind = NkBcRef_Data;
-                ref.offset += (size_t)*found;
+                ref.offset += (size_t)sym;
                 break;
             }
             case NkIrRef_ExternProc: {
                 auto proc = ir.extern_procs.data[ir_ref.index];
+                auto sym = getExternSym(ctx, proc.lib, proc.name);
 
-                auto found = ctx->extern_syms.find(proc.name);
-                assert(found && "extern proc not found");
                 auto sym_addr = nk_alloc_t<void *>(ir.alloc);
-                *sym_addr = *found;
+                *sym_addr = sym;
 
                 ref.kind = NkBcRef_Rodata;
                 ref.offset += (size_t)sym_addr;
@@ -541,6 +574,7 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
 
         .procs{0, 0, 0, ir->alloc},
         .globals{0, 0, 0, ir->alloc},
+        .extern_libs = decltype(NkIrRunCtx_T::extern_libs)::create(ir->alloc),
         .extern_syms = decltype(NkIrRunCtx_T::extern_syms)::create(ir->alloc),
 
         .ffi_ctx{
@@ -555,12 +589,6 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
     ctx->ffi_ctx.typemap.deinit();
 
     nk_free_t(ctx->ir->alloc, ctx);
-}
-
-void nkir_defineExternSym(NkIrRunCtx ctx, nkid name, void *data) {
-    NK_LOG_TRC("%s", __func__);
-
-    ctx->extern_syms.insert(name, data);
 }
 
 void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {

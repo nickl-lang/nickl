@@ -1,4 +1,4 @@
-#include "lexer.hpp"
+#include "lexer.h"
 
 #include <cctype>
 #include <cinttypes>
@@ -319,7 +319,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
 #ifdef ENABLE_LOGGING
         nksb_fixed_buffer(sb, 256);
-        nksb_str_escape(&sb, scanner.m_token.text);
+        nks_escape(nksb_getStream(&sb), scanner.m_token.text);
         NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[scanner.m_token.id], nks_Arg(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);

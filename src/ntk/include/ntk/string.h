@@ -7,12 +7,19 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/common.h"
+#include "ntk/stream.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 nkav_typedef(char const, nks);
+
+#define nks_begin nkav_begin
+#define nks_end nkav_end
+
+#define nks_first nkav_first
+#define nks_last nkav_last
 
 NK_INLINE nks nk_cs2s(char const *str) {
     return LITERAL(nks){str, strlen(str)};
@@ -32,7 +39,7 @@ NK_INLINE nks nk_strcpy_nt(NkAllocator alloc, nks src) {
 }
 
 NK_INLINE nks nks_trim_left(nks str) {
-    while (str.size && nkav_first(str) == ' ') {
+    while (str.size && nks_first(str) == ' ') {
         str.size -= 1;
         str.data += 1;
     }
@@ -40,7 +47,7 @@ NK_INLINE nks nks_trim_left(nks str) {
 }
 
 NK_INLINE nks nks_trim_right(nks str) {
-    while (str.size && nkav_last(str) == ' ') {
+    while (str.size && nks_last(str) == ' ') {
         str.size -= 1;
     }
     return str;
@@ -53,21 +60,56 @@ NK_INLINE nks nks_trim(nks str) {
 NK_INLINE nks nks_chop_by_delim(nks *str, char delim) {
     size_t i = 0;
     while (i < str->size && str->data[i] != delim) {
-        i += 1;
+        i++;
     }
 
     nks res = {str->data, i};
 
     if (i < str->size) {
-        str->size -= i + 1;
         str->data += i + 1;
+        str->size -= i + 1;
     } else {
-        str->size -= i;
         str->data += i;
+        str->size -= i;
     }
 
     return res;
 }
+
+NK_INLINE nks nks_chop_by_delim_reverse(nks *str, char delim) {
+    nks res = *str;
+
+    while (str->size && nks_last(*str) != delim) {
+        str->size--;
+    }
+
+    if (str->size) {
+        str->size--;
+
+        res.data += str->size + 1;
+        res.size -= str->size + 1;
+    } else {
+        res.data += str->size;
+        res.size -= str->size;
+    }
+
+    return res;
+}
+
+NK_INLINE bool nks_equal(nks lhs, nks rhs) {
+    return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
+}
+
+NK_INLINE bool nks_starts_with(nks str, nks pref) {
+    if (pref.size > str.size) {
+        return false;
+    } else {
+        return nks_equal(LITERAL(nks){str.data, pref.size}, pref);
+    }
+}
+
+int nks_escape(nk_stream out, nks str);
+int nks_unescape(nk_stream out, nks str);
 
 #define nks_Fmt "%.*s"
 #define nks_Arg(str) (int)(str).size, (str).data
@@ -95,19 +137,24 @@ inline std::ostream &operator<<(std::ostream &stream, nks str) {
     return stream << std::string_view{str.data, str.size};
 }
 
+inline bool operator==(nks lhs, nks rhs) {
+    return nks_equal(lhs, rhs);
+}
+
+inline bool operator==(nks lhs, char const *rhs) {
+    return lhs == nk_cs2s(rhs);
+}
+
+inline bool operator==(char const *lhs, nks rhs) {
+    return nk_cs2s(lhs) == rhs;
+}
+
 namespace std {
 
 template <>
 struct hash<::nks> {
     size_t operator()(::nks slice) {
         return ::hash_array((uint8_t *)&slice.data[0], (uint8_t *)&slice.data[slice.size]);
-    }
-};
-
-template <>
-struct equal_to<::nks> {
-    size_t operator()(::nks lhs, ::nks rhs) {
-        return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
     }
 };
 

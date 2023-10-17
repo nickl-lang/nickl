@@ -57,7 +57,6 @@ struct WriterCtx {
     NkAllocator alloc = nk_arena_getAllocator(arena);
 
     NkStringBuilder types_s{0, 0, 0, alloc};
-    NkStringBuilder data_s{0, 0, 0, alloc};
     NkStringBuilder forward_s{0, 0, 0, alloc};
     NkStringBuilder main_s{0, 0, 0, alloc};
 
@@ -359,11 +358,11 @@ void writeConst(
     nks const_str{nkav_init(tmp_s)};
 
     if (is_complex && !getFlag(ctx.consts_translated, const_id)) {
-        writeVisibilityAttr(cnst.visibility, &ctx.data_s);
-        writeType(ctx, cnst.type, &ctx.data_s);
-        nksb_printf(&ctx.data_s, " ");
-        writeName(cnst.name, ctx.const_count, CONST_CLASS, &ctx.data_s);
-        nksb_printf(&ctx.data_s, " = " nks_Fmt ";\n", nks_Arg(const_str));
+        writeVisibilityAttr(cnst.visibility, &ctx.forward_s);
+        writeType(ctx, cnst.type, &ctx.forward_s);
+        nksb_printf(&ctx.forward_s, " ");
+        writeName(cnst.name, ctx.const_count, CONST_CLASS, &ctx.forward_s);
+        nksb_printf(&ctx.forward_s, " = " nks_Fmt ";\n", nks_Arg(const_str));
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
         writeName(cnst.name, ctx.const_count, CONST_CLASS, &sb);
@@ -439,7 +438,7 @@ void writeLineDirective(nkid file, size_t line, NkStringBuilder *src) {
     if (file != nk_invalid_id) {
         auto const file_name = nkid2s(file);
         nksb_printf(src, "#line %zu \"", line);
-        nksb_str_escape(src, file_name);
+        nks_escape(nksb_getStream(src), file_name);
         nksb_printf(src, "\"\n");
     } else {
         nksb_printf(src, "#line %zu\n", line);
@@ -850,18 +849,12 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 #if 0
     fprintf(
         stderr,
-        nks_Fmt "\n" nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
+        nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
         nks_Arg(ctx.types_s),
-        nks_Arg(ctx.data_s),
         nks_Arg(ctx.forward_s),
         nks_Arg(ctx.main_s));
 #endif
 
     nk_stream_printf(
-        src,
-        nks_Fmt "\n" nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
-        nks_Arg(ctx.types_s),
-        nks_Arg(ctx.data_s),
-        nks_Arg(ctx.forward_s),
-        nks_Arg(ctx.main_s));
+        src, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
 }
