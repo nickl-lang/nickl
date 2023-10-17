@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include <stdio.h>
 
 #include "config.hpp"
@@ -242,6 +244,17 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     NkIrcConfig irc_conf{};
+
+    auto usize = config.find(nk_cs2s("usize"));
+    if (usize) {
+        NK_LOG_DBG("usize=`" nks_Fmt "`", nks_Arg(*usize));
+        char *endptr = NULL;
+        irc_conf.usize = strtol(usize->data, &endptr, 10);
+        if (endptr != usize->data + usize->size || !irc_conf.usize || !isZeroOrPowerOf2(irc_conf.usize)) {
+            nkirc_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(*usize));
+            return 1;
+        }
+    }
 
     auto libc_name = config.find(nk_cs2s("libc_name"));
     if (libc_name) {

@@ -34,7 +34,7 @@ bool readConfig(NkHashMap<nks, nks> &conf, NkAllocator alloc, nks file) {
                     res.bytes, {file, lin, 0, 0}, "failed to read compiler config: syntax error");
                 return false;
             }
-            conf.insert(nk_strcpy(alloc, nks_trim(field)), nk_strcpy(alloc, nks_trim(line)));
+            conf.insert(nk_strcpy_nt(alloc, nks_trim(field)), nk_strcpy_nt(alloc, nks_trim(line)));
         }
 
         lin++;

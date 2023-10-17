@@ -81,8 +81,8 @@ nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
             .as{.ptr{
                 .target_type = target_type,
             }},
-            .size = c->usize,
-            .align = c->usize,
+            .size = c->conf.usize,
+            .align = c->conf.usize,
             .kind = NkType_Pointer,
             .id = c->next_id++,
         };
@@ -110,8 +110,8 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
             .as{.proc{
                 .info = proc_info,
             }},
-            .size = c->usize,
-            .align = c->usize,
+            .size = c->conf.usize,
+            .align = c->conf.usize,
             .kind = NkType_Procedure,
             .id = c->next_id++,
         };

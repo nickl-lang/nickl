@@ -68,7 +68,6 @@ struct NkIrCompiler_T {
     NkArena parse_arena{};
     NkIrParserState parser{};
 
-    uint8_t usize = sizeof(void *);
     NkHashMap<nks, nktype_t> fpmap{};
     uint64_t next_id{1};
     std::mutex mtx{};

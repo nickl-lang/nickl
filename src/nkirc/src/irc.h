@@ -15,6 +15,7 @@ typedef struct {
     nkid libc_name;
     nkid libm_name;
     nkid libpthread_name;
+    uint8_t usize;
 } NkIrcConfig;
 
 NkIrCompiler nkirc_create(NkArena *tmp_arena, NkIrcConfig conf);
