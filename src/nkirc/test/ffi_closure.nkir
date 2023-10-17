@@ -1,4 +1,4 @@
-proc extern printf(*i8, ...) i32
+extern proc printf(*i8, ...) i32
 
 type ivec2: { [2]i64 }
 

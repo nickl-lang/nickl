@@ -124,13 +124,14 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
     if (found) {
         return *found;
     } else {
-        auto lib = nk_load_library(nkid2cs(name));
+        auto const name_str = nkid2cs(name);
+        auto lib = nk_load_library(name_str);
         if (!lib) {
-            auto const name_str = nkid2s(name);
             // TODO Report errors from bytecode translation
-            NK_LOG_ERR("failed to load extern library `" nks_Fmt "`: %s", nks_Arg(name_str), nkdl_getLastErrorString());
+            NK_LOG_ERR("failed to load extern library `%s`: %s", name_str, nkdl_getLastErrorString());
             abort();
         }
+        NK_LOG_DBG("loaded extern library `%s`: %p", name_str, lib);
         return ctx->extern_libs.insert(name, lib);
     }
 }
@@ -140,13 +141,14 @@ void *getExternSym(NkIrRunCtx ctx, nkid lib, nkid name) {
     if (found) {
         return *found;
     } else {
-        auto sym = nk_resolve_symbol(getExternLib(ctx, lib), nkid2cs(name));
+        auto const name_str = nkid2cs(name);
+        auto sym = nk_resolve_symbol(getExternLib(ctx, lib), name_str);
         if (!sym) {
-            auto const name_str = nkid2s(name);
             // TODO Report errors from bytecode translation
-            NK_LOG_ERR("failed to load extern symbol `" nks_Fmt "`: %s", nks_Arg(name_str), nkdl_getLastErrorString());
+            NK_LOG_ERR("failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
             abort();
         }
+        NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
         return ctx->extern_libs.insert(name, sym);
     }
 }

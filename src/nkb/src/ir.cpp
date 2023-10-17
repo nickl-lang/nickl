@@ -548,7 +548,11 @@ void inspectProcSignature(
 void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
     if (ir->extern_data.size) {
         for (auto const &data : nk_iterate(ir->extern_data)) {
-            nksb_printf(sb, "\nextern data %s: ", nkid2cs(data.name));
+            nksb_printf(sb, "\nextern");
+            if (data.lib != nk_invalid_id) {
+                nksb_printf(sb, " \"%s\"", nkid2cs(data.lib));
+            }
+            nksb_printf(sb, " data %s: ", nkid2cs(data.name));
             nkirt_inspect(data.type, sb);
         }
         nksb_printf(sb, "\n");
@@ -556,7 +560,11 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb) {
 
     if (ir->extern_procs.size) {
         for (auto const &proc : nk_iterate(ir->extern_procs)) {
-            nksb_printf(sb, "\nextern proc %s", nkid2cs(proc.name));
+            nksb_printf(sb, "\nextern");
+            if (proc.lib != nk_invalid_id) {
+                nksb_printf(sb, " \"%s\"", nkid2cs(proc.lib));
+            }
+            nksb_printf(sb, " proc %s", nkid2cs(proc.name));
             inspectProcSignature(proc.type->as.proc.info, {}, sb, false);
         }
         nksb_printf(sb, "\n");

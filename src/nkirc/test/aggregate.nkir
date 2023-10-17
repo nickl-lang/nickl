@@ -1,5 +1,5 @@
-proc extern printf(*i8, ...) i32
-proc extern sqrt(f64) f64
+extern proc printf(*i8, ...) i32
+extern proc sqrt(f64) f64
 
 type Vec2: { [2]f64 }
 

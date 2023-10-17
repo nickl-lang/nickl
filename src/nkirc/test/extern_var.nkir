@@ -1,6 +1,6 @@
-data extern g_test_global_var: i64
-proc extern setTestGlobalVar(i64) void
-proc extern printf(*i8, ...) i32
+extern data g_test_global_var: i64
+extern proc setTestGlobalVar(i64) void
+extern proc printf(*i8, ...) i32
 
 pub proc main(argc: i32, argv: **i8) i32 {
 @start

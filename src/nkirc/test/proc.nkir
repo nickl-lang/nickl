@@ -1,4 +1,4 @@
-pub proc extern printf(*i8, ...) i32
+extern proc printf(*i8, ...) i32
 
 proc plus(a: i64, b: i64) i64 {
 @start
