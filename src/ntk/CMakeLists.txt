@@ -3,6 +3,7 @@ set(LIB ntk)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
 
 add_library(${LIB}
+    src/sys/${PLATFORM_DIR}/dl.c
     src/sys/${PLATFORM_DIR}/error.c
     src/sys/${PLATFORM_DIR}/file.c
     src/sys/${PLATFORM_DIR}/mem.c
