@@ -46,6 +46,12 @@ struct NkIrGlobal_T {
     NkIrVisibility visibility;
 };
 
+struct NkIrExternSym_T {
+    nkid lib;
+    nkid name;
+    nktype_t type;
+};
+
 struct NkIrProg_T {
     NkAllocator alloc;
 
@@ -54,8 +60,8 @@ struct NkIrProg_T {
     nkar_type(NkIrInstr) instrs;
     nkar_type(NkIrGlobal_T) globals;
     nkar_type(NkIrConst_T) consts;
-    nkar_type(NkIrDecl_T) extern_data;
-    nkar_type(NkIrDecl_T) extern_procs;
+    nkar_type(NkIrExternSym_T) extern_data;
+    nkar_type(NkIrExternSym_T) extern_procs;
     nkar_type(NkIrRef) relocs;
 
     NkIrProc cur_proc{};

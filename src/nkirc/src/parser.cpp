@@ -130,10 +130,11 @@ struct GeneratorState {
             new (makeGlobalDecl(sig.name)) Decl{
                 {.extern_proc = nkir_makeExternProc(
                      m_ir,
+                     nk_invalid_id, // TODO lib id
                      sig.name,
                      nkir_makeProcedureType(
                          m_compiler,
-                         {
+                         NkIrProcInfo{
                              .args_t{nkav_init(sig.args_t)},
                              .ret_t = sig.ret_t,
                              .call_conv = NkCallConv_Cdecl,
@@ -252,7 +253,11 @@ struct GeneratorState {
         auto name = s2nkid(token->text);
         if (is_extern) {
             new (makeGlobalDecl(name)) Decl{
-                {.extern_data = nkir_makeExternData(m_ir, s2nkid(token->text), type)},
+                {.extern_data = nkir_makeExternData(
+                     m_ir,
+                     nk_invalid_id, // TODO lib id
+                     s2nkid(token->text),
+                     type)},
                 Decl_ExternData,
             };
         } else {

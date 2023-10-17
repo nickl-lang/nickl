@@ -233,19 +233,19 @@ NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIr
     return id;
 }
 
-NkIrExternData nkir_makeExternData(NkIrProg ir, nkid name, nktype_t type) {
+NkIrExternData nkir_makeExternData(NkIrProg ir, nkid lib, nkid name, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternData id{ir->extern_data.size};
-    nkar_append(&ir->extern_data, (NkIrDecl_T{name, type}));
+    nkar_append(&ir->extern_data, (NkIrExternSym_T{lib, name, type}));
     return id;
 }
 
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid name, nktype_t proc_t) {
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid lib, nkid name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternProc id{ir->extern_procs.size};
-    nkar_append(&ir->extern_procs, (NkIrDecl_T{name, proc_t}));
+    nkar_append(&ir->extern_procs, (NkIrExternSym_T{lib, name, proc_t}));
     return id;
 }
 
