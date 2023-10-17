@@ -1,4 +1,4 @@
-#include "irc.hpp"
+#include "irc.h"
 
 #include <cmath>
 #include <cstdio>
@@ -6,7 +6,8 @@
 #include <new>
 
 #include "diagnostics.h"
-#include "lexer.hpp"
+#include "irc_impl.hpp"
+#include "lexer.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
@@ -16,8 +17,8 @@
 #include "ntk/sys/path.h"
 #include "ntk/sys/term.h"
 #include "ntk/utils.h"
-#include "parser.hpp"
-#include "types.hpp"
+#include "parser.h"
+#include "types.h"
 
 namespace {
 
@@ -27,9 +28,10 @@ NK_LOG_USE_SCOPE(nkirc);
 
 } // namespace
 
-NkIrCompiler nkirc_create(NkArena *tmp_arena) {
+NkIrCompiler nkirc_create(NkArena *tmp_arena, NkIrcConfig conf) {
     NkIrCompiler c = new (nk_alloc_t<NkIrCompiler_T>(nk_default_allocator)) NkIrCompiler_T{
         .tmp_arena = tmp_arena,
+        .conf = conf,
     };
     c->parser.decls = decltype(NkIrParserState::decls)::create(nk_arena_getAllocator(&c->parse_arena));
     return c;

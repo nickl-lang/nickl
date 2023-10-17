@@ -1,10 +1,11 @@
-#include "parser.hpp"
+#include "parser.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <new>
 
+#include "irc_impl.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
@@ -13,7 +14,7 @@
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
-#include "types.hpp"
+#include "types.h"
 
 namespace {
 
@@ -93,7 +94,16 @@ struct GeneratorState {
                 nkid lib = nk_invalid_id;
 
                 if (check(t_string)) {
-                    lib = s2nkid(parseString(m_file_alloc));
+                    auto const lib_name = parseString(m_file_alloc);
+                    if (lib_name == "c" || lib_name == "C") {
+                        lib = m_compiler->conf.libc_name;
+                    } else if (lib_name == "m" || lib_name == "M") {
+                        lib = m_compiler->conf.libm_name;
+                    } else if (lib_name == "pthread" || lib_name == "PTHREAD") {
+                        lib = m_compiler->conf.libpthread_name;
+                    } else {
+                        lib = s2nkid(lib_name);
+                    }
                 }
 
                 if (accept(t_proc)) {

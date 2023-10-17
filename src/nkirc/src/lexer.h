@@ -5,14 +5,18 @@
 #include "ntk/array.h"
 #include "ntk/string.h"
 
-enum ETokenId {
+#ifndef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {
 #define OP(ID, TEXT) t_##ID,
 #define KW(ID) t_##ID,
 #define SP(ID, TEXT) t_##ID,
 #include "tokens.inl"
 
     Token_Count,
-};
+} ETokenId;
 
 typedef struct {
     nks text;
@@ -34,5 +38,9 @@ typedef struct {
 } NkIrLexerState;
 
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src);
+
+#ifndef __cplusplus
+}
+#endif
 
 #endif // HEADER_GUARD_NKIRC_LEXER

@@ -1,9 +1,10 @@
-#ifndef HEADER_GUARD_NKIRC_IRC
-#define HEADER_GUARD_NKIRC_IRC
+#ifndef HEADER_GUARD_NKIRC_IRC_IMPL
+#define HEADER_GUARD_NKIRC_IRC_IMPL
 
 #include <cstdint>
 #include <mutex>
 
+#include "irc.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
@@ -56,10 +57,12 @@ struct NkIrParserState {
     bool ok{};
 };
 
-typedef struct NkIrCompiler_T {
+struct NkIrCompiler_T {
+    NkArena *tmp_arena;
+    NkIrcConfig conf;
+
     NkIrProg ir{};
     NkIrProc entry_point{NKIR_INVALID_IDX};
-    NkArena *tmp_arena{};
     NkArena file_arena{};
 
     NkArena parse_arena{};
@@ -69,18 +72,10 @@ typedef struct NkIrCompiler_T {
     NkHashMap<nks, nktype_t> fpmap{};
     uint64_t next_id{1};
     std::mutex mtx{};
-} * NkIrCompiler;
-
-NkIrCompiler nkirc_create(NkArena *tmp_arena);
-void nkirc_free(NkIrCompiler c);
-
-int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf);
-int nkir_run(NkIrCompiler c, nks in_file);
-
-bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file);
+};
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKIRC_IRC
+#endif // HEADER_GUARD_NKIRC_IRC_IMPL

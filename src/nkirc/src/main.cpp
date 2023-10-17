@@ -2,7 +2,7 @@
 
 #include "config.hpp"
 #include "diagnostics.h"
-#include "irc.hpp"
+#include "irc.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
@@ -221,7 +221,47 @@ int main(int /*argc*/, char const *const *argv) {
 
     NK_LOGGER_INIT(logger_opts);
 
-    auto const c = nkirc_create(&arena);
+    auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
+    int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
+    if (compiler_path_len < 0) {
+        nkirc_diag_printError("failed to get compiler binary path");
+        return 1;
+    }
+
+    nks compiler_dir{compiler_path_buf, (size_t)compiler_path_len};
+    nks_chop_by_delim_reverse(&compiler_dir, nk_path_separator);
+
+    NkStringBuilder config_path{0, 0, 0, nk_arena_getAllocator(&arena)};
+    nksb_printf(&config_path, nks_Fmt "%c" NK_BINARY_NAME ".conf", nks_Arg(compiler_dir), nk_path_separator);
+
+    NK_LOG_DBG("config_path=`" nks_Fmt "`", nks_Arg(config_path));
+
+    auto config = NkHashMap<nks, nks>::create(nk_arena_getAllocator(&arena));
+    if (!readConfig(config, nk_arena_getAllocator(&arena), {nkav_init(config_path)})) {
+        return 1;
+    }
+
+    NkIrcConfig irc_conf{};
+
+    auto libc_name = config.find(nk_cs2s("libc_name"));
+    if (libc_name) {
+        NK_LOG_DBG("libc_name=`" nks_Fmt "`", nks_Arg(*libc_name));
+        irc_conf.libc_name = s2nkid(*libc_name);
+    }
+
+    auto libm_name = config.find(nk_cs2s("libm_name"));
+    if (libm_name) {
+        NK_LOG_DBG("libm_name=`" nks_Fmt "`", nks_Arg(*libm_name));
+        irc_conf.libm_name = s2nkid(*libm_name);
+    }
+
+    auto libpthread_name = config.find(nk_cs2s("libpthread_name"));
+    if (libpthread_name) {
+        NK_LOG_DBG("libpthread_name=`" nks_Fmt "`", nks_Arg(*libpthread_name));
+        irc_conf.libpthread_name = s2nkid(*libpthread_name);
+    }
+
+    auto const c = nkirc_create(&arena, irc_conf);
     defer {
         nkirc_free(c);
     };
@@ -230,26 +270,6 @@ int main(int /*argc*/, char const *const *argv) {
     if (run) {
         code = nkir_run(c, in_file);
     } else {
-        auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
-        int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
-        if (compiler_path_len < 0) {
-            nkirc_diag_printError("failed to get compiler binary path");
-            return 1;
-        }
-
-        nks compiler_dir{compiler_path_buf, (size_t)compiler_path_len};
-        nks_chop_by_delim_reverse(&compiler_dir, nk_path_separator);
-
-        NkStringBuilder config_path{0, 0, 0, nk_arena_getAllocator(&arena)};
-        nksb_printf(&config_path, nks_Fmt "%c" NK_BINARY_NAME ".conf", nks_Arg(compiler_dir), nk_path_separator);
-
-        NK_LOG_DBG("config_path=`" nks_Fmt "`", nks_Arg(config_path));
-
-        auto config = NkHashMap<nks, nks>::create(nk_arena_getAllocator(&arena));
-        if (!readConfig(config, nk_arena_getAllocator(&arena), {nkav_init(config_path)})) {
-            return 1;
-        }
-
         auto c_compiler = config.find(nk_cs2s("c_compiler"));
         if (!c_compiler) {
             nkirc_diag_printError("`c_compiler` field is missing in the config");

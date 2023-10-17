@@ -1,8 +1,9 @@
-#include "types.hpp"
+#include "types.h"
 
 #include <cstring>
 #include <new>
 
+#include "irc_impl.hpp"
 #include "nkb/common.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
