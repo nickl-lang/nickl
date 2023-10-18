@@ -136,6 +136,7 @@ void nk_arena_pop(NkArena *arena, size_t size) {
 void nk_arena_free(NkArena *arena) {
     if (arena->data) {
         NK_LOG_TRC("arena=%p vfree(%p, %" PRIu64 ")", (void *)arena, (void *)arena->data, FIXED_ARENA_SIZE);
+        ASAN_UNPOISON_MEMORY_REGION(arena->data, FIXED_ARENA_SIZE);
         nk_vfree(arena->data, FIXED_ARENA_SIZE);
     }
     *arena = (NkArena){0};
