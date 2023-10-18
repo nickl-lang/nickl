@@ -7,10 +7,12 @@
 #include "ir_impl.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 #include "ntk/sys/dl.h"
 #include "ntk/sys/syscall.h"
 
@@ -127,9 +129,40 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
         auto const name_str = nkid2cs(name);
         auto lib = nk_load_library(name_str);
         if (!lib) {
-            // TODO Report errors from bytecode translation
-            NK_LOG_ERR("failed to load extern library `%s`: %s", name_str, nkdl_getLastErrorString());
-            abort();
+            auto const frame = nk_arena_grab(ctx->tmp_arena);
+            defer {
+                nk_arena_popFrame(ctx->tmp_arena, frame);
+            };
+
+            NkStringBuilder err_str{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
+            nksb_printf(&err_str, "%s", nkdl_getLastErrorString());
+
+            NkStringBuilder lib_name{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
+            nksb_printf(&lib_name, "%s.%s", name_str, nk_dl_extension);
+            nksb_append_null(&lib_name);
+            lib = nk_load_library(lib_name.data);
+
+            if (!lib) {
+                nksb_clear(&lib_name);
+
+                nksb_printf(&lib_name, "lib%s", name_str);
+                nksb_append_null(&lib_name);
+                lib = nk_load_library(lib_name.data);
+
+                if (!lib) {
+                    nksb_clear(&lib_name);
+
+                    nksb_printf(&lib_name, "lib%s.%s", name_str, nk_dl_extension);
+                    nksb_append_null(&lib_name);
+                    lib = nk_load_library(lib_name.data);
+
+                    if (!lib) {
+                        // TODO Report errors from bytecode translation
+                        NK_LOG_ERR("failed to load extern library `%s`: " nks_Fmt, name_str, nks_Arg(err_str));
+                        abort();
+                    }
+                }
+            }
         }
         NK_LOG_DBG("loaded extern library `%s`: %p", name_str, lib);
         return ctx->extern_libs.insert(name, lib);

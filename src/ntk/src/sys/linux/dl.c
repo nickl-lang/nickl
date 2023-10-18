@@ -2,6 +2,8 @@
 
 #include <dlfcn.h>
 
+char const *nk_dl_extension = "so";
+
 nkdl_t nk_load_library(char const *name) {
     return dlopen(name, RTLD_LOCAL | RTLD_LAZY);
 }

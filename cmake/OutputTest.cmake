@@ -1,4 +1,4 @@
-set(OUTPUT_TEST_SCRIPT "${PROJECT_SOURCE_DIR}/cmake/output_test.sh")
+set(OUTPUT_TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/output_test.sh")
 
 function(def_output_test)
     set(options)

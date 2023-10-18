@@ -1,3 +1,5 @@
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 add_subdirectory(config)
 
 set(EXE nkirc)
@@ -31,5 +33,6 @@ target_compile_definitions(${EXE}
     )
 
 if(CMAKE_TESTING_ENABLED)
+    include(NkircTest)
     add_subdirectory(test)
 endif()

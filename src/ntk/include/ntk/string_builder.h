@@ -16,6 +16,7 @@
 #define nksb_append_many nkar_append_many
 #define nksb_try_append_many nkar_try_append_many
 #define nksb_free nkar_free
+#define nksb_clear nkar_clear
 
 #define nksb_append_null(sb) nksb_append((sb), '\0')
 #define nksb_try_append_null(sb) nksb_try_append((sb), '\0')

@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+extern char const *nk_dl_extension;
+
 typedef void *nkdl_t;
 
 nkdl_t nk_load_library(char const *name);

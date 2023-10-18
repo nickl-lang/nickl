@@ -5,6 +5,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+char const *nk_dl_extension = "dll";
+
 nkdl_t nk_load_library(char const *name) {
     return (name && name[0]) ? LoadLibrary(name) : GetModuleHandle(NULL);
 }
