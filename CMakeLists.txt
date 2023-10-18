@@ -42,7 +42,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
 if(BUILD_TESTS)
     enable_testing()
     include(Test)
-    include(nkirc_test)
+    include(OutputTest)
     find_package(GTest REQUIRED)
 endif()
 

@@ -10,32 +10,17 @@ printUsage() {
   echo "Usage: $(basename $0) [options...]"
   echo "Options:"
   echo "    --file=<filepath>   Path to the test file"
-  echo "    --exe=<filepath>    Path to the nkirc executable"
-  echo "    --emulator=<name>   Crosscompiling emulator"
-  echo "    --mode=<mode>       Test mode: {run, compile}"
-  echo "    --args=<args>       Additional compiler arguments"
+  echo "    --cmd=<command>     Path to the nkirc executable"
   echo "    -h,--help           Display this message"
 }
-
-ARG_EMULATOR=
-ARG_ARGS=
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --file=*)
       ARG_FILE="${1#*=}"
       ;;
-    --exe=*)
-      ARG_EXE="${1#*=}"
-      ;;
-    --emulator=*)
-      ARG_EMULATOR="${1#*=}"
-      ;;
-    --mode=*)
-      ARG_MODE="${1#*=}"
-      ;;
-    --args=*)
-      ARG_ARGS="${1#*=}"
+    --cmd=*)
+      ARG_CMD="${1#*=}"
       ;;
     -h|--help)
       printUsage
@@ -49,20 +34,14 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ -z $ARG_FILE ]; then
+if [ -z "$ARG_FILE" ]; then
   echo 'error: missing `file` argument' >&2
   printErrorUsage
   exit 1
 fi
 
-if [ -z $ARG_EXE ]; then
-  echo 'error: missing `exe` argument' >&2
-  printErrorUsage
-  exit 1
-fi
-
-if [ -z $ARG_MODE ]; then
-  echo 'error: missing `mode` argument' >&2
+if [ -z "$ARG_CMD" ]; then
+  echo 'error: missing `cmd` argument' >&2
   printErrorUsage
   exit 1
 fi
@@ -106,31 +85,13 @@ runTest() {
 runCommand() {
   COMMAND=$1
   echo "Running '$COMMAND'" >&2
-  $ARG_EMULATOR $COMMAND
+  $COMMAND
 }
 
-run() {
-  runCommand "$ARG_EXE -krun $ARG_FILE"
+testCommand() {
+  runCommand "$ARG_CMD $ARG_FILE"
 }
 
-compile() {
-  OUT_FILE=$(basename $ARG_FILE | cut -d. -f1)_test_out
-  runCommand "rm -f ./$OUT_FILE"
-  runCommand "$ARG_EXE -kexe -o $OUT_FILE $ARG_FILE $ARG_ARGS" &&
-  runCommand "./$OUT_FILE"
-}
-
-case $ARG_MODE in
-  run)
-    runTest run
-    ;;
-  compile)
-    runTest compile
-    ;;
-  *)
-    echo "error: invalid mode '$ARG_MODE'" >&2
-    printErrorUsage
-    exit 1
-esac
+runTest testCommand
 
 echo 'TEST PASSED'
