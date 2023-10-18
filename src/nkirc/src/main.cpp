@@ -30,14 +30,15 @@ void printUsage() {
            "\nOptions:"
            "\n    -o, --output <file>                      Output file path"
            "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
-           "\n    -l, --link <lib>                         Link the library <lib>"
+           "\n    -l <lib>                                 Link the library <lib>"
+           "\n    -L <dir>                                 Search dir for linked libraries"
            "\n    -g                                       Add debug information"
            "\n    -c, --color {auto,always,never}          Choose when to color output"
            "\n    -h, --help                               Display this message and exit"
            "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
            "\nDeveloper options:"
-           "\n    -L, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
            "\n");
 }
@@ -71,6 +72,7 @@ int main(int /*argc*/, char const *const *argv) {
     };
 
     nkar_type(nks) link{0, 0, 0, nk_arena_getAllocator(&arena)};
+    nkar_type(nks) link_dirs{0, 0, 0, nk_arena_getAllocator(&arena)};
     nks opt{};
 
 #ifdef ENABLE_LOGGING
@@ -132,9 +134,12 @@ int main(int /*argc*/, char const *const *argv) {
                     printErrorUsage();
                     return 1;
                 }
-            } else if (key == "-l" || key == "--link") {
+            } else if (key == "-l") {
                 GET_VALUE;
                 nkar_append(&link, val);
+            } else if (key == "-L") {
+                GET_VALUE;
+                nkar_append(&link_dirs, val);
             } else if (key == "-g") {
                 NO_VALUE;
                 add_debug_info = true;
@@ -164,7 +169,7 @@ int main(int /*argc*/, char const *const *argv) {
                 } else if (val == "never") {
                     logger_opts.color_mode = NkLog_Color_Never;
                 }
-            } else if (key == "-L" || key == "--loglevel") {
+            } else if (key == "-t" || key == "--loglevel") {
                 GET_VALUE;
                 if (val == "none") {
                     logger_opts.log_level = NkLog_None;
@@ -300,6 +305,12 @@ int main(int /*argc*/, char const *const *argv) {
 
         if (add_debug_info) {
             nkar_append(&additional_flags, nk_cs2s("-g"));
+        }
+
+        for (auto dir : nk_iterate(link_dirs)) {
+            NkStringBuilder sb{0, 0, 0, nk_arena_getAllocator(&arena)};
+            nksb_printf(&sb, "-L" nks_Fmt, nks_Arg(dir));
+            nkar_append(&additional_flags, nks{nkav_init(sb)});
         }
 
         for (auto lib : nk_iterate(link)) {

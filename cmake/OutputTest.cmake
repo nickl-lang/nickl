@@ -28,5 +28,6 @@ function(def_output_test)
         COMMAND "${OUTPUT_TEST_SCRIPT}"
             "--file=${TEST_FILE}"
             "--cmd=${COMMAND}"
+        WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
         )
 endfunction()

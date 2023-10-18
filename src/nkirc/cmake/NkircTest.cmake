@@ -23,8 +23,8 @@ function(def_nkirc_run_test)
         FILE ${ARG_FILE}
         COMMAND
             "env"
-            "LD_LIBRARY_PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-            "${CMAKE_CROSSCOMPILING_EMULATOR}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" "-krun"
+            "LD_LIBRARY_PATH=."
+            "${CMAKE_CROSSCOMPILING_EMULATOR}" "./${EXE}" "-krun"
         )
 endfunction()
 
@@ -53,8 +53,9 @@ function(def_nkirc_compile_test)
         FILE ${ARG_FILE}
         COMMAND
             "env"
+            "LD_LIBRARY_PATH=."
             "EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
-            "COMPILER=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
+            "COMPILER=./${EXE}"
             "OUT_FILE=${BASE_NAME}.out"
             "${NKIRC_COMPILE_TEST_SCRIPT}" "${ARG_ARGS}"
         )

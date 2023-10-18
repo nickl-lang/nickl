@@ -1,3 +1,6 @@
+set(CMAKE_CXX_FLAGS "")
+set(CMAKE_C_FLAGS "")
+
 set(LIB test_extern_lib)
 
 add_library(${LIB} SHARED

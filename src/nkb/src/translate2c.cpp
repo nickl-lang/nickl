@@ -69,6 +69,7 @@ struct WriterCtx {
     flag_array procs_translated{0, 0, 0, alloc};
     flag_array consts_translated{0, 0, 0, alloc};
     flag_array globals_translated{0, 0, 0, alloc};
+    flag_array ext_data_translated{0, 0, 0, alloc};
     flag_array ext_procs_translated{0, 0, 0, alloc};
 
     nkar_type(size_t) procs_to_translate{0, 0, 0, alloc};
@@ -530,7 +531,15 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
             }
             return;
         } else if (ref.kind == NkIrRef_ExternData) {
-            nksb_printf(src, "TODO NkIrRef_ExternData");
+            auto const extern_data = ctx.ir->extern_data.data[ref.index];
+            auto const extern_data_name = nkid2s(extern_data.name);
+            nksb_printf(src, nks_Fmt, nks_Arg(extern_data_name));
+            if (!getFlag(ctx.ext_data_translated, ref.index)) {
+                nksb_printf(&ctx.forward_s, "extern ");
+                writeType(ctx, extern_data.type, &ctx.forward_s);
+                nksb_printf(&ctx.forward_s, " " nks_Fmt ";\n", nks_Arg(extern_data_name));
+                getFlag(ctx.ext_data_translated, ref.index) = true;
+            }
             return;
         } else if (ref.kind == NkIrRef_Address) {
             nksb_printf(src, "&");
@@ -848,11 +857,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 
 #if 0
     fprintf(
-        stderr,
-        nks_Fmt "\n" nks_Fmt "\n" nks_Fmt,
-        nks_Arg(ctx.types_s),
-        nks_Arg(ctx.forward_s),
-        nks_Arg(ctx.main_s));
+        stderr, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
 #endif
 
     nk_stream_printf(
