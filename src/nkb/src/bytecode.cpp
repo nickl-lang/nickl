@@ -121,6 +121,19 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
 }
 #endif // ENABLE_LOGGING
 
+NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) {
+    assert(!ctx->error_str.data && "run error is already initialized");
+
+    NkStringBuilder error{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
+
+    va_list ap;
+    va_start(ap, fmt);
+    nksb_vprintf(&error, fmt, ap);
+    va_end(ap);
+
+    ctx->error_str = {nkav_init(error)};
+}
+
 nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
     auto found = ctx->extern_libs.find(name);
     if (found) {
@@ -157,9 +170,8 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
                     lib = nk_load_library(lib_name.data);
 
                     if (!lib) {
-                        // TODO Report errors from bytecode translation
-                        NK_LOG_ERR("failed to load extern library `%s`: " nks_Fmt, name_str, nks_Arg(err_str));
-                        abort();
+                        reportError(ctx, "failed to load extern library `%s`: " nks_Fmt, name_str, nks_Arg(err_str));
+                        return NULL;
                     }
                 }
             }
@@ -169,30 +181,33 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
     }
 }
 
-void *getExternSym(NkIrRunCtx ctx, nkid lib, nkid name) {
+void *getExternSym(NkIrRunCtx ctx, nkid lib_hame, nkid name) {
     auto found = ctx->extern_syms.find(name);
     if (found) {
         return *found;
     } else {
         auto const name_str = nkid2cs(name);
-        auto sym = nk_resolve_symbol(getExternLib(ctx, lib), name_str);
+        nkdl_t lib = getExternLib(ctx, lib_hame);
+        if (!lib) {
+            return NULL;
+        }
+        auto sym = nk_resolve_symbol(lib, name_str);
         if (!sym) {
-            // TODO Report errors from bytecode translation
-            NK_LOG_ERR("failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
-            abort();
+            reportError(ctx, "failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
+            return NULL;
         }
         NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
         return ctx->extern_libs.insert(name, sym);
     }
 }
 
-void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
+bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     while (proc.idx >= ctx->procs.size) {
         nkar_append(&ctx->procs, nullptr);
     }
 
     if (ctx->procs.data[proc.idx]) {
-        return;
+        return true;
     }
 
     NK_LOG_TRC("%s", __func__);
@@ -322,6 +337,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             case NkIrRef_ExternData: {
                 auto data = ir.extern_data.data[ir_ref.index];
                 auto sym = getExternSym(ctx, data.lib, data.name);
+                if (!sym) {
+                    return false;
+                }
 
                 ref.kind = NkBcRef_Data;
                 ref.offset += (size_t)sym;
@@ -330,6 +348,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             case NkIrRef_ExternProc: {
                 auto proc = ir.extern_procs.data[ir_ref.index];
                 auto sym = getExternSym(ctx, proc.lib, proc.name);
+                if (!sym) {
+                    return false;
+                }
 
                 auto sym_addr = nk_alloc_t<void *>(ir.alloc);
                 *sym_addr = sym;
@@ -363,6 +384,8 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             case NkIrRef_None:
                 break;
             }
+
+            return true;
         };
 
     auto const translate_arg = [&](size_t instr_index, size_t arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
@@ -374,7 +397,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
         case NkIrArg_Ref: {
             arg.kind = NkBcArg_Ref;
-            translate_ref(instr_index, arg_index, -1ul, arg.ref, ir_arg.ref);
+            if (!translate_ref(instr_index, arg_index, -1ul, arg.ref, ir_arg.ref)) {
+                return false;
+            }
             break;
         }
 
@@ -382,7 +407,9 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             arg.kind = NkBcArg_RefArray;
             auto refs = nk_alloc_t<NkBcRef>(ir.alloc, ir_arg.refs.size);
             for (size_t i = 0; i < ir_arg.refs.size; i++) {
-                translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i]);
+                if (!translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i])) {
+                    return false;
+                }
             }
             arg.refs = {refs, ir_arg.refs.size};
             break;
@@ -407,6 +434,8 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         default:
             assert(!"unreachable");
         }
+
+        return true;
     };
 
     for (auto block_id : nk_iterate(ir_proc.blocks)) {
@@ -488,13 +517,12 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 break;
             }
 
-                // TODO Report errors from bytecode translation
             case nkir_syscall:
 #if NK_SYSCALLS_AVAILABLE
                 code += 1 + ir_instr.arg[2].refs.size;
 #else  // NK_SYSCALLS_AVAILABLE
-                NK_LOG_ERR("syscalls are not available on the host platform");
-                abort();
+                reportError(ctx, "syscalls are not available on the host platform");
+                return false;
 #endif // NK_SYSCALLS_AVAILABLE
                 break;
 
@@ -532,13 +560,17 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             auto &instr = nkav_last(bc_proc.instrs);
             instr.code = code;
             for (size_t ai = 0; ai < 3; ai++) {
-                translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
+                if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
+                    return false;
+                }
             }
         }
     }
 
     for (auto proc : nk_iterate(referenced_procs)) {
-        translateProc(ctx, proc);
+        if (!translateProc(ctx, proc)) {
+            return false;
+        }
     }
 
     for (auto const &reloc : nk_iterate(relocs)) {
@@ -579,6 +611,8 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     inspect({nkav_init(bc_proc.instrs)}, nksb_getStream(&sb));
     NK_LOG_INF("proc %s\n" nks_Fmt "", nkid2cs(ir_proc.name), nks_Arg(sb));
 #endif // ENABLE_LOGGING
+
+    return true;
 }
 
 } // namespace
@@ -624,9 +658,16 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
     nk_free_t(ctx->ir->alloc, ctx);
 }
 
-void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
+bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
     NK_LOG_TRC("%s", __func__);
 
-    translateProc(ctx, proc);
+    if (!translateProc(ctx, proc)) {
+        return false;
+    }
     nkir_interp_invoke(ctx->procs.data[proc.idx], args, ret);
+    return true;
+}
+
+nks nkir_getRunErrorString(NkIrRunCtx ctx) {
+    return ctx->error_str;
 }

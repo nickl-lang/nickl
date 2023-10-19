@@ -67,12 +67,13 @@ int main(int /*argc*/, char const *const *argv) {
     bool add_debug_info = false;
 
     NkArena arena{};
+    NkAllocator alloc = nk_arena_getAllocator(&arena);
     defer {
         nk_arena_free(&arena);
     };
 
-    nkar_type(nks) link{0, 0, 0, nk_arena_getAllocator(&arena)};
-    nkar_type(nks) link_dirs{0, 0, 0, nk_arena_getAllocator(&arena)};
+    nkar_type(nks) link{0, 0, 0, alloc};
+    nkar_type(nks) link_dirs{0, 0, 0, alloc};
     nks opt{};
 
 #ifdef ENABLE_LOGGING
@@ -238,13 +239,13 @@ int main(int /*argc*/, char const *const *argv) {
     nks compiler_dir{compiler_path_buf, (size_t)compiler_path_len};
     nks_chop_by_delim_reverse(&compiler_dir, nk_path_separator);
 
-    NkStringBuilder config_path{0, 0, 0, nk_arena_getAllocator(&arena)};
+    NkStringBuilder config_path{0, 0, 0, alloc};
     nksb_printf(&config_path, nks_Fmt "%c" NK_BINARY_NAME ".conf", nks_Arg(compiler_dir), nk_path_separator);
 
     NK_LOG_DBG("config_path=`" nks_Fmt "`", nks_Arg(config_path));
 
-    auto config = NkHashMap<nks, nks>::create(nk_arena_getAllocator(&arena));
-    if (!readConfig(config, nk_arena_getAllocator(&arena), {nkav_init(config_path)})) {
+    auto config = NkHashMap<nks, nks>::create(alloc);
+    if (!readConfig(config, alloc, {nkav_init(config_path)})) {
         return 1;
     }
 
@@ -295,7 +296,7 @@ int main(int /*argc*/, char const *const *argv) {
         }
         NK_LOG_DBG("c_compiler=`" nks_Fmt "`", nks_Arg(*c_compiler));
 
-        nkar_type(nks) additional_flags{0, 0, 0, nk_arena_getAllocator(&arena)};
+        nkar_type(nks) additional_flags{0, 0, 0, alloc};
 
         auto c_flags = config.find(nk_cs2s("c_flags"));
         if (c_flags) {
@@ -308,19 +309,19 @@ int main(int /*argc*/, char const *const *argv) {
         }
 
         for (auto dir : nk_iterate(link_dirs)) {
-            NkStringBuilder sb{0, 0, 0, nk_arena_getAllocator(&arena)};
+            NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-L" nks_Fmt, nks_Arg(dir));
             nkar_append(&additional_flags, nks{nkav_init(sb)});
         }
 
         for (auto lib : nk_iterate(link)) {
-            NkStringBuilder sb{0, 0, 0, nk_arena_getAllocator(&arena)};
+            NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-l" nks_Fmt, nks_Arg(lib));
             nkar_append(&additional_flags, nks{nkav_init(sb)});
         }
 
         if (opt.size) {
-            NkStringBuilder sb{0, 0, 0, nk_arena_getAllocator(&arena)};
+            NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-O" nks_Fmt, nks_Arg(opt));
             nkar_append(&additional_flags, nks{nkav_init(sb)});
         }

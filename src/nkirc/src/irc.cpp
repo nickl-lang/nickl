@@ -97,7 +97,11 @@ int nkir_run(NkIrCompiler c, nks in_file) {
 
     void *args[] = {&argc, &argv};
     void *rets[] = {&ret_code};
-    nkir_invoke(run_ctx, c->entry_point, args, rets);
+    if (!nkir_invoke(run_ctx, c->entry_point, args, rets)) {
+        nks err_str = nkir_getRunErrorString(run_ctx);
+        nkirc_diag_printError("failed to run the program: " nks_Fmt, nks_Arg(err_str));
+        return 1;
+    }
 
     return ret_code;
 }

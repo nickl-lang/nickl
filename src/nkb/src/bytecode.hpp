@@ -91,6 +91,8 @@ struct NkIrRunCtx_T {
     NkHashMap<nkid, void *> extern_syms;
 
     NkFfiContext ffi_ctx;
+
+    nks error_str{};
 };
 
 #endif // HEADER_GUARD_NKB_BYTECODE
