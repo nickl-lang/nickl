@@ -656,7 +656,7 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src) {
         _translateFunction(ctx, fn);
     }
 
-    nk_stream_printf(
+    nk_printf(
         src,
         "%s\n%s\n%s\n%s",
         types_s.str().c_str(),   //

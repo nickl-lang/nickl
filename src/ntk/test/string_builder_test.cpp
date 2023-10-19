@@ -53,8 +53,8 @@ TEST_F(string_builder, stream) {
 
     auto stream = nksb_getStream(&sb);
 
-    nk_stream_printf(stream, "Hello");
-    nk_stream_printf(stream, ", %s!", "World");
+    nk_printf(stream, "Hello");
+    nk_printf(stream, ", %s!", "World");
 
     EXPECT_EQ(std_view({nkav_init(sb)}), "Hello, World!");
 }

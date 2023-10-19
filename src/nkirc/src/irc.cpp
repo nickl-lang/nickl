@@ -154,7 +154,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{};
     sb.alloc = nk_arena_getAllocator(c->tmp_arena);
-    nkir_inspectProgram(c->ir, &sb);
+    nkir_inspectProgram(c->ir, nksb_getStream(&sb));
     NK_LOG_INF("IR:\n" nks_Fmt, nks_Arg(sb));
 #endif // ENABLE_LOGGING
 

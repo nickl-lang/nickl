@@ -28,33 +28,33 @@ NkBcOpcode s_ir2opcode[] = {
 #ifdef ENABLE_LOGGING
 nkav_typedef(NkBcInstr, NkBcInstrView);
 
-void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
+void inspect(NkBcInstrView instrs, nk_stream out) {
     auto inspect_ref = [&](NkBcRef const &ref) {
         if (ref.kind == NkBcRef_None) {
-            nksb_printf(sb, "(null)");
+            nk_printf(out, "(null)");
             return;
         } else if (ref.kind == NkBcRef_Instr) {
-            nksb_printf(sb, "instr@%zi", ref.offset / sizeof(NkBcInstr));
+            nk_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
         }
         for (size_t i = 0; i < ref.indir; i++) {
-            nksb_printf(sb, "[");
+            nk_printf(out, "[");
         }
         switch (ref.kind) {
         case NkBcRef_Frame:
-            nksb_printf(sb, "frame+");
+            nk_printf(out, "frame+");
             break;
         case NkBcRef_Arg:
-            nksb_printf(sb, "arg+");
+            nk_printf(out, "arg+");
             break;
         case NkBcRef_Ret:
-            nksb_printf(sb, "ret+");
+            nk_printf(out, "ret+");
             break;
         case NkBcRef_Rodata:
-            nkirv_inspect((void *)ref.offset, ref.type, sb);
+            nkirv_inspect((void *)ref.offset, ref.type, out);
             break;
         case NkBcRef_Data:
-            nksb_printf(sb, "data+");
+            nk_printf(out, "data+");
             break;
         default:
         case NkBcRef_None:
@@ -63,17 +63,17 @@ void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
             break;
         }
         if (ref.kind != NkBcRef_Rodata) {
-            nksb_printf(sb, "%zx", ref.offset);
+            nk_printf(out, "%zx", ref.offset);
         }
         for (size_t i = 0; i < ref.indir; i++) {
-            nksb_printf(sb, "]");
+            nk_printf(out, "]");
         }
         if (ref.post_offset) {
-            nksb_printf(sb, "+%zx", ref.post_offset);
+            nk_printf(out, "+%zx", ref.post_offset);
         }
         if (ref.type) {
-            nksb_printf(sb, ":");
-            nkirt_inspect(ref.type, sb);
+            nk_printf(out, ":");
+            nkirt_inspect(ref.type, out);
         }
     };
 
@@ -85,14 +85,14 @@ void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
         }
 
         case NkBcArg_RefArray:
-            nksb_printf(sb, "(");
+            nk_printf(out, "(");
             for (size_t i = 0; i < arg.refs.size; i++) {
                 if (i) {
-                    nksb_printf(sb, ", ");
+                    nk_printf(out, ", ");
                 }
                 inspect_ref(arg.refs.data[i]);
             }
-            nksb_printf(sb, ")");
+            nk_printf(out, ")");
             break;
 
         default:
@@ -101,22 +101,22 @@ void inspect(NkBcInstrView instrs, NkStringBuilder *sb) {
     };
 
     for (auto const &instr : nk_iterate(instrs)) {
-        nksb_printf(sb, "%5zu", (&instr - instrs.data));
-        nksb_printf(sb, "%13s", nkbcOpcodeName(instr.code));
+        nk_printf(out, "%5zu", (&instr - instrs.data));
+        nk_printf(out, "%13s", nkbcOpcodeName(instr.code));
 
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
-                nksb_printf(sb, ((i > 1) ? ", " : " "));
+                nk_printf(out, ((i > 1) ? ", " : " "));
                 inspect_arg(instr.arg[i]);
             }
         }
 
         if (instr.arg[0].ref.kind != NkBcRef_None) {
-            nksb_printf(sb, " -> ");
+            nk_printf(out, " -> ");
             inspect_arg(instr.arg[0]);
         }
 
-        nksb_printf(sb, "\n");
+        nk_printf(out, "\n");
     }
 }
 #endif // ENABLE_LOGGING
@@ -576,7 +576,7 @@ void translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
-    inspect({nkav_init(bc_proc.instrs)}, &sb);
+    inspect({nkav_init(bc_proc.instrs)}, nksb_getStream(&sb));
     NK_LOG_INF("proc %s\n" nks_Fmt "", nkid2cs(ir_proc.name), nks_Arg(sb));
 #endif // ENABLE_LOGGING
 }

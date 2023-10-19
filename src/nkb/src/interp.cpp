@@ -552,9 +552,9 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 #ifdef ENABLE_LOGGING
         if (dst_ref_data) {
             nksb_fixed_buffer(sb, 256);
-            nkirv_inspect(dst_ref_data, dst.ref.type, &sb);
+            nkirv_inspect(dst_ref_data, dst.ref.type, nksb_getStream(&sb));
             nksb_printf(&sb, ":");
-            nkirt_inspect(dst.ref.type, &sb);
+            nkirt_inspect(dst.ref.type, nksb_getStream(&sb));
             NK_LOG_DBG("res=" nks_Fmt, nks_Arg(sb));
         }
 #endif // ENABLE_LOGGING

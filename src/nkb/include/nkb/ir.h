@@ -7,8 +7,8 @@
 #include "nkb/common.h"
 #include "ntk/allocator.h"
 #include "ntk/id.h"
+#include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 #ifdef __cplusplus
@@ -200,11 +200,11 @@ void nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 // Inspection
 
 #ifdef ENABLE_LOGGING
-void nkir_inspectProgram(NkIrProg ir, NkStringBuilder *sb);
-void nkir_inspectData(NkIrProg ir, NkStringBuilder *sb);
-void nkir_inspectExternSyms(NkIrProg ir, NkStringBuilder *sb);
-void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStringBuilder *sb);
-void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, NkStringBuilder *sb);
+void nkir_inspectProgram(NkIrProg ir, nk_stream out);
+void nkir_inspectData(NkIrProg ir, nk_stream out);
+void nkir_inspectExternSyms(NkIrProg ir, nk_stream out);
+void nkir_inspectProc(NkIrProg ir, NkIrProc proc, nk_stream out);
+void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, nk_stream out);
 #endif // ENABLE_LOGGING
 
 #ifdef __cplusplus
