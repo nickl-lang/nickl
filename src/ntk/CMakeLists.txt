@@ -11,6 +11,7 @@ add_library(${LIB}
     src/sys/${PLATFORM_DIR}/process.c
     src/sys/${PLATFORM_DIR}/syscall.c
     src/sys/${PLATFORM_DIR}/term.c
+    src/sys/${PLATFORM_DIR}/thread.c
     src/sys/${PLATFORM_DIR}/time.c
     src/allocator.c
     src/arena.c

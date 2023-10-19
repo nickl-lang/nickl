@@ -2,7 +2,6 @@
 
 #include "ntk/logger.h"
 
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +9,7 @@
 #include <unistd.h>
 
 #include "ntk/sys/term.h"
+#include "ntk/sys/thread.h"
 #include "ntk/sys/time.h"
 
 #define ENV_VAR "NK_LOG_LEVEL"
@@ -45,7 +45,7 @@ struct LoggerState {
     nktime_t start_time;
     NkLogLevel log_level;
     NkColorMode color_mode;
-    pthread_mutex_t mtx;
+    nk_mutex_t mtx;
     size_t msg_count;
     bool initialized;
 };
@@ -74,7 +74,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
     nktime_t now = nk_getTimeNs();
     double ts = (now - s_logger.start_time) / 1e9;
 
-    pthread_mutex_lock(&s_logger.mtx);
+    nk_mutex_lock(&s_logger.mtx);
 
     if (to_color) {
         fprintf(stderr, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
@@ -93,7 +93,7 @@ void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, .
 
     fputc('\n', stderr);
 
-    pthread_mutex_unlock(&s_logger.mtx);
+    nk_mutex_unlock(&s_logger.mtx);
 }
 
 void _nk_loggerInit(NkLoggerOptions opt) {
@@ -104,7 +104,7 @@ void _nk_loggerInit(NkLoggerOptions opt) {
     s_logger.log_level = opt.log_level;
     s_logger.color_mode = opt.color_mode;
 
-    pthread_mutex_init(&s_logger.mtx, NULL);
+    nk_mutex_init(&s_logger.mtx);
 
     s_logger.initialized = true;
 }
