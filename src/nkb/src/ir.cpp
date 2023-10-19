@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdarg>
 #include <new>
 
 #include "cc_adapter.h"
@@ -11,6 +12,7 @@
 #include "ntk/id.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 #include "ntk/sys/error.h"
 #include "translate2c.h"
 
@@ -83,6 +85,23 @@ void nkir_freeProgram(NkIrProg ir) {
     nkar_free(&ir->relocs);
 
     nk_free_t(ir->alloc, ir);
+}
+
+NK_PRINTF_LIKE(2, 3) static void reportError(NkIrProg ir, char const *fmt, ...) {
+    assert(!ir->error_str.data && "run error is already initialized");
+
+    NkStringBuilder error{0, 0, 0, ir->alloc};
+
+    va_list ap;
+    va_start(ap, fmt);
+    nksb_vprintf(&error, fmt, ap);
+    va_end(ap);
+
+    ir->error_str = {nkav_init(error)};
+}
+
+nks nkir_getErrorString(NkIrProg ir) {
+    return ir->error_str;
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
@@ -444,17 +463,21 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
     return {{{}, _arg(ir, comment), {}}, 0, nkir_comment};
 }
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkIrCompilerConfig conf) {
+bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     nk_stream src{};
     bool res = nkcc_streamOpen(&src, conf);
     if (res) {
         nkir_translate2c(arena, ir, src);
-        return !nkcc_streamClose(src);
+        if (nkcc_streamClose(src)) {
+            reportError(ir, "C compiler `" nks_Fmt "` returned nonzero exit code", nks_Arg(conf.compiler_binary));
+            return false;
+        }
+        return true;
     } else {
-        // TODO Report errors to the user
-        NK_LOG_ERR("Failed to run compiler `" nks_Fmt "`: %s", nks_Arg(conf.compiler_binary), nk_getLastErrorString());
+        reportError(
+            ir, "failed to run C compiler `" nks_Fmt "`: %s", nks_Arg(conf.compiler_binary), nk_getLastErrorString());
         return false;
     }
 }

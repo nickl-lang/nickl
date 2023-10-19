@@ -107,6 +107,8 @@ typedef struct NkIrProg_T *NkIrProg;
 NkIrProg nkir_createProgram(NkAllocator alloc);
 void nkir_freeProgram(NkIrProg ir);
 
+nks nkir_getErrorString(NkIrProg ir);
+
 // Code Generation
 
 NkIrProc nkir_createProc(NkIrProg ir);
@@ -186,7 +188,7 @@ typedef struct {
     bool quiet;
 } NkIrCompilerConfig;
 
-bool nkir_write(NkArena *arena, NkIrProg ir, NkIrCompilerConfig conf);
+bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf);
 
 // Execution
 

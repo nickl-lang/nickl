@@ -66,6 +66,8 @@ struct NkIrProg_T {
 
     NkIrProc cur_proc{};
     size_t cur_line{};
+
+    nks error_str{};
 };
 
 #endif // HEADER_GUARD_NKB_IR_IMPL

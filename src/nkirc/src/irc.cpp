@@ -63,7 +63,9 @@ int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
         return false;
     }
 
-    if (!nkir_write(c->tmp_arena, c->ir, conf)) {
+    if (!nkir_write(c->ir, c->tmp_arena, conf)) {
+        nks err_str = nkir_getErrorString(c->ir);
+        nkirc_diag_printError("failed to run write output: " nks_Fmt, nks_Arg(err_str));
         return 1;
     }
 
