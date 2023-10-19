@@ -221,22 +221,11 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     auto const &ir = *ctx->ir;
     auto const &ir_proc = ir.procs.data[proc.idx];
 
-    auto const local_counts = nk_alloc_t<size_t>(tmp_alloc, ir_proc.locals.size);
-    for (size_t i = 0; i < ir_proc.locals.size; i++) {
-        local_counts[i] = 1lu;
-    }
-    auto const frame_layout = nkir_calcAggregateLayout(
-        tmp_alloc,
-        &ir_proc.locals.data[0].type,
-        local_counts,
-        ir_proc.locals.size,
-        sizeof(NkIrDecl_T) / sizeof(nktype_t),
-        1);
-
     auto &bc_proc =
         *(ctx->procs.data[proc.idx] = new (nk_alloc_t<NkBcProc_T>(ir.alloc)) NkBcProc_T{
               .ctx = ctx,
-              .frame_size = frame_layout.size,
+              .frame_size = ir_proc.frame_size,
+              .frame_align = ir_proc.frame_align,
               .instrs{0, 0, 0, ir.alloc},
           });
 
@@ -288,7 +277,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
             switch (ir_ref.kind) {
             case NkIrRef_Frame:
-                ref.offset += frame_layout.info_ar.data[ir_ref.index].offset;
+                ref.offset += ir_proc.locals.data[ir_ref.index].offset;
                 break;
             case NkIrRef_Arg:
                 ref.offset += ir_ref.index * sizeof(void *);

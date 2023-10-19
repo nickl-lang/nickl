@@ -72,6 +72,7 @@ typedef struct NkBcProc_T *NkBcProc;
 struct NkBcProc_T {
     NkIrRunCtx ctx;
     size_t frame_size;
+    size_t frame_align;
     nkar_type(NkBcInstr) instrs;
 };
 

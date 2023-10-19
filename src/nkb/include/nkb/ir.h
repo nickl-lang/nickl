@@ -136,6 +136,9 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 
 void nkir_setLine(NkIrProg ir, size_t line);
 
+void nkir_enter(NkIrProg ir);
+void nkir_leave(NkIrProg ir);
+
 // References
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);

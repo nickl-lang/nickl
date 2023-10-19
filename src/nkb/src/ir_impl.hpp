@@ -7,14 +7,16 @@
 #include "ntk/array.h"
 #include "ntk/id.h"
 
-struct NkIrDecl_T {
+struct NkIrLocal_T {
     nkid name;
     nktype_t type;
+    size_t offset;
 };
 
 struct NkIrProc_T {
     nkar_type(size_t) blocks;
-    nkar_type(NkIrDecl_T) locals;
+    nkar_type(NkIrLocal_T) locals;
+    nkar_type(size_t) scopes;
 
     nkid name{};
     nktype_t proc_t{};
@@ -26,6 +28,10 @@ struct NkIrProc_T {
     size_t end_line{};
 
     size_t cur_block{};
+
+    size_t frame_size{};
+    size_t frame_align{1};
+    size_t cur_frame_size{};
 };
 
 struct NkIrBlock {

@@ -113,6 +113,7 @@ NkIrProc nkir_createProc(NkIrProg ir) {
         (NkIrProc_T{
             .blocks{0, 0, 0, ir->alloc},
             .locals{0, 0, 0, ir->alloc},
+            .scopes{0, 0, 0, ir->alloc},
         }));
     return id;
 }
@@ -163,8 +164,8 @@ void nkir_finishProc(NkIrProg ir, NkIrProc _proc, size_t line) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[_proc.idx];
-
     proc.end_line = line;
+    proc.frame_size = roundUpSafe(proc.frame_size, proc.frame_align);
 }
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
@@ -222,7 +223,30 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
 }
 
 void nkir_setLine(NkIrProg ir, size_t line) {
+    NK_LOG_TRC("%s", __func__);
+
     ir->cur_line = line;
+}
+
+void nkir_enter(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto &proc = ir->procs.data[ir->cur_proc.idx];
+
+    nkar_append(&proc.scopes, proc.cur_frame_size);
+}
+
+void nkir_leave(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
+    assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto &proc = ir->procs.data[ir->cur_proc.idx];
+
+    assert(proc.scopes.size && "mismatched enter/leave");
+
+    proc.cur_frame_size = nkav_last(proc.scopes);
+    nkar_pop(&proc.scopes, 1);
 }
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type) {
@@ -232,7 +256,11 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type) {
     auto &proc = ir->procs.data[ir->cur_proc.idx];
 
     NkIrLocalVar id{proc.locals.size};
-    nkar_append(&proc.locals, (NkIrDecl_T{name, type}));
+    proc.frame_align = maxu(proc.frame_align, type->align);
+    proc.cur_frame_size = roundUpSafe(proc.cur_frame_size, type->align);
+    nkar_append(&proc.locals, (NkIrLocal_T{name, type, proc.cur_frame_size}));
+    proc.cur_frame_size += type->size;
+    proc.frame_size = maxu(proc.frame_size, proc.cur_frame_size);
     return id;
 }
 
