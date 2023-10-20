@@ -105,17 +105,17 @@ void nkirc_diag_vprintErrorQuote(nks src, NkIrcSourceLocation loc, char const *f
         int pointer_offset = loc.col;
         int actual_len = loc.len;
         if (loc.col && loc.col <= line.size && loc.len) {
-            pointer_offset = nks_escape(out, {line.data, loc.col - 1}) + 1;
+            pointer_offset = nks_sanitize(out, {line.data, loc.col - 1}) + 1;
             if (to_color) {
                 nk_printf(out, NK_TERM_COLOR_RED);
             }
-            actual_len = nks_escape(out, {line.data + loc.col - 1, loc.len});
+            actual_len = nks_sanitize(out, {line.data + loc.col - 1, loc.len});
             if (to_color) {
                 nk_printf(out, NK_TERM_COLOR_NONE);
             }
-            nks_escape(out, {line.data + loc.col - 1 + loc.len, line.size - loc.col + 1 - loc.len});
+            nks_sanitize(out, {line.data + loc.col - 1 + loc.len, line.size - loc.col + 1 - loc.len});
         } else {
-            nks_escape(out, line);
+            nks_sanitize(out, line);
         }
         nk_printf(out, "\n");
         if (loc.col) {

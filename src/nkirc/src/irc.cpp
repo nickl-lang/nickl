@@ -140,7 +140,16 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         };
         nkir_lex(&lexer, &c->file_arena, c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
-            nkirc_diag_printError(nks_Fmt, nks_Arg(lexer.error_msg));
+            nkirc_diag_printErrorQuote(
+                read_res.bytes,
+                {
+                    in_file_s,
+                    nkav_last(lexer.tokens).lin,
+                    nkav_last(lexer.tokens).col,
+                    nkav_last(lexer.tokens).text.size,
+                },
+                nks_Fmt,
+                nks_Arg(lexer.error_msg));
             return false;
         }
     }
@@ -152,7 +161,16 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         };
         nkir_parse(c, in_file_id, {nkav_init(lexer.tokens)});
         if (!c->parser.ok) {
-            nkirc_diag_printError(nks_Fmt, nks_Arg(c->parser.error_msg));
+            nkirc_diag_printErrorQuote(
+                read_res.bytes,
+                {
+                    in_file_s,
+                    c->parser.error_token.lin,
+                    c->parser.error_token.col,
+                    c->parser.error_token.text.size,
+                },
+                nks_Fmt,
+                nks_Arg(c->parser.error_msg));
             return false;
         }
     }

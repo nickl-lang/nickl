@@ -5,6 +5,7 @@
 #include <mutex>
 
 #include "irc.h"
+#include "lexer.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
@@ -54,6 +55,7 @@ struct Decl {
 struct NkIrParserState {
     NkHashMap<nkid, Decl *> decls;
     nks error_msg{};
+    NkIrToken error_token{};
     bool ok{};
 };
 

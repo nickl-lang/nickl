@@ -953,6 +953,7 @@ void nkir_parse(NkIrCompiler c, nkid file, NkIrTokenView tokens) {
 
     if (gen.m_error_occurred) {
         c->parser.error_msg = gen.m_error_msg;
+        c->parser.error_token = *gen.m_cur_token;
         c->parser.ok = false;
         return;
     }

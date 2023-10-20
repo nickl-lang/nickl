@@ -180,4 +180,16 @@ int nks_unescape(nk_stream out, nks str) {
     return res;
 }
 
+int nks_sanitize(nk_stream out, nks str) {
+    int res = 0;
+    for (size_t i = 0; i < str.size; i++) {
+        if (isprint(str.data[i])) {
+            WRITE(nk_stream_write(out, &str.data[i], 1));
+        } else {
+            WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+        }
+    }
+    return res;
+}
+
 extern inline nks nk_cs2s(char const *str);
