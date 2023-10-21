@@ -404,6 +404,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = alloc;
         nks_unescape(nksb_getStream(&sb), {data, len});
+        nksb_append_null(&sb);
         return {nkav_init(sb)};
     }
 
@@ -712,9 +713,7 @@ private:
     }
 
     NkIrConst parseConst(nkid name, nktype_t type, NkIrVisibility vis) {
-        auto data = nk_alloc(m_file_alloc, type->size);
-        std::memset(data, 0, type->size);
-        auto const cnst = nkir_makeConst(m_ir, name, data, type, vis);
+        auto const cnst = nkir_makeConst(m_ir, name, type, vis);
         CHECK(parseValue(nkir_makeRodataRef(m_ir, cnst), type));
         return cnst;
     }
@@ -769,31 +768,29 @@ private:
         }
 
         else if (check(t_string)) {
-            auto const str = parseString(m_file_alloc);
+            auto const str = parseString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            result_ref = nkir_makeRodataRef(
-                m_ir, nkir_makeConst(m_ir, nk_invalid_id, (void *)str.data, str_t, NkIrVisibility_Local));
+            auto const cnst = nkir_makeConst(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
+            memcpy(nkir_constGetData(m_ir, cnst), str.data, str_t->size);
+            result_ref = nkir_makeRodataRef(m_ir, cnst);
         } else if (check(t_escaped_string)) {
-            auto const str = parseEscapedString(m_file_alloc);
+            auto const str = parseEscapedString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            result_ref = nkir_makeRodataRef(
-                m_ir, nkir_makeConst(m_ir, nk_invalid_id, (void *)str.data, str_t, NkIrVisibility_Local));
+            auto const cnst = nkir_makeConst(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
+            memcpy(nkir_constGetData(m_ir, cnst), str.data, str_t->size);
+            result_ref = nkir_makeRodataRef(m_ir, cnst);
         }
 
         else if (check(t_int)) {
-            auto value = nk_alloc_t<int64_t>(m_file_alloc);
-            CHECK(parseNumeric(value, Int64));
-            result_ref = nkir_makeRodataRef(
-                m_ir,
-                nkir_makeConst(
-                    m_ir, nk_invalid_id, value, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local));
+            auto const cnst =
+                nkir_makeConst(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
+            CHECK(parseNumeric(nkir_constGetData(m_ir, cnst), Int64));
+            result_ref = nkir_makeRodataRef(m_ir, cnst);
         } else if (check(t_float)) {
-            auto value = nk_alloc_t<double>(m_file_alloc);
-            CHECK(parseNumeric(value, Float64));
-            result_ref = nkir_makeRodataRef(
-                m_ir,
-                nkir_makeConst(
-                    m_ir, nk_invalid_id, value, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local));
+            auto const cnst =
+                nkir_makeConst(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
+            CHECK(parseNumeric(nkir_constGetData(m_ir, cnst), Float64));
+            result_ref = nkir_makeRodataRef(m_ir, cnst);
         }
 
         else if (accept(t_colon)) {

@@ -292,7 +292,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             }
             case NkIrRef_Rodata: {
                 ref.kind = NkBcRef_Rodata;
-                auto const_data = ir.consts.data[ir_ref.index].data;
+                auto const_data = nkir_constGetData(ctx->ir, {ir_ref.index});
                 ref.offset = (size_t)const_data;
                 break;
             }
@@ -356,7 +356,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     *ref_addr = get_global_addr(target_ref.index);
                     break;
                 case NkIrRef_Rodata:
-                    *ref_addr = ir.consts.data[target_ref.index].data;
+                    *ref_addr = nkir_constGetData(ctx->ir, {target_ref.index});
                     break;
                 default:
                     assert(!"unreachable");

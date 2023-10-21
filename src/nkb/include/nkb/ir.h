@@ -104,8 +104,7 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 typedef struct NkIrProg_T *NkIrProg;
 
-NkIrProg nkir_createProgram(NkAllocator alloc);
-void nkir_freeProgram(NkIrProg ir);
+NkIrProg nkir_createProgram(NkArena *arena);
 
 nks nkir_getErrorString(NkIrProg ir);
 
@@ -143,7 +142,7 @@ void nkir_leave(NkIrProg ir);
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);
 NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
-NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIrVisibility vis);
+NkIrConst nkir_makeConst(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkid lib, nkid name, nktype_t type);
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid lib, nkid name, nktype_t proc_t);
 

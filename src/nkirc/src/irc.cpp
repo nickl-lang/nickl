@@ -49,7 +49,7 @@ void nkirc_free(NkIrCompiler c) {
 int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
-    c->ir = nkir_createProgram(nk_arena_getAllocator(&c->file_arena));
+    c->ir = nkir_createProgram(&c->file_arena);
 
     auto base_path_str = (fs::current_path() / "_").string();
     nks base_file{base_path_str.c_str(), base_path_str.size()};
@@ -75,7 +75,7 @@ int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
 int nkir_run(NkIrCompiler c, nks in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    c->ir = nkir_createProgram(nk_arena_getAllocator(&c->file_arena));
+    c->ir = nkir_createProgram(&c->file_arena);
 
     auto base_path_str = (fs::current_path() / "_").string();
     nks base_file{base_path_str.c_str(), base_path_str.size()};

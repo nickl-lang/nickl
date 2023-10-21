@@ -14,6 +14,7 @@
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/error.h"
+#include "ntk/utils.h"
 #include "translate2c.h"
 
 namespace {
@@ -55,9 +56,10 @@ char const *nkirOpcodeName(uint8_t code) {
     }
 }
 
-NkIrProg nkir_createProgram(NkAllocator alloc) {
+NkIrProg nkir_createProgram(NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
 
+    auto alloc = nk_arena_getAllocator(arena);
     return new (nk_alloc_t<NkIrProg_T>(alloc)) NkIrProg_T{
         .alloc = alloc,
 
@@ -70,21 +72,6 @@ NkIrProg nkir_createProgram(NkAllocator alloc) {
         .extern_procs{0, 0, 0, alloc},
         .relocs{0, 0, 0, alloc},
     };
-}
-
-void nkir_freeProgram(NkIrProg ir) {
-    NK_LOG_TRC("%s", __func__);
-
-    nkar_free(&ir->procs);
-    nkar_free(&ir->blocks);
-    nkar_free(&ir->instrs);
-    nkar_free(&ir->globals);
-    nkar_free(&ir->consts);
-    nkar_free(&ir->extern_data);
-    nkar_free(&ir->extern_procs);
-    nkar_free(&ir->relocs);
-
-    nk_free_t(ir->alloc, ir);
 }
 
 NK_PRINTF_LIKE(2, 3) static void reportError(NkIrProg ir, char const *fmt, ...) {
@@ -178,8 +165,7 @@ void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
     NK_LOG_TRC("%s", __func__);
 
     assert(ref.kind == NkIrRef_Rodata && "rodata ref expected");
-    auto const &cnst = ir->consts.data[ref.index];
-    auto data = (uint8_t *)cnst.data + ref.offset;
+    auto data = (uint8_t *)nkir_constGetData(ir, {ref.index}) + ref.offset;
     int indir = ref.indir;
     while (indir--) {
         data = *(uint8_t **)data;
@@ -272,11 +258,14 @@ NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisi
     return id;
 }
 
-NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIrVisibility vis) {
+NkIrConst nkir_makeConst(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
+
+    void *data = nk_allocAligned(ir->alloc, type->size, type->align);
 
     NkIrConst id{ir->consts.size};
     nkar_append(&ir->consts, (NkIrConst_T{name, data, type, vis}));
+    memset(data, 0, type->size);
     return id;
 }
 
@@ -813,4 +802,4 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
         nkirt_inspect(ref.type, out);
     }
 }
-#endif // ENABLE_LOGGIN
+#endif // ENABLE_LOGGING
