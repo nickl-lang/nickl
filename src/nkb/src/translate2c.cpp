@@ -247,7 +247,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
 void writeConst(
     WriterCtx &ctx,
     size_t const_id,
-    NkIrConst_T const &cnst,
+    NkIrData_T const &cnst,
     NkStringBuilder *src,
     bool is_complex = false) {
     ConstFp const_fp{cnst.data, cnst.type->id};
@@ -274,7 +274,7 @@ void writeConst(
                 writeConst(
                     ctx,
                     NKIR_INVALID_IDX,
-                    NkIrConst_T{
+                    {
                         .name = nk_invalid_id,
                         .data = (uint8_t *)cnst.data + offset,
                         .type = elem.type,
@@ -418,19 +418,33 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 }
 
 void writeGlobal(WriterCtx &ctx, size_t global_id, NkStringBuilder *src) {
-    auto const &decl = ctx.ir->globals.data[global_id];
-    writeName(decl.name, global_id, GLOBAL_CLASS, src);
+    auto const &global = ctx.ir->globals.data[global_id];
+    writeName(global.name, global_id, GLOBAL_CLASS, src);
     if (!getFlag(ctx.globals_translated, global_id)) {
-        writeVisibilityAttr(decl.visibility, &ctx.forward_s);
-        writeType(ctx, decl.type, &ctx.forward_s);
+        writeVisibilityAttr(global.visibility, &ctx.forward_s);
+        writeType(ctx, global.type, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " ");
-        writeName(decl.name, global_id, GLOBAL_CLASS, &ctx.forward_s);
-        nksb_printf(&ctx.forward_s, "={");
-        if (decl.type->size) {
-            nksb_printf(&ctx.forward_s, "0");
+        writeName(global.name, global_id, GLOBAL_CLASS, &ctx.forward_s);
+        nksb_printf(&ctx.forward_s, " = ");
+        if (global.data) {
+            writeConst(
+                ctx,
+                NKIR_INVALID_IDX,
+                {
+                    .name = nk_invalid_id,
+                    .data = global.data,
+                    .type = global.type,
+                    .visibility = NkIrVisibility_Local,
+                },
+                &ctx.forward_s);
+        } else {
+            nksb_printf(&ctx.forward_s, "{");
+            if (global.type->size) {
+                nksb_printf(&ctx.forward_s, "0");
+            }
+            nksb_printf(&ctx.forward_s, "}");
         }
-        nksb_printf(&ctx.forward_s, "};\n");
-
+        nksb_printf(&ctx.forward_s, ";\n");
         getFlag(ctx.globals_translated, global_id) = true;
     }
 }
@@ -854,7 +868,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
         }
     }
 
-#if 0
+#if 1
     fprintf(
         stderr, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
 #endif

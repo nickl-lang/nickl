@@ -39,15 +39,9 @@ struct NkIrBlock {
     nkar_type(size_t) instrs;
 };
 
-struct NkIrConst_T {
+struct NkIrData_T {
     nkid name;
     void *data;
-    nktype_t type;
-    NkIrVisibility visibility;
-};
-
-struct NkIrGlobal_T {
-    nkid name;
     nktype_t type;
     NkIrVisibility visibility;
 };
@@ -64,8 +58,8 @@ struct NkIrProg_T {
     nkar_type(NkIrProc_T) procs;
     nkar_type(NkIrBlock) blocks;
     nkar_type(NkIrInstr) instrs;
-    nkar_type(NkIrGlobal_T) globals;
-    nkar_type(NkIrConst_T) consts;
+    nkar_type(NkIrData_T) globals;
+    nkar_type(NkIrData_T) consts;
     nkar_type(NkIrExternSym_T) extern_data;
     nkar_type(NkIrExternSym_T) extern_procs;
     nkar_type(NkIrRef) relocs;

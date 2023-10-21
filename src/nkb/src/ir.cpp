@@ -161,11 +161,24 @@ void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
     return ir->consts.data[cnst.idx].data;
 }
 
-void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
+void *nkir_globalGetData(NkIrProg ir, NkIrGlobalVar var) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ref.kind == NkIrRef_Rodata && "rodata ref expected");
-    auto data = (uint8_t *)nkir_constGetData(ir, {ref.index}) + ref.offset;
+    auto &global = ir->globals.data[var.idx];
+    if (!global.data) {
+        global.data = nk_allocAligned(ir->alloc, global.type->size, global.type->align);
+    }
+    return global.data;
+}
+
+void *nkir_refDeref(NkIrProg ir, NkIrRef ref) {
+    NK_LOG_TRC("%s", __func__);
+
+    assert((ref.kind == NkIrRef_Rodata || ref.kind == NkIrRef_Data) && "data ref expected");
+    auto data =
+        (uint8_t
+             *)(ref.kind == NkIrRef_Rodata ? nkir_constGetData(ir, {ref.index}) : nkir_globalGetData(ir, {ref.index})) +
+        ref.offset;
     int indir = ref.indir;
     while (indir--) {
         data = *(uint8_t **)data;
@@ -254,7 +267,7 @@ NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisi
     NK_LOG_TRC("%s", __func__);
 
     NkIrGlobalVar id{ir->globals.size};
-    nkar_append(&ir->globals, (NkIrGlobal_T{name, type, vis}));
+    nkar_append(&ir->globals, (NkIrData_T{name, nullptr, type, vis}));
     return id;
 }
 
@@ -264,7 +277,7 @@ NkIrConst nkir_makeConst(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility v
     void *data = nk_allocAligned(ir->alloc, type->size, type->align);
 
     NkIrConst id{ir->consts.size};
-    nkar_append(&ir->consts, (NkIrConst_T{name, data, type, vis}));
+    nkar_append(&ir->consts, (NkIrData_T{name, data, type, vis}));
     memset(data, 0, type->size);
     return id;
 }
@@ -512,16 +525,20 @@ void nkir_inspectProgram(NkIrProg ir, nk_stream out) {
 void nkir_inspectData(NkIrProg ir, nk_stream out) {
     if (ir->globals.size) {
         for (size_t i = 0; i < ir->globals.size; i++) {
-            auto const &decl = ir->globals.data[i];
+            auto const &global = ir->globals.data[i];
             nk_printf(out, "\ndata ");
-            if (decl.name != nk_invalid_id) {
-                auto const global_name = nkid2s(decl.name);
+            if (global.name != nk_invalid_id) {
+                auto const global_name = nkid2s(global.name);
                 nk_printf(out, nks_Fmt, nks_Arg(global_name));
             } else {
                 nk_printf(out, "global%" PRIu64, i);
             }
             nk_printf(out, ": ");
-            nkirt_inspect(decl.type, out);
+            nkirt_inspect(global.type, out);
+            if (global.data) {
+                nk_printf(out, " = ");
+                nkirv_inspect(global.data, global.type, out);
+            }
         }
         nk_printf(out, "\n");
     }
@@ -750,7 +767,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
     }
     case NkIrRef_Rodata:
         if (ref.type->kind == NkType_Numeric) {
-            void *data = nkir_constRefDeref(ir, ref);
+            void *data = nkir_refDeref(ir, ref);
             nkirv_inspect(data, ref.type, out);
         } else {
             auto const &cnst = ir->consts.data[ref.index];

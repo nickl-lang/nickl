@@ -128,7 +128,9 @@ void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, size_t line);
 
 void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);
-void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref);
+void *nkir_globalGetData(NkIrProg ir, NkIrGlobalVar var);
+
+void *nkir_refDeref(NkIrProg ir, NkIrRef ref);
 
 nkav_typedef(NkIrInstr const, NkIrInstrArray);
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);

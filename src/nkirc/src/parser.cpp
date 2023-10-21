@@ -280,10 +280,14 @@ struct GeneratorState {
         EXPECT(t_colon);
         DEFINE(type, parseType());
         auto name = s2nkid(token->text);
+        auto global = nkir_makeGlobalVar(m_ir, name, type, vis);
         new (makeGlobalDecl(name)) Decl{
-            {.global = nkir_makeGlobalVar(m_ir, name, type, vis)},
+            {.global = global},
             Decl_GlobalVar,
         };
+        if (!check(t_newline)) {
+            parseValue(nkir_makeDataRef(m_ir, global), type);
+        }
         return {};
     }
 
@@ -697,7 +701,7 @@ private:
         }
 
         case NkType_Numeric: {
-            auto const data = nkir_constRefDeref(m_ir, result_ref);
+            auto const data = nkir_refDeref(m_ir, result_ref);
             CHECK(parseNumeric(data, type->as.num.value_type));
             break;
         }
