@@ -65,12 +65,7 @@ struct InterpContext {
 thread_local InterpContext ctx;
 
 void *getRefAddr(NkBcRef const &ref) {
-    uint8_t *ptr = ctx.base_ar[ref.kind] + ref.offset;
-    int indir = ref.indir;
-    while (indir--) {
-        ptr = *(uint8_t **)ptr;
-    }
-    return ptr + ref.post_offset;
+    return nkbc_deref(ctx.base_ar[ref.kind], ref);
 }
 
 template <class T>

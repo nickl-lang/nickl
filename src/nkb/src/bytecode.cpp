@@ -29,7 +29,7 @@ NkBcOpcode s_ir2opcode[] = {
 nkav_typedef(NkBcInstr, NkBcInstrView);
 
 void inspect(NkBcInstrView instrs, nk_stream out) {
-    auto inspect_ref = [&](NkBcRef const &ref) {
+    auto inspect_ref = [&](NkBcRef const &ref, bool expand_values) {
         if (ref.kind == NkBcRef_None) {
             nk_printf(out, "(null)");
             return;
@@ -42,19 +42,20 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         }
         switch (ref.kind) {
         case NkBcRef_Frame:
-            nk_printf(out, "frame+");
+            nk_printf(out, "frame");
             break;
         case NkBcRef_Arg:
-            nk_printf(out, "arg+");
+            nk_printf(out, "arg");
             break;
         case NkBcRef_Ret:
-            nk_printf(out, "ret+");
+            nk_printf(out, "ret");
             break;
-        // TODO case NkBcRef_Rodata:
-        //     nkirv_inspect((void *)ref.offset, ref.type, out);
-        //     break;
         case NkBcRef_Data:
-            nk_printf(out, "data+");
+            if (expand_values) {
+                nkirv_inspect(nkbc_deref(nullptr, ref), ref.type, out);
+            } else {
+                nk_printf(out, "data");
+            }
             break;
         default:
         case NkBcRef_None:
@@ -62,9 +63,9 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
             assert(!"unreachable");
             break;
         }
-        // TODO if (ref.kind != NkBcRef_Rodata) {
-        nk_printf(out, "%zx", ref.offset);
-        // }
+        if (ref.kind != NkBcRef_Data || !expand_values) {
+            nk_printf(out, "+%zx", ref.offset);
+        }
         for (size_t i = 0; i < ref.indir; i++) {
             nk_printf(out, "]");
         }
@@ -77,10 +78,10 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         }
     };
 
-    auto inspect_arg = [&](NkBcArg const &arg) {
+    auto inspect_arg = [&](NkBcArg const &arg, bool expand_values) {
         switch (arg.kind) {
         case NkBcArg_Ref: {
-            inspect_ref(arg.ref);
+            inspect_ref(arg.ref, expand_values);
             break;
         }
 
@@ -90,7 +91,7 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
                 if (i) {
                     nk_printf(out, ", ");
                 }
-                inspect_ref(arg.refs.data[i]);
+                inspect_ref(arg.refs.data[i], expand_values);
             }
             nk_printf(out, ")");
             break;
@@ -107,13 +108,13 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
                 nk_printf(out, ((i > 1) ? ", " : " "));
-                inspect_arg(instr.arg[i]);
+                inspect_arg(instr.arg[i], true);
             }
         }
 
         if (instr.arg[0].ref.kind != NkBcRef_None) {
             nk_printf(out, " -> ");
-            inspect_arg(instr.arg[0]);
+            inspect_arg(instr.arg[0], false);
         }
 
         nk_printf(out, "\n");

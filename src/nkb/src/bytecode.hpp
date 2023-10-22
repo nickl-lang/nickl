@@ -95,4 +95,13 @@ struct NkIrRunCtx_T {
     nks error_str{};
 };
 
+inline void *nkbc_deref(uint8_t *base, NkBcRef const &ref) {
+    uint8_t *ptr = base + ref.offset;
+    int indir = ref.indir;
+    while (indir--) {
+        ptr = *(uint8_t **)ptr;
+    }
+    return ptr + ref.post_offset;
+}
+
 #endif // HEADER_GUARD_NKB_BYTECODE
