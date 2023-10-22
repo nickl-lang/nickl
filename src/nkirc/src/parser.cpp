@@ -266,10 +266,10 @@ struct GeneratorState {
         EXPECT(t_colon);
         DEFINE(type, parseType());
         auto name = s2nkid(token->text);
-        DEFINE(cnst, parseConst(name, type, vis));
+        DEFINE(decl, parseConst(name, type, vis));
         new (makeGlobalDecl(name)) Decl{
-            {.cnst = cnst},
-            Decl_Const,
+            {.data = decl},
+            Decl_Data,
         };
 
         return {};
@@ -280,13 +280,13 @@ struct GeneratorState {
         EXPECT(t_colon);
         DEFINE(type, parseType());
         auto name = s2nkid(token->text);
-        auto global = nkir_makeGlobalVar(m_ir, name, type, vis);
+        auto decl = nkir_makeData(m_ir, name, type, vis);
         new (makeGlobalDecl(name)) Decl{
-            {.global = global},
-            Decl_GlobalVar,
+            {.data = decl},
+            Decl_Data,
         };
         if (!check(t_newline)) {
-            parseValue(nkir_makeDataRef(m_ir, global), type);
+            parseValue(nkir_makeDataRef(m_ir, decl), type);
         }
         return {};
     }
@@ -306,7 +306,7 @@ struct GeneratorState {
 private:
     Decl *makeGlobalDecl(nkid name) {
         if (m_compiler->parser.decls.find(name)) {
-            return error("global `%s` is already defined", nkid2cs(name)), nullptr;
+            return error("identifier `%s` is already defined", nkid2cs(name)), nullptr;
         }
         auto const decl = nk_alloc_t<Decl>(m_parse_alloc);
         m_compiler->parser.decls.insert(name, decl);
@@ -409,6 +409,7 @@ private:
         sb.alloc = alloc;
         nks_unescape(nksb_getStream(&sb), {data, len});
         nksb_append_null(&sb);
+        sb.size--;
         return {nkav_init(sb)};
     }
 
@@ -701,7 +702,7 @@ private:
         }
 
         case NkType_Numeric: {
-            auto const data = nkir_refDeref(m_ir, result_ref);
+            auto const data = nkir_dataRefDeref(m_ir, result_ref);
             CHECK(parseNumeric(data, type->as.num.value_type));
             break;
         }
@@ -716,10 +717,10 @@ private:
         return {};
     }
 
-    NkIrConst parseConst(nkid name, nktype_t type, NkIrVisibility vis) {
-        auto const cnst = nkir_makeConst(m_ir, name, type, vis);
-        CHECK(parseValue(nkir_makeRodataRef(m_ir, cnst), type));
-        return cnst;
+    NkIrData parseConst(nkid name, nktype_t type, NkIrVisibility vis) {
+        auto const decl = nkir_makeRodata(m_ir, name, type, vis);
+        CHECK(parseValue(nkir_makeDataRef(m_ir, decl), type));
+        return decl;
     }
 
     NkIrRef parseRef() {
@@ -749,8 +750,8 @@ private:
             case Decl_LocalVar:
                 result_ref = nkir_makeFrameRef(m_ir, decl->as.local);
                 break;
-            case Decl_GlobalVar:
-                result_ref = nkir_makeDataRef(m_ir, decl->as.global);
+            case Decl_Data:
+                result_ref = nkir_makeDataRef(m_ir, decl->as.data);
                 break;
             case Decl_ExternData:
                 result_ref = nkir_makeExternDataRef(m_ir, decl->as.extern_data);
@@ -760,9 +761,6 @@ private:
                 break;
             case Decl_Type:
                 return error("cannot reference a type"), NkIrRef{};
-            case Decl_Const:
-                result_ref = nkir_makeRodataRef(m_ir, decl->as.cnst);
-                break;
             default:
                 assert(!"unreachable");
                 return {};
@@ -774,33 +772,33 @@ private:
         else if (check(t_string)) {
             auto const str = parseString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            auto const cnst = nkir_makeConst(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
-            memcpy(nkir_constGetData(m_ir, cnst), str.data, str_t->size);
-            result_ref = nkir_makeRodataRef(m_ir, cnst);
+            auto const decl = nkir_makeRodata(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
+            memcpy(nkir_getDataPtr(m_ir, decl), str.data, str_t->size);
+            result_ref = nkir_makeDataRef(m_ir, decl);
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            auto const cnst = nkir_makeConst(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
-            memcpy(nkir_constGetData(m_ir, cnst), str.data, str_t->size);
-            result_ref = nkir_makeRodataRef(m_ir, cnst);
+            auto const decl = nkir_makeRodata(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
+            memcpy(nkir_getDataPtr(m_ir, decl), str.data, str_t->size);
+            result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else if (check(t_int)) {
-            auto const cnst =
-                nkir_makeConst(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
-            CHECK(parseNumeric(nkir_constGetData(m_ir, cnst), Int64));
-            result_ref = nkir_makeRodataRef(m_ir, cnst);
+            auto const decl =
+                nkir_makeRodata(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
+            CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Int64));
+            result_ref = nkir_makeDataRef(m_ir, decl);
         } else if (check(t_float)) {
-            auto const cnst =
-                nkir_makeConst(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
-            CHECK(parseNumeric(nkir_constGetData(m_ir, cnst), Float64));
-            result_ref = nkir_makeRodataRef(m_ir, cnst);
+            auto const decl =
+                nkir_makeRodata(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
+            CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Float64));
+            result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(cnst, parseConst(nk_invalid_id, type, NkIrVisibility_Local));
-            result_ref = nkir_makeRodataRef(m_ir, cnst);
+            DEFINE(decl, parseConst(nk_invalid_id, type, NkIrVisibility_Local));
+            result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else {

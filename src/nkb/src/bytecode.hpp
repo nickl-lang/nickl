@@ -26,7 +26,6 @@ enum NkBcRefKind { // must preserve NkIrRefKind order
     NkBcRef_Frame,
     NkBcRef_Arg,
     NkBcRef_Ret,
-    NkBcRef_Rodata,
     NkBcRef_Data,
 
     NkBcRef_Instr,
@@ -87,7 +86,7 @@ struct NkIrRunCtx_T {
     NkArena *tmp_arena;
 
     nkar_type(NkBcProc) procs;
-    nkar_type(void *) globals;
+    nkar_type(void *) data;
     NkHashMap<nkid, nkdl_t> extern_libs;
     NkHashMap<nkid, void *> extern_syms;
 

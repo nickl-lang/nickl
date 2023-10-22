@@ -40,7 +40,6 @@ struct InterpContext {
         uint8_t *frame;
         uint8_t *arg;
         uint8_t *ret;
-        uint8_t *rodata;
         uint8_t *data;
         uint8_t *instr;
     };
