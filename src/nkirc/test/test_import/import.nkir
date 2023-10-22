@@ -1,5 +1,5 @@
-extern "test_extern_lib" data g_test_global_var: i64
-extern "test_extern_lib" proc setTestGlobalVar(i64) void
+extern "test_import_lib" data g_test_global_var: i64
+extern "test_import_lib" proc setTestGlobalVar(i64) void
 
 extern "c" proc printf(*i8, ...) i32
 
