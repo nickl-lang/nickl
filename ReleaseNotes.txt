@@ -1,3 +1,13 @@
+v0.2.5
+    - Improve CLI interface and diagnostics
+    - Improve error handling
+    - Implement IR compilation via the C backend
+    - Implement the rest of IR instructions
+    - Implement the ability to explicitly link libraries in IR programs
+    - Implement the way of controlling IR symbol visibility
+    - Implement running Windows tests under wine
+    - Improve robustness of compiler internals
+
 v0.2.4
     - Rename std -> core
     - Add hex int literals
