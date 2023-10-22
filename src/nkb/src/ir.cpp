@@ -502,7 +502,7 @@ void nkir_inspectData(NkIrProg ir, nk_stream out) {
         bool printed = false;
         for (size_t i = 0; i < ir->data.size; i++) {
             auto const &decl = ir->data.data[i];
-            if (!decl.read_only || decl.type->kind == NkType_Aggregate) {
+            if (!decl.read_only || decl.visibility != NkIrVisibility_Local || decl.type->kind == NkType_Aggregate) {
                 nk_printf(out, "\n%s ", decl.read_only ? "const" : "data");
                 if (decl.name != nk_invalid_id) {
                     auto const decl_name = nkid2s(decl.name);
@@ -713,16 +713,16 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
         break;
     case NkIrRef_Data: {
         auto const &decl = ir->data.data[ref.index];
-        if (decl.read_only && ref.type->kind == NkType_Numeric) {
-            void *data = nkir_dataRefDeref(ir, ref);
-            nkirv_inspect(data, ref.type, out);
-        } else {
+        if (!decl.read_only || decl.visibility != NkIrVisibility_Local || decl.type->kind == NkType_Aggregate) {
             if (decl.name != nk_invalid_id) {
                 auto const decl_name = nkid2s(decl.name);
                 nk_printf(out, nks_Fmt, nks_Arg(decl_name));
             } else {
                 nk_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", ref.index);
             }
+        } else {
+            void *data = nkir_dataRefDeref(ir, ref);
+            nkirv_inspect(data, ref.type, out);
         }
         break;
     }

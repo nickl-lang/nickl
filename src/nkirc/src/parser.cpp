@@ -70,9 +70,9 @@ struct GeneratorState {
                 if (accept(t_proc)) {
                     CHECK(parseProc(NkIrVisibility_Default));
                 } else if (accept(t_const)) {
-                    CHECK(parseConstDef(NkIrVisibility_Default));
+                    CHECK(parseData(NkIrVisibility_Default, true));
                 } else if (accept(t_data)) {
-                    CHECK(parseData(NkIrVisibility_Default));
+                    CHECK(parseData(NkIrVisibility_Default, false));
                 } else {
                     return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
                 }
@@ -82,9 +82,9 @@ struct GeneratorState {
                 if (accept(t_proc)) {
                     CHECK(parseProc(NkIrVisibility_Local));
                 } else if (accept(t_const)) {
-                    CHECK(parseConstDef(NkIrVisibility_Local));
+                    CHECK(parseData(NkIrVisibility_Local, true));
                 } else if (accept(t_data)) {
-                    CHECK(parseData(NkIrVisibility_Local));
+                    CHECK(parseData(NkIrVisibility_Local, false));
                 } else {
                     return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), Void{};
                 }
@@ -120,9 +120,9 @@ struct GeneratorState {
             } else if (accept(t_type)) {
                 CHECK(parseTypeDef());
             } else if (accept(t_const)) {
-                CHECK(parseConstDef(NkIrVisibility_Hidden));
+                CHECK(parseData(NkIrVisibility_Hidden, true));
             } else if (accept(t_data)) {
-                CHECK(parseData(NkIrVisibility_Hidden));
+                CHECK(parseData(NkIrVisibility_Hidden, false));
             }
 
             else if (accept(t_include)) {
@@ -261,26 +261,12 @@ struct GeneratorState {
         return {};
     }
 
-    Void parseConstDef(NkIrVisibility vis) {
+    Void parseData(NkIrVisibility vis, bool read_only) {
         DEFINE(token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
         auto name = s2nkid(token->text);
-        DEFINE(decl, parseConst(name, type, vis));
-        new (makeGlobalDecl(name)) Decl{
-            {.data = decl},
-            Decl_Data,
-        };
-
-        return {};
-    }
-
-    Void parseData(NkIrVisibility vis) {
-        DEFINE(token, parseId());
-        EXPECT(t_colon);
-        DEFINE(type, parseType());
-        auto name = s2nkid(token->text);
-        auto decl = nkir_makeData(m_ir, name, type, vis);
+        auto decl = read_only ? nkir_makeRodata(m_ir, name, type, vis) : nkir_makeData(m_ir, name, type, vis);
         new (makeGlobalDecl(name)) Decl{
             {.data = decl},
             Decl_Data,

@@ -1,0 +1,24 @@
+extern "c" proc printf(*i8, ...) i32
+
+pub data  g_zero: i64
+pub data  g_init: i64 42
+pub const c_zero: i64
+pub const c_init: i64 42
+
+pub proc main() i32 {
+@start
+    call printf, (&"g_zero=%zi\n", g_zero)
+    call printf, (&"g_init=%zi\n", g_init)
+    call printf, (&"c_zero=%zi\n", c_zero)
+    call printf, (&"c_init=%zi\n", c_init)
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+g_zero=0
+g_init=42
+c_zero=0
+c_init=42
+
+@endoutput */

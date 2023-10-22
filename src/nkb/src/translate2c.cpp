@@ -23,21 +23,23 @@ namespace {
 
 NK_LOG_USE_SCOPE(translate2c);
 
-struct ConstFp {
+struct DataFp {
+    size_t idx;
     void *data;
     size_t type_id;
 };
 
-struct ConstFpHashSetContext {
-    static hash_t hash(ConstFp const &val) {
+struct DataFpHashSetContext {
+    static hash_t hash(DataFp const &val) {
         hash_t seed = 0;
+        hash_combine(&seed, val.idx);
         hash_combine(&seed, (size_t)val.data);
         hash_combine(&seed, val.type_id);
         return seed;
     }
 
-    static bool equal_to(ConstFp const &lhs, ConstFp const &rhs) {
-        return lhs.data == rhs.data && lhs.type_id == rhs.type_id;
+    static bool equal_to(DataFp const &lhs, DataFp const &rhs) {
+        return lhs.idx == rhs.idx && lhs.data == rhs.data && lhs.type_id == rhs.type_id;
     }
 };
 
@@ -63,8 +65,8 @@ struct WriterCtx {
     NkHashMap<size_t, nks> type_map = decltype(type_map)::create(alloc);
     size_t typedecl_count = 0;
 
-    NkHashMap<ConstFp, nks, ConstFpHashSetContext> const_map = decltype(const_map)::create(alloc);
-    size_t const_count = 0;
+    NkHashMap<DataFp, nks, DataFpHashSetContext> data_map = decltype(data_map)::create(alloc);
+    size_t data_count = 0;
 
     flag_array procs_translated{0, 0, 0, alloc};
     flag_array data_translated{0, 0, 0, alloc};
@@ -243,14 +245,16 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     nksb_printf(src, nks_Fmt, nks_Arg(type_str));
 }
 
-void writeData(WriterCtx &ctx, size_t const_id, NkIrDecl_T const &decl, NkStringBuilder *src, bool is_complex = false) {
-    ConstFp const_fp{decl.data, decl.type->id};
+void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuilder *src, bool is_complex = false) {
+    DataFp data_fp{idx, decl.data, decl.type->id};
 
-    auto found_str = ctx.const_map.find(const_fp);
+    auto found_str = ctx.data_map.find(data_fp);
     if (found_str) {
         nksb_printf(src, nks_Fmt, nks_Arg(*found_str));
         return;
     }
+
+    is_complex |= decl.visibility != NkIrVisibility_Local;
 
     NkStringBuilder tmp_s{0, 0, 0, ctx.alloc};
 
@@ -355,14 +359,14 @@ void writeData(WriterCtx &ctx, size_t const_id, NkIrDecl_T const &decl, NkString
 
     nks str{nkav_init(tmp_s)};
 
-    if (is_complex && !getFlag(ctx.data_translated, const_id)) {
+    if (is_complex && !getFlag(ctx.data_translated, idx)) {
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
         writeType(ctx, decl.type, &ctx.forward_s);
         if (decl.read_only) {
             nksb_printf(&ctx.forward_s, " const");
         }
         nksb_printf(&ctx.forward_s, " ");
-        writeName(decl.name, ctx.const_count, CONST_CLASS, &ctx.forward_s);
+        writeName(decl.name, ctx.data_count, CONST_CLASS, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " = ");
         if (decl.data) {
             nksb_printf(&ctx.forward_s, nks_Fmt, nks_Arg(str));
@@ -372,17 +376,17 @@ void writeData(WriterCtx &ctx, size_t const_id, NkIrDecl_T const &decl, NkString
         nksb_printf(&ctx.forward_s, ";\n");
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
-        writeName(decl.name, ctx.const_count, CONST_CLASS, &sb);
-        str = nks{nkav_init(sb)};
+        writeName(decl.name, ctx.data_count, CONST_CLASS, &sb);
+        str = {nkav_init(sb)};
 
-        ctx.const_count++;
+        ctx.data_count++;
 
-        if (const_id != NKIR_INVALID_IDX) {
-            getFlag(ctx.data_translated, const_id) = true;
+        if (idx != NKIR_INVALID_IDX) {
+            getFlag(ctx.data_translated, idx) = true;
         }
     }
 
-    ctx.const_map.insert(const_fp, str);
+    ctx.data_map.insert(data_fp, str);
     nksb_printf(src, nks_Fmt, nks_Arg(str));
 }
 
@@ -801,7 +805,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
     writePreamble(&ctx.types_s);
 
     for (size_t i = 0; i < ir->procs.size; i++) {
-        if (ir->procs.data[i].visibility == NkIrVisibility_Default) {
+        if (ir->procs.data[i].visibility != NkIrVisibility_Local) {
             translateProc(ctx, i);
 
             while (ctx.procs_to_translate.size) {
@@ -814,7 +818,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 
     for (size_t i = 0; i < ir->data.size; i++) {
         auto const &decl = ir->data.data[i];
-        if (!getFlag(ctx.data_translated, i) && decl.visibility == NkIrVisibility_Default) {
+        if (!getFlag(ctx.data_translated, i) && decl.visibility != NkIrVisibility_Local) {
             NkStringBuilder dummy_sb{0, 0, 0, ctx.alloc};
             writeData(ctx, i, decl, &dummy_sb, true);
         }
