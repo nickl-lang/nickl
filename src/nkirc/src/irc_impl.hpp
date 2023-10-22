@@ -30,12 +30,11 @@ enum EDeclKind {
     Decl_Arg,
     Decl_Proc,
     Decl_LocalVar,
-    Decl_GlobalVar,
+    Decl_Data,
     Decl_ExternData,
     Decl_ExternProc,
 
     Decl_Type,
-    Decl_Const
 };
 
 struct Decl {
@@ -43,11 +42,10 @@ struct Decl {
         size_t arg_index;
         ProcRecord proc;
         NkIrLocalVar local;
-        NkIrGlobalVar global;
+        NkIrData data;
         NkIrExternData extern_data;
         NkIrExternProc extern_proc;
         nktype_t type;
-        NkIrConst cnst;
     } as;
     EDeclKind kind;
 };

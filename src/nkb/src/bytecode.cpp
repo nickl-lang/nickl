@@ -29,7 +29,7 @@ NkBcOpcode s_ir2opcode[] = {
 nkav_typedef(NkBcInstr, NkBcInstrView);
 
 void inspect(NkBcInstrView instrs, nk_stream out) {
-    auto inspect_ref = [&](NkBcRef const &ref) {
+    auto inspect_ref = [&](NkBcRef const &ref, bool expand_values) {
         if (ref.kind == NkBcRef_None) {
             nk_printf(out, "(null)");
             return;
@@ -42,19 +42,20 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         }
         switch (ref.kind) {
         case NkBcRef_Frame:
-            nk_printf(out, "frame+");
+            nk_printf(out, "frame");
             break;
         case NkBcRef_Arg:
-            nk_printf(out, "arg+");
+            nk_printf(out, "arg");
             break;
         case NkBcRef_Ret:
-            nk_printf(out, "ret+");
-            break;
-        case NkBcRef_Rodata:
-            nkirv_inspect((void *)ref.offset, ref.type, out);
+            nk_printf(out, "ret");
             break;
         case NkBcRef_Data:
-            nk_printf(out, "data+");
+            if (expand_values) {
+                nkirv_inspect(nkbc_deref(nullptr, ref), ref.type, out);
+            } else {
+                nk_printf(out, "data");
+            }
             break;
         default:
         case NkBcRef_None:
@@ -62,8 +63,8 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
             assert(!"unreachable");
             break;
         }
-        if (ref.kind != NkBcRef_Rodata) {
-            nk_printf(out, "%zx", ref.offset);
+        if (ref.kind != NkBcRef_Data || !expand_values) {
+            nk_printf(out, "+%zx", ref.offset);
         }
         for (size_t i = 0; i < ref.indir; i++) {
             nk_printf(out, "]");
@@ -77,10 +78,10 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         }
     };
 
-    auto inspect_arg = [&](NkBcArg const &arg) {
+    auto inspect_arg = [&](NkBcArg const &arg, bool expand_values) {
         switch (arg.kind) {
         case NkBcArg_Ref: {
-            inspect_ref(arg.ref);
+            inspect_ref(arg.ref, expand_values);
             break;
         }
 
@@ -90,7 +91,7 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
                 if (i) {
                     nk_printf(out, ", ");
                 }
-                inspect_ref(arg.refs.data[i]);
+                inspect_ref(arg.refs.data[i], expand_values);
             }
             nk_printf(out, ")");
             break;
@@ -107,13 +108,13 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         for (size_t i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
                 nk_printf(out, ((i > 1) ? ", " : " "));
-                inspect_arg(instr.arg[i]);
+                inspect_arg(instr.arg[i], true);
             }
         }
 
         if (instr.arg[0].ref.kind != NkBcRef_None) {
             nk_printf(out, " -> ");
-            inspect_arg(instr.arg[0]);
+            inspect_arg(instr.arg[0], false);
         }
 
         nk_printf(out, "\n");
@@ -252,15 +253,23 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     nkar_type(Reloc) relocs{0, 0, 0, tmp_alloc};
     nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
-    auto const get_global_addr = [&](size_t index) {
-        while (index >= ctx->globals.size) {
-            nkar_append(&ctx->globals, nullptr);
+    auto const get_data_addr = [&](size_t index) {
+        while (index >= ctx->data.size) {
+            nkar_append(&ctx->data, nullptr);
         }
-        auto &data = ctx->globals.data[index];
+        auto &data = ctx->data.data[index];
         if (!data) {
-            auto const &decl = ir.globals.data[index];
-            data = nk_allocAligned(ir.alloc, decl.type->size, decl.type->align);
-            std::memset(data, 0, decl.type->size);
+            auto const &decl = ir.data.data[index];
+            if (decl.data && decl.read_only) {
+                data = decl.data;
+            } else {
+                data = nk_allocAligned(ir.alloc, decl.type->size, decl.type->align);
+                if (decl.data) {
+                    memcpy(data, decl.data, decl.type->size);
+                } else {
+                    memset(data, 0, decl.type->size);
+                }
+            }
         }
         return data;
     };
@@ -287,17 +296,11 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 ref.indir++;
                 break;
             case NkIrRef_Data: {
-                ref.offset += (size_t)get_global_addr(ir_ref.index);
-                break;
-            }
-            case NkIrRef_Rodata: {
-                ref.kind = NkBcRef_Rodata;
-                auto const_data = ir.consts.data[ir_ref.index].data;
-                ref.offset = (size_t)const_data;
+                ref.offset += (size_t)get_data_addr(ir_ref.index);
                 break;
             }
             case NkIrRef_Proc: {
-                ref.kind = NkBcRef_Rodata;
+                ref.kind = NkBcRef_Data;
                 if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
                     nkar_append(
                         &relocs,
@@ -344,28 +347,17 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 auto sym_addr = nk_alloc_t<void *>(ir.alloc);
                 *sym_addr = sym;
 
-                ref.kind = NkBcRef_Rodata;
+                ref.kind = NkBcRef_Data;
                 ref.offset += (size_t)sym_addr;
                 break;
             }
             case NkIrRef_Address: {
                 auto const &target_ref = ir.relocs.data[ir_ref.index];
                 auto ref_addr = nk_alloc_t<void *>(ir.alloc);
-                switch (target_ref.kind) {
-                case NkIrRef_Data:
-                    *ref_addr = get_global_addr(target_ref.index);
-                    break;
-                case NkIrRef_Rodata:
-                    *ref_addr = ir.consts.data[target_ref.index].data;
-                    break;
-                default:
-                    assert(!"unreachable");
-                    break;
-                }
+                *ref_addr = get_data_addr(target_ref.index);
 
-                ref.kind = NkBcRef_Rodata;
+                ref.kind = NkBcRef_Data;
                 ref.offset += (size_t)ref_addr;
-
                 break;
             }
             default:
@@ -451,7 +443,6 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 } else if (arg1.ref.kind == NkIrRef_Proc) {
                     code = nkop_call_jmp;
                 }
-
                 break;
             }
 
@@ -629,7 +620,7 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
         .tmp_arena = tmp_arena,
 
         .procs{0, 0, 0, ir->alloc},
-        .globals{0, 0, 0, ir->alloc},
+        .data{0, 0, 0, ir->alloc},
         .extern_libs = decltype(NkIrRunCtx_T::extern_libs)::create(ir->alloc),
         .extern_syms = decltype(NkIrRunCtx_T::extern_syms)::create(ir->alloc),
 

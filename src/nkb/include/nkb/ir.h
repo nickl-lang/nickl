@@ -29,7 +29,6 @@ typedef enum {
     NkIrRef_Frame,
     NkIrRef_Arg,
     NkIrRef_Ret,
-    NkIrRef_Rodata,
     NkIrRef_Data,
 
     NkIrRef_Proc,
@@ -93,8 +92,7 @@ typedef struct {
 DEFINE_IDX_TYPE(NkIrProc);
 DEFINE_IDX_TYPE(NkIrLabel);
 DEFINE_IDX_TYPE(NkIrLocalVar);
-DEFINE_IDX_TYPE(NkIrGlobalVar);
-DEFINE_IDX_TYPE(NkIrConst);
+DEFINE_IDX_TYPE(NkIrData);
 DEFINE_IDX_TYPE(NkIrExternData);
 DEFINE_IDX_TYPE(NkIrExternProc);
 
@@ -104,8 +102,7 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 typedef struct NkIrProg_T *NkIrProg;
 
-NkIrProg nkir_createProgram(NkAllocator alloc);
-void nkir_freeProgram(NkIrProg ir);
+NkIrProg nkir_createProgram(NkArena *arena);
 
 nks nkir_getErrorString(NkIrProg ir);
 
@@ -128,8 +125,8 @@ void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, size_t line);
 
-void *nkir_constGetData(NkIrProg ir, NkIrConst cnst);
-void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref);
+void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);
+void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
 
 nkav_typedef(NkIrInstr const, NkIrInstrArray);
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
@@ -142,16 +139,15 @@ void nkir_leave(NkIrProg ir);
 // References
 
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);
-NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
-NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIrVisibility vis);
+NkIrData nkir_makeData(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
+NkIrData nkir_makeRodata(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
 NkIrExternData nkir_makeExternData(NkIrProg ir, nkid lib, nkid name, nktype_t type);
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid lib, nkid name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index);
 NkIrRef nkir_makeRetRef(NkIrProg ir);
-NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var);
-NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst);
+NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
 NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc);

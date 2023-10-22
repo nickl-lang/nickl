@@ -131,7 +131,7 @@ nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst) {
     return p->consts[cnst.id];
 }
 
-nkval_t nkir_constRefDeref(NkIrProg p, NkIrRef ref) {
+nkval_t nkir_refDeref(NkIrProg p, NkIrRef ref) {
     assert(ref.ref_type == NkIrRef_Const && "const ref expected");
     auto const val = nkir_constGetValue(p, {ref.index});
     auto type = nkval_typeof(val);
@@ -368,7 +368,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder *sb) {
         return;
     }
     if (ref.ref_type == NkIrRef_Const) {
-        auto val = nkir_constRefDeref(p, ref);
+        auto val = nkir_refDeref(p, ref);
         val.type = ref.type;
         nkval_inspect(val, sb);
     } else {

@@ -96,7 +96,6 @@ void nkirv_inspect(void *data, nktype_t type, nk_stream out) {
     }
     switch (type->kind) {
     case NkType_Aggregate:
-        nk_printf(out, "{");
         for (size_t elemi = 0; elemi < type->as.aggr.elems.size; elemi++) {
             auto const &elem = type->as.aggr.elems.data[elemi];
             auto ptr = (uint8_t *)data + elem.offset;
@@ -105,6 +104,9 @@ void nkirv_inspect(void *data, nktype_t type, nk_stream out) {
                 nks_escape(out, {(char const *)ptr, elem.count});
                 nk_printf(out, "\"");
             } else {
+                if (elemi == 0) {
+                    nk_printf(out, "{");
+                }
                 if (elem.count) {
                     nk_printf(out, "[");
                 }
@@ -118,9 +120,11 @@ void nkirv_inspect(void *data, nktype_t type, nk_stream out) {
                 if (elem.count) {
                     nk_printf(out, "]");
                 }
+                if (elemi == type->as.aggr.elems.size - 1) {
+                    nk_printf(out, "}");
+                }
             }
         }
-        nk_printf(out, "}");
         break;
     case NkType_Numeric:
         switch (type->as.num.value_type) {

@@ -413,7 +413,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
         auto _writeRef = [&](NkIrRef const &ref) {
             if (ref.ref_type == NkIrRef_Const) {
-                _writeConst(ctx, nkir_constRefDeref(ir, ref), src);
+                _writeConst(ctx, nkir_refDeref(ir, ref), src);
                 return;
             } else if (ref.ref_type == NkIrRef_ExtSym) {
                 auto sym = ctx.ir->exsyms[ref.index];

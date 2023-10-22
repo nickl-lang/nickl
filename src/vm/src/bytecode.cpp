@@ -241,7 +241,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case nkir_call:
                 if (arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
                     arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
-                    auto const fn = nkval_as(NkIrFunct, nkir_constRefDeref(p->ir, arg1.ref));
+                    auto const fn = nkval_as(NkIrFunct, nkir_refDeref(p->ir, arg1.ref));
                     bool found = false;
                     // TODO Manual search for fn
                     for (auto f : ir.functs) {

@@ -14,6 +14,7 @@
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/error.h"
+#include "ntk/utils.h"
 #include "translate2c.h"
 
 namespace {
@@ -55,36 +56,21 @@ char const *nkirOpcodeName(uint8_t code) {
     }
 }
 
-NkIrProg nkir_createProgram(NkAllocator alloc) {
+NkIrProg nkir_createProgram(NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
 
+    auto alloc = nk_arena_getAllocator(arena);
     return new (nk_alloc_t<NkIrProg_T>(alloc)) NkIrProg_T{
         .alloc = alloc,
 
         .procs{0, 0, 0, alloc},
         .blocks{0, 0, 0, alloc},
         .instrs{0, 0, 0, alloc},
-        .globals{0, 0, 0, alloc},
-        .consts{0, 0, 0, alloc},
+        .data{0, 0, 0, alloc},
         .extern_data{0, 0, 0, alloc},
         .extern_procs{0, 0, 0, alloc},
         .relocs{0, 0, 0, alloc},
     };
-}
-
-void nkir_freeProgram(NkIrProg ir) {
-    NK_LOG_TRC("%s", __func__);
-
-    nkar_free(&ir->procs);
-    nkar_free(&ir->blocks);
-    nkar_free(&ir->instrs);
-    nkar_free(&ir->globals);
-    nkar_free(&ir->consts);
-    nkar_free(&ir->extern_data);
-    nkar_free(&ir->extern_procs);
-    nkar_free(&ir->relocs);
-
-    nk_free_t(ir->alloc, ir);
 }
 
 NK_PRINTF_LIKE(2, 3) static void reportError(NkIrProg ir, char const *fmt, ...) {
@@ -168,18 +154,21 @@ void nkir_finishProc(NkIrProg ir, NkIrProc _proc, size_t line) {
     proc.frame_size = roundUpSafe(proc.frame_size, proc.frame_align);
 }
 
-void *nkir_constGetData(NkIrProg ir, NkIrConst cnst) {
+void *nkir_getDataPtr(NkIrProg ir, NkIrData var) {
     NK_LOG_TRC("%s", __func__);
 
-    return ir->consts.data[cnst.idx].data;
+    auto &decl = ir->data.data[var.idx];
+    if (!decl.data) {
+        decl.data = nk_allocAligned(ir->alloc, decl.type->size, decl.type->align);
+    }
+    return decl.data;
 }
 
-void *nkir_constRefDeref(NkIrProg ir, NkIrRef ref) {
+void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     NK_LOG_TRC("%s", __func__);
 
-    assert(ref.kind == NkIrRef_Rodata && "rodata ref expected");
-    auto const &cnst = ir->consts.data[ref.index];
-    auto data = (uint8_t *)cnst.data + ref.offset;
+    assert(ref.kind == NkIrRef_Data && "data ref expected");
+    auto data = (uint8_t *)nkir_getDataPtr(ir, {ref.index}) + ref.offset;
     int indir = ref.indir;
     while (indir--) {
         data = *(uint8_t **)data;
@@ -208,7 +197,8 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
 
         assert(
             instr.arg[0].kind != NkIrArg_Ref || instr.arg[0].ref.indir ||
-            (instr.arg[0].ref.kind != NkIrRef_Rodata && instr.arg[0].ref.kind != NkIrRef_Arg));
+            ((instr.arg[0].ref.kind != NkIrRef_Data || !ir->data.data[instr.arg[0].ref.index].read_only) &&
+             instr.arg[0].ref.kind != NkIrRef_Arg));
 
         auto &instrs = ir->instrs;
 
@@ -264,19 +254,19 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type) {
     return id;
 }
 
-NkIrGlobalVar nkir_makeGlobalVar(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis) {
+NkIrData nkir_makeData(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
-    NkIrGlobalVar id{ir->globals.size};
-    nkar_append(&ir->globals, (NkIrGlobal_T{name, type, vis}));
+    NkIrData id{ir->data.size};
+    nkar_append(&ir->data, (NkIrDecl_T{name, nullptr, type, vis, false}));
     return id;
 }
 
-NkIrConst nkir_makeConst(NkIrProg ir, nkid name, void *data, nktype_t type, NkIrVisibility vis) {
+NkIrData nkir_makeRodata(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
-    NkIrConst id{ir->consts.size};
-    nkar_append(&ir->consts, (NkIrConst_T{name, data, type, vis}));
+    NkIrData id{ir->data.size};
+    nkar_append(&ir->data, (NkIrDecl_T{name, nullptr, type, vis, true}));
     return id;
 }
 
@@ -346,28 +336,15 @@ NkIrRef nkir_makeRetRef(NkIrProg ir) {
     };
 }
 
-NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrGlobalVar var) {
+NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var) {
     NK_LOG_TRC("%s", __func__);
 
     return {
         .index = var.idx,
         .offset = 0,
         .post_offset = 0,
-        .type = ir->globals.data[var.idx].type,
+        .type = ir->data.data[var.idx].type,
         .kind = NkIrRef_Data,
-        .indir = 0,
-    };
-}
-
-NkIrRef nkir_makeRodataRef(NkIrProg ir, NkIrConst cnst) {
-    NK_LOG_TRC("%s", __func__);
-
-    return {
-        .index = cnst.idx,
-        .offset = 0,
-        .post_offset = 0,
-        .type = ir->consts.data[cnst.idx].type,
-        .kind = NkIrRef_Rodata,
         .indir = 0,
     };
 }
@@ -414,7 +391,7 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
 NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
     NK_LOG_TRC("%s", __func__);
 
-    assert((ref.kind == NkIrRef_Data || ref.kind == NkIrRef_Rodata) && "invalid address reference");
+    assert(ref.kind == NkIrRef_Data && "invalid address reference");
 
     auto const id = ir->relocs.size;
     nkar_append(&ir->relocs, ref);
@@ -520,39 +497,31 @@ void nkir_inspectProgram(NkIrProg ir, nk_stream out) {
     nkir_inspectExternSyms(ir, out);
 }
 
+static bool isInlineDecl(NkIrDecl_T const &decl) {
+    return decl.read_only && decl.visibility == NkIrVisibility_Local &&
+           (decl.type->kind != NkType_Aggregate ||
+            (decl.type->as.aggr.elems.size == 1 && decl.type->as.aggr.elems.data[0].type->size == 1));
+}
+
 void nkir_inspectData(NkIrProg ir, nk_stream out) {
-    if (ir->globals.size) {
-        for (size_t i = 0; i < ir->globals.size; i++) {
-            auto const &decl = ir->globals.data[i];
-            nk_printf(out, "\ndata ");
-            if (decl.name != nk_invalid_id) {
-                auto const global_name = nkid2s(decl.name);
-                nk_printf(out, nks_Fmt, nks_Arg(global_name));
-            } else {
-                nk_printf(out, "global%" PRIu64, i);
-            }
-            nk_printf(out, ": ");
-            nkirt_inspect(decl.type, out);
-        }
-        nk_printf(out, "\n");
-    }
-
-    if (ir->consts.size) {
+    if (ir->data.size) {
         bool printed = false;
-
-        for (size_t i = 0; i < ir->consts.size; i++) {
-            auto const &cnst = ir->consts.data[i];
-            if (cnst.type->kind == NkType_Aggregate) {
-                if (cnst.name != nk_invalid_id) {
-                    auto const const_name = nkid2s(cnst.name);
-                    nk_printf(out, "\nconst " nks_Fmt ": ", nks_Arg(const_name));
+        for (size_t i = 0; i < ir->data.size; i++) {
+            auto const &decl = ir->data.data[i];
+            if (!isInlineDecl(decl)) {
+                nk_printf(out, "\n%s ", decl.read_only ? "const" : "data");
+                if (decl.name != nk_invalid_id) {
+                    auto const decl_name = nkid2s(decl.name);
+                    nk_printf(out, nks_Fmt, nks_Arg(decl_name));
                 } else {
-                    nk_printf(out, "\nconst const%" PRIu64 ": ", i);
+                    nk_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", i);
                 }
-                nkirt_inspect(cnst.type, out);
-                nk_printf(out, " = ");
-                nkirv_inspect(cnst.data, cnst.type, out);
-
+                nk_printf(out, ": ");
+                nkirt_inspect(decl.type, out);
+                if (decl.data) {
+                    nk_printf(out, " = ");
+                    nkirv_inspect(decl.data, decl.type, out);
+                }
                 printed = true;
             }
         }
@@ -750,29 +719,20 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
         nk_printf(out, "ret");
         break;
     case NkIrRef_Data: {
-        auto const &decl = ir->globals.data[ref.index];
-        if (decl.name != nk_invalid_id) {
-            auto const name = nkid2s(decl.name);
-            nk_printf(out, nks_Fmt, nks_Arg(name));
-        } else {
-            nk_printf(out, "global%" PRIu64, ref.index);
-        }
-        break;
-    }
-    case NkIrRef_Rodata:
-        if (ref.type->kind == NkType_Numeric) {
-            void *data = nkir_constRefDeref(ir, ref);
+        auto const &decl = ir->data.data[ref.index];
+        if (isInlineDecl(decl)) {
+            void *data = nkir_dataRefDeref(ir, ref);
             nkirv_inspect(data, ref.type, out);
         } else {
-            auto const &cnst = ir->consts.data[ref.index];
-            if (cnst.name != nk_invalid_id) {
-                auto const const_name = nkid2s(cnst.name);
-                nk_printf(out, nks_Fmt, nks_Arg(const_name));
+            if (decl.name != nk_invalid_id) {
+                auto const decl_name = nkid2s(decl.name);
+                nk_printf(out, nks_Fmt, nks_Arg(decl_name));
             } else {
-                nk_printf(out, "const%" PRIu64, ref.index);
+                nk_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", ref.index);
             }
         }
         break;
+    }
     case NkIrRef_Proc: {
         auto const name = nkid2s(ir->procs.data[ref.index].name);
         nk_printf(out, nks_Fmt, nks_Arg(name));
@@ -813,4 +773,4 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
         nkirt_inspect(ref.type, out);
     }
 }
-#endif // ENABLE_LOGGIN
+#endif // ENABLE_LOGGING
