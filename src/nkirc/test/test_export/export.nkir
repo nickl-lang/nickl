@@ -1,0 +1,13 @@
+pub data g_test_global_var: i64
+
+pub proc setTestGlobalVar(val: i64) void {
+@start
+    mov val -> g_test_global_var
+    ret
+}
+
+pub proc getTestGlobalVar() i64 {
+@start
+    mov g_test_global_var -> ret
+    ret
+}
