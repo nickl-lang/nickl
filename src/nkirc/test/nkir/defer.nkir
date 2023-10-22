@@ -1,0 +1,80 @@
+extern "c" proc printf(*i8, ...) i32
+
+local proc allocate() i64 {
+@start
+    mov 42 -> ret
+    call printf, (&"allocate()->%zi\n", ret)
+    ret
+}
+
+local proc free(resource: i64) void {
+@start
+    call printf, (&"free(%zi)\n", resource)
+    ret
+}
+
+local proc use(resource: i64) void {
+@start
+    call printf, (&"use(%zi)\n", resource)
+    ret
+}
+
+pub proc main() i32 {
+
+/*
+    resource := allocate();
+    {
+        defer {
+            if resource {
+                free(resource);
+            }
+        }
+        if !resource {
+            return 1;
+        }
+        use(resource);
+    }
+    printf("done\n");
+    return 0;
+*/
+
+@start
+    // resource := allocate();
+    resource: i64
+    call allocate, () -> resource
+    //     if !resource {
+    jmpnz resource, @endif
+    //         if resource {
+    jmpz resource, @defer_endif_1
+    //             free(resource);
+    call free, (resource)
+
+@defer_endif_1
+    //         return 1;
+    mov  1 -> ret
+    ret
+
+@endif
+    //     use(resource);
+    call use, (resource)
+    //         if resource {
+    jmpz resource, @defer_endif_2
+    //             free(resource);
+    call free, (resource)
+
+@defer_endif_2
+    // printf("done\n");
+    call printf, (&"done\n")
+    // return 0;
+    mov  0 -> ret
+    ret
+
+}
+
+/* @output
+allocate()->42
+use(42)
+free(42)
+done
+
+@endoutput */
