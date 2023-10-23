@@ -1,6 +1,8 @@
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
+#include "nkl/common/token.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/cli.h"
@@ -10,6 +12,7 @@
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/sys/file.h"
 #include "ntk/sys/path.h"
 #include "ntk/utils.h"
 
@@ -165,6 +168,21 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     NK_LOGGER_INIT(logger_opts);
+
+    // TODO Hardcoded example {
+    NklAstNode nodes[] = {
+        {.id = cs2nkid("add"), .token_idx = 1, .total_children = 2, .arity = 2},
+        {.id = cs2nkid("int"), .token_idx = 0, .total_children = 0, .arity = 0},
+        {.id = cs2nkid("int"), .token_idx = 2, .total_children = 0, .arity = 0},
+    };
+    NklToken tokens[] = {
+        {.text = nk_cs2s("4"), .id = 0, .lin = 1, .col = 1},
+        {.text = nk_cs2s("+"), .id = 0, .lin = 1, .col = 2},
+        {.text = nk_cs2s("5"), .id = 0, .lin = 1, .col = 3},
+    };
+    nk_stream out = nk_file_getStream(nk_stdout());
+    nkl_ast_inspect({nodes, sizeof(nodes)}, {tokens, sizeof(tokens)}, out);
+    // }
 
 #ifdef BUILD_WITH_EASY_PROFILER
     puts("press any key to exit");
