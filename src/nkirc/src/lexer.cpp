@@ -49,8 +49,8 @@ struct ScannerState {
     NkArena *m_tmp_arena;
 
     size_t m_pos = 0;
-    size_t m_lin = 1;
-    size_t m_col = 1;
+    uint32_t m_lin = 1;
+    uint32_t m_col = 1;
 
     NkIrToken m_token{};
     nks m_error_msg{};

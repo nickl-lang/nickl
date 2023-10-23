@@ -15,14 +15,14 @@ typedef enum {
 #define SP(ID, TEXT) t_##ID,
 #include "tokens.inl"
 
-    Token_Count,
+    NkIrToken_Count,
 } ETokenId;
 
 typedef struct {
     nks text;
-    size_t id;
-    size_t lin;
-    size_t col;
+    uint32_t id;
+    uint32_t lin;
+    uint32_t col;
 } NkIrToken;
 
 extern const char *s_token_id[];
