@@ -1,12 +1,12 @@
 set(EXE nkstc)
 
 add_executable(${EXE}
-    src/diagnostics.cpp
     src/main.cpp
     )
 
 target_link_libraries(${EXE}
     PRIVATE nkb
+    PRIVATE nkl_common
     )
 
 if(NOT DEV_BUILD)

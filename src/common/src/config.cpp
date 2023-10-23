@@ -1,6 +1,6 @@
-#include "config.hpp"
+#include "nkl/common/config.hpp"
 
-#include "diagnostics.h"
+#include "nkl/common/diagnostics.h"
 #include "ntk/file.h"
 #include "ntk/string.h"
 #include "ntk/sys/error.h"

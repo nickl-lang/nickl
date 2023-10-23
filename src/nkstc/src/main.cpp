@@ -1,6 +1,6 @@
-#include "diagnostics.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/cli.h"

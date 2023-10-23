@@ -5,8 +5,6 @@ add_subdirectory(config)
 set(EXE nkirc)
 
 add_executable(${EXE}
-    src/config.cpp
-    src/diagnostics.cpp
     src/irc.cpp
     src/lexer.cpp
     src/main.cpp
@@ -16,6 +14,7 @@ add_executable(${EXE}
 
 target_link_libraries(${EXE}
     PRIVATE nkb
+    PRIVATE nkl_common
     )
 
 if(NOT DEV_BUILD)

@@ -5,10 +5,10 @@
 #include <filesystem>
 #include <new>
 
-#include "diagnostics.h"
 #include "irc_impl.hpp"
 #include "lexer.h"
 #include "nkb/ir.h"
+#include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/logger.h"

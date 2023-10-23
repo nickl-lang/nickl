@@ -1,15 +1,12 @@
-#include <cstdlib>
-
-#include <stdio.h>
-
-#include "config.hpp"
-#include "diagnostics.h"
 #include "irc.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "nkl/common/config.hpp"
+#include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/cli.h"
+#include "ntk/file.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
@@ -21,7 +18,7 @@
 namespace {
 
 void printErrorUsage() {
-    fprintf(stderr, "See `%s --help` for usage information\n", NK_BINARY_NAME);
+    nk_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
 }
 
 void printUsage() {
