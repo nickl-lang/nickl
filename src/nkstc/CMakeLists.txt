@@ -2,6 +2,7 @@ set(EXE nkstc)
 
 add_executable(${EXE}
     src/main.cpp
+    src/stc.cpp
     )
 
 target_link_libraries(${EXE}

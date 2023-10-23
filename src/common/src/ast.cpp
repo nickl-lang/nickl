@@ -8,7 +8,8 @@ static void inspectNode(uint32_t idx, NklAstNodeView nodes, NklTokenView tokens,
     auto const &node = nodes.data[idx];
 
     auto const node_name = nkid2s(node.id);
-    nk_printf(out, nks_Fmt " \"" nks_Fmt "\"\n", nks_Arg(node_name), nks_Arg(tokens.data[node.token_idx].text));
+    auto const token_text = tokens.data[node.token_idx].text;
+    nk_printf(out, nks_Fmt " \"" nks_Fmt "\"\n", nks_Arg(node_name), nks_Arg(token_text));
 
     for (uint32_t i = 0; i < node.arity; i++) {
         auto const &child_node = nodes.data[++idx];
