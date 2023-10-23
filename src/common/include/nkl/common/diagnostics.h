@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKIRC_DIAGNOSTICS
-#define HEADER_GUARD_NKIRC_DIAGNOSTICS
+#ifndef HEADER_GUARD_NKL_COMMON_DIAGNOSTICS
+#define HEADER_GUARD_NKL_COMMON_DIAGNOSTICS
 
 #include <stdarg.h>
 
@@ -11,30 +11,30 @@ extern "C" {
 #endif
 
 typedef enum {
-    NkIrcColor_Auto,
-    NkIrcColor_Always,
-    NkIrcColor_Never,
-} NkIrcColorPolicy;
+    NklColor_Auto,
+    NklColor_Always,
+    NklColor_Never,
+} NklColorPolicy;
 
-void nkirc_diag_init(NkIrcColorPolicy color_policy);
+void nkl_diag_init(NklColorPolicy color_policy);
 
 typedef struct {
     nks file;
     size_t lin;
     size_t col;
     size_t len;
-} NkIrcSourceLocation;
+} NklSourceLocation;
 
-NK_PRINTF_LIKE(1, 2) void nkirc_diag_printError(char const *fmt, ...);
-NK_PRINTF_LIKE(2, 3) void nkirc_diag_printErrorFile(NkIrcSourceLocation loc, char const *fmt, ...);
-NK_PRINTF_LIKE(3, 4) void nkirc_diag_printErrorQuote(nks src, NkIrcSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(1, 2) void nkl_diag_printError(char const *fmt, ...);
+NK_PRINTF_LIKE(2, 3) void nkl_diag_printErrorFile(NklSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(3, 4) void nkl_diag_printErrorQuote(nks src, NklSourceLocation loc, char const *fmt, ...);
 
-void nkirc_diag_vprintError(char const *fmt, va_list ap);
-void nkirc_diag_vprintErrorFile(NkIrcSourceLocation loc, char const *fmt, va_list ap);
-void nkirc_diag_vprintErrorQuote(nks src, NkIrcSourceLocation loc, char const *fmt, va_list ap);
+void nkl_diag_vprintError(char const *fmt, va_list ap);
+void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap);
+void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, va_list ap);
 
 #ifndef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_nkirc_diag
+#endif // HEADER_GUARD_NKL_COMMON_DIAGNOSTICS

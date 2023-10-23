@@ -5,38 +5,38 @@
 #include "ntk/sys/file.h"
 #include "ntk/sys/term.h"
 
-static NkIrcColorPolicy s_color_policy;
+static NklColorPolicy s_color_policy;
 
 static bool toColor() {
-    return s_color_policy == NkIrcColor_Always || (s_color_policy == NkIrcColor_Auto && nk_isatty(2));
+    return s_color_policy == NklColor_Always || (s_color_policy == NklColor_Auto && nk_isatty(2));
 }
 
-void nkirc_diag_init(NkIrcColorPolicy color_policy) {
+void nkl_diag_init(NklColorPolicy color_policy) {
     s_color_policy = color_policy;
 }
 
-void nkirc_diag_printError(char const *fmt, ...) {
+void nkl_diag_printError(char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    nkirc_diag_vprintError(fmt, ap);
+    nkl_diag_vprintError(fmt, ap);
     va_end(ap);
 }
 
-void nkirc_diag_printErrorFile(NkIrcSourceLocation loc, char const *fmt, ...) {
+void nkl_diag_printErrorFile(NklSourceLocation loc, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    nkirc_diag_vprintErrorFile(loc, fmt, ap);
+    nkl_diag_vprintErrorFile(loc, fmt, ap);
     va_end(ap);
 }
 
-void nkirc_diag_printErrorQuote(nks src, NkIrcSourceLocation loc, char const *fmt, ...) {
+void nkl_diag_printErrorQuote(nks src, NklSourceLocation loc, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    nkirc_diag_vprintErrorQuote(src, loc, fmt, ap);
+    nkl_diag_vprintErrorQuote(src, loc, fmt, ap);
     va_end(ap);
 }
 
-void nkirc_diag_vprintError(char const *fmt, va_list ap) {
+void nkl_diag_vprintError(char const *fmt, va_list ap) {
     bool const to_color = toColor();
     nk_stream out = nk_file_getStream(nk_stderr());
     if (to_color) {
@@ -51,7 +51,7 @@ void nkirc_diag_vprintError(char const *fmt, va_list ap) {
     nk_printf(out, "\n");
 }
 
-void nkirc_diag_vprintErrorFile(NkIrcSourceLocation loc, char const *fmt, va_list ap) {
+void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap) {
     bool const to_color = toColor();
     nk_stream out = nk_file_getStream(nk_stderr());
     if (to_color) {
@@ -70,13 +70,13 @@ void nkirc_diag_vprintErrorFile(NkIrcSourceLocation loc, char const *fmt, va_lis
     }
     nk_printf(out, " ");
 
-    nkirc_diag_vprintError(fmt, ap);
+    nkl_diag_vprintError(fmt, ap);
 }
 
 #define MAX_LINE_QUOTE 120
 
-void nkirc_diag_vprintErrorQuote(nks src, NkIrcSourceLocation loc, char const *fmt, va_list ap) {
-    nkirc_diag_vprintErrorFile(loc, fmt, ap);
+void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, va_list ap) {
+    nkl_diag_vprintErrorFile(loc, fmt, ap);
 
     nk_stream out = nk_file_getStream(nk_stderr());
 

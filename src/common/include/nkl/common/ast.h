@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKIRC_AST
-#define HEADER_GUARD_NKIRC_AST
+#ifndef HEADER_GUARD_NKL_COMMON_AST
+#define HEADER_GUARD_NKL_COMMON_AST
 
 #include <stdint.h>
 
@@ -20,4 +20,4 @@ typedef struct {
 }
 #endif
 
-#endif // HEADER_GUARD_NKIRC_AST
+#endif // HEADER_GUARD_NKL_COMMON_AST

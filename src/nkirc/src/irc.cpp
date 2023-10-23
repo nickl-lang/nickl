@@ -59,13 +59,13 @@ int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
     }
 
     if (conf.output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
-        nkirc_diag_printError("entry point is not defined");
+        nkl_diag_printError("entry point is not defined");
         return false;
     }
 
     if (!nkir_write(c->ir, c->tmp_arena, conf)) {
         nks err_str = nkir_getErrorString(c->ir);
-        nkirc_diag_printError("failed to run write output: " nks_Fmt, nks_Arg(err_str));
+        nkl_diag_printError("failed to run write output: " nks_Fmt, nks_Arg(err_str));
         return 1;
     }
 
@@ -84,7 +84,7 @@ int nkir_run(NkIrCompiler c, nks in_file) {
     }
 
     if (c->entry_point.idx == NKIR_INVALID_IDX) {
-        nkirc_diag_printError("entry point is not defined");
+        nkl_diag_printError("entry point is not defined");
         return false;
     }
 
@@ -101,7 +101,7 @@ int nkir_run(NkIrCompiler c, nks in_file) {
     void *rets[] = {&ret_code};
     if (!nkir_invoke(run_ctx, c->entry_point, args, rets)) {
         nks err_str = nkir_getRunErrorString(run_ctx);
-        nkirc_diag_printError("failed to run the program: " nks_Fmt, nks_Arg(err_str));
+        nkl_diag_printError("failed to run the program: " nks_Fmt, nks_Arg(err_str));
         return 1;
     }
 
@@ -115,7 +115,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 
     if (!fs::exists(in_file_path)) {
         auto const in_file_path_str = in_file_path.string();
-        nkirc_diag_printError("file `%s` doesn't exist", in_file_path_str.c_str());
+        nkl_diag_printError("file `%s` doesn't exist", in_file_path_str.c_str());
         return false;
     }
 
@@ -126,7 +126,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 
     auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file_s);
     if (!read_res.ok) {
-        nkirc_diag_printError("failed to read file `%s`", in_file_path_str.c_str());
+        nkl_diag_printError("failed to read file `%s`", in_file_path_str.c_str());
         return false;
     }
 
@@ -140,7 +140,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         };
         nkir_lex(&lexer, &c->file_arena, c->tmp_arena, read_res.bytes);
         if (!lexer.ok) {
-            nkirc_diag_printErrorQuote(
+            nkl_diag_printErrorQuote(
                 read_res.bytes,
                 {
                     in_file_s,
@@ -161,7 +161,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         };
         nkir_parse(c, in_file_id, {nkav_init(lexer.tokens)});
         if (!c->parser.ok) {
-            nkirc_diag_printErrorQuote(
+            nkl_diag_printErrorQuote(
                 read_res.bytes,
                 {
                     in_file_s,

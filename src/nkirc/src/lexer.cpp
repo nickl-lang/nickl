@@ -52,7 +52,7 @@ struct ScannerState {
     uint32_t m_lin = 1;
     uint32_t m_col = 1;
 
-    NkIrToken m_token{};
+    NklToken m_token{};
     nks m_error_msg{};
 
     void scan() {
@@ -190,7 +190,7 @@ struct ScannerState {
 
             if (it != std::end(s_keywords)) {
                 size_t kw_index = std::distance(std::begin(s_keywords), it);
-                m_token.id = (ETokenId)(t_keyword_marker + kw_index);
+                m_token.id = (ENkIrTokenId)(t_keyword_marker + kw_index);
             } else {
                 m_token.id = t_id;
             }
@@ -222,7 +222,7 @@ struct ScannerState {
 
             if (op_index > 0) {
                 accept(op_len);
-                m_token.id = (ETokenId)(t_operator_marker + op_index);
+                m_token.id = (ENkIrTokenId)(t_operator_marker + op_index);
             } else {
                 accept();
                 if (isprint(chr(-1))) {

@@ -62,23 +62,23 @@ int main(int /*argc*/, char const *const *argv) {
         nks val{};
         NK_CLI_ARG_INIT(&argv, &key, &val);
 
-#define GET_VALUE                                                                               \
-    do {                                                                                        \
-        NK_CLI_ARG_GET_VALUE;                                                                   \
-        if (!val.size) {                                                                        \
-            nkirc_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
-            printErrorUsage();                                                                  \
-            return 1;                                                                           \
-        }                                                                                       \
+#define GET_VALUE                                                                             \
+    do {                                                                                      \
+        NK_CLI_ARG_GET_VALUE;                                                                 \
+        if (!val.size) {                                                                      \
+            nkl_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
+            printErrorUsage();                                                                \
+            return 1;                                                                         \
+        }                                                                                     \
     } while (0)
 
-#define NO_VALUE                                                                                     \
-    do {                                                                                             \
-        if (val.size) {                                                                              \
-            nkirc_diag_printError("argument `" nks_Fmt "` doesn't accept parameters", nks_Arg(key)); \
-            printErrorUsage();                                                                       \
-            return 1;                                                                                \
-        }                                                                                            \
+#define NO_VALUE                                                                                   \
+    do {                                                                                           \
+        if (val.size) {                                                                            \
+            nkl_diag_printError("argument `" nks_Fmt "` doesn't accept parameters", nks_Arg(key)); \
+            printErrorUsage();                                                                     \
+            return 1;                                                                              \
+        }                                                                                          \
     } while (0)
 
         if (key.size) {
@@ -91,13 +91,13 @@ int main(int /*argc*/, char const *const *argv) {
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
                 if (val == "auto") {
-                    nkirc_diag_init(NkIrcColor_Auto);
+                    nkl_diag_init(NklColor_Auto);
                 } else if (val == "always") {
-                    nkirc_diag_init(NkIrcColor_Always);
+                    nkl_diag_init(NklColor_Always);
                 } else if (val == "never") {
-                    nkirc_diag_init(NkIrcColor_Never);
+                    nkl_diag_init(NklColor_Never);
                 } else {
-                    nkirc_diag_printError(
+                    nkl_diag_printError(
                         "invalid color mode `" nks_Fmt "`. Possible values are `auto`, `always`, `never`",
                         nks_Arg(val));
                     printErrorUsage();
@@ -126,7 +126,7 @@ int main(int /*argc*/, char const *const *argv) {
                 } else if (val == "trace") {
                     logger_opts.log_level = NkLog_Trace;
                 } else {
-                    nkirc_diag_printError(
+                    nkl_diag_printError(
                         "invalid loglevel `" nks_Fmt
                         "`. Possible values are `none`, `error`, `warning`, `info`, `debug`, `trace`",
                         nks_Arg(val));
@@ -135,14 +135,14 @@ int main(int /*argc*/, char const *const *argv) {
                 }
 #endif // ENABLE_LOGGING
             } else {
-                nkirc_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(key));
+                nkl_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(key));
                 printErrorUsage();
                 return 1;
             }
         } else if (!in_file.size) {
             in_file = val;
         } else {
-            nkirc_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(val));
+            nkl_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(val));
             printErrorUsage();
             return 1;
         }
@@ -159,7 +159,7 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     if (!in_file.size) {
-        nkirc_diag_printError("no input file");
+        nkl_diag_printError("no input file");
         printErrorUsage();
         return 1;
     }
