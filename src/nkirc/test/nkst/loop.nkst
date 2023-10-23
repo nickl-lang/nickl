@@ -1,0 +1,19 @@
+(proc (extern "c") printf [(ptr i8) ("...")] i32)
+
+(proc (pub) main [[argc i32] [argv (ptr (ptr i8))]] i32 [
+    (define i 0)
+    (while (less i 5) [
+        (call printf ["%zi\n" i])
+        (assign i (add i 1))
+    ])
+    (return 0)
+])
+
+/* @output
+0
+1
+2
+3
+4
+
+@endoutput */
