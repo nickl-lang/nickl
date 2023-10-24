@@ -3,13 +3,13 @@
 #include <filesystem>
 
 #include "lexer.h"
-#include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
+#include "parser.h"
 
 namespace {
 
@@ -72,20 +72,26 @@ int nkst_compile(nks in_file) {
         }
     }
 
-    // TODO Hardcoded example {
-    NklAstNode nodes[] = {
-        {.id = cs2nkid("add"), .token_idx = 1, .total_children = 2, .arity = 2},
-        {.id = cs2nkid("int"), .token_idx = 0, .total_children = 0, .arity = 0},
-        {.id = cs2nkid("int"), .token_idx = 2, .total_children = 0, .arity = 0},
-    };
-    NklToken tokens[] = {
-        {.text = nk_cs2s("4"), .id = 0, .lin = 1, .col = 1},
-        {.text = nk_cs2s("+"), .id = 0, .lin = 1, .col = 2},
-        {.text = nk_cs2s("5"), .id = 0, .lin = 1, .col = 3},
-    };
-    nk_stream out = nk_file_getStream(nk_stdout());
-    nkl_ast_inspect({nodes, sizeof(nodes)}, {tokens, sizeof(tokens)}, out);
-    // }
+    NkStParserState parser{};
+    {
+        auto frame = nk_arena_grab(&tmp_arena);
+        defer {
+            nk_arena_popFrame(&tmp_arena, frame);
+        };
+        if (!nkst_parse(&parser, &file_arena, &tmp_arena, {nkav_init(lexer.tokens)})) {
+            nkl_diag_printErrorQuote(
+                read_res.bytes,
+                {
+                    in_file_s,
+                    0,
+                    0,
+                    0,
+                },
+                nks_Fmt,
+                nks_Arg(parser.error_msg));
+            return false;
+        }
+    }
 
     return 0;
 }
