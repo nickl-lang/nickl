@@ -1,6 +1,7 @@
 set(EXE nkstc)
 
 add_executable(${EXE}
+    src/lexer.cpp
     src/main.cpp
     src/stc.cpp
     )

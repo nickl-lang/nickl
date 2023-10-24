@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "lexer.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
@@ -21,9 +22,14 @@ NK_LOG_USE_SCOPE(nkstc);
 int nkst_compile(nks in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    NkArena arena{};
+    NkArena tmp_arena{};
     defer {
-        nk_arena_free(&arena);
+        nk_arena_free(&tmp_arena);
+    };
+
+    NkArena file_arena{};
+    defer {
+        nk_arena_free(&file_arena);
     };
 
     auto in_file_path = fs::current_path() / fs::path{std_str(in_file)};
@@ -39,10 +45,31 @@ int nkst_compile(nks in_file) {
 
     auto const in_file_s = nks{in_file_path_str.c_str(), in_file_path_str.size()};
 
-    auto read_res = nk_file_read(nk_arena_getAllocator(&arena), in_file_s);
+    auto read_res = nk_file_read(nk_arena_getAllocator(&file_arena), in_file_s);
     if (!read_res.ok) {
         nkl_diag_printError("failed to read file `%s`", in_file_path_str.c_str());
         return false;
+    }
+
+    NkStLexerState lexer{};
+    {
+        auto frame = nk_arena_grab(&tmp_arena);
+        defer {
+            nk_arena_popFrame(&tmp_arena, frame);
+        };
+        if (!nkst_lex(&lexer, &file_arena, &tmp_arena, read_res.bytes)) {
+            nkl_diag_printErrorQuote(
+                read_res.bytes,
+                {
+                    in_file_s,
+                    nkav_last(lexer.tokens).lin,
+                    nkav_last(lexer.tokens).col,
+                    nkav_last(lexer.tokens).text.size,
+                },
+                nks_Fmt,
+                nks_Arg(lexer.error_msg));
+            return false;
+        }
     }
 
     // TODO Hardcoded example {
