@@ -83,9 +83,9 @@ int nkst_compile(nks in_file) {
                 read_res.bytes,
                 {
                     in_file_s,
-                    0,
-                    0,
-                    0,
+                    parser.error_token.lin,
+                    parser.error_token.col,
+                    parser.error_token.text.size,
                 },
                 nks_Fmt,
                 nks_Arg(parser.error_msg));

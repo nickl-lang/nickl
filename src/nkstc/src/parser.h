@@ -11,6 +11,7 @@ extern "C" {
 
 typedef struct {
     nks error_msg;
+    NklToken error_token{};
 } NkStParserState;
 
 bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NklTokenView tokens);
