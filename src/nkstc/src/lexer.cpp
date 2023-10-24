@@ -16,13 +16,13 @@
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
-const char *s_token_id[] = {
+const char *s_nkst_token_id[] = {
 #define OP(ID, TEXT) #ID,
 #define SP(ID, TEXT) #ID,
 #include "tokens.inl"
 };
 
-const char *s_token_text[] = {
+const char *s_nkst_token_text[] = {
 #define OP(ID, TEXT) TEXT,
 #define SP(ID, TEXT) TEXT,
 #include "tokens.inl"
@@ -38,6 +38,7 @@ char const *s_operators[] = {
 };
 
 struct ScannerState {
+    nkid const m_file;
     nks const m_src;
     NkArena *m_tmp_arena;
 
@@ -80,6 +81,7 @@ struct ScannerState {
         m_token = {
             .text = {m_src.data + m_pos, 0},
             .id = t_empty,
+            .file = m_file,
             .lin = m_lin,
             .col = m_col,
         };
@@ -259,7 +261,7 @@ private:
 
 } // namespace
 
-bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src) {
+bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src) {
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
@@ -268,6 +270,7 @@ bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
     lexer->error_msg = {};
 
     ScannerState scanner{
+        .m_file = file,
         .m_src = src,
         .m_tmp_arena = tmp_arena,
     };
@@ -284,7 +287,7 @@ bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 #ifdef ENABLE_LOGGING
         nksb_fixed_buffer(sb, 256);
         nks_escape(nksb_getStream(&sb), scanner.m_token.text);
-        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[scanner.m_token.id], nks_Arg(sb));
+        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_nkst_token_id[scanner.m_token.id], nks_Arg(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 

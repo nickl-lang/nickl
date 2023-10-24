@@ -50,7 +50,7 @@ struct GeneratorState {
     nks m_error_msg{};
     bool m_error_occurred{};
 
-    NklToken *m_cur_token{};
+    NklToken const *m_cur_token{};
     ProcRecord *m_cur_proc{};
 
     Void generate() {
@@ -308,7 +308,7 @@ private:
         return decl;
     }
 
-    NklToken *parseId() {
+    NklToken const *parseId() {
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }

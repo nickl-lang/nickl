@@ -20,6 +20,7 @@ typedef struct {
 } NklAstNode;
 
 nkav_typedef(NklAstNode, NklAstNodeView);
+nkar_typedef(NklAstNode, NklAstNodeArray);
 
 void nkl_ast_inspect(NklAstNodeView nodes, NklTokenView tokens, nk_stream out);
 

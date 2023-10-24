@@ -37,18 +37,19 @@ int nkst_compile(nks in_file) {
     if (!fs::exists(in_file_path)) {
         auto const in_file_path_str = in_file_path.string();
         nkl_diag_printError("file `%s` doesn't exist", in_file_path_str.c_str());
-        return false;
+        return 1;
     }
 
     in_file_path = fs::canonical(in_file_path);
     auto const in_file_path_str = in_file_path.string();
 
     auto const in_file_s = nks{in_file_path_str.c_str(), in_file_path_str.size()};
+    auto const in_file_id = s2nkid(in_file_s);
 
     auto read_res = nk_file_read(nk_arena_getAllocator(&file_arena), in_file_s);
     if (!read_res.ok) {
         nkl_diag_printError("failed to read file `%s`", in_file_path_str.c_str());
-        return false;
+        return 1;
     }
 
     NkStLexerState lexer{};
@@ -57,7 +58,7 @@ int nkst_compile(nks in_file) {
         defer {
             nk_arena_popFrame(&tmp_arena, frame);
         };
-        if (!nkst_lex(&lexer, &file_arena, &tmp_arena, read_res.bytes)) {
+        if (!nkst_lex(&lexer, &file_arena, &tmp_arena, in_file_id, read_res.bytes)) {
             nkl_diag_printErrorQuote(
                 read_res.bytes,
                 {
@@ -68,7 +69,7 @@ int nkst_compile(nks in_file) {
                 },
                 nks_Fmt,
                 nks_Arg(lexer.error_msg));
-            return false;
+            return 1;
         }
     }
 
@@ -89,7 +90,7 @@ int nkst_compile(nks in_file) {
                 },
                 nks_Fmt,
                 nks_Arg(parser.error_msg));
-            return false;
+            return 1;
         }
     }
 

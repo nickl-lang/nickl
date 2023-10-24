@@ -45,6 +45,7 @@ char const *s_keywords[] = {
 };
 
 struct ScannerState {
+    nkid const m_file;
     nks const m_src;
     NkArena *m_tmp_arena;
 
@@ -87,6 +88,7 @@ struct ScannerState {
         m_token = {
             .text = {m_src.data + m_pos, 0},
             .id = t_empty,
+            .file = m_file,
             .lin = m_lin,
             .col = m_col,
         };
@@ -293,7 +295,7 @@ private:
 
 } // namespace
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src) {
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src) {
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
@@ -303,6 +305,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
     lexer->ok = true;
 
     ScannerState scanner{
+        .m_file = file,
         .m_src = src,
         .m_tmp_arena = tmp_arena,
     };

@@ -138,7 +138,7 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         defer {
             nk_arena_popFrame(c->tmp_arena, frame);
         };
-        nkir_lex(&lexer, &c->file_arena, c->tmp_arena, read_res.bytes);
+        nkir_lex(&lexer, &c->file_arena, c->tmp_arena, in_file_id, read_res.bytes);
         if (!lexer.ok) {
             nkl_diag_printErrorQuote(
                 read_res.bytes,
