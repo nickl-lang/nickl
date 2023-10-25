@@ -53,7 +53,7 @@ struct Decl {
 struct NkIrParserState {
     NkHashMap<nkid, Decl *> decls;
     nks error_msg{};
-    NkIrToken error_token{};
+    NklToken error_token{};
     bool ok{};
 };
 

@@ -1,15 +1,10 @@
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-add_subdirectory(config)
-
-set(EXE nkirc)
+set(EXE nkstc)
 
 add_executable(${EXE}
-    src/irc.cpp
     src/lexer.cpp
     src/main.cpp
     src/parser.cpp
-    src/types.cpp
+    src/stc.cpp
     )
 
 target_link_libraries(${EXE}
@@ -30,8 +25,3 @@ target_compile_definitions(${EXE}
     PUBLIC NK_BUILD_VERSION="${BUILD_VERSION}"
     PUBLIC NK_BUILD_TIME="${BUILD_TIME}"
     )
-
-if(CMAKE_TESTING_ENABLED)
-    include(NkircTest)
-    add_subdirectory(test)
-endif()

@@ -41,7 +41,7 @@ struct GeneratorState {
     NkIrCompiler m_compiler;
     NkIrProg m_ir;
     nkid m_file;
-    NkIrTokenView const m_tokens;
+    NklTokenView const m_tokens;
 
     NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
     NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_compiler->tmp_arena)};
@@ -50,7 +50,7 @@ struct GeneratorState {
     nks m_error_msg{};
     bool m_error_occurred{};
 
-    NkIrToken *m_cur_token{};
+    NklToken const *m_cur_token{};
     ProcRecord *m_cur_proc{};
 
     Void generate() {
@@ -308,7 +308,7 @@ private:
         return decl;
     }
 
-    NkIrToken *parseId() {
+    NklToken const *parseId() {
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }
@@ -885,7 +885,7 @@ private:
         NK_LOG_DBG("next token: " LOG_TOKEN(m_cur_token->id));
     }
 
-    bool accept(ETokenId id) {
+    bool accept(ENkIrTokenId id) {
         if (check(id)) {
             NK_LOG_DBG("accept" LOG_TOKEN(id));
             getToken();
@@ -894,11 +894,11 @@ private:
         return false;
     }
 
-    bool check(ETokenId id) const {
+    bool check(ENkIrTokenId id) const {
         return m_cur_token->id == id;
     }
 
-    void expect(ETokenId id) {
+    void expect(ENkIrTokenId id) {
         if (!accept(id)) {
             return error("expected `%s` before `" nks_Fmt "`", s_token_text[id], nks_Arg(m_cur_token->text));
         }
@@ -921,7 +921,7 @@ private:
 
 } // namespace
 
-void nkir_parse(NkIrCompiler c, nkid file, NkIrTokenView tokens) {
+void nkir_parse(NkIrCompiler c, nkid file, NklTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
     c->parser.error_msg = {};

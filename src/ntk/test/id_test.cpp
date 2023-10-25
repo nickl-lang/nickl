@@ -40,7 +40,7 @@ TEST_F(id, backward) {
 }
 
 TEST_F(id, nonexistent) {
-    auto str = nkid2s(9999999999);
+    auto str = nkid2s(999999999);
     EXPECT_EQ(nullptr, str.data);
     EXPECT_EQ(0, str.size);
 }

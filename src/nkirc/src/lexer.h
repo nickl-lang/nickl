@@ -1,6 +1,7 @@
 #ifndef HEADER_GUARD_NKIRC_LEXER
 #define HEADER_GUARD_NKIRC_LEXER
 
+#include "nkl/common/token.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/string.h"
@@ -15,29 +16,19 @@ typedef enum {
 #define SP(ID, TEXT) t_##ID,
 #include "tokens.inl"
 
-    Token_Count,
-} ETokenId;
-
-typedef struct {
-    nks text;
-    size_t id;
-    size_t lin;
-    size_t col;
-} NkIrToken;
+    NkIrToken_Count,
+} ENkIrTokenId;
 
 extern const char *s_token_id[];
 extern const char *s_token_text[];
 
-nkar_typedef(NkIrToken, NkIrTokenArray);
-nkav_typedef(NkIrToken, NkIrTokenView);
-
 typedef struct {
-    NkIrTokenArray tokens;
+    NklTokenArray tokens;
     nks error_msg;
     bool ok;
 } NkIrLexerState;
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks src);
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src);
 
 #ifndef __cplusplus
 }

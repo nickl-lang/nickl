@@ -16,16 +16,14 @@
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
-const char *s_token_id[] = {
+const char *s_nkst_token_id[] = {
 #define OP(ID, TEXT) #ID,
-#define KW(ID) #ID,
 #define SP(ID, TEXT) #ID,
 #include "tokens.inl"
 };
 
-const char *s_token_text[] = {
+const char *s_nkst_token_text[] = {
 #define OP(ID, TEXT) TEXT,
-#define KW(ID) #ID,
 #define SP(ID, TEXT) TEXT,
 #include "tokens.inl"
 };
@@ -36,11 +34,6 @@ NK_LOG_USE_SCOPE(lexer);
 
 char const *s_operators[] = {
 #define OP(id, text) text,
-#include "tokens.inl"
-};
-
-char const *s_keywords[] = {
-#define KW(id) #id,
 #include "tokens.inl"
 };
 
@@ -95,11 +88,6 @@ struct ScannerState {
 
         if (!chr()) {
             m_token.id = t_eof;
-        } else if (on('\n')) {
-            while (on('\n')) {
-                accept();
-            }
-            m_token.id = t_newline;
         } else if (on('"')) {
             accept();
 
@@ -184,29 +172,7 @@ struct ScannerState {
             while (onAlnumOrUscr()) {
                 accept();
             }
-
-            auto it = std::begin(s_keywords) + 1;
-            for (; it != std::end(s_keywords) && (m_token.text.size != strlen(*it) || *it != std_view(m_token.text));
-                 ++it) {
-            }
-
-            if (it != std::end(s_keywords)) {
-                size_t kw_index = std::distance(std::begin(s_keywords), it);
-                m_token.id = (ENkIrTokenId)(t_keyword_marker + kw_index);
-            } else {
-                m_token.id = t_id;
-            }
-        } else if (on('@')) {
-            accept();
-
-            if (!onAlphaOrUscr()) {
-                error("invalid label");
-            }
-            while (onAlnumOrUscr()) {
-                accept();
-            }
-
-            m_token.id = t_label;
+            m_token.id = t_id;
         } else {
             size_t op_index = 0;
             size_t op_len = 0;
@@ -224,7 +190,7 @@ struct ScannerState {
 
             if (op_index > 0) {
                 accept(op_len);
-                m_token.id = (ENkIrTokenId)(t_operator_marker + op_index);
+                m_token.id = (ENkStTokenId)(t_operator_marker + op_index);
             } else {
                 accept();
                 if (isprint(chr(-1))) {
@@ -271,7 +237,7 @@ private:
     }
 
     void skipSpaces() {
-        while (chk<isspace>() && !on('\n')) {
+        while (chk<isspace>()) {
             advance();
         }
     }
@@ -295,14 +261,13 @@ private:
 
 } // namespace
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src) {
+bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src) {
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
     nkar_reserve(&lexer->tokens, 1000);
 
     lexer->error_msg = {};
-    lexer->ok = true;
 
     ScannerState scanner{
         .m_file = file,
@@ -315,15 +280,16 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         nkar_append(&lexer->tokens, scanner.m_token);
 
         if (scanner.m_token.id == t_error) {
-            lexer->ok = false;
             lexer->error_msg = scanner.m_error_msg;
-            break;
+            return false;
         }
 
 #ifdef ENABLE_LOGGING
         nksb_fixed_buffer(sb, 256);
         nks_escape(nksb_getStream(&sb), scanner.m_token.text);
-        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[scanner.m_token.id], nks_Arg(sb));
+        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_nkst_token_id[scanner.m_token.id], nks_Arg(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
+
+    return true;
 }

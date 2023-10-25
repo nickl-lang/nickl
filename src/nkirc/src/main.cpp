@@ -1,15 +1,12 @@
-#include <cstdlib>
-
-#include <stdio.h>
-
-#include "config.hpp"
-#include "diagnostics.h"
 #include "irc.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "nkl/common/config.hpp"
+#include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/cli.h"
+#include "ntk/file.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/logger.h"
 #include "ntk/profiler.hpp"
@@ -21,7 +18,7 @@
 namespace {
 
 void printErrorUsage() {
-    fprintf(stderr, "See `%s --help` for usage information\n", NK_BINARY_NAME);
+    nk_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
 }
 
 void printUsage() {
@@ -86,23 +83,23 @@ int main(int /*argc*/, char const *const *argv) {
         nks val{};
         NK_CLI_ARG_INIT(&argv, &key, &val);
 
-#define GET_VALUE                                                                               \
-    do {                                                                                        \
-        NK_CLI_ARG_GET_VALUE;                                                                   \
-        if (!val.size) {                                                                        \
-            nkirc_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
-            printErrorUsage();                                                                  \
-            return 1;                                                                           \
-        }                                                                                       \
+#define GET_VALUE                                                                             \
+    do {                                                                                      \
+        NK_CLI_ARG_GET_VALUE;                                                                 \
+        if (!val.size) {                                                                      \
+            nkl_diag_printError("argument `" nks_Fmt "` requires a parameter", nks_Arg(key)); \
+            printErrorUsage();                                                                \
+            return 1;                                                                         \
+        }                                                                                     \
     } while (0)
 
-#define NO_VALUE                                                                                     \
-    do {                                                                                             \
-        if (val.size) {                                                                              \
-            nkirc_diag_printError("argument `" nks_Fmt "` doesn't accept parameters", nks_Arg(key)); \
-            printErrorUsage();                                                                       \
-            return 1;                                                                                \
-        }                                                                                            \
+#define NO_VALUE                                                                                   \
+    do {                                                                                           \
+        if (val.size) {                                                                            \
+            nkl_diag_printError("argument `" nks_Fmt "` doesn't accept parameters", nks_Arg(key)); \
+            printErrorUsage();                                                                     \
+            return 1;                                                                              \
+        }                                                                                          \
     } while (0)
 
         if (key.size) {
@@ -128,7 +125,7 @@ int main(int /*argc*/, char const *const *argv) {
                 } else if (val == "obj") {
                     output_kind = NkbOutput_Object;
                 } else {
-                    nkirc_diag_printError(
+                    nkl_diag_printError(
                         "invalid output kind `" nks_Fmt
                         "`. Possible values are `run`, `executable`, `shared`, `static`, `object`",
                         nks_Arg(val));
@@ -150,13 +147,13 @@ int main(int /*argc*/, char const *const *argv) {
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
                 if (val == "auto") {
-                    nkirc_diag_init(NkIrcColor_Auto);
+                    nkl_diag_init(NklColor_Auto);
                 } else if (val == "always") {
-                    nkirc_diag_init(NkIrcColor_Always);
+                    nkl_diag_init(NklColor_Always);
                 } else if (val == "never") {
-                    nkirc_diag_init(NkIrcColor_Never);
+                    nkl_diag_init(NklColor_Never);
                 } else {
-                    nkirc_diag_printError(
+                    nkl_diag_printError(
                         "invalid color mode `" nks_Fmt "`. Possible values are `auto`, `always`, `never`",
                         nks_Arg(val));
                     printErrorUsage();
@@ -185,7 +182,7 @@ int main(int /*argc*/, char const *const *argv) {
                 } else if (val == "trace") {
                     logger_opts.log_level = NkLog_Trace;
                 } else {
-                    nkirc_diag_printError(
+                    nkl_diag_printError(
                         "invalid loglevel `" nks_Fmt
                         "`. Possible values are `none`, `error`, `warning`, `info`, `debug`, `trace`",
                         nks_Arg(val));
@@ -194,14 +191,14 @@ int main(int /*argc*/, char const *const *argv) {
                 }
 #endif // ENABLE_LOGGING
             } else {
-                nkirc_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(key));
+                nkl_diag_printError("invalid argument `" nks_Fmt "`", nks_Arg(key));
                 printErrorUsage();
                 return 1;
             }
         } else if (!in_file.size) {
             in_file = val;
         } else {
-            nkirc_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(val));
+            nkl_diag_printError("extra argument `" nks_Fmt "`", nks_Arg(val));
             printErrorUsage();
             return 1;
         }
@@ -218,7 +215,7 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     if (!in_file.size) {
-        nkirc_diag_printError("no input file");
+        nkl_diag_printError("no input file");
         printErrorUsage();
         return 1;
     }
@@ -232,7 +229,7 @@ int main(int /*argc*/, char const *const *argv) {
     auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
     int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
     if (compiler_path_len < 0) {
-        nkirc_diag_printError("failed to get compiler binary path");
+        nkl_diag_printError("failed to get compiler binary path");
         return 1;
     }
 
@@ -257,7 +254,7 @@ int main(int /*argc*/, char const *const *argv) {
         char *endptr = NULL;
         irc_conf.usize = strtol(usize->data, &endptr, 10);
         if (endptr != usize->data + usize->size || !irc_conf.usize || !isZeroOrPowerOf2(irc_conf.usize)) {
-            nkirc_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(*usize));
+            nkl_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(*usize));
             return 1;
         }
     }
@@ -291,7 +288,7 @@ int main(int /*argc*/, char const *const *argv) {
     } else {
         auto c_compiler = config.find(nk_cs2s("c_compiler"));
         if (!c_compiler) {
-            nkirc_diag_printError("`c_compiler` field is missing in the config");
+            nkl_diag_printError("`c_compiler` field is missing in the config");
             return 1;
         }
         NK_LOG_DBG("c_compiler=`" nks_Fmt "`", nks_Arg(*c_compiler));

@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-typedef uint64_t nkid;
+typedef uint32_t nkid;
 
 nks nkid2s(nkid id);
 char const *nkid2cs(nkid id);
