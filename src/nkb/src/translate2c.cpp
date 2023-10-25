@@ -320,7 +320,7 @@ void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuild
                 break;
             case Float32: {
                 auto f_val = *(float *)decl.data;
-                nksb_printf(&tmp_s, "%.*f", std::numeric_limits<float>::max_digits10, f_val);
+                nksb_printf(&tmp_s, "%.*g", std::numeric_limits<float>::max_digits10, f_val);
                 if (f_val == round(f_val)) {
                     nksb_printf(&tmp_s, ".");
                 }
@@ -329,7 +329,7 @@ void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuild
             }
             case Float64: {
                 auto f_val = *(double *)decl.data;
-                nksb_printf(&tmp_s, "%.*lf", std::numeric_limits<double>::max_digits10, f_val);
+                nksb_printf(&tmp_s, "%.*lg", std::numeric_limits<double>::max_digits10, f_val);
                 if (f_val == round(f_val)) {
                     nksb_printf(&tmp_s, ".");
                 }

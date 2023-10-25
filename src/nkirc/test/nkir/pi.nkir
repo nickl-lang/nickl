@@ -1,0 +1,61 @@
+extern "c" proc printf(*i8, ...) i32
+
+const ITER: i64 10
+
+proc myatan(x: f64) f64 {
+    sum:   f64
+    sign:  f64
+    num:   f64
+    denom: f64
+    tmp:   f64
+    i:     i64
+    cond:  i8
+
+@start
+    mov x -> sum
+    mov x -> num
+    mov :f64 1. -> sign
+    mov :f64 1. -> denom
+
+@loop
+    cmp lt i, ITER -> cond
+    jmpz cond, @endloop
+
+    mul num, x -> num
+    mul num, x -> num
+    add denom, :f64 2. -> denom
+    mul sign, :f64 -1. -> sign
+    mul sign, num -> tmp
+    div tmp, denom -> tmp
+    add sum, tmp -> sum
+    add i, 1 -> i
+
+    jmp @loop
+
+@endloop
+    mov sum -> ret
+    ret
+}
+
+pub proc main(argc: i32, argv: **i8) i32 {
+    pi:  f64
+    tmp: f64
+
+@start
+    call myatan, (:f64 0.2) -> pi
+    call myatan, (:f64 0.0041841004184100415) -> tmp
+
+    mul pi, :f64 4. -> pi
+    sub pi, tmp     -> pi
+    mul pi, :f64 4. -> pi
+
+    call printf, (&"pi = %.*g\n", :i32 16, pi)
+
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+pi = 3.141592653589794
+
+@endoutput */
