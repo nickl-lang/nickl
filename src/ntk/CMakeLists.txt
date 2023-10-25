@@ -37,6 +37,7 @@ target_include_directories(${LIB}
 
 target_link_libraries(${LIB}
     PRIVATE stb
+    PRIVATE Dl
     )
 
 if(ENABLE_PROFILING)
