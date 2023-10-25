@@ -16,8 +16,12 @@ static void inspectNode(uint32_t idx, NklAstNodeView nodes, NklTokenView tokens,
 
     auto const &node = nodes.data[idx];
 
-    auto const node_name = nkid2s(node.id);
-    nk_printf(out, nks_Fmt, nks_Arg(node_name));
+    if (node.id) {
+        auto const node_name = nkid2s(node.id);
+        nk_printf(out, "#" nks_Fmt, nks_Arg(node_name));
+    } else {
+        nk_printf(out, "(null)");
+    }
 
     if (node.token_idx < tokens.size) {
         auto const token_text = tokens.data[node.token_idx].text;

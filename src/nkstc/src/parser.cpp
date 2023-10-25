@@ -61,22 +61,24 @@ struct ParseEngine {
         auto &node = nkav_last(*m_nodes);
 
         if (accept(t_par_l)) {
-            if (check(t_id)) {
-                node.id = s2nkid(curToken()->text);
-                getToken();
-            } else if (check(t_string)) {
-                auto str = parseString(m_tmp_alloc);
-                node.id = s2nkid(str);
-            } else {
-                return error("unexpected token `" nks_Fmt "`", nks_Arg(curToken()->text)), Void{};
+            if (!accept(t_par_r)) {
+                if (check(t_id)) {
+                    node.id = s2nkid(curToken()->text);
+                    getToken();
+                } else if (check(t_string)) {
+                    auto str = parseString(m_tmp_alloc);
+                    node.id = s2nkid(str);
+                } else {
+                    return error("unexpected token `" nks_Fmt "`", nks_Arg(curToken()->text)), Void{};
+                }
+                node.token_idx++;
+                node.total_children = m_nodes->size;
+                CHECK(parseNodeList(node));
+                EXPECT(t_par_r);
             }
-            node.token_idx++;
-            node.total_children = (uint32_t)m_nodes->size;
-            CHECK(parseNodeList(node));
-            EXPECT(t_par_r);
         } else if (accept(t_bracket_l)) {
             node.id = cs2nkid("list");
-            node.total_children = (uint32_t)m_nodes->size;
+            node.total_children = m_nodes->size;
             CHECK(parseNodeList(node));
             EXPECT(t_bracket_r);
         }
