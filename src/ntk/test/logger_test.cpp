@@ -31,7 +31,7 @@ protected:
         fflush(stderr);                        // Flush any existing data
         memset(m_msg_buffer, 0, MSG_BUF_SIZE); // Clear the test msg buffer
 
-        _NK_LOG_CHK(level, "%s", msg);
+        NK_LOG_SEV(level, "%s", msg);
 
         fflush(stderr); // Flush any test msg data
     }
