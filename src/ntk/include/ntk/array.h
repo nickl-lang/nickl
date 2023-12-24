@@ -130,11 +130,6 @@
 
 #include <utility>
 
-template <class T>
-void _nk_assign_void_ptr(T *&dst, void *src) {
-    dst = (T *)src;
-}
-
 template <class TDst, class TSrc>
 void nkav_copy(NkAllocator alloc, TDst *dst, TSrc src) {
     _nkav_copy(alloc, dst, src);
@@ -194,8 +189,6 @@ struct _nk_iterate_wrapper {
 };
 
 #else // __cplusplus
-
-#define _nk_assign_void_ptr(dst, src) (dst) = (src)
 
 #define nkav_copy _nkav_copy
 

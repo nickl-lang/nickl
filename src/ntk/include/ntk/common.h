@@ -28,4 +28,13 @@
 #define NK_INLINE inline
 #endif //_WIN32
 
+#ifdef __cplusplus
+template <class T>
+T *_nk_assign_void_ptr(T *&dst, void *src) {
+    return dst = (T *)src;
+}
+#else // __cplusplus
+#define _nk_assign_void_ptr(dst, src) ((dst) = (src))
+#endif // __cplusplus
+
 #endif // HEADER_GUARD_NTK_COMMON
