@@ -11,27 +11,21 @@ typedef struct {
     void *child[2];
 } NodeInfo;
 
-#define node_info_ptr(node, elem_size) \
-    ((NodeInfo *)roundUp((size_t)((uint8_t *)(node) + (elem_size)), alignof(NodeInfo)))
-#define node_size(elem_size) roundUp((elem_size), alignof(NodeInfo)) + sizeof(NodeInfo)
+#define node_info_ptr(node, elemsize) ((NodeInfo *)roundUp((size_t)((uint8_t *)(node) + (elemsize)), alignof(NodeInfo)))
+#define node_size(elemsize) roundUp((elemsize), alignof(NodeInfo)) + sizeof(NodeInfo)
 
-#define hash_key(key, key_size) hash_array((uint8_t *)(key), (uint8_t *)(key) + (key_size))
-#define key_equal(lhs, rhs, key_size) (memcmp((lhs), (rhs), (key_size)) == 0)
+#define hash_key(key, keysize) hash_array((uint8_t *)(key), (uint8_t *)(key) + (keysize))
+#define key_equal(lhs, rhs, keysize) (memcmp((lhs), (rhs), (keysize)) == 0)
 
-void *_nkht_insert_impl(
-    void **insert,
-    NkAllocator alloc,
-    void *elem,
-    size_t elem_size,
-    size_t key_size,
-    size_t key_offset) {
-    void *key = (uint8_t *)elem + key_offset;
-    uint64_t hash = hash_key(key, key_size);
+void *_nkht_insert_impl(void **root, NkAllocator alloc, void *elem, size_t elemsize, size_t keysize, size_t keyoffset) {
+    void *key = (uint8_t *)elem + keyoffset;
+    uint64_t hash = hash_key(key, keysize);
+    void **insert = root;
     while (*insert) {
-        NodeInfo *node_info = node_info_ptr(*insert, elem_size);
+        NodeInfo *node_info = node_info_ptr(*insert, elemsize);
         switch ((hash > node_info->hash) - (hash < node_info->hash)) {
         case 0:
-            if (key_equal(key, (uint8_t *)*insert + key_offset, key_size)) {
+            if (key_equal(key, (uint8_t *)*insert + keyoffset, keysize)) {
                 return *insert;
             } /*fallthrough*/
         case -1:
@@ -43,9 +37,9 @@ void *_nkht_insert_impl(
         }
     }
     NkAllocator _alloc = alloc.proc ? alloc : nk_default_allocator;
-    *insert = nk_alloc(_alloc, node_size(elem_size));
-    memcpy(*insert, elem, elem_size);
-    NodeInfo *new_node_info = node_info_ptr(*insert, elem_size);
+    *insert = nk_alloc(_alloc, node_size(elemsize));
+    memcpy(*insert, elem, elemsize);
+    NodeInfo *new_node_info = node_info_ptr(*insert, elemsize);
     *new_node_info = (NodeInfo){
         .hash = hash,
         .child = {0},
@@ -53,17 +47,17 @@ void *_nkht_insert_impl(
     return *insert;
 }
 
-static void freeNode(NkAllocator alloc, void *node, size_t elem_size) {
+static void freeNode(NkAllocator alloc, void *node, size_t elemsize) {
     if (!node) {
         return;
     }
-    NodeInfo *node_info = node_info_ptr(node, elem_size);
-    freeNode(alloc, node_info->child[0], elem_size);
-    freeNode(alloc, node_info->child[1], elem_size);
-    nk_free(alloc, node, node_size(elem_size));
+    NodeInfo *node_info = node_info_ptr(node, elemsize);
+    freeNode(alloc, node_info->child[0], elemsize);
+    freeNode(alloc, node_info->child[1], elemsize);
+    nk_free(alloc, node, node_size(elemsize));
 }
 
-void _nkht_free_impl(void *root, NkAllocator alloc, size_t elem_size) {
+void _nkht_free_impl(void *root, NkAllocator alloc, size_t elemsize) {
     NkAllocator _alloc = alloc.proc ? alloc : nk_default_allocator;
-    freeNode(_alloc, root, elem_size);
+    freeNode(_alloc, root, elemsize);
 }
