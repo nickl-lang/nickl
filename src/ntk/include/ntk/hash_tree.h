@@ -9,11 +9,11 @@
 #define nkht_type(T)       \
     struct {               \
         T *root;           \
+        NkAllocator alloc; \
         union {            \
             T tmp_val;     \
             T *tmp_ptr;    \
         };                 \
-        NkAllocator alloc; \
     }
 
 #define nkht_typedef(T, Name) typedef nkht_type(T) Name
@@ -22,41 +22,83 @@
 extern "C" {
 #endif
 
-void *_nkht_insert_impl(void **root, NkAllocator alloc, void *elem, size_t elemsize, size_t keysize, size_t keyoffset);
-void *_nkht_find_impl(void *root, size_t elemsize, void *key, size_t keysize, size_t keyoffset);
+typedef enum {
+    _nkht_hash_val,
+    _nkht_hash_str,
+} _nkht_hash_mode;
 
-void _nkht_free_impl(void **root, NkAllocator alloc, size_t elemsize);
+void *_nkht_insert_impl(
+    void **root,
+    NkAllocator alloc,
+    void *elem,
+    size_t elem_size,
+    size_t key_size,
+    size_t key_offset,
+    _nkht_hash_mode mode);
+
+void *_nkht_find_impl(
+    void *root,
+    size_t elem_size,
+    void *key,
+    size_t key_size,
+    size_t key_offset,
+    _nkht_hash_mode mode);
+
+void _nkht_free_impl(void **root, NkAllocator alloc, size_t elem_size);
 
 #ifdef __cplusplus
 }
 #endif
 
-#define _nkht_insert_val(ht, item)    \
-    ((ht)->tmp_val = (item),          \
-     _nk_assign_void_ptr(             \
-         (ht)->tmp_ptr,               \
-         _nkht_insert_impl(           \
-             (void **)&(ht)->root,    \
-             (ht)->alloc,             \
-             (void *)&(ht)->tmp_val,  \
-             sizeof(*(ht)->root),     \
-             sizeof((ht)->root->key), \
-             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key)))
+#define _nkht_insert_val(ht, item)                                \
+    ((ht)->tmp_val = (item),                                      \
+     _nk_assign_void_ptr(                                         \
+         (ht)->tmp_ptr,                                           \
+         _nkht_insert_impl(                                       \
+             (void **)&(ht)->root,                                \
+             (ht)->alloc,                                         \
+             (void *)&(ht)->tmp_val,                              \
+             sizeof(*(ht)->root),                                 \
+             sizeof((ht)->root->key),                             \
+             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key, \
+             _nkht_hash_val)))
 
-#define _nkht_insert_str(ht, item)
+#define _nkht_insert_str(ht, item)                                       \
+    ((ht)->tmp_val = (item),                                             \
+     _nk_assign_void_ptr(                                                \
+         (ht)->tmp_ptr,                                                  \
+         _nkht_insert_impl(                                              \
+             (void **)&(ht)->root,                                       \
+             (ht)->alloc,                                                \
+             (void *)&(ht)->tmp_val,                                     \
+             sizeof(*(ht)->root),                                        \
+             (ht)->tmp_val.key.size * sizeof((ht)->tmp_val.key.data[0]), \
+             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key,        \
+             _nkht_hash_str)))
 
-#define _nkht_find_val(ht, KEY)          \
-    ((ht)->tmp_val.key = (KEY),          \
-     _nk_assign_void_ptr(                \
-         (ht)->tmp_ptr,                  \
-         _nkht_find_impl(                \
-             (void *)(ht)->root,         \
-             sizeof(*(ht)->root),        \
-             (void *)&(ht)->tmp_val.key, \
-             sizeof((ht)->root->key),    \
-             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key)))
+#define _nkht_find_val(ht, KEY)                                   \
+    ((ht)->tmp_val.key = (KEY),                                   \
+     _nk_assign_void_ptr(                                         \
+         (ht)->tmp_ptr,                                           \
+         _nkht_find_impl(                                         \
+             (void *)(ht)->root,                                  \
+             sizeof(*(ht)->root),                                 \
+             (void *)&(ht)->tmp_val.key,                          \
+             sizeof((ht)->root->key),                             \
+             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key, \
+             _nkht_hash_val)))
 
-#define _nkht_find_str(ht, KEY)
+#define _nkht_find_str(ht, KEY)                                          \
+    ((ht)->tmp_val.key = (KEY),                                          \
+     _nk_assign_void_ptr(                                                \
+         (ht)->tmp_ptr,                                                  \
+         _nkht_find_impl(                                                \
+             (void *)(ht)->root,                                         \
+             sizeof(*(ht)->root),                                        \
+             (void *)(ht)->tmp_val.key.data,                             \
+             (ht)->tmp_val.key.size * sizeof((ht)->tmp_val.key.data[0]), \
+             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key,        \
+             _nkht_hash_str)))
 
 #define _nkht_free(ht) _nkht_free_impl((void **)&(ht)->root, (ht)->alloc, sizeof(*(ht)->root));
 
