@@ -1,29 +1,36 @@
 #include "ntk/id.h"
 
-#include "ntk/hash_map.hpp"
+#include "ntk/hash_tree.h"
 #include "ntk/string.h"
 
 namespace {
 
+struct s2id {
+    nks key;
+    nkid val;
+};
+
+struct id2s {
+    nkid key;
+    nks val;
+};
+
 struct Context {
-    NkArena string_arena{};
-    NkHashMap<nks, nkid> str2id{};
-    NkHashMap<nkid, nks> id2str{};
+    NkArena arena{};
+    nkht_type(s2id) str2id{};
+    nkht_type(id2s) id2str{};
     nkid next_id = 1000;
 
     ~Context() {
-        str2id.deinit();
-        id2str.deinit();
-
-        nk_arena_free(&string_arena);
+        nk_arena_free(&arena);
     }
 } ctx;
 
 } // namespace
 
 nks nkid2s(nkid id) {
-    auto found = ctx.id2str.find(id);
-    return found ? *found : nks{};
+    auto found = nkht_find_val(&ctx.id2str, id);
+    return found ? found->val : nks{};
 }
 
 char const *nkid2cs(nkid id) {
@@ -31,10 +38,10 @@ char const *nkid2cs(nkid id) {
 }
 
 nkid s2nkid(nks str) {
-    auto found = ctx.str2id.find(str);
+    auto found = nkht_find_str(&ctx.str2id, str);
 
     if (found) {
-        return *found;
+        return found->val;
     } else {
         nkid id = ctx.next_id++;
         nkid_define(id, str);
@@ -47,7 +54,7 @@ nkid cs2nkid(char const *str) {
 }
 
 void nkid_define(nkid id, nks str) {
-    auto const str_copy = nk_strcpy_nt(nk_arena_getAllocator(&ctx.string_arena), str);
-    ctx.str2id.insert(str_copy, id);
-    ctx.id2str.insert(id, str_copy);
+    auto const str_copy = nk_strcpy_nt(nk_arena_getAllocator(&ctx.arena), str);
+    nkht_insert_str(&ctx.str2id, s2id{str_copy, id});
+    nkht_insert_val(&ctx.id2str, id2s{id, str_copy});
 }
