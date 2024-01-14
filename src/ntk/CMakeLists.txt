@@ -17,7 +17,7 @@ add_library(${LIB}
     src/arena.c
     src/file.c
     src/hash_tree.c
-    src/id.cpp
+    src/id.c
     src/logger.c
     src/pipe_stream.c
     src/stream.c
