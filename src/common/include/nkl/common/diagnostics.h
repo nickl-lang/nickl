@@ -6,7 +6,7 @@
 #include "ntk/common.h"
 #include "ntk/string.h"
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -33,7 +33,7 @@ void nkl_diag_vprintError(char const *fmt, va_list ap);
 void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap);
 void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, va_list ap);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -1,10 +1,8 @@
 #ifndef HEADER_GUARD_NTK_HASH_TREE
 #define HEADER_GUARD_NTK_HASH_TREE
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "ntk/allocator.h"
+#include "ntk/common.h"
 
 #define nkht_type(T)       \
     struct {               \
@@ -32,6 +30,7 @@ void *_nkht_insert_impl(
     NkAllocator alloc,
     void *elem,
     size_t elem_size,
+    size_t elem_align,
     size_t key_size,
     size_t key_offset,
     _nkht_hash_mode mode);
@@ -59,6 +58,7 @@ void _nkht_free_impl(void **root, NkAllocator alloc, size_t elem_size);
              (ht)->alloc,                                         \
              (void *)&(ht)->tmp_val,                              \
              sizeof(*(ht)->root),                                 \
+             nk_alignofval((ht)->tmp_val),                        \
              sizeof((ht)->root->key),                             \
              (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key, \
              _nkht_hash_val)))
@@ -72,6 +72,7 @@ void _nkht_free_impl(void **root, NkAllocator alloc, size_t elem_size);
              (ht)->alloc,                                                \
              (void *)&(ht)->tmp_val,                                     \
              sizeof(*(ht)->root),                                        \
+             nk_alignofval((ht)->tmp_val),                               \
              (ht)->tmp_val.key.size * sizeof((ht)->tmp_val.key.data[0]), \
              (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key,        \
              _nkht_hash_str)))

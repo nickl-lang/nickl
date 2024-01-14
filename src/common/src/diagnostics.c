@@ -82,7 +82,7 @@ void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, 
 
     bool const to_color = toColor();
 
-    nks line{};
+    nks line = {0};
     for (size_t i = 0; i < loc.lin; i++) {
         line = nks_chop_by_delim(&src, '\n');
     }
@@ -105,15 +105,15 @@ void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, 
         int pointer_offset = loc.col;
         int actual_len = loc.len;
         if (loc.col && loc.col <= line.size && loc.len) {
-            pointer_offset = nks_sanitize(out, {line.data, loc.col - 1}) + 1;
+            pointer_offset = nks_sanitize(out, (nks){line.data, loc.col - 1}) + 1;
             if (to_color) {
                 nk_printf(out, NK_TERM_COLOR_RED);
             }
-            actual_len = nks_sanitize(out, {line.data + loc.col - 1, loc.len});
+            actual_len = nks_sanitize(out, (nks){line.data + loc.col - 1, loc.len});
             if (to_color) {
                 nk_printf(out, NK_TERM_COLOR_NONE);
             }
-            nks_sanitize(out, {line.data + loc.col - 1 + loc.len, line.size - loc.col + 1 - loc.len});
+            nks_sanitize(out, (nks){line.data + loc.col - 1 + loc.len, line.size - loc.col + 1 - loc.len});
         } else {
             nks_sanitize(out, line);
         }

@@ -2,6 +2,9 @@
 #define HEADER_GUARD_NTK_COMMON
 
 #include <inttypes.h>
+#include <stdalign.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #ifdef _WIN32
@@ -16,12 +19,6 @@
 #define NK_PRINTF_LIKE(FMT_POS, ARGS_POS) __attribute__((__format__(printf, FMT_POS, ARGS_POS)))
 #endif //__MINGW32__
 
-#ifdef __cplusplus
-#define LITERAL(T) T
-#else // __cplusplus
-#define LITERAL(T) (T)
-#endif // __cplusplus
-
 #ifdef _WIN32
 #define NK_INLINE static inline
 #else //_WIN32
@@ -29,12 +26,27 @@
 #endif //_WIN32
 
 #ifdef __cplusplus
+
+#define LITERAL(T) T
+
 template <class T>
 T *_nk_assign_void_ptr(T *&dst, void *src) {
     return dst = (T *)src;
 }
+
+template <class T>
+constexpr size_t nk_alignofval(T const &) {
+    return alignof(T);
+}
+
 #else // __cplusplus
+
+#define LITERAL(T) (T)
+
 #define _nk_assign_void_ptr(dst, src) ((dst) = (src))
+
+#define nk_alignofval alignof
+
 #endif // __cplusplus
 
 #endif // HEADER_GUARD_NTK_COMMON

@@ -1,9 +1,9 @@
 set(LIB nkl_common)
 
 add_library(${LIB}
-    src/ast.cpp
-    src/config.cpp
-    src/diagnostics.cpp
+    src/ast.c
+    src/config.c
+    src/diagnostics.c
     )
 
 target_include_directories(${LIB}

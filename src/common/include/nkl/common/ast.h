@@ -8,7 +8,7 @@
 #include "ntk/id.h"
 #include "ntk/stream.h"
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -24,7 +24,7 @@ nkar_typedef(NklAstNode, NklAstNodeArray);
 
 void nkl_ast_inspect(NklAstNodeView nodes, NklTokenView tokens, nk_stream out);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

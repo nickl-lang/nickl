@@ -7,7 +7,7 @@
 #include "nkb/common.h"
 #include "ntk/string.h"
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -18,7 +18,7 @@ nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, size_t count);
 nktype_t nkir_makeVoidType(NkIrCompiler c);
 nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, size_t const *elem_counts, size_t n);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -14,17 +14,17 @@ static void inspectNode(uint32_t idx, NklAstNodeView nodes, NklTokenView tokens,
         return;
     }
 
-    auto const &node = nodes.data[idx];
+    NklAstNode const *node = &nodes.data[idx];
 
-    if (node.id) {
-        auto const node_name = nkid2s(node.id);
+    if (node->id) {
+        nks const node_name = nkid2s(node->id);
         nk_printf(out, "#" nks_Fmt, nks_Arg(node_name));
     } else {
         nk_printf(out, "(null)");
     }
 
-    if (node.token_idx < tokens.size) {
-        auto const token_text = tokens.data[node.token_idx].text;
+    if (node->token_idx < tokens.size) {
+        nks const token_text = tokens.data[node->token_idx].text;
         nk_printf(out, " \"");
         nks_escape(out, token_text);
         nk_printf(out, "\"");
@@ -32,12 +32,12 @@ static void inspectNode(uint32_t idx, NklAstNodeView nodes, NklTokenView tokens,
         nk_printf(out, " \"<invalid>\"");
     }
 
-    for (uint32_t i = 0; i < node.arity; i++) {
+    for (uint32_t i = 0; i < node->arity; i++) {
         idx++;
         inspectNode(idx, nodes, tokens, out, indent + 1);
         if (idx < nodes.size) {
-            auto const &child_node = nodes.data[idx];
-            idx += child_node.total_children;
+            NklAstNode const *child_node = &nodes.data[idx];
+            idx += child_node->total_children;
         }
     }
 }

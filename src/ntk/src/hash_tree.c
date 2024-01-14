@@ -1,6 +1,5 @@
 #include "ntk/hash_tree.h"
 
-#include <stdalign.h>
 #include <string.h>
 
 #include "ntk/array.h"
@@ -14,7 +13,7 @@ typedef struct {
 
 #define node_info_ptr(node, elem_size) \
     ((NodeInfo *)roundUp((size_t)((uint8_t *)(node) + (elem_size)), alignof(NodeInfo)))
-#define node_size(elem_size) roundUp((elem_size), alignof(NodeInfo)) + sizeof(NodeInfo)
+#define node_size(elem_size) (roundUp((elem_size), alignof(NodeInfo)) + sizeof(NodeInfo))
 
 #define hash_key(key, key_size) hash_array((uint8_t *)(key), (uint8_t *)(key) + (key_size))
 #define key_equal(lhs, rhs, key_size) (memcmp((lhs), (rhs), (key_size)) == 0)
@@ -69,6 +68,7 @@ void *_nkht_insert_impl(
     NkAllocator alloc,
     void *elem,
     size_t elem_size,
+    size_t elem_align,
     size_t key_size,
     size_t key_offset,
     _nkht_hash_mode mode) {
@@ -77,7 +77,7 @@ void *_nkht_insert_impl(
     SearchResult res = findNode(root, elem_size, key, key_size, key_offset, hash, mode);
     if (!res.existing) {
         NkAllocator _alloc = alloc.proc ? alloc : nk_default_allocator;
-        *res.node = nk_alloc(_alloc, node_size(elem_size));
+        *res.node = nk_allocAligned(_alloc, node_size(elem_size), maxu(elem_align, alignof(NodeInfo)));
         memcpy(*res.node, elem, elem_size);
         NodeInfo *new_node_info = node_info_ptr(*res.node, elem_size);
         *new_node_info = (NodeInfo){

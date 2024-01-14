@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include "ntk/allocator.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -123,4 +124,19 @@ TEST_F(HashTree, str_key) {
     found = nkht_insert_str(&ht, elem);
     EXPECT_EQ(found->key, "forty two");
     EXPECT_EQ(found->value, 42);
+}
+
+TEST_F(HashTree, alignment) {
+    NkArena arena{};
+    auto alloc = nk_arena_getAllocator(&arena);
+    defer {
+        nk_arena_free(&arena);
+    };
+
+    nkht_type(MyElemWithStr) ht{};
+    ht.alloc = alloc;
+
+    nk_arena_alloc(&arena, 1);
+    nkht_insert_str(&ht, MyElemWithStr{nk_cs2s("one"), 42});
+    nkht_insert_str(&ht, MyElemWithStr{nk_cs2s("two"), 42});
 }

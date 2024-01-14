@@ -1,7 +1,7 @@
 #include "irc.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
-#include "nkl/common/config.hpp"
+#include "nkl/common/config.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
@@ -241,40 +241,41 @@ int main(int /*argc*/, char const *const *argv) {
 
     NK_LOG_DBG("config_path=`" nks_Fmt "`", nks_Arg(config_path));
 
-    auto config = NkHashMap<nks, nks>::create(alloc);
-    if (!readConfig(config, alloc, {nkav_init(config_path)})) {
+    nks_config config{};
+    config.alloc = alloc;
+    if (!readConfig(&config, {nkav_init(config_path)})) {
         return 1;
     }
 
     NkIrcConfig irc_conf{};
 
-    auto usize = config.find(nk_cs2s("usize"));
+    auto usize = nkht_find_str(&config, nk_cs2s("usize"));
     if (usize) {
-        NK_LOG_DBG("usize=`" nks_Fmt "`", nks_Arg(*usize));
+        NK_LOG_DBG("usize=`" nks_Fmt "`", nks_Arg(usize->val));
         char *endptr = NULL;
-        irc_conf.usize = strtol(usize->data, &endptr, 10);
-        if (endptr != usize->data + usize->size || !irc_conf.usize || !isZeroOrPowerOf2(irc_conf.usize)) {
-            nkl_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(*usize));
+        irc_conf.usize = strtol(usize->val.data, &endptr, 10);
+        if (endptr != usize->val.data + usize->val.size || !irc_conf.usize || !isZeroOrPowerOf2(irc_conf.usize)) {
+            nkl_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(usize->val));
             return 1;
         }
     }
 
-    auto libc_name = config.find(nk_cs2s("libc_name"));
+    auto libc_name = nkht_find_str(&config, nk_cs2s("libc_name"));
     if (libc_name) {
-        NK_LOG_DBG("libc_name=`" nks_Fmt "`", nks_Arg(*libc_name));
-        irc_conf.libc_name = s2nkid(*libc_name);
+        NK_LOG_DBG("libc_name=`" nks_Fmt "`", nks_Arg(libc_name->val));
+        irc_conf.libc_name = s2nkid(libc_name->val);
     }
 
-    auto libm_name = config.find(nk_cs2s("libm_name"));
+    auto libm_name = nkht_find_str(&config, nk_cs2s("libm_name"));
     if (libm_name) {
-        NK_LOG_DBG("libm_name=`" nks_Fmt "`", nks_Arg(*libm_name));
-        irc_conf.libm_name = s2nkid(*libm_name);
+        NK_LOG_DBG("libm_name=`" nks_Fmt "`", nks_Arg(libm_name->val));
+        irc_conf.libm_name = s2nkid(libm_name->val);
     }
 
-    auto libpthread_name = config.find(nk_cs2s("libpthread_name"));
+    auto libpthread_name = nkht_find_str(&config, nk_cs2s("libpthread_name"));
     if (libpthread_name) {
-        NK_LOG_DBG("libpthread_name=`" nks_Fmt "`", nks_Arg(*libpthread_name));
-        irc_conf.libpthread_name = s2nkid(*libpthread_name);
+        NK_LOG_DBG("libpthread_name=`" nks_Fmt "`", nks_Arg(libpthread_name->val));
+        irc_conf.libpthread_name = s2nkid(libpthread_name->val);
     }
 
     auto const c = nkirc_create(&arena, irc_conf);
@@ -286,19 +287,19 @@ int main(int /*argc*/, char const *const *argv) {
     if (run) {
         code = nkir_run(c, in_file);
     } else {
-        auto c_compiler = config.find(nk_cs2s("c_compiler"));
+        auto c_compiler = nkht_find_str(&config, nk_cs2s("c_compiler"));
         if (!c_compiler) {
             nkl_diag_printError("`c_compiler` field is missing in the config");
             return 1;
         }
-        NK_LOG_DBG("c_compiler=`" nks_Fmt "`", nks_Arg(*c_compiler));
+        NK_LOG_DBG("c_compiler=`" nks_Fmt "`", nks_Arg(c_compiler->val));
 
         nkar_type(nks) additional_flags{0, 0, 0, alloc};
 
-        auto c_flags = config.find(nk_cs2s("c_flags"));
+        auto c_flags = nkht_find_str(&config, nk_cs2s("c_flags"));
         if (c_flags) {
-            NK_LOG_DBG("c_flags=`" nks_Fmt "`", nks_Arg(*c_flags));
-            nkar_append(&additional_flags, *c_flags);
+            NK_LOG_DBG("c_flags=`" nks_Fmt "`", nks_Arg(c_flags->val));
+            nkar_append(&additional_flags, c_flags->val);
         }
 
         if (add_debug_info) {
@@ -327,7 +328,7 @@ int main(int /*argc*/, char const *const *argv) {
             c,
             in_file,
             {
-                .compiler_binary = *c_compiler,
+                .compiler_binary = c_compiler->val,
                 .additional_flags{nkav_init(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,

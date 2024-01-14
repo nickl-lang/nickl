@@ -5,13 +5,13 @@
 #include "lexer.h"
 #include "ntk/id.h"
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 void nkir_parse(NkIrCompiler c, nkid file, NklTokenView tokens);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 
