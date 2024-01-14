@@ -6,7 +6,7 @@
 #include "ntk/array.h"
 #include "ntk/string.h"
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -30,7 +30,7 @@ typedef struct {
 
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

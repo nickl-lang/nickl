@@ -7,7 +7,7 @@
 #include "ntk/id.h"
 #include "ntk/string.h"
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -22,7 +22,7 @@ typedef struct {
 nkar_typedef(NklToken, NklTokenArray);
 nkav_typedef(NklToken const, NklTokenView);
 
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 
