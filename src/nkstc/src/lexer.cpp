@@ -10,6 +10,7 @@
 #include <cstring>
 #include <iterator>
 
+#include "nkl/common/token.h"
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
@@ -39,10 +40,10 @@ char const *s_operators[] = {
 
 struct ScannerState {
     nkid const m_file;
-    nks const m_src;
+    nks const m_text;
     NkArena *m_tmp_arena;
 
-    size_t m_pos = 0;
+    uint32_t m_pos = 0;
     uint32_t m_lin = 1;
     uint32_t m_col = 1;
 
@@ -79,9 +80,9 @@ struct ScannerState {
         }
 
         m_token = {
-            .text = {m_src.data + m_pos, 0},
             .id = t_empty,
-            .file = m_file,
+            .pos = m_pos,
+            .len = 0,
             .lin = m_lin,
             .col = m_col,
         };
@@ -110,8 +111,8 @@ struct ScannerState {
                         if (!chr()) {
                             return error("unexpected end of file");
                         } else {
-                            m_token.text.data = m_src.data + m_pos - 1;
-                            m_token.text.size = 2;
+                            m_token.pos = m_pos - 1;
+                            m_token.len = 2;
                             m_token.lin = m_lin;
                             m_token.col = m_col - 1;
                             if (isprint(chr())) {
@@ -204,7 +205,7 @@ struct ScannerState {
 
 private:
     char chr(int64_t offset = 0) {
-        return m_pos + offset < m_src.size ? m_src.data[m_pos + offset] : '\0';
+        return m_pos + offset < (uint32_t)m_text.size ? m_text.data[m_pos + offset] : '\0';
     }
 
     template <int (*F)(int)>
@@ -244,7 +245,7 @@ private:
 
     void accept(int64_t n = 1) {
         advance(n);
-        m_token.text.size += n;
+        m_token.len += n;
     }
 
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
@@ -261,7 +262,7 @@ private:
 
 } // namespace
 
-bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src) {
+bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks text) {
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
@@ -271,7 +272,7 @@ bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
     ScannerState scanner{
         .m_file = file,
-        .m_src = src,
+        .m_text = text,
         .m_tmp_arena = tmp_arena,
     };
 
@@ -286,7 +287,7 @@ bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
 #ifdef ENABLE_LOGGING
         nksb_fixed_buffer(sb, 256);
-        nks_escape(nksb_getStream(&sb), scanner.m_token.text);
+        nks_escape(nksb_getStream(&sb), nkl_getTokenStr(scanner.m_token, text));
         NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_nkst_token_id[scanner.m_token.id], nks_Arg(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);

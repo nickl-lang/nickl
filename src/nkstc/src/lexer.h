@@ -26,7 +26,7 @@ typedef struct {
     nks error_msg;
 } NkStLexerState;
 
-bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src);
+bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks text);
 
 #ifdef __cplusplus
 }

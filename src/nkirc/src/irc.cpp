@@ -132,21 +132,23 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
 
     auto const in_file_id = s2nkid(in_file_s);
 
+    auto const text = read_res.bytes;
+
     NkIrLexerState lexer{};
     {
         auto frame = nk_arena_grab(c->tmp_arena);
         defer {
             nk_arena_popFrame(c->tmp_arena, frame);
         };
-        nkir_lex(&lexer, &c->file_arena, c->tmp_arena, in_file_id, read_res.bytes);
+        nkir_lex(&lexer, &c->file_arena, c->tmp_arena, text);
         if (!lexer.ok) {
             nkl_diag_printErrorQuote(
-                read_res.bytes,
+                text,
                 {
                     in_file_s,
                     nkav_last(lexer.tokens).lin,
                     nkav_last(lexer.tokens).col,
-                    nkav_last(lexer.tokens).text.size,
+                    nkav_last(lexer.tokens).len,
                 },
                 nks_Fmt,
                 nks_Arg(lexer.error_msg));
@@ -159,15 +161,15 @@ bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
         defer {
             nk_arena_popFrame(c->tmp_arena, frame);
         };
-        nkir_parse(c, in_file_id, {nkav_init(lexer.tokens)});
+        nkir_parse(c, in_file_id, text, {nkav_init(lexer.tokens)});
         if (!c->parser.ok) {
             nkl_diag_printErrorQuote(
-                read_res.bytes,
+                text,
                 {
                     in_file_s,
                     c->parser.error_token.lin,
                     c->parser.error_token.col,
-                    c->parser.error_token.text.size,
+                    c->parser.error_token.len,
                 },
                 nks_Fmt,
                 nks_Arg(c->parser.error_msg));

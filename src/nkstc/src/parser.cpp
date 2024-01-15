@@ -30,6 +30,7 @@ struct Void {};
 #define EXPECT(ID) CHECK(expect(ID))
 
 struct ParseEngine {
+    nks m_text;
     NklTokenView m_tokens;
     NklAstNodeArray *m_nodes;
 
@@ -50,7 +51,8 @@ struct ParseEngine {
         CHECK(parseNodeList(node));
 
         if (!check(t_eof)) {
-            return error("unexpected token `" nks_Fmt "`", nks_Arg(curToken()->text)), Void{};
+            auto const token_str = nkl_getTokenStr(*curToken(), m_text);
+            return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
         }
 
         return {};
@@ -63,13 +65,15 @@ struct ParseEngine {
         if (accept(t_par_l)) {
             if (!accept(t_par_r)) {
                 if (check(t_id)) {
-                    node.id = s2nkid(curToken()->text);
+                    auto const token_str = nkl_getTokenStr(*curToken(), m_text);
+                    node.id = s2nkid(token_str);
                     getToken();
                 } else if (check(t_string)) {
                     auto str = parseString(m_tmp_alloc);
                     node.id = s2nkid(str);
                 } else {
-                    return error("unexpected token `" nks_Fmt "`", nks_Arg(curToken()->text)), Void{};
+                    auto const token_str = nkl_getTokenStr(*curToken(), m_text);
+                    return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
                 }
                 node.token_idx++;
                 node.total_children = m_nodes->size;
@@ -98,7 +102,8 @@ struct ParseEngine {
         }
 
         else {
-            return error("unexpected token `" nks_Fmt "`", nks_Arg(curToken()->text)), Void{};
+            auto const token_str = nkl_getTokenStr(*curToken(), m_text);
+            return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
         }
 
         return {};
@@ -114,8 +119,8 @@ struct ParseEngine {
     }
 
     nks parseString(NkAllocator alloc) {
-        auto const data = curToken()->text.data + 1;
-        auto const len = curToken()->text.size - 2;
+        auto const data = m_text.data + curToken()->pos + 1;
+        auto const len = curToken()->len - 2;
         getToken();
 
         return nk_strcpy_nt(alloc, {data, len});
@@ -142,7 +147,8 @@ struct ParseEngine {
 
     void expect(ENkStTokenId id) {
         if (!accept(id)) {
-            return error("expected `%s` before `" nks_Fmt "`", s_nkst_token_text[id], nks_Arg(curToken()->text));
+            auto const token_str = nkl_getTokenStr(*curToken(), m_text);
+            return error("expected `%s` before `" nks_Fmt "`", s_nkst_token_text[id], nks_Arg(token_str));
         }
     }
 
@@ -167,7 +173,7 @@ struct ParseEngine {
 
 } // namespace
 
-bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NklTokenView tokens) {
+bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, nks text, NklTokenView tokens) {
     NK_LOG_TRC("%s", __func__);
 
     parser->nodes = {0, 0, 0, nk_arena_getAllocator(file_arena)};
@@ -175,6 +181,7 @@ bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena
     parser->error_token = {};
 
     ParseEngine engine{
+        .m_text = text,
         .m_tokens = tokens,
         .m_nodes = &parser->nodes,
         .m_tmp_alloc{nk_arena_getAllocator(tmp_arena)},
@@ -185,7 +192,13 @@ bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena
     NK_LOG_INF(
         "ast:%s", (char const *)[&]() {
             NkStringBuilder sb{0, 0, 0, engine.m_tmp_alloc};
-            nkl_ast_inspect({nkav_init(parser->nodes)}, tokens, nksb_getStream(&sb));
+            nkl_ast_inspect(
+                {
+                    text,
+                    tokens,
+                    {nkav_init(parser->nodes)},
+                },
+                nksb_getStream(&sb));
             nksb_append_null(&sb);
             return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);

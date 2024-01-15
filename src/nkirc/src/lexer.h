@@ -28,7 +28,7 @@ typedef struct {
     bool ok;
 } NkIrLexerState;
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nkid file, nks src);
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks text);
 
 #ifdef __cplusplus
 }

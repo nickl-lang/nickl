@@ -16,7 +16,7 @@ typedef struct {
     NklToken error_token;
 } NkStParserState;
 
-bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NklTokenView tokens);
+bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, nks text, NklTokenView tokens);
 
 #ifdef __cplusplus
 }

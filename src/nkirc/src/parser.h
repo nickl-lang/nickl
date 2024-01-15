@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-void nkir_parse(NkIrCompiler c, nkid file, NklTokenView tokens);
+void nkir_parse(NkIrCompiler c, nkid file, nks text, NklTokenView tokens);
 
 #ifdef __cplusplus
 }

@@ -1,1 +1,1 @@
-au BufRead,BufNewFile *.nkl set filetype=nickl
+au BufRead,BufNewFile *.nkl,*.nkl.in set filetype=nickl

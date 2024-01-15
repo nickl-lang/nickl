@@ -22,7 +22,13 @@ typedef struct {
 nkav_typedef(NklAstNode, NklAstNodeView);
 nkar_typedef(NklAstNode, NklAstNodeArray);
 
-void nkl_ast_inspect(NklAstNodeView nodes, NklTokenView tokens, nk_stream out);
+typedef struct {
+    nks text;
+    NklTokenView tokens;
+    NklAstNodeView nodes;
+} NklSource;
+
+void nkl_ast_inspect(NklSource src, nk_stream out);
 
 #ifdef __cplusplus
 }
