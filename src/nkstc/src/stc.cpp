@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "compiler.h"
 #include "lexer.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
@@ -95,6 +96,22 @@ int nkst_compile(NkString in_file) {
             return 1;
         }
     }
+
+    auto c = nkl_createCompiler({});
+    defer {
+        nkl_freeCompiler(c);
+    };
+
+    auto m = nkl_createModule(c);
+    nkl_compile(
+        m,
+        {
+            .text = text,
+            .tokens{nkav_init(lexer.tokens)},
+            .nodes{nkav_init(parser.nodes)},
+        });
+
+    nkl_writeModule(m, nk_cs2s("a.out"));
 
     return 0;
 }
