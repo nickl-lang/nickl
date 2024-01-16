@@ -20,8 +20,8 @@ typedef struct {
 typedef NkDynArray(NklToken) NklTokenDynArray;
 typedef NkSlice(NklToken const) NklTokenArray;
 
-inline NkString nkl_getTokenStr(NklToken token, NkString text) {
-    return NK_LITERAL(NkString){text.data + token.pos, token.len};
+NK_INLINE NkString nkl_getTokenStr(NklToken const *token, NkString text) {
+    return NK_LITERAL(NkString){text.data + token->pos, token->len};
 }
 
 #ifdef __cplusplus

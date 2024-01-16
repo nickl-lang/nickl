@@ -1,5 +1,6 @@
 #include "nkl/common/ast.h"
 
+#include "nkl/common/token.h"
 #include "ntk/string.h"
 
 static void inspectNode(u32 idx, NklSource src, NkStream out, u32 indent) {
@@ -14,7 +15,7 @@ static void inspectNode(u32 idx, NklSource src, NkStream out, u32 indent) {
         return;
     }
 
-    NklAstNode const *node = &src.nodes.data[idx];
+    NklAstNode const *node = &src.nodes.data[idx++];
 
     if (node->id) {
         NkString const node_name = nk_atom2s(node->id);
@@ -25,7 +26,7 @@ static void inspectNode(u32 idx, NklSource src, NkStream out, u32 indent) {
 
     if (node->token_idx < src.tokens.size) {
         NklToken const *token = &src.tokens.data[node->token_idx];
-        NkString const token_text = (NkString){&src.text.data[token->pos], token->len};
+        NkString const token_text = nkl_getTokenStr(token, src.text);
         nk_stream_printf(out, " \"");
         nks_escape(out, token_text);
         nk_stream_printf(out, "\"");
@@ -33,13 +34,8 @@ static void inspectNode(u32 idx, NklSource src, NkStream out, u32 indent) {
         nk_stream_printf(out, " \"<invalid>\"");
     }
 
-    for (u32 i = 0; i < node->arity; i++) {
-        idx++;
+    for (u32 i = 0; i < node->arity; i++, idx = nkl_ast_nextChild(src.nodes, idx)) {
         inspectNode(idx, src, out, indent + 1);
-        if (idx < src.nodes.size) {
-            NklAstNode const *child_node = &src.nodes.data[idx];
-            idx += child_node->total_children;
-        }
     }
 }
 

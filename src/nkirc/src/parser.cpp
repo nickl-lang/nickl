@@ -76,7 +76,7 @@ struct GeneratorState {
                 } else if (accept(t_data)) {
                     CHECK(parseData(NkIrVisibility_Default, false));
                 } else {
-                    auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+                    auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
                     return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
                 }
             }
@@ -89,7 +89,7 @@ struct GeneratorState {
                 } else if (accept(t_data)) {
                     CHECK(parseData(NkIrVisibility_Local, false));
                 } else {
-                    auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+                    auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
                     return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
                 }
             }
@@ -115,7 +115,7 @@ struct GeneratorState {
                 } else if (accept(t_data)) {
                     CHECK(parseExternData(lib));
                 } else {
-                    auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+                    auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
                     return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
                 }
             }
@@ -141,7 +141,7 @@ struct GeneratorState {
             }
 
             else {
-                auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+                auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
                 return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
             }
 
@@ -208,7 +208,7 @@ struct GeneratorState {
             }
             if (check(t_id)) {
                 DEFINE(token, parseId());
-                auto const name = nk_s2atom(nkl_getTokenStr(*token, m_text));
+                auto const name = nk_s2atom(nkl_getTokenStr(token, m_text));
                 EXPECT(t_colon);
                 DEFINE(type, parseType());
                 new (makeLocalDecl(name)) Decl{
@@ -258,7 +258,7 @@ struct GeneratorState {
         DEFINE(id_token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
-        auto name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
+        auto name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         new (makeGlobalDecl(name)) Decl{
             {.type = type},
             Decl_Type,
@@ -271,7 +271,7 @@ struct GeneratorState {
         DEFINE(id_token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
-        auto name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
+        auto name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         auto decl = read_only ? nkir_makeRodata(m_ir, name, type, vis) : nkir_makeData(m_ir, name, type, vis);
         new (makeGlobalDecl(name)) Decl{
             {.data = decl},
@@ -287,7 +287,7 @@ struct GeneratorState {
         DEFINE(id_token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
-        auto name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
+        auto name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         new (makeGlobalDecl(name)) Decl{
             {.extern_data = nkir_makeExternData(m_ir, lib, name, type)},
             Decl_ExternData,
@@ -318,7 +318,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }
-        auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+        auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
         NK_LOG_DBG("accept(id, \"" NKS_FMT "\")", NKS_ARG(token_str));
         auto id = m_cur_token;
         getToken();
@@ -336,7 +336,7 @@ private:
             }
         }
 
-        auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+        auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
         char const *cstr = nks_copyNt(m_tmp_alloc, token_str).data;
         getToken();
 
@@ -424,7 +424,7 @@ private:
             res.is_cdecl = true;
         }
         DEFINE(id_token, parseId());
-        res.name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
+        res.name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -437,7 +437,7 @@ private:
             NkAtom name = NK_ATOM_INVALID;
             if (parse_names) {
                 DEFINE(id_token, parseId());
-                name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
+                name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
                 EXPECT(t_colon);
             }
             DEFINE(type, parseType());
@@ -478,7 +478,7 @@ private:
 
         else if (check(t_id)) {
             DEFINE(id_token, parseId());
-            auto const token_str = nkl_getTokenStr(*id_token, m_text);
+            auto const token_str = nkl_getTokenStr(id_token, m_text);
             auto name = nk_s2atom(token_str);
             auto found = m_compiler->parser.decls.find(name);
             if (!found) {
@@ -520,14 +520,14 @@ private:
         }
 
         else {
-            auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+            auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
             return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), nullptr;
         }
     }
 
     NkIrInstr parseInstr() {
         if (check(t_label)) {
-            auto label = getLabel(nk_s2atom(nkl_getTokenStr(*m_cur_token, m_text)));
+            auto label = getLabel(nk_s2atom(nkl_getTokenStr(m_cur_token, m_text)));
             getToken();
             return nkir_make_label(label);
         }
@@ -640,7 +640,7 @@ private:
     }
 #include "nkb/ir.inl"
             else {
-                auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+                auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
                 return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), NkIrInstr{};
             }
         }
@@ -656,7 +656,7 @@ private:
         }
 
         else {
-            auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+            auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
             return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), NkIrInstr{};
         }
     }
@@ -732,7 +732,7 @@ private:
 
         if (check(t_id)) {
             DEFINE(id_token, parseId());
-            auto const token_str = nkl_getTokenStr(*id_token, m_text);
+            auto const token_str = nkl_getTokenStr(id_token, m_text);
             auto const name = nk_s2atom(token_str);
             auto decl = resolve(name);
             if (!decl) {
@@ -800,7 +800,7 @@ private:
         }
 
         else {
-            auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+            auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
             return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), NkIrRef{};
         }
 
@@ -852,7 +852,7 @@ private:
         if (!check(t_label)) {
             return error("label expected"), NkIrLabel{};
         }
-        auto label = getLabel(nk_s2atom(nkl_getTokenStr(*m_cur_token, m_text)));
+        auto label = getLabel(nk_s2atom(nkl_getTokenStr(m_cur_token, m_text)));
         getToken();
         return label;
     }
@@ -913,7 +913,7 @@ private:
 
     void expect(ENkIrTokenId id) {
         if (!accept(id)) {
-            auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
+            auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
             return error("expected `%s` before `" NKS_FMT "`", s_token_text[id], NKS_ARG(token_str));
         }
     }

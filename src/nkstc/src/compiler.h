@@ -2,7 +2,7 @@
 #define HEADER_GUARD_NKSTC_COMPILER
 
 #include "nkl/common/ast.h"
-#include "ntk/id.h"
+#include "ntk/atom.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -10,9 +10,9 @@ extern "C" {
 #endif
 
 typedef struct {
-    nkid arch;
-    nkid vendor;
-    nkid sys;
+    NkAtom arch;
+    NkAtom vendor;
+    NkAtom sys;
 } NklTargetTriple;
 
 typedef struct NklCompiler_T *NklCompiler;
@@ -23,7 +23,7 @@ void nkl_freeCompiler(NklCompiler c);
 
 NklModule nkl_createModule(NklCompiler c);
 
-void nkl_writeModule(NklModule m, nks filename);
+void nkl_writeModule(NklModule m, NkString filename);
 
 void nkl_compile(NklModule m, NklSource src);
 

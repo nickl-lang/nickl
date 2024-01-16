@@ -184,7 +184,7 @@ struct ScannerState {
                 accept();
             }
 
-            auto const token_str = nk_s2stdView(nkl_getTokenStr(m_token, m_text));
+            auto const token_str = nk_s2stdView(nkl_getTokenStr(&m_token, m_text));
             auto it = std::begin(s_keywords) + 1;
             for (; it != std::end(s_keywords) && (m_token.len != strlen(*it) || *it != token_str); ++it) {
             }
@@ -321,7 +321,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, Nk
 
 #ifdef ENABLE_LOGGING
         NKSB_FIXED_BUFFER(sb, 256);
-        nks_escape(nksb_getStream(&sb), nkl_getTokenStr(scanner.m_token, text));
+        nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&scanner.m_token, text));
         NK_LOG_DBG("%s: \"" NKS_FMT "\"", s_token_id[scanner.m_token.id], NKS_ARG(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
