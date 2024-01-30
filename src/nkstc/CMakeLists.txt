@@ -6,6 +6,7 @@ add_executable(${EXE}
     src/main.cpp
     src/parser.cpp
     src/stc.cpp
+    src/types.c
     )
 
 target_link_libraries(${EXE}

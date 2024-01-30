@@ -125,6 +125,7 @@ typedef struct NkIrType {
         NkIrProcTypeInfo proc;
     } as;
     u64 size;
+    u16 flags;
     u8 align;
     NkIrTypeKind kind;
     u64 id;
