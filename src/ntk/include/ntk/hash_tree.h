@@ -4,144 +4,92 @@
 #include "ntk/allocator.h"
 #include "ntk/common.h"
 
-#define nkht_type(T)       \
-    struct {               \
-        T *root;           \
-        NkAllocator alloc; \
-        union {            \
-            T tmp_val;     \
-            T *tmp_ptr;    \
-        };                 \
-    }
+#define nkht_typedef(Name, TItem)                 \
+    typedef struct _##Name##_Node _##Name##_Node; \
+    struct _##Name##_Node {                       \
+        TItem item;                               \
+        hash_t hash;                              \
+        _##Name##_Node *child[2];                 \
+    };                                            \
+    typedef struct {                              \
+        _##Name##_Node *root;                     \
+        NkAllocator alloc;                        \
+    } Name
 
-#define nkht_typedef(T, Name) typedef nkht_type(T) Name
+#define nkht_proto(Name, TItem, TKey)                 \
+    nkht_typedef(Name, TItem);                        \
+    TItem *Name##_insert(Name *ht, TItem const item); \
+    TItem *Name##_find(Name *ht, TKey const key);     \
+    void Name##_free(Name *ht)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define nkht_impl(Name, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)                                 \
+    typedef struct {                                                                                        \
+        _##Name##_Node **node;                                                                              \
+        bool existing;                                                                                      \
+    } _##Name##_SearchResult;                                                                               \
+                                                                                                            \
+    static _##Name##_SearchResult _##Name##_findNode(_##Name##_Node **node, TKey const *key, hash_t hash) { \
+        while (*node) {                                                                                     \
+            switch ((hash > (*node)->hash) - (hash < (*node)->hash)) {                                      \
+            case 0: {                                                                                       \
+                TKey const *existing_key = GetKeyFunc(&(*node)->item);                                      \
+                if (KeyEqualFunc(*key, *existing_key)) {                                                    \
+                    return LITERAL(_##Name##_SearchResult){node, true};                                     \
+                }                                                                                           \
+            } /*fallthrough*/                                                                               \
+            case -1:                                                                                        \
+                node = (*node)->child + 0;                                                                  \
+                break;                                                                                      \
+            case +1:                                                                                        \
+                node = (*node)->child + 1;                                                                  \
+                break;                                                                                      \
+            }                                                                                               \
+        }                                                                                                   \
+        return LITERAL(_##Name##_SearchResult){node, false};                                                \
+    }                                                                                                       \
+                                                                                                            \
+    TItem *Name##_insert(Name *ht, TItem const item) {                                                      \
+        TKey const *key = GetKeyFunc(&item);                                                                \
+        hash_t hash = KeyHashFunc(*key);                                                                    \
+        _##Name##_SearchResult res = _##Name##_findNode(&ht->root, key, hash);                              \
+        if (!res.existing) {                                                                                \
+            NkAllocator _alloc = ht->alloc.proc ? ht->alloc : nk_default_allocator;                         \
+            *res.node = (_##Name##_Node *)nk_allocAligned(                                                  \
+                _alloc, sizeof(_##Name##_Node), maxu(alignof(TItem), alignof(_##Name##_Node)));             \
+            **res.node = LITERAL(_##Name##_Node){                                                           \
+                .item = item,                                                                               \
+                .hash = hash,                                                                               \
+                .child = {0},                                                                               \
+            };                                                                                              \
+        }                                                                                                   \
+        return &(*res.node)->item;                                                                          \
+    }                                                                                                       \
+                                                                                                            \
+    TItem *Name##_find(Name *ht, TKey const key) {                                                          \
+        hash_t hash = KeyHashFunc(key);                                                                     \
+        _##Name##_SearchResult res = _##Name##_findNode(&ht->root, &key, hash);                             \
+        return &(*res.node)->item;                                                                          \
+    }                                                                                                       \
+                                                                                                            \
+    static void _##Name##_freeNode(NkAllocator alloc, _##Name##_Node *node) {                               \
+        if (!node) {                                                                                        \
+            return;                                                                                         \
+        }                                                                                                   \
+        _##Name##_freeNode(alloc, node->child[0]);                                                          \
+        _##Name##_freeNode(alloc, node->child[1]);                                                          \
+        nk_free(alloc, node, sizeof(_##Name##_Node));                                                       \
+    }                                                                                                       \
+                                                                                                            \
+    void Name##_free(Name *ht) {                                                                            \
+        NkAllocator _alloc = ht->alloc.proc ? ht->alloc : nk_default_allocator;                             \
+        _##Name##_freeNode(_alloc, ht->root);                                                               \
+        ht->root = NULL;                                                                                    \
+    }                                                                                                       \
+                                                                                                            \
+    extern int _##__LINE__
 
-typedef enum {
-    _nkht_hash_val,
-    _nkht_hash_str,
-} _nkht_hash_mode;
-
-void *_nkht_insert_impl(
-    void **root,
-    NkAllocator alloc,
-    void *elem,
-    size_t elem_size,
-    size_t elem_align,
-    size_t key_size,
-    size_t key_offset,
-    _nkht_hash_mode mode);
-
-void *_nkht_find_impl(
-    void *root,
-    size_t elem_size,
-    void *key,
-    size_t key_size,
-    size_t key_offset,
-    _nkht_hash_mode mode);
-
-void _nkht_free_impl(void **root, NkAllocator alloc, size_t elem_size);
-
-#ifdef __cplusplus
-}
-#endif
-
-#define _nkht_insert_val(ht, item)                                \
-    ((ht)->tmp_val = (item),                                      \
-     _nk_assign_void_ptr(                                         \
-         (ht)->tmp_ptr,                                           \
-         _nkht_insert_impl(                                       \
-             (void **)&(ht)->root,                                \
-             (ht)->alloc,                                         \
-             (void *)&(ht)->tmp_val,                              \
-             sizeof(*(ht)->root),                                 \
-             nk_alignofval((ht)->tmp_val),                        \
-             sizeof((ht)->root->key),                             \
-             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key, \
-             _nkht_hash_val)))
-
-#define _nkht_insert_str(ht, item)                                       \
-    ((ht)->tmp_val = (item),                                             \
-     _nk_assign_void_ptr(                                                \
-         (ht)->tmp_ptr,                                                  \
-         _nkht_insert_impl(                                              \
-             (void **)&(ht)->root,                                       \
-             (ht)->alloc,                                                \
-             (void *)&(ht)->tmp_val,                                     \
-             sizeof(*(ht)->root),                                        \
-             nk_alignofval((ht)->tmp_val),                               \
-             (ht)->tmp_val.key.size * sizeof((ht)->tmp_val.key.data[0]), \
-             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key,        \
-             _nkht_hash_str)))
-
-#define _nkht_find_val(ht, KEY)                                   \
-    ((ht)->tmp_val.key = (KEY),                                   \
-     _nk_assign_void_ptr(                                         \
-         (ht)->tmp_ptr,                                           \
-         _nkht_find_impl(                                         \
-             (void *)(ht)->root,                                  \
-             sizeof(*(ht)->root),                                 \
-             (void *)&(ht)->tmp_val.key,                          \
-             sizeof((ht)->root->key),                             \
-             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key, \
-             _nkht_hash_val)))
-
-#define _nkht_find_str(ht, KEY)                                          \
-    ((ht)->tmp_val.key = (KEY),                                          \
-     _nk_assign_void_ptr(                                                \
-         (ht)->tmp_ptr,                                                  \
-         _nkht_find_impl(                                                \
-             (void *)(ht)->root,                                         \
-             sizeof(*(ht)->root),                                        \
-             (void *)(ht)->tmp_val.key.data,                             \
-             (ht)->tmp_val.key.size * sizeof((ht)->tmp_val.key.data[0]), \
-             (uint8_t *)(ht)->root - (uint8_t *)&(ht)->root->key,        \
-             _nkht_hash_str)))
-
-#define _nkht_free(ht) _nkht_free_impl((void **)&(ht)->root, (ht)->alloc, sizeof(*(ht)->root));
-
-#ifdef __cplusplus
-
-#include <utility>
-
-template <class THt, class TItem>
-auto nkht_insert_val(THt *ht, TItem &&item) -> decltype(THt::root) {
-    return _nkht_insert_val(ht, std::forward<TItem>(item));
-}
-
-template <class THt, class TItem>
-auto nkht_insert_str(THt *ht, TItem &&item) -> decltype(THt::root) {
-    return _nkht_insert_str(ht, std::forward<TItem>(item));
-}
-
-template <class THt, class TKey>
-auto nkht_find_val(THt *ht, TKey &&item) -> decltype(THt::root) {
-    return _nkht_find_val(ht, std::forward<TKey>(item));
-}
-
-template <class THt, class TKey>
-auto nkht_find_str(THt *ht, TKey &&item) -> decltype(THt::root) {
-    return _nkht_find_str(ht, std::forward<TKey>(item));
-}
-
-template <class THt>
-void nkht_free(THt *ht) {
-    _nkht_free(ht);
-}
-
-#else // __cplusplus
-
-#define nkht_insert_val _nkht_insert_val
-#define nkht_insert_str _nkht_insert_str
-
-#define nkht_find_val _nkht_find_val
-#define nkht_find_str _nkht_find_str
-
-#define nkht_free _nkht_free
-
-#endif // __cplusplus
+#define nkht_define(Name, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc) \
+    nkht_proto(Name, TItem, TKey);                                            \
+    nkht_impl(Name, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)
 
 #endif // HEADER_GUARD_NTK_HASH_TREE

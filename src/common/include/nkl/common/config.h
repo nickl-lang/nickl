@@ -13,7 +13,8 @@ typedef struct {
     nks key;
     nks val;
 } nks_KV;
-nkht_typedef(nks_KV, nks_config);
+
+nkht_proto(nks_config, nks_KV, nks);
 
 bool readConfig(nks_config *conf, nks file);
 

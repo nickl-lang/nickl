@@ -20,8 +20,6 @@ extern "C" {
 
 #define AR_SIZE(AR) sizeof(AR) / sizeof((AR)[0])
 
-typedef size_t hash_t;
-
 NK_INLINE size_t roundUp(size_t v, size_t m) {
     return (v + m - 1) / m * m;
 }
@@ -115,6 +113,8 @@ NK_INLINE void hash_combine(hash_t *seed, size_t n) {
 }
 
 hash_t hash_array(uint8_t const *begin, uint8_t const *end);
+
+#define hash_val(val) hash_array((uint8_t const *)(val), (uint8_t const *)((val) + 1))
 
 NK_INLINE hash_t hash_cstrn(char const *str, size_t n) {
     return hash_array((uint8_t *)&str[0], (uint8_t *)&str[0] + n);

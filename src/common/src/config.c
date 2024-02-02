@@ -8,6 +8,12 @@
 
 #define MAX_LINE 4096
 
+static nks const *nkv_KV_GetKey(nks_KV const *item) {
+    return &item->key;
+}
+
+nkht_impl(nks_config, nks_KV, nks, nkv_KV_GetKey, nks_hash, nks_equal);
+
 bool readConfig(nks_config *conf, nks file) {
     NkFileReadResult res = nk_file_read(conf->alloc, file);
     if (!res.ok) {
@@ -36,7 +42,7 @@ bool readConfig(nks_config *conf, nks file) {
             }
             nks const field_copy = nk_strcpy_nt(conf->alloc, nks_trim(field));
             nks const line_copy = nk_strcpy_nt(conf->alloc, nks_trim(line));
-            nkht_insert_str(conf, ((nks_KV){field_copy, line_copy}));
+            nks_config_insert(conf, (nks_KV){field_copy, line_copy});
         }
 
         lin++;

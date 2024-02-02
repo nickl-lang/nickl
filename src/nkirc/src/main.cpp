@@ -249,7 +249,7 @@ int main(int /*argc*/, char const *const *argv) {
 
     NkIrcConfig irc_conf{};
 
-    auto usize = nkht_find_str(&config, nk_cs2s("usize"));
+    auto usize = nks_config_find(&config, nk_cs2s("usize"));
     if (usize) {
         NK_LOG_DBG("usize=`" nks_Fmt "`", nks_Arg(usize->val));
         char *endptr = NULL;
@@ -260,19 +260,19 @@ int main(int /*argc*/, char const *const *argv) {
         }
     }
 
-    auto libc_name = nkht_find_str(&config, nk_cs2s("libc_name"));
+    auto libc_name = nks_config_find(&config, nk_cs2s("libc_name"));
     if (libc_name) {
         NK_LOG_DBG("libc_name=`" nks_Fmt "`", nks_Arg(libc_name->val));
         irc_conf.libc_name = s2nkid(libc_name->val);
     }
 
-    auto libm_name = nkht_find_str(&config, nk_cs2s("libm_name"));
+    auto libm_name = nks_config_find(&config, nk_cs2s("libm_name"));
     if (libm_name) {
         NK_LOG_DBG("libm_name=`" nks_Fmt "`", nks_Arg(libm_name->val));
         irc_conf.libm_name = s2nkid(libm_name->val);
     }
 
-    auto libpthread_name = nkht_find_str(&config, nk_cs2s("libpthread_name"));
+    auto libpthread_name = nks_config_find(&config, nk_cs2s("libpthread_name"));
     if (libpthread_name) {
         NK_LOG_DBG("libpthread_name=`" nks_Fmt "`", nks_Arg(libpthread_name->val));
         irc_conf.libpthread_name = s2nkid(libpthread_name->val);
@@ -287,7 +287,7 @@ int main(int /*argc*/, char const *const *argv) {
     if (run) {
         code = nkir_run(c, in_file);
     } else {
-        auto c_compiler = nkht_find_str(&config, nk_cs2s("c_compiler"));
+        auto c_compiler = nks_config_find(&config, nk_cs2s("c_compiler"));
         if (!c_compiler) {
             nkl_diag_printError("`c_compiler` field is missing in the config");
             return 1;
@@ -296,7 +296,7 @@ int main(int /*argc*/, char const *const *argv) {
 
         nkar_type(nks) additional_flags{0, 0, 0, alloc};
 
-        auto c_flags = nkht_find_str(&config, nk_cs2s("c_flags"));
+        auto c_flags = nks_config_find(&config, nk_cs2s("c_flags"));
         if (c_flags) {
             NK_LOG_DBG("c_flags=`" nks_Fmt "`", nks_Arg(c_flags->val));
             nkar_append(&additional_flags, c_flags->val);

@@ -16,7 +16,6 @@ add_library(${LIB}
     src/allocator.c
     src/arena.c
     src/file.c
-    src/hash_tree.c
     src/id.c
     src/logger.c
     src/pipe_stream.c

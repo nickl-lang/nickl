@@ -49,4 +49,6 @@ constexpr size_t nk_alignofval(T const &) {
 
 #endif // __cplusplus
 
+typedef size_t hash_t;
+
 #endif // HEADER_GUARD_NTK_COMMON
