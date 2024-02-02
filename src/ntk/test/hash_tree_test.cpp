@@ -1,8 +1,7 @@
-#include "ntk/hash_tree.h"
-
 #include <gtest/gtest.h>
 
 #include "ntk/allocator.h"
+#include "ntk/hash_tree2.h"
 #include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -16,112 +15,132 @@ class HashTree : public testing::Test {
     }
 };
 
-struct MyElem {
+struct int2cstr_KV {
     int key;
     char const *value;
 };
 
+int const *int2cstr_GetKey(int2cstr_KV const *elem) {
+    return &elem->key;
+}
+
+uint64_t int_hash(int const key) {
+    return hash_array((uint8_t const *)&key, (uint8_t const *)&key + sizeof(key));
+}
+
+bool int_equal(int const lhs, int const rhs) {
+    return lhs == rhs;
+}
+
+nkht_define(int2cstr_ht, int2cstr_KV, int, int2cstr_GetKey, int_hash, int_equal);
+
 TEST_F(HashTree, val_key) {
-    nkht_type(MyElem) ht{};
+    int2cstr_ht ht{};
     defer {
-        nkht_free(&ht);
+        int2cstr_ht_free(&ht);
     };
 
-    MyElem elem{};
-    MyElem *found;
+    int2cstr_KV elem{};
+    int2cstr_KV *found;
 
     elem = {42, "forty two"};
-    EXPECT_FALSE(nkht_find_val(&ht, 42));
-    found = nkht_insert_val(&ht, elem);
-    EXPECT_TRUE(nkht_find_val(&ht, 42));
+    EXPECT_FALSE(int2cstr_ht_find(&ht, 42));
+    found = int2cstr_ht_insert(&ht, elem);
+    EXPECT_TRUE(int2cstr_ht_find(&ht, 42));
     EXPECT_EQ(found->key, 42);
     EXPECT_STREQ(found->value, "forty two");
 
     elem = {1, "one"};
-    EXPECT_FALSE(nkht_find_val(&ht, 1));
-    found = nkht_insert_val(&ht, elem);
-    EXPECT_TRUE(nkht_find_val(&ht, 1));
+    EXPECT_FALSE(int2cstr_ht_find(&ht, 1));
+    found = int2cstr_ht_insert(&ht, elem);
+    EXPECT_TRUE(int2cstr_ht_find(&ht, 1));
     EXPECT_EQ(found->key, 1);
     EXPECT_STREQ(found->value, "one");
 
     elem = {2, "two"};
-    EXPECT_FALSE(nkht_find_val(&ht, 2));
-    found = nkht_insert_val(&ht, elem);
-    EXPECT_TRUE(nkht_find_val(&ht, 2));
+    EXPECT_FALSE(int2cstr_ht_find(&ht, 2));
+    found = int2cstr_ht_insert(&ht, elem);
+    EXPECT_TRUE(int2cstr_ht_find(&ht, 2));
     EXPECT_EQ(found->key, 2);
     EXPECT_STREQ(found->value, "two");
 
     elem = {2, "asdasdasd"};
-    EXPECT_TRUE(nkht_find_val(&ht, 2));
-    found = nkht_insert_val(&ht, elem);
+    EXPECT_TRUE(int2cstr_ht_find(&ht, 2));
+    found = int2cstr_ht_insert(&ht, elem);
     EXPECT_EQ(found->key, 2);
     EXPECT_STREQ(found->value, "two");
 
     elem = {41, "asdasdasd"};
-    EXPECT_FALSE(nkht_find_val(&ht, 41));
-    found = nkht_insert_val(&ht, elem);
-    EXPECT_TRUE(nkht_find_val(&ht, 41));
+    EXPECT_FALSE(int2cstr_ht_find(&ht, 41));
+    found = int2cstr_ht_insert(&ht, elem);
+    EXPECT_TRUE(int2cstr_ht_find(&ht, 41));
     EXPECT_EQ(found->key, 41);
     EXPECT_STREQ(found->value, "asdasdasd");
 
     elem = {42, "asdasdasd"};
-    EXPECT_TRUE(nkht_find_val(&ht, 42));
-    found = nkht_insert_val(&ht, elem);
+    EXPECT_TRUE(int2cstr_ht_find(&ht, 42));
+    found = int2cstr_ht_insert(&ht, elem);
     EXPECT_EQ(found->key, 42);
     EXPECT_STREQ(found->value, "forty two");
 }
 
-struct MyElemWithStr {
+struct str2int_KV {
     nks key;
     int value;
 };
 
+nks const *int2cstr_GetKey(str2int_KV const *elem) {
+    return &elem->key;
+}
+
+nkht_define(str2int, str2int_KV, nks, int2cstr_GetKey, nks_hash, nks_equal);
+
 TEST_F(HashTree, str_key) {
-    nkht_type(MyElemWithStr) ht{};
+    str2int ht{};
     defer {
-        nkht_free(&ht);
+        str2int_free(&ht);
     };
 
-    MyElemWithStr elem{};
-    MyElemWithStr *found;
+    str2int_KV elem{};
+    str2int_KV *found;
 
     elem = {nk_cs2s("forty two"), 42};
-    EXPECT_FALSE(nkht_find_str(&ht, nk_cs2s("forty two")));
-    found = nkht_insert_str(&ht, elem);
-    EXPECT_TRUE(nkht_find_str(&ht, nk_cs2s("forty two")));
+    EXPECT_FALSE(str2int_find(&ht, nk_cs2s("forty two")));
+    found = str2int_insert(&ht, elem);
+    EXPECT_TRUE(str2int_find(&ht, nk_cs2s("forty two")));
     EXPECT_EQ(found->key, "forty two");
     EXPECT_EQ(found->value, 42);
 
     elem = {nk_cs2s("one"), 1};
-    EXPECT_FALSE(nkht_find_str(&ht, nk_cs2s("one")));
-    found = nkht_insert_str(&ht, elem);
-    EXPECT_TRUE(nkht_find_str(&ht, nk_cs2s("one")));
+    EXPECT_FALSE(str2int_find(&ht, nk_cs2s("one")));
+    found = str2int_insert(&ht, elem);
+    EXPECT_TRUE(str2int_find(&ht, nk_cs2s("one")));
     EXPECT_EQ(found->key, "one");
     EXPECT_EQ(found->value, 1);
 
     elem = {nk_cs2s("two"), 2};
-    EXPECT_FALSE(nkht_find_str(&ht, nk_cs2s("two")));
-    found = nkht_insert_str(&ht, elem);
-    EXPECT_TRUE(nkht_find_str(&ht, nk_cs2s("two")));
+    EXPECT_FALSE(str2int_find(&ht, nk_cs2s("two")));
+    found = str2int_insert(&ht, elem);
+    EXPECT_TRUE(str2int_find(&ht, nk_cs2s("two")));
     EXPECT_EQ(found->key, "two");
     EXPECT_EQ(found->value, 2);
 
     elem = {nk_cs2s("two"), 123};
-    EXPECT_TRUE(nkht_find_str(&ht, nk_cs2s("two")));
-    found = nkht_insert_str(&ht, elem);
+    EXPECT_TRUE(str2int_find(&ht, nk_cs2s("two")));
+    found = str2int_insert(&ht, elem);
     EXPECT_EQ(found->key, "two");
     EXPECT_EQ(found->value, 2);
 
     elem = {nk_cs2s("forty one"), 41};
-    EXPECT_FALSE(nkht_find_str(&ht, nk_cs2s("forty one")));
-    found = nkht_insert_str(&ht, elem);
-    EXPECT_TRUE(nkht_find_str(&ht, nk_cs2s("forty one")));
+    EXPECT_FALSE(str2int_find(&ht, nk_cs2s("forty one")));
+    found = str2int_insert(&ht, elem);
+    EXPECT_TRUE(str2int_find(&ht, nk_cs2s("forty one")));
     EXPECT_EQ(found->key, "forty one");
     EXPECT_EQ(found->value, 41);
 
     elem = {nk_cs2s("forty two"), 123};
-    EXPECT_TRUE(nkht_find_str(&ht, nk_cs2s("forty two")));
-    found = nkht_insert_str(&ht, elem);
+    EXPECT_TRUE(str2int_find(&ht, nk_cs2s("forty two")));
+    found = str2int_insert(&ht, elem);
     EXPECT_EQ(found->key, "forty two");
     EXPECT_EQ(found->value, 42);
 }
@@ -133,10 +152,10 @@ TEST_F(HashTree, alignment) {
         nk_arena_free(&arena);
     };
 
-    nkht_type(MyElemWithStr) ht{};
+    str2int ht{};
     ht.alloc = alloc;
 
     nk_arena_alloc(&arena, 1);
-    nkht_insert_str(&ht, MyElemWithStr{nk_cs2s("one"), 42});
-    nkht_insert_str(&ht, MyElemWithStr{nk_cs2s("two"), 42});
+    str2int_insert(&ht, str2int_KV{nk_cs2s("one"), 42});
+    str2int_insert(&ht, str2int_KV{nk_cs2s("two"), 42});
 }

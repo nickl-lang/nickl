@@ -8,6 +8,7 @@
 #include "ntk/array.h"
 #include "ntk/common.h"
 #include "ntk/stream.h"
+#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,7 @@ nks nks_trim(nks str);
 nks nks_chop_by_delim(nks *str, char delim);
 nks nks_chop_by_delim_reverse(nks *str, char delim);
 
+hash_t nks_hash(nks str);
 bool nks_equal(nks lhs, nks rhs);
 
 bool nks_starts_with(nks str, nks pref);
@@ -85,8 +87,8 @@ namespace std {
 
 template <>
 struct hash<::nks> {
-    size_t operator()(::nks slice) {
-        return ::hash_array((uint8_t *)&slice.data[0], (uint8_t *)&slice.data[slice.size]);
+    size_t operator()(::nks str) {
+        return nks_hash(str);
     }
 };
 

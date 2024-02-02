@@ -73,6 +73,10 @@ nks nks_chop_by_delim_reverse(nks *str, char delim) {
     return res;
 }
 
+hash_t nks_hash(nks str) {
+    return hash_array((uint8_t *)&str.data[0], (uint8_t *)&str.data[str.size]);
+}
+
 bool nks_equal(nks lhs, nks rhs) {
     return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
 }
