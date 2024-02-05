@@ -43,6 +43,11 @@ int nkl_main(int /*argc*/, char const *const *argv) {
         ProfExit();
     };
 
+    ProfBeginFunc();
+    defer {
+        ProfEndBlock();
+    };
+
     nks in_file{};
     bool help = false;
     bool version = false;

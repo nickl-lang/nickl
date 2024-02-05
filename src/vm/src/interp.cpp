@@ -124,6 +124,12 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
 }
 
 void interp(NkBcInstr const &instr) {
+#ifdef ENABLE_PROFILING
+    nksb_fixed_buffer(sb, 128);
+    nksb_printf(&sb, "interp: %s", s_nk_bc_names[instr.code]);
+#endif // ENABLE_PROFILING
+    ProfBeginBlock(sb.data, sb.size);
+
     switch (instr.code) {
     case nkop_nop: {
         break;
@@ -421,6 +427,8 @@ void interp(NkBcInstr const &instr) {
         assert(!"unknown opcode");
         break;
     }
+
+    ProfEndBlock();
 }
 
 } // namespace
