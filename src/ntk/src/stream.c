@@ -1,5 +1,6 @@
 #include "ntk/stream.h"
 
+#include "ntk/profiler.h"
 #include "stb/sprintf.h"
 
 int nk_printf(nk_stream out, char const *fmt, ...) {
@@ -17,15 +18,20 @@ struct SprintfCallbackContext {
 };
 
 static char *sprintfCallback(const char *buf, void *user, int len) {
+    ProfBeginFunc();
     struct SprintfCallbackContext *context = user;
     int res = nk_stream_write(context->out, (char *)buf, len);
+    ProfEndBlock();
     return res < 0 ? NULL : context->buf;
 }
 
 int nk_vprintf(nk_stream out, char const *fmt, va_list ap) {
+    ProfBeginFunc();
     char buf[STB_SPRINTF_MIN];
     struct SprintfCallbackContext context = {out, buf};
-    return stbsp_vsprintfcb(sprintfCallback, &context, context.buf, fmt, ap);
+    int ret = stbsp_vsprintfcb(sprintfCallback, &context, context.buf, fmt, ap);
+    ProfEndBlock();
+    return ret;
 }
 
 extern inline int nk_stream_read(nk_stream in, char *buf, size_t size);

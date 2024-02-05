@@ -2,6 +2,8 @@
 
 #include <ctype.h>
 
+#include "ntk/profiler.h"
+
 nks nk_strcpy(NkAllocator alloc, nks src) {
     char *mem = (char *)nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
@@ -99,6 +101,7 @@ bool nks_starts_with(nks str, nks pref) {
     } while (0)
 
 int nks_escape(nk_stream out, nks str) {
+    ProfBeginFunc();
     int res = 0;
     for (size_t i = 0; i < str.size; i++) {
         switch (str.data[i]) {
@@ -141,10 +144,12 @@ int nks_escape(nk_stream out, nks str) {
             break;
         }
     }
+    ProfEndBlock();
     return res;
 }
 
 int nks_unescape(nk_stream out, nks str) {
+    ProfBeginFunc();
     int res = 0;
     for (size_t i = 0; i < str.size; i++) {
         if (str.data[i] == '\\' && i < str.size - 1) {
@@ -181,10 +186,12 @@ int nks_unescape(nk_stream out, nks str) {
             WRITE(nk_stream_write(out, &str.data[i], 1));
         }
     }
+    ProfEndBlock();
     return res;
 }
 
 int nks_sanitize(nk_stream out, nks str) {
+    ProfBeginFunc();
     int res = 0;
     for (size_t i = 0; i < str.size; i++) {
         if (isprint(str.data[i])) {
@@ -193,6 +200,7 @@ int nks_sanitize(nk_stream out, nks str) {
             WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
         }
     }
+    ProfEndBlock();
     return res;
 }
 

@@ -115,6 +115,12 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
 }
 
 void interp(NkBcInstr const &instr) {
+#ifdef ENABLE_PROFILING
+    nksb_fixed_buffer(sb, 128);
+    nksb_printf(&sb, "interp: %s", nkbcOpcodeName(instr.code));
+#endif // ENABLE_PROFILING
+    ProfBeginBlock(sb.data, sb.size);
+
     switch (instr.code) {
     case nkop_nop: {
         break;
@@ -504,6 +510,8 @@ void interp(NkBcInstr const &instr) {
         assert(!"unknown opcode");
         break;
     }
+
+    ProfEndBlock();
 }
 
 } // namespace

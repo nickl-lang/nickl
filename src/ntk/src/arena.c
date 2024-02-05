@@ -78,8 +78,10 @@ static void *arenaAllocatorProc(
 #endif // ENABLE_LOGGING
 
     switch (mode) {
-    case NkAllocator_Alloc:
-        return allocAlignedRaw(arena, size, align, true);
+    case NkAllocator_Alloc: {
+        void *ret = allocAlignedRaw(arena, size, align, true);
+        return ret;
+    }
 
     case NkAllocator_Free:
         assert(arena->data + arena->size >= (uint8_t *)old_mem + old_size && "invalid allocation");
@@ -96,7 +98,8 @@ static void *arenaAllocatorProc(
 
         if (arena->data + arena->size == (uint8_t *)old_mem + old_size) {
             nk_arena_pop(arena, old_size);
-            return allocAlignedRaw(arena, size, align, false);
+            void *ret = allocAlignedRaw(arena, size, align, false);
+            return ret;
         } else {
             void *new_mem = allocAlignedRaw(arena, size, align, true);
             memcpy(new_mem, old_mem, old_size);

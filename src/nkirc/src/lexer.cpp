@@ -14,6 +14,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -57,6 +58,8 @@ struct ScannerState {
     nks m_error_msg{};
 
     void scan() {
+        ProfBeginFunc();
+
         skipSpaces();
 
         if (m_pos == 0 && on('#') && on('!', 1)) {
@@ -120,6 +123,7 @@ struct ScannerState {
                         break;
                     default:
                         if (!chr()) {
+                            ProfEndBlock();
                             return error("unexpected end of file");
                         } else {
                             m_token.pos = m_pos - 1;
@@ -127,8 +131,10 @@ struct ScannerState {
                             m_token.lin = m_lin;
                             m_token.col = m_col - 1;
                             if (isprint(chr())) {
+                                ProfEndBlock();
                                 return error("invalid escape sequence `\\%c`", chr());
                             } else {
+                                ProfEndBlock();
                                 return error("invalid escape sequence `\\\\x%" PRIx8 "`", chr() & 0xff);
                             }
                         }
@@ -138,6 +144,7 @@ struct ScannerState {
 
             if (!on('\"')) {
                 accept();
+                ProfEndBlock();
                 return error("invalid string constant");
             }
 
@@ -169,6 +176,7 @@ struct ScannerState {
                     accept();
                 }
                 if (!chk<isdigit>()) {
+                    ProfEndBlock();
                     return error("invalid float literal");
                 }
                 while (chk<isdigit>()) {
@@ -178,6 +186,7 @@ struct ScannerState {
 
             if (chk<isalpha>()) {
                 accept();
+                ProfEndBlock();
                 return error("invalid suffix");
             }
         } else if (onAlphaOrUscr()) {
@@ -228,12 +237,16 @@ struct ScannerState {
             } else {
                 accept();
                 if (isprint(chr(-1))) {
+                    ProfEndBlock();
                     return error("unexpected character `%c`", chr(-1));
                 } else {
+                    ProfEndBlock();
                     return error("unexpected byte `\\x%" PRIx8 "`", chr(-1) & 0xff);
                 }
             }
         }
+
+        ProfEndBlock();
     }
 
 private:
@@ -296,6 +309,7 @@ private:
 } // namespace
 
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks text) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
@@ -325,4 +339,6 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[scanner.m_token.id], nks_Arg(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
+
+    ProfEndBlock();
 }

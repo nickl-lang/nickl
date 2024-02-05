@@ -11,6 +11,7 @@
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/dl.h"
@@ -136,8 +137,11 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ..
 }
 
 nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
+    ProfBeginFunc();
+
     auto found = ctx->extern_libs.find(name);
     if (found) {
+        ProfEndBlock();
         return *found;
     } else {
         auto const name_str = nkid2cs(name);
@@ -172,42 +176,52 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
 
                     if (!lib) {
                         reportError(ctx, "failed to load extern library `%s`: " nks_Fmt, name_str, nks_Arg(err_str));
+                        ProfEndBlock();
                         return NULL;
                     }
                 }
             }
         }
         NK_LOG_DBG("loaded extern library `%s`: %p", name_str, lib);
+        ProfEndBlock();
         return ctx->extern_libs.insert(name, lib);
     }
 }
 
 void *getExternSym(NkIrRunCtx ctx, nkid lib_hame, nkid name) {
+    ProfBeginFunc();
     auto found = ctx->extern_syms.find(name);
     if (found) {
+        ProfEndBlock();
         return *found;
     } else {
         auto const name_str = nkid2cs(name);
         nkdl_t lib = getExternLib(ctx, lib_hame);
         if (!lib) {
+            ProfEndBlock();
             return NULL;
         }
         auto sym = nk_resolve_symbol(lib, name_str);
         if (!sym) {
             reportError(ctx, "failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
+            ProfEndBlock();
             return NULL;
         }
         NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
+        ProfEndBlock();
         return ctx->extern_libs.insert(name, sym);
     }
 }
 
 bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
+    ProfBeginFunc();
+
     while (proc.idx >= ctx->procs.size) {
         nkar_append(&ctx->procs, nullptr);
     }
 
     if (ctx->procs.data[proc.idx]) {
+        ProfEndBlock();
         return true;
     }
 
@@ -254,6 +268,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
     auto const get_data_addr = [&](size_t index) {
+        ProfBeginBlock("get_data_addr", sizeof("get_data_addr") - 1);
         while (index >= ctx->data.size) {
             nkar_append(&ctx->data, nullptr);
         }
@@ -271,11 +286,13 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
             }
         }
+        ProfEndBlock();
         return data;
     };
 
     auto const translate_ref =
         [&](size_t instr_index, size_t arg_index, size_t ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
+            ProfBeginBlock("translate_ref", sizeof("translate_ref") - 1);
             ref = {
                 .offset = ir_ref.offset,
                 .post_offset = ir_ref.post_offset,
@@ -330,6 +347,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 auto data = ir.extern_data.data[ir_ref.index];
                 auto sym = getExternSym(ctx, data.lib, data.name);
                 if (!sym) {
+                    ProfEndBlock();
                     return false;
                 }
 
@@ -341,6 +359,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 auto proc = ir.extern_procs.data[ir_ref.index];
                 auto sym = getExternSym(ctx, proc.lib, proc.name);
                 if (!sym) {
+                    ProfEndBlock();
                     return false;
                 }
 
@@ -366,10 +385,12 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 break;
             }
 
+            ProfEndBlock();
             return true;
         };
 
     auto const translate_arg = [&](size_t instr_index, size_t arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
+        ProfBeginBlock("translate_arg", sizeof("translate_arg") - 1);
         switch (ir_arg.kind) {
         case NkIrArg_None: {
             arg.kind = NkBcArg_None;
@@ -379,6 +400,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         case NkIrArg_Ref: {
             arg.kind = NkBcArg_Ref;
             if (!translate_ref(instr_index, arg_index, -1ul, arg.ref, ir_arg.ref)) {
+                ProfEndBlock();
                 return false;
             }
             break;
@@ -389,6 +411,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             auto refs = nk_alloc_t<NkBcRef>(ir.alloc, ir_arg.refs.size);
             for (size_t i = 0; i < ir_arg.refs.size; i++) {
                 if (!translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i])) {
+                    ProfEndBlock();
                     return false;
                 }
             }
@@ -416,6 +439,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             assert(!"unreachable");
         }
 
+        ProfEndBlock();
         return true;
     };
 
@@ -502,6 +526,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 code += 1 + ir_instr.arg[2].refs.size;
 #else  // NK_SYSCALLS_AVAILABLE
                 reportError(ctx, "syscalls are not available on the host platform");
+                ProfEndBlock();
                 return false;
 #endif // NK_SYSCALLS_AVAILABLE
                 break;
@@ -541,6 +566,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             instr.code = code;
             for (size_t ai = 0; ai < 3; ai++) {
                 if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
+                    ProfEndBlock();
                     return false;
                 }
             }
@@ -549,6 +575,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
     for (auto proc : nk_iterate(referenced_procs)) {
         if (!translateProc(ctx, proc)) {
+            ProfEndBlock();
             return false;
         }
     }
@@ -592,6 +619,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     NK_LOG_INF("proc %s\n" nks_Fmt "", nkid2cs(ir_proc.name), nks_Arg(sb));
 #endif // ENABLE_LOGGING
 
+    ProfEndBlock();
     return true;
 }
 
@@ -639,12 +667,15 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
 }
 
 bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     if (!translateProc(ctx, proc)) {
+        ProfEndBlock();
         return false;
     }
     nkir_interp_invoke(ctx->procs.data[proc.idx], args, ret);
+    ProfEndBlock();
     return true;
 }
 

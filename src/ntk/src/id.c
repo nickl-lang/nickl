@@ -1,6 +1,7 @@
 #include "ntk/id.h"
 
 #include "ntk/hash_tree.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 
 typedef struct {
@@ -38,7 +39,9 @@ static id2str g_id2str;
 static nkid g_next_id = 1000;
 
 nks nkid2s(nkid id) {
+    ProfBeginFunc();
     id2s_KV const *found = id2str_find(&g_id2str, id);
+    ProfEndBlock();
     return found ? found->val : (nks){0};
 }
 
@@ -47,13 +50,17 @@ char const *nkid2cs(nkid id) {
 }
 
 nkid s2nkid(nks str) {
+    ProfBeginFunc();
+
     s2id_KV const *found = str2id_find(&g_str2id, str);
 
     if (found) {
+        ProfEndBlock();
         return found->val;
     } else {
         nkid id = g_next_id++;
         nkid_define(id, str);
+        ProfEndBlock();
         return id;
     }
 }

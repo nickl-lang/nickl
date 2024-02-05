@@ -2,12 +2,14 @@
 
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
 bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(cmd, 4096);
@@ -46,11 +48,16 @@ bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
         break;
     }
 
-    return nk_pipe_streamWrite(stream, (nks){nkav_init(cmd)}, conf.quiet);
+    bool ret = nk_pipe_streamWrite(stream, (nks){nkav_init(cmd)}, conf.quiet);
+    ProfEndBlock();
+    return ret;
 }
 
 int nkcc_streamClose(nk_stream stream) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
-    return nk_pipe_streamClose(stream);
+    int ret = nk_pipe_streamClose(stream);
+    ProfEndBlock();
+    return ret;
 }

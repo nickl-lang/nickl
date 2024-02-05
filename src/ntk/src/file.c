@@ -1,10 +1,13 @@
 #include "ntk/file.h"
 
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/file.h"
 #include "ntk/sys/path.h"
 
 NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
+    ProfBeginFunc();
+
     nksb_fixed_buffer(path, NK_MAX_PATH);
     nksb_try_append_many(&path, file.data, file.size);
     nksb_try_append_null(&path);
@@ -12,6 +15,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     nkfd_t fd = nk_open(path.data, nk_open_read);
 
     if (fd < 0) {
+        ProfEndBlock();
         return (NkFileReadResult){0};
     }
 
@@ -19,6 +23,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     nksb_readFromStream(&sb, nk_file_getStream(fd));
     nk_close(fd);
 
+    ProfEndBlock();
     return (NkFileReadResult){
         .bytes = {nkav_init(sb)},
         .ok = true,
