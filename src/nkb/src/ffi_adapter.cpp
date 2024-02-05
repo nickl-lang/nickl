@@ -10,7 +10,7 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -19,11 +19,12 @@ namespace {
 NK_LOG_USE_SCOPE(ffi_adapter);
 
 ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     if (!type) {
         NK_LOG_DBG("ffi(null) -> void");
+        ProfEndBlock();
         return &ffi_type_void;
     }
 
@@ -78,6 +79,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
             break;
         case NkType_Aggregate: {
             if (!type->size) {
+                ProfEndBlock();
                 return &ffi_type_void;
             }
             size_t elem_count = 0;
@@ -114,6 +116,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
     NK_LOG_DBG("ffi(type{name=" nks_Fmt " id=%" PRIu64 "}) -> %p", nks_Arg(sb), type->id, (void *)ffi_t);
 #endif // ENABLE_LOGGING
 
+    ProfEndBlock();
     return ffi_t;
 }
 
@@ -153,7 +156,7 @@ void ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     ffi_cif cif;
@@ -168,13 +171,16 @@ void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const 
     }
 
     {
-        EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
+        ProfBeginBlock("ffi_call", sizeof("ffi_call") - 1);
         ffi_call(&cif, FFI_FN(call_data->proc.native), call_data->retv, call_data->argv);
+        ProfEndBlock();
     }
+
+    ProfEndBlock();
 }
 
 void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     NkIrNativeClosure_T *cl;
@@ -196,5 +202,6 @@ void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc
     ffi_status status = ffi_prep_closure_loc(cl->closure, &cl->cif, ffiClosure, cl, cl->code);
     assert(status == FFI_OK && "ffi_prep_closure_loc failed");
 
+    ProfEndBlock();
     return cl;
 }

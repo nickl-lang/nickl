@@ -41,12 +41,24 @@ target_link_libraries(${LIB}
     )
 
 if(ENABLE_PROFILING)
-    target_link_libraries(${LIB}
-        PUBLIC easy_profiler
+    add_library(ntk_prof SHARED
+        src/profiler.c
         )
 
-    target_compile_definitions(${LIB}
-        PUBLIC EASY_PROFILER_PORT=28077
+    target_include_directories(ntk_prof
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+        )
+
+    target_link_libraries(ntk_prof
+        PRIVATE Spall
+        )
+
+    target_compile_definitions(ntk_prof
+        PUBLIC ENABLE_PROFILING=1
+        )
+
+    target_link_libraries(${LIB}
+        PUBLIC ntk_prof
         )
 endif()
 

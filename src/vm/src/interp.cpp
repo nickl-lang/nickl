@@ -10,7 +10,7 @@
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -426,7 +426,7 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
-    EASY_FUNCTION(::profiler::colors::Red200);
+    ProfBeginFunc();
 
     NK_LOG_TRC("%s", __func__);
 
@@ -478,4 +478,6 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     ctx.base.reg = pfr.base_reg;
     ctx.pinstr = pfr.pinstr;
+
+    ProfEndBlock();
 }

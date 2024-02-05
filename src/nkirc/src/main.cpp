@@ -9,7 +9,7 @@
 #include "ntk/file.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/path.h"
@@ -49,10 +49,12 @@ NK_LOG_USE_SCOPE(main);
 } // namespace
 
 int main(int /*argc*/, char const *const *argv) {
-#ifdef BUILD_WITH_EASY_PROFILER
-    EASY_PROFILER_ENABLE;
-    ::profiler::startListen(EASY_PROFILER_PORT);
-#endif // BUILD_WITH_EASY_PROFILER
+    ProfInit(NK_BINARY_NAME ".spall");
+    ProfThreadInit(0, 32 * 1024 * 1024);
+    defer {
+        ProfThreadExit();
+        ProfExit();
+    };
 
     nks in_file{};
     nks out_file{};
@@ -335,11 +337,6 @@ int main(int /*argc*/, char const *const *argv) {
                 .quiet = false,
             });
     }
-
-#ifdef BUILD_WITH_EASY_PROFILER
-    puts("press any key to exit");
-    getchar();
-#endif // BUILD_WITH_EASY_PROFILER
 
     return code;
 }

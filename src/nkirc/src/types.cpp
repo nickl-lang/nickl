@@ -8,7 +8,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 
 namespace {
 
@@ -18,17 +18,20 @@ nkar_typedef(char, ByteArray);
 
 template <class F>
 nktype_t getTypeByFp(NkIrCompiler c, ByteArray fp, F const &make_type) {
-    EASY_FUNCTION(::profiler::colors::Green200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{c->mtx};
 
     auto found = c->fpmap.find({nkav_init(fp)});
     if (found) {
+        ProfEndBlock();
         return *found;
     } else {
         auto copy = nk_strcpy(nk_arena_getAllocator(&c->file_arena), {nkav_init(fp)});
-        return c->fpmap.insert(copy, make_type());
+        auto const ret = c->fpmap.insert(copy, make_type());
+        ProfEndBlock();
+        return ret;
     }
 }
 

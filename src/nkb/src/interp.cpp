@@ -11,7 +11,7 @@
 #include "ir_impl.hpp"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/syscall.h"
 #include "ntk/utils.h"
@@ -509,7 +509,7 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
-    EASY_FUNCTION(::profiler::colors::Red200);
+    ProfBeginFunc();
 
     NK_LOG_TRC("%s", __func__);
 
@@ -558,4 +558,6 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 
     ctx.pinstr = pfr.pinstr;
     ctx.ffi_ctx = pfr.ffi_ctx;
+
+    ProfEndBlock();
 }

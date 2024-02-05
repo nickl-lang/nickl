@@ -19,7 +19,7 @@
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
@@ -625,7 +625,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 } // namespace
 
 void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     std::ostringstream types_s;
@@ -664,4 +664,6 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src) {
         forward_s.str().c_str(), //
         main_s.str().c_str()     //
     );
+
+    ProfEndBlock();
 }

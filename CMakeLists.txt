@@ -70,6 +70,7 @@ message("Build time: ${BUILD_TIME}")
 include(Package)
 add_package_target("${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}" "${DEPLOY_PREFIX}")
 
+add_subdirectory(spall)
 add_subdirectory(src)
 
 if(BUILD_TESTS)

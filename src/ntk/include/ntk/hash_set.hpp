@@ -9,7 +9,7 @@
 #include <type_traits>
 
 #include "ntk/allocator.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/utils.h"
 
 template <class T>
@@ -108,7 +108,7 @@ public:
     }
 
     T &insert(T const &val) {
-        EASY_BLOCK("NkHashSet::insert", profiler::colors::Grey200)
+        ProfBeginBlock("NkHashSet::insert", sizeof("NkHashSet::insert") - 1);
         hash_t const hash = _valHash(val);
         _Entry *found = _find(hash, val);
         if (found) {
@@ -116,24 +116,27 @@ public:
         } else {
             found = _insert(hash, val);
         }
+        ProfEndBlock();
         return found->val;
     }
 
     template <class U>
     T *find(U const &val) const {
-        EASY_BLOCK("NkHashSet::find", profiler::colors::Grey200)
+        ProfBeginBlock("NkHashSet::find", sizeof("NkHashSet::find") - 1);
         _Entry *found = _find(_valHash(val), val);
+        ProfEndBlock();
         return found ? &found->val : nullptr;
     }
 
     template <class U>
     void remove(U const &val) {
-        EASY_BLOCK("NkHashSet::remove", profiler::colors::Grey200)
+        ProfBeginBlock("NkHashSet::remove", sizeof("NkHashSet::remove") - 1);
         _Entry *found = _find(_valHash(val), val);
         if (found) {
             found->hash |= DELETED_FLAG;
             m_size--;
         }
+        ProfEndBlock();
     }
 
 private:

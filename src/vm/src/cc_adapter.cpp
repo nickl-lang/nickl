@@ -4,7 +4,7 @@
 #include "nk/vm/ir_compile.h"
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 #include "translate_to_c.hpp"
@@ -16,7 +16,7 @@ NK_LOG_USE_SCOPE(cc_adapter);
 } // namespace
 
 nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     NkStringBuilder sb{};
@@ -33,21 +33,26 @@ nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
 
     nk_stream src{};
     nk_pipe_streamWrite(&src, {nkav_init(sb)}, conf.quiet);
+    ProfEndBlock();
     return src;
 }
 
 int nkcc_streamClose(nk_stream stream) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
-    return nk_pipe_streamClose(stream);
+    auto ret = nk_pipe_streamClose(stream);
+    ProfEndBlock();
+    return ret;
 }
 
 bool nkir_compile(NkIrCompilerConfig conf, NkIrProg ir, NkIrFunct entry_point) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     auto src = nkcc_streamOpen(conf);
     nkir_translateToC(ir, entry_point, src);
-    return nkcc_streamClose(src);
+    auto ret = nkcc_streamClose(src);
+    ProfEndBlock();
+    return ret;
 }
