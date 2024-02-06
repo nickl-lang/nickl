@@ -2,17 +2,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libgmock-dev \
     libgtest-dev \
- && rm -rf /var/lib/apt/lists/*
-
-RUN git clone https://github.com/yse/easy_profiler.git -b v2.1.0 \
- && mkdir easy_profiler/build \
- && cd easy_profiler/build \
- && cmake -GNinja .. \
- && ninja install \
- && cd ../.. \
- && rm -rf easy_profiler \
- ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
     libjson-c-dev \
  && rm -rf /var/lib/apt/lists/*
+
+RUN wget -O /usr/include/spall.h \
+    "https://raw.githubusercontent.com/colrdavidson/spall-web/5129ce6778a9d732a7de727a79648a71d1092962/spall.h"

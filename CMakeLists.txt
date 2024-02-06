@@ -46,10 +46,6 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
-if(ENABLE_PROFILING)
-    find_package(easy_profiler REQUIRED)
-endif()
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(SYSTEM_INSTALL_DIR lib)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -70,7 +66,6 @@ message("Build time: ${BUILD_TIME}")
 include(Package)
 add_package_target("${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}" "${DEPLOY_PREFIX}")
 
-add_subdirectory(spall)
 add_subdirectory(src)
 
 if(BUILD_TESTS)

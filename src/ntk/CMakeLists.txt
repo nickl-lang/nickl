@@ -49,10 +49,6 @@ if(ENABLE_PROFILING)
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
 
-    target_link_libraries(ntk_prof
-        PRIVATE Spall
-        )
-
     target_compile_definitions(ntk_prof
         PUBLIC ENABLE_PROFILING=1
         )
