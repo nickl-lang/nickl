@@ -40,14 +40,6 @@ void nk_prof_exit(void) {
     spall_quit(&spall_ctx);
 }
 
-// #include <time.h>
-
-// static double getTimeUs(void) {
-//     struct timespec ts = {0};
-//     clock_gettime(CLOCK_MONOTONIC, &ts);
-//     return ts.tv_sec * 1000000.0 + ts.tv_nsec / 1000.0;
-// }
-
 #include <x86intrin.h>
 
 void nk_prof_begin_block(char const *name, size_t name_len) {
@@ -63,58 +55,79 @@ void nk_prof_end_block(void) {
 }
 
 #include <linux/perf_event.h>
-#include <stdio.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
+#include <time.h>
 #include <unistd.h>
-
-/*
-        This is supporting code to read the RDTSC multiplier from perf on Linux,
-        so we can convert from RDTSC's clock to microseconds.
-
-        Using the RDTSC directly like this reduces profiler overhead a lot,
-        which can save you a ton of time and improve the quality of your trace.
-
-        For my i7-8559U, it takes ~20 ns to call clock_gettime, or ~6 ns to use rdtsc directly, which adds up!
-*/
-static uint64_t mul_u64_u32_shr(uint64_t cyc, uint32_t mult, uint32_t shift) {
-    __uint128_t x = cyc;
-    x *= mult;
-    x >>= shift;
-    return x;
-}
 
 static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags) {
     return syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
 }
 
 static double get_rdtsc_multiplier(void) {
-    struct perf_event_attr pe = {
-        .type = PERF_TYPE_HARDWARE,
-        .size = sizeof(struct perf_event_attr),
-        .config = PERF_COUNT_HW_INSTRUCTIONS,
-        .disabled = 1,
-        .exclude_kernel = 1,
-        .exclude_hv = 1};
+    struct perf_event_attr pe = {0};
+    pe.type = PERF_TYPE_HARDWARE;
+    pe.size = sizeof(struct perf_event_attr);
+    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+
+    uint64_t tsc_freq = 0;
 
     int fd = perf_event_open(&pe, 0, -1, -1, 0);
-    if (fd == -1) {
-        perror("perf_event_open failed");
-        return 1;
-    }
-    void *addr = mmap(NULL, 4 * 1024, PROT_READ, MAP_SHARED, fd, 0);
-    if (!addr) {
-        perror("mmap failed");
-        return 1;
-    }
-    struct perf_event_mmap_page *pc = addr;
-    if (pc->cap_user_time != 1) {
-        fprintf(stderr, "Perf system doesn't support user time\n");
-        return 1;
+    if (fd != -1) {
+        void *addr = mmap(NULL, 4096, PROT_READ, MAP_SHARED, fd, 0);
+        if (addr) {
+            struct perf_event_mmap_page *pc = addr;
+            if (pc->cap_user_time == 1) {
+                // Docs say nanoseconds = (tsc * time_mult) >> time_shift
+                //      set nanoseconds = 1000000000 = 1 second in nanoseconds, solve for tsc
+                //       =>         tsc = 1000000000 / (time_mult >> time_shift)
+                tsc_freq =
+                    (1000000000ull << (pc->time_shift / 2)) / (pc->time_mult >> (pc->time_shift - pc->time_shift / 2));
+                // If your build configuration supports 128 bit arithmetic, do this:
+                // tsc_freq = ((__uint128_t)1000000000ull << (__uint128_t)pc->time_shift) / pc->time_mult;
+            }
+            munmap(pc, 4096);
+        }
+        close(fd);
     }
 
-    double nanos = (double)mul_u64_u32_shr(1000000, pc->time_mult, pc->time_shift);
-    return nanos / 1000000000;
+    // Slow path
+    if (!tsc_freq) {
+        // Get time before sleep
+        uint64_t nsc_begin = 0;
+        {
+            struct timespec t;
+            if (!clock_gettime(CLOCK_MONOTONIC_RAW, &t)) {
+                nsc_begin = (uint64_t)t.tv_sec * 1000000000ull + t.tv_nsec;
+            }
+        }
+        uint64_t tsc_begin = __rdtsc();
+
+        usleep(10000); // 10ms gives ~4.5 digits of precision - the longer you sleep, the more precise you get
+
+        // Get time after sleep
+        uint64_t nsc_end = nsc_begin + 1;
+        {
+            struct timespec t;
+            if (!clock_gettime(CLOCK_MONOTONIC_RAW, &t)) {
+                nsc_end = (uint64_t)t.tv_sec * 1000000000ull + t.tv_nsec;
+            }
+        }
+        uint64_t tsc_end = __rdtsc();
+
+        // Do the math to extrapolate the RDTSC ticks elapsed in 1 second
+        tsc_freq = (tsc_end - tsc_begin) * 1000000000ull / (nsc_end - nsc_begin);
+    }
+
+    // Failure case
+    if (!tsc_freq) {
+        tsc_freq = 1000000000ull;
+    }
+
+    return 1000000.0 / (double)tsc_freq;
 }
 
 #endif // ENABLE_PROFILING
