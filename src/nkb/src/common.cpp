@@ -180,7 +180,7 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     size_t n,
     size_t type_stride,
     size_t count_stride) {
-    ProfBeginFunc();
+    ProfFunc();
     size_t alignment = 0;
     size_t offset = 0;
 
@@ -201,6 +201,5 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
         offset += type->size * elem_count;
     }
 
-    ProfEndBlock();
     return NkIrAggregateLayout{{info_ar, n}, roundUpSafe(offset, alignment), alignment};
 }

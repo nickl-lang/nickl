@@ -56,10 +56,7 @@ int main(int /*argc*/, char const *const *argv) {
         ProfExit();
     };
 
-    ProfBeginFunc();
-    defer {
-        ProfEndBlock();
-    };
+    ProfFunc();
 
     nks in_file{};
     nks out_file{};

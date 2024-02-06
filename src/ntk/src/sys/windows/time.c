@@ -4,6 +4,6 @@
 
 nktime_t nk_getTimeNs(void) {
     struct timespec ts = {0};
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000000000ull + ts.tv_nsec;
 }

@@ -18,20 +18,17 @@ nkar_typedef(char, ByteArray);
 
 template <class F>
 nktype_t getTypeByFp(NkIrCompiler c, ByteArray fp, F const &make_type) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{c->mtx};
 
     auto found = c->fpmap.find({nkav_init(fp)});
     if (found) {
-        ProfEndBlock();
         return *found;
     } else {
         auto copy = nk_strcpy(nk_arena_getAllocator(&c->file_arena), {nkav_init(fp)});
-        auto const ret = c->fpmap.insert(copy, make_type());
-        ProfEndBlock();
-        return ret;
+        return c->fpmap.insert(copy, make_type());
     }
 }
 

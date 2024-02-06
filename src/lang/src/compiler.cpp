@@ -2319,7 +2319,7 @@ Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView tag
 }
 
 NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     auto fn = nkir_makeFunct(c->ir);
@@ -2357,7 +2357,6 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
             });
         }());
 
-    ProfEndBlock();
     return fn;
 }
 
@@ -2452,7 +2451,7 @@ NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
 }
 
 NkIrFunct nkl_compileSrc(NklCompiler c, nks src, bool create_scope = true) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     c->src_stack.emplace(src);
@@ -2467,7 +2466,6 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nks src, bool create_scope = true) {
     bool res = nkl_lex(src, tokens, err_str);
     if (!res) {
         printError(c, &tokens.back(), err_str);
-        ProfEndBlock();
         return {};
     }
 
@@ -2478,29 +2476,25 @@ NkIrFunct nkl_compileSrc(NklCompiler c, nks src, bool create_scope = true) {
     auto root = nkl_parse(ast, {tokens.data(), tokens.size()}, err_str, err_token);
     if (!root) {
         printError(c, err_token, err_str);
-        ProfEndBlock();
         return {};
     }
 
     auto fn = nkl_compile(c, root, create_scope);
     if (c->error_occurred) {
         printError(c, c->err_token, err_str);
-        ProfEndBlock();
         return {};
     }
 
-    ProfEndBlock();
     return fn;
 }
 
 NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     if (!fs::exists(path)) {
         auto const path_str = path.string();
         printError(c, "file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
-        ProfEndBlock();
         return {};
     }
     path = fs::canonical(path);
@@ -2514,12 +2508,9 @@ NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
 
     auto res = nk_file_read(c->alloc, {path_str.c_str(), path_str.size()});
     if (res.ok) {
-        auto ret = nkl_compileSrc(c, res.bytes, create_scope);
-        ProfEndBlock();
-        return ret;
+        return nkl_compileSrc(c, res.bytes, create_scope);
     } else {
         printError(c, "failed to open file `%.*s`", (int)path_str.size(), path_str.c_str());
-        ProfEndBlock();
         return {};
     }
 }
@@ -2546,12 +2537,11 @@ T getConfigValue(NklCompiler c, std::string const &name, decltype(Scope::locals)
 } // namespace
 
 extern "C" NK_EXPORT Void nkl_compiler_declareLocal(nks name, nkltype_t type) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
     NklCompiler c = s_compiler;
     // TODO Treating slice as cstring, while we include excess zero charater
     CHECK(defineLocal(c, cs2nkid(std_str(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
-    ProfEndBlock();
     return {};
 }
 
@@ -2590,7 +2580,7 @@ extern "C" NK_EXPORT bool nkl_compiler_linkFile(NklCompilerBuilder *b, nks lib) 
 }
 
 extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct entry, nks exe_name) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     NklCompiler c = s_compiler;
@@ -2614,9 +2604,7 @@ extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct en
         .output_filename = exe_name,
         .quiet = 0,
     };
-    auto ret = nkir_compile(conf, c->ir, entry);
-    ProfEndBlock();
-    return ret;
+    return nkir_compile(conf, c->ir, entry);
 }
 
 struct StructField {
@@ -2672,7 +2660,7 @@ void nkl_compiler_free(NklCompiler c) {
 }
 
 bool nkl_compiler_configure(NklCompiler c, nks self_path) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
     NK_LOG_DBG("self_path=`" nks_Fmt "`", nks_Arg(self_path));
 
@@ -2683,11 +2671,9 @@ bool nkl_compiler_configure(NklCompiler c, nks self_path) {
     if (!fs::exists(preload_filepath)) {
         auto const path_str = preload_filepath.string();
         printError(c, "preload file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
-        ProfEndBlock();
         return false;
     }
     if (!nkl_compileFile(c, preload_filepath, false)) {
-        ProfEndBlock();
         return false;
     }
 
@@ -2695,12 +2681,10 @@ bool nkl_compiler_configure(NklCompiler c, nks self_path) {
     if (!fs::exists(config_filepath)) {
         auto const path_str = config_filepath.string();
         printError(c, "config file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
-        ProfEndBlock();
         return false;
     }
     auto fn = nkl_compileFile(c, config_filepath);
     if (!fn) {
-        ProfEndBlock();
         return false;
     }
     auto &config = c->fn_scopes[fn]->locals;
@@ -2725,13 +2709,12 @@ bool nkl_compiler_configure(NklCompiler c, nks self_path) {
     c->c_compiler_flags = c_compiler_flags_str;
     NK_LOG_DBG("c_compiler_flags=`%.*s`", (int)c->c_compiler_flags.size(), c->c_compiler_flags.c_str());
 
-    ProfEndBlock();
     return true;
 }
 
 // TODO nkl_compiler_run probably is not needed
 bool nkl_compiler_run(NklCompiler c, NklAstNode root) {
-    ProfBeginFunc();
+    ProfFunc();
 
     // TODO Boilerplate in nkl_compiler_run_*
 
@@ -2744,12 +2727,11 @@ bool nkl_compiler_run(NklCompiler c, NklAstNode root) {
     DEFINE(fn, nkl_compile(c, root));
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 
-    ProfEndBlock();
     return true;
 }
 
 bool nkl_compiler_runSrc(NklCompiler c, nks src) {
-    ProfBeginFunc();
+    ProfFunc();
 
     auto prev_compiler = s_compiler;
     s_compiler = c;
@@ -2765,12 +2747,11 @@ bool nkl_compiler_runSrc(NklCompiler c, nks src) {
     DEFINE(fn, nkl_compileSrc(c, src));
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 
-    ProfEndBlock();
     return true;
 }
 
 bool nkl_compiler_runFile(NklCompiler c, nks path) {
-    ProfBeginFunc();
+    ProfFunc();
 
     auto prev_compiler = s_compiler;
     s_compiler = c;
@@ -2781,6 +2762,5 @@ bool nkl_compiler_runFile(NklCompiler c, nks path) {
     DEFINE(fn, nkl_compileFile(c, fs::path{std_view(path)}));
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 
-    ProfEndBlock();
     return true;
 }

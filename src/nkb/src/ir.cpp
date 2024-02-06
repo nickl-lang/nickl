@@ -179,7 +179,7 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
 }
 
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
@@ -212,8 +212,6 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
         nkar_append(&instrs, instr);
         nkar_append(&block, id);
     }
-
-    ProfEndBlock();
 }
 
 void nkir_setLine(NkIrProg ir, size_t line) {

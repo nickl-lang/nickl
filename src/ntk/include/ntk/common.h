@@ -51,4 +51,6 @@ constexpr size_t nk_alignofval(T const &) {
 
 typedef size_t hash_t;
 
+#define NK_FORCEINLINE __attribute__((always_inline))
+
 #endif // HEADER_GUARD_NTK_COMMON

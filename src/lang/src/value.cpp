@@ -36,7 +36,7 @@ enum ETypeSubset {
 
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{s_mtx};
@@ -49,7 +49,6 @@ nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
         assert(inserted && "type duplication");
     }
 
-    ProfEndBlock();
     return it->second;
 }
 

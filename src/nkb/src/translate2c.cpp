@@ -450,10 +450,9 @@ void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
 }
 
 void translateProc(WriterCtx &ctx, size_t proc_id) {
-    ProfBeginFunc();
+    ProfFunc();
 
     if (getFlag(ctx.procs_translated, proc_id)) {
-        ProfEndBlock();
         return;
     }
 
@@ -500,7 +499,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
     nksb_printf(src, "\n");
 
     auto write_ref = [&](NkIrRef const &ref) {
-        ProfBeginBlock("write_ref", sizeof("write_ref") - 1);
+        ProfBlock("write_ref", sizeof("write_ref") - 1);
         if (ref.kind == NkIrRef_Proc) {
             auto const &proc = ctx.ir->procs.data[ref.index];
             auto const proc_name = nkid2s(proc.name);
@@ -508,7 +507,6 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
             if (!getFlag(ctx.procs_translated, ref.index)) {
                 nkar_append(&ctx.procs_to_translate, ref.index);
             }
-            ProfEndBlock();
             return;
         } else if (ref.kind == NkIrRef_ExternProc) {
             auto const extern_proc = ctx.ir->extern_procs.data[ref.index];
@@ -527,7 +525,6 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                 nksb_printf(&ctx.forward_s, ";\n");
                 getFlag(ctx.ext_procs_translated, ref.index) = true;
             }
-            ProfEndBlock();
             return;
         } else if (ref.kind == NkIrRef_ExternData) {
             auto const extern_data = ctx.ir->extern_data.data[ref.index];
@@ -539,13 +536,11 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                 nksb_printf(&ctx.forward_s, " " nks_Fmt ";\n", nks_Arg(extern_data_name));
                 getFlag(ctx.ext_data_translated, ref.index) = true;
             }
-            ProfEndBlock();
             return;
         } else if (ref.kind == NkIrRef_Address) {
             nksb_printf(src, "&");
             auto const &target_ref = ctx.ir->relocs.data[ref.index];
             writeData(ctx, target_ref.index, ctx.ir->data.data[target_ref.index], src, true);
-            ProfEndBlock();
             return;
         }
 
@@ -607,7 +602,6 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                 nksb_printf(src, "+%zu)", ref.post_offset);
             }
         }
-        ProfEndBlock();
     };
 
     for (auto bi : nk_iterate(proc.blocks)) {
@@ -795,14 +789,12 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
 
     writeLineDirective(nk_invalid_id, proc.end_line, src);
     nksb_printf(src, "}\n");
-
-    ProfEndBlock();
 }
 
 } // namespace
 
 void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     auto frame = nk_arena_grab(arena);
@@ -844,6 +836,4 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 
     nk_printf(
         src, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
-
-    ProfEndBlock();
 }

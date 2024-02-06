@@ -937,7 +937,7 @@ private:
 } // namespace
 
 void nkir_parse(NkIrCompiler c, nkid file, nks text, NklTokenView tokens) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     c->parser.error_msg = {};
@@ -958,6 +958,4 @@ void nkir_parse(NkIrCompiler c, nkid file, nks text, NklTokenView tokens) {
         c->parser.error_token = *gen.m_cur_token;
         c->parser.ok = false;
     }
-
-    ProfEndBlock();
 }

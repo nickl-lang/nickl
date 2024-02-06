@@ -981,7 +981,7 @@ private:
 } // namespace
 
 NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklTokenRef &err_token) {
-    ProfBeginFunc();
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     assert(tokens.size && "empty token array");
@@ -1001,10 +1001,8 @@ NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklT
 
     if (engine.m_error_occurred) {
         err_token = engine.m_cur_token;
-        ProfEndBlock();
         return nullptr;
     }
 
-    ProfEndBlock();
     return root;
 }

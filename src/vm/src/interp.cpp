@@ -128,7 +128,7 @@ void interp(NkBcInstr const &instr) {
     nksb_fixed_buffer(sb, 128);
     nksb_printf(&sb, "interp: %s", s_nk_bc_names[instr.code]);
 #endif // ENABLE_PROFILING
-    ProfBeginBlock(sb.data, sb.size);
+    ProfBlock(sb.data, sb.size);
 
     switch (instr.code) {
     case nkop_nop: {
@@ -427,14 +427,12 @@ void interp(NkBcInstr const &instr) {
         assert(!"unknown opcode");
         break;
     }
-
-    ProfEndBlock();
 }
 
 } // namespace
 
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
-    ProfBeginFunc();
+    ProfFunc();
 
     NK_LOG_TRC("%s", __func__);
 
@@ -486,6 +484,4 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     ctx.base.reg = pfr.base_reg;
     ctx.pinstr = pfr.pinstr;
-
-    ProfEndBlock();
 }
