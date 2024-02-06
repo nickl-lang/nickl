@@ -33,26 +33,26 @@ typedef struct {
     NkColorMode color_mode;
 } NkLoggerOptions;
 
-bool _nk_loggerCheck(NkLogLevel log_level);
-NK_PRINTF_LIKE(3, 4) void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
+bool nk_loggerCheck(NkLogLevel log_level);
+NK_PRINTF_LIKE(3, 4) void nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
-void _nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap);
+void nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap);
 
-void _nk_loggerInit(NkLoggerOptions opt);
+void nk_loggerInit(NkLoggerOptions opt);
 
-#define NK_LOG_SEV(LEVEL, ...)                                    \
-    if (_nk_loggerCheck(LEVEL)) {                                 \
-        _nk_loggerWrite((LEVEL), __nk_logger_scope, __VA_ARGS__); \
+#define NK_LOG_SEV(LEVEL, ...)                                   \
+    if (nk_loggerCheck(LEVEL)) {                                 \
+        nk_loggerWrite((LEVEL), __nk_logger_scope, __VA_ARGS__); \
+    } else                                                       \
+        (void)0
+
+#define NK_VLOG_SEV(LEVEL, FMT, AP)                               \
+    if (nk_loggerCheck(LEVEL)) {                                  \
+        nk_vloggerWrite((LEVEL), __nk_logger_scope, (FMT), (AP)); \
     } else                                                        \
         (void)0
 
-#define NK_VLOG_SEV(LEVEL, FMT, AP)                                \
-    if (_nk_loggerCheck(LEVEL)) {                                  \
-        _nk_vloggerWrite((LEVEL), __nk_logger_scope, (FMT), (AP)); \
-    } else                                                         \
-        (void)0
-
-#define NK_LOGGER_INIT(...) _nk_loggerInit(__VA_ARGS__)
+#define NK_LOGGER_INIT(...) nk_loggerInit(__VA_ARGS__)
 
 #define NK_LOG_USE_SCOPE(NAME) static char const *__nk_logger_scope = #NAME
 

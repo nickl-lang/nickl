@@ -19,6 +19,7 @@ add_library(${LIB}
     src/id.c
     src/logger.c
     src/pipe_stream.c
+    src/profiler.c
     src/stream.c
     src/string.c
     src/string_builder.c
@@ -41,20 +42,8 @@ target_link_libraries(${LIB}
     )
 
 if(ENABLE_PROFILING)
-    add_library(ntk_prof SHARED
-        src/profiler.c
-        )
-
-    target_include_directories(ntk_prof
-        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-        )
-
-    target_compile_definitions(ntk_prof
+    target_compile_definitions(${LIB}
         PUBLIC ENABLE_PROFILING=1
-        )
-
-    target_link_libraries(${LIB}
-        PUBLIC ntk_prof
         )
 endif()
 

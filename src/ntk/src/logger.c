@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ntk/profiler.h"
 #include "ntk/sys/term.h"
 #include "ntk/sys/thread.h"
 #include "ntk/sys/time.h"
@@ -65,19 +66,22 @@ static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
     return NkLog_None;
 }
 
-bool _nk_loggerCheck(NkLogLevel log_level) {
-    char const *env_log_level = getenv(ENV_VAR);
-    return s_logger.initialized && log_level <= (env_log_level ? parseEnvLogLevel(env_log_level) : s_logger.log_level);
+bool nk_loggerCheck(NkLogLevel log_level) {
+    return s_logger.initialized && log_level <= s_logger.log_level;
 }
 
-void _nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
+void nk_loggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
+    ProfBeginFunc();
+
     va_list ap;
     va_start(ap, fmt);
-    _nk_vloggerWrite(log_level, scope, fmt, ap);
+    nk_vloggerWrite(log_level, scope, fmt, ap);
     va_end(ap);
+
+    ProfEndBlock();
 }
 
-void _nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
+void nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
     bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
                           (s_logger.color_mode == NkLog_Color_Auto && nk_isatty(STDERR_FILENO));
 
@@ -102,17 +106,27 @@ void _nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, 
     nk_mutex_unlock(&s_logger.mtx);
 }
 
-void _nk_loggerInit(NkLoggerOptions opt) {
+void nk_loggerInit(NkLoggerOptions opt) {
+    ProfBeginFunc();
+
     s_logger = (struct LoggerState){0};
 
     s_logger.start_time = nk_getTimeNs();
 
-    s_logger.log_level = opt.log_level;
+    char const *env_log_level = getenv(ENV_VAR);
+    if (env_log_level) {
+        s_logger.log_level = parseEnvLogLevel(env_log_level);
+    } else {
+        s_logger.log_level = opt.log_level;
+    }
+
     s_logger.color_mode = opt.color_mode;
 
     nk_mutex_init(&s_logger.mtx);
 
     s_logger.initialized = true;
+
+    ProfEndBlock();
 }
 
 #endif // ENABLE_LOGGING
