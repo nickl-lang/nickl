@@ -239,7 +239,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     }
 
     {
-        ProfBlock("ffi_call", sizeof("ffi_call") - 1);
+        ProfBlock(nk_cs2s("ffi_call"));
         ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);
     }
 }

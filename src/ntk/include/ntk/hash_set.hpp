@@ -108,7 +108,7 @@ public:
     }
 
     T &insert(T const &val) {
-        ProfBlock("NkHashSet::insert", sizeof("NkHashSet::insert") - 1);
+        ProfBlock(nk_cs2s("NkHashSet::insert"));
         hash_t const hash = _valHash(val);
         _Entry *found = _find(hash, val);
         if (found) {
@@ -121,14 +121,14 @@ public:
 
     template <class U>
     T *find(U const &val) const {
-        ProfBlock("NkHashSet::find", sizeof("NkHashSet::find") - 1);
+        ProfBlock(nk_cs2s("NkHashSet::find"));
         _Entry *found = _find(_valHash(val), val);
         return found ? &found->val : nullptr;
     }
 
     template <class U>
     void remove(U const &val) {
-        ProfBlock("NkHashSet::remove", sizeof("NkHashSet::remove") - 1);
+        ProfBlock(nk_cs2s("NkHashSet::remove"));
         _Entry *found = _find(_valHash(val), val);
         if (found) {
             found->hash |= DELETED_FLAG;

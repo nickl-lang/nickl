@@ -499,7 +499,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
     nksb_printf(src, "\n");
 
     auto write_ref = [&](NkIrRef const &ref) {
-        ProfBlock("write_ref", sizeof("write_ref") - 1);
+        ProfBlock(nk_cs2s("write_ref"));
         if (ref.kind == NkIrRef_Proc) {
             auto const &proc = ctx.ir->procs.data[ref.index];
             auto const proc_name = nkid2s(proc.name);

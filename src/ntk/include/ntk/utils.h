@@ -18,7 +18,7 @@ extern "C" {
 #define CAT(x, y) _CAT(x, y)
 #endif // CAT
 
-#define AR_SIZE(AR) sizeof(AR) / sizeof((AR)[0])
+#define AR_SIZE(AR) (sizeof(AR) / sizeof((AR)[0]))
 
 NK_INLINE size_t roundUp(size_t v, size_t m) {
     return (v + m - 1) / m * m;

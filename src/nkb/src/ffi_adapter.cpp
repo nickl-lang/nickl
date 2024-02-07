@@ -168,7 +168,7 @@ void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const 
     }
 
     {
-        ProfBlock("ffi_call", sizeof("ffi_call") - 1);
+        ProfBlock(nk_cs2s("ffi_call"));
         ffi_call(&cif, FFI_FN(call_data->proc.native), call_data->retv, call_data->argv);
     }
 }

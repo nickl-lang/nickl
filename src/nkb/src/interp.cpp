@@ -119,7 +119,7 @@ void interp(NkBcInstr const &instr) {
     nksb_fixed_buffer(sb, 128);
     nksb_printf(&sb, "interp: %s", nkbcOpcodeName(instr.code));
 #endif // ENABLE_PROFILING
-    ProfBlock(sb.data, sb.size);
+    ProfBlock(sb);
 
     switch (instr.code) {
     case nkop_nop: {
