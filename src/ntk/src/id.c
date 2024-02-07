@@ -70,7 +70,11 @@ nkid cs2nkid(char const *str) {
 }
 
 void nkid_define(nkid id, nks str) {
+    ProfBeginFunc();
+
     nks const str_copy = nk_strcpy_nt(nk_arena_getAllocator(&g_arena), str);
     str2id_insert(&g_str2id, (s2id_KV){str_copy, id});
     id2str_insert(&g_id2str, (id2s_KV){id, str_copy});
+
+    ProfEndBlock();
 }

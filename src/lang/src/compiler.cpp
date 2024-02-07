@@ -94,6 +94,21 @@ struct Void {};
 
 namespace fs = std::filesystem;
 
+static bool fs_fileExists(fs::path const &path) {
+    ProfFunc();
+    return fs::exists(path);
+}
+
+static fs::path fs_pathCanonical(fs::path const &path) {
+    ProfFunc();
+    return fs::canonical(path);
+}
+
+static fs::path fs_pathRelative(fs::path const &path) {
+    ProfFunc();
+    return fs::relative(path);
+}
+
 NK_LOG_USE_SCOPE(compiler);
 
 enum EDeclKind {
@@ -287,6 +302,7 @@ Scope &curScope(NklCompiler c) {
 }
 
 void pushScope(NklCompiler c) {
+    ProfFunc();
     NkIrFunct cur_fn = c->scopes.size() ? c->scopes.back()->cur_fn : nullptr;
     NK_LOG_DBG("entering scope=%" PRIu64, c->scopes.size());
     auto scope = &c->nonpersistent_scope_stack.emplace(Scope{false, cur_fn});
@@ -294,6 +310,7 @@ void pushScope(NklCompiler c) {
 }
 
 void pushFnScope(NklCompiler c, NkIrFunct fn) {
+    ProfFunc();
     NK_LOG_DBG("entering persistent scope=%" PRIu64, c->scopes.size());
     auto scope = &c->persistent_scopes.emplace_back(Scope{false, fn});
     c->scopes.emplace_back(scope);
@@ -301,6 +318,7 @@ void pushFnScope(NklCompiler c, NkIrFunct fn) {
 }
 
 void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
+    ProfFunc();
     NK_LOG_DBG("entering top level scope=%" PRIu64, c->scopes.size());
     auto scope = &c->persistent_scopes.emplace_back(Scope{true, fn});
     c->scopes.emplace_back(scope);
@@ -308,6 +326,7 @@ void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
 }
 
 void popScope(NklCompiler c) {
+    ProfFunc();
     assert(!c->scopes.empty() && "popping an empty scope stack");
     if (!c->nonpersistent_scope_stack.empty()) {
         auto scope = &c->nonpersistent_scope_stack.top();
@@ -408,6 +427,8 @@ ValueInfo makeRef(NkIrRef const &ref) {
 }
 
 nklval_t comptimeConstGetValue(NklCompiler c, ComptimeConst &cnst) {
+    ProfFunc();
+
     switch (cnst.kind) {
     case ComptimeConst_Value:
         NK_LOG_DBG("returning comptime const as value");
@@ -1137,11 +1158,11 @@ ValueInfo compileCompositeType(
 }
 
 ValueInfo import(NklCompiler c, fs::path filepath) {
-    if (!fs::exists(filepath)) {
+    if (!fs_fileExists(filepath)) {
         auto const str = filepath.string();
         return error(c, "imported file `%.*s` doesn't exist", (int)str.size(), str.c_str()), ValueInfo{};
     }
-    filepath = fs::canonical(filepath);
+    filepath = fs_pathCanonical(filepath);
     auto it = c->imports.find(filepath);
     if (it == c->imports.end()) {
         DEFINE(fn, nkl_compileFile(c, filepath));
@@ -1294,6 +1315,7 @@ ValueInfo compileTupleLiteral(NklCompiler c, nkltype_t type, nkltype_t tuple_t, 
 }
 
 ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView tags) {
+    ProfFunc();
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
 
     c->node_stack.emplace_back(NodeInfo{
@@ -2248,6 +2270,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView ta
 }
 
 ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type) {
+    ProfFunc();
+
     auto fn = nkir_makeFunct(c->ir);
     NkltFnInfo fn_info{nullptr, nkl_get_tuple(c->alloc, {nullptr, 0}, 1), NkCallConv_Nk, false};
 
@@ -2294,6 +2318,8 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
 }
 
 nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t type) {
+    ProfFunc();
+
     DEFINE(cnst, comptimeCompileNode(c, node, type));
     // TODO Probably should have a way of controlling, whether we want to
     // automatically invoke code at compile time here
@@ -2301,6 +2327,8 @@ nklval_t comptimeCompileNodeGetValue(NklCompiler c, NklAstNode node, nkltype_t t
 }
 
 Void compileStmt(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoView tags) {
+    ProfFunc();
+
     DEFINE(val, compile(c, node, type, tags));
     auto ref = asRef(c, val);
     if (val.kind != v_none) {
@@ -2492,16 +2520,17 @@ NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
     ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
-    if (!fs::exists(path)) {
+    if (!fs_fileExists(path)) {
         auto const path_str = path.string();
         printError(c, "file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
         return {};
     }
-    path = fs::canonical(path);
+
+    path = fs_pathCanonical(path);
 
     auto const path_str = path.string();
 
-    c->file_stack.emplace(fs::relative(path));
+    c->file_stack.emplace(fs_pathRelative(path));
     defer {
         c->file_stack.pop();
     };
@@ -2588,8 +2617,8 @@ extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct en
     std::string flags = c->c_compiler_flags;
     for (auto const &lib : b->libs) {
         fs::path path{lib.lib_str};
-        if (fs::exists(path)) {
-            path = fs::canonical(path);
+        if (fs_fileExists(path)) {
+            path = fs_pathCanonical(path);
         }
         if (!path.parent_path().empty()) {
             flags += " -L" + path.parent_path().string();
@@ -2629,6 +2658,8 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(StructFieldView fields_ra
 }
 
 NklCompiler nkl_compiler_create() {
+    ProfFunc();
+
     nkl_ast_init();
 
     NkArena arena{};
@@ -2668,7 +2699,7 @@ bool nkl_compiler_configure(NklCompiler c, nks self_path) {
 
     pushScope(c);
     auto preload_filepath = fs::path{c->compiler_dir} / "preload.nkl";
-    if (!fs::exists(preload_filepath)) {
+    if (!fs_fileExists(preload_filepath)) {
         auto const path_str = preload_filepath.string();
         printError(c, "preload file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
         return false;
@@ -2678,7 +2709,7 @@ bool nkl_compiler_configure(NklCompiler c, nks self_path) {
     }
 
     auto config_filepath = fs::path{c->compiler_dir} / "config.nkl";
-    if (!fs::exists(config_filepath)) {
+    if (!fs_fileExists(config_filepath)) {
         auto const path_str = config_filepath.string();
         printError(c, "config file `%.*s` doesn't exist", (int)path_str.size(), path_str.c_str());
         return false;

@@ -54,6 +54,39 @@ void nk_prof_end_block(void) {
     }
 }
 
+#ifdef _WIN32
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+static double get_rdtsc_multiplier(void) {
+    // Get time before sleep
+    uint64_t qpc_begin = 0;
+    QueryPerformanceCounter((LARGE_INTEGER *)&qpc_begin);
+    uint64_t tsc_begin = __rdtsc();
+
+    Sleep(10);
+
+    // Get time after sleep
+    uint64_t qpc_end = qpc_begin + 1;
+    QueryPerformanceCounter((LARGE_INTEGER *)&qpc_end);
+    uint64_t tsc_end = __rdtsc();
+
+    // Do the math to extrapolate the RDTSC ticks elapsed in 1 second
+    uint64_t qpc_freq = 0;
+    QueryPerformanceFrequency((LARGE_INTEGER *)&qpc_freq);
+    uint64_t tsc_freq = (tsc_end - tsc_begin) * qpc_freq / (qpc_end - qpc_begin);
+
+    // Failure case
+    if (!tsc_freq) {
+        tsc_freq = 1000000000;
+    }
+
+    return 1000000.0 / (double)tsc_freq;
+}
+
+#else // _WIN32
+
 #include <linux/perf_event.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -130,5 +163,7 @@ static double get_rdtsc_multiplier(void) {
 
     return 1000000.0 / (double)tsc_freq;
 }
+
+#endif // _WIN32
 
 #endif // ENABLE_PROFILING

@@ -54,6 +54,8 @@ struct ScanEngine {
     NklToken m_token{};
 
     void scan() {
+        ProfFunc();
+
         skipSpaces();
 
         if (m_pos == 0 && on('#') && on('!', 1)) {
