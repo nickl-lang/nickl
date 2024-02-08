@@ -12,6 +12,7 @@
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/path.h"
@@ -47,6 +48,7 @@ void nkirc_free(NkIrCompiler c) {
 }
 
 int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     c->ir = nkir_createProgram(&c->file_arena);
@@ -73,6 +75,7 @@ int nkir_compile(NkIrCompiler c, nks in_file, NkIrCompilerConfig conf) {
 }
 
 int nkir_run(NkIrCompiler c, nks in_file) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     c->ir = nkir_createProgram(&c->file_arena);
@@ -109,6 +112,7 @@ int nkir_run(NkIrCompiler c, nks in_file) {
 }
 
 bool nkir_compileFile(NkIrCompiler c, nks base_file, nks in_file) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     auto in_file_path = fs::path{std_str(base_file)}.parent_path() / fs::path{std_str(in_file)};

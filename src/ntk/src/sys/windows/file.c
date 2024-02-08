@@ -1,5 +1,7 @@
 #include "ntk/sys/file.h"
 
+#include "ntk/profiler.h"
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -7,6 +9,8 @@ nkfd_t nk_invalid_fd = 0;
 char const *nk_null_file = "nul";
 
 int nk_read(nkfd_t fd, char *buf, size_t n) {
+    ProfBeginFunc();
+
     DWORD nNumberOfBytesRead = 0;
     BOOL bSuccess = ReadFile(
         (HANDLE)fd,          // HANDLE       hFile
@@ -23,10 +27,13 @@ int nk_read(nkfd_t fd, char *buf, size_t n) {
         }
     }
 
+    ProfEndBlock();
     return nNumberOfBytesRead;
 }
 
 int nk_write(nkfd_t fd, char const *buf, size_t n) {
+    ProfBeginFunc();
+
     DWORD nNumberOfBytesWritten = 0;
     BOOL bSuccess = WriteFile(
         (HANDLE)fd,             // HANDLE       hFile
@@ -36,10 +43,13 @@ int nk_write(nkfd_t fd, char const *buf, size_t n) {
         NULL                    // LPOVERLAPPED lpOverlapped
     );
 
+    ProfEndBlock();
     return bSuccess ? (int)nNumberOfBytesWritten : -1;
 }
 
 nkfd_t nk_open(char const *file, int flags) {
+    ProfBeginFunc();
+
     DWORD dwDesiredAccess = ((flags & nk_open_read) ? GENERIC_READ : 0) | ((flags & nk_open_write) ? GENERIC_WRITE : 0);
     DWORD dwShareMode =
         ((flags & nk_open_read) ? FILE_SHARE_READ : 0) | ((flags & nk_open_write) ? FILE_SHARE_WRITE : 0);
@@ -56,14 +66,19 @@ nkfd_t nk_open(char const *file, int flags) {
         NULL                   // HANDLE                hTemplateFile
     );
     if (hFile == INVALID_HANDLE_VALUE) {
+        ProfEndBlock();
         return nk_invalid_fd;
     } else {
+        ProfEndBlock();
         return (nkfd_t)hFile;
     }
 }
 
 int nk_close(nkfd_t fd) {
-    return CloseHandle((HANDLE)fd) ? 0 : -1;
+    ProfBeginFunc();
+    int ret = CloseHandle((HANDLE)fd) ? 0 : -1;
+    ProfEndBlock();
+    return ret;
 }
 
 nkfd_t nk_stdin() {

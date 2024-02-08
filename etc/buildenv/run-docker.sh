@@ -52,4 +52,5 @@ docker run \
     -w $PROJECTDIR \
     -v $DOCKERHOME:$HOME \
     -v $PROJECTDIR:$PROJECTDIR \
+    $EXTRA_DOCKER_OPTS \
     $IMAGE "$@"

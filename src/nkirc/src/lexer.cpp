@@ -14,6 +14,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -57,6 +58,8 @@ struct ScannerState {
     nks m_error_msg{};
 
     void scan() {
+        ProfFunc();
+
         skipSpaces();
 
         if (m_pos == 0 && on('#') && on('!', 1)) {
@@ -296,6 +299,7 @@ private:
 } // namespace
 
 void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks text) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};

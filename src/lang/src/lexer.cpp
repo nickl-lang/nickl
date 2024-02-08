@@ -9,7 +9,7 @@
 #include <cstring>
 
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -54,6 +54,8 @@ struct ScanEngine {
     NklToken m_token{};
 
     void scan() {
+        ProfFunc();
+
         skipSpaces();
 
         if (m_pos == 0 && on('#') && on('!', 1)) {
@@ -305,7 +307,7 @@ private:
 } // namespace
 
 bool nkl_lex(nks src, std::vector<NklToken> &tokens, std::string &err_str) {
-    EASY_FUNCTION(::profiler::colors::Lime200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     ScanEngine engine{src, err_str};

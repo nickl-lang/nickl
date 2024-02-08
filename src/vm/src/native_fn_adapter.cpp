@@ -15,7 +15,7 @@
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -51,7 +51,7 @@ static Context ctx;
 
 // TODO Integer promotion works only on little-endian
 ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     if (!type) {
@@ -208,7 +208,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     size_t const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
@@ -239,13 +239,13 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     }
 
     {
-        EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
+        ProfBlock(nk_cs2s("ffi_call"));
         ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);
     }
 }
 
 NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     NkIrNativeClosure cl;
@@ -275,7 +275,7 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
 }
 
 void nk_native_free_closure(NkIrNativeClosure cl) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     ffi_closure_free(cl->closure);

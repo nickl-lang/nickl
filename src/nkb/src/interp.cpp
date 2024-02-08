@@ -11,7 +11,7 @@
 #include "ir_impl.hpp"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/syscall.h"
 #include "ntk/utils.h"
@@ -115,6 +115,12 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
 }
 
 void interp(NkBcInstr const &instr) {
+#ifdef ENABLE_PROFILING
+    nksb_fixed_buffer(sb, 128);
+    nksb_printf(&sb, "interp: %s", nkbcOpcodeName(instr.code));
+#endif // ENABLE_PROFILING
+    ProfBlock(sb);
+
     switch (instr.code) {
     case nkop_nop: {
         break;
@@ -509,7 +515,7 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
-    EASY_FUNCTION(::profiler::colors::Red200);
+    ProfFunc();
 
     NK_LOG_TRC("%s", __func__);
 

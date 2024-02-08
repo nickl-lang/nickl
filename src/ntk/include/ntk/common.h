@@ -25,6 +25,13 @@
 #define NK_INLINE inline
 #endif //_WIN32
 
+#ifndef CAT
+#define _CAT(x, y) x##y
+#define CAT(x, y) _CAT(x, y)
+#endif // CAT
+
+#define AR_SIZE(AR) (sizeof(AR) / sizeof((AR)[0]))
+
 #ifdef __cplusplus
 
 #define LITERAL(T) T
@@ -50,5 +57,10 @@ constexpr size_t nk_alignofval(T const &) {
 #endif // __cplusplus
 
 typedef size_t hash_t;
+
+#define _NK_NOP (void)0
+#define _NK_NOP_TOPLEVEL extern int CAT(_, __LINE__)
+
+#define NK_FORCEINLINE __attribute__((always_inline))
 
 #endif // HEADER_GUARD_NTK_COMMON

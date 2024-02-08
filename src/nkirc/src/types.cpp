@@ -8,7 +8,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 
 namespace {
 
@@ -18,7 +18,7 @@ nkar_typedef(char, ByteArray);
 
 template <class F>
 nktype_t getTypeByFp(NkIrCompiler c, ByteArray fp, F const &make_type) {
-    EASY_FUNCTION(::profiler::colors::Green200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{c->mtx};

@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NTK_UTILS_H
-#define HEADER_GUARD_NTK_UTILS_H
+#ifndef HEADER_GUARD_NTK_UTILS
+#define HEADER_GUARD_NTK_UTILS
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -12,13 +12,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifndef CAT
-#define _CAT(x, y) x##y
-#define CAT(x, y) _CAT(x, y)
-#endif // CAT
-
-#define AR_SIZE(AR) sizeof(AR) / sizeof((AR)[0])
 
 NK_INLINE size_t roundUp(size_t v, size_t m) {
     return (v + m - 1) / m * m;
@@ -172,4 +165,4 @@ _DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
 
 #endif // __cplusplus
 
-#endif // HEADER_GUARD_NTK_UTILS_H
+#endif // HEADER_GUARD_NTK_UTILS

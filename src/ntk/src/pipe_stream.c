@@ -2,6 +2,7 @@
 
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/error.h"
@@ -21,6 +22,7 @@ typedef struct {
 } PipeStreamContext;
 
 static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
+    ProfBeginFunc();
     if (mode == nk_stream_mode_read) {
         PipeStreamContext *context = stream_data;
         int res = nk_read(context->fd, buf, size);
@@ -28,8 +30,10 @@ static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_
             NK_LOG_ERR("failed to read from stream: %s", nk_getLastErrorString());
             res = 0;
         }
+        ProfEndBlock();
         return res;
     } else {
+        ProfEndBlock();
         return -1;
     }
 }
@@ -37,6 +41,7 @@ static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_
 #define CMD_BUF_SIZE 4096
 
 bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, CMD_BUF_SIZE);
@@ -64,6 +69,7 @@ bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet) {
 
         *stream = (nk_stream){0};
 
+        ProfEndBlock();
         return false;
     }
 
@@ -71,10 +77,12 @@ bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet) {
     *context = (PipeStreamContext){out.read, pid};
     *stream = (nk_stream){context, nk_pipe_streamReadProc};
 
+    ProfEndBlock();
     return true;
 }
 
 static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
+    ProfBeginFunc();
     if (mode == nk_stream_mode_write) {
         PipeStreamContext *context = stream_data;
         int res = nk_write(context->fd, buf, size);
@@ -82,13 +90,16 @@ static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk
             NK_LOG_ERR("failed to write to stream: %s", nk_getLastErrorString());
             res = 0;
         }
+        ProfEndBlock();
         return res;
     } else {
+        ProfEndBlock();
         return -1;
     }
 }
 
 bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, CMD_BUF_SIZE);
@@ -114,6 +125,7 @@ bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet) {
 
         *stream = (nk_stream){0};
 
+        ProfEndBlock();
         return false;
     }
 
@@ -121,10 +133,12 @@ bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet) {
     *context = (PipeStreamContext){in.write, pid};
     *stream = (nk_stream){context, nk_pipe_streamWriteProc};
 
+    ProfEndBlock();
     return true;
 }
 
 int nk_pipe_streamClose(nk_stream stream) {
+    ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     int ret = 1;
@@ -136,5 +150,6 @@ int nk_pipe_streamClose(nk_stream stream) {
         }
         nk_free(nk_default_allocator, context, sizeof(*context));
     }
+    ProfEndBlock();
     return ret;
 }

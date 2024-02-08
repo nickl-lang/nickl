@@ -3,7 +3,7 @@
 #include <dlfcn.h>
 
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 
 namespace {
@@ -13,7 +13,7 @@ NK_LOG_USE_SCOPE(dl_adapter);
 } // namespace
 
 NkDlHandle nkdl_open(nks name) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
 
     auto dl = (NkDlHandle)dlopen(name.size ? name.data : nullptr, RTLD_GLOBAL | RTLD_LAZY);
     if (!dl) {
@@ -24,7 +24,7 @@ NkDlHandle nkdl_open(nks name) {
 }
 
 void nkdl_close(NkDlHandle dl) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
 
     if (dl) {
         dlclose((void *)dl);
@@ -32,7 +32,7 @@ void nkdl_close(NkDlHandle dl) {
 }
 
 void *nkdl_sym(NkDlHandle dl, nks sym) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
 
     auto ptr = dlsym((void *)dl, sym.data);
     if (!ptr) {

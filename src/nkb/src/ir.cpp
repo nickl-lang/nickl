@@ -11,6 +11,7 @@
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/error.h"
@@ -178,6 +179,7 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
 }
 
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");

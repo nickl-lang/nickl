@@ -10,7 +10,7 @@
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -124,6 +124,12 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
 }
 
 void interp(NkBcInstr const &instr) {
+#ifdef ENABLE_PROFILING
+    nksb_fixed_buffer(sb, 128);
+    nksb_printf(&sb, "interp: %s", s_nk_bc_names[instr.code]);
+#endif // ENABLE_PROFILING
+    ProfBlock(sb);
+
     switch (instr.code) {
     case nkop_nop: {
         break;
@@ -426,7 +432,7 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
-    EASY_FUNCTION(::profiler::colors::Red200);
+    ProfFunc();
 
     NK_LOG_TRC("%s", __func__);
 

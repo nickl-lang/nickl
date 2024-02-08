@@ -15,6 +15,7 @@
 #include "ntk/hash_set.hpp"
 #include "ntk/id.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -449,6 +450,8 @@ void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
 }
 
 void translateProc(WriterCtx &ctx, size_t proc_id) {
+    ProfFunc();
+
     if (getFlag(ctx.procs_translated, proc_id)) {
         return;
     }
@@ -496,6 +499,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
     nksb_printf(src, "\n");
 
     auto write_ref = [&](NkIrRef const &ref) {
+        ProfBlock(nk_cs2s("write_ref"));
         if (ref.kind == NkIrRef_Proc) {
             auto const &proc = ctx.ir->procs.data[ref.index];
             auto const proc_name = nkid2s(proc.name);
@@ -790,6 +794,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
 } // namespace
 
 void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     auto frame = nk_arena_grab(arena);

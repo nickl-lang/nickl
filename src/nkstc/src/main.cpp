@@ -7,7 +7,7 @@
 #include "ntk/cli.h"
 #include "ntk/file.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -40,16 +40,9 @@ void printVersion() {
     printf(NK_BINARY_NAME " " NK_BUILD_VERSION " " NK_BUILD_TIME "\n");
 }
 
-NK_LOG_USE_SCOPE(main);
-
 } // namespace
 
 int main(int /*argc*/, char const *const *argv) {
-#ifdef BUILD_WITH_EASY_PROFILER
-    EASY_PROFILER_ENABLE;
-    ::profiler::startListen(EASY_PROFILER_PORT);
-#endif // BUILD_WITH_EASY_PROFILER
-
     nks in_file{};
 
     bool help = false;
@@ -170,11 +163,6 @@ int main(int /*argc*/, char const *const *argv) {
     NK_LOGGER_INIT(logger_opts);
 
     int code = nkst_compile(in_file);
-
-#ifdef BUILD_WITH_EASY_PROFILER
-    puts("press any key to exit");
-    getchar();
-#endif // BUILD_WITH_EASY_PROFILER
 
     return code;
 }

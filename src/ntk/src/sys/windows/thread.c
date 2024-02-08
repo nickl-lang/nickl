@@ -1,5 +1,7 @@
 #include "ntk/sys/thread.h"
 
+#include <unistd.h>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -19,4 +21,8 @@ int nk_mutex_lock(nk_mutex_t *mutex) {
 
 int nk_mutex_unlock(nk_mutex_t *mutex) {
     return ReleaseMutex(*mutex) ? 0 : -1;
+}
+
+void nk_usleep(uint64_t usec) {
+    usleep(usec);
 }

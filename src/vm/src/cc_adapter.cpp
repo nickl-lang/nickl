@@ -4,7 +4,7 @@
 #include "nk/vm/ir_compile.h"
 #include "ntk/logger.h"
 #include "ntk/pipe_stream.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 #include "translate_to_c.hpp"
@@ -16,7 +16,7 @@ NK_LOG_USE_SCOPE(cc_adapter);
 } // namespace
 
 nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     NkStringBuilder sb{};
@@ -37,14 +37,14 @@ nk_stream nkcc_streamOpen(NkIrCompilerConfig const &conf) {
 }
 
 int nkcc_streamClose(nk_stream stream) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     return nk_pipe_streamClose(stream);
 }
 
 bool nkir_compile(NkIrCompilerConfig conf, NkIrProg ir, NkIrFunct entry_point) {
-    EASY_FUNCTION(::profiler::colors::Amber200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     auto src = nkcc_streamOpen(conf);

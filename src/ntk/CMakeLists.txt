@@ -19,9 +19,11 @@ add_library(${LIB}
     src/id.c
     src/logger.c
     src/pipe_stream.c
+    src/profiler.c
     src/stream.c
     src/string.c
     src/string_builder.c
+    src/time.c
     src/utils.c
     )
 
@@ -41,12 +43,8 @@ target_link_libraries(${LIB}
     )
 
 if(ENABLE_PROFILING)
-    target_link_libraries(${LIB}
-        PUBLIC easy_profiler
-        )
-
     target_compile_definitions(${LIB}
-        PUBLIC EASY_PROFILER_PORT=28077
+        PUBLIC ENABLE_PROFILING=1
         )
 endif()
 

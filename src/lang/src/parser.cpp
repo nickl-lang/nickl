@@ -10,7 +10,7 @@
 #include "nkl/lang/token.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
 #include "token.hpp"
@@ -981,7 +981,7 @@ private:
 } // namespace
 
 NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklTokenRef &err_token) {
-    EASY_FUNCTION(::profiler::colors::Teal200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     assert(tokens.size && "empty token array");

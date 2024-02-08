@@ -16,7 +16,7 @@ void nk_free_library(nkdl_t dl) {
 }
 
 void *nk_resolve_symbol(nkdl_t dl, char const *sym) {
-    return (void *)GetProcAddress(dl, sym);
+    return (void *)(intptr_t)GetProcAddress(dl, sym);
 }
 
 char const *nkdl_getLastErrorString() {

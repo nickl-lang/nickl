@@ -5,6 +5,7 @@
 #include <limits>
 
 #include "ntk/allocator.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
@@ -179,6 +180,7 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     size_t n,
     size_t type_stride,
     size_t count_stride) {
+    ProfFunc();
     size_t alignment = 0;
     size_t offset = 0;
 

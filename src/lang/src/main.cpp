@@ -5,7 +5,7 @@
 #include "nkl/lang/compiler.h"
 #include "ntk/cli.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/sys/path.h"
 #include "ntk/utils.h"
@@ -36,10 +36,14 @@ void printVersion() {
 } // namespace
 
 int nkl_main(int /*argc*/, char const *const *argv) {
-#ifdef BUILD_WITH_EASY_PROFILER
-    EASY_PROFILER_ENABLE;
-    ::profiler::startListen(EASY_PROFILER_PORT);
-#endif // BUILD_WITH_EASY_PROFILER
+    ProfInit(NKL_BINARY_NAME ".spall");
+    ProfThreadInit(0, 32 * 1024 * 1024);
+    defer {
+        ProfThreadExit();
+        ProfExit();
+    };
+
+    ProfFunc();
 
     nks in_file{};
     bool help = false;
@@ -171,11 +175,6 @@ int nkl_main(int /*argc*/, char const *const *argv) {
     if (!nkl_compiler_runFile(compiler, in_file)) {
         return 1;
     }
-
-#ifdef BUILD_WITH_EASY_PROFILER
-    puts("press any key to exit");
-    getchar();
-#endif // BUILD_WITH_EASY_PROFILER
 
     return 0;
 }

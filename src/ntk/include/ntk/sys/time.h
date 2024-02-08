@@ -7,9 +7,8 @@
 extern "C" {
 #endif
 
-typedef int64_t nktime_t;
-
-nktime_t nk_getTimeNs(void);
+// Time Stamp Counter frequency
+uint64_t nk_getTscFreq();
 
 #ifdef __cplusplus
 }

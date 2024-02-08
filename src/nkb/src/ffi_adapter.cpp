@@ -10,7 +10,7 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -19,7 +19,7 @@ namespace {
 NK_LOG_USE_SCOPE(ffi_adapter);
 
 ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     if (!type) {
@@ -153,7 +153,7 @@ void ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     ffi_cif cif;
@@ -168,13 +168,13 @@ void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const 
     }
 
     {
-        EASY_BLOCK("ffi_call", ::profiler::colors::Orange200);
+        ProfBlock(nk_cs2s("ffi_call"));
         ffi_call(&cif, FFI_FN(call_data->proc.native), call_data->retv, call_data->argv);
     }
 }
 
 void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data) {
-    EASY_FUNCTION(::profiler::colors::Orange200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     NkIrNativeClosure_T *cl;

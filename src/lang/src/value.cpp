@@ -13,7 +13,7 @@
 #include "ntk/allocator.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
-#include "ntk/profiler.hpp"
+#include "ntk/profiler.h"
 #include "ntk/utils.h"
 
 // TODO @Optimization A bit excessive approach with type fingerprints
@@ -36,7 +36,7 @@ enum ETypeSubset {
 
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
-    EASY_FUNCTION(::profiler::colors::Green200);
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{s_mtx};
@@ -48,6 +48,7 @@ nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
         std::tie(it, inserted) = s_typemap.emplace(std::move(fp), type);
         assert(inserted && "type duplication");
     }
+
     return it->second;
 }
 

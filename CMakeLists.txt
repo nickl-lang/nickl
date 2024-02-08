@@ -46,10 +46,6 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
-if(ENABLE_PROFILING)
-    find_package(easy_profiler REQUIRED)
-endif()
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(SYSTEM_INSTALL_DIR lib)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

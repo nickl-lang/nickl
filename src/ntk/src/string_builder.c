@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/utils.h"
 #include "stb/sprintf.h"
@@ -54,6 +55,8 @@ nk_stream nksb_getStream(NkStringBuilder *sb) {
 #define NKSB_STREAM_BUF_SIZE 1024
 
 void nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
+    ProfBeginFunc();
+
     for (;;) {
         nksb_reserve(sb, sb->capacity + NKSB_STREAM_BUF_SIZE);
         int res = nk_stream_read(in, nkav_end(sb), NKSB_STREAM_BUF_SIZE);
@@ -63,4 +66,6 @@ void nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
             break;
         }
     }
+
+    ProfEndBlock();
 }

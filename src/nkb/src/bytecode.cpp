@@ -11,6 +11,7 @@
 #include "ntk/array.h"
 #include "ntk/id.h"
 #include "ntk/logger.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/sys/dl.h"
@@ -136,6 +137,8 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ..
 }
 
 nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
+    ProfFunc();
+
     auto found = ctx->extern_libs.find(name);
     if (found) {
         return *found;
@@ -183,6 +186,7 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
 }
 
 void *getExternSym(NkIrRunCtx ctx, nkid lib_hame, nkid name) {
+    ProfFunc();
     auto found = ctx->extern_syms.find(name);
     if (found) {
         return *found;
@@ -203,6 +207,8 @@ void *getExternSym(NkIrRunCtx ctx, nkid lib_hame, nkid name) {
 }
 
 bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
+    ProfFunc();
+
     while (proc.idx >= ctx->procs.size) {
         nkar_append(&ctx->procs, nullptr);
     }
@@ -254,6 +260,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
     auto const get_data_addr = [&](size_t index) {
+        ProfBlock(nk_cs2s("get_data_addr"));
         while (index >= ctx->data.size) {
             nkar_append(&ctx->data, nullptr);
         }
@@ -276,6 +283,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
     auto const translate_ref =
         [&](size_t instr_index, size_t arg_index, size_t ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
+            ProfBlock(nk_cs2s("translate_ref"));
             ref = {
                 .offset = ir_ref.offset,
                 .post_offset = ir_ref.post_offset,
@@ -370,6 +378,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         };
 
     auto const translate_arg = [&](size_t instr_index, size_t arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
+        ProfBlock(nk_cs2s("translate_arg"));
         switch (ir_arg.kind) {
         case NkIrArg_None: {
             arg.kind = NkBcArg_None;
@@ -639,6 +648,7 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
 }
 
 bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
+    ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
     if (!translateProc(ctx, proc)) {
