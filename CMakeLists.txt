@@ -61,11 +61,20 @@ install(FILES LICENSE DESTINATION share/doc/${PROJECT_NAME}/)
 include(Version)
 get_build_version(${PROJECT_SOURCE_DIR} BUILD_VERSION)
 string(TIMESTAMP BUILD_TIME UTC)
-message("Build version: ${BUILD_VERSION}")
-message("Build time: ${BUILD_TIME}")
+message(STATUS "Build version: ${BUILD_VERSION}")
+message(STATUS "Build time: ${BUILD_TIME}")
 
 include(Package)
 add_package_target("${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}" "${DEPLOY_PREFIX}")
+
+# ccache
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    message(STATUS "Using Ccache")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+else()
+    message(STATUS "Ccache not found")
+endif()
 
 add_subdirectory(src)
 

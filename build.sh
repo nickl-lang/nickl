@@ -23,6 +23,8 @@ if [ -f /.dockerenv ]; then
     BIN_DIR=$PROJ_ROOT/out/build-$PLATFORM_SUFFIX
     mkdir -p $BIN_DIR
 
+    export CCACHE_DIR=$BIN_DIR/ccache
+
     if [ ! -f $BIN_DIR/build.ninja -o \
          ! -f $BIN_DIR/CMakeCache.txt -o \
          -n "$DEV_BUILD" ]; then
