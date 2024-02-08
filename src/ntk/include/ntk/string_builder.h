@@ -60,6 +60,7 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 nk_stream nksb_getStream(NkStringBuilder *sb);
 
 bool nksb_readFromStream(NkStringBuilder *sb, nk_stream in);
+bool nksb_readFromStreamEx(NkStringBuilder *sb, nk_stream in, size_t buf_size);
 
 #ifdef __cplusplus
 }

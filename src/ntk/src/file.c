@@ -5,6 +5,8 @@
 #include "ntk/sys/file.h"
 #include "ntk/sys/path.h"
 
+#define BUF_SIZE 4096
+
 NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     ProfBeginFunc();
 
@@ -17,7 +19,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     nkfd_t fd = nk_open(path.data, nk_open_read);
     if (fd >= 0) {
         NkStringBuilder sb = {nksb_init(alloc)};
-        if (nksb_readFromStream(&sb, nk_file_getStream(fd))) {
+        if (nksb_readFromStreamEx(&sb, nk_file_getStream(fd), BUF_SIZE)) {
             res.bytes = (nks){nkav_init(sb)};
             res.ok = true;
         }
