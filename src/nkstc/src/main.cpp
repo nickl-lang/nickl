@@ -40,8 +40,6 @@ void printVersion() {
     printf(NK_BINARY_NAME " " NK_BUILD_VERSION " " NK_BUILD_TIME "\n");
 }
 
-NK_LOG_USE_SCOPE(main);
-
 } // namespace
 
 int main(int /*argc*/, char const *const *argv) {

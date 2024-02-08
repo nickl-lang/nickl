@@ -23,6 +23,7 @@ add_library(${LIB}
     src/stream.c
     src/string.c
     src/string_builder.c
+    src/time.c
     src/utils.c
     )
 

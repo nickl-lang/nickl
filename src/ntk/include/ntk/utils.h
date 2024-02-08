@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NTK_UTILS_H
-#define HEADER_GUARD_NTK_UTILS_H
+#ifndef HEADER_GUARD_NTK_UTILS
+#define HEADER_GUARD_NTK_UTILS
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -172,4 +172,4 @@ _DeferrerWithData<T, F> makeDeferrerWithData(T &&data, F &&f) {
 
 #endif // __cplusplus
 
-#endif // HEADER_GUARD_NTK_UTILS_H
+#endif // HEADER_GUARD_NTK_UTILS

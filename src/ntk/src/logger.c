@@ -11,7 +11,7 @@
 #include "ntk/profiler.h"
 #include "ntk/sys/term.h"
 #include "ntk/sys/thread.h"
-#include "ntk/sys/time.h"
+#include "ntk/time.h"
 
 #define ENV_VAR "NK_LOG_LEVEL"
 
@@ -46,7 +46,7 @@ static char const *c_env_log_level_map[] = {
 };
 
 struct LoggerState {
-    nktime_t start_time;
+    int64_t start_time;
     NkLogLevel log_level;
     NkColorMode color_mode;
     nk_mutex_t mtx;
@@ -85,7 +85,7 @@ void nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, v
     bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
                           (s_logger.color_mode == NkLog_Color_Auto && nk_isatty(STDERR_FILENO));
 
-    nktime_t now = nk_getTimeNs();
+    int64_t now = nk_getTimeNs();
     double ts = (now - s_logger.start_time) / 1e9;
 
     nk_mutex_lock(&s_logger.mtx);
