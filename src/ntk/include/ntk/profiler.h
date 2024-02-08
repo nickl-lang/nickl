@@ -1,8 +1,6 @@
 #ifndef HEADER_GUARD_NTK_PROFILER
 #define HEADER_GUARD_NTK_PROFILER
 
-#ifdef ENABLE_PROFILING
-
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -10,17 +8,6 @@
 #include "ntk/common.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
-
-#define ProfInit(filename) nk_prof_init(filename)
-#define ProfExit() nk_prof_exit()
-
-#define ProfThreadInit(tid, buffer_size) nk_prof_thread_init((tid), (buffer_size));
-#define ProfThreadExit() nk_prof_thread_exit();
-
-#define ProfBeginBlock(str) nk_prof_begin_block((str).data, (str).size)
-#define ProfEndBlock() nk_prof_end_block()
-
-#define ProfBeginFunc() nk_prof_begin_block(__func__, sizeof(__func__) - 1)
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +25,19 @@ void NK_EXPORT nk_prof_end_block(void);
 }
 #endif
 
+#ifdef ENABLE_PROFILING
+
+#define ProfInit(filename) nk_prof_init(filename)
+#define ProfExit() nk_prof_exit()
+
+#define ProfThreadInit(tid, buffer_size) nk_prof_thread_init((tid), (buffer_size));
+#define ProfThreadExit() nk_prof_thread_exit();
+
+#define ProfBeginBlock(str) nk_prof_begin_block((str).data, (str).size)
+#define ProfEndBlock() nk_prof_end_block()
+
+#define ProfBeginFunc() nk_prof_begin_block(__func__, sizeof(__func__) - 1)
+
 #ifdef __cplusplus
 
 struct _ProfBlockGuard {
@@ -50,8 +50,6 @@ struct _ProfBlockGuard {
     }
 };
 
-#endif // __cplusplus
-
 #define ProfFunc()                               \
     _ProfBlockGuard CAT(_prof_guard, __LINE__) { \
         __func__, sizeof(__func__) - 1           \
@@ -60,6 +58,8 @@ struct _ProfBlockGuard {
     _ProfBlockGuard CAT(_prof_guard, __LINE__) { \
         (str).data, (str).size                   \
     }
+
+#endif // __cplusplus
 
 #else // ENABLE_PROFILING
 

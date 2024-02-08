@@ -10,8 +10,6 @@
 extern "C" {
 #endif
 
-#ifdef ENABLE_LOGGING
-
 typedef enum {
     NkLog_None = 0,
     NkLog_Fatal,
@@ -40,6 +38,16 @@ void nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, v
 
 void nk_loggerInit(NkLoggerOptions opt);
 
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef ENABLE_LOGGING
+
+#define NK_LOGGER_INIT(...) nk_loggerInit(__VA_ARGS__)
+
+#define NK_LOG_USE_SCOPE(NAME) static char const *__nk_logger_scope = #NAME
+
 #define NK_LOG_SEV(LEVEL, ...)                                   \
     if (nk_loggerCheck(LEVEL)) {                                 \
         nk_loggerWrite((LEVEL), __nk_logger_scope, __VA_ARGS__); \
@@ -52,10 +60,6 @@ void nk_loggerInit(NkLoggerOptions opt);
     } else                                                        \
         (void)0
 
-#define NK_LOGGER_INIT(...) nk_loggerInit(__VA_ARGS__)
-
-#define NK_LOG_USE_SCOPE(NAME) static char const *__nk_logger_scope = #NAME
-
 #define NK_LOG_FAT(...) NK_LOG_SEV(NkLog_Fatal, __VA_ARGS__)
 #define NK_LOG_ERR(...) NK_LOG_SEV(NkLog_Error, __VA_ARGS__)
 #define NK_LOG_WRN(...) NK_LOG_SEV(NkLog_Warning, __VA_ARGS__)
@@ -65,27 +69,20 @@ void nk_loggerInit(NkLoggerOptions opt);
 
 #else // ENABLE_LOGGING
 
-#define _NK_LOG_NOP (void)0
-#define _NK_LOG_NOP_TOPLEVEL extern int _
+#define NK_LOGGER_INIT(...) _NK_NOP
 
-#define NK_LOG_SEV(...) _NK_LOG_NOP
-#define NK_VLOG_SEV(...) _NK_LOG_NOP
+#define NK_LOG_USE_SCOPE(...) _NK_NOP_TOPLEVEL
 
-#define NK_LOGGER_INIT(...) _NK_LOG_NOP
+#define NK_LOG_SEV(...) _NK_NOP
+#define NK_VLOG_SEV(...) _NK_NOP
 
-#define NK_LOG_USE_SCOPE(...) _NK_LOG_NOP_TOPLEVEL
-
-#define NK_LOG_FAT(...) _NK_LOG_NOP
-#define NK_LOG_ERR(...) _NK_LOG_NOP
-#define NK_LOG_WRN(...) _NK_LOG_NOP
-#define NK_LOG_INF(...) _NK_LOG_NOP
-#define NK_LOG_DBG(...) _NK_LOG_NOP
-#define NK_LOG_TRC(...) _NK_LOG_NOP
+#define NK_LOG_FAT(...) _NK_NOP
+#define NK_LOG_ERR(...) _NK_NOP
+#define NK_LOG_WRN(...) _NK_NOP
+#define NK_LOG_INF(...) _NK_NOP
+#define NK_LOG_DBG(...) _NK_NOP
+#define NK_LOG_TRC(...) _NK_NOP
 
 #endif // ENABLE_LOGGING
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // HEADER_GUARD_NTK_LOGGER

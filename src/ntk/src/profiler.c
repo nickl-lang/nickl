@@ -1,5 +1,3 @@
-#ifdef ENABLE_PROFILING
-
 #include "ntk/profiler.h"
 
 #include <spall.h>
@@ -52,5 +50,3 @@ void nk_prof_end_block(void) {
         spall_buffer_end_ex(&spall_ctx, &spall_buffer, __rdtsc(), tid, 0);
     }
 }
-
-#endif // ENABLE_PROFILING

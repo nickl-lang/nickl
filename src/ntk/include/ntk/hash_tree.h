@@ -86,7 +86,7 @@
         ht->root = NULL;                                                                                    \
     }                                                                                                       \
                                                                                                             \
-    extern int _##__LINE__
+    _NK_NOP_TOPLEVEL
 
 #define nkht_define(Name, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc) \
     nkht_proto(Name, TItem, TKey);                                            \

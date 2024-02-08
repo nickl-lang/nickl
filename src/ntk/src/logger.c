@@ -1,5 +1,3 @@
-#ifdef ENABLE_LOGGING
-
 #include "ntk/logger.h"
 
 #include <stdarg.h>
@@ -128,5 +126,3 @@ void nk_loggerInit(NkLoggerOptions opt) {
 
     ProfEndBlock();
 }
-
-#endif // ENABLE_LOGGING
