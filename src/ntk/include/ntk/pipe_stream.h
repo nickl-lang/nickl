@@ -3,15 +3,22 @@
 
 #include "ntk/stream.h"
 #include "ntk/string.h"
+#include "ntk/sys/process.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet);
-bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet);
+typedef struct {
+    nk_stream stream;
+    nkfd_t fd;
+    nkpid_t pid;
+} NkPipeStream;
 
-int nk_pipe_streamClose(nk_stream stream);
+bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, nks cmd, bool quiet);
+bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, nks cmd, bool quiet);
+
+int nk_pipe_streamClose(NkPipeStream *stream);
 
 #ifdef __cplusplus
 }

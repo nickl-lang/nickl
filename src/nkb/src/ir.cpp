@@ -473,11 +473,11 @@ NkIrInstr nkir_make_comment(NkIrProg ir, nks comment) {
 bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
-    nk_stream src{};
+    NkPipeStream src{};
     bool res = nkcc_streamOpen(&src, conf);
     if (res) {
-        nkir_translate2c(arena, ir, src);
-        if (nkcc_streamClose(src)) {
+        nkir_translate2c(arena, ir, src.stream);
+        if (nkcc_streamClose(&src)) {
             reportError(ir, "C compiler `" nks_Fmt "` returned nonzero exit code", nks_Arg(conf.compiler_binary));
             return false;
         }

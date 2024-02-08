@@ -1,4 +1,4 @@
-#include "cc_adapter.hpp"
+#include "cc_adapter.h"
 
 #include <filesystem>
 #include <iterator>
@@ -41,10 +41,10 @@ class cc_adapter : public testing::Test {
 
 protected:
     std::string runGetStdout() {
-        nk_stream in;
-        auto res = nk_pipe_streamRead(&in, m_conf.output_filename, false);
+        NkPipeStream in;
+        auto res = nk_pipe_streamOpenRead(&in, m_conf.output_filename, false);
         defer {
-            nk_pipe_streamClose(in);
+            nk_pipe_streamClose(&in);
         };
 
         EXPECT_TRUE(res);
@@ -54,7 +54,7 @@ protected:
             defer {
                 nksb_free(&sb);
             };
-            nksb_readFromStream(&sb, in);
+            EXPECT_TRUE(nksb_readFromStream(&sb, in.stream));
             NK_LOG_DBG("out_str=\"" nks_Fmt "\"", nks_Arg(sb));
             return std_str({nkav_init(sb)});
         } else {
@@ -71,15 +71,15 @@ protected:
 
 TEST_F(cc_adapter, empty) {
     auto src = nkcc_streamOpen(m_conf);
-    EXPECT_TRUE(nkcc_streamClose(src));
+    EXPECT_TRUE(nkcc_streamClose(&src));
 }
 
 TEST_F(cc_adapter, empty_main) {
     auto src = nkcc_streamOpen(m_conf);
 
-    nk_printf(src, "%s", "int main() {}\n");
+    nk_printf(src.stream, "%s", "int main() {}\n");
 
-    EXPECT_FALSE(nkcc_streamClose(src));
+    EXPECT_FALSE(nkcc_streamClose(&src));
 
     EXPECT_EQ(runGetStdout(), "");
 }
@@ -87,14 +87,14 @@ TEST_F(cc_adapter, empty_main) {
 TEST_F(cc_adapter, hello_world) {
     auto src = nkcc_streamOpen(m_conf);
 
-    nk_printf(src, "%s", R"(
+    nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
 }
 )");
 
-    EXPECT_FALSE(nkcc_streamClose(src));
+    EXPECT_FALSE(nkcc_streamClose(&src));
 
     EXPECT_EQ(runGetStdout(), "Hello, World!");
 }
@@ -102,12 +102,12 @@ int main() {
 TEST_F(cc_adapter, undefined_var) {
     auto src = nkcc_streamOpen(m_conf);
 
-    nk_printf(src, "%s", R"(
+    nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("%i", var);
 }
 )");
 
-    EXPECT_TRUE(nkcc_streamClose(src));
+    EXPECT_TRUE(nkcc_streamClose(&src));
 }

@@ -8,7 +8,7 @@
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
-bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
+bool nkcc_streamOpen(NkPipeStream *stream, NkIrCompilerConfig conf) {
     ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
@@ -32,13 +32,13 @@ bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
 
     switch (conf.output_kind) {
     case NkbOutput_Object:
-        nksb_try_append_str(&cmd, " -c");
+        nksb_try_append_cstr(&cmd, " -c");
         break;
     case NkbOutput_Static:
-        nksb_try_append_str(&cmd, " -static");
+        nksb_try_append_cstr(&cmd, " -static");
         break;
     case NkbOutput_Shared:
-        nksb_try_append_str(&cmd, " -shared");
+        nksb_try_append_cstr(&cmd, " -shared");
         break;
     case NkbOutput_Executable:
         break;
@@ -48,12 +48,12 @@ bool nkcc_streamOpen(nk_stream *stream, NkIrCompilerConfig conf) {
         break;
     }
 
-    bool ret = nk_pipe_streamWrite(stream, (nks){nkav_init(cmd)}, conf.quiet);
+    bool ret = nk_pipe_streamOpenWrite(stream, (nks){nkav_init(cmd)}, conf.quiet);
     ProfEndBlock();
     return ret;
 }
 
-int nkcc_streamClose(nk_stream stream) {
+int nkcc_streamClose(NkPipeStream *stream) {
     ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 

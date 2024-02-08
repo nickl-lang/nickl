@@ -7,6 +7,7 @@
 
 #include "nk/vm/common.h"
 #include "ntk/allocator.h"
+#include "ntk/common.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -149,7 +150,7 @@ typedef struct {
 NkTupleLayout nk_calcTupleLayout(nktype_t const *types, size_t count, NkAllocator allocator, size_t stride);
 
 inline nkval_t nkval_undefined() {
-    return nkval_t{};
+    return LITERAL(nkval_t) ZERO_STRUCT;
 }
 
 inline void *nkval_data(nkval_t val) {
@@ -193,12 +194,12 @@ inline size_t nkval_alignof(nkval_t val) {
 }
 
 inline nkval_t nkval_reinterpret_cast(nktype_t type, nkval_t val) {
-    return nkval_t{nkval_data(val), type};
+    return LITERAL(nkval_t){nkval_data(val), type};
 }
 
 inline nkval_t nkval_copy(void *dst, nkval_t src) {
     memcpy(dst, nkval_data(src), nkval_sizeof(src));
-    return nkval_t{dst, nkval_typeof(src)};
+    return LITERAL(nkval_t){dst, nkval_typeof(src)};
 }
 
 #define nkval_as(TYPE, VAL) (*(TYPE *)nkval_data(VAL))

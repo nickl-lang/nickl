@@ -260,7 +260,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
     auto const get_data_addr = [&](size_t index) {
-        ProfBlock(nk_cs2s("get_data_addr"));
+        ProfScope(nk_cs2s("get_data_addr"));
         while (index >= ctx->data.size) {
             nkar_append(&ctx->data, nullptr);
         }
@@ -283,7 +283,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
     auto const translate_ref =
         [&](size_t instr_index, size_t arg_index, size_t ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
-            ProfBlock(nk_cs2s("translate_ref"));
+            ProfScope(nk_cs2s("translate_ref"));
             ref = {
                 .offset = ir_ref.offset,
                 .post_offset = ir_ref.post_offset,
@@ -378,7 +378,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         };
 
     auto const translate_arg = [&](size_t instr_index, size_t arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
-        ProfBlock(nk_cs2s("translate_arg"));
+        ProfScope(nk_cs2s("translate_arg"));
         switch (ir_arg.kind) {
         case NkIrArg_None: {
             arg.kind = NkBcArg_None;

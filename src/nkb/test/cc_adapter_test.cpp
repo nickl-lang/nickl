@@ -43,10 +43,10 @@ class cc_adapter : public testing::Test {
 
 protected:
     std::string runGetStdout() {
-        nk_stream in;
-        auto res = nk_pipe_streamRead(&in, m_conf.output_filename, false);
+        NkPipeStream in;
+        auto res = nk_pipe_streamOpenRead(&in, m_conf.output_filename, false);
         defer {
-            nk_pipe_streamClose(in);
+            nk_pipe_streamClose(&in);
         };
 
         EXPECT_TRUE(res);
@@ -56,7 +56,7 @@ protected:
             defer {
                 nksb_free(&sb);
             };
-            nksb_readFromStream(&sb, in);
+            EXPECT_TRUE(nksb_readFromStream(&sb, in.stream));
             NK_LOG_DBG("out_str=\"" nks_Fmt "\"", nks_Arg(sb));
             return std_str({nkav_init(sb)});
         } else {
@@ -72,34 +72,34 @@ protected:
 } // namespace
 
 TEST_F(cc_adapter, empty) {
-    nk_stream src;
+    NkPipeStream src;
     auto res = nkcc_streamOpen(&src, m_conf);
     EXPECT_TRUE(res);
 
-    EXPECT_TRUE(nkcc_streamClose(src));
+    EXPECT_TRUE(nkcc_streamClose(&src));
 }
 
 TEST_F(cc_adapter, empty_main) {
-    nk_stream src;
+    NkPipeStream src;
     auto res = nkcc_streamOpen(&src, m_conf);
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src, "%s", "int main() {}\n");
+        nk_printf(src.stream, "%s", "int main() {}\n");
     }
 
-    EXPECT_FALSE(nkcc_streamClose(src));
+    EXPECT_FALSE(nkcc_streamClose(&src));
 
     EXPECT_EQ(runGetStdout(), "");
 }
 
 TEST_F(cc_adapter, hello_world) {
-    nk_stream src;
+    NkPipeStream src;
     auto res = nkcc_streamOpen(&src, m_conf);
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src, "%s", R"(
+        nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
@@ -107,18 +107,18 @@ int main() {
 )");
     }
 
-    EXPECT_FALSE(nkcc_streamClose(src));
+    EXPECT_FALSE(nkcc_streamClose(&src));
 
     EXPECT_EQ(runGetStdout(), "Hello, World!");
 }
 
 TEST_F(cc_adapter, undefined_var) {
-    nk_stream src;
+    NkPipeStream src;
     auto res = nkcc_streamOpen(&src, m_conf);
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src, "%s", R"(
+        nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("%i", var);
@@ -126,5 +126,5 @@ int main() {
 )");
     }
 
-    EXPECT_TRUE(nkcc_streamClose(src));
+    EXPECT_TRUE(nkcc_streamClose(&src));
 }

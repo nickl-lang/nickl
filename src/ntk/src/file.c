@@ -9,25 +9,23 @@ NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     ProfBeginFunc();
 
     nksb_fixed_buffer(path, NK_MAX_PATH);
-    nksb_try_append_many(&path, file.data, file.size);
+    nksb_try_append_str(&path, file);
     nksb_try_append_null(&path);
 
+    NkFileReadResult res = {0};
+
     nkfd_t fd = nk_open(path.data, nk_open_read);
-
-    if (fd < 0) {
-        ProfEndBlock();
-        return (NkFileReadResult){0};
+    if (fd >= 0) {
+        NkStringBuilder sb = {nksb_init(alloc)};
+        if (nksb_readFromStream(&sb, nk_file_getStream(fd))) {
+            res.bytes = (nks){nkav_init(sb)};
+            res.ok = true;
+        }
     }
-
-    NkStringBuilder sb = {nksb_init(alloc)};
-    nksb_readFromStream(&sb, nk_file_getStream(fd));
     nk_close(fd);
 
     ProfEndBlock();
-    return (NkFileReadResult){
-        .bytes = {nkav_init(sb)},
-        .ok = true,
-    };
+    return res;
 }
 
 static int nk_file_streamProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {

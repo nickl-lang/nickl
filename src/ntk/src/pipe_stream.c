@@ -1,6 +1,6 @@
 #include "ntk/pipe_stream.h"
 
-#include "ntk/allocator.h"
+#include "ntk/file.h"
 #include "ntk/logger.h"
 #include "ntk/profiler.h"
 #include "ntk/stream.h"
@@ -11,41 +11,15 @@
 
 NK_LOG_USE_SCOPE(pipe_stream);
 
-static void makeCmdStr(NkStringBuilder *sb, nks cmd) {
-    nksb_printf(sb, nks_Fmt, nks_Arg(cmd));
-    nksb_append_null(sb);
-}
-
-typedef struct {
-    nkfd_t fd;
-    nkpid_t pid;
-} PipeStreamContext;
-
-static int nk_pipe_streamReadProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
-    ProfBeginFunc();
-    if (mode == nk_stream_mode_read) {
-        PipeStreamContext *context = stream_data;
-        int res = nk_read(context->fd, buf, size);
-        if (res < 0) {
-            NK_LOG_ERR("failed to read from stream: %s", nk_getLastErrorString());
-            res = 0;
-        }
-        ProfEndBlock();
-        return res;
-    } else {
-        ProfEndBlock();
-        return -1;
-    }
-}
-
 #define CMD_BUF_SIZE 4096
 
-bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet) {
+bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, nks cmd, bool quiet) {
     ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, CMD_BUF_SIZE);
-    makeCmdStr(&sb, cmd);
+    nksb_try_append_str(&sb, cmd);
+    nksb_try_append_null(&sb);
 
     NK_LOG_DBG("exec(\"" nks_Fmt "\")", nks_Arg(sb));
 
@@ -67,43 +41,27 @@ bool nk_pipe_streamRead(nk_stream *stream, nks cmd, bool quiet) {
 
         nk_setLastError(err);
 
-        *stream = (nk_stream){0};
-
         ProfEndBlock();
         return false;
     }
 
-    PipeStreamContext *context = (PipeStreamContext *)nk_alloc(nk_default_allocator, sizeof(PipeStreamContext));
-    *context = (PipeStreamContext){out.read, pid};
-    *stream = (nk_stream){context, nk_pipe_streamReadProc};
+    *pipe_stream = (NkPipeStream){
+        nk_file_getStream(out.read),
+        out.read,
+        pid,
+    };
 
     ProfEndBlock();
     return true;
 }
 
-static int nk_pipe_streamWriteProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
-    ProfBeginFunc();
-    if (mode == nk_stream_mode_write) {
-        PipeStreamContext *context = stream_data;
-        int res = nk_write(context->fd, buf, size);
-        if (res < 0) {
-            NK_LOG_ERR("failed to write to stream: %s", nk_getLastErrorString());
-            res = 0;
-        }
-        ProfEndBlock();
-        return res;
-    } else {
-        ProfEndBlock();
-        return -1;
-    }
-}
-
-bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet) {
+bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, nks cmd, bool quiet) {
     ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     nksb_fixed_buffer(sb, CMD_BUF_SIZE);
-    makeCmdStr(&sb, cmd);
+    nksb_try_append_str(&sb, cmd);
+    nksb_try_append_null(&sb);
 
     NK_LOG_DBG("exec(\"" nks_Fmt "\")", nks_Arg(sb));
 
@@ -123,33 +81,32 @@ bool nk_pipe_streamWrite(nk_stream *stream, nks cmd, bool quiet) {
 
         nk_setLastError(err);
 
-        *stream = (nk_stream){0};
-
         ProfEndBlock();
         return false;
     }
 
-    PipeStreamContext *context = (PipeStreamContext *)nk_alloc(nk_default_allocator, sizeof(PipeStreamContext));
-    *context = (PipeStreamContext){in.write, pid};
-    *stream = (nk_stream){context, nk_pipe_streamWriteProc};
+    *pipe_stream = (NkPipeStream){
+        nk_file_getStream(in.write),
+        in.write,
+        pid,
+    };
 
     ProfEndBlock();
     return true;
 }
 
-int nk_pipe_streamClose(nk_stream stream) {
+int nk_pipe_streamClose(NkPipeStream *pipe_stream) {
     ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
     int ret = 1;
-    PipeStreamContext *context = stream.data;
-    if (context) {
-        nk_close(context->fd);
-        if (context->pid > 0) {
-            nk_waitpid(context->pid, &ret);
-        }
-        nk_free(nk_default_allocator, context, sizeof(*context));
+    nk_close(pipe_stream->fd);
+    if (pipe_stream->pid > 0) {
+        nk_waitpid(pipe_stream->pid, &ret);
     }
+
+    *pipe_stream = (NkPipeStream){0};
+
     ProfEndBlock();
     return ret;
 }

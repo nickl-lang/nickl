@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <stdalign.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -35,6 +36,8 @@
 #ifdef __cplusplus
 
 #define LITERAL(T) T
+#define ZERO_STRUCT \
+    {}
 
 template <class T>
 T *_nk_assign_void_ptr(T *&dst, void *src) {
@@ -49,6 +52,8 @@ constexpr size_t nk_alignofval(T const &) {
 #else // __cplusplus
 
 #define LITERAL(T) (T)
+#define ZERO_STRUCT \
+    { 0 }
 
 #define _nk_assign_void_ptr(dst, src) ((dst) = (src))
 

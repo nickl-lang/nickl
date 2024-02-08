@@ -21,30 +21,31 @@
 #define nksb_append_null(sb) nksb_append((sb), '\0')
 #define nksb_try_append_null(sb) nksb_try_append((sb), '\0')
 
-#define _nksb_append_str(sb, str)           \
-    do {                                    \
-        char const *_str = (str);           \
-        size_t _len = strlen(_str);         \
-        nksb_append_many((sb), _str, _len); \
+#define _nksb_append_str(sb, str)                     \
+    do {                                              \
+        nks _str = (str);                             \
+        nksb_append_many((sb), _str.data, _str.size); \
     } while (0)
 
-#define _nksb_try_append_str(sb, str)           \
-    do {                                        \
-        char const *_str = (str);               \
-        size_t _len = strlen(_str);             \
-        nksb_try_append_many((sb), _str, _len); \
+#define _nksb_try_append_str(sb, str)                     \
+    do {                                                  \
+        nks _str = (str);                                 \
+        nksb_try_append_many((sb), _str.data, _str.size); \
     } while (0)
+
+#define _nksb_append_cstr(sb, str) _nksb_append_str(sb, nk_cs2s(str));
+#define _nksb_try_append_cstr(sb, str) _nksb_try_append_str(sb, nk_cs2s(str));
 
 #define nksb_init(allocator) .data = NULL, .size = 0, .capacity = 0, .alloc = (allocator)
 
-#define nksb_fixed_buffer(NAME, SIZE)                      \
-    uint8_t _buf[SIZE];                                    \
-    NkArena _log_arena = {_buf, 0, sizeof(_buf)};          \
-    NkStringBuilder NAME = {                               \
-        (char *)nk_arena_alloc(&_log_arena, sizeof(_buf)), \
-        0,                                                 \
-        sizeof(_buf),                                      \
-        nk_arena_getAllocator(&_log_arena),                \
+#define nksb_fixed_buffer(NAME, SIZE)                  \
+    uint8_t _buf[SIZE];                                \
+    NkArena _arena = {_buf, 0, sizeof(_buf)};          \
+    NkStringBuilder NAME = {                           \
+        (char *)nk_arena_alloc(&_arena, sizeof(_buf)), \
+        0,                                             \
+        sizeof(_buf),                                  \
+        nk_arena_getAllocator(&_arena),                \
     }
 
 #ifdef __cplusplus
@@ -58,7 +59,7 @@ int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
 nk_stream nksb_getStream(NkStringBuilder *sb);
 
-void nksb_readFromStream(NkStringBuilder *sb, nk_stream in);
+bool nksb_readFromStream(NkStringBuilder *sb, nk_stream in);
 
 #ifdef __cplusplus
 }
@@ -66,17 +67,27 @@ void nksb_readFromStream(NkStringBuilder *sb, nk_stream in);
 
 #ifdef __cplusplus
 
-inline void nksb_append_str(NkStringBuilder *sb, char const *str) {
+inline void nksb_append_str(NkStringBuilder *sb, nks str) {
     _nksb_append_str(sb, str);
 }
-inline void nksb_try_append_str(NkStringBuilder *sb, char const *str) {
+inline void nksb_try_append_str(NkStringBuilder *sb, nks str) {
     _nksb_try_append_str(sb, str);
+}
+
+inline void nksb_append_cstr(NkStringBuilder *sb, char const *str) {
+    _nksb_append_cstr(sb, str);
+}
+inline void nksb_try_append_cstr(NkStringBuilder *sb, char const *str) {
+    _nksb_try_append_cstr(sb, str);
 }
 
 #else //__cplusplus
 
 #define nksb_append_str _nksb_append_str
 #define nksb_try_append_str _nksb_try_append_str
+
+#define nksb_append_cstr _nksb_append_cstr
+#define nksb_try_append_cstr _nksb_try_append_cstr
 
 #endif //__cplusplus
 

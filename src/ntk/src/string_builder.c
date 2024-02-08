@@ -54,12 +54,13 @@ nk_stream nksb_getStream(NkStringBuilder *sb) {
 
 #define NKSB_STREAM_BUF_SIZE 1024
 
-void nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
+bool nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
     ProfBeginFunc();
 
+    int res = 0;
     for (;;) {
         nksb_reserve(sb, sb->capacity + NKSB_STREAM_BUF_SIZE);
-        int res = nk_stream_read(in, nkav_end(sb), NKSB_STREAM_BUF_SIZE);
+        res = nk_stream_read(in, nkav_end(sb), NKSB_STREAM_BUF_SIZE);
         if (res > 0) {
             sb->size += res;
         } else {
@@ -68,4 +69,5 @@ void nksb_readFromStream(NkStringBuilder *sb, nk_stream in) {
     }
 
     ProfEndBlock();
+    return res == 0;
 }

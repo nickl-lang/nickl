@@ -39,9 +39,9 @@ void nk_prof_exit(void) {
     spall_quit(&spall_ctx);
 }
 
-void nk_prof_begin_block(char const *name, size_t name_len) {
+void nk_prof_begin_block(nks name) {
     if (is_thread_running) {
-        spall_buffer_begin_ex(&spall_ctx, &spall_buffer, name, name_len, __rdtsc(), tid, 0);
+        spall_buffer_begin_ex(&spall_ctx, &spall_buffer, name.data, name.size, __rdtsc(), tid, 0);
     }
 }
 

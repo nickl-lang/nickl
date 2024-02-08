@@ -32,12 +32,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include(Dependencies)
 
+# TODO Organize flags better
 set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic -Werror=unused-result -Werror=format -fvisibility=hidden")
 if(ENABLE_ASAN)
     set(FLAGS "${FLAGS} -g -fsanitize=address -fsanitize=leak")
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS} -Werror=implicit-function-declaration")
 
 if(BUILD_TESTS)
     enable_testing()

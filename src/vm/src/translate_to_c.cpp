@@ -1,4 +1,4 @@
-#include "translate_to_c.hpp"
+#include "translate_to_c.h"
 
 #include <cmath>
 #include <cstddef>
