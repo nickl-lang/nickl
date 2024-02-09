@@ -8,16 +8,16 @@
 
 static SpallProfile spall_ctx;
 static _Thread_local SpallBuffer spall_buffer;
-static _Thread_local uint32_t tid;
+static _Thread_local u32 tid;
 static _Thread_local bool is_thread_running;
 
 void nk_prof_init(char const *filename) {
-    double timestamp_unit = 1000000.0 / (double)nk_getTscFreq();
+    f64 timestamp_unit = 1000000.0 / (f64)nk_getTscFreq();
     spall_ctx = spall_init_file(filename, timestamp_unit);
 }
 
-void nk_prof_thread_init(uint32_t _tid, size_t buffer_size) {
-    uint8_t *buffer = (uint8_t *)malloc(buffer_size);
+void nk_prof_thread_init(u32 _tid, usize buffer_size) {
+    u8 *buffer = (u8 *)malloc(buffer_size);
     spall_buffer = (SpallBuffer){.data = buffer, .length = buffer_size};
 
     // removing initial page-fault bubbles to make the data a little more accurate, at the cost of thread spin-up time

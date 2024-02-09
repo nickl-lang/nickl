@@ -23,7 +23,7 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
+void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, usize depth = 1) {
     auto const _newline = [&]() {
         nksb_printf(sb, "\n%*s", (int)(depth * 2), "");
     };
@@ -34,7 +34,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
         depth += 1;
     }
 
-    for (size_t node_i = 0; node_i < nodes.size; node_i++) {
+    for (usize node_i = 0; node_i < nodes.size; node_i++) {
         auto const node = &nodes.data[node_i];
 
         if (!node) {
@@ -54,7 +54,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, size_t depth = 1) {
 
         bool print_text = true;
 
-        for (size_t arg_i = 0; arg_i < 3; arg_i++) {
+        for (usize arg_i = 0; arg_i < 3; arg_i++) {
             auto const &arg = node->args[arg_i];
             if (arg.size) {
                 print_text = false;

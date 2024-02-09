@@ -6,28 +6,28 @@
 #include "ntk/sys/thread.h"
 #include "ntk/sys/time.h"
 
-int64_t nk_getTimeNs(void) {
+i64 nk_getTimeNs(void) {
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000000000ull + ts.tv_nsec;
 }
 
-uint64_t nk_estimateTscFrequency(void) {
-    uint64_t tsc_freq = 0;
+u64 nk_estimateTscFrequency(void) {
+    u64 tsc_freq = 0;
 
     // Get time before sleep
-    uint64_t nsc_begin = 0;
+    u64 nsc_begin = 0;
     nsc_begin = nk_getTimeNs();
-    uint64_t tsc_begin = __rdtsc();
+    u64 tsc_begin = __rdtsc();
 
     // 10ms gives ~4.5 digits of precision
     // the longer you sleep, the more precise you get
     nk_usleep(10000);
 
     // Get time after sleep
-    uint64_t nsc_end = nsc_begin + 1;
+    u64 nsc_end = nsc_begin + 1;
     nsc_end = nk_getTimeNs();
-    uint64_t tsc_end = __rdtsc();
+    u64 tsc_end = __rdtsc();
 
     if (nsc_end > nsc_begin) {
         // Do the math to extrapolate the RDTSC ticks elapsed in 1 second

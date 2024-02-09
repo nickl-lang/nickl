@@ -80,14 +80,14 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
             if (!type->size) {
                 return &ffi_type_void;
             }
-            size_t elem_count = 0;
-            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+            usize elem_count = 0;
+            for (usize i = 0; i < type->as.aggr.elems.size; i++) {
                 elem_count += type->as.aggr.elems.data[i].count;
             }
             ffi_type **elems = (ffi_type **)nk_alloc_t<void *>(ctx->alloc, elem_count + 1);
-            size_t cur_elem = 0;
-            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
-                for (size_t j = 0; j < type->as.aggr.elems.data[i].count; j++) {
+            usize cur_elem = 0;
+            for (usize i = 0; i < type->as.aggr.elems.size; i++) {
+                for (usize j = 0; j < type->as.aggr.elems.data[i].count; j++) {
                     elems[cur_elem++] = getNativeHandle(ctx, type->as.aggr.elems.data[i].type);
                 }
             }
@@ -119,14 +119,14 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
 
 ffi_type **getNativeHandleArray(NkFfiContext *ctx, NkArena *stack, NkTypeArray types) {
     ffi_type **elements = nk_arena_alloc_t<ffi_type *>(stack, types.size + 1);
-    for (size_t i = 0; i < types.size; i++) {
+    for (usize i = 0; i < types.size; i++) {
         elements[i] = getNativeHandle(ctx, types.data[i]);
     }
     elements[types.size] = nullptr;
     return (ffi_type **)elements;
 }
 
-void ffiPrepareCif(ffi_cif *cif, size_t nfixedargs, bool is_variadic, ffi_type *rtype, ffi_type **atypes, size_t argc) {
+void ffiPrepareCif(ffi_cif *cif, usize nfixedargs, bool is_variadic, ffi_type *rtype, ffi_type **atypes, usize argc) {
     ffi_status status;
     if (is_variadic) {
         status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, nfixedargs, argc, rtype, atypes);

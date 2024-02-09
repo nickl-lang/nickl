@@ -14,13 +14,6 @@
 namespace {
 
 // clang-format off
-using i8  = int8_t ;
-using i16 = int16_t;
-using i32 = int32_t;
-using i64 = int64_t;
-using f32 = float  ;
-using f64 = double ;
-
 struct ivec3 { i64 data[3]; };
 struct dvec3 { f64 data[3]; };
 

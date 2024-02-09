@@ -155,7 +155,7 @@ struct GeneratorState {
     }
 
     Void parseProc(NkIrVisibility vis) {
-        size_t cur_line = m_cur_token->lin;
+        usize cur_line = m_cur_token->lin;
 
         DEFINE(sig, parseProcSignature(true));
 
@@ -179,7 +179,7 @@ struct GeneratorState {
                     .args_t{nkav_init(sig.args_t)},
                     .ret_t = sig.ret_t,
                     .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
-                    .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                    .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
                 }),
             {nkav_init(sig.arg_names)},
             m_file,
@@ -196,7 +196,7 @@ struct GeneratorState {
         };
         m_cur_proc = &decl->as.proc;
 
-        for (size_t i = 0; i < sig.args_t.size; i++) {
+        for (usize i = 0; i < sig.args_t.size; i++) {
             new (makeLocalDecl(sig.arg_names.data[i])) Decl{
                 {.arg_index = i},
                 Decl_Arg,
@@ -247,7 +247,7 @@ struct GeneratorState {
                          .args_t{nkav_init(sig.args_t)},
                          .ret_t = sig.ret_t,
                          .call_conv = NkCallConv_Cdecl,
-                         .flags = (uint8_t)(sig.is_variadic ? NkProcVariadic : 0),
+                         .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
                      }))},
             Decl_ExternProc,
         };
@@ -345,34 +345,34 @@ private:
 
         switch (value_type) {
         case Int8:
-            *(int8_t *)data = strtol(cstr, &endptr, 10);
+            *(i8 *)data = strtol(cstr, &endptr, 10);
             break;
         case Uint8:
-            *(uint8_t *)data = strtoul(cstr, &endptr, 10);
+            *(u8 *)data = strtoul(cstr, &endptr, 10);
             break;
         case Int16:
-            *(int16_t *)data = strtol(cstr, &endptr, 10);
+            *(i16 *)data = strtol(cstr, &endptr, 10);
             break;
         case Uint16:
-            *(uint16_t *)data = strtoul(cstr, &endptr, 10);
+            *(u16 *)data = strtoul(cstr, &endptr, 10);
             break;
         case Int32:
-            *(int32_t *)data = strtol(cstr, &endptr, 10);
+            *(i32 *)data = strtol(cstr, &endptr, 10);
             break;
         case Uint32:
-            *(uint32_t *)data = strtoul(cstr, &endptr, 10);
+            *(u32 *)data = strtoul(cstr, &endptr, 10);
             break;
         case Int64:
-            *(int64_t *)data = strtoll(cstr, &endptr, 10);
+            *(i64 *)data = strtoll(cstr, &endptr, 10);
             break;
         case Uint64:
-            *(uint64_t *)data = strtoull(cstr, &endptr, 10);
+            *(u64 *)data = strtoull(cstr, &endptr, 10);
             break;
         case Float32:
-            *(float *)data = strtof(cstr, &endptr);
+            *(f32 *)data = strtof(cstr, &endptr);
             break;
         case Float64:
-            *(double *)data = strtod(cstr, &endptr);
+            *(f64 *)data = strtod(cstr, &endptr);
             break;
         default:
             assert(!"unreachable");
@@ -492,7 +492,7 @@ private:
 
         else if (accept(t_brace_l)) {
             nkar_type(nktype_t) types{0, 0, 0, m_tmp_alloc};
-            nkar_type(size_t) counts{0, 0, 0, m_tmp_alloc};
+            nkar_type(usize) counts{0, 0, 0, m_tmp_alloc};
 
             do {
                 if (check(t_par_r) || check(t_eof)) {
@@ -502,7 +502,7 @@ private:
                     if (!check(t_int)) {
                         return error("integer constant expected"), nullptr;
                     }
-                    uint64_t count = 0;
+                    u64 count = 0;
                     CHECK(parseNumeric(&count, Uint64));
                     nkar_append(&counts, count);
                     EXPECT(t_bracket_r);
@@ -667,7 +667,7 @@ private:
         case NkType_Aggregate: {
             EXPECT(t_brace_l);
 
-            for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+            for (usize i = 0; i < type->as.aggr.elems.size; i++) {
                 if (i) {
                     EXPECT(t_comma);
                 }
@@ -678,7 +678,7 @@ private:
                     EXPECT(t_bracket_l);
                 }
 
-                for (size_t i = 0; i < elem.count; i++) {
+                for (usize i = 0; i < elem.count; i++) {
                     if (i) {
                         EXPECT(t_comma);
                     }
@@ -723,7 +723,7 @@ private:
 
     NkIrRef parseRef() {
         NkIrRef result_ref{};
-        uint8_t indir{};
+        u8 indir{};
 
         bool const deref = accept(t_amper);
 
@@ -787,7 +787,7 @@ private:
                 nkir_makeRodata(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
             CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Int64));
             result_ref = nkir_makeDataRef(m_ir, decl);
-        } else if (check(t_float)) {
+        } else if (check(t_f32)) {
             auto const decl =
                 nkir_makeRodata(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
             CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Float64));
@@ -805,15 +805,15 @@ private:
             return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), NkIrRef{};
         }
 
-        size_t offset = 0;
+        usize offset = 0;
 
         if (accept(t_plus)) {
-            int64_t value = 0;
+            i64 value = 0;
             CHECK(parseNumeric(&value, Int64));
             offset = value;
         }
 
-        for (uint8_t i = 0; i < indir; i++) {
+        for (u8 i = 0; i < indir; i++) {
             EXPECT(t_bracket_r);
 
             if (result_ref.type->kind != NkType_Pointer) {
@@ -823,7 +823,7 @@ private:
         }
 
         if (accept(t_plus)) {
-            int64_t value = 0;
+            i64 value = 0;
             CHECK(parseNumeric(&value, Int64));
             result_ref.post_offset += value;
 

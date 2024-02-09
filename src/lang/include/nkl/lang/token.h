@@ -12,11 +12,11 @@ extern "C" {
 typedef struct {
     nks text;
 
-    size_t pos;
-    size_t lin;
-    size_t col;
+    usize pos;
+    usize lin;
+    usize col;
 
-    size_t id;
+    usize id;
 } NklToken;
 
 typedef NklToken const *NklTokenRef;

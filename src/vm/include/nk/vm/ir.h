@@ -51,10 +51,10 @@ typedef enum {
 typedef struct {
     union {
         void *data;
-        size_t index;
+        usize index;
     };
-    size_t offset;
-    size_t post_offset;
+    usize offset;
+    usize post_offset;
     nktype_t type;
     NkIrRefType ref_type;
     bool is_indirect;
@@ -71,14 +71,14 @@ typedef enum {
 typedef struct {
     union {
         NkIrRef ref;
-        size_t id;
+        usize id;
     };
     NkIrArgType arg_type;
 } NkIrArg;
 
 typedef struct {
     NkIrArg arg[3];
-    uint16_t code;
+    u16 code;
 } NkIrInstr;
 
 DEFINE_ID_TYPE(NkIrBlockId);
@@ -126,7 +126,7 @@ NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val);
 NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nks name, nktype_t type);
 
 NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var);
-NkIrRef nkir_makeArgRef(NkIrProg p, size_t index);
+NkIrRef nkir_makeArgRef(NkIrProg p, usize index);
 NkIrRef nkir_makeRetRef(NkIrProg p);
 NkIrRef nkir_makeGlobalRef(NkIrProg p, NkIrGlobalVarId var);
 NkIrRef nkir_makeConstRef(NkIrProg p, NkIrConstId cnst);

@@ -2,8 +2,6 @@
 
 #include <unistd.h>
 
-int nk_syscalls_available = 1;
-
 nksc_t nk_syscall0(nksc_t n) {
     return syscall(n);
 }

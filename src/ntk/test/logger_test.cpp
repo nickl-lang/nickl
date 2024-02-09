@@ -90,7 +90,7 @@ TEST_F(logger, write) {
 }
 
 TEST_F(logger, complex) {
-    NK_LOG_INF("float=%lf, int=%i", 3.14, 42);
+    NK_LOG_INF("f32=%lf, int=%i", 3.14, 42);
 }
 
 TEST_F(logger, threads) {

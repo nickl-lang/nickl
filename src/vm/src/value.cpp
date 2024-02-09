@@ -14,7 +14,7 @@
 
 static nk_typeid_t s_next_id = 1;
 
-NkType nkt_get_array(nktype_t elem_type, size_t elem_count) {
+NkType nkt_get_array(nktype_t elem_type, usize elem_count) {
     return {
         .as{.arr{
             .elem_type = elem_type,
@@ -47,8 +47,8 @@ NkType nkt_get_numeric(NkNumericValueType value_type) {
         .as{.num{
             .value_type = value_type,
         }},
-        .size = (size_t)NUM_TYPE_SIZE(value_type),
-        .align = (uint8_t)NUM_TYPE_SIZE(value_type),
+        .size = (usize)NUM_TYPE_SIZE(value_type),
+        .align = (u8)NUM_TYPE_SIZE(value_type),
         .tclass = NkType_Numeric,
         .id = s_next_id++,
     };
@@ -66,14 +66,14 @@ NkType nkt_get_ptr(nktype_t target_type) {
     };
 }
 
-NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride) {
+NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, usize count, usize stride) {
     auto layout = nk_calcTupleLayout(types, count, alloc, stride);
     return NkType{
         .as{.tuple{
             .elems = layout.info_ar,
         }},
         .size = layout.size,
-        .align = (uint8_t)layout.align,
+        .align = (u8)layout.align,
         .tclass = NkType_Tuple,
         .id = s_next_id++,
     };
@@ -105,7 +105,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
         }
         nksb_printf(sb, "(");
         nktype_t const params = type->as.fn.args_t;
-        for (size_t i = 0; i < params->as.tuple.elems.size; i++) {
+        for (usize i = 0; i < params->as.tuple.elems.size; i++) {
             if (i) {
                 nksb_printf(sb, ", ");
             }
@@ -137,7 +137,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
             assert(!"unreachable");
             break;
         }
-        nksb_printf(sb, "%" PRIu64, (size_t)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
+        nksb_printf(sb, "%" PRIu64, (usize)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
         break;
     case NkType_Ptr:
         nksb_printf(sb, "*");
@@ -145,7 +145,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
         break;
     case NkType_Tuple: {
         nksb_printf(sb, "(");
-        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+        for (usize i = 0; i < type->as.tuple.elems.size; i++) {
             if (i) {
                 nksb_printf(sb, " ");
             }
@@ -165,7 +165,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
     switch (nkval_typeclassid(val)) {
     case NkType_Array:
         nksb_printf(sb, "[");
-        for (size_t i = 0; i < nkval_typeof(val)->as.arr.elem_count; i++) {
+        for (usize i = 0; i < nkval_typeof(val)->as.arr.elem_count; i++) {
             if (i) {
                 nksb_printf(sb, " ");
             }
@@ -187,34 +187,34 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
     case NkType_Numeric:
         switch (nkval_typeof(val)->as.num.value_type) {
         case Int8:
-            nksb_printf(sb, "%" PRIi8, nkval_as(int8_t, val));
+            nksb_printf(sb, "%" PRIi8, nkval_as(i8, val));
             break;
         case Uint8:
-            nksb_printf(sb, "%" PRIu8, nkval_as(uint8_t, val));
+            nksb_printf(sb, "%" PRIu8, nkval_as(u8, val));
             break;
         case Int16:
-            nksb_printf(sb, "%" PRIi16, nkval_as(int16_t, val));
+            nksb_printf(sb, "%" PRIi16, nkval_as(i16, val));
             break;
         case Uint16:
-            nksb_printf(sb, "%" PRIu16, nkval_as(uint16_t, val));
+            nksb_printf(sb, "%" PRIu16, nkval_as(u16, val));
             break;
         case Int32:
-            nksb_printf(sb, "%" PRIi32, nkval_as(int32_t, val));
+            nksb_printf(sb, "%" PRIi32, nkval_as(i32, val));
             break;
         case Uint32:
-            nksb_printf(sb, "%" PRIu32, nkval_as(uint32_t, val));
+            nksb_printf(sb, "%" PRIu32, nkval_as(u32, val));
             break;
         case Int64:
-            nksb_printf(sb, "%" PRIi64, nkval_as(int64_t, val));
+            nksb_printf(sb, "%" PRIi64, nkval_as(i64, val));
             break;
         case Uint64:
-            nksb_printf(sb, "%" PRIu64, nkval_as(uint64_t, val));
+            nksb_printf(sb, "%" PRIu64, nkval_as(u64, val));
             break;
         case Float32:
-            nksb_printf(sb, "%.*g", std::numeric_limits<float>::max_digits10, nkval_as(float, val));
+            nksb_printf(sb, "%.*g", std::numeric_limits<f32>::max_digits10, nkval_as(f32, val));
             break;
         case Float64:
-            nksb_printf(sb, "%.*g", std::numeric_limits<double>::max_digits10, nkval_as(double, val));
+            nksb_printf(sb, "%.*g", std::numeric_limits<f64>::max_digits10, nkval_as(f64, val));
             break;
         default:
             assert(!"unreachable");
@@ -225,7 +225,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
         nktype_t target_type = nkval_typeof(val)->as.ptr.target_type;
         if (target_type->tclass == NkType_Array) {
             nktype_t elem_type = target_type->as.arr.elem_type;
-            size_t elem_count = target_type->as.arr.elem_count;
+            usize elem_count = target_type->as.arr.elem_count;
             if (elem_type->tclass == NkType_Numeric) {
                 if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
                     nksb_printf(sb, "\"");
@@ -240,7 +240,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
     }
     case NkType_Tuple:
         nksb_printf(sb, "(");
-        for (size_t i = 0; i < nkval_tuple_size(val); i++) {
+        for (usize i = 0; i < nkval_tuple_size(val); i++) {
             if (i) {
                 nksb_printf(sb, " ");
             }
@@ -269,39 +269,39 @@ void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     }
 }
 
-size_t nkval_array_size(nkval_t self) {
+usize nkval_array_size(nkval_t self) {
     return nkval_typeof(self)->as.arr.elem_count;
 }
 
-nkval_t nkval_array_at(nkval_t self, size_t i) {
+nkval_t nkval_array_at(nkval_t self, usize i) {
     assert(i < nkval_array_size(self) && "array index out of range");
     auto const type = nkval_typeof(self);
     return {
-        ((uint8_t *)nkval_data(self)) + type->as.arr.elem_type->size * i,
+        ((u8 *)nkval_data(self)) + type->as.arr.elem_type->size * i,
         type->as.arr.elem_type,
     };
 }
 
-size_t nkval_tuple_size(nkval_t self) {
+usize nkval_tuple_size(nkval_t self) {
     return nkval_typeof(self)->as.tuple.elems.size;
 }
 
-nkval_t nkval_tuple_at(nkval_t self, size_t i) {
+nkval_t nkval_tuple_at(nkval_t self, usize i) {
     assert(i < nkval_tuple_size(self) && "tuple index out of range");
     auto const type = nkval_typeof(self);
     return {
-        ((uint8_t *)nkval_data(self)) + type->as.tuple.elems.data[i].offset,
+        ((u8 *)nkval_data(self)) + type->as.tuple.elems.data[i].offset,
         type->as.tuple.elems.data[i].type,
     };
 }
 
-NkTupleLayout nk_calcTupleLayout(nktype_t const *types, size_t count, NkAllocator alloc, size_t stride) {
-    size_t alignment = 0;
-    size_t offset = 0;
+NkTupleLayout nk_calcTupleLayout(nktype_t const *types, usize count, NkAllocator alloc, usize stride) {
+    usize alignment = 0;
+    usize offset = 0;
 
     NkTupleElemInfo *info_ar = (NkTupleElemInfo *)nk_alloc(alloc, sizeof(NkTupleElemInfo) * count);
 
-    for (size_t i = 0; i < count; i++) {
+    for (usize i = 0; i < count; i++) {
         nktype_t const type = types[i * stride];
 
         alignment = maxu(alignment, type->align);

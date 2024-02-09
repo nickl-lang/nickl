@@ -55,25 +55,25 @@ typedef enum {
 
 #define NKIR_NUMERIC_IS_SIGNED(VALUE_TYPE) ((NKIR_NUMERIC_TYPE_INDEX(VALUE_TYPE) & 1) == 0)
 
-#define NKIR_NUMERIC_ITERATE_INT(MACRO, ...)                \
-    MACRO(i8, Int8, int8_t __VA_OPT__(, ) __VA_ARGS__)      \
-    MACRO(u8, Uint8, uint8_t __VA_OPT__(, ) __VA_ARGS__)    \
-    MACRO(i16, Int16, int16_t __VA_OPT__(, ) __VA_ARGS__)   \
-    MACRO(u16, Uint16, uint16_t __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(i32, Int32, int32_t __VA_OPT__(, ) __VA_ARGS__)   \
-    MACRO(u32, Uint32, uint32_t __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(i64, Int64, int64_t __VA_OPT__(, ) __VA_ARGS__)   \
-    MACRO(u64, Uint64, uint64_t __VA_OPT__(, ) __VA_ARGS__)
+#define NKIR_NUMERIC_ITERATE_INT(MACRO, ...)      \
+    MACRO(i8, Int8 __VA_OPT__(, ) __VA_ARGS__)    \
+    MACRO(u8, Uint8 __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(i16, Int16 __VA_OPT__(, ) __VA_ARGS__)  \
+    MACRO(u16, Uint16 __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i32, Int32 __VA_OPT__(, ) __VA_ARGS__)  \
+    MACRO(u32, Uint32 __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i64, Int64 __VA_OPT__(, ) __VA_ARGS__)  \
+    MACRO(u64, Uint64 __VA_OPT__(, ) __VA_ARGS__)
 
 #define NKIR_NUMERIC_ITERATE(MACRO, ...)                       \
     NKIR_NUMERIC_ITERATE_INT(MACRO __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(f32, Float32, float __VA_OPT__(, ) __VA_ARGS__)      \
-    MACRO(f64, Float64, double __VA_OPT__(, ) __VA_ARGS__)
+    MACRO(f32, Float32 __VA_OPT__(, ) __VA_ARGS__)             \
+    MACRO(f64, Float64 __VA_OPT__(, ) __VA_ARGS__)
 
 typedef struct {
     nktype_t type;
-    size_t count;
-    size_t offset;
+    usize count;
+    usize offset;
 } NkIrAggregateElemInfo;
 
 typedef enum {
@@ -89,19 +89,19 @@ typedef enum {
 
 typedef struct {
     nktype_t const *data;
-    size_t size;
+    usize size;
 } NkTypeArray;
 
 typedef struct {
     NkIrAggregateElemInfo const *data;
-    size_t size;
+    usize size;
 } NkIrAggregateElemInfoArray;
 
 typedef struct {
     NkTypeArray args_t;
     nktype_t ret_t;
     NkCallConv call_conv;
-    uint8_t flags;
+    u8 flags;
 } NkIrProcInfo;
 
 typedef struct {
@@ -127,10 +127,10 @@ typedef struct NkIrType {
         NkIrPointerTypeInfo ptr;
         NkIrProcTypeInfo proc;
     } as;
-    uint64_t size;
-    uint8_t align;
+    u64 size;
+    u8 align;
     NkIrTypeKind kind;
-    uint64_t id;
+    u64 id;
 } NkIrType;
 
 void nkirt_inspect(nktype_t type, nk_stream out);
@@ -138,17 +138,17 @@ void nkirv_inspect(void *data, nktype_t type, nk_stream out);
 
 typedef struct {
     NkIrAggregateElemInfoArray info_ar;
-    size_t size;
-    size_t align;
+    usize size;
+    usize align;
 } NkIrAggregateLayout;
 
 NkIrAggregateLayout nkir_calcAggregateLayout(
     NkAllocator alloc,
     nktype_t const *elem_types,
-    size_t const *elem_counts,
-    size_t n,
-    size_t type_stride,
-    size_t count_stride);
+    usize const *elem_counts,
+    usize n,
+    usize type_stride,
+    usize count_stride);
 
 #ifdef __cplusplus
 }

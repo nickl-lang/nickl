@@ -14,7 +14,7 @@
 nkpipe_t nk_createPipe(void) {
     nkpipe_t pip = {-1, -1};
 
-    int pipefd[2];
+    i32 pipefd[2];
     if (pipe(pipefd) == 0) {
         pip.read = pipefd[0];
         pip.write = pipefd[1];
@@ -31,12 +31,12 @@ void nk_closePipe(nkpipe_t pipe) {
 #define MAX_ARGS 31
 #define CMD_BUF_SIZE 4095
 
-int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
+i32 nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
     char cmd_buf[CMD_BUF_SIZE + 1];
-    size_t cmd_buf_pos = 0;
+    usize cmd_buf_pos = 0;
 
     char *args[MAX_ARGS + 1];
-    size_t argc = 0;
+    usize argc = 0;
 
     nks cmd_str = nk_cs2s(cmd);
     for (;;) {
@@ -65,12 +65,12 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkp
     }
     args[argc++] = NULL;
 
-    int err_pipe[2];
+    i32 err_pipe[2];
     if (pipe(err_pipe) < 0) {
         return -1;
     }
 
-    int error_code = 0;
+    i32 error_code = 0;
 
     switch (*pid = fork()) {
     case -1:
@@ -130,9 +130,9 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkp
     }
 }
 
-int nk_waitpid(nkpid_t pid, int *exit_status) {
+i32 nk_waitpid(nkpid_t pid, i32 *exit_status) {
     for (;;) {
-        int wstatus = 0;
+        i32 wstatus = 0;
         if (waitpid(pid, &wstatus, 0) < 0) {
             return -1;
         }
@@ -153,4 +153,4 @@ int nk_waitpid(nkpid_t pid, int *exit_status) {
     }
 }
 
-extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, int *exit_status);
+extern inline i32 nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, i32 *exit_status);

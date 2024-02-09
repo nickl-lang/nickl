@@ -25,8 +25,8 @@ int const *int2cstr_KV_GetKey(int2cstr_KV const *elem) {
     return &elem->key;
 }
 
-uint64_t int_hash(int const key) {
-    return hash_array((uint8_t const *)&key, (uint8_t const *)&key + sizeof(key));
+u64 int_hash(int const key) {
+    return hash_array((u8 const *)&key, (u8 const *)&key + sizeof(key));
 }
 
 bool int_equal(int const lhs, int const rhs) {

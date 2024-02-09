@@ -1,12 +1,28 @@
 #ifndef HEADER_GUARD_NTK_COMMON
 #define HEADER_GUARD_NTK_COMMON
 
+#include <stdarg.h>
 #include <inttypes.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+
+typedef float f32;
+typedef double f64;
+
+typedef size_t usize;
 
 #ifdef _WIN32
 #define NK_EXPORT __declspec(dllexport)
@@ -45,7 +61,7 @@ T *_nk_assign_void_ptr(T *&dst, void *src) {
 }
 
 template <class T>
-constexpr size_t nk_alignofval(T const &) {
+constexpr usize nk_alignofval(T const &) {
     return alignof(T);
 }
 
@@ -61,7 +77,7 @@ constexpr size_t nk_alignofval(T const &) {
 
 #endif // __cplusplus
 
-typedef size_t hash_t;
+typedef usize hash_t;
 
 #define _NK_NOP (void)0
 #define _NK_NOP_TOPLEVEL extern int CAT(_, __LINE__)

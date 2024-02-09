@@ -26,7 +26,7 @@ bool nkcc_streamOpen(NkPipeStream *stream, NkIrCompilerConfig conf) {
         nks_Arg(conf.compiler_binary),
         nks_Arg(conf.output_filename));
 
-    for (size_t i = 0; i < conf.additional_flags.size; i++) {
+    for (usize i = 0; i < conf.additional_flags.size; i++) {
         nksb_printf(&cmd, " " nks_Fmt, nks_Arg(conf.additional_flags.data[i]));
     }
 

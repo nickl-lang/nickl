@@ -57,8 +57,8 @@ nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type) {
             .as{.num{
                 .value_type = value_type,
             }},
-            .size = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
-            .align = (uint8_t)NKIR_NUMERIC_TYPE_SIZE(value_type),
+            .size = (u8)NKIR_NUMERIC_TYPE_SIZE(value_type),
+            .align = (u8)NKIR_NUMERIC_TYPE_SIZE(value_type),
             .kind = kind,
             .id = c->next_id++,
         };
@@ -81,8 +81,8 @@ nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
             .as{.ptr{
                 .target_type = target_type,
             }},
-            .size = c->conf.usize,
-            .align = c->conf.usize,
+            .size = c->conf.ptr_size,
+            .align = c->conf.ptr_size,
             .kind = NkType_Pointer,
             .id = c->next_id++,
         };
@@ -98,7 +98,7 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
         nkar_free(&fp);
     };
     pushVal(fp, kind);
-    for (size_t i = 0; i < proc_info.args_t.size; i++) {
+    for (usize i = 0; i < proc_info.args_t.size; i++) {
         pushVal(fp, proc_info.args_t.data[i]->id);
     }
     pushVal(fp, proc_info.ret_t->id);
@@ -110,15 +110,15 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
             .as{.proc{
                 .info = proc_info,
             }},
-            .size = c->conf.usize,
-            .align = c->conf.usize,
+            .size = c->conf.ptr_size,
+            .align = c->conf.ptr_size,
             .kind = NkType_Procedure,
             .id = c->next_id++,
         };
     });
 }
 
-nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, size_t count) {
+nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, usize count) {
     auto const kind = NkType_Aggregate;
 
     ByteArray fp{};
@@ -127,7 +127,7 @@ nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, size_t count) {
         nkar_free(&fp);
     };
     pushVal(fp, kind);
-    pushVal(fp, size_t{1});
+    pushVal(fp, usize{1});
     pushVal(fp, elem_t->id);
     pushVal(fp, count);
 
@@ -160,7 +160,7 @@ nktype_t nkir_makeVoidType(NkIrCompiler c) {
         nkar_free(&fp);
     };
     pushVal(fp, kind);
-    pushVal(fp, size_t{});
+    pushVal(fp, usize{});
 
     return getTypeByFp(c, fp, [&]() {
         return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
@@ -173,7 +173,7 @@ nktype_t nkir_makeVoidType(NkIrCompiler c) {
     });
 }
 
-nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, size_t const *elem_counts, size_t n) {
+nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usize const *elem_counts, usize n) {
     auto const kind = NkType_Aggregate;
 
     ByteArray fp{};
@@ -183,7 +183,7 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, size
     };
     pushVal(fp, kind);
     pushVal(fp, n);
-    for (size_t i = 0; i < n; i++) {
+    for (usize i = 0; i < n; i++) {
         pushVal(fp, elem_types[i]->id);
         pushVal(fp, elem_counts[i]);
     }
@@ -197,7 +197,7 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, size
                 .elems = layout.info_ar,
             }},
             .size = layout.size,
-            .align = (uint8_t)layout.align,
+            .align = (u8)layout.align,
             .kind = NkType_Aggregate,
             .id = c->next_id++,
         };

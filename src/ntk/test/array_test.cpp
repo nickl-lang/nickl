@@ -20,7 +20,7 @@ class array : public testing::Test {
 };
 
 TEST_F(array, init) {
-    nkar_type(uint8_t) ar{};
+    nkar_type(u8) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -33,7 +33,7 @@ TEST_F(array, init) {
 }
 
 TEST_F(array, basic) {
-    nkar_type(uint16_t) ar{};
+    nkar_type(u16) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -45,7 +45,7 @@ TEST_F(array, basic) {
     EXPECT_EQ(ar.size, 3);
     EXPECT_EQ(ar.capacity, 4);
 
-    for (size_t i = 0; i < ar.size; i++) {
+    for (usize i = 0; i < ar.size; i++) {
         EXPECT_EQ(ar.data[i], i);
     }
 
@@ -56,19 +56,19 @@ TEST_F(array, basic) {
 }
 
 TEST_F(array, capacity) {
-    nkar_type(uint8_t) ar{};
+    nkar_type(u8) ar{};
     defer {
         nkar_free(&ar);
     };
 
-    for (uint8_t i = 1; i < 60; i++) {
+    for (u8 i = 1; i < 60; i++) {
         nkar_append(&ar, i);
         EXPECT_EQ(ar.capacity, ceilToPowerOf2(i));
     }
 }
 
 TEST_F(array, zero_capacity) {
-    nkar_type(uint8_t) ar{};
+    nkar_type(u8) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -87,7 +87,7 @@ TEST_F(array, zero_capacity) {
 }
 
 TEST_F(array, zero_init) {
-    nkar_type(uint8_t) ar{};
+    nkar_type(u8) ar{};
     defer {
         nkar_free(&ar);
     };
@@ -119,7 +119,7 @@ TEST_F(array, multiple_reserves) {
         nkar_free(&ar);
     };
 
-    size_t sz = 1;
+    usize sz = 1;
 
     sz *= 10;
     nkar_reserve(&ar, sz);

@@ -2,6 +2,6 @@
 
 #include <io.h>
 
-bool nk_isatty(int fd) {
+bool nk_isatty(i32 fd) {
     return _isatty(fd);
 }

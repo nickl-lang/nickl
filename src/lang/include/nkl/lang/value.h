@@ -26,12 +26,12 @@ typedef enum {
 
 typedef struct NklType const *nkltype_t;
 
-typedef uint64_t nkl_typeid_t;
-typedef uint8_t nkl_typeclassid_t;
+typedef u64 nkl_typeid_t;
+typedef u8 nkl_typeclassid_t;
 
 typedef struct {
     nkltype_t elem_type;
-    size_t elem_count;
+    usize elem_count;
 } _nkl_type_array;
 
 typedef struct {
@@ -54,12 +54,12 @@ typedef struct {
 
 typedef struct {
     nkltype_t type;
-    size_t offset;
+    usize offset;
 } NklTupleElemInfo;
 
 typedef struct {
     NklTupleElemInfo *data;
-    size_t size;
+    usize size;
 } NklTupleElemInfoArray;
 
 typedef struct {
@@ -78,7 +78,7 @@ typedef struct {
 
 typedef struct {
     NklField const *data;
-    size_t size;
+    usize size;
 } NklFieldArray;
 
 typedef struct {
@@ -108,16 +108,16 @@ typedef struct {
 
 typedef struct {
     nkltype_t const *data;
-    size_t size;
+    usize size;
 } NklTypeArray;
 
 void nkl_types_clean();
 
-nkltype_t nkl_get_array(nkltype_t elem_type, size_t elem_count);
+nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count);
 nkltype_t nkl_get_fn(NkltFnInfo info);
 nkltype_t nkl_get_numeric(NkNumericValueType value_type);
 nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const = false);
-nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride);
+nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, usize stride);
 nkltype_t nkl_get_void();
 
 nkltype_t nkl_get_typeref();
@@ -130,15 +130,15 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields);
 void nklt_inspect(nkltype_t type, NkStringBuilder *sb);
 void nklval_inspect(nklval_t val, NkStringBuilder *sb);
 
-size_t nklt_struct_index(nkltype_t type, nkid name);
+usize nklt_struct_index(nkltype_t type, nkid name);
 
 void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args);
 
-size_t nklval_array_size(nklval_t self);
-nklval_t nklval_array_at(nklval_t self, size_t i);
+usize nklval_array_size(nklval_t self);
+nklval_t nklval_array_at(nklval_t self, usize i);
 
-size_t nklval_tuple_size(nklval_t self);
-nklval_t nklval_tuple_at(nklval_t self, size_t i);
+usize nklval_tuple_size(nklval_t self);
+nklval_t nklval_tuple_at(nklval_t self, usize i);
 
 nklval_t nklval_struct_at(nklval_t val, nkid name);
 
@@ -196,11 +196,11 @@ inline NkltFnInfo fromvmf(NktFnInfo info) {
     };
 }
 
-inline size_t nklt_sizeof(nkltype_t type) {
+inline usize nklt_sizeof(nkltype_t type) {
     return nkt_sizeof(tovmt(type));
 }
 
-inline size_t nklt_alignof(nkltype_t type) {
+inline usize nklt_alignof(nkltype_t type) {
     return nkt_alignof(tovmt(type));
 }
 
@@ -212,11 +212,11 @@ inline nkl_typeclassid_t nklval_tclass(nklval_t val) {
     return nklt_tclass(nklval_typeof(val));
 }
 
-inline size_t nklval_sizeof(nklval_t val) {
+inline usize nklval_sizeof(nklval_t val) {
     return nklt_sizeof(nklval_typeof(val));
 }
 
-inline size_t nklval_alignof(nklval_t val) {
+inline usize nklval_alignof(nklval_t val) {
     return nklt_alignof(nklval_typeof(val));
 }
 

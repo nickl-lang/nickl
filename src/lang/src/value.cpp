@@ -17,7 +17,7 @@
 #include "ntk/utils.h"
 
 // TODO @Optimization A bit excessive approach with type fingerprints
-using ByteArray = std::vector<uint8_t>;
+using ByteArray = std::vector<u8>;
 
 namespace {
 
@@ -54,10 +54,10 @@ nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
 
 template <class T>
 void pushVal(ByteArray &ar, T v) {
-    ar.insert(ar.end(), (uint8_t *)&v, (uint8_t *)&v + sizeof(v));
+    ar.insert(ar.end(), (u8 *)&v, (u8 *)&v + sizeof(v));
 }
 
-nktype_t nkl_get_vm_array(nktype_t elem_type, size_t elem_count) {
+nktype_t nkl_get_vm_array(nktype_t elem_type, usize elem_count) {
     auto const tclass = NkType_Array;
 
     ByteArray fp{};
@@ -118,14 +118,14 @@ nktype_t nkl_get_vm_ptr(nktype_t target_type) {
     });
 }
 
-nktype_t nkl_get_vm_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride) {
+nktype_t nkl_get_vm_tuple(NkAllocator alloc, nktype_t const *types, usize count, usize stride) {
     auto const tclass = NkType_Tuple;
 
     ByteArray fp{};
     pushVal(fp, NkTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, count);
-    for (size_t i = 0; i < count; i++) {
+    for (usize i = 0; i < count; i++) {
         pushVal(fp, nkt_typeid(types[i * stride]));
     }
 
@@ -140,7 +140,7 @@ nktype_t nkl_get_vm_void() {
     ByteArray fp{};
     pushVal(fp, NkTypeSubset);
     pushVal(fp, tclass);
-    pushVal(fp, (size_t)0);
+    pushVal(fp, (usize)0);
 
     return getTypeByFingerprint(std::move(fp), [=]() {
         return &s_vm_types.emplace_back(nkt_get_void());
@@ -159,7 +159,7 @@ void nkl_types_clean() {
     s_typemap.clear();
 }
 
-nkltype_t nkl_get_array(nkltype_t elem_type, size_t elem_count) {
+nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count) {
     auto const tclass = NkType_Array;
 
     ByteArray fp{};
@@ -249,14 +249,14 @@ nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const) {
     });
 }
 
-nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, size_t stride) {
+nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, usize stride) {
     auto const tclass = NkType_Tuple;
 
     ByteArray fp{};
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, types.size);
-    for (size_t i = 0; i < types.size; i++) {
+    for (usize i = 0; i < types.size; i++) {
         pushVal(fp, nklt_typeid(types.data[i * stride]));
     }
 
@@ -282,7 +282,7 @@ nkltype_t nkl_get_void() {
     ByteArray fp{};
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
-    pushVal(fp, (size_t)0);
+    pushVal(fp, (usize)0);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         return &s_types.emplace_back(NklType{
@@ -387,7 +387,7 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields) {
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, fields.size);
-    for (size_t i = 0; i < fields.size; i++) {
+    for (usize i = 0; i < fields.size; i++) {
         pushVal(fp, fields.data[i].name);
         pushVal(fp, nklt_typeid(fields.data[i].type));
     }
@@ -419,7 +419,7 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, fields.size);
-    for (size_t i = 0; i < fields.size; i++) {
+    for (usize i = 0; i < fields.size; i++) {
         pushVal(fp, fields.data[i].name);
         pushVal(fp, nklt_typeid(fields.data[i].type));
     }
@@ -428,8 +428,8 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
         auto fields_data = (NklField *)nk_alloc(alloc, fields.size * sizeof(NklField));
         std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
         nkltype_t largest_type = nkl_get_void();
-        uint8_t max_align = 0;
-        for (size_t i = 0; i < fields.size; i++) {
+        u8 max_align = 0;
+        for (usize i = 0; i < fields.size; i++) {
             auto const type = fields.data[i].type;
             if (nklt_sizeof(type) > nklt_sizeof(largest_type)) {
                 largest_type = type;
@@ -459,7 +459,7 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields) {
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, fields.size);
-    for (size_t i = 0; i < fields.size; i++) {
+    for (usize i = 0; i < fields.size; i++) {
         pushVal(fp, fields.data[i].name);
         pushVal(fp, nklt_typeid(fields.data[i].type));
     }
@@ -539,8 +539,8 @@ void nklval_inspect(nklval_t val, NkStringBuilder *sb) {
     }
 }
 
-size_t nklt_struct_index(nkltype_t type, nkid name) {
-    for (size_t i = 0; i < type->as.strct.fields.size; i++) {
+usize nklt_struct_index(nkltype_t type, nkid name) {
+    for (usize i = 0; i < type->as.strct.fields.size; i++) {
         if (name == type->as.strct.fields.data[i].name) {
             return i;
         }
@@ -552,19 +552,19 @@ void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args) {
     return nkval_fn_invoke(tovmv(fn), tovmv(ret), tovmv(args));
 }
 
-size_t nklval_array_size(nklval_t self) {
+usize nklval_array_size(nklval_t self) {
     return nkval_array_size(tovmv(self));
 }
 
-nklval_t nklval_array_at(nklval_t self, size_t i) {
+nklval_t nklval_array_at(nklval_t self, usize i) {
     return fromvmv(nkval_array_at(tovmv(self), i));
 }
 
-size_t nklval_tuple_size(nklval_t self) {
+usize nklval_tuple_size(nklval_t self) {
     return nkval_tuple_size(tovmv(self));
 }
 
-nklval_t nklval_tuple_at(nklval_t self, size_t i) {
+nklval_t nklval_tuple_at(nklval_t self, usize i) {
     return fromvmv(nkval_tuple_at(tovmv(self), i));
 }
 

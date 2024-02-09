@@ -19,42 +19,42 @@ namespace {
 NK_LOG_USE_SCOPE(interp);
 
 struct ProgramFrame {
-    uint8_t *base_reg;
+    u8 *base_reg;
     NkBcInstr const *pinstr;
 };
 
 struct ControlFrame {
     NkArenaFrame stack_frame;
-    uint8_t *base_frame;
-    uint8_t *base_arg;
-    uint8_t *base_ret;
-    uint8_t *base_instr;
+    u8 *base_frame;
+    u8 *base_arg;
+    u8 *base_ret;
+    u8 *base_instr;
     NkBcInstr const *pinstr;
 };
 
 struct InterpContext {
     struct Registers { // repeats the layout of NkIrRegister
-        uint64_t a;
-        uint64_t b;
-        uint64_t c;
-        uint64_t d;
-        uint64_t e;
-        uint64_t f;
+        u64 a;
+        u64 b;
+        u64 c;
+        u64 d;
+        u64 e;
+        u64 f;
     };
 
     struct Base { // repeats the layout of NkBcRefType
-        uint8_t *none;
-        uint8_t *frame;
-        uint8_t *arg;
-        uint8_t *ret;
-        uint8_t *reg;
-        uint8_t *rodata;
-        uint8_t *data;
-        uint8_t *instr;
+        u8 *none;
+        u8 *frame;
+        u8 *arg;
+        u8 *ret;
+        u8 *reg;
+        u8 *rodata;
+        u8 *data;
+        u8 *instr;
     };
 
     union {
-        uint8_t *base_ar[NkBcRef_Count];
+        u8 *base_ar[NkBcRef_Count];
         Base base;
     };
     NkArena stack;
@@ -79,13 +79,13 @@ template <class T>
 T &_getRef(NkBcRef const &ref) {
     auto ptr = ctx.base_ar[ref.ref_type] + ref.offset;
     if (ref.is_indirect) {
-        ptr = *(uint8_t **)ptr;
+        ptr = *(u8 **)ptr;
     }
     return *(T *)(ptr + ref.post_offset);
 }
 
 nkval_t _getValRef(NkBcRef const &ref) {
-    return {&_getRef<uint8_t>(ref), ref.type};
+    return {&_getRef<u8>(ref), ref.type};
 }
 
 void _jumpTo(NkBcInstr const *pinstr) {
@@ -108,11 +108,11 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
     });
 
     ctx.stack_frame = nk_arena_grab(&ctx.stack);
-    ctx.base.frame = (uint8_t *)nk_arena_allocAligned(&ctx.stack, fn->frame_size, alignof(max_align_t));
+    ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, fn->frame_size, alignof(max_align_t));
     std::memset(ctx.base.frame, 0, fn->frame_size);
-    ctx.base.arg = (uint8_t *)nkval_data(args);
-    ctx.base.ret = (uint8_t *)nkval_data(ret);
-    ctx.base.instr = (uint8_t *)fn->instrs;
+    ctx.base.arg = (u8 *)nkval_data(args);
+    ctx.base.ret = (u8 *)nkval_data(ret);
+    ctx.base.instr = (u8 *)fn->instrs;
 
     _jumpTo(fn->instrs);
 
@@ -168,81 +168,81 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_jmpz_8: {
-        if (!_getRef<uint8_t>(instr.arg[1])) {
+        if (!_getRef<u8>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_16: {
-        if (!_getRef<uint16_t>(instr.arg[1])) {
+        if (!_getRef<u16>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_32: {
-        if (!_getRef<uint32_t>(instr.arg[1])) {
+        if (!_getRef<u32>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_64: {
-        if (!_getRef<uint64_t>(instr.arg[1])) {
+        if (!_getRef<u64>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_8: {
-        if (_getRef<uint8_t>(instr.arg[1])) {
+        if (_getRef<u8>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_16: {
-        if (_getRef<uint16_t>(instr.arg[1])) {
+        if (_getRef<u16>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_32: {
-        if (_getRef<uint32_t>(instr.arg[1])) {
+        if (_getRef<u32>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_64: {
-        if (_getRef<uint64_t>(instr.arg[1])) {
+        if (_getRef<u64>(instr.arg[1])) {
             _jumpTo(instr.arg[2]);
         }
         break;
     }
 
-#define _CAST(FROM_NAME, FROM_VALUE_TYPE, FROM_CTYPE, TO_NAME, TO_CTYPE)               \
-    case CAT(CAT(CAT(nkop_cast_, FROM_NAME), _to_), TO_NAME): {                        \
-        _getRef<TO_CTYPE>(instr.arg[0]) = (TO_CTYPE)_getRef<FROM_CTYPE>(instr.arg[2]); \
-        break;                                                                         \
+#define _CAST(FROM_TYPE, FROM_VALUE_TYPE, TO_TYPE)                                  \
+    case CAT(CAT(CAT(nkop_cast_, FROM_TYPE), _to_), TO_TYPE): {                     \
+        _getRef<TO_TYPE>(instr.arg[0]) = (TO_TYPE)_getRef<FROM_TYPE>(instr.arg[2]); \
+        break;                                                                      \
     }
 
-#define CAST(TO_NAME, TO_CTYPE) NUMERIC_ITERATE(_CAST, TO_NAME, TO_CTYPE)
+#define CAST(TO_TYPE) NUMERIC_ITERATE(_CAST, TO_TYPE)
 
         // TODO Figure out a way to compress CAST with NUMERIC_ITERATE
 
-        CAST(i8, int8_t)
-        CAST(u8, uint8_t)
-        CAST(i16, int16_t)
-        CAST(u16, uint16_t)
-        CAST(i32, int32_t)
-        CAST(u32, uint32_t)
-        CAST(i64, int64_t)
-        CAST(u64, uint64_t)
-        CAST(f32, float)
-        CAST(f64, double)
+        CAST(i8)
+        CAST(u8)
+        CAST(i16)
+        CAST(u16)
+        CAST(i32)
+        CAST(u32)
+        CAST(i64)
+        CAST(u64)
+        CAST(f32)
+        CAST(f64)
 
 #undef CAST
 #undef _CAST
@@ -276,34 +276,34 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_mov_8: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint8_t>(instr.arg[1]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_16: {
-        _getRef<uint16_t>(instr.arg[0]) = _getRef<uint16_t>(instr.arg[1]);
+        _getRef<u16>(instr.arg[0]) = _getRef<u16>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_32: {
-        _getRef<uint32_t>(instr.arg[0]) = _getRef<uint32_t>(instr.arg[1]);
+        _getRef<u32>(instr.arg[0]) = _getRef<u32>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_64: {
-        _getRef<uint64_t>(instr.arg[0]) = _getRef<uint64_t>(instr.arg[1]);
+        _getRef<u64>(instr.arg[0]) = _getRef<u64>(instr.arg[1]);
         break;
     }
 
     case nkop_lea: {
-        _getRef<void *>(instr.arg[0]) = &_getRef<uint8_t>(instr.arg[1]);
+        _getRef<void *>(instr.arg[0]) = &_getRef<u8>(instr.arg[1]);
         break;
     }
 
-#define NUM_UN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                  \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                          \
-        _getRef<CTYPE>(instr.arg[0]) = OP _getRef<CTYPE>(instr.arg[1]); \
-        break;                                                          \
+#define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                      \
+    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                       \
+        _getRef<TYPE>(instr.arg[0]) = OP _getRef<TYPE>(instr.arg[1]); \
+        break;                                                        \
     }
 
 #define NUM_UN_OP(NAME, OP) NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
@@ -325,27 +325,27 @@ void interp(NkBcInstr const &instr) {
         assert(nkval_sizeof(dst) == 1);
         assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
-        _getRef<uint8_t>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
+        _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
         break;
     }
 
     case nkop_eq_8: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint8_t>(instr.arg[1]) == _getRef<uint8_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]) == _getRef<u8>(instr.arg[2]);
         break;
     }
 
     case nkop_eq_16: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint16_t>(instr.arg[1]) == _getRef<uint16_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u16>(instr.arg[1]) == _getRef<u16>(instr.arg[2]);
         break;
     }
 
     case nkop_eq_32: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint32_t>(instr.arg[1]) == _getRef<uint32_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u32>(instr.arg[1]) == _getRef<u32>(instr.arg[2]);
         break;
     }
 
     case nkop_eq_64: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint64_t>(instr.arg[1]) == _getRef<uint64_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u64>(instr.arg[1]) == _getRef<u64>(instr.arg[2]);
         break;
     }
 
@@ -357,40 +357,40 @@ void interp(NkBcInstr const &instr) {
         assert(nkval_sizeof(dst) == 1);
         assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
-        _getRef<uint8_t>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
+        _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
         break;
     }
 
     case nkop_ne_8: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint8_t>(instr.arg[1]) != _getRef<uint8_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]) != _getRef<u8>(instr.arg[2]);
         break;
     }
 
     case nkop_ne_16: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint16_t>(instr.arg[1]) != _getRef<uint16_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u16>(instr.arg[1]) != _getRef<u16>(instr.arg[2]);
         break;
     }
 
     case nkop_ne_32: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint32_t>(instr.arg[1]) != _getRef<uint32_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u32>(instr.arg[1]) != _getRef<u32>(instr.arg[2]);
         break;
     }
 
     case nkop_ne_64: {
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<uint64_t>(instr.arg[1]) != _getRef<uint64_t>(instr.arg[2]);
+        _getRef<u8>(instr.arg[0]) = _getRef<u64>(instr.arg[1]) != _getRef<u64>(instr.arg[2]);
         break;
     }
 
-#define NUM_BIN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                              \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                       \
-        _getRef<CTYPE>(instr.arg[0]) = _getRef<CTYPE>(instr.arg[1]) OP _getRef<CTYPE>(instr.arg[2]); \
-        break;                                                                                       \
+#define NUM_BIN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                                 \
+    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                                   \
+        _getRef<TYPE>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
+        break;                                                                                    \
     }
 
-#define NUM_BIN_BOOL_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                           \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                         \
-        _getRef<uint8_t>(instr.arg[0]) = _getRef<CTYPE>(instr.arg[1]) OP _getRef<CTYPE>(instr.arg[2]); \
-        break;                                                                                         \
+#define NUM_BIN_BOOL_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                          \
+    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                                 \
+        _getRef<u8>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
+        break;                                                                                  \
     }
 
 #define NUM_BIN_OP(NAME, OP) NUMERIC_ITERATE(NUM_BIN_OP_IT, NAME, OP)
@@ -449,7 +449,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         .pinstr = ctx.pinstr,
     };
 
-    ctx.base.reg = (uint8_t *)&ctx.reg;
+    ctx.base.reg = (u8 *)&ctx.reg;
     ctx.pinstr = nullptr;
 
     NK_LOG_DBG("instr=%p", (void *)ctx.base.instr);

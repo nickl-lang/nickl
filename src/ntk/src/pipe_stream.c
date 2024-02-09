@@ -95,11 +95,11 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, nks cmd, bool quiet) {
     return true;
 }
 
-int nk_pipe_streamClose(NkPipeStream *pipe_stream) {
+i32 nk_pipe_streamClose(NkPipeStream *pipe_stream) {
     ProfBeginFunc();
     NK_LOG_TRC("%s", __func__);
 
-    int ret = 1;
+    i32 ret = 1;
     nk_close(pipe_stream->fd);
     if (pipe_stream->pid > 0) {
         nk_waitpid(pipe_stream->pid, &ret);

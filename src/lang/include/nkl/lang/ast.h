@@ -17,7 +17,7 @@ typedef struct NklAstNode_T const *NklAstNode;
 
 typedef struct {
     NklAstNode data;
-    size_t size;
+    usize size;
 } NklAstNodeArray;
 
 struct NklAstNode_T {

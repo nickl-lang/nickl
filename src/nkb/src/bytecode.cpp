@@ -38,7 +38,7 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
             nk_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
         }
-        for (size_t i = 0; i < ref.indir; i++) {
+        for (usize i = 0; i < ref.indir; i++) {
             nk_printf(out, "[");
         }
         switch (ref.kind) {
@@ -67,7 +67,7 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         if (ref.kind != NkBcRef_Data || !expand_values) {
             nk_printf(out, "+%zx", ref.offset);
         }
-        for (size_t i = 0; i < ref.indir; i++) {
+        for (usize i = 0; i < ref.indir; i++) {
             nk_printf(out, "]");
         }
         if (ref.post_offset) {
@@ -88,7 +88,7 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
 
         case NkBcArg_RefArray:
             nk_printf(out, "(");
-            for (size_t i = 0; i < arg.refs.size; i++) {
+            for (usize i = 0; i < arg.refs.size; i++) {
                 if (i) {
                     nk_printf(out, ", ");
                 }
@@ -106,7 +106,7 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         nk_printf(out, "%5zu", (&instr - instrs.data));
         nk_printf(out, "%13s", nkbcOpcodeName(instr.code));
 
-        for (size_t i = 1; i < 3; i++) {
+        for (usize i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
                 nk_printf(out, ((i > 1) ? ", " : " "));
                 inspect_arg(instr.arg[i], true);
@@ -243,23 +243,23 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     };
 
     struct Reloc {
-        size_t instr_index;
-        size_t arg_index;
-        size_t ref_index;
-        size_t target_id;
+        usize instr_index;
+        usize arg_index;
+        usize ref_index;
+        usize target_id;
         ERelocType reloc_type;
         NkIrProcInfo const *proc_info{};
     };
 
     struct BlockInfo {
-        size_t first_instr;
+        usize first_instr;
     };
 
     nkar_type(BlockInfo) block_info{0, 0, 0, tmp_alloc};
     nkar_type(Reloc) relocs{0, 0, 0, tmp_alloc};
     nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
-    auto const get_data_addr = [&](size_t index) {
+    auto const get_data_addr = [&](usize index) {
         ProfScope(nk_cs2s("get_data_addr"));
         while (index >= ctx->data.size) {
             nkar_append(&ctx->data, nullptr);
@@ -282,7 +282,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     };
 
     auto const translate_ref =
-        [&](size_t instr_index, size_t arg_index, size_t ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
+        [&](usize instr_index, usize arg_index, usize ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
             ProfScope(nk_cs2s("translate_ref"));
             ref = {
                 .offset = ir_ref.offset,
@@ -304,7 +304,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 ref.indir++;
                 break;
             case NkIrRef_Data: {
-                ref.offset += (size_t)get_data_addr(ir_ref.index);
+                ref.offset += (usize)get_data_addr(ir_ref.index);
                 break;
             }
             case NkIrRef_Proc: {
@@ -342,7 +342,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
 
                 ref.kind = NkBcRef_Data;
-                ref.offset += (size_t)sym;
+                ref.offset += (usize)sym;
                 break;
             }
             case NkIrRef_ExternProc: {
@@ -356,7 +356,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 *sym_addr = sym;
 
                 ref.kind = NkBcRef_Data;
-                ref.offset += (size_t)sym_addr;
+                ref.offset += (usize)sym_addr;
                 break;
             }
             case NkIrRef_Address: {
@@ -365,7 +365,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 *ref_addr = get_data_addr(target_ref.index);
 
                 ref.kind = NkBcRef_Data;
-                ref.offset += (size_t)ref_addr;
+                ref.offset += (usize)ref_addr;
                 break;
             }
             default:
@@ -377,7 +377,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             return true;
         };
 
-    auto const translate_arg = [&](size_t instr_index, size_t arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
+    auto const translate_arg = [&](usize instr_index, usize arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
         ProfScope(nk_cs2s("translate_arg"));
         switch (ir_arg.kind) {
         case NkIrArg_None: {
@@ -396,7 +396,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         case NkIrArg_RefArray: {
             arg.kind = NkBcArg_RefArray;
             auto refs = nk_alloc_t<NkBcRef>(ir.alloc, ir_arg.refs.size);
-            for (size_t i = 0; i < ir_arg.refs.size; i++) {
+            for (usize i = 0; i < ir_arg.refs.size; i++) {
                 if (!translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i])) {
                     return false;
                 }
@@ -439,7 +439,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         for (auto const &ir_instr_id : nk_iterate(block.instrs)) {
             auto const &ir_instr = ir.instrs.data[ir_instr_id];
 
-            uint16_t code = s_ir2opcode[ir_instr.code];
+            u16 code = s_ir2opcode[ir_instr.code];
 
             auto const &arg0 = ir_instr.arg[0];
             auto const &arg1 = ir_instr.arg[1];
@@ -548,7 +548,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             nkar_append(&bc_proc.instrs, NkBcInstr{});
             auto &instr = nkav_last(bc_proc.instrs);
             instr.code = code;
-            for (size_t ai = 0; ai < 3; ai++) {
+            for (usize ai = 0; ai < 3; ai++) {
                 if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
                     return false;
                 }
@@ -574,7 +574,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         case Reloc_Proc: {
             auto sym_addr = nk_alloc_t<void *>(ir.alloc);
             *sym_addr = ctx->procs.data[reloc.target_id];
-            ref.offset = (size_t)sym_addr;
+            ref.offset = (usize)sym_addr;
             break;
         }
         case Reloc_Closure: {
@@ -588,7 +588,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 .retv{},
                 .rett = reloc.proc_info->ret_t,
             };
-            ref.offset = (size_t)nk_native_makeClosure(&ctx->ffi_ctx, ctx->tmp_arena, ir.alloc, &call_data);
+            ref.offset = (usize)nk_native_makeClosure(&ctx->ffi_ctx, ctx->tmp_arena, ir.alloc, &call_data);
             break;
         }
         }
@@ -606,7 +606,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
 } // namespace
 
-char const *nkbcOpcodeName(uint16_t code) {
+char const *nkbcOpcodeName(u16 code) {
     switch (code) {
 #define OP(NAME)           \
     case CAT(nkop_, NAME): \

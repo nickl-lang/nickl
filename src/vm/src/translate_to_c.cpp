@@ -35,7 +35,7 @@ struct nkval_equal_to {
 
 struct nkval_hash {
     hash_t operator()(nkval_t key) const noexcept {
-        return hash_array((uint8_t *)&key, (uint8_t *)&key + sizeof(key));
+        return hash_array((u8 *)&key, (u8 *)&key + sizeof(key));
     }
 };
 
@@ -50,16 +50,16 @@ struct WriterCtx {
     NkArena arena{};
 
     std::unordered_map<nktype_t, std::string> type_map{};
-    size_t typedecl_count{};
+    usize typedecl_count{};
 
     std::unordered_map<nkval_t, std::string, nkval_hash, nkval_equal_to> const_map{};
-    size_t const_count{};
+    usize const_count{};
 
     std::set<NkIrFunct> translated{};
     std::stack<NkIrFunct> to_translate{};
 
-    std::set<size_t> ext_syms_forward_declared{};
-    std::set<size_t> globals_forward_declared{};
+    std::set<usize> ext_syms_forward_declared{};
+    std::set<usize> globals_forward_declared{};
 };
 
 void _writePreabmle(std::ostream &src) {
@@ -135,7 +135,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src, bool allow_voi
     case NkType_Tuple: {
         is_complex = true;
         tmp_s << "struct {\n";
-        for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+        for (usize i = 0; i < type->as.tuple.elems.size; i++) {
             tmp_s << "  ";
             _writeType(ctx, type->as.tuple.elems.data[i].type, tmp_s);
             tmp_s << " _" << i << ";\n";
@@ -158,7 +158,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src, bool allow_voi
         _writeType(ctx, ret_t, tmp_s, true);
         tmp_s << " (*";
         tmp_s_suf << ")(";
-        for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+        for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
             if (i) {
                 tmp_s_suf << ", ";
             }
@@ -201,32 +201,32 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         auto value_type = nkval_typeof(val)->as.num.value_type;
         switch (value_type) {
         case Int8:
-            tmp_s << (int)nkval_as(int8_t, val);
+            tmp_s << (int)nkval_as(i8, val);
             break;
         case Uint8:
-            tmp_s << (unsigned)nkval_as(uint8_t, val);
+            tmp_s << (unsigned)nkval_as(u8, val);
             break;
         case Int16:
-            tmp_s << nkval_as(int16_t, val);
+            tmp_s << nkval_as(i16, val);
             break;
         case Uint16:
-            tmp_s << nkval_as(uint16_t, val);
+            tmp_s << nkval_as(u16, val);
             break;
         case Int32:
-            tmp_s << nkval_as(int32_t, val);
+            tmp_s << nkval_as(i32, val);
             break;
         case Uint32:
-            tmp_s << nkval_as(uint32_t, val);
+            tmp_s << nkval_as(u32, val);
             break;
         case Int64:
-            tmp_s << nkval_as(int64_t, val);
+            tmp_s << nkval_as(i64, val);
             break;
         case Uint64:
-            tmp_s << nkval_as(uint64_t, val);
+            tmp_s << nkval_as(u64, val);
             break;
         case Float32: {
-            tmp_s << std::setprecision(std::numeric_limits<float>::max_digits10);
-            auto f_val = nkval_as(float, val);
+            tmp_s << std::setprecision(std::numeric_limits<f32>::max_digits10);
+            auto f_val = nkval_as(f32, val);
             tmp_s << f_val;
             if (f_val == std::round(f_val)) {
                 tmp_s << ".";
@@ -235,8 +235,8 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
             break;
         }
         case Float64: {
-            tmp_s << std::setprecision(std::numeric_limits<double>::max_digits10);
-            auto f_val = nkval_as(double, val);
+            tmp_s << std::setprecision(std::numeric_limits<f64>::max_digits10);
+            auto f_val = nkval_as(f64, val);
             tmp_s << f_val;
             if (f_val == std::round(f_val)) {
                 tmp_s << ".";
@@ -271,7 +271,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
     case NkType_Tuple: {
         is_complex = true;
         tmp_s << "{ ";
-        for (size_t i = 0; i < nkval_tuple_size(val); i++) {
+        for (usize i = 0; i < nkval_tuple_size(val); i++) {
             _writeConst(ctx, nkval_tuple_at(val, i), tmp_s);
             tmp_s << ", ";
         }
@@ -281,7 +281,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
     case NkType_Array: {
         is_complex = true;
         tmp_s << "{ ";
-        for (size_t i = 0; i < nkval_array_size(val); i++) {
+        for (usize i = 0; i < nkval_array_size(val); i++) {
             _writeConst(ctx, nkval_array_at(val, i), tmp_s);
             tmp_s << ", ";
         }
@@ -341,7 +341,7 @@ void _writeFnSig(
     _writeType(ctx, ret_t, src, true);
     src << " " << name << "(";
 
-    for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+    for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
         if (i) {
             src << ", ";
         }
@@ -390,7 +390,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
     _writeType(ctx, &reg_t, src);
     src << " reg={0};\n";
 
-    for (size_t i = 0; auto type : fn->locals) {
+    for (usize i = 0; auto type : fn->locals) {
         _writeType(ctx, type, src);
         src << " var" << i++ << "={";
         if (type->size) {
@@ -542,7 +542,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << "(";
                 if (instr.arg[2].ref.ref_type != NkIrRef_None) {
                     auto args_t = instr.arg[2].ref.type;
-                    for (size_t i = 0; i < args_t->as.tuple.elems.size; i++) {
+                    for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
                         if (i) {
                             src << ", ";
                         }

@@ -1,9 +1,6 @@
 #ifndef HEADER_GUARD_NTK_SYS_PROCESS
 #define HEADER_GUARD_NTK_SYS_PROCESS
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "ntk/common.h"
 #include "ntk/sys/file.h"
 
@@ -21,12 +18,12 @@ typedef struct {
 nkpipe_t nk_createPipe(void);
 void nk_closePipe(nkpipe_t pipe);
 
-int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err);
-int nk_waitpid(nkpid_t pid, int *exit_status);
+i32 nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err);
+i32 nk_waitpid(nkpid_t pid, i32 *exit_status);
 
-NK_INLINE int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, int *exit_status) {
+NK_INLINE i32 nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, i32 *exit_status) {
     nkpid_t pid = 0;
-    int res = nk_execAsync(cmd, &pid, in, out, err);
+    i32 res = nk_execAsync(cmd, &pid, in, out, err);
     if (pid > 0) {
         nk_waitpid(pid, exit_status);
     }

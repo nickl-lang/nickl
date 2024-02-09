@@ -20,9 +20,9 @@ void nkl_diag_init(NklColorPolicy color_policy);
 
 typedef struct {
     nks file;
-    size_t lin;
-    size_t col;
-    size_t len;
+    usize lin;
+    usize col;
+    usize len;
 } NklSourceLocation;
 
 NK_PRINTF_LIKE(1, 2) void nkl_diag_printError(char const *fmt, ...);

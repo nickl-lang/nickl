@@ -39,7 +39,7 @@ struct ParseEngine {
     nks m_error_msg{};
     bool m_error_occurred{};
 
-    uint32_t m_cur_token_idx{};
+    u32 m_cur_token_idx{};
 
     Void parse() {
         assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");

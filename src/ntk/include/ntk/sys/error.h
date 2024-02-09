@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-typedef uint32_t nkerr_t;
+typedef u32 nkerr_t;
 
 nkerr_t nk_getLastError(void);
 void nk_setLastError(nkerr_t err);

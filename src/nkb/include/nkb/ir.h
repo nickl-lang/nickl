@@ -22,7 +22,7 @@ typedef enum {
     NkIrOpcode_Count,
 } NkIrOpcode;
 
-char const *nkirOpcodeName(uint8_t code);
+char const *nkirOpcodeName(u8 code);
 
 typedef enum {
     NkIrRef_None = 0,
@@ -38,17 +38,17 @@ typedef enum {
 } NkIrRefKind;
 
 typedef struct {
-    size_t index;
-    size_t offset;
-    size_t post_offset;
+    usize index;
+    usize offset;
+    usize post_offset;
     nktype_t type;
     NkIrRefKind kind;
-    uint8_t indir;
+    u8 indir;
 } NkIrRef;
 
 typedef struct {
     NkIrRef const *data;
-    size_t size;
+    usize size;
 } NkIrRefArray;
 
 typedef enum {
@@ -72,7 +72,7 @@ typedef struct {
     union {
         NkIrRef ref;
         NkIrRefArray refs;
-        size_t id;
+        usize id;
         nks comment;
     };
     NkIrArgKind kind;
@@ -80,13 +80,13 @@ typedef struct {
 
 typedef struct {
     NkIrArg arg[3];
-    size_t line;
-    uint8_t code;
+    usize line;
+    u8 code;
 } NkIrInstr;
 
 #define DEFINE_IDX_TYPE(NAME) \
     typedef struct {          \
-        size_t idx;           \
+        usize idx;            \
     } NAME
 
 DEFINE_IDX_TYPE(NkIrProc);
@@ -98,7 +98,7 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 #undef DEFINE_IDX_TYPE
 
-#define NKIR_INVALID_IDX ((size_t)-1ul)
+#define NKIR_INVALID_IDX ((usize)-1ul)
 
 typedef struct NkIrProg_T *NkIrProg;
 
@@ -119,11 +119,11 @@ void nkir_startProc(
     nktype_t proc_t,
     nkid_array arg_names,
     nkid file,
-    size_t line,
+    usize line,
     NkIrVisibility vis);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
-void nkir_finishProc(NkIrProg ir, NkIrProc proc, size_t line);
+void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 
 void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
@@ -131,7 +131,7 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
 nkav_typedef(NkIrInstr const, NkIrInstrArray);
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 
-void nkir_setLine(NkIrProg ir, size_t line);
+void nkir_setLine(NkIrProg ir, usize line);
 
 void nkir_enter(NkIrProg ir);
 void nkir_leave(NkIrProg ir);
@@ -145,7 +145,7 @@ NkIrExternData nkir_makeExternData(NkIrProg ir, nkid lib, nkid name, nktype_t ty
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid lib, nkid name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
-NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index);
+NkIrRef nkir_makeArgRef(NkIrProg ir, usize index);
 NkIrRef nkir_makeRetRef(NkIrProg ir);
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);

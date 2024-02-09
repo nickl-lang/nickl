@@ -2,8 +2,6 @@
 #define HEADER_GUARD_NTK_ARRAY
 
 #include <assert.h>
-#include <stdalign.h>
-#include <stddef.h>
 #include <string.h>
 
 #include "ntk/allocator.h"
@@ -13,7 +11,7 @@
 #define nkav_type(T) \
     struct {         \
         T *data;     \
-        size_t size; \
+        usize size;  \
     }
 
 #define nkav_typedef(T, Name) typedef nkav_type(T) Name
@@ -31,8 +29,8 @@
 #define nkar_type(T)       \
     struct {               \
         T *data;           \
-        size_t size;       \
-        size_t capacity;   \
+        usize size;        \
+        usize capacity;    \
         NkAllocator alloc; \
     }
 
@@ -52,7 +50,7 @@
 
 #define _nkar_maybe_grow(ar, cap)                                                             \
     do {                                                                                      \
-        size_t _cap = (cap);                                                                  \
+        usize _cap = (cap);                                                                   \
         if (_cap > (ar)->capacity) {                                                          \
             NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator; \
             NkAllocatorSpaceLeftQueryResult _query_res;                                       \
@@ -92,7 +90,7 @@
 
 #define _nkar_append_many(ar, items, count)                               \
     do {                                                                  \
-        size_t _count = (count);                                          \
+        usize _count = (count);                                           \
         nkar_reserve(ar, (ar)->size + _count);                            \
         assert((ar)->capacity - (ar)->size >= _count && "no space left"); \
         memcpy(nkav_end(ar), (items), _count * sizeof(*(ar)->data));      \
@@ -101,7 +99,7 @@
 
 #define _nkar_try_append_many(ar, items, count)                      \
     do {                                                             \
-        size_t _count = (count);                                     \
+        usize _count = (count);                                      \
         nkar_reserve(ar, (ar)->size + _count);                       \
         _count = minu(_count, (ar)->capacity - (ar)->size);          \
         memcpy(nkav_end(ar), (items), _count * sizeof(*(ar)->data)); \
@@ -119,7 +117,7 @@
 
 #define _nkar_pop(ar, count)                                                       \
     do {                                                                           \
-        size_t _count = (count);                                                   \
+        usize _count = (count);                                                    \
         assert(_count <= (ar)->size && "trying to pop more items than available"); \
         (ar)->size -= _count;                                                      \
     } while (0)
@@ -136,11 +134,11 @@ void nkav_copy(NkAllocator alloc, TDst *dst, TSrc src) {
 }
 
 template <class TAr>
-void nkar_maybe_grow(TAr *ar, size_t cap) {
+void nkar_maybe_grow(TAr *ar, usize cap) {
     _nkar_maybe_grow(ar, cap);
 }
 template <class TAr>
-void nkar_reserve(TAr *ar, size_t cap) {
+void nkar_reserve(TAr *ar, usize cap) {
     _nkar_reserve(ar, cap);
 }
 template <class TAr, class T>
@@ -152,11 +150,11 @@ void nkar_try_append(TAr *ar, T &&item) {
     _nkar_try_append(ar, std::forward<T>(item));
 }
 template <class TAr, class T>
-void nkar_append_many(TAr *ar, T *items, size_t count) {
+void nkar_append_many(TAr *ar, T *items, usize count) {
     _nkar_append_many(ar, items, count);
 }
 template <class TAr, class T>
-void nkar_try_append_many(TAr *ar, T *items, size_t count) {
+void nkar_try_append_many(TAr *ar, T *items, usize count) {
     _nkar_try_append_many(ar, items, count);
 }
 template <class TAr>
@@ -164,7 +162,7 @@ void nkar_free(TAr *ar) {
     _nkar_free(ar);
 }
 template <class TAr>
-void nkar_pop(TAr *ar, size_t count) {
+void nkar_pop(TAr *ar, usize count) {
     _nkar_pop(ar, count);
 }
 template <class TAr>

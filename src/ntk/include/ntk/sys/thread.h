@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NTK_SYS_THREAD
 #define HEADER_GUARD_NTK_SYS_THREAD
 
-#include <stdint.h>
+#include "ntk/common.h"
 
 #ifdef _WIN32
 typedef void *nk_mutex_t;
@@ -14,11 +14,11 @@ typedef pthread_mutex_t nk_mutex_t;
 extern "C" {
 #endif
 
-int nk_mutex_init(nk_mutex_t *mutex);
-int nk_mutex_lock(nk_mutex_t *mutex);
-int nk_mutex_unlock(nk_mutex_t *mutex);
+i32 nk_mutex_init(nk_mutex_t *mutex);
+i32 nk_mutex_lock(nk_mutex_t *mutex);
+i32 nk_mutex_unlock(nk_mutex_t *mutex);
 
-void nk_usleep(uint64_t usec);
+void nk_usleep(u64 usec);
 
 #ifdef __cplusplus
 }

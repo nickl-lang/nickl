@@ -29,7 +29,7 @@ class compiler_src : public testing::Test {
         }
 
         m_compiler = nkl_compiler_create();
-        nkl_compiler_configure(m_compiler, {path_buf, (size_t)path_len});
+        nkl_compiler_configure(m_compiler, {path_buf, (usize)path_len});
     }
 
     void TearDown() override {

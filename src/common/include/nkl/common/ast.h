@@ -14,9 +14,9 @@ extern "C" {
 
 typedef struct {
     nkid id;
-    uint32_t token_idx;
-    uint32_t total_children;
-    uint32_t arity;
+    u32 token_idx;
+    u32 total_children;
+    u32 arity;
 } NklAstNode;
 
 nkav_typedef(NklAstNode, NklAstNodeView);

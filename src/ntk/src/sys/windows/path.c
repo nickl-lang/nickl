@@ -7,7 +7,7 @@
 
 char nk_path_separator = '\\';
 
-int nk_getBinaryPath(char *buf, size_t size) {
+i32 nk_getBinaryPath(char *buf, usize size) {
     ProfBeginFunc();
     DWORD dwBytesWritten = GetModuleFileName(
         NULL, // HMODULE hModule
@@ -15,5 +15,5 @@ int nk_getBinaryPath(char *buf, size_t size) {
         size  // DWORD   nSize
     );
     ProfEndBlock();
-    return dwBytesWritten > 0 ? (int)dwBytesWritten : -1;
+    return dwBytesWritten > 0 ? (i32)dwBytesWritten : -1;
 }

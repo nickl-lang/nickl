@@ -42,7 +42,7 @@ NkIrArg _arg(NkIrProg ir, nks comment) {
 
 } // namespace
 
-char const *nkirOpcodeName(uint8_t code) {
+char const *nkirOpcodeName(u8 code) {
     switch (code) {
 #define IR(NAME)           \
     case CAT(nkir_, NAME): \
@@ -125,7 +125,7 @@ void nkir_startProc(
     nktype_t proc_t,
     nkid_array arg_names,
     nkid file,
-    size_t line,
+    usize line,
     NkIrVisibility vis) {
     NK_LOG_TRC("%s", __func__);
 
@@ -147,7 +147,7 @@ void nkir_activateProc(NkIrProg ir, NkIrProc _proc) {
     ir->cur_proc = _proc;
 }
 
-void nkir_finishProc(NkIrProg ir, NkIrProc _proc, size_t line) {
+void nkir_finishProc(NkIrProg ir, NkIrProc _proc, usize line) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[_proc.idx];
@@ -169,10 +169,10 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     NK_LOG_TRC("%s", __func__);
 
     assert(ref.kind == NkIrRef_Data && "data ref expected");
-    auto data = (uint8_t *)nkir_getDataPtr(ir, {ref.index}) + ref.offset;
+    auto data = (u8 *)nkir_getDataPtr(ir, {ref.index}) + ref.offset;
     int indir = ref.indir;
     while (indir--) {
-        data = *(uint8_t **)data;
+        data = *(u8 **)data;
     }
     data += ref.post_offset;
     return data;
@@ -185,7 +185,7 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
     assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto &proc = ir->procs.data[ir->cur_proc.idx];
 
-    for (size_t i = 0; i < instrs_array.size; i++) {
+    for (usize i = 0; i < instrs_array.size; i++) {
         auto const &instr = instrs_array.data[i];
 
         if (instr.code == nkir_label) {
@@ -208,13 +208,13 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
             continue;
         }
 
-        size_t id = instrs.size;
+        usize id = instrs.size;
         nkar_append(&instrs, instr);
         nkar_append(&block, id);
     }
 }
 
-void nkir_setLine(NkIrProg ir, size_t line) {
+void nkir_setLine(NkIrProg ir, usize line) {
     NK_LOG_TRC("%s", __func__);
 
     ir->cur_line = line;
@@ -304,7 +304,7 @@ NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
     };
 }
 
-NkIrRef nkir_makeArgRef(NkIrProg ir, size_t index) {
+NkIrRef nkir_makeArgRef(NkIrProg ir, usize index) {
     NK_LOG_TRC("%s", __func__);
 
     assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
@@ -491,7 +491,7 @@ bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf) {
 
 #ifdef ENABLE_LOGGING
 void nkir_inspectProgram(NkIrProg ir, nk_stream out) {
-    for (size_t i = 0; i < ir->procs.size; i++) {
+    for (usize i = 0; i < ir->procs.size; i++) {
         nkir_inspectProc(ir, {i}, out);
     }
 
@@ -508,7 +508,7 @@ static bool isInlineDecl(NkIrDecl_T const &decl) {
 void nkir_inspectData(NkIrProg ir, nk_stream out) {
     if (ir->data.size) {
         bool printed = false;
-        for (size_t i = 0; i < ir->data.size; i++) {
+        for (usize i = 0; i < ir->data.size; i++) {
             auto const &decl = ir->data.data[i];
             if (!isInlineDecl(decl)) {
                 nk_printf(out, "\n%s ", decl.read_only ? "const" : "data");
@@ -540,7 +540,7 @@ void inspectProcSignature(
     bool print_arg_names = true) {
     nk_printf(out, "(");
 
-    for (size_t i = 0; i < proc_info.args_t.size; i++) {
+    for (usize i = 0; i < proc_info.args_t.size; i++) {
         if (i) {
             nk_printf(out, ", ");
         }
@@ -606,7 +606,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, nk_stream out) {
     nk_printf(out, " {\n\n");
 
     if (proc.locals.size) {
-        for (size_t i = 0; i < proc.locals.size; i++) {
+        for (usize i = 0; i < proc.locals.size; i++) {
             if (proc.locals.data[i].name != nk_invalid_id) {
                 auto const local_name = nkid2s(proc.locals.data[i].name);
                 nk_printf(out, nks_Fmt ": ", nks_Arg(local_name));
@@ -619,7 +619,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, nk_stream out) {
         nk_printf(out, "\n");
     }
 
-    size_t instr_index = 0;
+    usize instr_index = 0;
 
     for (auto block_id : nk_iterate(proc.blocks)) {
         auto const &block = ir->blocks.data[block_id];
@@ -636,7 +636,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, nk_stream out) {
 
             nk_printf(out, "%5zu%8s", instr_index++, nkirOpcodeName(instr.code));
 
-            for (size_t i = 1; i < 3; i++) {
+            for (usize i = 1; i < 3; i++) {
                 auto const &arg = instr.arg[i];
                 if (arg.kind != NkIrArg_None) {
                     nk_printf(out, ((i > 1) ? ", " : " "));
@@ -649,7 +649,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, nk_stream out) {
                 }
                 case NkIrArg_RefArray: {
                     nk_printf(out, "(");
-                    for (size_t i = 0; i < arg.refs.size; i++) {
+                    for (usize i = 0; i < arg.refs.size; i++) {
                         if (i) {
                             nk_printf(out, ", ");
                         }
@@ -694,7 +694,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
         nk_printf(out, "{}");
         return;
     }
-    for (size_t i = 0; i < ref.indir; i++) {
+    for (usize i = 0; i < ref.indir; i++) {
         nk_printf(out, "[");
     }
     switch (ref.kind) {
@@ -764,7 +764,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, nk_stream out) {
     if (ref.offset) {
         nk_printf(out, "+%" PRIu64, ref.offset);
     }
-    for (size_t i = 0; i < ref.indir; i++) {
+    for (usize i = 0; i < ref.indir; i++) {
         nk_printf(out, "]");
     }
     if (ref.post_offset) {

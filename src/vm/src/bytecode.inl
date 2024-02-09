@@ -28,7 +28,7 @@ XE(jmpnz, 64)
 X(cast)
 
 #ifndef CAST
-#define CAST_X(TNAME, VALUE_TYPE, CTYPE, TO) XE(cast, TNAME##_to_##TO)
+#define CAST_X(TYPE, VALUE_TYPE, TO) XE(cast, TYPE##_to_##TO)
 #define CAST(TO) NUMERIC_ITERATE(CAST_X, TO)
 #endif
 
@@ -59,14 +59,14 @@ XE(mov, 64)
 X(lea)
 
 #ifndef NUM
-#define NUM_IT(TNAME, VALUE_TYPE, CTYPE, NAME) XE(NAME, TNAME)
+#define NUM_IT(TYPE, VALUE_TYPE, NAME) XE(NAME, TYPE)
 #define NUM(NAME) \
     X(NAME)       \
     NUMERIC_ITERATE(NUM_IT, NAME)
 #endif
 
 #ifndef INT
-#define INT_IT(TNAME, VALUE_TYPE, CTYPE, NAME) XE(NAME, TNAME)
+#define INT_IT(TYPE, VALUE_TYPE, NAME) XE(NAME, TYPE)
 #define INT(NAME) \
     X(NAME)       \
     NUMERIC_ITERATE_INT(INT_IT, NAME)

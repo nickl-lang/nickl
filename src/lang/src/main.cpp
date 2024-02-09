@@ -166,7 +166,7 @@ int nkl_main(int /*argc*/, char const *const *argv) {
     }
 
     auto compiler = nkl_compiler_create();
-    if (!nkl_compiler_configure(compiler, {path_buf, (size_t)path_len})) {
+    if (!nkl_compiler_configure(compiler, {path_buf, (usize)path_len})) {
         return 1;
     }
     defer {

@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-void *nk_valloc(size_t len) {
+void *nk_valloc(usize len) {
     return VirtualAlloc(
         NULL,                     // LPVOID lpAddress
         len,                      // SIZE_T dwSize
@@ -12,7 +12,7 @@ void *nk_valloc(size_t len) {
     );
 }
 
-int nk_vfree(void *addr, size_t len) {
+i32 nk_vfree(void *addr, usize len) {
     (void)len;
     BOOL bSuccess = VirtualFree(
         addr,       // LPVOID lpAddress

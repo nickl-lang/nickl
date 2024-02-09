@@ -14,35 +14,35 @@ struct NkLogArray {
 
     using _block_ptr = T *;
 
-    size_t _size{};
+    usize _size{};
     _block_ptr *_block_table{};
-    size_t _block_table_size{};
-    size_t _block_table_capacity{};
-    size_t _bi{}; // block index
-    size_t _ic{}; // initial capacity
+    usize _block_table_size{};
+    usize _block_table_capacity{};
+    usize _bi{}; // block index
+    usize _ic{}; // initial capacity
     NkAllocator _alloc{nk_default_allocator};
 
     void deinit() {
-        for (size_t bi = 0; bi < _block_table_size; bi++) {
+        for (usize bi = 0; bi < _block_table_size; bi++) {
             nk_free_t(_alloc, _block_table[bi], _blockDataSize(bi));
         }
 
         nk_free_t(_alloc, _block_table, _block_table_capacity);
     }
 
-    size_t size() const {
+    usize size() const {
         return _size;
     }
 
-    T &at(size_t i) const {
+    T &at(usize i) const {
         return *(_blockByIndex(i) + _indexRemainder(i));
     }
 
-    T &operator[](size_t pos) const {
+    T &operator[](usize pos) const {
         return at(pos);
     }
 
-    void reserve(size_t n) {
+    void reserve(usize n) {
         if (!_enoughSpace(n)) {
             if (!_block_table) {
                 _block_table_capacity = INIT_BLOCK_TAB_CAPACITY;
@@ -56,19 +56,19 @@ struct NkLogArray {
             }
             _size = _precedingBlocksSize(_bi);
 
-            for (size_t bi = _block_table_size; bi <= _bi; bi++) {
+            for (usize bi = _block_table_size; bi <= _bi; bi++) {
                 _allocateBlock(bi);
             }
         }
     }
 
-    T *push(size_t n = 1) {
+    T *push(usize n = 1) {
         reserve(n);
         _size += n;
         return _top() - n;
     }
 
-    void pop(size_t n = 1) {
+    void pop(usize n = 1) {
         assert(n <= _size && "trying to pop more bytes that available");
         _size -= n;
         _bi = _size == 0 ? 0 : _blockIndexByIndex(_size - 1);
@@ -79,29 +79,29 @@ struct NkLogArray {
     }
 
 private:
-    static constexpr size_t INIT_BLOCK_TAB_CAPACITY = 8;
+    static constexpr usize INIT_BLOCK_TAB_CAPACITY = 8;
 
-    size_t _indexRemainder(size_t i) const {
+    usize _indexRemainder(usize i) const {
         return i + _ic - floorToPowerOf2(i + _ic);
     }
 
-    size_t _precedingBlocksSize(size_t bi) const {
+    usize _precedingBlocksSize(usize bi) const {
         return ((1ul << bi) - 1) * _ic;
     }
 
-    size_t _blockIndexByIndex(size_t i) const {
+    usize _blockIndexByIndex(usize i) const {
         return log2u64(i / _ic + 1);
     }
 
-    _block_ptr _blockByIndex(size_t i) const {
+    _block_ptr _blockByIndex(usize i) const {
         return _block_table[_blockIndexByIndex(i)];
     }
 
-    size_t _blockDataSize(size_t bi) const {
+    usize _blockDataSize(usize bi) const {
         return _ic * (1ul << bi);
     }
 
-    void _allocateBlock(size_t bi) {
+    void _allocateBlock(usize bi) {
         if (_block_table_size == _block_table_capacity) {
             _block_table_capacity <<= 1;
             _block_table = nk_realloc_t(_alloc, _block_table_capacity, _block_table, _block_table_capacity >> 1);
@@ -113,8 +113,8 @@ private:
         return _block_table ? (_size == 0 ? &at(0) : &at(_size - 1) + 1) : 0;
     }
 
-    bool _enoughSpace(size_t n) const {
-        int64_t const rem = _size == 0 ? -1 : (int64_t)_indexRemainder(_size - 1);
+    bool _enoughSpace(usize n) const {
+        i64 const rem = _size == 0 ? -1 : (i64)_indexRemainder(_size - 1);
         return rem + n < _blockDataSize(_bi);
     }
 };

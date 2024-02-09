@@ -83,7 +83,7 @@ void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, 
     bool const to_color = toColor();
 
     nks line = {0};
-    for (size_t i = 0; i < loc.lin; i++) {
+    for (usize i = 0; i < loc.lin; i++) {
         line = nks_chop_by_delim(&src, '\n');
     }
     if (line.size) {
@@ -125,7 +125,7 @@ void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, 
             }
             nk_printf(out, "%*c", pointer_offset, '^');
             if (actual_len > 0) {
-                for (size_t i = 0; i < (size_t)actual_len - 1; i++) {
+                for (usize i = 0; i < (usize)actual_len - 1; i++) {
                     nk_printf(out, "~");
                 }
             }

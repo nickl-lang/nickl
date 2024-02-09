@@ -10,13 +10,13 @@
 struct NkIrLocal_T {
     nkid name;
     nktype_t type;
-    size_t offset;
+    usize offset;
 };
 
 struct NkIrProc_T {
-    nkar_type(size_t) blocks;
+    nkar_type(usize) blocks;
     nkar_type(NkIrLocal_T) locals;
-    nkar_type(size_t) scopes;
+    nkar_type(usize) scopes;
 
     nkid name{};
     nktype_t proc_t{};
@@ -24,19 +24,19 @@ struct NkIrProc_T {
     NkIrVisibility visibility{};
 
     nkid file{};
-    size_t start_line{};
-    size_t end_line{};
+    usize start_line{};
+    usize end_line{};
 
-    size_t cur_block{};
+    usize cur_block{};
 
-    size_t frame_size{};
-    size_t frame_align{1};
-    size_t cur_frame_size{};
+    usize frame_size{};
+    usize frame_align{1};
+    usize cur_frame_size{};
 };
 
 struct NkIrBlock {
     nkid name;
-    nkar_type(size_t) instrs;
+    nkar_type(usize) instrs;
 };
 
 struct NkIrDecl_T {
@@ -65,7 +65,7 @@ struct NkIrProg_T {
     nkar_type(NkIrRef) relocs;
 
     NkIrProc cur_proc{};
-    size_t cur_line{};
+    usize cur_line{};
 
     nks error_str{};
 };

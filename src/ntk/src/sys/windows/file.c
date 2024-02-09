@@ -8,7 +8,7 @@
 nkfd_t nk_invalid_fd = 0;
 char const *nk_null_file = "nul";
 
-int nk_read(nkfd_t fd, char *buf, size_t n) {
+i32 nk_read(nkfd_t fd, char *buf, usize n) {
     ProfBeginFunc();
 
     DWORD nNumberOfBytesRead = 0;
@@ -31,7 +31,7 @@ int nk_read(nkfd_t fd, char *buf, size_t n) {
     return nNumberOfBytesRead;
 }
 
-int nk_write(nkfd_t fd, char const *buf, size_t n) {
+i32 nk_write(nkfd_t fd, char const *buf, usize n) {
     ProfBeginFunc();
 
     DWORD nNumberOfBytesWritten = 0;
@@ -44,10 +44,10 @@ int nk_write(nkfd_t fd, char const *buf, size_t n) {
     );
 
     ProfEndBlock();
-    return bSuccess ? (int)nNumberOfBytesWritten : -1;
+    return bSuccess ? (i32)nNumberOfBytesWritten : -1;
 }
 
-nkfd_t nk_open(char const *file, int flags) {
+nkfd_t nk_open(char const *file, i32 flags) {
     ProfBeginFunc();
 
     DWORD dwDesiredAccess = ((flags & nk_open_read) ? GENERIC_READ : 0) | ((flags & nk_open_write) ? GENERIC_WRITE : 0);
@@ -74,9 +74,9 @@ nkfd_t nk_open(char const *file, int flags) {
     }
 }
 
-int nk_close(nkfd_t fd) {
+i32 nk_close(nkfd_t fd) {
     ProfBeginFunc();
-    int ret = CloseHandle((HANDLE)fd) ? 0 : -1;
+    i32 ret = CloseHandle((HANDLE)fd) ? 0 : -1;
     ProfEndBlock();
     return ret;
 }

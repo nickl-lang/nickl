@@ -18,7 +18,7 @@ typedef struct {
 // TODO Move somewhere
 #define DEFINE_ID_TYPE(NAME) \
     typedef struct {         \
-        size_t id;           \
+        usize id;            \
     } NAME
 
 #ifdef __cplusplus

@@ -54,9 +54,9 @@ TEST_F(allocator, clear) {
     int *ptr = nk_alloc_t<int>(m_alloc, 5);
     ASSERT_TRUE(ptr);
 
-    EXPECT_EQ((size_t)ptr & (alignof(int) - 1), 0);
+    EXPECT_EQ((usize)ptr & (alignof(int) - 1), 0);
 
-    size_t const sz = sizeof(*ptr) * 5;
+    usize const sz = sizeof(*ptr) * 5;
     std::memset(ptr, 0, sz);
     EXPECT_GE(m_arena.size, sz);
 
@@ -118,18 +118,18 @@ TEST_F(allocator, align) {
     EXPECT_GE(m_arena.size, 1);
 
     void *ptr = nk_arena_allocAligned(&m_arena, 8, 8);
-    EXPECT_EQ((size_t)ptr & 7, 0);
+    EXPECT_EQ((usize)ptr & 7, 0);
     EXPECT_GE(m_arena.size, 16);
 }
 
 TEST_F(allocator, free_noop) {
     static constexpr auto c_size = 2;
 
-    auto ptr1 = nk_alloc_t<int64_t>(m_alloc, c_size);
+    auto ptr1 = nk_alloc_t<i64>(m_alloc, c_size);
     ptr1[0] = 42;
     ptr1[1] = 43;
 
-    auto ptr2 = nk_alloc_t<int64_t>(m_alloc, c_size);
+    auto ptr2 = nk_alloc_t<i64>(m_alloc, c_size);
 
     EXPECT_EQ(ptr1[0], 42);
     EXPECT_EQ(ptr1[1], 43);

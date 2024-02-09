@@ -96,7 +96,7 @@ int nkir_run(NkIrCompiler c, nks in_file) {
 
     int argc = 1;
     char const *argv[] = {""};
-    int64_t ret_code = -1;
+    i64 ret_code = -1;
 
     void *args[] = {&argc, &argv};
     void *rets[] = {&ret_code};

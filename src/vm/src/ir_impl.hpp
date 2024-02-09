@@ -18,7 +18,7 @@ enum ENkIrFunctState {
 struct NkIrFunct_T {
     NkIrProg prog;
 
-    size_t cur_block{};
+    usize cur_block{};
 
     std::string name{};
     union {
@@ -27,7 +27,7 @@ struct NkIrFunct_T {
     };
     ENkIrFunctState state{};
 
-    std::vector<size_t> blocks{};
+    std::vector<usize> blocks{};
     std::vector<nktype_t> locals{};
 
     NkBcFunct bc_funct{};
@@ -36,7 +36,7 @@ struct NkIrFunct_T {
 struct IrBlock {
     std::string name;
 
-    std::vector<size_t> instrs;
+    std::vector<usize> instrs;
 };
 
 struct IrExSym {

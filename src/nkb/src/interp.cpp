@@ -27,25 +27,25 @@ struct ProgramFrame {
 
 struct ControlFrame {
     NkArenaFrame stack_frame;
-    uint8_t *base_frame;
-    uint8_t *base_arg;
-    uint8_t *base_ret;
-    uint8_t *base_instr;
+    u8 *base_frame;
+    u8 *base_arg;
+    u8 *base_ret;
+    u8 *base_instr;
     NkBcInstr const *pinstr;
 };
 
 struct InterpContext {
     struct Base { // repeats the layout of NkBcRefKind
-        uint8_t *none;
-        uint8_t *frame;
-        uint8_t *arg;
-        uint8_t *ret;
-        uint8_t *data;
-        uint8_t *instr;
+        u8 *none;
+        u8 *frame;
+        u8 *arg;
+        u8 *ret;
+        u8 *data;
+        u8 *instr;
     };
 
     union {
-        uint8_t *base_ar[NkBcRef_Count];
+        u8 *base_ar[NkBcRef_Count];
         Base base;
     };
     NkArena stack;
@@ -99,11 +99,11 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
     });
 
     ctx.stack_frame = stack_frame;
-    ctx.base.frame = (uint8_t *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, proc->frame_align);
+    ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, proc->frame_align);
     std::memset(ctx.base.frame, 0, proc->frame_size);
-    ctx.base.arg = (uint8_t *)args;
-    ctx.base.ret = (uint8_t *)ret;
-    ctx.base.instr = (uint8_t *)proc->instrs.data;
+    ctx.base.arg = (u8 *)args;
+    ctx.base.ret = (u8 *)ret;
+    ctx.base.instr = (u8 *)proc->instrs.data;
 
     jumpTo(proc->instrs.data);
 
@@ -148,56 +148,56 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_jmpz_8: {
-        if (!deref<uint8_t>(instr.arg[1])) {
+        if (!deref<u8>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_16: {
-        if (!deref<uint16_t>(instr.arg[1])) {
+        if (!deref<u16>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_32: {
-        if (!deref<uint32_t>(instr.arg[1])) {
+        if (!deref<u32>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpz_64: {
-        if (!deref<uint64_t>(instr.arg[1])) {
+        if (!deref<u64>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_8: {
-        if (deref<uint8_t>(instr.arg[1])) {
+        if (deref<u8>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_16: {
-        if (deref<uint16_t>(instr.arg[1])) {
+        if (deref<u16>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_32: {
-        if (deref<uint32_t>(instr.arg[1])) {
+        if (deref<u32>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
     }
 
     case nkop_jmpnz_64: {
-        if (deref<uint64_t>(instr.arg[1])) {
+        if (deref<u64>(instr.arg[1])) {
             jumpTo(instr.arg[2]);
         }
         break;
@@ -210,7 +210,7 @@ void interp(NkBcInstr const &instr) {
 
         auto const argc = instr.arg[2].refs.size;
         auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc + 1);
-        for (size_t i = 0; i < argc; i++) {
+        for (usize i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
         }
 
@@ -231,7 +231,7 @@ void interp(NkBcInstr const &instr) {
         auto const argc = instr.arg[2].refs.size;
         auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc);
         auto const argt = nk_arena_alloc_t<nktype_t>(&ctx.stack, argc);
-        for (size_t i = 0; i < argc; i++) {
+        for (usize i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
             argt[i] = instr.arg[2].refs.data[i].type;
         }
@@ -254,110 +254,110 @@ void interp(NkBcInstr const &instr) {
     }
 
     case nkop_sext_8_16: {
-        deref<int16_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        deref<i16>(instr.arg[0]) = deref<i8>(instr.arg[1]);
         break;
     }
     case nkop_sext_8_32: {
-        deref<int32_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        deref<i32>(instr.arg[0]) = deref<i8>(instr.arg[1]);
         break;
     }
     case nkop_sext_8_64: {
-        deref<int64_t>(instr.arg[0]) = deref<int8_t>(instr.arg[1]);
+        deref<i64>(instr.arg[0]) = deref<i8>(instr.arg[1]);
         break;
     }
     case nkop_sext_16_32: {
-        deref<int32_t>(instr.arg[0]) = deref<int16_t>(instr.arg[1]);
+        deref<i32>(instr.arg[0]) = deref<i16>(instr.arg[1]);
         break;
     }
     case nkop_sext_16_64: {
-        deref<int64_t>(instr.arg[0]) = deref<int16_t>(instr.arg[1]);
+        deref<i64>(instr.arg[0]) = deref<i16>(instr.arg[1]);
         break;
     }
     case nkop_sext_32_64: {
-        deref<int64_t>(instr.arg[0]) = deref<int32_t>(instr.arg[1]);
+        deref<i64>(instr.arg[0]) = deref<i32>(instr.arg[1]);
         break;
     }
 
     case nkop_zext_8_16: {
-        deref<uint16_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        deref<u16>(instr.arg[0]) = deref<u8>(instr.arg[1]);
         break;
     }
     case nkop_zext_8_32: {
-        deref<uint32_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        deref<u32>(instr.arg[0]) = deref<u8>(instr.arg[1]);
         break;
     }
     case nkop_zext_8_64: {
-        deref<uint64_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        deref<u64>(instr.arg[0]) = deref<u8>(instr.arg[1]);
         break;
     }
     case nkop_zext_16_32: {
-        deref<uint32_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        deref<u32>(instr.arg[0]) = deref<u16>(instr.arg[1]);
         break;
     }
     case nkop_zext_16_64: {
-        deref<uint64_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        deref<u64>(instr.arg[0]) = deref<u16>(instr.arg[1]);
         break;
     }
     case nkop_zext_32_64: {
-        deref<uint64_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        deref<u64>(instr.arg[0]) = deref<u32>(instr.arg[1]);
         break;
     }
 
     case nkop_fext: {
-        deref<double>(instr.arg[0]) = deref<float>(instr.arg[1]);
+        deref<f64>(instr.arg[0]) = deref<f32>(instr.arg[1]);
         break;
     }
 
     case nkop_trunc_16_8: {
-        deref<uint8_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        deref<u8>(instr.arg[0]) = deref<u16>(instr.arg[1]);
         break;
     }
     case nkop_trunc_32_8: {
-        deref<uint8_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        deref<u8>(instr.arg[0]) = deref<u32>(instr.arg[1]);
         break;
     }
     case nkop_trunc_64_8: {
-        deref<uint8_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        deref<u8>(instr.arg[0]) = deref<u64>(instr.arg[1]);
         break;
     }
     case nkop_trunc_32_16: {
-        deref<uint16_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        deref<u16>(instr.arg[0]) = deref<u32>(instr.arg[1]);
         break;
     }
     case nkop_trunc_64_16: {
-        deref<uint16_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        deref<u16>(instr.arg[0]) = deref<u64>(instr.arg[1]);
         break;
     }
     case nkop_trunc_64_32: {
-        deref<uint32_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        deref<u32>(instr.arg[0]) = deref<u64>(instr.arg[1]);
         break;
     }
 
     case nkop_ftrunc: {
-        deref<float>(instr.arg[0]) = deref<double>(instr.arg[1]);
+        deref<f32>(instr.arg[0]) = deref<f64>(instr.arg[1]);
         break;
     }
 
-#define FP2I_OP_IT(EXT, VALUE_TYPE, CTYPE, TYPE, SIZ)                  \
-    case CAT(CAT(CAT(nkop_fp2i_, SIZ), _), EXT): {                     \
-        deref<CTYPE>(instr.arg[0]) = (CTYPE)deref<TYPE>(instr.arg[1]); \
-        break;                                                         \
-    }
-
-#define I2FP_OP_IT(EXT, VALUE_TYPE, CTYPE, TYPE, SIZ)                 \
-    case CAT(CAT(CAT(nkop_i2fp_, SIZ), _), EXT): {                    \
-        deref<TYPE>(instr.arg[0]) = (TYPE)deref<CTYPE>(instr.arg[1]); \
+#define FP2I_OP_IT(TYPE, VALUE_TYPE, FTYPE, SIZ)                      \
+    case CAT(CAT(CAT(nkop_fp2i_, SIZ), _), TYPE): {                   \
+        deref<TYPE>(instr.arg[0]) = (TYPE)deref<FTYPE>(instr.arg[1]); \
         break;                                                        \
     }
 
-#define FP2I_OP(TYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(FP2I_OP_IT, TYPE, SIZ)
-#define I2FP_OP(TYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(I2FP_OP_IT, TYPE, SIZ)
+#define I2FP_OP_IT(TYPE, VALUE_TYPE, FTYPE, SIZ)                       \
+    case CAT(CAT(CAT(nkop_i2fp_, SIZ), _), TYPE): {                    \
+        deref<FTYPE>(instr.arg[0]) = (FTYPE)deref<TYPE>(instr.arg[1]); \
+        break;                                                         \
+    }
 
-        FP2I_OP(float, 32)
-        FP2I_OP(double, 64)
+#define FP2I_OP(FTYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(FP2I_OP_IT, FTYPE, SIZ)
+#define I2FP_OP(FTYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(I2FP_OP_IT, FTYPE, SIZ)
 
-        I2FP_OP(float, 32)
-        I2FP_OP(double, 64)
+        FP2I_OP(f32, 32)
+        FP2I_OP(f64, 64)
+
+        I2FP_OP(f32, 32)
+        I2FP_OP(f64, 64)
 
 #undef I2FP_OP
 #undef FP2I_OP
@@ -365,34 +365,34 @@ void interp(NkBcInstr const &instr) {
 #undef FP2I_OP_IT
 
     case nkop_mov_8: {
-        deref<uint8_t>(instr.arg[0]) = deref<uint8_t>(instr.arg[1]);
+        deref<u8>(instr.arg[0]) = deref<u8>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_16: {
-        deref<uint16_t>(instr.arg[0]) = deref<uint16_t>(instr.arg[1]);
+        deref<u16>(instr.arg[0]) = deref<u16>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_32: {
-        deref<uint32_t>(instr.arg[0]) = deref<uint32_t>(instr.arg[1]);
+        deref<u32>(instr.arg[0]) = deref<u32>(instr.arg[1]);
         break;
     }
 
     case nkop_mov_64: {
-        deref<uint64_t>(instr.arg[0]) = deref<uint64_t>(instr.arg[1]);
+        deref<u64>(instr.arg[0]) = deref<u64>(instr.arg[1]);
         break;
     }
 
     case nkop_lea: {
-        deref<void *>(instr.arg[0]) = &deref<uint8_t>(instr.arg[1]);
+        deref<void *>(instr.arg[0]) = &deref<u8>(instr.arg[1]);
         break;
     }
 
-#define NUM_UN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)              \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                      \
-        deref<CTYPE>(instr.arg[0]) = OP deref<CTYPE>(instr.arg[1]); \
-        break;                                                      \
+#define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                  \
+    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                   \
+        deref<TYPE>(instr.arg[0]) = OP deref<TYPE>(instr.arg[1]); \
+        break;                                                    \
     }
 
 #define NUM_UN_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
@@ -402,16 +402,16 @@ void interp(NkBcInstr const &instr) {
 #undef NUM_UN_OP
 #undef NUM_UN_OP_IT
 
-#define NUM_BIN_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                        \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                 \
-        deref<CTYPE>(instr.arg[0]) = deref<CTYPE>(instr.arg[1]) OP deref<CTYPE>(instr.arg[2]); \
-        break;                                                                                 \
+#define NUM_BIN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                           \
+    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                             \
+        deref<TYPE>(instr.arg[0]) = deref<TYPE>(instr.arg[1]) OP deref<TYPE>(instr.arg[2]); \
+        break;                                                                              \
     }
 
-#define NUM_BIN_BOOL_OP_IT(EXT, VALUE_TYPE, CTYPE, NAME, OP)                                     \
-    case CAT(CAT(CAT(nkop_, NAME), _), EXT): {                                                   \
-        deref<uint8_t>(instr.arg[0]) = deref<CTYPE>(instr.arg[1]) OP deref<CTYPE>(instr.arg[2]); \
-        break;                                                                                   \
+#define NUM_BIN_BOOL_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                    \
+    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                           \
+        deref<u8>(instr.arg[0]) = deref<TYPE>(instr.arg[1]) OP deref<TYPE>(instr.arg[2]); \
+        break;                                                                            \
     }
 
 #define NUM_BIN_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_BIN_OP_IT, NAME, OP)

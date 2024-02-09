@@ -7,11 +7,11 @@
 
 #include "ntk/time.h"
 
-static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags) {
+static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, i32 cpu, i32 group_fd, unsigned long flags) {
     return syscall(SYS_perf_event_open, hw_event, pid, cpu, group_fd, flags);
 }
 
-uint64_t nk_getTscFreq() {
+u64 nk_getTscFreq() {
     struct perf_event_attr pe = {0};
     pe.type = PERF_TYPE_HARDWARE;
     pe.size = sizeof(struct perf_event_attr);
@@ -20,9 +20,9 @@ uint64_t nk_getTscFreq() {
     pe.exclude_kernel = 1;
     pe.exclude_hv = 1;
 
-    uint64_t tsc_freq = 0;
+    u64 tsc_freq = 0;
 
-    int fd = perf_event_open(&pe, 0, -1, -1, 0);
+    i32 fd = perf_event_open(&pe, 0, -1, -1, 0);
     if (fd != -1) {
         void *addr = mmap(NULL, 4096, PROT_READ, MAP_SHARED, fd, 0);
         if (addr) {

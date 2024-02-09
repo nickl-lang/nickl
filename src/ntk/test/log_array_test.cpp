@@ -17,7 +17,7 @@ class LogArray : public testing::Test {
 };
 
 TEST_F(LogArray, basic) {
-    using ValueType = uint64_t;
+    using ValueType = u64;
 
     NkLogArray<ValueType> ar{};
     defer {
@@ -40,27 +40,27 @@ TEST_F(LogArray, basic) {
 }
 
 TEST_F(LogArray, many_small_pushes) {
-    static constexpr size_t c_ic = 64;
-    static constexpr size_t c_bytes_to_push = 1024;
+    static constexpr usize c_ic = 64;
+    static constexpr usize c_bytes_to_push = 1024;
 
-    NkLogArray<uint8_t> ar{};
+    NkLogArray<u8> ar{};
     defer {
         ar.deinit();
     };
 
     ar.reserve(c_ic);
 
-    for (size_t i = 0; i < c_bytes_to_push; i++) {
+    for (usize i = 0; i < c_bytes_to_push; i++) {
         ar.push();
     }
     EXPECT_EQ(ar.size(), c_bytes_to_push);
 }
 
 TEST_F(LogArray, one_big_push) {
-    static constexpr size_t c_ic = 64;
-    static constexpr size_t c_bytes_to_push = 1024;
+    static constexpr usize c_ic = 64;
+    static constexpr usize c_bytes_to_push = 1024;
 
-    NkLogArray<uint8_t> ar{};
+    NkLogArray<u8> ar{};
     defer {
         ar.deinit();
     };
@@ -72,10 +72,10 @@ TEST_F(LogArray, one_big_push) {
 }
 
 TEST_F(LogArray, pop) {
-    static constexpr size_t c_bytes_to_push = 64;
+    static constexpr usize c_bytes_to_push = 64;
 
     {
-        NkLogArray<uint8_t> ar{};
+        NkLogArray<u8> ar{};
         defer {
             ar.deinit();
         };
@@ -83,41 +83,41 @@ TEST_F(LogArray, pop) {
         ar.reserve(1);
 
         ar.push(c_bytes_to_push);
-        size_t size1 = ar.size();
+        usize size1 = ar.size();
         EXPECT_EQ(size1, c_bytes_to_push * 2 - 1);
 
         ar.pop(ar.size());
 
         ar.push(c_bytes_to_push);
-        size_t size2 = ar.size();
+        usize size2 = ar.size();
         EXPECT_EQ(size2, c_bytes_to_push * 2 - 1);
     }
 
     {
-        NkLogArray<uint8_t> ar{};
+        NkLogArray<u8> ar{};
         defer {
             ar.deinit();
         };
 
         ar.reserve(1);
 
-        for (size_t i = 0; i < c_bytes_to_push; i++) {
+        for (usize i = 0; i < c_bytes_to_push; i++) {
             ar.push();
         }
-        size_t size1 = ar.size();
+        usize size1 = ar.size();
         EXPECT_EQ(size1, c_bytes_to_push);
 
         ar.pop(ar.size());
 
-        for (size_t i = 0; i < c_bytes_to_push; i++) {
+        for (usize i = 0; i < c_bytes_to_push; i++) {
             ar.push();
         }
-        size_t size2 = ar.size();
+        usize size2 = ar.size();
         EXPECT_EQ(size2, c_bytes_to_push);
     }
 
     {
-        NkLogArray<uint8_t> ar{};
+        NkLogArray<u8> ar{};
         defer {
             ar.deinit();
         };
@@ -135,7 +135,7 @@ TEST_F(LogArray, pop) {
     }
 
     {
-        NkLogArray<uint8_t> ar{};
+        NkLogArray<u8> ar{};
         defer {
             ar.deinit();
         };
@@ -154,7 +154,7 @@ TEST_F(LogArray, pop) {
 }
 
 TEST_F(LogArray, zero_init) {
-    NkLogArray<uint8_t> ar{};
+    NkLogArray<u8> ar{};
     defer {
         ar.deinit();
     };
@@ -172,7 +172,7 @@ TEST_F(LogArray, zero_init) {
 //         ar.deinit();
 //     };
 
-//     size_t sz = 1;
+//     usize sz = 1;
 
 //     ar.reserve(sz *= 10);
 //     ar.reserve(sz *= 10);

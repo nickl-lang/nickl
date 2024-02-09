@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NTK_SYS_TTY
 #define HEADER_GUARD_NTK_SYS_TTY
 
-#include <stdbool.h>
+#include "ntk/common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,7 +17,7 @@ extern "C" {
 #define NK_TERM_COLOR_CYAN "\x1b[1;36m"
 #define NK_TERM_COLOR_WHITE "\x1b[1;37m"
 
-bool nk_isatty(int fd);
+bool nk_isatty(i32 fd);
 
 #ifdef __cplusplus
 }

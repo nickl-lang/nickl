@@ -18,7 +18,7 @@ typedef struct {
 bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, nks cmd, bool quiet);
 bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, nks cmd, bool quiet);
 
-int nk_pipe_streamClose(NkPipeStream *stream);
+i32 nk_pipe_streamClose(NkPipeStream *stream);
 
 #ifdef __cplusplus
 }

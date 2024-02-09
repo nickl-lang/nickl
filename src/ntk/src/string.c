@@ -37,7 +37,7 @@ nks nks_trim(nks str) {
 }
 
 nks nks_chop_by_delim(nks *str, char delim) {
-    size_t i = 0;
+    usize i = 0;
     while (i < str->size && str->data[i] != delim) {
         i++;
     }
@@ -76,7 +76,7 @@ nks nks_chop_by_delim_reverse(nks *str, char delim) {
 }
 
 hash_t nks_hash(nks str) {
-    return hash_array((uint8_t *)&str.data[0], (uint8_t *)&str.data[str.size]);
+    return hash_array((u8 *)&str.data[0], (u8 *)&str.data[str.size]);
 }
 
 bool nks_equal(nks lhs, nks rhs) {
@@ -93,17 +93,17 @@ bool nks_starts_with(nks str, nks pref) {
 
 #define WRITE(expr)        \
     do {                   \
-        int _res = (expr); \
+        i32 _res = (expr); \
         if (_res < 0) {    \
             return -1;     \
         }                  \
         res += _res;       \
     } while (0)
 
-int nks_escape(nk_stream out, nks str) {
+i32 nks_escape(nk_stream out, nks str) {
     ProfBeginFunc();
-    int res = 0;
-    for (size_t i = 0; i < str.size; i++) {
+    i32 res = 0;
+    for (usize i = 0; i < str.size; i++) {
         switch (str.data[i]) {
         case '\a':
             WRITE(nk_stream_write_str(out, "\\a"));
@@ -148,10 +148,10 @@ int nks_escape(nk_stream out, nks str) {
     return res;
 }
 
-int nks_unescape(nk_stream out, nks str) {
+i32 nks_unescape(nk_stream out, nks str) {
     ProfBeginFunc();
-    int res = 0;
-    for (size_t i = 0; i < str.size; i++) {
+    i32 res = 0;
+    for (usize i = 0; i < str.size; i++) {
         if (str.data[i] == '\\' && i < str.size - 1) {
             switch (str.data[++i]) {
             case 'a':
@@ -190,10 +190,10 @@ int nks_unescape(nk_stream out, nks str) {
     return res;
 }
 
-int nks_sanitize(nk_stream out, nks str) {
+i32 nks_sanitize(nk_stream out, nks str) {
     ProfBeginFunc();
-    int res = 0;
-    for (size_t i = 0; i < str.size; i++) {
+    i32 res = 0;
+    for (usize i = 0; i < str.size; i++) {
         if (isprint(str.data[i])) {
             WRITE(nk_stream_write(out, &str.data[i], 1));
         } else {

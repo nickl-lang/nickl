@@ -130,7 +130,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             }
             ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
                 &ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *), alignof(void *));
-            for (size_t i = 0; i < type->as.tuple.elems.size; i++) {
+            for (usize i = 0; i < type->as.tuple.elems.size; i++) {
                 elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
             }
             elements[type->as.tuple.elems.size] = nullptr;
@@ -165,13 +165,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
     return ffi_t;
 }
 
-void _ffiPrepareCif(
-    ffi_cif *cif,
-    size_t actual_argc,
-    bool is_variadic,
-    ffi_type *rtype,
-    ffi_type *atypes,
-    size_t argc) {
+void _ffiPrepareCif(ffi_cif *cif, usize actual_argc, bool is_variadic, ffi_type *rtype, ffi_type *atypes, usize argc) {
     ffi_status status;
     if (is_variadic) {
         status = ffi_prep_cif_var(cif, FFI_DEFAULT_ABI, actual_argc, argc, rtype, atypes->elements);
@@ -188,7 +182,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 
     auto const fn_t = cl.fn->fn_t;
 
-    size_t argc = fn_t->as.fn.args_t->as.tuple.elems.size;
+    usize argc = fn_t->as.fn.args_t->as.tuple.elems.size;
 
     void *argv = (void *)nk_alloc(nk_default_allocator, fn_t->as.fn.args_t->size);
     defer {
@@ -197,7 +191,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 
     nkval_t args_val{argv, fn_t->as.fn.args_t};
 
-    for (size_t i = 0; i < argc; i++) {
+    for (usize i = 0; i < argc; i++) {
         std::memcpy(
             nkval_data(nkval_tuple_at(args_val, i)), args[i], fn_t->as.fn.args_t->as.tuple.elems.data[i].type->size);
     }
@@ -211,7 +205,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     ProfFunc();
     NK_LOG_TRC("%s", __func__);
 
-    size_t const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
+    usize const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
 
     auto const fn_t = nkval_typeof(fn);
     bool const is_variadic = fn_t->as.fn.is_variadic;
@@ -233,7 +227,7 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     };
 
     if (nkval_data(args)) {
-        for (size_t i = 0; i < argc; i++) {
+        for (usize i = 0; i < argc; i++) {
             argv[i] = nkval_data(nkval_tuple_at(args, i));
         }
     }
@@ -256,7 +250,7 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
         cl = (NkIrNativeClosure)nk_alloc(nk_default_allocator, sizeof(NkIrNativeClosure_T));
         cl->fn = fn;
 
-        size_t const argc = fn->fn_t->as.fn.args_t->as.tuple.elems.size;
+        usize const argc = fn->fn_t->as.fn.args_t->as.tuple.elems.size;
 
         bool const is_variadic = fn->fn_t->as.fn.is_variadic;
 

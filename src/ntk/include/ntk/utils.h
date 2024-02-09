@@ -1,10 +1,6 @@
 #ifndef HEADER_GUARD_NTK_UTILS
 #define HEADER_GUARD_NTK_UTILS
 
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 
 #include "ntk/common.h"
@@ -13,15 +9,15 @@
 extern "C" {
 #endif
 
-NK_INLINE size_t roundUp(size_t v, size_t m) {
+NK_INLINE usize roundUp(usize v, usize m) {
     return (v + m - 1) / m * m;
 }
 
-NK_INLINE size_t roundUpSafe(size_t v, size_t m) {
+NK_INLINE usize roundUpSafe(usize v, usize m) {
     return m ? roundUp(v, m) : v;
 }
 
-NK_INLINE uint64_t ceilToPowerOf2(uint64_t n) {
+NK_INLINE u64 ceilToPowerOf2(u64 n) {
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -33,7 +29,7 @@ NK_INLINE uint64_t ceilToPowerOf2(uint64_t n) {
     return n;
 }
 
-NK_INLINE uint64_t floorToPowerOf2(uint64_t n) {
+NK_INLINE u64 floorToPowerOf2(u64 n) {
     n |= n >> 1;
     n |= n >> 2;
     n |= n >> 4;
@@ -43,13 +39,13 @@ NK_INLINE uint64_t floorToPowerOf2(uint64_t n) {
     return n - (n >> 1);
 }
 
-NK_INLINE bool isZeroOrPowerOf2(uint64_t n) {
+NK_INLINE bool isZeroOrPowerOf2(u64 n) {
     return (n & (n - 1)) == 0;
 }
 
-NK_INLINE uint64_t log2u64(uint64_t n) {
-    static uint64_t const s_de_bruijn_magic = 0x07edd5e59a4e28c2;
-    static uint32_t const s_de_bruijn_table[64] = {
+NK_INLINE u64 log2u64(u64 n) {
+    static u64 const s_de_bruijn_magic = 0x07edd5e59a4e28c2;
+    static u32 const s_de_bruijn_table[64] = {
         63, 0,  58, 1,  59, 47, 53, 2,  60, 39, 48, 27, 54, 33, 42, 3,  61, 51, 37, 40, 49, 18,
         28, 20, 55, 30, 34, 11, 43, 14, 22, 4,  62, 57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19,
         29, 10, 13, 21, 56, 45, 25, 31, 35, 16, 9,  12, 44, 24, 15, 8,  23, 7,  6,  5,
@@ -65,9 +61,9 @@ NK_INLINE uint64_t log2u64(uint64_t n) {
     return s_de_bruijn_table[(((n - (n >> 1)) * s_de_bruijn_magic)) >> 58];
 }
 
-NK_INLINE uint32_t log2u32(uint32_t n) {
-    static uint32_t const s_de_bruijn_magic = 0x07c4acdd;
-    static uint32_t const s_de_bruijn_table[32] = {
+NK_INLINE u32 log2u32(u32 n) {
+    static u32 const s_de_bruijn_magic = 0x07c4acdd;
+    static u32 const s_de_bruijn_table[32] = {
         0, 9,  1,  10, 13, 21, 2,  29, 11, 14, 16, 18, 22, 25, 3, 30,
         8, 12, 20, 28, 15, 17, 24, 7,  19, 27, 23, 6,  26, 5,  4, 31,
     };
@@ -83,34 +79,34 @@ NK_INLINE uint32_t log2u32(uint32_t n) {
 
 #define _MAGIC ((x ^ y) & -(x < y))
 
-NK_INLINE uint64_t minu(uint64_t x, uint64_t y) {
+NK_INLINE u64 minu(u64 x, u64 y) {
     return y ^ _MAGIC;
 }
 
-NK_INLINE uint64_t maxu(uint64_t x, uint64_t y) {
+NK_INLINE u64 maxu(u64 x, u64 y) {
     return x ^ _MAGIC;
 }
 
-NK_INLINE int64_t mini(int64_t x, int64_t y) {
+NK_INLINE i64 mini(i64 x, i64 y) {
     return y ^ _MAGIC;
 }
 
-NK_INLINE int64_t maxi(int64_t x, int64_t y) {
+NK_INLINE i64 maxi(i64 x, i64 y) {
     return x ^ _MAGIC;
 }
 
 #undef _MAGIC
 
-NK_INLINE void hash_combine(hash_t *seed, size_t n) {
+NK_INLINE void hash_combine(hash_t *seed, usize n) {
     *seed ^= n + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
 }
 
-hash_t hash_array(uint8_t const *begin, uint8_t const *end);
+hash_t hash_array(u8 const *begin, u8 const *end);
 
-#define hash_val(val) hash_array((uint8_t const *)(val), (uint8_t const *)((val) + 1))
+#define hash_val(val) hash_array((u8 const *)(val), (u8 const *)((val) + 1))
 
-NK_INLINE hash_t hash_cstrn(char const *str, size_t n) {
-    return hash_array((uint8_t *)&str[0], (uint8_t *)&str[0] + n);
+NK_INLINE hash_t hash_cstrn(char const *str, usize n) {
+    return hash_array((u8 *)&str[0], (u8 *)&str[0] + n);
 }
 
 NK_INLINE hash_t hash_cstr(char const *str) {

@@ -19,7 +19,7 @@ enum NkBcOpcode {
     NkBcOpcode_Count,
 };
 
-char const *nkbcOpcodeName(uint16_t code);
+char const *nkbcOpcodeName(u16 code);
 
 enum NkBcRefKind { // must preserve NkIrRefKind order
     NkBcRef_None = 0,
@@ -34,16 +34,16 @@ enum NkBcRefKind { // must preserve NkIrRefKind order
 };
 
 struct NkBcRef {
-    size_t offset;
-    size_t post_offset;
+    usize offset;
+    usize post_offset;
     nktype_t type;
     NkBcRefKind kind;
-    uint8_t indir;
+    u8 indir;
 };
 
 struct NkBcRefArray {
     NkBcRef *data;
-    size_t size;
+    usize size;
 };
 
 typedef enum {
@@ -63,21 +63,21 @@ struct NkBcArg {
 
 struct NkBcInstr {
     NkBcArg arg[3];
-    uint16_t code;
+    u16 code;
 };
 
 typedef struct NkBcProc_T *NkBcProc;
 
 struct NkBcProc_T {
     NkIrRunCtx ctx;
-    size_t frame_size;
-    size_t frame_align;
+    usize frame_size;
+    usize frame_align;
     nkar_type(NkBcInstr) instrs;
 };
 
 struct NkFfiContext {
     NkAllocator alloc;
-    NkHashMap<uint64_t, void *> typemap{};
+    NkHashMap<u64, void *> typemap{};
     std::mutex mtx{};
 };
 
@@ -95,11 +95,11 @@ struct NkIrRunCtx_T {
     nks error_str{};
 };
 
-inline void *nkbc_deref(uint8_t *base, NkBcRef const &ref) {
-    uint8_t *ptr = base + ref.offset;
+inline void *nkbc_deref(u8 *base, NkBcRef const &ref) {
+    u8 *ptr = base + ref.offset;
     int indir = ref.indir;
     while (indir--) {
-        ptr = *(uint8_t **)ptr;
+        ptr = *(u8 **)ptr;
     }
     return ptr + ref.post_offset;
 }

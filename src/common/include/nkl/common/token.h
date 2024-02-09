@@ -13,11 +13,11 @@ extern "C" {
 #endif
 
 typedef struct {
-    uint32_t id;
-    uint32_t pos;
-    uint32_t len;
-    uint32_t lin;
-    uint32_t col;
+    u32 id;
+    u32 pos;
+    u32 len;
+    u32 lin;
+    u32 col;
 } NklToken;
 
 nkar_typedef(NklToken, NklTokenArray);

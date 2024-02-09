@@ -86,15 +86,15 @@ public:
         return {m_entries + m_capacity, m_entries + m_capacity};
     }
 
-    size_t size() const {
+    usize size() const {
         return m_size;
     }
 
-    size_t capacity() const {
+    usize capacity() const {
         return m_capacity;
     }
 
-    void reserve(size_t cap) {
+    void reserve(usize cap) {
         _allocate(cap);
     }
 
@@ -137,7 +137,7 @@ public:
     }
 
 private:
-    static constexpr size_t LOAD_FACTOR_PERCENT = 90;
+    static constexpr usize LOAD_FACTOR_PERCENT = 90;
     static constexpr hash_t DELETED_FLAG = 1ull << (8 * sizeof(hash_t) - 1);
 
     template <class U>
@@ -166,15 +166,15 @@ private:
     }
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
-    size_t _elemIndex(hash_t hash, size_t i) const {
+    usize _elemIndex(hash_t hash, usize i) const {
         return (hash + ((i + i * i) >> 1)) & (m_capacity - 1);
     }
 
-    _Entry *_entry(hash_t hash, size_t i) const {
+    _Entry *_entry(hash_t hash, usize i) const {
         return &m_entries[_elemIndex(hash, i)];
     }
 
-    void _allocate(size_t cap) {
+    void _allocate(usize cap) {
         static_assert(std::is_trivial_v<_Entry>, "Entry should be trivial");
 
         m_capacity = ceilToPowerOf2(maxu(cap, 1));
@@ -186,7 +186,7 @@ private:
         auto new_hs = create(m_alloc);
         new_hs._allocate(m_capacity << 1);
 
-        for (size_t i = 0; i < m_capacity; i++) {
+        for (usize i = 0; i < m_capacity; i++) {
             _Entry *entry = &m_entries[i];
             if (_isValid(entry)) {
                 new_hs._insert(entry->hash, entry->val);
@@ -207,7 +207,7 @@ private:
         }
 
         _Entry *entry = _entry(hash, 0);
-        size_t i = 1;
+        usize i = 1;
         while (_isValid(entry)) {
             entry = _entry(hash, i++);
         }
@@ -223,7 +223,7 @@ private:
 
     template <class U>
     _Entry *_find(hash_t hash, U const &val) const {
-        for (size_t i = 0; i < m_capacity; i++) {
+        for (usize i = 0; i < m_capacity; i++) {
             _Entry *entry = _entry(hash, i);
             if (_isEmpty(entry) || i > m_max_probe_dist) {
                 return nullptr;
@@ -245,9 +245,9 @@ private:
 private:
     NkAllocator m_alloc;
     _Entry *m_entries;
-    size_t m_size;
-    size_t m_capacity;
-    size_t m_max_probe_dist;
+    usize m_size;
+    usize m_capacity;
+    usize m_max_probe_dist;
 };
 
 #endif // HEADER_GUARD_NTK_HASH_SET

@@ -9,11 +9,11 @@ typedef struct {
         void *native;
         NkBcProc bytecode;
     } proc;
-    size_t nfixedargs;
+    usize nfixedargs;
     bool is_variadic;
     void **argv;
     nktype_t const *argt;
-    size_t argc;
+    usize argc;
     void *retv;
     nktype_t rett;
 } NkNativeCallData;

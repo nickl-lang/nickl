@@ -30,7 +30,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
     return res;
 }
 
-static int nk_file_streamProc(void *stream_data, char *buf, size_t size, nk_stream_mode mode) {
+static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, nk_stream_mode mode) {
     nkfd_t fd = (nkfd_t)stream_data;
 
     switch (mode) {

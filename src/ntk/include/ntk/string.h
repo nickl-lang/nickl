@@ -41,12 +41,12 @@ bool nks_equal(nks lhs, nks rhs);
 
 bool nks_starts_with(nks str, nks pref);
 
-int nks_escape(nk_stream out, nks str);
-int nks_unescape(nk_stream out, nks str);
-int nks_sanitize(nk_stream out, nks str);
+i32 nks_escape(nk_stream out, nks str);
+i32 nks_unescape(nk_stream out, nks str);
+i32 nks_sanitize(nk_stream out, nks str);
 
 #define nks_Fmt "%.*s"
-#define nks_Arg(str) (int)(str).size, (str).data
+#define nks_Arg(str) (i32)(str).size, (str).data
 
 #ifdef __cplusplus
 }
@@ -87,7 +87,7 @@ namespace std {
 
 template <>
 struct hash<::nks> {
-    size_t operator()(::nks str) {
+    usize operator()(::nks str) {
         return nks_hash(str);
     }
 };

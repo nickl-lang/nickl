@@ -57,7 +57,7 @@ struct DoubleMap {
     DOUBLE_MAP_VERIFY(MAP);
 
 TEST_F(HashMap, basic) {
-    using hashmap_t = NkHashMap<uint8_t, uint8_t>;
+    using hashmap_t = NkHashMap<u8, u8>;
 
     hashmap_t hm{};
     defer {
@@ -69,7 +69,7 @@ TEST_F(HashMap, basic) {
 
 TEST_F(HashMap, insert) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -88,7 +88,7 @@ TEST_F(HashMap, insert) {
 
 TEST_F(HashMap, find) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -113,7 +113,7 @@ TEST_F(HashMap, find) {
 
 TEST_F(HashMap, remove) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -131,7 +131,7 @@ TEST_F(HashMap, remove) {
 
 TEST_F(HashMap, overwrite) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -152,7 +152,7 @@ TEST_F(HashMap, overwrite) {
 
 TEST_F(HashMap, ptr_key) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -169,11 +169,11 @@ TEST_F(HashMap, ptr_key) {
 }
 
 TEST_F(HashMap, str_map) {
-    static constexpr size_t c_key_size = 16;
-    static constexpr size_t c_test_size = 100;
+    static constexpr usize c_key_size = 16;
+    static constexpr usize c_test_size = 100;
 
-    using key_t = struct { uint8_t data[c_key_size]; };
-    using val_t = uint64_t;
+    using key_t = struct { u8 data[c_key_size]; };
+    using val_t = u64;
 
     struct HashMapContext {
         static hash_t hash(key_t const &key) {
@@ -197,11 +197,11 @@ TEST_F(HashMap, str_map) {
         hm.deinit();
     };
 
-    for (size_t i = 0; i < c_test_size; i++) {
+    for (usize i = 0; i < c_test_size; i++) {
         key_t key;
 
-        size_t const partition = gen() % c_key_size;
-        size_t j = 0;
+        usize const partition = gen() % c_key_size;
+        usize j = 0;
         for (; j < partition; j++) {
             key.data[j] = '1';
         }
@@ -243,19 +243,19 @@ TEST_F(HashMap, insert_remove_loop) {
     DoubleMap<int, int> map;
 
     DOUBLE_MAP_INSERT(map, 0, 42);
-    for (size_t i = 1; i <= 100; i++) {
+    for (usize i = 1; i <= 100; i++) {
         DOUBLE_MAP_INSERT(map, i, 24);
         DOUBLE_MAP_REMOVE(map, i);
     }
 }
 
 TEST_F(HashMap, stress) {
-    using key_t = uint64_t;
-    using val_t = uint64_t;
+    using key_t = u64;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
-    static constexpr size_t c_test_size = 1024;
-    static constexpr size_t c_max_cap = 128;
+    static constexpr usize c_test_size = 1024;
+    static constexpr usize c_max_cap = 128;
 
     std::random_device rd;
     std::mt19937_64 gen{rd()};
@@ -269,7 +269,7 @@ TEST_F(HashMap, stress) {
 
     std::unordered_map<key_t, val_t> std_map;
 
-    for (size_t i = 0; i < c_test_size; i++) {
+    for (usize i = 0; i < c_test_size; i++) {
         if (gen() % 2 || std_map.empty()) {
             key_t key = gen() % 100;
             val_t val = gen();
@@ -296,7 +296,7 @@ TEST_F(HashMap, stress) {
 
 TEST_F(HashMap, zero_init) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -413,7 +413,7 @@ TEST_F(HashMap, const_iteration) {
 
 TEST_F(HashMap, allocator) {
     using key_t = nks;
-    using val_t = uint64_t;
+    using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     NkArena arena{};

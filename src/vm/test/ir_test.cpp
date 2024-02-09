@@ -82,8 +82,8 @@ TEST_F(ir, add) {
 
     inspect(p);
 
-    int32_t args[] = {4, 5};
-    int32_t res = 0;
+    i32 args[] = {4, 5};
+    i32 res = 0;
 
     nkir_invoke({&add, add_fn_t}, {&res, i32_t}, {args, args_t});
 
@@ -98,8 +98,8 @@ TEST_F(ir, nested_functions) {
 
     auto i32_t = alloct(nkt_get_numeric(Int32));
 
-    int32_t const_2 = 2;
-    int32_t const_4 = 4;
+    i32 const_2 = 2;
+    i32 const_4 = 4;
 
     auto getEight = nkir_makeFunct(p);
     auto getEight_fn_t =
@@ -126,7 +126,7 @@ TEST_F(ir, nested_functions) {
 
     inspect(p);
 
-    int32_t res = 0;
+    i32 res = 0;
     nkir_invoke({&getEight, getEight_fn_t}, {&res, i32_t}, {});
     EXPECT_EQ(res, 8);
 }
@@ -146,9 +146,9 @@ TEST_F(ir, isEven) {
     nkir_startFunct(isEven, nk_cs2s("isEven"), isEven_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
-    int32_t const_0 = 0;
-    int32_t const_1 = 1;
-    int32_t const_2 = 2;
+    i32 const_0 = 0;
+    i32 const_1 = 1;
+    i32 const_2 = 2;
 
     auto l_else = nkir_makeBlock(p);
     auto l_end = nkir_makeBlock(p);
@@ -166,8 +166,8 @@ TEST_F(ir, isEven) {
 
     inspect(p);
 
-    int32_t res = 42;
-    int32_t args[] = {0};
+    i32 res = 42;
+    i32 args[] = {0};
 
     args[0] = 1;
     nkir_invoke({&isEven, isEven_fn_t}, {&res, i32_t}, {&args, args_t});
@@ -225,20 +225,20 @@ TEST_F(ir, native_call) {
     EXPECT_STREQ(s_test_print_str, const_str);
 }
 
-extern "C" NK_EXPORT uint32_t _test_log2(uint32_t x) {
+extern "C" NK_EXPORT u32 _test_log2(u32 x) {
     return log2u32(x);
 }
 
-extern "C" NK_EXPORT void _test_fillAr(uint8_t *buf, uint32_t size) {
-    for (uint32_t i = 0; i < size; i++) {
+extern "C" NK_EXPORT void _test_fillAr(u8 *buf, u32 size) {
+    for (u32 i = 0; i < size; i++) {
         buf[i] = i;
     }
 }
 
-static uint32_t s_test_ar_sum;
-extern "C" NK_EXPORT void _test_printAr(uint8_t *buf, uint32_t size) {
+static u32 s_test_ar_sum;
+extern "C" NK_EXPORT void _test_printAr(u8 *buf, u32 size) {
     s_test_ar_sum = 0;
-    for (uint32_t i = 0; i < size; i++) {
+    for (u32 i = 0; i < size; i++) {
         if (i > 0) {
             printf(", ");
         }
@@ -285,7 +285,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
     nkir_startFunct(getArrSize, nk_cs2s("getArrSize"), getArrSize_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
-    uint32_t const_64 = 64;
+    u32 const_64 = 64;
 
     nkir_gen(
         p,
@@ -295,7 +295,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
             nkir_makeConstRef(p, nkir_makeConst(p, {&const_64, log2_args_t}))));
     nkir_gen(p, nkir_make_ret());
 
-    uint64_t ar_size = 0; // Must be aligned to 8
+    u64 ar_size = 0; // Must be aligned to 8
     nkir_invoke({&getArrSize, getArrSize_fn_t}, {&ar_size, u32_t}, {});
     EXPECT_EQ(ar_size, 6);
 
@@ -402,7 +402,7 @@ TEST_F(ir, callback) {
     delete[] s_test_print_str;
 }
 
-extern "C" NK_EXPORT uint32_t _test_nativeCallback(uint32_t (*cb)(uint32_t, uint32_t)) {
+extern "C" NK_EXPORT u32 _test_nativeCallback(u32 (*cb)(u32, u32)) {
     return cb(12, 34);
 }
 
@@ -451,7 +451,7 @@ TEST_F(ir, callback_from_native) {
 
     inspect(p);
 
-    uint64_t res = 0; // Must be aligned to 8
+    u64 res = 0; // Must be aligned to 8
     nkir_invoke({&test, test_fn_t}, {&res, u32_t}, {});
     EXPECT_EQ(res, 46);
 }

@@ -64,7 +64,7 @@ public:
         return m_entries.end();
     }
 
-    void reserve(size_t cap) {
+    void reserve(usize cap) {
         m_entries.reserve(cap);
     }
 
@@ -72,11 +72,11 @@ public:
         m_entries.deinit();
     }
 
-    size_t size() const {
+    usize size() const {
         return m_entries.size();
     }
 
-    size_t capacity() const {
+    usize capacity() const {
         return m_entries.capacity();
     }
 

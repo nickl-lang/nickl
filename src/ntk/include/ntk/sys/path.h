@@ -1,7 +1,7 @@
 #ifndef HEADER_GUARD_NTK_SYS_APP
 #define HEADER_GUARD_NTK_SYS_APP
 
-#include <stddef.h>
+#include "ntk/common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,7 +11,7 @@ extern "C" {
 
 extern char nk_path_separator;
 
-int nk_getBinaryPath(char *buf, size_t size);
+i32 nk_getBinaryPath(char *buf, usize size);
 
 #ifdef __cplusplus
 }

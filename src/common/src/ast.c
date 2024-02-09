@@ -2,10 +2,10 @@
 
 #include "ntk/string.h"
 
-static void inspectNode(uint32_t idx, NklSource src, nk_stream out, uint32_t indent) {
+static void inspectNode(u32 idx, NklSource src, nk_stream out, u32 indent) {
     nk_printf(out, "\n");
 
-    for (uint32_t i = 0; i < indent; i++) {
+    for (u32 i = 0; i < indent; i++) {
         nk_printf(out, "  ");
     }
 
@@ -33,7 +33,7 @@ static void inspectNode(uint32_t idx, NklSource src, nk_stream out, uint32_t ind
         nk_printf(out, " \"<invalid>\"");
     }
 
-    for (uint32_t i = 0; i < node->arity; i++) {
+    for (u32 i = 0; i < node->arity; i++) {
         idx++;
         inspectNode(idx, src, out, indent + 1);
         if (idx < src.nodes.size) {

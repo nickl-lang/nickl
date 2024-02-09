@@ -50,9 +50,9 @@ struct ScannerState {
     nks const m_text;
     NkArena *m_tmp_arena;
 
-    uint32_t m_pos = 0;
-    uint32_t m_lin = 1;
-    uint32_t m_col = 1;
+    u32 m_pos = 0;
+    u32 m_lin = 1;
+    u32 m_col = 1;
 
     NklToken m_token{};
     nks m_error_msg{};
@@ -194,7 +194,7 @@ struct ScannerState {
             }
 
             if (it != std::end(s_keywords)) {
-                size_t kw_index = std::distance(std::begin(s_keywords), it);
+                usize kw_index = std::distance(std::begin(s_keywords), it);
                 m_token.id = (ENkIrTokenId)(t_keyword_marker + kw_index);
             } else {
                 m_token.id = t_id;
@@ -211,12 +211,12 @@ struct ScannerState {
 
             m_token.id = t_label;
         } else {
-            size_t op_index = 0;
-            size_t op_len = 0;
+            usize op_index = 0;
+            usize op_len = 0;
 
             for (auto it = std::begin(s_operators); it != std::end(s_operators); ++it) {
-                const size_t len = strlen(*it);
-                size_t i = 0;
+                const usize len = strlen(*it);
+                usize i = 0;
                 for (; i < len && !on('\0', i) && on((*it)[i], i); i++) {
                 }
                 if (i == len) {
@@ -240,29 +240,29 @@ struct ScannerState {
     }
 
 private:
-    char chr(int64_t offset = 0) {
-        return m_pos + offset < (uint32_t)m_text.size ? m_text.data[m_pos + offset] : '\0';
+    char chr(i64 offset = 0) {
+        return m_pos + offset < (u32)m_text.size ? m_text.data[m_pos + offset] : '\0';
     }
 
     template <int (*F)(int)>
-    int chk(int64_t offset = 0) {
+    int chk(i64 offset = 0) {
         return F(chr(offset));
     }
 
-    bool on(char c, int64_t offset = 0) {
+    bool on(char c, i64 offset = 0) {
         return chr(offset) == c;
     }
 
-    bool onAlphaOrUscr(int64_t offset = 0) {
+    bool onAlphaOrUscr(i64 offset = 0) {
         return chk<isalpha>(offset) || on('_', offset);
     }
 
-    bool onAlnumOrUscr(int64_t offset = 0) {
+    bool onAlnumOrUscr(i64 offset = 0) {
         return chk<isalnum>(offset) || on('_', offset);
     }
 
-    void advance(int64_t n = 1) {
-        for (int64_t i = 0; i < n && chr(); i++) {
+    void advance(i64 n = 1) {
+        for (i64 i = 0; i < n && chr(); i++) {
             m_pos++;
             if (on('\n')) {
                 m_col = 0;
@@ -279,7 +279,7 @@ private:
         }
     }
 
-    void accept(int64_t n = 1) {
+    void accept(i64 n = 1) {
         advance(n);
         m_token.len += n;
     }

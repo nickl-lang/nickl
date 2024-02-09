@@ -13,13 +13,13 @@
 extern "C" {
 #endif
 
-void NK_EXPORT nk_prof_init(char const *filename);
-void NK_EXPORT nk_prof_thread_init(uint32_t tid, size_t buffer_size);
-void NK_EXPORT nk_prof_thread_exit(void);
-void NK_EXPORT nk_prof_exit(void);
+void nk_prof_init(char const *filename);
+void nk_prof_thread_init(u32 tid, usize buffer_size);
+void nk_prof_thread_exit(void);
+void nk_prof_exit(void);
 
-void NK_EXPORT nk_prof_begin_block(nks name);
-void NK_EXPORT nk_prof_end_block(void);
+void nk_prof_begin_block(nks name);
+void nk_prof_end_block(void);
 
 #ifdef __cplusplus
 }

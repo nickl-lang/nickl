@@ -11,10 +11,10 @@ NK_LOG_USE_SCOPE(mem);
 static void *defaultAllocatorProc(
     void *data,
     NkAllocatorMode mode,
-    size_t size,
-    uint8_t align,
+    usize size,
+    u8 align,
     void *old_mem,
-    size_t old_size) {
+    usize old_size) {
     (void)data;
     (void)align;
     (void)old_size;
@@ -65,14 +65,14 @@ NkAllocator nk_default_allocator = {
     .proc = defaultAllocatorProc,
 };
 
-extern inline void *nk_allocAligned(NkAllocator alloc, size_t size, uint8_t align);
-extern inline void nk_freeAligned(NkAllocator alloc, void *ptr, size_t size, uint8_t align);
-extern inline void *nk_reallocAligned(NkAllocator alloc, size_t size, uint8_t align, void *old_mem, size_t old_size);
-extern inline void *nk_alloc(NkAllocator alloc, size_t size);
-extern inline void nk_free(NkAllocator alloc, void *ptr, size_t size);
-extern inline void *nk_realloc(NkAllocator alloc, size_t size, void *old_mem, size_t old_size);
+extern inline void *nk_allocAligned(NkAllocator alloc, usize size, u8 align);
+extern inline void nk_freeAligned(NkAllocator alloc, void *ptr, usize size, u8 align);
+extern inline void *nk_reallocAligned(NkAllocator alloc, usize size, u8 align, void *old_mem, usize old_size);
+extern inline void *nk_alloc(NkAllocator alloc, usize size);
+extern inline void nk_free(NkAllocator alloc, void *ptr, usize size);
+extern inline void *nk_realloc(NkAllocator alloc, usize size, void *old_mem, usize old_size);
 extern inline void *nk_alloc_querySpaceLeft(NkAllocator alloc, NkAllocatorSpaceLeftQueryResult *result);
-extern inline void *nk_arena_alloc(NkArena *arena, size_t size);
+extern inline void *nk_arena_alloc(NkArena *arena, usize size);
 extern inline void nk_arena_clear(NkArena *arena);
 extern inline NkArenaFrame nk_arena_grab(NkArena *arena);
 extern inline void nk_arena_popFrame(NkArena *arena, NkArenaFrame frame);

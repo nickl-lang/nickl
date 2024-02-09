@@ -39,7 +39,7 @@
 #define nksb_init(allocator) .data = NULL, .size = 0, .capacity = 0, .alloc = (allocator)
 
 #define nksb_fixed_buffer(NAME, SIZE)                  \
-    uint8_t _buf[SIZE];                                \
+    u8 _buf[SIZE];                                     \
     NkArena _arena = {_buf, 0, sizeof(_buf)};          \
     NkStringBuilder NAME = {                           \
         (char *)nk_arena_alloc(&_arena, sizeof(_buf)), \
@@ -54,13 +54,13 @@ extern "C" {
 
 nkar_typedef(char, NkStringBuilder);
 
-NK_PRINTF_LIKE(2, 3) int nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
-int nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
+NK_PRINTF_LIKE(2, 3) i32 nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
+i32 nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
 nk_stream nksb_getStream(NkStringBuilder *sb);
 
 bool nksb_readFromStream(NkStringBuilder *sb, nk_stream in);
-bool nksb_readFromStreamEx(NkStringBuilder *sb, nk_stream in, size_t buf_size);
+bool nksb_readFromStreamEx(NkStringBuilder *sb, nk_stream in, usize buf_size);
 
 #ifdef __cplusplus
 }

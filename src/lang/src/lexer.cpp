@@ -47,9 +47,9 @@ struct ScanEngine {
     nks const m_src;
     std::string &m_err_str;
 
-    size_t m_pos = 0;
-    size_t m_lin = 1;
-    size_t m_col = 1;
+    usize m_pos = 0;
+    usize m_lin = 1;
+    usize m_col = 1;
 
     NklToken m_token{};
 
@@ -203,18 +203,18 @@ struct ScanEngine {
             }
 
             if (it != std::end(s_keywords)) {
-                size_t kw_index = std::distance(std::begin(s_keywords), it);
+                usize kw_index = std::distance(std::begin(s_keywords), it);
                 m_token.id = (ETokenId)(t_keyword_marker + kw_index);
             } else {
                 m_token.id = t_id;
             }
         } else {
-            size_t op_index = 0;
-            size_t op_len = 0;
+            usize op_index = 0;
+            usize op_len = 0;
 
             for (auto it = std::begin(s_operators); it != std::end(s_operators); ++it) {
-                const size_t len = std::strlen(*it);
-                size_t i = 0;
+                const usize len = std::strlen(*it);
+                usize i = 0;
                 for (; i < len && !on('\0', i) && on((*it)[i], i); i++) {
                 }
                 if (i == len) {
@@ -248,29 +248,29 @@ struct ScanEngine {
     }
 
 private:
-    char chr(int64_t offset = 0) {
+    char chr(i64 offset = 0) {
         return m_pos + offset < m_src.size ? m_src.data[m_pos + offset] : '\0';
     }
 
     template <int (*F)(int)>
-    int chk(int64_t offset = 0) {
+    int chk(i64 offset = 0) {
         return F(chr(offset));
     }
 
-    bool on(char c, int64_t offset = 0) {
+    bool on(char c, i64 offset = 0) {
         return chr(offset) == c;
     }
 
-    bool onAlphaOrUscr(int64_t offset = 0) {
+    bool onAlphaOrUscr(i64 offset = 0) {
         return chk<std::isalpha>(offset) || on('_', offset);
     }
 
-    bool onAlnumOrUscr(int64_t offset = 0) {
+    bool onAlnumOrUscr(i64 offset = 0) {
         return chk<std::isalnum>(offset) || on('_', offset);
     }
 
-    void advance(int64_t n = 1) {
-        for (int64_t i = 0; i < n && chr(); i++) {
+    void advance(i64 n = 1) {
+        for (i64 i = 0; i < n && chr(); i++) {
             m_pos++;
             if (on('\n')) {
                 m_col = 0;
@@ -287,7 +287,7 @@ private:
         }
     }
 
-    void accept(int64_t n = 1) {
+    void accept(i64 n = 1) {
         advance(n);
         m_token.text.size += n;
     }

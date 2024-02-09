@@ -135,11 +135,11 @@ nkval_t nkir_refDeref(NkIrProg p, NkIrRef ref) {
     assert(ref.ref_type == NkIrRef_Const && "const ref expected");
     auto const val = nkir_constGetValue(p, {ref.index});
     auto type = nkval_typeof(val);
-    auto data = (uint8_t *)nkval_data(val) + ref.offset;
+    auto data = (u8 *)nkval_data(val) + ref.offset;
     if (ref.is_indirect) {
         assert(nkt_typeclassid(type) == NkType_Ptr);
         type = type->as.ptr.target_type;
-        data = *(uint8_t **)data;
+        data = *(u8 **)data;
     }
     data += ref.post_offset;
     return {data, type};
@@ -208,7 +208,7 @@ NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
     };
 }
 
-NkIrRef nkir_makeArgRef(NkIrProg p, size_t index) {
+NkIrRef nkir_makeArgRef(NkIrProg p, usize index) {
     assert(p->cur_funct && "no current function");
     assert(
         (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.args_t) &&
@@ -349,7 +349,7 @@ void nkir_gen(NkIrProg p, NkIrInstr instr) {
         return;
     }
 
-    size_t id = instrs.size();
+    usize id = instrs.size();
     instrs.emplace_back(instr);
     block.emplace_back(id);
 }
@@ -430,7 +430,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
     }
 
     nksb_printf(sb, "%s(", funct->name.c_str());
-    for (size_t i = 0; i < funct->fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
+    for (usize i = 0; i < funct->fn_t->as.fn.args_t->as.tuple.elems.size; i++) {
         if (i) {
             nksb_printf(sb, ", ");
         }
@@ -443,7 +443,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
 
     if (!funct->locals.empty()) {
         nksb_printf(sb, "\n\n");
-        for (size_t i = 0; i < funct->locals.size(); i++) {
+        for (usize i = 0; i < funct->locals.size(); i++) {
             nksb_printf(sb, "$%" PRIu64 ": ", i);
             nkt_inspect(funct->locals[i], sb);
             nksb_printf(sb, "\n");
@@ -472,7 +472,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
 
             nksb_printf(sb, "%s", s_nk_ir_names[instr.code]);
 
-            for (size_t i = 1; i < 3; i++) {
+            for (usize i = 1; i < 3; i++) {
                 auto &arg = instr.arg[i];
                 if (arg.arg_type != NkIrArg_None) {
                     nksb_printf(sb, ((i > 1) ? ", " : " "));
@@ -512,7 +512,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
                         assert(!"unreachable");
                         break;
                     }
-                    nksb_printf(sb, "%" PRIu64 "", (size_t)NUM_TYPE_SIZE(arg.id) * 8);
+                    nksb_printf(sb, "%" PRIu64 "", (usize)NUM_TYPE_SIZE(arg.id) * 8);
                     break;
                 case NkIrArg_None:
                 default:

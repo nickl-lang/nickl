@@ -36,8 +36,8 @@ typedef enum { // must preserve NkIrRefType order
 } NkBcRefType;
 
 typedef struct {
-    size_t offset;
-    size_t post_offset;
+    usize offset;
+    usize post_offset;
     nktype_t type;
     NkBcRefType ref_type;
     bool is_indirect;
@@ -45,12 +45,12 @@ typedef struct {
 
 typedef struct {
     NkBcRef arg[3];
-    uint16_t code;
+    u16 code;
 } NkBcInstr;
 
 struct NkBcFunct_T {
     NkBcProg prog;
-    size_t frame_size;
+    usize frame_size;
     NkBcInstr *instrs;
     nktype_t fn_t;
 };

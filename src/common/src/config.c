@@ -22,7 +22,7 @@ bool readConfig(nks_config *conf, nks file) {
     }
 
     nks src = res.bytes;
-    size_t lin = 1;
+    usize lin = 1;
     while (src.size) {
         nks line = nks_trim(nks_chop_by_delim(&src, '\n'));
         if (line.size) {

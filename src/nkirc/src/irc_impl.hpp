@@ -39,7 +39,7 @@ enum EDeclKind {
 
 struct Decl {
     union {
-        size_t arg_index;
+        usize arg_index;
         ProcRecord proc;
         NkIrLocalVar local;
         NkIrData data;
@@ -69,7 +69,7 @@ struct NkIrCompiler_T {
     NkIrParserState parser{};
 
     NkHashMap<nks, nktype_t> fpmap{};
-    uint64_t next_id{1};
+    u64 next_id{1};
     std::mutex mtx{};
 };
 

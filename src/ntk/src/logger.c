@@ -44,18 +44,18 @@ static char const *c_env_log_level_map[] = {
 };
 
 struct LoggerState {
-    int64_t start_time;
+    i64 start_time;
     NkLogLevel log_level;
     NkColorMode color_mode;
     nk_mutex_t mtx;
-    size_t msg_count;
+    usize msg_count;
     bool initialized;
 };
 
 static struct LoggerState s_logger;
 
 static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
-    size_t i = 0;
+    usize i = 0;
     for (; i <= NkLog_Trace; i++) {
         if (strcmp(env_log_level, c_env_log_level_map[i]) == 0) {
             return (NkLogLevel)i;
@@ -83,8 +83,8 @@ void nk_vloggerWrite(NkLogLevel log_level, char const *scope, char const *fmt, v
     bool const to_color = s_logger.color_mode == NkLog_Color_Always ||
                           (s_logger.color_mode == NkLog_Color_Auto && nk_isatty(STDERR_FILENO));
 
-    int64_t now = nk_getTimeNs();
-    double ts = (now - s_logger.start_time) / 1e9;
+    i64 now = nk_getTimeNs();
+    f64 ts = (now - s_logger.start_time) / 1e9;
 
     nk_mutex_lock(&s_logger.mtx);
 

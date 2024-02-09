@@ -30,7 +30,7 @@ void nk_closePipe(nkpipe_t pipe) {
     nk_close(pipe.write);
 }
 
-int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
+i32 nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
@@ -96,7 +96,7 @@ int nk_execAsync(char const *cmd, nkpid_t *pid, nkpipe_t *in, nkpipe_t *out, nkp
     return 0;
 }
 
-int nk_waitpid(nkpid_t pid, int *exit_status) {
+i32 nk_waitpid(nkpid_t pid, i32 *exit_status) {
     DWORD dwResult = WaitForSingleObject(
         (HANDLE)pid, // HANDLE hHandle,
         INFINITE     // DWORD  dwMilliseconds
@@ -120,4 +120,4 @@ int nk_waitpid(nkpid_t pid, int *exit_status) {
     return 0;
 }
 
-extern inline int nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, int *exit_status);
+extern inline i32 nk_execSync(char const *cmd, nkpipe_t *in, nkpipe_t *out, nkpipe_t *err, i32 *exit_status);

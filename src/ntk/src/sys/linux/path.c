@@ -6,9 +6,9 @@
 
 char nk_path_separator = '/';
 
-int nk_getBinaryPath(char *buf, size_t size) {
+i32 nk_getBinaryPath(char *buf, usize size) {
     ProfBeginFunc();
-    int ret = readlink("/proc/self/exe", buf, size);
+    i32 ret = readlink("/proc/self/exe", buf, size);
     ProfEndBlock();
     return ret;
 }

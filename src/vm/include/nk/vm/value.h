@@ -15,8 +15,8 @@
 extern "C" {
 #endif
 
-typedef uint64_t nk_typeid_t;
-typedef uint8_t nk_typeclassid_t;
+typedef u64 nk_typeid_t;
+typedef u8 nk_typeclassid_t;
 
 typedef enum {
     NkType_Array,
@@ -30,7 +30,7 @@ typedef enum {
 
 typedef struct {
     nktype_t elem_type;
-    size_t elem_count;
+    usize elem_count;
 } _nk_type_array;
 
 typedef enum {
@@ -66,20 +66,20 @@ typedef enum {
 #define NUM_TYPE_INDEX(VALUE_TYPE) ((0xf0 & (VALUE_TYPE)) >> 4)
 #define NUM_TYPE_COUNT 10
 
-#define NUMERIC_ITERATE_INT(MACRO, ...)                     \
-    MACRO(i8, Int8, int8_t __VA_OPT__(, ) __VA_ARGS__)      \
-    MACRO(u8, Uint8, uint8_t __VA_OPT__(, ) __VA_ARGS__)    \
-    MACRO(i16, Int16, int16_t __VA_OPT__(, ) __VA_ARGS__)   \
-    MACRO(u16, Uint16, uint16_t __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(i32, Int32, int32_t __VA_OPT__(, ) __VA_ARGS__)   \
-    MACRO(u32, Uint32, uint32_t __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(i64, Int64, int64_t __VA_OPT__(, ) __VA_ARGS__)   \
-    MACRO(u64, Uint64, uint64_t __VA_OPT__(, ) __VA_ARGS__)
+#define NUMERIC_ITERATE_INT(MACRO, ...)           \
+    MACRO(i8, Int8 __VA_OPT__(, ) __VA_ARGS__)    \
+    MACRO(u8, Uint8 __VA_OPT__(, ) __VA_ARGS__)   \
+    MACRO(i16, Int16 __VA_OPT__(, ) __VA_ARGS__)  \
+    MACRO(u16, Uint16 __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i32, Int32 __VA_OPT__(, ) __VA_ARGS__)  \
+    MACRO(u32, Uint32 __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(i64, Int64 __VA_OPT__(, ) __VA_ARGS__)  \
+    MACRO(u64, Uint64 __VA_OPT__(, ) __VA_ARGS__)
 
 #define NUMERIC_ITERATE(MACRO, ...)                       \
     NUMERIC_ITERATE_INT(MACRO __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(f32, Float32, float __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(f64, Float64, double __VA_OPT__(, ) __VA_ARGS__)
+    MACRO(f32, Float32 __VA_OPT__(, ) __VA_ARGS__)        \
+    MACRO(f64, Float64 __VA_OPT__(, ) __VA_ARGS__)
 
 typedef struct {
     NkNumericValueType value_type;
@@ -91,12 +91,12 @@ typedef struct {
 
 typedef struct {
     nktype_t type;
-    size_t offset;
+    usize offset;
 } NkTupleElemInfo;
 
 typedef struct {
     NkTupleElemInfo *data;
-    size_t size;
+    usize size;
 } NkTupleElemInfoArray;
 
 typedef struct {
@@ -111,13 +111,13 @@ typedef struct NkType {
         _nk_type_ptr ptr;
         _nk_type_tuple tuple;
     } as;
-    uint64_t size;
-    uint8_t align;
+    u64 size;
+    u8 align;
     nk_typeclassid_t tclass;
     nk_typeid_t id;
 } NkType;
 
-NkType nkt_get_array(nktype_t elem_type, size_t elem_count);
+NkType nkt_get_array(nktype_t elem_type, usize elem_count);
 
 NkType nkt_get_fn(NktFnInfo info);
 
@@ -126,7 +126,7 @@ NkType nkt_get_numeric(NkNumericValueType value_type);
 NkType nkt_get_ptr(nktype_t target_type);
 
 //@Feature TODO Implement optimized tuple type
-NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, size_t count, size_t stride);
+NkType nkt_get_tuple(NkAllocator alloc, nktype_t const *types, usize count, usize stride);
 
 NkType nkt_get_void();
 
@@ -135,19 +135,19 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb);
 
 void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 
-size_t nkval_array_size(nkval_t self);
-nkval_t nkval_array_at(nkval_t self, size_t i);
+usize nkval_array_size(nkval_t self);
+nkval_t nkval_array_at(nkval_t self, usize i);
 
-size_t nkval_tuple_size(nkval_t self);
-nkval_t nkval_tuple_at(nkval_t self, size_t i);
+usize nkval_tuple_size(nkval_t self);
+nkval_t nkval_tuple_at(nkval_t self, usize i);
 
 typedef struct {
     NkTupleElemInfoArray info_ar;
-    size_t size;
-    size_t align;
+    usize size;
+    usize align;
 } NkTupleLayout;
 
-NkTupleLayout nk_calcTupleLayout(nktype_t const *types, size_t count, NkAllocator allocator, size_t stride);
+NkTupleLayout nk_calcTupleLayout(nktype_t const *types, usize count, NkAllocator allocator, usize stride);
 
 inline nkval_t nkval_undefined() {
     return LITERAL(nkval_t) ZERO_STRUCT;
@@ -169,11 +169,11 @@ inline nk_typeclassid_t nkt_typeclassid(nktype_t type) {
     return type->tclass;
 }
 
-inline size_t nkt_sizeof(nktype_t type) {
+inline usize nkt_sizeof(nktype_t type) {
     return type->size;
 }
 
-inline size_t nkt_alignof(nktype_t type) {
+inline usize nkt_alignof(nktype_t type) {
     return type->align;
 }
 
@@ -185,11 +185,11 @@ inline nk_typeclassid_t nkval_typeclassid(nkval_t val) {
     return nkt_typeclassid(nkval_typeof(val));
 }
 
-inline size_t nkval_sizeof(nkval_t val) {
+inline usize nkval_sizeof(nkval_t val) {
     return nkt_sizeof(nkval_typeof(val));
 }
 
-inline size_t nkval_alignof(nkval_t val) {
+inline usize nkval_alignof(nkval_t val) {
     return nkt_alignof(nkval_typeof(val));
 }
 

@@ -91,7 +91,7 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder *sb) {
 
         nksb_printf(sb, "%s", s_nk_bc_names[instr.code]);
 
-        for (size_t i = 1; i < 3; i++) {
+        for (usize i = 1; i < 3; i++) {
             if (instr.arg[i].ref_type != NkBcRef_None) {
                 nksb_printf(sb, ((i > 1) ? ", " : " "));
                 _inspectArg(instr.arg[i]);
@@ -127,14 +127,14 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
     };
 
     struct Reloc {
-        size_t instr_index;
-        size_t arg;
-        size_t target_id;
+        usize instr_index;
+        usize arg;
+        usize target_id;
         ERelocType reloc_type;
     };
 
     struct BlockInfo {
-        size_t first_instr;
+        usize first_instr;
     };
 
     std::vector<BlockInfo> block_info;
@@ -142,7 +142,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     std::vector<Reloc> relocs{};
 
-    auto _compileArg = [&](size_t ii, size_t ai, NkBcRef &arg, NkIrArg const &ir_arg) {
+    auto _compileArg = [&](usize ii, usize ai, NkBcRef &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.arg_type) {
         case NkIrArg_None:
             arg.ref_type = NkBcRef_None;
@@ -174,13 +174,13 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                     val = {nk_arena_alloc(&p->arena, type->size), type};
                     std::memset(val.data, 0, type->size);
                 }
-                arg.offset += (size_t)val.data;
+                arg.offset += (usize)val.data;
                 break;
             }
             case NkIrRef_Const: {
                 arg.ref_type = NkBcRef_Rodata;
                 auto const_data = nkval_data(ir.consts[ref.index]);
-                arg.offset = (size_t)const_data;
+                arg.offset = (usize)const_data;
                 break;
             }
             case NkIrRef_Reg:
@@ -199,7 +199,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 }
                 auto &sym = p->exsyms[ref.index];
                 sym = nkdl_sym(dl, nk_cs2s(exsym.name.c_str()));
-                arg.offset += (size_t)&sym;
+                arg.offset += (usize)&sym;
                 break;
             }
             default:
@@ -233,7 +233,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         for (auto const &ir_instr_id : block.instrs) {
             auto const &ir_instr = ir.instrs[ir_instr_id];
 
-            uint16_t code = s_ir2opcode[ir_instr.code];
+            u16 code = s_ir2opcode[ir_instr.code];
 
             auto const &arg1 = ir_instr.arg[1];
 
@@ -286,7 +286,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
             auto &instr = instrs.emplace_back();
             instr.code = code;
-            for (size_t ai = 0; ai < 3; ai++) {
+            for (usize ai = 0; ai < 3; ai++) {
                 _compileArg(instrs.size() - 1, ai, instr.arg[ai], ir_instr.arg[ai]);
             }
         }

@@ -25,16 +25,16 @@ namespace {
 NK_LOG_USE_SCOPE(translate2c);
 
 struct DataFp {
-    size_t idx;
+    usize idx;
     void *data;
-    size_t type_id;
+    usize type_id;
 };
 
 struct DataFpHashSetContext {
     static hash_t hash(DataFp const &val) {
         hash_t seed = 0;
         hash_combine(&seed, val.idx);
-        hash_combine(&seed, (size_t)val.data);
+        hash_combine(&seed, (usize)val.data);
         hash_combine(&seed, val.type_id);
         return seed;
     }
@@ -46,7 +46,7 @@ struct DataFpHashSetContext {
 
 nkar_typedef(bool, flag_array);
 
-bool &getFlag(flag_array &ar, size_t i) {
+bool &getFlag(flag_array &ar, usize i) {
     while (i >= ar.size) {
         nkar_append(&ar, false);
     }
@@ -63,18 +63,18 @@ struct WriterCtx {
     NkStringBuilder forward_s{0, 0, 0, alloc};
     NkStringBuilder main_s{0, 0, 0, alloc};
 
-    NkHashMap<size_t, nks> type_map = decltype(type_map)::create(alloc);
-    size_t typedecl_count = 0;
+    NkHashMap<usize, nks> type_map = decltype(type_map)::create(alloc);
+    usize typedecl_count = 0;
 
     NkHashMap<DataFp, nks, DataFpHashSetContext> data_map = decltype(data_map)::create(alloc);
-    size_t data_count = 0;
+    usize data_count = 0;
 
     flag_array procs_translated{0, 0, 0, alloc};
     flag_array data_translated{0, 0, 0, alloc};
     flag_array ext_data_translated{0, 0, 0, alloc};
     flag_array ext_procs_translated{0, 0, 0, alloc};
 
-    nkar_type(size_t) procs_to_translate{0, 0, 0, alloc};
+    nkar_type(usize) procs_to_translate{0, 0, 0, alloc};
 };
 
 #define LOCAL_CLASS "var"
@@ -82,7 +82,7 @@ struct WriterCtx {
 #define CONST_CLASS "const"
 #define GLOBAL_CLASS "global"
 
-void writeName(nkid name, size_t index, char const *obj_class, NkStringBuilder *src) {
+void writeName(nkid name, usize index, char const *obj_class, NkStringBuilder *src) {
     if (name != nk_invalid_id) {
         auto const str = nkid2s(name);
         nksb_printf(src, nks_Fmt, nks_Arg(str));
@@ -93,14 +93,16 @@ void writeName(nkid name, size_t index, char const *obj_class, NkStringBuilder *
 
 void writePreamble(NkStringBuilder *sb) {
     nksb_printf(sb, R"(
-typedef signed char int8_t;
-typedef signed short int16_t;
-typedef signed long int32_t;
-typedef signed long long int64_t;
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned long uint32_t;
-typedef unsigned long long uint64_t;
+typedef signed char i8;
+typedef signed short i16;
+typedef signed long i32;
+typedef signed long long i64;
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned long u32;
+typedef unsigned long long u64;
+typedef float f32;
+typedef double f64;
 
 )");
 }
@@ -127,34 +129,34 @@ void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
 void writeNumericType(NkIrNumericValueType value_type, NkStringBuilder *src) {
     switch (value_type) {
     case Int8:
-        nksb_printf(src, "int8_t");
+        nksb_printf(src, "i8");
         break;
     case Int16:
-        nksb_printf(src, "int16_t");
+        nksb_printf(src, "i16");
         break;
     case Int32:
-        nksb_printf(src, "int32_t");
+        nksb_printf(src, "i32");
         break;
     case Int64:
-        nksb_printf(src, "int64_t");
+        nksb_printf(src, "i64");
         break;
     case Uint8:
-        nksb_printf(src, "uint8_t");
+        nksb_printf(src, "u8");
         break;
     case Uint16:
-        nksb_printf(src, "uint16_t");
+        nksb_printf(src, "u16");
         break;
     case Uint32:
-        nksb_printf(src, "uint32_t");
+        nksb_printf(src, "u32");
         break;
     case Uint64:
-        nksb_printf(src, "uint64_t");
+        nksb_printf(src, "u64");
         break;
     case Float32:
-        nksb_printf(src, "float");
+        nksb_printf(src, "f32");
         break;
     case Float64:
-        nksb_printf(src, "double");
+        nksb_printf(src, "f64");
         break;
     default:
         assert(!"unreachable");
@@ -182,7 +184,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     case NkType_Aggregate:
         is_complex = true;
         nksb_printf(&tmp_s, "struct {\n");
-        for (size_t i = 0; i < type->as.aggr.elems.size; i++) {
+        for (usize i = 0; i < type->as.aggr.elems.size; i++) {
             nksb_printf(&tmp_s, "  ");
             writeType(ctx, type->as.aggr.elems.data[i].type, &tmp_s);
             nksb_printf(&tmp_s, " _%zu", i);
@@ -208,7 +210,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         writeType(ctx, ret_t, &tmp_s, true);
         nksb_printf(&tmp_s, " (*");
         nksb_printf(&tmp_s_suf, ")(");
-        for (size_t i = 0; i < args_t.size; i++) {
+        for (usize i = 0; i < args_t.size; i++) {
             if (i) {
                 nksb_printf(&tmp_s_suf, ", ");
             }
@@ -246,7 +248,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     nksb_printf(src, nks_Fmt, nks_Arg(type_str));
 }
 
-void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuilder *src, bool is_complex = false) {
+void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilder *src, bool is_complex = false) {
     DataFp data_fp{idx, decl.data, decl.type->id};
 
     auto found_str = ctx.data_map.find(data_fp);
@@ -264,19 +266,19 @@ void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuild
         case NkType_Aggregate: {
             is_complex = true;
             nksb_printf(&tmp_s, "{ ");
-            for (size_t i = 0; i < decl.type->as.aggr.elems.size; i++) {
+            for (usize i = 0; i < decl.type->as.aggr.elems.size; i++) {
                 auto const &elem = decl.type->as.aggr.elems.data[i];
                 if (elem.count > 1) {
                     nksb_printf(&tmp_s, "{ ");
                 }
-                size_t offset = elem.offset;
-                for (size_t c = 0; c < elem.count; c++) {
+                usize offset = elem.offset;
+                for (usize c = 0; c < elem.count; c++) {
                     writeData(
                         ctx,
                         NKIR_INVALID_IDX,
                         {
                             .name = nk_invalid_id,
-                            .data = (uint8_t *)decl.data + offset,
+                            .data = (u8 *)decl.data + offset,
                             .type = elem.type,
                             .visibility = NkIrVisibility_Local,
                             .read_only = decl.read_only,
@@ -296,32 +298,32 @@ void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuild
             auto value_type = decl.type->as.num.value_type;
             switch (value_type) {
             case Int8:
-                nksb_printf(&tmp_s, "%" PRIi8, *(int8_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIi8, *(i8 *)decl.data);
                 break;
             case Uint8:
-                nksb_printf(&tmp_s, "%" PRIu8, *(uint8_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIu8, *(u8 *)decl.data);
                 break;
             case Int16:
-                nksb_printf(&tmp_s, "%" PRIi16, *(int16_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIi16, *(i16 *)decl.data);
                 break;
             case Uint16:
-                nksb_printf(&tmp_s, "%" PRIu16, *(uint16_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIu16, *(u16 *)decl.data);
                 break;
             case Int32:
-                nksb_printf(&tmp_s, "%" PRIi32, *(int32_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIi32, *(i32 *)decl.data);
                 break;
             case Uint32:
-                nksb_printf(&tmp_s, "%" PRIu32, *(uint32_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIu32, *(u32 *)decl.data);
                 break;
             case Int64:
-                nksb_printf(&tmp_s, "%" PRIi64, *(int64_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIi64, *(i64 *)decl.data);
                 break;
             case Uint64:
-                nksb_printf(&tmp_s, "%" PRIu64, *(uint64_t *)decl.data);
+                nksb_printf(&tmp_s, "%" PRIu64, *(u64 *)decl.data);
                 break;
             case Float32: {
-                auto f_val = *(float *)decl.data;
-                nksb_printf(&tmp_s, "%.*g", std::numeric_limits<float>::max_digits10, f_val);
+                auto f_val = *(f32 *)decl.data;
+                nksb_printf(&tmp_s, "%.*g", std::numeric_limits<f32>::max_digits10, f_val);
                 if (f_val == round(f_val)) {
                     nksb_printf(&tmp_s, ".");
                 }
@@ -329,8 +331,8 @@ void writeData(WriterCtx &ctx, size_t idx, NkIrDecl_T const &decl, NkStringBuild
                 break;
             }
             case Float64: {
-                auto f_val = *(double *)decl.data;
-                nksb_printf(&tmp_s, "%.*lg", std::numeric_limits<double>::max_digits10, f_val);
+                auto f_val = *(f64 *)decl.data;
+                nksb_printf(&tmp_s, "%.*lg", std::numeric_limits<f64>::max_digits10, f_val);
                 if (f_val == round(f_val)) {
                     nksb_printf(&tmp_s, ".");
                 }
@@ -402,7 +404,7 @@ void writeProcSignature(
     writeType(ctx, ret_t, src, true);
     nksb_printf(src, " " nks_Fmt "(", nks_Arg(name));
 
-    for (size_t i = 0; i < args_t.size; i++) {
+    for (usize i = 0; i < args_t.size; i++) {
         if (i) {
             nksb_printf(src, ", ");
         }
@@ -428,7 +430,7 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
     nksb_printf(src, ")");
 }
 
-void writeLineDirective(nkid file, size_t line, NkStringBuilder *src) {
+void writeLineDirective(nkid file, usize line, NkStringBuilder *src) {
     if (file != nk_invalid_id) {
         auto const file_name = nkid2s(file);
         nksb_printf(src, "#line %zu \"", line);
@@ -439,7 +441,7 @@ void writeLineDirective(nkid file, size_t line, NkStringBuilder *src) {
     }
 }
 
-void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
+void writeLabel(WriterCtx &ctx, usize label_id, NkStringBuilder *src) {
     auto const &block = ctx.ir->blocks.data[label_id];
     auto name = nkid2s(block.name);
     if (name.data[0] == '@') {
@@ -449,7 +451,7 @@ void writeLabel(WriterCtx &ctx, size_t label_id, NkStringBuilder *src) {
     nksb_printf(src, "l_" nks_Fmt, nks_Arg(name));
 }
 
-void translateProc(WriterCtx &ctx, size_t proc_id) {
+void translateProc(WriterCtx &ctx, usize proc_id) {
     ProfFunc();
 
     if (getFlag(ctx.procs_translated, proc_id)) {
@@ -478,7 +480,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
     writeProcSignature(ctx, src, nkid2s(proc.name), ret_t, args_t, proc.arg_names);
     nksb_printf(src, " {\n\n");
 
-    for (size_t i = 0; auto decl : nk_iterate(proc.locals)) {
+    for (usize i = 0; auto decl : nk_iterate(proc.locals)) {
         writeLineDirective(nk_invalid_id, proc.start_line, src);
         writeType(ctx, decl.type, src);
         nksb_printf(src, " ");
@@ -549,20 +551,20 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
               ctx.ir->data.data[ref.index].type->kind != NkType_Aggregate);
 
         if (is_addressable) {
-            for (uint8_t i = 0; i < maxu(ref.indir, 1); i++) {
+            for (u8 i = 0; i < maxu(ref.indir, 1); i++) {
                 nksb_printf(src, "*");
             }
             nksb_printf(src, "(");
             writeType(ctx, ref.type, src);
-            for (uint8_t i = 0; i < maxu(ref.indir, 1); i++) {
+            for (u8 i = 0; i < maxu(ref.indir, 1); i++) {
                 nksb_printf(src, "*");
             }
             nksb_printf(src, ")");
             if (ref.post_offset) {
-                nksb_printf(src, "((uint8_t*)");
+                nksb_printf(src, "((u8*)");
             }
             if (ref.offset) {
-                nksb_printf(src, "((uint8_t*)");
+                nksb_printf(src, "((u8*)");
             }
             if (ref.indir == 0) {
                 nksb_printf(src, "& ");
@@ -610,7 +612,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
         writeLabel(ctx, bi, src);
         nksb_printf(src, ":\n");
 
-        size_t last_line{};
+        usize last_line{};
 
         for (auto ii : nk_iterate(block.instrs)) {
             auto const &instr = ctx.ir->instrs.data[ii];
@@ -671,7 +673,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                 nksb_printf(src, "(");
                 write_ref(instr.arg[1].ref);
                 nksb_printf(src, ")(");
-                for (size_t i = 0; i < instr.arg[2].refs.size; i++) {
+                for (usize i = 0; i < instr.arg[2].refs.size; i++) {
                     if (i) {
                         nksb_printf(src, ", ");
                     }
@@ -696,19 +698,19 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                 switch (instr.arg[1].ref.type->as.num.value_type) {
                 case Int8:
                 case Uint8:
-                    nksb_printf(src, dst_signed ? "(int8_t)" : "(uint8_t)");
+                    nksb_printf(src, dst_signed ? "(i8)" : "(u8)");
                     break;
                 case Int16:
                 case Uint16:
-                    nksb_printf(src, dst_signed ? "(int16_t)" : "(uint16_t)");
+                    nksb_printf(src, dst_signed ? "(i16)" : "(u16)");
                     break;
                 case Int32:
                 case Uint32:
-                    nksb_printf(src, dst_signed ? "(int32_t)" : "(uint32_t)");
+                    nksb_printf(src, dst_signed ? "(i32)" : "(u32)");
                     break;
                 case Int64:
                 case Uint64:
-                    nksb_printf(src, dst_signed ? "(int64_t)" : "(uint64_t)");
+                    nksb_printf(src, dst_signed ? "(i64)" : "(u64)");
                     break;
                 default:
                     break;
@@ -769,7 +771,7 @@ void translateProc(WriterCtx &ctx, size_t proc_id) {
                 nksb_printf(src, "syscall(");
                 write_ref(instr.arg[1].ref);
                 auto const args = instr.arg[2].refs;
-                for (size_t i = 0; i < args.size; i++) {
+                for (usize i = 0; i < args.size; i++) {
                     nksb_printf(src, ", ");
                     write_ref(args.data[i]);
                 }
@@ -809,7 +811,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 
     writePreamble(&ctx.types_s);
 
-    for (size_t i = 0; i < ir->procs.size; i++) {
+    for (usize i = 0; i < ir->procs.size; i++) {
         if (ir->procs.data[i].visibility != NkIrVisibility_Local) {
             translateProc(ctx, i);
 
@@ -821,7 +823,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
         }
     }
 
-    for (size_t i = 0; i < ir->data.size; i++) {
+    for (usize i = 0; i < ir->data.size; i++) {
         auto const &decl = ir->data.data[i];
         if (!getFlag(ctx.data_translated, i) && decl.visibility != NkIrVisibility_Local) {
             NkStringBuilder dummy_sb{0, 0, 0, ctx.alloc};

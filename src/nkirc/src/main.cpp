@@ -6,6 +6,7 @@
 #include "ntk/allocator.h"
 #include "ntk/array.h"
 #include "ntk/cli.h"
+#include "ntk/common.h"
 #include "ntk/file.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/logger.h"
@@ -237,7 +238,7 @@ int main(int /*argc*/, char const *const *argv) {
         return 1;
     }
 
-    nks compiler_dir{compiler_path_buf, (size_t)compiler_path_len};
+    nks compiler_dir{compiler_path_buf, (usize)compiler_path_len};
     nks_chop_by_delim_reverse(&compiler_dir, nk_path_separator);
 
     NkStringBuilder config_path{0, 0, 0, alloc};
@@ -253,13 +254,14 @@ int main(int /*argc*/, char const *const *argv) {
 
     NkIrcConfig irc_conf{};
 
-    auto usize = nks_config_find(&config, nk_cs2s("usize"));
-    if (usize) {
-        NK_LOG_DBG("usize=`" nks_Fmt "`", nks_Arg(usize->val));
+    auto ptr_size = nks_config_find(&config, nk_cs2s("usize"));
+    if (ptr_size) {
+        NK_LOG_DBG("usize=`" nks_Fmt "`", nks_Arg(ptr_size->val));
         char *endptr = NULL;
-        irc_conf.usize = strtol(usize->val.data, &endptr, 10);
-        if (endptr != usize->val.data + usize->val.size || !irc_conf.usize || !isZeroOrPowerOf2(irc_conf.usize)) {
-            nkl_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(usize->val));
+        irc_conf.ptr_size = strtol(ptr_size->val.data, &endptr, 10);
+        if (endptr != ptr_size->val.data + ptr_size->val.size || !irc_conf.ptr_size ||
+            !isZeroOrPowerOf2(irc_conf.ptr_size)) {
+            nkl_diag_printError("invalid usize in config: `" nks_Fmt "`", nks_Arg(ptr_size->val));
             return 1;
         }
     }

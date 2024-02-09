@@ -10,23 +10,23 @@
 nkfd_t nk_invalid_fd = -1;
 char const *nk_null_file = "/dev/null";
 
-int nk_read(nkfd_t fd, char *buf, size_t n) {
+i32 nk_read(nkfd_t fd, char *buf, usize n) {
     ProfBeginFunc();
-    int ret = read(fd, buf, n);
+    i32 ret = read(fd, buf, n);
     ProfEndBlock();
     return ret;
 }
 
-int nk_write(nkfd_t fd, char const *buf, size_t n) {
+i32 nk_write(nkfd_t fd, char const *buf, usize n) {
     ProfBeginFunc();
-    int ret = write(fd, buf, n);
+    i32 ret = write(fd, buf, n);
     ProfEndBlock();
     return ret;
 }
 
-nkfd_t nk_open(char const *file, int flags) {
+nkfd_t nk_open(char const *file, i32 flags) {
     ProfBeginFunc();
-    int oflag = ((flags & nk_open_read) && (flags & nk_open_write) ? O_RDWR : 0) |
+    i32 oflag = ((flags & nk_open_read) && (flags & nk_open_write) ? O_RDWR : 0) |
                 ((flags & nk_open_read) && !(flags & nk_open_write) ? O_RDONLY : 0) |
                 (!(flags & nk_open_read) && (flags & nk_open_write) ? O_WRONLY : 0) |
                 ((flags & nk_open_create) ? O_CREAT : 0) | ((flags & nk_open_truncate) ? O_TRUNC : 0);
@@ -35,9 +35,9 @@ nkfd_t nk_open(char const *file, int flags) {
     return ret;
 }
 
-int nk_close(nkfd_t fd) {
+i32 nk_close(nkfd_t fd) {
     ProfBeginFunc();
-    int ret = close(fd);
+    i32 ret = close(fd);
     ProfEndBlock();
     return ret;
 }
