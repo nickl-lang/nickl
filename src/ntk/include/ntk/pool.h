@@ -1,7 +1,7 @@
 #ifndef NTK_POOL_H_
 #define NTK_POOL_H_
 
-#include "ntk/dyn_array.h"
+#include "ntk/arena.h"
 
 #define NK_POOL_TYPEDEF(TPool, TItem)               \
     typedef struct _##TPool##_Node _##TPool##_Node; \
@@ -10,41 +10,39 @@
         _##TPool##_Node *next;                      \
     };                                              \
     typedef struct {                                \
-        NkDynArray(_##TPool##_Node) items;          \
+        NkArena arena;                              \
         _##TPool##_Node *next;                      \
     } TPool
-
-#define NK_POOL_INIT(alloc) .items = {NKDA_INIT(alloc)}, .next = NULL
 
 #define NK_POOL_PROTO(TPool, TItem)                 \
     TItem *TPool##_alloc(TPool *pool);              \
     void TPool##_release(TPool *pool, TItem *item); \
     void TPool##_free(TPool *pool)
 
-#define NK_POOL_IMPL(TPool, TItem)                                                 \
-    TItem *TPool##_alloc(TPool *pool) {                                            \
-        if (pool->next) {                                                          \
-            _##TPool##_Node *node = pool->next;                                    \
-            pool->next = node->next;                                               \
-            *node = NK_LITERAL(_##TPool##_Node) NK_ZERO_STRUCT;                    \
-            return &node->item;                                                    \
-        } else {                                                                   \
-            nkda_append(&pool->items, NK_LITERAL(_##TPool##_Node) NK_ZERO_STRUCT); \
-            return &nk_slice_last(pool->items).item;                               \
-        }                                                                          \
-    }                                                                              \
-                                                                                   \
-    void TPool##_release(TPool *pool, TItem *item) {                               \
-        _##TPool##_Node *node = (_##TPool##_Node *)item;                           \
-        node->next = pool->next;                                                   \
-        pool->next = node;                                                         \
-    }                                                                              \
-                                                                                   \
-    void TPool##_free(TPool *pool) {                                               \
-        nkda_free(&pool->items);                                                   \
-        pool->next = NULL;                                                         \
-    }                                                                              \
-                                                                                   \
+#define NK_POOL_IMPL(TPool, TItem)                                                           \
+    TItem *TPool##_alloc(TPool *pool) {                                                      \
+        _##TPool##_Node *node;                                                               \
+        if (pool->next) {                                                                    \
+            node = pool->next;                                                               \
+            pool->next = node->next;                                                         \
+        } else {                                                                             \
+            node = (_##TPool##_Node *)nk_arena_alloc(&pool->arena, sizeof(_##TPool##_Node)); \
+        }                                                                                    \
+        *node = NK_LITERAL(_##TPool##_Node) NK_ZERO_STRUCT;                                  \
+        return &node->item;                                                                  \
+    }                                                                                        \
+                                                                                             \
+    void TPool##_release(TPool *pool, TItem *item) {                                         \
+        _##TPool##_Node *node = (_##TPool##_Node *)item;                                     \
+        node->next = pool->next;                                                             \
+        pool->next = node;                                                                   \
+    }                                                                                        \
+                                                                                             \
+    void TPool##_free(TPool *pool) {                                                         \
+        nk_arena_free(&pool->arena);                                                         \
+        pool->next = NULL;                                                                   \
+    }                                                                                        \
+                                                                                             \
     _NK_NOP_TOPLEVEL
 
 #define NK_POOL_DEFINE(TPool, TItem) \

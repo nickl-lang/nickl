@@ -7,15 +7,11 @@
 
 NK_POOL_DEFINE(MutexPool, pthread_mutex_t);
 
-static NkArena g_arena;
 static MutexPool g_mutex_pool;
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 NkOsHandle nk_mutex_alloc(void) {
     pthread_mutex_lock(&g_mutex);
-    if (!g_mutex_pool.items.alloc.proc) {
-        g_mutex_pool = (MutexPool){NK_POOL_INIT(nk_arena_getAllocator(&g_arena))};
-    }
     pthread_mutex_t *mutex = MutexPool_alloc(&g_mutex_pool);
     pthread_mutex_unlock(&g_mutex);
 

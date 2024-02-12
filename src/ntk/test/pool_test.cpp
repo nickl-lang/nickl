@@ -4,6 +4,7 @@
 
 #include "ntk/arena.h"
 #include "ntk/log.h"
+#include "ntk/utils.h"
 
 class Pool : public testing::Test {
     void SetUp() override {
@@ -22,26 +23,20 @@ TEST_F(Pool, basic) {
         IntPool_free(&pool);
     };
 
-    EXPECT_EQ(pool.items.size, 0);
-
     int *obj = IntPool_alloc(&pool);
     *obj = 42;
-    EXPECT_EQ(pool.items.size, 1);
 
     IntPool_release(&pool, obj);
-    EXPECT_EQ(pool.items.size, 1);
 
     ASSERT_TRUE(pool.next);
     EXPECT_EQ(&pool.next->item, obj);
 }
 
 TEST_F(Pool, reuse) {
-    NkArena arena{};
+    IntPool pool{};
     defer {
-        nk_arena_free(&arena);
+        IntPool_free(&pool);
     };
-
-    IntPool pool{NK_POOL_INIT(nk_arena_getAllocator(&arena))};
 
     int *a = IntPool_alloc(&pool);
     EXPECT_EQ(*a, 0);
