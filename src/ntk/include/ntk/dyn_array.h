@@ -16,6 +16,8 @@
         NkAllocator alloc; \
     }
 
+#define NKDA_INIT(_alloc) .data = NULL, .size = 0, .capacity = 0, .alloc = (_alloc)
+
 #ifndef NKDA_INITIAL_CAPACITY
 #define NKDA_INITIAL_CAPACITY 16
 #endif // NKDA_INITIAL_CAPACITY

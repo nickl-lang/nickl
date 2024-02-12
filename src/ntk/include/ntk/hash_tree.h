@@ -5,7 +5,7 @@
 #include "ntk/common.h"
 #include "ntk/utils.h"
 
-#define HK_HASH_TREE_TYPEDEF(Name, TItem)         \
+#define NK_HASH_TREE_TYPEDEF(Name, TItem)         \
     typedef struct _##Name##_Node _##Name##_Node; \
     struct _##Name##_Node {                       \
         TItem item;                               \
@@ -18,7 +18,6 @@
     } Name
 
 #define NK_HASH_TREE_PROTO(Name, TItem, TKey)         \
-    HK_HASH_TREE_TYPEDEF(Name, TItem);                \
     TItem *Name##_insert(Name *ht, TItem const item); \
     TItem *Name##_find(Name *ht, TKey const key);     \
     void Name##_free(Name *ht)
@@ -90,6 +89,7 @@
     _NK_NOP_TOPLEVEL
 
 #define NK_HASH_TREE_DEFINE(Name, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc) \
+    NK_HASH_TREE_TYPEDEF(Name, TItem);                                                \
     NK_HASH_TREE_PROTO(Name, TItem, TKey);                                            \
     NK_HASH_TREE_IMPL(Name, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)
 

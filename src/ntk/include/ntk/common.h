@@ -48,8 +48,8 @@ typedef size_t usize;
 #define NK_CAT(x, y) _NK_CAT(x, y)
 #endif // NK_CAT
 
-#define _NK_STR(x) #x
-#define NK_STR(x) _NK_STR(x)
+#define _NK_STRINGIFY(x) #x
+#define NK_STRINGIFY(x) _NK_STRINGIFY(x)
 
 #define NK_ARRAY_COUNT(AR) (sizeof(AR) / sizeof((AR)[0]))
 
@@ -90,13 +90,13 @@ constexpr usize nk_alignofval(T const &) {
 #define nk_assert(x) (void)(x)
 #else
 // TODO nk_assert depends on libc
-#define nk_assert(x)                                                                       \
-    do {                                                                                   \
-        if (!(x)) {                                                                        \
-            fprintf(stderr, __FILE__ ":" NK_STR(__LINE__) ": Assertion failed: " #x "\n"); \
-            fflush(stderr);                                                                \
-            nk_trap();                                                                     \
-        }                                                                                  \
+#define nk_assert(x)                                                                             \
+    do {                                                                                         \
+        if (!(x)) {                                                                              \
+            fprintf(stderr, __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
+            fflush(stderr);                                                                      \
+            nk_trap();                                                                           \
+        }                                                                                        \
     } while (0)
 #endif
 

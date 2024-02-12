@@ -13,6 +13,7 @@ typedef struct {
     NkString val;
 } nks_kv;
 
+NK_HASH_TREE_TYPEDEF(nks_config, nks_kv);
 NK_HASH_TREE_PROTO(nks_config, nks_kv, NkString);
 
 bool readConfig(nks_config *conf, NkString file);

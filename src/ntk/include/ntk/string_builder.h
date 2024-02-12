@@ -11,6 +11,18 @@
 
 typedef NkDynArray(char) NkStringBuilder;
 
+#define NKSB_INIT(alloc) NKDA_INIT(alloc)
+
+#define NKSB_FIXED_BUFFER(NAME, SIZE)                                                               \
+    u8 NK_CAT(_buf, __LINE__)[SIZE];                                                                \
+    NkArena NK_CAT(_arena, __LINE__) = {NK_CAT(_buf, __LINE__), 0, sizeof(NK_CAT(_buf, __LINE__))}; \
+    NkStringBuilder NAME = {                                                                        \
+        (char *)nk_arena_alloc(&NK_CAT(_arena, __LINE__), sizeof(NK_CAT(_buf, __LINE__))),          \
+        0,                                                                                          \
+        sizeof(NK_CAT(_buf, __LINE__)),                                                             \
+        nk_arena_getAllocator(&NK_CAT(_arena, __LINE__)),                                           \
+    }
+
 #define nksb_reserve nkda_reserve
 #define nksb_append nkda_append
 #define nksb_tryAppend nkda_tryAppend
@@ -36,18 +48,6 @@ typedef NkDynArray(char) NkStringBuilder;
 
 #define _nksb_appendCStr(sb, str) _nksb_appendStr(sb, nk_cs2s(str));
 #define _nksb_tryAppendCStr(sb, str) _nksb_tryAppendStr(sb, nk_cs2s(str));
-
-#define NKSB_INIT(allocator) .data = NULL, .size = 0, .capacity = 0, .alloc = (allocator)
-
-#define NKSB_FIXED_BUFFER(NAME, SIZE)                  \
-    u8 _buf[SIZE];                                     \
-    NkArena _arena = {_buf, 0, sizeof(_buf)};          \
-    NkStringBuilder NAME = {                           \
-        (char *)nk_arena_alloc(&_arena, sizeof(_buf)), \
-        0,                                             \
-        sizeof(_buf),                                  \
-        nk_arena_getAllocator(&_arena),                \
-    }
 
 #ifdef __cplusplus
 extern "C" {

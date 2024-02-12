@@ -5,6 +5,7 @@ def_test(GROUP ntk NAME hash_map LINK ntk)
 def_test(GROUP ntk NAME hash_set LINK ntk)
 def_test(GROUP ntk NAME hash_tree LINK ntk)
 def_test(GROUP ntk NAME log_array LINK ntk)
+def_test(GROUP ntk NAME pool LINK ntk)
 def_test(GROUP ntk NAME string_builder LINK ntk)
 def_test(GROUP ntk NAME utils LINK ntk)
 

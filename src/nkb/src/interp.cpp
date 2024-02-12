@@ -441,63 +441,60 @@ void interp(NkBcInstr const &instr) {
 
 #if NK_SYSCALLS_AVAILABLE
     case nkop_syscall_0: {
-        deref<nksc_t>(instr.arg[0]) = nk_syscall0(deref<nksc_t>(instr.arg[1]));
+        deref<long>(instr.arg[0]) = nk_syscall0(deref<long>(instr.arg[1]));
         break;
     }
 
     case nkop_syscall_1: {
-        deref<nksc_t>(instr.arg[0]) =
-            nk_syscall1(deref<nksc_t>(instr.arg[1]), deref<nksc_t>(instr.arg[2].refs.data[0]));
+        deref<long>(instr.arg[0]) = nk_syscall1(deref<long>(instr.arg[1]), deref<long>(instr.arg[2].refs.data[0]));
         break;
     }
 
     case nkop_syscall_2: {
-        deref<nksc_t>(instr.arg[0]) = nk_syscall2(
-            deref<nksc_t>(instr.arg[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[0]),
-            deref<nksc_t>(instr.arg[2].refs.data[1]));
+        deref<long>(instr.arg[0]) = nk_syscall2(
+            deref<long>(instr.arg[1]), deref<long>(instr.arg[2].refs.data[0]), deref<long>(instr.arg[2].refs.data[1]));
         break;
     }
 
     case nkop_syscall_3: {
-        deref<nksc_t>(instr.arg[0]) = nk_syscall3(
-            deref<nksc_t>(instr.arg[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[0]),
-            deref<nksc_t>(instr.arg[2].refs.data[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[2]));
+        deref<long>(instr.arg[0]) = nk_syscall3(
+            deref<long>(instr.arg[1]),
+            deref<long>(instr.arg[2].refs.data[0]),
+            deref<long>(instr.arg[2].refs.data[1]),
+            deref<long>(instr.arg[2].refs.data[2]));
         break;
     }
 
     case nkop_syscall_4: {
-        deref<nksc_t>(instr.arg[0]) = nk_syscall4(
-            deref<nksc_t>(instr.arg[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[0]),
-            deref<nksc_t>(instr.arg[2].refs.data[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[2]),
-            deref<nksc_t>(instr.arg[2].refs.data[3]));
+        deref<long>(instr.arg[0]) = nk_syscall4(
+            deref<long>(instr.arg[1]),
+            deref<long>(instr.arg[2].refs.data[0]),
+            deref<long>(instr.arg[2].refs.data[1]),
+            deref<long>(instr.arg[2].refs.data[2]),
+            deref<long>(instr.arg[2].refs.data[3]));
         break;
     }
 
     case nkop_syscall_5: {
-        deref<nksc_t>(instr.arg[0]) = nk_syscall5(
-            deref<nksc_t>(instr.arg[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[0]),
-            deref<nksc_t>(instr.arg[2].refs.data[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[2]),
-            deref<nksc_t>(instr.arg[2].refs.data[3]),
-            deref<nksc_t>(instr.arg[2].refs.data[4]));
+        deref<long>(instr.arg[0]) = nk_syscall5(
+            deref<long>(instr.arg[1]),
+            deref<long>(instr.arg[2].refs.data[0]),
+            deref<long>(instr.arg[2].refs.data[1]),
+            deref<long>(instr.arg[2].refs.data[2]),
+            deref<long>(instr.arg[2].refs.data[3]),
+            deref<long>(instr.arg[2].refs.data[4]));
         break;
     }
 
     case nkop_syscall_6: {
-        deref<nksc_t>(instr.arg[0]) = nk_syscall6(
-            deref<nksc_t>(instr.arg[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[0]),
-            deref<nksc_t>(instr.arg[2].refs.data[1]),
-            deref<nksc_t>(instr.arg[2].refs.data[2]),
-            deref<nksc_t>(instr.arg[2].refs.data[3]),
-            deref<nksc_t>(instr.arg[2].refs.data[4]),
-            deref<nksc_t>(instr.arg[2].refs.data[5]));
+        deref<long>(instr.arg[0]) = nk_syscall6(
+            deref<long>(instr.arg[1]),
+            deref<long>(instr.arg[2].refs.data[0]),
+            deref<long>(instr.arg[2].refs.data[1]),
+            deref<long>(instr.arg[2].refs.data[2]),
+            deref<long>(instr.arg[2].refs.data[3]),
+            deref<long>(instr.arg[2].refs.data[4]),
+            deref<long>(instr.arg[2].refs.data[5]));
         break;
     }
 #endif // NK_SYSCALLS_AVAILABLE
