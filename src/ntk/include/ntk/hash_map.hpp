@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NTK_HASH_MAP
-#define HEADER_GUARD_NTK_HASH_MAP
+#ifndef NTK_HASH_MAP_H_
+#define NTK_HASH_MAP_H_
 
 #include "ntk/hash_set.hpp"
 
@@ -15,11 +15,11 @@ private:
     using _Entry = _TEntry<K, V>;
 
     struct _HashSetContext {
-        static hash_t hash(_Entry const &entry) {
+        static u64 hash(_Entry const &entry) {
             return Context::hash(entry.key);
         }
 
-        static hash_t hash(K const &key) {
+        static u64 hash(K const &key) {
             return Context::hash(key);
         }
 
@@ -101,4 +101,4 @@ private:
     _EntrySet m_entries;
 };
 
-#endif // HEADER_GUARD_NTK_HASH_MAP
+#endif // NTK_HASH_MAP_H_

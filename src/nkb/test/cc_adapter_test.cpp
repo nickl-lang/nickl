@@ -1,12 +1,11 @@
 #include "cc_adapter.h"
 
 #include <filesystem>
-#include <iterator>
 
 #include <gtest/gtest.h>
 
 #include "nkb/ir.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
@@ -19,7 +18,7 @@ NK_LOG_USE_SCOPE(test);
 
 class cc_adapter : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
 
         nksb_printf(
             &m_output_filename_sb,
@@ -27,11 +26,11 @@ class cc_adapter : public testing::Test {
             std::filesystem::exists(TEST_FILES_DIR) ? TEST_FILES_DIR : "",
             testing::UnitTest::GetInstance()->current_test_info()->name());
 
-        static nks const additional_flags = nk_cs2s(TEST_CC_FLAGS);
+        static NkString const additional_flags = nk_cs2s(TEST_CC_FLAGS);
         m_conf = NkIrCompilerConfig{
             .compiler_binary = nk_cs2s(TEST_CC),
             .additional_flags{&additional_flags, 1},
-            .output_filename{nkav_init(m_output_filename_sb)},
+            .output_filename{NK_SLICE_INIT(m_output_filename_sb)},
             .output_kind = NkbOutput_Executable,
             .quiet = TEST_QUIET,
         };
@@ -57,8 +56,8 @@ protected:
                 nksb_free(&sb);
             };
             EXPECT_TRUE(nksb_readFromStream(&sb, in.stream));
-            NK_LOG_DBG("out_str=\"" nks_Fmt "\"", nks_Arg(sb));
-            return std_str({nkav_init(sb)});
+            NK_LOG_DBG("out_str=\"" NKS_FMT "\"", NKS_ARG(sb));
+            return nk_s2stdStr({NK_SLICE_INIT(sb)});
         } else {
             return "";
         }
@@ -85,7 +84,7 @@ TEST_F(cc_adapter, empty_main) {
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src.stream, "%s", "int main() {}\n");
+        nk_stream_printf(src.stream, "%s", "int main() {}\n");
     }
 
     EXPECT_FALSE(nkcc_streamClose(&src));
@@ -99,7 +98,7 @@ TEST_F(cc_adapter, hello_world) {
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src.stream, "%s", R"(
+        nk_stream_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
@@ -118,7 +117,7 @@ TEST_F(cc_adapter, undefined_var) {
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src.stream, "%s", R"(
+        nk_stream_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("%i", var);

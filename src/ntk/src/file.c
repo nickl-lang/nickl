@@ -1,48 +1,48 @@
 #include "ntk/file.h"
 
+#include "ntk/os/file.h"
+#include "ntk/os/path.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
-#include "ntk/sys/file.h"
-#include "ntk/sys/path.h"
 
 #define BUF_SIZE 4096
 
-NkFileReadResult nk_file_read(NkAllocator alloc, nks file) {
-    ProfBeginFunc();
+NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
+    NK_PROF_FUNC_BEGIN();
 
-    nksb_fixed_buffer(path, NK_MAX_PATH);
-    nksb_try_append_str(&path, file);
-    nksb_try_append_null(&path);
+    NKSB_FIXED_BUFFER(path, NK_MAX_PATH);
+    nksb_tryAppendStr(&path, file);
+    nksb_tryAppendNull(&path);
 
     NkFileReadResult res = {0};
 
-    nkfd_t fd = nk_open(path.data, nk_open_read);
+    nkfd_t fd = nk_open(path.data, NkOpenFlags_Read);
     if (fd >= 0) {
-        NkStringBuilder sb = {nksb_init(alloc)};
+        NkStringBuilder sb = {NKSB_INIT(alloc)};
         if (nksb_readFromStreamEx(&sb, nk_file_getStream(fd), BUF_SIZE)) {
-            res.bytes = (nks){nkav_init(sb)};
+            res.bytes = (NkString){NK_SLICE_INIT(sb)};
             res.ok = true;
         }
     }
     nk_close(fd);
 
-    ProfEndBlock();
+    NK_PROF_FUNC_END();
     return res;
 }
 
-static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, nk_stream_mode mode) {
+static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
     nkfd_t fd = (nkfd_t)stream_data;
 
     switch (mode) {
-    case nk_stream_mode_read:
+    case NkStreamMode_Read:
         return nk_read(fd, buf, size);
-    case nk_stream_mode_write:
+    case NkStreamMode_Write:
         return nk_write(fd, buf, size);
     default:
         return -1;
     }
 }
 
-nk_stream nk_file_getStream(nkfd_t fd) {
-    return (nk_stream){(void *)fd, nk_file_streamProc};
+NkStream nk_file_getStream(nkfd_t fd) {
+    return (NkStream){(void *)fd, nk_file_streamProc};
 }

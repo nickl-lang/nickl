@@ -1,8 +1,7 @@
-#ifndef HEADER_GUARD_NK_VM_COMMON
-#define HEADER_GUARD_NK_VM_COMMON
+#ifndef NK_VM_COMMON_H_
+#define NK_VM_COMMON_H_
 
-#include <stddef.h>
-#include <stdint.h>
+#include "ntk/common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,4 +24,4 @@ typedef struct {
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_COMMON
+#endif // NK_VM_COMMON_H_

@@ -1,20 +1,16 @@
 #include "translate2c.h"
 
-#include <cassert>
 #include <cmath>
-#include <cstdint>
-#include <cstdio>
 #include <limits>
 
 #include "ir_impl.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
-#include "ntk/array.h"
+#include "ntk/atom.h"
+#include "ntk/dyn_array.h"
 #include "ntk/hash_map.hpp"
-#include "ntk/hash_set.hpp"
-#include "ntk/id.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -31,11 +27,11 @@ struct DataFp {
 };
 
 struct DataFpHashSetContext {
-    static hash_t hash(DataFp const &val) {
-        hash_t seed = 0;
-        hash_combine(&seed, val.idx);
-        hash_combine(&seed, (usize)val.data);
-        hash_combine(&seed, val.type_id);
+    static u64 hash(DataFp const &val) {
+        u64 seed = 0;
+        nk_hashCombine(&seed, val.idx);
+        nk_hashCombine(&seed, (usize)val.data);
+        nk_hashCombine(&seed, val.type_id);
         return seed;
     }
 
@@ -44,11 +40,11 @@ struct DataFpHashSetContext {
     }
 };
 
-nkar_typedef(bool, flag_array);
+typedef NkDynArray(bool) FlagArray;
 
-bool &getFlag(flag_array &ar, usize i) {
+bool &getFlag(FlagArray &ar, usize i) {
     while (i >= ar.size) {
-        nkar_append(&ar, false);
+        nkda_append(&ar, false);
     }
     return ar.data[i];
 }
@@ -63,18 +59,18 @@ struct WriterCtx {
     NkStringBuilder forward_s{0, 0, 0, alloc};
     NkStringBuilder main_s{0, 0, 0, alloc};
 
-    NkHashMap<usize, nks> type_map = decltype(type_map)::create(alloc);
+    NkHashMap<usize, NkString> type_map = decltype(type_map)::create(alloc);
     usize typedecl_count = 0;
 
-    NkHashMap<DataFp, nks, DataFpHashSetContext> data_map = decltype(data_map)::create(alloc);
+    NkHashMap<DataFp, NkString, DataFpHashSetContext> data_map = decltype(data_map)::create(alloc);
     usize data_count = 0;
 
-    flag_array procs_translated{0, 0, 0, alloc};
-    flag_array data_translated{0, 0, 0, alloc};
-    flag_array ext_data_translated{0, 0, 0, alloc};
-    flag_array ext_procs_translated{0, 0, 0, alloc};
+    FlagArray procs_translated{0, 0, 0, alloc};
+    FlagArray data_translated{0, 0, 0, alloc};
+    FlagArray ext_data_translated{0, 0, 0, alloc};
+    FlagArray ext_procs_translated{0, 0, 0, alloc};
 
-    nkar_type(usize) procs_to_translate{0, 0, 0, alloc};
+    NkDynArray(usize) procs_to_translate{0, 0, 0, alloc};
 };
 
 #define LOCAL_CLASS "var"
@@ -82,10 +78,10 @@ struct WriterCtx {
 #define CONST_CLASS "const"
 #define GLOBAL_CLASS "global"
 
-void writeName(nkid name, usize index, char const *obj_class, NkStringBuilder *src) {
-    if (name != nk_invalid_id) {
-        auto const str = nkid2s(name);
-        nksb_printf(src, nks_Fmt, nks_Arg(str));
+void writeName(NkAtom name, usize index, char const *obj_class, NkStringBuilder *src) {
+    if (name != NK_ATOM_INVALID) {
+        auto const str = nk_atom2s(name);
+        nksb_printf(src, NKS_FMT, NKS_ARG(str));
     } else {
         nksb_printf(src, "_%s_%zu", obj_class, index);
     }
@@ -159,7 +155,7 @@ void writeNumericType(NkIrNumericValueType value_type, NkStringBuilder *src) {
         nksb_printf(src, "f64");
         break;
     default:
-        assert(!"unreachable");
+        nk_assert(!"unreachable");
         break;
     }
 }
@@ -172,7 +168,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
 
     auto found_str = ctx.type_map.find(type->id);
     if (found_str) {
-        nksb_printf(src, nks_Fmt, nks_Arg(*found_str));
+        nksb_printf(src, NKS_FMT, NKS_ARG(*found_str));
         return;
     }
 
@@ -223,29 +219,29 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         break;
     }
     default:
-        assert(!"unreachable");
+        nk_assert(!"unreachable");
         break;
     }
 
-    nks type_str{nkav_init(tmp_s)};
+    NkString type_str{NK_SLICE_INIT(tmp_s)};
 
     if (is_complex) {
         nksb_printf(
             &ctx.types_s,
-            "typedef " nks_Fmt " _type%zu" nks_Fmt ";\n",
-            nks_Arg(type_str),
+            "typedef " NKS_FMT " _type%zu" NKS_FMT ";\n",
+            NKS_ARG(type_str),
             ctx.typedecl_count,
-            nks_Arg(tmp_s_suf));
+            NKS_ARG(tmp_s_suf));
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
         nksb_printf(&sb, "_type%zu", ctx.typedecl_count);
-        type_str = nks{nkav_init(sb)};
+        type_str = NkString{NK_SLICE_INIT(sb)};
 
         ctx.typedecl_count++;
     }
 
     ctx.type_map.insert(type->id, type_str);
-    nksb_printf(src, nks_Fmt, nks_Arg(type_str));
+    nksb_printf(src, NKS_FMT, NKS_ARG(type_str));
 }
 
 void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilder *src, bool is_complex = false) {
@@ -253,7 +249,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 
     auto found_str = ctx.data_map.find(data_fp);
     if (found_str) {
-        nksb_printf(src, nks_Fmt, nks_Arg(*found_str));
+        nksb_printf(src, NKS_FMT, NKS_ARG(*found_str));
         return;
     }
 
@@ -277,7 +273,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                         ctx,
                         NKIR_INVALID_IDX,
                         {
-                            .name = nk_invalid_id,
+                            .name = NK_ATOM_INVALID,
                             .data = (u8 *)decl.data + offset,
                             .type = elem.type,
                             .visibility = NkIrVisibility_Local,
@@ -339,7 +335,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                 break;
             }
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
                 break;
             }
             if (value_type < Float32) {
@@ -355,12 +351,12 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
             break;
         }
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
     }
 
-    nks str{nkav_init(tmp_s)};
+    NkString str{NK_SLICE_INIT(tmp_s)};
 
     if (is_complex && !getFlag(ctx.data_translated, idx)) {
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
@@ -372,7 +368,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
         writeName(decl.name, ctx.data_count, CONST_CLASS, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " = ");
         if (decl.data) {
-            nksb_printf(&ctx.forward_s, nks_Fmt, nks_Arg(str));
+            nksb_printf(&ctx.forward_s, NKS_FMT, NKS_ARG(str));
         } else {
             nksb_printf(&ctx.forward_s, "{0}");
         }
@@ -380,7 +376,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
         writeName(decl.name, ctx.data_count, CONST_CLASS, &sb);
-        str = {nkav_init(sb)};
+        str = {NK_SLICE_INIT(sb)};
 
         ctx.data_count++;
 
@@ -390,19 +386,19 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
     }
 
     ctx.data_map.insert(data_fp, str);
-    nksb_printf(src, nks_Fmt, nks_Arg(str));
+    nksb_printf(src, NKS_FMT, NKS_ARG(str));
 }
 
 void writeProcSignature(
     WriterCtx &ctx,
     NkStringBuilder *src,
-    nks name,
+    NkString name,
     nktype_t ret_t,
     NkTypeArray args_t,
-    nkid_array arg_names,
+    NkAtomArray arg_names,
     bool va = false) {
     writeType(ctx, ret_t, src, true);
-    nksb_printf(src, " " nks_Fmt "(", nks_Arg(name));
+    nksb_printf(src, " " NKS_FMT "(", NKS_ARG(name));
 
     for (usize i = 0; i < args_t.size; i++) {
         if (i) {
@@ -411,7 +407,7 @@ void writeProcSignature(
         writeType(ctx, args_t.data[i], src);
         if (arg_names.size) {
             nksb_printf(src, " ");
-            writeName(i < arg_names.size ? arg_names.data[i] : (nkid)nk_invalid_id, i, ARG_CLASS, src);
+            writeName(i < arg_names.size ? arg_names.data[i] : (NkAtom)NK_ATOM_INVALID, i, ARG_CLASS, src);
         }
     }
     if (va) {
@@ -430,9 +426,9 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
     nksb_printf(src, ")");
 }
 
-void writeLineDirective(nkid file, usize line, NkStringBuilder *src) {
-    if (file != nk_invalid_id) {
-        auto const file_name = nkid2s(file);
+void writeLineDirective(NkAtom file, usize line, NkStringBuilder *src) {
+    if (file != NK_ATOM_INVALID) {
+        auto const file_name = nk_atom2s(file);
         nksb_printf(src, "#line %zu \"", line);
         nks_escape(nksb_getStream(src), file_name);
         nksb_printf(src, "\"\n");
@@ -443,16 +439,16 @@ void writeLineDirective(nkid file, usize line, NkStringBuilder *src) {
 
 void writeLabel(WriterCtx &ctx, usize label_id, NkStringBuilder *src) {
     auto const &block = ctx.ir->blocks.data[label_id];
-    auto name = nkid2s(block.name);
+    auto name = nk_atom2s(block.name);
     if (name.data[0] == '@') {
         name.data++;
         name.size--;
     }
-    nksb_printf(src, "l_" nks_Fmt, nks_Arg(name));
+    nksb_printf(src, "l_" NKS_FMT, NKS_ARG(name));
 }
 
 void translateProc(WriterCtx &ctx, usize proc_id) {
-    ProfFunc();
+    NK_PROF_FUNC();
 
     if (getFlag(ctx.procs_translated, proc_id)) {
         return;
@@ -472,16 +468,16 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     auto src = &ctx.main_s;
 
     writeVisibilityAttr(proc.visibility, &ctx.forward_s);
-    writeProcSignature(ctx, &ctx.forward_s, nkid2s(proc.name), ret_t, args_t, {});
+    writeProcSignature(ctx, &ctx.forward_s, nk_atom2s(proc.name), ret_t, args_t, {});
     nksb_printf(&ctx.forward_s, ";\n");
 
     nksb_printf(src, "\n");
     writeLineDirective(proc.file, proc.start_line, src);
-    writeProcSignature(ctx, src, nkid2s(proc.name), ret_t, args_t, proc.arg_names);
+    writeProcSignature(ctx, src, nk_atom2s(proc.name), ret_t, args_t, proc.arg_names);
     nksb_printf(src, " {\n\n");
 
     for (usize i = 0; auto decl : nk_iterate(proc.locals)) {
-        writeLineDirective(nk_invalid_id, proc.start_line, src);
+        writeLineDirective(NK_ATOM_INVALID, proc.start_line, src);
         writeType(ctx, decl.type, src);
         nksb_printf(src, " ");
         writeName(decl.name, i++, LOCAL_CLASS, src);
@@ -493,7 +489,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     }
 
     if (ret_t->size) {
-        writeLineDirective(nk_invalid_id, proc.start_line, src);
+        writeLineDirective(NK_ATOM_INVALID, proc.start_line, src);
         writeType(ctx, ret_t, src);
         nksb_printf(src, " _ret={0};\n");
     }
@@ -501,19 +497,19 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     nksb_printf(src, "\n");
 
     auto write_ref = [&](NkIrRef const &ref) {
-        ProfScope(nk_cs2s("write_ref"));
+        NK_PROF_SCOPE(nk_cs2s("write_ref"));
         if (ref.kind == NkIrRef_Proc) {
             auto const &proc = ctx.ir->procs.data[ref.index];
-            auto const proc_name = nkid2s(proc.name);
-            nksb_printf(src, nks_Fmt, nks_Arg(proc_name));
+            auto const proc_name = nk_atom2s(proc.name);
+            nksb_printf(src, NKS_FMT, NKS_ARG(proc_name));
             if (!getFlag(ctx.procs_translated, ref.index)) {
-                nkar_append(&ctx.procs_to_translate, ref.index);
+                nkda_append(&ctx.procs_to_translate, ref.index);
             }
             return;
         } else if (ref.kind == NkIrRef_ExternProc) {
             auto const extern_proc = ctx.ir->extern_procs.data[ref.index];
-            auto const extern_proc_name = nkid2s(extern_proc.name);
-            nksb_printf(src, nks_Fmt, nks_Arg(extern_proc_name));
+            auto const extern_proc_name = nk_atom2s(extern_proc.name);
+            nksb_printf(src, NKS_FMT, NKS_ARG(extern_proc_name));
             if (!getFlag(ctx.ext_procs_translated, ref.index)) {
                 nksb_printf(&ctx.forward_s, "extern ");
                 writeProcSignature(
@@ -530,12 +526,12 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             return;
         } else if (ref.kind == NkIrRef_ExternData) {
             auto const extern_data = ctx.ir->extern_data.data[ref.index];
-            auto const extern_data_name = nkid2s(extern_data.name);
-            nksb_printf(src, nks_Fmt, nks_Arg(extern_data_name));
+            auto const extern_data_name = nk_atom2s(extern_data.name);
+            nksb_printf(src, NKS_FMT, NKS_ARG(extern_data_name));
             if (!getFlag(ctx.ext_data_translated, ref.index)) {
                 nksb_printf(&ctx.forward_s, "extern ");
                 writeType(ctx, extern_data.type, &ctx.forward_s);
-                nksb_printf(&ctx.forward_s, " " nks_Fmt ";\n", nks_Arg(extern_data_name));
+                nksb_printf(&ctx.forward_s, " " NKS_FMT ";\n", NKS_ARG(extern_data_name));
                 getFlag(ctx.ext_data_translated, ref.index) = true;
             }
             return;
@@ -551,12 +547,12 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
               ctx.ir->data.data[ref.index].type->kind != NkType_Aggregate);
 
         if (is_addressable) {
-            for (u8 i = 0; i < maxu(ref.indir, 1); i++) {
+            for (u8 i = 0; i < nk_maxu(ref.indir, 1); i++) {
                 nksb_printf(src, "*");
             }
             nksb_printf(src, "(");
             writeType(ctx, ref.type, src);
-            for (u8 i = 0; i < maxu(ref.indir, 1); i++) {
+            for (u8 i = 0; i < nk_maxu(ref.indir, 1); i++) {
                 nksb_printf(src, "*");
             }
             nksb_printf(src, ")");
@@ -576,7 +572,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             break;
         case NkIrRef_Arg:
             writeName(
-                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (nkid)nk_invalid_id,
+                ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (NkAtom)NK_ATOM_INVALID,
                 ref.index,
                 ARG_CLASS,
                 src);
@@ -593,7 +589,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         case NkIrRef_Address:
         case NkIrRef_None:
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         if (is_addressable) {
@@ -618,7 +614,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             auto const &instr = ctx.ir->instrs.data[ii];
 
             if (instr.line != last_line + 1) {
-                writeLineDirective(nk_invalid_id, instr.line, src);
+                writeLineDirective(NK_ATOM_INVALID, instr.line, src);
             }
             last_line = instr.line;
 
@@ -669,7 +665,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             }
             case nkir_call: {
                 auto proc_t = instr.arg[1].ref.type;
-                assert(proc_t->kind == NkType_Procedure);
+                nk_assert(proc_t->kind == NkType_Procedure);
                 nksb_printf(src, "(");
                 write_ref(instr.arg[1].ref);
                 nksb_printf(src, ")(");
@@ -726,7 +722,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                 break;
 
 #define UN_OP(NAME, OP)              \
-    case CAT(nkir_, NAME):           \
+    case NK_CAT(nkir_, NAME):        \
         nksb_printf(src, "(");       \
         nksb_printf(src, #OP);       \
         write_ref(instr.arg[1].ref); \
@@ -738,7 +734,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
 #undef UN_OP
 
 #define BIN_OP(NAME, OP)              \
-    case CAT(nkir_, NAME):            \
+    case NK_CAT(nkir_, NAME):         \
         nksb_printf(src, "(");        \
         write_ref(instr.arg[1].ref);  \
         nksb_printf(src, " " OP " "); \
@@ -780,7 +776,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             }
 
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
             }
 
             nksb_printf(src, ";\n");
@@ -789,14 +785,14 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         nksb_printf(src, "\n");
     }
 
-    writeLineDirective(nk_invalid_id, proc.end_line, src);
+    writeLineDirective(NK_ATOM_INVALID, proc.end_line, src);
     nksb_printf(src, "}\n");
 }
 
 } // namespace
 
-void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
-    ProfFunc();
+void nkir_translate2c(NkArena *arena, NkIrProg ir, NkStream src) {
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     auto frame = nk_arena_grab(arena);
@@ -816,8 +812,8 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
             translateProc(ctx, i);
 
             while (ctx.procs_to_translate.size) {
-                auto proc = nkav_last(ctx.procs_to_translate);
-                nkar_pop(&ctx.procs_to_translate, 1);
+                auto proc = nk_slice_last(ctx.procs_to_translate);
+                nkda_pop(&ctx.procs_to_translate, 1);
                 translateProc(ctx, proc);
             }
         }
@@ -833,9 +829,9 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src) {
 
 #if 0
     fprintf(
-        stderr, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
+        stderr, NKS_FMT "\n" NKS_FMT "\n" NKS_FMT, NKS_ARG(ctx.types_s), NKS_ARG(ctx.forward_s), NKS_ARG(ctx.main_s));
 #endif
 
-    nk_printf(
-        src, nks_Fmt "\n" nks_Fmt "\n" nks_Fmt, nks_Arg(ctx.types_s), nks_Arg(ctx.forward_s), nks_Arg(ctx.main_s));
+    nk_stream_printf(
+        src, NKS_FMT "\n" NKS_FMT "\n" NKS_FMT, NKS_ARG(ctx.types_s), NKS_ARG(ctx.forward_s), NKS_ARG(ctx.main_s));
 }

@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_DL_ADAPTER
-#define HEADER_GUARD_NK_VM_DL_ADAPTER
+#ifndef NK_VM_DL_ADAPTER_H_
+#define NK_VM_DL_ADAPTER_H_
 
 #include "ntk/string.h"
 
@@ -9,13 +9,13 @@ extern "C" {
 
 typedef struct NkDlHandle_T *NkDlHandle;
 
-NkDlHandle nkdl_open(nks name);
+NkDlHandle nkdl_open(NkString name);
 void nkdl_close(NkDlHandle dl);
 
-void *nkdl_sym(NkDlHandle dl, nks sym);
+void *nkdl_sym(NkDlHandle dl, NkString sym);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_DL_ADAPTER
+#endif // NK_VM_DL_ADAPTER_H_

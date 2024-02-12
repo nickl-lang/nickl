@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKL_COMMON_DIAGNOSTICS
-#define HEADER_GUARD_NKL_COMMON_DIAGNOSTICS
+#ifndef NKL_COMMON_DIAGNOSTICS_H_
+#define NKL_COMMON_DIAGNOSTICS_H_
 
 #include <stdarg.h>
 
@@ -19,7 +19,7 @@ typedef enum {
 void nkl_diag_init(NklColorPolicy color_policy);
 
 typedef struct {
-    nks file;
+    NkString file;
     usize lin;
     usize col;
     usize len;
@@ -27,14 +27,14 @@ typedef struct {
 
 NK_PRINTF_LIKE(1, 2) void nkl_diag_printError(char const *fmt, ...);
 NK_PRINTF_LIKE(2, 3) void nkl_diag_printErrorFile(NklSourceLocation loc, char const *fmt, ...);
-NK_PRINTF_LIKE(3, 4) void nkl_diag_printErrorQuote(nks src, NklSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(3, 4) void nkl_diag_printErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, ...);
 
 void nkl_diag_vprintError(char const *fmt, va_list ap);
 void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap);
-void nkl_diag_vprintErrorQuote(nks src, NklSourceLocation loc, char const *fmt, va_list ap);
+void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_COMMON_DIAGNOSTICS
+#endif // NKL_COMMON_DIAGNOSTICS_H_

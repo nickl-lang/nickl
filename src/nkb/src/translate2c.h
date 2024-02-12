@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKB_TRANSLATE2C
-#define HEADER_GUARD_NKB_TRANSLATE2C
+#ifndef NKB_TRANSLATE2C_H_
+#define NKB_TRANSLATE2C_H_
 
 #include "nkb/ir.h"
 #include "ntk/stream.h"
@@ -8,10 +8,10 @@
 extern "C" {
 #endif
 
-void nkir_translate2c(NkArena *arena, NkIrProg ir, nk_stream src);
+void nkir_translate2c(NkArena *arena, NkIrProg ir, NkStream src);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKB_TRANSLATE2C
+#endif // NKB_TRANSLATE2C_H_

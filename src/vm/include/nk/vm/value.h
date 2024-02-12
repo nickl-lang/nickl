@@ -1,14 +1,11 @@
-#ifndef HEADER_GUARD_NK_VM_VALUE
-#define HEADER_GUARD_NK_VM_VALUE
+#ifndef NK_VM_VALUE_H_
+#define NK_VM_VALUE_H_
 
-#include <assert.h>
-#include <stddef.h>
 #include <string.h>
 
 #include "nk/vm/common.h"
 #include "ntk/allocator.h"
 #include "ntk/common.h"
-#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 #ifdef __cplusplus
@@ -150,7 +147,7 @@ typedef struct {
 NkTupleLayout nk_calcTupleLayout(nktype_t const *types, usize count, NkAllocator allocator, usize stride);
 
 inline nkval_t nkval_undefined() {
-    return LITERAL(nkval_t) ZERO_STRUCT;
+    return NK_LITERAL(nkval_t) NK_ZERO_STRUCT;
 }
 
 inline void *nkval_data(nkval_t val) {
@@ -194,12 +191,12 @@ inline usize nkval_alignof(nkval_t val) {
 }
 
 inline nkval_t nkval_reinterpret_cast(nktype_t type, nkval_t val) {
-    return LITERAL(nkval_t){nkval_data(val), type};
+    return NK_LITERAL(nkval_t){nkval_data(val), type};
 }
 
 inline nkval_t nkval_copy(void *dst, nkval_t src) {
     memcpy(dst, nkval_data(src), nkval_sizeof(src));
-    return LITERAL(nkval_t){dst, nkval_typeof(src)};
+    return NK_LITERAL(nkval_t){dst, nkval_typeof(src)};
 }
 
 #define nkval_as(TYPE, VAL) (*(TYPE *)nkval_data(VAL))
@@ -208,4 +205,4 @@ inline nkval_t nkval_copy(void *dst, nkval_t src) {
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_VALUE
+#endif // NK_VM_VALUE_H_

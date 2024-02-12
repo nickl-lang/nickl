@@ -1,25 +1,20 @@
 #include "ffi_adapter.hpp"
 
-#include <cassert>
-#include <new>
-
 #include <ffi.h>
 
 #include "interp.hpp"
 #include "nkb/common.h"
-#include "nkb/ir.h"
 #include "ntk/allocator.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.h"
 
 namespace {
 
 NK_LOG_USE_SCOPE(ffi_adapter);
 
 ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     if (!type) {
@@ -68,7 +63,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
                 ffi_t = &ffi_type_double;
                 break;
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
                 break;
             }
             break;
@@ -84,7 +79,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
             for (usize i = 0; i < type->as.aggr.elems.size; i++) {
                 elem_count += type->as.aggr.elems.data[i].count;
             }
-            ffi_type **elems = (ffi_type **)nk_alloc_t<void *>(ctx->alloc, elem_count + 1);
+            ffi_type **elems = (ffi_type **)nk_allocT<void *>(ctx->alloc, elem_count + 1);
             usize cur_elem = 0;
             for (usize i = 0; i < type->as.aggr.elems.size; i++) {
                 for (usize j = 0; j < type->as.aggr.elems.data[i].count; j++) {
@@ -92,7 +87,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
                 }
             }
             elems[elem_count] = nullptr;
-            ffi_t = new (nk_alloc_t<ffi_type>(ctx->alloc)) ffi_type{
+            ffi_t = new (nk_allocT<ffi_type>(ctx->alloc)) ffi_type{
                 .size = type->size,
                 .alignment = type->align,
                 .type = FFI_TYPE_STRUCT,
@@ -101,7 +96,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
             break;
         }
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
 
@@ -109,16 +104,16 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
     }
 
 #ifdef ENABLE_LOGGING
-    nksb_fixed_buffer(sb, 256);
+    NKSB_FIXED_BUFFER(sb, 256);
     nkirt_inspect(type, nksb_getStream(&sb));
-    NK_LOG_DBG("ffi(type{name=" nks_Fmt " id=%" PRIu64 "}) -> %p", nks_Arg(sb), type->id, (void *)ffi_t);
+    NK_LOG_DBG("ffi(type{name=" NKS_FMT " id=%" PRIu64 "}) -> %p", NKS_ARG(sb), type->id, (void *)ffi_t);
 #endif // ENABLE_LOGGING
 
     return ffi_t;
 }
 
 ffi_type **getNativeHandleArray(NkFfiContext *ctx, NkArena *stack, NkTypeArray types) {
-    ffi_type **elements = nk_arena_alloc_t<ffi_type *>(stack, types.size + 1);
+    ffi_type **elements = nk_arena_allocT<ffi_type *>(stack, types.size + 1);
     for (usize i = 0; i < types.size; i++) {
         elements[i] = getNativeHandle(ctx, types.data[i]);
     }
@@ -133,7 +128,7 @@ void ffiPrepareCif(ffi_cif *cif, usize nfixedargs, bool is_variadic, ffi_type *r
     } else {
         status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes);
     }
-    assert(status == FFI_OK && "ffi_prep_cif failed");
+    nk_assert(status == FFI_OK && "ffi_prep_cif failed");
 }
 
 struct NkIrNativeClosure_T {
@@ -153,7 +148,7 @@ void ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     ffi_cif cif;
@@ -168,13 +163,13 @@ void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const 
     }
 
     {
-        ProfScope(nk_cs2s("ffi_call"));
+        NK_PROF_SCOPE(nk_cs2s("ffi_call"));
         ffi_call(&cif, FFI_FN(call_data->proc.native), call_data->retv, call_data->argv);
     }
 }
 
 void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     NkIrNativeClosure_T *cl;
@@ -182,7 +177,7 @@ void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc
     {
         std::lock_guard lk{ctx->mtx};
 
-        cl = nk_alloc_t<NkIrNativeClosure_T>(alloc);
+        cl = nk_allocT<NkIrNativeClosure_T>(alloc);
         cl->proc = call_data->proc.bytecode;
 
         auto const rtype = getNativeHandle(ctx, call_data->rett);
@@ -194,7 +189,7 @@ void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc
     cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
 
     ffi_status status = ffi_prep_closure_loc(cl->closure, &cl->cif, ffiClosure, cl, cl->code);
-    assert(status == FFI_OK && "ffi_prep_closure_loc failed");
+    nk_assert(status == FFI_OK && "ffi_prep_closure_loc failed");
 
     return cl;
 }

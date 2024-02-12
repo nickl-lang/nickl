@@ -1,15 +1,12 @@
 #include "parser.hpp"
 
-#include <cassert>
-#include <cstdio>
-#include <cstdlib>
 #include <vector>
 
 #include "ast_impl.h"
 #include "nkl/lang/ast.h"
 #include "nkl/lang/token.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
+#include "ntk/atom.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -33,7 +30,7 @@ namespace {
 NK_LOG_USE_SCOPE(parser);
 
 struct ParseEngine {
-    NklTokenView m_tokens;
+    NklTokenArray m_tokens;
     NklAst m_ast;
     std::string &m_err_str;
 
@@ -51,7 +48,7 @@ struct ParseEngine {
     EExprKind m_cur_expr_kind = Expr_Regular;
 
     NklAstNode parse() {
-        assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");
+        nk_assert(m_tokens.size && nk_slice_last(m_tokens).id == t_eof && "ill-formed token stream");
 
         m_cur_token = &m_tokens.data[0];
         return nkl_pushNode(m_ast, block(false)).data;
@@ -61,7 +58,7 @@ private:
     struct Void {};
 
     void getToken() {
-        assert(m_cur_token->id != t_eof);
+        nk_assert(m_cur_token->id != t_eof);
         m_last_token = m_cur_token++;
 
         NK_LOG_DBG("next token: " LOG_TOKEN(m_cur_token->id));
@@ -83,7 +80,7 @@ private:
     void expect(ETokenId id) {
         if (!accept(id)) {
             // TODO Improve token quote for string constants etc.
-            return error("expected `%s` before `" nks_Fmt "`", s_token_text[id], nks_Arg(m_cur_token->text));
+            return error("expected `%s` before `" NKS_FMT "`", s_token_text[id], NKS_ARG(m_cur_token->text));
         }
     }
 
@@ -97,7 +94,7 @@ private:
                 break;
             }
             APPEND(nodes, expr());
-            if (all_ids && nodes.back().id != cs2nkid("id")) {
+            if (all_ids && nodes.back().id != nk_cs2atom("id")) {
                 *all_ids = false;
             }
         } while (accept(t_comma));
@@ -119,15 +116,15 @@ private:
     };
 
     Void parseFields(ParseFieldsResult &res, ETokenId closer, ParseFieldsConfig const &cfg) {
-        assert(!cfg.allow_omit_type || !cfg.allow_tuple_mode);
+        nk_assert(!cfg.allow_omit_type || !cfg.allow_tuple_mode);
         bool &tuple_mode = res.tuple_parsed = cfg.allow_tuple_mode;
         if (accept(closer)) {
             return {};
         }
         NklAstNode_T &field = res.fields.emplace_back();
-        field.id = cs2nkid("field");
+        field.id = nk_cs2atom("field");
         if (cfg.accept_const && accept(t_const)) {
-            field.id = cs2nkid("const_field");
+            field.id = nk_cs2atom("const_field");
             tuple_mode = false;
         }
         if (tuple_mode) {
@@ -173,9 +170,9 @@ private:
                     break;
                 }
                 NklAstNode_T &field = res.fields.emplace_back();
-                field.id = cs2nkid("field");
+                field.id = nk_cs2atom("field");
                 if (cfg.accept_const && accept(t_const)) {
-                    field.id = cs2nkid("const_field");
+                    field.id = nk_cs2atom("const_field");
                 }
                 ASSIGN(field.args[0], nkl_pushNode(m_ast, nkl_makeNode0(n_id, identifier())));
                 EXPECT(t_colon);
@@ -203,9 +200,9 @@ private:
                 break;
             }
             NklAstNode_T &arg = args.emplace_back();
-            arg.id = cs2nkid("arg");
+            arg.id = nk_cs2atom("arg");
             if (named_mode || check(t_id)) {
-                NK_LOG_DBG("accept(id, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
+                NK_LOG_DBG("accept(id, \"" NKS_FMT "\")", NKS_ARG(m_cur_token->text));
                 auto id = m_cur_token;
                 getToken();
                 if (named_mode && !check(t_eq)) {
@@ -254,7 +251,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), NklTokenRef{};
         }
-        NK_LOG_DBG("accept(id, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
+        NK_LOG_DBG("accept(id, \"" NKS_FMT "\")", NKS_ARG(m_cur_token->text));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -306,7 +303,7 @@ private:
             //     }
         } else if (check(t_tag)) {
             //@Todo Refactor token debug prints
-            NK_LOG_DBG("accept(tag, \"" nks_Fmt "\")", nks_Arg(m_cur_token->text));
+            NK_LOG_DBG("accept(tag, \"" NKS_FMT "\")", NKS_ARG(m_cur_token->text));
             auto tag = m_cur_token;
             getToken();
             if (accept(t_colon_2x)) {
@@ -329,7 +326,7 @@ private:
                             .allow_trailing_comma = true,
                         }));
                 }
-                NklAstNodeArray nodes{};
+                NklAstNodeDynArray nodes{};
                 NklAstNode_T body{};
                 if (check(t_brace_l)) {
                     ASSIGN(body, block(true, true));
@@ -363,7 +360,7 @@ private:
         }
 
         //@Todo Hack for id-statements, also support multiple assignment
-        if (node.id == cs2nkid("id")) {
+        if (node.id == nk_cs2atom("id")) {
             auto _n_token = m_cur_token;
 
             if (accept(t_colon_eq)) {
@@ -504,7 +501,7 @@ private:
                     .allow_omit_type = true,
                 }));
             node = nkl_makeNode1(n_enum, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
-        } else if (check(t_tag) && std_view(m_cur_token->text) == "#type") {
+        } else if (check(t_tag) && nk_s2stdView(m_cur_token->text) == "#type") {
             getToken();
             ASSIGN(node, expr(Expr_Type));
         } else {
@@ -819,19 +816,19 @@ private:
         auto _n_token = m_cur_token;
 
         if (accept(t_int)) {
-            NK_LOG_DBG("accept(int, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
+            NK_LOG_DBG("accept(int, \"" NKS_FMT "\")", NKS_ARG(_n_token->text));
             node = nkl_makeNode0(n_int, _n_token);
         } else if (accept(t_int_hex)) {
-            NK_LOG_DBG("accept(int_hex, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
+            NK_LOG_DBG("accept(int_hex, \"" NKS_FMT "\")", NKS_ARG(_n_token->text));
             node = nkl_makeNode0(n_int_hex, _n_token);
         } else if (accept(t_float)) {
-            NK_LOG_DBG("accept(float, \"" nks_Fmt "\"", nks_Arg(_n_token->text));
+            NK_LOG_DBG("accept(float, \"" NKS_FMT "\"", NKS_ARG(_n_token->text));
             node = nkl_makeNode0(n_float, _n_token);
         } else if (accept(t_string)) {
-            NK_LOG_DBG("accept(string, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
+            NK_LOG_DBG("accept(string, \"" NKS_FMT "\")", NKS_ARG(_n_token->text));
             node = nkl_makeNode0(n_string, _n_token);
         } else if (accept(t_escaped_string)) {
-            NK_LOG_DBG("accept(escaped_string, \"" nks_Fmt "\")", nks_Arg(_n_token->text));
+            NK_LOG_DBG("accept(escaped_string, \"" NKS_FMT "\")", NKS_ARG(_n_token->text));
             node = nkl_makeNode0(n_escaped_string, _n_token);
         }
 
@@ -903,14 +900,14 @@ private:
                         res.variadic_parsed ? n_fn_var : n_fn,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
-                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{},
+                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeDynArray{},
                         nkl_pushNode(m_ast, body));
                 } else {
                     node = nkl_makeNode2(
                         res.variadic_parsed ? n_fn_type_var : n_fn_type,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
-                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{});
+                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeDynArray{});
                 }
             } else {
                 if (res.tuple_parsed) {
@@ -957,20 +954,20 @@ private:
             m_cur_token--;
             return error("unexpected end of file"), NklAstNode_T{};
         } else {
-            return error("unexpected token `" nks_Fmt "`", nks_Arg(m_cur_token->text)), NklAstNode_T{};
+            return error("unexpected token `" NKS_FMT "`", NKS_ARG(m_cur_token->text)), NklAstNode_T{};
         }
 
         return node;
     }
 
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
-        assert(!m_error_occurred && "Parser error already initialized");
+        nk_assert(!m_error_occurred && "Parser error already initialized");
 
         va_list ap;
         va_start(ap, fmt);
         NkStringBuilder sb{};
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = std_str({nkav_init(sb)});
+        m_err_str = nk_s2stdStr({NK_SLICE_INIT(sb)});
         nksb_free(&sb);
         va_end(ap);
 
@@ -980,11 +977,11 @@ private:
 
 } // namespace
 
-NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklTokenRef &err_token) {
-    ProfFunc();
+NklAstNode nkl_parse(NklAst ast, NklTokenArray tokens, std::string &err_str, NklTokenRef &err_token) {
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    assert(tokens.size && "empty token array");
+    nk_assert(tokens.size && "empty token array");
 
     ParseEngine engine{tokens, ast, err_str};
     NklAstNode root = engine.parse();
@@ -993,8 +990,8 @@ NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklT
         "root: %s", (char const *)[&]() {
             NkStringBuilder sb{};
             nkl_inspectNode(root, &sb);
-            nksb_append_null(&sb);
-            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+            nksb_appendNull(&sb);
+            return nk_defer((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });
         }());

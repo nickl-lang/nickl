@@ -1,19 +1,19 @@
-#ifndef HEADER_GUARD_NKB_BYTECODE
-#define HEADER_GUARD_NKB_BYTECODE
+#ifndef NKB_BYTECODE_HPP_
+#define NKB_BYTECODE_HPP_
 
-#include <cstddef>
 #include <mutex>
 
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
-#include "ntk/array.h"
+#include "ntk/atom.h"
+#include "ntk/dyn_array.h"
 #include "ntk/hash_map.hpp"
-#include "ntk/id.h"
-#include "ntk/sys/dl.h"
+#include "ntk/os/common.h"
+#include "ntk/os/dl.h"
 
 enum NkBcOpcode {
-#define OP(NAME) CAT(nkop_, NAME),
+#define OP(NAME) NK_CAT(nkop_, NAME),
 #include "bytecode.inl"
 
     NkBcOpcode_Count,
@@ -72,7 +72,7 @@ struct NkBcProc_T {
     NkIrRunCtx ctx;
     usize frame_size;
     usize frame_align;
-    nkar_type(NkBcInstr) instrs;
+    NkDynArray(NkBcInstr) instrs;
 };
 
 struct NkFfiContext {
@@ -85,14 +85,14 @@ struct NkIrRunCtx_T {
     NkIrProg ir;
     NkArena *tmp_arena;
 
-    nkar_type(NkBcProc) procs;
-    nkar_type(void *) data;
-    NkHashMap<nkid, nkdl_t> extern_libs;
-    NkHashMap<nkid, void *> extern_syms;
+    NkDynArray(NkBcProc) procs;
+    NkDynArray(void *) data;
+    NkHashMap<NkAtom, NkOsHandle> extern_libs;
+    NkHashMap<NkAtom, void *> extern_syms;
 
     NkFfiContext ffi_ctx;
 
-    nks error_str{};
+    NkString error_str{};
 };
 
 inline void *nkbc_deref(u8 *base, NkBcRef const &ref) {
@@ -104,4 +104,4 @@ inline void *nkbc_deref(u8 *base, NkBcRef const &ref) {
     return ptr + ref.post_offset;
 }
 
-#endif // HEADER_GUARD_NKB_BYTECODE
+#endif // NKB_BYTECODE_HPP_

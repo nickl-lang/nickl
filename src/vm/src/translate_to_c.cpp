@@ -1,9 +1,6 @@
 #include "translate_to_c.h"
 
 #include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
 #include <iomanip>
 #include <limits>
 #include <ostream>
@@ -18,9 +15,8 @@
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
-#include "ntk/string.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -34,8 +30,8 @@ struct nkval_equal_to {
 };
 
 struct nkval_hash {
-    hash_t operator()(nkval_t key) const noexcept {
-        return hash_array((u8 *)&key, (u8 *)&key + sizeof(key));
+    u64 operator()(nkval_t key) const noexcept {
+        return nk_hashArray((u8 *)&key, (u8 *)&key + sizeof(key));
     }
 };
 
@@ -103,7 +99,7 @@ void _writeNumericType(NkNumericValueType value_type, std::ostream &src) {
         src << "double";
         break;
     default:
-        assert(!"unreachable");
+        nk_assert(!"unreachable");
         break;
     }
 }
@@ -171,7 +167,7 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src, bool allow_voi
         break;
     }
     default:
-        assert(!"type not implemented");
+        nk_assert(!"type not implemented");
         break;
     }
 
@@ -244,7 +240,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
             break;
         }
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         if (value_type < Float32) {
@@ -297,12 +293,12 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         }
         case NkCallConv_Cdecl: {
             auto it = ctx.ir->closureCode2IrFunct.find(nkval_as(void *, val));
-            assert(it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
+            nk_assert(it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
             fn = it->second;
             break;
         }
         default:
-            assert(!"invalid calling convention");
+            nk_assert(!"invalid calling convention");
             break;
         }
         tmp_s << fn->name;
@@ -312,7 +308,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
         break;
     }
     default:
-        assert(!"unreachable");
+        nk_assert(!"unreachable");
         break;
     }
 
@@ -475,7 +471,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             case NkIrRef_ExtSym:
             case NkIrRef_None:
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
                 break;
             }
             if (ref.offset) {
@@ -527,7 +523,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
                 break;
             case nkir_cast:
-                assert(instr.arg[1].arg_type == NkIrArg_NumValType && "numeric value type expected in cast");
+                nk_assert(instr.arg[1].arg_type == NkIrArg_NumValType && "numeric value type expected in cast");
                 src << "(";
                 _writeNumericType((NkNumericValueType)instr.arg[1].id, src);
                 src << ")";
@@ -535,7 +531,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 break;
             case nkir_call: {
                 auto fn_t = instr.arg[1].ref.type;
-                assert(fn_t->tclass == NkType_Fn);
+                nk_assert(fn_t->tclass == NkType_Fn);
                 src << "(";
                 _writeRef(instr.arg[1].ref);
                 src << ")";
@@ -566,7 +562,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 break;
 
 #define UN_OP(NAME, OP)              \
-    case CAT(nkir_, NAME):           \
+    case NK_CAT(nkir_, NAME):        \
         src << "(";                  \
         src << #OP;                  \
         _writeRef(instr.arg[1].ref); \
@@ -580,7 +576,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 #undef UN_OP
 
 #define BIN_OP(NAME, OP)             \
-    case CAT(nkir_, NAME):           \
+    case NK_CAT(nkir_, NAME):        \
         src << "(";                  \
         _writeRef(instr.arg[1].ref); \
         src << " " #OP " ";          \
@@ -610,7 +606,7 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 #undef BIN_OP
 
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
             }
 
             src << ";\n";
@@ -624,8 +620,8 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
 
 } // namespace
 
-void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src) {
-    ProfFunc();
+void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, NkStream src) {
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     std::ostringstream types_s;
@@ -656,7 +652,7 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src) {
         _translateFunction(ctx, fn);
     }
 
-    nk_printf(
+    nk_stream_printf(
         src,
         "%s\n%s\n%s\n%s",
         types_s.str().c_str(),   //

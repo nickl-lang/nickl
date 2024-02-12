@@ -1,10 +1,7 @@
 #include "native_fn_adapter.h"
 
-#include <cassert>
-#include <cstdint>
 #include <cstring>
 #include <mutex>
-#include <new>
 #include <unordered_map>
 
 #include <ffi.h>
@@ -14,7 +11,7 @@
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -51,7 +48,7 @@ static Context ctx;
 
 // TODO Integer promotion works only on little-endian
 ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     if (!type) {
@@ -117,7 +114,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
                 ffi_t = &ffi_type_double;
                 break;
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
                 break;
             }
             break;
@@ -143,7 +140,7 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
             break;
         }
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
 
@@ -155,8 +152,8 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         (char const *)[&]() {
             NkStringBuilder sb{};
             nkt_inspect(type, &sb);
-            nksb_append_null(&sb);
-            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+            nksb_appendNull(&sb);
+            return nk_defer((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });
         }(),
@@ -172,7 +169,7 @@ void _ffiPrepareCif(ffi_cif *cif, usize actual_argc, bool is_variadic, ffi_type 
     } else {
         status = ffi_prep_cif(cif, FFI_DEFAULT_ABI, argc, rtype, atypes->elements);
     }
-    assert(status == FFI_OK && "ffi_prep_cif failed");
+    nk_assert(status == FFI_OK && "ffi_prep_cif failed");
 }
 
 void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
@@ -202,7 +199,7 @@ void _ffiClosure(ffi_cif *, void *resp, void **args, void *userdata) {
 } // namespace
 
 void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     usize const argc = nkval_data(args) ? nkval_tuple_size(args) : 0;
@@ -233,13 +230,13 @@ void nk_native_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     }
 
     {
-        ProfScope(nk_cs2s("ffi_call"));
+        NK_PROF_SCOPE(nk_cs2s("ffi_call"));
         ffi_call(&cif, FFI_FN(nkval_as(void *, fn)), nkval_data(ret), argv);
     }
 }
 
 NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     NkIrNativeClosure cl;
@@ -263,13 +260,13 @@ NkIrNativeClosure nk_native_make_closure(NkIrFunct fn) {
     cl->closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &cl->code);
 
     ffi_status status = ffi_prep_closure_loc(cl->closure, &cl->cif, _ffiClosure, cl, cl->code);
-    assert(status == FFI_OK && "ffi_prep_closure_loc failed");
+    nk_assert(status == FFI_OK && "ffi_prep_closure_loc failed");
 
     return cl;
 }
 
 void nk_native_free_closure(NkIrNativeClosure cl) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     ffi_closure_free(cl->closure);

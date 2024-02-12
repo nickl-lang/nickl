@@ -1,8 +1,6 @@
 #include "nk/vm/value.h"
 
-#include <cassert>
 #include <cstdalign>
-#include <cstdint>
 #include <limits>
 
 #include "ir_impl.hpp"
@@ -134,7 +132,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
             nksb_printf(sb, "f");
             break;
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         nksb_printf(sb, "%" PRIu64, (usize)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
@@ -217,7 +215,7 @@ void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
             nksb_printf(sb, "%.*g", std::numeric_limits<f64>::max_digits10, nkval_as(f64, val));
             break;
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         break;
@@ -274,7 +272,7 @@ usize nkval_array_size(nkval_t self) {
 }
 
 nkval_t nkval_array_at(nkval_t self, usize i) {
-    assert(i < nkval_array_size(self) && "array index out of range");
+    nk_assert(i < nkval_array_size(self) && "array index out of range");
     auto const type = nkval_typeof(self);
     return {
         ((u8 *)nkval_data(self)) + type->as.arr.elem_type->size * i,
@@ -287,7 +285,7 @@ usize nkval_tuple_size(nkval_t self) {
 }
 
 nkval_t nkval_tuple_at(nkval_t self, usize i) {
-    assert(i < nkval_tuple_size(self) && "tuple index out of range");
+    nk_assert(i < nkval_tuple_size(self) && "tuple index out of range");
     auto const type = nkval_typeof(self);
     return {
         ((u8 *)nkval_data(self)) + type->as.tuple.elems.data[i].offset,
@@ -304,12 +302,12 @@ NkTupleLayout nk_calcTupleLayout(nktype_t const *types, usize count, NkAllocator
     for (usize i = 0; i < count; i++) {
         nktype_t const type = types[i * stride];
 
-        alignment = maxu(alignment, type->align);
+        alignment = nk_maxu(alignment, type->align);
 
-        offset = roundUpSafe(offset, type->align);
+        offset = nk_roundUpSafe(offset, type->align);
         info_ar[i] = NkTupleElemInfo{type, offset};
         offset += type->size;
     }
 
-    return NkTupleLayout{{info_ar, count}, roundUpSafe(offset, alignment), alignment};
+    return NkTupleLayout{{info_ar, count}, nk_roundUpSafe(offset, alignment), alignment};
 }

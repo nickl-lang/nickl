@@ -4,12 +4,13 @@
 
 #include <gtest/gtest.h>
 
-#include "ntk/logger.h"
+#include "ntk/arena.h"
+#include "ntk/log.h"
 #include "ntk/utils.h"
 
 class allocator : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
 
         m_alloc = nk_arena_getAllocator(&m_arena);
     }
@@ -24,13 +25,13 @@ protected:
 };
 
 TEST_F(allocator, default) {
-    auto ptr = nk_alloc_t<int>(nk_default_allocator);
+    auto ptr = nk_allocT<int>(nk_default_allocator);
     *ptr = 42;
-    nk_free_t(nk_default_allocator, ptr);
+    nk_freeT(nk_default_allocator, ptr);
 }
 
 TEST_F(allocator, basic) {
-    char *ptr = nk_alloc_t<char>(m_alloc);
+    char *ptr = nk_allocT<char>(m_alloc);
     ASSERT_TRUE(ptr);
     *ptr = 'a';
 }
@@ -51,7 +52,7 @@ TEST_F(allocator, frames) {
 }
 
 TEST_F(allocator, clear) {
-    int *ptr = nk_alloc_t<int>(m_alloc, 5);
+    int *ptr = nk_allocT<int>(m_alloc, 5);
     ASSERT_TRUE(ptr);
 
     EXPECT_EQ((usize)ptr & (alignof(int) - 1), 0);
@@ -68,11 +69,11 @@ TEST_F(allocator, clear) {
 TEST_F(allocator, realloc) {
     EXPECT_EQ(m_arena.size, 0);
 
-    auto ptr1 = nk_alloc_t<int>(m_alloc);
+    auto ptr1 = nk_allocT<int>(m_alloc);
     EXPECT_GE(m_arena.size, sizeof(int));
     *ptr1 = 42;
 
-    auto ptr2 = nk_realloc_t(m_alloc, 2, ptr1, 1);
+    auto ptr2 = nk_reallocT(m_alloc, 2, ptr1, 1);
     EXPECT_GE(m_arena.size, 2 * sizeof(int));
 
     EXPECT_EQ(ptr1, ptr2);
@@ -86,13 +87,13 @@ TEST_F(allocator, realloc) {
 TEST_F(allocator, realloc_memcpy) {
     EXPECT_EQ(m_arena.size, 0);
 
-    auto ptr1 = nk_alloc_t<int>(m_alloc);
+    auto ptr1 = nk_allocT<int>(m_alloc);
     EXPECT_GE(m_arena.size, sizeof(int));
     *ptr1 = 42;
 
     nk_arena_alloc(&m_arena, 1);
 
-    auto ptr2 = nk_realloc_t(m_alloc, 2, ptr1, 1);
+    auto ptr2 = nk_reallocT(m_alloc, 2, ptr1, 1);
     EXPECT_GE(m_arena.size, 2 * sizeof(int));
 
     EXPECT_NE(ptr1, ptr2);
@@ -125,16 +126,16 @@ TEST_F(allocator, align) {
 TEST_F(allocator, free_noop) {
     static constexpr auto c_size = 2;
 
-    auto ptr1 = nk_alloc_t<i64>(m_alloc, c_size);
+    auto ptr1 = nk_allocT<i64>(m_alloc, c_size);
     ptr1[0] = 42;
     ptr1[1] = 43;
 
-    auto ptr2 = nk_alloc_t<i64>(m_alloc, c_size);
+    auto ptr2 = nk_allocT<i64>(m_alloc, c_size);
 
     EXPECT_EQ(ptr1[0], 42);
     EXPECT_EQ(ptr1[1], 43);
 
-    nk_free_t(m_alloc, ptr1, c_size);
+    nk_freeT(m_alloc, ptr1, c_size);
 
     EXPECT_EQ(ptr1[0], 42);
     EXPECT_EQ(ptr1[1], 43);

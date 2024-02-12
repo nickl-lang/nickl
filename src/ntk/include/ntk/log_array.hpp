@@ -1,9 +1,5 @@
-#ifndef HEADER_GUARD_NTK_LOG_ARRAY
-#define HEADER_GUARD_NTK_LOG_ARRAY
-
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
+#ifndef NTK_LOG_ARRAY_H_
+#define NTK_LOG_ARRAY_H_
 
 #include "ntk/allocator.h"
 #include "ntk/utils.h"
@@ -24,10 +20,10 @@ struct NkLogArray {
 
     void deinit() {
         for (usize bi = 0; bi < _block_table_size; bi++) {
-            nk_free_t(_alloc, _block_table[bi], _blockDataSize(bi));
+            nk_freeT(_alloc, _block_table[bi], _blockDataSize(bi));
         }
 
-        nk_free_t(_alloc, _block_table, _block_table_capacity);
+        nk_freeT(_alloc, _block_table, _block_table_capacity);
     }
 
     usize size() const {
@@ -46,13 +42,13 @@ struct NkLogArray {
         if (!_enoughSpace(n)) {
             if (!_block_table) {
                 _block_table_capacity = INIT_BLOCK_TAB_CAPACITY;
-                _block_table = nk_alloc_t<_block_ptr>(_alloc, _block_table_capacity);
-                _ic = ceilToPowerOf2(n);
+                _block_table = nk_allocT<_block_ptr>(_alloc, _block_table_capacity);
+                _ic = nk_ceilToPowerOf2(n);
             }
 
             if (!_enoughSpace(n)) {
-                auto const exp = ceilToPowerOf2(n);
-                _bi = maxu(exp >= _ic ? log2u64(exp / _ic) : 0ull, _bi + 1);
+                auto const exp = nk_ceilToPowerOf2(n);
+                _bi = nk_maxu(exp >= _ic ? nk_log2u64(exp / _ic) : 0ull, _bi + 1);
             }
             _size = _precedingBlocksSize(_bi);
 
@@ -69,7 +65,7 @@ struct NkLogArray {
     }
 
     void pop(usize n = 1) {
-        assert(n <= _size && "trying to pop more bytes that available");
+        nk_assert(n <= _size && "trying to pop more bytes that available");
         _size -= n;
         _bi = _size == 0 ? 0 : _blockIndexByIndex(_size - 1);
     }
@@ -82,7 +78,7 @@ private:
     static constexpr usize INIT_BLOCK_TAB_CAPACITY = 8;
 
     usize _indexRemainder(usize i) const {
-        return i + _ic - floorToPowerOf2(i + _ic);
+        return i + _ic - nk_floorToPowerOf2(i + _ic);
     }
 
     usize _precedingBlocksSize(usize bi) const {
@@ -90,7 +86,7 @@ private:
     }
 
     usize _blockIndexByIndex(usize i) const {
-        return log2u64(i / _ic + 1);
+        return nk_log2u64(i / _ic + 1);
     }
 
     _block_ptr _blockByIndex(usize i) const {
@@ -104,9 +100,9 @@ private:
     void _allocateBlock(usize bi) {
         if (_block_table_size == _block_table_capacity) {
             _block_table_capacity <<= 1;
-            _block_table = nk_realloc_t(_alloc, _block_table_capacity, _block_table, _block_table_capacity >> 1);
+            _block_table = nk_reallocT(_alloc, _block_table_capacity, _block_table, _block_table_capacity >> 1);
         }
-        _block_table[_block_table_size++] = nk_alloc_t<T>(_alloc, _blockDataSize(bi));
+        _block_table[_block_table_size++] = nk_allocT<T>(_alloc, _blockDataSize(bi));
     }
 
     T *_top() const {
@@ -119,4 +115,4 @@ private:
     }
 };
 
-#endif // HEADER_GUARD_NTK_LOG_ARRAY
+#endif // NTK_LOG_ARRAY_H_

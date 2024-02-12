@@ -1,15 +1,11 @@
 #include "nk/vm/ir.h"
 
 #include <algorithm>
-#include <cassert>
-#include <new>
 
 #include "ir_impl.hpp"
 #include "native_fn_adapter.h"
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -64,9 +60,9 @@ NkIrBlockId nkir_makeBlock(NkIrProg p) {
     return id;
 }
 
-NkIrShObjId nkir_makeShObj(NkIrProg p, nks name) {
+NkIrShObjId nkir_makeShObj(NkIrProg p, NkString name) {
     NkIrShObjId shobj_id{p->shobjs.size()};
-    p->shobjs.emplace_back(std_str(name));
+    p->shobjs.emplace_back(nk_s2stdStr(name));
     return shobj_id;
 }
 
@@ -77,8 +73,8 @@ NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct) {
     return cl;
 }
 
-void nkir_startFunct(NkIrFunct funct, nks name, nktype_t fn_t) {
-    funct->name = std_str(name);
+void nkir_startFunct(NkIrFunct funct, NkString name, nktype_t fn_t) {
+    funct->name = nk_s2stdStr(name);
 
     funct->fn_t = fn_t;
     funct->state = NkIrFunct_Complete;
@@ -86,8 +82,8 @@ void nkir_startFunct(NkIrFunct funct, nks name, nktype_t fn_t) {
     nkir_activateFunct(funct->prog, funct);
 }
 
-void nkir_startIncompleteFunct(NkIrFunct funct, nks name, NktFnInfo const *fn_info) {
-    funct->name = std_str(name);
+void nkir_startIncompleteFunct(NkIrFunct funct, NkString name, NktFnInfo const *fn_info) {
+    funct->name = nk_s2stdStr(name);
 
     funct->fn_info = *fn_info;
     funct->state = NkIrFunct_Incomplete;
@@ -96,10 +92,10 @@ void nkir_startIncompleteFunct(NkIrFunct funct, nks name, NktFnInfo const *fn_in
 }
 
 void nkir_finalizeIncompleteFunct(NkIrFunct funct, nktype_t fn_t) {
-    assert(fn_t->as.fn.args_t == funct->fn_info.args_t);
-    assert(fn_t->as.fn.ret_t == funct->fn_info.ret_t);
-    assert(fn_t->as.fn.call_conv == funct->fn_info.call_conv);
-    assert(fn_t->as.fn.is_variadic == funct->fn_info.is_variadic);
+    nk_assert(fn_t->as.fn.args_t == funct->fn_info.args_t);
+    nk_assert(fn_t->as.fn.ret_t == funct->fn_info.ret_t);
+    nk_assert(fn_t->as.fn.call_conv == funct->fn_info.call_conv);
+    nk_assert(fn_t->as.fn.is_variadic == funct->fn_info.is_variadic);
     funct->fn_t = fn_t;
     funct->state = NkIrFunct_Complete;
 }
@@ -117,27 +113,27 @@ void nkir_discardFunct(NkIrFunct funct) {
 }
 
 nktype_t nkir_functGetType(NkIrFunct funct) {
-    assert(funct->state == NkIrFunct_Complete && "invalid function state");
+    nk_assert(funct->state == NkIrFunct_Complete && "invalid function state");
     return funct->fn_t;
 }
 
 NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct) {
-    assert(funct->state == NkIrFunct_Incomplete && "invalid function state");
+    nk_assert(funct->state == NkIrFunct_Incomplete && "invalid function state");
     return &funct->fn_info;
 }
 
 nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst) {
-    assert(cnst.id < p->consts.size() && "invalid const");
+    nk_assert(cnst.id < p->consts.size() && "invalid const");
     return p->consts[cnst.id];
 }
 
 nkval_t nkir_refDeref(NkIrProg p, NkIrRef ref) {
-    assert(ref.ref_type == NkIrRef_Const && "const ref expected");
+    nk_assert(ref.ref_type == NkIrRef_Const && "const ref expected");
     auto const val = nkir_constGetValue(p, {ref.index});
     auto type = nkval_typeof(val);
     auto data = (u8 *)nkval_data(val) + ref.offset;
     if (ref.is_indirect) {
-        assert(nkt_typeclassid(type) == NkType_Ptr);
+        nk_assert(nkt_typeclassid(type) == NkType_Ptr);
         type = type->as.ptr.target_type;
         data = *(u8 **)data;
     }
@@ -145,12 +141,12 @@ nkval_t nkir_refDeref(NkIrProg p, NkIrRef ref) {
     return {data, type};
 }
 
-void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nks name) {
-    assert(p->cur_funct && "no current function");
-    assert(block_id.id < p->blocks.size() && "invalid block");
+void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, NkString name) {
+    nk_assert(p->cur_funct && "no current function");
+    nk_assert(block_id.id < p->blocks.size() && "invalid block");
 
     auto &block = p->blocks[block_id.id];
-    block.name = std_str(name);
+    block.name = nk_s2stdStr(name);
 
     p->cur_funct->blocks.emplace_back(block_id.id);
 
@@ -162,13 +158,13 @@ void nkir_activateFunct(NkIrProg p, NkIrFunct funct) {
 }
 
 void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id) {
-    assert(p->cur_funct && "no current function");
-    assert(block_id.id < p->blocks.size() && "invalid block");
+    nk_assert(p->cur_funct && "no current function");
+    nk_assert(block_id.id < p->blocks.size() && "invalid block");
     p->cur_funct->cur_block = block_id.id;
 }
 
 NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type) {
-    assert(p->cur_funct && "no current function");
+    nk_assert(p->cur_funct && "no current function");
     NkIrLocalVarId id{p->cur_funct->locals.size()};
     p->cur_funct->locals.emplace_back(type);
     return id;
@@ -186,10 +182,10 @@ NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val) {
     return id;
 }
 
-NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nks name, nktype_t type) {
+NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, NkString name, nktype_t type) {
     NkIrExtSymId id{p->exsyms.size()};
     p->exsyms.emplace_back(IrExSym{
-        .name = std_str(name),
+        .name = nk_s2stdStr(name),
         .so_id = so,
         .type = type,
     });
@@ -197,7 +193,7 @@ NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nks name, nktype_t type
 }
 
 NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
-    assert(p->cur_funct && "no current function");
+    nk_assert(p->cur_funct && "no current function");
     return {
         .index = var.id,
         .offset = 0,
@@ -209,13 +205,13 @@ NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
 }
 
 NkIrRef nkir_makeArgRef(NkIrProg p, usize index) {
-    assert(p->cur_funct && "no current function");
-    assert(
+    nk_assert(p->cur_funct && "no current function");
+    nk_assert(
         (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.args_t) &&
         "referencing incomplete function args type");
     auto const args_t =
         p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.args_t : p->cur_funct->fn_info.args_t;
-    assert(index < args_t->as.tuple.elems.size && "arg index out of range");
+    nk_assert(index < args_t->as.tuple.elems.size && "arg index out of range");
     return {
         .index = index,
         .offset = 0,
@@ -227,8 +223,8 @@ NkIrRef nkir_makeArgRef(NkIrProg p, usize index) {
 }
 
 NkIrRef nkir_makeRetRef(NkIrProg p) {
-    assert(p->cur_funct && "no current function");
-    assert(
+    nk_assert(p->cur_funct && "no current function");
+    nk_assert(
         (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.ret_t) &&
         "referencing incomplete function ret type");
     auto const ret_t =
@@ -266,7 +262,7 @@ NkIrRef nkir_makeConstRef(NkIrProg p, NkIrConstId cnst) {
 }
 
 NkIrRef nkir_makeRegRef(NkIrProg, NkIrRegister reg, nktype_t type) {
-    assert(type->size <= REG_SIZE && "reference type excedes register size");
+    nk_assert(type->size <= REG_SIZE && "reference type excedes register size");
     return {
         .index = reg,
         .offset = 0,
@@ -317,7 +313,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrBlockId label) {
 }
 
 NkIrInstr nkir_make_cast(NkIrRef dst, nktype_t type, NkIrRef arg) {
-    assert(type->tclass == NkType_Numeric && "numeric type expected in cast");
+    nk_assert(type->tclass == NkType_Numeric && "numeric type expected in cast");
     return {{_arg(dst), _arg(type->as.num.value_type), _arg(arg)}, nkir_cast};
 }
 
@@ -336,9 +332,9 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef fn, NkIrRef args) {
 #include "nk/vm/ir.inl"
 
 void nkir_gen(NkIrProg p, NkIrInstr instr) {
-    assert(p->cur_funct && "no current function");
-    assert(p->cur_funct->cur_block < p->blocks.size() && "no current block");
-    assert(
+    nk_assert(p->cur_funct && "no current function");
+    nk_assert(p->cur_funct->cur_block < p->blocks.size() && "no current block");
+    nk_assert(
         instr.arg[0].arg_type != NkIrArg_Ref || instr.arg[0].ref.is_indirect ||
         (instr.arg[0].ref.ref_type != NkIrRef_Const && instr.arg[0].ref.ref_type != NkIrRef_Arg));
 
@@ -397,7 +393,7 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder *sb) {
         case NkIrRef_None:
         case NkIrRef_Const:
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         if (ref.offset) {
@@ -419,7 +415,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
 
     nksb_printf(sb, "\nfn ");
 
-    assert(funct->state == NkIrFunct_Complete && "inspecting incomplete function");
+    nk_assert(funct->state == NkIrFunct_Complete && "inspecting incomplete function");
 
     switch (funct->fn_t->as.fn.call_conv) {
     case NkCallConv_Nk:
@@ -509,7 +505,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
                         nksb_printf(sb, "f");
                         break;
                     default:
-                        assert(!"unreachable");
+                        nk_assert(!"unreachable");
                         break;
                     }
                     nksb_printf(sb, "%" PRIu64 "", (usize)NUM_TYPE_SIZE(arg.id) * 8);

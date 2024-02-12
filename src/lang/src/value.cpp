@@ -1,6 +1,5 @@
 #include "nkl/lang/value.h"
 
-#include <cstdint>
 #include <cstring>
 #include <deque>
 #include <map>
@@ -11,8 +10,8 @@
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
+#include "ntk/atom.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/utils.h"
 
@@ -36,7 +35,7 @@ enum ETypeSubset {
 
 template <class F>
 nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{s_mtx};
@@ -46,7 +45,7 @@ nktype_t getTypeByFingerprint(ByteArray fp, F const &create_type) {
         bool inserted = false;
         auto type = (nktype_t)create_type();
         std::tie(it, inserted) = s_typemap.emplace(std::move(fp), type);
-        assert(inserted && "type duplication");
+        nk_assert(inserted && "type duplication");
     }
 
     return it->second;
@@ -325,15 +324,15 @@ nkltype_t nkl_get_any(NkAllocator alloc) {
         auto const type_t = nkl_get_typeref();
         NklField const fields[] = {
             {
-                .name = cs2nkid("data"),
+                .name = nk_cs2atom("data"),
                 .type = data_t,
             },
             {
-                .name = cs2nkid("type"),
+                .name = nk_cs2atom("type"),
                 .type = type_t,
             },
         };
-        auto const underlying_type = nkl_get_struct(alloc, {fields, AR_SIZE(fields)});
+        auto const underlying_type = nkl_get_struct(alloc, {fields, NK_ARRAY_COUNT(fields)});
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{},
@@ -358,15 +357,15 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
         auto const u64_t = nkl_get_numeric(Uint64);
         NklField const fields[] = {
             {
-                .name = cs2nkid("data"),
+                .name = nk_cs2atom("data"),
                 .type = ptr_t,
             },
             {
-                .name = cs2nkid("size"),
+                .name = nk_cs2atom("size"),
                 .type = u64_t,
             },
         };
-        auto const underlying_type = nkl_get_struct(alloc, {fields, AR_SIZE(fields)});
+        auto const underlying_type = nkl_get_struct(alloc, {fields, NK_ARRAY_COUNT(fields)});
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{.slice{
@@ -434,7 +433,7 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
             if (nklt_sizeof(type) > nklt_sizeof(largest_type)) {
                 largest_type = type;
             }
-            max_align = maxu(max_align, nklt_alignof(type));
+            max_align = nk_maxu(max_align, nklt_alignof(type));
         }
         auto vm_type = *tovmt(largest_type);
         vm_type.align = max_align;
@@ -469,15 +468,15 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields) {
         auto const tag_t = nkl_get_numeric(Uint64);
         NklField const enum_fields[] = {
             {
-                .name = cs2nkid("data"),
+                .name = nk_cs2atom("data"),
                 .type = data_t,
             },
             {
-                .name = cs2nkid("tag"),
+                .name = nk_cs2atom("tag"),
                 .type = tag_t,
             },
         };
-        auto const underlying_type = nkl_get_struct(alloc, {enum_fields, AR_SIZE(enum_fields)});
+        auto const underlying_type = nkl_get_struct(alloc, {enum_fields, NK_ARRAY_COUNT(enum_fields)});
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{},
@@ -539,7 +538,7 @@ void nklval_inspect(nklval_t val, NkStringBuilder *sb) {
     }
 }
 
-usize nklt_struct_index(nkltype_t type, nkid name) {
+usize nklt_struct_index(nkltype_t type, NkAtom name) {
     for (usize i = 0; i < type->as.strct.fields.size; i++) {
         if (name == type->as.strct.fields.data[i].name) {
             return i;
@@ -568,7 +567,7 @@ nklval_t nklval_tuple_at(nklval_t self, usize i) {
     return fromvmv(nkval_tuple_at(tovmv(self), i));
 }
 
-nklval_t nklval_struct_at(nklval_t val, nkid name) {
+nklval_t nklval_struct_at(nklval_t val, NkAtom name) {
     auto const type = nklval_typeof(val);
     auto const i = nklt_struct_index(type, name);
     return i == -1ull ? nklval_undefined() : nklval_tuple_at(val, i);

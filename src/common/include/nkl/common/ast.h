@@ -1,11 +1,9 @@
-#ifndef HEADER_GUARD_NKL_COMMON_AST
-#define HEADER_GUARD_NKL_COMMON_AST
-
-#include <stdint.h>
+#ifndef NKL_COMMON_AST_H_
+#define NKL_COMMON_AST_H_
 
 #include "nkl/common/token.h"
-#include "ntk/array.h"
-#include "ntk/id.h"
+#include "ntk/atom.h"
+#include "ntk/dyn_array.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus
@@ -13,25 +11,25 @@ extern "C" {
 #endif
 
 typedef struct {
-    nkid id;
+    NkAtom id;
     u32 token_idx;
     u32 total_children;
     u32 arity;
 } NklAstNode;
 
-nkav_typedef(NklAstNode, NklAstNodeView);
-nkar_typedef(NklAstNode, NklAstNodeArray);
+typedef NkSlice(NklAstNode) NklAstNodeArray;
+typedef NkDynArray(NklAstNode) NklAstNodeDynArray;
 
 typedef struct {
-    nks text;
-    NklTokenView tokens;
-    NklAstNodeView nodes;
+    NkString text;
+    NklTokenArray tokens;
+    NklAstNodeArray nodes;
 } NklSource;
 
-void nkl_ast_inspect(NklSource src, nk_stream out);
+void nkl_ast_inspect(NklSource src, NkStream out);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_COMMON_AST
+#endif // NKL_COMMON_AST_H_

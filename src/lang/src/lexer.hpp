@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKL_LANG_LEXER
-#define HEADER_GUARD_NKL_LANG_LEXER
+#ifndef NKL_LANG_LEXER_HPP_
+#define NKL_LANG_LEXER_HPP_
 
 #include <string>
 #include <vector>
@@ -7,6 +7,6 @@
 #include "nkl/lang/token.h"
 #include "ntk/string.h"
 
-bool nkl_lex(nks src, std::vector<NklToken> &tokens, std::string &err_str);
+bool nkl_lex(NkString src, std::vector<NklToken> &tokens, std::string &err_str);
 
-#endif // HEADER_GUARD_NKL_LANG_LEXER
+#endif // NKL_LANG_LEXER_HPP_

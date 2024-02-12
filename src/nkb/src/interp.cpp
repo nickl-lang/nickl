@@ -1,19 +1,15 @@
 #include "interp.hpp"
 
-#include <algorithm>
-#include <cassert>
-#include <cstdint>
 #include <cstring>
 #include <vector>
 
 #include "bytecode.hpp"
 #include "ffi_adapter.hpp"
-#include "ir_impl.hpp"
 #include "ntk/allocator.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
+#include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
-#include "ntk/sys/syscall.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -57,7 +53,7 @@ struct InterpContext {
 
     ~InterpContext() {
         NK_LOG_TRC("deinitializing stack...");
-        assert(stack.size == 0 && "nonempty stack at exit");
+        nk_assert(stack.size == 0 && "nonempty stack at exit");
         nk_arena_free(&stack);
     }
 };
@@ -70,7 +66,7 @@ void *getRefAddr(NkBcRef const &ref) {
 
 template <class T>
 T &deref(NkBcArg const &arg) {
-    assert(arg.kind == NkBcArg_Ref);
+    nk_assert(arg.kind == NkBcArg_Ref);
     return *(T *)getRefAddr(arg.ref);
 }
 
@@ -116,10 +112,10 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
 
 void interp(NkBcInstr const &instr) {
 #ifdef ENABLE_PROFILING
-    nksb_fixed_buffer(sb, 128);
+    NKSB_FIXED_BUFFER(sb, 128);
     nksb_printf(&sb, "interp: %s", nkbcOpcodeName(instr.code));
 #endif // ENABLE_PROFILING
-    ProfScope(sb);
+    NK_PROF_SCOPE(sb);
 
     switch (instr.code) {
     case nkop_nop: {
@@ -209,7 +205,7 @@ void interp(NkBcInstr const &instr) {
         auto const proc = deref<NkBcProc>(instr.arg[1]);
 
         auto const argc = instr.arg[2].refs.size;
-        auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc + 1);
+        auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc + 1);
         for (usize i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
         }
@@ -229,8 +225,8 @@ void interp(NkBcInstr const &instr) {
         };
 
         auto const argc = instr.arg[2].refs.size;
-        auto const argv = nk_arena_alloc_t<void *>(&ctx.stack, argc);
-        auto const argt = nk_arena_alloc_t<nktype_t>(&ctx.stack, argc);
+        auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc);
+        auto const argt = nk_arena_allocT<nktype_t>(&ctx.stack, argc);
         for (usize i = 0; i < argc; i++) {
             argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
             argt[i] = instr.arg[2].refs.data[i].type;
@@ -339,13 +335,13 @@ void interp(NkBcInstr const &instr) {
     }
 
 #define FP2I_OP_IT(TYPE, VALUE_TYPE, FTYPE, SIZ)                      \
-    case CAT(CAT(CAT(nkop_fp2i_, SIZ), _), TYPE): {                   \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_fp2i_, SIZ), _), TYPE): {          \
         deref<TYPE>(instr.arg[0]) = (TYPE)deref<FTYPE>(instr.arg[1]); \
         break;                                                        \
     }
 
 #define I2FP_OP_IT(TYPE, VALUE_TYPE, FTYPE, SIZ)                       \
-    case CAT(CAT(CAT(nkop_i2fp_, SIZ), _), TYPE): {                    \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_i2fp_, SIZ), _), TYPE): {           \
         deref<FTYPE>(instr.arg[0]) = (FTYPE)deref<TYPE>(instr.arg[1]); \
         break;                                                         \
     }
@@ -390,7 +386,7 @@ void interp(NkBcInstr const &instr) {
     }
 
 #define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                  \
-    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                   \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {          \
         deref<TYPE>(instr.arg[0]) = OP deref<TYPE>(instr.arg[1]); \
         break;                                                    \
     }
@@ -403,13 +399,13 @@ void interp(NkBcInstr const &instr) {
 #undef NUM_UN_OP_IT
 
 #define NUM_BIN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                           \
-    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                             \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {                                    \
         deref<TYPE>(instr.arg[0]) = deref<TYPE>(instr.arg[1]) OP deref<TYPE>(instr.arg[2]); \
         break;                                                                              \
     }
 
 #define NUM_BIN_BOOL_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                    \
-    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                           \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {                                  \
         deref<u8>(instr.arg[0]) = deref<TYPE>(instr.arg[1]) OP deref<TYPE>(instr.arg[2]); \
         break;                                                                            \
     }
@@ -507,7 +503,7 @@ void interp(NkBcInstr const &instr) {
 #endif // NK_SYSCALLS_AVAILABLE
 
     default:
-        assert(!"unknown opcode");
+        nk_assert(!"unknown opcode");
         break;
     }
 }
@@ -515,8 +511,7 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
-    ProfFunc();
-
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     NK_LOG_DBG("program @%p", (void *)proc->ctx);
@@ -536,7 +531,7 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
 
-        assert(pinstr->code < NkBcOpcode_Count && "unknown instruction");
+        nk_assert(pinstr->code < NkBcOpcode_Count && "unknown instruction");
         NK_LOG_DBG("instr: %zu %s", (pinstr - (NkBcInstr *)ctx.base.instr), nkbcOpcodeName(pinstr->code));
 
 #ifdef ENABLE_LOGGING
@@ -551,11 +546,11 @@ void nkir_interp_invoke(NkBcProc proc, void **args, void **ret) {
 
 #ifdef ENABLE_LOGGING
         if (dst_ref_data) {
-            nksb_fixed_buffer(sb, 256);
+            NKSB_FIXED_BUFFER(sb, 256);
             nkirv_inspect(dst_ref_data, dst.ref.type, nksb_getStream(&sb));
             nksb_printf(&sb, ":");
             nkirt_inspect(dst.ref.type, nksb_getStream(&sb));
-            NK_LOG_DBG("res=" nks_Fmt, nks_Arg(sb));
+            NK_LOG_DBG("res=" NKS_FMT, NKS_ARG(sb));
         }
 #endif // ENABLE_LOGGING
     }

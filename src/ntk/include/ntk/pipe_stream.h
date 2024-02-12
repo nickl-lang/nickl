@@ -1,22 +1,22 @@
-#ifndef HEADER_GUARD_NTK_PIPE_STREAM
-#define HEADER_GUARD_NTK_PIPE_STREAM
+#ifndef NTK_PIPE_STREAM_H_
+#define NTK_PIPE_STREAM_H_
 
+#include "ntk/os/process.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/sys/process.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct {
-    nk_stream stream;
+    NkStream stream;
     nkfd_t fd;
     nkpid_t pid;
 } NkPipeStream;
 
-bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, nks cmd, bool quiet);
-bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, nks cmd, bool quiet);
+bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
+bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
 
 i32 nk_pipe_streamClose(NkPipeStream *stream);
 
@@ -24,4 +24,4 @@ i32 nk_pipe_streamClose(NkPipeStream *stream);
 }
 #endif
 
-#endif // HEADER_GUARD_NTK_PIPE_STREAM
+#endif // NTK_PIPE_STREAM_H_

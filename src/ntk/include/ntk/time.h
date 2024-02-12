@@ -1,10 +1,10 @@
-#ifndef HEADER_GUARD_NTK_TIME
-#define HEADER_GUARD_NTK_TIME
+#ifndef NTK_TIME_H_
+#define NTK_TIME_H_
 
 #include "ntk/common.h"
 
-i64 nk_getTimeNs(void);
+i64 nk_now_ns(void);
 
 u64 nk_estimateTscFrequency(void);
 
-#endif // HEADER_GUARD_NTK_TIME
+#endif // NTK_TIME_H_

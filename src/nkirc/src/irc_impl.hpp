@@ -1,13 +1,12 @@
-#ifndef HEADER_GUARD_NKIRC_IRC_IMPL
-#define HEADER_GUARD_NKIRC_IRC_IMPL
+#ifndef NKIRC_IRC_IMPL_HPP_
+#define NKIRC_IRC_IMPL_HPP_
 
-#include <cstdint>
 #include <mutex>
 
 #include "irc.h"
-#include "lexer.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
+#include "nkl/common/token.h"
 #include "ntk/allocator.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/string.h"
@@ -20,8 +19,8 @@ struct Decl;
 
 struct ProcRecord {
     NkIrProc proc;
-    NkHashMap<nkid, Decl *> locals;
-    NkHashMap<nkid, NkIrLabel> labels;
+    NkHashMap<NkAtom, Decl *> locals;
+    NkHashMap<NkAtom, NkIrLabel> labels;
 };
 
 enum EDeclKind {
@@ -51,8 +50,8 @@ struct Decl {
 };
 
 struct NkIrParserState {
-    NkHashMap<nkid, Decl *> decls;
-    nks error_msg{};
+    NkHashMap<NkAtom, Decl *> decls;
+    NkString error_msg{};
     NklToken error_token{};
     bool ok{};
 };
@@ -68,7 +67,7 @@ struct NkIrCompiler_T {
     NkArena parse_arena{};
     NkIrParserState parser{};
 
-    NkHashMap<nks, nktype_t> fpmap{};
+    NkHashMap<NkString, nktype_t> fpmap{};
     u64 next_id{1};
     std::mutex mtx{};
 };
@@ -77,4 +76,4 @@ struct NkIrCompiler_T {
 }
 #endif
 
-#endif // HEADER_GUARD_NKIRC_IRC_IMPL
+#endif // NKIRC_IRC_IMPL_HPP_

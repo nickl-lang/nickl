@@ -2,38 +2,38 @@
 
 #include <gtest/gtest.h>
 
-#include "ntk/allocator.h"
-#include "ntk/logger.h"
+#include "ntk/arena.h"
+#include "ntk/log.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
 class HashTree : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
     }
 
     void TearDown() override {
     }
 };
 
-struct int2cstr_KV {
+struct int2cstr_kv {
     int key;
     char const *val;
 };
 
-int const *int2cstr_KV_GetKey(int2cstr_KV const *elem) {
+int const *int2cstr_kv_GetKey(int2cstr_kv const *elem) {
     return &elem->key;
 }
 
 u64 int_hash(int const key) {
-    return hash_array((u8 const *)&key, (u8 const *)&key + sizeof(key));
+    return nk_hashArray((u8 const *)&key, (u8 const *)&key + sizeof(key));
 }
 
 bool int_equal(int const lhs, int const rhs) {
     return lhs == rhs;
 }
 
-nkht_define(int2cstr_ht, int2cstr_KV, int, int2cstr_KV_GetKey, int_hash, int_equal);
+NK_HASH_TREE_DEFINE(int2cstr_ht, int2cstr_kv, int, int2cstr_kv_GetKey, int_hash, int_equal);
 
 TEST_F(HashTree, val_key) {
     int2cstr_ht ht{};
@@ -41,8 +41,8 @@ TEST_F(HashTree, val_key) {
         int2cstr_ht_free(&ht);
     };
 
-    int2cstr_KV elem{};
-    int2cstr_KV *found;
+    int2cstr_kv elem{};
+    int2cstr_kv *found;
 
     elem = {42, "forty two"};
     EXPECT_FALSE(int2cstr_ht_find(&ht, 42));
@@ -85,16 +85,16 @@ TEST_F(HashTree, val_key) {
     EXPECT_STREQ(found->val, "forty two");
 }
 
-struct str2int_KV {
-    nks key;
+struct str2int_kv {
+    NkString key;
     int val;
 };
 
-nks const *str2int_KV_GetKey(str2int_KV const *elem) {
+NkString const *str2int_kv_GetKey(str2int_kv const *elem) {
     return &elem->key;
 }
 
-nkht_define(str2int, str2int_KV, nks, str2int_KV_GetKey, nks_hash, nks_equal);
+NK_HASH_TREE_DEFINE(str2int, str2int_kv, NkString, str2int_kv_GetKey, nks_hash, nks_equal);
 
 TEST_F(HashTree, str_key) {
     str2int ht{};
@@ -102,8 +102,8 @@ TEST_F(HashTree, str_key) {
         str2int_free(&ht);
     };
 
-    str2int_KV elem{};
-    str2int_KV *found;
+    str2int_kv elem{};
+    str2int_kv *found;
 
     elem = {nk_cs2s("forty two"), 42};
     EXPECT_FALSE(str2int_find(&ht, nk_cs2s("forty two")));
@@ -157,6 +157,6 @@ TEST_F(HashTree, alignment) {
     ht.alloc = alloc;
 
     nk_arena_alloc(&arena, 1);
-    str2int_insert(&ht, str2int_KV{nk_cs2s("one"), 42});
-    str2int_insert(&ht, str2int_KV{nk_cs2s("two"), 42});
+    str2int_insert(&ht, str2int_kv{nk_cs2s("one"), 42});
+    str2int_insert(&ht, str2int_kv{nk_cs2s("two"), 42});
 }

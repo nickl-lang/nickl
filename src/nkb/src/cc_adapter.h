@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKB_CC_ADAPTER
-#define HEADER_GUARD_NKB_CC_ADAPTER
+#ifndef NKB_CC_ADAPTER_H_
+#define NKB_CC_ADAPTER_H_
 
 #include "nkb/ir.h"
 #include "ntk/pipe_stream.h"
@@ -15,4 +15,4 @@ int nkcc_streamClose(NkPipeStream *stream);
 }
 #endif
 
-#endif // HEADER_GUARD_NKB_CC_ADAPTER
+#endif // NKB_CC_ADAPTER_H_

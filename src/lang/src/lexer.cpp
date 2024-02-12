@@ -2,17 +2,12 @@
 
 #include <cctype>
 #include <cstdarg>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.h"
 #include "token.hpp"
 
 const char *s_token_id[] = {
@@ -44,7 +39,7 @@ char const *s_keywords[] = {
 };
 
 struct ScanEngine {
-    nks const m_src;
+    NkString const m_src;
     std::string &m_err_str;
 
     usize m_pos = 0;
@@ -54,7 +49,7 @@ struct ScanEngine {
     NklToken m_token{};
 
     void scan() {
-        ProfFunc();
+        NK_PROF_FUNC();
 
         skipSpaces();
 
@@ -197,8 +192,8 @@ struct ScanEngine {
             }
 
             auto it = std::begin(s_keywords) + 1;
-            for (;
-                 it != std::end(s_keywords) && (m_token.text.size != std::strlen(*it) || *it != std_view(m_token.text));
+            for (; it != std::end(s_keywords) &&
+                   (m_token.text.size != std::strlen(*it) || *it != nk_s2stdView(m_token.text));
                  ++it) {
             }
 
@@ -297,7 +292,7 @@ private:
         va_start(ap, fmt);
         NkStringBuilder sb{};
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = std_str({nkav_init(sb)});
+        m_err_str = nk_s2stdStr({NK_SLICE_INIT(sb)});
         nksb_free(&sb);
         va_end(ap);
         m_token.id = t_error;
@@ -306,8 +301,8 @@ private:
 
 } // namespace
 
-bool nkl_lex(nks src, std::vector<NklToken> &tokens, std::string &err_str) {
-    ProfFunc();
+bool nkl_lex(NkString src, std::vector<NklToken> &tokens, std::string &err_str) {
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     ScanEngine engine{src, err_str};
@@ -315,7 +310,7 @@ bool nkl_lex(nks src, std::vector<NklToken> &tokens, std::string &err_str) {
     do {
         engine.scan();
         tokens.emplace_back(engine.m_token);
-        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[tokens.back().id], nks_Arg(tokens.back().text));
+        NK_LOG_DBG("%s: \"" NKS_FMT "\"", s_token_id[tokens.back().id], NKS_ARG(tokens.back().text));
         if (engine.m_token.id == t_error) {
             return false;
         }

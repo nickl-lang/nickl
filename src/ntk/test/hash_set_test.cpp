@@ -2,11 +2,12 @@
 
 #include <gtest/gtest.h>
 
-#include "ntk/logger.h"
+#include "ntk/arena.h"
+#include "ntk/log.h"
 
 class HashSet : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
     }
 
     void TearDown() override {

@@ -1,18 +1,10 @@
-#include <algorithm>
-#include <iterator>
-#include <new>
-
 #include <gtest/gtest.h>
 
-#include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
-#include "ntk/allocator.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
+#include "ntk/os/path.h"
 #include "ntk/string.h"
-#include "ntk/sys/path.h"
-#include "ntk/utils.h"
 
 namespace {
 
@@ -20,7 +12,7 @@ NK_LOG_USE_SCOPE(test);
 
 class compiler_src : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
 
         char path_buf[NK_MAX_PATH];
         int path_len = nk_getBinaryPath(path_buf, sizeof(path_buf));

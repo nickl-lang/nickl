@@ -1,7 +1,6 @@
-#ifndef HEADER_GUARD_NK_VM_IR_IMPL
-#define HEADER_GUARD_NK_VM_IR_IMPL
+#ifndef NK_VM_IR_IMPL_HPP_
+#define NK_VM_IR_IMPL_HPP_
 
-#include <cstddef>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -62,4 +61,4 @@ struct NkIrProg_T {
     std::unordered_map<void *, NkIrFunct> closureCode2IrFunct;
 };
 
-#endif // HEADER_GUARD_NK_VM_IR_IMPL
+#endif // NK_VM_IR_IMPL_HPP_

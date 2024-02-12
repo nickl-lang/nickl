@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKL_LANG_AST_IMPL
-#define HEADER_GUARD_NKL_LANG_AST_IMPL
+#ifndef NKL_LANG_AST_IMPL_H_
+#define NKL_LANG_AST_IMPL_H_
 
 #include "ntk/utils.h"
 
@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 typedef enum {
-#define X(ID) CAT(n_, ID),
+#define X(ID) NK_CAT(n_, ID),
 #include "nodes.inl"
 
     node_count,
@@ -18,4 +18,4 @@ typedef enum {
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_LANG_AST_IMPL
+#endif // NKL_LANG_AST_IMPL_H_

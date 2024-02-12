@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKL_LANG_MAIN
-#define HEADER_GUARD_NKL_LANG_MAIN
+#ifndef NKL_LANG_MAIN_H_
+#define NKL_LANG_MAIN_H_
 
 #include "ntk/common.h"
 
@@ -13,4 +13,4 @@ int NK_EXPORT nkl_main(int argc, char const *const *argv);
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_LANG_MAIN
+#endif // NKL_LANG_MAIN_H_

@@ -3,21 +3,22 @@
 #include <ctype.h>
 
 #include "ntk/profiler.h"
+#include "ntk/utils.h"
 
-nks nk_strcpy(NkAllocator alloc, nks src) {
+NkString nks_copy(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size);
     memcpy(mem, src.data, src.size);
-    return LITERAL(nks){mem, src.size};
+    return (NkString){mem, src.size};
 }
 
-nks nk_strcpy_nt(NkAllocator alloc, nks src) {
+NkString nks_copyNt(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size + 1);
     memcpy(mem, src.data, src.size);
     mem[src.size] = '\0';
-    return LITERAL(nks){(char const *)mem, src.size};
+    return (NkString){(char const *)mem, src.size};
 }
 
-nks nks_trim_left(nks str) {
+NkString nks_trimLeft(NkString str) {
     while (str.size && nks_first(str) == ' ') {
         str.size -= 1;
         str.data += 1;
@@ -25,24 +26,24 @@ nks nks_trim_left(nks str) {
     return str;
 }
 
-nks nks_trim_right(nks str) {
+NkString nks_trimRight(NkString str) {
     while (str.size && nks_last(str) == ' ') {
         str.size -= 1;
     }
     return str;
 }
 
-nks nks_trim(nks str) {
-    return nks_trim_right(nks_trim_left(str));
+NkString nks_trim(NkString str) {
+    return nks_trimRight(nks_trimLeft(str));
 }
 
-nks nks_chop_by_delim(nks *str, char delim) {
+NkString nks_chopByDelim(NkString *str, char delim) {
     usize i = 0;
     while (i < str->size && str->data[i] != delim) {
         i++;
     }
 
-    nks res = {str->data, i};
+    NkString res = {str->data, i};
 
     if (i < str->size) {
         str->data += i + 1;
@@ -55,8 +56,8 @@ nks nks_chop_by_delim(nks *str, char delim) {
     return res;
 }
 
-nks nks_chop_by_delim_reverse(nks *str, char delim) {
-    nks res = *str;
+NkString nks_chopByDelimReverse(NkString *str, char delim) {
+    NkString res = *str;
 
     while (str->size && nks_last(*str) != delim) {
         str->size--;
@@ -75,19 +76,19 @@ nks nks_chop_by_delim_reverse(nks *str, char delim) {
     return res;
 }
 
-hash_t nks_hash(nks str) {
-    return hash_array((u8 *)&str.data[0], (u8 *)&str.data[str.size]);
+u64 nks_hash(NkString str) {
+    return nk_hashArray((u8 *)&str.data[0], (u8 *)&str.data[str.size]);
 }
 
-bool nks_equal(nks lhs, nks rhs) {
+bool nks_equal(NkString lhs, NkString rhs) {
     return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
 }
 
-bool nks_starts_with(nks str, nks pref) {
+bool nks_startsWith(NkString str, NkString pref) {
     if (pref.size > str.size) {
         return false;
     } else {
-        return nks_equal(LITERAL(nks){str.data, pref.size}, pref);
+        return nks_equal((NkString){str.data, pref.size}, pref);
     }
 }
 
@@ -100,80 +101,80 @@ bool nks_starts_with(nks str, nks pref) {
         res += _res;       \
     } while (0)
 
-i32 nks_escape(nk_stream out, nks str) {
-    ProfBeginFunc();
+i32 nks_escape(NkStream out, NkString str) {
+    NK_PROF_FUNC_BEGIN();
     i32 res = 0;
     for (usize i = 0; i < str.size; i++) {
         switch (str.data[i]) {
         case '\a':
-            WRITE(nk_stream_write_str(out, "\\a"));
+            WRITE(nk_stream_writeCStr(out, "\\a"));
             break;
         case '\b':
-            WRITE(nk_stream_write_str(out, "\\b"));
+            WRITE(nk_stream_writeCStr(out, "\\b"));
             break;
         case '\f':
-            WRITE(nk_stream_write_str(out, "\\f"));
+            WRITE(nk_stream_writeCStr(out, "\\f"));
             break;
         case '\n':
-            WRITE(nk_stream_write_str(out, "\\n"));
+            WRITE(nk_stream_writeCStr(out, "\\n"));
             break;
         case '\r':
-            WRITE(nk_stream_write_str(out, "\\r"));
+            WRITE(nk_stream_writeCStr(out, "\\r"));
             break;
         case '\t':
-            WRITE(nk_stream_write_str(out, "\\t"));
+            WRITE(nk_stream_writeCStr(out, "\\t"));
             break;
         case '\v':
-            WRITE(nk_stream_write_str(out, "\\v"));
+            WRITE(nk_stream_writeCStr(out, "\\v"));
             break;
         case '\0':
-            WRITE(nk_stream_write_str(out, "\\0"));
+            WRITE(nk_stream_writeCStr(out, "\\0"));
             break;
         case '\"':
-            WRITE(nk_stream_write_str(out, "\\\""));
+            WRITE(nk_stream_writeCStr(out, "\\\""));
             break;
         case '\\':
-            WRITE(nk_stream_write_str(out, "\\\\"));
+            WRITE(nk_stream_writeCStr(out, "\\\\"));
             break;
         default:
             if (isprint(str.data[i])) {
                 WRITE(nk_stream_write(out, &str.data[i], 1));
             } else {
-                WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+                WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
             }
             break;
         }
     }
-    ProfEndBlock();
+    NK_PROF_FUNC_END();
     return res;
 }
 
-i32 nks_unescape(nk_stream out, nks str) {
-    ProfBeginFunc();
+i32 nks_unescape(NkStream out, NkString str) {
+    NK_PROF_FUNC_BEGIN();
     i32 res = 0;
     for (usize i = 0; i < str.size; i++) {
         if (str.data[i] == '\\' && i < str.size - 1) {
             switch (str.data[++i]) {
             case 'a':
-                WRITE(nk_stream_write_str(out, "\a"));
+                WRITE(nk_stream_writeCStr(out, "\a"));
                 break;
             case 'b':
-                WRITE(nk_stream_write_str(out, "\b"));
+                WRITE(nk_stream_writeCStr(out, "\b"));
                 break;
             case 'f':
-                WRITE(nk_stream_write_str(out, "\f"));
+                WRITE(nk_stream_writeCStr(out, "\f"));
                 break;
             case 'n':
-                WRITE(nk_stream_write_str(out, "\n"));
+                WRITE(nk_stream_writeCStr(out, "\n"));
                 break;
             case 'r':
-                WRITE(nk_stream_write_str(out, "\r"));
+                WRITE(nk_stream_writeCStr(out, "\r"));
                 break;
             case 't':
-                WRITE(nk_stream_write_str(out, "\t"));
+                WRITE(nk_stream_writeCStr(out, "\t"));
                 break;
             case 'v':
-                WRITE(nk_stream_write_str(out, "\v"));
+                WRITE(nk_stream_writeCStr(out, "\v"));
                 break;
             case '0':
                 WRITE(nk_stream_write(out, "\0", 1));
@@ -186,22 +187,22 @@ i32 nks_unescape(nk_stream out, nks str) {
             WRITE(nk_stream_write(out, &str.data[i], 1));
         }
     }
-    ProfEndBlock();
+    NK_PROF_FUNC_END();
     return res;
 }
 
-i32 nks_sanitize(nk_stream out, nks str) {
-    ProfBeginFunc();
+i32 nks_sanitize(NkStream out, NkString str) {
+    NK_PROF_FUNC_BEGIN();
     i32 res = 0;
     for (usize i = 0; i < str.size; i++) {
         if (isprint(str.data[i])) {
             WRITE(nk_stream_write(out, &str.data[i], 1));
         } else {
-            WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+            WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
         }
     }
-    ProfEndBlock();
+    NK_PROF_FUNC_END();
     return res;
 }
 
-extern inline nks nk_cs2s(char const *str);
+extern inline NkString nk_cs2s(char const *str);

@@ -1,13 +1,12 @@
-#ifndef HEADER_GUARD_NKL_LANG_VALUE
-#define HEADER_GUARD_NKL_LANG_VALUE
+#ifndef NKL_LANG_VALUE_H_
+#define NKL_LANG_VALUE_H_
 
-#include <stdint.h>
 #include <string.h>
 
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
+#include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/id.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,7 +71,7 @@ typedef struct {
 } _nkl_type_slice;
 
 typedef struct {
-    nkid name;
+    NkAtom name;
     nkltype_t type;
 } NklField;
 
@@ -130,7 +129,7 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields);
 void nklt_inspect(nkltype_t type, NkStringBuilder *sb);
 void nklval_inspect(nklval_t val, NkStringBuilder *sb);
 
-usize nklt_struct_index(nkltype_t type, nkid name);
+usize nklt_struct_index(nkltype_t type, NkAtom name);
 
 void nklval_fn_invoke(nklval_t fn, nklval_t ret, nklval_t args);
 
@@ -140,7 +139,7 @@ nklval_t nklval_array_at(nklval_t self, usize i);
 usize nklval_tuple_size(nklval_t self);
 nklval_t nklval_tuple_at(nklval_t self, usize i);
 
-nklval_t nklval_struct_at(nklval_t val, nkid name);
+nklval_t nklval_struct_at(nklval_t val, NkAtom name);
 
 inline nklval_t nklval_undefined() {
     return nklval_t{};
@@ -235,4 +234,4 @@ inline nklval_t nklval_copy(void *dst, nklval_t src) {
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_LANG_VALUE
+#endif // NKL_LANG_VALUE_H_

@@ -3,10 +3,10 @@
 #include <time.h>
 #include <x86intrin.h>
 
-#include "ntk/sys/thread.h"
-#include "ntk/sys/time.h"
+#include "ntk/os/thread.h"
+#include "ntk/os/time.h"
 
-i64 nk_getTimeNs(void) {
+i64 nk_now_ns(void) {
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000000000ull + ts.tv_nsec;
@@ -17,7 +17,7 @@ u64 nk_estimateTscFrequency(void) {
 
     // Get time before sleep
     u64 nsc_begin = 0;
-    nsc_begin = nk_getTimeNs();
+    nsc_begin = nk_now_ns();
     u64 tsc_begin = __rdtsc();
 
     // 10ms gives ~4.5 digits of precision
@@ -26,7 +26,7 @@ u64 nk_estimateTscFrequency(void) {
 
     // Get time after sleep
     u64 nsc_end = nsc_begin + 1;
-    nsc_end = nk_getTimeNs();
+    nsc_end = nk_now_ns();
     u64 tsc_end = __rdtsc();
 
     if (nsc_end > nsc_begin) {

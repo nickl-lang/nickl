@@ -1,25 +1,20 @@
-#ifndef HEADER_GUARD_NTK_PROFILER
-#define HEADER_GUARD_NTK_PROFILER
-
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
+#ifndef NTK_PROFILER_H_
+#define NTK_PROFILER_H_
 
 #include "ntk/common.h"
 #include "ntk/string.h"
-#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void nk_prof_init(char const *filename);
-void nk_prof_thread_init(u32 tid, usize buffer_size);
-void nk_prof_thread_exit(void);
-void nk_prof_exit(void);
+void nk_prof_start(char const *filename);
+void nk_prof_threadEnter(u32 tid, usize buffer_size);
+void nk_prof_threadLeave(void);
+void nk_prof_finish(void);
 
-void nk_prof_begin_block(nks name);
-void nk_prof_end_block(void);
+void nk_prof_scopeBegin(NkString name);
+void nk_prof_scopeEnd(void);
 
 #ifdef __cplusplus
 }
@@ -27,58 +22,60 @@ void nk_prof_end_block(void);
 
 #ifdef ENABLE_PROFILING
 
-#define ProfInit(filename) nk_prof_init(filename)
-#define ProfExit() nk_prof_exit()
+#define NK_PROF_START(filename) nk_prof_start(filename)
+#define NK_PROF_FINISH() nk_prof_finish()
 
-#define ProfThreadInit(tid, buffer_size) nk_prof_thread_init((tid), (buffer_size));
-#define ProfThreadExit() nk_prof_thread_exit();
+#define NK_PROF_THREAD_ENTER(tid, buffer_size) nk_prof_threadEnter((tid), (buffer_size));
+#define NK_PROF_THREAD_LEAVE() nk_prof_threadLeave();
 
-#define ProfBeginBlock(str) nk_prof_begin_block(str)
-#define ProfEndBlock() nk_prof_end_block()
+#define NK_PROF_SCOPE_BEGIN(str) nk_prof_scopeBegin(str)
+#define NK_PROF_SCOPE_END() nk_prof_scopeEnd()
 
-#define ProfBeginFunc() ProfBeginBlock(nk_cs2s(__func__))
+#define NK_PROF_FUNC_BEGIN() NK_PROF_SCOPE_BEGIN(nk_cs2s(__func__))
+#define NK_PROF_FUNC_END() NK_PROF_SCOPE_END()
 
 #ifdef __cplusplus
 
-struct _ProfScopeGuard {
-    NK_FORCEINLINE _ProfScopeGuard(nks str) {
-        ProfBeginBlock(str);
+struct _NkProfScopeGuard {
+    NK_FORCEINLINE _NkProfScopeGuard(NkString str) {
+        NK_PROF_SCOPE_BEGIN(str);
     }
 
-    NK_FORCEINLINE ~_ProfScopeGuard() {
-        ProfEndBlock();
+    NK_FORCEINLINE ~_NkProfScopeGuard() {
+        NK_PROF_SCOPE_END();
     }
 };
 
-#define ProfScope(str)                           \
-    _ProfScopeGuard CAT(_prof_guard, __LINE__) { \
-        { nkav_init(str) }                       \
+#define NK_PROF_SCOPE(str)                            \
+    _NkProfScopeGuard NK_CAT(_prof_guard, __LINE__) { \
+        { NK_SLICE_INIT(str) }                        \
     }
 
-#define ProfFunc() ProfScope(nk_cs2s(__func__))
+#define NK_PROF_FUNC() NK_PROF_SCOPE(nk_cs2s(__func__))
 
 #endif // __cplusplus
 
 #else // ENABLE_PROFILING
 
-#define ProfInit(filename) _NK_NOP
-#define ProfExit() _NK_NOP
+#define NK_PROF_START(filename) _NK_NOP
+#define NK_PROF_FINISH() _NK_NOP
 
-#define ProfThreadInit(tid, buffer_size) _NK_NOP
-#define ProfThreadExit() _NK_NOP
+#define NK_PROF_THREAD_ENTER(tid, buffer_size) _NK_NOP
+#define NK_PROF_THREAD_LEAVE() _NK_NOP
 
-#define ProfBeginBlock(str) _NK_NOP
-#define ProfEndBlock() _NK_NOP
+#define NK_PROF_SCOPE_BEGIN(str) _NK_NOP
+#define NK_PROF_SCOPE_END() _NK_NOP
 
-#define ProfBeginFunc() _NK_NOP
+#define NK_PROF_FUNC_BEGIN() _NK_NOP
+#define NK_PROF_FUNC_END() _NK_NOP
 
 #ifdef __cplusplus
 
-#define ProfScope(str) _NK_NOP
-#define ProfFunc() _NK_NOP
+#define NK_PROF_SCOPE(str) _NK_NOP
+#define NK_PROF_FUNC() _NK_NOP
 
 #endif // __cplusplus
 
 #endif // ENABLE_PROFILING
 
-#endif // HEADER_GUARD_NTK_PROFILER
+#endif // NTK_PROFILER_H_

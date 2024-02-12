@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_IR_COMPILE
-#define HEADER_GUARD_NK_VM_IR_COMPILE
+#ifndef NK_VM_IR_COMPILE_H_
+#define NK_VM_IR_COMPILE_H_
 
 #include "nk/vm/ir.h"
 #include "ntk/string.h"
@@ -9,9 +9,9 @@ extern "C" {
 #endif
 
 typedef struct {
-    nks compiler_binary;
-    nks additional_flags;
-    nks output_filename;
+    NkString compiler_binary;
+    NkString additional_flags;
+    NkString output_filename;
     bool quiet;
 } NkIrCompilerConfig;
 
@@ -21,4 +21,4 @@ bool nkir_compile(NkIrCompilerConfig const conf, NkIrProg ir, NkIrFunct entry_po
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_IR_COMPILE
+#endif // NK_VM_IR_COMPILE_H_

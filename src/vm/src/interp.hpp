@@ -1,9 +1,9 @@
-#ifndef HEADER_GUARD_NK_VM_INTERP
-#define HEADER_GUARD_NK_VM_INTERP
+#ifndef NK_VM_INTERP_HPP_
+#define NK_VM_INTERP_HPP_
 
-#include "bytecode_impl.hpp"
+#include "bytecode.h"
 #include "nk/vm/common.h"
 
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args);
 
-#endif // HEADER_GUARD_NK_VM_INTERP
+#endif // NK_VM_INTERP_HPP_

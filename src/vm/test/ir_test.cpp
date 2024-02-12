@@ -1,9 +1,7 @@
 #include "nk/vm/ir.h"
 
-#include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 
 #include <gtest/gtest.h>
 
@@ -12,7 +10,7 @@
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
 #include "ntk/common.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -27,7 +25,7 @@ nktype_t alloct(NkArena *arena, NkType type) {
 
 class ir : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
 
         m_alloc = nk_arena_getAllocator(&m_arena);
     }
@@ -50,7 +48,7 @@ protected:
             nksb_free(&sb);
         };
         nkir_inspect(p, &sb);
-        NK_LOG_INF("ir:\n" nks_Fmt, nks_Arg(sb));
+        NK_LOG_INF("ir:\n" NKS_FMT, NKS_ARG(sb));
 #endif // ENABLE_LOGGING
     }
 
@@ -70,7 +68,7 @@ TEST_F(ir, add) {
     auto i32_t = alloct(nkt_get_numeric(Int32));
 
     nktype_t args_types[] = {i32_t, i32_t};
-    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, AR_SIZE(args_types), 1));
+    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, NK_ARRAY_COUNT(args_types), 1));
 
     auto add = nkir_makeFunct(p);
     auto add_fn_t = alloct(nkt_get_fn({i32_t, args_t, NkCallConv_Nk, false}));
@@ -226,7 +224,7 @@ TEST_F(ir, native_call) {
 }
 
 extern "C" NK_EXPORT u32 _test_log2(u32 x) {
-    return log2u32(x);
+    return nk_log2u32(x);
 }
 
 extern "C" NK_EXPORT void _test_fillAr(u8 *buf, u32 size) {
@@ -266,7 +264,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
         p, so, nk_cs2s("_test_log2"), alloct(nkt_get_fn({u32_t, log2_args_t, NkCallConv_Cdecl, false})));
 
     nktype_t args_types[] = {u8_ptr_t, u32_t};
-    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, AR_SIZE(args_types), 1));
+    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, NK_ARRAY_COUNT(args_types), 1));
 
     auto fillAr_fn =
         nkir_makeExtSym(p, so, nk_cs2s("_test_fillAr"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
@@ -417,7 +415,8 @@ TEST_F(ir, callback_from_native) {
     auto so = nkir_makeShObj(p, nk_cs2s(""));
 
     nktype_t nativeAdd_args_types[] = {u32_t, u32_t};
-    auto nativeAdd_args_t = alloct(nkt_get_tuple(m_alloc, nativeAdd_args_types, AR_SIZE(nativeAdd_args_types), 1));
+    auto nativeAdd_args_t =
+        alloct(nkt_get_tuple(m_alloc, nativeAdd_args_types, NK_ARRAY_COUNT(nativeAdd_args_types), 1));
     auto nativeAdd_fn_t = alloct(nkt_get_fn({u32_t, nativeAdd_args_t, NkCallConv_Cdecl, false}));
 
     auto nativeCallback_args_t = alloct(nkt_get_tuple(m_alloc, &nativeAdd_fn_t, 1, 1));

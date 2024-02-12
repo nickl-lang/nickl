@@ -1,9 +1,8 @@
-#ifndef HEADER_GUARD_NKIRC_LEXER
-#define HEADER_GUARD_NKIRC_LEXER
+#ifndef NKIRC_LEXER_H_
+#define NKIRC_LEXER_H_
 
 #include "nkl/common/token.h"
-#include "ntk/allocator.h"
-#include "ntk/array.h"
+#include "ntk/arena.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -23,15 +22,15 @@ extern const char *s_token_id[];
 extern const char *s_token_text[];
 
 typedef struct {
-    NklTokenArray tokens;
-    nks error_msg;
+    NklTokenDynArray tokens;
+    NkString error_msg;
     bool ok;
 } NkIrLexerState;
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks text);
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, NkString text);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKIRC_LEXER
+#endif // NKIRC_LEXER_H_

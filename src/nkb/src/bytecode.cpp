@@ -1,80 +1,77 @@
 #include "bytecode.hpp"
 
-#include <cassert>
-
 #include "ffi_adapter.hpp"
 #include "interp.hpp"
 #include "ir_impl.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
-#include "ntk/array.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
+#include "ntk/atom.h"
+#include "ntk/dyn_array.h"
+#include "ntk/log.h"
+#include "ntk/os/dl.h"
+#include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
-#include "ntk/sys/dl.h"
-#include "ntk/sys/syscall.h"
 
 namespace {
 
 NK_LOG_USE_SCOPE(bytecode);
 
 NkBcOpcode s_ir2opcode[] = {
-#define IR(NAME) CAT(nkop_, NAME),
+#define IR(NAME) NK_CAT(nkop_, NAME),
 #include "nkb/ir.inl"
 };
 
-#ifdef ENABLE_LOGGING
-nkav_typedef(NkBcInstr, NkBcInstrView);
+typedef NkSlice(NkBcInstr) NkBcInstrArray;
 
-void inspect(NkBcInstrView instrs, nk_stream out) {
+void inspect(NkBcInstrArray instrs, NkStream out) {
     auto inspect_ref = [&](NkBcRef const &ref, bool expand_values) {
         if (ref.kind == NkBcRef_None) {
-            nk_printf(out, "(null)");
+            nk_stream_printf(out, "(null)");
             return;
         } else if (ref.kind == NkBcRef_Instr) {
-            nk_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
+            nk_stream_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
         }
         for (usize i = 0; i < ref.indir; i++) {
-            nk_printf(out, "[");
+            nk_stream_printf(out, "[");
         }
         switch (ref.kind) {
         case NkBcRef_Frame:
-            nk_printf(out, "frame");
+            nk_stream_printf(out, "frame");
             break;
         case NkBcRef_Arg:
-            nk_printf(out, "arg");
+            nk_stream_printf(out, "arg");
             break;
         case NkBcRef_Ret:
-            nk_printf(out, "ret");
+            nk_stream_printf(out, "ret");
             break;
         case NkBcRef_Data:
             if (expand_values) {
                 nkirv_inspect(nkbc_deref(nullptr, ref), ref.type, out);
             } else {
-                nk_printf(out, "data");
+                nk_stream_printf(out, "data");
             }
             break;
         default:
         case NkBcRef_None:
         case NkBcRef_Instr:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         if (ref.kind != NkBcRef_Data || !expand_values) {
-            nk_printf(out, "+%zx", ref.offset);
+            nk_stream_printf(out, "+%zx", ref.offset);
         }
         for (usize i = 0; i < ref.indir; i++) {
-            nk_printf(out, "]");
+            nk_stream_printf(out, "]");
         }
         if (ref.post_offset) {
-            nk_printf(out, "+%zx", ref.post_offset);
+            nk_stream_printf(out, "+%zx", ref.post_offset);
         }
         if (ref.type) {
-            nk_printf(out, ":");
+            nk_stream_printf(out, ":");
             nkirt_inspect(ref.type, out);
         }
     };
@@ -87,14 +84,14 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
         }
 
         case NkBcArg_RefArray:
-            nk_printf(out, "(");
+            nk_stream_printf(out, "(");
             for (usize i = 0; i < arg.refs.size; i++) {
                 if (i) {
-                    nk_printf(out, ", ");
+                    nk_stream_printf(out, ", ");
                 }
                 inspect_ref(arg.refs.data[i], expand_values);
             }
-            nk_printf(out, ")");
+            nk_stream_printf(out, ")");
             break;
 
         default:
@@ -103,28 +100,27 @@ void inspect(NkBcInstrView instrs, nk_stream out) {
     };
 
     for (auto const &instr : nk_iterate(instrs)) {
-        nk_printf(out, "%5zu", (&instr - instrs.data));
-        nk_printf(out, "%13s", nkbcOpcodeName(instr.code));
+        nk_stream_printf(out, "%5zu", (&instr - instrs.data));
+        nk_stream_printf(out, "%13s", nkbcOpcodeName(instr.code));
 
         for (usize i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
-                nk_printf(out, ((i > 1) ? ", " : " "));
+                nk_stream_printf(out, ((i > 1) ? ", " : " "));
                 inspect_arg(instr.arg[i], true);
             }
         }
 
         if (instr.arg[0].ref.kind != NkBcRef_None) {
-            nk_printf(out, " -> ");
+            nk_stream_printf(out, " -> ");
             inspect_arg(instr.arg[0], false);
         }
 
-        nk_printf(out, "\n");
+        nk_stream_printf(out, "\n");
     }
 }
-#endif // ENABLE_LOGGING
 
 NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) {
-    assert(!ctx->error_str.data && "run error is already initialized");
+    nk_assert(!ctx->error_str.data && "run error is already initialized");
 
     NkStringBuilder error{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
 
@@ -133,48 +129,48 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ..
     nksb_vprintf(&error, fmt, ap);
     va_end(ap);
 
-    ctx->error_str = {nkav_init(error)};
+    ctx->error_str = {NK_SLICE_INIT(error)};
 }
 
-nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
-    ProfFunc();
+NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
+    NK_PROF_FUNC();
 
     auto found = ctx->extern_libs.find(name);
     if (found) {
         return *found;
     } else {
-        auto const name_str = nkid2cs(name);
-        auto lib = nk_load_library(name_str);
+        auto const name_str = nk_atom2cs(name);
+        auto lib = nkdl_loadLibrary(name_str);
         if (!lib) {
             auto const frame = nk_arena_grab(ctx->tmp_arena);
             defer {
                 nk_arena_popFrame(ctx->tmp_arena, frame);
             };
 
-            NkStringBuilder err_str{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
+            NkStringBuilder err_str{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};
             nksb_printf(&err_str, "%s", nkdl_getLastErrorString());
 
-            NkStringBuilder lib_name{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
-            nksb_printf(&lib_name, "%s.%s", name_str, nk_dl_extension);
-            nksb_append_null(&lib_name);
-            lib = nk_load_library(lib_name.data);
+            NkStringBuilder lib_name{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};
+            nksb_printf(&lib_name, "%s.%s", name_str, nkdl_file_extension);
+            nksb_appendNull(&lib_name);
+            lib = nkdl_loadLibrary(lib_name.data);
 
             if (!lib) {
                 nksb_clear(&lib_name);
 
                 nksb_printf(&lib_name, "lib%s", name_str);
-                nksb_append_null(&lib_name);
-                lib = nk_load_library(lib_name.data);
+                nksb_appendNull(&lib_name);
+                lib = nkdl_loadLibrary(lib_name.data);
 
                 if (!lib) {
                     nksb_clear(&lib_name);
 
-                    nksb_printf(&lib_name, "lib%s.%s", name_str, nk_dl_extension);
-                    nksb_append_null(&lib_name);
-                    lib = nk_load_library(lib_name.data);
+                    nksb_printf(&lib_name, "lib%s.%s", name_str, nkdl_file_extension);
+                    nksb_appendNull(&lib_name);
+                    lib = nkdl_loadLibrary(lib_name.data);
 
                     if (!lib) {
-                        reportError(ctx, "failed to load extern library `%s`: " nks_Fmt, name_str, nks_Arg(err_str));
+                        reportError(ctx, "failed to load extern library `%s`: " NKS_FMT, name_str, NKS_ARG(err_str));
                         return NULL;
                     }
                 }
@@ -185,18 +181,18 @@ nkdl_t getExternLib(NkIrRunCtx ctx, nkid name) {
     }
 }
 
-void *getExternSym(NkIrRunCtx ctx, nkid lib_hame, nkid name) {
-    ProfFunc();
+void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
+    NK_PROF_FUNC();
     auto found = ctx->extern_syms.find(name);
     if (found) {
         return *found;
     } else {
-        auto const name_str = nkid2cs(name);
-        nkdl_t lib = getExternLib(ctx, lib_hame);
+        auto const name_str = nk_atom2cs(name);
+        NkOsHandle lib = getExternLib(ctx, lib_hame);
         if (!lib) {
             return NULL;
         }
-        auto sym = nk_resolve_symbol(lib, name_str);
+        auto sym = nkdl_resolveSymbol(lib, name_str);
         if (!sym) {
             reportError(ctx, "failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
             return NULL;
@@ -207,10 +203,10 @@ void *getExternSym(NkIrRunCtx ctx, nkid lib_hame, nkid name) {
 }
 
 bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
-    ProfFunc();
+    NK_PROF_FUNC();
 
     while (proc.idx >= ctx->procs.size) {
-        nkar_append(&ctx->procs, nullptr);
+        nkda_append(&ctx->procs, nullptr);
     }
 
     if (ctx->procs.data[proc.idx]) {
@@ -229,7 +225,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     auto const &ir_proc = ir.procs.data[proc.idx];
 
     auto &bc_proc =
-        *(ctx->procs.data[proc.idx] = new (nk_alloc_t<NkBcProc_T>(ir.alloc)) NkBcProc_T{
+        *(ctx->procs.data[proc.idx] = new (nk_allocT<NkBcProc_T>(ir.alloc)) NkBcProc_T{
               .ctx = ctx,
               .frame_size = ir_proc.frame_size,
               .frame_align = ir_proc.frame_align,
@@ -255,14 +251,14 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         usize first_instr;
     };
 
-    nkar_type(BlockInfo) block_info{0, 0, 0, tmp_alloc};
-    nkar_type(Reloc) relocs{0, 0, 0, tmp_alloc};
-    nkar_type(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
+    NkDynArray(BlockInfo) block_info{0, 0, 0, tmp_alloc};
+    NkDynArray(Reloc) relocs{0, 0, 0, tmp_alloc};
+    NkDynArray(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
 
     auto const get_data_addr = [&](usize index) {
-        ProfScope(nk_cs2s("get_data_addr"));
+        NK_PROF_SCOPE(nk_cs2s("get_data_addr"));
         while (index >= ctx->data.size) {
-            nkar_append(&ctx->data, nullptr);
+            nkda_append(&ctx->data, nullptr);
         }
         auto &data = ctx->data.data[index];
         if (!data) {
@@ -283,7 +279,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
     auto const translate_ref =
         [&](usize instr_index, usize arg_index, usize ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
-            ProfScope(nk_cs2s("translate_ref"));
+            NK_PROF_SCOPE(nk_cs2s("translate_ref"));
             ref = {
                 .offset = ir_ref.offset,
                 .post_offset = ir_ref.post_offset,
@@ -310,7 +306,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             case NkIrRef_Proc: {
                 ref.kind = NkBcRef_Data;
                 if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
-                    nkar_append(
+                    nkda_append(
                         &relocs,
                         (Reloc{
                             .instr_index = instr_index,
@@ -321,7 +317,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                             .proc_info = &ir_ref.type->as.proc.info,
                         }));
                 } else {
-                    nkar_append(
+                    nkda_append(
                         &relocs,
                         (Reloc{
                             .instr_index = instr_index,
@@ -331,7 +327,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                             .reloc_type = Reloc_Proc,
                         }));
                 }
-                nkar_append(&referenced_procs, NkIrProc{ir_ref.index});
+                nkda_append(&referenced_procs, NkIrProc{ir_ref.index});
                 break;
             }
             case NkIrRef_ExternData: {
@@ -352,7 +348,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     return false;
                 }
 
-                auto sym_addr = nk_alloc_t<void *>(ir.alloc);
+                auto sym_addr = nk_allocT<void *>(ir.alloc);
                 *sym_addr = sym;
 
                 ref.kind = NkBcRef_Data;
@@ -361,7 +357,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             }
             case NkIrRef_Address: {
                 auto const &target_ref = ir.relocs.data[ir_ref.index];
-                auto ref_addr = nk_alloc_t<void *>(ir.alloc);
+                auto ref_addr = nk_allocT<void *>(ir.alloc);
                 *ref_addr = get_data_addr(target_ref.index);
 
                 ref.kind = NkBcRef_Data;
@@ -369,7 +365,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 break;
             }
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
             case NkIrRef_None:
                 break;
             }
@@ -378,7 +374,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         };
 
     auto const translate_arg = [&](usize instr_index, usize arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
-        ProfScope(nk_cs2s("translate_arg"));
+        NK_PROF_SCOPE(nk_cs2s("translate_arg"));
         switch (ir_arg.kind) {
         case NkIrArg_None: {
             arg.kind = NkBcArg_None;
@@ -395,7 +391,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
         case NkIrArg_RefArray: {
             arg.kind = NkBcArg_RefArray;
-            auto refs = nk_alloc_t<NkBcRef>(ir.alloc, ir_arg.refs.size);
+            auto refs = nk_allocT<NkBcRef>(ir.alloc, ir_arg.refs.size);
             for (usize i = 0; i < ir_arg.refs.size; i++) {
                 if (!translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i])) {
                     return false;
@@ -408,7 +404,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         case NkIrArg_Label: {
             arg.kind = NkBcArg_Ref;
             arg.ref.kind = NkBcRef_Instr;
-            nkar_append(
+            nkda_append(
                 &relocs,
                 (Reloc{
                     .instr_index = instr_index,
@@ -422,7 +418,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
         case NkIrArg_Comment:
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
         }
 
         return true;
@@ -432,7 +428,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         auto const &block = ir.blocks.data[block_id];
 
         while (block_id >= block_info.size) {
-            nkar_append(&block_info, BlockInfo{});
+            nkda_append(&block_info, BlockInfo{});
         }
         block_info.data[block_id].first_instr = bc_proc.instrs.size;
 
@@ -460,13 +456,13 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
                 auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
 
-                assert(max_ref.type->kind == NkType_Numeric && min_ref.type->kind == NkType_Numeric);
-                assert(
+                nk_assert(max_ref.type->kind == NkType_Numeric && min_ref.type->kind == NkType_Numeric);
+                nk_assert(
                     NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
                     NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
 
                 if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
-                    assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
+                    nk_assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
 
                     if (ir_instr.code == nkir_ext) {
                         code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
@@ -474,21 +470,21 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
                     switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
                     case 1:
-                        code += 0 + log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                        code += 0 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
                         break;
                     case 2:
-                        code += 2 + log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                        code += 2 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
                         break;
                     case 4:
                         code += 6;
                         break;
                     default:
-                        assert(!"unreachable");
+                        nk_assert(!"unreachable");
                         break;
                     }
                 } else {
-                    assert(max_ref.type->as.num.value_type == Float64);
-                    assert(min_ref.type->as.num.value_type == Float32);
+                    nk_assert(max_ref.type->as.num.value_type == Float64);
+                    nk_assert(min_ref.type->as.num.value_type == Float32);
 
                     code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
                 }
@@ -515,29 +511,29 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 #endif // NK_SYSCALLS_AVAILABLE
                 break;
 
-#define SIZ_OP(NAME) case CAT(nkir_, NAME):
+#define SIZ_OP(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
                 {
-                    assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
+                    nk_assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
                     auto const ref_type = arg0.kind == NkIrArg_Ref ? arg0.ref.type : arg1.ref.type;
-                    if (ref_type->size <= 8 && isZeroOrPowerOf2(ref_type->size)) {
-                        code += 1 + log2u64(ref_type->size);
+                    if (ref_type->size <= 8 && nk_isZeroOrPowerOf2(ref_type->size)) {
+                        code += 1 + nk_log2u64(ref_type->size);
                     }
                     break;
                 }
 
 #define BOOL_NUM_OP(NAME)
-#define NUM_OP(NAME) case CAT(nkir_, NAME):
-#define INT_OP(NAME) case CAT(nkir_, NAME):
+#define NUM_OP(NAME) case NK_CAT(nkir_, NAME):
+#define INT_OP(NAME) case NK_CAT(nkir_, NAME):
 #define FP2I_OP(NAME)
 #include "bytecode.inl"
-                assert(arg0.ref.type->kind == NkType_Numeric);
+                nk_assert(arg0.ref.type->kind == NkType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
                 break;
 
-#define BOOL_NUM_OP(NAME) case CAT(nkir_, NAME):
+#define BOOL_NUM_OP(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
-                assert(arg1.ref.type->kind == NkType_Numeric);
+                nk_assert(arg1.ref.type->kind == NkType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 break;
 
@@ -545,8 +541,8 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 continue;
             }
 
-            nkar_append(&bc_proc.instrs, NkBcInstr{});
-            auto &instr = nkav_last(bc_proc.instrs);
+            nkda_append(&bc_proc.instrs, NkBcInstr{});
+            auto &instr = nk_slice_last(bc_proc.instrs);
             instr.code = code;
             for (usize ai = 0; ai < 3; ai++) {
                 if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
@@ -572,7 +568,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             break;
         }
         case Reloc_Proc: {
-            auto sym_addr = nk_alloc_t<void *>(ir.alloc);
+            auto sym_addr = nk_allocT<void *>(ir.alloc);
             *sym_addr = ctx->procs.data[reloc.target_id];
             ref.offset = (usize)sym_addr;
             break;
@@ -597,8 +593,8 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{};
     sb.alloc = tmp_alloc;
-    inspect({nkav_init(bc_proc.instrs)}, nksb_getStream(&sb));
-    NK_LOG_INF("proc %s\n" nks_Fmt "", nkid2cs(ir_proc.name), nks_Arg(sb));
+    inspect({NK_SLICE_INIT(bc_proc.instrs)}, nksb_getStream(&sb));
+    NK_LOG_INF("proc %s\n" NKS_FMT "", nk_atom2cs(ir_proc.name), NKS_ARG(sb));
 #endif // ENABLE_LOGGING
 
     return true;
@@ -608,11 +604,11 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
 char const *nkbcOpcodeName(u16 code) {
     switch (code) {
-#define OP(NAME)           \
-    case CAT(nkop_, NAME): \
+#define OP(NAME)              \
+    case NK_CAT(nkop_, NAME): \
         return #NAME;
-#define OPX(NAME, EXT)                       \
-    case CAT(nkop_, CAT(NAME, CAT(_, EXT))): \
+#define OPX(NAME, EXT)                                \
+    case NK_CAT(nkop_, NK_CAT(NAME, NK_CAT(_, EXT))): \
         return #NAME "(" #EXT ")";
 #include "bytecode.inl"
 
@@ -624,7 +620,7 @@ char const *nkbcOpcodeName(u16 code) {
 NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
     NK_LOG_TRC("%s", __func__);
 
-    return new (nk_alloc_t<NkIrRunCtx_T>(ir->alloc)) NkIrRunCtx_T{
+    return new (nk_allocT<NkIrRunCtx_T>(ir->alloc)) NkIrRunCtx_T{
         .ir = ir,
         .tmp_arena = tmp_arena,
 
@@ -644,11 +640,11 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
 
     ctx->ffi_ctx.typemap.deinit();
 
-    nk_free_t(ctx->ir->alloc, ctx);
+    nk_freeT(ctx->ir->alloc, ctx);
 }
 
 bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     if (!translateProc(ctx, proc)) {
@@ -658,6 +654,6 @@ bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
     return true;
 }
 
-nks nkir_getRunErrorString(NkIrRunCtx ctx) {
+NkString nkir_getRunErrorString(NkIrRunCtx ctx) {
     return ctx->error_str;
 }

@@ -1,16 +1,15 @@
 #include <algorithm>
 #include <iterator>
-#include <new>
 
 #include <gtest/gtest.h>
 
 #include "nkl/lang/ast.h"
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
-#include "ntk/allocator.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
-#include "ntk/sys/path.h"
+#include "ntk/arena.h"
+#include "ntk/atom.h"
+#include "ntk/log.h"
+#include "ntk/os/path.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -19,7 +18,7 @@ NK_LOG_USE_SCOPE(test);
 
 class compiler_ast : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
 
         char path_buf[NK_MAX_PATH];
         int path_len = nk_getBinaryPath(path_buf, sizeof(path_buf));
@@ -41,12 +40,12 @@ class compiler_ast : public testing::Test {
     }
 
 protected:
-    void test(NklAstNodeArray root) {
+    void test(NklAstNodeDynArray root) {
         NK_LOG_INF(
             "ast:%s\n", (char const *)[&]() {
                 NkStringBuilder sb{};
                 nkl_inspectNode(root.data, &sb);
-                return makeDeferrerWithData((char const *)sb.data, [=]() mutable {
+                return nk_defer((char const *)sb.data, [=]() mutable {
                     nksb_free(&sb);
                 });
             }());
@@ -54,8 +53,8 @@ protected:
     }
 
     NklToken const *mkt(char const *text) {
-        return new (nk_arena_alloc_t<NklToken>(&m_arena)) NklToken{
-            .text = text ? nk_cs2s(text) : nks{},
+        return new (nk_arena_allocT<NklToken>(&m_arena)) NklToken{
+            .text = text ? nk_cs2s(text) : NkString{},
             .pos = 0,
             .lin = 0,
             .col = 0,
@@ -63,40 +62,40 @@ protected:
         };
     }
 
-    NklAstNodeArray _(char const *id, char const *text) {
+    NklAstNodeDynArray _(char const *id, char const *text) {
         return _(id, text, {}, {}, {});
     }
 
-    NklAstNodeArray _(char const *id, NklAstNodeArray arg0) {
+    NklAstNodeDynArray _(char const *id, NklAstNodeDynArray arg0) {
         return _(id, arg0, {}, {});
     }
 
-    NklAstNodeArray _(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1) {
+    NklAstNodeDynArray _(char const *id, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1) {
         return _(id, arg0, arg1, {});
     }
 
-    NklAstNodeArray _(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1, NklAstNodeArray arg2) {
+    NklAstNodeDynArray _(char const *id, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1, NklAstNodeDynArray arg2) {
         return _(id, {}, arg0, arg1, arg2);
     }
 
-    NklAstNodeArray _(
+    NklAstNodeDynArray _(
         char const *id,
         char const *text,
-        NklAstNodeArray arg0,
-        NklAstNodeArray arg1,
-        NklAstNodeArray arg2) {
+        NklAstNodeDynArray arg0,
+        NklAstNodeDynArray arg1,
+        NklAstNodeDynArray arg2) {
         return nkl_pushNode(
             m_ast,
             {
                 .args{arg0, arg1, arg2},
                 .token = mkt(text),
-                .id = cs2nkid(id),
+                .id = nk_cs2atom(id),
             });
     }
 
-    NklAstNodeArray _(std::vector<NklAstNodeArray> const &ar) {
+    NklAstNodeDynArray _(std::vector<NklAstNodeDynArray> const &ar) {
         std::vector<NklAstNode_T> nodes;
-        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeArray ar) {
+        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeDynArray ar) {
             return ar.data[0];
         });
         return nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()});

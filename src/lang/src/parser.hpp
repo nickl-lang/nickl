@@ -1,11 +1,11 @@
-#ifndef HEADER_GUARD_NKL_LANG_PARSER
-#define HEADER_GUARD_NKL_LANG_PARSER
+#ifndef NKL_LANG_PARSER_HPP_
+#define NKL_LANG_PARSER_HPP_
 
 #include <string>
 
 #include "nkl/lang/ast.h"
 #include "nkl/lang/token.h"
 
-NklAstNode nkl_parse(NklAst ast, NklTokenView tokens, std::string &err_str, NklTokenRef &err_token);
+NklAstNode nkl_parse(NklAst ast, NklTokenArray tokens, std::string &err_str, NklTokenRef &err_token);
 
-#endif // HEADER_GUARD_NKL_LANG_PARSER
+#endif // NKL_LANG_PARSER_HPP_

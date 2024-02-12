@@ -1,7 +1,6 @@
-#ifndef HEADER_GUARD_NKL_COMMON_CONFIG
-#define HEADER_GUARD_NKL_COMMON_CONFIG
+#ifndef NKL_COMMON_CONFIG_H_
+#define NKL_COMMON_CONFIG_H_
 
-#include "ntk/allocator.h"
 #include "ntk/hash_tree.h"
 #include "ntk/string.h"
 
@@ -10,16 +9,16 @@ extern "C" {
 #endif
 
 typedef struct {
-    nks key;
-    nks val;
-} nks_KV;
+    NkString key;
+    NkString val;
+} nks_kv;
 
-nkht_proto(nks_config, nks_KV, nks);
+NK_HASH_TREE_PROTO(nks_config, nks_kv, NkString);
 
-bool readConfig(nks_config *conf, nks file);
+bool readConfig(nks_config *conf, NkString file);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_COMMON_CONFIG
+#endif // NKL_COMMON_CONFIG_H_

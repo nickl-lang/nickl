@@ -2,35 +2,35 @@
 
 #include "ntk/string.h"
 
-static void inspectNode(u32 idx, NklSource src, nk_stream out, u32 indent) {
-    nk_printf(out, "\n");
+static void inspectNode(u32 idx, NklSource src, NkStream out, u32 indent) {
+    nk_stream_printf(out, "\n");
 
     for (u32 i = 0; i < indent; i++) {
-        nk_printf(out, "  ");
+        nk_stream_printf(out, "  ");
     }
 
     if (idx >= src.nodes.size) {
-        nk_printf(out, "<invalid>\n");
+        nk_stream_printf(out, "<invalid>\n");
         return;
     }
 
     NklAstNode const *node = &src.nodes.data[idx];
 
     if (node->id) {
-        nks const node_name = nkid2s(node->id);
-        nk_printf(out, "#" nks_Fmt, nks_Arg(node_name));
+        NkString const node_name = nk_atom2s(node->id);
+        nk_stream_printf(out, "#" NKS_FMT, NKS_ARG(node_name));
     } else {
-        nk_printf(out, "(null)");
+        nk_stream_printf(out, "(null)");
     }
 
     if (node->token_idx < src.tokens.size) {
         NklToken const *token = &src.tokens.data[node->token_idx];
-        nks const token_text = (nks){&src.text.data[token->pos], token->len};
-        nk_printf(out, " \"");
+        NkString const token_text = (NkString){&src.text.data[token->pos], token->len};
+        nk_stream_printf(out, " \"");
         nks_escape(out, token_text);
-        nk_printf(out, "\"");
+        nk_stream_printf(out, "\"");
     } else {
-        nk_printf(out, " \"<invalid>\"");
+        nk_stream_printf(out, " \"<invalid>\"");
     }
 
     for (u32 i = 0; i < node->arity; i++) {
@@ -43,7 +43,7 @@ static void inspectNode(u32 idx, NklSource src, nk_stream out, u32 indent) {
     }
 }
 
-void nkl_ast_inspect(NklSource src, nk_stream out) {
+void nkl_ast_inspect(NklSource src, NkStream out) {
     if (src.nodes.size) {
         inspectNode(0, src, out, 0);
     }

@@ -1,11 +1,8 @@
-#ifndef HEADER_GUARD_NKL_COMMON_TOKEN
-#define HEADER_GUARD_NKL_COMMON_TOKEN
+#ifndef NKL_COMMON_TOKEN_H_
+#define NKL_COMMON_TOKEN_H_
 
-#include <stdint.h>
-
-#include "ntk/array.h"
 #include "ntk/common.h"
-#include "ntk/id.h"
+#include "ntk/dyn_array.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -20,15 +17,15 @@ typedef struct {
     u32 col;
 } NklToken;
 
-nkar_typedef(NklToken, NklTokenArray);
-nkav_typedef(NklToken const, NklTokenView);
+typedef NkDynArray(NklToken) NklTokenDynArray;
+typedef NkSlice(NklToken const) NklTokenArray;
 
-inline nks nkl_getTokenStr(NklToken token, nks text) {
-    return LITERAL(nks){text.data + token.pos, token.len};
+inline NkString nkl_getTokenStr(NklToken token, NkString text) {
+    return NK_LITERAL(NkString){text.data + token.pos, token.len};
 }
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_COMMON_TOKEN
+#endif // NKL_COMMON_TOKEN_H_

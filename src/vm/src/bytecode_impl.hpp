@@ -1,19 +1,16 @@
-#ifndef HEADER_GUARD_NK_VM_BYTECODE_IMPL
-#define HEADER_GUARD_NK_VM_BYTECODE_IMPL
+#ifndef NK_VM_BYTECODE_IMPL_HPP_
+#define NK_VM_BYTECODE_IMPL_HPP_
 
-#include <cstddef>
-#include <cstdint>
 #include <deque>
 #include <vector>
 
 #include "bytecode.h"
 #include "dl_adapter.h"
 #include "nk/vm/ir.h"
-#include "nk/vm/value.h"
 #include "ntk/allocator.h"
 
 typedef enum {
-#define X(NAME) CAT(nkop_, NAME),
+#define X(NAME) NK_CAT(nkop_, NAME),
 #include "bytecode.inl"
 
     nkop_count,
@@ -69,4 +66,4 @@ struct NkBcProg_T {
     std::deque<void *> exsyms{};
 };
 
-#endif // HEADER_GUARD_NK_VM_BYTECODE_IMPL
+#endif // NK_VM_BYTECODE_IMPL_HPP_

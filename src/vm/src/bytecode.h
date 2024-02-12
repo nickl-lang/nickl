@@ -1,10 +1,8 @@
-#ifndef HEADER_GUARD_NK_VM_BYTECODE
-#define HEADER_GUARD_NK_VM_BYTECODE
+#ifndef NK_VM_BYTECODE_H_
+#define NK_VM_BYTECODE_H_
 
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
-#include "ntk/string_builder.h"
-#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,4 +21,4 @@ typedef struct NkBcFunct_T *NkBcFunct;
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_BYTECODE
+#endif // NK_VM_BYTECODE_H_

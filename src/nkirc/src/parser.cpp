@@ -1,18 +1,17 @@
 #include "parser.h"
 
-#include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <new>
 
 #include "irc_impl.hpp"
+#include "lexer.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "nkl/common/token.h"
 #include "ntk/allocator.h"
-#include "ntk/array.h"
-#include "ntk/id.h"
-#include "ntk/logger.h"
+#include "ntk/atom.h"
+#include "ntk/dyn_array.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -34,7 +33,7 @@ NK_LOG_USE_SCOPE(parser);
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
-#define APPEND(AR, VAL) CHECK(nkar_append((AR), (VAL)))
+#define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 #define EXPECT(ID) CHECK(expect(ID))
 
 static constexpr char const *c_entry_point_name = "main";
@@ -42,22 +41,22 @@ static constexpr char const *c_entry_point_name = "main";
 struct GeneratorState {
     NkIrCompiler m_compiler;
     NkIrProg m_ir;
-    nkid m_file;
-    NklTokenView const m_tokens;
-    nks const m_text;
+    NkAtom m_file;
+    NklTokenArray const m_tokens;
+    NkString const m_text;
 
     NkAllocator m_file_alloc{nk_arena_getAllocator(&m_compiler->file_arena)};
     NkAllocator m_tmp_alloc{nk_arena_getAllocator(m_compiler->tmp_arena)};
     NkAllocator m_parse_alloc{nk_arena_getAllocator(&m_compiler->parse_arena)};
 
-    nks m_error_msg{};
+    NkString m_error_msg{};
     bool m_error_occurred{};
 
     NklToken const *m_cur_token{};
     ProcRecord *m_cur_proc{};
 
     Void generate() {
-        assert(m_tokens.size && nkav_last(m_tokens).id == t_eof && "ill-formed token stream");
+        nk_assert(m_tokens.size && nk_slice_last(m_tokens).id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
@@ -78,7 +77,7 @@ struct GeneratorState {
                     CHECK(parseData(NkIrVisibility_Default, false));
                 } else {
                     auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-                    return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
+                    return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
                 }
             }
 
@@ -91,12 +90,12 @@ struct GeneratorState {
                     CHECK(parseData(NkIrVisibility_Local, false));
                 } else {
                     auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-                    return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
+                    return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
                 }
             }
 
             else if (accept(t_extern)) {
-                nkid lib = nk_invalid_id;
+                NkAtom lib = NK_ATOM_INVALID;
 
                 if (check(t_string)) {
                     auto const lib_name = parseString(m_file_alloc);
@@ -107,7 +106,7 @@ struct GeneratorState {
                     } else if (lib_name == "pthread" || lib_name == "PTHREAD") {
                         lib = m_compiler->conf.libpthread_name;
                     } else {
-                        lib = s2nkid(lib_name);
+                        lib = nk_s2atom(lib_name);
                     }
                 }
 
@@ -117,7 +116,7 @@ struct GeneratorState {
                     CHECK(parseExternData(lib));
                 } else {
                     auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-                    return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
+                    return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
                 }
             }
 
@@ -136,14 +135,14 @@ struct GeneratorState {
                     return error("string constant expected in include"), Void{};
                 }
                 auto const str = parseString(m_file_alloc);
-                if (!nkir_compileFile(m_compiler, nkid2s(m_file), str)) {
-                    return error("failed to include file `" nks_Fmt "`", nks_Arg(str)), Void{};
+                if (!nkir_compileFile(m_compiler, nk_atom2s(m_file), str)) {
+                    return error("failed to include file `" NKS_FMT "`", NKS_ARG(str)), Void{};
                 }
             }
 
             else {
                 auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-                return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), Void{};
+                return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
             }
 
             EXPECT(t_newline);
@@ -161,7 +160,7 @@ struct GeneratorState {
 
         auto proc = nkir_createProc(m_ir);
 
-        static auto const c_entry_point_id = cs2nkid(c_entry_point_name);
+        static auto const c_entry_point_id = nk_cs2atom(c_entry_point_name);
         if (sig.name == c_entry_point_id) {
             if (vis != NkIrVisibility_Default) {
                 return error("entry point must be public"), Void{};
@@ -176,12 +175,12 @@ struct GeneratorState {
             nkir_makeProcedureType(
                 m_compiler,
                 {
-                    .args_t{nkav_init(sig.args_t)},
+                    .args_t{NK_SLICE_INIT(sig.args_t)},
                     .ret_t = sig.ret_t,
                     .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                     .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
                 }),
-            {nkav_init(sig.arg_names)},
+            {NK_SLICE_INIT(sig.arg_names)},
             m_file,
             cur_line,
             vis);
@@ -209,7 +208,7 @@ struct GeneratorState {
             }
             if (check(t_id)) {
                 DEFINE(token, parseId());
-                auto const name = s2nkid(nkl_getTokenStr(*token, m_text));
+                auto const name = nk_s2atom(nkl_getTokenStr(*token, m_text));
                 EXPECT(t_colon);
                 DEFINE(type, parseType());
                 new (makeLocalDecl(name)) Decl{
@@ -233,7 +232,7 @@ struct GeneratorState {
         return {};
     }
 
-    Void parseExternProc(nkid lib) {
+    Void parseExternProc(NkAtom lib) {
         DEFINE(sig, parseProcSignature(false));
 
         new (makeGlobalDecl(sig.name)) Decl{
@@ -244,7 +243,7 @@ struct GeneratorState {
                  nkir_makeProcedureType(
                      m_compiler,
                      NkIrProcInfo{
-                         .args_t{nkav_init(sig.args_t)},
+                         .args_t{NK_SLICE_INIT(sig.args_t)},
                          .ret_t = sig.ret_t,
                          .call_conv = NkCallConv_Cdecl,
                          .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
@@ -259,7 +258,7 @@ struct GeneratorState {
         DEFINE(id_token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
-        auto name = s2nkid(nkl_getTokenStr(*id_token, m_text));
+        auto name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
         new (makeGlobalDecl(name)) Decl{
             {.type = type},
             Decl_Type,
@@ -272,7 +271,7 @@ struct GeneratorState {
         DEFINE(id_token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
-        auto name = s2nkid(nkl_getTokenStr(*id_token, m_text));
+        auto name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
         auto decl = read_only ? nkir_makeRodata(m_ir, name, type, vis) : nkir_makeData(m_ir, name, type, vis);
         new (makeGlobalDecl(name)) Decl{
             {.data = decl},
@@ -284,11 +283,11 @@ struct GeneratorState {
         return {};
     }
 
-    Void parseExternData(nkid lib) {
+    Void parseExternData(NkAtom lib) {
         DEFINE(id_token, parseId());
         EXPECT(t_colon);
         DEFINE(type, parseType());
-        auto name = s2nkid(nkl_getTokenStr(*id_token, m_text));
+        auto name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
         new (makeGlobalDecl(name)) Decl{
             {.extern_data = nkir_makeExternData(m_ir, lib, name, type)},
             Decl_ExternData,
@@ -297,20 +296,20 @@ struct GeneratorState {
     }
 
 private:
-    Decl *makeGlobalDecl(nkid name) {
+    Decl *makeGlobalDecl(NkAtom name) {
         if (m_compiler->parser.decls.find(name)) {
-            return error("identifier `%s` is already defined", nkid2cs(name)), nullptr;
+            return error("identifier `%s` is already defined", nk_atom2cs(name)), nullptr;
         }
-        auto const decl = nk_alloc_t<Decl>(m_parse_alloc);
+        auto const decl = nk_allocT<Decl>(m_parse_alloc);
         m_compiler->parser.decls.insert(name, decl);
         return decl;
     }
 
-    Decl *makeLocalDecl(nkid name) {
+    Decl *makeLocalDecl(NkAtom name) {
         if (m_cur_proc->locals.find(name)) {
-            return error("local `%s` is already defined", nkid2cs(name)), nullptr;
+            return error("local `%s` is already defined", nk_atom2cs(name)), nullptr;
         }
-        auto const decl = nk_alloc_t<Decl>(m_parse_alloc);
+        auto const decl = nk_allocT<Decl>(m_parse_alloc);
         m_cur_proc->locals.insert(name, decl);
         return decl;
     }
@@ -320,7 +319,7 @@ private:
             return error("identifier expected"), nullptr;
         }
         auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-        NK_LOG_DBG("accept(id, \"" nks_Fmt "\")", nks_Arg(token_str));
+        NK_LOG_DBG("accept(id, \"" NKS_FMT "\")", NKS_ARG(token_str));
         auto id = m_cur_token;
         getToken();
         return id;
@@ -338,7 +337,7 @@ private:
         }
 
         auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-        char const *cstr = nk_strcpy_nt(m_tmp_alloc, token_str).data;
+        char const *cstr = nks_copyNt(m_tmp_alloc, token_str).data;
         getToken();
 
         char *endptr = NULL;
@@ -375,7 +374,7 @@ private:
             *(f64 *)data = strtod(cstr, &endptr);
             break;
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
 
@@ -386,15 +385,15 @@ private:
         return {};
     }
 
-    nks parseString(NkAllocator alloc) {
+    NkString parseString(NkAllocator alloc) {
         auto const data = m_text.data + m_cur_token->pos + 1;
         auto const len = m_cur_token->len - 2;
         getToken();
 
-        return nk_strcpy_nt(alloc, {data, len});
+        return nks_copyNt(alloc, {data, len});
     }
 
-    nks parseEscapedString(NkAllocator alloc) {
+    NkString parseEscapedString(NkAllocator alloc) {
         auto const data = m_text.data + m_cur_token->pos + 1;
         auto const len = m_cur_token->len - 2;
         getToken();
@@ -402,16 +401,16 @@ private:
         NkStringBuilder sb{};
         sb.alloc = alloc;
         nks_unescape(nksb_getStream(&sb), {data, len});
-        nksb_append_null(&sb);
+        nksb_appendNull(&sb);
         sb.size--;
-        return {nkav_init(sb)};
+        return {NK_SLICE_INIT(sb)};
     }
 
     struct ProcSignatureParseResult {
-        nkar_type(nkid) arg_names;
-        nkar_type(nktype_t) args_t;
+        NkDynArray(NkAtom) arg_names;
+        NkDynArray(nktype_t) args_t;
         nktype_t ret_t{};
-        nkid name{};
+        NkAtom name{};
         bool is_variadic{};
         bool is_cdecl{};
     };
@@ -425,7 +424,7 @@ private:
             res.is_cdecl = true;
         }
         DEFINE(id_token, parseId());
-        res.name = s2nkid(nkl_getTokenStr(*id_token, m_text));
+        res.name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -435,15 +434,15 @@ private:
                 res.is_variadic = true;
                 break;
             }
-            nkid name = nk_invalid_id;
+            NkAtom name = NK_ATOM_INVALID;
             if (parse_names) {
                 DEFINE(id_token, parseId());
-                name = s2nkid(nkl_getTokenStr(*id_token, m_text));
+                name = nk_s2atom(nkl_getTokenStr(*id_token, m_text));
                 EXPECT(t_colon);
             }
             DEFINE(type, parseType());
-            nkar_append(&res.args_t, type);
-            nkar_append(&res.arg_names, name);
+            nkda_append(&res.args_t, type);
+            nkda_append(&res.arg_names, name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
         ASSIGN(res.ret_t, parseType());
@@ -480,10 +479,10 @@ private:
         else if (check(t_id)) {
             DEFINE(id_token, parseId());
             auto const token_str = nkl_getTokenStr(*id_token, m_text);
-            auto name = s2nkid(token_str);
+            auto name = nk_s2atom(token_str);
             auto found = m_compiler->parser.decls.find(name);
             if (!found) {
-                return error("undeclared identifier `" nks_Fmt "`", nks_Arg(token_str)), nullptr;
+                return error("undeclared identifier `" NKS_FMT "`", NKS_ARG(token_str)), nullptr;
             } else if ((*found)->kind != Decl_Type) {
                 return error("type expected"), nullptr;
             }
@@ -491,8 +490,8 @@ private:
         }
 
         else if (accept(t_brace_l)) {
-            nkar_type(nktype_t) types{0, 0, 0, m_tmp_alloc};
-            nkar_type(usize) counts{0, 0, 0, m_tmp_alloc};
+            NkDynArray(nktype_t) types{0, 0, 0, m_tmp_alloc};
+            NkDynArray(usize) counts{0, 0, 0, m_tmp_alloc};
 
             do {
                 if (check(t_par_r) || check(t_eof)) {
@@ -504,10 +503,10 @@ private:
                     }
                     u64 count = 0;
                     CHECK(parseNumeric(&count, Uint64));
-                    nkar_append(&counts, count);
+                    nkda_append(&counts, count);
                     EXPECT(t_bracket_r);
                 } else {
-                    nkar_append(&counts, 1ull);
+                    nkda_append(&counts, 1ull);
                 }
                 APPEND(&types, parseType());
             } while (accept(t_comma));
@@ -522,13 +521,13 @@ private:
 
         else {
             auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-            return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), nullptr;
+            return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), nullptr;
         }
     }
 
     NkIrInstr parseInstr() {
         if (check(t_label)) {
-            auto label = getLabel(s2nkid(nkl_getTokenStr(*m_cur_token, m_text)));
+            auto label = getLabel(nk_s2atom(nkl_getTokenStr(*m_cur_token, m_text)));
             getToken();
             return nkir_make_label(label);
         }
@@ -616,33 +615,33 @@ private:
 
         else if (false) {
         }
-#define BIN_IR(NAME)                                       \
-    else if (accept(CAT(t_, NAME))) {                      \
-        DEFINE(lhs, parseRef());                           \
-        EXPECT(t_comma);                                   \
-        DEFINE(rhs, parseRef());                           \
-        EXPECT(t_minus_greater);                           \
-        DEFINE(dst, parseRef());                           \
-        return CAT(nkir_make_, NAME)(m_ir, dst, lhs, rhs); \
+#define BIN_IR(NAME)                                          \
+    else if (accept(NK_CAT(t_, NAME))) {                      \
+        DEFINE(lhs, parseRef());                              \
+        EXPECT(t_comma);                                      \
+        DEFINE(rhs, parseRef());                              \
+        EXPECT(t_minus_greater);                              \
+        DEFINE(dst, parseRef());                              \
+        return NK_CAT(nkir_make_, NAME)(m_ir, dst, lhs, rhs); \
     }
 #include "nkb/ir.inl"
 
         else if (accept(t_cmp)) {
             if (false) {
             }
-#define CMP_IR(NAME)                                           \
-    else if (accept(CAT(t_, NAME))) {                          \
-        DEFINE(lhs, parseRef());                               \
-        EXPECT(t_comma);                                       \
-        DEFINE(rhs, parseRef());                               \
-        EXPECT(t_minus_greater);                               \
-        DEFINE(dst, parseRef());                               \
-        return CAT(nkir_make_cmp_, NAME)(m_ir, dst, lhs, rhs); \
+#define CMP_IR(NAME)                                              \
+    else if (accept(NK_CAT(t_, NAME))) {                          \
+        DEFINE(lhs, parseRef());                                  \
+        EXPECT(t_comma);                                          \
+        DEFINE(rhs, parseRef());                                  \
+        EXPECT(t_minus_greater);                                  \
+        DEFINE(dst, parseRef());                                  \
+        return NK_CAT(nkir_make_cmp_, NAME)(m_ir, dst, lhs, rhs); \
     }
 #include "nkb/ir.inl"
             else {
                 auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-                return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), NkIrInstr{};
+                return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), NkIrInstr{};
             }
         }
 
@@ -658,7 +657,7 @@ private:
 
         else {
             auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-            return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), NkIrInstr{};
+            return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), NkIrInstr{};
         }
     }
 
@@ -708,14 +707,14 @@ private:
         case NkType_Pointer:
         case NkType_Procedure:
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             return {};
         }
 
         return {};
     }
 
-    NkIrData parseConst(nkid name, nktype_t type, NkIrVisibility vis) {
+    NkIrData parseConst(NkAtom name, nktype_t type, NkIrVisibility vis) {
         auto const decl = nkir_makeRodata(m_ir, name, type, vis);
         CHECK(parseValue(nkir_makeDataRef(m_ir, decl), type));
         return decl;
@@ -734,10 +733,10 @@ private:
         if (check(t_id)) {
             DEFINE(id_token, parseId());
             auto const token_str = nkl_getTokenStr(*id_token, m_text);
-            auto const name = s2nkid(token_str);
+            auto const name = nk_s2atom(token_str);
             auto decl = resolve(name);
             if (!decl) {
-                return error("undeclared identifier `" nks_Fmt "`", nks_Arg(token_str)), NkIrRef{};
+                return error("undeclared identifier `" NKS_FMT "`", NKS_ARG(token_str)), NkIrRef{};
             }
             switch (decl->kind) {
             case Decl_Arg:
@@ -761,7 +760,7 @@ private:
             case Decl_Type:
                 return error("cannot reference a type"), NkIrRef{};
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
                 return {};
             }
         } else if (accept(t_ret)) {
@@ -771,38 +770,38 @@ private:
         else if (check(t_string)) {
             auto const str = parseString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            auto const decl = nkir_makeRodata(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
+            auto const decl = nkir_makeRodata(m_ir, NK_ATOM_INVALID, str_t, NkIrVisibility_Local);
             memcpy(nkir_getDataPtr(m_ir, decl), str.data, str_t->size);
             result_ref = nkir_makeDataRef(m_ir, decl);
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            auto const decl = nkir_makeRodata(m_ir, nk_invalid_id, str_t, NkIrVisibility_Local);
+            auto const decl = nkir_makeRodata(m_ir, NK_ATOM_INVALID, str_t, NkIrVisibility_Local);
             memcpy(nkir_getDataPtr(m_ir, decl), str.data, str_t->size);
             result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else if (check(t_int)) {
             auto const decl =
-                nkir_makeRodata(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
+                nkir_makeRodata(m_ir, NK_ATOM_INVALID, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
             CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Int64));
             result_ref = nkir_makeDataRef(m_ir, decl);
         } else if (check(t_f32)) {
             auto const decl =
-                nkir_makeRodata(m_ir, nk_invalid_id, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
+                nkir_makeRodata(m_ir, NK_ATOM_INVALID, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
             CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Float64));
             result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(decl, parseConst(nk_invalid_id, type, NkIrVisibility_Local));
+            DEFINE(decl, parseConst(NK_ATOM_INVALID, type, NkIrVisibility_Local));
             result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else {
             auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-            return error("unexpected token `" nks_Fmt "`", nks_Arg(token_str)), NkIrRef{};
+            return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), NkIrRef{};
         }
 
         usize offset = 0;
@@ -853,12 +852,12 @@ private:
         if (!check(t_label)) {
             return error("label expected"), NkIrLabel{};
         }
-        auto label = getLabel(s2nkid(nkl_getTokenStr(*m_cur_token, m_text)));
+        auto label = getLabel(nk_s2atom(nkl_getTokenStr(*m_cur_token, m_text)));
         getToken();
         return label;
     }
 
-    NkIrLabel getLabel(nkid label_id) {
+    NkIrLabel getLabel(NkAtom label_id) {
         auto found = m_cur_proc->labels.find(label_id);
         if (!found) {
             auto label = nkir_createLabel(m_ir, label_id);
@@ -868,7 +867,7 @@ private:
         }
     }
 
-    Decl *resolve(nkid name) {
+    Decl *resolve(NkAtom name) {
         auto found = m_cur_proc->locals.find(name);
         if (found) {
             return *found;
@@ -881,7 +880,7 @@ private:
     }
 
     NkIrRefArray parseRefArray() {
-        nkar_type(NkIrRef) refs{0, 0, 0, m_tmp_alloc};
+        NkDynArray(NkIrRef) refs{0, 0, 0, m_tmp_alloc};
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -890,11 +889,11 @@ private:
             APPEND(&refs, parseRef());
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        return {nkav_init(refs)};
+        return {NK_SLICE_INIT(refs)};
     }
 
     void getToken() {
-        assert(m_cur_token->id != t_eof);
+        nk_assert(m_cur_token->id != t_eof);
         m_cur_token++;
         NK_LOG_DBG("next token: " LOG_TOKEN(m_cur_token->id));
     }
@@ -915,19 +914,19 @@ private:
     void expect(ENkIrTokenId id) {
         if (!accept(id)) {
             auto const token_str = nkl_getTokenStr(*m_cur_token, m_text);
-            return error("expected `%s` before `" nks_Fmt "`", s_token_text[id], nks_Arg(token_str));
+            return error("expected `%s` before `" NKS_FMT "`", s_token_text[id], NKS_ARG(token_str));
         }
     }
 
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
-        assert(!m_error_occurred && "Parser error already initialized");
+        nk_assert(!m_error_occurred && "Parser error already initialized");
 
         va_list ap;
         va_start(ap, fmt);
         NkStringBuilder sb{};
         sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {nkav_init(sb)};
+        m_error_msg = {NK_SLICE_INIT(sb)};
         va_end(ap);
 
         m_error_occurred = true;
@@ -936,8 +935,8 @@ private:
 
 } // namespace
 
-void nkir_parse(NkIrCompiler c, nkid file, nks text, NklTokenView tokens) {
-    ProfFunc();
+void nkir_parse(NkIrCompiler c, NkAtom file, NkString text, NklTokenArray tokens) {
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     c->parser.error_msg = {};

@@ -4,12 +4,12 @@
 
 #include <gtest/gtest.h>
 
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/utils.h"
 
 class LogArray : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
     }
 
     void TearDown() override {
@@ -68,7 +68,7 @@ TEST_F(LogArray, one_big_push) {
     ar.reserve(c_ic);
 
     ar.push(c_bytes_to_push);
-    EXPECT_EQ(ar.size(), 2 * c_bytes_to_push - ceilToPowerOf2(c_ic));
+    EXPECT_EQ(ar.size(), 2 * c_bytes_to_push - nk_ceilToPowerOf2(c_ic));
 }
 
 TEST_F(LogArray, pop) {

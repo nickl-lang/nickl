@@ -1,22 +1,17 @@
 #include "bytecode.h"
 
-#include <cassert>
 #include <cstring>
-#include <new>
-#include <tuple>
 #include <vector>
 
 #include "bytecode_impl.hpp"
 #include "dl_adapter.h"
 #include "interp.hpp"
 #include "ir_impl.hpp"
-#include "native_fn_adapter.h"
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
-#include "ntk/logger.h"
-#include "ntk/string_builder.h"
+#include "ntk/log.h"
 #include "ntk/utils.h"
 
 char const *s_nk_bc_names[] = {
@@ -30,7 +25,7 @@ namespace {
 NK_LOG_USE_SCOPE(bytecode);
 
 NkOpCode s_ir2opcode[] = {
-#define X(NAME) CAT(nkop_, NAME),
+#define X(NAME) NK_CAT(nkop_, NAME),
 #include "nk/vm/ir.inl"
 };
 
@@ -63,7 +58,7 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder *sb) {
             nksb_printf(sb, "instr+");
             break;
         default:
-            assert(!"unreachable");
+            nk_assert(!"unreachable");
             break;
         }
         if (arg.ref_type != NkBcRef_Rodata) {
@@ -203,7 +198,7 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
                 break;
             }
             default:
-                assert(!"unreachable");
+                nk_assert(!"unreachable");
             case NkIrRef_None:
                 break;
             }
@@ -261,24 +256,24 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             case nkir_jmpnz:
             case nkir_eq:
             case nkir_ne:
-                if (arg1.ref.type->size <= REG_SIZE && isZeroOrPowerOf2(arg1.ref.type->size)) {
-                    code += 1 + log2u64(arg1.ref.type->size);
+                if (arg1.ref.type->size <= REG_SIZE && nk_isZeroOrPowerOf2(arg1.ref.type->size)) {
+                    code += 1 + nk_log2u64(arg1.ref.type->size);
                 }
                 break;
-#define NUM(NAME) case CAT(nkir_, NAME):
-#define INT(NAME) case CAT(nkir_, NAME):
+#define NUM(NAME) case NK_CAT(nkir_, NAME):
+#define INT(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
                 if (arg1.ref.type->tclass == NkType_Ptr) {
                     code += 1 + NUM_TYPE_INDEX(Uint64);
                 } else {
-                    assert(arg1.ref.type->tclass == NkType_Numeric);
+                    nk_assert(arg1.ref.type->tclass == NkType_Numeric);
                     code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 }
                 break;
 
             case nkir_cast:
-                assert(arg1.arg_type == NkIrArg_NumValType);
-                assert(ir_instr.arg[2].ref.type->tclass == NkType_Numeric);
+                nk_assert(arg1.arg_type == NkIrArg_NumValType);
+                nk_assert(ir_instr.arg[2].ref.type->tclass == NkType_Numeric);
                 code += 1 + NUM_TYPE_INDEX(arg1.id) * NUM_TYPE_COUNT +
                         NUM_TYPE_INDEX(ir_instr.arg[2].ref.type->as.num.value_type);
                 break;
@@ -308,8 +303,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         "bytecode:\n%s", (char const *)[&]() {
             NkStringBuilder sb{};
             _inspect(instrs, &sb);
-            nksb_append_null(&sb);
-            return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+            nksb_appendNull(&sb);
+            return nk_defer((char const *)sb.data, [sb]() mutable {
                 nksb_free(&sb);
             });
         }());

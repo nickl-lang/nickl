@@ -1,12 +1,8 @@
-#ifndef HEADER_GUARD_NK_VM_IR
-#define HEADER_GUARD_NK_VM_IR
-
-#include <stddef.h>
-#include <stdint.h>
+#ifndef NK_VM_IR_H_
+#define NK_VM_IR_H_
 
 #include "nk/vm/common.h"
 #include "nk/vm/value.h"
-#include "ntk/allocator.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -98,12 +94,12 @@ typedef struct NkIrNativeClosure_T *NkIrNativeClosure;
 
 NkIrFunct nkir_makeFunct(NkIrProg p);
 NkIrBlockId nkir_makeBlock(NkIrProg p);
-NkIrShObjId nkir_makeShObj(NkIrProg p, nks name);
+NkIrShObjId nkir_makeShObj(NkIrProg p, NkString name);
 NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct);
 
-void nkir_startFunct(NkIrFunct funct, nks name, nktype_t fn_t);
+void nkir_startFunct(NkIrFunct funct, NkString name, nktype_t fn_t);
 
-void nkir_startIncompleteFunct(NkIrFunct funct, nks name, NktFnInfo const *fn_info);
+void nkir_startIncompleteFunct(NkIrFunct funct, NkString name, NktFnInfo const *fn_info);
 void nkir_finalizeIncompleteFunct(NkIrFunct funct, nktype_t fn_t);
 
 void nkir_discardFunct(NkIrFunct funct);
@@ -114,7 +110,7 @@ NktFnInfo *nkir_incompleteFunctGetInfo(NkIrFunct funct);
 nkval_t nkir_constGetValue(NkIrProg p, NkIrConstId cnst);
 nkval_t nkir_refDeref(NkIrProg p, NkIrRef ref);
 
-void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, nks name);
+void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, NkString name);
 
 void nkir_activateFunct(NkIrProg p, NkIrFunct funct);
 void nkir_activateBlock(NkIrProg p, NkIrBlockId block_id);
@@ -123,7 +119,7 @@ NkIrLocalVarId nkir_makeLocalVar(NkIrProg p, nktype_t type);
 NkIrGlobalVarId nkir_makeGlobalVar(NkIrProg p, nktype_t type);
 NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val);
 
-NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, nks name, nktype_t type);
+NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, NkString name, nktype_t type);
 
 NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var);
 NkIrRef nkir_makeArgRef(NkIrProg p, usize index);
@@ -163,4 +159,4 @@ void nkir_invoke(nkval_t fn, nkval_t ret, nkval_t args);
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_IR
+#endif // NK_VM_IR_H_

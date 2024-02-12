@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
-#define HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
+#ifndef NK_VM_NATIVE_FN_ADAPTER_H_
+#define NK_VM_NATIVE_FN_ADAPTER_H_
 
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
@@ -19,4 +19,4 @@ void nk_native_adapterDeinit();
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_NATIVE_FN_ADAPTER
+#endif // NK_VM_NATIVE_FN_ADAPTER_H_

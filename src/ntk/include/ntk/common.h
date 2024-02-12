@@ -1,7 +1,6 @@
-#ifndef HEADER_GUARD_NTK_COMMON
-#define HEADER_GUARD_NTK_COMMON
+#ifndef NTK_COMMON_H_
+#define NTK_COMMON_H_
 
-#include <stdarg.h>
 #include <inttypes.h>
 #include <stdalign.h>
 #include <stdbool.h>
@@ -42,21 +41,26 @@ typedef size_t usize;
 #define NK_INLINE inline
 #endif //_WIN32
 
-#ifndef CAT
-#define _CAT(x, y) x##y
-#define CAT(x, y) _CAT(x, y)
-#endif // CAT
+#define NK_FORCEINLINE __attribute__((always_inline))
 
-#define AR_SIZE(AR) (sizeof(AR) / sizeof((AR)[0]))
+#ifndef NK_CAT
+#define _NK_CAT(x, y) x##y
+#define NK_CAT(x, y) _NK_CAT(x, y)
+#endif // NK_CAT
+
+#define _NK_STR(x) #x
+#define NK_STR(x) _NK_STR(x)
+
+#define NK_ARRAY_COUNT(AR) (sizeof(AR) / sizeof((AR)[0]))
 
 #ifdef __cplusplus
 
-#define LITERAL(T) T
-#define ZERO_STRUCT \
+#define NK_LITERAL(T) T
+#define NK_ZERO_STRUCT \
     {}
 
 template <class T>
-T *_nk_assign_void_ptr(T *&dst, void *src) {
+T *_nk_assignVoidPtr(T *&dst, void *src) {
     return dst = (T *)src;
 }
 
@@ -67,21 +71,33 @@ constexpr usize nk_alignofval(T const &) {
 
 #else // __cplusplus
 
-#define LITERAL(T) (T)
-#define ZERO_STRUCT \
+#define NK_LITERAL(T) (T)
+#define NK_ZERO_STRUCT \
     { 0 }
 
-#define _nk_assign_void_ptr(dst, src) ((dst) = (src))
+#define _nk_assignVoidPtr(dst, src) ((dst) = (src))
 
 #define nk_alignofval alignof
 
 #endif // __cplusplus
 
-typedef usize hash_t;
-
 #define _NK_NOP (void)0
-#define _NK_NOP_TOPLEVEL extern int CAT(_, __LINE__)
+#define _NK_NOP_TOPLEVEL extern int NK_CAT(_, __LINE__)
 
-#define NK_FORCEINLINE __attribute__((always_inline))
+#define nk_trap() __builtin_trap()
 
-#endif // HEADER_GUARD_NTK_COMMON
+#ifdef NDEBUG
+#define nk_assert(x) (void)(x)
+#else
+// TODO nk_assert depends on libc
+#define nk_assert(x)                                                                       \
+    do {                                                                                   \
+        if (!(x)) {                                                                        \
+            fprintf(stderr, __FILE__ ":" NK_STR(__LINE__) ": Assertion failed: " #x "\n"); \
+            fflush(stderr);                                                                \
+            nk_trap();                                                                     \
+        }                                                                                  \
+    } while (0)
+#endif
+
+#endif // NTK_COMMON_H_

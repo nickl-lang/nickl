@@ -1,41 +1,40 @@
 #include "types.h"
 
 #include <cstring>
-#include <new>
 
 #include "irc_impl.hpp"
 #include "nkb/common.h"
 #include "ntk/allocator.h"
-#include "ntk/array.h"
-#include "ntk/logger.h"
+#include "ntk/dyn_array.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 
 namespace {
 
 NK_LOG_USE_SCOPE(types);
 
-nkar_typedef(char, ByteArray);
+typedef NkDynArray(char) ByteArray;
 
 template <class F>
 nktype_t getTypeByFp(NkIrCompiler c, ByteArray fp, F const &make_type) {
-    ProfFunc();
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     std::lock_guard lk{c->mtx};
 
-    auto found = c->fpmap.find({nkav_init(fp)});
+    auto found = c->fpmap.find({NK_SLICE_INIT(fp)});
     if (found) {
         return *found;
     } else {
-        auto copy = nk_strcpy(nk_arena_getAllocator(&c->file_arena), {nkav_init(fp)});
+        auto copy = nks_copy(nk_arena_getAllocator(&c->file_arena), {NK_SLICE_INIT(fp)});
         return c->fpmap.insert(copy, make_type());
     }
 }
 
 template <class T>
 void pushVal(ByteArray &ar, T const v) {
-    nkar_reserve(&ar, ar.size + sizeof(v));
-    memcpy(nkav_end(&ar), &v, sizeof(v));
+    nkda_reserve(&ar, ar.size + sizeof(v));
+    memcpy(nk_slice_end(&ar), &v, sizeof(v));
     ar.size += sizeof(v);
 }
 
@@ -47,13 +46,13 @@ nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type) {
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
-        nkar_free(&fp);
+        nkda_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, value_type);
 
     return getTypeByFp(c, fp, [&]() {
-        return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
+        return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.num{
                 .value_type = value_type,
             }},
@@ -71,13 +70,13 @@ nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
-        nkar_free(&fp);
+        nkda_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, target_type->id);
 
     return getTypeByFp(c, fp, [&]() {
-        return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
+        return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.ptr{
                 .target_type = target_type,
             }},
@@ -95,7 +94,7 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
-        nkar_free(&fp);
+        nkda_free(&fp);
     };
     pushVal(fp, kind);
     for (usize i = 0; i < proc_info.args_t.size; i++) {
@@ -106,7 +105,7 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
     pushVal(fp, proc_info.flags);
 
     return getTypeByFp(c, fp, [&]() {
-        return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
+        return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.proc{
                 .info = proc_info,
             }},
@@ -124,7 +123,7 @@ nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, usize count) {
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
-        nkar_free(&fp);
+        nkda_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, usize{1});
@@ -132,10 +131,10 @@ nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, usize count) {
     pushVal(fp, count);
 
     return getTypeByFp(c, fp, [&]() {
-        return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
+        return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.aggr{
                 .elems{
-                    new (nk_arena_alloc_t<NkIrAggregateElemInfo>(&c->file_arena)) NkIrAggregateElemInfo{
+                    new (nk_arena_allocT<NkIrAggregateElemInfo>(&c->file_arena)) NkIrAggregateElemInfo{
                         .type = elem_t,
                         .count = count,
                         .offset = 0,
@@ -157,13 +156,13 @@ nktype_t nkir_makeVoidType(NkIrCompiler c) {
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
-        nkar_free(&fp);
+        nkda_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, usize{});
 
     return getTypeByFp(c, fp, [&]() {
-        return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
+        return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.aggr{.elems{nullptr, 0}}},
             .size = 0,
             .align = 1,
@@ -179,7 +178,7 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usiz
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
     defer {
-        nkar_free(&fp);
+        nkda_free(&fp);
     };
     pushVal(fp, kind);
     pushVal(fp, n);
@@ -192,7 +191,7 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usiz
         auto const layout =
             nkir_calcAggregateLayout(nk_arena_getAllocator(&c->file_arena), elem_types, elem_counts, n, 1, 1);
 
-        return new (nk_arena_alloc_t<NkIrType>(&c->file_arena)) NkIrType{
+        return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.aggr{
                 .elems = layout.info_ar,
             }},

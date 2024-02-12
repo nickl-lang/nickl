@@ -1,11 +1,8 @@
-#ifndef HEADER_GUARD_NKIRC_TYPES
-#define HEADER_GUARD_NKIRC_TYPES
-
-#include <stddef.h>
+#ifndef NKIRC_TYPES_H_
+#define NKIRC_TYPES_H_
 
 #include "irc.h"
 #include "nkb/common.h"
-#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,4 +19,4 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usiz
 }
 #endif
 
-#endif // HEADER_GUARD_NKIRC_TYPES
+#endif // NKIRC_TYPES_H_

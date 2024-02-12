@@ -1,9 +1,6 @@
-#ifndef HEADER_GUARD_NTK_HASH_SET
-#define HEADER_GUARD_NTK_HASH_SET
+#ifndef NTK_HASH_SET_H_
+#define NTK_HASH_SET_H_
 
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <type_traits>
@@ -14,7 +11,7 @@
 
 template <class T>
 struct NkHashSetDefaultContext {
-    static hash_t hash(T const &val) {
+    static u64 hash(T const &val) {
         return std::hash<T>{}(val);
     }
 
@@ -28,7 +25,7 @@ struct NkHashSet {
 private:
     struct _Entry {
         T val;
-        hash_t hash;
+        u64 hash;
     };
 
 public:
@@ -99,7 +96,7 @@ public:
     }
 
     void deinit() {
-        nk_free_t(alloc(), m_entries, m_capacity);
+        nk_freeT(alloc(), m_entries, m_capacity);
 
         m_entries = nullptr;
         m_size = 0;
@@ -108,8 +105,8 @@ public:
     }
 
     T &insert(T const &val) {
-        ProfScope(nk_cs2s("NkHashSet::insert"));
-        hash_t const hash = _valHash(val);
+        NK_PROF_SCOPE(nk_cs2s("NkHashSet::insert"));
+        u64 const hash = _valHash(val);
         _Entry *found = _find(hash, val);
         if (found) {
             found->val = val;
@@ -121,14 +118,14 @@ public:
 
     template <class U>
     T *find(U const &val) const {
-        ProfScope(nk_cs2s("NkHashSet::find"));
+        NK_PROF_SCOPE(nk_cs2s("NkHashSet::find"));
         _Entry *found = _find(_valHash(val), val);
         return found ? &found->val : nullptr;
     }
 
     template <class U>
     void remove(U const &val) {
-        ProfScope(nk_cs2s("NkHashSet::remove"));
+        NK_PROF_SCOPE(nk_cs2s("NkHashSet::remove"));
         _Entry *found = _find(_valHash(val), val);
         if (found) {
             found->hash |= DELETED_FLAG;
@@ -138,11 +135,11 @@ public:
 
 private:
     static constexpr usize LOAD_FACTOR_PERCENT = 90;
-    static constexpr hash_t DELETED_FLAG = 1ull << (8 * sizeof(hash_t) - 1);
+    static constexpr u64 DELETED_FLAG = 1ull << (8 * sizeof(u64) - 1);
 
     template <class U>
-    static hash_t _valHash(U const &val) {
-        hash_t hash = Context::hash(val);
+    static u64 _valHash(U const &val) {
+        u64 hash = Context::hash(val);
         hash &= ~DELETED_FLAG;
         hash |= hash == 0;
         return hash;
@@ -161,24 +158,24 @@ private:
     }
 
     template <class U>
-    static bool _found(_Entry *entry, hash_t hash, U const &val) {
+    static bool _found(_Entry *entry, u64 hash, U const &val) {
         return _isValid(entry) && entry->hash == hash && Context::equal_to(entry->val, val);
     }
 
     // capacity must be a power of 2 for quadratic probe sequence with triangular numbers
-    usize _elemIndex(hash_t hash, usize i) const {
+    usize _elemIndex(u64 hash, usize i) const {
         return (hash + ((i + i * i) >> 1)) & (m_capacity - 1);
     }
 
-    _Entry *_entry(hash_t hash, usize i) const {
+    _Entry *_entry(u64 hash, usize i) const {
         return &m_entries[_elemIndex(hash, i)];
     }
 
     void _allocate(usize cap) {
         static_assert(std::is_trivial_v<_Entry>, "Entry should be trivial");
 
-        m_capacity = ceilToPowerOf2(maxu(cap, 1));
-        m_entries = nk_alloc_t<_Entry>(alloc(), m_capacity);
+        m_capacity = nk_ceilToPowerOf2(nk_maxu(cap, 1));
+        m_entries = nk_allocT<_Entry>(alloc(), m_capacity);
         std::memset(&m_entries[0], 0, m_capacity * sizeof(_Entry));
     }
 
@@ -201,7 +198,7 @@ private:
         m_max_probe_dist = new_hs.m_max_probe_dist;
     }
 
-    _Entry *_insert(hash_t hash, T const &val) {
+    _Entry *_insert(u64 hash, T const &val) {
         if (m_size * 100 / LOAD_FACTOR_PERCENT >= m_capacity) {
             _rehash();
         }
@@ -212,7 +209,7 @@ private:
             entry = _entry(hash, i++);
         }
 
-        m_max_probe_dist = maxu(m_max_probe_dist, i);
+        m_max_probe_dist = nk_maxu(m_max_probe_dist, i);
 
         m_size++;
         entry->val = val;
@@ -222,7 +219,7 @@ private:
     }
 
     template <class U>
-    _Entry *_find(hash_t hash, U const &val) const {
+    _Entry *_find(u64 hash, U const &val) const {
         for (usize i = 0; i < m_capacity; i++) {
             _Entry *entry = _entry(hash, i);
             if (_isEmpty(entry) || i > m_max_probe_dist) {
@@ -250,4 +247,4 @@ private:
     usize m_max_probe_dist;
 };
 
-#endif // HEADER_GUARD_NTK_HASH_SET
+#endif // NTK_HASH_SET_H_

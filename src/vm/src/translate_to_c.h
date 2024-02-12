@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_TRANSLATE_TO_C
-#define HEADER_GUARD_NK_VM_TRANSLATE_TO_C
+#ifndef NK_VM_TRANSLATE_TO_C_H_
+#define NK_VM_TRANSLATE_TO_C_H_
 
 #include "nk/vm/ir.h"
 #include "ntk/stream.h"
@@ -8,10 +8,10 @@
 extern "C" {
 #endif
 
-void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, nk_stream src);
+void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, NkStream src);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_TRANSLATE_TO_C
+#endif // NK_VM_TRANSLATE_TO_C_H_

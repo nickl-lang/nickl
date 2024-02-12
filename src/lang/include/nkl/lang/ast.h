@@ -1,11 +1,10 @@
-#ifndef HEADER_GUARD_NKL_LANG_AST
-#define HEADER_GUARD_NKL_LANG_AST
+#ifndef NKL_LANG_AST_H_
+#define NKL_LANG_AST_H_
 
 #include "nkl/lang/token.h"
+#include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/id.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,12 +17,12 @@ typedef struct NklAstNode_T const *NklAstNode;
 typedef struct {
     NklAstNode data;
     usize size;
-} NklAstNodeArray;
+} NklAstNodeDynArray;
 
 struct NklAstNode_T {
-    NklAstNodeArray args[3];
+    NklAstNodeDynArray args[3];
     NklTokenRef token;
-    nkid id;
+    NkAtom id;
 };
 
 typedef struct NklAst_T *NklAst;
@@ -33,18 +32,18 @@ void nkl_ast_init();
 NklAst nkl_ast_create();
 void nkl_ast_free(NklAst ast);
 
-NklAstNode_T nkl_makeNode0(nkid id, NklTokenRef token);
-NklAstNode_T nkl_makeNode1(nkid id, NklTokenRef token, NklAstNodeArray arg0);
-NklAstNode_T nkl_makeNode2(nkid id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1);
+NklAstNode_T nkl_makeNode0(NkAtom id, NklTokenRef token);
+NklAstNode_T nkl_makeNode1(NkAtom id, NklTokenRef token, NklAstNodeDynArray arg0);
+NklAstNode_T nkl_makeNode2(NkAtom id, NklTokenRef token, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1);
 NklAstNode_T nkl_makeNode3(
-    nkid id,
+    NkAtom id,
     NklTokenRef token,
-    NklAstNodeArray arg0,
-    NklAstNodeArray arg1,
-    NklAstNodeArray arg2);
+    NklAstNodeDynArray arg0,
+    NklAstNodeDynArray arg1,
+    NklAstNodeDynArray arg2);
 
-NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
-NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
+NklAstNodeDynArray nkl_pushNode(NklAst ast, NklAstNode_T node);
+NklAstNodeDynArray nkl_pushNodeAr(NklAst ast, NklAstNodeDynArray ar);
 
 void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb);
 
@@ -60,4 +59,4 @@ void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb);
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_LANG_AST
+#endif // NKL_LANG_AST_H_

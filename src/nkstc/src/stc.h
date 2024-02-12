@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKSTC_STC
-#define HEADER_GUARD_NKSTC_STC
+#ifndef NKSTC_STC_H_
+#define NKSTC_STC_H_
 
 #include "ntk/string.h"
 
@@ -7,10 +7,10 @@
 extern "C" {
 #endif
 
-int nkst_compile(nks in_file);
+int nkst_compile(NkString in_file);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKSTC_STC
+#endif // NKSTC_STC_H_

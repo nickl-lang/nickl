@@ -5,13 +5,14 @@
 
 #include <gtest/gtest.h>
 
-#include "ntk/logger.h"
+#include "ntk/arena.h"
+#include "ntk/log.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
 class HashMap : public testing::Test {
     void SetUp() override {
-        NK_LOGGER_INIT({});
+        NK_LOG_INIT({});
     }
 
     void TearDown() override {
@@ -68,7 +69,7 @@ TEST_F(HashMap, basic) {
 }
 
 TEST_F(HashMap, insert) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -87,7 +88,7 @@ TEST_F(HashMap, insert) {
 }
 
 TEST_F(HashMap, find) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -112,7 +113,7 @@ TEST_F(HashMap, find) {
 }
 
 TEST_F(HashMap, remove) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -130,7 +131,7 @@ TEST_F(HashMap, remove) {
 }
 
 TEST_F(HashMap, overwrite) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -151,7 +152,7 @@ TEST_F(HashMap, overwrite) {
 }
 
 TEST_F(HashMap, ptr_key) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -176,11 +177,11 @@ TEST_F(HashMap, str_map) {
     using val_t = u64;
 
     struct HashMapContext {
-        static hash_t hash(key_t const &key) {
-            return hash_array(key.data, key.data + c_key_size);
+        static u64 hash(key_t const &key) {
+            return nk_hashArray(key.data, key.data + c_key_size);
         }
 
-        static hash_t equal_to(key_t const &lhs, key_t const &rhs) {
+        static u64 equal_to(key_t const &lhs, key_t const &rhs) {
             return std::memcmp(lhs.data, rhs.data, c_key_size) == 0;
         }
     };
@@ -295,7 +296,7 @@ TEST_F(HashMap, stress) {
 }
 
 TEST_F(HashMap, zero_init) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
@@ -317,7 +318,7 @@ TEST_F(HashMap, zero_init) {
 
 TEST_F(HashMap, index_operator) {
     using key_t = int;
-    using val_t = nks;
+    using val_t = NkString;
     using hashmap_t = NkHashMap<key_t, val_t>;
 
     hashmap_t hm{};
@@ -333,7 +334,7 @@ TEST_F(HashMap, index_operator) {
 
     found = hm.find(1);
     ASSERT_TRUE(found);
-    EXPECT_EQ(std_str(*found), "one");
+    EXPECT_EQ(nk_s2stdStr(*found), "one");
 
     hm[42];
 
@@ -341,7 +342,7 @@ TEST_F(HashMap, index_operator) {
 
     found = hm.find(42);
     ASSERT_TRUE(found);
-    EXPECT_EQ(std_str(*found), "");
+    EXPECT_EQ(nk_s2stdStr(*found), "");
 
     hm[42] = nk_cs2s("forty-two");
 
@@ -349,7 +350,7 @@ TEST_F(HashMap, index_operator) {
 
     found = hm.find(42);
     ASSERT_TRUE(found);
-    EXPECT_EQ(std_str(*found), "forty-two");
+    EXPECT_EQ(nk_s2stdStr(*found), "forty-two");
 }
 
 TEST_F(HashMap, iteration) {
@@ -412,7 +413,7 @@ TEST_F(HashMap, const_iteration) {
 }
 
 TEST_F(HashMap, allocator) {
-    using key_t = nks;
+    using key_t = NkString;
     using val_t = u64;
     using hashmap_t = NkHashMap<key_t, val_t>;
 

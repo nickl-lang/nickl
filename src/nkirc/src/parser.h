@@ -1,18 +1,18 @@
-#ifndef HEADER_GUARD_NKIRC_PARSER
-#define HEADER_GUARD_NKIRC_PARSER
+#ifndef NKIRC_PARSER_H_
+#define NKIRC_PARSER_H_
 
 #include "irc.h"
-#include "lexer.h"
-#include "ntk/id.h"
+#include "nkl/common/token.h"
+#include "ntk/atom.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void nkir_parse(NkIrCompiler c, nkid file, nks text, NklTokenView tokens);
+void nkir_parse(NkIrCompiler c, NkAtom file, NkString text, NklTokenArray tokens);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKIRC_PARSER
+#endif // NKIRC_PARSER_H_

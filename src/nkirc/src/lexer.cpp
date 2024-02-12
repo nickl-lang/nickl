@@ -3,17 +3,13 @@
 #include <cctype>
 #include <cinttypes>
 #include <cstdarg>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <iterator>
 
 #include "nkl/common/token.h"
 #include "ntk/allocator.h"
-#include "ntk/array.h"
-#include "ntk/logger.h"
+#include "ntk/dyn_array.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -47,7 +43,7 @@ char const *s_keywords[] = {
 };
 
 struct ScannerState {
-    nks const m_text;
+    NkString const m_text;
     NkArena *m_tmp_arena;
 
     u32 m_pos = 0;
@@ -55,10 +51,10 @@ struct ScannerState {
     u32 m_col = 1;
 
     NklToken m_token{};
-    nks m_error_msg{};
+    NkString m_error_msg{};
 
     void scan() {
-        ProfFunc();
+        NK_PROF_FUNC();
 
         skipSpaces();
 
@@ -188,7 +184,7 @@ struct ScannerState {
                 accept();
             }
 
-            auto const token_str = std_view(nkl_getTokenStr(m_token, m_text));
+            auto const token_str = nk_s2stdView(nkl_getTokenStr(m_token, m_text));
             auto it = std::begin(s_keywords) + 1;
             for (; it != std::end(s_keywords) && (m_token.len != strlen(*it) || *it != token_str); ++it) {
             }
@@ -290,7 +286,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {nkav_init(sb)};
+        m_error_msg = {NK_SLICE_INIT(sb)};
         va_end(ap);
         m_token.id = t_error;
     }
@@ -298,12 +294,12 @@ private:
 
 } // namespace
 
-void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nks text) {
-    ProfFunc();
+void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, NkString text) {
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
-    nkar_reserve(&lexer->tokens, 1000);
+    nkda_reserve(&lexer->tokens, 1000);
 
     lexer->error_msg = {};
     lexer->ok = true;
@@ -315,7 +311,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
 
     do {
         scanner.scan();
-        nkar_append(&lexer->tokens, scanner.m_token);
+        nkda_append(&lexer->tokens, scanner.m_token);
 
         if (scanner.m_token.id == t_error) {
             lexer->ok = false;
@@ -324,9 +320,9 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, nk
         }
 
 #ifdef ENABLE_LOGGING
-        nksb_fixed_buffer(sb, 256);
+        NKSB_FIXED_BUFFER(sb, 256);
         nks_escape(nksb_getStream(&sb), nkl_getTokenStr(scanner.m_token, text));
-        NK_LOG_DBG("%s: \"" nks_Fmt "\"", s_token_id[scanner.m_token.id], nks_Arg(sb));
+        NK_LOG_DBG("%s: \"" NKS_FMT "\"", s_token_id[scanner.m_token.id], NKS_ARG(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 }

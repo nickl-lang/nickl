@@ -1,7 +1,5 @@
 #include "interp.hpp"
 
-#include <algorithm>
-#include <cassert>
 #include <cstring>
 
 #include "bytecode.h"
@@ -9,7 +7,7 @@
 #include "ir_impl.hpp"
 #include "nk/vm/value.h"
 #include "ntk/allocator.h"
-#include "ntk/logger.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -67,7 +65,7 @@ struct InterpContext {
 
     ~InterpContext() {
         NK_LOG_TRC("deinitializing stack...");
-        assert(nk_arena_grab(&stack).size == 0 && "nonempty stack at exit");
+        nk_assert(nk_arena_grab(&stack).size == 0 && "nonempty stack at exit");
         nk_arena_free(&stack);
         is_initialized = false;
     }
@@ -125,10 +123,10 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
 void interp(NkBcInstr const &instr) {
 #ifdef ENABLE_PROFILING
-    nksb_fixed_buffer(sb, 128);
+    NKSB_FIXED_BUFFER(sb, 128);
     nksb_printf(&sb, "interp: %s", s_nk_bc_names[instr.code]);
 #endif // ENABLE_PROFILING
-    ProfScope(sb);
+    NK_PROF_SCOPE(sb);
 
     switch (instr.code) {
     case nkop_nop: {
@@ -224,7 +222,7 @@ void interp(NkBcInstr const &instr) {
     }
 
 #define _CAST(FROM_TYPE, FROM_VALUE_TYPE, TO_TYPE)                                  \
-    case CAT(CAT(CAT(nkop_cast_, FROM_TYPE), _to_), TO_TYPE): {                     \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_cast_, FROM_TYPE), _to_), TO_TYPE): {            \
         _getRef<TO_TYPE>(instr.arg[0]) = (TO_TYPE)_getRef<FROM_TYPE>(instr.arg[2]); \
         break;                                                                      \
     }
@@ -269,7 +267,7 @@ void interp(NkBcInstr const &instr) {
         auto dst = _getValRef(instr.arg[0]);
         auto src = _getValRef(instr.arg[1]);
 
-        assert(nkval_sizeof(dst) == nkval_sizeof(src));
+        nk_assert(nkval_sizeof(dst) == nkval_sizeof(src));
 
         std::memcpy(nkval_data(dst), nkval_data(src), nkval_sizeof(dst));
         break;
@@ -301,7 +299,7 @@ void interp(NkBcInstr const &instr) {
     }
 
 #define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                      \
-    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                       \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {              \
         _getRef<TYPE>(instr.arg[0]) = OP _getRef<TYPE>(instr.arg[1]); \
         break;                                                        \
     }
@@ -322,8 +320,8 @@ void interp(NkBcInstr const &instr) {
         auto lhs = _getValRef(instr.arg[1]);
         auto rhs = _getValRef(instr.arg[2]);
 
-        assert(nkval_sizeof(dst) == 1);
-        assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
+        nk_assert(nkval_sizeof(dst) == 1);
+        nk_assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
         _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
         break;
@@ -354,8 +352,8 @@ void interp(NkBcInstr const &instr) {
         auto lhs = _getValRef(instr.arg[1]);
         auto rhs = _getValRef(instr.arg[2]);
 
-        assert(nkval_sizeof(dst) == 1);
-        assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
+        nk_assert(nkval_sizeof(dst) == 1);
+        nk_assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
         _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
         break;
@@ -382,13 +380,13 @@ void interp(NkBcInstr const &instr) {
     }
 
 #define NUM_BIN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                                 \
-    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                                   \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {                                          \
         _getRef<TYPE>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
         break;                                                                                    \
     }
 
 #define NUM_BIN_BOOL_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                          \
-    case CAT(CAT(CAT(nkop_, NAME), _), TYPE): {                                                 \
+    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {                                        \
         _getRef<u8>(instr.arg[0]) = _getRef<TYPE>(instr.arg[1]) OP _getRef<TYPE>(instr.arg[2]); \
         break;                                                                                  \
     }
@@ -424,7 +422,7 @@ void interp(NkBcInstr const &instr) {
 #undef NUM_BIN_BOOL_OP_IT
 
     default:
-        assert(!"unknown opcode");
+        nk_assert(!"unknown opcode");
         break;
     }
 }
@@ -432,8 +430,7 @@ void interp(NkBcInstr const &instr) {
 } // namespace
 
 void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
-    ProfFunc();
-
+    NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     NK_LOG_DBG("program @%p", (void *)fn->prog);
@@ -458,7 +455,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     while (ctx.pinstr) {
         auto pinstr = ctx.pinstr++;
-        assert(pinstr->code < nkop_count && "unknown instruction");
+        nk_assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
             "instr: %" PRIx64 " %s",
             (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
@@ -472,9 +469,9 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
                     nkval_inspect(_getValRef(ref), &sb);
                     nksb_printf(&sb, ":");
                     nkt_inspect(ref.type, &sb);
-                    nksb_append_null(&sb);
+                    nksb_appendNull(&sb);
                 }
-                return makeDeferrerWithData((char const *)sb.data, [sb]() mutable {
+                return nk_defer((char const *)sb.data, [sb]() mutable {
                     nksb_free(&sb);
                 });
             }());

@@ -1,7 +1,5 @@
-#ifndef HEADER_GUARD_NKL_LANG_TOKEN
-#define HEADER_GUARD_NKL_LANG_TOKEN
-
-#include <stddef.h>
+#ifndef NKL_LANG_TOKEN_H_
+#define NKL_LANG_TOKEN_H_
 
 #include "ntk/string.h"
 
@@ -10,7 +8,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    nks text;
+    NkString text;
 
     usize pos;
     usize lin;
@@ -21,10 +19,10 @@ typedef struct {
 
 typedef NklToken const *NklTokenRef;
 
-nkav_typedef(NklToken const, NklTokenView);
+typedef NkSlice(NklToken const) NklTokenArray;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKL_LANG_TOKEN
+#endif // NKL_LANG_TOKEN_H_

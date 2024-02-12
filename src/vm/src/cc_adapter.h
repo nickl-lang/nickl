@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NK_VM_C_COMPILER_ADAPTER
-#define HEADER_GUARD_NK_VM_C_COMPILER_ADAPTER
+#ifndef NK_VM_C_COMPILER_ADAPTER_H_
+#define NK_VM_C_COMPILER_ADAPTER_H_
 
 #include "nk/vm/ir_compile.h"
 #include "ntk/pipe_stream.h"
@@ -15,4 +15,4 @@ int nkcc_streamClose(NkPipeStream *stream);
 }
 #endif
 
-#endif // HEADER_GUARD_NK_VM_C_COMPILER_ADAPTER
+#endif // NK_VM_C_COMPILER_ADAPTER_H_

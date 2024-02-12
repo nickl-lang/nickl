@@ -1,26 +1,27 @@
-#ifndef HEADER_GUARD_NTK_FILE
-#define HEADER_GUARD_NTK_FILE
+#ifndef NTK_FILE_H_
+#define NTK_FILE_H_
 
 #include "ntk/allocator.h"
+#include "ntk/os/file.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/sys/file.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// TODO Refactor NkFileReadResult
 typedef struct {
-    nks bytes;
+    NkString bytes;
     bool ok;
 } NkFileReadResult;
 
-NkFileReadResult nk_file_read(NkAllocator alloc, nks file);
+NkFileReadResult nk_file_read(NkAllocator alloc, NkString file);
 
-nk_stream nk_file_getStream(nkfd_t fd);
+NkStream nk_file_getStream(nkfd_t fd);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NTK_FILE
+#endif // NTK_FILE_H_

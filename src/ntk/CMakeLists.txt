@@ -3,21 +3,21 @@ set(LIB ntk)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
 
 add_library(${LIB}
-    src/sys/${PLATFORM_DIR}/dl.c
-    src/sys/${PLATFORM_DIR}/error.c
-    src/sys/${PLATFORM_DIR}/file.c
-    src/sys/${PLATFORM_DIR}/mem.c
-    src/sys/${PLATFORM_DIR}/path.c
-    src/sys/${PLATFORM_DIR}/process.c
-    src/sys/${PLATFORM_DIR}/syscall.c
-    src/sys/${PLATFORM_DIR}/term.c
-    src/sys/${PLATFORM_DIR}/thread.c
-    src/sys/${PLATFORM_DIR}/time.c
+    src/os/${PLATFORM_DIR}/dl.c
+    src/os/${PLATFORM_DIR}/error.c
+    src/os/${PLATFORM_DIR}/file.c
+    src/os/${PLATFORM_DIR}/mem.c
+    src/os/${PLATFORM_DIR}/path.c
+    src/os/${PLATFORM_DIR}/process.c
+    src/os/${PLATFORM_DIR}/syscall.c
+    src/os/${PLATFORM_DIR}/term.c
+    src/os/${PLATFORM_DIR}/thread.c
+    src/os/${PLATFORM_DIR}/time.c
     src/allocator.c
     src/arena.c
+    src/atom.c
     src/file.c
-    src/id.c
-    src/logger.c
+    src/log.c
     src/pipe_stream.c
     src/profiler.c
     src/stream.c

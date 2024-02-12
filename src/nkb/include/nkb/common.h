@@ -1,8 +1,5 @@
-#ifndef HEADER_GUARD_NKB_COMMON
-#define HEADER_GUARD_NKB_COMMON
-
-#include <stddef.h>
-#include <stdint.h>
+#ifndef NKB_COMMON_H_
+#define NKB_COMMON_H_
 
 #include "ntk/allocator.h"
 #include "ntk/stream.h"
@@ -133,8 +130,8 @@ typedef struct NkIrType {
     u64 id;
 } NkIrType;
 
-void nkirt_inspect(nktype_t type, nk_stream out);
-void nkirv_inspect(void *data, nktype_t type, nk_stream out);
+void nkirt_inspect(nktype_t type, NkStream out);
+void nkirv_inspect(void *data, nktype_t type, NkStream out);
 
 typedef struct {
     NkIrAggregateElemInfoArray info_ar;
@@ -154,4 +151,4 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
 }
 #endif
 
-#endif // HEADER_GUARD_NKB_COMMON
+#endif // NKB_COMMON_H_

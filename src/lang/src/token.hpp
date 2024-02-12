@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKL_LANG_TOKEN_HPP
-#define HEADER_GUARD_NKL_LANG_TOKEN_HPP
+#ifndef NKL_LANG_TOKEN_HPP_HPP_
+#define NKL_LANG_TOKEN_HPP_HPP_
 
 enum ETokenId {
 #define OP(ID, TEXT) t_##ID,
@@ -13,4 +13,4 @@ enum ETokenId {
 extern const char *s_token_id[];
 extern const char *s_token_text[];
 
-#endif // HEADER_GUARD_NKL_LANG_TOKEN_HPP
+#endif // NKL_LANG_TOKEN_HPP_HPP_

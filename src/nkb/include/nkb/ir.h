@@ -1,22 +1,18 @@
-#ifndef HEADER_GUARD_NKB_IR
-#define HEADER_GUARD_NKB_IR
-
-#include <stddef.h>
-#include <stdint.h>
+#ifndef NKB_IR_H_
+#define NKB_IR_H_
 
 #include "nkb/common.h"
-#include "ntk/allocator.h"
-#include "ntk/id.h"
+#include "ntk/arena.h"
+#include "ntk/atom.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef enum {
-#define IR(NAME) CAT(nkir_, NAME),
+#define IR(NAME) NK_CAT(nkir_, NAME),
 #include "nkb/ir.inl"
 
     NkIrOpcode_Count,
@@ -73,7 +69,7 @@ typedef struct {
         NkIrRef ref;
         NkIrRefArray refs;
         usize id;
-        nks comment;
+        NkString comment;
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -104,21 +100,21 @@ typedef struct NkIrProg_T *NkIrProg;
 
 NkIrProg nkir_createProgram(NkArena *arena);
 
-nks nkir_getErrorString(NkIrProg ir);
+NkString nkir_getErrorString(NkIrProg ir);
 
 // Code Generation
 
 NkIrProc nkir_createProc(NkIrProg ir);
-NkIrLabel nkir_createLabel(NkIrProg ir, nkid name);
+NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name);
 
-nkav_typedef(nkid, nkid_array);
+typedef NkSlice(NkAtom) NkAtomArray;
 void nkir_startProc(
     NkIrProg ir,
     NkIrProc proc,
-    nkid name,
+    NkAtom name,
     nktype_t proc_t,
-    nkid_array arg_names,
-    nkid file,
+    NkAtomArray arg_names,
+    NkAtom file,
     usize line,
     NkIrVisibility vis);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
@@ -128,7 +124,7 @@ void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
 
-nkav_typedef(NkIrInstr const, NkIrInstrArray);
+typedef NkSlice(NkIrInstr const) NkIrInstrArray;
 void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
 
 void nkir_setLine(NkIrProg ir, usize line);
@@ -138,11 +134,11 @@ void nkir_leave(NkIrProg ir);
 
 // References
 
-NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, nkid name, nktype_t type);
-NkIrData nkir_makeData(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
-NkIrData nkir_makeRodata(NkIrProg ir, nkid name, nktype_t type, NkIrVisibility vis);
-NkIrExternData nkir_makeExternData(NkIrProg ir, nkid lib, nkid name, nktype_t type);
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, nkid lib, nkid name, nktype_t proc_t);
+NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, NkAtom name, nktype_t type);
+NkIrData nkir_makeData(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility vis);
+NkIrData nkir_makeRodata(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility vis);
+NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t type);
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, usize index);
@@ -165,24 +161,24 @@ NkIrInstr nkir_make_jmpnz(NkIrProg ir, NkIrRef cond, NkIrLabel label);
 
 NkIrInstr nkir_make_call(NkIrProg ir, NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
-#define UNA_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef arg);
-#define BIN_IR(NAME) NkIrInstr CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+#define UNA_IR(NAME) NkIrInstr NK_CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef arg);
+#define BIN_IR(NAME) NkIrInstr NK_CAT(nkir_make_, NAME)(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #define DBL_IR(NAME1, NAME2) \
-    NkIrInstr CAT(nkir_make_, CAT(NAME1, CAT(_, NAME2)))(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+    NkIrInstr NK_CAT(nkir_make_, NK_CAT(NAME1, NK_CAT(_, NAME2)))(NkIrProg ir, NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #include "nkb/ir.inl"
 
 NkIrInstr nkir_make_syscall(NkIrProg ir, NkIrRef dst, NkIrRef n, NkIrRefArray args);
 
 NkIrInstr nkir_make_label(NkIrLabel label);
 
-NkIrInstr nkir_make_comment(NkIrProg ir, nks comment);
+NkIrInstr nkir_make_comment(NkIrProg ir, NkString comment);
 
 // Output
 
 typedef struct {
-    nks compiler_binary;
-    nkav_type(nks const) additional_flags;
-    nks output_filename;
+    NkString compiler_binary;
+    NkSlice(NkString const) additional_flags;
+    NkString output_filename;
     NkbOutputKind output_kind;
     bool quiet;
 } NkIrCompilerConfig;
@@ -198,20 +194,18 @@ void nkir_freeRunCtx(NkIrRunCtx ctx);
 
 bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 
-nks nkir_getRunErrorString(NkIrRunCtx ctx);
+NkString nkir_getRunErrorString(NkIrRunCtx ctx);
 
 // Inspection
 
-#ifdef ENABLE_LOGGING
-void nkir_inspectProgram(NkIrProg ir, nk_stream out);
-void nkir_inspectData(NkIrProg ir, nk_stream out);
-void nkir_inspectExternSyms(NkIrProg ir, nk_stream out);
-void nkir_inspectProc(NkIrProg ir, NkIrProc proc, nk_stream out);
-void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, nk_stream out);
-#endif // ENABLE_LOGGING
+void nkir_inspectProgram(NkIrProg ir, NkStream out);
+void nkir_inspectData(NkIrProg ir, NkStream out);
+void nkir_inspectExternSyms(NkIrProg ir, NkStream out);
+void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStream out);
+void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, NkStream out);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HEADER_GUARD_NKB_IR
+#endif // NKB_IR_H_

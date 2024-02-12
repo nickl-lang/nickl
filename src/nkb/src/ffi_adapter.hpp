@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKB_FFI_ADAPTER
-#define HEADER_GUARD_NKB_FFI_ADAPTER
+#ifndef NKB_FFI_ADAPTER_HPP_
+#define NKB_FFI_ADAPTER_HPP_
 
 #include "bytecode.hpp"
 #include "nkb/common.h"
@@ -21,4 +21,4 @@ typedef struct {
 void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data);
 void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data);
 
-#endif // HEADER_GUARD_NKB_FFI_ADAPTER
+#endif // NKB_FFI_ADAPTER_HPP_
