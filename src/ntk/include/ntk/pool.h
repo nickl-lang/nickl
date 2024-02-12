@@ -14,7 +14,7 @@
         _##TPool##_Node *next;                      \
     } TPool
 
-#define NK_POOL_INIT(alloc) .items{NKDA_INIT(alloc)}, .next = NULL
+#define NK_POOL_INIT(alloc) .items = {NKDA_INIT(alloc)}, .next = NULL
 
 #define NK_POOL_PROTO(TPool, TItem)                 \
     TItem *TPool##_alloc(TPool *pool);              \

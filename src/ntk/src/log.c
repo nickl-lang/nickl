@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ntk/os/common.h"
 #include "ntk/os/term.h"
 #include "ntk/os/thread.h"
 #include "ntk/profiler.h"
@@ -47,7 +48,7 @@ struct LoggerState {
     i64 start_time;
     NkLogLevel log_level;
     NkLogColorMode color_mode;
-    nk_mutex_t mtx;
+    NkOsHandle mtx;
     usize msg_count;
     bool initialized;
 };
@@ -86,7 +87,7 @@ void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_
     i64 now = nk_now_ns();
     f64 ts = (now - s_logger.start_time) / 1e9;
 
-    nk_mutex_lock(&s_logger.mtx);
+    nk_mutex_lock(s_logger.mtx);
 
     if (to_color) {
         fprintf(stderr, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
@@ -101,7 +102,7 @@ void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_
 
     fputc('\n', stderr);
 
-    nk_mutex_unlock(&s_logger.mtx);
+    nk_mutex_unlock(s_logger.mtx);
 }
 
 void nk_log_init(NkLogOptions opt) {
@@ -120,7 +121,7 @@ void nk_log_init(NkLogOptions opt) {
 
     s_logger.color_mode = opt.color_mode;
 
-    nk_mutex_init(&s_logger.mtx);
+    s_logger.mtx = nk_mutex_alloc();
 
     s_logger.initialized = true;
 
