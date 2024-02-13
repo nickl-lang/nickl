@@ -1,8 +1,14 @@
+LABEL org.opencontainers.image.description="Windows build environment for Nickl compiler"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++-mingw-w64-x86-64 \
     mingw-w64-x86-64-dev \
     zstd \
  && rm -rf /var/lib/apt/lists/*
+
+ADD common/scripts/install_spall.sh /root
+RUN /root/install_spall.sh /opt/mingw64
+RUN rm /root/install_spall.sh
 
 ADD mingw64/scripts/install_mingw64_package.sh /root
 
@@ -37,6 +43,3 @@ RUN /root/install_mingw64_package.sh zstd-1.5.5-1-any.pkg.tar.zst
 RUN /root/install_mingw64_package.sh json-c-0.17-1-any.pkg.tar.zst
 
 RUN rm /root/install_mingw64_package.sh
-
-RUN wget -O /opt/mingw64/include/spall.h \
-    "https://raw.githubusercontent.com/colrdavidson/spall-web/5129ce6778a9d732a7de727a79648a71d1092962/spall.h"
