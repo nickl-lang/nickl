@@ -1,9 +1,7 @@
 #include "ntk/os/path.h"
 
+#include "common.h"
 #include "ntk/profiler.h"
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 
 char nk_path_separator = '\\';
 

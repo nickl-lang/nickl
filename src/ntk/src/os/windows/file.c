@@ -1,23 +1,20 @@
 #include "ntk/os/file.h"
 
+#include "common.h"
 #include "ntk/profiler.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
-nkfd_t nk_invalid_fd = 0;
 char const *nk_null_file = "nul";
 
-i32 nk_read(nkfd_t fd, char *buf, usize n) {
+i32 nk_read(NkOsHandle h_file, char *buf, usize n) {
     NK_PROF_FUNC_BEGIN();
 
     DWORD nNumberOfBytesRead = 0;
     BOOL bSuccess = ReadFile(
-        (HANDLE)fd,          // HANDLE       hFile
-        buf,                 // LPVOID       lpBuffer
-        n,                   // DWORD        nNumberOfBytesToRead
-        &nNumberOfBytesRead, // LPDWORD      lpNumberOfBytesRead
-        NULL                 // LPOVERLAPPED lpOverlapped
+        handle_toNative(h_file), // HANDLE       hFile
+        buf,                     // LPVOID       lpBuffer
+        n,                       // DWORD        nNumberOfBytesToRead
+        &nNumberOfBytesRead,     // LPDWORD      lpNumberOfBytesRead
+        NULL                     // LPOVERLAPPED lpOverlapped
     );
 
     if (!bSuccess) {
@@ -32,24 +29,26 @@ i32 nk_read(nkfd_t fd, char *buf, usize n) {
     return nNumberOfBytesRead;
 }
 
-i32 nk_write(nkfd_t fd, char const *buf, usize n) {
+i32 nk_write(NkOsHandle h_file, char const *buf, usize n) {
     NK_PROF_FUNC_BEGIN();
 
     DWORD nNumberOfBytesWritten = 0;
     BOOL bSuccess = WriteFile(
-        (HANDLE)fd,             // HANDLE       hFile
-        buf,                    // LPCVOID      lpBuffer
-        n,                      // DWORD        nNumberOfBytesToWrite
-        &nNumberOfBytesWritten, // LPDWORD      lpNumberOfBytesWritten
-        NULL                    // LPOVERLAPPED lpOverlapped
+        handle_toNative(h_file), // HANDLE       hFile
+        buf,                     // LPCVOID      lpBuffer
+        n,                       // DWORD        nNumberOfBytesToWrite
+        &nNumberOfBytesWritten,  // LPDWORD      lpNumberOfBytesWritten
+        NULL                     // LPOVERLAPPED lpOverlapped
     );
 
     NK_PROF_FUNC_END();
     return bSuccess ? (i32)nNumberOfBytesWritten : -1;
 }
 
-nkfd_t nk_open(char const *file, i32 flags) {
+NkOsHandle nk_open(char const *file, i32 flags) {
     NK_PROF_FUNC_BEGIN();
+
+    NkOsHandle h_file = NK_OS_HANDLE_ZERO;
 
     DWORD dwDesiredAccess =
         ((flags & NkOpenFlags_Read) ? GENERIC_READ : 0) | ((flags & NkOpenFlags_Write) ? GENERIC_WRITE : 0);
@@ -67,30 +66,33 @@ nkfd_t nk_open(char const *file, i32 flags) {
         FILE_ATTRIBUTE_NORMAL, // DWORD                 dwFlagsAndAttributes,
         NULL                   // HANDLE                hTemplateFile
     );
-    if (hFile == INVALID_HANDLE_VALUE) {
+    if (hFile != INVALID_HANDLE_VALUE) {
+        h_file = handle_fromNative(hFile);
+    }
+
+    NK_PROF_FUNC_END();
+    return h_file;
+}
+
+i32 nk_close(NkOsHandle h_file) {
+    if (!nkos_handleIsZero(h_file)) {
+        NK_PROF_FUNC_BEGIN();
+        i32 ret = CloseHandle(handle_toNative(h_file)) ? 0 : -1;
         NK_PROF_FUNC_END();
-        return nk_invalid_fd;
+        return ret;
     } else {
-        NK_PROF_FUNC_END();
-        return (nkfd_t)hFile;
+        return 0;
     }
 }
 
-i32 nk_close(nkfd_t fd) {
-    NK_PROF_FUNC_BEGIN();
-    i32 ret = CloseHandle((HANDLE)fd) ? 0 : -1;
-    NK_PROF_FUNC_END();
-    return ret;
+NkOsHandle nk_stdin() {
+    return handle_fromNative(GetStdHandle(STD_INPUT_HANDLE));
 }
 
-nkfd_t nk_stdin() {
-    return (nkfd_t)GetStdHandle(STD_INPUT_HANDLE);
+NkOsHandle nk_stdout() {
+    return handle_fromNative(GetStdHandle(STD_OUTPUT_HANDLE));
 }
 
-nkfd_t nk_stdout() {
-    return (nkfd_t)GetStdHandle(STD_OUTPUT_HANDLE);
-}
-
-nkfd_t nk_stderr() {
-    return (nkfd_t)GetStdHandle(STD_ERROR_HANDLE);
+NkOsHandle nk_stderr() {
+    return handle_fromNative(GetStdHandle(STD_ERROR_HANDLE));
 }

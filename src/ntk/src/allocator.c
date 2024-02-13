@@ -63,11 +63,3 @@ NkAllocator nk_default_allocator = {
     .data = NULL,
     .proc = defaultAllocatorProc,
 };
-
-extern inline void *nk_allocAligned(NkAllocator alloc, usize size, u8 align);
-extern inline void nk_freeAligned(NkAllocator alloc, void *ptr, usize size, u8 align);
-extern inline void *nk_reallocAligned(NkAllocator alloc, usize size, u8 align, void *old_mem, usize old_size);
-extern inline void *nk_alloc(NkAllocator alloc, usize size);
-extern inline void nk_free(NkAllocator alloc, void *ptr, usize size);
-extern inline void *nk_realloc(NkAllocator alloc, usize size, void *old_mem, usize old_size);
-extern inline void *nk_alloc_querySpaceLeft(NkAllocator alloc, NkAllocatorSpaceLeftQueryResult *result);

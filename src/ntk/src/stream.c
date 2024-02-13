@@ -33,7 +33,3 @@ i32 nk_stream_vprintf(NkStream out, char const *fmt, va_list ap) {
     NK_PROF_FUNC_END();
     return ret;
 }
-
-extern inline i32 nk_stream_read(NkStream in, char *buf, usize size);
-extern inline i32 nk_stream_write(NkStream out, char const *buf, usize size);
-extern inline i32 nk_stream_writeCStr(NkStream out, char const *str);

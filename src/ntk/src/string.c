@@ -204,5 +204,3 @@ i32 nks_sanitize(NkStream out, NkString str) {
     NK_PROF_FUNC_END();
     return res;
 }
-
-extern inline NkString nk_cs2s(char const *str);

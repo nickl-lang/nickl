@@ -1,19 +1,16 @@
 #ifndef NTK_OS_FILE_H_
 #define NTK_OS_FILE_H_
 
-#include "ntk/common.h"
+#include "ntk/os/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef intptr_t nkfd_t;
-
-extern nkfd_t nk_invalid_fd;
 extern char const *nk_null_file;
 
-i32 nk_read(nkfd_t fd, char *buf, usize n);
-i32 nk_write(nkfd_t fd, char const *buf, usize n);
+i32 nk_read(NkOsHandle fd, char *buf, usize n);
+i32 nk_write(NkOsHandle fd, char const *buf, usize n);
 
 typedef enum {
     NkOpenFlags_Read = 1,
@@ -22,13 +19,13 @@ typedef enum {
     NkOpenFlags_Truncate = 8,
 } NkOpenFlags;
 
-nkfd_t nk_open(char const *file, i32 flags);
+NkOsHandle nk_open(char const *file, i32 flags);
 
-i32 nk_close(nkfd_t fd);
+i32 nk_close(NkOsHandle fd);
 
-nkfd_t nk_stdin();
-nkfd_t nk_stdout();
-nkfd_t nk_stderr();
+NkOsHandle nk_stdin();
+NkOsHandle nk_stdout();
+NkOsHandle nk_stderr();
 
 #ifdef __cplusplus
 }

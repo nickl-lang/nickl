@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 
+#include "common.h"
 #include "ntk/arena.h"
 #include "ntk/pool.h"
 
@@ -16,11 +17,11 @@ NkOsHandle nk_mutex_alloc(void) {
     pthread_mutex_unlock(&g_mutex);
 
     pthread_mutex_init(mutex, NULL);
-    return (NkOsHandle)mutex;
+    return handle_fromNative(mutex);
 }
 
-i32 nk_mutex_free(NkOsHandle handle) {
-    pthread_mutex_t *mutex = (pthread_mutex_t *)handle;
+i32 nk_mutex_free(NkOsHandle h_mutex) {
+    pthread_mutex_t *mutex = handle_toNative(h_mutex);
     i32 res = pthread_mutex_destroy(mutex);
 
     pthread_mutex_lock(&g_mutex);
@@ -30,10 +31,10 @@ i32 nk_mutex_free(NkOsHandle handle) {
     return res;
 }
 
-i32 nk_mutex_lock(NkOsHandle mutex) {
-    return pthread_mutex_lock((pthread_mutex_t *)mutex);
+i32 nk_mutex_lock(NkOsHandle h_mutex) {
+    return pthread_mutex_lock(handle_toNative(h_mutex));
 }
 
-i32 nk_mutex_unlock(NkOsHandle mutex) {
-    return pthread_mutex_unlock((pthread_mutex_t *)mutex);
+i32 nk_mutex_unlock(NkOsHandle h_mutex) {
+    return pthread_mutex_unlock(handle_toNative(h_mutex));
 }

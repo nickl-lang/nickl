@@ -1,7 +1,6 @@
 #include "ntk/os/mem.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "common.h"
 
 void *nk_mem_reserveAndCommit(usize len) {
     return VirtualAlloc(

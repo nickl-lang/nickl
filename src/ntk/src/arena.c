@@ -134,8 +134,3 @@ void nk_arena_free(NkArena *arena) {
     }
     *arena = (NkArena){0};
 }
-
-extern inline void *nk_arena_alloc(NkArena *arena, usize size);
-extern inline void nk_arena_clear(NkArena *arena);
-extern inline NkArenaFrame nk_arena_grab(NkArena *arena);
-extern inline void nk_arena_popFrame(NkArena *arena, NkArenaFrame frame);

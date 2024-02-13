@@ -14,5 +14,3 @@ void nk_setLastError(nkerr_t err) {
 char const *nk_getErrorString(nkerr_t err) {
     return strerror(err);
 }
-
-extern inline char const *nk_getLastErrorString(void);

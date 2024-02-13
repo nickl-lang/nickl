@@ -36,7 +36,7 @@
                 void *const _new_data = nk_reallocAligned(                                    \
                     _alloc,                                                                   \
                     _cap * sizeof(*(ar)->data),                                               \
-                    alignof(max_align_t),                                                     \
+                    nk_alignofval(*(ar)->data),                                               \
                     (ar)->data,                                                               \
                     (ar)->capacity * sizeof(*(ar)->data));                                    \
                 _nk_assignVoidPtr((ar)->data, _new_data);                                     \
@@ -80,13 +80,13 @@
         (ar)->size += _count;                                            \
     } while (0)
 
-#define _nkda_free(ar)                                                                                  \
-    do {                                                                                                \
-        NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator;               \
-        nk_freeAligned(_alloc, (ar)->data, (ar)->capacity * sizeof(*(ar)->data), alignof(max_align_t)); \
-        (ar)->data = NULL;                                                                              \
-        (ar)->size = 0;                                                                                 \
-        (ar)->capacity = 0;                                                                             \
+#define _nkda_free(ar)                                                                                        \
+    do {                                                                                                      \
+        NkAllocator const _alloc = (ar)->alloc.proc ? (ar)->alloc : nk_default_allocator;                     \
+        nk_freeAligned(_alloc, (ar)->data, (ar)->capacity * sizeof(*(ar)->data), nk_alignofval(*(ar)->data)); \
+        (ar)->data = NULL;                                                                                    \
+        (ar)->size = 0;                                                                                       \
+        (ar)->capacity = 0;                                                                                   \
     } while (0)
 
 #define _nkda_pop(ar, count)                                                          \

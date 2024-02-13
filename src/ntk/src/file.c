@@ -1,5 +1,6 @@
 #include "ntk/file.h"
 
+#include "ntk/os/common.h"
 #include "ntk/os/file.h"
 #include "ntk/os/path.h"
 #include "ntk/profiler.h"
@@ -16,33 +17,33 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
 
     NkFileReadResult res = {0};
 
-    nkfd_t fd = nk_open(path.data, NkOpenFlags_Read);
-    if (fd >= 0) {
+    NkOsHandle h_file = nk_open(path.data, NkOpenFlags_Read);
+    if (!nkos_handleIsZero(h_file)) {
         NkStringBuilder sb = {NKSB_INIT(alloc)};
-        if (nksb_readFromStreamEx(&sb, nk_file_getStream(fd), BUF_SIZE)) {
+        if (nksb_readFromStreamEx(&sb, nk_file_getStream(h_file), BUF_SIZE)) {
             res.bytes = (NkString){NK_SLICE_INIT(sb)};
             res.ok = true;
         }
     }
-    nk_close(fd);
+    nk_close(h_file);
 
     NK_PROF_FUNC_END();
     return res;
 }
 
 static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
-    nkfd_t fd = (nkfd_t)stream_data;
+    NkOsHandle h_file = *(NkOsHandle *)&stream_data;
 
     switch (mode) {
     case NkStreamMode_Read:
-        return nk_read(fd, buf, size);
+        return nk_read(h_file, buf, size);
     case NkStreamMode_Write:
-        return nk_write(fd, buf, size);
+        return nk_write(h_file, buf, size);
     default:
         return -1;
     }
 }
 
-NkStream nk_file_getStream(nkfd_t fd) {
-    return (NkStream){(void *)fd, nk_file_streamProc};
+NkStream nk_file_getStream(NkOsHandle h_file) {
+    return (NkStream){*(void **)&h_file, nk_file_streamProc};
 }

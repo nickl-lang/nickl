@@ -1,7 +1,6 @@
 #include "ntk/os/error.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "common.h"
 
 nkerr_t nk_getLastError(void) {
     return GetLastError();
@@ -25,5 +24,3 @@ char const *nk_getErrorString(nkerr_t err) {
 
     return buf;
 }
-
-extern inline char const *nk_getLastErrorString(void);

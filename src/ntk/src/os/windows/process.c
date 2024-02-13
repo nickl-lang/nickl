@@ -1,10 +1,9 @@
 #include "ntk/os/process.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "common.h"
 
 NkPipe nk_proc_createPipe(void) {
-    NkPipe pip = {-1, -1};
+    NkPipe pip = {0};
 
     SECURITY_ATTRIBUTES saAttr = {0};
     saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -18,44 +17,47 @@ NkPipe nk_proc_createPipe(void) {
             &saAttr, // LPSECURITY_ATTRIBUTES lpPipeAttributes
             0        // DWORD                 nSize
             )) {
-        pip.read = (nkfd_t)hRead;
-        pip.write = (nkfd_t)hWrite;
+        pip.h_read = handle_fromNative(hRead);
+        pip.h_write = handle_fromNative(hWrite);
     }
 
     return pip;
 }
 
 void nk_proc_closePipe(NkPipe pipe) {
-    nk_close(pipe.read);
-    nk_close(pipe.write);
+    nk_close(pipe.h_read);
+    nk_close(pipe.h_write);
 }
 
-i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
-    siStartInfo.hStdInput = (in && in->read) ? (HANDLE)in->read : GetStdHandle(STD_INPUT_HANDLE);
-    siStartInfo.hStdOutput = (out && out->write) ? (HANDLE)out->write : GetStdHandle(STD_OUTPUT_HANDLE);
-    siStartInfo.hStdError = (err && err->write) ? (HANDLE)err->write : GetStdHandle(STD_ERROR_HANDLE);
+    siStartInfo.hStdInput =
+        (in && !nkos_handleIsZero(in->h_read)) ? handle_toNative(in->h_read) : GetStdHandle(STD_INPUT_HANDLE);
+    siStartInfo.hStdOutput =
+        (out && !nkos_handleIsZero(out->h_write)) ? handle_toNative(out->h_write) : GetStdHandle(STD_OUTPUT_HANDLE);
+    siStartInfo.hStdError =
+        (err && !nkos_handleIsZero(err->h_write)) ? handle_toNative(err->h_write) : GetStdHandle(STD_ERROR_HANDLE);
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     PROCESS_INFORMATION piProcInfo;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-    if (in && in->write) {
-        if (!SetHandleInformation((HANDLE)in->write, HANDLE_FLAG_INHERIT, 0)) {
+    if (in && !nkos_handleIsZero(in->h_write)) {
+        if (!SetHandleInformation(handle_toNative(in->h_write), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (out && out->read) {
-        if (!SetHandleInformation((HANDLE)out->read, HANDLE_FLAG_INHERIT, 0)) {
+    if (out && !nkos_handleIsZero(out->h_read)) {
+        if (!SetHandleInformation(handle_toNative(out->h_read), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (err && err->read) {
-        if (!SetHandleInformation((HANDLE)err->read, HANDLE_FLAG_INHERIT, 0)) {
+    if (err && !nkos_handleIsZero(err->h_read)) {
+        if (!SetHandleInformation(handle_toNative(err->h_read), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
@@ -73,16 +75,16 @@ i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, Nk
         &piProcInfo   // LPPROCESS_INFORMATION lpProcessInformation
     );
 
-    if (in && in->read) {
-        CloseHandle((HANDLE)in->read);
+    if (in) {
+        nk_close(in->h_read);
     }
 
-    if (out && out->write) {
-        CloseHandle((HANDLE)out->write);
+    if (out) {
+        nk_close(out->h_write);
     }
 
-    if (err && err->write) {
-        CloseHandle((HANDLE)err->write);
+    if (err) {
+        nk_close(err->h_write);
     }
 
     CloseHandle(piProcInfo.hThread);
@@ -91,33 +93,33 @@ i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, Nk
         return -1;
     }
 
-    *pid = (nkpid_t)piProcInfo.hProcess;
+    *h_process = handle_fromNative(piProcInfo.hProcess);
 
     return 0;
 }
 
-i32 nk_proc_waitpid(nkpid_t pid, i32 *exit_status) {
-    DWORD dwResult = WaitForSingleObject(
-        (HANDLE)pid, // HANDLE hHandle,
-        INFINITE     // DWORD  dwMilliseconds
-    );
-
-    if (dwResult == WAIT_FAILED) {
-        return -1;
-    }
-
-    if (exit_status) {
-        DWORD dwExitCode = 1;
-        GetExitCodeProcess(
-            (HANDLE)pid, // HANDLE  hProcess,
-            &dwExitCode  // LPDWORD lpExitCode
+i32 nk_proc_wait(NkOsHandle h_process, i32 *exit_status) {
+    if (!nkos_handleIsZero(h_process)) {
+        DWORD dwResult = WaitForSingleObject(
+            handle_toNative(h_process), // HANDLE hHandle,
+            INFINITE                    // DWORD  dwMilliseconds
         );
-        *exit_status = dwExitCode;
-    }
 
-    CloseHandle((HANDLE)pid);
+        if (dwResult == WAIT_FAILED) {
+            return -1;
+        }
+
+        if (exit_status) {
+            DWORD dwExitCode = 1;
+            GetExitCodeProcess(
+                handle_toNative(h_process), // HANDLE  hProcess,
+                &dwExitCode                 // LPDWORD lpExitCode
+            );
+            *exit_status = dwExitCode;
+        }
+
+        nk_close(h_process);
+    }
 
     return 0;
 }
-
-extern inline i32 nk_proc_execSync(char const *cmd, NkPipe *in, NkPipe *out, NkPipe *err, i32 *exit_status);

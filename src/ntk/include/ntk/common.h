@@ -35,18 +35,12 @@ typedef size_t usize;
 #define NK_PRINTF_LIKE(FMT_POS, ARGS_POS) __attribute__((__format__(printf, FMT_POS, ARGS_POS)))
 #endif //__MINGW32__
 
-#ifdef _WIN32
 #define NK_INLINE static inline
-#else //_WIN32
-#define NK_INLINE inline
-#endif //_WIN32
 
 #define NK_FORCEINLINE __attribute__((always_inline))
 
-#ifndef NK_CAT
 #define _NK_CAT(x, y) x##y
 #define NK_CAT(x, y) _NK_CAT(x, y)
-#endif // NK_CAT
 
 #define _NK_STRINGIFY(x) #x
 #define NK_STRINGIFY(x) _NK_STRINGIFY(x)

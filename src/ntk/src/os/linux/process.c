@@ -9,29 +9,30 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "ntk/string.h"
 
 NkPipe nk_proc_createPipe(void) {
-    NkPipe pip = {-1, -1};
+    NkPipe pip = {0};
 
     i32 pipefd[2];
     if (pipe(pipefd) == 0) {
-        pip.read = pipefd[0];
-        pip.write = pipefd[1];
+        pip.h_read = handle_fromFd(pipefd[0]);
+        pip.h_write = handle_fromFd(pipefd[1]);
     }
 
     return pip;
 }
 
 void nk_proc_closePipe(NkPipe pipe) {
-    nk_close(pipe.read);
-    nk_close(pipe.write);
+    nk_close(pipe.h_read);
+    nk_close(pipe.h_write);
 }
 
 #define MAX_ARGS 31
 #define CMD_BUF_SIZE 4095
 
-i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err) {
     char cmd_buf[CMD_BUF_SIZE + 1];
     usize cmd_buf_pos = 0;
 
@@ -72,7 +73,8 @@ i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, Nk
 
     i32 error_code = 0;
 
-    switch (*pid = fork()) {
+    pid_t pid = fork();
+    switch (pid) {
     case -1:
         return -1;
 
@@ -81,24 +83,24 @@ i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, Nk
         fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
 
         if (in) {
-            if (in->read >= 0 && dup2(in->read, STDIN_FILENO) < 0) {
+            if (!nkos_handleIsZero(in->h_read) && dup2(handle_toFd(in->h_read), STDIN_FILENO) < 0) {
                 goto error;
             }
-            close(in->write);
+            nk_close(in->h_write);
         }
 
         if (out) {
-            if (out->write >= 0 && dup2(out->write, STDOUT_FILENO) < 0) {
+            if (!nkos_handleIsZero(out->h_write) && dup2(handle_toFd(out->h_write), STDOUT_FILENO) < 0) {
                 goto error;
             }
-            close(out->read);
+            nk_close(out->h_read);
         }
 
         if (err) {
-            if (err->write >= 0 && dup2(err->write, STDERR_FILENO) < 0) {
+            if (!nkos_handleIsZero(err->h_write) && dup2(handle_toFd(err->h_write), STDERR_FILENO) < 0) {
                 goto error;
             }
-            close(err->read);
+            nk_close(err->h_read);
         }
 
         execvp(args[0], (char *const *)args);
@@ -109,16 +111,18 @@ i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, Nk
         _exit(EX_OSERR);
 
     default:
-        if (in && in->read >= 0) {
-            close(in->read);
+        *h_process = handle_fromPid(pid);
+
+        if (in) {
+            nk_close(in->h_read);
         }
 
-        if (out && out->write >= 0) {
-            close(out->write);
+        if (out) {
+            nk_close(out->h_write);
         }
 
-        if (err && err->write >= 0) {
-            close(err->write);
+        if (err) {
+            nk_close(err->h_write);
         }
 
         close(err_pipe[1]);
@@ -130,27 +134,29 @@ i32 nk_proc_execAsync(char const *cmd, nkpid_t *pid, NkPipe *in, NkPipe *out, Nk
     }
 }
 
-i32 nk_proc_waitpid(nkpid_t pid, i32 *exit_status) {
-    for (;;) {
-        i32 wstatus = 0;
-        if (waitpid(pid, &wstatus, 0) < 0) {
-            return -1;
-        }
-
-        if (WIFEXITED(wstatus)) {
-            if (exit_status) {
-                *exit_status = WEXITSTATUS(wstatus);
+i32 nk_proc_wait(NkOsHandle h_process, i32 *exit_status) {
+    if (!nkos_handleIsZero(h_process)) {
+        for (;;) {
+            i32 wstatus = 0;
+            if (waitpid(handle_toPid(h_process), &wstatus, 0) < 0) {
+                return -1;
             }
-            return 0;
-        }
 
-        if (WIFSIGNALED(wstatus)) {
-            if (exit_status) {
-                *exit_status = 128 + WTERMSIG(wstatus);
+            if (WIFEXITED(wstatus)) {
+                if (exit_status) {
+                    *exit_status = WEXITSTATUS(wstatus);
+                }
+                return 0;
             }
-            return 0;
+
+            if (WIFSIGNALED(wstatus)) {
+                if (exit_status) {
+                    *exit_status = 128 + WTERMSIG(wstatus);
+                }
+                return 0;
+            }
         }
+    } else {
+        return 0;
     }
 }
-
-extern inline i32 nk_proc_execSync(char const *cmd, NkPipe *in, NkPipe *out, NkPipe *err, i32 *exit_status);

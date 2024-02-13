@@ -9,6 +9,7 @@
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
+#include "ntk/os/common.h"
 #include "ntk/os/dl.h"
 #include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
@@ -140,8 +141,8 @@ NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
         return *found;
     } else {
         auto const name_str = nk_atom2cs(name);
-        auto lib = nkdl_loadLibrary(name_str);
-        if (!lib) {
+        auto h_lib = nkdl_loadLibrary(name_str);
+        if (nkos_handleIsZero(h_lib)) {
             auto const frame = nk_arena_grab(ctx->tmp_arena);
             defer {
                 nk_arena_popFrame(ctx->tmp_arena, frame);
@@ -153,31 +154,31 @@ NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
             NkStringBuilder lib_name{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};
             nksb_printf(&lib_name, "%s.%s", name_str, nkdl_file_extension);
             nksb_appendNull(&lib_name);
-            lib = nkdl_loadLibrary(lib_name.data);
+            h_lib = nkdl_loadLibrary(lib_name.data);
 
-            if (!lib) {
+            if (nkos_handleIsZero(h_lib)) {
                 nksb_clear(&lib_name);
 
                 nksb_printf(&lib_name, "lib%s", name_str);
                 nksb_appendNull(&lib_name);
-                lib = nkdl_loadLibrary(lib_name.data);
+                h_lib = nkdl_loadLibrary(lib_name.data);
 
-                if (!lib) {
+                if (nkos_handleIsZero(h_lib)) {
                     nksb_clear(&lib_name);
 
                     nksb_printf(&lib_name, "lib%s.%s", name_str, nkdl_file_extension);
                     nksb_appendNull(&lib_name);
-                    lib = nkdl_loadLibrary(lib_name.data);
+                    h_lib = nkdl_loadLibrary(lib_name.data);
 
-                    if (!lib) {
+                    if (nkos_handleIsZero(h_lib)) {
                         reportError(ctx, "failed to load extern library `%s`: " NKS_FMT, name_str, NKS_ARG(err_str));
-                        return NULL;
+                        return NK_OS_HANDLE_ZERO;
                     }
                 }
             }
         }
-        NK_LOG_DBG("loaded extern library `%s`: %p", name_str, lib);
-        return ctx->extern_libs.insert(name, lib);
+        NK_LOG_DBG("loaded extern library `%s`: %zu", name_str, h_lib.val);
+        return ctx->extern_libs.insert(name, h_lib);
     }
 }
 
@@ -188,17 +189,17 @@ void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
         return *found;
     } else {
         auto const name_str = nk_atom2cs(name);
-        NkOsHandle lib = getExternLib(ctx, lib_hame);
-        if (!lib) {
+        NkOsHandle h_lib = getExternLib(ctx, lib_hame);
+        if (nkos_handleIsZero(h_lib)) {
             return NULL;
         }
-        auto sym = nkdl_resolveSymbol(lib, name_str);
+        auto sym = nkdl_resolveSymbol(h_lib, name_str);
         if (!sym) {
             reportError(ctx, "failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
             return NULL;
         }
         NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
-        return ctx->extern_libs.insert(name, sym);
+        return ctx->extern_syms.insert(name, sym);
     }
 }
 

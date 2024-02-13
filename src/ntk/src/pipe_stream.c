@@ -24,16 +24,14 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
 
     NkPipe out = nk_proc_createPipe();
     NkPipe null_pipe = {
-        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : nk_invalid_fd,
-        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : nk_invalid_fd};
-    nkpid_t pid = 0;
-    if (nk_proc_execAsync(sb.data, &pid, NULL, &out, &null_pipe) < 0) {
+        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_OS_HANDLE_ZERO,
+        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_OS_HANDLE_ZERO,
+    };
+    NkOsHandle h_process = NK_OS_HANDLE_ZERO;
+    if (nk_proc_execAsync(sb.data, &h_process, NULL, &out, &null_pipe) < 0) {
         nkerr_t err = nk_getLastError();
 
-        if (pid > 0) {
-            nk_proc_waitpid(pid, NULL);
-            pid = 0;
-        }
+        nk_proc_wait(h_process, NULL);
 
         nk_proc_closePipe(out);
         nk_proc_closePipe(null_pipe);
@@ -45,9 +43,9 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
     }
 
     *pipe_stream = (NkPipeStream){
-        nk_file_getStream(out.read),
-        out.read,
-        pid,
+        nk_file_getStream(out.h_read),
+        out.h_read,
+        h_process,
     };
 
     NK_PROF_FUNC_END();
@@ -65,15 +63,15 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
     NK_LOG_DBG("exec(\"" NKS_FMT "\")", NKS_ARG(sb));
 
     NkPipe in = nk_proc_createPipe();
-    NkPipe null_pipe = {nk_invalid_fd, quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : nk_invalid_fd};
-    nkpid_t pid = 0;
-    if (nk_proc_execAsync(sb.data, &pid, &in, &null_pipe, &null_pipe) < 0) {
+    NkPipe null_pipe = {
+        NK_OS_HANDLE_ZERO,
+        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_OS_HANDLE_ZERO,
+    };
+    NkOsHandle h_process = NK_OS_HANDLE_ZERO;
+    if (nk_proc_execAsync(sb.data, &h_process, &in, &null_pipe, &null_pipe) < 0) {
         nkerr_t err = nk_getLastError();
 
-        if (pid > 0) {
-            nk_proc_waitpid(pid, NULL);
-            pid = 0;
-        }
+        nk_proc_wait(h_process, NULL);
 
         nk_proc_closePipe(in);
         nk_proc_closePipe(null_pipe);
@@ -85,9 +83,9 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
     }
 
     *pipe_stream = (NkPipeStream){
-        nk_file_getStream(in.write),
-        in.write,
-        pid,
+        nk_file_getStream(in.h_write),
+        in.h_write,
+        h_process,
     };
 
     NK_PROF_FUNC_END();
@@ -99,10 +97,8 @@ i32 nk_pipe_streamClose(NkPipeStream *pipe_stream) {
     NK_LOG_TRC("%s", __func__);
 
     i32 ret = 1;
-    nk_close(pipe_stream->fd);
-    if (pipe_stream->pid > 0) {
-        nk_proc_waitpid(pipe_stream->pid, &ret);
-    }
+    nk_close(pipe_stream->h_file);
+    nk_proc_wait(pipe_stream->h_process, &ret);
 
     *pipe_stream = (NkPipeStream){0};
 

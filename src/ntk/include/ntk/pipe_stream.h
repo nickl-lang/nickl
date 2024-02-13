@@ -11,8 +11,8 @@ extern "C" {
 
 typedef struct {
     NkStream stream;
-    nkfd_t fd;
-    nkpid_t pid;
+    NkOsHandle h_file;
+    NkOsHandle h_process;
 } NkPipeStream;
 
 bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
