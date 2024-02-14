@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKSTC_COMPILER
-#define HEADER_GUARD_NKSTC_COMPILER
+#ifndef NKSTC_COMPILER_H_
+#define NKSTC_COMPILER_H_
 
 #include "nkl/common/ast.h"
 #include "ntk/atom.h"
@@ -31,4 +31,4 @@ void nkl_compile(NklModule m, NklSource src);
 }
 #endif
 
-#endif // HEADER_GUARD_NKSTC_COMPILER
+#endif // NKSTC_COMPILER_H_

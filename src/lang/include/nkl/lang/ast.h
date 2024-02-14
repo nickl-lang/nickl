@@ -17,10 +17,10 @@ typedef struct NklAstNode_T const *NklAstNode;
 typedef struct {
     NklAstNode data;
     usize size;
-} NklAstNodeDynArray;
+} NklAstNodeArray;
 
 struct NklAstNode_T {
-    NklAstNodeDynArray args[3];
+    NklAstNodeArray args[3];
     NklTokenRef token;
     NkAtom id;
 };
@@ -33,17 +33,17 @@ NklAst nkl_ast_create();
 void nkl_ast_free(NklAst ast);
 
 NklAstNode_T nkl_makeNode0(NkAtom id, NklTokenRef token);
-NklAstNode_T nkl_makeNode1(NkAtom id, NklTokenRef token, NklAstNodeDynArray arg0);
-NklAstNode_T nkl_makeNode2(NkAtom id, NklTokenRef token, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1);
+NklAstNode_T nkl_makeNode1(NkAtom id, NklTokenRef token, NklAstNodeArray arg0);
+NklAstNode_T nkl_makeNode2(NkAtom id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1);
 NklAstNode_T nkl_makeNode3(
     NkAtom id,
     NklTokenRef token,
-    NklAstNodeDynArray arg0,
-    NklAstNodeDynArray arg1,
-    NklAstNodeDynArray arg2);
+    NklAstNodeArray arg0,
+    NklAstNodeArray arg1,
+    NklAstNodeArray arg2);
 
-NklAstNodeDynArray nkl_pushNode(NklAst ast, NklAstNode_T node);
-NklAstNodeDynArray nkl_pushNodeAr(NklAst ast, NklAstNodeDynArray ar);
+NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node);
+NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar);
 
 void nkl_inspectNode(NklAstNode root, NkStringBuilder *sb);
 

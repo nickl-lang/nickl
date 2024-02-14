@@ -129,7 +129,7 @@ struct ParseEngine {
         NK_LOG_DBG("next token: " LOG_TOKEN(curToken()->id));
     }
 
-    bool accept(ENkStTokenId id) {
+    bool accept(NkStTokenId id) {
         if (check(id)) {
             NK_LOG_DBG("accept" LOG_TOKEN(id));
             getToken();
@@ -138,11 +138,11 @@ struct ParseEngine {
         return false;
     }
 
-    bool check(ENkStTokenId id) const {
+    bool check(NkStTokenId id) const {
         return curToken()->id == id;
     }
 
-    void expect(ENkStTokenId id) {
+    void expect(NkStTokenId id) {
         if (!accept(id)) {
             auto const token_str = nkl_getTokenStr(curToken(), m_text);
             return error("expected `%s` before `" NKS_FMT "`", s_nkst_token_text[id], NKS_ARG(token_str));
@@ -173,7 +173,7 @@ struct ParseEngine {
 bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NkString text, NklTokenArray tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    parser->nodes = {0, 0, 0, nk_arena_getAllocator(file_arena)};
+    parser->nodes = {NKDA_INIT(nk_arena_getAllocator(file_arena))};
     parser->error_msg = {};
     parser->error_token = {};
 
@@ -188,7 +188,7 @@ bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena
 
     NK_LOG_INF(
         "ast:%s", (char const *)[&]() {
-            NkStringBuilder sb{0, 0, 0, engine.m_tmp_alloc};
+            NkStringBuilder sb{NKSB_INIT(engine.m_tmp_alloc)};
             nkl_ast_inspect(
                 {
                     text,

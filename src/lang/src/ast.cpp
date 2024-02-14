@@ -20,7 +20,7 @@ struct NklAst_T {
 
 namespace {
 
-void _inspect(NklAstNodeDynArray nodes, NkStringBuilder *sb, usize depth = 1) {
+void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, usize depth = 1) {
     auto const _newline = [&]() {
         nksb_printf(sb, "\n%*s", (int)(depth * 2), "");
     };
@@ -88,28 +88,28 @@ NklAstNode_T nkl_makeNode0(NkAtom id, NklTokenRef token) {
     return {.args{{}, {}, {}}, .token = token, .id = id};
 }
 
-NklAstNode_T nkl_makeNode1(NkAtom id, NklTokenRef token, NklAstNodeDynArray arg0) {
+NklAstNode_T nkl_makeNode1(NkAtom id, NklTokenRef token, NklAstNodeArray arg0) {
     return {.args{arg0, {}, {}}, .token = token, .id = id};
 }
 
-NklAstNode_T nkl_makeNode2(NkAtom id, NklTokenRef token, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1) {
+NklAstNode_T nkl_makeNode2(NkAtom id, NklTokenRef token, NklAstNodeArray arg0, NklAstNodeArray arg1) {
     return {.args{arg0, arg1, {}}, .token = token, .id = id};
 }
 
 NklAstNode_T nkl_makeNode3(
     NkAtom id,
     NklTokenRef token,
-    NklAstNodeDynArray arg0,
-    NklAstNodeDynArray arg1,
-    NklAstNodeDynArray arg2) {
+    NklAstNodeArray arg0,
+    NklAstNodeArray arg1,
+    NklAstNodeArray arg2) {
     return {.args{arg0, arg1, arg2}, .token = token, .id = id};
 }
 
-NklAstNodeDynArray nkl_pushNode(NklAst ast, NklAstNode_T node) {
+NklAstNodeArray nkl_pushNode(NklAst ast, NklAstNode_T node) {
     return {new (nk_arena_allocT<NklAstNode_T>(&ast->arena)) NklAstNode_T{node}, 1};
 }
 
-NklAstNodeDynArray nkl_pushNodeAr(NklAst ast, NklAstNodeDynArray ar) {
+NklAstNodeArray nkl_pushNodeAr(NklAst ast, NklAstNodeArray ar) {
     auto new_ar = new (nk_arena_allocT<NklAstNode_T>(&ast->arena, ar.size)) NklAstNode_T[ar.size];
     std::memcpy(new_ar, ar.data, sizeof(NklAstNode_T) * ar.size);
     return {new_ar, ar.size};

@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKSTC_TYPES
-#define HEADER_GUARD_NKSTC_TYPES
+#ifndef NKSTC_TYPES_H_
+#define NKSTC_TYPES_H_
 
 #include "nkb/common.h"
 #include "ntk/allocator.h"
@@ -102,4 +102,4 @@ void nkl_type_inspect(nkltype_t type, NkStream out);
 }
 #endif
 
-#endif // HEADER_GUARD_NKSTC_TYPES
+#endif // NKSTC_TYPES_H_

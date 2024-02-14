@@ -1019,7 +1019,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic, NkCall
     return makeValue<nkltype_t>(c, typeref_t, fn_t);
 }
 
-Void initFromAst(NklCompiler c, nklval_t val, NklAstNodeDynArray init_nodes) {
+Void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
     switch (nklval_tclass(val)) {
     case NkType_Array:
         if (init_nodes.size > nklval_tuple_size(val)) {
@@ -1179,7 +1179,7 @@ ValueInfo makeNumeric(NklCompiler c, nkltype_t type, char const *str, char const
     return makeValue<T>(c, type, value);
 }
 
-ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeDynArray init_nodes) {
+ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArray init_nodes) {
     auto const value_count = init_nodes.size;
     std::vector<NkAtom> names;
     std::vector<ValueInfo> values;
@@ -1279,7 +1279,7 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeDynA
     }
 }
 
-ValueInfo compileTupleLiteral(NklCompiler c, nkltype_t type, nkltype_t tuple_t, NklAstNodeDynArray init_nodes) {
+ValueInfo compileTupleLiteral(NklCompiler c, nkltype_t type, nkltype_t tuple_t, NklAstNodeArray init_nodes) {
     auto const value_count = init_nodes.size;
     std::vector<NkAtom> names;
     std::vector<ValueInfo> values;

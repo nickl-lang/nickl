@@ -16,8 +16,8 @@ typedef enum {
 #define SP(ID, TEXT) t_##ID,
 #include "tokens.inl"
 
-    NkIrToken_Count,
-} ENkStTokenId;
+    NkStTokenId_Count,
+} NkStTokenId;
 
 extern const char *s_nkst_token_id[];
 extern const char *s_nkst_token_text[];

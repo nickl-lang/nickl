@@ -1,5 +1,5 @@
-#ifndef HEADER_GUARD_NKSTC_AST_IMPL
-#define HEADER_GUARD_NKSTC_AST_IMPL
+#ifndef NKSTC_AST_IMPL_H_
+#define NKSTC_AST_IMPL_H_
 
 #include "ntk/utils.h"
 
@@ -18,4 +18,4 @@ typedef enum {
 }
 #endif
 
-#endif // HEADER_GUARD_NKSTC_AST_IMPL
+#endif // NKSTC_AST_IMPL_H_

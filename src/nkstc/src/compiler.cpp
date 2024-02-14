@@ -1,9 +1,5 @@
 #include "compiler.h"
 
-#include <cstdint>
-
-#include <sys/types.h>
-
 #include "ast_impl.h"
 #include "nkl/common/ast.h"
 #include "ntk/arena.h"
