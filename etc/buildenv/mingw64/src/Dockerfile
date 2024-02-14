@@ -3,43 +3,60 @@ LABEL org.opencontainers.image.description="Windows build environment for Nickl 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++-mingw-w64-x86-64 \
     mingw-w64-x86-64-dev \
-    zstd \
- && rm -rf /var/lib/apt/lists/*
-
-ADD common/scripts/install_spall.sh /root
-RUN /root/install_spall.sh /opt/mingw64
-RUN rm /root/install_spall.sh
-
-ADD mingw64/scripts/install_mingw64_package.sh /root
-
-RUN /root/install_mingw64_package.sh libffi-3.4.4-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh dlfcn-1.3.1-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh gtest-1.13.0-1-any.pkg.tar.zst
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
     wine \
     winetricks \
+    #zstd \
  && rm -rf /var/lib/apt/lists/*
 
 ENV WINEPATH="/opt/mingw64/bin;/usr/lib/gcc/x86_64-w64-mingw32/9.3-posix/"
 ENV WINEDEBUG=-all
 
-RUN /root/install_mingw64_package.sh binutils-2.41-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh crt-git-11.0.0.r159.g0605217f5-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh gcc-13.2.0-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh gcc-libs-13.2.0-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh gmp-6.3.0-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh headers-git-11.0.0.r159.g0605217f5-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh isl-0.26-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh libiconv-1.17-3-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh libwinpthread-git-11.0.0.r159.g0605217f5-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh mpc-1.3.1-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh mpfr-4.2.1-2-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh windows-default-manifest-6.4-4-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh winpthreads-git-11.0.0.r159.g0605217f5-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh zlib-1.3-1-any.pkg.tar.zst
-RUN /root/install_mingw64_package.sh zstd-1.5.5-1-any.pkg.tar.zst
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libarchive-dev \
+    libgpgme-dev \
+    libssl-dev \
+    python3-pip \
+ && python3 -m pip --no-cache-dir install meson \
+ && export CCACHE_DISABLE=1 \
+ && git clone --depth=1 --branch=v6.0.0 https://gitlab.archlinux.org/pacman/pacman.git /root/pacman \
+ && cd /root/pacman \
+ && meson build \
+ && ninja -C build \
+ && ninja -C build install \
+ && mkdir -p /usr/share/doc/pacman/ \
+ && cp COPYING README /usr/share/doc/pacman/ \
+ && python3 -m pip uninstall -y meson \
+ && apt remove -y python3-pip \
+ && rm -rf /root/pacman \
+ && rm -rf /var/lib/apt/lists/* \
+ ;
 
-RUN /root/install_mingw64_package.sh json-c-0.17-1-any.pkg.tar.zst
+RUN git clone https://github.com/msys2/MSYS2-keyring /root/MSYS2-keyring \
+ && cd /root/MSYS2-keyring \
+ && mkdir -p /usr/share/pacman/keyrings/ \
+ && cp msys2.gpg msys2-trusted msys2-revoked /usr/share/pacman/keyrings/ \
+ && rm -rf /root/MSYS2-keyring \
+ ;
 
-RUN rm /root/install_mingw64_package.sh
+RUN pacman-key --init \
+ && pacman-key --populate msys2 \
+ ;
+
+ADD mingw64/src/pacman.conf /etc/
+ADD mingw64/src/mirrorlist.mingw64 /etc/pacman.d/
+
+RUN ln -sf /proc/self/mounts /etc/mtab \
+ && pacman -Syu --noconfirm \
+    mingw-w64-x86_64-dlfcn \
+    mingw-w64-x86_64-gcc \
+    mingw-w64-x86_64-gtest \
+    mingw-w64-x86_64-json-c \
+    mingw-w64-x86_64-libffi \
+ && rm -rf /var/cache/pacman/pkg/* \
+ && rm -rf /var/lib/pacman/sync/* \
+ && rm /etc/mtab \
+ ;
+
+ADD common/scripts/install_spall.sh /root/
+RUN /root/install_spall.sh /opt/mingw64
+RUN rm /root/install_spall.sh

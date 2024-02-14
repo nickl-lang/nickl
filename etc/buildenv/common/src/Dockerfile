@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     ccache \
     cmake \
+    curl \
     gdb \
     git \
     less \
@@ -16,7 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     pkg-config \
     sudo \
-    wget \
     zsh \
  && rm -rf /var/lib/apt/lists/*
 
