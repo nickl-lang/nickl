@@ -13,8 +13,6 @@ extern "C" {
 
 typedef struct NklType_T const *nkltype_t;
 
-typedef uint32_t nkl_typeid_t;
-
 typedef enum {
     NklType_Any,
     NklType_Array,
@@ -54,7 +52,7 @@ typedef struct NklType_T {
         _nkl_type_struct strct;
     } as;
     NklTypeClass tclass;
-    nkl_typeid_t id;
+    u32 id;
     nkltype_t underlying_type;
 } NklType;
 
@@ -79,7 +77,7 @@ typedef struct {
 
 typedef NkSlice(NklField) NklFieldArray;
 
-void nkl_types_init(NkAllocator alloc);
+void nkl_types_init();
 void nkl_types_free();
 
 nkltype_t nkl_get_any();
@@ -95,6 +93,7 @@ nkltype_t nkl_get_tuple(NklTypeArray types);
 nkltype_t nkl_get_tuple_packed(NklTypeArray types);
 nkltype_t nkl_get_typeref();
 nkltype_t nkl_get_union(NklFieldArray fields);
+nkltype_t nkl_get_void();
 
 void nkl_type_inspect(nkltype_t type, NkStream out);
 
