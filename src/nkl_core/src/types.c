@@ -15,7 +15,7 @@ typedef NkDynArray(u8) ByteDynArray;
 typedef NkSlice(u8) ByteArray;
 
 typedef enum {
-    TypeSubset_NkIr,
+    TypeSubset_Ir,
     TypeSubset_Nkl,
 } TypeSubset;
 
@@ -114,7 +114,7 @@ static void get_ir_aggregate(NklType *backing, NkIrAggregateLayout const layout)
     NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
 
     ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
-    PUSH_VAL(&fp, u8, TypeSubset_NkIr);
+    PUSH_VAL(&fp, u8, TypeSubset_Ir);
     PUSH_VAL(&fp, u8, kind);
     PUSH_VAL(&fp, usize, layout.info_ar.size);
     for (usize i = 0; i < layout.info_ar.size; i++) {
@@ -150,7 +150,7 @@ static void get_ir_numeric(NklType *backing, NkIrNumericValueType value_type) {
     NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
 
     ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
-    PUSH_VAL(&fp, u8, TypeSubset_NkIr);
+    PUSH_VAL(&fp, u8, TypeSubset_Ir);
     PUSH_VAL(&fp, u8, kind);
     PUSH_VAL(&fp, u8, value_type);
 
@@ -181,7 +181,7 @@ static void get_ir_ptr(NklType *backing, nktype_t target_type) {
     NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
 
     ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
-    PUSH_VAL(&fp, u8, TypeSubset_NkIr);
+    PUSH_VAL(&fp, u8, TypeSubset_Ir);
     PUSH_VAL(&fp, u8, kind);
     PUSH_VAL(&fp, u32, target_type->id);
 
@@ -203,37 +203,6 @@ static void get_ir_ptr(NklType *backing, nktype_t target_type) {
     nk_arena_popFrame(&g_tmp_arena, frame);
 }
 
-static void get_ir_void(NklType *backing) {
-    NK_LOG_TRC("%s", __func__);
-
-    NkIrTypeKind const kind = NkIrType_Aggregate;
-
-    // TODO Use scope macro
-    NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
-
-    ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
-    PUSH_VAL(&fp, u8, TypeSubset_NkIr);
-    PUSH_VAL(&fp, u8, kind);
-    PUSH_VAL(&fp, u64, 0);
-
-    TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, backing);
-
-    if (res.inserted) {
-        backing->ir_type = (NkIrType){
-            .as = {{{0}}},
-            .size = 0,
-            .flags = 0,
-            .align = 1,
-            .kind = kind,
-            .id = res.id,
-        };
-    } else {
-        backing->ir_type = res.type->ir_type;
-    }
-
-    nk_arena_popFrame(&g_tmp_arena, frame);
-}
-
 static void get_ir_proc(NklType *backing, NklProcInfo info) {
     NK_LOG_TRC("%s", __func__);
 
@@ -243,7 +212,7 @@ static void get_ir_proc(NklType *backing, NklProcInfo info) {
     NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
 
     ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
-    PUSH_VAL(&fp, u8, TypeSubset_NkIr);
+    PUSH_VAL(&fp, u8, TypeSubset_Ir);
     PUSH_VAL(&fp, u8, kind);
     PUSH_VAL(&fp, usize, info.param_types.size);
     for (usize i = 0; i < info.param_types.size; i++) {
@@ -615,7 +584,7 @@ nkltype_t nkl_get_void() {
     TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
 
     if (res.inserted) {
-        get_ir_void(res.type);
+        get_ir_aggregate(res.type, (NkIrAggregateLayout){{0}, 0, 1});
 
         res.type->tclass = tclass;
         res.type->id = res.id;
