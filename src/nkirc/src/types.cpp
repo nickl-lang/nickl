@@ -41,7 +41,7 @@ void pushVal(ByteArray &ar, T const v) {
 } // namespace
 
 nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type) {
-    auto const kind = NkType_Numeric;
+    auto const kind = NkIrType_Numeric;
 
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
@@ -66,7 +66,7 @@ nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type) {
 }
 
 nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
-    auto const kind = NkType_Pointer;
+    auto const kind = NkIrType_Pointer;
 
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
@@ -84,14 +84,14 @@ nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
             .size = c->conf.ptr_size,
             .flags = 0,
             .align = c->conf.ptr_size,
-            .kind = NkType_Pointer,
+            .kind = NkIrType_Pointer,
             .id = c->next_id++,
         };
     });
 }
 
 nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
-    auto const kind = NkType_Procedure;
+    auto const kind = NkIrType_Procedure;
 
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
@@ -114,14 +114,14 @@ nktype_t nkir_makeProcedureType(NkIrCompiler c, NkIrProcInfo proc_info) {
             .size = c->conf.ptr_size,
             .flags = 0,
             .align = c->conf.ptr_size,
-            .kind = NkType_Procedure,
+            .kind = NkIrType_Procedure,
             .id = c->next_id++,
         };
     });
 }
 
 nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, usize count) {
-    auto const kind = NkType_Aggregate;
+    auto const kind = NkIrType_Aggregate;
 
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
@@ -148,14 +148,14 @@ nktype_t nkir_makeArrayType(NkIrCompiler c, nktype_t elem_t, usize count) {
             .size = elem_t->size * count,
             .flags = 0,
             .align = elem_t->align,
-            .kind = NkType_Aggregate,
+            .kind = NkIrType_Aggregate,
             .id = c->next_id++,
         };
     });
 }
 
 nktype_t nkir_makeVoidType(NkIrCompiler c) {
-    auto const kind = NkType_Aggregate;
+    auto const kind = NkIrType_Aggregate;
 
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
@@ -171,14 +171,14 @@ nktype_t nkir_makeVoidType(NkIrCompiler c) {
             .size = 0,
             .flags = 0,
             .align = 1,
-            .kind = NkType_Aggregate,
+            .kind = NkIrType_Aggregate,
             .id = c->next_id++,
         };
     });
 }
 
 nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usize const *elem_counts, usize n) {
-    auto const kind = NkType_Aggregate;
+    auto const kind = NkIrType_Aggregate;
 
     ByteArray fp{};
     fp.alloc = nk_arena_getAllocator(c->tmp_arena);
@@ -203,7 +203,7 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usiz
             .size = layout.size,
             .flags = 0,
             .align = (u8)layout.align,
-            .kind = NkType_Aggregate,
+            .kind = NkIrType_Aggregate,
             .id = c->next_id++,
         };
     });

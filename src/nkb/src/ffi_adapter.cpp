@@ -30,7 +30,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
         ffi_t = (ffi_type *)*found;
     } else {
         switch (type->kind) {
-        case NkType_Numeric:
+        case NkIrType_Numeric:
             switch (type->as.num.value_type) {
             case Int8:
                 ffi_t = &ffi_type_sint8;
@@ -67,11 +67,11 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
                 break;
             }
             break;
-        case NkType_Pointer:
-        case NkType_Procedure:
+        case NkIrType_Pointer:
+        case NkIrType_Procedure:
             ffi_t = &ffi_type_pointer;
             break;
-        case NkType_Aggregate: {
+        case NkIrType_Aggregate: {
             if (!type->size) {
                 return &ffi_type_void;
             }
@@ -106,7 +106,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
 #ifdef ENABLE_LOGGING
     NKSB_FIXED_BUFFER(sb, 256);
     nkirt_inspect(type, nksb_getStream(&sb));
-    NK_LOG_DBG("ffi(type{name=" NKS_FMT " id=%" PRIu64 "}) -> %p", NKS_ARG(sb), type->id, (void *)ffi_t);
+    NK_LOG_DBG("ffi(type{name=" NKS_FMT " id=%" PRIu32 "}) -> %p", NKS_ARG(sb), type->id, (void *)ffi_t);
 #endif // ENABLE_LOGGING
 
     return ffi_t;

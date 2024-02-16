@@ -457,7 +457,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
                 auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
 
-                nk_assert(max_ref.type->kind == NkType_Numeric && min_ref.type->kind == NkType_Numeric);
+                nk_assert(max_ref.type->kind == NkIrType_Numeric && min_ref.type->kind == NkIrType_Numeric);
                 nk_assert(
                     NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
                     NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
@@ -528,13 +528,13 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 #define INT_OP(NAME) case NK_CAT(nkir_, NAME):
 #define FP2I_OP(NAME)
 #include "bytecode.inl"
-                nk_assert(arg0.ref.type->kind == NkType_Numeric);
+                nk_assert(arg0.ref.type->kind == NkIrType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
                 break;
 
 #define BOOL_NUM_OP(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
-                nk_assert(arg1.ref.type->kind == NkType_Numeric);
+                nk_assert(arg1.ref.type->kind == NkIrType_Numeric);
                 code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
                 break;
 

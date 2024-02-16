@@ -498,7 +498,7 @@ void nkir_inspectProgram(NkIrProg ir, NkStream out) {
 
 static bool isInlineDecl(NkIrDecl_T const &decl) {
     return decl.read_only && decl.visibility == NkIrVisibility_Local &&
-           (decl.type->kind != NkType_Aggregate ||
+           (decl.type->kind != NkIrType_Aggregate ||
             (decl.type->as.aggr.elems.size == 1 && decl.type->as.aggr.elems.data[0].type->size == 1));
 }
 

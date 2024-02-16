@@ -663,7 +663,7 @@ private:
 
     Void parseValue(NkIrRef const &result_ref, nktype_t type) {
         switch (type->kind) {
-        case NkType_Aggregate: {
+        case NkIrType_Aggregate: {
             EXPECT(t_brace_l);
 
             for (usize i = 0; i < type->as.aggr.elems.size; i++) {
@@ -698,14 +698,14 @@ private:
             break;
         }
 
-        case NkType_Numeric: {
+        case NkIrType_Numeric: {
             auto const data = nkir_dataRefDeref(m_ir, result_ref);
             CHECK(parseNumeric(data, type->as.num.value_type));
             break;
         }
 
-        case NkType_Pointer:
-        case NkType_Procedure:
+        case NkIrType_Pointer:
+        case NkIrType_Procedure:
         default:
             nk_assert(!"unreachable");
             return {};
@@ -815,7 +815,7 @@ private:
         for (u8 i = 0; i < indir; i++) {
             EXPECT(t_bracket_r);
 
-            if (result_ref.type->kind != NkType_Pointer) {
+            if (result_ref.type->kind != NkIrType_Pointer) {
                 return error("dereference of a non-pointer type"), NkIrRef{};
             }
             result_ref.type = result_ref.type->as.ptr.target_type;

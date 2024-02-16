@@ -1,5 +1,5 @@
-#ifndef NKSTC_TYPES_H_
-#define NKSTC_TYPES_H_
+#ifndef NKL_CORE_TYPES_H_
+#define NKL_CORE_TYPES_H_
 
 #include "nkb/common.h"
 #include "ntk/allocator.h"
@@ -77,11 +77,12 @@ typedef struct {
 
 typedef NkSlice(NklField) NklFieldArray;
 
-void nkl_types_init();
+// TODO Use proper config struct for ptr_size
+void nkl_types_init(u8 ptr_size);
 void nkl_types_free();
 
 nkltype_t nkl_get_any();
-nkltype_t nkl_get_array(nkltype_t elem_type, size_t elem_count);
+nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count);
 nkltype_t nkl_get_enum(NklFieldArray fields);
 nkltype_t nkl_get_numeric(NkIrNumericValueType value_type);
 nkltype_t nkl_get_proc(NklProcInfo info);
@@ -101,4 +102,4 @@ void nkl_type_inspect(nkltype_t type, NkStream out);
 }
 #endif
 
-#endif // NKSTC_TYPES_H_
+#endif // NKL_CORE_TYPES_H_

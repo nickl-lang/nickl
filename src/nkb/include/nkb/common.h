@@ -20,12 +20,12 @@ typedef enum {
 typedef struct NkIrType const *nktype_t;
 
 typedef enum {
-    NkType_Aggregate,
-    NkType_Numeric,
-    NkType_Pointer,
-    NkType_Procedure,
+    NkIrType_Aggregate,
+    NkIrType_Numeric,
+    NkIrType_Pointer,
+    NkIrType_Procedure,
 
-    NkTypeKind_Count,
+    NkIrType_Count,
 } NkIrTypeKind;
 
 // 0x<index><size>
@@ -128,7 +128,7 @@ typedef struct NkIrType {
     u16 flags;
     u8 align;
     NkIrTypeKind kind;
-    u64 id;
+    u32 id;
 } NkIrType;
 
 void nkirt_inspect(nktype_t type, NkStream out);

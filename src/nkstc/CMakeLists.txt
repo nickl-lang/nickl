@@ -6,12 +6,12 @@ add_executable(${EXE}
     src/main.cpp
     src/parser.cpp
     src/stc.cpp
-    src/types.c
     )
 
 target_link_libraries(${EXE}
     PRIVATE nkb
     PRIVATE nkl_common
+    PRIVATE nkl_core
     )
 
 if(NOT DEV_BUILD)
