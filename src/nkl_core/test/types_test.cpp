@@ -5,6 +5,7 @@
 #include "nkb/common.h"
 #include "ntk/common.h"
 #include "ntk/log.h"
+#include "ntk/string_builder.h"
 
 class types : public testing::Test {
     void SetUp() override {
@@ -55,6 +56,10 @@ TEST_F(types, array) {
     EXPECT_EQ(vec3_t->ir_type.as.aggr.elems.data[0].type->id, f64_t->ir_type.id);
     EXPECT_EQ(vec3_t->tclass, NklType_Array);
     EXPECT_EQ(vec3_t->underlying_type, nullptr);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(vec3_t, nksb_getStream(&sb));
+    EXPECT_EQ("[3]f64", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, enum) {

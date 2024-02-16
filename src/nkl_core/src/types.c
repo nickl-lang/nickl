@@ -8,6 +8,7 @@
 #include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
+#include "ntk/stream.h"
 
 NK_LOG_USE_SCOPE(types);
 
@@ -533,6 +534,10 @@ nkltype_t nkl_get_struct(NklFieldArray fields) {
 
 nkltype_t nkl_get_struct_packed(NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
+
+    (void)fields;
+    nk_assert(!"nkl_get_struct_packed is not implemented");
+    return NULL;
 }
 
 nkltype_t nkl_get_tuple(NklTypeArray types) {
@@ -572,6 +577,10 @@ nkltype_t nkl_get_tupleEx(nkltype_t const *types, usize count, usize stride) {
 
 nkltype_t nkl_get_tuple_packed(NklTypeArray types) {
     NK_LOG_TRC("%s", __func__);
+
+    (void)types;
+    nk_assert(!"nkl_get_tuple_packed is not implemented");
+    return NULL;
 }
 
 nkltype_t nkl_get_typeref() {
@@ -678,4 +687,85 @@ nkltype_t nkl_get_void() {
 
 void nkl_type_inspect(nkltype_t type, NkStream out) {
     NK_LOG_TRC("%s", __func__);
+
+    switch (type->tclass) {
+    case NklType_Any:
+        nk_stream_printf(out, "any_t");
+        break;
+    case NklType_Array: {
+        NkIrAggregateElemInfo info = type->ir_type.as.aggr.elems.data[0];
+        nk_stream_printf(out, "[%zu]", info.count);
+        nkl_type_inspect((nkltype_t)info.type, out);
+    } break;
+    case NklType_Enum:
+        nk_stream_printf(out, "<NklType_Enum inspect is not implemented>");
+        break;
+    case NklType_Numeric: {
+        switch (type->ir_type.as.num.value_type) {
+        case Int8:
+            nk_stream_printf(out, "i8");
+            break;
+        case Int16:
+            nk_stream_printf(out, "i16");
+            break;
+        case Int32:
+            nk_stream_printf(out, "i32");
+            break;
+        case Int64:
+            nk_stream_printf(out, "i64");
+            break;
+        case Uint8:
+            nk_stream_printf(out, "u8");
+            break;
+        case Uint16:
+            nk_stream_printf(out, "u16");
+            break;
+        case Uint32:
+            nk_stream_printf(out, "u32");
+            break;
+        case Uint64:
+            nk_stream_printf(out, "u64");
+            break;
+        case Float32:
+            nk_stream_printf(out, "f32");
+            break;
+        case Float64:
+            nk_stream_printf(out, "f64");
+            break;
+        default:
+            nk_assert(!"unreachable");
+            break;
+        }
+    } break;
+    case NklType_Pointer:
+        nk_stream_printf(out, "<NklType_Pointer inspect is not implemented>");
+        break;
+    case NklType_Procedure:
+        nk_stream_printf(out, "<NklType_Procedure inspect is not implemented>");
+        break;
+    case NklType_Slice:
+        nk_stream_printf(out, "<NklType_Slice inspect is not implemented>");
+        break;
+    case NklType_Struct:
+        nk_stream_printf(out, "<NklType_Struct inspect is not implemented>");
+        break;
+    case NklType_StructPacked:
+        nk_stream_printf(out, "<NklType_StructPacked inspect is not implemented>");
+        break;
+    case NklType_Tuple:
+        nk_stream_printf(out, "<NklType_Tuple inspect is not implemented>");
+        break;
+    case NklType_TuplePacked:
+        nk_stream_printf(out, "<NklType_TuplePacked inspect is not implemented>");
+        break;
+    case NklType_Typeref:
+        nk_stream_printf(out, "<NklType_Typeref inspect is not implemented>");
+        break;
+    case NklType_Union:
+        nk_stream_printf(out, "<NklType_Union inspect is not implemented>");
+        break;
+
+    default:
+        nk_assert(!"unreachable");
+    }
 }
