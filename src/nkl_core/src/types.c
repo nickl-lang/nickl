@@ -566,6 +566,50 @@ nkltype_t nkl_get_typeref() {
 
 nkltype_t nkl_get_union(NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
+
+    NklTypeClass const tclass = NklType_Union;
+
+    // TODO Use scope macro
+    NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
+
+    ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
+    PUSH_VAL(&fp, u8, TypeSubset_Nkl);
+    PUSH_VAL(&fp, u8, tclass);
+    PUSH_VAL(&fp, usize, fields.size);
+    for (usize i = 0; i < fields.size; i++) {
+        PUSH_VAL(&fp, u32, fields.data[i].name);
+        PUSH_VAL(&fp, u32, fields.data[i].type->id);
+    }
+
+    TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
+
+    if (res.inserted) {
+        nkltype_t largest_type = nkl_get_void();
+        u8 max_align = 1;
+        for (usize i = 0; i < fields.size; i++) {
+            nkltype_t const type = fields.data[i].type;
+            if (type->ir_type.size > largest_type->ir_type.size) {
+                largest_type = type;
+            }
+            max_align = nk_maxu(max_align, type->ir_type.align);
+        }
+
+        // TODO Code duplication with nkl_get_struct
+        NkAtom *field_names = nk_arena_alloc(&g_type_arena, sizeof(NkAtom) * fields.size);
+        for (usize i = 0; i < fields.size; i++) {
+            field_names[i] = fields.data[i].name;
+        }
+
+        res.type->as.strct.fields = (NkAtomArray){field_names, fields.size};
+
+        // TODO Use a special ir_type for union? bytes or smth?
+        res.type->ir_type = largest_type->ir_type;
+        res.type->tclass = tclass;
+        res.type->id = res.id;
+    }
+
+    nk_arena_popFrame(&g_tmp_arena, frame);
+    return res.type;
 }
 
 nkltype_t nkl_get_void() {
