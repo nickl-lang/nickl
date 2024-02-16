@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "nkb/common.h"
+#include "ntk/common.h"
 #include "ntk/log.h"
 
 class types : public testing::Test {
@@ -20,10 +21,14 @@ class types : public testing::Test {
 TEST_F(types, array) {
     auto f64_t = nkl_get_numeric(Float64);
 
-    auto vec3_t = nkl_get_array(f64_t, 3);
+    auto get_vec3_t = [&]() {
+        return nkl_get_array(f64_t, 3);
+    };
 
-    EXPECT_EQ(vec3_t->id, nkl_get_array(f64_t, 3)->id);
-    EXPECT_EQ(vec3_t->ir_type.id, nkl_get_array(f64_t, 3)->ir_type.id);
+    auto vec3_t = get_vec3_t();
+
+    EXPECT_EQ(vec3_t->id, get_vec3_t()->id);
+    EXPECT_EQ(vec3_t->ir_type.id, get_vec3_t()->ir_type.id);
 
     EXPECT_EQ(vec3_t->ir_type.size, sizeof(f64) * 3);
     EXPECT_EQ(vec3_t->ir_type.align, sizeof(f64));
@@ -79,19 +84,58 @@ TEST_F(types, numeric) {
     EXPECT_EQ(f64_t->underlying_type, nullptr);
 }
 
+TEST_F(types, proc) {
+    auto i32_t = nkl_get_numeric(Int32);
+    auto get_add_t = [&]() {
+        nkltype_t add_params[] = {i32_t, i32_t};
+        return nkl_get_proc(NklProcInfo{
+            .param_types = {add_params, NK_ARRAY_COUNT(add_params)},
+            .ret_t = i32_t,
+            .call_conv = NkCallConv_Nk,
+            .flags = 0,
+        });
+    };
+
+    auto add_t = get_add_t();
+
+    EXPECT_EQ(add_t->id, get_add_t()->id);
+    EXPECT_EQ(add_t->ir_type.id, get_add_t()->ir_type.id);
+
+    EXPECT_EQ(add_t->ir_type.size, sizeof(void *));
+    EXPECT_EQ(add_t->ir_type.align, sizeof(void *));
+    EXPECT_EQ(add_t->ir_type.kind, NkIrType_Procedure);
+    ASSERT_EQ(add_t->ir_type.as.proc.info.args_t.size, 2);
+    EXPECT_EQ(add_t->ir_type.as.proc.info.args_t.data[0]->id, i32_t->ir_type.id);
+    EXPECT_EQ(add_t->ir_type.as.proc.info.args_t.data[1]->id, i32_t->ir_type.id);
+    EXPECT_EQ(add_t->ir_type.as.proc.info.ret_t->id, i32_t->ir_type.id);
+    EXPECT_EQ(add_t->ir_type.as.proc.info.call_conv, NkCallConv_Nk);
+    EXPECT_EQ(add_t->ir_type.as.proc.info.flags, 0);
+    EXPECT_EQ(add_t->tclass, NklType_Procedure);
+    EXPECT_EQ(add_t->underlying_type, nullptr);
+}
+
 TEST_F(types, ptr) {
     auto void_t = nkl_get_void();
+    auto i8_t = nkl_get_numeric(Int8);
 
-    auto void_ptr_t = nkl_get_ptr(void_t, false);
-    auto str_t = nkl_get_ptr(nkl_get_numeric(Int8), true);
+    auto get_void_ptr_t = [&]() {
+        return nkl_get_ptr(void_t, false);
+    };
 
-    EXPECT_EQ(void_ptr_t->id, nkl_get_ptr(void_t, false)->id);
-    EXPECT_EQ(void_ptr_t->ir_type.id, nkl_get_ptr(void_t, false)->ir_type.id);
+    auto get_str_t = [&]() {
+        return nkl_get_ptr(i8_t, true);
+    };
 
-    EXPECT_EQ(str_t->id, nkl_get_ptr(nkl_get_numeric(Int8), true)->id);
-    EXPECT_EQ(str_t->ir_type.id, nkl_get_ptr(nkl_get_numeric(Int8), true)->ir_type.id);
+    auto void_ptr_t = get_void_ptr_t();
+    auto str_t = get_str_t();
 
-    auto i8_ptr_t = nkl_get_ptr(nkl_get_numeric(Int8), false);
+    EXPECT_EQ(void_ptr_t->id, get_void_ptr_t()->id);
+    EXPECT_EQ(void_ptr_t->ir_type.id, get_void_ptr_t()->ir_type.id);
+
+    EXPECT_EQ(str_t->id, get_str_t()->id);
+    EXPECT_EQ(str_t->ir_type.id, get_str_t()->ir_type.id);
+
+    auto i8_ptr_t = nkl_get_ptr(i8_t, false);
 
     EXPECT_NE(str_t->id, i8_ptr_t->id);
     EXPECT_EQ(str_t->ir_type.id, i8_ptr_t->ir_type.id);
@@ -107,14 +151,53 @@ TEST_F(types, ptr) {
     EXPECT_EQ(void_ptr_t->as.ptr.is_const, false);
 }
 
+TEST_F(types, struct) {
+    auto i64_t = nkl_get_numeric(Int64);
+
+    auto get_ivec2_t = [&]() {
+        NklField fields[] = {
+            {nk_cs2atom("x"), i64_t},
+            {nk_cs2atom("y"), i64_t},
+        };
+        return nkl_get_struct({fields, NK_ARRAY_COUNT(fields)});
+    };
+
+    auto ivec2_t = get_ivec2_t();
+
+    EXPECT_EQ(ivec2_t->id, get_ivec2_t()->id);
+    EXPECT_EQ(ivec2_t->ir_type.id, get_ivec2_t()->ir_type.id);
+
+    nkltype_t types[] = {i64_t, i64_t};
+    auto tuple_t = nkl_get_tuple({types, NK_ARRAY_COUNT(types)});
+
+    EXPECT_EQ(ivec2_t->ir_type.size, sizeof(i64) * 2);
+    EXPECT_EQ(ivec2_t->ir_type.align, sizeof(i64));
+    EXPECT_EQ(ivec2_t->ir_type.kind, NkIrType_Aggregate);
+    ASSERT_EQ(ivec2_t->ir_type.as.aggr.elems.size, 2);
+    EXPECT_EQ(ivec2_t->ir_type.as.aggr.elems.data[0].type->id, i64_t->ir_type.id);
+    EXPECT_EQ(ivec2_t->ir_type.as.aggr.elems.data[1].type->id, i64_t->ir_type.id);
+    ASSERT_EQ(ivec2_t->as.strct.fields.size, 2);
+    ASSERT_EQ(ivec2_t->as.strct.fields.data[0], nk_cs2atom("x"));
+    ASSERT_EQ(ivec2_t->as.strct.fields.data[1], nk_cs2atom("y"));
+    EXPECT_EQ(ivec2_t->tclass, NklType_Struct);
+    ASSERT_TRUE(ivec2_t->underlying_type);
+    EXPECT_EQ(ivec2_t->underlying_type->id, tuple_t->id);
+
+    ASSERT_EQ(ivec2_t->ir_type.id, tuple_t->ir_type.id);
+}
+
 TEST_F(types, tuple) {
     auto f64_t = nkl_get_numeric(Float64);
 
-    nkltype_t types[] = {f64_t, f64_t, f64_t};
-    auto vec3_t = nkl_get_tuple({types, NK_ARRAY_COUNT(types)});
+    auto get_vec3_t = [&]() {
+        nkltype_t types[] = {f64_t, f64_t, f64_t};
+        return nkl_get_tuple({types, NK_ARRAY_COUNT(types)});
+    };
 
-    EXPECT_EQ(vec3_t->id, nkl_get_tuple({types, NK_ARRAY_COUNT(types)})->id);
-    EXPECT_EQ(vec3_t->ir_type.id, nkl_get_tuple({types, NK_ARRAY_COUNT(types)})->ir_type.id);
+    auto vec3_t = get_vec3_t();
+
+    EXPECT_EQ(vec3_t->id, get_vec3_t()->id);
+    EXPECT_EQ(vec3_t->ir_type.id, get_vec3_t()->ir_type.id);
 
     EXPECT_EQ(vec3_t->ir_type.size, sizeof(f64) * 3);
     EXPECT_EQ(vec3_t->ir_type.align, sizeof(f64));

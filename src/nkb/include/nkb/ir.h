@@ -107,7 +107,6 @@ NkString nkir_getErrorString(NkIrProg ir);
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name);
 
-typedef NkSlice(NkAtom) NkAtomArray;
 void nkir_startProc(
     NkIrProg ir,
     NkIrProc proc,

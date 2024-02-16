@@ -2,6 +2,7 @@
 #define NKB_COMMON_H_
 
 #include "ntk/allocator.h"
+#include "ntk/atom.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus
@@ -147,6 +148,8 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     usize n,
     usize type_stride,
     usize count_stride);
+
+typedef NkSlice(NkAtom) NkAtomArray;
 
 #ifdef __cplusplus
 }

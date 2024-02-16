@@ -41,7 +41,7 @@ typedef struct {
 } _nkl_type_slice;
 
 typedef struct {
-    NkSlice(NkAtom) fields;
+    NkAtomArray fields;
 } _nkl_type_struct;
 
 typedef struct NklType_T {
@@ -64,8 +64,8 @@ typedef struct {
 typedef NkSlice(nkltype_t) NklTypeArray;
 
 typedef struct {
-    NklTypeArray args_t;
-    nktype_t ret_t;
+    NklTypeArray param_types;
+    nkltype_t ret_t;
     NkCallConv call_conv;
     uint8_t flags;
 } NklProcInfo;
@@ -91,6 +91,7 @@ nkltype_t nkl_get_slice(nkltype_t target_type, bool is_const);
 nkltype_t nkl_get_struct(NklFieldArray fields);
 nkltype_t nkl_get_struct_packed(NklFieldArray fields);
 nkltype_t nkl_get_tuple(NklTypeArray types);
+nkltype_t nkl_get_tupleEx(nkltype_t const *types, usize count, usize stride);
 nkltype_t nkl_get_tuple_packed(NklTypeArray types);
 nkltype_t nkl_get_typeref();
 nkltype_t nkl_get_union(NklFieldArray fields);
