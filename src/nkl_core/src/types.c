@@ -324,6 +324,44 @@ nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count) {
 
 nkltype_t nkl_get_enum(NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
+
+    NklTypeClass const tclass = NklType_Enum;
+
+    // TODO Use scope macro
+    NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
+
+    ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
+    PUSH_VAL(&fp, u8, TypeSubset_Nkl);
+    PUSH_VAL(&fp, u8, tclass);
+    PUSH_VAL(&fp, usize, fields.size);
+    for (usize i = 0; i < fields.size; i++) {
+        PUSH_VAL(&fp, u32, fields.data[i].name);
+        PUSH_VAL(&fp, u32, fields.data[i].type->id);
+    }
+
+    TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
+
+    if (res.inserted) {
+        NklField enum_fields[] = {
+            {
+                .name = nk_cs2atom("data"),
+                .type = nkl_get_union(fields),
+            },
+            {
+                .name = nk_cs2atom("tag"),
+                .type = nkl_get_numeric(Uint64), // TODO Hardcoded 64bit enum tag
+            },
+        };
+        nkltype_t underlying_type = nkl_get_struct((NklFieldArray){enum_fields, NK_ARRAY_COUNT(enum_fields)});
+
+        res.type->ir_type = underlying_type->ir_type;
+        res.type->tclass = tclass;
+        res.type->id = res.id;
+        res.type->underlying_type = underlying_type;
+    }
+
+    nk_arena_popFrame(&g_tmp_arena, frame);
+    return res.type;
 }
 
 nkltype_t nkl_get_numeric(NkIrNumericValueType value_type) {

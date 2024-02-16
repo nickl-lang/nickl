@@ -57,6 +57,38 @@ TEST_F(types, array) {
     EXPECT_EQ(vec3_t->underlying_type, nullptr);
 }
 
+TEST_F(types, enum) {
+    auto i32_t = nkl_get_numeric(Int32);
+    auto u64_t = nkl_get_numeric(Uint64);
+
+    NklField fields[] = {
+        {nk_cs2atom("val"), nkl_get_ptr(i32_t, true)},
+        {nk_cs2atom("nil"), nkl_get_void()},
+    };
+
+    auto get_opt_t = [&]() {
+        return nkl_get_enum({fields, NK_ARRAY_COUNT(fields)});
+    };
+
+    auto opt_t = get_opt_t();
+
+    EXPECT_EQ(opt_t->id, get_opt_t()->id);
+    EXPECT_EQ(opt_t->ir_type.id, get_opt_t()->ir_type.id);
+
+    auto union_t = nkl_get_union({fields, NK_ARRAY_COUNT(fields)});
+
+    NklField struct_fields[] = {
+        {nk_cs2atom("data"), union_t},
+        {nk_cs2atom("tag"), nkl_get_numeric(Uint64)},
+    };
+    auto struct_t = nkl_get_struct({struct_fields, NK_ARRAY_COUNT(struct_fields)});
+
+    EXPECT_EQ(opt_t->tclass, NklType_Enum);
+    ASSERT_TRUE(opt_t->underlying_type);
+    EXPECT_EQ(opt_t->underlying_type->id, struct_t->id);
+    ASSERT_EQ(opt_t->ir_type.id, struct_t->ir_type.id);
+}
+
 TEST_F(types, numeric) {
     auto i8_t = nkl_get_numeric(Int8);
     auto u32_t = nkl_get_numeric(Uint32);
