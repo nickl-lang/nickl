@@ -261,7 +261,7 @@ static void get_ir_proc(NklType *backing, NklProcInfo info) {
                 {.proc =
                      {.info =
                           {
-                              .ret_t = info.ret_t,
+                              .ret_t = (nktype_t)info.ret_t,
                               .call_conv = info.call_conv,
                               .flags = info.flags,
                           }}},
@@ -285,6 +285,40 @@ static void get_ir_proc(NklType *backing, NklProcInfo info) {
 
 nkltype_t nkl_get_any() {
     NK_LOG_TRC("%s", __func__);
+
+    NklTypeClass const tclass = NklType_Any;
+
+    // TODO Use scope macro
+    NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
+
+    ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
+    PUSH_VAL(&fp, u8, TypeSubset_Nkl);
+    PUSH_VAL(&fp, u8, tclass);
+
+    TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
+
+    if (res.inserted) {
+        NklField fields[] = {
+            {
+                nk_cs2atom("data"),
+                nkl_get_ptr(nkl_get_void(), false),
+            },
+            {
+                nk_cs2atom("type"),
+                nkl_get_typeref(),
+            },
+        };
+        nkltype_t const underlying_type = nkl_get_struct((NklFieldArray){fields, NK_ARRAY_COUNT(fields)});
+
+        res.type->ir_type = underlying_type->ir_type;
+        res.type->as = underlying_type->as;
+        res.type->tclass = tclass;
+        res.type->id = res.id;
+        res.type->underlying_type = underlying_type;
+    }
+
+    nk_arena_popFrame(&g_tmp_arena, frame);
+    return res.type;
 }
 
 nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count) {
@@ -412,6 +446,42 @@ nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const) {
 
 nkltype_t nkl_get_slice(nkltype_t target_type, bool is_const) {
     NK_LOG_TRC("%s", __func__);
+
+    NklTypeClass const tclass = NklType_Slice;
+
+    // TODO Use scope macro
+    NkArenaFrame frame = nk_arena_grab(&g_tmp_arena);
+
+    ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
+    PUSH_VAL(&fp, u8, TypeSubset_Nkl);
+    PUSH_VAL(&fp, u8, tclass);
+    PUSH_VAL(&fp, u32, target_type->id);
+    PUSH_VAL(&fp, u8, is_const);
+
+    TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
+
+    if (res.inserted) {
+        NklField fields[] = {
+            {
+                nk_cs2atom("data"),
+                nkl_get_ptr(target_type, is_const),
+            },
+            {
+                nk_cs2atom("size"),
+                nkl_get_numeric(Uint64), // TODO Should use g_ptr_size
+            },
+        };
+        nkltype_t const underlying_type = nkl_get_struct((NklFieldArray){fields, NK_ARRAY_COUNT(fields)});
+
+        res.type->ir_type = underlying_type->ir_type;
+        res.type->as = underlying_type->as;
+        res.type->tclass = tclass;
+        res.type->id = res.id;
+        res.type->underlying_type = underlying_type;
+    }
+
+    nk_arena_popFrame(&g_tmp_arena, frame);
+    return res.type;
 }
 
 nkltype_t nkl_get_struct(NklFieldArray fields) {
@@ -512,9 +582,10 @@ nkltype_t nkl_get_typeref() {
     TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
 
     if (res.inserted) {
-        nkltype_t const underlying_type = nkl_get_ptr(nkl_get_void(), false);
+        nkltype_t const underlying_type = nkl_get_ptr(nkl_get_void(), true);
 
         res.type->ir_type = underlying_type->ir_type;
+        res.type->as = underlying_type->as;
         res.type->tclass = tclass;
         res.type->id = res.id;
         res.type->underlying_type = underlying_type;

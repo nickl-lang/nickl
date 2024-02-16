@@ -36,11 +36,6 @@ typedef struct {
 } _nkl_type_pointer;
 
 typedef struct {
-    nkltype_t target_type;
-    bool is_const;
-} _nkl_type_slice;
-
-typedef struct {
     NkAtomArray fields;
 } _nkl_type_struct;
 
@@ -48,7 +43,6 @@ typedef struct NklType_T {
     NkIrType ir_type;
     union {
         _nkl_type_pointer ptr;
-        _nkl_type_slice slice;
         _nkl_type_struct strct;
     } as;
     NklTypeClass tclass;
