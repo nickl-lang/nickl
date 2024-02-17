@@ -1,7 +1,6 @@
 #include "lexer.h"
 
 #include <cctype>
-#include <cinttypes>
 #include <cstdarg>
 #include <cstring>
 #include <iterator>
@@ -187,7 +186,7 @@ struct ScannerState {
 
             if (op_index > 0) {
                 accept(op_len);
-                m_token.id = (ENkStTokenId)(t_operator_marker + op_index);
+                m_token.id = (NkStTokenId)(t_operator_marker + op_index);
             } else {
                 accept();
                 if (isprint(chr(-1))) {
@@ -283,7 +282,7 @@ bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, Nk
 
 #ifdef ENABLE_LOGGING
         NKSB_FIXED_BUFFER(sb, 256);
-        nks_escape(nksb_getStream(&sb), nkl_getTokenStr(scanner.m_token, text));
+        nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&scanner.m_token, text));
         NK_LOG_DBG("%s: \"" NKS_FMT "\"", s_nkst_token_id[scanner.m_token.id], NKS_ARG(sb));
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);

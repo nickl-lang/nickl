@@ -2,6 +2,7 @@
 #define NKB_COMMON_H_
 
 #include "ntk/allocator.h"
+#include "ntk/atom.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus
@@ -20,12 +21,12 @@ typedef enum {
 typedef struct NkIrType const *nktype_t;
 
 typedef enum {
-    NkType_Aggregate,
-    NkType_Numeric,
-    NkType_Pointer,
-    NkType_Procedure,
+    NkIrType_Aggregate,
+    NkIrType_Numeric,
+    NkIrType_Pointer,
+    NkIrType_Procedure,
 
-    NkTypeKind_Count,
+    NkIrType_Count,
 } NkIrTypeKind;
 
 // 0x<index><size>
@@ -125,9 +126,10 @@ typedef struct NkIrType {
         NkIrProcTypeInfo proc;
     } as;
     u64 size;
+    u16 flags;
     u8 align;
     NkIrTypeKind kind;
-    u64 id;
+    u32 id;
 } NkIrType;
 
 void nkirt_inspect(nktype_t type, NkStream out);
@@ -146,6 +148,8 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     usize n,
     usize type_stride,
     usize count_stride);
+
+typedef NkSlice(NkAtom) NkAtomArray;
 
 #ifdef __cplusplus
 }

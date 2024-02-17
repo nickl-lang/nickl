@@ -1,6 +1,6 @@
-(proc (extern "c") printf [(arg () (ptr i8)) ("...")] i32)
+(proc (extern "c") printf [(arg () (ptr (i8))) ("...")] (i32))
 
-(proc (pub) main [(arg argc i32) (arg argv (ptr (ptr i8)))] i32 [
+(proc (pub) main [(arg argc (i32)) (arg argv (ptr (ptr (i8))))] (i32) [
     (call printf ["Hello, World!\n"])
     (return 0)
 ])

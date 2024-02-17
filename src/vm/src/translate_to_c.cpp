@@ -58,10 +58,16 @@ struct WriterCtx {
     std::set<usize> globals_forward_declared{};
 };
 
-void _writePreabmle(std::ostream &src) {
+void _writePreamble(std::ostream &src) {
     src << R"(
-#include <stddef.h>
-#include <stdint.h>
+typedef signed char int8_t;
+typedef signed short int16_t;
+typedef signed long int32_t;
+typedef signed long long int64_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned long uint32_t;
+typedef unsigned long long uint64_t;
 
 )";
 }
@@ -261,7 +267,7 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
             tmp_s << "& ";
             _writeConst(ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
         } else {
-            tmp_s << "NULL";
+            tmp_s << "(void*)0";
         }
         break;
     case NkType_Tuple: {
@@ -642,7 +648,7 @@ void nkir_translateToC(NkIrProg ir, NkIrFunct entry_point, NkStream src) {
         nk_arena_free(&ctx.arena);
     };
 
-    _writePreabmle(ctx.types_s);
+    _writePreamble(ctx.types_s);
 
     _translateFunction(ctx, entry_point);
 

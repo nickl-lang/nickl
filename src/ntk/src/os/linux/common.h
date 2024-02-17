@@ -9,13 +9,8 @@
 extern "C" {
 #endif
 
-NK_INLINE void *handle_toNative(NkOsHandle handle) {
-    return (void *)handle.val;
-}
-
-NK_INLINE NkOsHandle handle_fromNative(void *native_handle) {
-    return (NkOsHandle){(intptr_t)native_handle};
-}
+#define handle_toNative nkos_handleToVoidPtr
+#define handle_fromNative nkos_handleFromVoidPtr
 
 NK_INLINE i32 handle_toFd(NkOsHandle handle) {
     return (i32)handle.val - 1;

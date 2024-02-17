@@ -17,7 +17,7 @@ typedef struct {
     u32 arity;
 } NklAstNode;
 
-typedef NkSlice(NklAstNode) NklAstNodeArray;
+typedef NkSlice(NklAstNode const) NklAstNodeArray;
 typedef NkDynArray(NklAstNode) NklAstNodeDynArray;
 
 typedef struct {
@@ -27,6 +27,11 @@ typedef struct {
 } NklSource;
 
 void nkl_ast_inspect(NklSource src, NkStream out);
+
+NK_INLINE uint32_t nkl_ast_nextChild(NklAstNodeArray nodes, uint32_t idx) {
+    uint32_t total_children = idx < nodes.size ? nodes.data[idx].total_children : 0;
+    return idx + total_children + 1;
+}
 
 #ifdef __cplusplus
 }

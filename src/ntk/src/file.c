@@ -32,7 +32,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
 }
 
 static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
-    NkOsHandle h_file = *(NkOsHandle *)&stream_data;
+    NkOsHandle h_file = nkos_handleFromVoidPtr(stream_data);
 
     switch (mode) {
     case NkStreamMode_Read:
@@ -45,5 +45,5 @@ static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStream
 }
 
 NkStream nk_file_getStream(NkOsHandle h_file) {
-    return (NkStream){*(void **)&h_file, nk_file_streamProc};
+    return (NkStream){nkos_handleToVoidPtr(h_file), nk_file_streamProc};
 }

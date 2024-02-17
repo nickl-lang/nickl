@@ -326,7 +326,7 @@ private:
                             .allow_trailing_comma = true,
                         }));
                 }
-                NklAstNodeDynArray nodes{};
+                NklAstNodeArray nodes{};
                 NklAstNode_T body{};
                 if (check(t_brace_l)) {
                     ASSIGN(body, block(true, true));
@@ -900,14 +900,14 @@ private:
                         res.variadic_parsed ? n_fn_var : n_fn,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
-                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeDynArray{},
+                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{},
                         nkl_pushNode(m_ast, body));
                 } else {
                     node = nkl_makeNode2(
                         res.variadic_parsed ? n_fn_type_var : n_fn_type,
                         _n_token,
                         nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}),
-                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeDynArray{});
+                        ret_type.id ? nkl_pushNode(m_ast, ret_type) : NklAstNodeArray{});
                 }
             } else {
                 if (res.tuple_parsed) {

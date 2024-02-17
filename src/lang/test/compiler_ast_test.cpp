@@ -40,7 +40,7 @@ class compiler_ast : public testing::Test {
     }
 
 protected:
-    void test(NklAstNodeDynArray root) {
+    void test(NklAstNodeArray root) {
         NK_LOG_INF(
             "ast:%s\n", (char const *)[&]() {
                 NkStringBuilder sb{};
@@ -62,28 +62,28 @@ protected:
         };
     }
 
-    NklAstNodeDynArray _(char const *id, char const *text) {
+    NklAstNodeArray _(char const *id, char const *text) {
         return _(id, text, {}, {}, {});
     }
 
-    NklAstNodeDynArray _(char const *id, NklAstNodeDynArray arg0) {
+    NklAstNodeArray _(char const *id, NklAstNodeArray arg0) {
         return _(id, arg0, {}, {});
     }
 
-    NklAstNodeDynArray _(char const *id, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1) {
+    NklAstNodeArray _(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1) {
         return _(id, arg0, arg1, {});
     }
 
-    NklAstNodeDynArray _(char const *id, NklAstNodeDynArray arg0, NklAstNodeDynArray arg1, NklAstNodeDynArray arg2) {
+    NklAstNodeArray _(char const *id, NklAstNodeArray arg0, NklAstNodeArray arg1, NklAstNodeArray arg2) {
         return _(id, {}, arg0, arg1, arg2);
     }
 
-    NklAstNodeDynArray _(
+    NklAstNodeArray _(
         char const *id,
         char const *text,
-        NklAstNodeDynArray arg0,
-        NklAstNodeDynArray arg1,
-        NklAstNodeDynArray arg2) {
+        NklAstNodeArray arg0,
+        NklAstNodeArray arg1,
+        NklAstNodeArray arg2) {
         return nkl_pushNode(
             m_ast,
             {
@@ -93,9 +93,9 @@ protected:
             });
     }
 
-    NklAstNodeDynArray _(std::vector<NklAstNodeDynArray> const &ar) {
+    NklAstNodeArray _(std::vector<NklAstNodeArray> const &ar) {
         std::vector<NklAstNode_T> nodes;
-        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeDynArray ar) {
+        std::transform(ar.begin(), ar.end(), std::back_inserter(nodes), [](NklAstNodeArray ar) {
             return ar.data[0];
         });
         return nkl_pushNodeAr(m_ast, {nodes.data(), nodes.size()});

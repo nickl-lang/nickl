@@ -13,7 +13,7 @@ void nkirt_inspect(nktype_t type, NkStream out) {
         return;
     }
     switch (type->kind) {
-    case NkType_Aggregate:
+    case NkIrType_Aggregate:
         if (type->as.aggr.elems.size) {
             nk_stream_printf(out, "{");
             for (usize i = 0; i < type->as.aggr.elems.size; i++) {
@@ -31,7 +31,7 @@ void nkirt_inspect(nktype_t type, NkStream out) {
             nk_stream_printf(out, "void");
         }
         break;
-    case NkType_Numeric:
+    case NkIrType_Numeric:
         switch (type->as.num.value_type) {
         case Int8:
             nk_stream_printf(out, "i8");
@@ -65,11 +65,11 @@ void nkirt_inspect(nktype_t type, NkStream out) {
             break;
         }
         break;
-    case NkType_Pointer:
+    case NkIrType_Pointer:
         nk_stream_printf(out, "*");
         nkirt_inspect(type->as.ptr.target_type, out);
         break;
-    case NkType_Procedure:
+    case NkIrType_Procedure:
         nk_stream_printf(out, "(");
         for (usize i = 0; i < type->as.proc.info.args_t.size; i++) {
             if (i) {
@@ -94,11 +94,11 @@ void nkirv_inspect(void *data, nktype_t type, NkStream out) {
         return;
     }
     switch (type->kind) {
-    case NkType_Aggregate:
+    case NkIrType_Aggregate:
         for (usize elemi = 0; elemi < type->as.aggr.elems.size; elemi++) {
             auto const &elem = type->as.aggr.elems.data[elemi];
             auto ptr = (u8 *)data + elem.offset;
-            if (elem.type->kind == NkType_Numeric && elem.type->size == 1) {
+            if (elem.type->kind == NkIrType_Numeric && elem.type->size == 1) {
                 nk_stream_printf(out, "\"");
                 nks_escape(out, {(char const *)ptr, elem.count});
                 nk_stream_printf(out, "\"");
@@ -125,7 +125,7 @@ void nkirv_inspect(void *data, nktype_t type, NkStream out) {
             }
         }
         break;
-    case NkType_Numeric:
+    case NkIrType_Numeric:
         switch (type->as.num.value_type) {
         case Int8:
             nk_stream_printf(out, "%" PRIi8, *(i8 *)data);
@@ -162,8 +162,8 @@ void nkirv_inspect(void *data, nktype_t type, NkStream out) {
             break;
         }
         break;
-    case NkType_Pointer:
-    case NkType_Procedure:
+    case NkIrType_Pointer:
+    case NkIrType_Procedure:
         nk_stream_printf(out, "%p", *(void **)data);
         break;
     default:
@@ -179,14 +179,14 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     usize type_stride,
     usize count_stride) {
     NK_PROF_FUNC();
-    usize alignment = 0;
+    usize alignment = 1;
     usize offset = 0;
 
     auto info_ar = nk_allocT<NkIrAggregateElemInfo>(alloc, n);
 
     for (usize i = 0; i < n; i++) {
         auto const type = elem_types[i * type_stride];
-        auto const elem_count = elem_counts[i * count_stride];
+        auto const elem_count = elem_counts ? elem_counts[i * count_stride] : 1;
 
         alignment = nk_maxu(alignment, type->align);
 

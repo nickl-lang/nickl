@@ -11,7 +11,7 @@
 
 typedef NkDynArray(char) NkStringBuilder;
 
-#define NKSB_INIT(alloc) NKDA_INIT(alloc)
+#define NKSB_INIT NKDA_INIT
 
 #define NKSB_FIXED_BUFFER(NAME, SIZE)                                                               \
     u8 NK_CAT(_buf, __LINE__)[SIZE];                                                                \

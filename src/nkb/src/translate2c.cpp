@@ -177,7 +177,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     bool is_complex = false;
 
     switch (type->kind) {
-    case NkType_Aggregate:
+    case NkIrType_Aggregate:
         is_complex = true;
         nksb_printf(&tmp_s, "struct {\n");
         for (usize i = 0; i < type->as.aggr.elems.size; i++) {
@@ -191,14 +191,14 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         }
         nksb_printf(&tmp_s, "}");
         break;
-    case NkType_Numeric:
+    case NkIrType_Numeric:
         writeNumericType(type->as.num.value_type, &tmp_s);
         break;
-    case NkType_Pointer:
+    case NkIrType_Pointer:
         writeType(ctx, type->as.ptr.target_type, &tmp_s);
         nksb_printf(&tmp_s, "*");
         break;
-    case NkType_Procedure: {
+    case NkIrType_Procedure: {
         is_complex = true;
         auto const ret_t = type->as.proc.info.ret_t;
         auto const args_t = type->as.proc.info.args_t;
@@ -259,7 +259,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 
     if (decl.data) {
         switch (decl.type->kind) {
-        case NkType_Aggregate: {
+        case NkIrType_Aggregate: {
             is_complex = true;
             nksb_printf(&tmp_s, "{ ");
             for (usize i = 0; i < decl.type->as.aggr.elems.size; i++) {
@@ -290,7 +290,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
             nksb_printf(&tmp_s, "}");
             break;
         }
-        case NkType_Numeric: {
+        case NkIrType_Numeric: {
             auto value_type = decl.type->as.num.value_type;
             switch (value_type) {
             case Int8:
@@ -417,7 +417,7 @@ void writeProcSignature(
 }
 
 void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
-    if (type->kind != NkType_Numeric && type->kind != NkType_Pointer && type->size) {
+    if (type->kind != NkIrType_Numeric && type->kind != NkIrType_Pointer && type->size) {
         return;
     }
 
@@ -544,7 +544,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
 
         bool const is_addressable =
             !(ref.kind == NkIrRef_Data && ctx.ir->data.data[ref.index].read_only &&
-              ctx.ir->data.data[ref.index].type->kind != NkType_Aggregate);
+              ctx.ir->data.data[ref.index].type->kind != NkIrType_Aggregate);
 
         if (is_addressable) {
             for (u8 i = 0; i < nk_maxu(ref.indir, 1); i++) {
@@ -665,7 +665,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             }
             case nkir_call: {
                 auto proc_t = instr.arg[1].ref.type;
-                nk_assert(proc_t->kind == NkType_Procedure);
+                nk_assert(proc_t->kind == NkIrType_Procedure);
                 nksb_printf(src, "(");
                 write_ref(instr.arg[1].ref);
                 nksb_printf(src, ")(");

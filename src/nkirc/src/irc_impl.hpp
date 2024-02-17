@@ -68,7 +68,7 @@ struct NkIrCompiler_T {
     NkIrParserState parser{};
 
     NkHashMap<NkString, nktype_t> fpmap{};
-    u64 next_id{1};
+    u32 next_id{1};
     std::mutex mtx{};
 };
 

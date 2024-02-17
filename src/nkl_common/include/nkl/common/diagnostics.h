@@ -11,18 +11,18 @@ extern "C" {
 #endif
 
 typedef enum {
-    NklColor_Auto,
-    NklColor_Always,
-    NklColor_Never,
+    NklColorPolicy_Auto,
+    NklColorPolicy_Always,
+    NklColorPolicy_Never,
 } NklColorPolicy;
 
 void nkl_diag_init(NklColorPolicy color_policy);
 
 typedef struct {
     NkString file;
-    usize lin;
-    usize col;
-    usize len;
+    u32 lin;
+    u32 col;
+    u32 len;
 } NklSourceLocation;
 
 NK_PRINTF_LIKE(1, 2) void nkl_diag_printError(char const *fmt, ...);

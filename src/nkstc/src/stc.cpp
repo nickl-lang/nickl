@@ -2,6 +2,8 @@
 
 #include <filesystem>
 
+#include "ast_impl.h"
+#include "compiler.h"
 #include "lexer.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
@@ -21,6 +23,10 @@ NK_LOG_USE_SCOPE(nkstc);
 
 int nkst_compile(NkString in_file) {
     NK_LOG_TRC("%s", __func__);
+
+    // TODO Init ast nodes somewhere else
+#define XN(N, T) nk_atom_define(NK_CAT(n_, N), nk_cs2s(T));
+#include "nodes.inl"
 
     NkArena tmp_arena{};
     defer {
@@ -95,6 +101,22 @@ int nkst_compile(NkString in_file) {
             return 1;
         }
     }
+
+    auto c = nkl_createCompiler({});
+    defer {
+        nkl_freeCompiler(c);
+    };
+
+    auto m = nkl_createModule(c);
+    nkl_compile(
+        m,
+        {
+            .text = text,
+            .tokens{NK_SLICE_INIT(lexer.tokens)},
+            .nodes{NK_SLICE_INIT(parser.nodes)},
+        });
+
+    nkl_writeModule(m, nk_cs2s("a.out"));
 
     return 0;
 }

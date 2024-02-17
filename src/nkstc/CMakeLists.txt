@@ -1,6 +1,7 @@
 set(EXE nkstc)
 
 add_executable(${EXE}
+    src/compiler.cpp
     src/lexer.cpp
     src/main.cpp
     src/parser.cpp
@@ -10,6 +11,7 @@ add_executable(${EXE}
 target_link_libraries(${EXE}
     PRIVATE nkb
     PRIVATE nkl_common
+    PRIVATE nkl_core
     )
 
 if(NOT DEV_BUILD)

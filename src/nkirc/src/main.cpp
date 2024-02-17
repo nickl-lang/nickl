@@ -150,11 +150,11 @@ int main(int /*argc*/, char const *const *argv) {
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
                 if (val == "auto") {
-                    nkl_diag_init(NklColor_Auto);
+                    nkl_diag_init(NklColorPolicy_Auto);
                 } else if (val == "always") {
-                    nkl_diag_init(NklColor_Always);
+                    nkl_diag_init(NklColorPolicy_Always);
                 } else if (val == "never") {
-                    nkl_diag_init(NklColor_Never);
+                    nkl_diag_init(NklColorPolicy_Never);
                 } else {
                     nkl_diag_printError(
                         "invalid color mode `" NKS_FMT "`. Possible values are `auto`, `always`, `never`",

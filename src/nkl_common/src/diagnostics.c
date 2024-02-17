@@ -8,7 +8,7 @@
 static NklColorPolicy s_color_policy;
 
 static bool toColor() {
-    return s_color_policy == NklColor_Always || (s_color_policy == NklColor_Auto && nk_isatty(2));
+    return s_color_policy == NklColorPolicy_Always || (s_color_policy == NklColorPolicy_Auto && nk_isatty(2));
 }
 
 void nkl_diag_init(NklColorPolicy color_policy) {
@@ -59,10 +59,10 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
     }
     nk_stream_printf(out, NKS_FMT, NKS_ARG(loc.file));
     if (loc.lin) {
-        nk_stream_printf(out, ":%zu", loc.lin);
+        nk_stream_printf(out, ":%u", loc.lin);
     }
     if (loc.col) {
-        nk_stream_printf(out, ":%zu", loc.col);
+        nk_stream_printf(out, ":%u", loc.col);
     }
     nk_stream_printf(out, ":");
     if (to_color) {
@@ -101,7 +101,7 @@ void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *
         if (loc.col && loc.len && loc.len > line.size - loc.col) {
             loc.len = line.size - loc.col + 1;
         }
-        int line_offset = nk_stream_printf(out, "%5zu | ", loc.lin);
+        int line_offset = nk_stream_printf(out, "%5u | ", loc.lin);
         int pointer_offset = loc.col;
         int actual_len = loc.len;
         if (loc.col && loc.col <= line.size && loc.len) {
