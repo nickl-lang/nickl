@@ -2,10 +2,9 @@
 
 #include <filesystem>
 
-#include "ast_impl.h"
-#include "compiler.h"
 #include "lexer.h"
 #include "nkl/common/diagnostics.h"
+#include "nkl/core/compiler.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
@@ -23,10 +22,6 @@ NK_LOG_USE_SCOPE(nkstc);
 
 int nkst_compile(NkString in_file) {
     NK_LOG_TRC("%s", __func__);
-
-    // TODO Init ast nodes somewhere else
-#define XN(N, T) nk_atom_define(NK_CAT(n_, N), nk_cs2s(T));
-#include "nodes.inl"
 
     NkArena tmp_arena{};
     defer {

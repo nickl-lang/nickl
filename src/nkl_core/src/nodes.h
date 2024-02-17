@@ -1,5 +1,5 @@
-#ifndef NKSTC_AST_IMPL_H_
-#define NKSTC_AST_IMPL_H_
+#ifndef NKL_CORE_NODES_H_
+#define NKL_CORE_NODES_H_
 
 #include "ntk/utils.h"
 
@@ -18,4 +18,4 @@ typedef enum {
 }
 #endif
 
-#endif // NKSTC_AST_IMPL_H_
+#endif // NKL_CORE_NODES_H_

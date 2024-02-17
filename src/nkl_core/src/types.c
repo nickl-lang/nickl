@@ -102,7 +102,7 @@ void nkl_types_init(u8 ptr_size) {
     g_ptr_size = ptr_size;
 }
 
-void nkl_types_free() {
+void nkl_types_free(void) {
     nk_mutex_free(g_mtx);
 }
 
@@ -250,7 +250,7 @@ static void get_ir_proc(NklType *backing, NklProcInfo info) {
     nk_arena_popFrame(&g_tmp_arena, frame);
 }
 
-nkltype_t nkl_get_any() {
+nkltype_t nkl_get_any(void) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Any;
@@ -576,7 +576,7 @@ nkltype_t nkl_get_tuple_packed(NklTypeArray types) {
     return NULL;
 }
 
-nkltype_t nkl_get_typeref() {
+nkltype_t nkl_get_typeref(void) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Typeref;
@@ -646,7 +646,7 @@ nkltype_t nkl_get_union(NklFieldArray fields) {
     return res.type;
 }
 
-nkltype_t nkl_get_void() {
+nkltype_t nkl_get_void(void) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Tuple;

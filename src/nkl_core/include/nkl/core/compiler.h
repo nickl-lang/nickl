@@ -1,5 +1,5 @@
-#ifndef NKSTC_COMPILER_H_
-#define NKSTC_COMPILER_H_
+#ifndef NKL_CORE_COMPILER_H_
+#define NKL_CORE_COMPILER_H_
 
 #include "nkl/common/ast.h"
 #include "ntk/atom.h"
@@ -31,4 +31,4 @@ void nkl_compile(NklModule m, NklSource src);
 }
 #endif
 
-#endif // NKSTC_COMPILER_H_
+#endif // NKL_CORE_COMPILER_H_

@@ -73,9 +73,9 @@ typedef struct {
 
 // TODO Use proper config struct for ptr_size
 void nkl_types_init(u8 ptr_size);
-void nkl_types_free();
+void nkl_types_free(void);
 
-nkltype_t nkl_get_any();
+nkltype_t nkl_get_any(void);
 nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count);
 nkltype_t nkl_get_enum(NklFieldArray fields);
 nkltype_t nkl_get_numeric(NkIrNumericValueType value_type);
@@ -87,9 +87,9 @@ nkltype_t nkl_get_struct_packed(NklFieldArray fields);
 nkltype_t nkl_get_tuple(NklTypeArray types);
 nkltype_t nkl_get_tupleEx(nkltype_t const *types, usize count, usize stride);
 nkltype_t nkl_get_tuple_packed(NklTypeArray types);
-nkltype_t nkl_get_typeref();
+nkltype_t nkl_get_typeref(void);
 nkltype_t nkl_get_union(NklFieldArray fields);
-nkltype_t nkl_get_void();
+nkltype_t nkl_get_void(void);
 
 void nkl_type_inspect(nkltype_t type, NkStream out);
 

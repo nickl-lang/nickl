@@ -1,6 +1,7 @@
 set(LIB nkl_core)
 
 add_library(${LIB}
+    src/compiler.cpp
     src/types.c
     )
 
@@ -10,6 +11,7 @@ target_include_directories(${LIB}
 
 target_link_libraries(${LIB}
     PUBLIC nkb
+    PUBLIC nkl_common
     PUBLIC ntk
     )
 
