@@ -2,6 +2,7 @@
 #define NKL_CORE_TYPES_H_
 
 #include "nkb/common.h"
+#include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
@@ -46,7 +47,7 @@ typedef struct {
     NklFieldArray fields;
 } _nkl_type_struct;
 
-typedef struct NklType_T {
+struct NklType_T {
     NkIrType ir_type;
     union {
         _nkl_type_pointer ptr;
@@ -55,7 +56,7 @@ typedef struct NklType_T {
     NklTypeClass tclass;
     u32 id;
     nkltype_t underlying_type;
-} NklType;
+};
 
 typedef struct {
     void *data;
@@ -71,25 +72,24 @@ typedef struct {
     uint8_t flags;
 } NklProcInfo;
 
-// TODO Use proper config struct for ptr_size
-void nkl_types_init(u8 ptr_size);
-void nkl_types_free(void);
+void nkl_types_init(NklState *nkl);
+void nkl_types_free(NklState *nkl);
 
-nkltype_t nkl_get_any(void);
-nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count);
-nkltype_t nkl_get_enum(NklFieldArray fields);
-nkltype_t nkl_get_numeric(NkIrNumericValueType value_type);
-nkltype_t nkl_get_proc(NklProcInfo info);
-nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const);
-nkltype_t nkl_get_slice(nkltype_t target_type, bool is_const);
-nkltype_t nkl_get_struct(NklFieldArray fields);
-nkltype_t nkl_get_struct_packed(NklFieldArray fields);
-nkltype_t nkl_get_tuple(NklTypeArray types);
-nkltype_t nkl_get_tupleEx(nkltype_t const *types, usize count, usize stride);
-nkltype_t nkl_get_tuple_packed(NklTypeArray types);
-nkltype_t nkl_get_typeref(void);
-nkltype_t nkl_get_union(NklFieldArray fields);
-nkltype_t nkl_get_void(void);
+nkltype_t nkl_get_any(NklState *nkl);
+nkltype_t nkl_get_array(NklState *nkl, nkltype_t elem_type, usize elem_count);
+nkltype_t nkl_get_enum(NklState *nkl, NklFieldArray fields);
+nkltype_t nkl_get_numeric(NklState *nkl, NkIrNumericValueType value_type);
+nkltype_t nkl_get_proc(NklState *nkl, NklProcInfo info);
+nkltype_t nkl_get_ptr(NklState *nkl, nkltype_t target_type, bool is_const);
+nkltype_t nkl_get_slice(NklState *nkl, nkltype_t target_type, bool is_const);
+nkltype_t nkl_get_struct(NklState *nkl, NklFieldArray fields);
+nkltype_t nkl_get_struct_packed(NklState *nkl, NklFieldArray fields);
+nkltype_t nkl_get_tuple(NklState *nkl, NklTypeArray types);
+nkltype_t nkl_get_tupleEx(NklState *nkl, nkltype_t const *types, usize count, usize stride);
+nkltype_t nkl_get_tuple_packed(NklState *nkl, NklTypeArray types);
+nkltype_t nkl_get_typeref(NklState *nkl);
+nkltype_t nkl_get_union(NklState *nkl, NklFieldArray fields);
+nkltype_t nkl_get_void(NklState *nkl);
 
 void nkl_type_inspect(nkltype_t type, NkStream out);
 
