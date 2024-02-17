@@ -27,6 +27,7 @@ NkBcOpcode s_ir2opcode[] = {
 
 typedef NkSlice(NkBcInstr) NkBcInstrArray;
 
+#ifdef ENABLE_LOGGING
 void inspect(NkBcInstrArray instrs, NkStream out) {
     auto inspect_ref = [&](NkBcRef const &ref, bool expand_values) {
         if (ref.kind == NkBcRef_None) {
@@ -119,6 +120,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
         nk_stream_printf(out, "\n");
     }
 }
+#endif // ENABLE_LOGGING
 
 NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) {
     nk_assert(!ctx->error_str.data && "run error is already initialized");

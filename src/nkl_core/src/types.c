@@ -242,10 +242,7 @@ static void get_ir_proc(NklType *backing, NklProcInfo info) {
             .id = res.id,
         };
         // TODO Improve ProcInfo copying
-        nk_slice_copy(
-            nk_arena_getAllocator(&g_type_arena),
-            (NklTypeArray *)&backing->ir_type.as.proc.info.args_t,
-            info.param_types);
+        nk_slice_copy(nk_arena_getAllocator(&g_type_arena), &backing->ir_type.as.proc.info.args_t, info.param_types);
     } else {
         backing->ir_type = res.type->ir_type;
     }

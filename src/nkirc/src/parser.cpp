@@ -318,8 +318,7 @@ private:
         if (!check(t_id)) {
             return error("identifier expected"), nullptr;
         }
-        auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
-        NK_LOG_DBG("accept(id, \"" NKS_FMT "\")", NKS_ARG(token_str));
+        NK_LOG_DBG("accept(id, \"" NKS_FMT "\")", NKS_ARG(nkl_getTokenStr(m_cur_token, m_text)));
         auto id = m_cur_token;
         getToken();
         return id;

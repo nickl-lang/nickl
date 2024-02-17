@@ -21,6 +21,14 @@ NK_INLINE bool nkos_handleIsZero(NkOsHandle handle) {
     return nkos_handleEqual(handle, NK_OS_HANDLE_ZERO);
 }
 
+NK_INLINE void *nkos_handleToVoidPtr(NkOsHandle handle) {
+    return (void *)handle.val;
+}
+
+NK_INLINE NkOsHandle nkos_handleFromVoidPtr(void *ptr) {
+    return NK_LITERAL(NkOsHandle){(intptr_t)ptr};
+}
+
 #ifdef __cplusplus
 
 inline bool operator==(NkOsHandle lhs, NkOsHandle rhs) {

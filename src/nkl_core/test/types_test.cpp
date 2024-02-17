@@ -329,6 +329,8 @@ TEST_F(types, tuple) {
     EXPECT_EQ(vec3_t->underlying_type, nullptr);
 
     NKSB_FIXED_BUFFER(sb, 64);
+
+    nksb_clear(&sb);
     nkl_type_inspect(vec3_t, nksb_getStream(&sb));
     EXPECT_EQ("(f64, f64, f64, )", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 
@@ -340,6 +342,10 @@ TEST_F(types, tuple) {
     EXPECT_EQ(void_t->ir_type.as.aggr.elems.size, 0);
     EXPECT_EQ(void_t->tclass, NklType_Tuple);
     EXPECT_EQ(void_t->underlying_type, nullptr);
+
+    nksb_clear(&sb);
+    nkl_type_inspect(void_t, nksb_getStream(&sb));
+    EXPECT_EQ("void", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, typeref) {
