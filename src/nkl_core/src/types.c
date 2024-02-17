@@ -356,6 +356,7 @@ nkltype_t nkl_get_enum(NklFieldArray fields) {
         nkltype_t underlying_type = nkl_get_struct((NklFieldArray){enum_fields, NK_ARRAY_COUNT(enum_fields)});
 
         res.type->ir_type = underlying_type->ir_type;
+        res.type->as = underlying_type->as;
         res.type->tclass = tclass;
         res.type->id = res.id;
         res.type->underlying_type = underlying_type;
@@ -515,12 +516,7 @@ nkltype_t nkl_get_struct(NklFieldArray fields) {
         nkltype_t const underlying_type =
             nkl_get_tupleEx(&fields.data->type, fields.size, sizeof(*fields.data) / sizeof(void *));
 
-        NkAtom *field_names = nk_arena_alloc(&g_type_arena, sizeof(NkAtom) * fields.size);
-        for (usize i = 0; i < fields.size; i++) {
-            field_names[i] = fields.data[i].name;
-        }
-
-        res.type->as.strct.fields = (NkAtomArray){field_names, fields.size};
+        nk_slice_copy(nk_arena_getAllocator(&g_type_arena), &res.type->as.strct.fields, fields);
 
         res.type->ir_type = underlying_type->ir_type;
         res.type->tclass = tclass;
@@ -641,13 +637,7 @@ nkltype_t nkl_get_union(NklFieldArray fields) {
             max_align = nk_maxu(max_align, type->ir_type.align);
         }
 
-        // TODO Code duplication with nkl_get_struct
-        NkAtom *field_names = nk_arena_alloc(&g_type_arena, sizeof(NkAtom) * fields.size);
-        for (usize i = 0; i < fields.size; i++) {
-            field_names[i] = fields.data[i].name;
-        }
-
-        res.type->as.strct.fields = (NkAtomArray){field_names, fields.size};
+        nk_slice_copy(nk_arena_getAllocator(&g_type_arena), &res.type->as.strct.fields, fields);
 
         // TODO Use a special ir_type for union? bytes or smth?
         res.type->ir_type = largest_type->ir_type;
@@ -670,7 +660,7 @@ nkltype_t nkl_get_void() {
     ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&g_tmp_arena))};
     PUSH_VAL(&fp, u8, TypeSubset_Nkl);
     PUSH_VAL(&fp, u8, tclass);
-    PUSH_VAL(&fp, u64, 0);
+    PUSH_VAL(&fp, usize, 0);
 
     TypeSearchResult res = getTypeByFingerprint((ByteArray){NK_SLICE_INIT(fp)}, NULL);
 
@@ -696,11 +686,22 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
         NkIrAggregateElemInfo info = type->ir_type.as.aggr.elems.data[0];
         nk_stream_printf(out, "[%zu]", info.count);
         nkl_type_inspect((nkltype_t)info.type, out);
-    } break;
-    case NklType_Enum:
-        nk_stream_printf(out, "<NklType_Enum inspect is not implemented>");
         break;
-    case NklType_Numeric: {
+    }
+    case NklType_Enum: {
+        nk_stream_printf(out, "enum { ");
+        nkltype_t union_t = (nkltype_t)type->ir_type.as.aggr.elems.data[0].type;
+        NklFieldArray fields = union_t->as.strct.fields;
+        for (usize i = 0; i < fields.size; i++) {
+            nk_stream_printf(out, "%s", nk_atom2cs(fields.data[i].name));
+            nk_stream_printf(out, ": ");
+            nkl_type_inspect((nkltype_t)fields.data[i].type, out);
+            nk_stream_printf(out, ", ");
+        }
+        nk_stream_printf(out, "}");
+        break;
+    }
+    case NklType_Numeric:
         switch (type->ir_type.as.num.value_type) {
         case Int8:
             nk_stream_printf(out, "i8");
@@ -736,34 +737,89 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
             nk_assert(!"unreachable");
             break;
         }
-    } break;
-    case NklType_Pointer:
-        nk_stream_printf(out, "<NklType_Pointer inspect is not implemented>");
         break;
-    case NklType_Procedure:
-        nk_stream_printf(out, "<NklType_Procedure inspect is not implemented>");
+    case NklType_Pointer: {
+        nkltype_t target_type = (nkltype_t)type->ir_type.as.ptr.target_type;
+        nk_stream_printf(out, "*");
+        if (type->as.ptr.is_const) {
+            nk_stream_printf(out, "const ");
+        }
+        nkl_type_inspect(target_type, out);
         break;
-    case NklType_Slice:
-        nk_stream_printf(out, "<NklType_Slice inspect is not implemented>");
+    }
+    case NklType_Procedure: {
+        NkIrProcInfo info = type->ir_type.as.proc.info;
+        nk_stream_printf(out, "(");
+        for (usize i = 0; i < info.args_t.size; i++) {
+            if (i) {
+                nk_stream_printf(out, ", ");
+            }
+            nkltype_t arg_t = (nkltype_t)info.args_t.data[i];
+            nkl_type_inspect(arg_t, out);
+        }
+        nk_stream_printf(out, ") -> ");
+        nkltype_t ret_t = (nkltype_t)info.ret_t;
+        nkl_type_inspect(ret_t, out);
         break;
-    case NklType_Struct:
-        nk_stream_printf(out, "<NklType_Struct inspect is not implemented>");
+    }
+    case NklType_Slice: {
+        nkltype_t ptr_t = (nkltype_t)type->ir_type.as.aggr.elems.data[0].type;
+        nk_stream_printf(out, "[]");
+        if (ptr_t->as.ptr.is_const) {
+            nk_stream_printf(out, "const");
+        }
+        nk_stream_printf(out, " ");
+        nkl_type_inspect((nkltype_t)ptr_t->ir_type.as.ptr.target_type, out);
         break;
+    }
+    case NklType_Struct: {
+        nk_stream_printf(out, "struct { ");
+        NklFieldArray fields = type->as.strct.fields;
+        for (usize i = 0; i < fields.size; i++) {
+            nk_stream_printf(out, "%s", nk_atom2cs(fields.data[i].name));
+            nk_stream_printf(out, ": ");
+            nkl_type_inspect((nkltype_t)fields.data[i].type, out);
+            nk_stream_printf(out, ", ");
+        }
+        nk_stream_printf(out, "}");
+        break;
+    }
     case NklType_StructPacked:
-        nk_stream_printf(out, "<NklType_StructPacked inspect is not implemented>");
+        nk_stream_printf(out, "<StructPacked inspect is not implemented>");
         break;
-    case NklType_Tuple:
-        nk_stream_printf(out, "<NklType_Tuple inspect is not implemented>");
+    case NklType_Tuple: {
+        NkIrAggregateElemInfoArray elems = type->ir_type.as.aggr.elems;
+        if (elems.size) {
+            nk_stream_printf(out, "(");
+            for (usize i = 0; i < elems.size; i++) {
+                nkltype_t elem_t = (nkltype_t)elems.data[i].type;
+                nkl_type_inspect(elem_t, out);
+                nk_stream_printf(out, ", ");
+            }
+            nk_stream_printf(out, ")");
+        } else {
+            nk_stream_printf(out, "void");
+        }
         break;
+    }
     case NklType_TuplePacked:
-        nk_stream_printf(out, "<NklType_TuplePacked inspect is not implemented>");
+        nk_stream_printf(out, "<TuplePacked inspect is not implemented>");
         break;
     case NklType_Typeref:
-        nk_stream_printf(out, "<NklType_Typeref inspect is not implemented>");
+        nk_stream_printf(out, "type_t");
         break;
-    case NklType_Union:
-        nk_stream_printf(out, "<NklType_Union inspect is not implemented>");
+    case NklType_Union: {
+        nk_stream_printf(out, "union { ");
+        NklFieldArray fields = type->as.strct.fields;
+        for (usize i = 0; i < fields.size; i++) {
+            nk_stream_printf(out, "%s", nk_atom2cs(fields.data[i].name));
+            nk_stream_printf(out, ": ");
+            nkl_type_inspect((nkltype_t)fields.data[i].type, out);
+            nk_stream_printf(out, ", ");
+        }
+        nk_stream_printf(out, "}");
         break;
+    }
 
     default:
         nk_assert(!"unreachable");

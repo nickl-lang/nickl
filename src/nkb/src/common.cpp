@@ -179,7 +179,7 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     usize type_stride,
     usize count_stride) {
     NK_PROF_FUNC();
-    usize alignment = 0;
+    usize alignment = 1;
     usize offset = 0;
 
     auto info_ar = nk_allocT<NkIrAggregateElemInfo>(alloc, n);

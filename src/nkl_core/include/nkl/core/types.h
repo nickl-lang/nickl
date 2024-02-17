@@ -32,11 +32,18 @@ typedef enum {
 } NklTypeClass;
 
 typedef struct {
+    NkAtom name;
+    nkltype_t type;
+} NklField;
+
+typedef NkSlice(NklField) NklFieldArray;
+
+typedef struct {
     bool is_const;
 } _nkl_type_pointer;
 
 typedef struct {
-    NkAtomArray fields;
+    NklFieldArray fields;
 } _nkl_type_struct;
 
 typedef struct NklType_T {
@@ -63,13 +70,6 @@ typedef struct {
     NkCallConv call_conv;
     uint8_t flags;
 } NklProcInfo;
-
-typedef struct {
-    NkAtom name;
-    nkltype_t type;
-} NklField;
-
-typedef NkSlice(NklField) NklFieldArray;
 
 // TODO Use proper config struct for ptr_size
 void nkl_types_init(u8 ptr_size);

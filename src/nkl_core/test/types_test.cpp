@@ -35,6 +35,10 @@ TEST_F(types, any) {
     ASSERT_TRUE(any_t->underlying_type);
     EXPECT_EQ(any_t->underlying_type->id, struct_t->id);
     ASSERT_EQ(any_t->ir_type.id, struct_t->ir_type.id);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(any_t, nksb_getStream(&sb));
+    EXPECT_EQ("any_t", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, array) {
@@ -64,10 +68,9 @@ TEST_F(types, array) {
 
 TEST_F(types, enum) {
     auto i32_t = nkl_get_numeric(Int32);
-    auto u64_t = nkl_get_numeric(Uint64);
 
     NklField fields[] = {
-        {nk_cs2atom("val"), nkl_get_ptr(i32_t, true)},
+        {nk_cs2atom("val"), i32_t},
         {nk_cs2atom("nil"), nkl_get_void()},
     };
 
@@ -92,6 +95,10 @@ TEST_F(types, enum) {
     ASSERT_TRUE(opt_t->underlying_type);
     EXPECT_EQ(opt_t->underlying_type->id, struct_t->id);
     ASSERT_EQ(opt_t->ir_type.id, struct_t->ir_type.id);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(opt_t, nksb_getStream(&sb));
+    EXPECT_EQ("enum { val: i32, nil: void, }", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, numeric) {
@@ -110,12 +117,18 @@ TEST_F(types, numeric) {
     EXPECT_EQ(i64_t->ir_type.id, nkl_get_numeric(Int64)->ir_type.id);
     EXPECT_EQ(f64_t->ir_type.id, nkl_get_numeric(Float64)->ir_type.id);
 
+    NKSB_FIXED_BUFFER(sb, 64);
+
     EXPECT_EQ(i8_t->ir_type.size, 1);
     EXPECT_EQ(i8_t->ir_type.align, 1);
     ASSERT_EQ(i8_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(i8_t->ir_type.as.num.value_type, Int8);
     EXPECT_EQ(i8_t->tclass, NklType_Numeric);
     EXPECT_EQ(i8_t->underlying_type, nullptr);
+
+    nksb_clear(&sb);
+    nkl_type_inspect(i8_t, nksb_getStream(&sb));
+    EXPECT_EQ("i8", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 
     EXPECT_EQ(u32_t->ir_type.size, 4);
     EXPECT_EQ(u32_t->ir_type.align, 4);
@@ -124,6 +137,10 @@ TEST_F(types, numeric) {
     EXPECT_EQ(u32_t->tclass, NklType_Numeric);
     EXPECT_EQ(u32_t->underlying_type, nullptr);
 
+    nksb_clear(&sb);
+    nkl_type_inspect(u32_t, nksb_getStream(&sb));
+    EXPECT_EQ("u32", nk_s2stdStr({NK_SLICE_INIT(sb)}));
+
     EXPECT_EQ(i64_t->ir_type.size, 8);
     EXPECT_EQ(i64_t->ir_type.align, 8);
     ASSERT_EQ(i64_t->ir_type.kind, NkIrType_Numeric);
@@ -131,12 +148,20 @@ TEST_F(types, numeric) {
     EXPECT_EQ(i64_t->tclass, NklType_Numeric);
     EXPECT_EQ(i64_t->underlying_type, nullptr);
 
+    nksb_clear(&sb);
+    nkl_type_inspect(i64_t, nksb_getStream(&sb));
+    EXPECT_EQ("i64", nk_s2stdStr({NK_SLICE_INIT(sb)}));
+
     EXPECT_EQ(f64_t->ir_type.size, 8);
     EXPECT_EQ(f64_t->ir_type.align, 8);
     ASSERT_EQ(f64_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(f64_t->ir_type.as.num.value_type, Float64);
     EXPECT_EQ(f64_t->tclass, NklType_Numeric);
     EXPECT_EQ(f64_t->underlying_type, nullptr);
+
+    nksb_clear(&sb);
+    nkl_type_inspect(f64_t, nksb_getStream(&sb));
+    EXPECT_EQ("f64", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, proc) {
@@ -167,6 +192,10 @@ TEST_F(types, proc) {
     EXPECT_EQ(add_t->ir_type.as.proc.info.flags, 0);
     EXPECT_EQ(add_t->tclass, NklType_Procedure);
     EXPECT_EQ(add_t->underlying_type, nullptr);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(add_t, nksb_getStream(&sb));
+    EXPECT_EQ("(i32, i32) -> i32", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, ptr) {
@@ -204,6 +233,16 @@ TEST_F(types, ptr) {
 
     EXPECT_EQ(str_t->as.ptr.is_const, true);
     EXPECT_EQ(void_ptr_t->as.ptr.is_const, false);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+
+    nksb_clear(&sb);
+    nkl_type_inspect(void_ptr_t, nksb_getStream(&sb));
+    EXPECT_EQ("*void", nk_s2stdStr({NK_SLICE_INIT(sb)}));
+
+    nksb_clear(&sb);
+    nkl_type_inspect(str_t, nksb_getStream(&sb));
+    EXPECT_EQ("*const i8", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, slice) {
@@ -228,6 +267,10 @@ TEST_F(types, slice) {
     ASSERT_TRUE(string_t->underlying_type);
     EXPECT_EQ(string_t->underlying_type->id, struct_t->id);
     ASSERT_EQ(string_t->ir_type.id, struct_t->ir_type.id);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(string_t, nksb_getStream(&sb));
+    EXPECT_EQ("[]const i8", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, struct) {
@@ -250,12 +293,16 @@ TEST_F(types, struct) {
     auto tuple_t = nkl_get_tuple({types, NK_ARRAY_COUNT(types)});
 
     ASSERT_EQ(ivec2_t->as.strct.fields.size, 2);
-    ASSERT_EQ(ivec2_t->as.strct.fields.data[0], nk_cs2atom("x"));
-    ASSERT_EQ(ivec2_t->as.strct.fields.data[1], nk_cs2atom("y"));
+    ASSERT_EQ(ivec2_t->as.strct.fields.data[0].name, nk_cs2atom("x"));
+    ASSERT_EQ(ivec2_t->as.strct.fields.data[1].name, nk_cs2atom("y"));
     EXPECT_EQ(ivec2_t->tclass, NklType_Struct);
     ASSERT_TRUE(ivec2_t->underlying_type);
     EXPECT_EQ(ivec2_t->underlying_type->id, tuple_t->id);
     ASSERT_EQ(ivec2_t->ir_type.id, tuple_t->ir_type.id);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(ivec2_t, nksb_getStream(&sb));
+    EXPECT_EQ("struct { x: i64, y: i64, }", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, tuple) {
@@ -280,6 +327,19 @@ TEST_F(types, tuple) {
     EXPECT_EQ(vec3_t->ir_type.as.aggr.elems.data[2].type->id, f64_t->ir_type.id);
     EXPECT_EQ(vec3_t->tclass, NklType_Tuple);
     EXPECT_EQ(vec3_t->underlying_type, nullptr);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(vec3_t, nksb_getStream(&sb));
+    EXPECT_EQ("(f64, f64, f64, )", nk_s2stdStr({NK_SLICE_INIT(sb)}));
+
+    auto void_t = nkl_get_tuple({});
+
+    EXPECT_EQ(void_t->ir_type.size, 0);
+    EXPECT_EQ(void_t->ir_type.align, 1);
+    ASSERT_EQ(void_t->ir_type.kind, NkIrType_Aggregate);
+    EXPECT_EQ(void_t->ir_type.as.aggr.elems.size, 0);
+    EXPECT_EQ(void_t->tclass, NklType_Tuple);
+    EXPECT_EQ(void_t->underlying_type, nullptr);
 }
 
 TEST_F(types, typeref) {
@@ -296,6 +356,10 @@ TEST_F(types, typeref) {
     ASSERT_TRUE(typeref_t->underlying_type);
     EXPECT_EQ(typeref_t->underlying_type->id, void_ptr_t->id);
     ASSERT_EQ(typeref_t->ir_type.id, void_ptr_t->ir_type.id);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(typeref_t, nksb_getStream(&sb));
+    EXPECT_EQ("type_t", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, union) {
@@ -320,9 +384,13 @@ TEST_F(types, union) {
     ASSERT_EQ(union_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(union_t->ir_type.as.num.value_type, Float64);
     ASSERT_EQ(union_t->as.strct.fields.size, 2);
-    ASSERT_EQ(union_t->as.strct.fields.data[0], nk_cs2atom("float64"));
-    ASSERT_EQ(union_t->as.strct.fields.data[1], nk_cs2atom("uint64"));
+    ASSERT_EQ(union_t->as.strct.fields.data[0].name, nk_cs2atom("float64"));
+    ASSERT_EQ(union_t->as.strct.fields.data[1].name, nk_cs2atom("uint64"));
     EXPECT_EQ(union_t->tclass, NklType_Union);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(union_t, nksb_getStream(&sb));
+    EXPECT_EQ("union { float64: f64, uint64: u64, }", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
 
 TEST_F(types, void) {
@@ -336,4 +404,8 @@ TEST_F(types, void) {
     EXPECT_EQ(void_t->ir_type.kind, NkIrType_Aggregate);
     EXPECT_EQ(void_t->tclass, NklType_Tuple);
     EXPECT_EQ(void_t->underlying_type, nullptr);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(void_t, nksb_getStream(&sb));
+    EXPECT_EQ("void", nk_s2stdStr({NK_SLICE_INIT(sb)}));
 }
