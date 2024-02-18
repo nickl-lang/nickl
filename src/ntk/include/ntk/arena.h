@@ -55,4 +55,8 @@ T *nk_arena_allocT(NkArena *arena, usize n = 1) {
 
 #endif // __cplusplus
 
+#define NkArenaScope(arena)                 \
+    NkArenaFrame NK_CAT(_frame_, __LINE__); \
+    NkDeferLoop(NK_CAT(_frame_, __LINE__) = nk_arena_grab(arena), nk_arena_popFrame(arena, NK_CAT(_frame_, __LINE__)))
+
 #endif // NTK_ARENA_H_

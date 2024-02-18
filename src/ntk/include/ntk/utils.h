@@ -158,4 +158,6 @@ _NkDeferWithData<T, F> nk_defer(T &&data, F &&f) {
 
 #endif // __cplusplus
 
+#define NkDeferLoop(begin, end) for (int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
+
 #endif // NTK_UTILS_H_

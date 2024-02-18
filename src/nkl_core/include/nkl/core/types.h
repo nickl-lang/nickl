@@ -75,19 +75,19 @@ typedef struct {
 void nkl_types_init(NklState *nkl);
 void nkl_types_free(NklState *nkl);
 
-nkltype_t nkl_get_any(NklState *nkl);
+nkltype_t nkl_get_any(NklState *nkl, usize word_size);
 nkltype_t nkl_get_array(NklState *nkl, nkltype_t elem_type, usize elem_count);
 nkltype_t nkl_get_enum(NklState *nkl, NklFieldArray fields);
 nkltype_t nkl_get_numeric(NklState *nkl, NkIrNumericValueType value_type);
-nkltype_t nkl_get_proc(NklState *nkl, NklProcInfo info);
-nkltype_t nkl_get_ptr(NklState *nkl, nkltype_t target_type, bool is_const);
-nkltype_t nkl_get_slice(NklState *nkl, nkltype_t target_type, bool is_const);
+nkltype_t nkl_get_proc(NklState *nkl, usize word_size, NklProcInfo info);
+nkltype_t nkl_get_ptr(NklState *nkl, usize word_size, nkltype_t target_type, bool is_const);
+nkltype_t nkl_get_slice(NklState *nkl, usize word_size, nkltype_t target_type, bool is_const);
 nkltype_t nkl_get_struct(NklState *nkl, NklFieldArray fields);
 nkltype_t nkl_get_struct_packed(NklState *nkl, NklFieldArray fields);
 nkltype_t nkl_get_tuple(NklState *nkl, NklTypeArray types);
 nkltype_t nkl_get_tupleEx(NklState *nkl, nkltype_t const *types, usize count, usize stride);
 nkltype_t nkl_get_tuple_packed(NklState *nkl, NklTypeArray types);
-nkltype_t nkl_get_typeref(NklState *nkl);
+nkltype_t nkl_get_typeref(NklState *nkl, usize word_size);
 nkltype_t nkl_get_union(NklState *nkl, NklFieldArray fields);
 nkltype_t nkl_get_void(NklState *nkl);
 
