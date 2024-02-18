@@ -1,8 +1,8 @@
-#include "ffi_adapter.hpp"
+#include "ffi_adapter.h"
 
 #include <ffi.h>
 
-#include "interp.hpp"
+#include "interp.h"
 #include "nkb/common.h"
 #include "ntk/allocator.h"
 #include "ntk/log.h"
@@ -153,9 +153,7 @@ void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const 
 
     ffi_cif cif;
 
-    {
-        std::lock_guard lk{ctx->mtx};
-
+    NK_MUTEX_GUARD_SCOPE(ctx->mtx) {
         auto const rtype = getNativeHandle(ctx, call_data->rett);
         auto const atypes = getNativeHandleArray(ctx, stack, {call_data->argt, call_data->argc});
 
@@ -174,9 +172,7 @@ void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc
 
     NkIrNativeClosure_T *cl;
 
-    {
-        std::lock_guard lk{ctx->mtx};
-
+    NK_MUTEX_GUARD_SCOPE(ctx->mtx) {
         cl = nk_allocT<NkIrNativeClosure_T>(alloc);
         cl->proc = call_data->proc.bytecode;
 

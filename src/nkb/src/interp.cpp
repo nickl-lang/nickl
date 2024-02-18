@@ -1,10 +1,9 @@
-#include "interp.hpp"
+#include "interp.h"
 
 #include <cstring>
 #include <vector>
 
-#include "bytecode.hpp"
-#include "ffi_adapter.hpp"
+#include "ffi_adapter.h"
 #include "ntk/allocator.h"
 #include "ntk/log.h"
 #include "ntk/os/syscall.h"

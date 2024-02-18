@@ -1,8 +1,12 @@
-#ifndef NKB_FFI_ADAPTER_HPP_
-#define NKB_FFI_ADAPTER_HPP_
+#ifndef NKB_FFI_ADAPTER_H_
+#define NKB_FFI_ADAPTER_H_
 
-#include "bytecode.hpp"
+#include "bytecode.h"
 #include "nkb/common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct {
     union {
@@ -21,4 +25,8 @@ typedef struct {
 void nk_native_invoke(NkFfiContext *ctx, NkArena *stack, NkNativeCallData const *call_data);
 void *nk_native_makeClosure(NkFfiContext *ctx, NkArena *stack, NkAllocator alloc, NkNativeCallData const *call_data);
 
-#endif // NKB_FFI_ADAPTER_HPP_
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NKB_FFI_ADAPTER_H_

@@ -1,7 +1,7 @@
-#include "bytecode.hpp"
+#include "bytecode.h"
 
-#include "ffi_adapter.hpp"
-#include "interp.hpp"
+#include "ffi_adapter.h"
+#include "interp.h"
 #include "ir_impl.hpp"
 #include "nkb/common.h"
 #include "nkb/ir.h"
@@ -634,6 +634,7 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
 
         .ffi_ctx{
             .alloc = ir->alloc,
+            .mtx = nk_mutex_alloc(),
         },
     };
 }
@@ -641,6 +642,7 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
 void nkir_freeRunCtx(NkIrRunCtx ctx) {
     NK_LOG_TRC("%s", __func__);
 
+    nk_mutex_free(ctx->ffi_ctx.mtx);
     ctx->ffi_ctx.typemap.deinit();
 
     nk_freeT(ctx->ir->alloc, ctx);

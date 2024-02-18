@@ -99,7 +99,7 @@ static void get_ir_aggregate(NklState *nkl, NklType *backing, NkIrAggregateLayou
 
     NkIrTypeKind const kind = NkIrType_Aggregate;
 
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
@@ -133,7 +133,7 @@ static void get_ir_numeric(NklState *nkl, NklType *backing, NkIrNumericValueType
 
     NkIrTypeKind const kind = NkIrType_Numeric;
 
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
@@ -161,7 +161,7 @@ static void get_ir_ptr(NklState *nkl, usize word_size, NklType *backing, nktype_
 
     NkIrTypeKind const kind = NkIrType_Pointer;
 
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
@@ -189,7 +189,7 @@ static void get_ir_proc(NklState *nkl, usize word_size, NklType *backing, NklPro
 
     NkIrTypeKind const kind = NkIrType_Procedure;
 
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
@@ -234,7 +234,7 @@ nkltype_t nkl_get_any(NklState *nkl, usize word_size) {
     NklTypeClass const tclass = NklType_Any;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -271,7 +271,7 @@ nkltype_t nkl_get_array(NklState *nkl, nkltype_t elem_type, usize elem_count) {
     NklTypeClass const tclass = NklType_Array;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -302,7 +302,7 @@ nkltype_t nkl_get_enum(NklState *nkl, NklFieldArray fields) {
     NklTypeClass const tclass = NklType_Enum;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -345,7 +345,7 @@ nkltype_t nkl_get_numeric(NklState *nkl, NkIrNumericValueType value_type) {
     NklTypeClass const tclass = NklType_Numeric;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -370,7 +370,7 @@ nkltype_t nkl_get_proc(NklState *nkl, usize word_size, NklProcInfo info) {
     NklTypeClass const tclass = NklType_Procedure;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -401,7 +401,7 @@ nkltype_t nkl_get_ptr(NklState *nkl, usize word_size, nkltype_t target_type, boo
     NklTypeClass const tclass = NklType_Pointer;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -429,7 +429,7 @@ nkltype_t nkl_get_slice(NklState *nkl, usize word_size, nkltype_t target_type, b
     NklTypeClass const tclass = NklType_Slice;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -469,7 +469,7 @@ nkltype_t nkl_get_struct(NklState *nkl, NklFieldArray fields) {
     NklTypeClass const tclass = NklType_Struct;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -516,7 +516,7 @@ nkltype_t nkl_get_tupleEx(NklState *nkl, nkltype_t const *types, usize count, us
     NklTypeClass const tclass = NklType_Tuple;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -555,7 +555,7 @@ nkltype_t nkl_get_typeref(NklState *nkl, usize word_size) {
     NklTypeClass const tclass = NklType_Typeref;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -582,7 +582,7 @@ nkltype_t nkl_get_union(NklState *nkl, NklFieldArray fields) {
     NklTypeClass const tclass = NklType_Union;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
@@ -623,7 +623,7 @@ nkltype_t nkl_get_void(NklState *nkl) {
     NklTypeClass const tclass = NklType_Tuple;
 
     TypeSearchResult res;
-    NkArenaScope(&nkl->types.tmp_arena) {
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);

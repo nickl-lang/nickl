@@ -1,7 +1,5 @@
-#ifndef NKB_BYTECODE_HPP_
-#define NKB_BYTECODE_HPP_
-
-#include <mutex>
+#ifndef NKB_BYTECODE_H_
+#define NKB_BYTECODE_H_
 
 #include "nkb/common.h"
 #include "nkb/ir.h"
@@ -11,6 +9,11 @@
 #include "ntk/hash_map.hpp"
 #include "ntk/os/common.h"
 #include "ntk/os/dl.h"
+#include "ntk/os/thread.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum NkBcOpcode {
 #define OP(NAME) NK_CAT(nkop_, NAME),
@@ -78,7 +81,7 @@ struct NkBcProc_T {
 struct NkFfiContext {
     NkAllocator alloc;
     NkHashMap<u64, void *> typemap{};
-    std::mutex mtx{};
+    NkOsHandle mtx{};
 };
 
 struct NkIrRunCtx_T {
@@ -95,7 +98,7 @@ struct NkIrRunCtx_T {
     NkString error_str{};
 };
 
-inline void *nkbc_deref(u8 *base, NkBcRef const &ref) {
+NK_INLINE void *nkbc_deref(u8 *base, NkBcRef const &ref) {
     u8 *ptr = base + ref.offset;
     int indir = ref.indir;
     while (indir--) {
@@ -104,4 +107,8 @@ inline void *nkbc_deref(u8 *base, NkBcRef const &ref) {
     return ptr + ref.post_offset;
 }
 
-#endif // NKB_BYTECODE_HPP_
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NKB_BYTECODE_H_

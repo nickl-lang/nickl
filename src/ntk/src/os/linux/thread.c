@@ -21,6 +21,8 @@ NkOsHandle nk_mutex_alloc(void) {
 }
 
 i32 nk_mutex_free(NkOsHandle h_mutex) {
+    nk_assert(!nkos_handleIsZero(h_mutex) && "Using uninitialized mutex");
+
     pthread_mutex_t *mutex = handle_toNative(h_mutex);
     i32 res = pthread_mutex_destroy(mutex);
 
@@ -32,9 +34,11 @@ i32 nk_mutex_free(NkOsHandle h_mutex) {
 }
 
 i32 nk_mutex_lock(NkOsHandle h_mutex) {
+    nk_assert(!nkos_handleIsZero(h_mutex) && "Using uninitialized mutex");
     return pthread_mutex_lock(handle_toNative(h_mutex));
 }
 
 i32 nk_mutex_unlock(NkOsHandle h_mutex) {
+    nk_assert(!nkos_handleIsZero(h_mutex) && "Using uninitialized mutex");
     return pthread_mutex_unlock(handle_toNative(h_mutex));
 }
