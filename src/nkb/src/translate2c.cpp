@@ -3,7 +3,7 @@
 #include <cmath>
 #include <limits>
 
-#include "ir_impl.hpp"
+#include "ir_impl.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"

@@ -3,7 +3,7 @@
 #include <cstdarg>
 
 #include "cc_adapter.h"
-#include "ir_impl.hpp"
+#include "ir_impl.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"

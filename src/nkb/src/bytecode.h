@@ -6,7 +6,7 @@
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
-#include "ntk/hash_map.hpp"
+#include "ntk/hash_tree.h"
 #include "ntk/os/common.h"
 #include "ntk/os/dl.h"
 #include "ntk/os/thread.h"
@@ -15,16 +15,16 @@
 extern "C" {
 #endif
 
-enum NkBcOpcode {
+typedef enum {
 #define OP(NAME) NK_CAT(nkop_, NAME),
 #include "bytecode.inl"
 
     NkBcOpcode_Count,
-};
+} NkBcOpcode;
 
 char const *nkbcOpcodeName(u16 code);
 
-enum NkBcRefKind { // must preserve NkIrRefKind order
+typedef enum {
     NkBcRef_None = 0,
     NkBcRef_Frame,
     NkBcRef_Arg,
@@ -34,20 +34,20 @@ enum NkBcRefKind { // must preserve NkIrRefKind order
     NkBcRef_Instr,
 
     NkBcRef_Count,
-};
+} NkBcRefKind; // must preserve NkIrRefKind order
 
-struct NkBcRef {
+typedef struct {
     usize offset;
     usize post_offset;
     nktype_t type;
     NkBcRefKind kind;
     u8 indir;
-};
+} NkBcRef;
 
-struct NkBcRefArray {
+typedef struct {
     NkBcRef *data;
     usize size;
-};
+} NkBcRefArray;
 
 typedef enum {
     NkBcArg_None,
@@ -56,18 +56,18 @@ typedef enum {
     NkBcArg_RefArray,
 } NkBcArgKind;
 
-struct NkBcArg {
+typedef struct {
     union {
         NkBcRef ref;
         NkBcRefArray refs;
     };
     NkBcArgKind kind;
-};
+} NkBcArg;
 
-struct NkBcInstr {
+typedef struct {
     NkBcArg arg[3];
     u16 code;
-};
+} NkBcInstr;
 
 typedef struct NkBcProc_T *NkBcProc;
 
@@ -78,11 +78,38 @@ struct NkBcProc_T {
     NkDynArray(NkBcInstr) instrs;
 };
 
-struct NkFfiContext {
+typedef struct {
+    u32 key;
+    void *val;
+} TypeTree_kv;
+
+// TODO Use hash map for types
+NK_HASH_TREE_TYPEDEF(TypeTree, TypeTree_kv);
+NK_HASH_TREE_PROTO(TypeTree, TypeTree_kv, u32);
+
+typedef struct {
     NkAllocator alloc;
-    NkHashMap<u64, void *> typemap{};
+    TypeTree types{};
     NkOsHandle mtx{};
-};
+} NkFfiContext;
+
+typedef struct {
+    NkAtom key;
+    NkOsHandle val;
+} ExternLib_kv;
+
+// TODO Use hash map or linear array for extern libs
+NK_HASH_TREE_TYPEDEF(ExternLibTree, ExternLib_kv);
+NK_HASH_TREE_PROTO(ExternLibTree, ExternLib_kv, NkAtom);
+
+typedef struct {
+    NkAtom key;
+    void *val;
+} ExternSym_kv;
+
+// TODO Use hash map or linear array for extern syms
+NK_HASH_TREE_TYPEDEF(ExternSymTree, ExternSym_kv);
+NK_HASH_TREE_PROTO(ExternSymTree, ExternSym_kv, NkAtom);
 
 struct NkIrRunCtx_T {
     NkIrProg ir;
@@ -90,21 +117,21 @@ struct NkIrRunCtx_T {
 
     NkDynArray(NkBcProc) procs;
     NkDynArray(void *) data;
-    NkHashMap<NkAtom, NkOsHandle> extern_libs;
-    NkHashMap<NkAtom, void *> extern_syms;
+    ExternLibTree extern_libs;
+    ExternSymTree extern_syms;
 
     NkFfiContext ffi_ctx;
 
     NkString error_str{};
 };
 
-NK_INLINE void *nkbc_deref(u8 *base, NkBcRef const &ref) {
-    u8 *ptr = base + ref.offset;
-    int indir = ref.indir;
+NK_INLINE void *nkbc_deref(u8 *base, NkBcRef const *ref) {
+    u8 *ptr = base + ref->offset;
+    int indir = ref->indir;
     while (indir--) {
         ptr = *(u8 **)ptr;
     }
-    return ptr + ref.post_offset;
+    return ptr + ref->post_offset;
 }
 
 #ifdef __cplusplus

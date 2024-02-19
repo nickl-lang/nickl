@@ -2,7 +2,7 @@
 
 #include "ffi_adapter.h"
 #include "interp.h"
-#include "ir_impl.hpp"
+#include "ir_impl.h"
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
@@ -15,6 +15,39 @@
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+
+static u32 const *TypeTree_kv_getKey(TypeTree_kv const *item) {
+    return &item->key;
+}
+
+static u64 u32_hash(u32 key) {
+    return nk_hashVal(key);
+}
+
+static bool u32_equal(u32 lhs, u32 rhs) {
+    return lhs == rhs;
+}
+
+NK_HASH_TREE_IMPL(TypeTree, TypeTree_kv, u32, TypeTree_kv_getKey, u32_hash, u32_equal);
+
+static NkAtom const *ExternLib_kv_getKey(ExternLib_kv const *item) {
+    return &item->key;
+}
+
+static NkAtom const *ExternSym_kv_getKey(ExternSym_kv const *item) {
+    return &item->key;
+}
+
+static u64 NkAtom_hash(NkAtom key) {
+    return nk_hashVal(key);
+}
+
+static bool NkAtom_equal(NkAtom lhs, NkAtom rhs) {
+    return lhs == rhs;
+}
+
+NK_HASH_TREE_IMPL(ExternLibTree, ExternLib_kv, NkAtom, ExternLib_kv_getKey, NkAtom_hash, NkAtom_equal);
+NK_HASH_TREE_IMPL(ExternSymTree, ExternSym_kv, NkAtom, ExternSym_kv_getKey, NkAtom_hash, NkAtom_equal);
 
 namespace {
 
@@ -52,7 +85,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
             break;
         case NkBcRef_Data:
             if (expand_values) {
-                nkirv_inspect(nkbc_deref(nullptr, ref), ref.type, out);
+                nkirv_inspect(nkbc_deref(nullptr, &ref), ref.type, out);
             } else {
                 nk_stream_printf(out, "data");
             }
@@ -138,9 +171,9 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ..
 NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
     NK_PROF_FUNC();
 
-    auto found = ctx->extern_libs.find(name);
+    auto found = ExternLibTree_find(&ctx->extern_libs, name);
     if (found) {
-        return *found;
+        return found->val;
     } else {
         auto const name_str = nk_atom2cs(name);
         auto h_lib = nkdl_loadLibrary(name_str);
@@ -180,15 +213,15 @@ NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
             }
         }
         NK_LOG_DBG("loaded extern library `%s`: %zu", name_str, h_lib.val);
-        return ctx->extern_libs.insert(name, h_lib);
+        return ExternLibTree_insert(&ctx->extern_libs, {name, h_lib})->val;
     }
 }
 
 void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
     NK_PROF_FUNC();
-    auto found = ctx->extern_syms.find(name);
+    auto found = ExternSymTree_find(&ctx->extern_syms, name);
     if (found) {
-        return *found;
+        return found->val;
     } else {
         auto const name_str = nk_atom2cs(name);
         NkOsHandle h_lib = getExternLib(ctx, lib_hame);
@@ -201,7 +234,7 @@ void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
             return NULL;
         }
         NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
-        return ctx->extern_syms.insert(name, sym);
+        return ExternSymTree_insert(&ctx->extern_syms, {name, sym})->val;
     }
 }
 
@@ -629,11 +662,12 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
 
         .procs{0, 0, 0, ir->alloc},
         .data{0, 0, 0, ir->alloc},
-        .extern_libs = decltype(NkIrRunCtx_T::extern_libs)::create(ir->alloc),
-        .extern_syms = decltype(NkIrRunCtx_T::extern_syms)::create(ir->alloc),
+        .extern_libs = {NULL, ir->alloc},
+        .extern_syms = {NULL, ir->alloc},
 
         .ffi_ctx{
             .alloc = ir->alloc,
+            .types = {NULL, ir->alloc},
             .mtx = nk_mutex_alloc(),
         },
     };
@@ -643,7 +677,6 @@ void nkir_freeRunCtx(NkIrRunCtx ctx) {
     NK_LOG_TRC("%s", __func__);
 
     nk_mutex_free(ctx->ffi_ctx.mtx);
-    ctx->ffi_ctx.typemap.deinit();
 
     nk_freeT(ctx->ir->alloc, ctx);
 }

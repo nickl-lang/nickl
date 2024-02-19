@@ -1,17 +1,21 @@
-#ifndef NKB_IR_IMPL_HPP_
-#define NKB_IR_IMPL_HPP_
+#ifndef NKB_IR_IMPL_H_
+#define NKB_IR_IMPL_H_
 
 #include "nkb/ir.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
 
-struct NkIrLocal_T {
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
     NkAtom name;
     nktype_t type;
     usize offset;
-};
+} NkIrLocal_T;
 
-struct NkIrProc_T {
+typedef struct {
     NkDynArray(usize) blocks;
     NkDynArray(NkIrLocal_T) locals;
     NkDynArray(usize) scopes;
@@ -30,26 +34,26 @@ struct NkIrProc_T {
     usize frame_size{};
     usize frame_align{1};
     usize cur_frame_size{};
-};
+} NkIrProc_T;
 
-struct NkIrBlock {
+typedef struct {
     NkAtom name;
     NkDynArray(usize) instrs;
-};
+} NkIrBlock;
 
-struct NkIrDecl_T {
+typedef struct {
     NkAtom name;
     void *data;
     nktype_t type;
     NkIrVisibility visibility;
     bool read_only;
-};
+} NkIrDecl_T;
 
-struct NkIrExternSym_T {
+typedef struct {
     NkAtom lib;
     NkAtom name;
     nktype_t type;
-};
+} NkIrExternSym_T;
 
 struct NkIrProg_T {
     NkAllocator alloc;
@@ -68,4 +72,8 @@ struct NkIrProg_T {
     NkString error_str{};
 };
 
-#endif // NKB_IR_IMPL_HPP_
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NKB_IR_IMPL_H_

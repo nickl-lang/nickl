@@ -24,10 +24,10 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
 
     ffi_type *ffi_t = nullptr;
 
-    auto found = ctx->typemap.find(type->id);
+    auto found = TypeTree_find(&ctx->types, type->id);
     if (found) {
-        NK_LOG_DBG("Found existing ffi type=%p", *found);
-        ffi_t = (ffi_type *)*found;
+        NK_LOG_DBG("Found existing ffi type=%p", found->val);
+        ffi_t = (ffi_type *)found->val;
     } else {
         switch (type->kind) {
         case NkIrType_Numeric:
@@ -100,7 +100,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
             break;
         }
 
-        ctx->typemap.insert(type->id, ffi_t);
+        TypeTree_insert(&ctx->types, {type->id, ffi_t});
     }
 
 #ifdef ENABLE_LOGGING
