@@ -1,4 +1,4 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 extern "m" proc sqrt(f64) f64
 
 type Vec2: { [2]f64 }
@@ -16,7 +16,7 @@ proc Vec2_length(vec: Vec2) f64 {
 
 const c_vec: Vec2 {[1.2, 3.4]}
 
-pub proc main(argc: i32, argv: **i8) i32 {
+pub proc main(argc: i32, argv: ptr) i32 {
 @start
     len: f64
     call Vec2_length, (c_vec) -> len

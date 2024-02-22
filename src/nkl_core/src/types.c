@@ -171,7 +171,7 @@ static void get_ir_ptr(NklState *nkl, usize word_size, NklType *backing, nktype_
 
         if (res.inserted) {
             backing->ir_type = (NkIrType){
-                .as = {.ptr = {.target_type = target_type}},
+                .as = {{{0}}},
                 .size = word_size,
                 .flags = 0,
                 .align = word_size,
@@ -413,6 +413,7 @@ nkltype_t nkl_get_ptr(NklState *nkl, usize word_size, nkltype_t target_type, boo
         if (res.inserted) {
             get_ir_ptr(nkl, word_size, res.type, &target_type->ir_type);
 
+            res.type->as.ptr.target_type = target_type;
             res.type->as.ptr.is_const = is_const;
 
             res.type->tclass = tclass;
@@ -706,7 +707,7 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
         }
         break;
     case NklType_Pointer: {
-        nkltype_t target_type = (nkltype_t)type->ir_type.as.ptr.target_type;
+        nkltype_t target_type = (nkltype_t)type->as.ptr.target_type;
         nk_stream_printf(out, "*");
         if (type->as.ptr.is_const) {
             nk_stream_printf(out, "const ");
@@ -736,7 +737,7 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
             nk_stream_printf(out, "const");
         }
         nk_stream_printf(out, " ");
-        nkl_type_inspect((nkltype_t)ptr_t->ir_type.as.ptr.target_type, out);
+        nkl_type_inspect((nkltype_t)ptr_t->as.ptr.target_type, out);
         break;
     }
     case NklType_Struct: {

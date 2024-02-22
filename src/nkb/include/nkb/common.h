@@ -111,10 +111,6 @@ typedef struct {
 } NkIrNumericTypeInfo;
 
 typedef struct {
-    nktype_t target_type;
-} NkIrPointerTypeInfo;
-
-typedef struct {
     NkIrProcInfo info;
 } NkIrProcTypeInfo;
 
@@ -122,7 +118,6 @@ typedef struct NkIrType {
     union {
         NkIrAggregateTypeInfo aggr;
         NkIrNumericTypeInfo num;
-        NkIrPointerTypeInfo ptr;
         NkIrProcTypeInfo proc;
     } as;
     u64 size;

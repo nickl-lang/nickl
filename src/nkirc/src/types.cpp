@@ -65,7 +65,7 @@ nktype_t nkir_makeNumericType(NkIrCompiler c, NkIrNumericValueType value_type) {
     });
 }
 
-nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
+nktype_t nkir_makePointerType(NkIrCompiler c) {
     auto const kind = NkIrType_Pointer;
 
     ByteArray fp{};
@@ -74,13 +74,10 @@ nktype_t nkir_makePointerType(NkIrCompiler c, nktype_t target_type) {
         nkda_free(&fp);
     };
     pushVal(fp, kind);
-    pushVal(fp, target_type->id);
 
     return getTypeByFp(c, fp, [&]() {
         return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
-            .as{.ptr{
-                .target_type = target_type,
-            }},
+            .as{},
             .size = c->conf.ptr_size,
             .flags = 0,
             .align = c->conf.ptr_size,

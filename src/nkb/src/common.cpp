@@ -66,8 +66,7 @@ void nkirt_inspect(nktype_t type, NkStream out) {
         }
         break;
     case NkIrType_Pointer:
-        nk_stream_printf(out, "*");
-        nkirt_inspect(type->as.ptr.target_type, out);
+        nk_stream_printf(out, "ptr");
         break;
     case NkIrType_Procedure:
         nk_stream_printf(out, "(");

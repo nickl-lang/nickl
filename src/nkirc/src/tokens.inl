@@ -7,7 +7,6 @@
 OP(operator_marker, "")
 
 OP(amper, "&")
-OP(aster, "*")
 OP(brace_l, "{")
 OP(brace_r, "}")
 OP(bracket_l, "[")
@@ -86,6 +85,7 @@ KW(syscall)
 KW(typename_marker)
 
 KW(void)
+KW(ptr)
 
 KW(f32)
 KW(f64)

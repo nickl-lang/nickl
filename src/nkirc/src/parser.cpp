@@ -451,6 +451,8 @@ private:
     nktype_t parseType() {
         if (accept(t_void)) {
             return nkir_makeVoidType(m_compiler);
+        } else if (accept(t_ptr)) {
+            return nkir_makePointerType(m_compiler);
         }
 
         else if (accept(t_f32)) {
@@ -511,11 +513,6 @@ private:
             } while (accept(t_comma));
             EXPECT(t_brace_r);
             return nkir_makeAggregateType(m_compiler, types.data, counts.data, types.size);
-        }
-
-        else if (accept(t_aster)) {
-            DEFINE(target_type, parseType());
-            return nkir_makePointerType(m_compiler, target_type);
         }
 
         else {
@@ -811,13 +808,12 @@ private:
             offset = value;
         }
 
+        if (indir && result_ref.type->kind != NkIrType_Pointer) {
+            return error("dereference of a non-pointer type"), NkIrRef{};
+        }
+
         for (u8 i = 0; i < indir; i++) {
             EXPECT(t_bracket_r);
-
-            if (result_ref.type->kind != NkIrType_Pointer) {
-                return error("dereference of a non-pointer type"), NkIrRef{};
-            }
-            result_ref.type = result_ref.type->as.ptr.target_type;
         }
 
         if (accept(t_plus)) {
@@ -832,7 +828,10 @@ private:
 
         result_ref.indir += indir;
 
-        if (accept(t_colon)) {
+        if (indir) {
+            EXPECT(t_colon);
+            ASSIGN(result_ref.type, parseType());
+        } else if (accept(t_colon)) {
             ASSIGN(result_ref.type, parseType());
         }
 
@@ -841,7 +840,7 @@ private:
         }
 
         if (deref) {
-            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler, result_ref.type));
+            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler));
         }
 
         return result_ref;

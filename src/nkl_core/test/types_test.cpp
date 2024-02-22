@@ -236,7 +236,6 @@ TEST_F(types, ptr) {
     EXPECT_EQ(void_ptr_t->ir_type.size, sizeof(void *));
     EXPECT_EQ(void_ptr_t->ir_type.align, alignof(void *));
     ASSERT_EQ(void_ptr_t->ir_type.kind, NkIrType_Pointer);
-    EXPECT_EQ(void_ptr_t->ir_type.as.ptr.target_type->id, void_t->ir_type.id);
     EXPECT_EQ(void_ptr_t->tclass, NklType_Pointer);
     EXPECT_EQ(void_ptr_t->underlying_type, nullptr);
 

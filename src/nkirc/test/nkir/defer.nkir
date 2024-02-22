@@ -1,4 +1,4 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
 local proc allocate() i64 {
 @start

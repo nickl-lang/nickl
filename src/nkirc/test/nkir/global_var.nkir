@@ -1,4 +1,4 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
 data g_value: i64
 proc getValue() i64 {
@@ -13,9 +13,9 @@ proc setValue(val: i64) void {
 }
 
 const c_value: i64 42
-proc writeValue(ptr: *i64) void {
+proc writeValue(pval: ptr) void {
 @start
-    mov c_value -> [ptr]
+    mov c_value -> [pval]:i64
     ret
 }
 
@@ -27,7 +27,7 @@ proc printValue() void {
     ret
 }
 
-pub proc main(argc: i32, argv: **i8) i32 {
+pub proc main(argc: i32, argv: ptr) i32 {
 @start
     call printValue, ()
 

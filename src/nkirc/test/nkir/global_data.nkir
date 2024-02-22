@@ -1,4 +1,4 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
 pub data  g_zero: i64
 pub data  g_init: i64 42

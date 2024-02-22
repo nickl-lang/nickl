@@ -195,8 +195,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         writeNumericType(type->as.num.value_type, &tmp_s);
         break;
     case NkIrType_Pointer:
-        writeType(ctx, type->as.ptr.target_type, &tmp_s);
-        nksb_printf(&tmp_s, "*");
+        nksb_printf(&tmp_s, "void*");
         break;
     case NkIrType_Procedure: {
         is_complex = true;
