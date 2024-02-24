@@ -49,7 +49,7 @@ pub proc main(argc: i32, argv: ptr) i32 {
     sub pi, tmp     -> pi
     mul pi, :f64 4. -> pi
 
-    call printf, (&"pi = %.*g\n", :i32 16, pi)
+    call printf, (&"pi = %.*g\n", ..., :i32 16, pi)
 
     mov  0 -> ret
     ret

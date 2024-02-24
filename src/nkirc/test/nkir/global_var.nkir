@@ -23,7 +23,7 @@ proc printValue() void {
 @start
     val: i64
     call getValue, () -> val
-    call printf, (&"%zi\n", val)
+    call printf, (&"%zi\n", ..., val)
     ret
 }
 

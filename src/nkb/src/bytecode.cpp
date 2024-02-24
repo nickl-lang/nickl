@@ -483,12 +483,20 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
             auto const &arg0 = ir_instr.arg[0];
             auto const &arg1 = ir_instr.arg[1];
+            auto const &arg2 = ir_instr.arg[2];
 
             switch (ir_instr.code) {
             case nkir_call: {
                 if (arg1.ref.kind == NkIrRef_ExternProc ||
                     (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
                     code = nkop_call_ext;
+                    nk_assert(arg2.kind == NkIrArg_RefArray);
+                    for (usize i = 0; i < arg2.refs.size; i++) {
+                        if (arg2.refs.data[i].kind == NkIrRef_VariadicMarker) {
+                            code = nkop_call_extv;
+                            break;
+                        }
+                    }
                 } else if (arg1.ref.kind == NkIrRef_Proc) {
                     code = nkop_call_jmp;
                 }

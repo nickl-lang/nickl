@@ -7,10 +7,10 @@ pub const c_init: i64 42
 
 pub proc main() i32 {
 @start
-    call printf, (&"g_zero=%zi\n", g_zero)
-    call printf, (&"g_init=%zi\n", g_init)
-    call printf, (&"c_zero=%zi\n", c_zero)
-    call printf, (&"c_init=%zi\n", c_init)
+    call printf, (&"g_zero=%zi\n", ..., g_zero)
+    call printf, (&"g_init=%zi\n", ..., g_init)
+    call printf, (&"c_zero=%zi\n", ..., c_zero)
+    call printf, (&"c_init=%zi\n", ..., c_init)
     mov  0 -> ret
     ret
 }
