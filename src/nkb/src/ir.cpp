@@ -405,6 +405,18 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
     };
 }
 
+NkIrRef nkir_makeVariadicMarkerRef(NkIrProg) {
+    NK_LOG_TRC("%s", __func__);
+    return {
+        .index = 0,
+        .offset = 0,
+        .post_offset = 0,
+        .type = NULL,
+        .kind = NkIrRef_VariadicMarker,
+        .indir = 0,
+    };
+}
+
 NkIrInstr nkir_make_nop(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
     return {{}, ir->cur_line, nkir_nop};
@@ -751,6 +763,10 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
         nk_stream_printf(out, "&");
         auto const &reloc_ref = ir->relocs.data[ref.index];
         nkir_inspectRef(ir, _proc, reloc_ref, out);
+        break;
+    }
+    case NkIrRef_VariadicMarker: {
+        nk_stream_printf(out, "...");
         break;
     }
     case NkIrRef_None:

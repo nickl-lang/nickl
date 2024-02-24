@@ -884,7 +884,11 @@ private:
             if (check(t_par_r) || check(t_eof)) {
                 break;
             }
-            APPEND(&refs, parseRef());
+            if (accept(t_period_3x)) {
+                APPEND(&refs, nkir_makeVariadicMarkerRef(m_ir));
+            } else {
+                APPEND(&refs, parseRef());
+            }
         } while (accept(t_comma));
         EXPECT(t_par_r);
         return {NK_SLICE_INIT(refs)};

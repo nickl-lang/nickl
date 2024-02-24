@@ -69,6 +69,9 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
         } else if (ref.kind == NkBcRef_Instr) {
             nk_stream_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
+        } else if (ref.kind == NkBcRef_VariadicMarker) {
+            nk_stream_printf(out, "...");
+            return;
         }
         for (usize i = 0; i < ref.indir; i++) {
             nk_stream_printf(out, "[");
@@ -93,6 +96,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
         default:
         case NkBcRef_None:
         case NkBcRef_Instr:
+        case NkBcRef_VariadicMarker:
             nk_assert(!"unreachable");
             break;
         }
@@ -398,6 +402,10 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
                 ref.kind = NkBcRef_Data;
                 ref.offset += (usize)ref_addr;
+                break;
+            }
+            case NkIrRef_VariadicMarker: {
+                ref.kind = NkBcRef_VariadicMarker;
                 break;
             }
             default:

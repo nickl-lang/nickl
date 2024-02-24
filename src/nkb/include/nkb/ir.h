@@ -31,6 +31,7 @@ typedef enum {
     NkIrRef_ExternData,
     NkIrRef_ExternProc,
     NkIrRef_Address,
+    NkIrRef_VariadicMarker,
 } NkIrRefKind;
 
 typedef struct {
@@ -148,6 +149,8 @@ NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc);
 
 NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t);
+
+NkIrRef nkir_makeVariadicMarkerRef(NkIrProg ir);
 
 // Instructions
 
