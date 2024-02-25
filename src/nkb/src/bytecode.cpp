@@ -487,6 +487,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
             switch (ir_instr.code) {
             case nkir_call: {
+                nk_assert(arg1.ref.type->kind == NkIrType_Procedure);
                 if (arg1.ref.kind == NkIrRef_ExternProc ||
                     (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
                     code = nkop_call_ext;
@@ -497,7 +498,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                             break;
                         }
                     }
-                } else if (arg1.ref.kind == NkIrRef_Proc) {
+                } else {
                     code = nkop_call_jmp;
                 }
                 break;
@@ -556,7 +557,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
             case nkir_syscall:
 #if NK_SYSCALLS_AVAILABLE
-                code += 1 + ir_instr.arg[2].refs.size;
+                code += 1 + arg2.refs.size;
 #else  // NK_SYSCALLS_AVAILABLE
                 reportError(ctx, "syscalls are not available on the host platform");
                 return false;

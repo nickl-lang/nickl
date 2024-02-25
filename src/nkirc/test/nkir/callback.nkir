@@ -1,0 +1,25 @@
+extern "c" proc printf(ptr, ...) i32
+
+proc invoke(cb: () void) void {
+@start
+    call cb, ()
+    ret
+}
+
+proc callback() void {
+@start
+    call printf, (&"Callback has been called!\n")
+    ret
+}
+
+pub proc main(argc: i32, argv: ptr) i32 {
+@start
+    call invoke, (callback)
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+Callback has been called!
+
+@endoutput */
