@@ -5,6 +5,7 @@
 
 #include "ffi_adapter.h"
 #include "ntk/allocator.h"
+#include "ntk/common.h"
 #include "ntk/log.h"
 #include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
@@ -231,12 +232,45 @@ void interp(NkBcInstr const &instr) {
             argt[i] = instr.arg[2].refs.data[i].type;
         }
 
-        auto const &proc_info = &instr.arg[1].ref.type->as.proc.info;
+        NkNativeCallData const call_data{
+            .proc{.native = deref<void *>(instr.arg[1])},
+            .nfixedargs = argc,
+            .is_variadic = false,
+            .argv = argv,
+            .argt = argt,
+            .argc = argc,
+            .retv = getRefAddr(instr.arg[0].ref),
+            .rett = instr.arg[0].ref.type,
+        };
+
+        nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
+        break;
+    }
+
+    case nkop_call_extv: {
+        auto const frame = nk_arena_grab(&ctx.stack);
+        defer {
+            nk_arena_popFrame(&ctx.stack, frame);
+        };
+
+        usize nfixedargs = 0;
+        auto const argc = instr.arg[2].refs.size - 1;
+        auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc);
+        auto const argt = nk_arena_allocT<nktype_t>(&ctx.stack, argc);
+        for (usize i = 0; i < instr.arg[2].refs.size; i++) {
+            auto const &ref = instr.arg[2].refs.data[i];
+            if (ref.kind == NkBcRef_VariadicMarker) {
+                nfixedargs = i;
+                continue;
+            }
+            argv[i - (bool)nfixedargs] = getRefAddr(ref);
+            argt[i - (bool)nfixedargs] = ref.type;
+        }
 
         NkNativeCallData const call_data{
             .proc{.native = deref<void *>(instr.arg[1])},
-            .nfixedargs = proc_info->args_t.size,
-            .is_variadic = (bool)(proc_info->flags & NkProcVariadic),
+            .nfixedargs = nfixedargs,
+            .is_variadic = true,
             .argv = argv,
             .argt = argt,
             .argc = argc,

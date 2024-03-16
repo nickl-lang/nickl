@@ -1,21 +1,21 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
 local proc allocate() i64 {
 @start
     mov 42 -> ret
-    call printf, (&"allocate()->%zi\n", ret)
+    call printf, (&"allocate()->%zi\n", ..., ret)
     ret
 }
 
 local proc free(resource: i64) void {
 @start
-    call printf, (&"free(%zi)\n", resource)
+    call printf, (&"free(%zi)\n", ..., resource)
     ret
 }
 
 local proc use(resource: i64) void {
 @start
-    call printf, (&"use(%zi)\n", resource)
+    call printf, (&"use(%zi)\n", ..., resource)
     ret
 }
 

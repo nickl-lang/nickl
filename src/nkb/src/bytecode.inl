@@ -54,6 +54,7 @@ SIZ_OP(jmpnz)
 OP(call)
 OPX(call, jmp)
 OPX(call, ext)
+OPX(call, extv)
 
 OP(ext)
 

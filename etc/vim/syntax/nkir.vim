@@ -3,7 +3,7 @@ if exists("b:current_syntax")
 endif
 
 syn keyword nkirKeyword null proc extern cdecl type data const pub local include
-syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void
+syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void ptr
 syn keyword nkirBoolean true false
 
 syn match nkirComment    display '//.*$'

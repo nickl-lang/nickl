@@ -156,7 +156,7 @@ struct GeneratorState {
     Void parseProc(NkIrVisibility vis) {
         usize cur_line = m_cur_token->lin;
 
-        DEFINE(sig, parseProcSignature(true));
+        DEFINE(sig, parseProcSignature(true, true));
 
         auto proc = nkir_createProc(m_ir);
 
@@ -233,7 +233,7 @@ struct GeneratorState {
     }
 
     Void parseExternProc(NkAtom lib) {
-        DEFINE(sig, parseProcSignature(false));
+        DEFINE(sig, parseProcSignature(true, false));
 
         new (makeGlobalDecl(sig.name)) Decl{
             {.extern_proc = nkir_makeExternProc(
@@ -414,7 +414,7 @@ private:
         bool is_cdecl{};
     };
 
-    ProcSignatureParseResult parseProcSignature(bool parse_names) {
+    ProcSignatureParseResult parseProcSignature(bool parse_name, bool parse_param_names) {
         ProcSignatureParseResult res{
             .arg_names{0, 0, 0, m_parse_alloc},
             .args_t{0, 0, 0, m_file_alloc},
@@ -422,8 +422,12 @@ private:
         if (accept(t_cdecl)) {
             res.is_cdecl = true;
         }
-        DEFINE(id_token, parseId());
-        res.name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
+        if (parse_name) {
+            DEFINE(id_token, parseId());
+            res.name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
+        } else {
+            res.name = NK_ATOM_INVALID;
+        }
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {
@@ -433,15 +437,15 @@ private:
                 res.is_variadic = true;
                 break;
             }
-            NkAtom name = NK_ATOM_INVALID;
-            if (parse_names) {
+            NkAtom param_name = NK_ATOM_INVALID;
+            if (parse_param_names) {
                 DEFINE(id_token, parseId());
-                name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
+                param_name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
                 EXPECT(t_colon);
             }
             DEFINE(type, parseType());
             nkda_append(&res.args_t, type);
-            nkda_append(&res.arg_names, name);
+            nkda_append(&res.arg_names, param_name);
         } while (accept(t_comma));
         EXPECT(t_par_r);
         ASSIGN(res.ret_t, parseType());
@@ -451,6 +455,8 @@ private:
     nktype_t parseType() {
         if (accept(t_void)) {
             return nkir_makeVoidType(m_compiler);
+        } else if (accept(t_ptr)) {
+            return nkir_makePointerType(m_compiler);
         }
 
         else if (accept(t_f32)) {
@@ -513,9 +519,16 @@ private:
             return nkir_makeAggregateType(m_compiler, types.data, counts.data, types.size);
         }
 
-        else if (accept(t_aster)) {
-            DEFINE(target_type, parseType());
-            return nkir_makePointerType(m_compiler, target_type);
+        else if (check(t_par_l)) {
+            DEFINE(sig, parseProcSignature(false, false));
+            return nkir_makeProcedureType(
+                m_compiler,
+                {
+                    .args_t{NK_SLICE_INIT(sig.args_t)},
+                    .ret_t = sig.ret_t,
+                    .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
+                    .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
+                });
         }
 
         else {
@@ -811,13 +824,12 @@ private:
             offset = value;
         }
 
+        if (indir && result_ref.type->kind != NkIrType_Pointer) {
+            return error("dereference of a non-pointer type"), NkIrRef{};
+        }
+
         for (u8 i = 0; i < indir; i++) {
             EXPECT(t_bracket_r);
-
-            if (result_ref.type->kind != NkIrType_Pointer) {
-                return error("dereference of a non-pointer type"), NkIrRef{};
-            }
-            result_ref.type = result_ref.type->as.ptr.target_type;
         }
 
         if (accept(t_plus)) {
@@ -832,7 +844,10 @@ private:
 
         result_ref.indir += indir;
 
-        if (accept(t_colon)) {
+        if (indir) {
+            EXPECT(t_colon);
+            ASSIGN(result_ref.type, parseType());
+        } else if (accept(t_colon)) {
             ASSIGN(result_ref.type, parseType());
         }
 
@@ -841,7 +856,7 @@ private:
         }
 
         if (deref) {
-            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler, result_ref.type));
+            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler));
         }
 
         return result_ref;
@@ -885,7 +900,11 @@ private:
             if (check(t_par_r) || check(t_eof)) {
                 break;
             }
-            APPEND(&refs, parseRef());
+            if (accept(t_period_3x)) {
+                APPEND(&refs, nkir_makeVariadicMarkerRef(m_ir));
+            } else {
+                APPEND(&refs, parseRef());
+            }
         } while (accept(t_comma));
         EXPECT(t_par_r);
         return {NK_SLICE_INIT(refs)};

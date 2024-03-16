@@ -195,8 +195,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         writeNumericType(type->as.num.value_type, &tmp_s);
         break;
     case NkIrType_Pointer:
-        writeType(ctx, type->as.ptr.target_type, &tmp_s);
-        nksb_printf(&tmp_s, "*");
+        nksb_printf(&tmp_s, "void*");
         break;
     case NkIrType_Procedure: {
         is_complex = true;
@@ -669,14 +668,20 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                 nksb_printf(src, "(");
                 write_ref(instr.arg[1].ref);
                 nksb_printf(src, ")(");
+                bool fixedargs = true;
                 for (usize i = 0; i < instr.arg[2].refs.size; i++) {
+                    auto const &ref = instr.arg[2].refs.data[i];
+                    if (ref.kind == NkIrRef_VariadicMarker) {
+                        fixedargs = false;
+                        continue;
+                    }
                     if (i) {
                         nksb_printf(src, ", ");
                     }
-                    if (i < proc_t->as.proc.info.args_t.size) {
+                    if (fixedargs) {
                         writeCast(ctx, src, proc_t->as.proc.info.args_t.data[i]);
                     }
-                    write_ref(instr.arg[2].refs.data[i]);
+                    write_ref(ref);
                 }
                 nksb_printf(src, ")");
                 break;

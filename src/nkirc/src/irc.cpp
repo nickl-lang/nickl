@@ -54,7 +54,7 @@ int nkir_compile(NkIrCompiler c, NkString in_file, NkIrCompilerConfig conf) {
 
     if (conf.output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
         nkl_diag_printError("entry point is not defined");
-        return false;
+        return 1;
     }
 
     if (!nkir_write(c->ir, c->tmp_arena, conf)) {
@@ -80,7 +80,7 @@ int nkir_run(NkIrCompiler c, NkString in_file) {
 
     if (c->entry_point.idx == NKIR_INVALID_IDX) {
         nkl_diag_printError("entry point is not defined");
-        return false;
+        return 1;
     }
 
     auto run_ctx = nkir_createRunCtx(c->ir, c->tmp_arena);

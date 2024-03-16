@@ -32,6 +32,7 @@ typedef enum {
     NkBcRef_Data,
 
     NkBcRef_Instr,
+    NkBcRef_VariadicMarker,
 
     NkBcRef_Count,
 } NkBcRefKind; // must preserve NkIrRefKind order

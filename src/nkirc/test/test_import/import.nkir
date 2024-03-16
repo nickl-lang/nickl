@@ -1,12 +1,12 @@
 extern "test_import_lib" data g_test_global_var: i64
 extern "test_import_lib" proc setTestGlobalVar(i64) void
 
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
-pub proc main(argc: i32, argv: **i8) i32 {
+pub proc main(argc: i32, argv: ptr) i32 {
 @start
     call setTestGlobalVar, (12345)
-    call printf, (&"%zi\n", g_test_global_var)
+    call printf, (&"%zi\n", ..., g_test_global_var)
     mov  0 -> ret
     ret
 }

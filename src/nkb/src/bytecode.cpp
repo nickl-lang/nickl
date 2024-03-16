@@ -69,6 +69,9 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
         } else if (ref.kind == NkBcRef_Instr) {
             nk_stream_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
+        } else if (ref.kind == NkBcRef_VariadicMarker) {
+            nk_stream_printf(out, "...");
+            return;
         }
         for (usize i = 0; i < ref.indir; i++) {
             nk_stream_printf(out, "[");
@@ -93,6 +96,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
         default:
         case NkBcRef_None:
         case NkBcRef_Instr:
+        case NkBcRef_VariadicMarker:
             nk_assert(!"unreachable");
             break;
         }
@@ -400,6 +404,10 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 ref.offset += (usize)ref_addr;
                 break;
             }
+            case NkIrRef_VariadicMarker: {
+                ref.kind = NkBcRef_VariadicMarker;
+                break;
+            }
             default:
                 nk_assert(!"unreachable");
             case NkIrRef_None:
@@ -475,13 +483,22 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
             auto const &arg0 = ir_instr.arg[0];
             auto const &arg1 = ir_instr.arg[1];
+            auto const &arg2 = ir_instr.arg[2];
 
             switch (ir_instr.code) {
             case nkir_call: {
+                nk_assert(arg1.ref.type->kind == NkIrType_Procedure);
                 if (arg1.ref.kind == NkIrRef_ExternProc ||
                     (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
                     code = nkop_call_ext;
-                } else if (arg1.ref.kind == NkIrRef_Proc) {
+                    nk_assert(arg2.kind == NkIrArg_RefArray);
+                    for (usize i = 0; i < arg2.refs.size; i++) {
+                        if (arg2.refs.data[i].kind == NkIrRef_VariadicMarker) {
+                            code = nkop_call_extv;
+                            break;
+                        }
+                    }
+                } else {
                     code = nkop_call_jmp;
                 }
                 break;
@@ -540,7 +557,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
             case nkir_syscall:
 #if NK_SYSCALLS_AVAILABLE
-                code += 1 + ir_instr.arg[2].refs.size;
+                code += 1 + arg2.refs.size;
 #else  // NK_SYSCALLS_AVAILABLE
                 reportError(ctx, "syscalls are not available on the host platform");
                 return false;

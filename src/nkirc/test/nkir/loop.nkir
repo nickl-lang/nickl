@@ -1,12 +1,12 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
-pub proc main(argc: i32, argv: **i8) i32 {
+pub proc main(argc: i32, argv: ptr) i32 {
     i: i64
     cond: u8
 @loop
     cmp lt i, 5 -> cond
     jmpz cond, @endloop
-    call printf, (&"%zi\n", i)
+    call printf, (&"%zi\n", ..., i)
     add i, 1 -> i
     jmp @loop
 @endloop

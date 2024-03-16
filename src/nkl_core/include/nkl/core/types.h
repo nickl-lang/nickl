@@ -40,6 +40,7 @@ typedef struct {
 typedef NkSlice(NklField) NklFieldArray;
 
 typedef struct {
+    nkltype_t target_type;
     bool is_const;
 } _nkl_type_pointer;
 

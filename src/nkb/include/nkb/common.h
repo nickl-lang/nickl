@@ -20,6 +20,7 @@ typedef enum {
 
 typedef struct NkIrType const *nktype_t;
 
+// TODO: Remove procedure type
 typedef enum {
     NkIrType_Aggregate,
     NkIrType_Numeric,
@@ -28,6 +29,8 @@ typedef enum {
 
     NkIrType_Count,
 } NkIrTypeKind;
+
+// TODO: Remove signed/unsigned type distinction
 
 // 0x<index><size>
 // Ordered in coercion order, max(lhs, rhs) is a common type
@@ -111,10 +114,6 @@ typedef struct {
 } NkIrNumericTypeInfo;
 
 typedef struct {
-    nktype_t target_type;
-} NkIrPointerTypeInfo;
-
-typedef struct {
     NkIrProcInfo info;
 } NkIrProcTypeInfo;
 
@@ -122,7 +121,6 @@ typedef struct NkIrType {
     union {
         NkIrAggregateTypeInfo aggr;
         NkIrNumericTypeInfo num;
-        NkIrPointerTypeInfo ptr;
         NkIrProcTypeInfo proc;
     } as;
     u64 size;

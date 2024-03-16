@@ -1,6 +1,6 @@
-extern "c" proc printf(*i8, ...) i32
+extern "c" proc printf(ptr, ...) i32
 
-pub proc main(argc: i32, argv: **i8) i32 {
+pub proc main(argc: i32, argv: ptr) i32 {
 
 var_i8: i8
 var_u8: u8
@@ -16,50 +16,50 @@ var_f64: f64
 
     ext :u8 42 -> var_i16
     ext var_i16 -> var_i32
-    call printf, (&"%i\n", var_i32)
+    call printf, (&"%i\n", ..., var_i32)
     ext :u8 -1 -> var_i16
     ext var_i16 -> var_i32
-    call printf, (&"%i\n", var_i32)
+    call printf, (&"%i\n", ..., var_i32)
     ext :u8 -1 -> var_u16
     ext var_u16 -> var_i32
-    call printf, (&"%i\n", var_i32)
+    call printf, (&"%i\n", ..., var_i32)
     ext :u8 -1 -> var_i16
     ext var_i16 -> var_u32
-    call printf, (&"%u\n", var_u32)
+    call printf, (&"%u\n", ..., var_u32)
     ext :f32 3.14 -> var_f64
-    call printf, (&"%g\n", var_f64)
+    call printf, (&"%g\n", ..., var_f64)
 
     call printf, (&"\ntrunc:\n")
 
     trunc :u64 -1 -> var_i16
     ext var_i16 -> var_i32
-    call printf, (&"%i\n", var_i32)
+    call printf, (&"%i\n", ..., var_i32)
     trunc :u64 -1 -> var_u16
     ext var_u16 -> var_u32
-    call printf, (&"%u\n", var_u32)
+    call printf, (&"%u\n", ..., var_u32)
     trunc :u64 256 -> var_u8
     ext var_u8 -> var_u32
-    call printf, (&"%u\n", var_u32)
+    call printf, (&"%u\n", ..., var_u32)
     trunc :u64 257 -> var_u8
     ext var_u8 -> var_u32
-    call printf, (&"%u\n", var_u32)
+    call printf, (&"%u\n", ..., var_u32)
     trunc :f64 3.14 -> var_f32
     ext var_f32 -> var_f64
-    call printf, (&"%g\n", var_f64)
+    call printf, (&"%g\n", ..., var_f64)
 
     call printf, (&"\nfp2i:\n")
 
     fp2i :f32 -3.14 -> var_i8
     ext var_i8 -> var_i32
-    call printf, (&"%i\n", var_i32)
+    call printf, (&"%i\n", ..., var_i32)
 
     call printf, (&"\ni2fp:\n")
 
     i2fp 42 -> var_f32
     ext var_f32 -> var_f64
-    call printf, (&"%g\n", var_f64)
+    call printf, (&"%g\n", ..., var_f64)
     i2fp -10 -> var_f64
-    call printf, (&"%g\n", var_f64)
+    call printf, (&"%g\n", ..., var_f64)
 
     mov  0 -> ret
     ret
