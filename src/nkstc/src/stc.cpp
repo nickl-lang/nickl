@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/compiler.h"
+#include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
@@ -22,6 +23,12 @@ NK_LOG_USE_SCOPE(nkstc);
 
 int nkst_compile(NkString in_file) {
     NK_LOG_TRC("%s", __func__);
+
+    NklState state{};
+    nkl_state_init(&state);
+    defer {
+        nkl_state_free(&state);
+    };
 
     NkArena tmp_arena{};
     defer {

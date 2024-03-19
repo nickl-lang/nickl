@@ -46,18 +46,25 @@ void nkl_writeModule(NklModule m, NkString filename) {
     NK_LOG_TRC("%s", __func__);
 }
 
-static void compileNode(NklModule m, NklSource src, NklAstNode const &node) {
+static void compileNode(NklModule m, NklSource src, usize node_idx) {
     NK_LOG_TRC("%s", __func__);
+
+    auto const &node = src.nodes.data[node_idx];
 
     NK_LOG_DBG("Compiling #%s", nk_atom2cs(node.id));
 
-    auto idx = &node - src.nodes.data + 1;
+    auto idx = node_idx + 1;
 
     switch (node.id) {
+    case n_int: {
+        // TODO WIP int parsing
+        auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+        NK_LOG_INF("value=" NKS_FMT, NKS_ARG(token_str));
+    }
+
     case n_list: {
         for (size_t i = 0; i < node.arity; i++, idx = nkl_ast_nextChild(src.nodes, idx)) {
-            auto const &child_node = src.nodes.data[idx];
-            compileNode(m, src, child_node);
+            compileNode(m, src, idx);
         }
         break;
     }
@@ -69,20 +76,20 @@ static void compileNode(NklModule m, NklSource src, NklAstNode const &node) {
         }
 
         auto const &info = src.nodes.data[idx];
+        compileNode(m, src, idx);
         idx = nkl_ast_nextChild(src.nodes, idx);
-        compileNode(m, src, info);
 
         auto const &name = src.nodes.data[idx];
+        compileNode(m, src, idx);
         idx = nkl_ast_nextChild(src.nodes, idx);
-        compileNode(m, src, name);
 
         auto const &params = src.nodes.data[idx];
+        compileNode(m, src, idx);
         idx = nkl_ast_nextChild(src.nodes, idx);
-        compileNode(m, src, params);
 
         auto const &return_type = src.nodes.data[idx];
+        compileNode(m, src, idx);
         idx = nkl_ast_nextChild(src.nodes, idx);
-        compileNode(m, src, return_type);
 
         if (info.id == n_extern) {
             NK_LOG_ERR("extern proc compilation is not implemented");
@@ -108,7 +115,6 @@ void nkl_compile(NklModule m, NklSource src) {
     NK_LOG_TRC("%s", __func__);
 
     if (src.nodes.size) {
-        auto const &root = src.nodes.data[0];
-        compileNode(m, src, root);
+        compileNode(m, src, 0);
     }
 }
