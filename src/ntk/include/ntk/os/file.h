@@ -23,9 +23,9 @@ NkOsHandle nk_open(char const *file, i32 flags);
 
 i32 nk_close(NkOsHandle fd);
 
-NkOsHandle nk_stdin();
-NkOsHandle nk_stdout();
-NkOsHandle nk_stderr();
+NkOsHandle nk_stdin(void);
+NkOsHandle nk_stdout(void);
+NkOsHandle nk_stderr(void);
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "ntk/os/file.h"
 #include "ntk/string.h"
 
 NkPipe nk_proc_createPipe(void) {

@@ -18,6 +18,6 @@ void *nkdl_resolveSymbol(NkOsHandle h_lib, char const *name) {
     return dlsym(handle_toNative(h_lib), name);
 }
 
-char const *nkdl_getLastErrorString() {
+char const *nkdl_getLastErrorString(void) {
     return dlerror();
 }

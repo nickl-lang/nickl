@@ -2,7 +2,7 @@
 #define NTK_OS_PROCESS_H_
 
 #include "ntk/common.h"
-#include "ntk/os/file.h"
+#include "ntk/os/common.h"
 
 #ifdef __cplusplus
 extern "C" {
