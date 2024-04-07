@@ -89,181 +89,181 @@ NkType nkt_get_void() {
 
 void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
     switch (type->tclass) {
-    case NkType_Array:
-        nksb_printf(sb, "[%" PRIu64 "]", type->as.arr.elem_count);
-        nkt_inspect(type->as.arr.elem_type, sb);
-        break;
-    case NkType_Fn: {
-        switch (type->as.fn.call_conv) {
-        case NkCallConv_Nk:
+        case NkType_Array:
+            nksb_printf(sb, "[%" PRIu64 "]", type->as.arr.elem_count);
+            nkt_inspect(type->as.arr.elem_type, sb);
             break;
-        case NkCallConv_Cdecl:
-            nksb_printf(sb, "(cdecl)");
-            break;
-        }
-        nksb_printf(sb, "(");
-        nktype_t const params = type->as.fn.args_t;
-        for (usize i = 0; i < params->as.tuple.elems.size; i++) {
-            if (i) {
-                nksb_printf(sb, ", ");
+        case NkType_Fn: {
+            switch (type->as.fn.call_conv) {
+                case NkCallConv_Nk:
+                    break;
+                case NkCallConv_Cdecl:
+                    nksb_printf(sb, "(cdecl)");
+                    break;
             }
-            nkt_inspect(params->as.tuple.elems.data[i].type, sb);
+            nksb_printf(sb, "(");
+            nktype_t const params = type->as.fn.args_t;
+            for (usize i = 0; i < params->as.tuple.elems.size; i++) {
+                if (i) {
+                    nksb_printf(sb, ", ");
+                }
+                nkt_inspect(params->as.tuple.elems.data[i].type, sb);
+            }
+            nksb_printf(sb, ")->");
+            nkt_inspect(type->as.fn.ret_t, sb);
+            break;
         }
-        nksb_printf(sb, ")->");
-        nkt_inspect(type->as.fn.ret_t, sb);
-        break;
-    }
-    case NkType_Numeric:
-        switch (type->as.num.value_type) {
-        case Int8:
-        case Int16:
-        case Int32:
-        case Int64:
-            nksb_printf(sb, "i");
+        case NkType_Numeric:
+            switch (type->as.num.value_type) {
+                case Int8:
+                case Int16:
+                case Int32:
+                case Int64:
+                    nksb_printf(sb, "i");
+                    break;
+                case Uint8:
+                case Uint16:
+                case Uint32:
+                case Uint64:
+                    nksb_printf(sb, "u");
+                    break;
+                case Float32:
+                case Float64:
+                    nksb_printf(sb, "f");
+                    break;
+                default:
+                    nk_assert(!"unreachable");
+                    break;
+            }
+            nksb_printf(sb, "%" PRIu64, (usize)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
             break;
-        case Uint8:
-        case Uint16:
-        case Uint32:
-        case Uint64:
-            nksb_printf(sb, "u");
+        case NkType_Ptr:
+            nksb_printf(sb, "*");
+            nkt_inspect(type->as.ptr.target_type, sb);
             break;
-        case Float32:
-        case Float64:
-            nksb_printf(sb, "f");
+        case NkType_Tuple: {
+            nksb_printf(sb, "(");
+            for (usize i = 0; i < type->as.tuple.elems.size; i++) {
+                if (i) {
+                    nksb_printf(sb, " ");
+                }
+                nkt_inspect(type->as.tuple.elems.data[i].type, sb);
+                nksb_printf(sb, ",");
+            }
+            nksb_printf(sb, ")");
             break;
+        }
         default:
-            nk_assert(!"unreachable");
+            nksb_printf(sb, "type{%p}", (void *)type);
             break;
-        }
-        nksb_printf(sb, "%" PRIu64, (usize)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
-        break;
-    case NkType_Ptr:
-        nksb_printf(sb, "*");
-        nkt_inspect(type->as.ptr.target_type, sb);
-        break;
-    case NkType_Tuple: {
-        nksb_printf(sb, "(");
-        for (usize i = 0; i < type->as.tuple.elems.size; i++) {
-            if (i) {
-                nksb_printf(sb, " ");
-            }
-            nkt_inspect(type->as.tuple.elems.data[i].type, sb);
-            nksb_printf(sb, ",");
-        }
-        nksb_printf(sb, ")");
-        break;
-    }
-    default:
-        nksb_printf(sb, "type{%p}", (void *)type);
-        break;
     }
 }
 
 void nkval_inspect(nkval_t val, NkStringBuilder *sb) {
     switch (nkval_typeclassid(val)) {
-    case NkType_Array:
-        nksb_printf(sb, "[");
-        for (usize i = 0; i < nkval_typeof(val)->as.arr.elem_count; i++) {
-            if (i) {
-                nksb_printf(sb, " ");
+        case NkType_Array:
+            nksb_printf(sb, "[");
+            for (usize i = 0; i < nkval_typeof(val)->as.arr.elem_count; i++) {
+                if (i) {
+                    nksb_printf(sb, " ");
+                }
+                nkval_inspect(nkval_array_at(val, i), sb);
+                nksb_printf(sb, ",");
             }
-            nkval_inspect(nkval_array_at(val, i), sb);
-            nksb_printf(sb, ",");
-        }
-        nksb_printf(sb, "]");
-        break;
-    case NkType_Fn:
-        switch (nkval_typeof(val)->as.fn.call_conv) {
-        case NkCallConv_Nk:
-            nksb_printf(sb, "%s", nkval_as(NkIrFunct, val)->name.c_str());
+            nksb_printf(sb, "]");
             break;
-        case NkCallConv_Cdecl:
+        case NkType_Fn:
+            switch (nkval_typeof(val)->as.fn.call_conv) {
+                case NkCallConv_Nk:
+                    nksb_printf(sb, "%s", nkval_as(NkIrFunct, val)->name.c_str());
+                    break;
+                case NkCallConv_Cdecl:
+                    nksb_printf(sb, "%p", nkval_as(void *, val));
+                    break;
+            }
+            break;
+        case NkType_Numeric:
+            switch (nkval_typeof(val)->as.num.value_type) {
+                case Int8:
+                    nksb_printf(sb, "%" PRIi8, nkval_as(i8, val));
+                    break;
+                case Uint8:
+                    nksb_printf(sb, "%" PRIu8, nkval_as(u8, val));
+                    break;
+                case Int16:
+                    nksb_printf(sb, "%" PRIi16, nkval_as(i16, val));
+                    break;
+                case Uint16:
+                    nksb_printf(sb, "%" PRIu16, nkval_as(u16, val));
+                    break;
+                case Int32:
+                    nksb_printf(sb, "%" PRIi32, nkval_as(i32, val));
+                    break;
+                case Uint32:
+                    nksb_printf(sb, "%" PRIu32, nkval_as(u32, val));
+                    break;
+                case Int64:
+                    nksb_printf(sb, "%" PRIi64, nkval_as(i64, val));
+                    break;
+                case Uint64:
+                    nksb_printf(sb, "%" PRIu64, nkval_as(u64, val));
+                    break;
+                case Float32:
+                    nksb_printf(sb, "%.*g", std::numeric_limits<f32>::max_digits10, nkval_as(f32, val));
+                    break;
+                case Float64:
+                    nksb_printf(sb, "%.*g", std::numeric_limits<f64>::max_digits10, nkval_as(f64, val));
+                    break;
+                default:
+                    nk_assert(!"unreachable");
+                    break;
+            }
+            break;
+        case NkType_Ptr: {
+            nktype_t target_type = nkval_typeof(val)->as.ptr.target_type;
+            if (target_type->tclass == NkType_Array) {
+                nktype_t elem_type = target_type->as.arr.elem_type;
+                usize elem_count = target_type->as.arr.elem_count;
+                if (elem_type->tclass == NkType_Numeric) {
+                    if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
+                        nksb_printf(sb, "\"");
+                        nks_escape(nksb_getStream(sb), {nkval_as(char const *, val), elem_count});
+                        nksb_printf(sb, "\"");
+                        break;
+                    }
+                }
+            }
             nksb_printf(sb, "%p", nkval_as(void *, val));
             break;
         }
-        break;
-    case NkType_Numeric:
-        switch (nkval_typeof(val)->as.num.value_type) {
-        case Int8:
-            nksb_printf(sb, "%" PRIi8, nkval_as(i8, val));
-            break;
-        case Uint8:
-            nksb_printf(sb, "%" PRIu8, nkval_as(u8, val));
-            break;
-        case Int16:
-            nksb_printf(sb, "%" PRIi16, nkval_as(i16, val));
-            break;
-        case Uint16:
-            nksb_printf(sb, "%" PRIu16, nkval_as(u16, val));
-            break;
-        case Int32:
-            nksb_printf(sb, "%" PRIi32, nkval_as(i32, val));
-            break;
-        case Uint32:
-            nksb_printf(sb, "%" PRIu32, nkval_as(u32, val));
-            break;
-        case Int64:
-            nksb_printf(sb, "%" PRIi64, nkval_as(i64, val));
-            break;
-        case Uint64:
-            nksb_printf(sb, "%" PRIu64, nkval_as(u64, val));
-            break;
-        case Float32:
-            nksb_printf(sb, "%.*g", std::numeric_limits<f32>::max_digits10, nkval_as(f32, val));
-            break;
-        case Float64:
-            nksb_printf(sb, "%.*g", std::numeric_limits<f64>::max_digits10, nkval_as(f64, val));
-            break;
-        default:
-            nk_assert(!"unreachable");
-            break;
-        }
-        break;
-    case NkType_Ptr: {
-        nktype_t target_type = nkval_typeof(val)->as.ptr.target_type;
-        if (target_type->tclass == NkType_Array) {
-            nktype_t elem_type = target_type->as.arr.elem_type;
-            usize elem_count = target_type->as.arr.elem_count;
-            if (elem_type->tclass == NkType_Numeric) {
-                if (elem_type->as.num.value_type == Int8 || elem_type->as.num.value_type == Uint8) {
-                    nksb_printf(sb, "\"");
-                    nks_escape(nksb_getStream(sb), {nkval_as(char const *, val), elem_count});
-                    nksb_printf(sb, "\"");
-                    break;
+        case NkType_Tuple:
+            nksb_printf(sb, "(");
+            for (usize i = 0; i < nkval_tuple_size(val); i++) {
+                if (i) {
+                    nksb_printf(sb, " ");
                 }
+                nkval_inspect(nkval_tuple_at(val, i), sb);
+                nksb_printf(sb, ",");
             }
+            nksb_printf(sb, ")");
+            break;
+        default: {
+            nksb_printf(sb, "value{data=%p, type=", nkval_data(val));
+            nkt_inspect(nkval_typeof(val), sb);
+            nksb_printf(sb, "}");
+            break;
         }
-        nksb_printf(sb, "%p", nkval_as(void *, val));
-        break;
-    }
-    case NkType_Tuple:
-        nksb_printf(sb, "(");
-        for (usize i = 0; i < nkval_tuple_size(val); i++) {
-            if (i) {
-                nksb_printf(sb, " ");
-            }
-            nkval_inspect(nkval_tuple_at(val, i), sb);
-            nksb_printf(sb, ",");
-        }
-        nksb_printf(sb, ")");
-        break;
-    default: {
-        nksb_printf(sb, "value{data=%p, type=", nkval_data(val));
-        nkt_inspect(nkval_typeof(val), sb);
-        nksb_printf(sb, "}");
-        break;
-    }
     }
 }
 
 void nkval_fn_invoke(nkval_t fn, nkval_t ret, nkval_t args) {
     switch (nkval_typeof(fn)->as.fn.call_conv) {
-    case NkCallConv_Nk:
-        nkir_invoke(fn, ret, args);
-        break;
-    case NkCallConv_Cdecl:
-        nk_native_invoke(fn, ret, args);
-        break;
+        case NkCallConv_Nk:
+            nkir_invoke(fn, ret, args);
+            break;
+        case NkCallConv_Cdecl:
+            nk_native_invoke(fn, ret, args);
+            break;
     }
 }
 

@@ -118,254 +118,254 @@ void interp(NkBcInstr const &instr) {
     NK_PROF_SCOPE(sb);
 
     switch (instr.code) {
-    case nkop_nop: {
-        break;
-    }
-
-    case nkop_ret: {
-        auto const fr = ctx.ctrl_stack.back();
-        ctx.ctrl_stack.pop_back();
-
-        nk_arena_popFrame(&ctx.stack, ctx.stack_frame);
-
-        ctx.stack_frame = fr.stack_frame;
-        ctx.base.frame = fr.base_frame;
-        ctx.base.arg = fr.base_arg;
-        ctx.base.ret = fr.base_ret;
-        ctx.base.instr = fr.base_instr;
-
-        jumpTo(fr.pinstr);
-        break;
-    }
-
-    case nkop_jmp: {
-        jumpTo(instr.arg[1]);
-        break;
-    }
-
-    case nkop_jmpz_8: {
-        if (!deref<u8>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpz_16: {
-        if (!deref<u16>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpz_32: {
-        if (!deref<u32>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpz_64: {
-        if (!deref<u64>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpnz_8: {
-        if (deref<u8>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpnz_16: {
-        if (deref<u16>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpnz_32: {
-        if (deref<u32>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_jmpnz_64: {
-        if (deref<u64>(instr.arg[1])) {
-            jumpTo(instr.arg[2]);
-        }
-        break;
-    }
-
-    case nkop_call_jmp: {
-        auto const stack_frame = nk_arena_grab(&ctx.stack);
-
-        auto const proc = deref<NkBcProc>(instr.arg[1]);
-
-        auto const argc = instr.arg[2].refs.size;
-        auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc + 1);
-        for (usize i = 0; i < argc; i++) {
-            argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
+        case nkop_nop: {
+            break;
         }
 
-        auto const retv = argv + argc;
-        retv[0] = getRefAddr(instr.arg[0].ref);
+        case nkop_ret: {
+            auto const fr = ctx.ctrl_stack.back();
+            ctx.ctrl_stack.pop_back();
 
-        jumpCall(proc, argv, retv, stack_frame);
+            nk_arena_popFrame(&ctx.stack, ctx.stack_frame);
 
-        break;
-    }
+            ctx.stack_frame = fr.stack_frame;
+            ctx.base.frame = fr.base_frame;
+            ctx.base.arg = fr.base_arg;
+            ctx.base.ret = fr.base_ret;
+            ctx.base.instr = fr.base_instr;
 
-    case nkop_call_ext: {
-        auto const frame = nk_arena_grab(&ctx.stack);
-        defer {
-            nk_arena_popFrame(&ctx.stack, frame);
-        };
-
-        auto const argc = instr.arg[2].refs.size;
-        auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc);
-        auto const argt = nk_arena_allocT<nktype_t>(&ctx.stack, argc);
-        for (usize i = 0; i < argc; i++) {
-            argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
-            argt[i] = instr.arg[2].refs.data[i].type;
+            jumpTo(fr.pinstr);
+            break;
         }
 
-        NkNativeCallData const call_data{
-            .proc{.native = deref<void *>(instr.arg[1])},
-            .nfixedargs = argc,
-            .is_variadic = false,
-            .argv = argv,
-            .argt = argt,
-            .argc = argc,
-            .retv = getRefAddr(instr.arg[0].ref),
-            .rett = instr.arg[0].ref.type,
-        };
+        case nkop_jmp: {
+            jumpTo(instr.arg[1]);
+            break;
+        }
 
-        nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
-        break;
-    }
-
-    case nkop_call_extv: {
-        auto const frame = nk_arena_grab(&ctx.stack);
-        defer {
-            nk_arena_popFrame(&ctx.stack, frame);
-        };
-
-        usize nfixedargs = 0;
-        auto const argc = instr.arg[2].refs.size - 1;
-        auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc);
-        auto const argt = nk_arena_allocT<nktype_t>(&ctx.stack, argc);
-        for (usize i = 0; i < instr.arg[2].refs.size; i++) {
-            auto const &ref = instr.arg[2].refs.data[i];
-            if (ref.kind == NkBcRef_VariadicMarker) {
-                nfixedargs = i;
-                continue;
+        case nkop_jmpz_8: {
+            if (!deref<u8>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
             }
-            argv[i - (bool)nfixedargs] = getRefAddr(ref);
-            argt[i - (bool)nfixedargs] = ref.type;
+            break;
         }
 
-        NkNativeCallData const call_data{
-            .proc{.native = deref<void *>(instr.arg[1])},
-            .nfixedargs = nfixedargs,
-            .is_variadic = true,
-            .argv = argv,
-            .argt = argt,
-            .argc = argc,
-            .retv = getRefAddr(instr.arg[0].ref),
-            .rett = instr.arg[0].ref.type,
-        };
+        case nkop_jmpz_16: {
+            if (!deref<u16>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
-        nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
-        break;
-    }
+        case nkop_jmpz_32: {
+            if (!deref<u32>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
-    case nkop_sext_8_16: {
-        deref<i16>(instr.arg[0]) = deref<i8>(instr.arg[1]);
-        break;
-    }
-    case nkop_sext_8_32: {
-        deref<i32>(instr.arg[0]) = deref<i8>(instr.arg[1]);
-        break;
-    }
-    case nkop_sext_8_64: {
-        deref<i64>(instr.arg[0]) = deref<i8>(instr.arg[1]);
-        break;
-    }
-    case nkop_sext_16_32: {
-        deref<i32>(instr.arg[0]) = deref<i16>(instr.arg[1]);
-        break;
-    }
-    case nkop_sext_16_64: {
-        deref<i64>(instr.arg[0]) = deref<i16>(instr.arg[1]);
-        break;
-    }
-    case nkop_sext_32_64: {
-        deref<i64>(instr.arg[0]) = deref<i32>(instr.arg[1]);
-        break;
-    }
+        case nkop_jmpz_64: {
+            if (!deref<u64>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
-    case nkop_zext_8_16: {
-        deref<u16>(instr.arg[0]) = deref<u8>(instr.arg[1]);
-        break;
-    }
-    case nkop_zext_8_32: {
-        deref<u32>(instr.arg[0]) = deref<u8>(instr.arg[1]);
-        break;
-    }
-    case nkop_zext_8_64: {
-        deref<u64>(instr.arg[0]) = deref<u8>(instr.arg[1]);
-        break;
-    }
-    case nkop_zext_16_32: {
-        deref<u32>(instr.arg[0]) = deref<u16>(instr.arg[1]);
-        break;
-    }
-    case nkop_zext_16_64: {
-        deref<u64>(instr.arg[0]) = deref<u16>(instr.arg[1]);
-        break;
-    }
-    case nkop_zext_32_64: {
-        deref<u64>(instr.arg[0]) = deref<u32>(instr.arg[1]);
-        break;
-    }
+        case nkop_jmpnz_8: {
+            if (deref<u8>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
-    case nkop_fext: {
-        deref<f64>(instr.arg[0]) = deref<f32>(instr.arg[1]);
-        break;
-    }
+        case nkop_jmpnz_16: {
+            if (deref<u16>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
-    case nkop_trunc_16_8: {
-        deref<u8>(instr.arg[0]) = deref<u16>(instr.arg[1]);
-        break;
-    }
-    case nkop_trunc_32_8: {
-        deref<u8>(instr.arg[0]) = deref<u32>(instr.arg[1]);
-        break;
-    }
-    case nkop_trunc_64_8: {
-        deref<u8>(instr.arg[0]) = deref<u64>(instr.arg[1]);
-        break;
-    }
-    case nkop_trunc_32_16: {
-        deref<u16>(instr.arg[0]) = deref<u32>(instr.arg[1]);
-        break;
-    }
-    case nkop_trunc_64_16: {
-        deref<u16>(instr.arg[0]) = deref<u64>(instr.arg[1]);
-        break;
-    }
-    case nkop_trunc_64_32: {
-        deref<u32>(instr.arg[0]) = deref<u64>(instr.arg[1]);
-        break;
-    }
+        case nkop_jmpnz_32: {
+            if (deref<u32>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
-    case nkop_ftrunc: {
-        deref<f32>(instr.arg[0]) = deref<f64>(instr.arg[1]);
-        break;
-    }
+        case nkop_jmpnz_64: {
+            if (deref<u64>(instr.arg[1])) {
+                jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_call_jmp: {
+            auto const stack_frame = nk_arena_grab(&ctx.stack);
+
+            auto const proc = deref<NkBcProc>(instr.arg[1]);
+
+            auto const argc = instr.arg[2].refs.size;
+            auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc + 1);
+            for (usize i = 0; i < argc; i++) {
+                argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
+            }
+
+            auto const retv = argv + argc;
+            retv[0] = getRefAddr(instr.arg[0].ref);
+
+            jumpCall(proc, argv, retv, stack_frame);
+
+            break;
+        }
+
+        case nkop_call_ext: {
+            auto const frame = nk_arena_grab(&ctx.stack);
+            defer {
+                nk_arena_popFrame(&ctx.stack, frame);
+            };
+
+            auto const argc = instr.arg[2].refs.size;
+            auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc);
+            auto const argt = nk_arena_allocT<nktype_t>(&ctx.stack, argc);
+            for (usize i = 0; i < argc; i++) {
+                argv[i] = getRefAddr(instr.arg[2].refs.data[i]);
+                argt[i] = instr.arg[2].refs.data[i].type;
+            }
+
+            NkNativeCallData const call_data{
+                .proc{.native = deref<void *>(instr.arg[1])},
+                .nfixedargs = argc,
+                .is_variadic = false,
+                .argv = argv,
+                .argt = argt,
+                .argc = argc,
+                .retv = getRefAddr(instr.arg[0].ref),
+                .rett = instr.arg[0].ref.type,
+            };
+
+            nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
+            break;
+        }
+
+        case nkop_call_extv: {
+            auto const frame = nk_arena_grab(&ctx.stack);
+            defer {
+                nk_arena_popFrame(&ctx.stack, frame);
+            };
+
+            usize nfixedargs = 0;
+            auto const argc = instr.arg[2].refs.size - 1;
+            auto const argv = nk_arena_allocT<void *>(&ctx.stack, argc);
+            auto const argt = nk_arena_allocT<nktype_t>(&ctx.stack, argc);
+            for (usize i = 0; i < instr.arg[2].refs.size; i++) {
+                auto const &ref = instr.arg[2].refs.data[i];
+                if (ref.kind == NkBcRef_VariadicMarker) {
+                    nfixedargs = i;
+                    continue;
+                }
+                argv[i - (bool)nfixedargs] = getRefAddr(ref);
+                argt[i - (bool)nfixedargs] = ref.type;
+            }
+
+            NkNativeCallData const call_data{
+                .proc{.native = deref<void *>(instr.arg[1])},
+                .nfixedargs = nfixedargs,
+                .is_variadic = true,
+                .argv = argv,
+                .argt = argt,
+                .argc = argc,
+                .retv = getRefAddr(instr.arg[0].ref),
+                .rett = instr.arg[0].ref.type,
+            };
+
+            nk_native_invoke(ctx.ffi_ctx, &ctx.stack, &call_data);
+            break;
+        }
+
+        case nkop_sext_8_16: {
+            deref<i16>(instr.arg[0]) = deref<i8>(instr.arg[1]);
+            break;
+        }
+        case nkop_sext_8_32: {
+            deref<i32>(instr.arg[0]) = deref<i8>(instr.arg[1]);
+            break;
+        }
+        case nkop_sext_8_64: {
+            deref<i64>(instr.arg[0]) = deref<i8>(instr.arg[1]);
+            break;
+        }
+        case nkop_sext_16_32: {
+            deref<i32>(instr.arg[0]) = deref<i16>(instr.arg[1]);
+            break;
+        }
+        case nkop_sext_16_64: {
+            deref<i64>(instr.arg[0]) = deref<i16>(instr.arg[1]);
+            break;
+        }
+        case nkop_sext_32_64: {
+            deref<i64>(instr.arg[0]) = deref<i32>(instr.arg[1]);
+            break;
+        }
+
+        case nkop_zext_8_16: {
+            deref<u16>(instr.arg[0]) = deref<u8>(instr.arg[1]);
+            break;
+        }
+        case nkop_zext_8_32: {
+            deref<u32>(instr.arg[0]) = deref<u8>(instr.arg[1]);
+            break;
+        }
+        case nkop_zext_8_64: {
+            deref<u64>(instr.arg[0]) = deref<u8>(instr.arg[1]);
+            break;
+        }
+        case nkop_zext_16_32: {
+            deref<u32>(instr.arg[0]) = deref<u16>(instr.arg[1]);
+            break;
+        }
+        case nkop_zext_16_64: {
+            deref<u64>(instr.arg[0]) = deref<u16>(instr.arg[1]);
+            break;
+        }
+        case nkop_zext_32_64: {
+            deref<u64>(instr.arg[0]) = deref<u32>(instr.arg[1]);
+            break;
+        }
+
+        case nkop_fext: {
+            deref<f64>(instr.arg[0]) = deref<f32>(instr.arg[1]);
+            break;
+        }
+
+        case nkop_trunc_16_8: {
+            deref<u8>(instr.arg[0]) = deref<u16>(instr.arg[1]);
+            break;
+        }
+        case nkop_trunc_32_8: {
+            deref<u8>(instr.arg[0]) = deref<u32>(instr.arg[1]);
+            break;
+        }
+        case nkop_trunc_64_8: {
+            deref<u8>(instr.arg[0]) = deref<u64>(instr.arg[1]);
+            break;
+        }
+        case nkop_trunc_32_16: {
+            deref<u16>(instr.arg[0]) = deref<u32>(instr.arg[1]);
+            break;
+        }
+        case nkop_trunc_64_16: {
+            deref<u16>(instr.arg[0]) = deref<u64>(instr.arg[1]);
+            break;
+        }
+        case nkop_trunc_64_32: {
+            deref<u32>(instr.arg[0]) = deref<u64>(instr.arg[1]);
+            break;
+        }
+
+        case nkop_ftrunc: {
+            deref<f32>(instr.arg[0]) = deref<f64>(instr.arg[1]);
+            break;
+        }
 
 #define FP2I_OP_IT(TYPE, VALUE_TYPE, FTYPE, SIZ)                      \
     case NK_CAT(NK_CAT(NK_CAT(nkop_fp2i_, SIZ), _), TYPE): {          \
@@ -382,41 +382,41 @@ void interp(NkBcInstr const &instr) {
 #define FP2I_OP(FTYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(FP2I_OP_IT, FTYPE, SIZ)
 #define I2FP_OP(FTYPE, SIZ) NKIR_NUMERIC_ITERATE_INT(I2FP_OP_IT, FTYPE, SIZ)
 
-        FP2I_OP(f32, 32)
-        FP2I_OP(f64, 64)
+            FP2I_OP(f32, 32)
+            FP2I_OP(f64, 64)
 
-        I2FP_OP(f32, 32)
-        I2FP_OP(f64, 64)
+            I2FP_OP(f32, 32)
+            I2FP_OP(f64, 64)
 
 #undef I2FP_OP
 #undef FP2I_OP
 #undef I2FP_OP_IT
 #undef FP2I_OP_IT
 
-    case nkop_mov_8: {
-        deref<u8>(instr.arg[0]) = deref<u8>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_8: {
+            deref<u8>(instr.arg[0]) = deref<u8>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_mov_16: {
-        deref<u16>(instr.arg[0]) = deref<u16>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_16: {
+            deref<u16>(instr.arg[0]) = deref<u16>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_mov_32: {
-        deref<u32>(instr.arg[0]) = deref<u32>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_32: {
+            deref<u32>(instr.arg[0]) = deref<u32>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_mov_64: {
-        deref<u64>(instr.arg[0]) = deref<u64>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_64: {
+            deref<u64>(instr.arg[0]) = deref<u64>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_lea: {
-        deref<void *>(instr.arg[0]) = &deref<u8>(instr.arg[1]);
-        break;
-    }
+        case nkop_lea: {
+            deref<void *>(instr.arg[0]) = &deref<u8>(instr.arg[1]);
+            break;
+        }
 
 #define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                  \
     case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {          \
@@ -426,7 +426,7 @@ void interp(NkBcInstr const &instr) {
 
 #define NUM_UN_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
 
-        NUM_UN_OP(neg, -)
+            NUM_UN_OP(neg, -)
 
 #undef NUM_UN_OP
 #undef NUM_UN_OP_IT
@@ -447,24 +447,24 @@ void interp(NkBcInstr const &instr) {
 #define NUM_BIN_BOOL_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_BIN_BOOL_OP_IT, NAME, OP)
 #define NUM_BIN_OP_INT(NAME, OP) NKIR_NUMERIC_ITERATE_INT(NUM_BIN_OP_IT, NAME, OP)
 
-        NUM_BIN_OP(add, +)
-        NUM_BIN_OP(sub, -)
-        NUM_BIN_OP(mul, *)
-        NUM_BIN_OP(div, /)
-        NUM_BIN_OP_INT(mod, %)
+            NUM_BIN_OP(add, +)
+            NUM_BIN_OP(sub, -)
+            NUM_BIN_OP(mul, *)
+            NUM_BIN_OP(div, /)
+            NUM_BIN_OP_INT(mod, %)
 
-        NUM_BIN_OP_INT(and, &)
-        NUM_BIN_OP_INT(or, |)
-        NUM_BIN_OP_INT(xor, ^)
-        NUM_BIN_OP_INT(lsh, <<)
-        NUM_BIN_OP_INT(rsh, >>)
+            NUM_BIN_OP_INT(and, &)
+            NUM_BIN_OP_INT(or, |)
+            NUM_BIN_OP_INT(xor, ^)
+            NUM_BIN_OP_INT(lsh, <<)
+            NUM_BIN_OP_INT(rsh, >>)
 
-        NUM_BIN_BOOL_OP(cmp_eq, ==)
-        NUM_BIN_BOOL_OP(cmp_ne, !=)
-        NUM_BIN_BOOL_OP(cmp_ge, >=)
-        NUM_BIN_BOOL_OP(cmp_gt, >)
-        NUM_BIN_BOOL_OP(cmp_le, <=)
-        NUM_BIN_BOOL_OP(cmp_lt, <)
+            NUM_BIN_BOOL_OP(cmp_eq, ==)
+            NUM_BIN_BOOL_OP(cmp_ne, !=)
+            NUM_BIN_BOOL_OP(cmp_ge, >=)
+            NUM_BIN_BOOL_OP(cmp_gt, >)
+            NUM_BIN_BOOL_OP(cmp_le, <=)
+            NUM_BIN_BOOL_OP(cmp_lt, <)
 
 #undef NUM_BIN_OP
 #undef NUM_BIN_OP_INT
@@ -473,68 +473,70 @@ void interp(NkBcInstr const &instr) {
 #undef NUM_BIN_BOOL_OP_IT
 
 #if NK_SYSCALLS_AVAILABLE
-    case nkop_syscall_0: {
-        deref<long>(instr.arg[0]) = nk_syscall0(deref<long>(instr.arg[1]));
-        break;
-    }
+        case nkop_syscall_0: {
+            deref<long>(instr.arg[0]) = nk_syscall0(deref<long>(instr.arg[1]));
+            break;
+        }
 
-    case nkop_syscall_1: {
-        deref<long>(instr.arg[0]) = nk_syscall1(deref<long>(instr.arg[1]), deref<long>(instr.arg[2].refs.data[0]));
-        break;
-    }
+        case nkop_syscall_1: {
+            deref<long>(instr.arg[0]) = nk_syscall1(deref<long>(instr.arg[1]), deref<long>(instr.arg[2].refs.data[0]));
+            break;
+        }
 
-    case nkop_syscall_2: {
-        deref<long>(instr.arg[0]) = nk_syscall2(
-            deref<long>(instr.arg[1]), deref<long>(instr.arg[2].refs.data[0]), deref<long>(instr.arg[2].refs.data[1]));
-        break;
-    }
+        case nkop_syscall_2: {
+            deref<long>(instr.arg[0]) = nk_syscall2(
+                deref<long>(instr.arg[1]),
+                deref<long>(instr.arg[2].refs.data[0]),
+                deref<long>(instr.arg[2].refs.data[1]));
+            break;
+        }
 
-    case nkop_syscall_3: {
-        deref<long>(instr.arg[0]) = nk_syscall3(
-            deref<long>(instr.arg[1]),
-            deref<long>(instr.arg[2].refs.data[0]),
-            deref<long>(instr.arg[2].refs.data[1]),
-            deref<long>(instr.arg[2].refs.data[2]));
-        break;
-    }
+        case nkop_syscall_3: {
+            deref<long>(instr.arg[0]) = nk_syscall3(
+                deref<long>(instr.arg[1]),
+                deref<long>(instr.arg[2].refs.data[0]),
+                deref<long>(instr.arg[2].refs.data[1]),
+                deref<long>(instr.arg[2].refs.data[2]));
+            break;
+        }
 
-    case nkop_syscall_4: {
-        deref<long>(instr.arg[0]) = nk_syscall4(
-            deref<long>(instr.arg[1]),
-            deref<long>(instr.arg[2].refs.data[0]),
-            deref<long>(instr.arg[2].refs.data[1]),
-            deref<long>(instr.arg[2].refs.data[2]),
-            deref<long>(instr.arg[2].refs.data[3]));
-        break;
-    }
+        case nkop_syscall_4: {
+            deref<long>(instr.arg[0]) = nk_syscall4(
+                deref<long>(instr.arg[1]),
+                deref<long>(instr.arg[2].refs.data[0]),
+                deref<long>(instr.arg[2].refs.data[1]),
+                deref<long>(instr.arg[2].refs.data[2]),
+                deref<long>(instr.arg[2].refs.data[3]));
+            break;
+        }
 
-    case nkop_syscall_5: {
-        deref<long>(instr.arg[0]) = nk_syscall5(
-            deref<long>(instr.arg[1]),
-            deref<long>(instr.arg[2].refs.data[0]),
-            deref<long>(instr.arg[2].refs.data[1]),
-            deref<long>(instr.arg[2].refs.data[2]),
-            deref<long>(instr.arg[2].refs.data[3]),
-            deref<long>(instr.arg[2].refs.data[4]));
-        break;
-    }
+        case nkop_syscall_5: {
+            deref<long>(instr.arg[0]) = nk_syscall5(
+                deref<long>(instr.arg[1]),
+                deref<long>(instr.arg[2].refs.data[0]),
+                deref<long>(instr.arg[2].refs.data[1]),
+                deref<long>(instr.arg[2].refs.data[2]),
+                deref<long>(instr.arg[2].refs.data[3]),
+                deref<long>(instr.arg[2].refs.data[4]));
+            break;
+        }
 
-    case nkop_syscall_6: {
-        deref<long>(instr.arg[0]) = nk_syscall6(
-            deref<long>(instr.arg[1]),
-            deref<long>(instr.arg[2].refs.data[0]),
-            deref<long>(instr.arg[2].refs.data[1]),
-            deref<long>(instr.arg[2].refs.data[2]),
-            deref<long>(instr.arg[2].refs.data[3]),
-            deref<long>(instr.arg[2].refs.data[4]),
-            deref<long>(instr.arg[2].refs.data[5]));
-        break;
-    }
+        case nkop_syscall_6: {
+            deref<long>(instr.arg[0]) = nk_syscall6(
+                deref<long>(instr.arg[1]),
+                deref<long>(instr.arg[2].refs.data[0]),
+                deref<long>(instr.arg[2].refs.data[1]),
+                deref<long>(instr.arg[2].refs.data[2]),
+                deref<long>(instr.arg[2].refs.data[3]),
+                deref<long>(instr.arg[2].refs.data[4]),
+                deref<long>(instr.arg[2].refs.data[5]));
+            break;
+        }
 #endif // NK_SYSCALLS_AVAILABLE
 
-    default:
-        nk_assert(!"unknown opcode");
-        break;
+        default:
+            nk_assert(!"unknown opcode");
+            break;
     }
 }
 

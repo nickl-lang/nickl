@@ -129,97 +129,97 @@ void interp(NkBcInstr const &instr) {
     NK_PROF_SCOPE(sb);
 
     switch (instr.code) {
-    case nkop_nop: {
-        break;
-    }
-
-    case nkop_ret: {
-        auto const fr = ctx.ctrl_stack.back();
-        ctx.ctrl_stack.pop_back();
-
-        nk_arena_popFrame(&ctx.stack, ctx.stack_frame);
-
-        ctx.stack_frame = fr.stack_frame;
-        ctx.base.frame = fr.base_frame;
-        ctx.base.arg = fr.base_arg;
-        ctx.base.ret = fr.base_ret;
-        ctx.base.instr = fr.base_instr;
-
-        _jumpTo(fr.pinstr);
-        break;
-    }
-
-    case nkop_enter: {
-        // ctx.stack_frames.emplace_back(nk_arena_grab(&ctx.stack));
-        break;
-    }
-
-    case nkop_leave: {
-        // nk_arena_popFrame(&ctx.stack, ctx.stack_frames.back());
-        // ctx.stack_frames.pop_back();
-        break;
-    }
-
-    case nkop_jmp: {
-        _jumpTo(instr.arg[1]);
-        break;
-    }
-
-    case nkop_jmpz_8: {
-        if (!_getRef<u8>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+        case nkop_nop: {
+            break;
         }
-        break;
-    }
 
-    case nkop_jmpz_16: {
-        if (!_getRef<u16>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
-        }
-        break;
-    }
+        case nkop_ret: {
+            auto const fr = ctx.ctrl_stack.back();
+            ctx.ctrl_stack.pop_back();
 
-    case nkop_jmpz_32: {
-        if (!_getRef<u32>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
-        }
-        break;
-    }
+            nk_arena_popFrame(&ctx.stack, ctx.stack_frame);
 
-    case nkop_jmpz_64: {
-        if (!_getRef<u64>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
-        }
-        break;
-    }
+            ctx.stack_frame = fr.stack_frame;
+            ctx.base.frame = fr.base_frame;
+            ctx.base.arg = fr.base_arg;
+            ctx.base.ret = fr.base_ret;
+            ctx.base.instr = fr.base_instr;
 
-    case nkop_jmpnz_8: {
-        if (_getRef<u8>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+            _jumpTo(fr.pinstr);
+            break;
         }
-        break;
-    }
 
-    case nkop_jmpnz_16: {
-        if (_getRef<u16>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+        case nkop_enter: {
+            // ctx.stack_frames.emplace_back(nk_arena_grab(&ctx.stack));
+            break;
         }
-        break;
-    }
 
-    case nkop_jmpnz_32: {
-        if (_getRef<u32>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+        case nkop_leave: {
+            // nk_arena_popFrame(&ctx.stack, ctx.stack_frames.back());
+            // ctx.stack_frames.pop_back();
+            break;
         }
-        break;
-    }
 
-    case nkop_jmpnz_64: {
-        if (_getRef<u64>(instr.arg[1])) {
-            _jumpTo(instr.arg[2]);
+        case nkop_jmp: {
+            _jumpTo(instr.arg[1]);
+            break;
         }
-        break;
-    }
+
+        case nkop_jmpz_8: {
+            if (!_getRef<u8>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpz_16: {
+            if (!_getRef<u16>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpz_32: {
+            if (!_getRef<u32>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpz_64: {
+            if (!_getRef<u64>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpnz_8: {
+            if (_getRef<u8>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpnz_16: {
+            if (_getRef<u16>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpnz_32: {
+            if (_getRef<u32>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
+
+        case nkop_jmpnz_64: {
+            if (_getRef<u64>(instr.arg[1])) {
+                _jumpTo(instr.arg[2]);
+            }
+            break;
+        }
 
 #define _CAST(FROM_TYPE, FROM_VALUE_TYPE, TO_TYPE)                                  \
     case NK_CAT(NK_CAT(NK_CAT(nkop_cast_, FROM_TYPE), _to_), TO_TYPE): {            \
@@ -229,74 +229,74 @@ void interp(NkBcInstr const &instr) {
 
 #define CAST(TO_TYPE) NUMERIC_ITERATE(_CAST, TO_TYPE)
 
-        // TODO Figure out a way to compress CAST with NUMERIC_ITERATE
+            // TODO Figure out a way to compress CAST with NUMERIC_ITERATE
 
-        CAST(i8)
-        CAST(u8)
-        CAST(i16)
-        CAST(u16)
-        CAST(i32)
-        CAST(u32)
-        CAST(i64)
-        CAST(u64)
-        CAST(f32)
-        CAST(f64)
+            CAST(i8)
+            CAST(u8)
+            CAST(i16)
+            CAST(u16)
+            CAST(i32)
+            CAST(u32)
+            CAST(i64)
+            CAST(u64)
+            CAST(f32)
+            CAST(f64)
 
 #undef CAST
 #undef _CAST
 
-    case nkop_call: {
-        auto ret = _getValRef(instr.arg[0]);
-        auto fn_val = _getValRef(instr.arg[1]);
-        auto args = _getValRef(instr.arg[2]);
+        case nkop_call: {
+            auto ret = _getValRef(instr.arg[0]);
+            auto fn_val = _getValRef(instr.arg[1]);
+            auto args = _getValRef(instr.arg[2]);
 
-        nkval_fn_invoke(fn_val, ret, args);
-        break;
-    }
+            nkval_fn_invoke(fn_val, ret, args);
+            break;
+        }
 
-    case nkop_call_jmp: {
-        auto ret = _getValRef(instr.arg[0]);
-        auto fn_val = _getValRef(instr.arg[1]);
-        auto args = _getValRef(instr.arg[2]);
+        case nkop_call_jmp: {
+            auto ret = _getValRef(instr.arg[0]);
+            auto fn_val = _getValRef(instr.arg[1]);
+            auto args = _getValRef(instr.arg[2]);
 
-        _jumpCall(nkval_as(NkIrFunct, fn_val)->bc_funct, ret, args);
-        break;
-    }
+            _jumpCall(nkval_as(NkIrFunct, fn_val)->bc_funct, ret, args);
+            break;
+        }
 
-    case nkop_mov: {
-        auto dst = _getValRef(instr.arg[0]);
-        auto src = _getValRef(instr.arg[1]);
+        case nkop_mov: {
+            auto dst = _getValRef(instr.arg[0]);
+            auto src = _getValRef(instr.arg[1]);
 
-        nk_assert(nkval_sizeof(dst) == nkval_sizeof(src));
+            nk_assert(nkval_sizeof(dst) == nkval_sizeof(src));
 
-        std::memcpy(nkval_data(dst), nkval_data(src), nkval_sizeof(dst));
-        break;
-    }
+            std::memcpy(nkval_data(dst), nkval_data(src), nkval_sizeof(dst));
+            break;
+        }
 
-    case nkop_mov_8: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_8: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_mov_16: {
-        _getRef<u16>(instr.arg[0]) = _getRef<u16>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_16: {
+            _getRef<u16>(instr.arg[0]) = _getRef<u16>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_mov_32: {
-        _getRef<u32>(instr.arg[0]) = _getRef<u32>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_32: {
+            _getRef<u32>(instr.arg[0]) = _getRef<u32>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_mov_64: {
-        _getRef<u64>(instr.arg[0]) = _getRef<u64>(instr.arg[1]);
-        break;
-    }
+        case nkop_mov_64: {
+            _getRef<u64>(instr.arg[0]) = _getRef<u64>(instr.arg[1]);
+            break;
+        }
 
-    case nkop_lea: {
-        _getRef<void *>(instr.arg[0]) = &_getRef<u8>(instr.arg[1]);
-        break;
-    }
+        case nkop_lea: {
+            _getRef<void *>(instr.arg[0]) = &_getRef<u8>(instr.arg[1]);
+            break;
+        }
 
 #define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                      \
     case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {              \
@@ -307,77 +307,77 @@ void interp(NkBcInstr const &instr) {
 #define NUM_UN_OP(NAME, OP) NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
 #define NUM_UN_OP_INT(NAME, OP) NUMERIC_ITERATE_INT(NUM_UN_OP_IT, NAME, OP)
 
-        NUM_UN_OP(not, not )
-        NUM_UN_OP_INT(compl, compl )
-        NUM_UN_OP(neg, -)
+            NUM_UN_OP(not, not )
+            NUM_UN_OP_INT(compl, compl )
+            NUM_UN_OP(neg, -)
 
 #undef NUM_UN_OP
 #undef NUM_UN_OP_INT
 #undef NUM_UN_OP_IT
 
-    case nkop_eq: {
-        auto dst = _getValRef(instr.arg[0]);
-        auto lhs = _getValRef(instr.arg[1]);
-        auto rhs = _getValRef(instr.arg[2]);
+        case nkop_eq: {
+            auto dst = _getValRef(instr.arg[0]);
+            auto lhs = _getValRef(instr.arg[1]);
+            auto rhs = _getValRef(instr.arg[2]);
 
-        nk_assert(nkval_sizeof(dst) == 1);
-        nk_assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
+            nk_assert(nkval_sizeof(dst) == 1);
+            nk_assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
-        _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
-        break;
-    }
+            _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) == 0;
+            break;
+        }
 
-    case nkop_eq_8: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]) == _getRef<u8>(instr.arg[2]);
-        break;
-    }
+        case nkop_eq_8: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]) == _getRef<u8>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_eq_16: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u16>(instr.arg[1]) == _getRef<u16>(instr.arg[2]);
-        break;
-    }
+        case nkop_eq_16: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u16>(instr.arg[1]) == _getRef<u16>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_eq_32: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u32>(instr.arg[1]) == _getRef<u32>(instr.arg[2]);
-        break;
-    }
+        case nkop_eq_32: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u32>(instr.arg[1]) == _getRef<u32>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_eq_64: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u64>(instr.arg[1]) == _getRef<u64>(instr.arg[2]);
-        break;
-    }
+        case nkop_eq_64: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u64>(instr.arg[1]) == _getRef<u64>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_ne: {
-        auto dst = _getValRef(instr.arg[0]);
-        auto lhs = _getValRef(instr.arg[1]);
-        auto rhs = _getValRef(instr.arg[2]);
+        case nkop_ne: {
+            auto dst = _getValRef(instr.arg[0]);
+            auto lhs = _getValRef(instr.arg[1]);
+            auto rhs = _getValRef(instr.arg[2]);
 
-        nk_assert(nkval_sizeof(dst) == 1);
-        nk_assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
+            nk_assert(nkval_sizeof(dst) == 1);
+            nk_assert(nkval_sizeof(lhs) == nkval_sizeof(rhs));
 
-        _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
-        break;
-    }
+            _getRef<u8>(instr.arg[0]) = std::memcmp(nkval_data(dst), nkval_data(lhs), nkval_sizeof(rhs)) != 0;
+            break;
+        }
 
-    case nkop_ne_8: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]) != _getRef<u8>(instr.arg[2]);
-        break;
-    }
+        case nkop_ne_8: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u8>(instr.arg[1]) != _getRef<u8>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_ne_16: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u16>(instr.arg[1]) != _getRef<u16>(instr.arg[2]);
-        break;
-    }
+        case nkop_ne_16: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u16>(instr.arg[1]) != _getRef<u16>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_ne_32: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u32>(instr.arg[1]) != _getRef<u32>(instr.arg[2]);
-        break;
-    }
+        case nkop_ne_32: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u32>(instr.arg[1]) != _getRef<u32>(instr.arg[2]);
+            break;
+        }
 
-    case nkop_ne_64: {
-        _getRef<u8>(instr.arg[0]) = _getRef<u64>(instr.arg[1]) != _getRef<u64>(instr.arg[2]);
-        break;
-    }
+        case nkop_ne_64: {
+            _getRef<u8>(instr.arg[0]) = _getRef<u64>(instr.arg[1]) != _getRef<u64>(instr.arg[2]);
+            break;
+        }
 
 #define NUM_BIN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                                 \
     case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {                                          \
@@ -395,25 +395,25 @@ void interp(NkBcInstr const &instr) {
 #define NUM_BIN_BOOL_OP(NAME, OP) NUMERIC_ITERATE(NUM_BIN_BOOL_OP_IT, NAME, OP)
 #define NUM_BIN_OP_INT(NAME, OP) NUMERIC_ITERATE_INT(NUM_BIN_OP_IT, NAME, OP)
 
-        NUM_BIN_OP(add, +)
-        NUM_BIN_OP(sub, -)
-        NUM_BIN_OP(mul, *)
-        NUM_BIN_OP(div, /)
-        NUM_BIN_OP_INT(mod, %)
+            NUM_BIN_OP(add, +)
+            NUM_BIN_OP(sub, -)
+            NUM_BIN_OP(mul, *)
+            NUM_BIN_OP(div, /)
+            NUM_BIN_OP_INT(mod, %)
 
-        NUM_BIN_OP_INT(bitand, &)
-        NUM_BIN_OP_INT(bitor, |)
-        NUM_BIN_OP_INT(xor, ^)
-        NUM_BIN_OP_INT(lsh, <<)
-        NUM_BIN_OP_INT(rsh, >>)
+            NUM_BIN_OP_INT(bitand, &)
+            NUM_BIN_OP_INT(bitor, |)
+            NUM_BIN_OP_INT(xor, ^)
+            NUM_BIN_OP_INT(lsh, <<)
+            NUM_BIN_OP_INT(rsh, >>)
 
-        NUM_BIN_BOOL_OP(and, &&)
-        NUM_BIN_BOOL_OP(or, ||)
+            NUM_BIN_BOOL_OP(and, &&)
+            NUM_BIN_BOOL_OP(or, ||)
 
-        NUM_BIN_BOOL_OP(ge, >=)
-        NUM_BIN_BOOL_OP(gt, >)
-        NUM_BIN_BOOL_OP(le, <=)
-        NUM_BIN_BOOL_OP(lt, <)
+            NUM_BIN_BOOL_OP(ge, >=)
+            NUM_BIN_BOOL_OP(gt, >)
+            NUM_BIN_BOOL_OP(le, <=)
+            NUM_BIN_BOOL_OP(lt, <)
 
 #undef NUM_BIN_OP
 #undef NUM_BIN_OP_INT
@@ -421,9 +421,9 @@ void interp(NkBcInstr const &instr) {
 #undef NUM_BIN_BOOL_OP
 #undef NUM_BIN_BOOL_OP_IT
 
-    default:
-        nk_assert(!"unknown opcode");
-        break;
+        default:
+            nk_assert(!"unknown opcode");
+            break;
     }
 }
 

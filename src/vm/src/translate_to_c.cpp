@@ -74,39 +74,39 @@ typedef unsigned long long uint64_t;
 
 void _writeNumericType(NkNumericValueType value_type, std::ostream &src) {
     switch (value_type) {
-    case Int8:
-        src << "char";
-        break;
-    case Int16:
-        src << "int16_t";
-        break;
-    case Int32:
-        src << "int32_t";
-        break;
-    case Int64:
-        src << "int64_t";
-        break;
-    case Uint8:
-        src << "uint8_t";
-        break;
-    case Uint16:
-        src << "uint16_t";
-        break;
-    case Uint32:
-        src << "uint32_t";
-        break;
-    case Uint64:
-        src << "uint64_t";
-        break;
-    case Float32:
-        src << "float";
-        break;
-    case Float64:
-        src << "double";
-        break;
-    default:
-        nk_assert(!"unreachable");
-        break;
+        case Int8:
+            src << "char";
+            break;
+        case Int16:
+            src << "int16_t";
+            break;
+        case Int32:
+            src << "int32_t";
+            break;
+        case Int64:
+            src << "int64_t";
+            break;
+        case Uint8:
+            src << "uint8_t";
+            break;
+        case Uint16:
+            src << "uint16_t";
+            break;
+        case Uint32:
+            src << "uint32_t";
+            break;
+        case Uint64:
+            src << "uint64_t";
+            break;
+        case Float32:
+            src << "float";
+            break;
+        case Float64:
+            src << "double";
+            break;
+        default:
+            nk_assert(!"unreachable");
+            break;
     }
 }
 
@@ -127,54 +127,54 @@ void _writeType(WriterCtx &ctx, nktype_t type, std::ostream &src, bool allow_voi
     bool is_complex = false;
 
     switch (type->tclass) {
-    case NkType_Numeric:
-        _writeNumericType(type->as.num.value_type, tmp_s);
-        break;
-    case NkType_Ptr:
-        _writeType(ctx, type->as.ptr.target_type, tmp_s);
-        tmp_s << "*";
-        break;
-    case NkType_Tuple: {
-        is_complex = true;
-        tmp_s << "struct {\n";
-        for (usize i = 0; i < type->as.tuple.elems.size; i++) {
-            tmp_s << "  ";
-            _writeType(ctx, type->as.tuple.elems.data[i].type, tmp_s);
-            tmp_s << " _" << i << ";\n";
-        }
-        tmp_s << "}";
-        break;
-    }
-    case NkType_Array: {
-        is_complex = true;
-        tmp_s << "struct { ";
-        _writeType(ctx, type->as.arr.elem_type, tmp_s);
-        tmp_s << " _data[" << type->as.arr.elem_count << "]; }";
-        break;
-    }
-    case NkType_Fn: {
-        is_complex = true;
-        auto const ret_t = type->as.fn.ret_t;
-        auto const args_t = type->as.fn.args_t;
-        auto const is_variadic = type->as.fn.is_variadic;
-        _writeType(ctx, ret_t, tmp_s, true);
-        tmp_s << " (*";
-        tmp_s_suf << ")(";
-        for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
-            if (i) {
-                tmp_s_suf << ", ";
+        case NkType_Numeric:
+            _writeNumericType(type->as.num.value_type, tmp_s);
+            break;
+        case NkType_Ptr:
+            _writeType(ctx, type->as.ptr.target_type, tmp_s);
+            tmp_s << "*";
+            break;
+        case NkType_Tuple: {
+            is_complex = true;
+            tmp_s << "struct {\n";
+            for (usize i = 0; i < type->as.tuple.elems.size; i++) {
+                tmp_s << "  ";
+                _writeType(ctx, type->as.tuple.elems.data[i].type, tmp_s);
+                tmp_s << " _" << i << ";\n";
             }
-            _writeType(ctx, args_t->as.tuple.elems.data[i].type, tmp_s_suf);
+            tmp_s << "}";
+            break;
         }
-        if (is_variadic) {
-            tmp_s_suf << ", ...";
+        case NkType_Array: {
+            is_complex = true;
+            tmp_s << "struct { ";
+            _writeType(ctx, type->as.arr.elem_type, tmp_s);
+            tmp_s << " _data[" << type->as.arr.elem_count << "]; }";
+            break;
         }
-        tmp_s_suf << ")";
-        break;
-    }
-    default:
-        nk_assert(!"type not implemented");
-        break;
+        case NkType_Fn: {
+            is_complex = true;
+            auto const ret_t = type->as.fn.ret_t;
+            auto const args_t = type->as.fn.args_t;
+            auto const is_variadic = type->as.fn.is_variadic;
+            _writeType(ctx, ret_t, tmp_s, true);
+            tmp_s << " (*";
+            tmp_s_suf << ")(";
+            for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
+                if (i) {
+                    tmp_s_suf << ", ";
+                }
+                _writeType(ctx, args_t->as.tuple.elems.data[i].type, tmp_s_suf);
+            }
+            if (is_variadic) {
+                tmp_s_suf << ", ...";
+            }
+            tmp_s_suf << ")";
+            break;
+        }
+        default:
+            nk_assert(!"type not implemented");
+            break;
     }
 
     auto type_str = tmp_s.str();
@@ -199,123 +199,123 @@ void _writeConst(WriterCtx &ctx, nkval_t val, std::ostream &src, bool is_complex
     std::ostringstream tmp_s;
 
     switch (nkval_typeclassid(val)) {
-    case NkType_Numeric: {
-        auto value_type = nkval_typeof(val)->as.num.value_type;
-        switch (value_type) {
-        case Int8:
-            tmp_s << (int)nkval_as(i8, val);
-            break;
-        case Uint8:
-            tmp_s << (unsigned)nkval_as(u8, val);
-            break;
-        case Int16:
-            tmp_s << nkval_as(i16, val);
-            break;
-        case Uint16:
-            tmp_s << nkval_as(u16, val);
-            break;
-        case Int32:
-            tmp_s << nkval_as(i32, val);
-            break;
-        case Uint32:
-            tmp_s << nkval_as(u32, val);
-            break;
-        case Int64:
-            tmp_s << nkval_as(i64, val);
-            break;
-        case Uint64:
-            tmp_s << nkval_as(u64, val);
-            break;
-        case Float32: {
-            tmp_s << std::setprecision(std::numeric_limits<f32>::max_digits10);
-            auto f_val = nkval_as(f32, val);
-            tmp_s << f_val;
-            if (f_val == std::round(f_val)) {
-                tmp_s << ".";
+        case NkType_Numeric: {
+            auto value_type = nkval_typeof(val)->as.num.value_type;
+            switch (value_type) {
+                case Int8:
+                    tmp_s << (int)nkval_as(i8, val);
+                    break;
+                case Uint8:
+                    tmp_s << (unsigned)nkval_as(u8, val);
+                    break;
+                case Int16:
+                    tmp_s << nkval_as(i16, val);
+                    break;
+                case Uint16:
+                    tmp_s << nkval_as(u16, val);
+                    break;
+                case Int32:
+                    tmp_s << nkval_as(i32, val);
+                    break;
+                case Uint32:
+                    tmp_s << nkval_as(u32, val);
+                    break;
+                case Int64:
+                    tmp_s << nkval_as(i64, val);
+                    break;
+                case Uint64:
+                    tmp_s << nkval_as(u64, val);
+                    break;
+                case Float32: {
+                    tmp_s << std::setprecision(std::numeric_limits<f32>::max_digits10);
+                    auto f_val = nkval_as(f32, val);
+                    tmp_s << f_val;
+                    if (f_val == std::round(f_val)) {
+                        tmp_s << ".";
+                    }
+                    tmp_s << "f";
+                    break;
+                }
+                case Float64: {
+                    tmp_s << std::setprecision(std::numeric_limits<f64>::max_digits10);
+                    auto f_val = nkval_as(f64, val);
+                    tmp_s << f_val;
+                    if (f_val == std::round(f_val)) {
+                        tmp_s << ".";
+                    }
+                    break;
+                }
+                default:
+                    nk_assert(!"unreachable");
+                    break;
             }
-            tmp_s << "f";
+            if (value_type < Float32) {
+                if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
+                    tmp_s << "u";
+                }
+                if (nkval_sizeof(val) == 4) {
+                    tmp_s << "l";
+                } else if (nkval_sizeof(val) == 8) {
+                    tmp_s << "ll";
+                }
+            }
             break;
         }
-        case Float64: {
-            tmp_s << std::setprecision(std::numeric_limits<f64>::max_digits10);
-            auto f_val = nkval_as(f64, val);
-            tmp_s << f_val;
-            if (f_val == std::round(f_val)) {
-                tmp_s << ".";
+        case NkType_Ptr:
+            if (nkval_as(void *, val)) {
+                is_complex = true;
+                tmp_s << "& ";
+                _writeConst(ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
+            } else {
+                tmp_s << "(void*)0";
+            }
+            break;
+        case NkType_Tuple: {
+            is_complex = true;
+            tmp_s << "{ ";
+            for (usize i = 0; i < nkval_tuple_size(val); i++) {
+                _writeConst(ctx, nkval_tuple_at(val, i), tmp_s);
+                tmp_s << ", ";
+            }
+            tmp_s << "}";
+            break;
+        }
+        case NkType_Array: {
+            is_complex = true;
+            tmp_s << "{ ";
+            for (usize i = 0; i < nkval_array_size(val); i++) {
+                _writeConst(ctx, nkval_array_at(val, i), tmp_s);
+                tmp_s << ", ";
+            }
+            tmp_s << "}";
+            break;
+        }
+        case NkType_Fn: {
+            NkIrFunct fn;
+            switch (nkval_typeof(val)->as.fn.call_conv) {
+                case NkCallConv_Nk: {
+                    fn = nkval_as(NkIrFunct, val);
+                    break;
+                }
+                case NkCallConv_Cdecl: {
+                    auto it = ctx.ir->closureCode2IrFunct.find(nkval_as(void *, val));
+                    nk_assert(it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
+                    fn = it->second;
+                    break;
+                }
+                default:
+                    nk_assert(!"invalid calling convention");
+                    break;
+            }
+            tmp_s << fn->name;
+            if (ctx.translated.find(fn) == ctx.translated.end()) {
+                ctx.to_translate.emplace(fn);
             }
             break;
         }
         default:
             nk_assert(!"unreachable");
             break;
-        }
-        if (value_type < Float32) {
-            if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
-                tmp_s << "u";
-            }
-            if (nkval_sizeof(val) == 4) {
-                tmp_s << "l";
-            } else if (nkval_sizeof(val) == 8) {
-                tmp_s << "ll";
-            }
-        }
-        break;
-    }
-    case NkType_Ptr:
-        if (nkval_as(void *, val)) {
-            is_complex = true;
-            tmp_s << "& ";
-            _writeConst(ctx, {nkval_as(void *, val), nkval_typeof(val)->as.ptr.target_type}, tmp_s, true);
-        } else {
-            tmp_s << "(void*)0";
-        }
-        break;
-    case NkType_Tuple: {
-        is_complex = true;
-        tmp_s << "{ ";
-        for (usize i = 0; i < nkval_tuple_size(val); i++) {
-            _writeConst(ctx, nkval_tuple_at(val, i), tmp_s);
-            tmp_s << ", ";
-        }
-        tmp_s << "}";
-        break;
-    }
-    case NkType_Array: {
-        is_complex = true;
-        tmp_s << "{ ";
-        for (usize i = 0; i < nkval_array_size(val); i++) {
-            _writeConst(ctx, nkval_array_at(val, i), tmp_s);
-            tmp_s << ", ";
-        }
-        tmp_s << "}";
-        break;
-    }
-    case NkType_Fn: {
-        NkIrFunct fn;
-        switch (nkval_typeof(val)->as.fn.call_conv) {
-        case NkCallConv_Nk: {
-            fn = nkval_as(NkIrFunct, val);
-            break;
-        }
-        case NkCallConv_Cdecl: {
-            auto it = ctx.ir->closureCode2IrFunct.find(nkval_as(void *, val));
-            nk_assert(it != ctx.ir->closureCode2IrFunct.end() && "cdecl translation is not implemented");
-            fn = it->second;
-            break;
-        }
-        default:
-            nk_assert(!"invalid calling convention");
-            break;
-        }
-        tmp_s << fn->name;
-        if (ctx.translated.find(fn) == ctx.translated.end()) {
-            ctx.to_translate.emplace(fn);
-        }
-        break;
-    }
-    default:
-        nk_assert(!"unreachable");
-        break;
     }
 
     auto const_str = tmp_s.str();
@@ -448,37 +448,37 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
                 src << "& ";
             }
             switch (ref.ref_type) {
-            case NkIrRef_Frame:
-                src << "var" << ref.index;
-                break;
-            case NkIrRef_Arg:
-                src << "arg" << ref.index;
-                break;
-            case NkIrRef_Ret:
-                src << "ret";
-                break;
-            case NkIrRef_Global:
-                src << "global" << ref.index;
-                if (ctx.globals_forward_declared.find(ref.index) == ctx.globals_forward_declared.end()) {
-                    auto const type = ir->globals[ref.index];
-                    _writeType(ctx, type, ctx.forward_s);
-                    ctx.forward_s << " global" << ref.index << "={";
-                    if (type->size) {
-                        ctx.forward_s << "0";
+                case NkIrRef_Frame:
+                    src << "var" << ref.index;
+                    break;
+                case NkIrRef_Arg:
+                    src << "arg" << ref.index;
+                    break;
+                case NkIrRef_Ret:
+                    src << "ret";
+                    break;
+                case NkIrRef_Global:
+                    src << "global" << ref.index;
+                    if (ctx.globals_forward_declared.find(ref.index) == ctx.globals_forward_declared.end()) {
+                        auto const type = ir->globals[ref.index];
+                        _writeType(ctx, type, ctx.forward_s);
+                        ctx.forward_s << " global" << ref.index << "={";
+                        if (type->size) {
+                            ctx.forward_s << "0";
+                        }
+                        ctx.forward_s << "};\n";
+                        ctx.globals_forward_declared.emplace(ref.index);
                     }
-                    ctx.forward_s << "};\n";
-                    ctx.globals_forward_declared.emplace(ref.index);
-                }
-                break;
-            case NkIrRef_Reg:
-                src << "*((uint8_t*)&reg+" << ref.index * REG_SIZE << ")";
-                break;
-            case NkIrRef_Const:
-            case NkIrRef_ExtSym:
-            case NkIrRef_None:
-            default:
-                nk_assert(!"unreachable");
-                break;
+                    break;
+                case NkIrRef_Reg:
+                    src << "*((uint8_t*)&reg+" << ref.index * REG_SIZE << ")";
+                    break;
+                case NkIrRef_Const:
+                case NkIrRef_ExtSym:
+                case NkIrRef_None:
+                default:
+                    nk_assert(!"unreachable");
+                    break;
             }
             if (ref.offset) {
                 src << "+" << ref.offset << ")";
@@ -492,12 +492,12 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             auto const &instr = ctx.ir->instrs[ii];
 
             switch (instr.code) {
-            case nkir_enter:
-            case nkir_leave:
-            case nkir_nop:
-                continue;
-            default:
-                break;
+                case nkir_enter:
+                case nkir_leave:
+                case nkir_nop:
+                    continue;
+                default:
+                    break;
             }
 
             src << "  ";
@@ -509,63 +509,63 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
             }
 
             switch (instr.code) {
-            case nkir_ret:
-                src << "return";
-                if (ret_t->size) {
-                    src << " ret";
-                }
-                break;
-            case nkir_jmp:
-                src << "goto l_" << ctx.ir->blocks[instr.arg[1].id].name;
-                break;
-            case nkir_jmpz:
-                src << "if (0 == ";
-                _writeRef(instr.arg[1].ref);
-                src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
-                break;
-            case nkir_jmpnz:
-                src << "if (";
-                _writeRef(instr.arg[1].ref);
-                src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
-                break;
-            case nkir_cast:
-                nk_assert(instr.arg[1].arg_type == NkIrArg_NumValType && "numeric value type expected in cast");
-                src << "(";
-                _writeNumericType((NkNumericValueType)instr.arg[1].id, src);
-                src << ")";
-                _writeRef(instr.arg[2].ref);
-                break;
-            case nkir_call: {
-                auto fn_t = instr.arg[1].ref.type;
-                nk_assert(fn_t->tclass == NkType_Fn);
-                src << "(";
-                _writeRef(instr.arg[1].ref);
-                src << ")";
-                src << "(";
-                if (instr.arg[2].ref.ref_type != NkIrRef_None) {
-                    auto args_t = instr.arg[2].ref.type;
-                    for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
-                        if (i) {
-                            src << ", ";
-                        }
-                        if (i < fn_t->as.fn.args_t->as.tuple.elems.size) {
-                            _writeCast(ctx, src, fn_t->as.fn.args_t->as.tuple.elems.data[i].type);
-                        }
-                        src << "(";
-                        _writeRef(instr.arg[2].ref);
-                        src << ")._" << i;
+                case nkir_ret:
+                    src << "return";
+                    if (ret_t->size) {
+                        src << " ret";
                     }
+                    break;
+                case nkir_jmp:
+                    src << "goto l_" << ctx.ir->blocks[instr.arg[1].id].name;
+                    break;
+                case nkir_jmpz:
+                    src << "if (0 == ";
+                    _writeRef(instr.arg[1].ref);
+                    src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
+                    break;
+                case nkir_jmpnz:
+                    src << "if (";
+                    _writeRef(instr.arg[1].ref);
+                    src << ") { goto l_" << ctx.ir->blocks[instr.arg[2].id].name << "; }";
+                    break;
+                case nkir_cast:
+                    nk_assert(instr.arg[1].arg_type == NkIrArg_NumValType && "numeric value type expected in cast");
+                    src << "(";
+                    _writeNumericType((NkNumericValueType)instr.arg[1].id, src);
+                    src << ")";
+                    _writeRef(instr.arg[2].ref);
+                    break;
+                case nkir_call: {
+                    auto fn_t = instr.arg[1].ref.type;
+                    nk_assert(fn_t->tclass == NkType_Fn);
+                    src << "(";
+                    _writeRef(instr.arg[1].ref);
+                    src << ")";
+                    src << "(";
+                    if (instr.arg[2].ref.ref_type != NkIrRef_None) {
+                        auto args_t = instr.arg[2].ref.type;
+                        for (usize i = 0; i < args_t->as.tuple.elems.size; i++) {
+                            if (i) {
+                                src << ", ";
+                            }
+                            if (i < fn_t->as.fn.args_t->as.tuple.elems.size) {
+                                _writeCast(ctx, src, fn_t->as.fn.args_t->as.tuple.elems.data[i].type);
+                            }
+                            src << "(";
+                            _writeRef(instr.arg[2].ref);
+                            src << ")._" << i;
+                        }
+                    }
+                    src << ")";
+                    break;
                 }
-                src << ")";
-                break;
-            }
-            case nkir_mov:
-                _writeRef(instr.arg[1].ref);
-                break;
-            case nkir_lea:
-                src << "& ";
-                _writeRef(instr.arg[1].ref);
-                break;
+                case nkir_mov:
+                    _writeRef(instr.arg[1].ref);
+                    break;
+                case nkir_lea:
+                    src << "& ";
+                    _writeRef(instr.arg[1].ref);
+                    break;
 
 #define UN_OP(NAME, OP)              \
     case NK_CAT(nkir_, NAME):        \
@@ -575,9 +575,9 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
         src << ")";                  \
         break;
 
-                UN_OP(neg, -)
-                UN_OP(compl, ~)
-                UN_OP(not, !)
+                    UN_OP(neg, -)
+                    UN_OP(compl, ~)
+                    UN_OP(not, !)
 
 #undef UN_OP
 
@@ -590,29 +590,29 @@ void _translateFunction(WriterCtx &ctx, NkIrFunct fn) {
         src << ")";                  \
         break;
 
-                BIN_OP(add, +)
-                BIN_OP(sub, -)
-                BIN_OP(mul, *)
-                BIN_OP(div, /)
-                BIN_OP(mod, %)
-                BIN_OP(bitand, &)
-                BIN_OP(bitor, |)
-                BIN_OP(xor, ^)
-                BIN_OP(lsh, <<)
-                BIN_OP(rsh, >>)
-                BIN_OP(and, &&)
-                BIN_OP(or, ||)
-                BIN_OP(eq, ==)
-                BIN_OP(ge, >=)
-                BIN_OP(gt, >)
-                BIN_OP(le, <=)
-                BIN_OP(lt, <)
-                BIN_OP(ne, !=)
+                    BIN_OP(add, +)
+                    BIN_OP(sub, -)
+                    BIN_OP(mul, *)
+                    BIN_OP(div, /)
+                    BIN_OP(mod, %)
+                    BIN_OP(bitand, &)
+                    BIN_OP(bitor, |)
+                    BIN_OP(xor, ^)
+                    BIN_OP(lsh, <<)
+                    BIN_OP(rsh, >>)
+                    BIN_OP(and, &&)
+                    BIN_OP(or, ||)
+                    BIN_OP(eq, ==)
+                    BIN_OP(ge, >=)
+                    BIN_OP(gt, >)
+                    BIN_OP(le, <=)
+                    BIN_OP(lt, <)
+                    BIN_OP(ne, !=)
 
 #undef BIN_OP
 
-            default:
-                nk_assert(!"unreachable");
+                default:
+                    nk_assert(!"unreachable");
             }
 
             src << ";\n";

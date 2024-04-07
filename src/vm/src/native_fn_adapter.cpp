@@ -64,84 +64,84 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         ffi_t = it->second;
     } else {
         switch (type->tclass) {
-        case NkType_Array: {
-            auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
-            ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
-                &ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *), alignof(void *));
-            std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
-            elements[type->as.arr.elem_count] = nullptr;
-            ffi_t = new (nk_arena_allocAligned(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
-                .size = type->size,
-                .alignment = type->align,
-                .type = FFI_TYPE_STRUCT,
-                .elements = elements,
-            };
-            break;
-        }
-        case NkType_Fn:
-            ffi_t = &ffi_type_pointer;
-            break;
-        case NkType_Numeric:
-            switch (type->as.num.value_type) {
-            case Int8:
-                ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint8;
+            case NkType_Array: {
+                auto native_elem_h = _getNativeHandle(type->as.arr.elem_type);
+                ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
+                    &ctx.typearena, (type->as.arr.elem_count + 1) * sizeof(void *), alignof(void *));
+                std::fill_n(elements, type->as.arr.elem_count, native_elem_h);
+                elements[type->as.arr.elem_count] = nullptr;
+                ffi_t = new (nk_arena_allocAligned(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
+                    .size = type->size,
+                    .alignment = type->align,
+                    .type = FFI_TYPE_STRUCT,
+                    .elements = elements,
+                };
                 break;
-            case Int16:
-                ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint16;
+            }
+            case NkType_Fn:
+                ffi_t = &ffi_type_pointer;
                 break;
-            case Int32:
-                ffi_t = &ffi_type_sint32;
+            case NkType_Numeric:
+                switch (type->as.num.value_type) {
+                    case Int8:
+                        ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint8;
+                        break;
+                    case Int16:
+                        ffi_t = promote ? &ffi_type_sint32 : &ffi_type_sint16;
+                        break;
+                    case Int32:
+                        ffi_t = &ffi_type_sint32;
+                        break;
+                    case Int64:
+                        ffi_t = &ffi_type_sint64;
+                        break;
+                    case Uint8:
+                        ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint8;
+                        break;
+                    case Uint16:
+                        ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint16;
+                        break;
+                    case Uint32:
+                        ffi_t = &ffi_type_uint32;
+                        break;
+                    case Uint64:
+                        ffi_t = &ffi_type_uint64;
+                        break;
+                    case Float32:
+                        ffi_t = promote ? &ffi_type_double : &ffi_type_float;
+                        break;
+                    case Float64:
+                        ffi_t = &ffi_type_double;
+                        break;
+                    default:
+                        nk_assert(!"unreachable");
+                        break;
+                }
                 break;
-            case Int64:
-                ffi_t = &ffi_type_sint64;
+            case NkType_Ptr:
+                ffi_t = &ffi_type_pointer;
                 break;
-            case Uint8:
-                ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint8;
+            case NkType_Tuple: {
+                if (!type->as.tuple.elems.size) {
+                    return &ffi_type_void;
+                }
+                ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
+                    &ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *), alignof(void *));
+                for (usize i = 0; i < type->as.tuple.elems.size; i++) {
+                    elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
+                }
+                elements[type->as.tuple.elems.size] = nullptr;
+                ffi_t = new (nk_arena_allocAligned(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
+                    .size = type->size,
+                    .alignment = type->align,
+                    .type = FFI_TYPE_STRUCT,
+                    .elements = elements,
+                };
                 break;
-            case Uint16:
-                ffi_t = promote ? &ffi_type_uint32 : &ffi_type_uint16;
-                break;
-            case Uint32:
-                ffi_t = &ffi_type_uint32;
-                break;
-            case Uint64:
-                ffi_t = &ffi_type_uint64;
-                break;
-            case Float32:
-                ffi_t = promote ? &ffi_type_double : &ffi_type_float;
-                break;
-            case Float64:
-                ffi_t = &ffi_type_double;
-                break;
+            }
             default:
                 nk_assert(!"unreachable");
                 break;
-            }
-            break;
-        case NkType_Ptr:
-            ffi_t = &ffi_type_pointer;
-            break;
-        case NkType_Tuple: {
-            if (!type->as.tuple.elems.size) {
-                return &ffi_type_void;
-            }
-            ffi_type **elements = (ffi_type **)nk_arena_allocAligned(
-                &ctx.typearena, (type->as.tuple.elems.size + 1) * sizeof(void *), alignof(void *));
-            for (usize i = 0; i < type->as.tuple.elems.size; i++) {
-                elements[i] = _getNativeHandle(type->as.tuple.elems.data[i].type, promote);
-            }
-            elements[type->as.tuple.elems.size] = nullptr;
-            ffi_t = new (nk_arena_allocAligned(&ctx.typearena, sizeof(ffi_type), alignof(ffi_type))) ffi_type{
-                .size = type->size,
-                .alignment = type->align,
-                .type = FFI_TYPE_STRUCT,
-                .elements = elements,
-            };
-            break;
-        }
-        default:
-            nk_assert(!"unreachable");
-            break;
         }
 
         ctx.typemap.emplace(type, ffi_t);

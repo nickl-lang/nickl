@@ -51,61 +51,62 @@ static void *arenaAllocatorProc(void *data, NkAllocatorMode mode, usize size, u8
 
 #ifdef ENABLE_LOGGING
     switch (mode) {
-    case NkAllocatorMode_Alloc:
-        NK_LOG_TRC("arena=%p alloc(%" PRIu64 ", %" PRIu8 ")", data, size, align);
-        break;
-    case NkAllocatorMode_Free:
-        NK_LOG_TRC("arena=%p free(%p, %" PRIu64 ", %" PRIu8 ")", data, old_mem, old_size, align);
-        break;
-    case NkAllocatorMode_Realloc:
-        NK_LOG_TRC("arena=%p realloc(%" PRIu64 ", %" PRIu8 ", %p, %" PRIu64 ")", data, size, align, old_mem, old_size);
-        break;
-    default:
-        nk_assert(!"unreachable");
-    case NkAllocatorMode_QuerySpaceLeft:
-        break;
+        case NkAllocatorMode_Alloc:
+            NK_LOG_TRC("arena=%p alloc(%" PRIu64 ", %" PRIu8 ")", data, size, align);
+            break;
+        case NkAllocatorMode_Free:
+            NK_LOG_TRC("arena=%p free(%p, %" PRIu64 ", %" PRIu8 ")", data, old_mem, old_size, align);
+            break;
+        case NkAllocatorMode_Realloc:
+            NK_LOG_TRC(
+                "arena=%p realloc(%" PRIu64 ", %" PRIu8 ", %p, %" PRIu64 ")", data, size, align, old_mem, old_size);
+            break;
+        default:
+            nk_assert(!"unreachable");
+        case NkAllocatorMode_QuerySpaceLeft:
+            break;
     }
 #endif // ENABLE_LOGGING
 
     switch (mode) {
-    case NkAllocatorMode_Alloc: {
-        void *ret = allocAlignedRaw(arena, size, align, true);
-        return ret;
-    }
-
-    case NkAllocatorMode_Free:
-        nk_assert(arena->data + arena->size >= (u8 *)old_mem + old_size && "invalid allocation");
-        nk_assert(((usize)old_mem & (align - 1)) == 0 && "invalid alignment");
-
-        if (arena->data + arena->size == (u8 *)old_mem + old_size) {
-            nk_arena_pop(arena, old_size);
-        }
-        return NULL;
-
-    case NkAllocatorMode_Realloc:
-        nk_assert(arena->data + arena->size >= (u8 *)old_mem + old_size && "invalid allocation");
-        nk_assert(((usize)old_mem & (align - 1)) == 0 && "invalid alignment");
-
-        if (arena->data + arena->size == (u8 *)old_mem + old_size) {
-            nk_arena_pop(arena, old_size);
-            void *ret = allocAlignedRaw(arena, size, align, false);
+        case NkAllocatorMode_Alloc: {
+            void *ret = allocAlignedRaw(arena, size, align, true);
             return ret;
-        } else {
-            void *new_mem = allocAlignedRaw(arena, size, align, true);
-            memcpy(new_mem, old_mem, old_size);
-            return new_mem;
         }
 
-    case NkAllocatorMode_QuerySpaceLeft:
-        *(NkAllocatorSpaceLeftQueryResult *)old_mem = (NkAllocatorSpaceLeftQueryResult){
-            .kind = NkAllocatorSpaceLeftQueryResultKind_Limited,
-            .bytes_left = (arena->data ? arena->capacity : FIXED_ARENA_SIZE) - arena->size,
-        };
-        return NULL;
+        case NkAllocatorMode_Free:
+            nk_assert(arena->data + arena->size >= (u8 *)old_mem + old_size && "invalid allocation");
+            nk_assert(((usize)old_mem & (align - 1)) == 0 && "invalid alignment");
 
-    default:
-        nk_assert(!"unreachable");
-        return NULL;
+            if (arena->data + arena->size == (u8 *)old_mem + old_size) {
+                nk_arena_pop(arena, old_size);
+            }
+            return NULL;
+
+        case NkAllocatorMode_Realloc:
+            nk_assert(arena->data + arena->size >= (u8 *)old_mem + old_size && "invalid allocation");
+            nk_assert(((usize)old_mem & (align - 1)) == 0 && "invalid alignment");
+
+            if (arena->data + arena->size == (u8 *)old_mem + old_size) {
+                nk_arena_pop(arena, old_size);
+                void *ret = allocAlignedRaw(arena, size, align, false);
+                return ret;
+            } else {
+                void *new_mem = allocAlignedRaw(arena, size, align, true);
+                memcpy(new_mem, old_mem, old_size);
+                return new_mem;
+            }
+
+        case NkAllocatorMode_QuerySpaceLeft:
+            *(NkAllocatorSpaceLeftQueryResult *)old_mem = (NkAllocatorSpaceLeftQueryResult){
+                .kind = NkAllocatorSpaceLeftQueryResultKind_Limited,
+                .bytes_left = (arena->data ? arena->capacity : FIXED_ARENA_SIZE) - arena->size,
+            };
+            return NULL;
+
+        default:
+            nk_assert(!"unreachable");
+            return NULL;
     }
 }
 

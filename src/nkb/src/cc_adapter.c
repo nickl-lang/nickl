@@ -30,21 +30,21 @@ bool nkcc_streamOpen(NkPipeStream *stream, NkIrCompilerConfig conf) {
     }
 
     switch (conf.output_kind) {
-    case NkbOutput_Object:
-        nksb_tryAppendCStr(&cmd, " -c");
-        break;
-    case NkbOutput_Static:
-        nksb_tryAppendCStr(&cmd, " -static");
-        break;
-    case NkbOutput_Shared:
-        nksb_tryAppendCStr(&cmd, " -shared");
-        break;
-    case NkbOutput_Executable:
-        break;
+        case NkbOutput_Object:
+            nksb_tryAppendCStr(&cmd, " -c");
+            break;
+        case NkbOutput_Static:
+            nksb_tryAppendCStr(&cmd, " -static");
+            break;
+        case NkbOutput_Shared:
+            nksb_tryAppendCStr(&cmd, " -shared");
+            break;
+        case NkbOutput_Executable:
+            break;
 
-    default:
-        nk_assert(!"unreachable");
-        break;
+        default:
+            nk_assert(!"unreachable");
+            break;
     }
 
     bool ret = nk_pipe_streamOpenWrite(stream, (NkString){NK_SLICE_INIT(cmd)}, conf.quiet);

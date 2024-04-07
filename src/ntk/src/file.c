@@ -35,12 +35,12 @@ static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStream
     NkOsHandle h_file = nkos_handleFromVoidPtr(stream_data);
 
     switch (mode) {
-    case NkStreamMode_Read:
-        return nk_read(h_file, buf, size);
-    case NkStreamMode_Write:
-        return nk_write(h_file, buf, size);
-    default:
-        return -1;
+        case NkStreamMode_Read:
+            return nk_read(h_file, buf, size);
+        case NkStreamMode_Write:
+            return nk_write(h_file, buf, size);
+        default:
+            return -1;
     }
 }
 

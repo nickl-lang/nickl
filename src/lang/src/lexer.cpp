@@ -98,26 +98,26 @@ struct ScanEngine {
                 accept();
                 if (on('\\', -1)) {
                     switch (chr()) {
-                    case 'n':
-                    case 't':
-                    case '0':
-                    case '\\':
-                    case '"':
-                    case '\n':
-                        escaped = true;
-                        accept();
-                        break;
-                    default:
-                        if (!chr()) {
-                            return error("unexpected end of file");
-                        } else {
-                            m_token.text.data = m_src.data + m_pos - 1;
-                            m_token.text.size = 2;
-                            m_token.pos = m_pos - 1;
-                            m_token.lin = m_lin;
-                            m_token.col = m_col - 1;
-                            return error("invalid escape sequence `\\%c`", chr());
-                        }
+                        case 'n':
+                        case 't':
+                        case '0':
+                        case '\\':
+                        case '"':
+                        case '\n':
+                            escaped = true;
+                            accept();
+                            break;
+                        default:
+                            if (!chr()) {
+                                return error("unexpected end of file");
+                            } else {
+                                m_token.text.data = m_src.data + m_pos - 1;
+                                m_token.text.size = 2;
+                                m_token.pos = m_pos - 1;
+                                m_token.lin = m_lin;
+                                m_token.col = m_col - 1;
+                                return error("invalid escape sequence `\\%c`", chr());
+                            }
                     }
                 }
             }

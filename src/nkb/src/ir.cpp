@@ -49,8 +49,8 @@ char const *nkirOpcodeName(u8 code) {
         return #NAME1 " " #NAME2;
 #include "nkb/ir.inl"
 
-    default:
-        return "";
+        default:
+            return "";
     }
 }
 
@@ -651,34 +651,34 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                     nk_stream_printf(out, ((i > 1) ? ", " : " "));
                 }
                 switch (arg.kind) {
-                case NkIrArg_Ref: {
-                    auto const &ref = arg.ref;
-                    nkir_inspectRef(ir, _proc, ref, out);
-                    break;
-                }
-                case NkIrArg_RefArray: {
-                    nk_stream_printf(out, "(");
-                    for (usize i = 0; i < arg.refs.size; i++) {
-                        if (i) {
-                            nk_stream_printf(out, ", ");
-                        }
-                        auto const &ref = arg.refs.data[i];
+                    case NkIrArg_Ref: {
+                        auto const &ref = arg.ref;
                         nkir_inspectRef(ir, _proc, ref, out);
+                        break;
                     }
-                    nk_stream_printf(out, ")");
-                    break;
-                }
-                case NkIrArg_Label:
-                    if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != NK_ATOM_INVALID) {
-                        auto const name = nk_atom2s(ir->blocks.data[arg.id].name);
-                        nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
-                    } else {
-                        nk_stream_printf(out, "(null)");
+                    case NkIrArg_RefArray: {
+                        nk_stream_printf(out, "(");
+                        for (usize i = 0; i < arg.refs.size; i++) {
+                            if (i) {
+                                nk_stream_printf(out, ", ");
+                            }
+                            auto const &ref = arg.refs.data[i];
+                            nkir_inspectRef(ir, _proc, ref, out);
+                        }
+                        nk_stream_printf(out, ")");
+                        break;
                     }
-                    break;
-                case NkIrArg_None:
-                default:
-                    break;
+                    case NkIrArg_Label:
+                        if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != NK_ATOM_INVALID) {
+                            auto const name = nk_atom2s(ir->blocks.data[arg.id].name);
+                            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+                        } else {
+                            nk_stream_printf(out, "(null)");
+                        }
+                        break;
+                    case NkIrArg_None:
+                    default:
+                        break;
                 }
             }
 
@@ -707,72 +707,72 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
         nk_stream_printf(out, "[");
     }
     switch (ref.kind) {
-    case NkIrRef_Frame: {
-        auto const &decl = proc.locals.data[ref.index];
-        if (decl.name != NK_ATOM_INVALID) {
-            auto const local_name = nk_atom2s(decl.name);
-            nk_stream_printf(out, NKS_FMT, NKS_ARG(local_name));
-        } else {
-            nk_stream_printf(out, "var%" PRIu64, ref.index);
-        }
-        break;
-    }
-    case NkIrRef_Arg: {
-        if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index] != NK_ATOM_INVALID) {
-            auto const name = nk_atom2s(proc.arg_names.data[ref.index]);
-            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
-        } else {
-            nk_stream_printf(out, "arg%" PRIu64, ref.index);
-        }
-        break;
-    }
-    case NkIrRef_Ret:
-        nk_stream_printf(out, "ret");
-        break;
-    case NkIrRef_Data: {
-        auto const &decl = ir->data.data[ref.index];
-        if (isInlineDecl(decl)) {
-            void *data = nkir_dataRefDeref(ir, ref);
-            nkirv_inspect(data, ref.type, out);
-        } else {
+        case NkIrRef_Frame: {
+            auto const &decl = proc.locals.data[ref.index];
             if (decl.name != NK_ATOM_INVALID) {
-                auto const decl_name = nk_atom2s(decl.name);
-                nk_stream_printf(out, NKS_FMT, NKS_ARG(decl_name));
+                auto const local_name = nk_atom2s(decl.name);
+                nk_stream_printf(out, NKS_FMT, NKS_ARG(local_name));
             } else {
-                nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", ref.index);
+                nk_stream_printf(out, "var%" PRIu64, ref.index);
             }
+            break;
         }
-        break;
-    }
-    case NkIrRef_Proc: {
-        auto const name = nk_atom2s(ir->procs.data[ref.index].name);
-        nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
-        break;
-    }
-    case NkIrRef_ExternData: {
-        auto const name = nk_atom2s(ir->extern_data.data[ref.index].name);
-        nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
-        break;
-    }
-    case NkIrRef_ExternProc: {
-        auto const name = nk_atom2s(ir->extern_procs.data[ref.index].name);
-        nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
-        break;
-    }
-    case NkIrRef_Address: {
-        nk_stream_printf(out, "&");
-        auto const &reloc_ref = ir->relocs.data[ref.index];
-        nkir_inspectRef(ir, _proc, reloc_ref, out);
-        break;
-    }
-    case NkIrRef_VariadicMarker: {
-        nk_stream_printf(out, "...");
-        break;
-    }
-    case NkIrRef_None:
-    default:
-        nk_assert(!"unreachable");
-        break;
+        case NkIrRef_Arg: {
+            if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index] != NK_ATOM_INVALID) {
+                auto const name = nk_atom2s(proc.arg_names.data[ref.index]);
+                nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+            } else {
+                nk_stream_printf(out, "arg%" PRIu64, ref.index);
+            }
+            break;
+        }
+        case NkIrRef_Ret:
+            nk_stream_printf(out, "ret");
+            break;
+        case NkIrRef_Data: {
+            auto const &decl = ir->data.data[ref.index];
+            if (isInlineDecl(decl)) {
+                void *data = nkir_dataRefDeref(ir, ref);
+                nkirv_inspect(data, ref.type, out);
+            } else {
+                if (decl.name != NK_ATOM_INVALID) {
+                    auto const decl_name = nk_atom2s(decl.name);
+                    nk_stream_printf(out, NKS_FMT, NKS_ARG(decl_name));
+                } else {
+                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", ref.index);
+                }
+            }
+            break;
+        }
+        case NkIrRef_Proc: {
+            auto const name = nk_atom2s(ir->procs.data[ref.index].name);
+            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+            break;
+        }
+        case NkIrRef_ExternData: {
+            auto const name = nk_atom2s(ir->extern_data.data[ref.index].name);
+            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+            break;
+        }
+        case NkIrRef_ExternProc: {
+            auto const name = nk_atom2s(ir->extern_procs.data[ref.index].name);
+            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+            break;
+        }
+        case NkIrRef_Address: {
+            nk_stream_printf(out, "&");
+            auto const &reloc_ref = ir->relocs.data[ref.index];
+            nkir_inspectRef(ir, _proc, reloc_ref, out);
+            break;
+        }
+        case NkIrRef_VariadicMarker: {
+            nk_stream_printf(out, "...");
+            break;
+        }
+        case NkIrRef_None:
+        default:
+            nk_assert(!"unreachable");
+            break;
     }
     if (ref.offset) {
         nk_stream_printf(out, "+%" PRIu64, ref.offset);

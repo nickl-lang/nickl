@@ -56,58 +56,58 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
     auto idx = node_idx + 1;
 
     switch (node.id) {
-    case n_int: {
-        // TODO WIP int parsing
-        auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
-        NK_LOG_INF("value=" NKS_FMT, NKS_ARG(token_str));
-    }
+        case n_int: {
+            // TODO WIP int parsing
+            auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            NK_LOG_INF("value=" NKS_FMT, NKS_ARG(token_str));
+        }
 
-    case n_list: {
-        for (size_t i = 0; i < node.arity; i++, idx = nkl_ast_nextChild(src.nodes, idx)) {
+        case n_list: {
+            for (size_t i = 0; i < node.arity; i++, idx = nkl_ast_nextChild(src.nodes, idx)) {
+                compileNode(m, src, idx);
+            }
+            break;
+        }
+
+        case n_proc: {
+            if (!node.arity) {
+                NK_LOG_ERR("invalid node");
+                return;
+            }
+
+            auto const &info = src.nodes.data[idx];
             compileNode(m, src, idx);
-        }
-        break;
-    }
+            idx = nkl_ast_nextChild(src.nodes, idx);
 
-    case n_proc: {
-        if (!node.arity) {
-            NK_LOG_ERR("invalid node");
-            return;
-        }
+            auto const &name = src.nodes.data[idx];
+            compileNode(m, src, idx);
+            idx = nkl_ast_nextChild(src.nodes, idx);
 
-        auto const &info = src.nodes.data[idx];
-        compileNode(m, src, idx);
-        idx = nkl_ast_nextChild(src.nodes, idx);
+            auto const &params = src.nodes.data[idx];
+            compileNode(m, src, idx);
+            idx = nkl_ast_nextChild(src.nodes, idx);
 
-        auto const &name = src.nodes.data[idx];
-        compileNode(m, src, idx);
-        idx = nkl_ast_nextChild(src.nodes, idx);
+            auto const &return_type = src.nodes.data[idx];
+            compileNode(m, src, idx);
+            idx = nkl_ast_nextChild(src.nodes, idx);
 
-        auto const &params = src.nodes.data[idx];
-        compileNode(m, src, idx);
-        idx = nkl_ast_nextChild(src.nodes, idx);
+            if (info.id == n_extern) {
+                NK_LOG_ERR("extern proc compilation is not implemented");
+                return;
+            } else if (info.id == n_pub) {
+                NK_LOG_ERR("pub proc compilation is not implemented");
+                return;
+            } else {
+                NK_LOG_ERR("invalid node");
+                return;
+            }
 
-        auto const &return_type = src.nodes.data[idx];
-        compileNode(m, src, idx);
-        idx = nkl_ast_nextChild(src.nodes, idx);
-
-        if (info.id == n_extern) {
-            NK_LOG_ERR("extern proc compilation is not implemented");
-            return;
-        } else if (info.id == n_pub) {
-            NK_LOG_ERR("pub proc compilation is not implemented");
-            return;
-        } else {
-            NK_LOG_ERR("invalid node");
-            return;
+            break;
         }
 
-        break;
-    }
-
-    default:
-        NK_LOG_ERR("unknown node #%s", nk_atom2cs(node.id));
-        break;
+        default:
+            NK_LOG_ERR("unknown node #%s", nk_atom2cs(node.id));
+            break;
     }
 }
 

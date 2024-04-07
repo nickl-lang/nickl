@@ -489,52 +489,52 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields) {
 
 void nklt_inspect(nkltype_t type, NkStringBuilder *sb) {
     switch (nklt_tclass(type)) {
-    case NklType_Typeref:
-        nksb_printf(sb, "type_t");
-        break;
+        case NklType_Typeref:
+            nksb_printf(sb, "type_t");
+            break;
 
-    case NklType_Any:
-        nksb_printf(sb, "any_t");
-        break;
+        case NklType_Any:
+            nksb_printf(sb, "any_t");
+            break;
 
-    case NklType_Slice:
-        nksb_printf(sb, "[]");
-        nklt_inspect(type->as.slice.target_type, sb);
-        break;
+        case NklType_Slice:
+            nksb_printf(sb, "[]");
+            nklt_inspect(type->as.slice.target_type, sb);
+            break;
 
-    case NklType_Struct: // TODO Struct type inspect not implemented
-        nksb_printf(sb, "struct");
-        break;
+        case NklType_Struct: // TODO Struct type inspect not implemented
+            nksb_printf(sb, "struct");
+            break;
 
-    case NklType_Union: // TODO Union type inspect not implemented
-        nksb_printf(sb, "union");
-        break;
+        case NklType_Union: // TODO Union type inspect not implemented
+            nksb_printf(sb, "union");
+            break;
 
-    case NklType_Enum: // TODO Enum type inspect not implemented
-        nksb_printf(sb, "enum");
-        break;
+        case NklType_Enum: // TODO Enum type inspect not implemented
+            nksb_printf(sb, "enum");
+            break;
 
-    default:
-        nkt_inspect(tovmt(type), sb);
-        break;
+        default:
+            nkt_inspect(tovmt(type), sb);
+            break;
     }
 }
 
 void nklval_inspect(nklval_t val, NkStringBuilder *sb) {
     switch (nklval_tclass(val)) {
-    case NklType_Any:    // TODO any_t value inspect not implemented
-    case NklType_Slice:  // TODO Slice value inspect not implemented
-    case NklType_Struct: // TODO Struct value inspect not implemented
-    case NklType_Union:  // TODO Union value inspect not implemented
-    case NklType_Enum:   // TODO Enum value inspect not implemented
+        case NklType_Any:    // TODO any_t value inspect not implemented
+        case NklType_Slice:  // TODO Slice value inspect not implemented
+        case NklType_Struct: // TODO Struct value inspect not implemented
+        case NklType_Union:  // TODO Union value inspect not implemented
+        case NklType_Enum:   // TODO Enum value inspect not implemented
 
-    case NklType_Typeref:
-        nklt_inspect(nklval_as(nkltype_t, val), sb);
-        break;
+        case NklType_Typeref:
+            nklt_inspect(nklval_as(nkltype_t, val), sb);
+            break;
 
-    default:
-        nkval_inspect(tovmv(val), sb);
-        break;
+        default:
+            nkval_inspect(tovmv(val), sb);
+            break;
     }
 }
 
