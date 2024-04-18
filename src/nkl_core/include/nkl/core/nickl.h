@@ -3,7 +3,7 @@
 
 #include "ntk/arena.h"
 #include "ntk/hash_tree.h"
-#include "ntk/os/thread.h"
+#include "ntk/os/common.h"
 #include "ntk/slice.h"
 
 #ifdef __cplusplus

@@ -4,7 +4,6 @@
 #include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
-#include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/string.h"
 
@@ -56,10 +55,27 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
     auto idx = node_idx + 1;
 
     switch (node.id) {
+        case n_define: {
+            auto const &name = src.nodes.data[idx];
+            compileNode(m, src, idx);
+            idx = nkl_ast_nextChild(src.nodes, idx);
+
+            auto const &value = src.nodes.data[idx];
+            compileNode(m, src, idx);
+            idx = nkl_ast_nextChild(src.nodes, idx);
+
+            break;
+        }
+
+        case n_id: {
+            break;
+        }
+
         case n_int: {
             // TODO WIP int parsing
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
             NK_LOG_INF("value=" NKS_FMT, NKS_ARG(token_str));
+            break;
         }
 
         case n_list: {
