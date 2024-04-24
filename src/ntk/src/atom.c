@@ -18,20 +18,17 @@ typedef struct {
 static NkString const *s2atom_kv_GetKey(s2atom_kv const *item) {
     return &item->key;
 }
+NK_HASH_TREE_DEFINE(str2atom, s2atom_kv, NkString, s2atom_kv_GetKey, nks_hash, nks_equal);
 
 static NkAtom const *atom2s_kv_GetKey(atom2s_kv const *item) {
     return &item->key;
 }
-
 static u64 nk_atom_hash(NkAtom const key) {
     return nk_hashVal(key);
 }
-
 static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
     return lhs == rhs;
 }
-
-NK_HASH_TREE_DEFINE(str2atom, s2atom_kv, NkString, s2atom_kv_GetKey, nks_hash, nks_equal);
 NK_HASH_TREE_DEFINE(atom2str, atom2s_kv, NkAtom, atom2s_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 static NkArena g_arena;

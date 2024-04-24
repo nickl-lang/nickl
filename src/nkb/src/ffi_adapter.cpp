@@ -6,6 +6,7 @@
 #include "nkb/common.h"
 #include "ntk/allocator.h"
 #include "ntk/log.h"
+#include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 

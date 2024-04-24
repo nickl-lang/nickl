@@ -12,6 +12,7 @@
 #include "ntk/os/common.h"
 #include "ntk/os/dl.h"
 #include "ntk/os/syscall.h"
+#include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
