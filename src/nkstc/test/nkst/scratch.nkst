@@ -1,3 +1,4 @@
 (define i 42)
-
-i
+(scope [
+    i
+])

@@ -157,20 +157,25 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
 
     auto idx = node_idx + 1;
 
+    auto get_next_child = [&]() {
+        auto child_idx = idx;
+        idx = nkl_ast_nextChild(src.nodes, idx);
+        return child_idx;
+    };
+
     switch (node.id) {
         case n_define: {
-            auto const &name = src.nodes.data[idx];
-            idx = nkl_ast_nextChild(src.nodes, idx);
+            auto name_idx = get_next_child();
+            auto const &name_n = src.nodes.data[name_idx];
 
-            auto const &value = src.nodes.data[idx];
-            compileNode(m, src, idx);
-            idx = nkl_ast_nextChild(src.nodes, idx);
+            auto value_idx = get_next_child();
+            compileNode(m, src, value_idx);
 
-            NkAtom name_atom = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name.token_idx], src.text));
+            NkAtom name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
             // TODO: Get var type
             nkltype_t type = nullptr;
 
-            defineLocal(m, name_atom, type);
+            defineLocal(m, name, type);
 
             break;
         }
@@ -200,8 +205,8 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
         }
 
         case n_list: {
-            for (size_t i = 0; i < node.arity; i++, idx = nkl_ast_nextChild(src.nodes, idx)) {
-                compileNode(m, src, idx);
+            for (size_t i = 0; i < node.arity; i++) {
+                compileNode(m, src, get_next_child());
             }
             break;
         }
@@ -212,21 +217,17 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
                 return;
             }
 
-            auto const &info = src.nodes.data[idx];
-            compileNode(m, src, idx);
-            idx = nkl_ast_nextChild(src.nodes, idx);
+            auto info_idx = get_next_child();
+            auto name_idx = get_next_child();
+            auto params_idx = get_next_child();
+            auto return_type_idx = get_next_child();
 
-            auto const &name = src.nodes.data[idx];
-            compileNode(m, src, idx);
-            idx = nkl_ast_nextChild(src.nodes, idx);
+            compileNode(m, src, info_idx);
+            compileNode(m, src, name_idx);
+            compileNode(m, src, params_idx);
+            compileNode(m, src, return_type_idx);
 
-            auto const &params = src.nodes.data[idx];
-            compileNode(m, src, idx);
-            idx = nkl_ast_nextChild(src.nodes, idx);
-
-            auto const &return_type = src.nodes.data[idx];
-            compileNode(m, src, idx);
-            idx = nkl_ast_nextChild(src.nodes, idx);
+            auto const &info = src.nodes.data[info_idx];
 
             if (info.id == n_extern) {
                 NK_LOG_ERR("extern proc compilation is not implemented");
@@ -240,6 +241,18 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
             }
 
             break;
+        }
+
+        case n_scope: {
+            pushScope(m);
+            defer {
+                popScope(m);
+            };
+
+            auto child_idx = get_next_child();
+            compileNode(m, src, child_idx);
+
+            return;
         }
 
         default:
