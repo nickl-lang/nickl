@@ -1,4 +1,5 @@
 #include "nkl/common/diagnostics.h"
+#include "ntk/atom.h"
 #include "ntk/cli.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
@@ -152,6 +153,11 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     NK_LOG_INIT(log_opts);
+
+    nk_atom_init();
+    defer {
+        nk_atom_deinit();
+    };
 
     int code = nkst_compile(in_file);
 

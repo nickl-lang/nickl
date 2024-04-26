@@ -9,6 +9,9 @@ extern "C" {
 
 typedef u32 NkAtom;
 
+void nk_atom_init(void);
+void nk_atom_deinit(void);
+
 NkString nk_atom2s(NkAtom atom);
 char const *nk_atom2cs(NkAtom atom);
 

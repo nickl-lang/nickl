@@ -3,6 +3,7 @@
 #include "nkl/common/config.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
+#include "ntk/atom.h"
 #include "ntk/cli.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
@@ -228,6 +229,11 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     NK_LOG_INIT(log_opts);
+
+    nk_atom_init();
+    defer {
+        nk_atom_deinit();
+    };
 
     auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
     int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);

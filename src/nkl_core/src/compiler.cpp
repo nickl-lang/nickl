@@ -29,10 +29,10 @@ struct NklCompiler_T {
 #define nk_list_pop_n(list, next) ((list) = (list)->next)
 #define nk_list_pop(list) nk_list_pop_n(list, next)
 
-enum EDeclKind {
-    Decl_Undefined,
+enum DeclKind {
+    DeclKind_Undefined,
 
-    Decl_Local,
+    DeclKind_Local,
 };
 
 struct Decl {
@@ -41,7 +41,7 @@ struct Decl {
             nkltype_t type;
         } local;
     } as;
-    EDeclKind kind;
+    DeclKind kind;
 };
 
 struct Decl_kv {
@@ -66,7 +66,14 @@ struct Scope {
     DeclTree locals;
 };
 
-struct ValueInfo {};
+enum ValueKind {
+    ValueKind_Void,
+};
+
+struct ValueInfo {
+    nkltype_t type;
+    ValueKind kind;
+};
 
 struct NklModule_T {
     NklCompiler c;
@@ -114,12 +121,12 @@ static Decl &resolve(NklModule m, NkAtom name) {
             return found->val;
         }
     }
-    static Decl s_undefined_decl{{}, Decl_Undefined};
+    static Decl s_undefined_decl{{}, DeclKind_Undefined};
     return s_undefined_decl;
 }
 
 static void defineLocal(NklModule m, NkAtom name, nkltype_t type) {
-    makeDecl(m, name) = {{.local{.type = type}}, Decl_Local};
+    makeDecl(m, name) = {{.local{.type = type}}, DeclKind_Local};
 }
 
 NklCompiler nkl_createCompiler(NklTargetTriple target) {
@@ -147,7 +154,7 @@ void nkl_writeModule(NklModule m, NkString filename) {
     NK_LOG_TRC("%s", __func__);
 }
 
-static void compileNode(NklModule m, NklSource src, usize node_idx) {
+static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -186,10 +193,10 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
 
             auto &decl = resolve(m, name_atom);
 
-            if (decl.kind == Decl_Undefined) {
+            if (decl.kind == DeclKind_Undefined) {
                 // TODO: Report error properly
                 NK_LOG_ERR("`" NKS_FMT "` is not defined", NKS_ARG(name_str));
-                return;
+                return ValueInfo{};
             } else {
                 // TODO: Handle resolved id
             }
@@ -214,7 +221,7 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
         case n_proc: {
             if (!node.arity) {
                 NK_LOG_ERR("invalid node");
-                return;
+                return ValueInfo{};
             }
 
             auto info_idx = get_next_child();
@@ -231,13 +238,13 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
 
             if (info.id == n_extern) {
                 NK_LOG_ERR("extern proc compilation is not implemented");
-                return;
+                return ValueInfo{};
             } else if (info.id == n_pub) {
                 NK_LOG_ERR("pub proc compilation is not implemented");
-                return;
+                return ValueInfo{};
             } else {
                 NK_LOG_ERR("invalid node");
-                return;
+                return ValueInfo{};
             }
 
             break;
@@ -252,12 +259,24 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
             auto child_idx = get_next_child();
             compileNode(m, src, child_idx);
 
-            return;
+            return ValueInfo{};
         }
 
         default:
             NK_LOG_ERR("unknown node #%s", nk_atom2cs(node.id));
             break;
+    }
+
+    return ValueInfo{};
+}
+
+static void compileStmt(NklModule m, NklSource src, usize node_idx) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    auto val = compileNode(m, src, node_idx);
+    if (val.kind != ValueKind_Void) {
+        NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
     }
 }
 
@@ -271,6 +290,6 @@ void nkl_compile(NklModule m, NklSource src) {
     };
 
     if (src.nodes.size) {
-        compileNode(m, src, 0);
+        compileStmt(m, src, 0);
     }
 }

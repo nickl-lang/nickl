@@ -36,6 +36,15 @@ static str2atom g_str2atom;
 static atom2str g_atom2str;
 static NkAtom g_next_atom = 1000;
 
+void nk_atom_init(void) {
+    NkAllocator alloc = nk_arena_getAllocator(&g_arena);
+    g_str2atom.alloc = alloc;
+    g_atom2str.alloc = alloc;
+}
+
+void nk_atom_deinit(void) {
+}
+
 NkString nk_atom2s(NkAtom atom) {
     NK_PROF_FUNC_BEGIN();
     atom2s_kv const *found = atom2str_find(&g_atom2str, atom);
