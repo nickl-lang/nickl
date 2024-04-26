@@ -68,9 +68,14 @@ struct Scope {
 
 enum ValueKind {
     ValueKind_Void,
+
+    ValueKind_Decl,
 };
 
 struct ValueInfo {
+    union {
+        Decl *decl;
+    } as;
     nkltype_t type;
     ValueKind kind;
 };
@@ -112,6 +117,10 @@ static Decl &makeDecl(NklModule m, NkAtom name) {
     return kv->val;
 }
 
+static void defineLocal(NklModule m, NkAtom name, nkltype_t type) {
+    makeDecl(m, name) = {{.local{.type = type}}, DeclKind_Local};
+}
+
 static Decl &resolve(NklModule m, NkAtom name) {
     NK_LOG_DBG("Resolving name: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
 
@@ -123,10 +132,6 @@ static Decl &resolve(NklModule m, NkAtom name) {
     }
     static Decl s_undefined_decl{{}, DeclKind_Undefined};
     return s_undefined_decl;
-}
-
-static void defineLocal(NklModule m, NkAtom name, nkltype_t type) {
-    makeDecl(m, name) = {{.local{.type = type}}, DeclKind_Local};
 }
 
 NklCompiler nkl_createCompiler(NklTargetTriple target) {
@@ -154,6 +159,16 @@ void nkl_writeModule(NklModule m, NkString filename) {
     NK_LOG_TRC("%s", __func__);
 }
 
+ValueInfo declInfo(Decl &decl) {
+    switch (decl.kind) {
+        case DeclKind_Local:
+            return {{.decl = &decl}, decl.as.local.type, ValueKind_Decl};
+        default:
+            nk_assert(!"unreachable");
+            return {};
+    }
+}
+
 static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -173,16 +188,14 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     switch (node.id) {
         case n_define: {
             auto name_idx = get_next_child();
-            auto const &name_n = src.nodes.data[name_idx];
-
             auto value_idx = get_next_child();
-            compileNode(m, src, value_idx);
 
-            NkAtom name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
-            // TODO: Get var type
-            nkltype_t type = nullptr;
+            auto const &name_n = src.nodes.data[name_idx];
+            auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
-            defineLocal(m, name, type);
+            auto val = compileNode(m, src, value_idx);
+
+            defineLocal(m, name, val.type);
 
             break;
         }
@@ -193,12 +206,14 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
 
             auto &decl = resolve(m, name_atom);
 
+            // TODO: Handle cross frame references
+
             if (decl.kind == DeclKind_Undefined) {
                 // TODO: Report error properly
                 NK_LOG_ERR("`" NKS_FMT "` is not defined", NKS_ARG(name_str));
                 return ValueInfo{};
             } else {
-                // TODO: Handle resolved id
+                return declInfo(decl);
             }
 
             break;
