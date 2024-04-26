@@ -60,22 +60,24 @@ static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
 }
 NK_HASH_TREE_DEFINE(DeclTree, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
-struct NklCompilerScope {
-    NklCompilerScope *next;
+struct Scope {
+    Scope *next;
     NkArenaFrame frame;
     DeclTree locals;
 };
 
+struct ValueInfo {};
+
 struct NklModule_T {
     NklCompiler c;
     NkArena scope_arena;
-    NklCompilerScope *scope_stack;
+    Scope *scope_stack;
 };
 
 static void pushScope(NklModule m) {
     auto frame = nk_arena_grab(&m->scope_arena);
     auto alloc = nk_arena_getAllocator(&m->scope_arena);
-    auto scope = new (nk_allocT<NklCompilerScope>(alloc)) NklCompilerScope{
+    auto scope = new (nk_allocT<Scope>(alloc)) Scope{
         .next{},
         .frame = frame,
         .locals{nullptr, alloc},
@@ -101,6 +103,19 @@ static Decl &makeDecl(NklModule m, NkAtom name) {
             .val = {},
         });
     return kv->val;
+}
+
+static Decl &resolve(NklModule m, NkAtom name) {
+    NK_LOG_DBG("Resolving name: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
+
+    for (auto scope = m->scope_stack; scope; scope = scope->next) {
+        auto found = DeclTree_find(&scope->locals, name);
+        if (found) {
+            return found->val;
+        }
+    }
+    static Decl s_undefined_decl{{}, Decl_Undefined};
+    return s_undefined_decl;
 }
 
 static void defineLocal(NklModule m, NkAtom name, nkltype_t type) {
@@ -145,7 +160,6 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
     switch (node.id) {
         case n_define: {
             auto const &name = src.nodes.data[idx];
-            compileNode(m, src, idx);
             idx = nkl_ast_nextChild(src.nodes, idx);
 
             auto const &value = src.nodes.data[idx];
@@ -162,6 +176,19 @@ static void compileNode(NklModule m, NklSource src, usize node_idx) {
         }
 
         case n_id: {
+            auto name_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            NkAtom name_atom = nk_s2atom(name_str);
+
+            auto &decl = resolve(m, name_atom);
+
+            if (decl.kind == Decl_Undefined) {
+                // TODO: Report error properly
+                NK_LOG_ERR("`" NKS_FMT "` is not defined", NKS_ARG(name_str));
+                return;
+            } else {
+                // TODO: Handle resolved id
+            }
+
             break;
         }
 
