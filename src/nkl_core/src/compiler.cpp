@@ -7,6 +7,7 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/error.h"
 #include "ntk/hash_tree.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
@@ -16,6 +17,18 @@
 namespace {
 
 NK_LOG_USE_SCOPE(compiler);
+
+struct Void {};
+
+#define CHECK(EXPR)         \
+    EXPR;                   \
+    if (nk_error_count()) { \
+        return {};          \
+    }
+
+#define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
+#define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
+#define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 
 } // namespace
 
@@ -187,15 +200,15 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             auto const &name_n = src.nodes.data[name_idx];
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
-            auto val = compileNode(m, src, value_idx);
-
-            defineLocal(m, name, val.type);
+            DEFINE(val, compileNode(m, src, value_idx));
+            CHECK(defineLocal(m, name, val.type));
 
             break;
         }
 
         case n_id: {
-            auto name_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            auto token = &src.tokens.data[node.token_idx];
+            auto name_str = nkl_getTokenStr(token, src.text);
             NkAtom name_atom = nk_s2atom(name_str);
 
             auto &decl = resolve(m, name_atom);
@@ -203,9 +216,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
-                // TODO: Report error properly
-                NK_LOG_ERR("`" NKS_FMT "` is not defined", NKS_ARG(name_str));
-                return ValueInfo{};
+                return nk_error_printf("`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
             } else {
                 return declInfo(decl);
             }
@@ -222,7 +233,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
 
         case n_list: {
             for (size_t i = 0; i < node.arity; i++) {
-                compileNode(m, src, get_next_child());
+                CHECK(compileNode(m, src, get_next_child()));
             }
             break;
         }
@@ -238,10 +249,10 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             auto params_idx = get_next_child();
             auto return_type_idx = get_next_child();
 
-            compileNode(m, src, info_idx);
-            compileNode(m, src, name_idx);
-            compileNode(m, src, params_idx);
-            compileNode(m, src, return_type_idx);
+            CHECK(compileNode(m, src, info_idx));
+            CHECK(compileNode(m, src, name_idx));
+            CHECK(compileNode(m, src, params_idx));
+            CHECK(compileNode(m, src, return_type_idx));
 
             auto const &info = src.nodes.data[info_idx];
 
@@ -266,7 +277,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             };
 
             auto child_idx = get_next_child();
-            compileNode(m, src, child_idx);
+            CHECK(compileNode(m, src, child_idx));
 
             return ValueInfo{};
         }
@@ -279,17 +290,19 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     return ValueInfo{};
 }
 
-static void compileStmt(NklModule m, NklSource src, usize node_idx) {
+static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto val = compileNode(m, src, node_idx);
+    DEFINE(val, compileNode(m, src, node_idx));
     if (val.kind != ValueKind_Void) {
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
     }
+
+    return {};
 }
 
-void nkl_compile(NklModule m, NklSource src) {
+bool nkl_compile(NklModule m, NklSource src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -301,4 +314,6 @@ void nkl_compile(NklModule m, NklSource src) {
     if (src.nodes.size) {
         compileStmt(m, src, 0);
     }
+
+    return nk_error_count() == 0;
 }

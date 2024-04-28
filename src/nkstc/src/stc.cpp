@@ -6,7 +6,8 @@
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/compiler.h"
 #include "nkl/core/nickl.h"
-#include "ntk/allocator.h"
+#include "ntk/arena.h"
+#include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/string.h"
@@ -38,6 +39,13 @@ int nkst_compile(NkString in_file) {
     NkArena file_arena{};
     defer {
         nk_arena_free(&file_arena);
+    };
+
+    NkErrorState err{};
+    err.alloc = nk_arena_getAllocator(&tmp_arena);
+    nk_error_pushState(&err);
+    defer {
+        nk_error_popState();
     };
 
     auto in_file_path = fs::current_path() / fs::path{nk_s2stdStr(in_file)};
@@ -110,13 +118,17 @@ int nkst_compile(NkString in_file) {
     };
 
     auto m = nkl_createModule(c);
-    nkl_compile(
-        m,
-        {
-            .text = text,
-            .tokens{NK_SLICE_INIT(lexer.tokens)},
-            .nodes{NK_SLICE_INIT(parser.nodes)},
-        });
+    if (!nkl_compile(
+            m,
+            {
+                .text = text,
+                .tokens{NK_SLICE_INIT(lexer.tokens)},
+                .nodes{NK_SLICE_INIT(parser.nodes)},
+            })) {
+        // TODO: Get error location
+        nkl_diag_printErrorQuote(text, {in_file_s, 0, 0, 0}, NKS_FMT, NKS_ARG(err.errors->msg));
+        return 1;
+    }
 
     nkl_writeModule(m, nk_cs2s("a.out"));
 

@@ -4,6 +4,7 @@
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/os/file.h"
+#include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "stc.h"
@@ -35,6 +36,15 @@ void printVersion() {
 } // namespace
 
 int main(int /*argc*/, char const *const *argv) {
+    NK_PROF_START(NK_BINARY_NAME ".spall");
+    NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024);
+    defer {
+        NK_PROF_THREAD_LEAVE();
+        NK_PROF_FINISH();
+    };
+
+    NK_PROF_FUNC();
+
     NkString in_file{};
 
     bool help = false;

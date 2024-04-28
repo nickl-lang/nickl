@@ -25,7 +25,7 @@ NklModule nkl_createModule(NklCompiler c);
 
 void nkl_writeModule(NklModule m, NkString filename);
 
-void nkl_compile(NklModule m, NklSource src);
+bool nkl_compile(NklModule m, NklSource src);
 
 #ifdef __cplusplus
 }

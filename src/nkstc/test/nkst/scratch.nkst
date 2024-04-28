@@ -1,4 +1,4 @@
-(define i 42)
+(define var 42)
 (scope [
-    i
+    whoops
 ])

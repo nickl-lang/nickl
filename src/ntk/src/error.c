@@ -29,6 +29,12 @@ void nk_error_freeState(void) {
     }
 }
 
+usize nk_error_count(void) {
+    nk_assert(g_error_state && "no error state");
+
+    return g_error_state->error_count;
+}
+
 i32 nk_error_printf(char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
