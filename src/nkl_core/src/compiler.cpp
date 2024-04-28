@@ -8,6 +8,7 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/hash_tree.h"
+#include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
@@ -21,13 +22,6 @@ NK_LOG_USE_SCOPE(compiler);
 struct NklCompiler_T {
     NkArena arena;
 };
-
-// TODO: Move list macros
-#define nk_list_push_n(list, item, next) ((item)->next = (list), (list) = (item))
-#define nk_list_push(list, item) nk_list_push_n(list, item, next)
-
-#define nk_list_pop_n(list, next) ((list) = (list)->next)
-#define nk_list_pop(list) nk_list_pop_n(list, next)
 
 enum DeclKind {
     DeclKind_Undefined,

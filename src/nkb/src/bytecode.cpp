@@ -170,7 +170,7 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ..
     nksb_vprintf(&error, fmt, ap);
     va_end(ap);
 
-    ctx->error_str = {NK_SLICE_INIT(error)};
+    ctx->error_str = {NKS_INIT(error)};
 }
 
 NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {

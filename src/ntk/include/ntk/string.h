@@ -14,6 +14,8 @@ extern "C" {
 
 typedef NkSlice(char const) NkString;
 
+#define NKS_INIT NK_SLICE_INIT
+
 #define nks_begin nk_slice_begin
 #define nks_end nk_slice_end
 

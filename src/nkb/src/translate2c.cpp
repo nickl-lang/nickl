@@ -222,7 +222,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
             break;
     }
 
-    NkString type_str{NK_SLICE_INIT(tmp_s)};
+    NkString type_str{NKS_INIT(tmp_s)};
 
     if (is_complex) {
         nksb_printf(
@@ -234,7 +234,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
         nksb_printf(&sb, "_type%zu", ctx.typedecl_count);
-        type_str = NkString{NK_SLICE_INIT(sb)};
+        type_str = NkString{NKS_INIT(sb)};
 
         ctx.typedecl_count++;
     }
@@ -355,7 +355,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
         }
     }
 
-    NkString str{NK_SLICE_INIT(tmp_s)};
+    NkString str{NKS_INIT(tmp_s)};
 
     if (is_complex && !getFlag(ctx.data_translated, idx)) {
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
@@ -375,7 +375,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 
         NkStringBuilder sb{0, 0, 0, ctx.alloc};
         writeName(decl.name, ctx.data_count, CONST_CLASS, &sb);
-        str = {NK_SLICE_INIT(sb)};
+        str = {NKS_INIT(sb)};
 
         ctx.data_count++;
 

@@ -265,7 +265,7 @@ NK_PRINTF_LIKE(2, 3) void error(NklCompiler c, char const *fmt, ...) {
     va_start(ap, fmt);
     NkStringBuilder sb{};
     nksb_vprintf(&sb, fmt, ap);
-    c->err_str = nk_s2stdStr({NK_SLICE_INIT(sb)});
+    c->err_str = nk_s2stdStr({NKS_INIT(sb)});
     nksb_free(&sb);
     va_end(ap);
 
@@ -2458,7 +2458,7 @@ NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
         nksb_free(&sb);
     };
     nksb_vprintf(&sb, fmt, ap);
-    NkString str{NK_SLICE_INIT(sb)};
+    NkString str{NKS_INIT(sb)};
     va_end(ap);
 
     bool const to_color = nk_isatty(2);

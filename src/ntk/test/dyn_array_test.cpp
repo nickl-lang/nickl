@@ -110,7 +110,7 @@ TEST_F(dyn_array, append) {
 
     EXPECT_EQ(ar.capacity, nk_ceilToPowerOf2(c_test_str.size));
     EXPECT_EQ(ar.size, c_test_str.size);
-    EXPECT_EQ(nk_s2stdStr({NK_SLICE_INIT(ar)}), nk_s2stdStr(c_test_str));
+    EXPECT_EQ(nk_s2stdStr({NKS_INIT(ar)}), nk_s2stdStr(c_test_str));
 }
 
 TEST_F(dyn_array, multiple_reserves) {

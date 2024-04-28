@@ -30,7 +30,7 @@ class cc_adapter : public testing::Test {
         m_conf = NkIrCompilerConfig{
             .compiler_binary = nk_cs2s(TEST_CC),
             .additional_flags{&additional_flags, 1},
-            .output_filename{NK_SLICE_INIT(m_output_filename_sb)},
+            .output_filename{NKS_INIT(m_output_filename_sb)},
             .output_kind = NkbOutput_Executable,
             .quiet = TEST_QUIET,
         };
@@ -57,7 +57,7 @@ protected:
             };
             EXPECT_TRUE(nksb_readFromStream(&sb, in.stream));
             NK_LOG_DBG("out_str=\"" NKS_FMT "\"", NKS_ARG(sb));
-            return nk_s2stdStr({NK_SLICE_INIT(sb)});
+            return nk_s2stdStr({NKS_INIT(sb)});
         } else {
             return "";
         }

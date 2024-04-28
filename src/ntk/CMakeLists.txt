@@ -16,6 +16,7 @@ add_library(${LIB}
     src/allocator.c
     src/arena.c
     src/atom.c
+    src/error.c
     src/file.c
     src/log.c
     src/pipe_stream.c

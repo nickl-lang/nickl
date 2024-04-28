@@ -47,7 +47,7 @@ bool nkcc_streamOpen(NkPipeStream *stream, NkIrCompilerConfig conf) {
             break;
     }
 
-    bool ret = nk_pipe_streamOpenWrite(stream, (NkString){NK_SLICE_INIT(cmd)}, conf.quiet);
+    bool ret = nk_pipe_streamOpenWrite(stream, (NkString){NKS_INIT(cmd)}, conf.quiet);
     NK_PROF_FUNC_END();
     return ret;
 }

@@ -252,7 +252,7 @@ int main(int /*argc*/, char const *const *argv) {
 
     nks_config config{};
     config.alloc = alloc;
-    if (!readConfig(&config, {NK_SLICE_INIT(config_path)})) {
+    if (!readConfig(&config, {NKS_INIT(config_path)})) {
         return 1;
     }
 
@@ -319,19 +319,19 @@ int main(int /*argc*/, char const *const *argv) {
         for (auto dir : nk_iterate(link_dirs)) {
             NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-L" NKS_FMT, NKS_ARG(dir));
-            nkda_append(&additional_flags, NkString{NK_SLICE_INIT(sb)});
+            nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         for (auto lib : nk_iterate(link)) {
             NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-l" NKS_FMT, NKS_ARG(lib));
-            nkda_append(&additional_flags, NkString{NK_SLICE_INIT(sb)});
+            nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         if (opt.size) {
             NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-O" NKS_FMT, NKS_ARG(opt));
-            nkda_append(&additional_flags, NkString{NK_SLICE_INIT(sb)});
+            nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         code = nkir_compile(
@@ -339,7 +339,7 @@ int main(int /*argc*/, char const *const *argv) {
             in_file,
             {
                 .compiler_binary = c_compiler->val,
-                .additional_flags{NK_SLICE_INIT(additional_flags)},
+                .additional_flags{NKS_INIT(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,
                 .quiet = false,

@@ -81,7 +81,7 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrProg ir, char const *fmt, ...) 
     nksb_vprintf(&error, fmt, ap);
     va_end(ap);
 
-    ir->error_str = {NK_SLICE_INIT(error)};
+    ir->error_str = {NKS_INIT(error)};
 }
 
 NkString nkir_getErrorString(NkIrProg ir) {

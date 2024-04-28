@@ -292,7 +292,7 @@ private:
         va_start(ap, fmt);
         NkStringBuilder sb{};
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = nk_s2stdStr({NK_SLICE_INIT(sb)});
+        m_err_str = nk_s2stdStr({NKS_INIT(sb)});
         nksb_free(&sb);
         va_end(ap);
         m_token.id = t_error;

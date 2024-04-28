@@ -1,6 +1,7 @@
 def_test(GROUP ntk NAME allocator LINK ${LIB})
 def_test(GROUP ntk NAME atom LINK ${LIB})
 def_test(GROUP ntk NAME dyn_array LINK ${LIB})
+def_test(GROUP ntk NAME error LINK ${LIB})
 def_test(GROUP ntk NAME hash_map LINK ${LIB})
 def_test(GROUP ntk NAME hash_set LINK ${LIB})
 def_test(GROUP ntk NAME hash_tree LINK ${LIB})

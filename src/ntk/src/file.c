@@ -21,7 +21,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
     if (!nkos_handleIsZero(h_file)) {
         NkStringBuilder sb = {NKSB_INIT(alloc)};
         if (nksb_readFromStreamEx(&sb, nk_file_getStream(h_file), BUF_SIZE)) {
-            res.bytes = (NkString){NK_SLICE_INIT(sb)};
+            res.bytes = (NkString){NKS_INIT(sb)};
             res.ok = true;
         }
     }

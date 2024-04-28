@@ -22,7 +22,7 @@ static void *allocAlignedRaw(NkArena *arena, usize size, u8 align, bool pad) {
     nk_assert(align && nk_isZeroOrPowerOf2(align) && "invalid alignment");
 
     if (!arena->data) {
-        NK_LOG_TRC("arena=%p valloc(%" PRIu64 ")", (void *)arena, FIXED_ARENA_SIZE);
+        NK_LOG_TRC("arena=%p valloc(%zu)", (void *)arena, FIXED_ARENA_SIZE);
         arena->data = (u8 *)nk_mem_reserveAndCommit(FIXED_ARENA_SIZE);
         ASAN_POISON_MEMORY_REGION(arena->data, FIXED_ARENA_SIZE);
         arena->size = 0;
@@ -49,32 +49,16 @@ static void *arenaAllocatorProc(void *data, NkAllocatorMode mode, usize size, u8
 
     NkArena *arena = data;
 
-#ifdef ENABLE_LOGGING
-    switch (mode) {
-        case NkAllocatorMode_Alloc:
-            NK_LOG_TRC("arena=%p alloc(%" PRIu64 ", %" PRIu8 ")", data, size, align);
-            break;
-        case NkAllocatorMode_Free:
-            NK_LOG_TRC("arena=%p free(%p, %" PRIu64 ", %" PRIu8 ")", data, old_mem, old_size, align);
-            break;
-        case NkAllocatorMode_Realloc:
-            NK_LOG_TRC(
-                "arena=%p realloc(%" PRIu64 ", %" PRIu8 ", %p, %" PRIu64 ")", data, size, align, old_mem, old_size);
-            break;
-        default:
-            nk_assert(!"unreachable");
-        case NkAllocatorMode_QuerySpaceLeft:
-            break;
-    }
-#endif // ENABLE_LOGGING
-
     switch (mode) {
         case NkAllocatorMode_Alloc: {
             void *ret = allocAlignedRaw(arena, size, align, true);
+            NK_LOG_TRC("arena=%p alloc(%zu, %hhu) -> %p", data, size, align, ret);
             return ret;
         }
 
         case NkAllocatorMode_Free:
+            NK_LOG_TRC("arena=%p free(%p, %zu, %hhu)", data, old_mem, old_size, align);
+
             nk_assert(arena->data + arena->size >= (u8 *)old_mem + old_size && "invalid allocation");
             nk_assert(((usize)old_mem & (align - 1)) == 0 && "invalid alignment");
 
@@ -83,19 +67,24 @@ static void *arenaAllocatorProc(void *data, NkAllocatorMode mode, usize size, u8
             }
             return NULL;
 
-        case NkAllocatorMode_Realloc:
+        case NkAllocatorMode_Realloc: {
             nk_assert(arena->data + arena->size >= (u8 *)old_mem + old_size && "invalid allocation");
             nk_assert(((usize)old_mem & (align - 1)) == 0 && "invalid alignment");
 
+            void *ret = NULL;
+
             if (arena->data + arena->size == (u8 *)old_mem + old_size) {
                 nk_arena_pop(arena, old_size);
-                void *ret = allocAlignedRaw(arena, size, align, false);
-                return ret;
+                ret = allocAlignedRaw(arena, size, align, false);
             } else {
-                void *new_mem = allocAlignedRaw(arena, size, align, true);
-                memcpy(new_mem, old_mem, old_size);
-                return new_mem;
+                ret = allocAlignedRaw(arena, size, align, true);
+                memcpy(ret, old_mem, old_size);
             }
+
+            NK_LOG_TRC("arena=%p realloc(%zu, %hhu, %p, %zu) -> %p", data, size, align, old_mem, old_size, ret);
+
+            return ret;
+        }
 
         case NkAllocatorMode_QuerySpaceLeft:
             *(NkAllocatorSpaceLeftQueryResult *)old_mem = (NkAllocatorSpaceLeftQueryResult){
@@ -129,7 +118,7 @@ void nk_arena_pop(NkArena *arena, usize size) {
 
 void nk_arena_free(NkArena *arena) {
     if (arena->data) {
-        NK_LOG_TRC("arena=%p vfree(%p, %" PRIu64 ")", (void *)arena, (void *)arena->data, FIXED_ARENA_SIZE);
+        NK_LOG_TRC("arena=%p vfree(%p, %zu)", (void *)arena, (void *)arena->data, FIXED_ARENA_SIZE);
         ASAN_UNPOISON_MEMORY_REGION(arena->data, FIXED_ARENA_SIZE);
         nk_mem_release(arena->data, FIXED_ARENA_SIZE);
     }

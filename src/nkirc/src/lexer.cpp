@@ -286,7 +286,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {NK_SLICE_INIT(sb)};
+        m_error_msg = {NKS_INIT(sb)};
         va_end(ap);
         m_token.id = t_error;
     }

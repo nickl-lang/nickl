@@ -161,7 +161,7 @@ struct ParseEngine {
         NkStringBuilder sb{};
         sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {NK_SLICE_INIT(sb)};
+        m_error_msg = {NKS_INIT(sb)};
         va_end(ap);
 
         m_error_occurred = true;

@@ -28,8 +28,8 @@ typedef struct {
 
 void nkl_ast_inspect(NklSource src, NkStream out);
 
-NK_INLINE uint32_t nkl_ast_nextChild(NklAstNodeArray nodes, uint32_t idx) {
-    uint32_t total_children = idx < nodes.size ? nodes.data[idx].total_children : 0;
+NK_INLINE u32 nkl_ast_nextChild(NklAstNodeArray nodes, u32 idx) {
+    u32 total_children = idx < nodes.size ? nodes.data[idx].total_children : 0;
     return idx + total_children + 1;
 }
 

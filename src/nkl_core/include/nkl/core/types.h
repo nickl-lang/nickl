@@ -70,7 +70,7 @@ typedef struct {
     NklTypeArray param_types;
     nkltype_t ret_t;
     NkCallConv call_conv;
-    uint8_t flags;
+    u8 flags;
 } NklProcInfo;
 
 void nkl_types_init(NklState *nkl);
