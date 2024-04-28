@@ -28,7 +28,7 @@ int nkst_compile(NkString in_file) {
     NklState state{};
     nkl_state_init(&state);
     defer {
-        nkl_state_free(&state);
+        nkl_state_free();
     };
 
     NkArena tmp_arena{};
@@ -41,12 +41,8 @@ int nkst_compile(NkString in_file) {
         nk_arena_free(&file_arena);
     };
 
-    NkErrorState err{};
-    err.alloc = nk_arena_getAllocator(&tmp_arena);
-    nk_error_pushState(&err);
-    defer {
-        nk_error_popState();
-    };
+    NklErrorState err{};
+    nkl_errorStateInitAndEquip(&err, &tmp_arena);
 
     auto in_file_path = fs::current_path() / fs::path{nk_s2stdStr(in_file)};
 
@@ -125,8 +121,20 @@ int nkst_compile(NkString in_file) {
                 .tokens{NK_SLICE_INIT(lexer.tokens)},
                 .nodes{NK_SLICE_INIT(parser.nodes)},
             })) {
-        // TODO: Get error location
-        nkl_diag_printErrorQuote(text, {in_file_s, 0, 0, 0}, NKS_FMT, NKS_ARG(err.errors->msg));
+        auto error = err.errors;
+        while (error) {
+            nkl_diag_printErrorQuote(
+                text,
+                {
+                    in_file_s,
+                    error->token->lin,
+                    error->token->col,
+                    error->token->len,
+                },
+                NKS_FMT,
+                NKS_ARG(error->msg));
+            error = error->next;
+        }
         return 1;
     }
 

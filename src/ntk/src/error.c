@@ -3,7 +3,7 @@
 #include "ntk/list.h"
 #include "ntk/string_builder.h"
 
-_Thread_local NkErrorState *g_error_state;
+static _Thread_local NkErrorState *g_error_state;
 
 void nk_error_pushState(NkErrorState *state) {
     nk_list_push(g_error_state, state);
@@ -21,7 +21,7 @@ void nk_error_freeState(void) {
     NkAllocator alloc = g_error_state->alloc.proc ? g_error_state->alloc : nk_default_allocator;
 
     while (g_error_state->errors) {
-        NkErrorNode *node = g_error_state->errors;
+        NkErrorNode const *node = g_error_state->errors;
         g_error_state->errors = node->next;
 
         nk_free(alloc, (void *)node->msg.data, node->msg.size);
@@ -45,6 +45,7 @@ i32 nk_error_printf(char const *fmt, ...) {
 }
 
 i32 nk_error_vprintf(char const *fmt, va_list ap) {
+    // TODO: Handle uninitialized case
     nk_assert(g_error_state && "no error state");
 
     NkAllocator alloc = g_error_state->alloc.proc ? g_error_state->alloc : nk_default_allocator;

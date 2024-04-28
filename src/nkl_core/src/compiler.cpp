@@ -2,12 +2,12 @@
 
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
+#include "nkl/core/nickl.h"
 #include "nkl/core/types.h"
 #include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/error.h"
 #include "ntk/hash_tree.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
@@ -20,10 +20,10 @@ NK_LOG_USE_SCOPE(compiler);
 
 struct Void {};
 
-#define CHECK(EXPR)         \
-    EXPR;                   \
-    if (nk_error_count()) { \
-        return {};          \
+#define CHECK(EXPR)            \
+    EXPR;                      \
+    if (nkl_getErrorCount()) { \
+        return {};             \
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
@@ -216,7 +216,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
-                return nk_error_printf("`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
+                return nkl_reportError(token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
             } else {
                 return declInfo(decl);
             }
@@ -315,5 +315,5 @@ bool nkl_compile(NklModule m, NklSource src) {
         compileStmt(m, src, 0);
     }
 
-    return nk_error_count() == 0;
+    return nkl_getErrorCount() == 0;
 }

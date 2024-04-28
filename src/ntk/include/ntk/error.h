@@ -33,6 +33,7 @@ void nk_error_freeState(void);
 
 usize nk_error_count(void);
 
+// TODO: Add location info
 NK_PRINTF_LIKE(1, 2) i32 nk_error_printf(char const *fmt, ...);
 i32 nk_error_vprintf(char const *fmt, va_list ap);
 

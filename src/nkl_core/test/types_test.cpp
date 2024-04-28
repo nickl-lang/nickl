@@ -16,7 +16,7 @@ class types : public testing::Test {
     }
 
     void TearDown() override {
-        nkl_state_free(&nkl);
+        nkl_state_free();
     }
 
 protected:

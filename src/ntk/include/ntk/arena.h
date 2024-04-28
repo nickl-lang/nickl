@@ -53,6 +53,10 @@ T *nk_arena_allocT(NkArena *arena, usize n = 1) {
     return (T *)nk_arena_allocAligned(arena, n * sizeof(T), alignof(T));
 }
 
+#else // __cplusplus
+
+#define nk_arena_allocT(arena, T) (T *)nk_arena_allocAligned((arena), sizeof(T), alignof(T))
+
 #endif // __cplusplus
 
 #define NK_ARENA_SCOPE(arena)               \

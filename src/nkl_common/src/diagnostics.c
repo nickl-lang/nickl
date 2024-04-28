@@ -7,7 +7,7 @@
 
 static NklColorPolicy s_color_policy;
 
-static bool toColor() {
+static bool toColor(void) {
     return s_color_policy == NklColorPolicy_Always || (s_color_policy == NklColorPolicy_Auto && nk_isatty(2));
 }
 
