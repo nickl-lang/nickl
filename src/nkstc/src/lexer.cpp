@@ -6,9 +6,11 @@
 #include <iterator>
 
 #include "nkl/common/token.h"
+#include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -34,16 +36,13 @@ char const *s_operators[] = {
 };
 
 struct ScannerState {
-    NkAtom const m_file;
     NkString const m_text;
-    NkArena *m_tmp_arena;
 
     u32 m_pos = 0;
     u32 m_lin = 1;
     u32 m_col = 1;
 
     NklToken m_token{};
-    NkString m_error_msg{};
 
     void scan() {
         skipSpaces();
@@ -246,38 +245,32 @@ private:
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder sb{};
-        sb.alloc = nk_arena_getAllocator(m_tmp_arena);
-        nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {NKS_INIT(sb)};
+        // TODO: Leaking error token, need to use scatch arena
+        auto token = nk_allocT<NklToken>(nk_default_allocator);
+        *token = m_token;
+        nkl_vreportError(token, fmt, ap);
         va_end(ap);
-        m_token.id = t_error;
     }
 };
 
 } // namespace
 
-bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, NkAtom file, NkString text) {
+NklTokenArray nkst_lex(NkArena *arena, NkString text) {
     NK_LOG_TRC("%s", __func__);
 
-    lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
-    nkda_reserve(&lexer->tokens, 1000);
-
-    lexer->error_msg = {};
+    NklTokenDynArray tokens{0, 0, 0, nk_arena_getAllocator(arena)};
+    nkda_reserve(&tokens, 1000);
 
     ScannerState scanner{
-        .m_file = file,
         .m_text = text,
-        .m_tmp_arena = tmp_arena,
     };
 
     do {
         scanner.scan();
-        nkda_append(&lexer->tokens, scanner.m_token);
+        nkda_append(&tokens, scanner.m_token);
 
-        if (scanner.m_token.id == t_error) {
-            lexer->error_msg = scanner.m_error_msg;
-            return false;
+        if (nkl_getErrorCount()) {
+            return {};
         }
 
 #ifdef ENABLE_LOGGING
@@ -287,5 +280,5 @@ bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, Nk
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 
-    return true;
+    return {NK_SLICE_INIT(tokens)};
 }

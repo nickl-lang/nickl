@@ -4,22 +4,23 @@
 #include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/string_builder.h"
 
-static NklState *g_nkl_state;
-
-void nkl_state_init(NklState *nkl) {
-    g_nkl_state = nkl;
-
+void nkl_state_init(NklState *nkl, NklLexer lexer, NklParser parser) {
 #define XN(N, T) nk_atom_define(NK_CAT(n_, N), nk_cs2s(T));
 #include "nodes.inl"
+
+    *nkl = (NklState){
+        .lexer = lexer,
+        .parser = parser,
+    };
 
     nkl_types_init(nkl);
 }
 
-void nkl_state_free(void) {
-    nkl_types_free(g_nkl_state);
-    g_nkl_state = NULL;
+void nkl_state_free(NklState *nkl) {
+    nkl_types_free(nkl);
 }
 
 static _Thread_local NklErrorState *g_error_state;

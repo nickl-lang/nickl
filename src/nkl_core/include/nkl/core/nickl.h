@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 
+#include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "ntk/arena.h"
 #include "ntk/hash_tree.h"
@@ -37,12 +38,36 @@ typedef struct {
 
 } NklTypeStorage;
 
+typedef NklTokenArray (*NklLexerProc)(void *data, NkString text);
+
+typedef struct {
+    void *data;
+    NklLexerProc proc;
+} NklLexer;
+
+NK_INLINE NklTokenArray nkl_lex(NklLexer lexer, NkString text) {
+    return lexer.proc(lexer.data, text);
+}
+
+typedef NklAstNodeArray (*NklParserProc)(void *data, NkString text, NklTokenArray tokens);
+
+typedef struct {
+    void *data;
+    NklParserProc proc;
+} NklParser;
+
+NK_INLINE NklAstNodeArray nkl_parse(NklParser parser, NkString text, NklTokenArray tokens) {
+    return parser.proc(parser.data, text, tokens);
+}
+
 typedef struct {
     NklTypeStorage types;
+    NklLexer lexer;
+    NklParser parser;
 } NklState;
 
-void nkl_state_init(NklState *nkl);
-void nkl_state_free(void);
+void nkl_state_init(NklState *nkl, NklLexer lexer, NklParser parser);
+void nkl_state_free(NklState *nkl);
 
 typedef struct NklError {
     struct NklError *next;

@@ -3,7 +3,6 @@
 
 #include "nkl/common/token.h"
 #include "ntk/arena.h"
-#include "ntk/atom.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -22,12 +21,7 @@ typedef enum {
 extern const char *s_nkst_token_id[];
 extern const char *s_nkst_token_text[];
 
-typedef struct {
-    NklTokenDynArray tokens;
-    NkString error_msg;
-} NkStLexerState;
-
-bool nkst_lex(NkStLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, NkAtom file, NkString text);
+NklTokenArray nkst_lex(NkArena *arena, NkString text);
 
 #ifdef __cplusplus
 }

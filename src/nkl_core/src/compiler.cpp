@@ -33,6 +33,7 @@ struct Void {};
 } // namespace
 
 struct NklCompiler_T {
+    NklState *nkl;
     NkArena arena;
 };
 
@@ -141,9 +142,10 @@ static Decl &resolve(NklModule m, NkAtom name) {
     return s_undefined_decl;
 }
 
-NklCompiler nkl_createCompiler(NklTargetTriple target) {
+NklCompiler nkl_createCompiler(NklState *nkl, NklTargetTriple target) {
     NkArena arena{};
     return new (nk_allocT<NklCompiler_T>(nk_arena_getAllocator(&arena))) NklCompiler_T{
+        .nkl = nkl,
         .arena = arena,
     };
 }
@@ -302,7 +304,32 @@ static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     return {};
 }
 
-bool nkl_compile(NklModule m, NklSource src) {
+bool nkl_compileSrc(NklModule m, NkString text) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    // TODO: Generate fake file in order to enable debug info in nkl_compileSrc
+
+    auto tokens = nkl_lex(m->c->nkl->lexer, text);
+    if (nkl_getErrorCount()) {
+        return false;
+    }
+
+    auto nodes = nkl_parse(m->c->nkl->parser, text, tokens);
+    if (nkl_getErrorCount()) {
+        return false;
+    }
+
+    return nkl_compileAst(
+        m,
+        {
+            .text = text,
+            .tokens = tokens,
+            .nodes = nodes,
+        });
+}
+
+bool nkl_compileAst(NklModule m, NklSource src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 

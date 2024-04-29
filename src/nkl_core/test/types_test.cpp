@@ -12,15 +12,15 @@ class types : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT({});
 
-        nkl_state_init(&nkl);
+        nkl_types_init(&nkl);
     }
 
     void TearDown() override {
-        nkl_state_free();
+        nkl_types_free(&nkl);
     }
 
 protected:
-    NklState nkl;
+    NklState nkl{};
 };
 
 static constexpr usize word_size = sizeof(void *);
