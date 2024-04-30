@@ -1,6 +1,7 @@
 #include "nkl/core/compiler.h"
 
 #include "nkl/common/ast.h"
+#include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
 #include "nkl/core/types.h"
@@ -8,11 +9,15 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/file.h"
 #include "ntk/hash_tree.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
+#include "ntk/os/error.h"
+#include "ntk/os/path.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 namespace {
 
@@ -302,6 +307,58 @@ static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     }
 
     return {};
+}
+
+bool nkl_compileFile(NklModule m, NkString in_file) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    NKSB_FIXED_BUFFER(in_file_path, NK_MAX_PATH + 1);
+    nksb_printf(&in_file_path, NKS_FMT, NKS_ARG(in_file));
+    nksb_appendNull(&in_file_path);
+
+    NkString canonical_file_path_s;
+    char canonical_file_path[NK_MAX_PATH + 1] = {};
+    if (nk_fullPath(canonical_file_path, in_file_path.data) >= 0) {
+        canonical_file_path_s = nk_cs2s(canonical_file_path);
+    } else {
+        canonical_file_path_s = {NKS_INIT(in_file_path)};
+    }
+
+    auto const read_res = nk_file_read(nk_arena_getAllocator(&m->c->arena), canonical_file_path_s);
+    if (!read_res.ok) {
+        nkl_diag_printError(
+            "failed to read file `" NKS_FMT "`: %s", NKS_ARG(canonical_file_path_s), nk_getLastErrorString());
+        return false;
+    }
+
+    auto text = read_res.bytes;
+
+    NklErrorState error_state{};
+    nkl_errorStateInitAndEquip(&error_state, &m->c->arena);
+
+    defer {
+        auto error = error_state.errors;
+        while (error) {
+            nkl_diag_printErrorQuote(
+                text,
+                {
+                    canonical_file_path_s,
+                    error->token->lin,
+                    error->token->col,
+                    error->token->len,
+                },
+                NKS_FMT,
+                NKS_ARG(error->msg));
+            error = error->next;
+        }
+    };
+
+    if (!nkl_compileSrc(m, text)) {
+        return false;
+    }
+
+    return true;
 }
 
 bool nkl_compileSrc(NklModule m, NkString text) {

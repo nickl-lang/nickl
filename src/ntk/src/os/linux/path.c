@@ -1,5 +1,6 @@
 #include "ntk/os/path.h"
 
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "ntk/profiler.h"
@@ -11,4 +12,12 @@ i32 nk_getBinaryPath(char *buf, usize size) {
     i32 ret = readlink("/proc/self/exe", buf, size);
     NK_PROF_FUNC_END();
     return ret;
+}
+
+i32 nk_fullPath(char *buf, char const *path) {
+    if (realpath(path, buf)) {
+        return 0;
+    } else {
+        return -1;
+    }
 }

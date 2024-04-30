@@ -20,7 +20,7 @@ class compiler_ast : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT({});
 
-        char path_buf[NK_MAX_PATH];
+        char path_buf[NK_MAX_PATH + 1];
         int path_len = nk_getBinaryPath(path_buf, sizeof(path_buf));
         if (path_len < 0) {
             FAIL() << "failed to get the compiler binary path";

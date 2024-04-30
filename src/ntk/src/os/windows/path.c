@@ -1,5 +1,7 @@
 #include "ntk/os/path.h"
 
+#include <stdlib.h>
+
 #include "common.h"
 #include "ntk/profiler.h"
 
@@ -14,4 +16,12 @@ i32 nk_getBinaryPath(char *buf, usize size) {
     );
     NK_PROF_FUNC_END();
     return dwBytesWritten > 0 ? (i32)dwBytesWritten : -1;
+}
+
+i32 nk_fullPath(char *buf, char const *path) {
+    if (_fullpath(buf, path, NK_MAX_PATH)) {
+        return 0;
+    } else {
+        return -1;
+    }
 }
