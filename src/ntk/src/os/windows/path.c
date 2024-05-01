@@ -1,11 +1,10 @@
 #include "ntk/os/path.h"
 
+#include <direct.h>
 #include <stdlib.h>
 
 #include "common.h"
 #include "ntk/profiler.h"
-
-char nk_path_separator = '\\';
 
 i32 nk_getBinaryPath(char *buf, usize size) {
     NK_PROF_FUNC_BEGIN();
@@ -24,4 +23,7 @@ i32 nk_fullPath(char *buf, char const *path) {
     } else {
         return -1;
     }
+}
+i32 nk_getCwd(char *buf, usize size) {
+    return _getcwd(buf, size) ? -1 : 0;
 }

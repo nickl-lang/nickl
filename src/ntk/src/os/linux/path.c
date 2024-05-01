@@ -5,8 +5,6 @@
 
 #include "ntk/profiler.h"
 
-char nk_path_separator = '/';
-
 i32 nk_getBinaryPath(char *buf, usize size) {
     NK_PROF_FUNC_BEGIN();
     i32 ret = readlink("/proc/self/exe", buf, size);
@@ -20,4 +18,8 @@ i32 nk_fullPath(char *buf, char const *path) {
     } else {
         return -1;
     }
+}
+
+i32 nk_getCwd(char *buf, usize size) {
+    return getcwd(buf, size) ? -1 : 0;
 }

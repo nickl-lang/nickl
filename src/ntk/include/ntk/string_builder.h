@@ -13,15 +13,18 @@ typedef NkDynArray(char) NkStringBuilder;
 
 #define NKSB_INIT NKDA_INIT
 
-#define NKSB_FIXED_BUFFER(NAME, SIZE)                                                               \
-    u8 NK_CAT(_buf, __LINE__)[SIZE];                                                                \
-    NkArena NK_CAT(_arena, __LINE__) = {NK_CAT(_buf, __LINE__), 0, sizeof(NK_CAT(_buf, __LINE__))}; \
-    NkStringBuilder NAME = {                                                                        \
-        (char *)nk_arena_alloc(&NK_CAT(_arena, __LINE__), sizeof(NK_CAT(_buf, __LINE__))),          \
-        0,                                                                                          \
-        sizeof(NK_CAT(_buf, __LINE__)),                                                             \
-        nk_arena_getAllocator(&NK_CAT(_arena, __LINE__)),                                           \
+#define NKSB_FIXED_BUFFER_EX(NAME, BUF, SIZE)                      \
+    NkArena NK_CAT(_arena, __LINE__) = {(BUF), 0, (SIZE)};         \
+    NkStringBuilder NAME = {                                       \
+        (char *)nk_arena_alloc(&NK_CAT(_arena, __LINE__), (SIZE)), \
+        0,                                                         \
+        (SIZE),                                                    \
+        nk_arena_getAllocator(&NK_CAT(_arena, __LINE__)),          \
     }
+
+#define NKSB_FIXED_BUFFER(NAME, SIZE) \
+    u8 NK_CAT(_buf, __LINE__)[SIZE];  \
+    NKSB_FIXED_BUFFER_EX(NAME, NK_CAT(_buf, __LINE__), (SIZE));
 
 #define nksb_reserve nkda_reserve
 #define nksb_append nkda_append

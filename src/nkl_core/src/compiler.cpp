@@ -14,7 +14,7 @@
 #include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/os/error.h"
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -313,12 +313,12 @@ bool nkl_compileFile(NklModule m, NkString in_file) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    NKSB_FIXED_BUFFER(in_file_path, NK_MAX_PATH + 1);
+    NKSB_FIXED_BUFFER(in_file_path, NK_MAX_PATH);
     nksb_printf(&in_file_path, NKS_FMT, NKS_ARG(in_file));
     nksb_appendNull(&in_file_path);
 
     NkString canonical_file_path_s;
-    char canonical_file_path[NK_MAX_PATH + 1] = {};
+    char canonical_file_path[NK_MAX_PATH] = {};
     if (nk_fullPath(canonical_file_path, in_file_path.data) >= 0) {
         canonical_file_path_s = nk_cs2s(canonical_file_path);
     } else {
@@ -337,25 +337,28 @@ bool nkl_compileFile(NklModule m, NkString in_file) {
     NklErrorState error_state{};
     nkl_errorStateInitAndEquip(&error_state, &m->c->arena);
 
-    defer {
-        auto error = error_state.errors;
-        while (error) {
-            nkl_diag_printErrorQuote(
-                text,
-                {
-                    canonical_file_path_s,
-                    error->token->lin,
-                    error->token->col,
-                    error->token->len,
-                },
-                NKS_FMT,
-                NKS_ARG(error->msg));
-            error = error->next;
-        }
-    };
-
     if (!nkl_compileSrc(m, text)) {
-        return false;
+        auto error = error_state.errors;
+        if (error) {
+            char cwd[NK_MAX_PATH];
+            nk_getCwd(cwd, sizeof(cwd));
+            char relpath[NK_MAX_PATH];
+            nk_relativePath(relpath, sizeof(relpath), canonical_file_path, cwd);
+
+            while (error) {
+                nkl_diag_printErrorQuote(
+                    text,
+                    {
+                        nk_cs2s(relpath),
+                        error->token->lin,
+                        error->token->col,
+                        error->token->len,
+                    },
+                    NKS_FMT,
+                    NKS_ARG(error->msg));
+                error = error->next;
+            }
+        }
     }
 
     return true;

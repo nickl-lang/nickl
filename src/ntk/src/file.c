@@ -18,7 +18,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
 
     NK_PROF_FUNC_BEGIN();
 
-    NKSB_FIXED_BUFFER(path, NK_MAX_PATH + 1);
+    NKSB_FIXED_BUFFER(path, NK_MAX_PATH);
     nksb_tryAppendStr(&path, file);
     nksb_tryAppendNull(&path);
 

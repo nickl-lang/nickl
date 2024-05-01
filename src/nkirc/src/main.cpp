@@ -243,10 +243,10 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     NkString compiler_dir{compiler_path_buf, (usize)compiler_path_len};
-    nks_chopByDelimReverse(&compiler_dir, nk_path_separator);
+    nks_chopByDelimReverse(&compiler_dir, NK_PATH_SEPARATOR);
 
     NkStringBuilder config_path{0, 0, 0, alloc};
-    nksb_printf(&config_path, NKS_FMT "%c" NK_BINARY_NAME ".conf", NKS_ARG(compiler_dir), nk_path_separator);
+    nksb_printf(&config_path, NKS_FMT "%c" NK_BINARY_NAME ".conf", NKS_ARG(compiler_dir), NK_PATH_SEPARATOR);
 
     NK_LOG_DBG("config_path=`" NKS_FMT "`", NKS_ARG(config_path));
 

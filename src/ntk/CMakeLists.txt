@@ -18,6 +18,7 @@ set(SOURCES
     src/error.c
     src/file.c
     src/log.c
+    src/path.c
     src/pipe_stream.c
     src/profiler.c
     src/stream.c
