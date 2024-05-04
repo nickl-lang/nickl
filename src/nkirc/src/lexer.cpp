@@ -108,29 +108,29 @@ struct ScannerState {
                 accept();
                 if (on('\\', -1)) {
                     switch (chr()) {
-                    case 'n':
-                    case 't':
-                    case '0':
-                    case '\\':
-                    case '"':
-                    case '\n':
-                        escaped = true;
-                        accept();
-                        break;
-                    default:
-                        if (!chr()) {
-                            return error("unexpected end of file");
-                        } else {
-                            m_token.pos = m_pos - 1;
-                            m_token.len = 2;
-                            m_token.lin = m_lin;
-                            m_token.col = m_col - 1;
-                            if (isprint(chr())) {
-                                return error("invalid escape sequence `\\%c`", chr());
+                        case 'n':
+                        case 't':
+                        case '0':
+                        case '\\':
+                        case '"':
+                        case '\n':
+                            escaped = true;
+                            accept();
+                            break;
+                        default:
+                            if (!chr()) {
+                                return error("unexpected end of file");
                             } else {
-                                return error("invalid escape sequence `\\\\x%" PRIx8 "`", chr() & 0xff);
+                                m_token.pos = m_pos - 1;
+                                m_token.len = 2;
+                                m_token.lin = m_lin;
+                                m_token.col = m_col - 1;
+                                if (isprint(chr())) {
+                                    return error("invalid escape sequence `\\%c`", chr());
+                                } else {
+                                    return error("invalid escape sequence `\\\\x%" PRIx8 "`", chr() & 0xff);
+                                }
                             }
-                        }
                     }
                 }
             }
@@ -286,7 +286,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = nk_arena_getAllocator(m_tmp_arena);
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {NK_SLICE_INIT(sb)};
+        m_error_msg = {NKS_INIT(sb)};
         va_end(ap);
         m_token.id = t_error;
     }

@@ -372,29 +372,29 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder *sb) {
             nksb_printf(sb, "[");
         }
         switch (ref.ref_type) {
-        case NkIrRef_Frame:
-            nksb_printf(sb, "$%" PRIu64 "", ref.index);
-            break;
-        case NkIrRef_Arg:
-            nksb_printf(sb, "$arg%" PRIu64 "", ref.index);
-            break;
-        case NkIrRef_Ret:
-            nksb_printf(sb, "$ret");
-            break;
-        case NkIrRef_Global:
-            nksb_printf(sb, "$global%" PRIu64 "", ref.index);
-            break;
-        case NkIrRef_Reg:
-            nksb_printf(sb, "$r%c", (char)('a' + ref.index));
-            break;
-        case NkIrRef_ExtSym:
-            nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
-            break;
-        case NkIrRef_None:
-        case NkIrRef_Const:
-        default:
-            nk_assert(!"unreachable");
-            break;
+            case NkIrRef_Frame:
+                nksb_printf(sb, "$%" PRIu64 "", ref.index);
+                break;
+            case NkIrRef_Arg:
+                nksb_printf(sb, "$arg%" PRIu64 "", ref.index);
+                break;
+            case NkIrRef_Ret:
+                nksb_printf(sb, "$ret");
+                break;
+            case NkIrRef_Global:
+                nksb_printf(sb, "$global%" PRIu64 "", ref.index);
+                break;
+            case NkIrRef_Reg:
+                nksb_printf(sb, "$r%c", (char)('a' + ref.index));
+                break;
+            case NkIrRef_ExtSym:
+                nksb_printf(sb, "(%s)", p->exsyms[ref.index].name.c_str());
+                break;
+            case NkIrRef_None:
+            case NkIrRef_Const:
+            default:
+                nk_assert(!"unreachable");
+                break;
         }
         if (ref.offset) {
             nksb_printf(sb, "+%" PRIu64 "", ref.offset);
@@ -418,11 +418,11 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
     nk_assert(funct->state == NkIrFunct_Complete && "inspecting incomplete function");
 
     switch (funct->fn_t->as.fn.call_conv) {
-    case NkCallConv_Nk:
-        break;
-    case NkCallConv_Cdecl:
-        nksb_printf(sb, "(cdecl) ");
-        break;
+        case NkCallConv_Nk:
+            break;
+        case NkCallConv_Cdecl:
+            nksb_printf(sb, "(cdecl) ");
+            break;
     }
 
     nksb_printf(sb, "%s(", funct->name.c_str());
@@ -474,45 +474,45 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
                     nksb_printf(sb, ((i > 1) ? ", " : " "));
                 }
                 switch (arg.arg_type) {
-                case NkIrArg_Ref: {
-                    auto &ref = arg.ref;
-                    nkir_inspectRef(p, ref, sb);
-                    break;
-                }
-                case NkIrArg_BlockId:
-                    if (arg.id < p->blocks.size() && !p->blocks[arg.id].name.empty()) {
-                        nksb_printf(sb, "%%%s", p->blocks[arg.id].name.c_str());
-                    } else {
-                        nksb_printf(sb, "%%(null)");
+                    case NkIrArg_Ref: {
+                        auto &ref = arg.ref;
+                        nkir_inspectRef(p, ref, sb);
+                        break;
                     }
-                    break;
-                case NkIrArg_NumValType:
-                    switch (arg.id) {
-                    case Int8:
-                    case Int16:
-                    case Int32:
-                    case Int64:
-                        nksb_printf(sb, "i");
+                    case NkIrArg_BlockId:
+                        if (arg.id < p->blocks.size() && !p->blocks[arg.id].name.empty()) {
+                            nksb_printf(sb, "%%%s", p->blocks[arg.id].name.c_str());
+                        } else {
+                            nksb_printf(sb, "%%(null)");
+                        }
                         break;
-                    case Uint8:
-                    case Uint16:
-                    case Uint32:
-                    case Uint64:
-                        nksb_printf(sb, "u");
+                    case NkIrArg_NumValType:
+                        switch (arg.id) {
+                            case Int8:
+                            case Int16:
+                            case Int32:
+                            case Int64:
+                                nksb_printf(sb, "i");
+                                break;
+                            case Uint8:
+                            case Uint16:
+                            case Uint32:
+                            case Uint64:
+                                nksb_printf(sb, "u");
+                                break;
+                            case Float32:
+                            case Float64:
+                                nksb_printf(sb, "f");
+                                break;
+                            default:
+                                nk_assert(!"unreachable");
+                                break;
+                        }
+                        nksb_printf(sb, "%" PRIu64 "", (usize)NUM_TYPE_SIZE(arg.id) * 8);
                         break;
-                    case Float32:
-                    case Float64:
-                        nksb_printf(sb, "f");
-                        break;
+                    case NkIrArg_None:
                     default:
-                        nk_assert(!"unreachable");
                         break;
-                    }
-                    nksb_printf(sb, "%" PRIu64 "", (usize)NUM_TYPE_SIZE(arg.id) * 8);
-                    break;
-                case NkIrArg_None:
-                default:
-                    break;
                 }
             }
 

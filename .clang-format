@@ -57,5 +57,3 @@ PenaltyReturnTypeOnItsOwnLine: 1000
 
 DerivePointerAlignment: false
 PointerAlignment: Right
-
-IndentCaseLabels: false

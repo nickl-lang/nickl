@@ -342,39 +342,39 @@ private:
         char *endptr = NULL;
 
         switch (value_type) {
-        case Int8:
-            *(i8 *)data = strtol(cstr, &endptr, 10);
-            break;
-        case Uint8:
-            *(u8 *)data = strtoul(cstr, &endptr, 10);
-            break;
-        case Int16:
-            *(i16 *)data = strtol(cstr, &endptr, 10);
-            break;
-        case Uint16:
-            *(u16 *)data = strtoul(cstr, &endptr, 10);
-            break;
-        case Int32:
-            *(i32 *)data = strtol(cstr, &endptr, 10);
-            break;
-        case Uint32:
-            *(u32 *)data = strtoul(cstr, &endptr, 10);
-            break;
-        case Int64:
-            *(i64 *)data = strtoll(cstr, &endptr, 10);
-            break;
-        case Uint64:
-            *(u64 *)data = strtoull(cstr, &endptr, 10);
-            break;
-        case Float32:
-            *(f32 *)data = strtof(cstr, &endptr);
-            break;
-        case Float64:
-            *(f64 *)data = strtod(cstr, &endptr);
-            break;
-        default:
-            nk_assert(!"unreachable");
-            break;
+            case Int8:
+                *(i8 *)data = strtol(cstr, &endptr, 10);
+                break;
+            case Uint8:
+                *(u8 *)data = strtoul(cstr, &endptr, 10);
+                break;
+            case Int16:
+                *(i16 *)data = strtol(cstr, &endptr, 10);
+                break;
+            case Uint16:
+                *(u16 *)data = strtoul(cstr, &endptr, 10);
+                break;
+            case Int32:
+                *(i32 *)data = strtol(cstr, &endptr, 10);
+                break;
+            case Uint32:
+                *(u32 *)data = strtoul(cstr, &endptr, 10);
+                break;
+            case Int64:
+                *(i64 *)data = strtoll(cstr, &endptr, 10);
+                break;
+            case Uint64:
+                *(u64 *)data = strtoull(cstr, &endptr, 10);
+                break;
+            case Float32:
+                *(f32 *)data = strtof(cstr, &endptr);
+                break;
+            case Float64:
+                *(f64 *)data = strtod(cstr, &endptr);
+                break;
+            default:
+                nk_assert(!"unreachable");
+                break;
         }
 
         if (endptr != cstr + token_str.size) {
@@ -402,7 +402,7 @@ private:
         nks_unescape(nksb_getStream(&sb), {data, len});
         nksb_appendNull(&sb);
         sb.size--;
-        return {NK_SLICE_INIT(sb)};
+        return {NKS_INIT(sb)};
     }
 
     struct ProcSignatureParseResult {
@@ -675,52 +675,52 @@ private:
 
     Void parseValue(NkIrRef const &result_ref, nktype_t type) {
         switch (type->kind) {
-        case NkIrType_Aggregate: {
-            EXPECT(t_brace_l);
+            case NkIrType_Aggregate: {
+                EXPECT(t_brace_l);
 
-            for (usize i = 0; i < type->as.aggr.elems.size; i++) {
-                if (i) {
-                    EXPECT(t_comma);
-                }
-
-                auto const &elem = type->as.aggr.elems.data[i];
-
-                if (elem.count > 1) {
-                    EXPECT(t_bracket_l);
-                }
-
-                for (usize i = 0; i < elem.count; i++) {
+                for (usize i = 0; i < type->as.aggr.elems.size; i++) {
                     if (i) {
                         EXPECT(t_comma);
                     }
-                    auto ref = result_ref;
-                    ref.post_offset += elem.offset + elem.type->size * i;
-                    CHECK(parseValue(ref, elem.type));
+
+                    auto const &elem = type->as.aggr.elems.data[i];
+
+                    if (elem.count > 1) {
+                        EXPECT(t_bracket_l);
+                    }
+
+                    for (usize i = 0; i < elem.count; i++) {
+                        if (i) {
+                            EXPECT(t_comma);
+                        }
+                        auto ref = result_ref;
+                        ref.post_offset += elem.offset + elem.type->size * i;
+                        CHECK(parseValue(ref, elem.type));
+                    }
+
+                    if (elem.count > 1) {
+                        accept(t_comma);
+                        EXPECT(t_bracket_r);
+                    }
                 }
 
-                if (elem.count > 1) {
-                    accept(t_comma);
-                    EXPECT(t_bracket_r);
-                }
+                accept(t_comma);
+                EXPECT(t_brace_r);
+
+                break;
             }
 
-            accept(t_comma);
-            EXPECT(t_brace_r);
+            case NkIrType_Numeric: {
+                auto const data = nkir_dataRefDeref(m_ir, result_ref);
+                CHECK(parseNumeric(data, type->as.num.value_type));
+                break;
+            }
 
-            break;
-        }
-
-        case NkIrType_Numeric: {
-            auto const data = nkir_dataRefDeref(m_ir, result_ref);
-            CHECK(parseNumeric(data, type->as.num.value_type));
-            break;
-        }
-
-        case NkIrType_Pointer:
-        case NkIrType_Procedure:
-        default:
-            nk_assert(!"unreachable");
-            return {};
+            case NkIrType_Pointer:
+            case NkIrType_Procedure:
+            default:
+                nk_assert(!"unreachable");
+                return {};
         }
 
         return {};
@@ -751,29 +751,29 @@ private:
                 return error("undeclared identifier `" NKS_FMT "`", NKS_ARG(token_str)), NkIrRef{};
             }
             switch (decl->kind) {
-            case Decl_Arg:
-                result_ref = nkir_makeArgRef(m_ir, decl->as.arg_index);
-                break;
-            case Decl_Proc:
-                result_ref = nkir_makeProcRef(m_ir, decl->as.proc.proc);
-                break;
-            case Decl_LocalVar:
-                result_ref = nkir_makeFrameRef(m_ir, decl->as.local);
-                break;
-            case Decl_Data:
-                result_ref = nkir_makeDataRef(m_ir, decl->as.data);
-                break;
-            case Decl_ExternData:
-                result_ref = nkir_makeExternDataRef(m_ir, decl->as.extern_data);
-                break;
-            case Decl_ExternProc:
-                result_ref = nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
-                break;
-            case Decl_Type:
-                return error("cannot reference a type"), NkIrRef{};
-            default:
-                nk_assert(!"unreachable");
-                return {};
+                case Decl_Arg:
+                    result_ref = nkir_makeArgRef(m_ir, decl->as.arg_index);
+                    break;
+                case Decl_Proc:
+                    result_ref = nkir_makeProcRef(m_ir, decl->as.proc.proc);
+                    break;
+                case Decl_LocalVar:
+                    result_ref = nkir_makeFrameRef(m_ir, decl->as.local);
+                    break;
+                case Decl_Data:
+                    result_ref = nkir_makeDataRef(m_ir, decl->as.data);
+                    break;
+                case Decl_ExternData:
+                    result_ref = nkir_makeExternDataRef(m_ir, decl->as.extern_data);
+                    break;
+                case Decl_ExternProc:
+                    result_ref = nkir_makeExternProcRef(m_ir, decl->as.extern_proc);
+                    break;
+                case Decl_Type:
+                    return error("cannot reference a type"), NkIrRef{};
+                default:
+                    nk_assert(!"unreachable");
+                    return {};
             }
         } else if (accept(t_ret)) {
             result_ref = nkir_makeRetRef(m_ir);
@@ -944,7 +944,7 @@ private:
         NkStringBuilder sb{};
         sb.alloc = m_tmp_alloc;
         nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {NK_SLICE_INIT(sb)};
+        m_error_msg = {NKS_INIT(sb)};
         va_end(ap);
 
         m_error_occurred = true;

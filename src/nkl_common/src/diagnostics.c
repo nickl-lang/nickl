@@ -7,7 +7,7 @@
 
 static NklColorPolicy s_color_policy;
 
-static bool toColor() {
+static bool toColor(void) {
     return s_color_policy == NklColorPolicy_Always || (s_color_policy == NklColorPolicy_Auto && nk_isatty(2));
 }
 
@@ -52,24 +52,25 @@ void nkl_diag_vprintError(char const *fmt, va_list ap) {
 }
 
 void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap) {
-    bool const to_color = toColor();
     NkStream out = nk_file_getStream(nk_stderr());
-    if (to_color) {
-        nk_stream_printf(out, NK_TERM_COLOR_WHITE);
+    if (loc.file.size) {
+        bool const to_color = toColor();
+        if (to_color) {
+            nk_stream_printf(out, NK_TERM_COLOR_WHITE);
+        }
+        nk_stream_printf(out, NKS_FMT, NKS_ARG(loc.file));
+        if (loc.lin) {
+            nk_stream_printf(out, ":%u", loc.lin);
+        }
+        if (loc.col) {
+            nk_stream_printf(out, ":%u", loc.col);
+        }
+        nk_stream_printf(out, ":");
+        if (to_color) {
+            nk_stream_printf(out, NK_TERM_COLOR_NONE);
+        }
+        nk_stream_printf(out, " ");
     }
-    nk_stream_printf(out, NKS_FMT, NKS_ARG(loc.file));
-    if (loc.lin) {
-        nk_stream_printf(out, ":%u", loc.lin);
-    }
-    if (loc.col) {
-        nk_stream_printf(out, ":%u", loc.col);
-    }
-    nk_stream_printf(out, ":");
-    if (to_color) {
-        nk_stream_printf(out, NK_TERM_COLOR_NONE);
-    }
-    nk_stream_printf(out, " ");
-
     nkl_diag_vprintError(fmt, ap);
 }
 

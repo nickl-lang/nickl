@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "ntk/common.h"
+#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {

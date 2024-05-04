@@ -19,43 +19,43 @@ static void *defaultAllocatorProc(
     (void)old_size;
 
     switch (mode) {
-    case NkAllocatorMode_Alloc: {
-        NK_LOG_TRC("malloc(%" PRIu64 ")", size);
-        void *data = malloc(size);
-        if (!data) {
-            NK_LOG_ERR("Out of memory");
-            nk_trap();
+        case NkAllocatorMode_Alloc: {
+            void *data = malloc(size);
+            NK_LOG_TRC("malloc(%" PRIu64 ") -> %p", size, data);
+            if (!data) {
+                NK_LOG_ERR("Out of memory");
+                nk_trap();
+            }
+            return data;
         }
-        return data;
-    }
 
-    case NkAllocatorMode_Free: {
-        NK_LOG_TRC("free(%p)", old_mem);
-        free(old_mem);
-        return NULL;
-    }
-
-    case NkAllocatorMode_Realloc: {
-        NK_LOG_TRC("realloc(%" PRIu64 ", %p)", size, old_mem);
-        void *data = realloc(old_mem, size);
-        if (!data) {
-            NK_LOG_ERR("Out of memory");
-            nk_trap();
+        case NkAllocatorMode_Free: {
+            NK_LOG_TRC("free(%p)", old_mem);
+            free(old_mem);
+            return NULL;
         }
-        return data;
-    }
 
-    case NkAllocatorMode_QuerySpaceLeft: {
-        *(NkAllocatorSpaceLeftQueryResult *)old_mem = (NkAllocatorSpaceLeftQueryResult){
-            .kind = NkAllocatorSpaceLeftQueryResultKind_Unknown,
-            .bytes_left = 0,
-        };
-        return NULL;
-    }
+        case NkAllocatorMode_Realloc: {
+            void *data = realloc(old_mem, size);
+            NK_LOG_TRC("realloc(%" PRIu64 ", %p) -> %p", size, old_mem, data);
+            if (!data) {
+                NK_LOG_ERR("Out of memory");
+                nk_trap();
+            }
+            return data;
+        }
 
-    default:
-        nk_assert(!"unreachable");
-        return NULL;
+        case NkAllocatorMode_QuerySpaceLeft: {
+            *(NkAllocatorSpaceLeftQueryResult *)old_mem = (NkAllocatorSpaceLeftQueryResult){
+                .kind = NkAllocatorSpaceLeftQueryResultKind_Unknown,
+                .bytes_left = 0,
+            };
+            return NULL;
+        }
+
+        default:
+            nk_assert(!"unreachable");
+            return NULL;
     }
 }
 

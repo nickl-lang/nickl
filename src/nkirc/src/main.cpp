@@ -3,6 +3,7 @@
 #include "nkl/common/config.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/allocator.h"
+#include "ntk/atom.h"
 #include "ntk/cli.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
@@ -229,6 +230,11 @@ int main(int /*argc*/, char const *const *argv) {
 
     NK_LOG_INIT(log_opts);
 
+    nk_atom_init();
+    defer {
+        nk_atom_deinit();
+    };
+
     auto compiler_path_buf = (char *)nk_arena_alloc(&arena, NK_MAX_PATH);
     int compiler_path_len = nk_getBinaryPath(compiler_path_buf, NK_MAX_PATH);
     if (compiler_path_len < 0) {
@@ -237,16 +243,16 @@ int main(int /*argc*/, char const *const *argv) {
     }
 
     NkString compiler_dir{compiler_path_buf, (usize)compiler_path_len};
-    nks_chopByDelimReverse(&compiler_dir, nk_path_separator);
+    nks_chopByDelimReverse(&compiler_dir, NK_PATH_SEPARATOR);
 
     NkStringBuilder config_path{0, 0, 0, alloc};
-    nksb_printf(&config_path, NKS_FMT "%c" NK_BINARY_NAME ".conf", NKS_ARG(compiler_dir), nk_path_separator);
+    nksb_printf(&config_path, NKS_FMT "%c" NK_BINARY_NAME ".conf", NKS_ARG(compiler_dir), NK_PATH_SEPARATOR);
 
     NK_LOG_DBG("config_path=`" NKS_FMT "`", NKS_ARG(config_path));
 
     nks_config config{};
     config.alloc = alloc;
-    if (!readConfig(&config, {NK_SLICE_INIT(config_path)})) {
+    if (!readConfig(&config, {NKS_INIT(config_path)})) {
         return 1;
     }
 
@@ -313,19 +319,19 @@ int main(int /*argc*/, char const *const *argv) {
         for (auto dir : nk_iterate(link_dirs)) {
             NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-L" NKS_FMT, NKS_ARG(dir));
-            nkda_append(&additional_flags, NkString{NK_SLICE_INIT(sb)});
+            nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         for (auto lib : nk_iterate(link)) {
             NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-l" NKS_FMT, NKS_ARG(lib));
-            nkda_append(&additional_flags, NkString{NK_SLICE_INIT(sb)});
+            nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         if (opt.size) {
             NkStringBuilder sb{0, 0, 0, alloc};
             nksb_printf(&sb, "-O" NKS_FMT, NKS_ARG(opt));
-            nkda_append(&additional_flags, NkString{NK_SLICE_INIT(sb)});
+            nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         code = nkir_compile(
@@ -333,7 +339,7 @@ int main(int /*argc*/, char const *const *argv) {
             in_file,
             {
                 .compiler_binary = c_compiler->val,
-                .additional_flags{NK_SLICE_INIT(additional_flags)},
+                .additional_flags{NKS_INIT(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,
                 .quiet = false,

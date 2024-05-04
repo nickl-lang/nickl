@@ -1,14 +1,21 @@
 #include "ntk/file.h"
 
+#include "ntk/log.h"
 #include "ntk/os/common.h"
 #include "ntk/os/file.h"
 #include "ntk/os/path.h"
 #include "ntk/profiler.h"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 #define BUF_SIZE 4096
 
+NK_LOG_USE_SCOPE(file);
+
 NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
+    NK_LOG_TRC("%s", __func__);
+    NK_LOG_DBG("Reading file `" NKS_FMT "`", NKS_ARG(file));
+
     NK_PROF_FUNC_BEGIN();
 
     NKSB_FIXED_BUFFER(path, NK_MAX_PATH);
@@ -21,7 +28,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
     if (!nkos_handleIsZero(h_file)) {
         NkStringBuilder sb = {NKSB_INIT(alloc)};
         if (nksb_readFromStreamEx(&sb, nk_file_getStream(h_file), BUF_SIZE)) {
-            res.bytes = (NkString){NK_SLICE_INIT(sb)};
+            res.bytes = (NkString){NKS_INIT(sb)};
             res.ok = true;
         }
     }
@@ -35,12 +42,12 @@ static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStream
     NkOsHandle h_file = nkos_handleFromVoidPtr(stream_data);
 
     switch (mode) {
-    case NkStreamMode_Read:
-        return nk_read(h_file, buf, size);
-    case NkStreamMode_Write:
-        return nk_write(h_file, buf, size);
-    default:
-        return -1;
+        case NkStreamMode_Read:
+            return nk_read(h_file, buf, size);
+        case NkStreamMode_Write:
+            return nk_write(h_file, buf, size);
+        default:
+            return -1;
     }
 }
 

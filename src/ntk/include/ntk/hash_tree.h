@@ -31,18 +31,18 @@
     static _##TTree##_SearchResult _##TTree##_findNode(_##TTree##_Node **node, TKey const *key, u64 hash) { \
         while (*node) {                                                                                     \
             switch ((hash > (*node)->hash) - (hash < (*node)->hash)) {                                      \
-            case 0: {                                                                                       \
-                TKey const *existing_key = GetKeyFunc(&(*node)->item);                                      \
-                if (KeyEqualFunc(*key, *existing_key)) {                                                    \
-                    return NK_LITERAL(_##TTree##_SearchResult){node, true};                                 \
-                }                                                                                           \
-            } /*fallthrough*/                                                                               \
-            case -1:                                                                                        \
-                node = (*node)->child + 0;                                                                  \
-                break;                                                                                      \
-            case +1:                                                                                        \
-                node = (*node)->child + 1;                                                                  \
-                break;                                                                                      \
+                case 0: {                                                                                   \
+                    TKey const *existing_key = GetKeyFunc(&(*node)->item);                                  \
+                    if (KeyEqualFunc(*key, *existing_key)) {                                                \
+                        return NK_LITERAL(_##TTree##_SearchResult){node, true};                             \
+                    }                                                                                       \
+                } /*fallthrough*/                                                                           \
+                case -1:                                                                                    \
+                    node = (*node)->child + 0;                                                              \
+                    break;                                                                                  \
+                case +1:                                                                                    \
+                    node = (*node)->child + 1;                                                              \
+                    break;                                                                                  \
             }                                                                                               \
         }                                                                                                   \
         return NK_LITERAL(_##TTree##_SearchResult){node, false};                                            \

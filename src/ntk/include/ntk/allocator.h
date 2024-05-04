@@ -82,6 +82,11 @@ void nk_freeT(NkAllocator alloc, T *ptr, usize n = 1) {
     nk_freeAligned(alloc, ptr, n * sizeof(T), alignof(T));
 }
 
+#else // __cplusplus
+
+#define nk_allocT(alloc, T) (T *)nk_allocAligned((alloc), sizeof(T), alignof(T))
+#define nk_freeT(alloc, ptr, T) nk_freeAligned((alloc), (void *)(ptr), sizeof(T), alignof(T))
+
 #endif // __cplusplus
 
 #endif // NTK_ALLOCATOR_H_

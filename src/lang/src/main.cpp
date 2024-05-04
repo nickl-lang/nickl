@@ -158,6 +158,11 @@ int nkl_main(int /*argc*/, char const *const *argv) {
 
     NK_LOG_INIT(log_options);
 
+    nk_atom_init();
+    defer {
+        nk_atom_deinit();
+    };
+
     char path_buf[NK_MAX_PATH];
     int path_len = nk_getBinaryPath(path_buf, sizeof(path_buf));
     if (path_len < 0) {

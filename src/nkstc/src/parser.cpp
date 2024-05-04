@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
+#include "nkl/core/nickl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/string_builder.h"
@@ -15,10 +16,10 @@ struct Void {};
 
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_nkst_token_id[ID], s_nkst_token_text[ID]
 
-#define CHECK(EXPR)         \
-    EXPR;                   \
-    if (m_error_occurred) { \
-        return {};          \
+#define CHECK(EXPR)            \
+    EXPR;                      \
+    if (nkl_getErrorCount()) { \
+        return {};             \
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
@@ -30,11 +31,6 @@ struct ParseEngine {
     NkString m_text;
     NklTokenArray m_tokens;
     NklAstNodeDynArray *m_nodes;
-
-    NkAllocator m_tmp_alloc;
-
-    NkString m_error_msg{};
-    bool m_error_occurred{};
 
     u32 m_cur_token_idx{};
 
@@ -66,8 +62,10 @@ struct ParseEngine {
                     node.id = nk_s2atom(token_str);
                     getToken();
                 } else if (check(t_string)) {
-                    auto str = parseString(m_tmp_alloc);
+                    // TODO: Use scratch arena
+                    auto str = parseString(nk_default_allocator);
                     node.id = nk_s2atom(str);
+                    nk_free(nk_default_allocator, (void *)str.data, str.size + 1);
                 } else {
                     auto const token_str = nkl_getTokenStr(curToken(), m_text);
                     return error("unexpected token `" NKS_FMT "`", NKS_ARG(token_str)), Void{};
@@ -154,46 +152,38 @@ struct ParseEngine {
     }
 
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
-        nk_assert(!m_error_occurred && "parser error is already initialized");
-
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder sb{};
-        sb.alloc = m_tmp_alloc;
-        nksb_vprintf(&sb, fmt, ap);
-        m_error_msg = {NK_SLICE_INIT(sb)};
+        nkl_vreportError(curToken(), fmt, ap);
         va_end(ap);
-
-        m_error_occurred = true;
     }
 };
 
 } // namespace
 
-bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NkString text, NklTokenArray tokens) {
+NklAstNodeArray nkst_parse(NkArena *arena, NkString text, NklTokenArray tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    parser->nodes = {NKDA_INIT(nk_arena_getAllocator(file_arena))};
-    parser->error_msg = {};
-    parser->error_token = {};
+    NklAstNodeDynArray nodes{NKDA_INIT(nk_arena_getAllocator(arena))};
+    nkda_reserve(&nodes, 1000);
 
     ParseEngine engine{
         .m_text = text,
         .m_tokens = tokens,
-        .m_nodes = &parser->nodes,
-        .m_tmp_alloc{nk_arena_getAllocator(tmp_arena)},
+        .m_nodes = &nodes,
     };
 
     engine.parse();
 
     NK_LOG_INF(
         "ast:%s", (char const *)[&]() {
-            NkStringBuilder sb{NKSB_INIT(engine.m_tmp_alloc)};
+            // TODO: Use scratch arena
+            NkStringBuilder sb{NKSB_INIT(nk_default_allocator)};
             nkl_ast_inspect(
                 {
                     text,
                     tokens,
-                    {NK_SLICE_INIT(parser->nodes)},
+                    {NK_SLICE_INIT(nodes)},
                 },
                 nksb_getStream(&sb));
             nksb_appendNull(&sb);
@@ -202,11 +192,5 @@ bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena
             });
         }());
 
-    if (engine.m_error_occurred) {
-        parser->error_msg = engine.m_error_msg;
-        parser->error_token = tokens.data[engine.m_cur_token_idx];
-        return false;
-    }
-
-    return true;
+    return {NK_SLICE_INIT(nodes)};
 }

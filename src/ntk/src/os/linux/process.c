@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "ntk/os/file.h"
 #include "ntk/string.h"
 
 NkPipe nk_proc_createPipe(void) {
@@ -75,62 +76,62 @@ i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe
 
     pid_t pid = fork();
     switch (pid) {
-    case -1:
-        return -1;
+        case -1:
+            return -1;
 
-    case 0:
-        close(err_pipe[0]);
-        fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
+        case 0:
+            close(err_pipe[0]);
+            fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
 
-        if (in) {
-            if (!nkos_handleIsZero(in->h_read) && dup2(handle_toFd(in->h_read), STDIN_FILENO) < 0) {
-                goto error;
+            if (in) {
+                if (!nkos_handleIsZero(in->h_read) && dup2(handle_toFd(in->h_read), STDIN_FILENO) < 0) {
+                    goto error;
+                }
+                nk_close(in->h_write);
             }
-            nk_close(in->h_write);
-        }
 
-        if (out) {
-            if (!nkos_handleIsZero(out->h_write) && dup2(handle_toFd(out->h_write), STDOUT_FILENO) < 0) {
-                goto error;
+            if (out) {
+                if (!nkos_handleIsZero(out->h_write) && dup2(handle_toFd(out->h_write), STDOUT_FILENO) < 0) {
+                    goto error;
+                }
+                nk_close(out->h_read);
             }
-            nk_close(out->h_read);
-        }
 
-        if (err) {
-            if (!nkos_handleIsZero(err->h_write) && dup2(handle_toFd(err->h_write), STDERR_FILENO) < 0) {
-                goto error;
+            if (err) {
+                if (!nkos_handleIsZero(err->h_write) && dup2(handle_toFd(err->h_write), STDERR_FILENO) < 0) {
+                    goto error;
+                }
+                nk_close(err->h_read);
             }
-            nk_close(err->h_read);
-        }
 
-        execvp(args[0], (char *const *)args);
+            execvp(args[0], (char *const *)args);
 
-    error:
-        error_code = errno;
-        (void)!write(err_pipe[1], &error_code, sizeof(error_code));
-        _exit(EX_OSERR);
+        error:
+            error_code = errno;
+            (void)!write(err_pipe[1], &error_code, sizeof(error_code));
+            _exit(EX_OSERR);
 
-    default:
-        *h_process = handle_fromPid(pid);
+        default:
+            *h_process = handle_fromPid(pid);
 
-        if (in) {
-            nk_close(in->h_read);
-        }
+            if (in) {
+                nk_close(in->h_read);
+            }
 
-        if (out) {
-            nk_close(out->h_write);
-        }
+            if (out) {
+                nk_close(out->h_write);
+            }
 
-        if (err) {
-            nk_close(err->h_write);
-        }
+            if (err) {
+                nk_close(err->h_write);
+            }
 
-        close(err_pipe[1]);
-        (void)!read(err_pipe[0], &error_code, sizeof(error_code));
-        close(err_pipe[0]);
-        errno = error_code;
+            close(err_pipe[1]);
+            (void)!read(err_pipe[0], &error_code, sizeof(error_code));
+            close(err_pipe[0]);
+            errno = error_code;
 
-        return errno ? -1 : 0;
+            return errno ? -1 : 0;
     }
 }
 

@@ -46,14 +46,14 @@ i32 nk_close(NkOsHandle h_file) {
     }
 }
 
-NkOsHandle nk_stdin() {
+NkOsHandle nk_stdin(void) {
     return handle_fromFd(0);
 }
 
-NkOsHandle nk_stdout() {
+NkOsHandle nk_stdout(void) {
     return handle_fromFd(1);
 }
 
-NkOsHandle nk_stderr() {
+NkOsHandle nk_stderr(void) {
     return handle_fromFd(2);
 }

@@ -9,13 +9,7 @@
 extern "C" {
 #endif
 
-typedef struct {
-    NklAstNodeDynArray nodes;
-    NkString error_msg;
-    NklToken error_token;
-} NkStParserState;
-
-bool nkst_parse(NkStParserState *parser, NkArena *file_arena, NkArena *tmp_arena, NkString text, NklTokenArray tokens);
+NklAstNodeArray nkst_parse(NkArena *arena, NkString text, NklTokenArray tokens);
 
 #ifdef __cplusplus
 }

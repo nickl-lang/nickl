@@ -8,8 +8,6 @@
 #include "ntk/dyn_array.h"
 #include "ntk/hash_tree.h"
 #include "ntk/os/common.h"
-#include "ntk/os/dl.h"
-#include "ntk/os/thread.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,8 +88,8 @@ NK_HASH_TREE_PROTO(TypeTree, TypeTree_kv, u32);
 
 typedef struct {
     NkAllocator alloc;
-    TypeTree types{};
-    NkOsHandle mtx{};
+    TypeTree types;
+    NkOsHandle mtx;
 } NkFfiContext;
 
 typedef struct {

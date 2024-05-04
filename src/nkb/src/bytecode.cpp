@@ -12,6 +12,7 @@
 #include "ntk/os/common.h"
 #include "ntk/os/dl.h"
 #include "ntk/os/syscall.h"
+#include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -77,28 +78,28 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
             nk_stream_printf(out, "[");
         }
         switch (ref.kind) {
-        case NkBcRef_Frame:
-            nk_stream_printf(out, "frame");
-            break;
-        case NkBcRef_Arg:
-            nk_stream_printf(out, "arg");
-            break;
-        case NkBcRef_Ret:
-            nk_stream_printf(out, "ret");
-            break;
-        case NkBcRef_Data:
-            if (expand_values) {
-                nkirv_inspect(nkbc_deref(nullptr, &ref), ref.type, out);
-            } else {
-                nk_stream_printf(out, "data");
-            }
-            break;
-        default:
-        case NkBcRef_None:
-        case NkBcRef_Instr:
-        case NkBcRef_VariadicMarker:
-            nk_assert(!"unreachable");
-            break;
+            case NkBcRef_Frame:
+                nk_stream_printf(out, "frame");
+                break;
+            case NkBcRef_Arg:
+                nk_stream_printf(out, "arg");
+                break;
+            case NkBcRef_Ret:
+                nk_stream_printf(out, "ret");
+                break;
+            case NkBcRef_Data:
+                if (expand_values) {
+                    nkirv_inspect(nkbc_deref(nullptr, &ref), ref.type, out);
+                } else {
+                    nk_stream_printf(out, "data");
+                }
+                break;
+            default:
+            case NkBcRef_None:
+            case NkBcRef_Instr:
+            case NkBcRef_VariadicMarker:
+                nk_assert(!"unreachable");
+                break;
         }
         if (ref.kind != NkBcRef_Data || !expand_values) {
             nk_stream_printf(out, "+%zx", ref.offset);
@@ -117,24 +118,24 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
 
     auto inspect_arg = [&](NkBcArg const &arg, bool expand_values) {
         switch (arg.kind) {
-        case NkBcArg_Ref: {
-            inspect_ref(arg.ref, expand_values);
-            break;
-        }
-
-        case NkBcArg_RefArray:
-            nk_stream_printf(out, "(");
-            for (usize i = 0; i < arg.refs.size; i++) {
-                if (i) {
-                    nk_stream_printf(out, ", ");
-                }
-                inspect_ref(arg.refs.data[i], expand_values);
+            case NkBcArg_Ref: {
+                inspect_ref(arg.ref, expand_values);
+                break;
             }
-            nk_stream_printf(out, ")");
-            break;
 
-        default:
-            break;
+            case NkBcArg_RefArray:
+                nk_stream_printf(out, "(");
+                for (usize i = 0; i < arg.refs.size; i++) {
+                    if (i) {
+                        nk_stream_printf(out, ", ");
+                    }
+                    inspect_ref(arg.refs.data[i], expand_values);
+                }
+                nk_stream_printf(out, ")");
+                break;
+
+            default:
+                break;
         }
     };
 
@@ -169,7 +170,7 @@ NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ..
     nksb_vprintf(&error, fmt, ap);
     va_end(ap);
 
-    ctx->error_str = {NK_SLICE_INIT(error)};
+    ctx->error_str = {NKS_INIT(error)};
 }
 
 NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
@@ -329,89 +330,89 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             };
 
             switch (ir_ref.kind) {
-            case NkIrRef_Frame:
-                ref.offset += ir_proc.locals.data[ir_ref.index].offset;
-                break;
-            case NkIrRef_Arg:
-                ref.offset += ir_ref.index * sizeof(void *);
-                ref.indir++;
-                break;
-            case NkIrRef_Ret:
-                ref.indir++;
-                break;
-            case NkIrRef_Data: {
-                ref.offset += (usize)get_data_addr(ir_ref.index);
-                break;
-            }
-            case NkIrRef_Proc: {
-                ref.kind = NkBcRef_Data;
-                if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
-                    nkda_append(
-                        &relocs,
-                        (Reloc{
-                            .instr_index = instr_index,
-                            .arg_index = arg_index,
-                            .ref_index = ref_index,
-                            .target_id = ir_ref.index,
-                            .reloc_type = Reloc_Closure,
-                            .proc_info = &ir_ref.type->as.proc.info,
-                        }));
-                } else {
-                    nkda_append(
-                        &relocs,
-                        (Reloc{
-                            .instr_index = instr_index,
-                            .arg_index = arg_index,
-                            .ref_index = ref_index,
-                            .target_id = ir_ref.index,
-                            .reloc_type = Reloc_Proc,
-                        }));
+                case NkIrRef_Frame:
+                    ref.offset += ir_proc.locals.data[ir_ref.index].offset;
+                    break;
+                case NkIrRef_Arg:
+                    ref.offset += ir_ref.index * sizeof(void *);
+                    ref.indir++;
+                    break;
+                case NkIrRef_Ret:
+                    ref.indir++;
+                    break;
+                case NkIrRef_Data: {
+                    ref.offset += (usize)get_data_addr(ir_ref.index);
+                    break;
                 }
-                nkda_append(&referenced_procs, NkIrProc{ir_ref.index});
-                break;
-            }
-            case NkIrRef_ExternData: {
-                auto data = ir.extern_data.data[ir_ref.index];
-                auto sym = getExternSym(ctx, data.lib, data.name);
-                if (!sym) {
-                    return false;
+                case NkIrRef_Proc: {
+                    ref.kind = NkBcRef_Data;
+                    if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
+                        nkda_append(
+                            &relocs,
+                            (Reloc{
+                                .instr_index = instr_index,
+                                .arg_index = arg_index,
+                                .ref_index = ref_index,
+                                .target_id = ir_ref.index,
+                                .reloc_type = Reloc_Closure,
+                                .proc_info = &ir_ref.type->as.proc.info,
+                            }));
+                    } else {
+                        nkda_append(
+                            &relocs,
+                            (Reloc{
+                                .instr_index = instr_index,
+                                .arg_index = arg_index,
+                                .ref_index = ref_index,
+                                .target_id = ir_ref.index,
+                                .reloc_type = Reloc_Proc,
+                            }));
+                    }
+                    nkda_append(&referenced_procs, NkIrProc{ir_ref.index});
+                    break;
                 }
+                case NkIrRef_ExternData: {
+                    auto data = ir.extern_data.data[ir_ref.index];
+                    auto sym = getExternSym(ctx, data.lib, data.name);
+                    if (!sym) {
+                        return false;
+                    }
 
-                ref.kind = NkBcRef_Data;
-                ref.offset += (usize)sym;
-                break;
-            }
-            case NkIrRef_ExternProc: {
-                auto proc = ir.extern_procs.data[ir_ref.index];
-                auto sym = getExternSym(ctx, proc.lib, proc.name);
-                if (!sym) {
-                    return false;
+                    ref.kind = NkBcRef_Data;
+                    ref.offset += (usize)sym;
+                    break;
                 }
+                case NkIrRef_ExternProc: {
+                    auto proc = ir.extern_procs.data[ir_ref.index];
+                    auto sym = getExternSym(ctx, proc.lib, proc.name);
+                    if (!sym) {
+                        return false;
+                    }
 
-                auto sym_addr = nk_allocT<void *>(ir.alloc);
-                *sym_addr = sym;
+                    auto sym_addr = nk_allocT<void *>(ir.alloc);
+                    *sym_addr = sym;
 
-                ref.kind = NkBcRef_Data;
-                ref.offset += (usize)sym_addr;
-                break;
-            }
-            case NkIrRef_Address: {
-                auto const &target_ref = ir.relocs.data[ir_ref.index];
-                auto ref_addr = nk_allocT<void *>(ir.alloc);
-                *ref_addr = get_data_addr(target_ref.index);
+                    ref.kind = NkBcRef_Data;
+                    ref.offset += (usize)sym_addr;
+                    break;
+                }
+                case NkIrRef_Address: {
+                    auto const &target_ref = ir.relocs.data[ir_ref.index];
+                    auto ref_addr = nk_allocT<void *>(ir.alloc);
+                    *ref_addr = get_data_addr(target_ref.index);
 
-                ref.kind = NkBcRef_Data;
-                ref.offset += (usize)ref_addr;
-                break;
-            }
-            case NkIrRef_VariadicMarker: {
-                ref.kind = NkBcRef_VariadicMarker;
-                break;
-            }
-            default:
-                nk_assert(!"unreachable");
-            case NkIrRef_None:
-                break;
+                    ref.kind = NkBcRef_Data;
+                    ref.offset += (usize)ref_addr;
+                    break;
+                }
+                case NkIrRef_VariadicMarker: {
+                    ref.kind = NkBcRef_VariadicMarker;
+                    break;
+                }
+                default:
+                    nk_assert(!"unreachable");
+                case NkIrRef_None:
+                    break;
             }
 
             return true;
@@ -420,49 +421,49 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     auto const translate_arg = [&](usize instr_index, usize arg_index, NkBcArg &arg, NkIrArg const &ir_arg) {
         NK_PROF_SCOPE(nk_cs2s("translate_arg"));
         switch (ir_arg.kind) {
-        case NkIrArg_None: {
-            arg.kind = NkBcArg_None;
-            break;
-        }
-
-        case NkIrArg_Ref: {
-            arg.kind = NkBcArg_Ref;
-            if (!translate_ref(instr_index, arg_index, -1ul, arg.ref, ir_arg.ref)) {
-                return false;
+            case NkIrArg_None: {
+                arg.kind = NkBcArg_None;
+                break;
             }
-            break;
-        }
 
-        case NkIrArg_RefArray: {
-            arg.kind = NkBcArg_RefArray;
-            auto refs = nk_allocT<NkBcRef>(ir.alloc, ir_arg.refs.size);
-            for (usize i = 0; i < ir_arg.refs.size; i++) {
-                if (!translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i])) {
+            case NkIrArg_Ref: {
+                arg.kind = NkBcArg_Ref;
+                if (!translate_ref(instr_index, arg_index, -1ul, arg.ref, ir_arg.ref)) {
                     return false;
                 }
+                break;
             }
-            arg.refs = {refs, ir_arg.refs.size};
-            break;
-        }
 
-        case NkIrArg_Label: {
-            arg.kind = NkBcArg_Ref;
-            arg.ref.kind = NkBcRef_Instr;
-            nkda_append(
-                &relocs,
-                (Reloc{
-                    .instr_index = instr_index,
-                    .arg_index = arg_index,
-                    .ref_index = -1ul,
-                    .target_id = ir_arg.id,
-                    .reloc_type = Reloc_Block,
-                }));
-            break;
-        }
+            case NkIrArg_RefArray: {
+                arg.kind = NkBcArg_RefArray;
+                auto refs = nk_allocT<NkBcRef>(ir.alloc, ir_arg.refs.size);
+                for (usize i = 0; i < ir_arg.refs.size; i++) {
+                    if (!translate_ref(instr_index, arg_index, i, refs[i], ir_arg.refs.data[i])) {
+                        return false;
+                    }
+                }
+                arg.refs = {refs, ir_arg.refs.size};
+                break;
+            }
 
-        case NkIrArg_Comment:
-        default:
-            nk_assert(!"unreachable");
+            case NkIrArg_Label: {
+                arg.kind = NkBcArg_Ref;
+                arg.ref.kind = NkBcRef_Instr;
+                nkda_append(
+                    &relocs,
+                    (Reloc{
+                        .instr_index = instr_index,
+                        .arg_index = arg_index,
+                        .ref_index = -1ul,
+                        .target_id = ir_arg.id,
+                        .reloc_type = Reloc_Block,
+                    }));
+                break;
+            }
+
+            case NkIrArg_Comment:
+            default:
+                nk_assert(!"unreachable");
         }
 
         return true;
@@ -486,112 +487,112 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             auto const &arg2 = ir_instr.arg[2];
 
             switch (ir_instr.code) {
-            case nkir_call: {
-                nk_assert(arg1.ref.type->kind == NkIrType_Procedure);
-                if (arg1.ref.kind == NkIrRef_ExternProc ||
-                    (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
-                    code = nkop_call_ext;
-                    nk_assert(arg2.kind == NkIrArg_RefArray);
-                    for (usize i = 0; i < arg2.refs.size; i++) {
-                        if (arg2.refs.data[i].kind == NkIrRef_VariadicMarker) {
-                            code = nkop_call_extv;
-                            break;
+                case nkir_call: {
+                    nk_assert(arg1.ref.type->kind == NkIrType_Procedure);
+                    if (arg1.ref.kind == NkIrRef_ExternProc ||
+                        (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
+                        code = nkop_call_ext;
+                        nk_assert(arg2.kind == NkIrArg_RefArray);
+                        for (usize i = 0; i < arg2.refs.size; i++) {
+                            if (arg2.refs.data[i].kind == NkIrRef_VariadicMarker) {
+                                code = nkop_call_extv;
+                                break;
+                            }
                         }
-                    }
-                } else {
-                    code = nkop_call_jmp;
-                }
-                break;
-            }
-
-            case nkir_ext:
-            case nkir_trunc: {
-                auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
-                auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
-
-                nk_assert(max_ref.type->kind == NkIrType_Numeric && min_ref.type->kind == NkIrType_Numeric);
-                nk_assert(
-                    NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
-                    NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
-
-                if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
-                    nk_assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
-
-                    if (ir_instr.code == nkir_ext) {
-                        code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
-                    }
-
-                    switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
-                    case 1:
-                        code += 0 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
-                        break;
-                    case 2:
-                        code += 2 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
-                        break;
-                    case 4:
-                        code += 6;
-                        break;
-                    default:
-                        nk_assert(!"unreachable");
-                        break;
-                    }
-                } else {
-                    nk_assert(max_ref.type->as.num.value_type == Float64);
-                    nk_assert(min_ref.type->as.num.value_type == Float32);
-
-                    code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
-                }
-                break;
-            }
-
-            case nkir_fp2i: {
-                code = arg1.ref.type->as.num.value_type == Float32 ? nkop_fp2i_32 : nkop_fp2i_64;
-                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
-                break;
-            }
-            case nkir_i2fp: {
-                code = arg0.ref.type->as.num.value_type == Float32 ? nkop_i2fp_32 : nkop_i2fp_64;
-                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
-                break;
-            }
-
-            case nkir_syscall:
-#if NK_SYSCALLS_AVAILABLE
-                code += 1 + arg2.refs.size;
-#else  // NK_SYSCALLS_AVAILABLE
-                reportError(ctx, "syscalls are not available on the host platform");
-                return false;
-#endif // NK_SYSCALLS_AVAILABLE
-                break;
-
-#define SIZ_OP(NAME) case NK_CAT(nkir_, NAME):
-#include "bytecode.inl"
-                {
-                    nk_assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
-                    auto const ref_type = arg0.kind == NkIrArg_Ref ? arg0.ref.type : arg1.ref.type;
-                    if (ref_type->size <= 8 && nk_isZeroOrPowerOf2(ref_type->size)) {
-                        code += 1 + nk_log2u64(ref_type->size);
+                    } else {
+                        code = nkop_call_jmp;
                     }
                     break;
                 }
+
+                case nkir_ext:
+                case nkir_trunc: {
+                    auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
+                    auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
+
+                    nk_assert(max_ref.type->kind == NkIrType_Numeric && min_ref.type->kind == NkIrType_Numeric);
+                    nk_assert(
+                        NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
+                        NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
+
+                    if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
+                        nk_assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
+
+                        if (ir_instr.code == nkir_ext) {
+                            code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
+                        }
+
+                        switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
+                            case 1:
+                                code += 0 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                                break;
+                            case 2:
+                                code += 2 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                                break;
+                            case 4:
+                                code += 6;
+                                break;
+                            default:
+                                nk_assert(!"unreachable");
+                                break;
+                        }
+                    } else {
+                        nk_assert(max_ref.type->as.num.value_type == Float64);
+                        nk_assert(min_ref.type->as.num.value_type == Float32);
+
+                        code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
+                    }
+                    break;
+                }
+
+                case nkir_fp2i: {
+                    code = arg1.ref.type->as.num.value_type == Float32 ? nkop_fp2i_32 : nkop_fp2i_64;
+                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
+                    break;
+                }
+                case nkir_i2fp: {
+                    code = arg0.ref.type->as.num.value_type == Float32 ? nkop_i2fp_32 : nkop_i2fp_64;
+                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                    break;
+                }
+
+                case nkir_syscall:
+#if NK_SYSCALLS_AVAILABLE
+                    code += 1 + arg2.refs.size;
+#else  // NK_SYSCALLS_AVAILABLE
+                    reportError(ctx, "syscalls are not available on the host platform");
+                    return false;
+#endif // NK_SYSCALLS_AVAILABLE
+                    break;
+
+#define SIZ_OP(NAME) case NK_CAT(nkir_, NAME):
+#include "bytecode.inl"
+                    {
+                        nk_assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
+                        auto const ref_type = arg0.kind == NkIrArg_Ref ? arg0.ref.type : arg1.ref.type;
+                        if (ref_type->size <= 8 && nk_isZeroOrPowerOf2(ref_type->size)) {
+                            code += 1 + nk_log2u64(ref_type->size);
+                        }
+                        break;
+                    }
 
 #define BOOL_NUM_OP(NAME)
 #define NUM_OP(NAME) case NK_CAT(nkir_, NAME):
 #define INT_OP(NAME) case NK_CAT(nkir_, NAME):
 #define FP2I_OP(NAME)
 #include "bytecode.inl"
-                nk_assert(arg0.ref.type->kind == NkIrType_Numeric);
-                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
-                break;
+                    nk_assert(arg0.ref.type->kind == NkIrType_Numeric);
+                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
+                    break;
 
 #define BOOL_NUM_OP(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
-                nk_assert(arg1.ref.type->kind == NkIrType_Numeric);
-                code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
-                break;
+                    nk_assert(arg1.ref.type->kind == NkIrType_Numeric);
+                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                    break;
 
-            case nkir_comment:
-                continue;
+                case nkir_comment:
+                    continue;
             }
 
             nkda_append(&bc_proc.instrs, NkBcInstr{});
@@ -616,30 +617,30 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         auto &ref = reloc.ref_index == -1ul ? arg.ref : arg.refs.data[reloc.ref_index];
 
         switch (reloc.reloc_type) {
-        case Reloc_Block: {
-            ref.offset = block_info.data[reloc.target_id].first_instr * sizeof(NkBcInstr);
-            break;
-        }
-        case Reloc_Proc: {
-            auto sym_addr = nk_allocT<void *>(ir.alloc);
-            *sym_addr = ctx->procs.data[reloc.target_id];
-            ref.offset = (usize)sym_addr;
-            break;
-        }
-        case Reloc_Closure: {
-            NkNativeCallData const call_data{
-                .proc{.bytecode = ctx->procs.data[reloc.target_id]},
-                .nfixedargs = reloc.proc_info->args_t.size,
-                .is_variadic = (bool)(reloc.proc_info->flags & NkProcVariadic),
-                .argv{},
-                .argt = reloc.proc_info->args_t.data,
-                .argc = reloc.proc_info->args_t.size,
-                .retv{},
-                .rett = reloc.proc_info->ret_t,
-            };
-            ref.offset = (usize)nk_native_makeClosure(&ctx->ffi_ctx, ctx->tmp_arena, ir.alloc, &call_data);
-            break;
-        }
+            case Reloc_Block: {
+                ref.offset = block_info.data[reloc.target_id].first_instr * sizeof(NkBcInstr);
+                break;
+            }
+            case Reloc_Proc: {
+                auto sym_addr = nk_allocT<void *>(ir.alloc);
+                *sym_addr = ctx->procs.data[reloc.target_id];
+                ref.offset = (usize)sym_addr;
+                break;
+            }
+            case Reloc_Closure: {
+                NkNativeCallData const call_data{
+                    .proc{.bytecode = ctx->procs.data[reloc.target_id]},
+                    .nfixedargs = reloc.proc_info->args_t.size,
+                    .is_variadic = (bool)(reloc.proc_info->flags & NkProcVariadic),
+                    .argv{},
+                    .argt = reloc.proc_info->args_t.data,
+                    .argc = reloc.proc_info->args_t.size,
+                    .retv{},
+                    .rett = reloc.proc_info->ret_t,
+                };
+                ref.offset = (usize)nk_native_makeClosure(&ctx->ffi_ctx, ctx->tmp_arena, ir.alloc, &call_data);
+                break;
+            }
         }
     }
 
@@ -665,8 +666,8 @@ char const *nkbcOpcodeName(u16 code) {
         return #NAME "(" #EXT ")";
 #include "bytecode.inl"
 
-    default:
-        return "";
+        default:
+            return "";
     }
 }
 

@@ -6,6 +6,7 @@
 #include "nkb/common.h"
 #include "ntk/allocator.h"
 #include "ntk/log.h"
+#include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 
@@ -30,74 +31,74 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
         ffi_t = (ffi_type *)found->val;
     } else {
         switch (type->kind) {
-        case NkIrType_Numeric:
-            switch (type->as.num.value_type) {
-            case Int8:
-                ffi_t = &ffi_type_sint8;
+            case NkIrType_Numeric:
+                switch (type->as.num.value_type) {
+                    case Int8:
+                        ffi_t = &ffi_type_sint8;
+                        break;
+                    case Int16:
+                        ffi_t = &ffi_type_sint16;
+                        break;
+                    case Int32:
+                        ffi_t = &ffi_type_sint32;
+                        break;
+                    case Int64:
+                        ffi_t = &ffi_type_sint64;
+                        break;
+                    case Uint8:
+                        ffi_t = &ffi_type_uint8;
+                        break;
+                    case Uint16:
+                        ffi_t = &ffi_type_uint16;
+                        break;
+                    case Uint32:
+                        ffi_t = &ffi_type_uint32;
+                        break;
+                    case Uint64:
+                        ffi_t = &ffi_type_uint64;
+                        break;
+                    case Float32:
+                        ffi_t = &ffi_type_float;
+                        break;
+                    case Float64:
+                        ffi_t = &ffi_type_double;
+                        break;
+                    default:
+                        nk_assert(!"unreachable");
+                        break;
+                }
                 break;
-            case Int16:
-                ffi_t = &ffi_type_sint16;
+            case NkIrType_Pointer:
+            case NkIrType_Procedure:
+                ffi_t = &ffi_type_pointer;
                 break;
-            case Int32:
-                ffi_t = &ffi_type_sint32;
+            case NkIrType_Aggregate: {
+                if (!type->size) {
+                    return &ffi_type_void;
+                }
+                usize elem_count = 0;
+                for (usize i = 0; i < type->as.aggr.elems.size; i++) {
+                    elem_count += type->as.aggr.elems.data[i].count;
+                }
+                ffi_type **elems = (ffi_type **)nk_allocT<void *>(ctx->alloc, elem_count + 1);
+                usize cur_elem = 0;
+                for (usize i = 0; i < type->as.aggr.elems.size; i++) {
+                    for (usize j = 0; j < type->as.aggr.elems.data[i].count; j++) {
+                        elems[cur_elem++] = getNativeHandle(ctx, type->as.aggr.elems.data[i].type);
+                    }
+                }
+                elems[elem_count] = nullptr;
+                ffi_t = new (nk_allocT<ffi_type>(ctx->alloc)) ffi_type{
+                    .size = type->size,
+                    .alignment = type->align,
+                    .type = FFI_TYPE_STRUCT,
+                    .elements = elems,
+                };
                 break;
-            case Int64:
-                ffi_t = &ffi_type_sint64;
-                break;
-            case Uint8:
-                ffi_t = &ffi_type_uint8;
-                break;
-            case Uint16:
-                ffi_t = &ffi_type_uint16;
-                break;
-            case Uint32:
-                ffi_t = &ffi_type_uint32;
-                break;
-            case Uint64:
-                ffi_t = &ffi_type_uint64;
-                break;
-            case Float32:
-                ffi_t = &ffi_type_float;
-                break;
-            case Float64:
-                ffi_t = &ffi_type_double;
-                break;
+            }
             default:
                 nk_assert(!"unreachable");
                 break;
-            }
-            break;
-        case NkIrType_Pointer:
-        case NkIrType_Procedure:
-            ffi_t = &ffi_type_pointer;
-            break;
-        case NkIrType_Aggregate: {
-            if (!type->size) {
-                return &ffi_type_void;
-            }
-            usize elem_count = 0;
-            for (usize i = 0; i < type->as.aggr.elems.size; i++) {
-                elem_count += type->as.aggr.elems.data[i].count;
-            }
-            ffi_type **elems = (ffi_type **)nk_allocT<void *>(ctx->alloc, elem_count + 1);
-            usize cur_elem = 0;
-            for (usize i = 0; i < type->as.aggr.elems.size; i++) {
-                for (usize j = 0; j < type->as.aggr.elems.data[i].count; j++) {
-                    elems[cur_elem++] = getNativeHandle(ctx, type->as.aggr.elems.data[i].type);
-                }
-            }
-            elems[elem_count] = nullptr;
-            ffi_t = new (nk_allocT<ffi_type>(ctx->alloc)) ffi_type{
-                .size = type->size,
-                .alignment = type->align,
-                .type = FFI_TYPE_STRUCT,
-                .elements = elems,
-            };
-            break;
-        }
-        default:
-            nk_assert(!"unreachable");
-            break;
         }
 
         TypeTree_insert(&ctx->types, {type->id, ffi_t});

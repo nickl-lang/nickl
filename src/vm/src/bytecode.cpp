@@ -36,30 +36,30 @@ void _inspect(std::vector<NkBcInstr> const &instrs, NkStringBuilder *sb) {
             nksb_printf(sb, "[");
         }
         switch (arg.ref_type) {
-        case NkBcRef_Frame:
-            nksb_printf(sb, "frame+");
-            break;
-        case NkBcRef_Arg:
-            nksb_printf(sb, "arg+");
-            break;
-        case NkBcRef_Ret:
-            nksb_printf(sb, "ret+");
-            break;
-        case NkBcRef_Reg:
-            nksb_printf(sb, "reg+");
-            break;
-        case NkBcRef_Rodata:
-            nkval_inspect({(void *)arg.offset, arg.type}, sb);
-            break;
-        case NkBcRef_Data:
-            nksb_printf(sb, "data+");
-            break;
-        case NkBcRef_Instr:
-            nksb_printf(sb, "instr+");
-            break;
-        default:
-            nk_assert(!"unreachable");
-            break;
+            case NkBcRef_Frame:
+                nksb_printf(sb, "frame+");
+                break;
+            case NkBcRef_Arg:
+                nksb_printf(sb, "arg+");
+                break;
+            case NkBcRef_Ret:
+                nksb_printf(sb, "ret+");
+                break;
+            case NkBcRef_Reg:
+                nksb_printf(sb, "reg+");
+                break;
+            case NkBcRef_Rodata:
+                nkval_inspect({(void *)arg.offset, arg.type}, sb);
+                break;
+            case NkBcRef_Data:
+                nksb_printf(sb, "data+");
+                break;
+            case NkBcRef_Instr:
+                nksb_printf(sb, "instr+");
+                break;
+            default:
+                nk_assert(!"unreachable");
+                break;
         }
         if (arg.ref_type != NkBcRef_Rodata) {
             nksb_printf(sb, "%zx", arg.offset);
@@ -139,82 +139,82 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     auto _compileArg = [&](usize ii, usize ai, NkBcRef &arg, NkIrArg const &ir_arg) {
         switch (ir_arg.arg_type) {
-        case NkIrArg_None:
-            arg.ref_type = NkBcRef_None;
-            break;
-        case NkIrArg_Ref: {
-            auto const &ref = ir_arg.ref;
-            arg.offset += ref.offset;
-            arg.post_offset = ref.post_offset;
-            arg.type = ref.type;
-            arg.ref_type = (NkBcRefType)ref.ref_type;
-            arg.is_indirect = ref.is_indirect;
-            switch (ref.ref_type) {
-            case NkIrRef_Frame:
-                arg.offset += frame_layout.info_ar.data[ref.index].offset;
+            case NkIrArg_None:
+                arg.ref_type = NkBcRef_None;
                 break;
-            case NkIrRef_Arg:
-                arg.offset += fn->fn_t->as.fn.args_t->as.tuple.elems.data[ref.index].offset;
-                break;
-            case NkIrRef_Ret:
-                break;
-            case NkIrRef_Global: {
-                arg.ref_type = NkBcRef_Data;
-                if (ref.index >= p->globals.size()) {
-                    p->globals.resize(ref.index + 1, {});
+            case NkIrArg_Ref: {
+                auto const &ref = ir_arg.ref;
+                arg.offset += ref.offset;
+                arg.post_offset = ref.post_offset;
+                arg.type = ref.type;
+                arg.ref_type = (NkBcRefType)ref.ref_type;
+                arg.is_indirect = ref.is_indirect;
+                switch (ref.ref_type) {
+                    case NkIrRef_Frame:
+                        arg.offset += frame_layout.info_ar.data[ref.index].offset;
+                        break;
+                    case NkIrRef_Arg:
+                        arg.offset += fn->fn_t->as.fn.args_t->as.tuple.elems.data[ref.index].offset;
+                        break;
+                    case NkIrRef_Ret:
+                        break;
+                    case NkIrRef_Global: {
+                        arg.ref_type = NkBcRef_Data;
+                        if (ref.index >= p->globals.size()) {
+                            p->globals.resize(ref.index + 1, {});
+                        }
+                        auto &val = p->globals[ref.index];
+                        if (!val.data) {
+                            auto const type = ir.globals[ref.index];
+                            val = {nk_arena_alloc(&p->arena, type->size), type};
+                            std::memset(val.data, 0, type->size);
+                        }
+                        arg.offset += (usize)val.data;
+                        break;
+                    }
+                    case NkIrRef_Const: {
+                        arg.ref_type = NkBcRef_Rodata;
+                        auto const_data = nkval_data(ir.consts[ref.index]);
+                        arg.offset = (usize)const_data;
+                        break;
+                    }
+                    case NkIrRef_Reg:
+                        arg.offset += ref.index * REG_SIZE;
+                        break;
+                    case NkIrRef_ExtSym: {
+                        arg.ref_type = NkBcRef_Rodata;
+                        auto const &exsym = ir.exsyms[ref.index];
+                        if (exsym.so_id.id >= p->shobjs.size()) {
+                            p->shobjs.resize(exsym.so_id.id + 1, {});
+                        }
+                        auto &dl = p->shobjs[exsym.so_id.id];
+                        dl = nkdl_open(nk_cs2s(ir.shobjs[exsym.so_id.id].c_str()));
+                        if (ref.index >= p->exsyms.size()) {
+                            p->exsyms.resize(ref.index + 1, {});
+                        }
+                        auto &sym = p->exsyms[ref.index];
+                        sym = nkdl_sym(dl, nk_cs2s(exsym.name.c_str()));
+                        arg.offset += (usize)&sym;
+                        break;
+                    }
+                    default:
+                        nk_assert(!"unreachable");
+                    case NkIrRef_None:
+                        break;
                 }
-                auto &val = p->globals[ref.index];
-                if (!val.data) {
-                    auto const type = ir.globals[ref.index];
-                    val = {nk_arena_alloc(&p->arena, type->size), type};
-                    std::memset(val.data, 0, type->size);
-                }
-                arg.offset += (usize)val.data;
                 break;
             }
-            case NkIrRef_Const: {
-                arg.ref_type = NkBcRef_Rodata;
-                auto const_data = nkval_data(ir.consts[ref.index]);
-                arg.offset = (usize)const_data;
+            case NkIrArg_BlockId:
+                arg.ref_type = NkBcRef_Instr;
+                relocs.emplace_back(Reloc{
+                    .instr_index = ii,
+                    .arg = ai,
+                    .target_id = ir_arg.id,
+                    .reloc_type = Reloc_Block,
+                });
                 break;
-            }
-            case NkIrRef_Reg:
-                arg.offset += ref.index * REG_SIZE;
+            case NkIrArg_NumValType: // TODO
                 break;
-            case NkIrRef_ExtSym: {
-                arg.ref_type = NkBcRef_Rodata;
-                auto const &exsym = ir.exsyms[ref.index];
-                if (exsym.so_id.id >= p->shobjs.size()) {
-                    p->shobjs.resize(exsym.so_id.id + 1, {});
-                }
-                auto &dl = p->shobjs[exsym.so_id.id];
-                dl = nkdl_open(nk_cs2s(ir.shobjs[exsym.so_id.id].c_str()));
-                if (ref.index >= p->exsyms.size()) {
-                    p->exsyms.resize(ref.index + 1, {});
-                }
-                auto &sym = p->exsyms[ref.index];
-                sym = nkdl_sym(dl, nk_cs2s(exsym.name.c_str()));
-                arg.offset += (usize)&sym;
-                break;
-            }
-            default:
-                nk_assert(!"unreachable");
-            case NkIrRef_None:
-                break;
-            }
-            break;
-        }
-        case NkIrArg_BlockId:
-            arg.ref_type = NkBcRef_Instr;
-            relocs.emplace_back(Reloc{
-                .instr_index = ii,
-                .arg = ai,
-                .target_id = ir_arg.id,
-                .reloc_type = Reloc_Block,
-            });
-            break;
-        case NkIrArg_NumValType: // TODO
-            break;
         }
     };
 
@@ -233,50 +233,50 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             auto const &arg1 = ir_instr.arg[1];
 
             switch (ir_instr.code) {
-            case nkir_call:
-                if (arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
-                    arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
-                    auto const fn = nkval_as(NkIrFunct, nkir_refDeref(p->ir, arg1.ref));
-                    bool found = false;
-                    // TODO Manual search for fn
-                    for (auto f : ir.functs) {
-                        if (fn == f) {
-                            found = true;
-                            break;
+                case nkir_call:
+                    if (arg1.ref.ref_type == NkIrRef_Const && arg1.ref.type->tclass == NkType_Fn &&
+                        arg1.ref.type->as.fn.call_conv == NkCallConv_Nk) {
+                        auto const fn = nkval_as(NkIrFunct, nkir_refDeref(p->ir, arg1.ref));
+                        bool found = false;
+                        // TODO Manual search for fn
+                        for (auto f : ir.functs) {
+                            if (fn == f) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) {
+                            code = nkop_call_jmp;
+                            referenced_functs.emplace_back(fn);
                         }
                     }
-                    if (found) {
-                        code = nkop_call_jmp;
-                        referenced_functs.emplace_back(fn);
+                    break;
+                case nkir_mov:
+                case nkir_jmpz:
+                case nkir_jmpnz:
+                case nkir_eq:
+                case nkir_ne:
+                    if (arg1.ref.type->size <= REG_SIZE && nk_isZeroOrPowerOf2(arg1.ref.type->size)) {
+                        code += 1 + nk_log2u64(arg1.ref.type->size);
                     }
-                }
-                break;
-            case nkir_mov:
-            case nkir_jmpz:
-            case nkir_jmpnz:
-            case nkir_eq:
-            case nkir_ne:
-                if (arg1.ref.type->size <= REG_SIZE && nk_isZeroOrPowerOf2(arg1.ref.type->size)) {
-                    code += 1 + nk_log2u64(arg1.ref.type->size);
-                }
-                break;
+                    break;
 #define NUM(NAME) case NK_CAT(nkir_, NAME):
 #define INT(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
-                if (arg1.ref.type->tclass == NkType_Ptr) {
-                    code += 1 + NUM_TYPE_INDEX(Uint64);
-                } else {
-                    nk_assert(arg1.ref.type->tclass == NkType_Numeric);
-                    code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
-                }
-                break;
+                    if (arg1.ref.type->tclass == NkType_Ptr) {
+                        code += 1 + NUM_TYPE_INDEX(Uint64);
+                    } else {
+                        nk_assert(arg1.ref.type->tclass == NkType_Numeric);
+                        code += 1 + NUM_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                    }
+                    break;
 
-            case nkir_cast:
-                nk_assert(arg1.arg_type == NkIrArg_NumValType);
-                nk_assert(ir_instr.arg[2].ref.type->tclass == NkType_Numeric);
-                code += 1 + NUM_TYPE_INDEX(arg1.id) * NUM_TYPE_COUNT +
-                        NUM_TYPE_INDEX(ir_instr.arg[2].ref.type->as.num.value_type);
-                break;
+                case nkir_cast:
+                    nk_assert(arg1.arg_type == NkIrArg_NumValType);
+                    nk_assert(ir_instr.arg[2].ref.type->tclass == NkType_Numeric);
+                    code += 1 + NUM_TYPE_INDEX(arg1.id) * NUM_TYPE_COUNT +
+                            NUM_TYPE_INDEX(ir_instr.arg[2].ref.type->as.num.value_type);
+                    break;
             }
 
             auto &instr = instrs.emplace_back();
@@ -291,9 +291,9 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
         NkBcRef &arg = instrs[reloc.instr_index].arg[reloc.arg];
 
         switch (reloc.reloc_type) {
-        case Reloc_Block:
-            arg.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
-            break;
+            case Reloc_Block:
+                arg.offset = block_info[reloc.target_id].first_instr * sizeof(NkBcInstr);
+                break;
         }
     }
 

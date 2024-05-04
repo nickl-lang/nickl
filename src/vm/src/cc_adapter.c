@@ -24,7 +24,7 @@ NkPipeStream nkcc_streamOpen(NkIrCompilerConfig const conf) {
         NKS_ARG(conf.additional_flags));
 
     NkPipeStream src;
-    nk_pipe_streamOpenWrite(&src, (NkString){NK_SLICE_INIT(sb)}, conf.quiet);
+    nk_pipe_streamOpenWrite(&src, (NkString){NKS_INIT(sb)}, conf.quiet);
 
     nksb_free(&sb);
     NK_PROF_FUNC_END();
