@@ -9,7 +9,6 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/file.h"
 #include "ntk/hash_tree.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
@@ -25,10 +24,10 @@ NK_LOG_USE_SCOPE(compiler);
 
 struct Void {};
 
-#define CHECK(EXPR)            \
-    EXPR;                      \
-    if (nkl_getErrorCount()) { \
-        return {};             \
+#define CHECK(EXPR)               \
+    EXPR;                         \
+    if (nkl_getErrorCount(nkl)) { \
+        return {};                \
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
@@ -90,10 +89,18 @@ static NkAtom const *FileData_kv_GetKey(FileData_kv const *item) {
 NK_HASH_TREE_DEFINE(FileMap, FileData_kv, NkAtom, FileData_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 struct NklCompiler_T {
-    NklState *nkl;
+    NklState nkl;
     NkArena permanent_arena;
     FileMap files;
 };
+
+// FileData &fileDataForFile(NklCompiler c, NkAtom file) {
+//     auto found = FileMap_find(&c->files, file);
+//     if (!found) {
+//         found = FileMap_insert(&c->files, {file, {}});
+//     }
+//     return found->val;
+// }
 
 enum ValueKind {
     ValueKind_Void,
@@ -137,12 +144,7 @@ static Decl &makeDecl(NklModule m, NkAtom name) {
     nk_assert(m->scope_stack && "no current scope");
     NK_LOG_DBG("Making declaration: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
     // TODO: Check for name conflict
-    auto kv = DeclMap_insert(
-        &m->scope_stack->locals,
-        {
-            .key = name,
-            .val = {},
-        });
+    auto kv = DeclMap_insert(&m->scope_stack->locals, {name, {}});
     return kv->val;
 }
 
@@ -163,12 +165,15 @@ static Decl &resolve(NklModule m, NkAtom name) {
     return s_undefined_decl;
 }
 
-NklCompiler nkl_createCompiler(NklState *nkl, NklTargetTriple target) {
+NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
-    return new (nk_allocT<NklCompiler_T>(nk_arena_getAllocator(&arena))) NklCompiler_T{
+    NklCompiler_T *c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .nkl = nkl,
         .permanent_arena = arena,
+        .files = {},
     };
+    c->files.alloc = nk_arena_getAllocator(&c->permanent_arena);
+    return c;
 }
 
 void nkl_freeCompiler(NklCompiler c) {
@@ -202,6 +207,8 @@ ValueInfo declInfo(Decl &decl) {
 static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
+
+    auto nkl = m->c->nkl;
 
     auto const &node = src.nodes.data[node_idx];
 
@@ -239,7 +246,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
-                return nkl_reportError(token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
+                return nkl_reportError(nkl, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
             } else {
                 return declInfo(decl);
             }
@@ -317,6 +324,8 @@ static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
+    auto nkl = m->c->nkl;
+
     DEFINE(val, compileNode(m, src, node_idx));
     if (val.kind != ValueKind_Void) {
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
@@ -325,36 +334,49 @@ static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     return {};
 }
 
-bool nkl_compileFile(NklModule m, NkString in_file) {
+static bool compileAst(NklModule m, NklSource &src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    NKSB_FIXED_BUFFER(in_file_path, NK_MAX_PATH);
-    nksb_printf(&in_file_path, NKS_FMT, NKS_ARG(in_file));
-    nksb_appendNull(&in_file_path);
+    auto nkl = m->c->nkl;
+
+    pushScope(m);
+    defer {
+        popScope(m);
+    };
+
+    if (src.nodes.size) {
+        compileStmt(m, src, 0);
+    }
+
+    return nkl_getErrorCount(nkl) == 0;
+}
+
+bool nkl_compileFile(NklModule m, NkString filename) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    auto nkl = m->c->nkl;
+
+    NKSB_FIXED_BUFFER(filename_nt, NK_MAX_PATH);
+    nksb_printf(&filename_nt, NKS_FMT, NKS_ARG(filename));
+    nksb_appendNull(&filename_nt);
 
     NkString canonical_file_path_s;
     char canonical_file_path[NK_MAX_PATH] = {};
-    if (nk_fullPath(canonical_file_path, in_file_path.data) >= 0) {
+    if (nk_fullPath(canonical_file_path, filename_nt.data) >= 0) {
         canonical_file_path_s = nk_cs2s(canonical_file_path);
     } else {
-        canonical_file_path_s = {NKS_INIT(in_file_path)};
-    }
-
-    auto const read_res = nk_file_read(nk_arena_getAllocator(&m->c->permanent_arena), canonical_file_path_s);
-    if (!read_res.ok) {
         nkl_diag_printError(
-            "failed to read file `" NKS_FMT "`: %s", NKS_ARG(canonical_file_path_s), nk_getLastErrorString());
+            "failed to canonicalize path `" NKS_FMT "`: %s", NKS_ARG(filename), nk_getLastErrorString());
         return false;
     }
 
-    auto text = read_res.bytes;
+    auto src = nkl_getSource(nkl, nk_s2atom(canonical_file_path_s));
 
-    NklErrorState error_state{};
-    nkl_errorStateInitAndEquip(&error_state, &m->c->permanent_arena);
-
-    if (!nkl_compileSrc(m, text)) {
-        auto error = error_state.errors;
+    // TODO: Report error elsewhere!
+    if (!compileAst(m, src)) {
+        auto error = nkl_getErrorList(nkl);
         if (error) {
             char cwd[NK_MAX_PATH];
             nk_getCwd(cwd, sizeof(cwd));
@@ -363,7 +385,7 @@ bool nkl_compileFile(NklModule m, NkString in_file) {
 
             while (error) {
                 nkl_diag_printErrorQuote(
-                    text,
+                    src.text,
                     {
                         nk_cs2s(relpath),
                         error->token->lin,
@@ -378,45 +400,4 @@ bool nkl_compileFile(NklModule m, NkString in_file) {
     }
 
     return true;
-}
-
-bool nkl_compileSrc(NklModule m, NkString text) {
-    NK_PROF_FUNC();
-    NK_LOG_TRC("%s", __func__);
-
-    // TODO: Generate fake file in order to enable debug info in nkl_compileSrc
-
-    auto tokens = nkl_lex(m->c->nkl->lexer, text);
-    if (nkl_getErrorCount()) {
-        return false;
-    }
-
-    auto nodes = nkl_parse(m->c->nkl->parser, text, tokens);
-    if (nkl_getErrorCount()) {
-        return false;
-    }
-
-    return nkl_compileAst(
-        m,
-        {
-            .text = text,
-            .tokens = tokens,
-            .nodes = nodes,
-        });
-}
-
-bool nkl_compileAst(NklModule m, NklSource src) {
-    NK_PROF_FUNC();
-    NK_LOG_TRC("%s", __func__);
-
-    pushScope(m);
-    defer {
-        popScope(m);
-    };
-
-    if (src.nodes.size) {
-        compileStmt(m, src, 0);
-    }
-
-    return nkl_getErrorCount() == 0;
 }

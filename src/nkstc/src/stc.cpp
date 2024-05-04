@@ -13,12 +13,12 @@ namespace {
 
 NK_LOG_USE_SCOPE(nkstc);
 
-NklTokenArray lexer_proc(void *data, NkString text) {
-    return nkst_lex((NkArena *)data, text);
+NklTokenArray lexer_proc(void *, NklState nkl, NkAllocator alloc, NkString text) {
+    return nkst_lex(nkl, alloc, text);
 }
 
-NklAstNodeArray parser_proc(void *data, NkString text, NklTokenArray tokens) {
-    return nkst_parse((NkArena *)data, text, tokens);
+NklAstNodeArray parser_proc(void *, NklState nkl, NkAllocator alloc, NkString text, NklTokenArray tokens) {
+    return nkst_parse(nkl, alloc, text, tokens);
 }
 
 } // namespace
@@ -26,21 +26,15 @@ NklAstNodeArray parser_proc(void *data, NkString text, NklTokenArray tokens) {
 int nkst_compile(NkString in_file) {
     NK_LOG_TRC("%s", __func__);
 
-    NkArena file_arena{};
+    NklLexer lexer{.data = nullptr, .proc = lexer_proc};
+    NklParser parser{.data = nullptr, .proc = parser_proc};
+
+    auto nkl = nkl_state_create(lexer, parser);
     defer {
-        nk_arena_free(&file_arena);
+        nkl_state_free(nkl);
     };
 
-    NklLexer lexer{.data = &file_arena, .proc = lexer_proc};
-    NklParser parser{.data = &file_arena, .proc = parser_proc};
-
-    NklState nkl{};
-    nkl_state_init(&nkl, lexer, parser);
-    defer {
-        nkl_state_free(&nkl);
-    };
-
-    auto c = nkl_createCompiler(&nkl, {});
+    auto c = nkl_createCompiler(nkl, {});
     defer {
         nkl_freeCompiler(c);
     };

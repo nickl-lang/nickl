@@ -1,5 +1,6 @@
 #include "nkl/core/types.h"
 
+#include "nickl_impl.h"
 #include "nkb/common.h"
 #include "ntk/arena.h"
 #include "ntk/dyn_array.h"
@@ -30,7 +31,7 @@ static bool ByteArray_equal(ByteArray const lhs, ByteArray const rhs) {
     return lhs.size == rhs.size && memcmp(lhs.data, lhs.data, lhs.size) == 0;
 }
 
-NK_HASH_TREE_IMPL(TypeTree, Type_kv, ByteArray, Type_kv_GetKey, ByteArray_hash, ByteArray_equal);
+NK_HASH_TREE_IMPL(TypeMap, Type_kv, ByteArray, Type_kv_GetKey, ByteArray_hash, ByteArray_equal);
 
 #define PUSH_VAL(fp, T, val)                        \
     do {                                            \
@@ -44,7 +45,7 @@ typedef struct {
     u32 id;
 } TypeSearchResult;
 
-static TypeSearchResult getTypeByFingerprint(NklState *nkl, ByteArray fp, NklType *backing) {
+static TypeSearchResult getTypeByFingerprint(NklState nkl, ByteArray fp, NklType *backing) {
     NK_PROF_FUNC_BEGIN();
     NK_LOG_TRC("%s", __func__);
 
@@ -52,7 +53,7 @@ static TypeSearchResult getTypeByFingerprint(NklState *nkl, ByteArray fp, NklTyp
 
     nk_mutex_lock(nkl->types.mtx);
 
-    Type_kv *found = TypeTree_find(&nkl->types.type_tree, fp);
+    Type_kv *found = TypeMap_find(&nkl->types.type_map, fp);
     if (found) {
         res.type = found->val;
     } else {
@@ -68,7 +69,7 @@ static TypeSearchResult getTypeByFingerprint(NklState *nkl, ByteArray fp, NklTyp
         ByteArray fp_copy;
         nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &fp_copy, fp);
 
-        TypeTree_insert(&nkl->types.type_tree, (Type_kv){fp_copy, res.type});
+        TypeMap_insert(&nkl->types.type_map, (Type_kv){fp_copy, res.type});
     }
 
     nk_mutex_unlock(nkl->types.mtx);
@@ -77,10 +78,10 @@ static TypeSearchResult getTypeByFingerprint(NklState *nkl, ByteArray fp, NklTyp
     return res;
 }
 
-void nkl_types_init(NklState *nkl) {
+void nkl_types_init(NklState nkl) {
     nkl->types = (NklTypeStorage){
         .type_arena = {0},
-        .type_tree = {NULL, nk_arena_getAllocator(&nkl->types.type_arena)},
+        .type_map = {NULL, nk_arena_getAllocator(&nkl->types.type_arena)},
         .mtx = nk_mutex_alloc(),
         .next_id = 1,
 
@@ -88,14 +89,14 @@ void nkl_types_init(NklState *nkl) {
     };
 }
 
-void nkl_types_free(NklState *nkl) {
+void nkl_types_free(NklState nkl) {
     nk_mutex_free(nkl->types.mtx);
 
     nk_arena_free(&nkl->types.type_arena);
     nk_arena_free(&nkl->types.tmp_arena);
 }
 
-static void get_ir_aggregate(NklState *nkl, NklType *backing, NkIrAggregateLayout const layout) {
+static void get_ir_aggregate(NklState nkl, NklType *backing, NkIrAggregateLayout const layout) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrTypeKind const kind = NkIrType_Aggregate;
@@ -129,7 +130,7 @@ static void get_ir_aggregate(NklState *nkl, NklType *backing, NkIrAggregateLayou
     }
 }
 
-static void get_ir_numeric(NklState *nkl, NklType *backing, NkIrNumericValueType value_type) {
+static void get_ir_numeric(NklState nkl, NklType *backing, NkIrNumericValueType value_type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrTypeKind const kind = NkIrType_Numeric;
@@ -157,7 +158,7 @@ static void get_ir_numeric(NklState *nkl, NklType *backing, NkIrNumericValueType
     }
 }
 
-static void get_ir_ptr(NklState *nkl, usize word_size, NklType *backing, nktype_t target_type) {
+static void get_ir_ptr(NklState nkl, usize word_size, NklType *backing, nktype_t target_type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrTypeKind const kind = NkIrType_Pointer;
@@ -185,7 +186,7 @@ static void get_ir_ptr(NklState *nkl, usize word_size, NklType *backing, nktype_
     }
 }
 
-static void get_ir_proc(NklState *nkl, usize word_size, NklType *backing, NklProcInfo info) {
+static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProcInfo info) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrTypeKind const kind = NkIrType_Procedure;
@@ -229,7 +230,7 @@ static void get_ir_proc(NklState *nkl, usize word_size, NklType *backing, NklPro
     }
 }
 
-nkltype_t nkl_get_any(NklState *nkl, usize word_size) {
+nkltype_t nkl_get_any(NklState nkl, usize word_size) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Any;
@@ -266,7 +267,7 @@ nkltype_t nkl_get_any(NklState *nkl, usize word_size) {
     return res.type;
 }
 
-nkltype_t nkl_get_array(NklState *nkl, nkltype_t elem_type, usize elem_count) {
+nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Array;
@@ -297,7 +298,7 @@ nkltype_t nkl_get_array(NklState *nkl, nkltype_t elem_type, usize elem_count) {
     return res.type;
 }
 
-nkltype_t nkl_get_enum(NklState *nkl, NklFieldArray fields) {
+nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Enum;
@@ -340,7 +341,7 @@ nkltype_t nkl_get_enum(NklState *nkl, NklFieldArray fields) {
     return res.type;
 }
 
-nkltype_t nkl_get_numeric(NklState *nkl, NkIrNumericValueType value_type) {
+nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Numeric;
@@ -365,7 +366,7 @@ nkltype_t nkl_get_numeric(NklState *nkl, NkIrNumericValueType value_type) {
     return res.type;
 }
 
-nkltype_t nkl_get_proc(NklState *nkl, usize word_size, NklProcInfo info) {
+nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Procedure;
@@ -396,7 +397,7 @@ nkltype_t nkl_get_proc(NklState *nkl, usize word_size, NklProcInfo info) {
     return res.type;
 }
 
-nkltype_t nkl_get_ptr(NklState *nkl, usize word_size, nkltype_t target_type, bool is_const) {
+nkltype_t nkl_get_ptr(NklState nkl, usize word_size, nkltype_t target_type, bool is_const) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Pointer;
@@ -425,7 +426,7 @@ nkltype_t nkl_get_ptr(NklState *nkl, usize word_size, nkltype_t target_type, boo
     return res.type;
 }
 
-nkltype_t nkl_get_slice(NklState *nkl, usize word_size, nkltype_t target_type, bool is_const) {
+nkltype_t nkl_get_slice(NklState nkl, usize word_size, nkltype_t target_type, bool is_const) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Slice;
@@ -465,7 +466,7 @@ nkltype_t nkl_get_slice(NklState *nkl, usize word_size, nkltype_t target_type, b
     return res.type;
 }
 
-nkltype_t nkl_get_struct(NklState *nkl, NklFieldArray fields) {
+nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Struct;
@@ -499,7 +500,7 @@ nkltype_t nkl_get_struct(NklState *nkl, NklFieldArray fields) {
     return res.type;
 }
 
-nkltype_t nkl_get_struct_packed(NklState *nkl, NklFieldArray fields) {
+nkltype_t nkl_get_struct_packed(NklState nkl, NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
 
     (void)nkl;
@@ -508,11 +509,11 @@ nkltype_t nkl_get_struct_packed(NklState *nkl, NklFieldArray fields) {
     return NULL;
 }
 
-nkltype_t nkl_get_tuple(NklState *nkl, NklTypeArray types) {
+nkltype_t nkl_get_tuple(NklState nkl, NklTypeArray types) {
     return nkl_get_tupleEx(nkl, types.data, types.size, 1);
 }
 
-nkltype_t nkl_get_tupleEx(NklState *nkl, nkltype_t const *types, usize count, usize stride) {
+nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usize stride) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Tuple;
@@ -542,7 +543,7 @@ nkltype_t nkl_get_tupleEx(NklState *nkl, nkltype_t const *types, usize count, us
     return res.type;
 }
 
-nkltype_t nkl_get_tuple_packed(NklState *nkl, NklTypeArray types) {
+nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeArray types) {
     NK_LOG_TRC("%s", __func__);
 
     (void)nkl;
@@ -551,7 +552,7 @@ nkltype_t nkl_get_tuple_packed(NklState *nkl, NklTypeArray types) {
     return NULL;
 }
 
-nkltype_t nkl_get_typeref(NklState *nkl, usize word_size) {
+nkltype_t nkl_get_typeref(NklState nkl, usize word_size) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Typeref;
@@ -578,7 +579,7 @@ nkltype_t nkl_get_typeref(NklState *nkl, usize word_size) {
     return res.type;
 }
 
-nkltype_t nkl_get_union(NklState *nkl, NklFieldArray fields) {
+nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Union;
@@ -619,7 +620,7 @@ nkltype_t nkl_get_union(NklState *nkl, NklFieldArray fields) {
     return res.type;
 }
 
-nkltype_t nkl_get_void(NklState *nkl) {
+nkltype_t nkl_get_void(NklState nkl) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeClass const tclass = NklType_Tuple;

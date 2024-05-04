@@ -16,10 +16,10 @@ struct Void {};
 
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_nkst_token_id[ID], s_nkst_token_text[ID]
 
-#define CHECK(EXPR)            \
-    EXPR;                      \
-    if (nkl_getErrorCount()) { \
-        return {};             \
+#define CHECK(EXPR)               \
+    EXPR;                         \
+    if (nkl_getErrorCount(nkl)) { \
+        return {};                \
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
@@ -28,6 +28,8 @@ struct Void {};
 #define EXPECT(ID) CHECK(expect(ID))
 
 struct ParseEngine {
+    NklState nkl;
+
     NkString m_text;
     NklTokenArray m_tokens;
     NklAstNodeDynArray *m_nodes;
@@ -154,20 +156,21 @@ struct ParseEngine {
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        nkl_vreportError(curToken(), fmt, ap);
+        nkl_vreportError(nkl, curToken(), fmt, ap);
         va_end(ap);
     }
 };
 
 } // namespace
 
-NklAstNodeArray nkst_parse(NkArena *arena, NkString text, NklTokenArray tokens) {
+NklAstNodeArray nkst_parse(NklState nkl, NkAllocator alloc, NkString text, NklTokenArray tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    NklAstNodeDynArray nodes{NKDA_INIT(nk_arena_getAllocator(arena))};
+    NklAstNodeDynArray nodes{NKDA_INIT(alloc)};
     nkda_reserve(&nodes, 1000);
 
     ParseEngine engine{
+        .nkl = nkl,
         .m_text = text,
         .m_tokens = tokens,
         .m_nodes = &nodes,
