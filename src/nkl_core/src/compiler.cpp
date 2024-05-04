@@ -37,11 +37,6 @@ struct Void {};
 
 } // namespace
 
-struct NklCompiler_T {
-    NklState *nkl;
-    NkArena arena;
-};
-
 enum DeclKind {
     DeclKind_Undefined,
 
@@ -57,26 +52,47 @@ struct Decl {
     DeclKind kind;
 };
 
-struct Decl_kv {
-    NkAtom key;
-    Decl val;
-};
-
-static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
-    return &item->key;
-}
 static u64 nk_atom_hash(NkAtom const key) {
     return nk_hashVal(key);
 }
 static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
     return lhs == rhs;
 }
-NK_HASH_TREE_DEFINE(DeclTree, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
+
+struct Decl_kv {
+    NkAtom key;
+    Decl val;
+};
+static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
+    return &item->key;
+}
+NK_HASH_TREE_DEFINE(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 struct Scope {
     Scope *next;
     NkArenaFrame frame;
-    DeclTree locals;
+    DeclMap locals;
+};
+
+struct FileData {
+    NklSource src;
+    NkArena scope_arena;
+    Scope *scope_stack;
+};
+
+struct FileData_kv {
+    NkAtom key;
+    FileData val;
+};
+static NkAtom const *FileData_kv_GetKey(FileData_kv const *item) {
+    return &item->key;
+}
+NK_HASH_TREE_DEFINE(FileMap, FileData_kv, NkAtom, FileData_kv_GetKey, nk_atom_hash, nk_atom_equal);
+
+struct NklCompiler_T {
+    NklState *nkl;
+    NkArena permanent_arena;
+    FileMap files;
 };
 
 enum ValueKind {
@@ -121,7 +137,7 @@ static Decl &makeDecl(NklModule m, NkAtom name) {
     nk_assert(m->scope_stack && "no current scope");
     NK_LOG_DBG("Making declaration: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
     // TODO: Check for name conflict
-    auto kv = DeclTree_insert(
+    auto kv = DeclMap_insert(
         &m->scope_stack->locals,
         {
             .key = name,
@@ -138,7 +154,7 @@ static Decl &resolve(NklModule m, NkAtom name) {
     NK_LOG_DBG("Resolving name: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
 
     for (auto scope = m->scope_stack; scope; scope = scope->next) {
-        auto found = DeclTree_find(&scope->locals, name);
+        auto found = DeclMap_find(&scope->locals, name);
         if (found) {
             return found->val;
         }
@@ -151,17 +167,17 @@ NklCompiler nkl_createCompiler(NklState *nkl, NklTargetTriple target) {
     NkArena arena{};
     return new (nk_allocT<NklCompiler_T>(nk_arena_getAllocator(&arena))) NklCompiler_T{
         .nkl = nkl,
-        .arena = arena,
+        .permanent_arena = arena,
     };
 }
 
 void nkl_freeCompiler(NklCompiler c) {
-    auto arena = c->arena;
+    auto arena = c->permanent_arena;
     nk_arena_free(&arena);
 }
 
 NklModule nkl_createModule(NklCompiler c) {
-    return new (nk_allocT<NklModule_T>(nk_arena_getAllocator(&c->arena))) NklModule_T{
+    return new (nk_allocT<NklModule_T>(nk_arena_getAllocator(&c->permanent_arena))) NklModule_T{
         .c = c,
         .scope_arena{},
         .scope_stack{},
@@ -325,7 +341,7 @@ bool nkl_compileFile(NklModule m, NkString in_file) {
         canonical_file_path_s = {NKS_INIT(in_file_path)};
     }
 
-    auto const read_res = nk_file_read(nk_arena_getAllocator(&m->c->arena), canonical_file_path_s);
+    auto const read_res = nk_file_read(nk_arena_getAllocator(&m->c->permanent_arena), canonical_file_path_s);
     if (!read_res.ok) {
         nkl_diag_printError(
             "failed to read file `" NKS_FMT "`: %s", NKS_ARG(canonical_file_path_s), nk_getLastErrorString());
@@ -335,7 +351,7 @@ bool nkl_compileFile(NklModule m, NkString in_file) {
     auto text = read_res.bytes;
 
     NklErrorState error_state{};
-    nkl_errorStateInitAndEquip(&error_state, &m->c->arena);
+    nkl_errorStateInitAndEquip(&error_state, &m->c->permanent_arena);
 
     if (!nkl_compileSrc(m, text)) {
         auto error = error_state.errors;
