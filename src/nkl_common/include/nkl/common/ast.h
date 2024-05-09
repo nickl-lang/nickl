@@ -21,6 +21,7 @@ typedef NkSlice(NklAstNode const) NklAstNodeArray;
 typedef NkDynArray(NklAstNode) NklAstNodeDynArray;
 
 typedef struct {
+    NkAtom file;
     NkString text;
     NklTokenArray tokens;
     NklAstNodeArray nodes;

@@ -2,8 +2,8 @@
 #define NKSTC_LEXER_H_
 
 #include "nkl/common/token.h"
-#include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
+#include "ntk/atom.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -22,7 +22,7 @@ typedef enum {
 extern const char *s_nkst_token_id[];
 extern const char *s_nkst_token_text[];
 
-NklTokenArray nkst_lex(NklState nkl, NkAllocator alloc, NkString text);
+NklTokenArray nkst_lex(NkAllocator alloc, NkAtom file, NkString text);
 
 #ifdef __cplusplus
 }

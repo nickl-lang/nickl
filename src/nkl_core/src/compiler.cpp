@@ -1,7 +1,6 @@
 #include "nkl/core/compiler.h"
 
 #include "nkl/common/ast.h"
-#include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
 #include "nkl/core/types.h"
@@ -12,8 +11,7 @@
 #include "ntk/hash_tree.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
-#include "ntk/os/error.h"
-#include "ntk/path.h"
+#include "ntk/os/path.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -24,10 +22,10 @@ NK_LOG_USE_SCOPE(compiler);
 
 struct Void {};
 
-#define CHECK(EXPR)               \
-    EXPR;                         \
-    if (nkl_getErrorCount(nkl)) { \
-        return {};                \
+#define CHECK(EXPR)            \
+    EXPR;                      \
+    if (nkl_getErrorCount()) { \
+        return {};             \
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
@@ -92,6 +90,7 @@ struct NklCompiler_T {
     NklState nkl;
     NkArena permanent_arena;
     FileMap files;
+    NklErrorState errors;
 };
 
 // FileData &fileDataForFile(NklCompiler c, NkAtom file) {
@@ -171,14 +170,24 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
         .nkl = nkl,
         .permanent_arena = arena,
         .files = {},
+        .errors = {},
     };
     c->files.alloc = nk_arena_getAllocator(&c->permanent_arena);
+    c->errors.arena = &c->permanent_arena;
     return c;
 }
 
 void nkl_freeCompiler(NklCompiler c) {
     auto arena = c->permanent_arena;
     nk_arena_free(&arena);
+}
+
+usize nkl_getCompileErrorCount(NklCompiler c) {
+    return c->errors.error_count;
+}
+
+NklError *nkl_getCompileErrorList(NklCompiler c) {
+    return c->errors.errors;
 }
 
 NklModule nkl_createModule(NklCompiler c) {
@@ -207,8 +216,6 @@ ValueInfo declInfo(Decl &decl) {
 static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
-
-    auto nkl = m->c->nkl;
 
     auto const &node = src.nodes.data[node_idx];
 
@@ -246,7 +253,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
-                return nkl_reportError(nkl, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
+                return nkl_reportError(src.file, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
             } else {
                 return declInfo(decl);
             }
@@ -324,8 +331,6 @@ static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto nkl = m->c->nkl;
-
     DEFINE(val, compileNode(m, src, node_idx));
     if (val.kind != ValueKind_Void) {
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
@@ -338,8 +343,6 @@ static bool compileAst(NklModule m, NklSource &src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto nkl = m->c->nkl;
-
     pushScope(m);
     defer {
         popScope(m);
@@ -349,14 +352,17 @@ static bool compileAst(NklModule m, NklSource &src) {
         compileStmt(m, src, 0);
     }
 
-    return nkl_getErrorCount(nkl) == 0;
+    return nkl_getErrorCount() == 0;
 }
 
 bool nkl_compileFile(NklModule m, NkString filename) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto nkl = m->c->nkl;
+    nkl_errorStateEquip(&m->c->errors);
+    defer {
+        nkl_errorStateUnequip();
+    };
 
     NKSB_FIXED_BUFFER(filename_nt, NK_MAX_PATH);
     nksb_printf(&filename_nt, NKS_FMT, NKS_ARG(filename));
@@ -367,37 +373,14 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     if (nk_fullPath(canonical_file_path, filename_nt.data) >= 0) {
         canonical_file_path_s = nk_cs2s(canonical_file_path);
     } else {
-        nkl_diag_printError(
-            "failed to canonicalize path `" NKS_FMT "`: %s", NKS_ARG(filename), nk_getLastErrorString());
+        canonical_file_path_s = filename;
+    }
+
+    auto src = nkl_getSource(m->c->nkl, nk_s2atom(canonical_file_path_s));
+
+    if (nkl_getErrorCount()) {
         return false;
     }
 
-    auto src = nkl_getSource(nkl, nk_s2atom(canonical_file_path_s));
-
-    // TODO: Report error elsewhere!
-    if (!compileAst(m, src)) {
-        auto error = nkl_getErrorList(nkl);
-        if (error) {
-            char cwd[NK_MAX_PATH];
-            nk_getCwd(cwd, sizeof(cwd));
-            char relpath[NK_MAX_PATH];
-            nk_relativePath(relpath, sizeof(relpath), canonical_file_path, cwd);
-
-            while (error) {
-                nkl_diag_printErrorQuote(
-                    src.text,
-                    {
-                        nk_cs2s(relpath),
-                        error->token->lin,
-                        error->token->col,
-                        error->token->len,
-                    },
-                    NKS_FMT,
-                    NKS_ARG(error->msg));
-                error = error->next;
-            }
-        }
-    }
-
-    return true;
+    return compileAst(m, src);
 }

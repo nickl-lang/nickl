@@ -40,20 +40,13 @@ typedef struct {
 NK_HASH_TREE_TYPEDEF(FileMap, Source_kv);
 NK_HASH_TREE_PROTO(FileMap, Source_kv, NkAtom);
 
-typedef struct {
-    NklError *errors;
-    NklError *last_error;
-    usize error_count;
-} NklErrorState;
-
 typedef struct NklState_T {
     NkArena permanent_arena;
 
     NklTypeStorage types;
-    NklErrorState errors;
 
-    NklLexer lexer;
-    NklParser parser;
+    NklLexerProc lexer_proc;
+    NklParserProc parser_proc;
 
     FileMap files;
 } NklState_T;

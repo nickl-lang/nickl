@@ -1,7 +1,6 @@
 #ifndef NKL_CORE_COMPILER_H_
 #define NKL_CORE_COMPILER_H_
 
-#include "nkl/common/ast.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/string.h"
@@ -21,6 +20,9 @@ typedef struct NklModule_T *NklModule;
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target);
 void nkl_freeCompiler(NklCompiler c);
+
+usize nkl_getCompileErrorCount(NklCompiler c);
+NklError *nkl_getCompileErrorList(NklCompiler c);
 
 NklModule nkl_createModule(NklCompiler c);
 

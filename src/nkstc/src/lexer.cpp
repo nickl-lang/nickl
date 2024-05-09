@@ -36,8 +36,7 @@ char const *s_operators[] = {
 };
 
 struct ScannerState {
-    NklState nkl;
-
+    NkAtom const m_file;
     NkString const m_text;
 
     u32 m_pos = 0;
@@ -250,20 +249,21 @@ private:
         // TODO: Leaking error token, need to use scatch arena
         auto token = nk_allocT<NklToken>(nk_default_allocator);
         *token = m_token;
-        nkl_vreportError(nkl, token, fmt, ap);
+        nkl_vreportError(m_file, token, fmt, ap);
         va_end(ap);
     }
 };
 
 } // namespace
 
-NklTokenArray nkst_lex(NklState nkl, NkAllocator alloc, NkString text) {
+NklTokenArray nkst_lex(NkAllocator alloc, NkAtom file, NkString text) {
     NK_LOG_TRC("%s", __func__);
 
     NklTokenDynArray tokens{0, 0, 0, alloc};
     nkda_reserve(&tokens, 1000);
 
     ScannerState scanner{
+        .m_file = file,
         .m_text = text,
     };
 
@@ -271,7 +271,7 @@ NklTokenArray nkst_lex(NklState nkl, NkAllocator alloc, NkString text) {
         scanner.scan();
         nkda_append(&tokens, scanner.m_token);
 
-        if (nkl_getErrorCount(nkl)) {
+        if (nkl_getErrorCount()) {
             return {};
         }
 

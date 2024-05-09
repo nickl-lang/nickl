@@ -16,10 +16,10 @@ struct Void {};
 
 #define LOG_TOKEN(ID) "(%s, \"%s\")", s_nkst_token_id[ID], s_nkst_token_text[ID]
 
-#define CHECK(EXPR)               \
-    EXPR;                         \
-    if (nkl_getErrorCount(nkl)) { \
-        return {};                \
+#define CHECK(EXPR)            \
+    EXPR;                      \
+    if (nkl_getErrorCount()) { \
+        return {};             \
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
@@ -28,10 +28,10 @@ struct Void {};
 #define EXPECT(ID) CHECK(expect(ID))
 
 struct ParseEngine {
-    NklState nkl;
+    NkAtom const m_file;
+    NkString const m_text;
+    NklTokenArray const m_tokens;
 
-    NkString m_text;
-    NklTokenArray m_tokens;
     NklAstNodeDynArray *m_nodes;
 
     u32 m_cur_token_idx{};
@@ -156,21 +156,21 @@ struct ParseEngine {
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        nkl_vreportError(nkl, curToken(), fmt, ap);
+        nkl_vreportError(m_file, curToken(), fmt, ap);
         va_end(ap);
     }
 };
 
 } // namespace
 
-NklAstNodeArray nkst_parse(NklState nkl, NkAllocator alloc, NkString text, NklTokenArray tokens) {
+NklAstNodeArray nkst_parse(NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens) {
     NK_LOG_TRC("%s", __func__);
 
     NklAstNodeDynArray nodes{NKDA_INIT(alloc)};
     nkda_reserve(&nodes, 1000);
 
     ParseEngine engine{
-        .nkl = nkl,
+        .m_file = file,
         .m_text = text,
         .m_tokens = tokens,
         .m_nodes = &nodes,
@@ -184,9 +184,10 @@ NklAstNodeArray nkst_parse(NklState nkl, NkAllocator alloc, NkString text, NklTo
             NkStringBuilder sb{NKSB_INIT(nk_default_allocator)};
             nkl_ast_inspect(
                 {
-                    text,
-                    tokens,
-                    {NK_SLICE_INIT(nodes)},
+                    .file = file,
+                    .text = text,
+                    .tokens = tokens,
+                    .nodes = {NK_SLICE_INIT(nodes)},
                 },
                 nksb_getStream(&sb));
             nksb_appendNull(&sb);
