@@ -51,7 +51,7 @@ void nkl_state_free(NklState nkl) {
     nk_arena_free(&arena);
 }
 
-NklSource nkl_getSource(NklState nkl, NkAtom file) {
+NklSource const *nkl_getSource(NklState nkl, NkAtom file) {
     Source_kv *found = FileMap_find(&nkl->files, file);
     if (!found) {
         found = FileMap_insert(&nkl->files, (Source_kv){.key = file, .val = {0}});
@@ -80,7 +80,7 @@ NklSource nkl_getSource(NklState nkl, NkAtom file) {
             }
         }
     }
-    return found->val;
+    return &found->val;
 }
 
 static _Thread_local NklErrorState *g_error_state;

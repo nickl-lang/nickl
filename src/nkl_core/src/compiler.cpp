@@ -37,14 +37,29 @@ struct Void {};
 enum DeclKind {
     DeclKind_Undefined,
 
-    DeclKind_Local,
+    DeclKind_Comptime,
+    DeclKind_ComptimeUnresolved,
+    DeclKind_Module,
+    DeclKind_Var,
 };
+
+struct Scope;
 
 struct Decl {
     union {
         struct {
+            nklval_t val;
+        } comptime;
+        struct {
+            NklAstNode const *node;
+        } comptime_unresolved;
+        struct {
+            Scope *scope;
+            nklval_t proc;
+        } module;
+        struct {
             nkltype_t type;
-        } local;
+        } var;
     } as;
     DeclKind kind;
 };
@@ -67,39 +82,50 @@ NK_HASH_TREE_DEFINE(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_a
 
 struct Scope {
     Scope *next;
-    NkArenaFrame frame;
+
+    NkArena *perm_arena;
+    NkArena *temp_arena;
+    NkArenaFrame temp_frame;
+
     DeclMap locals;
 };
 
-struct FileData {
-    NklSource src;
-    NkArena scope_arena;
+struct Context {
     Scope *scope_stack;
 };
 
-struct FileData_kv {
-    NkAtom key;
-    FileData val;
+struct FileContext {
+    Context *ctx;
 };
-static NkAtom const *FileData_kv_GetKey(FileData_kv const *item) {
+
+struct FileContext_kv {
+    NkAtom key;
+    FileContext val;
+};
+static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
     return &item->key;
 }
-NK_HASH_TREE_DEFINE(FileMap, FileData_kv, NkAtom, FileData_kv_GetKey, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_DEFINE(FileMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 struct NklCompiler_T {
     NklState nkl;
-    NkArena permanent_arena;
+    NkArena perm_arena;
+    NkArena temp_arena; // TODO: Use scrach arena?
     FileMap files;
     NklErrorState errors;
 };
 
-// FileData &fileDataForFile(NklCompiler c, NkAtom file) {
-//     auto found = FileMap_find(&c->files, file);
-//     if (!found) {
-//         found = FileMap_insert(&c->files, {file, {}});
-//     }
-//     return found->val;
-// }
+FileContext &getContextForFile(NklCompiler c, NkAtom file) {
+    auto found = FileMap_find(&c->files, file);
+    if (!found) {
+        found = FileMap_insert(&c->files, {file, {}});
+    }
+    return found->val;
+}
+
+Context *getNewContext(NklCompiler c) {
+    return nk_arena_allocT<Context>(&c->perm_arena);
+}
 
 enum ValueKind {
     ValueKind_Void,
@@ -117,44 +143,44 @@ struct ValueInfo {
 
 struct NklModule_T {
     NklCompiler c;
-    NkArena scope_arena;
-    Scope *scope_stack;
+    NkArena module_arena;
 };
 
-static void pushScope(NklModule m) {
-    auto frame = nk_arena_grab(&m->scope_arena);
-    auto alloc = nk_arena_getAllocator(&m->scope_arena);
-    auto scope = new (nk_allocT<Scope>(alloc)) Scope{
+static void pushScope(Context &ctx, NkArena *perm_arena, NkArena *temp_arena) {
+    auto scope = new (nk_arena_allocT<Scope>(perm_arena)) Scope{
         .next{},
-        .frame = frame,
-        .locals{nullptr, alloc},
+
+        .perm_arena = perm_arena,
+        .temp_arena = temp_arena,
+        .temp_frame = nk_arena_grab(temp_arena),
+
+        .locals{nullptr, nk_arena_getAllocator(perm_arena)},
     };
-    nk_list_push(m->scope_stack, scope);
+    nk_list_push(ctx.scope_stack, scope);
 }
 
-static void popScope(NklModule m) {
-    nk_assert(m->scope_stack && "no current scope");
-    auto frame = m->scope_stack->frame;
-    nk_list_pop(m->scope_stack);
-    nk_arena_popFrame(&m->scope_arena, frame);
+static void popScope(Context &ctx) {
+    nk_assert(ctx.scope_stack && "no current scope");
+    nk_arena_popFrame(ctx.scope_stack->temp_arena, ctx.scope_stack->temp_frame);
+    nk_list_pop(ctx.scope_stack);
 }
 
-static Decl &makeDecl(NklModule m, NkAtom name) {
-    nk_assert(m->scope_stack && "no current scope");
-    NK_LOG_DBG("Making declaration: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
+static Decl &makeDecl(Context &ctx, NkAtom name) {
+    nk_assert(ctx.scope_stack && "no current scope");
+    NK_LOG_DBG("Making declaration: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)ctx.scope_stack);
     // TODO: Check for name conflict
-    auto kv = DeclMap_insert(&m->scope_stack->locals, {name, {}});
+    auto kv = DeclMap_insert(&ctx.scope_stack->locals, {name, {}});
     return kv->val;
 }
 
-static void defineLocal(NklModule m, NkAtom name, nkltype_t type) {
-    makeDecl(m, name) = {{.local{.type = type}}, DeclKind_Local};
+static void defineVar(Context &ctx, NkAtom name, nkltype_t type) {
+    makeDecl(ctx, name) = {{.var{.type = type}}, DeclKind_Var};
 }
 
-static Decl &resolve(NklModule m, NkAtom name) {
-    NK_LOG_DBG("Resolving name: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)m->scope_stack);
+static Decl &resolve(Context &ctx, NkAtom name) {
+    NK_LOG_DBG("Resolving name: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)ctx.scope_stack);
 
-    for (auto scope = m->scope_stack; scope; scope = scope->next) {
+    for (auto scope = ctx.scope_stack; scope; scope = scope->next) {
         auto found = DeclMap_find(&scope->locals, name);
         if (found) {
             return found->val;
@@ -168,17 +194,18 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
     NklCompiler_T *c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .nkl = nkl,
-        .permanent_arena = arena,
+        .perm_arena = arena,
+        .temp_arena = {},
         .files = {},
         .errors = {},
     };
-    c->files.alloc = nk_arena_getAllocator(&c->permanent_arena);
-    c->errors.arena = &c->permanent_arena;
+    c->files.alloc = nk_arena_getAllocator(&c->perm_arena);
+    c->errors.arena = &c->perm_arena;
     return c;
 }
 
 void nkl_freeCompiler(NklCompiler c) {
-    auto arena = c->permanent_arena;
+    auto arena = c->perm_arena;
     nk_arena_free(&arena);
 }
 
@@ -191,10 +218,9 @@ NklError *nkl_getCompileErrorList(NklCompiler c) {
 }
 
 NklModule nkl_createModule(NklCompiler c) {
-    return new (nk_allocT<NklModule_T>(nk_arena_getAllocator(&c->permanent_arena))) NklModule_T{
+    return new (nk_allocT<NklModule_T>(nk_arena_getAllocator(&c->perm_arena))) NklModule_T{
         .c = c,
-        .scope_arena{},
-        .scope_stack{},
+        .module_arena = {},
     };
 }
 
@@ -205,15 +231,15 @@ void nkl_writeModule(NklModule m, NkString filename) {
 
 ValueInfo declInfo(Decl &decl) {
     switch (decl.kind) {
-        case DeclKind_Local:
-            return {{.decl = &decl}, decl.as.local.type, ValueKind_Decl};
+        case DeclKind_Var:
+            return {{.decl = &decl}, decl.as.var.type, ValueKind_Decl};
         default:
             nk_assert(!"unreachable");
             return {};
     }
 }
 
-static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
+static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -237,8 +263,8 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             auto const &name_n = src.nodes.data[name_idx];
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
-            DEFINE(val, compileNode(m, src, value_idx));
-            CHECK(defineLocal(m, name, val.type));
+            DEFINE(val, compileNode(ctx, src, value_idx));
+            CHECK(defineVar(ctx, name, val.type));
 
             break;
         }
@@ -248,7 +274,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             auto name_str = nkl_getTokenStr(token, src.text);
             NkAtom name_atom = nk_s2atom(name_str);
 
-            auto &decl = resolve(m, name_atom);
+            auto &decl = resolve(ctx, name_atom);
 
             // TODO: Handle cross frame references
 
@@ -270,7 +296,7 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
 
         case n_list: {
             for (size_t i = 0; i < node.arity; i++) {
-                CHECK(compileNode(m, src, get_next_child()));
+                CHECK(compileNode(ctx, src, get_next_child()));
             }
             break;
         }
@@ -286,10 +312,10 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
             auto params_idx = get_next_child();
             auto return_type_idx = get_next_child();
 
-            CHECK(compileNode(m, src, info_idx));
-            CHECK(compileNode(m, src, name_idx));
-            CHECK(compileNode(m, src, params_idx));
-            CHECK(compileNode(m, src, return_type_idx));
+            CHECK(compileNode(ctx, src, info_idx));
+            CHECK(compileNode(ctx, src, name_idx));
+            CHECK(compileNode(ctx, src, params_idx));
+            CHECK(compileNode(ctx, src, return_type_idx));
 
             auto const &info = src.nodes.data[info_idx];
 
@@ -308,13 +334,13 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
         }
 
         case n_scope: {
-            pushScope(m);
+            pushScope(ctx, ctx.scope_stack->temp_arena, ctx.scope_stack->perm_arena);
             defer {
-                popScope(m);
+                popScope(ctx);
             };
 
             auto child_idx = get_next_child();
-            CHECK(compileNode(m, src, child_idx));
+            CHECK(compileNode(ctx, src, child_idx));
 
             return ValueInfo{};
         }
@@ -327,11 +353,11 @@ static ValueInfo compileNode(NklModule m, NklSource src, usize node_idx) {
     return ValueInfo{};
 }
 
-static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
+static Void compileStmt(Context &ctx, NklSource const &src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    DEFINE(val, compileNode(m, src, node_idx));
+    DEFINE(val, compileNode(ctx, src, node_idx));
     if (val.kind != ValueKind_Void) {
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
     }
@@ -339,31 +365,18 @@ static Void compileStmt(NklModule m, NklSource src, usize node_idx) {
     return {};
 }
 
-static bool compileAst(NklModule m, NklSource &src) {
+static bool compileAst(NklCompiler c, Context &ctx, NklSource const &src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    pushScope(m);
-    defer {
-        popScope(m);
-    };
-
     if (src.nodes.size) {
-        compileStmt(m, src, 0);
+        compileStmt(ctx, src, 0);
     }
 
     return nkl_getErrorCount() == 0;
 }
 
-bool nkl_compileFile(NklModule m, NkString filename) {
-    NK_PROF_FUNC();
-    NK_LOG_TRC("%s", __func__);
-
-    nkl_errorStateEquip(&m->c->errors);
-    defer {
-        nkl_errorStateUnequip();
-    };
-
+static NkAtom getFileId(NkString filename) {
     NKSB_FIXED_BUFFER(filename_nt, NK_MAX_PATH);
     nksb_printf(&filename_nt, NKS_FMT, NKS_ARG(filename));
     nksb_appendNull(&filename_nt);
@@ -376,11 +389,39 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         canonical_file_path_s = filename;
     }
 
-    auto src = nkl_getSource(m->c->nkl, nk_s2atom(canonical_file_path_s));
+    return nk_s2atom(canonical_file_path_s);
+}
+
+bool nkl_compileFile(NklModule m, NkString filename) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    auto c = m->c;
+
+    nkl_errorStateEquip(&c->errors);
+    defer {
+        nkl_errorStateUnequip();
+    };
+
+    auto file = getFileId(filename);
+
+    auto &src = *nkl_getSource(c->nkl, file);
 
     if (nkl_getErrorCount()) {
         return false;
     }
 
-    return compileAst(m, src);
+    auto &file_ctx = getContextForFile(c, file);
+    if (file_ctx.ctx) {
+        nkl_reportError(
+            NK_ATOM_INVALID, nullptr, "file `" NKS_FMT "` has already been compiled", NKS_ARG(nk_atom2s(file)));
+        return false;
+    }
+
+    file_ctx.ctx = getNewContext(c);
+    auto &ctx = *file_ctx.ctx;
+
+    pushScope(ctx, &c->perm_arena, &c->temp_arena);
+
+    return compileAst(c, ctx, src);
 }

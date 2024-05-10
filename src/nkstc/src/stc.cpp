@@ -6,10 +6,8 @@
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/log.h"
-#include "ntk/os/error.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 #include "parser.h"
 
@@ -54,7 +52,7 @@ int nkst_compile(NkString in_file) {
 
                 auto src = nkl_getSource(nkl, error->file);
                 nkl_diag_printErrorQuote(
-                    src.text,
+                    src->text,
                     {
                         .file = nk_cs2s(relpath),
                         .lin = error->token->lin,

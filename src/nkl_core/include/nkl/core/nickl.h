@@ -21,7 +21,7 @@ typedef NklAstNodeArray (
 NklState nkl_state_create(NklLexerProc lexer_proc, NklParserProc parser_proc);
 void nkl_state_free(NklState nkl);
 
-NklSource nkl_getSource(NklState nkl, NkAtom file);
+NklSource const *nkl_getSource(NklState nkl, NkAtom file);
 
 typedef struct NklError {
     struct NklError *next;
