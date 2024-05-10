@@ -1,4 +1,4 @@
 (define var 42)
 (scope [
-    whoops
+    var
 ])

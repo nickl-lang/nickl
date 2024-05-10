@@ -1,7 +1,6 @@
 #ifndef NKL_CORE_COMPILER_H_
 #define NKL_CORE_COMPILER_H_
 
-#include "nkl/common/ast.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/string.h"
@@ -19,16 +18,17 @@ typedef struct {
 typedef struct NklCompiler_T *NklCompiler;
 typedef struct NklModule_T *NklModule;
 
-NklCompiler nkl_createCompiler(NklState *nkl, NklTargetTriple target);
+NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target);
 void nkl_freeCompiler(NklCompiler c);
+
+usize nkl_getCompileErrorCount(NklCompiler c);
+NklError *nkl_getCompileErrorList(NklCompiler c);
 
 NklModule nkl_createModule(NklCompiler c);
 
 void nkl_writeModule(NklModule m, NkString filename);
 
-bool nkl_compileFile(NklModule m, NkString in_file);
-bool nkl_compileSrc(NklModule m, NkString text);
-bool nkl_compileAst(NklModule m, NklSource src);
+bool nkl_compileFile(NklModule m, NkString filename);
 
 #ifdef __cplusplus
 }

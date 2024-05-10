@@ -3,13 +3,13 @@
 
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
-#include "ntk/arena.h"
+#include "ntk/allocator.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-NklAstNodeArray nkst_parse(NkArena *arena, NkString text, NklTokenArray tokens);
+NklAstNodeArray nkst_parse(NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens);
 
 #ifdef __cplusplus
 }

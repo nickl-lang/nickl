@@ -12,11 +12,11 @@ class types : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT({});
 
-        nkl_types_init(&nkl);
+        nkl = nkl_state_create({}, {});
     }
 
     void TearDown() override {
-        nkl_types_free(&nkl);
+        nkl_state_free(nkl);
     }
 
 protected:
@@ -26,16 +26,16 @@ protected:
 static constexpr usize word_size = sizeof(void *);
 
 TEST_F(types, any) {
-    auto any_t = nkl_get_any(&nkl, word_size);
+    auto any_t = nkl_get_any(nkl, word_size);
 
     NklField fields[] = {
-        {nk_cs2atom("data"), nkl_get_ptr(&nkl, word_size, nkl_get_void(&nkl), false)},
-        {nk_cs2atom("type"), nkl_get_typeref(&nkl, word_size)},
+        {nk_cs2atom("data"), nkl_get_ptr(nkl, word_size, nkl_get_void(nkl), false)},
+        {nk_cs2atom("type"), nkl_get_typeref(nkl, word_size)},
     };
-    auto struct_t = nkl_get_struct(&nkl, {fields, NK_ARRAY_COUNT(fields)});
+    auto struct_t = nkl_get_struct(nkl, {fields, NK_ARRAY_COUNT(fields)});
 
-    EXPECT_EQ(any_t->id, nkl_get_any(&nkl, word_size)->id);
-    EXPECT_EQ(any_t->ir_type.id, nkl_get_any(&nkl, word_size)->ir_type.id);
+    EXPECT_EQ(any_t->id, nkl_get_any(nkl, word_size)->id);
+    EXPECT_EQ(any_t->ir_type.id, nkl_get_any(nkl, word_size)->ir_type.id);
 
     EXPECT_EQ(any_t->tclass, NklType_Any);
     ASSERT_TRUE(any_t->underlying_type);
@@ -48,10 +48,10 @@ TEST_F(types, any) {
 }
 
 TEST_F(types, array) {
-    auto f64_t = nkl_get_numeric(&nkl, Float64);
+    auto f64_t = nkl_get_numeric(nkl, Float64);
 
     auto get_vec3_t = [&]() {
-        return nkl_get_array(&nkl, f64_t, 3);
+        return nkl_get_array(nkl, f64_t, 3);
     };
 
     auto vec3_t = get_vec3_t();
@@ -73,15 +73,15 @@ TEST_F(types, array) {
 }
 
 TEST_F(types, enum) {
-    auto i32_t = nkl_get_numeric(&nkl, Int32);
+    auto i32_t = nkl_get_numeric(nkl, Int32);
 
     NklField fields[] = {
         {nk_cs2atom("val"), i32_t},
-        {nk_cs2atom("nil"), nkl_get_void(&nkl)},
+        {nk_cs2atom("nil"), nkl_get_void(nkl)},
     };
 
     auto get_opt_t = [&]() {
-        return nkl_get_enum(&nkl, {fields, NK_ARRAY_COUNT(fields)});
+        return nkl_get_enum(nkl, {fields, NK_ARRAY_COUNT(fields)});
     };
 
     auto opt_t = get_opt_t();
@@ -89,13 +89,13 @@ TEST_F(types, enum) {
     EXPECT_EQ(opt_t->id, get_opt_t()->id);
     EXPECT_EQ(opt_t->ir_type.id, get_opt_t()->ir_type.id);
 
-    auto union_t = nkl_get_union(&nkl, {fields, NK_ARRAY_COUNT(fields)});
+    auto union_t = nkl_get_union(nkl, {fields, NK_ARRAY_COUNT(fields)});
 
     NklField struct_fields[] = {
         {nk_cs2atom("data"), union_t},
-        {nk_cs2atom("tag"), nkl_get_numeric(&nkl, Uint64)},
+        {nk_cs2atom("tag"), nkl_get_numeric(nkl, Uint64)},
     };
-    auto struct_t = nkl_get_struct(&nkl, {struct_fields, NK_ARRAY_COUNT(struct_fields)});
+    auto struct_t = nkl_get_struct(nkl, {struct_fields, NK_ARRAY_COUNT(struct_fields)});
 
     EXPECT_EQ(opt_t->tclass, NklType_Enum);
     ASSERT_TRUE(opt_t->underlying_type);
@@ -108,20 +108,20 @@ TEST_F(types, enum) {
 }
 
 TEST_F(types, numeric) {
-    auto i8_t = nkl_get_numeric(&nkl, Int8);
-    auto u32_t = nkl_get_numeric(&nkl, Uint32);
-    auto i64_t = nkl_get_numeric(&nkl, Int64);
-    auto f64_t = nkl_get_numeric(&nkl, Float64);
+    auto i8_t = nkl_get_numeric(nkl, Int8);
+    auto u32_t = nkl_get_numeric(nkl, Uint32);
+    auto i64_t = nkl_get_numeric(nkl, Int64);
+    auto f64_t = nkl_get_numeric(nkl, Float64);
 
-    EXPECT_EQ(i8_t->id, nkl_get_numeric(&nkl, Int8)->id);
-    EXPECT_EQ(u32_t->id, nkl_get_numeric(&nkl, Uint32)->id);
-    EXPECT_EQ(i64_t->id, nkl_get_numeric(&nkl, Int64)->id);
-    EXPECT_EQ(f64_t->id, nkl_get_numeric(&nkl, Float64)->id);
+    EXPECT_EQ(i8_t->id, nkl_get_numeric(nkl, Int8)->id);
+    EXPECT_EQ(u32_t->id, nkl_get_numeric(nkl, Uint32)->id);
+    EXPECT_EQ(i64_t->id, nkl_get_numeric(nkl, Int64)->id);
+    EXPECT_EQ(f64_t->id, nkl_get_numeric(nkl, Float64)->id);
 
-    EXPECT_EQ(i8_t->ir_type.id, nkl_get_numeric(&nkl, Int8)->ir_type.id);
-    EXPECT_EQ(u32_t->ir_type.id, nkl_get_numeric(&nkl, Uint32)->ir_type.id);
-    EXPECT_EQ(i64_t->ir_type.id, nkl_get_numeric(&nkl, Int64)->ir_type.id);
-    EXPECT_EQ(f64_t->ir_type.id, nkl_get_numeric(&nkl, Float64)->ir_type.id);
+    EXPECT_EQ(i8_t->ir_type.id, nkl_get_numeric(nkl, Int8)->ir_type.id);
+    EXPECT_EQ(u32_t->ir_type.id, nkl_get_numeric(nkl, Uint32)->ir_type.id);
+    EXPECT_EQ(i64_t->ir_type.id, nkl_get_numeric(nkl, Int64)->ir_type.id);
+    EXPECT_EQ(f64_t->ir_type.id, nkl_get_numeric(nkl, Float64)->ir_type.id);
 
     NKSB_FIXED_BUFFER(sb, 64);
 
@@ -171,11 +171,11 @@ TEST_F(types, numeric) {
 }
 
 TEST_F(types, proc) {
-    auto i32_t = nkl_get_numeric(&nkl, Int32);
+    auto i32_t = nkl_get_numeric(nkl, Int32);
     auto get_add_t = [&]() {
         nkltype_t add_params[] = {i32_t, i32_t};
         return nkl_get_proc(
-            &nkl,
+            nkl,
             word_size,
             NklProcInfo{
                 .param_types = {add_params, NK_ARRAY_COUNT(add_params)},
@@ -208,15 +208,15 @@ TEST_F(types, proc) {
 }
 
 TEST_F(types, ptr) {
-    auto void_t = nkl_get_void(&nkl);
-    auto i8_t = nkl_get_numeric(&nkl, Int8);
+    auto void_t = nkl_get_void(nkl);
+    auto i8_t = nkl_get_numeric(nkl, Int8);
 
     auto get_void_ptr_t = [&]() {
-        return nkl_get_ptr(&nkl, word_size, void_t, false);
+        return nkl_get_ptr(nkl, word_size, void_t, false);
     };
 
     auto get_str_t = [&]() {
-        return nkl_get_ptr(&nkl, word_size, i8_t, true);
+        return nkl_get_ptr(nkl, word_size, i8_t, true);
     };
 
     auto void_ptr_t = get_void_ptr_t();
@@ -228,7 +228,7 @@ TEST_F(types, ptr) {
     EXPECT_EQ(str_t->id, get_str_t()->id);
     EXPECT_EQ(str_t->ir_type.id, get_str_t()->ir_type.id);
 
-    auto i8_ptr_t = nkl_get_ptr(&nkl, word_size, i8_t, false);
+    auto i8_ptr_t = nkl_get_ptr(nkl, word_size, i8_t, false);
 
     EXPECT_NE(str_t->id, i8_ptr_t->id);
     EXPECT_EQ(str_t->ir_type.id, i8_ptr_t->ir_type.id);
@@ -254,19 +254,19 @@ TEST_F(types, ptr) {
 }
 
 TEST_F(types, slice) {
-    auto i8_t = nkl_get_numeric(&nkl, Int8);
+    auto i8_t = nkl_get_numeric(nkl, Int8);
 
     auto get_string_t = [&]() {
-        return nkl_get_slice(&nkl, word_size, i8_t, true);
+        return nkl_get_slice(nkl, word_size, i8_t, true);
     };
 
     auto string_t = get_string_t();
 
     NklField fields[] = {
-        {nk_cs2atom("data"), nkl_get_ptr(&nkl, word_size, i8_t, true)},
-        {nk_cs2atom("size"), nkl_get_numeric(&nkl, Uint64)},
+        {nk_cs2atom("data"), nkl_get_ptr(nkl, word_size, i8_t, true)},
+        {nk_cs2atom("size"), nkl_get_numeric(nkl, Uint64)},
     };
-    auto struct_t = nkl_get_struct(&nkl, {fields, NK_ARRAY_COUNT(fields)});
+    auto struct_t = nkl_get_struct(nkl, {fields, NK_ARRAY_COUNT(fields)});
 
     EXPECT_EQ(string_t->id, get_string_t()->id);
     EXPECT_EQ(string_t->ir_type.id, get_string_t()->ir_type.id);
@@ -282,14 +282,14 @@ TEST_F(types, slice) {
 }
 
 TEST_F(types, struct) {
-    auto i64_t = nkl_get_numeric(&nkl, Int64);
+    auto i64_t = nkl_get_numeric(nkl, Int64);
 
     auto get_ivec2_t = [&]() {
         NklField fields[] = {
             {nk_cs2atom("x"), i64_t},
             {nk_cs2atom("y"), i64_t},
         };
-        return nkl_get_struct(&nkl, {fields, NK_ARRAY_COUNT(fields)});
+        return nkl_get_struct(nkl, {fields, NK_ARRAY_COUNT(fields)});
     };
 
     auto ivec2_t = get_ivec2_t();
@@ -298,7 +298,7 @@ TEST_F(types, struct) {
     EXPECT_EQ(ivec2_t->ir_type.id, get_ivec2_t()->ir_type.id);
 
     nkltype_t types[] = {i64_t, i64_t};
-    auto tuple_t = nkl_get_tuple(&nkl, {types, NK_ARRAY_COUNT(types)});
+    auto tuple_t = nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types)});
 
     ASSERT_EQ(ivec2_t->as.strct.fields.size, 2);
     ASSERT_EQ(ivec2_t->as.strct.fields.data[0].name, nk_cs2atom("x"));
@@ -314,11 +314,11 @@ TEST_F(types, struct) {
 }
 
 TEST_F(types, tuple) {
-    auto f64_t = nkl_get_numeric(&nkl, Float64);
+    auto f64_t = nkl_get_numeric(nkl, Float64);
 
     auto get_vec3_t = [&]() {
         nkltype_t types[] = {f64_t, f64_t, f64_t};
-        return nkl_get_tuple(&nkl, {types, NK_ARRAY_COUNT(types)});
+        return nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types)});
     };
 
     auto vec3_t = get_vec3_t();
@@ -342,7 +342,7 @@ TEST_F(types, tuple) {
     nkl_type_inspect(vec3_t, nksb_getStream(&sb));
     EXPECT_EQ("(f64, f64, f64, )", nk_s2stdStr({NKS_INIT(sb)}));
 
-    auto void_t = nkl_get_tuple(&nkl, {});
+    auto void_t = nkl_get_tuple(nkl, {});
 
     EXPECT_EQ(void_t->ir_type.size, 0);
     EXPECT_EQ(void_t->ir_type.align, 1);
@@ -357,11 +357,11 @@ TEST_F(types, tuple) {
 }
 
 TEST_F(types, typeref) {
-    auto typeref_t = nkl_get_typeref(&nkl, word_size);
-    auto void_ptr_t = nkl_get_ptr(&nkl, word_size, nkl_get_void(&nkl), true);
+    auto typeref_t = nkl_get_typeref(nkl, word_size);
+    auto void_ptr_t = nkl_get_ptr(nkl, word_size, nkl_get_void(nkl), true);
 
-    EXPECT_EQ(typeref_t->id, nkl_get_typeref(&nkl, word_size)->id);
-    EXPECT_EQ(typeref_t->ir_type.id, nkl_get_typeref(&nkl, word_size)->ir_type.id);
+    EXPECT_EQ(typeref_t->id, nkl_get_typeref(nkl, word_size)->id);
+    EXPECT_EQ(typeref_t->ir_type.id, nkl_get_typeref(nkl, word_size)->ir_type.id);
 
     EXPECT_EQ(typeref_t->ir_type.size, sizeof(void *));
     EXPECT_EQ(typeref_t->ir_type.align, alignof(void *));
@@ -377,15 +377,15 @@ TEST_F(types, typeref) {
 }
 
 TEST_F(types, union) {
-    auto f64_t = nkl_get_numeric(&nkl, Float64);
-    auto u64_t = nkl_get_numeric(&nkl, Uint64);
+    auto f64_t = nkl_get_numeric(nkl, Float64);
+    auto u64_t = nkl_get_numeric(nkl, Uint64);
 
     auto get_union_t = [&]() {
         NklField fields[] = {
             {nk_cs2atom("float64"), f64_t},
             {nk_cs2atom("uint64"), u64_t},
         };
-        return nkl_get_union(&nkl, {fields, NK_ARRAY_COUNT(fields)});
+        return nkl_get_union(nkl, {fields, NK_ARRAY_COUNT(fields)});
     };
 
     auto union_t = get_union_t();
@@ -408,10 +408,10 @@ TEST_F(types, union) {
 }
 
 TEST_F(types, void) {
-    auto void_t = nkl_get_void(&nkl);
+    auto void_t = nkl_get_void(nkl);
 
-    EXPECT_EQ(void_t->id, nkl_get_void(&nkl)->id);
-    EXPECT_EQ(void_t->ir_type.id, nkl_get_void(&nkl)->ir_type.id);
+    EXPECT_EQ(void_t->id, nkl_get_void(nkl)->id);
+    EXPECT_EQ(void_t->ir_type.id, nkl_get_void(nkl)->ir_type.id);
 
     EXPECT_EQ(void_t->ir_type.size, 0);
     EXPECT_EQ(void_t->ir_type.align, 1);

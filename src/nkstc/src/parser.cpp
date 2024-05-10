@@ -28,8 +28,10 @@ struct Void {};
 #define EXPECT(ID) CHECK(expect(ID))
 
 struct ParseEngine {
-    NkString m_text;
-    NklTokenArray m_tokens;
+    NkAtom const m_file;
+    NkString const m_text;
+    NklTokenArray const m_tokens;
+
     NklAstNodeDynArray *m_nodes;
 
     u32 m_cur_token_idx{};
@@ -154,20 +156,21 @@ struct ParseEngine {
     NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        nkl_vreportError(curToken(), fmt, ap);
+        nkl_vreportError(m_file, curToken(), fmt, ap);
         va_end(ap);
     }
 };
 
 } // namespace
 
-NklAstNodeArray nkst_parse(NkArena *arena, NkString text, NklTokenArray tokens) {
+NklAstNodeArray nkst_parse(NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    NklAstNodeDynArray nodes{NKDA_INIT(nk_arena_getAllocator(arena))};
+    NklAstNodeDynArray nodes{NKDA_INIT(alloc)};
     nkda_reserve(&nodes, 1000);
 
     ParseEngine engine{
+        .m_file = file,
         .m_text = text,
         .m_tokens = tokens,
         .m_nodes = &nodes,
@@ -181,9 +184,10 @@ NklAstNodeArray nkst_parse(NkArena *arena, NkString text, NklTokenArray tokens) 
             NkStringBuilder sb{NKSB_INIT(nk_default_allocator)};
             nkl_ast_inspect(
                 {
-                    text,
-                    tokens,
-                    {NK_SLICE_INIT(nodes)},
+                    .file = file,
+                    .text = text,
+                    .tokens = tokens,
+                    .nodes = {NK_SLICE_INIT(nodes)},
                 },
                 nksb_getStream(&sb));
             nksb_appendNull(&sb);
