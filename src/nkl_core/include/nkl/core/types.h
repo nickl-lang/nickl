@@ -3,9 +3,7 @@
 
 #include "nkb/common.h"
 #include "nkl/core/nickl.h"
-#include "ntk/allocator.h"
 #include "ntk/atom.h"
-#include "ntk/dyn_array.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus

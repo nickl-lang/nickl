@@ -140,8 +140,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
     };
 
     for (auto const &instr : nk_iterate(instrs)) {
-        nk_stream_printf(out, "%5zu", (&instr - instrs.data));
-        nk_stream_printf(out, "%13s", nkbcOpcodeName(instr.code));
+        nk_stream_printf(out, "%5zu |%13s", (&instr - instrs.data), nkbcOpcodeName(instr.code));
 
         for (usize i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {

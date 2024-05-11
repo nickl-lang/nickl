@@ -1,4 +1,4 @@
-(define var 42)
+(define var "hello")
 (scope [
     var
 ])

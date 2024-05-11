@@ -51,7 +51,8 @@ struct Decl {
             nklval_t val;
         } comptime;
         struct {
-            NklAstNode const *node;
+            NklSource const *src;
+            usize node_idx;
         } comptime_unresolved;
         struct {
             Scope *scope;
@@ -96,6 +97,7 @@ struct Context {
 
 struct FileContext {
     Context *ctx;
+    NklModule module;
 };
 
 struct FileContext_kv {
@@ -123,18 +125,16 @@ FileContext &getContextForFile(NklCompiler c, NkAtom file) {
     return found->val;
 }
 
-Context *getNewContext(NklCompiler c) {
-    return nk_arena_allocT<Context>(&c->perm_arena);
-}
-
 enum ValueKind {
     ValueKind_Void,
 
+    ValueKind_Const,
     ValueKind_Decl,
 };
 
 struct ValueInfo {
     union {
+        void *cnst;
         Decl *decl;
     } as;
     nkltype_t type;
@@ -145,6 +145,8 @@ struct NklModule_T {
     NklCompiler c;
     NkArena module_arena;
 };
+
+static ValueInfo compileNode(NklModule m, Context &ctx, NklSource const &src, usize node_idx);
 
 static void pushScope(Context &ctx, NkArena *perm_arena, NkArena *temp_arena) {
     auto scope = new (nk_arena_allocT<Scope>(perm_arena)) Scope{
@@ -173,12 +175,20 @@ static Decl &makeDecl(Context &ctx, NkAtom name) {
     return kv->val;
 }
 
+static void defineComptime(Context &ctx, NkAtom name, nklval_t val) {
+    makeDecl(ctx, name) = {{.comptime{.val = val}}, DeclKind_Comptime};
+}
+
+static void defineComptimeUnresolved(Context &ctx, NkAtom name, NklSource const *src, usize node_idx) {
+    makeDecl(ctx, name) = {{.comptime_unresolved{.src = src, .node_idx = node_idx}}, DeclKind_ComptimeUnresolved};
+}
+
 static void defineVar(Context &ctx, NkAtom name, nkltype_t type) {
     makeDecl(ctx, name) = {{.var{.type = type}}, DeclKind_Var};
 }
 
-static Decl &resolve(Context &ctx, NkAtom name) {
-    NK_LOG_DBG("Resolving name: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)ctx.scope_stack);
+static Decl &resolve(NklModule m, Context &ctx, NkAtom name) {
+    NK_LOG_DBG("Resolving id: name=`" NKS_FMT "` scope=%p", NKS_ARG(nk_atom2s(name)), (void *)ctx.scope_stack);
 
     for (auto scope = ctx.scope_stack; scope; scope = scope->next) {
         auto found = DeclMap_find(&scope->locals, name);
@@ -229,8 +239,66 @@ void nkl_writeModule(NklModule m, NkString filename) {
     NK_LOG_TRC("%s", __func__);
 }
 
-ValueInfo declInfo(Decl &decl) {
+bool isValueKnown(ValueInfo const &val) {
+    return val.kind == ValueKind_Void || val.kind == ValueKind_Const ||
+           (val.kind == ValueKind_Const &&
+            (val.as.decl->kind == DeclKind_Comptime || val.as.decl->kind == DeclKind_ComptimeUnresolved ||
+             val.as.decl->kind == DeclKind_Module));
+}
+
+nklval_t getValueFromInfo(NklState nkl, ValueInfo const &val) {
+    switch (val.kind) {
+        case ValueKind_Void:
+            return {nullptr, val.type};
+        case ValueKind_Const:
+            return {val.as.cnst, val.type};
+        case ValueKind_Decl: {
+            switch (val.as.decl->kind) {
+                case DeclKind_Comptime:
+                    return val.as.decl->as.comptime.val;
+                case DeclKind_Module:
+                    return val.as.decl->as.module.proc;
+                default:
+                    nk_assert(!"unreachable");
+                    return {};
+            }
+        }
+    }
+}
+
+ValueInfo resolveComptime(NklModule m, Context &ctx, Decl &decl) {
+    nk_assert(decl.kind == DeclKind_ComptimeUnresolved);
+
+    auto &ur_decl = decl.as.comptime_unresolved;
+
+    NK_LOG_DBG("Resolving comptime: node#%zu @ file=`%s`", ur_decl.node_idx, nk_atom2cs(ur_decl.src->file));
+
+    DEFINE(val, compileNode(m, ctx, *ur_decl.src, ur_decl.node_idx));
+
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    if (!isValueKnown(val)) {
+        auto node = &ur_decl.src->nodes.data[ur_decl.node_idx];
+        auto token = &ur_decl.src->tokens.data[node->token_idx];
+        // TODO: Improve error description
+        return nkl_reportError(ur_decl.src->file, token, "value is not known"), ValueInfo{};
+    }
+
+    decl.as.comptime.val = getValueFromInfo(nkl, val);
+    decl.kind = DeclKind_Comptime;
+
+    return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
+}
+
+ValueInfo resolveDecl(NklModule m, Context &ctx, Decl &decl) {
     switch (decl.kind) {
+        case DeclKind_Comptime:
+            return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
+        case DeclKind_ComptimeUnresolved:
+            return resolveComptime(m, ctx, decl);
+        case DeclKind_Module:
+            return {{.decl = &decl}, decl.as.module.proc.type, ValueKind_Decl};
         case DeclKind_Var:
             return {{.decl = &decl}, decl.as.var.type, ValueKind_Decl};
         default:
@@ -239,9 +307,17 @@ ValueInfo declInfo(Decl &decl) {
     }
 }
 
-static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx) {
+static ValueInfo compileNode(NklModule m, Context &ctx, NklSource const &src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
+
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    auto temp_frame = nk_arena_grab(&c->temp_arena);
+    defer {
+        nk_arena_popFrame(&c->temp_arena, temp_frame);
+    };
 
     auto const &node = src.nodes.data[node_idx];
 
@@ -263,10 +339,25 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             auto const &name_n = src.nodes.data[name_idx];
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
-            DEFINE(val, compileNode(ctx, src, value_idx));
-            CHECK(defineVar(ctx, name, val.type));
+            CHECK(defineComptimeUnresolved(ctx, name, &src, value_idx));
 
             break;
+        }
+
+        case n_escaped_string: {
+            auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            NkString const text{token_str.data + 1, token_str.size - 2};
+
+            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(&c->temp_arena))};
+            nks_unescape(nksb_getStream(&sb), text);
+            NkString const unescaped_text{NKS_INIT(sb)};
+
+            auto i8_t = nkl_get_numeric(nkl, Int8);
+            auto ar_t = nkl_get_array(nkl, i8_t, unescaped_text.size + 1);
+            auto str_t = nkl_get_ptr(nkl, 8, ar_t, true);
+
+            auto str = nks_copyNt(nk_arena_getAllocator(&m->module_arena), unescaped_text);
+            return ValueInfo{{.cnst = (void *)str.data}, str_t, ValueKind_Const};
         }
 
         case n_id: {
@@ -274,29 +365,31 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             auto name_str = nkl_getTokenStr(token, src.text);
             NkAtom name_atom = nk_s2atom(name_str);
 
-            auto &decl = resolve(ctx, name_atom);
+            auto &decl = resolve(m, ctx, name_atom);
 
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
                 return nkl_reportError(src.file, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
             } else {
-                return declInfo(decl);
+                return resolveDecl(m, ctx, decl);
             }
 
             break;
         }
 
         case n_int: {
-            // TODO: WIP int parsing
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
-            NK_LOG_INF("value=" NKS_FMT, NKS_ARG(token_str));
-            break;
+            auto pvalue = nk_arena_allocT<int64_t>(&m->module_arena);
+            // TODO: Replace sscanf in compiler
+            int res = sscanf(token_str.data, "%" SCNi64, pvalue);
+            nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
+            return ValueInfo{{.cnst = pvalue}, nkl_get_numeric(nkl, Int64), ValueKind_Const};
         }
 
         case n_list: {
             for (size_t i = 0; i < node.arity; i++) {
-                CHECK(compileNode(ctx, src, get_next_child()));
+                CHECK(compileNode(m, ctx, src, get_next_child()));
             }
             break;
         }
@@ -312,10 +405,10 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             auto params_idx = get_next_child();
             auto return_type_idx = get_next_child();
 
-            CHECK(compileNode(ctx, src, info_idx));
-            CHECK(compileNode(ctx, src, name_idx));
-            CHECK(compileNode(ctx, src, params_idx));
-            CHECK(compileNode(ctx, src, return_type_idx));
+            CHECK(compileNode(m, ctx, src, info_idx));
+            CHECK(compileNode(m, ctx, src, name_idx));
+            CHECK(compileNode(m, ctx, src, params_idx));
+            CHECK(compileNode(m, ctx, src, return_type_idx));
 
             auto const &info = src.nodes.data[info_idx];
 
@@ -340,9 +433,21 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             };
 
             auto child_idx = get_next_child();
-            CHECK(compileNode(ctx, src, child_idx));
+            CHECK(compileNode(m, ctx, src, child_idx));
 
             return ValueInfo{};
+        }
+
+        case n_string: {
+            auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            NkString const text{token_str.data + 1, token_str.size - 2};
+
+            auto i8_t = nkl_get_numeric(nkl, Int8);
+            auto ar_t = nkl_get_array(nkl, i8_t, text.size + 1);
+            auto str_t = nkl_get_ptr(nkl, 8, ar_t, true);
+
+            auto str = nks_copyNt(nk_arena_getAllocator(&m->module_arena), text);
+            return ValueInfo{{.cnst = (void *)str.data}, str_t, ValueKind_Const};
         }
 
         default:
@@ -353,11 +458,11 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
     return ValueInfo{};
 }
 
-static Void compileStmt(Context &ctx, NklSource const &src, usize node_idx) {
+static Void compileStmt(NklModule m, Context &ctx, NklSource const &src, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    DEFINE(val, compileNode(ctx, src, node_idx));
+    DEFINE(val, compileNode(m, ctx, src, node_idx));
     if (val.kind != ValueKind_Void) {
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
     }
@@ -365,12 +470,12 @@ static Void compileStmt(Context &ctx, NklSource const &src, usize node_idx) {
     return {};
 }
 
-static bool compileAst(NklCompiler c, Context &ctx, NklSource const &src) {
+static bool compileAst(NklModule m, Context &ctx, NklSource const &src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     if (src.nodes.size) {
-        compileStmt(ctx, src, 0);
+        compileStmt(m, ctx, src, 0);
     }
 
     return nkl_getErrorCount() == 0;
@@ -397,6 +502,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     NK_LOG_TRC("%s", __func__);
 
     auto c = m->c;
+    auto nkl = c->nkl;
 
     nkl_errorStateEquip(&c->errors);
     defer {
@@ -405,7 +511,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 
     auto file = getFileId(filename);
 
-    auto &src = *nkl_getSource(c->nkl, file);
+    auto &src = *nkl_getSource(nkl, file);
 
     if (nkl_getErrorCount()) {
         return false;
@@ -418,10 +524,12 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         return false;
     }
 
-    file_ctx.ctx = getNewContext(c);
-    auto &ctx = *file_ctx.ctx;
+    file_ctx = {
+        .ctx = nk_arena_allocT<Context>(&c->perm_arena),
+        .module = nkl_createModule(c),
+    };
 
-    pushScope(ctx, &c->perm_arena, &c->temp_arena);
+    pushScope(*file_ctx.ctx, &c->perm_arena, &c->temp_arena);
 
-    return compileAst(c, ctx, src);
+    return compileAst(file_ctx.module, *file_ctx.ctx, src);
 }

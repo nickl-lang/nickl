@@ -94,8 +94,10 @@ struct ParseEngine {
             node.id = nk_cs2atom("float");
         }
 
-        else if (accept(t_string) || accept(t_escaped_string)) {
+        else if (accept(t_string)) {
             node.id = nk_cs2atom("string");
+        } else if (accept(t_escaped_string)) {
+            node.id = nk_cs2atom("escaped_string");
         }
 
         else {
