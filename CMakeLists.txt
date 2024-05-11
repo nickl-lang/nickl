@@ -37,12 +37,15 @@ set(FLAGS "-fdiagnostics-color -Wall -Wextra -pedantic -Werror=unused-result -We
 if(ENABLE_ASAN)
     set(FLAGS "${FLAGS} -g -fsanitize=address -fsanitize=leak")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS} \
+    -Werror=switch"
+    )
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS} ${PLATFORM_CXX_FLAGS} \
     -Werror=implicit-function-declaration                          \
     -Werror=implicit-int                                           \
     -Werror=int-conversion                                         \
-    -Werror=int-to-pointer-cast"
+    -Werror=int-to-pointer-cast                                    \
+    -Werror=switch"
     )
 
 if(BUILD_TESTS)

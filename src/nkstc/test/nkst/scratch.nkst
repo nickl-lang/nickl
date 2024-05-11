@@ -1,4 +1,5 @@
-(define var "hello")
-(scope [
-    var
-])
+(define plus (proc [(param a (i32)) (param b (i32))] (i32) [
+    (return (add a b))
+]))
+plus
+// (call plus [a b])

@@ -92,6 +92,24 @@ nkltype_t nkl_get_void(NklState nkl);
 
 void nkl_type_inspect(nkltype_t type, NkStream out);
 
+NK_INLINE void *nklval_data(nklval_t val) {
+    return val.data;
+}
+
+NK_INLINE nkltype_t nklval_typeof(nklval_t val) {
+    return val.type;
+}
+
+NK_INLINE u32 nklt_typeid(nkltype_t type) {
+    return type->id;
+}
+
+NK_INLINE NklTypeClass nklt_tclass(nkltype_t type) {
+    return type->tclass;
+}
+
+#define nklval_as(TYPE, VAL) (*(TYPE *)nklval_data(VAL))
+
 #ifdef __cplusplus
 }
 #endif

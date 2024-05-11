@@ -8,12 +8,14 @@
 
 X(null)
 
+X(add)
 X(arg)
 X(assign)
 X(call)
 X(define)
 X(escaped_string)
 X(extern)
+X(i32)
 X(id)
 X(int)
 X(less)
