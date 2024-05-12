@@ -219,15 +219,16 @@ static void defineParam(Context &ctx, NkAtom name, nkltype_t type) {
     makeDecl(ctx, name) = {{.param{.type = type}}, DeclKind_Param};
 }
 
-static Decl &resolve(Context &ctx, NkAtom name) {
-    NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)ctx.scope_stack);
+static Decl &resolve(Scope *scope, NkAtom name) {
+    NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
 
-    for (auto scope = ctx.scope_stack; scope; scope = scope->next) {
+    for (; scope; scope = scope->next) {
         auto found = DeclMap_find(&scope->locals, name);
         if (found) {
             return found->val;
         }
     }
+
     static Decl s_undefined_decl{{}, DeclKind_Undefined};
     return s_undefined_decl;
 }
@@ -516,7 +517,7 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             if (lhs.type->tclass != NklType_Procedure) {
                 auto node = &src.nodes.data[lhs_idx];
                 auto token = &src.tokens.data[node->token_idx];
-                // TODO: Improve error mesage
+                // TODO: Improve error message
                 return nkl_reportError(src.file, token, "procedure expected"), ValueInfo{};
             }
 
@@ -533,6 +534,35 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             NK_LOG_INF("IR: call {lhs}, [{args}...]");
 
             return {{.instr{}}, (nkltype_t)lhs.type->ir_type.as.proc.info.ret_t, ValueKind_Instr};
+        }
+
+        case n_context: {
+            auto lhs_idx = get_next_child(idx);
+            auto name_idx = get_next_child(idx);
+
+            DEFINE(lhs, compileNode(ctx, src, lhs_idx));
+
+            if (lhs.kind != ValueKind_Decl || lhs.as.decl->kind != DeclKind_Module) {
+                auto node = &src.nodes.data[lhs_idx];
+                auto token = &src.tokens.data[node->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "module expected"), ValueInfo{};
+            }
+
+            auto const &name_n = src.nodes.data[name_idx];
+            auto name_token = &src.tokens.data[name_n.token_idx];
+            auto name_str = nkl_getTokenStr(name_token, src.text);
+            auto name = nk_s2atom(name_str);
+
+            auto found = DeclMap_find(&lhs.as.decl->as.module.scope->locals, name);
+            if (found) {
+                return resolveDecl(found->val);
+            } else {
+                return nkl_reportError(src.file, name_token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)),
+                       ValueInfo{};
+            }
+
+            break;
         }
 
         case n_define: {
@@ -567,7 +597,6 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
         case n_i32: {
             auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
             *pvalue = nkl_get_numeric(nkl, Int32);
-
             // TODO: Hardcoded word size
             auto type_t = nkl_get_typeref(nkl, 8);
             return ValueInfo{{.cnst = pvalue}, type_t, ValueKind_Const};
@@ -578,7 +607,7 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             auto name_str = nkl_getTokenStr(token, src.text);
             auto name = nk_s2atom(name_str);
 
-            auto &decl = resolve(ctx, name);
+            auto &decl = resolve(ctx.scope_stack, name);
 
             // TODO: Handle cross frame references
 
@@ -649,6 +678,14 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
 
             auto str = nks_copyNt(nk_arena_getAllocator(&c->perm_arena), text);
             return ValueInfo{{.cnst = (void *)str.data}, str_t, ValueKind_Const};
+        }
+
+        case n_void: {
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = nkl_get_void(nkl);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst = pvalue}, type_t, ValueKind_Const};
         }
 
         default: {

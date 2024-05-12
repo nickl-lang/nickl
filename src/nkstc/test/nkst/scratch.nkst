@@ -1,4 +1,4 @@
-(define plus (proc [(param a (i32)) (param b (i32))] (i32) [
-    (return (add a b))
+(define foo (proc [] (void) [
+    (define Const 42)
 ]))
-(call plus [4 5])
+(context foo Const)
