@@ -320,6 +320,8 @@ static ValueInfo resolveComptime(Decl &decl) {
         decl.as.module.proc = getValueFromInfo(res.proc_val);
         decl.as.module.scope = res.proc_scope;
         decl.kind = DeclKind_Module;
+
+        return {{.decl = &decl}, decl.as.module.proc.type, ValueKind_Decl};
     } else {
         DEFINE(val, compileNode(ctx, src, node_idx));
 
@@ -332,9 +334,9 @@ static ValueInfo resolveComptime(Decl &decl) {
 
         decl.as.comptime.val = getValueFromInfo(val);
         decl.kind = DeclKind_Comptime;
-    }
 
-    return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
+        return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
+    }
 }
 
 static ValueInfo resolveDecl(Decl &decl) {
@@ -383,7 +385,7 @@ static ProcCompilationResult compileProc(
     NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
     NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
 
-    auto &params_n = src.nodes.data[params_idx];
+    auto const &params_n = src.nodes.data[params_idx];
     auto next_param_idx = params_idx + 1;
     for (size_t i = 0; i < params_n.arity; i++) {
         auto param_idx = get_next_child(next_param_idx) + 1;
@@ -505,6 +507,34 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             return {{.instr{}}, lhs.type, ValueKind_Instr};
         }
 
+        case n_call: {
+            auto lhs_idx = get_next_child(idx);
+            auto args_idx = get_next_child(idx);
+
+            DEFINE(lhs, compileNode(ctx, src, lhs_idx));
+
+            if (lhs.type->tclass != NklType_Procedure) {
+                auto node = &src.nodes.data[lhs_idx];
+                auto token = &src.tokens.data[node->token_idx];
+                // TODO: Improve error mesage
+                return nkl_reportError(src.file, token, "procedure expected"), ValueInfo{};
+            }
+
+            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+            NkDynArray(ValueInfo) args{NKDA_INIT(temp_alloc)};
+
+            auto const &args_n = src.nodes.data[args_idx];
+            auto next_arg_idx = args_idx + 1;
+            for (size_t i = 0; i < args_n.arity; i++) {
+                auto arg_idx = get_next_child(next_arg_idx);
+                APPEND(&args, compileNode(ctx, src, arg_idx));
+            }
+
+            NK_LOG_INF("IR: call {lhs}, [{args}...]");
+
+            return {{.instr{}}, (nkltype_t)lhs.type->ir_type.as.proc.info.ret_t, ValueKind_Instr};
+        }
+
         case n_define: {
             auto name_idx = get_next_child(idx);
             auto value_idx = get_next_child(idx);
@@ -570,7 +600,7 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
 
         case n_list: {
             for (size_t i = 0; i < node.arity; i++) {
-                CHECK(compileNode(ctx, src, get_next_child(idx)));
+                CHECK(compileStmt(ctx, src, get_next_child(idx)));
             }
             break;
         }
@@ -636,7 +666,9 @@ static Void compileStmt(Context &ctx, NklSource const &src, usize node_idx) {
 
     DEFINE(val, compileNode(ctx, src, node_idx));
     if (val.kind != ValueKind_Void) {
-        NK_LOG_DBG("Value ignored: <TODO: Inspect value>");
+        NKSB_FIXED_BUFFER(sb, 1024);
+        nkl_type_inspect(val.type, nksb_getStream(&sb));
+        NK_LOG_DBG("Value ignored: <TODO: Inspect value>:" NKS_FMT, NKS_ARG(sb));
     }
 
     return {};
