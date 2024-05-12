@@ -1,5 +1,7 @@
-(define plus (proc [(param a (i32)) (param b (i32))] (i32) [
-    (return (add a b))
-]))
-plus
-// (call plus [a b])
+(scope [
+    (define plus (proc [(param a (i32)) (param b (i32))] (i32) [
+        (return (add a b))
+    ]))
+    plus
+    // (call plus [a b])
+])
