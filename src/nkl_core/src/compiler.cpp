@@ -164,6 +164,17 @@ struct NklModule_T {
 static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx);
 static Void compileStmt(Context &ctx, NklSource const &src, usize node_idx);
 
+struct ProcCompilationResult {
+    ValueInfo proc_val;
+    Scope *proc_scope;
+};
+static ProcCompilationResult compileProc(
+    Context &ctx,
+    NklSource const &src,
+    usize node_idx,
+    NkArena *main_arena,
+    NkArena *temp_arena);
+
 static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena) {
     auto scope = new (nk_arena_allocT<Scope>(main_arena)) Scope{
         .next{},
@@ -293,41 +304,45 @@ static nklval_t getValueFromInfo(ValueInfo const &val) {
     }
 }
 
-static ValueInfo resolveComptime(NkAtom name, Decl &decl) {
+static ValueInfo resolveComptime(Decl &decl) {
     nk_assert(decl.kind == DeclKind_ComptimeUnresolved);
 
-    auto &ur_decl = decl.as.comptime_unresolved;
+    auto &ctx = *decl.as.comptime_unresolved.ctx;
+    auto const &src = *decl.as.comptime_unresolved.src;
+    auto node_idx = decl.as.comptime_unresolved.node_idx;
 
-    NK_LOG_DBG("Resolving comptime const: node %zu file=`%s`", ur_decl.node_idx, nk_atom2cs(ur_decl.src->file));
+    NK_LOG_DBG("Resolving comptime const: node %zu file=`%s`", node_idx, nk_atom2cs(src.file));
 
-    DEFINE(val, compileNode(*ur_decl.ctx, *ur_decl.src, ur_decl.node_idx));
+    auto const &node = &src.nodes.data[node_idx];
+    if (node->id == n_proc) {
+        // TODO: Assuming public visibility
+        DEFINE(res, compileProc(ctx, src, node_idx, ctx.scope_stack->main_arena, ctx.scope_stack->temp_arena));
+        decl.as.module.proc = getValueFromInfo(res.proc_val);
+        decl.as.module.scope = res.proc_scope;
+        decl.kind = DeclKind_Module;
+    } else {
+        DEFINE(val, compileNode(ctx, src, node_idx));
 
-    if (!isValueKnown(val)) {
-        auto node = &ur_decl.src->nodes.data[ur_decl.node_idx];
-        auto token = &ur_decl.src->tokens.data[node->token_idx];
-        // TODO: Improve error message
-        return nkl_reportError(ur_decl.src->file, token, "value is not known"), ValueInfo{};
+        if (!isValueKnown(val)) {
+            auto node = &src.nodes.data[node_idx];
+            auto token = &src.tokens.data[node->token_idx];
+            // TODO: Improve error message
+            return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+        }
+
+        decl.as.comptime.val = getValueFromInfo(val);
+        decl.kind = DeclKind_Comptime;
     }
-
-    auto const &node = &ur_decl.src->nodes.data[ur_decl.node_idx];
-    // if (node->id == n_proc) {
-    //     decl.as.module.scope = ;
-    //     decl.kind = DeclKind_Module;
-    // } else {
-    decl.as.comptime.val = getValueFromInfo(val);
-    decl.kind = DeclKind_Comptime;
-    // }
 
     return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
 }
 
-// TODO: Need to pass a different module to the `resolveComptime`!
-static ValueInfo resolveDecl(NkAtom name, Decl &decl) {
+static ValueInfo resolveDecl(Decl &decl) {
     switch (decl.kind) {
         case DeclKind_Comptime:
             return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
         case DeclKind_ComptimeUnresolved:
-            return resolveComptime(name, decl);
+            return resolveComptime(decl);
         case DeclKind_Local:
             return {{.decl = &decl}, decl.as.local.type, ValueKind_Decl};
         case DeclKind_Module:
@@ -338,6 +353,119 @@ static ValueInfo resolveDecl(NkAtom name, Decl &decl) {
             nk_assert(!"unreachable");
             return {};
     }
+}
+
+static ProcCompilationResult compileProc(
+    Context &ctx,
+    NklSource const &src,
+    usize node_idx,
+    NkArena *main_arena,
+    NkArena *temp_arena) {
+    auto m = ctx.m;
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    auto idx = node_idx + 1;
+
+    // TODO: Bolerplate `get_next_child`
+    auto get_next_child = [&src](usize &next_child_idx) {
+        auto child_idx = next_child_idx;
+        next_child_idx = nkl_ast_nextChild(src.nodes, next_child_idx);
+        return child_idx;
+    };
+
+    auto params_idx = get_next_child(idx);
+    auto ret_t_idx = get_next_child(idx);
+    auto body_idx = get_next_child(idx);
+
+    auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+
+    NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
+    NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
+
+    auto &params_n = src.nodes.data[params_idx];
+    auto next_param_idx = params_idx + 1;
+    for (size_t i = 0; i < params_n.arity; i++) {
+        auto param_idx = get_next_child(next_param_idx) + 1;
+
+        auto name_idx = get_next_child(param_idx);
+        auto type_idx = get_next_child(param_idx);
+
+        auto name_n = &src.nodes.data[name_idx];
+        auto name_token = &src.tokens.data[name_n->token_idx];
+        auto name_str = nkl_getTokenStr(name_token, src.text);
+        auto name = nk_s2atom(name_str);
+
+        DEFINE(type_v, compileNode(ctx, src, type_idx));
+
+        if (type_v.type->tclass != NklType_Typeref) {
+            auto type_n = &src.nodes.data[type_idx];
+            auto token = &src.tokens.data[type_n->token_idx];
+            // TODO: Improve error message
+            return nkl_reportError(src.file, token, "type expected"), ProcCompilationResult{};
+        }
+
+        if (!isValueKnown(type_v)) {
+            auto type_n = &src.nodes.data[type_idx];
+            auto token = &src.tokens.data[type_n->token_idx];
+            // TODO: Improve error message
+            return nkl_reportError(src.file, token, "value is not known"), ProcCompilationResult{};
+        }
+
+        auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
+
+        nkda_append(&param_names, name);
+        nkda_append(&param_types, type);
+    }
+
+    DEFINE(ret_t_v, compileNode(ctx, src, ret_t_idx));
+
+    // TODO: Boilerplate in type checking
+    if (ret_t_v.type->tclass != NklType_Typeref) {
+        auto type_n = &src.nodes.data[ret_t_idx];
+        auto token = &src.tokens.data[type_n->token_idx];
+        // TODO: Improve error message
+        return nkl_reportError(src.file, token, "type expected"), ProcCompilationResult{};
+    }
+
+    if (!isValueKnown(ret_t_v)) {
+        auto type_n = &src.nodes.data[ret_t_idx];
+        auto token = &src.tokens.data[type_n->token_idx];
+        // TODO: Improve error message
+        return nkl_reportError(src.file, token, "value is not known"), ProcCompilationResult{};
+    }
+
+    auto ret_t = nklval_as(nkltype_t, getValueFromInfo(ret_t_v));
+
+    pushScope(ctx, main_arena, temp_arena);
+    defer {
+        popScope(ctx);
+    };
+
+    auto proc_scope = ctx.scope_stack;
+
+    for (usize i = 0; i < params_n.arity; i++) {
+        CHECK(defineParam(ctx, param_names.data[i], param_types.data[i]));
+    }
+
+    CHECK(compileStmt(ctx, src, body_idx));
+
+    // TODO: Hardcoded word size
+    auto proc_t = nkl_get_proc(
+        nkl,
+        8,
+        NklProcInfo{
+            .param_types = {NK_SLICE_INIT(param_types)},
+            .ret_t = ret_t,
+            .call_conv = NkCallConv_Nk,
+            .flags = {},
+        });
+
+    return {
+        // TODO: Returning null as proc value
+        .proc_val = {{.cnst = nullptr}, proc_t, ValueKind_Const},
+        .proc_scope = proc_scope,
+    };
 }
 
 static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx) {
@@ -427,7 +555,7 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
             if (decl.kind == DeclKind_Undefined) {
                 return nkl_reportError(src.file, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
             } else {
-                return resolveDecl(name, decl);
+                return resolveDecl(decl);
             }
         }
 
@@ -448,94 +576,12 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
         }
 
         case n_proc: {
-            auto params_idx = get_next_child(idx);
-            auto ret_t_idx = get_next_child(idx);
-            auto body_idx = get_next_child(idx);
-
-            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-
-            NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
-            NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
-
-            auto &params_n = src.nodes.data[params_idx];
-            auto next_param_idx = params_idx + 1;
-            for (size_t i = 0; i < params_n.arity; i++) {
-                auto param_idx = get_next_child(next_param_idx) + 1;
-
-                auto name_idx = get_next_child(param_idx);
-                auto type_idx = get_next_child(param_idx);
-
-                auto name_n = &src.nodes.data[name_idx];
-                auto name_token = &src.tokens.data[name_n->token_idx];
-                auto name_str = nkl_getTokenStr(name_token, src.text);
-                auto name = nk_s2atom(name_str);
-
-                DEFINE(type_v, compileNode(ctx, src, type_idx));
-
-                if (type_v.type->tclass != NklType_Typeref) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
-                    // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
-                }
-
-                if (!isValueKnown(type_v)) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
-                    // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
-                }
-
-                auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
-
-                nkda_append(&param_names, name);
-                nkda_append(&param_types, type);
-            }
-
-            DEFINE(ret_t_v, compileNode(ctx, src, ret_t_idx));
-
-            // TODO: Boilerplate in type checking
-            if (ret_t_v.type->tclass != NklType_Typeref) {
-                auto type_n = &src.nodes.data[ret_t_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
-                // TODO: Improve error message
-                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
-            }
-
-            if (!isValueKnown(ret_t_v)) {
-                auto type_n = &src.nodes.data[ret_t_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
-                // TODO: Improve error message
-                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
-            }
-
-            auto ret_t = nklval_as(nkltype_t, getValueFromInfo(ret_t_v));
-
             // TODO: Not choosing arenas based on proc visibility
-            pushScope(ctx, ctx.scope_stack->temp_arena, getNextTempArena(c, ctx.scope_stack->temp_arena));
-            defer {
-                popScope(ctx);
-            };
-
-            for (usize i = 0; i < params_n.arity; i++) {
-                CHECK(defineParam(ctx, param_names.data[i], param_types.data[i]));
-            }
-
-            CHECK(compileStmt(ctx, src, body_idx));
-
-            // TODO: Hardcoded word size
-            auto proc_t = nkl_get_proc(
-                nkl,
-                8,
-                NklProcInfo{
-                    .param_types = {NK_SLICE_INIT(param_types)},
-                    .ret_t = ret_t,
-                    .call_conv = NkCallConv_Nk,
-                    .flags = {},
-                });
-
-            // TODO: Returning null as proc value
-            return ValueInfo{{.cnst = nullptr}, proc_t, ValueKind_Const};
+            DEFINE(
+                res,
+                compileProc(
+                    ctx, src, node_idx, ctx.scope_stack->temp_arena, getNextTempArena(c, ctx.scope_stack->temp_arena)));
+            return res.proc_val;
         }
 
         case n_return: {
