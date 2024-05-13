@@ -1,12 +1,4 @@
 (define foo (proc [] (void) [
-    (define bar (proc [] (void) [
-        (define C (context (context baz bar) B))
-    ]))
-    (define A "hello")
+    foo
 ]))
-(define baz (proc [] (void) [
-    (define bar (proc [] (void) [
-        (define B (context foo A))
-    ]))
-]))
-(context (context foo bar) C)
+foo
