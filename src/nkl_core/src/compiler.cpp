@@ -276,7 +276,7 @@ void nkl_writeModule(NklModule m, NkString filename) {
 
 static bool isValueKnown(ValueInfo const &val) {
     return val.kind == ValueKind_Void || val.kind == ValueKind_Const ||
-           (val.kind == ValueKind_Const &&
+           (val.kind == ValueKind_Decl &&
             (val.as.decl->kind == DeclKind_Comptime || val.as.decl->kind == DeclKind_Module));
 }
 
@@ -549,12 +549,16 @@ static ValueInfo compileNode(Context &ctx, NklSource const &src, usize node_idx)
                 return nkl_reportError(src.file, token, "module expected"), ValueInfo{};
             }
 
+            auto scope = lhs.as.decl->as.module.scope;
+
             auto const &name_n = src.nodes.data[name_idx];
             auto name_token = &src.tokens.data[name_n.token_idx];
             auto name_str = nkl_getTokenStr(name_token, src.text);
             auto name = nk_s2atom(name_str);
 
-            auto found = DeclMap_find(&lhs.as.decl->as.module.scope->locals, name);
+            NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
+
+            auto found = DeclMap_find(&scope->locals, name);
             if (found) {
                 return resolveDecl(found->val);
             } else {
