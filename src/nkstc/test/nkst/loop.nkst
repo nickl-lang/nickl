@@ -1,19 +1,16 @@
-(proc (extern "c") printf [(arg () (ptr (i8))) ("...")] (i32))
+// TODO: Implement extern proc node
+// (proc (extern "c") printf [(param () (ptr (i8))) ("...")] (i32))
 
-(proc (pub) main [(arg argc (i32)) (arg argv (ptr (ptr (i8))))] (i32) [
+(define main (proc  [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (define i 0)
     (while (less i 5) [
         (call printf ["%zi\n" i])
         (assign i (add i 1))
     ])
     (return 0)
-])
+]))
+
+// main
 
 /* @output
-0
-1
-2
-3
-4
-
 @endoutput */

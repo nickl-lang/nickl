@@ -1,2 +1,6 @@
-(context (context (import "foo.nkl") bar) A)
-(call (import "foo.nkl") [])
+// TODO: Implement include path search
+(context (context (import "../../../src/nkstc/test/foo.nkl") bar) A)
+(call (import "../../../src/nkstc/test/foo.nkl") [])
+
+/* @output
+@endoutput */
