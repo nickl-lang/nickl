@@ -1,7 +1,3 @@
-(define foo (proc [] (void) [
-    (define bar (proc [] (void) [
-        (define A 42)
-        foo
-    ]))
-]))
+(define foo (import "foo.nkl"))
 (context (context foo bar) A)
+(call foo [])

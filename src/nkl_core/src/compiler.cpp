@@ -171,6 +171,7 @@ struct NklModule_T {
 
 static ValueInfo compileNode(Context &ctx, usize node_idx);
 static Void compileStmt(Context &ctx, usize node_idx);
+static bool compileAst(Context &ctx);
 
 usize parentNodeIdx(Context &ctx) {
     return ctx.node_stack->next ? ctx.node_stack->next->node_idx : -1u;
@@ -358,6 +359,22 @@ static ValueInfo resolveDecl(Decl &decl) {
     }
 }
 
+static NkAtom getFileId(NkString filename) {
+    NKSB_FIXED_BUFFER(filename_nt, NK_MAX_PATH);
+    nksb_printf(&filename_nt, NKS_FMT, NKS_ARG(filename));
+    nksb_appendNull(&filename_nt);
+
+    NkString canonical_file_path_s;
+    char canonical_file_path[NK_MAX_PATH] = {};
+    if (nk_fullPath(canonical_file_path, filename_nt.data) >= 0) {
+        canonical_file_path_s = nk_cs2s(canonical_file_path);
+    } else {
+        canonical_file_path_s = filename;
+    }
+
+    return nk_s2atom(canonical_file_path_s);
+}
+
 static ValueInfo compileNode(Context &ctx, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -529,6 +546,59 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             } else {
                 return resolveDecl(decl);
             }
+        }
+
+        case n_import: {
+            // TODO: Boilerplate with n_proc
+            auto main_arena = decl ? ctx.scope_stack->main_arena : ctx.scope_stack->temp_arena;
+            auto temp_arena = decl ? ctx.scope_stack->temp_arena : getNextTempArena(c, ctx.scope_stack->temp_arena);
+
+            auto path_idx = get_next_child(next_idx);
+            auto &path_n = src.nodes.data[path_idx];
+            auto path_str = nkl_getTokenStr(&src.tokens.data[path_n.token_idx], src.text);
+            NkString const path{path_str.data + 1, path_str.size - 2};
+
+            auto file = getFileId(path);
+
+            DEFINE(src, nkl_getSource(nkl, file));
+
+            auto &file_ctx = getContextForFile(c, file);
+            if (!file_ctx.ctx) {
+                file_ctx.ctx = nk_arena_allocT<Context>(&c->perm_arena);
+                *file_ctx.ctx = {
+                    .m = nkl_createModule(c),
+                    .src = src,
+                    .scope_stack = {},
+                    .node_stack = {},
+                };
+            }
+
+            // TODO: Hardcoded word size
+            auto proc_t = nkl_get_proc(
+                nkl,
+                8,
+                NklProcInfo{
+                    .param_types = {},
+                    .ret_t = nkl_get_void(nkl),
+                    .call_conv = NkCallConv_Nk,
+                    .flags = {},
+                });
+
+            pushScope(*file_ctx.ctx, main_arena, temp_arena);
+            defer {
+                popScope(*file_ctx.ctx);
+            };
+
+            if (decl) {
+                decl->as.module.val.type = proc_t;
+                decl->as.module.scope = file_ctx.ctx->scope_stack;
+                decl->kind = DeclKind_ModuleIncomplete;
+            }
+
+            CHECK(compileAst(*file_ctx.ctx));
+
+            // TODO: Returning null as proc value
+            return {{.cnst = nullptr}, proc_t, ValueKind_Const};
         }
 
         case n_int: {
@@ -705,7 +775,7 @@ static Void compileStmt(Context &ctx, usize node_idx) {
     NK_LOG_TRC("%s", __func__);
 
     DEFINE(val, compileNode(ctx, node_idx));
-    if (val.kind != ValueKind_Void) {
+    if (val.kind != ValueKind_Void && val.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
         NKSB_FIXED_BUFFER(sb, 1024);
         nkl_type_inspect(val.type, nksb_getStream(&sb));
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>:" NKS_FMT, NKS_ARG(sb));
@@ -723,22 +793,6 @@ static bool compileAst(Context &ctx) {
     }
 
     return nkl_getErrorCount() == 0;
-}
-
-static NkAtom getFileId(NkString filename) {
-    NKSB_FIXED_BUFFER(filename_nt, NK_MAX_PATH);
-    nksb_printf(&filename_nt, NKS_FMT, NKS_ARG(filename));
-    nksb_appendNull(&filename_nt);
-
-    NkString canonical_file_path_s;
-    char canonical_file_path[NK_MAX_PATH] = {};
-    if (nk_fullPath(canonical_file_path, filename_nt.data) >= 0) {
-        canonical_file_path_s = nk_cs2s(canonical_file_path);
-    } else {
-        canonical_file_path_s = filename;
-    }
-
-    return nk_s2atom(canonical_file_path_s);
 }
 
 bool nkl_compileFile(NklModule m, NkString filename) {
