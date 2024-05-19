@@ -1,3 +1,2 @@
-(define foo (import "foo.nkl"))
-(context (context foo bar) A)
-(call foo [])
+(context (context (import "foo.nkl") bar) A)
+(call (import "foo.nkl") [])

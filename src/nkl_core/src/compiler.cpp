@@ -151,15 +151,22 @@ enum ValueKind {
     ValueKind_Const,
     ValueKind_Decl,
     ValueKind_Instr,
+    ValueKind_Module,
 };
 
 struct ValueInfo {
     union {
-        void *cnst;
+        struct {
+            void *data;
+        } cnst;
         Decl *decl;
         struct {
             int dummy;
         } instr;
+        struct {
+            void *data;
+            Scope *scope;
+        } module;
     } as;
     nkltype_t type;
     ValueKind kind;
@@ -280,7 +287,8 @@ void nkl_writeModule(NklModule m, NkString filename) {
 static bool isValueKnown(ValueInfo const &val) {
     return val.kind == ValueKind_Void || val.kind == ValueKind_Const ||
            (val.kind == ValueKind_Decl &&
-            (val.as.decl->kind == DeclKind_Comptime || val.as.decl->kind == DeclKind_Module));
+            (val.as.decl->kind == DeclKind_Comptime || val.as.decl->kind == DeclKind_Module)) ||
+           val.kind == ValueKind_Module;
 }
 
 static nklval_t getValueFromInfo(ValueInfo const &val) {
@@ -290,7 +298,7 @@ static nklval_t getValueFromInfo(ValueInfo const &val) {
         case ValueKind_Void:
             return {nullptr, val.type};
         case ValueKind_Const:
-            return {val.as.cnst, val.type};
+            return {val.as.cnst.data, val.type};
         case ValueKind_Decl: {
             switch (val.as.decl->kind) {
                 case DeclKind_Comptime:
@@ -302,6 +310,8 @@ static nklval_t getValueFromInfo(ValueInfo const &val) {
                     return {};
             }
         }
+        case ValueKind_Module:
+            return {val.as.cnst.data, val.type};
         default:
             nk_assert(!"unreachable");
             return {};
@@ -373,6 +383,17 @@ static NkAtom getFileId(NkString filename) {
     }
 
     return nk_s2atom(canonical_file_path_s);
+}
+
+bool isModule(ValueInfo const &val) {
+    return val.kind == ValueKind_Module ||
+           (val.kind == ValueKind_Decl &&
+            (val.as.decl->kind == DeclKind_Module || val.as.decl->kind == DeclKind_ModuleIncomplete));
+}
+
+Scope *getModuleScope(ValueInfo const &val) {
+    nk_assert(isModule(val) && "module expected");
+    return val.kind == ValueKind_Module ? val.as.module.scope : val.as.decl->as.module.scope;
 }
 
 static ValueInfo compileNode(Context &ctx, usize node_idx) {
@@ -467,15 +488,14 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             DEFINE(lhs, compileNode(ctx, lhs_idx));
 
-            if (lhs.kind != ValueKind_Decl ||
-                (lhs.as.decl->kind != DeclKind_Module && lhs.as.decl->kind != DeclKind_ModuleIncomplete)) {
+            if (!isModule(lhs)) {
                 auto node = &src.nodes.data[lhs_idx];
                 auto token = &src.tokens.data[node->token_idx];
                 // TODO: Improve error message
                 return nkl_reportError(src.file, token, "module expected"), ValueInfo{};
             }
 
-            auto scope = lhs.as.decl->as.module.scope;
+            auto scope = getModuleScope(lhs);
 
             auto const &name_n = src.nodes.data[name_idx];
             auto name_token = &src.tokens.data[name_n.token_idx];
@@ -521,7 +541,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto str_t = nkl_get_ptr(nkl, 8, ar_t, true);
 
             auto str = nks_copyNt(nk_arena_getAllocator(&c->perm_arena), unescaped_text);
-            return ValueInfo{{.cnst = (void *)str.data}, str_t, ValueKind_Const};
+            return ValueInfo{{.cnst{(void *)str.data}}, str_t, ValueKind_Const};
         }
 
         case n_i32: {
@@ -529,7 +549,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             *pvalue = nkl_get_numeric(nkl, Int32);
             // TODO: Hardcoded word size
             auto type_t = nkl_get_typeref(nkl, 8);
-            return ValueInfo{{.cnst = pvalue}, type_t, ValueKind_Const};
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
         }
 
         case n_id: {
@@ -550,8 +570,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
         case n_import: {
             // TODO: Boilerplate with n_proc
-            auto main_arena = decl ? ctx.scope_stack->main_arena : ctx.scope_stack->temp_arena;
-            auto temp_arena = decl ? ctx.scope_stack->temp_arena : getNextTempArena(c, ctx.scope_stack->temp_arena);
+            auto main_arena = ctx.scope_stack->main_arena;
+            auto temp_arena = ctx.scope_stack->temp_arena;
 
             auto path_idx = get_next_child(next_idx);
             auto &path_n = src.nodes.data[path_idx];
@@ -598,7 +618,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             CHECK(compileAst(*file_ctx.ctx));
 
             // TODO: Returning null as proc value
-            return {{.cnst = nullptr}, proc_t, ValueKind_Const};
+            return {{.module{.data = nullptr, .scope = file_ctx.ctx->scope_stack}}, proc_t, ValueKind_Module};
         }
 
         case n_int: {
@@ -607,7 +627,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             // TODO: Replace sscanf in compiler
             int res = sscanf(token_str.data, "%" SCNi64, pvalue);
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-            return ValueInfo{{.cnst = pvalue}, nkl_get_numeric(nkl, Int64), ValueKind_Const};
+            return ValueInfo{{.cnst{pvalue}}, nkl_get_numeric(nkl, Int64), ValueKind_Const};
         }
 
         case n_list: {
@@ -713,7 +733,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             CHECK(compileStmt(ctx, body_idx));
 
             // TODO: Returning null as proc value
-            return {{.cnst = nullptr}, proc_t, ValueKind_Const};
+            return {{.module{.data = nullptr, .scope = ctx.scope_stack}}, proc_t, ValueKind_Module};
         }
 
         case n_return: {
@@ -725,6 +745,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             } else {
                 NK_LOG_INF("IR: return");
             }
+            return {};
+        }
+
+        case n_run: {
+            NK_LOG_INF("TODO: running");
             return {};
         }
 
@@ -750,7 +775,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto str_t = nkl_get_ptr(nkl, 8, ar_t, true);
 
             auto str = nks_copyNt(nk_arena_getAllocator(&c->perm_arena), text);
-            return ValueInfo{{.cnst = (void *)str.data}, str_t, ValueKind_Const};
+            return ValueInfo{{.cnst{(void *)str.data}}, str_t, ValueKind_Const};
         }
 
         case n_void: {
@@ -758,7 +783,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             *pvalue = nkl_get_void(nkl);
             // TODO: Hardcoded word size
             auto type_t = nkl_get_typeref(nkl, 8);
-            return ValueInfo{{.cnst = pvalue}, type_t, ValueKind_Const};
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
         }
 
         default: {
