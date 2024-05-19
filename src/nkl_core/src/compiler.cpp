@@ -582,17 +582,6 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             DEFINE(src, nkl_getSource(nkl, file));
 
-            auto &file_ctx = getContextForFile(c, file);
-            if (!file_ctx.ctx) {
-                file_ctx.ctx = nk_arena_allocT<Context>(&c->perm_arena);
-                *file_ctx.ctx = {
-                    .m = nkl_createModule(c),
-                    .src = src,
-                    .scope_stack = {},
-                    .node_stack = {},
-                };
-            }
-
             // TODO: Hardcoded word size
             auto proc_t = nkl_get_proc(
                 nkl,
@@ -604,18 +593,30 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                     .flags = {},
                 });
 
-            pushScope(*file_ctx.ctx, main_arena, temp_arena);
-            defer {
-                popScope(*file_ctx.ctx);
-            };
+            auto &file_ctx = getContextForFile(c, file);
+            if (!file_ctx.ctx) {
+                file_ctx.ctx = nk_arena_allocT<Context>(&c->perm_arena);
+                *file_ctx.ctx = {
+                    .m = nkl_createModule(c),
+                    .src = src,
+                    .scope_stack = {},
+                    .node_stack = {},
+                };
 
-            if (decl) {
+                pushScope(*file_ctx.ctx, main_arena, temp_arena);
+
+                if (decl) {
+                    decl->as.module.val.type = proc_t;
+                    decl->as.module.scope = file_ctx.ctx->scope_stack;
+                    decl->kind = DeclKind_ModuleIncomplete;
+                }
+
+                CHECK(compileAst(*file_ctx.ctx));
+            } else if (decl) {
                 decl->as.module.val.type = proc_t;
                 decl->as.module.scope = file_ctx.ctx->scope_stack;
                 decl->kind = DeclKind_ModuleIncomplete;
             }
-
-            CHECK(compileAst(*file_ctx.ctx));
 
             // TODO: Returning null as proc value
             return {{.module{.data = nullptr, .scope = file_ctx.ctx->scope_stack}}, proc_t, ValueKind_Module};
