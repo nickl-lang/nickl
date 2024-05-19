@@ -1,4 +1,7 @@
 (define foo (proc [] (void) [
-    foo
+    (define bar (proc [] (void) [
+        (define A 42)
+        foo
+    ]))
 ]))
-foo
+(context (context foo bar) A)
