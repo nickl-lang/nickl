@@ -544,6 +544,89 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return ValueInfo{{.cnst{(void *)str.data}}, str_t, ValueKind_Const};
         }
 
+        case n_extern_c_proc: {
+            auto params_idx = get_next_child(next_idx);
+            auto ret_t_idx = get_next_child(next_idx);
+
+            // TODO: Boilerplate with n_proc
+            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+
+            NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
+
+            u8 proc_flags = 0;
+
+            auto const &params_n = src.nodes.data[params_idx];
+            auto next_param_idx = params_idx + 1;
+            for (size_t i = 0; i < params_n.arity; i++) {
+                auto param_idx = get_next_child(next_param_idx);
+
+                auto const &param_n = src.nodes.data[param_idx];
+                if (param_n.id == n_ellipsis) {
+                    proc_flags |= NkProcVariadic;
+                    // TODO: Check that ellipsis is the last param
+                    break;
+                }
+
+                auto next_idx = param_idx + 1;
+
+                auto name_idx = get_next_child(next_idx);
+                auto type_idx = get_next_child(next_idx);
+
+                DEFINE(type_v, compileNode(ctx, type_idx));
+
+                if (type_v.type->tclass != NklType_Typeref) {
+                    auto type_n = &src.nodes.data[type_idx];
+                    auto token = &src.tokens.data[type_n->token_idx];
+                    // TODO: Improve error message
+                    return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                }
+
+                if (!isValueKnown(type_v)) {
+                    auto type_n = &src.nodes.data[type_idx];
+                    auto token = &src.tokens.data[type_n->token_idx];
+                    // TODO: Improve error message
+                    return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                }
+
+                auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
+
+                nkda_append(&param_types, type);
+            }
+
+            DEFINE(ret_t_v, compileNode(ctx, ret_t_idx));
+
+            // TODO: Boilerplate in type checking
+            if (ret_t_v.type->tclass != NklType_Typeref) {
+                auto type_n = &src.nodes.data[ret_t_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+            }
+
+            if (!isValueKnown(ret_t_v)) {
+                auto type_n = &src.nodes.data[ret_t_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+            }
+
+            auto ret_t = nklval_as(nkltype_t, getValueFromInfo(ret_t_v));
+
+            // TODO: Hardcoded word size
+            auto proc_t = nkl_get_proc(
+                nkl,
+                8,
+                NklProcInfo{
+                    .param_types = {NK_SLICE_INIT(param_types)},
+                    .ret_t = ret_t,
+                    .call_conv = NkCallConv_Cdecl,
+                    .flags = proc_flags,
+                });
+
+            // TODO: Returning null as proc value
+            return {{.module{.data = nullptr, .scope = ctx.scope_stack}}, proc_t, ValueKind_Module};
+        }
+
         case n_i8: {
             auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
             *pvalue = nkl_get_numeric(nkl, Int8);
