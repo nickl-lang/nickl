@@ -2,6 +2,11 @@ set(LIB ntk)
 
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
 
+set(DEPS
+    stb
+    Dl
+    )
+
 set(SOURCES
     src/os/${PLATFORM_DIR}/dl.c
     src/os/${PLATFORM_DIR}/error.c
@@ -32,6 +37,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND SOURCES
         src/os/${PLATFORM_DIR}/syscall.c
     )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    list(APPEND DEPS
+        Shlwapi
+    )
 endif()
 
 add_library(${LIB} ${SOURCES})
@@ -46,10 +55,7 @@ target_include_directories(${LIB}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
-target_link_libraries(${LIB}
-    PRIVATE stb
-    PRIVATE Dl
-    )
+target_link_libraries(${LIB} ${DEPS})
 
 if(ENABLE_PROFILING)
     target_compile_definitions(${LIB}

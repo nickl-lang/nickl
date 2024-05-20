@@ -23,3 +23,7 @@ i32 nk_fullPath(char *buf, char const *path) {
 i32 nk_getCwd(char *buf, usize size) {
     return getcwd(buf, size) ? -1 : 0;
 }
+
+bool nk_pathIsRelative(char const *path) {
+    return !strlen(path) || path[0] != NK_PATH_SEPARATOR;
+}

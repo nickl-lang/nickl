@@ -13,6 +13,7 @@
 #include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/os/path.h"
+#include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/string.h"
@@ -685,7 +686,24 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto path_str = nkl_getTokenStr(&src.tokens.data[path_n.token_idx], src.text);
             NkString const path{path_str.data + 1, path_str.size - 2};
 
-            auto file = getFileId(path);
+            NKSB_FIXED_BUFFER(path_buf, NK_MAX_PATH);
+            nksb_printf(&path_buf, NKS_FMT, NKS_ARG(path));
+            nksb_appendNull(&path_buf);
+
+            NkString import_path{};
+
+            if (nk_pathIsRelative(path_buf.data)) {
+                auto parent = nk_path_getParent(nk_atom2s(src.file));
+
+                nksb_clear(&path_buf);
+                nksb_printf(&path_buf, NKS_FMT "%c" NKS_FMT, NKS_ARG(parent), NK_PATH_SEPARATOR, NKS_ARG(path));
+
+                import_path = {NKS_INIT(path_buf)};
+            } else {
+                import_path = path;
+            }
+
+            auto file = getFileId(import_path);
 
             DEFINE(src, nkl_getSource(nkl, file));
 

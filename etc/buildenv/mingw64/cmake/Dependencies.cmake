@@ -13,6 +13,12 @@ set_target_properties(Dl PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
+add_library(Shlwapi STATIC IMPORTED)
+set_target_properties(Shlwapi PROPERTIES
+    IMPORTED_LOCATION ${PLATFORM_PREFIX}/lib/libshlwapi.a
+    INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
+    )
+
 set(SYSTEM_DEPS
     # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libgcc_s_seh-1.dll
     # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libssp-0.dll

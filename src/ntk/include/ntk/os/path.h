@@ -24,6 +24,8 @@ i32 nk_getBinaryPath(char *buf, usize size);
 i32 nk_fullPath(char *buf, char const *path);
 i32 nk_getCwd(char *buf, usize size);
 
+bool nk_pathIsRelative(char const *path);
+
 #ifdef __cplusplus
 }
 #endif
