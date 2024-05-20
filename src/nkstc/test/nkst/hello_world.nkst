@@ -1,7 +1,6 @@
 // TODO: Implement extern proc node
 // (proc (extern "c") printf [(param () (ptr (i8))) ("...")] (i32))
 
-// TODO: Implement ptr node
 (define main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (call printf ["Hello, World!\n"])
     (return 0)

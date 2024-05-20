@@ -544,7 +544,31 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return ValueInfo{{.cnst{(void *)str.data}}, str_t, ValueKind_Const};
         }
 
+        case n_i8: {
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = nkl_get_numeric(nkl, Int8);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
+        }
+
+        case n_i16: {
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = nkl_get_numeric(nkl, Int16);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
+        }
+
         case n_i32: {
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = nkl_get_numeric(nkl, Int32);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
+        }
+
+        case n_i64: {
             auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
             *pvalue = nkl_get_numeric(nkl, Int32);
             // TODO: Hardcoded word size
@@ -735,6 +759,36 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             // TODO: Returning null as proc value
             return {{.module{.data = nullptr, .scope = ctx.scope_stack}}, proc_t, ValueKind_Module};
+        }
+
+        case n_ptr: {
+            auto target_idx = get_next_child(next_idx);
+
+            DEFINE(target, compileNode(ctx, target_idx));
+
+            // TODO: Boilerplate in type checking
+            if (target.type->tclass != NklType_Typeref) {
+                auto type_n = &src.nodes.data[target_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+            }
+
+            if (!isValueKnown(target)) {
+                auto type_n = &src.nodes.data[target_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+            }
+
+            auto target_t = nklval_as(nkltype_t, getValueFromInfo(target));
+
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            // TODO: Hardcoded word size
+            *pvalue = nkl_get_ptr(nkl, 8, target_t, false);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
         }
 
         case n_return: {

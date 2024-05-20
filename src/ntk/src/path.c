@@ -59,6 +59,4 @@ void nk_relativePath(char *buf, usize size, char const *full_path, char const *f
     }
 
     nksb_appendNull(&sb);
-
-    return;
 }
