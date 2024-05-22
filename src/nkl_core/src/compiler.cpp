@@ -114,6 +114,7 @@ struct Context {
 };
 
 struct FileContext {
+    nkltype_t proc_t;
     Context *ctx;
 };
 
@@ -397,6 +398,56 @@ Scope *getModuleScope(ValueInfo const &val) {
     return val.kind == ValueKind_Module ? val.as.module.scope : val.as.decl->as.module.scope;
 }
 
+FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_arena, NkArena *temp_arena, Decl *decl) {
+    auto nkl = c->nkl;
+
+    auto file = getFileId(filename);
+
+    DEFINE(src, nkl_getSource(nkl, file));
+
+    // TODO: Hardcoded word size
+    auto proc_t = nkl_get_proc(
+        nkl,
+        8,
+        NklProcInfo{
+            .param_types = {},
+            .ret_t = nkl_get_void(nkl),
+            .call_conv = NkCallConv_Nk,
+            .flags = {},
+        });
+
+    auto &file_ctx = getContextForFile(c, file);
+    if (!file_ctx.ctx) {
+        file_ctx = {
+            .proc_t = proc_t,
+            .ctx = nk_arena_allocT<Context>(&c->perm_arena),
+        };
+        auto &ctx = *file_ctx.ctx;
+        ctx = {
+            .m = nkl_createModule(c),
+            .src = src,
+            .scope_stack = {},
+            .node_stack = {},
+        };
+
+        pushScope(ctx, main_arena, temp_arena);
+
+        if (decl) {
+            decl->as.module.val.type = proc_t;
+            decl->as.module.scope = file_ctx.ctx->scope_stack;
+            decl->kind = DeclKind_ModuleIncomplete;
+        }
+
+        CHECK(compileAst(ctx));
+    } else if (decl) {
+        decl->as.module.val.type = proc_t;
+        decl->as.module.scope = file_ctx.ctx->scope_stack;
+        decl->kind = DeclKind_ModuleIncomplete;
+    }
+
+    return &file_ctx;
+}
+
 static ValueInfo compileNode(Context &ctx, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -677,10 +728,6 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         }
 
         case n_import: {
-            // TODO: Boilerplate with n_proc
-            auto main_arena = ctx.scope_stack->main_arena;
-            auto temp_arena = ctx.scope_stack->temp_arena;
-
             auto path_idx = get_next_child(next_idx);
             auto &path_n = src.nodes.data[path_idx];
             auto path_str = nkl_getTokenStr(&src.tokens.data[path_n.token_idx], src.text);
@@ -703,48 +750,12 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 import_path = path;
             }
 
-            auto file = getFileId(import_path);
-
-            DEFINE(src, nkl_getSource(nkl, file));
-
-            // TODO: Hardcoded word size
-            auto proc_t = nkl_get_proc(
-                nkl,
-                8,
-                NklProcInfo{
-                    .param_types = {},
-                    .ret_t = nkl_get_void(nkl),
-                    .call_conv = NkCallConv_Nk,
-                    .flags = {},
-                });
-
-            auto &file_ctx = getContextForFile(c, file);
-            if (!file_ctx.ctx) {
-                file_ctx.ctx = nk_arena_allocT<Context>(&c->perm_arena);
-                *file_ctx.ctx = {
-                    .m = nkl_createModule(c),
-                    .src = src,
-                    .scope_stack = {},
-                    .node_stack = {},
-                };
-
-                pushScope(*file_ctx.ctx, main_arena, temp_arena);
-
-                if (decl) {
-                    decl->as.module.val.type = proc_t;
-                    decl->as.module.scope = file_ctx.ctx->scope_stack;
-                    decl->kind = DeclKind_ModuleIncomplete;
-                }
-
-                CHECK(compileAst(*file_ctx.ctx));
-            } else if (decl) {
-                decl->as.module.val.type = proc_t;
-                decl->as.module.scope = file_ctx.ctx->scope_stack;
-                decl->kind = DeclKind_ModuleIncomplete;
-            }
+            DEFINE(
+                file_ctx, importFile(c, import_path, ctx.scope_stack->main_arena, ctx.scope_stack->temp_arena, decl));
 
             // TODO: Returning null as proc value
-            return {{.module{.data = nullptr, .scope = file_ctx.ctx->scope_stack}}, proc_t, ValueKind_Module};
+            return {
+                {.module{.data = nullptr, .scope = file_ctx->ctx->scope_stack}}, file_ctx->proc_t, ValueKind_Module};
         }
 
         case n_int: {
@@ -981,41 +992,15 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     NK_LOG_TRC("%s", __func__);
 
     auto c = m->c;
-    auto nkl = c->nkl;
 
     nkl_errorStateEquip(&c->errors);
     defer {
         nkl_errorStateUnequip();
     };
 
-    auto file = getFileId(filename);
+    DEFINE(file_ctx, importFile(c, filename, &c->perm_arena, &c->temp_arenas[0], nullptr));
 
-    auto src = nkl_getSource(nkl, file);
+    // TODO: Merge `file_ctx->ctx->m` into `m`
 
-    if (nkl_getErrorCount()) {
-        return false;
-    }
-
-    auto &file_ctx = getContextForFile(c, file);
-    if (file_ctx.ctx) {
-        nkl_reportError(NK_ATOM_INVALID, nullptr, "file `%s` has already been compiled", nk_atom2cs(file));
-        return false;
-    }
-
-    file_ctx.ctx = nk_arena_allocT<Context>(&c->perm_arena);
-    *file_ctx.ctx = {
-        .m = nkl_createModule(c),
-        .src = src,
-        .scope_stack = {},
-        .node_stack = {},
-    };
-
-    pushScope(*file_ctx.ctx, &c->perm_arena, &c->temp_arenas[0]);
-
-    if (compileAst(*file_ctx.ctx)) {
-        // TODO: Merge `file_ctx.module` into `m`
-        return true;
-    }
-
-    return false;
+    return true;
 }
