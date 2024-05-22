@@ -1,0 +1,5 @@
+(context (context (import "imported.nkl") bar) A)
+(call (import "imported.nkl") [])
+
+/* @output
+@endoutput */

@@ -154,6 +154,7 @@ enum ValueKind {
     ValueKind_Decl,
     ValueKind_Instr,
     ValueKind_Module,
+    ValueKind_Ref,
 };
 
 struct ValueInfo {
@@ -711,6 +712,22 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
         }
 
+        case n_f32: {
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = nkl_get_numeric(nkl, Float32);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
+        }
+
+        case n_f64: {
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = nkl_get_numeric(nkl, Float32);
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
+        }
+
         case n_id: {
             auto token = &src.tokens.data[node.token_idx];
             auto name_str = nkl_getTokenStr(token, src.text);
@@ -772,6 +789,60 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 CHECK(compileStmt(ctx, get_next_child(next_idx)));
             }
             break;
+        }
+
+        case n_member: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+
+            if (lhs.type->tclass != NklType_Struct) {
+                auto node = &src.nodes.data[lhs_idx];
+                auto token = &src.tokens.data[node->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "struct expected"), ValueInfo{};
+            }
+
+            auto &name_n = src.nodes.data[rhs_idx];
+            auto token = &src.tokens.data[name_n.token_idx];
+            auto name_str = nkl_getTokenStr(token, src.text);
+            auto name = nk_s2atom(name_str);
+
+            NklField const *found_field = nullptr;
+
+            for (auto &field : nk_iterate(lhs.type->as.strct.fields)) {
+                if (field.name == name) {
+                    found_field = &field;
+                }
+            }
+
+            if (!found_field) {
+                // TODO: Improve error msg
+                NKSB_FIXED_BUFFER(sb, 1024);
+                nkl_type_inspect(lhs.type, nksb_getStream(&sb));
+                return nkl_reportError(
+                           src.file,
+                           token,
+                           "no field named `" NKS_FMT "` in `" NKS_FMT "`",
+                           NKS_ARG(name_str),
+                           NKS_ARG(sb)),
+                       ValueInfo{};
+            }
+
+            // TODO: Returning null ref
+            return {{}, found_field->type, ValueKind_Ref};
+        }
+
+        case n_mul: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+            // TODO: Assuming equal and correct types in mul
+            NK_LOG_INF("IR: mul {lhs}, {rhs}");
+            return {{.instr{}}, lhs.type, ValueKind_Instr};
         }
 
         case n_proc: {
@@ -943,6 +1014,58 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto str = nks_copyNt(nk_arena_getAllocator(&c->perm_arena), text);
             return ValueInfo{{.cnst{(void *)str.data}}, str_t, ValueKind_Const};
+        }
+
+        case n_struct: {
+            auto params_idx = get_next_child(next_idx);
+
+            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+
+            NkDynArray(NklField) fields{NKDA_INIT(temp_alloc)};
+
+            // TODO: Boilerplate in param compilation
+            auto const &params_n = src.nodes.data[params_idx];
+            auto next_param_idx = params_idx + 1;
+            for (size_t i = 0; i < params_n.arity; i++) {
+                auto param_idx = get_next_child(next_param_idx) + 1;
+
+                auto name_idx = get_next_child(param_idx);
+                auto type_idx = get_next_child(param_idx);
+
+                auto name_n = &src.nodes.data[name_idx];
+                auto name_token = &src.tokens.data[name_n->token_idx];
+                auto name_str = nkl_getTokenStr(name_token, src.text);
+                auto name = nk_s2atom(name_str);
+
+                DEFINE(type_v, compileNode(ctx, type_idx));
+
+                if (type_v.type->tclass != NklType_Typeref) {
+                    auto type_n = &src.nodes.data[type_idx];
+                    auto token = &src.tokens.data[type_n->token_idx];
+                    // TODO: Improve error message
+                    return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                }
+
+                if (!isValueKnown(type_v)) {
+                    auto type_n = &src.nodes.data[type_idx];
+                    auto token = &src.tokens.data[type_n->token_idx];
+                    // TODO: Improve error message
+                    return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                }
+
+                auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
+
+                nkda_append(&fields, NklField{name, type});
+            }
+
+            auto struct_t = nkl_get_struct(nkl, {NK_SLICE_INIT(fields)});
+
+            auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
+            *pvalue = struct_t;
+
+            // TODO: Hardcoded word size
+            auto type_t = nkl_get_typeref(nkl, 8);
+            return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
         }
 
         case n_void: {
