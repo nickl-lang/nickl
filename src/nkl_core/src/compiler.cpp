@@ -507,6 +507,18 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return {{.instr{}}, lhs.type, ValueKind_Instr};
         }
 
+        case n_assign: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+
+            // TODO: Implement store proc
+            NK_LOG_INF("IR: mov {lhs}, {rhs}");
+            return {{.instr{}}, lhs.type, ValueKind_Instr};
+        }
+
         case n_call: {
             auto lhs_idx = get_next_child(next_idx);
             auto args_idx = get_next_child(next_idx);
@@ -782,6 +794,17 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             int res = sscanf(token_str.data, "%" SCNi64, pvalue);
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
             return ValueInfo{{.cnst{pvalue}}, nkl_get_numeric(nkl, Int64), ValueKind_Const};
+        }
+
+        case n_less: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+            // TODO: Assuming equal and correct types in add
+            NK_LOG_INF("IR: less {lhs}, {rhs}");
+            return {{.instr{}}, nkl_get_bool(nkl), ValueKind_Instr};
         }
 
         case n_list: {
@@ -1068,12 +1091,67 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
         }
 
+        case n_var: {
+            auto name_idx = get_next_child(next_idx);
+            auto type_idx = get_next_child(next_idx);
+
+            auto const &name_n = src.nodes.data[name_idx];
+            auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
+
+            DEFINE(type_v, compileNode(ctx, type_idx));
+
+            if (type_v.type->tclass != NklType_Typeref) {
+                auto type_n = &src.nodes.data[type_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+            }
+
+            if (!isValueKnown(type_v)) {
+                auto type_n = &src.nodes.data[type_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+            }
+
+            auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
+
+            CHECK(defineLocal(ctx, name, type));
+
+            return ValueInfo{};
+        }
+
         case n_void: {
             auto pvalue = nk_arena_allocT<nkltype_t>(&c->perm_arena);
             *pvalue = nkl_get_void(nkl);
             // TODO: Hardcoded word size
             auto type_t = nkl_get_typeref(nkl, 8);
             return ValueInfo{{.cnst{pvalue}}, type_t, ValueKind_Const};
+        }
+
+        case n_while: {
+            auto cond_idx = get_next_child(next_idx);
+            auto body_idx = get_next_child(next_idx);
+
+            NK_LOG_INF("IR: loop:");
+
+            DEFINE(cond, compileNode(ctx, cond_idx));
+
+            if (cond.type->tclass != NklType_Bool) {
+                auto type_n = &src.nodes.data[cond_idx];
+                auto token = &src.tokens.data[type_n->token_idx];
+                // TODO: Improve error message
+                return nkl_reportError(src.file, token, "bool expected"), ValueInfo{};
+            }
+
+            NK_LOG_INF("IR: jpmpz {cond}, endloop");
+
+            CHECK(compileStmt(ctx, body_idx));
+
+            NK_LOG_INF("IR: jmp loop");
+            NK_LOG_INF("IR: endloop:");
+
+            break;
         }
 
         default: {

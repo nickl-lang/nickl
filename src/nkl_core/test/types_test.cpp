@@ -72,6 +72,24 @@ TEST_F(types, array) {
     EXPECT_EQ("[3]f64", nk_s2stdStr({NKS_INIT(sb)}));
 }
 
+TEST_F(types, bool) {
+    auto bool_t = nkl_get_bool(nkl);
+
+    auto i8_t = nkl_get_numeric(nkl, Int8);
+
+    EXPECT_EQ(bool_t->id, nkl_get_bool(nkl)->id);
+    EXPECT_EQ(bool_t->ir_type.id, nkl_get_bool(nkl)->ir_type.id);
+
+    EXPECT_EQ(bool_t->tclass, NklType_Bool);
+    ASSERT_TRUE(bool_t->underlying_type);
+    EXPECT_EQ(bool_t->underlying_type->id, i8_t->id);
+    ASSERT_EQ(bool_t->ir_type.id, i8_t->ir_type.id);
+
+    NKSB_FIXED_BUFFER(sb, 64);
+    nkl_type_inspect(bool_t, nksb_getStream(&sb));
+    EXPECT_EQ("bool", nk_s2stdStr({NKS_INIT(sb)}));
+}
+
 TEST_F(types, enum) {
     auto i32_t = nkl_get_numeric(nkl, Int32);
 

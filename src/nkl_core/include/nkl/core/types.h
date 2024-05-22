@@ -15,6 +15,7 @@ typedef struct NklType_T const *nkltype_t;
 typedef enum {
     NklType_Any,
     NklType_Array,
+    NklType_Bool,
     NklType_Enum,
     NklType_Numeric,
     NklType_Pointer,
@@ -76,6 +77,7 @@ void nkl_types_free(NklState nkl);
 
 nkltype_t nkl_get_any(NklState nkl, usize word_size);
 nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count);
+nkltype_t nkl_get_bool(NklState nkl);
 nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type);
 nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info);

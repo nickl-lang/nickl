@@ -298,6 +298,33 @@ nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count) {
     return res.type;
 }
 
+nkltype_t nkl_get_bool(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
+    NklTypeClass const tclass = NklType_Bool;
+
+    TypeSearchResult res;
+    NK_ARENA_SCOPE(&nkl->types.tmp_arena) {
+        ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
+        PUSH_VAL(&fp, u8, TypeSubset_Nkl);
+        PUSH_VAL(&fp, u8, tclass);
+
+        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+
+        if (res.inserted) {
+            nkltype_t const underlying_type = nkl_get_numeric(nkl, Int8);
+
+            res.type->ir_type = underlying_type->ir_type;
+            res.type->as = underlying_type->as;
+            res.type->tclass = tclass;
+            res.type->id = res.id;
+            res.type->underlying_type = underlying_type;
+        }
+    }
+
+    return res.type;
+}
+
 nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields) {
     NK_LOG_TRC("%s", __func__);
 
@@ -658,6 +685,9 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
             nkl_type_inspect((nkltype_t)info.type, out);
             break;
         }
+        case NklType_Bool:
+            nk_stream_printf(out, "bool");
+            break;
         case NklType_Enum: {
             nk_stream_printf(out, "enum { ");
             nkltype_t union_t = (nkltype_t)type->ir_type.as.aggr.elems.data[0].type;
