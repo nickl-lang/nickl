@@ -147,6 +147,10 @@ FileContext &getContextForFile(NklCompiler c, NkAtom file) {
     return found->val;
 }
 
+struct Ref {
+    nkltype_t type;
+};
+
 enum ValueKind {
     ValueKind_Void,
 
@@ -164,12 +168,14 @@ struct ValueInfo {
         } cnst;
         Decl *decl;
         struct {
-            int dummy;
+            Ref dst;
+            char const *tmp_instr_name;
         } instr;
         struct {
             void *data;
             Scope *scope;
         } module;
+        Ref ref;
     } as;
     nkltype_t type;
     ValueKind kind;
@@ -178,6 +184,42 @@ struct ValueInfo {
 struct NklModule_T {
     NklCompiler c;
 };
+
+static Ref asRef(ValueInfo const &val) {
+    Ref ref{};
+
+    switch (val.kind) {
+        case ValueKind_Const:
+            // TODO: Actually create a const ref
+            ref.type = val.type;
+            break;
+
+        case ValueKind_Decl:
+            // TODO: Actually create a ref from decl
+            ref.type = val.type;
+            break;
+
+        case ValueKind_Instr:
+            // TODO: Replace dst with a local ref if needed
+            // TODO: Emit instructions
+            NK_LOG_INF("IR: %s", val.as.instr.tmp_instr_name);
+            ref = val.as.instr.dst;
+            break;
+
+        case ValueKind_Module:
+            ref.type = val.type;
+            break;
+
+        case ValueKind_Ref:
+            ref = val.as.ref;
+            break;
+
+        default:
+            break;
+    }
+
+    return ref;
+}
 
 static ValueInfo compileNode(Context &ctx, usize node_idx);
 static Void compileStmt(Context &ctx, usize node_idx);
@@ -501,10 +543,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto rhs_idx = get_next_child(next_idx);
 
             DEFINE(lhs, compileNode(ctx, lhs_idx));
+            asRef(lhs);
             DEFINE(rhs, compileNode(ctx, rhs_idx));
+            asRef(rhs);
             // TODO: Assuming equal and correct types in add
-            NK_LOG_INF("IR: add {lhs}, {rhs}");
-            return {{.instr{}}, lhs.type, ValueKind_Instr};
+            return {{.instr{{}, "add {lhs}, {rhs}"}}, lhs.type, ValueKind_Instr};
         }
 
         case n_assign: {
@@ -512,11 +555,12 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto rhs_idx = get_next_child(next_idx);
 
             DEFINE(lhs, compileNode(ctx, lhs_idx));
+            asRef(lhs);
             DEFINE(rhs, compileNode(ctx, rhs_idx));
+            asRef(rhs);
 
             // TODO: Implement store proc
-            NK_LOG_INF("IR: mov {lhs}, {rhs}");
-            return {{.instr{}}, lhs.type, ValueKind_Instr};
+            return {{.instr{{}, "mov {lhs}, {rhs}"}}, lhs.type, ValueKind_Instr};
         }
 
         case n_call: {
@@ -542,9 +586,10 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 APPEND(&args, compileNode(ctx, arg_idx));
             }
 
-            NK_LOG_INF("IR: call {lhs}, [{args}...]");
-
-            return {{.instr{}}, (nkltype_t)lhs.type->ir_type.as.proc.info.ret_t, ValueKind_Instr};
+            return {
+                {.instr{{}, "call {lhs}, [{args}...]"}},
+                (nkltype_t)lhs.type->ir_type.as.proc.info.ret_t,
+                ValueKind_Instr};
         }
 
         case n_context: {
@@ -801,10 +846,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto rhs_idx = get_next_child(next_idx);
 
             DEFINE(lhs, compileNode(ctx, lhs_idx));
+            asRef(lhs);
             DEFINE(rhs, compileNode(ctx, rhs_idx));
+            asRef(rhs);
             // TODO: Assuming equal and correct types in add
-            NK_LOG_INF("IR: less {lhs}, {rhs}");
-            return {{.instr{}}, nkl_get_bool(nkl), ValueKind_Instr};
+            return {{.instr{{}, "less {lhs}, {rhs}"}}, nkl_get_bool(nkl), ValueKind_Instr};
         }
 
         case n_list: {
@@ -862,10 +908,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto rhs_idx = get_next_child(next_idx);
 
             DEFINE(lhs, compileNode(ctx, lhs_idx));
+            asRef(lhs);
             DEFINE(rhs, compileNode(ctx, rhs_idx));
+            asRef(rhs);
             // TODO: Assuming equal and correct types in mul
-            NK_LOG_INF("IR: mul {lhs}, {rhs}");
-            return {{.instr{}}, lhs.type, ValueKind_Instr};
+            return {{.instr{{}, "mul {lhs}, {rhs}"}}, lhs.type, ValueKind_Instr};
         }
 
         case n_proc: {
@@ -1002,6 +1049,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             if (node.arity) {
                 auto arg_idx = get_next_child(next_idx);
                 DEFINE(arg, compileNode(ctx, arg_idx));
+                asRef(arg);
                 NK_LOG_INF("IR: return {arg}");
             } else {
                 NK_LOG_INF("IR: return");
@@ -1021,7 +1069,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             };
 
             auto child_idx = get_next_child(next_idx);
-            CHECK(compileNode(ctx, child_idx));
+            CHECK(compileStmt(ctx, child_idx));
 
             return ValueInfo{};
         }
@@ -1168,7 +1216,9 @@ static Void compileStmt(Context &ctx, usize node_idx) {
     NK_LOG_TRC("%s", __func__);
 
     DEFINE(val, compileNode(ctx, node_idx));
+    auto ref = asRef(val);
     if (val.kind != ValueKind_Void && val.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
+        // TODO: Inspect ref instead of value?
         NKSB_FIXED_BUFFER(sb, 1024);
         nkl_type_inspect(val.type, nksb_getStream(&sb));
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>:" NKS_FMT, NKS_ARG(sb));
