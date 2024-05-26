@@ -110,6 +110,10 @@ NK_INLINE NklTypeClass nklt_tclass(nkltype_t type) {
     return type->tclass;
 }
 
+NK_INLINE u64 nklt_sizeof(nkltype_t type) {
+    return type->ir_type.size;
+}
+
 #define nklval_as(TYPE, VAL) (*(TYPE *)nklval_data(VAL))
 
 #ifdef __cplusplus

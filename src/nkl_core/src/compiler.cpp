@@ -148,6 +148,7 @@ FileContext &getContextForFile(NklCompiler c, NkAtom file) {
 }
 
 struct Ref {
+    bool tmp_nonempty;
     nkltype_t type;
 };
 
@@ -189,25 +190,34 @@ static Ref asRef(ValueInfo const &val) {
     Ref ref{};
 
     switch (val.kind) {
+        case ValueKind_Void:
+            break;
+
         case ValueKind_Const:
             // TODO: Actually create a const ref
-            ref.type = val.type;
+            ref = {true, val.type};
             break;
 
         case ValueKind_Decl:
             // TODO: Actually create a ref from decl
-            ref.type = val.type;
+            ref = {true, val.type};
             break;
 
-        case ValueKind_Instr:
-            // TODO: Replace dst with a local ref if needed
-            // TODO: Emit instructions
-            NK_LOG_INF("IR: %s", val.as.instr.tmp_instr_name);
-            ref = val.as.instr.dst;
+        case ValueKind_Instr: {
+            auto instr = val.as.instr;
+            auto &dst = instr.dst;
+            if (!dst.tmp_nonempty && nklt_sizeof(val.type)) {
+                // TODO: Actually replace dst with a local ref
+                dst = {true, val.type};
+            }
+            // TODO: Actually emit instructions
+            NK_LOG_INF("IR: %s", instr.tmp_instr_name);
+            ref = dst;
             break;
+        }
 
         case ValueKind_Module:
-            ref.type = val.type;
+            ref = {true, val.type};
             break;
 
         case ValueKind_Ref:
@@ -215,7 +225,8 @@ static Ref asRef(ValueInfo const &val) {
             break;
 
         default:
-            break;
+            nk_assert(!"unreachable");
+            return {};
     }
 
     return ref;
@@ -430,18 +441,18 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
-bool isModule(ValueInfo const &val) {
+static bool isModule(ValueInfo const &val) {
     return val.kind == ValueKind_Module ||
            (val.kind == ValueKind_Decl &&
             (val.as.decl->kind == DeclKind_Module || val.as.decl->kind == DeclKind_ModuleIncomplete));
 }
 
-Scope *getModuleScope(ValueInfo const &val) {
+static Scope *getModuleScope(ValueInfo const &val) {
     nk_assert(isModule(val) && "module expected");
     return val.kind == ValueKind_Module ? val.as.module.scope : val.as.decl->as.module.scope;
 }
 
-FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_arena, NkArena *temp_arena, Decl *decl) {
+static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_arena, NkArena *temp_arena, Decl *decl) {
     auto nkl = c->nkl;
 
     auto file = getFileId(filename);
@@ -489,6 +500,51 @@ FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_arena, N
     }
 
     return &file_ctx;
+}
+
+static ValueInfo store(Ref const &dst, ValueInfo src) {
+    auto const dst_type = dst.type;
+    auto const src_type = src.type;
+    if (nklt_sizeof(src_type)) {
+        if (src.kind == ValueKind_Instr && !src.as.instr.dst.tmp_nonempty) {
+            src.as.instr.dst = dst;
+        } else {
+            asRef(src);
+            // TODO: Returning fake mov instr
+            src = {{.instr{{true, dst_type}, "mov {lhs}, {rhs}"}}, dst_type, ValueKind_Instr};
+        }
+    }
+    auto const src_ref = asRef(src);
+    return {{.ref = src_ref}, src_ref.type, ValueKind_Ref};
+}
+
+static ValueInfo getLvalueRef(Context &ctx, usize node_idx) {
+    auto const &node = ctx.src->nodes.data[node_idx];
+
+    if (node.id == n_id) {
+        auto token = &ctx.src->tokens.data[node.token_idx];
+        auto name_str = nkl_getTokenStr(token, ctx.src->text);
+        auto name = nk_s2atom(name_str);
+        auto &decl = resolve(ctx.scope_stack, name);
+        switch (decl.kind) {
+            case DeclKind_Local:
+                // TODO: Returning fake ref, make frame ref
+                return {{.ref = {true, decl.as.local.type}}, decl.as.local.type, ValueKind_Ref};
+            case DeclKind_Undefined:
+                return nkl_reportError(ctx.src->file, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)),
+                       ValueInfo{};
+            case DeclKind_Param:
+                return nkl_reportError(ctx.src->file, token, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str)),
+                       ValueInfo{};
+            default:
+                NK_LOG_ERR("unhandled decl type");
+                nk_assert(!"unreachable");
+                return {};
+        }
+    } else {
+        // TODO: Link token in error message
+        return nkl_reportError(ctx.src->file, nullptr, "invalid lvalue"), ValueInfo{};
+    }
 }
 
 static ValueInfo compileNode(Context &ctx, usize node_idx) {
@@ -554,13 +610,10 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto lhs_idx = get_next_child(next_idx);
             auto rhs_idx = get_next_child(next_idx);
 
-            DEFINE(lhs, compileNode(ctx, lhs_idx));
-            asRef(lhs);
+            DEFINE(lhs, getLvalueRef(ctx, lhs_idx));
             DEFINE(rhs, compileNode(ctx, rhs_idx));
-            asRef(rhs);
 
-            // TODO: Implement store proc
-            return {{.instr{{}, "mov {lhs}, {rhs}"}}, lhs.type, ValueKind_Instr};
+            return store(asRef(lhs), rhs);
         }
 
         case n_call: {
@@ -899,8 +952,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                        ValueInfo{};
             }
 
-            // TODO: Returning null ref
-            return {{}, found_field->type, ValueKind_Ref};
+            // TODO: Returning fake ref
+            return {{.ref = {true, found_field->type}}, found_field->type, ValueKind_Ref};
         }
 
         case n_mul: {
@@ -1166,6 +1219,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             CHECK(defineLocal(ctx, name, type));
 
+            // TODO: Zero init the var
+
             return ValueInfo{};
         }
 
@@ -1184,6 +1239,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             NK_LOG_INF("IR: loop:");
 
             DEFINE(cond, compileNode(ctx, cond_idx));
+            asRef(cond);
 
             if (cond.type->tclass != NklType_Bool) {
                 auto type_n = &src.nodes.data[cond_idx];
@@ -1217,10 +1273,10 @@ static Void compileStmt(Context &ctx, usize node_idx) {
 
     DEFINE(val, compileNode(ctx, node_idx));
     auto ref = asRef(val);
-    if (val.kind != ValueKind_Void && val.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
+    if (ref.tmp_nonempty && ref.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
         // TODO: Inspect ref instead of value?
         NKSB_FIXED_BUFFER(sb, 1024);
-        nkl_type_inspect(val.type, nksb_getStream(&sb));
+        nkl_type_inspect(ref.type, nksb_getStream(&sb));
         NK_LOG_DBG("Value ignored: <TODO: Inspect value>:" NKS_FMT, NKS_ARG(sb));
     }
 
