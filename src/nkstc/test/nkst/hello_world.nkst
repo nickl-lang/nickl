@@ -1,6 +1,6 @@
-(define printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(const printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
 
-(define main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(const main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (call printf ["Hello, World!\n"])
     (return 0)
 ]))

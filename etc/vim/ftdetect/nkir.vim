@@ -1,1 +1,1 @@
-au BufRead,BufNewFile *.nkir,*.nkst set filetype=nkir
+au BufRead,BufNewFile *.nkir set filetype=nkir

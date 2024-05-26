@@ -1,5 +1,0 @@
-(define bar (proc [] (void) [
-    (define A 42)
-]))
-
-(run ())

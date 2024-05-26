@@ -526,7 +526,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
     Decl *decl = nullptr;
     auto parent_idx = parentNodeIdx(ctx);
-    if (parent_idx != -1u && src.nodes.data[parent_idx].id == n_define) {
+    if (parent_idx != -1u && src.nodes.data[parent_idx].id == n_const) {
         auto next_idx = parent_idx + 1;
 
         auto name_idx = get_next_child(next_idx);
@@ -592,6 +592,18 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 ValueKind_Instr};
         }
 
+        case n_const: {
+            auto name_idx = get_next_child(next_idx);
+            auto value_idx = get_next_child(next_idx);
+
+            auto const &name_n = src.nodes.data[name_idx];
+            auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
+
+            CHECK(defineComptimeUnresolved(ctx, name, value_idx));
+
+            return ValueInfo{};
+        }
+
         case n_context: {
             auto lhs_idx = get_next_child(next_idx);
             auto name_idx = get_next_child(next_idx);
@@ -623,18 +635,6 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             }
 
             break;
-        }
-
-        case n_define: {
-            auto name_idx = get_next_child(next_idx);
-            auto value_idx = get_next_child(next_idx);
-
-            auto const &name_n = src.nodes.data[name_idx];
-            auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
-
-            CHECK(defineComptimeUnresolved(ctx, name, value_idx));
-
-            return ValueInfo{};
         }
 
         case n_escaped_string: {

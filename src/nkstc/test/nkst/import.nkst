@@ -1,5 +1,5 @@
-(context (context (import "imported.nkl") bar) A)
-(call (import "imported.nkl") [])
+(context (context (import "imported.nkst") bar) A)
+(call (import "imported.nkst") [])
 
 /* @output
 @endoutput */

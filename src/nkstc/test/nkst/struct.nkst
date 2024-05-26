@@ -1,9 +1,9 @@
-(define Vec2 (struct [
+(const Vec2 (struct [
     (param x (f64))
     (param y (f64))
 ]))
 
-(define dot (proc [(param a Vec2) (param b Vec2)] (f64) [
+(const dot (proc [(param a Vec2) (param b Vec2)] (f64) [
     (return (add (mul (member a x) (member b x)) (mul (member a y) (member b y))))
 ]))
 
