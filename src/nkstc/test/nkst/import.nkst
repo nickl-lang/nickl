@@ -2,4 +2,9 @@
 (call (import "imported.nkst") [])
 
 /* @output
+RUN
+bar {
+}
+call
+
 @endoutput */

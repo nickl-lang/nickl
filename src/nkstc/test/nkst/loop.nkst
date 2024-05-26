@@ -12,4 +12,15 @@
 main
 
 /* @output
+main {
+loop:
+cmp lt
+jmpz endloop
+call
+add
+jmp loop
+endloop:
+return
+}
+
 @endoutput */

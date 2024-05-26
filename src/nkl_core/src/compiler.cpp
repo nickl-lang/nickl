@@ -211,7 +211,7 @@ static Ref asRef(ValueInfo const &val) {
                 dst = {true, val.type};
             }
             // TODO: Actually emit instructions
-            NK_LOG_INF("IR: %s", instr.tmp_instr_name);
+            printf("%s\n", instr.tmp_instr_name);
             ref = dst;
             break;
         }
@@ -511,7 +511,7 @@ static ValueInfo store(Ref const &dst, ValueInfo src) {
         } else {
             asRef(src);
             // TODO: Returning fake mov instr
-            src = {{.instr{{true, dst_type}, "mov {lhs}, {rhs}"}}, dst_type, ValueKind_Instr};
+            src = {{.instr{{true, dst_type}, "mov"}}, dst_type, ValueKind_Instr};
         }
     }
     auto const src_ref = asRef(src);
@@ -581,14 +581,15 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
     };
 
     Decl *decl = nullptr;
+    NkAtom decl_name;
     auto parent_idx = parentNodeIdx(ctx);
     if (parent_idx != -1u && src.nodes.data[parent_idx].id == n_const) {
         auto next_idx = parent_idx + 1;
 
         auto name_idx = get_next_child(next_idx);
         auto const &name_n = src.nodes.data[name_idx];
-        auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
-        decl = &resolve(ctx.scope_stack, name);
+        decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
+        decl = &resolve(ctx.scope_stack, decl_name);
 
         nk_assert(decl->kind == DeclKind_ComptimeIncomplete);
     }
@@ -603,7 +604,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(rhs, compileNode(ctx, rhs_idx));
             asRef(rhs);
             // TODO: Assuming equal and correct types in add
-            return {{.instr{{}, "add {lhs}, {rhs}"}}, lhs.type, ValueKind_Instr};
+            return {{.instr{{}, "add"}}, lhs.type, ValueKind_Instr};
         }
 
         case n_assign: {
@@ -639,10 +640,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 APPEND(&args, compileNode(ctx, arg_idx));
             }
 
-            return {
-                {.instr{{}, "call {lhs}, [{args}...]"}},
-                (nkltype_t)lhs.type->ir_type.as.proc.info.ret_t,
-                ValueKind_Instr};
+            return {{.instr{{}, "call"}}, (nkltype_t)lhs.type->ir_type.as.proc.info.ret_t, ValueKind_Instr};
         }
 
         case n_const: {
@@ -903,7 +901,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(rhs, compileNode(ctx, rhs_idx));
             asRef(rhs);
             // TODO: Assuming equal and correct types in add
-            return {{.instr{{}, "less {lhs}, {rhs}"}}, nkl_get_bool(nkl), ValueKind_Instr};
+            return {{.instr{{}, "cmp lt"}}, nkl_get_bool(nkl), ValueKind_Instr};
         }
 
         case n_list: {
@@ -965,7 +963,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(rhs, compileNode(ctx, rhs_idx));
             asRef(rhs);
             // TODO: Assuming equal and correct types in mul
-            return {{.instr{{}, "mul {lhs}, {rhs}"}}, lhs.type, ValueKind_Instr};
+            return {{.instr{{}, "mul"}}, lhs.type, ValueKind_Instr};
         }
 
         case n_proc: {
@@ -1061,7 +1059,9 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 CHECK(defineParam(ctx, param_names.data[i], param_types.data[i]));
             }
 
+            printf("%s {\n", decl ? nk_atom2cs(decl_name) : "anonymous_proc");
             CHECK(compileStmt(ctx, body_idx));
+            printf("}\n");
 
             // TODO: Returning null as proc value
             return {{.module{.data = nullptr, .scope = ctx.scope_stack}}, proc_t, ValueKind_Module};
@@ -1103,15 +1103,15 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 auto arg_idx = get_next_child(next_idx);
                 DEFINE(arg, compileNode(ctx, arg_idx));
                 asRef(arg);
-                NK_LOG_INF("IR: return {arg}");
             } else {
-                NK_LOG_INF("IR: return");
             }
+            printf("return\n");
             return {};
         }
 
         case n_run: {
-            NK_LOG_INF("TODO: running");
+            // TODO: Actually run code
+            printf("RUN\n");
             return {};
         }
 
@@ -1236,7 +1236,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto cond_idx = get_next_child(next_idx);
             auto body_idx = get_next_child(next_idx);
 
-            NK_LOG_INF("IR: loop:");
+            printf("loop:\n");
 
             DEFINE(cond, compileNode(ctx, cond_idx));
             asRef(cond);
@@ -1248,12 +1248,12 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 return nkl_reportError(src.file, token, "bool expected"), ValueInfo{};
             }
 
-            NK_LOG_INF("IR: jpmpz {cond}, endloop");
+            printf("jmpz endloop\n");
 
             CHECK(compileStmt(ctx, body_idx));
 
-            NK_LOG_INF("IR: jmp loop");
-            NK_LOG_INF("IR: endloop:");
+            printf("jmp loop\n");
+            printf("endloop:\n");
 
             break;
         }

@@ -10,4 +10,11 @@
 dot
 
 /* @output
+dot {
+mul
+mul
+add
+return
+}
+
 @endoutput */

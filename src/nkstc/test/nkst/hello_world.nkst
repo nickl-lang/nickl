@@ -8,4 +8,9 @@
 main
 
 /* @output
+main {
+call
+return
+}
+
 @endoutput */
