@@ -373,6 +373,18 @@ static nklval_t getValueFromInfo(ValueInfo const &val) {
             return {};
     }
 }
+NK_PRINTF_LIKE(2, 3) static ValueInfo error(Context &ctx, char const *fmt, ...) {
+    auto src = ctx.src;
+    auto last_node = ctx.node_stack;
+    auto err_token = last_node ? &src->tokens.data[src->nodes.data[last_node->node_idx].token_idx] : nullptr;
+
+    va_list ap;
+    va_start(ap, fmt);
+    nkl_vreportError(ctx.src->file, err_token, fmt, ap);
+    va_end(ap);
+
+    return {};
+}
 
 static ValueInfo resolveComptime(Decl &decl) {
     nk_assert(decl.kind == DeclKind_ComptimeUnresolved);
@@ -388,10 +400,8 @@ static ValueInfo resolveComptime(Decl &decl) {
     DEFINE(val, compileNode(ctx, node_idx));
 
     if (!isValueKnown(val)) {
-        auto node = &ctx.src->nodes.data[node_idx];
-        auto token = &ctx.src->tokens.data[node->token_idx];
         // TODO: Improve error message
-        return nkl_reportError(ctx.src->file, token, "value is not known"), ValueInfo{};
+        return error(ctx, "value is not known");
     }
 
     if (decl.kind == DeclKind_Module || decl.kind == DeclKind_ModuleIncomplete) {
@@ -527,23 +537,27 @@ static ValueInfo getLvalueRef(Context &ctx, usize node_idx) {
         auto name = nk_s2atom(name_str);
         auto &decl = resolve(ctx.scope_stack, name);
         switch (decl.kind) {
+            case DeclKind_Undefined:
+                return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
+
             case DeclKind_Local:
                 // TODO: Returning fake ref, make frame ref
                 return {{.ref = {true, decl.as.local.type}}, decl.as.local.type, ValueKind_Ref};
-            case DeclKind_Undefined:
-                return nkl_reportError(ctx.src->file, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)),
-                       ValueInfo{};
+
+            case DeclKind_Comptime:
+            case DeclKind_ComptimeIncomplete:
+            case DeclKind_ComptimeUnresolved:
+            case DeclKind_Module:
+            case DeclKind_ModuleIncomplete:
             case DeclKind_Param:
-                return nkl_reportError(ctx.src->file, token, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str)),
-                       ValueInfo{};
+                return error(ctx, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str));
             default:
-                NK_LOG_ERR("unhandled decl type");
                 nk_assert(!"unreachable");
                 return {};
         }
     } else {
-        // TODO: Link token in error message
-        return nkl_reportError(ctx.src->file, nullptr, "invalid lvalue"), ValueInfo{};
+        // TODO: Improve error msg
+        return error(ctx, "invalid lvalue");
     }
 }
 
@@ -624,10 +638,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(lhs, compileNode(ctx, lhs_idx));
 
             if (lhs.type->tclass != NklType_Procedure) {
-                auto node = &src.nodes.data[lhs_idx];
-                auto token = &src.tokens.data[node->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "procedure expected"), ValueInfo{};
+                return error(ctx, "procedure expected");
             }
 
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
@@ -662,10 +674,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(lhs, compileNode(ctx, lhs_idx));
 
             if (!isModule(lhs)) {
-                auto node = &src.nodes.data[lhs_idx];
-                auto token = &src.tokens.data[node->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "module expected"), ValueInfo{};
+                return error(ctx, "module expected");
             }
 
             auto scope = getModuleScope(lhs);
@@ -681,8 +691,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             if (found) {
                 return resolveDecl(found->val);
             } else {
-                return nkl_reportError(src.file, name_token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)),
-                       ValueInfo{};
+                return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
             }
 
             break;
@@ -736,17 +745,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 DEFINE(type_v, compileNode(ctx, type_idx));
 
                 if (type_v.type->tclass != NklType_Typeref) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
                     // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                    return error(ctx, "type expected");
                 }
 
                 if (!isValueKnown(type_v)) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
                     // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                    return error(ctx, "value is not known");
                 }
 
                 auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
@@ -758,17 +763,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             // TODO: Boilerplate in type checking
             if (ret_t_v.type->tclass != NklType_Typeref) {
-                auto type_n = &src.nodes.data[ret_t_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                return error(ctx, "type expected");
             }
 
             if (!isValueKnown(ret_t_v)) {
-                auto type_n = &src.nodes.data[ret_t_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                return error(ctx, "value is not known");
             }
 
             auto ret_t = nklval_as(nkltype_t, getValueFromInfo(ret_t_v));
@@ -846,7 +847,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
-                return nkl_reportError(src.file, token, "`" NKS_FMT "` is not defined", NKS_ARG(name_str)), ValueInfo{};
+                return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
             } else {
                 return resolveDecl(decl);
             }
@@ -918,10 +919,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(lhs, compileNode(ctx, lhs_idx));
 
             if (lhs.type->tclass != NklType_Struct) {
-                auto node = &src.nodes.data[lhs_idx];
-                auto token = &src.tokens.data[node->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "struct expected"), ValueInfo{};
+                return error(ctx, "struct expected");
             }
 
             auto &name_n = src.nodes.data[rhs_idx];
@@ -941,13 +940,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 // TODO: Improve error msg
                 NKSB_FIXED_BUFFER(sb, 1024);
                 nkl_type_inspect(lhs.type, nksb_getStream(&sb));
-                return nkl_reportError(
-                           src.file,
-                           token,
-                           "no field named `" NKS_FMT "` in `" NKS_FMT "`",
-                           NKS_ARG(name_str),
-                           NKS_ARG(sb)),
-                       ValueInfo{};
+                return error(ctx, "no field named `" NKS_FMT "` in `" NKS_FMT "`", NKS_ARG(name_str), NKS_ARG(sb));
             }
 
             // TODO: Returning fake ref
@@ -995,17 +988,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 DEFINE(type_v, compileNode(ctx, type_idx));
 
                 if (type_v.type->tclass != NklType_Typeref) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
                     // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                    return error(ctx, "type expected");
                 }
 
                 if (!isValueKnown(type_v)) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
                     // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                    return error(ctx, "value is not known");
                 }
 
                 auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
@@ -1018,17 +1007,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             // TODO: Boilerplate in type checking
             if (ret_t_v.type->tclass != NklType_Typeref) {
-                auto type_n = &src.nodes.data[ret_t_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                return error(ctx, "type expected");
             }
 
             if (!isValueKnown(ret_t_v)) {
-                auto type_n = &src.nodes.data[ret_t_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                return error(ctx, "value is not known");
             }
 
             auto ret_t = nklval_as(nkltype_t, getValueFromInfo(ret_t_v));
@@ -1074,17 +1059,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             // TODO: Boilerplate in type checking
             if (target.type->tclass != NklType_Typeref) {
-                auto type_n = &src.nodes.data[target_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                return error(ctx, "type expected");
             }
 
             if (!isValueKnown(target)) {
-                auto type_n = &src.nodes.data[target_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                return error(ctx, "value is not known");
             }
 
             auto target_t = nklval_as(nkltype_t, getValueFromInfo(target));
@@ -1164,17 +1145,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 DEFINE(type_v, compileNode(ctx, type_idx));
 
                 if (type_v.type->tclass != NklType_Typeref) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
                     // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                    return error(ctx, "type expected");
                 }
 
                 if (!isValueKnown(type_v)) {
-                    auto type_n = &src.nodes.data[type_idx];
-                    auto token = &src.tokens.data[type_n->token_idx];
                     // TODO: Improve error message
-                    return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                    return error(ctx, "value is not known");
                 }
 
                 auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
@@ -1202,17 +1179,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(type_v, compileNode(ctx, type_idx));
 
             if (type_v.type->tclass != NklType_Typeref) {
-                auto type_n = &src.nodes.data[type_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "type expected"), ValueInfo{};
+                return error(ctx, "type expected");
             }
 
             if (!isValueKnown(type_v)) {
-                auto type_n = &src.nodes.data[type_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "value is not known"), ValueInfo{};
+                return error(ctx, "value is not known");
             }
 
             auto type = nklval_as(nkltype_t, getValueFromInfo(type_v));
@@ -1221,7 +1194,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             // TODO: Zero init the var
 
-            return ValueInfo{};
+            return {{.ref = {true, type}}, type, ValueKind_Ref};
         }
 
         case n_void: {
@@ -1242,10 +1215,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             asRef(cond);
 
             if (cond.type->tclass != NklType_Bool) {
-                auto type_n = &src.nodes.data[cond_idx];
-                auto token = &src.tokens.data[type_n->token_idx];
                 // TODO: Improve error message
-                return nkl_reportError(src.file, token, "bool expected"), ValueInfo{};
+                return error(ctx, "bool expected");
             }
 
             printf("jmpz endloop\n");
@@ -1259,8 +1230,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         }
 
         default: {
-            auto token = &src.tokens.data[node.token_idx];
-            return nkl_reportError(src.file, token, "unknown AST node #%s", nk_atom2cs(node.id)), ValueInfo{};
+            return error(ctx, "unknown AST node #%s", nk_atom2cs(node.id));
         }
     }
 
