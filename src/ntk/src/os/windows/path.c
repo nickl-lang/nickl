@@ -1,6 +1,7 @@
 #include "ntk/os/path.h"
 
 #include <direct.h>
+#include <shlwapi.h>
 #include <stdlib.h>
 
 #include "common.h"
@@ -26,4 +27,8 @@ i32 nk_fullPath(char *buf, char const *path) {
 }
 i32 nk_getCwd(char *buf, usize size) {
     return _getcwd(buf, size) ? -1 : 0;
+}
+
+bool nk_pathIsRelative(char const *path) {
+    return PathIsRelativeA(path);
 }

@@ -2,7 +2,7 @@ set(NKIRC_COMPILE_TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/compile_test.sh")
 
 function(def_nkirc_run_test)
     set(options)
-    set(oneValueArgs FILE ARGS PLATFORM)
+    set(oneValueArgs FILE PLATFORM)
     set(multiValueArgs)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})

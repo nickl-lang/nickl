@@ -3,9 +3,7 @@
 
 #include "nkb/common.h"
 #include "nkl/core/nickl.h"
-#include "ntk/allocator.h"
 #include "ntk/atom.h"
-#include "ntk/dyn_array.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus
@@ -17,6 +15,7 @@ typedef struct NklType_T const *nkltype_t;
 typedef enum {
     NklType_Any,
     NklType_Array,
+    NklType_Bool,
     NklType_Enum,
     NklType_Numeric,
     NklType_Pointer,
@@ -78,6 +77,7 @@ void nkl_types_free(NklState nkl);
 
 nkltype_t nkl_get_any(NklState nkl, usize word_size);
 nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count);
+nkltype_t nkl_get_bool(NklState nkl);
 nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type);
 nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info);
@@ -93,6 +93,28 @@ nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_void(NklState nkl);
 
 void nkl_type_inspect(nkltype_t type, NkStream out);
+
+NK_INLINE void *nklval_data(nklval_t val) {
+    return val.data;
+}
+
+NK_INLINE nkltype_t nklval_typeof(nklval_t val) {
+    return val.type;
+}
+
+NK_INLINE u32 nklt_typeid(nkltype_t type) {
+    return type->id;
+}
+
+NK_INLINE NklTypeClass nklt_tclass(nkltype_t type) {
+    return type->tclass;
+}
+
+NK_INLINE u64 nklt_sizeof(nkltype_t type) {
+    return type->ir_type.size;
+}
+
+#define nklval_as(TYPE, VAL) (*(TYPE *)nklval_data(VAL))
 
 #ifdef __cplusplus
 }

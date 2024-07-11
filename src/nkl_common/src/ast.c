@@ -4,7 +4,7 @@
 #include "ntk/string.h"
 
 static void inspectNode(u32 idx, NklSource src, NkStream out, u32 indent) {
-    nk_stream_printf(out, "\n");
+    nk_stream_printf(out, "\n%5u | ", idx);
 
     for (u32 i = 0; i < indent; i++) {
         nk_stream_printf(out, "  ");

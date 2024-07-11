@@ -1,8 +1,6 @@
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 
 #include <gtest/gtest.h>
-
-#include "ntk/path.h"
 
 static void fixPath(char *buf, char const *path) {
     usize i = 0;
@@ -32,6 +30,7 @@ TEST(utils, relative_path) {
     TEST_RELPATH("", "", "");
 
     TEST_RELPATH("/", "/", ".");
+    TEST_RELPATH("/one/two", "/one/two", ".");
     TEST_RELPATH("/one/two", "/one", "two");
     TEST_RELPATH("/one/two/three", "/one", "two/three");
     TEST_RELPATH("/one", "/one/two", "..");
@@ -39,9 +38,12 @@ TEST(utils, relative_path) {
     TEST_RELPATH("/one/two/three", "/one/four", "../two/three");
 
     TEST_RELPATH("C:/", "C:/", ".");
+    TEST_RELPATH("C:/one/two", "C:/one/two", ".");
     TEST_RELPATH("C:/one/two", "C:/one", "two");
     TEST_RELPATH("C:/one/two/three", "C:/one", "two/three");
     TEST_RELPATH("C:/one", "C:/one/two", "..");
     TEST_RELPATH("C:/one", "C:/one/two/three", "../..");
     TEST_RELPATH("C:/one/two/three", "C:/one/four", "../two/three");
+
+    TEST_RELPATH("C:/one", "D:/one", "");
 }

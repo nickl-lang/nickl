@@ -59,6 +59,11 @@ void nk_relativePath(char *buf, usize size, char const *full_path, char const *f
     }
 
     nksb_appendNull(&sb);
+}
 
-    return;
+NkString nk_path_getParent(NkString full_path) {
+    // TODO: Handle trailing separator
+    NkString parent = full_path;
+    nks_chopByDelimReverse(&parent, NK_PATH_SEPARATOR);
+    return parent;
 }

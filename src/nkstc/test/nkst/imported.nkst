@@ -1,0 +1,5 @@
+(const bar (proc [] (void) [
+    (const A 42)
+]))
+
+(run ())

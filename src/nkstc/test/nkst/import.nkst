@@ -1,0 +1,10 @@
+(context (context (import "imported.nkst") bar) A)
+(call (import "imported.nkst") [])
+
+/* @output
+RUN
+bar {
+}
+call
+
+@endoutput */

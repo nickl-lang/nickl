@@ -1,4 +1,3 @@
-(define var 42)
-(scope [
-    var
-])
+
+/* @output
+@endoutput */

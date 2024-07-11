@@ -643,7 +643,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                 continue;
             }
 
-            nk_stream_printf(out, "%5zu%8s", instr_index++, nkirOpcodeName(instr.code));
+            nk_stream_printf(out, "%5zu |%8s", instr_index++, nkirOpcodeName(instr.code));
 
             for (usize i = 1; i < 3; i++) {
                 auto const &arg = instr.arg[i];
@@ -702,7 +702,11 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
     if (ref.kind == NkIrRef_None) {
         nk_stream_printf(out, "{}");
         return;
+    } else if (ref.kind == NkIrRef_VariadicMarker) {
+        nk_stream_printf(out, "...");
+        return;
     }
+
     for (usize i = 0; i < ref.indir; i++) {
         nk_stream_printf(out, "[");
     }
@@ -765,11 +769,8 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
             nkir_inspectRef(ir, _proc, reloc_ref, out);
             break;
         }
-        case NkIrRef_VariadicMarker: {
-            nk_stream_printf(out, "...");
-            break;
-        }
         case NkIrRef_None:
+        case NkIrRef_VariadicMarker:
         default:
             nk_assert(!"unreachable");
             break;
