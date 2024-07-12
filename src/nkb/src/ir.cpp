@@ -10,6 +10,7 @@
 #include "ntk/log.h"
 #include "ntk/os/error.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -182,9 +183,7 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
     nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto &proc = ir->procs.data[ir->cur_proc.idx];
 
-    for (usize i = 0; i < instrs_array.size; i++) {
-        auto const &instr = instrs_array.data[i];
-
+    for (auto const &instr : nk_iterate(instrs_array)) {
         if (instr.code == nkir_label) {
             proc.cur_block = instr.arg[1].id;
             nkda_append(&proc.blocks, proc.cur_block);
@@ -209,6 +208,10 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
         nkda_append(&instrs, instr);
         nkda_append(&block, id);
     }
+}
+
+void nkir_paste(NkIrProg ir, NkIrInstrArray instrs) {
+    NK_LOG_TRC("%s", __func__);
 }
 
 void nkir_setLine(NkIrProg ir, usize line) {

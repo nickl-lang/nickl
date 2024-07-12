@@ -1,4 +1,5 @@
 def_test(GROUP nkb NAME cc_adapter LINK ${LIB} TARGET CC_ADAPTER_TEST)
+def_test(GROUP nkb NAME paste LINK ${LIB})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(TEST_EXECUTABLE_EXT "")
