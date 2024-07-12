@@ -38,7 +38,7 @@ NK_LOG_USE_SCOPE(parser);
 
 static constexpr char const *c_entry_point_name = "main";
 
-struct GeneratorState {
+struct EmitterState {
     NkIrCompiler m_compiler;
     NkIrProg m_ir;
     NkAtom m_file;
@@ -55,7 +55,7 @@ struct GeneratorState {
     NklToken const *m_cur_token{};
     ProcRecord *m_cur_proc{};
 
-    Void generate() {
+    Void emit() {
         nk_assert(m_tokens.size && nk_slice_last(m_tokens).id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens.data[0];
 
@@ -218,7 +218,7 @@ struct GeneratorState {
             } else {
                 nkir_setLine(m_ir, m_cur_token->lin);
                 DEFINE(instr, parseInstr());
-                nkir_gen(m_ir, {&instr, 1});
+                nkir_emit(m_ir, instr);
             }
             EXPECT(t_newline);
             while (accept(t_newline)) {
@@ -960,7 +960,7 @@ void nkir_parse(NkIrCompiler c, NkAtom file, NkString text, NklTokenArray tokens
     c->parser.error_msg = {};
     c->parser.ok = true;
 
-    GeneratorState gen{
+    EmitterState emitter{
         .m_compiler = c,
         .m_ir = c->ir,
         .m_file = file,
@@ -968,11 +968,11 @@ void nkir_parse(NkIrCompiler c, NkAtom file, NkString text, NklTokenArray tokens
         .m_text = text,
     };
 
-    gen.generate();
+    emitter.emit();
 
-    if (gen.m_error_occurred) {
-        c->parser.error_msg = gen.m_error_msg;
-        c->parser.error_token = *gen.m_cur_token;
+    if (emitter.m_error_occurred) {
+        c->parser.error_msg = emitter.m_error_msg;
+        c->parser.error_token = *emitter.m_cur_token;
         c->parser.ok = false;
     }
 }

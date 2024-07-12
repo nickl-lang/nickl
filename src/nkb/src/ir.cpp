@@ -176,7 +176,11 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     return data;
 }
 
-void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
+void nkir_emit(NkIrProg ir, NkIrInstr instr) {
+    nkir_emitArray(ir, {&instr, 1});
+}
+
+void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 

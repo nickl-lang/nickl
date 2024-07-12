@@ -64,16 +64,13 @@ TEST_F(ir_paste, defer_scenario) {
 
     nkir_startProc(ir, proc, nk_cs2atom("foo"), &proc_t, {}, NK_ATOM_INVALID, 0, NkIrVisibility_Default);
 
-    auto const start = nkir_make_label(nkir_createLabel(ir, nk_cs2atom("@start")));
-    nkir_gen(ir, {&start, 1});
+    nkir_emit(ir, nkir_make_label(nkir_createLabel(ir, nk_cs2atom("@start"))));
 
     auto const cnst = nkir_makeRodata(ir, NK_ATOM_INVALID, &i64_t, NkIrVisibility_Local);
     *(int64_t *)nkir_getDataPtr(ir, cnst) = 42;
-    auto const mov = nkir_make_mov(ir, nkir_makeRetRef(ir), nkir_makeDataRef(ir, cnst));
-    nkir_gen(ir, {&mov, 1});
+    nkir_emit(ir, nkir_make_mov(ir, nkir_makeRetRef(ir), nkir_makeDataRef(ir, cnst)));
 
-    auto const ret = nkir_make_ret(ir);
-    nkir_gen(ir, {&ret, 1});
+    nkir_emit(ir, nkir_make_ret(ir));
 
     nkir_finishProc(ir, proc, 0);
 
