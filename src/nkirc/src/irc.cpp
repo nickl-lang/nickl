@@ -44,6 +44,7 @@ int nkir_compile(NkIrCompiler c, NkString in_file, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     c->ir = nkir_createProgram(&c->file_arena);
+    c->mod = nkir_createModule(c->ir);
 
     auto base_path_str = (fs::current_path() / "_").string();
     NkString base_file{base_path_str.c_str(), base_path_str.size()};
@@ -57,7 +58,7 @@ int nkir_compile(NkIrCompiler c, NkString in_file, NkIrCompilerConfig conf) {
         return 1;
     }
 
-    if (!nkir_write(c->ir, c->tmp_arena, conf)) {
+    if (!nkir_write(c->ir, c->mod, c->tmp_arena, conf)) {
         NkString err_str = nkir_getErrorString(c->ir);
         nkl_diag_printError("failed to write output: " NKS_FMT, NKS_ARG(err_str));
         return 1;
@@ -71,6 +72,7 @@ int nkir_run(NkIrCompiler c, NkString in_file) {
     NK_LOG_TRC("%s", __func__);
 
     c->ir = nkir_createProgram(&c->file_arena);
+    c->mod = nkir_createModule(c->ir);
 
     auto base_path_str = (fs::current_path() / "_").string();
     NkString base_file{base_path_str.c_str(), base_path_str.size()};

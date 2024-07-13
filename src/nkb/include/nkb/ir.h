@@ -97,11 +97,21 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 #define NKIR_INVALID_IDX ((usize) - 1ul)
 
+typedef struct NkIrModule_T *NkIrModule;
 typedef struct NkIrProg_T *NkIrProg;
 
 NkIrProg nkir_createProgram(NkArena *arena);
 
 NkString nkir_getErrorString(NkIrProg ir);
+
+// Modules
+
+NkIrModule nkir_createModule(NkIrProg ir);
+
+void nkir_exportProc(NkIrProg ir, NkIrModule mod, NkIrProc proc);
+void nkir_exportData(NkIrProg ir, NkIrModule mod, NkIrData data);
+
+void nkir_mergeModules(NkIrModule dst, NkIrModule src);
 
 // Code Generation
 
@@ -190,7 +200,7 @@ typedef struct {
     bool quiet;
 } NkIrCompilerConfig;
 
-bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf);
+bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerConfig conf);
 
 // Execution
 

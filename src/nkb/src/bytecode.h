@@ -121,7 +121,7 @@ struct NkIrRunCtx_T {
 
     NkFfiContext ffi_ctx;
 
-    NkString error_str{};
+    NkString error_str;
 };
 
 NK_INLINE void *nkbc_deref(u8 *base, NkBcRef const *ref) {

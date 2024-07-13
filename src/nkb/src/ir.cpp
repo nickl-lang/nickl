@@ -1,10 +1,13 @@
 #include "nkb/ir.h"
 
+#include <algorithm>
+
 #include "cc_adapter.h"
 #include "ir_impl.h"
 #include "ntk/allocator.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/os/error.h"
@@ -61,6 +64,7 @@ NkIrProg nkir_createProgram(NkArena *arena) {
     return new (nk_allocT<NkIrProg_T>(alloc)) NkIrProg_T{
         .alloc = alloc,
 
+        .modules{NKDA_INIT(alloc)},
         .procs{NKDA_INIT(alloc)},
         .blocks{NKDA_INIT(alloc)},
         .instrs{NKDA_INIT(alloc)},
@@ -68,6 +72,11 @@ NkIrProg nkir_createProgram(NkArena *arena) {
         .extern_data{NKDA_INIT(alloc)},
         .extern_procs{NKDA_INIT(alloc)},
         .relocs{NKDA_INIT(alloc)},
+
+        .cur_proc{},
+        .cur_line{},
+
+        .error_str{},
     };
 }
 
@@ -86,6 +95,45 @@ NK_PRINTF_LIKE(2) static void reportError(NkIrProg ir, char const *fmt, ...) {
 
 NkString nkir_getErrorString(NkIrProg ir) {
     return ir->error_str;
+}
+
+NkIrModule nkir_createModule(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
+    return new (nk_allocT<NkIrModule_T>(ir->alloc)) NkIrModule_T{
+        .exported_procs{NKDA_INIT(ir->alloc)},
+        .exported_data{NKDA_INIT(ir->alloc)},
+    };
+}
+
+void nkir_exportProc(NkIrProg ir, NkIrModule mod, NkIrProc _proc) {
+    auto &proc = ir->procs.data[_proc.idx];
+    nk_assert(proc.visibility != NkIrVisibility_Local && "trying to export local proc");
+
+    nkda_append(&mod->exported_procs, _proc.idx);
+}
+
+void nkir_exportData(NkIrProg ir, NkIrModule mod, NkIrData _data) {
+    auto &data = ir->data.data[_data.idx];
+    nk_assert(data.visibility != NkIrVisibility_Local && "trying to export local data");
+
+    nkda_append(&mod->exported_data, _data.idx);
+}
+
+void nkir_mergeModules(NkIrModule dst, NkIrModule src) {
+    // TODO: Linear manual search in nkir module merge. Maybe just allow duplicates?
+
+    for (auto const proc_id : nk_iterate(src->exported_procs)) {
+        if (!std::count(nk_slice_begin(&dst->exported_procs), nk_slice_end(&dst->exported_procs), proc_id)) {
+            nkda_append(&dst->exported_procs, proc_id);
+        }
+    }
+
+    for (auto const decl_id : nk_iterate(src->exported_data)) {
+        if (!std::count(nk_slice_begin(&dst->exported_data), nk_slice_end(&dst->exported_data), decl_id)) {
+            nkda_append(&dst->exported_data, decl_id);
+        }
+    }
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
@@ -531,13 +579,13 @@ NkIrInstr nkir_make_comment(NkIrProg ir, NkString comment) {
     return {{{}, _arg(ir, comment), {}}, 0, nkir_comment};
 }
 
-bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf) {
+bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     NkPipeStream src{};
     bool res = nkcc_streamOpen(&src, conf);
     if (res) {
-        nkir_translate2c(arena, ir, src.stream);
+        nkir_translate2c(tmp_arena, ir, mod, src.stream);
         if (nkcc_streamClose(&src)) {
             reportError(ir, "C compiler `" NKS_FMT "` returned nonzero exit code", NKS_ARG(conf.compiler_binary));
             return false;

@@ -61,6 +61,7 @@ struct NkIrCompiler_T {
     NkIrcConfig conf;
 
     NkIrProg ir{};
+    NkIrModule mod{};
     NkIrProc entry_point{NKIR_INVALID_IDX};
     NkArena file_arena{};
 

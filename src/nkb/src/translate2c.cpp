@@ -12,6 +12,7 @@
 #include "ntk/hash_map.hpp"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -796,7 +797,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
 
 } // namespace
 
-void nkir_translate2c(NkArena *arena, NkIrProg ir, NkStream src) {
+void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrModule mod, NkStream src) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -812,23 +813,21 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkStream src) {
 
     writePreamble(&ctx.types_s);
 
-    for (usize i = 0; i < ir->procs.size; i++) {
-        if (ir->procs.data[i].visibility != NkIrVisibility_Local) {
-            translateProc(ctx, i);
+    for (auto proc_id : nk_iterate(mod->exported_procs)) {
+        translateProc(ctx, proc_id);
 
-            while (ctx.procs_to_translate.size) {
-                auto proc = nk_slice_last(ctx.procs_to_translate);
-                nkda_pop(&ctx.procs_to_translate, 1);
-                translateProc(ctx, proc);
-            }
+        while (ctx.procs_to_translate.size) {
+            auto proc = nk_slice_last(ctx.procs_to_translate);
+            nkda_pop(&ctx.procs_to_translate, 1);
+            translateProc(ctx, proc);
         }
     }
 
-    for (usize i = 0; i < ir->data.size; i++) {
-        auto const &decl = ir->data.data[i];
-        if (!getFlag(ctx.data_translated, i) && decl.visibility != NkIrVisibility_Local) {
+    for (auto decl_id : nk_iterate(mod->exported_data)) {
+        if (!getFlag(ctx.data_translated, decl_id)) {
             NkStringBuilder dummy_sb{NKSB_INIT(ctx.alloc)};
-            writeData(ctx, i, decl, &dummy_sb, true);
+            auto const &decl = ir->data.data[decl_id];
+            writeData(ctx, decl_id, decl, &dummy_sb, true);
         }
     }
 
