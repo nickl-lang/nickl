@@ -129,7 +129,7 @@ void nkir_emit(NkIrProg ir, NkIrInstr instr);
 typedef NkSlice(NkIrInstr const) NkIrInstrArray;
 void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs);
 
-void nkir_paste(NkIrProg ir, NkIrInstrArray instrs);
+void nkir_paste(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena);
 
 void nkir_setLine(NkIrProg ir, usize line);
 

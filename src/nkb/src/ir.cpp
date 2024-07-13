@@ -5,6 +5,7 @@
 #include "cc_adapter.h"
 #include "ir_impl.h"
 #include "ntk/allocator.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
@@ -214,10 +215,57 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
     }
 }
 
-void nkir_paste(NkIrProg ir, NkIrInstrArray instrs) {
+void nkir_paste(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) {
     NK_LOG_TRC("%s", __func__);
 
-    nkir_emitArray(ir, instrs);
+    auto frame = nk_arena_grab(tmp_arena);
+    defer {
+        nk_arena_popFrame(tmp_arena, frame);
+    };
+
+    struct LabelMap {
+        usize old_label;
+        usize new_label;
+    };
+
+    NkDynArray(LabelMap) labels{NKDA_INIT(nk_arena_getAllocator(tmp_arena))};
+
+    for (auto const &instr : nk_iterate(instrs)) {
+        if (instr.code == nkir_label) {
+            auto const old_label = instr.arg[1].id;
+
+            NKSB_FIXED_BUFFER(new_label_name, 256);
+            auto old_label_name = nk_atom2s(ir->blocks.data[old_label].name);
+            nksb_printf(&new_label_name, NKS_FMT "_copy", NKS_ARG(old_label_name));
+
+            auto const new_label = nkir_createLabel(ir, nk_s2atom({NK_SLICE_INIT(new_label_name)})).idx;
+            nkda_append(&labels, LabelMap{old_label, new_label});
+        }
+    }
+
+    auto replaceLabel = [&](usize &label) {
+        for (auto const &it : nk_iterate(labels)) {
+            if (it.old_label == label) {
+                label = it.new_label;
+                return;
+            }
+        }
+    };
+
+    for (auto const &instr : nk_iterate(instrs)) {
+        auto new_instr = instr;
+        switch (instr.code) {
+            case nkir_label:
+                replaceLabel(new_instr.arg[1].id);
+                break;
+            case nkir_jmp:
+            case nkir_jmpz:
+            case nkir_jmpnz:
+                replaceLabel(new_instr.arg[2].id);
+                break;
+        }
+        nkir_emit(ir, new_instr);
+    }
 }
 
 void nkir_setLine(NkIrProg ir, usize line) {
