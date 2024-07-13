@@ -373,7 +373,7 @@ static nklval_t getValueFromInfo(ValueInfo const &val) {
             return {};
     }
 }
-NK_PRINTF_LIKE(2, 3) static ValueInfo error(Context &ctx, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) static ValueInfo error(Context &ctx, char const *fmt, ...) {
     auto src = ctx.src;
     auto last_node = ctx.node_stack;
     auto err_token = last_node ? &src->tokens.data[src->nodes.data[last_node->node_idx].token_idx] : nullptr;

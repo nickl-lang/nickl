@@ -155,7 +155,7 @@ struct ParseEngine {
         return &m_tokens.data[m_cur_token_idx];
     }
 
-    NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
+    NK_PRINTF_LIKE(2) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
         nkl_vreportError(m_file, curToken(), fmt, ap);

@@ -56,7 +56,7 @@ typedef NkDynArray(char) NkStringBuilder;
 extern "C" {
 #endif
 
-NK_PRINTF_LIKE(2, 3) i32 nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
+NK_PRINTF_LIKE(2) i32 nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
 i32 nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
 NkStream nksb_getStream(NkStringBuilder *sb);

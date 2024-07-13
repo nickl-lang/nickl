@@ -101,7 +101,7 @@ usize nkl_getErrorCount(void) {
     return g_error_state->error_count;
 }
 
-NK_PRINTF_LIKE(3, 4) i32 nkl_reportError(NkAtom file, NklToken const *token, char const *fmt, ...) {
+NK_PRINTF_LIKE(3) i32 nkl_reportError(NkAtom file, NklToken const *token, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     i32 res = nkl_vreportError(file, token, fmt, ap);

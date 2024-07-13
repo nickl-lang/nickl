@@ -243,7 +243,7 @@ private:
         m_token.len += n;
     }
 
-    NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
+    NK_PRINTF_LIKE(2) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
         // TODO: Leaking error token, need to use scatch arena

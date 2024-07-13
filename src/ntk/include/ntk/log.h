@@ -31,7 +31,7 @@ typedef struct {
 } NkLogOptions;
 
 bool nk_log_check(NkLogLevel log_level);
-NK_PRINTF_LIKE(3, 4) void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...);
+NK_PRINTF_LIKE(3) void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
 void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap);
 

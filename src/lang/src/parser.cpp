@@ -960,7 +960,7 @@ private:
         return node;
     }
 
-    NK_PRINTF_LIKE(2, 3) void error(char const *fmt, ...) {
+    NK_PRINTF_LIKE(2) void error(char const *fmt, ...) {
         nk_assert(!m_error_occurred && "Parser error already initialized");
 
         va_list ap;

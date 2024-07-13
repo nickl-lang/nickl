@@ -258,7 +258,7 @@ struct ExternTag {
     NkString abi;
 };
 
-NK_PRINTF_LIKE(2, 3) void error(NklCompiler c, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) void error(NklCompiler c, char const *fmt, ...) {
     nk_assert(!c->error_occurred && "compiler error already initialized");
 
     va_list ap;
@@ -2446,7 +2446,7 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
     c->error_reported = true;
 }
 
-NK_PRINTF_LIKE(2, 3) void printError(NklCompiler c, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) void printError(NklCompiler c, char const *fmt, ...) {
     if (c->error_reported) {
         return;
     }

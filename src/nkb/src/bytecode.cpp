@@ -159,7 +159,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
 }
 #endif // ENABLE_LOGGING
 
-NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) {
     nk_assert(!ctx->error_str.data && "run error is already initialized");
 
     NkStringBuilder error{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};

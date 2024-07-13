@@ -71,7 +71,7 @@ NkIrProg nkir_createProgram(NkArena *arena) {
     };
 }
 
-NK_PRINTF_LIKE(2, 3) static void reportError(NkIrProg ir, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) static void reportError(NkIrProg ir, char const *fmt, ...) {
     nk_assert(!ir->error_str.data && "run error is already initialized");
 
     NkStringBuilder error{NKSB_INIT(ir->alloc)};

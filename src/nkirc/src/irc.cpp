@@ -59,7 +59,7 @@ int nkir_compile(NkIrCompiler c, NkString in_file, NkIrCompilerConfig conf) {
 
     if (!nkir_write(c->ir, c->tmp_arena, conf)) {
         NkString err_str = nkir_getErrorString(c->ir);
-        nkl_diag_printError("failed to run write output: " NKS_FMT, NKS_ARG(err_str));
+        nkl_diag_printError("failed to write output: " NKS_FMT, NKS_ARG(err_str));
         return 1;
     }
 

@@ -30,9 +30,9 @@ typedef size_t usize;
 #endif //_WIN32
 
 #ifdef __MINGW32__
-#define NK_PRINTF_LIKE(FMT_POS, ARGS_POS) __attribute__((__format__(__MINGW_PRINTF_FORMAT, FMT_POS, ARGS_POS)))
+#define NK_PRINTF_LIKE(FMT_POS) __attribute__((__format__(__MINGW_PRINTF_FORMAT, FMT_POS, FMT_POS + 1)))
 #else //__MINGW32__
-#define NK_PRINTF_LIKE(FMT_POS, ARGS_POS) __attribute__((__format__(printf, FMT_POS, ARGS_POS)))
+#define NK_PRINTF_LIKE(FMT_POS) __attribute__((__format__(printf, FMT_POS, FMT_POS + 1)))
 #endif //__MINGW32__
 
 #define NK_INLINE static inline

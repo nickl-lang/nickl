@@ -25,9 +25,9 @@ typedef struct {
     u32 len;
 } NklSourceLocation;
 
-NK_PRINTF_LIKE(1, 2) void nkl_diag_printError(char const *fmt, ...);
-NK_PRINTF_LIKE(2, 3) void nkl_diag_printErrorFile(NklSourceLocation loc, char const *fmt, ...);
-NK_PRINTF_LIKE(3, 4) void nkl_diag_printErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(1) void nkl_diag_printError(char const *fmt, ...);
+NK_PRINTF_LIKE(2) void nkl_diag_printErrorFile(NklSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(3) void nkl_diag_printErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, ...);
 
 void nkl_diag_vprintError(char const *fmt, va_list ap);
 void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap);

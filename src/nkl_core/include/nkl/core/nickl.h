@@ -45,7 +45,7 @@ void nkl_errorStateUnequip(void);
 
 usize nkl_getErrorCount(void);
 
-NK_PRINTF_LIKE(3, 4) i32 nkl_reportError(NkAtom file, NklToken const *token, char const *fmt, ...);
+NK_PRINTF_LIKE(3) i32 nkl_reportError(NkAtom file, NklToken const *token, char const *fmt, ...);
 i32 nkl_vreportError(NkAtom file, NklToken const *token, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
