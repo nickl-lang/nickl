@@ -162,7 +162,7 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
 NK_PRINTF_LIKE(2, 3) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) {
     nk_assert(!ctx->error_str.data && "run error is already initialized");
 
-    NkStringBuilder error{0, 0, 0, nk_arena_getAllocator(ctx->tmp_arena)};
+    NkStringBuilder error{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};
 
     va_list ap;
     va_start(ap, fmt);
@@ -269,7 +269,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
               .ctx = ctx,
               .frame_size = ir_proc.frame_size,
               .frame_align = ir_proc.frame_align,
-              .instrs{0, 0, 0, ir.alloc},
+              .instrs{NKDA_INIT(ir.alloc)},
           });
 
     enum ERelocType {
@@ -291,9 +291,9 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         usize first_instr;
     };
 
-    NkDynArray(BlockInfo) block_info{0, 0, 0, tmp_alloc};
-    NkDynArray(Reloc) relocs{0, 0, 0, tmp_alloc};
-    NkDynArray(NkIrProc) referenced_procs{0, 0, 0, tmp_alloc};
+    NkDynArray(BlockInfo) block_info{NKDA_INIT(tmp_alloc)};
+    NkDynArray(Reloc) relocs{NKDA_INIT(tmp_alloc)};
+    NkDynArray(NkIrProc) referenced_procs{NKDA_INIT(tmp_alloc)};
 
     auto const get_data_addr = [&](usize index) {
         NK_PROF_SCOPE(nk_cs2s("get_data_addr"));
@@ -677,14 +677,14 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
         .ir = ir,
         .tmp_arena = tmp_arena,
 
-        .procs{0, 0, 0, ir->alloc},
-        .data{0, 0, 0, ir->alloc},
-        .extern_libs = {NULL, ir->alloc},
-        .extern_syms = {NULL, ir->alloc},
+        .procs{NKDA_INIT(ir->alloc)},
+        .data{NKDA_INIT(ir->alloc)},
+        .extern_libs{NULL, ir->alloc},
+        .extern_syms{NULL, ir->alloc},
 
         .ffi_ctx{
             .alloc = ir->alloc,
-            .types = {NULL, ir->alloc},
+            .types{NULL, ir->alloc},
             .mtx = nk_mutex_alloc(),
         },
     };

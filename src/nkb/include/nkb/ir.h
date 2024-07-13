@@ -108,15 +108,16 @@ NkString nkir_getErrorString(NkIrProg ir);
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name);
 
-void nkir_startProc(
-    NkIrProg ir,
-    NkIrProc proc,
-    NkAtom name,
-    nktype_t proc_t,
-    NkAtomArray arg_names,
-    NkAtom file,
-    usize line,
-    NkIrVisibility vis);
+typedef struct {
+    NkAtom name;
+    nktype_t proc_t;
+    NkAtomArray arg_names;
+    NkAtom file;
+    usize line;
+    NkIrVisibility visibility;
+} NkIrProcDescr;
+
+void nkir_startProc(NkIrProg ir, NkIrProc proc, NkIrProcDescr descr);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);

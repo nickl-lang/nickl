@@ -259,7 +259,7 @@ private:
 NklTokenArray nkst_lex(NkAllocator alloc, NkAtom file, NkString text) {
     NK_LOG_TRC("%s", __func__);
 
-    NklTokenDynArray tokens{0, 0, 0, alloc};
+    NklTokenDynArray tokens{NKDA_INIT(alloc)};
     nkda_reserve(&tokens, 1000);
 
     ScannerState scanner{

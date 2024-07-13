@@ -73,8 +73,8 @@ int main(int /*argc*/, char const *const *argv) {
         nk_arena_free(&arena);
     };
 
-    NkDynArray(NkString) link{0, 0, 0, alloc};
-    NkDynArray(NkString) link_dirs{0, 0, 0, alloc};
+    NkDynArray(NkString) link{NKDA_INIT(alloc)};
+    NkDynArray(NkString) link_dirs{NKDA_INIT(alloc)};
     NkString opt{};
 
 #ifdef ENABLE_LOGGING
@@ -245,7 +245,7 @@ int main(int /*argc*/, char const *const *argv) {
     NkString compiler_dir{compiler_path_buf, (usize)compiler_path_len};
     nks_chopByDelimReverse(&compiler_dir, NK_PATH_SEPARATOR);
 
-    NkStringBuilder config_path{0, 0, 0, alloc};
+    NkStringBuilder config_path{NKSB_INIT(alloc)};
     nksb_printf(&config_path, NKS_FMT "%c" NK_BINARY_NAME ".conf", NKS_ARG(compiler_dir), NK_PATH_SEPARATOR);
 
     NK_LOG_DBG("config_path=`" NKS_FMT "`", NKS_ARG(config_path));
@@ -304,7 +304,7 @@ int main(int /*argc*/, char const *const *argv) {
         }
         NK_LOG_DBG("c_compiler=`" NKS_FMT "`", NKS_ARG(c_compiler->val));
 
-        NkDynArray(NkString) additional_flags{0, 0, 0, alloc};
+        NkDynArray(NkString) additional_flags{NKDA_INIT(alloc)};
 
         auto c_flags = nks_config_find(&config, nk_cs2s("c_flags"));
         if (c_flags) {
@@ -317,19 +317,19 @@ int main(int /*argc*/, char const *const *argv) {
         }
 
         for (auto dir : nk_iterate(link_dirs)) {
-            NkStringBuilder sb{0, 0, 0, alloc};
+            NkStringBuilder sb{NKSB_INIT(alloc)};
             nksb_printf(&sb, "-L" NKS_FMT, NKS_ARG(dir));
             nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         for (auto lib : nk_iterate(link)) {
-            NkStringBuilder sb{0, 0, 0, alloc};
+            NkStringBuilder sb{NKSB_INIT(alloc)};
             nksb_printf(&sb, "-l" NKS_FMT, NKS_ARG(lib));
             nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }
 
         if (opt.size) {
-            NkStringBuilder sb{0, 0, 0, alloc};
+            NkStringBuilder sb{NKSB_INIT(alloc)};
             nksb_printf(&sb, "-O" NKS_FMT, NKS_ARG(opt));
             nkda_append(&additional_flags, NkString{NKS_INIT(sb)});
         }

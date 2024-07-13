@@ -20,20 +20,20 @@ typedef struct {
     NkDynArray(NkIrLocal_T) locals;
     NkDynArray(usize) scopes;
 
-    NkAtom name{};
-    nktype_t proc_t{};
-    NkAtomArray arg_names{};
-    NkIrVisibility visibility{};
+    NkAtom name;
+    nktype_t proc_t;
+    NkAtomArray arg_names;
+    NkIrVisibility visibility;
 
-    NkAtom file{};
-    usize start_line{};
-    usize end_line{};
+    NkAtom file;
+    usize start_line;
+    usize end_line;
 
-    usize cur_block{};
+    usize cur_block;
 
-    usize frame_size{};
-    usize frame_align{1};
-    usize cur_frame_size{};
+    usize frame_size;
+    usize frame_align;
+    usize cur_frame_size;
 } NkIrProc_T;
 
 typedef struct {

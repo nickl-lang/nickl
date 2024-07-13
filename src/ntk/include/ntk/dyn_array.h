@@ -100,6 +100,7 @@
 
 #ifdef __cplusplus
 
+#include <type_traits>
 #include <utility>
 
 template <class TAr>
@@ -110,19 +111,19 @@ template <class TAr>
 void nkda_reserve(TAr *ar, usize cap) {
     _nkda_reserve(ar, cap);
 }
-template <class TAr, class T>
+template <class TAr, class T = std::remove_pointer_t<decltype(TAr::data)>>
 void nkda_append(TAr *ar, T &&item) {
     _nkda_append(ar, std::forward<T>(item));
 }
-template <class TAr, class T>
+template <class TAr, class T = std::remove_pointer_t<decltype(TAr::data)>>
 void nkda_tryAppend(TAr *ar, T &&item) {
     _nkda_tryAppend(ar, std::forward<T>(item));
 }
-template <class TAr, class T>
+template <class TAr, class T = std::remove_pointer_t<decltype(TAr::data)>>
 void nkda_appendMany(TAr *ar, T *items, usize count) {
     _nkda_appendMany(ar, items, count);
 }
-template <class TAr, class T>
+template <class TAr, class T = std::remove_pointer_t<decltype(TAr::data)>>
 void nkda_tryAppendMany(TAr *ar, T *items, usize count) {
     _nkda_tryAppendMany(ar, items, count);
 }

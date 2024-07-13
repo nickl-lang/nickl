@@ -55,9 +55,9 @@ struct WriterCtx {
     NkArena *arena;
     NkAllocator alloc = nk_arena_getAllocator(arena);
 
-    NkStringBuilder types_s{0, 0, 0, alloc};
-    NkStringBuilder forward_s{0, 0, 0, alloc};
-    NkStringBuilder main_s{0, 0, 0, alloc};
+    NkStringBuilder types_s{NKSB_INIT(alloc)};
+    NkStringBuilder forward_s{NKSB_INIT(alloc)};
+    NkStringBuilder main_s{NKSB_INIT(alloc)};
 
     NkHashMap<usize, NkString> type_map = decltype(type_map)::create(alloc);
     usize typedecl_count = 0;
@@ -65,12 +65,12 @@ struct WriterCtx {
     NkHashMap<DataFp, NkString, DataFpHashSetContext> data_map = decltype(data_map)::create(alloc);
     usize data_count = 0;
 
-    FlagArray procs_translated{0, 0, 0, alloc};
-    FlagArray data_translated{0, 0, 0, alloc};
-    FlagArray ext_data_translated{0, 0, 0, alloc};
-    FlagArray ext_procs_translated{0, 0, 0, alloc};
+    FlagArray procs_translated{NKDA_INIT(alloc)};
+    FlagArray data_translated{NKDA_INIT(alloc)};
+    FlagArray ext_data_translated{NKDA_INIT(alloc)};
+    FlagArray ext_procs_translated{NKDA_INIT(alloc)};
 
-    NkDynArray(usize) procs_to_translate{0, 0, 0, alloc};
+    NkDynArray(usize) procs_to_translate{NKDA_INIT(alloc)};
 };
 
 #define LOCAL_CLASS "var"
@@ -172,8 +172,8 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
         return;
     }
 
-    NkStringBuilder tmp_s{0, 0, 0, ctx.alloc};
-    NkStringBuilder tmp_s_suf{0, 0, 0, ctx.alloc};
+    NkStringBuilder tmp_s{NKSB_INIT(ctx.alloc)};
+    NkStringBuilder tmp_s_suf{NKSB_INIT(ctx.alloc)};
     bool is_complex = false;
 
     switch (type->kind) {
@@ -232,7 +232,7 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
             ctx.typedecl_count,
             NKS_ARG(tmp_s_suf));
 
-        NkStringBuilder sb{0, 0, 0, ctx.alloc};
+        NkStringBuilder sb{NKSB_INIT(ctx.alloc)};
         nksb_printf(&sb, "_type%zu", ctx.typedecl_count);
         type_str = NkString{NKS_INIT(sb)};
 
@@ -254,7 +254,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 
     is_complex |= decl.visibility != NkIrVisibility_Local;
 
-    NkStringBuilder tmp_s{0, 0, 0, ctx.alloc};
+    NkStringBuilder tmp_s{NKSB_INIT(ctx.alloc)};
 
     if (decl.data) {
         switch (decl.type->kind) {
@@ -373,7 +373,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
         }
         nksb_printf(&ctx.forward_s, ";\n");
 
-        NkStringBuilder sb{0, 0, 0, ctx.alloc};
+        NkStringBuilder sb{NKSB_INIT(ctx.alloc)};
         writeName(decl.name, ctx.data_count, CONST_CLASS, &sb);
         str = {NKS_INIT(sb)};
 
@@ -827,7 +827,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkStream src) {
     for (usize i = 0; i < ir->data.size; i++) {
         auto const &decl = ir->data.data[i];
         if (!getFlag(ctx.data_translated, i) && decl.visibility != NkIrVisibility_Local) {
-            NkStringBuilder dummy_sb{0, 0, 0, ctx.alloc};
+            NkStringBuilder dummy_sb{NKSB_INIT(ctx.alloc)};
             writeData(ctx, i, decl, &dummy_sb, true);
         }
     }

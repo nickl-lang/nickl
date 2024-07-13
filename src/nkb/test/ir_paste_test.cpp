@@ -111,7 +111,17 @@ protected:
 
         // proc foo() i64 {
         {
-            nkir_startProc(m_ir, m_proc, nk_cs2atom("foo"), &m_proc_t, {}, NK_ATOM_INVALID, 0, NkIrVisibility_Default);
+            nkir_startProc(
+                m_ir,
+                m_proc,
+                {
+                    .name = nk_cs2atom("foo"),
+                    .proc_t = &m_proc_t,
+                    .arg_names{},
+                    .file = NK_ATOM_INVALID,
+                    .line = 0,
+                    .visibility = NkIrVisibility_Default,
+                });
             auto const start_l = nkir_createLabel(m_ir, nk_cs2atom("@start"));
             nkir_emit(m_ir, nkir_make_label(start_l));
             // {

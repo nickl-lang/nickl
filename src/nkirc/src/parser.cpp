@@ -171,19 +171,21 @@ struct EmitterState {
         nkir_startProc(
             m_ir,
             proc,
-            sig.name,
-            nkir_makeProcedureType(
-                m_compiler,
-                {
-                    .args_t{NK_SLICE_INIT(sig.args_t)},
-                    .ret_t = sig.ret_t,
-                    .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
-                    .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
-                }),
-            {NK_SLICE_INIT(sig.arg_names)},
-            m_file,
-            cur_line,
-            vis);
+            {
+                .name = sig.name,
+                .proc_t = nkir_makeProcedureType(
+                    m_compiler,
+                    {
+                        .args_t{NK_SLICE_INIT(sig.args_t)},
+                        .ret_t = sig.ret_t,
+                        .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
+                        .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
+                    }),
+                .arg_names{NK_SLICE_INIT(sig.arg_names)},
+                .file = m_file,
+                .line = cur_line,
+                .visibility = vis,
+            });
 
         auto const decl = new (makeGlobalDecl(sig.name)) Decl{
             {.proc{
@@ -416,8 +418,8 @@ private:
 
     ProcSignatureParseResult parseProcSignature(bool parse_name, bool parse_param_names) {
         ProcSignatureParseResult res{
-            .arg_names{0, 0, 0, m_parse_alloc},
-            .args_t{0, 0, 0, m_file_alloc},
+            .arg_names{NKDA_INIT(m_parse_alloc)},
+            .args_t{NKDA_INIT(m_file_alloc)},
         };
         if (accept(t_cdecl)) {
             res.is_cdecl = true;
@@ -495,8 +497,8 @@ private:
         }
 
         else if (accept(t_brace_l)) {
-            NkDynArray(nktype_t) types{0, 0, 0, m_tmp_alloc};
-            NkDynArray(usize) counts{0, 0, 0, m_tmp_alloc};
+            NkDynArray(nktype_t) types{NKDA_INIT(m_tmp_alloc)};
+            NkDynArray(usize) counts{NKDA_INIT(m_tmp_alloc)};
 
             do {
                 if (check(t_par_r) || check(t_eof)) {
@@ -894,7 +896,7 @@ private:
     }
 
     NkIrRefArray parseRefArray() {
-        NkDynArray(NkIrRef) refs{0, 0, 0, m_tmp_alloc};
+        NkDynArray(NkIrRef) refs{NKDA_INIT(m_tmp_alloc)};
         EXPECT(t_par_l);
         do {
             if (check(t_par_r) || check(t_eof)) {

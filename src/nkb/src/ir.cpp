@@ -61,20 +61,20 @@ NkIrProg nkir_createProgram(NkArena *arena) {
     return new (nk_allocT<NkIrProg_T>(alloc)) NkIrProg_T{
         .alloc = alloc,
 
-        .procs{0, 0, 0, alloc},
-        .blocks{0, 0, 0, alloc},
-        .instrs{0, 0, 0, alloc},
-        .data{0, 0, 0, alloc},
-        .extern_data{0, 0, 0, alloc},
-        .extern_procs{0, 0, 0, alloc},
-        .relocs{0, 0, 0, alloc},
+        .procs{NKDA_INIT(alloc)},
+        .blocks{NKDA_INIT(alloc)},
+        .instrs{NKDA_INIT(alloc)},
+        .data{NKDA_INIT(alloc)},
+        .extern_data{NKDA_INIT(alloc)},
+        .extern_procs{NKDA_INIT(alloc)},
+        .relocs{NKDA_INIT(alloc)},
     };
 }
 
 NK_PRINTF_LIKE(2, 3) static void reportError(NkIrProg ir, char const *fmt, ...) {
     nk_assert(!ir->error_str.data && "run error is already initialized");
 
-    NkStringBuilder error{0, 0, 0, ir->alloc};
+    NkStringBuilder error{NKSB_INIT(ir->alloc)};
 
     va_list ap;
     va_start(ap, fmt);
@@ -94,11 +94,26 @@ NkIrProc nkir_createProc(NkIrProg ir) {
     NkIrProc id{ir->procs.size};
     nkda_append(
         &ir->procs,
-        (NkIrProc_T{
-            .blocks{0, 0, 0, ir->alloc},
-            .locals{0, 0, 0, ir->alloc},
-            .scopes{0, 0, 0, ir->alloc},
-        }));
+        {
+            .blocks{NKDA_INIT(ir->alloc)},
+            .locals{NKDA_INIT(ir->alloc)},
+            .scopes{NKDA_INIT(ir->alloc)},
+
+            .name{},
+            .proc_t{},
+            .arg_names{},
+            .visibility{},
+
+            .file{},
+            .start_line{},
+            .end_line{},
+
+            .cur_block{},
+
+            .frame_size{},
+            .frame_align = 1,
+            .cur_frame_size{},
+        });
     return id;
 }
 
@@ -108,32 +123,24 @@ NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name) {
     NkIrLabel id{ir->blocks.size};
     nkda_append(
         &ir->blocks,
-        (NkIrBlock{
+        {
             .name = name,
-            .instrs{0, 0, 0, ir->alloc},
-        }));
+            .instrs{NKDA_INIT(ir->alloc)},
+        });
     return id;
 }
 
-void nkir_startProc(
-    NkIrProg ir,
-    NkIrProc _proc,
-    NkAtom name,
-    nktype_t proc_t,
-    NkAtomArray arg_names,
-    NkAtom file,
-    usize line,
-    NkIrVisibility vis) {
+void nkir_startProc(NkIrProg ir, NkIrProc _proc, NkIrProcDescr descr) {
     NK_LOG_TRC("%s", __func__);
 
     auto &proc = ir->procs.data[_proc.idx];
 
-    proc.name = name;
-    proc.proc_t = proc_t;
-    nk_slice_copy(ir->alloc, &proc.arg_names, arg_names);
-    proc.file = file;
-    proc.start_line = line;
-    proc.visibility = vis;
+    proc.name = descr.name;
+    proc.proc_t = descr.proc_t;
+    nk_slice_copy(ir->alloc, &proc.arg_names, descr.arg_names);
+    proc.file = descr.file;
+    proc.start_line = descr.line;
+    proc.visibility = descr.visibility;
 
     nkir_activateProc(ir, _proc);
 }
@@ -232,7 +239,7 @@ void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) 
         if (instr.code == nkir_label) {
             auto const old_label = instr.arg[1].id;
             auto const new_label = nkir_createLabel(ir, ir->blocks.data[old_label].name).idx;
-            nkda_append(&label_map, LabelMapIt{old_label, new_label});
+            nkda_append(&label_map, {old_label, new_label});
         }
     }
 
@@ -291,7 +298,7 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, NkAtom name, nktype_t type) {
     NkIrLocalVar id{proc.locals.size};
     proc.frame_align = nk_maxu(proc.frame_align, type->align);
     proc.cur_frame_size = nk_roundUpSafe(proc.cur_frame_size, type->align);
-    nkda_append(&proc.locals, (NkIrLocal_T{name, type, proc.cur_frame_size}));
+    nkda_append(&proc.locals, {name, type, proc.cur_frame_size});
     proc.cur_frame_size += type->size;
     proc.frame_size = nk_maxu(proc.frame_size, proc.cur_frame_size);
     return id;
@@ -301,7 +308,7 @@ NkIrData nkir_makeData(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility v
     NK_LOG_TRC("%s", __func__);
 
     NkIrData id{ir->data.size};
-    nkda_append(&ir->data, (NkIrDecl_T{name, nullptr, type, vis, false}));
+    nkda_append(&ir->data, {name, nullptr, type, vis, false});
     return id;
 }
 
@@ -309,7 +316,7 @@ NkIrData nkir_makeRodata(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility
     NK_LOG_TRC("%s", __func__);
 
     NkIrData id{ir->data.size};
-    nkda_append(&ir->data, (NkIrDecl_T{name, nullptr, type, vis, true}));
+    nkda_append(&ir->data, {name, nullptr, type, vis, true});
     return id;
 }
 
@@ -317,7 +324,7 @@ NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom lib, NkAtom name, nktype_
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternData id{ir->extern_data.size};
-    nkda_append(&ir->extern_data, (NkIrExternSym_T{lib, name, type}));
+    nkda_append(&ir->extern_data, {lib, name, type});
     return id;
 }
 
@@ -325,7 +332,7 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternProc id{ir->extern_procs.size};
-    nkda_append(&ir->extern_procs, (NkIrExternSym_T{lib, name, proc_t}));
+    nkda_append(&ir->extern_procs, {lib, name, proc_t});
     return id;
 }
 

@@ -298,7 +298,7 @@ void nkir_lex(NkIrLexerState *lexer, NkArena *file_arena, NkArena *tmp_arena, Nk
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    lexer->tokens = {0, 0, 0, nk_arena_getAllocator(file_arena)};
+    lexer->tokens = {NKDA_INIT(nk_arena_getAllocator(file_arena))};
     nkda_reserve(&lexer->tokens, 1000);
 
     lexer->error_msg = {};
