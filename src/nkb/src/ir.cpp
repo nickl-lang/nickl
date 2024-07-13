@@ -5,6 +5,7 @@
 #include "ntk/allocator.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/os/error.h"
@@ -97,24 +98,24 @@ NkString nkir_getErrorString(NkIrProg ir) {
 NkIrModule nkir_createModule(NkIrProg ir) {
     NK_LOG_TRC("%s", __func__);
 
-    NkIrModule id{ir->modules.size};
-    nkda_append(
-        &ir->modules,
-        {
-            .exported_procs{NKDA_INIT(ir->alloc)},
-            .exported_data{NKDA_INIT(ir->alloc)},
-        });
-    return id;
+    return new (nk_allocT<NkIrModule_T>(ir->alloc)) NkIrModule_T{
+        .exported_procs{NKDA_INIT(ir->alloc)},
+        .exported_data{NKDA_INIT(ir->alloc)},
+    };
 }
 
-void nkir_exportProc(NkIrProg ir, NkIrModule _mod, NkIrProc proc) {
-    auto &mod = ir->modules.data[_mod.idx];
-    nkda_append(&mod.exported_procs, proc.idx);
+void nkir_exportProc(NkIrProg ir, NkIrModule mod, NkIrProc _proc) {
+    auto &proc = ir->procs.data[_proc.idx];
+    nk_assert(proc.visibility != NkIrVisibility_Local && "trying to export local proc");
+
+    nkda_append(&mod->exported_procs, _proc.idx);
 }
 
-void nkir_exportData(NkIrProg ir, NkIrModule _mod, NkIrData data) {
-    auto &mod = ir->modules.data[_mod.idx];
-    nkda_append(&mod.exported_data, data.idx);
+void nkir_exportData(NkIrProg ir, NkIrModule mod, NkIrData _data) {
+    auto &data = ir->data.data[_data.idx];
+    nk_assert(data.visibility != NkIrVisibility_Local && "trying to export local data");
+
+    nkda_append(&mod->exported_data, _data.idx);
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
@@ -560,13 +561,13 @@ NkIrInstr nkir_make_comment(NkIrProg ir, NkString comment) {
     return {{{}, _arg(ir, comment), {}}, 0, nkir_comment};
 }
 
-bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf) {
+bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
     NkPipeStream src{};
     bool res = nkcc_streamOpen(&src, conf);
     if (res) {
-        nkir_translate2c(arena, ir, src.stream);
+        nkir_translate2c(tmp_arena, ir, mod, src.stream);
         if (nkcc_streamClose(&src)) {
             reportError(ir, "C compiler `" NKS_FMT "` returned nonzero exit code", NKS_ARG(conf.compiler_binary));
             return false;

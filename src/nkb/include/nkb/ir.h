@@ -86,7 +86,6 @@ typedef struct {
         usize idx;            \
     } NAME
 
-DEFINE_IDX_TYPE(NkIrModule);
 DEFINE_IDX_TYPE(NkIrProc);
 DEFINE_IDX_TYPE(NkIrLabel);
 DEFINE_IDX_TYPE(NkIrLocalVar);
@@ -98,6 +97,7 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 #define NKIR_INVALID_IDX ((usize) - 1ul)
 
+typedef struct NkIrModule_T *NkIrModule;
 typedef struct NkIrProg_T *NkIrProg;
 
 NkIrProg nkir_createProgram(NkArena *arena);
@@ -196,7 +196,7 @@ typedef struct {
     bool quiet;
 } NkIrCompilerConfig;
 
-bool nkir_write(NkIrProg ir, NkArena *arena, NkIrCompilerConfig conf);
+bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerConfig conf);
 
 // Execution
 

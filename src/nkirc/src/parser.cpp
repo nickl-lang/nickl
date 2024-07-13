@@ -41,6 +41,7 @@ static constexpr char const *c_entry_point_name = "main";
 struct EmitterState {
     NkIrCompiler m_compiler;
     NkIrProg m_ir;
+    NkIrModule m_mod;
     NkAtom m_file;
     NklTokenArray const m_tokens;
     NkString const m_text;
@@ -159,6 +160,7 @@ struct EmitterState {
         DEFINE(sig, parseProcSignature(true, true));
 
         auto proc = nkir_createProc(m_ir);
+        nkir_exportProc(m_ir, m_mod, proc);
 
         static auto const c_entry_point_id = nk_cs2atom(c_entry_point_name);
         if (sig.name == c_entry_point_id) {
@@ -275,6 +277,9 @@ struct EmitterState {
         DEFINE(type, parseType());
         auto name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         auto decl = read_only ? nkir_makeRodata(m_ir, name, type, vis) : nkir_makeData(m_ir, name, type, vis);
+        if (vis != NkIrVisibility_Local) {
+            nkir_exportData(m_ir, m_mod, decl);
+        }
         new (makeGlobalDecl(name)) Decl{
             {.data = decl},
             Decl_Data,
@@ -728,8 +733,8 @@ private:
         return {};
     }
 
-    NkIrData parseConst(NkAtom name, nktype_t type, NkIrVisibility vis) {
-        auto const decl = nkir_makeRodata(m_ir, name, type, vis);
+    NkIrData parseConst(nktype_t type) {
+        auto const decl = nkir_makeRodata(m_ir, NK_ATOM_INVALID, type, NkIrVisibility_Local);
         CHECK(parseValue(nkir_makeDataRef(m_ir, decl), type));
         return decl;
     }
@@ -809,7 +814,7 @@ private:
 
         else if (accept(t_colon)) {
             DEFINE(type, parseType());
-            DEFINE(decl, parseConst(NK_ATOM_INVALID, type, NkIrVisibility_Local));
+            DEFINE(decl, parseConst(type));
             result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
@@ -965,6 +970,7 @@ void nkir_parse(NkIrCompiler c, NkAtom file, NkString text, NklTokenArray tokens
     EmitterState emitter{
         .m_compiler = c,
         .m_ir = c->ir,
+        .m_mod = c->mod,
         .m_file = file,
         .m_tokens = tokens,
         .m_text = text,

@@ -55,10 +55,10 @@ typedef struct {
     nktype_t type;
 } NkIrExternSym_T;
 
-typedef struct {
+struct NkIrModule_T {
     NkDynArray(usize) exported_procs;
     NkDynArray(usize) exported_data;
-} NkIrModule_T;
+};
 
 struct NkIrProg_T {
     NkAllocator alloc;
