@@ -104,12 +104,16 @@ NkIrProg nkir_createProgram(NkArena *arena);
 
 NkString nkir_getErrorString(NkIrProg ir);
 
-// Code Generation
+// Modules
 
 NkIrModule nkir_createModule(NkIrProg ir);
 
 void nkir_exportProc(NkIrProg ir, NkIrModule mod, NkIrProc proc);
 void nkir_exportData(NkIrProg ir, NkIrModule mod, NkIrData data);
+
+void nkir_mergeModules(NkIrModule dst, NkIrModule src);
+
+// Code Generation
 
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name);

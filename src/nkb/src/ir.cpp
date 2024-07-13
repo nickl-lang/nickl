@@ -1,5 +1,7 @@
 #include "nkb/ir.h"
 
+#include <algorithm>
+
 #include "cc_adapter.h"
 #include "ir_impl.h"
 #include "ntk/allocator.h"
@@ -116,6 +118,22 @@ void nkir_exportData(NkIrProg ir, NkIrModule mod, NkIrData _data) {
     nk_assert(data.visibility != NkIrVisibility_Local && "trying to export local data");
 
     nkda_append(&mod->exported_data, _data.idx);
+}
+
+void nkir_mergeModules(NkIrModule dst, NkIrModule src) {
+    // TODO: Linear manual search in nkir module merge. Maybe just allow duplicates?
+
+    for (auto const proc_id : nk_iterate(src->exported_procs)) {
+        if (!std::count(nk_slice_begin(&dst->exported_procs), nk_slice_end(&dst->exported_procs), proc_id)) {
+            nkda_append(&dst->exported_procs, proc_id);
+        }
+    }
+
+    for (auto const decl_id : nk_iterate(src->exported_data)) {
+        if (!std::count(nk_slice_begin(&dst->exported_data), nk_slice_end(&dst->exported_data), decl_id)) {
+            nkda_append(&dst->exported_data, decl_id);
+        }
+    }
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {
