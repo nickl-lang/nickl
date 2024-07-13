@@ -1,15 +1,15 @@
 #include "nkb/ir.h"
 
-#include <cstdarg>
-
 #include "cc_adapter.h"
 #include "ir_impl.h"
 #include "ntk/allocator.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/os/error.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -175,16 +175,18 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     return data;
 }
 
-void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
+void nkir_emit(NkIrProg ir, NkIrInstr instr) {
+    nkir_emitArray(ir, {&instr, 1});
+}
+
+void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto &proc = ir->procs.data[ir->cur_proc.idx];
 
-    for (usize i = 0; i < instrs_array.size; i++) {
-        auto const &instr = instrs_array.data[i];
-
+    for (auto const &instr : nk_iterate(instrs_array)) {
         if (instr.code == nkir_label) {
             proc.cur_block = instr.arg[1].id;
             nkda_append(&proc.blocks, proc.cur_block);
@@ -208,6 +210,48 @@ void nkir_gen(NkIrProg ir, NkIrInstrArray instrs_array) {
         usize id = instrs.size;
         nkda_append(&instrs, instr);
         nkda_append(&block, id);
+    }
+}
+
+void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) {
+    NK_LOG_TRC("%s", __func__);
+
+    auto frame = nk_arena_grab(tmp_arena);
+    defer {
+        nk_arena_popFrame(tmp_arena, frame);
+    };
+
+    struct LabelMapIt {
+        usize old_label;
+        usize new_label;
+    };
+
+    NkDynArray(LabelMapIt) label_map{NKDA_INIT(nk_arena_getAllocator(tmp_arena))};
+
+    for (auto const &instr : nk_iterate(instrs)) {
+        if (instr.code == nkir_label) {
+            auto const old_label = instr.arg[1].id;
+            auto const new_label = nkir_createLabel(ir, ir->blocks.data[old_label].name).idx;
+            nkda_append(&label_map, LabelMapIt{old_label, new_label});
+        }
+    }
+
+    auto replace_label = [&label_map](NkIrArg &arg) {
+        if (arg.kind == NkIrArg_Label) {
+            for (auto const &it : nk_iterate(label_map)) {
+                if (arg.id == it.old_label) {
+                    arg.id = it.new_label;
+                    return;
+                }
+            }
+        }
+    };
+
+    for (auto const &instr : nk_iterate(instrs)) {
+        auto new_instr = instr;
+        replace_label(new_instr.arg[1]);
+        replace_label(new_instr.arg[2]);
+        nkir_emit(ir, new_instr);
     }
 }
 
@@ -633,13 +677,13 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     for (auto block_id : nk_iterate(proc.blocks)) {
         auto const &block = ir->blocks.data[block_id];
 
-        nk_stream_printf(out, "%s\n", nk_atom2cs(block.name));
+        nk_stream_printf(out, "%s#%zu\n", nk_atom2cs(block.name), block_id);
 
         for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];
 
             if (instr.code == nkir_comment) {
-                nk_stream_printf(out, "%17s" NKS_FMT "\n", "// ", NKS_ARG(instr.arg[1].comment));
+                nk_stream_printf(out, "%19s" NKS_FMT "\n", "// ", NKS_ARG(instr.arg[1].comment));
                 continue;
             }
 
@@ -671,7 +715,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                     case NkIrArg_Label:
                         if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != NK_ATOM_INVALID) {
                             auto const name = nk_atom2s(ir->blocks.data[arg.id].name);
-                            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+                            nk_stream_printf(out, NKS_FMT "#%zu", NKS_ARG(name), arg.id);
                         } else {
                             nk_stream_printf(out, "(null)");
                         }

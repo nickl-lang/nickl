@@ -95,7 +95,7 @@ DEFINE_IDX_TYPE(NkIrExternProc);
 
 #undef DEFINE_IDX_TYPE
 
-#define NKIR_INVALID_IDX ((usize)-1ul)
+#define NKIR_INVALID_IDX ((usize) - 1ul)
 
 typedef struct NkIrProg_T *NkIrProg;
 
@@ -124,8 +124,12 @@ void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
 
+void nkir_emit(NkIrProg ir, NkIrInstr instr);
+
 typedef NkSlice(NkIrInstr const) NkIrInstrArray;
-void nkir_gen(NkIrProg ir, NkIrInstrArray instrs);
+void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs);
+
+void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena);
 
 void nkir_setLine(NkIrProg ir, usize line);
 
