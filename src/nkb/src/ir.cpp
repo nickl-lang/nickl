@@ -1,7 +1,5 @@
 #include "nkb/ir.h"
 
-#include <cstdarg>
-
 #include "cc_adapter.h"
 #include "ir_impl.h"
 #include "ntk/allocator.h"
@@ -215,7 +213,7 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
     }
 }
 
-void nkir_paste(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) {
+void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) {
     NK_LOG_TRC("%s", __func__);
 
     auto frame = nk_arena_grab(tmp_arena);
@@ -223,47 +221,36 @@ void nkir_paste(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) {
         nk_arena_popFrame(tmp_arena, frame);
     };
 
-    struct LabelMap {
+    struct LabelMapIt {
         usize old_label;
         usize new_label;
     };
 
-    NkDynArray(LabelMap) labels{NKDA_INIT(nk_arena_getAllocator(tmp_arena))};
+    NkDynArray(LabelMapIt) label_map{NKDA_INIT(nk_arena_getAllocator(tmp_arena))};
 
     for (auto const &instr : nk_iterate(instrs)) {
         if (instr.code == nkir_label) {
             auto const old_label = instr.arg[1].id;
-
-            NKSB_FIXED_BUFFER(new_label_name, 256);
-            auto old_label_name = nk_atom2s(ir->blocks.data[old_label].name);
-            nksb_printf(&new_label_name, NKS_FMT "_copy", NKS_ARG(old_label_name));
-
-            auto const new_label = nkir_createLabel(ir, nk_s2atom({NK_SLICE_INIT(new_label_name)})).idx;
-            nkda_append(&labels, LabelMap{old_label, new_label});
+            auto const new_label = nkir_createLabel(ir, ir->blocks.data[old_label].name).idx;
+            nkda_append(&label_map, LabelMapIt{old_label, new_label});
         }
     }
 
-    auto replaceLabel = [&](usize &label) {
-        for (auto const &it : nk_iterate(labels)) {
-            if (it.old_label == label) {
-                label = it.new_label;
-                return;
+    auto replace_label = [&label_map](NkIrArg &arg) {
+        if (arg.kind == NkIrArg_Label) {
+            for (auto const &it : nk_iterate(label_map)) {
+                if (arg.id == it.old_label) {
+                    arg.id = it.new_label;
+                    return;
+                }
             }
         }
     };
 
     for (auto const &instr : nk_iterate(instrs)) {
         auto new_instr = instr;
-        switch (instr.code) {
-            case nkir_label:
-                replaceLabel(new_instr.arg[1].id);
-                break;
-            case nkir_jmp:
-            case nkir_jmpz:
-            case nkir_jmpnz:
-                replaceLabel(new_instr.arg[2].id);
-                break;
-        }
+        replace_label(new_instr.arg[1]);
+        replace_label(new_instr.arg[2]);
         nkir_emit(ir, new_instr);
     }
 }
@@ -690,7 +677,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     for (auto block_id : nk_iterate(proc.blocks)) {
         auto const &block = ir->blocks.data[block_id];
 
-        nk_stream_printf(out, "%s\n", nk_atom2cs(block.name));
+        nk_stream_printf(out, "%s#%zu\n", nk_atom2cs(block.name), block_id);
 
         for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];
@@ -728,7 +715,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                     case NkIrArg_Label:
                         if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != NK_ATOM_INVALID) {
                             auto const name = nk_atom2s(ir->blocks.data[arg.id].name);
-                            nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
+                            nk_stream_printf(out, NKS_FMT "#%zu", NKS_ARG(name), arg.id);
                         } else {
                             nk_stream_printf(out, "(null)");
                         }

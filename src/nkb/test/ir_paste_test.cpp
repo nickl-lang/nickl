@@ -109,54 +109,62 @@ protected:
 
         m_proc = nkir_createProc(m_ir);
 
-        auto const forty_two = nkir_makeRodata(m_ir, NK_ATOM_INVALID, &m_i64_t, NkIrVisibility_Local);
-        *(i64 *)nkir_getDataPtr(m_ir, forty_two) = 42;
-
-        auto const nine = nkir_makeRodata(m_ir, NK_ATOM_INVALID, &m_i64_t, NkIrVisibility_Local);
-        *(i64 *)nkir_getDataPtr(m_ir, nine) = 9;
-
-        auto const do_stuff_res_ref =
-            nkir_makeFrameRef(m_ir, nkir_makeLocalVar(m_ir, nk_cs2atom("do_stuff_res"), &m_i64_t));
-        auto const should_free_ref =
-            nkir_makeFrameRef(m_ir, nkir_makeLocalVar(m_ir, nk_cs2atom("should_free"), &m_i64_t));
-
-        auto const endif_defer_l = nkir_createLabel(m_ir, nk_cs2atom("@endif_defer"));
-        auto const endif_l = nkir_createLabel(m_ir, nk_cs2atom("@endif"));
-
         // proc foo() i64 {
-        nkir_startProc(m_ir, m_proc, nk_cs2atom("foo"), &m_proc_t, {}, NK_ATOM_INVALID, 0, NkIrVisibility_Default);
-        nkir_emit(m_ir, nkir_make_label(nkir_createLabel(m_ir, nk_cs2atom("@start"))));
-        //     {
-        //         defer {
-        //             if test_shouldFreeResources() != 0 {
-        NkDynArray(NkIrInstr) defer_instrs{NKDA_INIT(nk_arena_getAllocator(&m_tmp_arena))};
-        nkda_append(&defer_instrs, nkir_make_comment(m_ir, nk_cs2s("defer start")));
-        nkda_append(&defer_instrs, nkir_make_call(m_ir, should_free_ref, test_shouldFreeResources_ref, {}));
-        nkda_append(&defer_instrs, nkir_make_jmpz(m_ir, should_free_ref, endif_defer_l));
-        //                 test_freeResources();
-        nkda_append(&defer_instrs, nkir_make_call(m_ir, {}, test_freeResources_ref, {}));
-        //             }
-        //         }
-        nkda_append(&defer_instrs, nkir_make_label(endif_defer_l));
-        nkda_append(&defer_instrs, nkir_make_comment(m_ir, nk_cs2s("defer end")));
-        //         if test_doStuff() == 0 {
-        nkir_emit(m_ir, nkir_make_call(m_ir, do_stuff_res_ref, test_doStuff_ref, {}));
-        nkir_emit(m_ir, nkir_make_jmpnz(m_ir, do_stuff_res_ref, endif_l));
-        //              return 42;
-        nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, forty_two)));
-        nkir_paste(m_ir, {NK_SLICE_INIT(defer_instrs)}, &m_tmp_arena);
-        nkir_emit(m_ir, nkir_make_ret(m_ir));
-        //         }
-        nkir_emit(m_ir, nkir_make_label(endif_l));
-        //         test_doMoreStuff();
-        //     }
-        nkir_emit(m_ir, nkir_make_call(m_ir, {}, test_doMoreStuff_ref, {}));
-        nkir_paste(m_ir, {NK_SLICE_INIT(defer_instrs)}, &m_tmp_arena);
-        //     return 9;
-        nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, nine)));
-        nkir_emit(m_ir, nkir_make_ret(m_ir));
-        // }
-        nkir_finishProc(m_ir, m_proc, 0);
+        {
+            nkir_startProc(m_ir, m_proc, nk_cs2atom("foo"), &m_proc_t, {}, NK_ATOM_INVALID, 0, NkIrVisibility_Default);
+            auto const start_l = nkir_createLabel(m_ir, nk_cs2atom("@start"));
+            nkir_emit(m_ir, nkir_make_label(start_l));
+            // {
+            {
+                NkDynArray(NkIrInstr) defer_instrs{NKDA_INIT(nk_arena_getAllocator(&m_tmp_arena))};
+                // defer {
+                {
+                    nkda_append(&defer_instrs, nkir_make_comment(m_ir, nk_cs2s("defer start")));
+                    // if test_shouldFreeResources() != 0 {
+                    {
+                        auto const should_free_ref =
+                            nkir_makeFrameRef(m_ir, nkir_makeLocalVar(m_ir, nk_cs2atom("should_free"), &m_i64_t));
+                        nkda_append(
+                            &defer_instrs, nkir_make_call(m_ir, should_free_ref, test_shouldFreeResources_ref, {}));
+                        auto const endif_l = nkir_createLabel(m_ir, nk_cs2atom("@endif"));
+                        nkda_append(&defer_instrs, nkir_make_jmpz(m_ir, should_free_ref, endif_l));
+                        // test_freeResources();
+                        nkda_append(&defer_instrs, nkir_make_call(m_ir, {}, test_freeResources_ref, {}));
+                        // }
+                        nkda_append(&defer_instrs, nkir_make_label(endif_l));
+                    }
+                    // }
+                    nkda_append(&defer_instrs, nkir_make_comment(m_ir, nk_cs2s("defer end")));
+                }
+                // if test_doStuff() == 0 {
+                {
+                    auto const do_stuff_res_ref =
+                        nkir_makeFrameRef(m_ir, nkir_makeLocalVar(m_ir, nk_cs2atom("do_stuff_res"), &m_i64_t));
+                    nkir_emit(m_ir, nkir_make_call(m_ir, do_stuff_res_ref, test_doStuff_ref, {}));
+                    auto const endif_l = nkir_createLabel(m_ir, nk_cs2atom("@endif"));
+                    nkir_emit(m_ir, nkir_make_jmpnz(m_ir, do_stuff_res_ref, endif_l));
+                    // return 42;
+                    auto const forty_two = nkir_makeRodata(m_ir, NK_ATOM_INVALID, &m_i64_t, NkIrVisibility_Local);
+                    *(i64 *)nkir_getDataPtr(m_ir, forty_two) = 42;
+                    nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, forty_two)));
+                    nkir_emitArrayCopy(m_ir, {NK_SLICE_INIT(defer_instrs)}, &m_tmp_arena);
+                    nkir_emit(m_ir, nkir_make_ret(m_ir));
+                    // }
+                    nkir_emit(m_ir, nkir_make_label(endif_l));
+                }
+                // test_doMoreStuff();
+                nkir_emit(m_ir, nkir_make_call(m_ir, {}, test_doMoreStuff_ref, {}));
+                // }
+                nkir_emitArray(m_ir, {NK_SLICE_INIT(defer_instrs)});
+            }
+            // return 9;
+            auto const nine = nkir_makeRodata(m_ir, NK_ATOM_INVALID, &m_i64_t, NkIrVisibility_Local);
+            *(i64 *)nkir_getDataPtr(m_ir, nine) = 9;
+            nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, nine)));
+            nkir_emit(m_ir, nkir_make_ret(m_ir));
+            // }
+            nkir_finishProc(m_ir, m_proc, 0);
+        }
 
 #ifdef ENABLE_LOGGING
         NkStringBuilder sb{};
