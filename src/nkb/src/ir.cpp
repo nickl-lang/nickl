@@ -61,6 +61,7 @@ NkIrProg nkir_createProgram(NkArena *arena) {
     return new (nk_allocT<NkIrProg_T>(alloc)) NkIrProg_T{
         .alloc = alloc,
 
+        .modules{NKDA_INIT(alloc)},
         .procs{NKDA_INIT(alloc)},
         .blocks{NKDA_INIT(alloc)},
         .instrs{NKDA_INIT(alloc)},
@@ -68,6 +69,11 @@ NkIrProg nkir_createProgram(NkArena *arena) {
         .extern_data{NKDA_INIT(alloc)},
         .extern_procs{NKDA_INIT(alloc)},
         .relocs{NKDA_INIT(alloc)},
+
+        .cur_proc{},
+        .cur_line{},
+
+        .error_str{},
     };
 }
 
@@ -86,6 +92,29 @@ NK_PRINTF_LIKE(2) static void reportError(NkIrProg ir, char const *fmt, ...) {
 
 NkString nkir_getErrorString(NkIrProg ir) {
     return ir->error_str;
+}
+
+NkIrModule nkir_createModule(NkIrProg ir) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkIrModule id{ir->modules.size};
+    nkda_append(
+        &ir->modules,
+        {
+            .exported_procs{NKDA_INIT(ir->alloc)},
+            .exported_data{NKDA_INIT(ir->alloc)},
+        });
+    return id;
+}
+
+void nkir_exportProc(NkIrProg ir, NkIrModule _mod, NkIrProc proc) {
+    auto &mod = ir->modules.data[_mod.idx];
+    nkda_append(&mod.exported_procs, proc.idx);
+}
+
+void nkir_exportData(NkIrProg ir, NkIrModule _mod, NkIrData data) {
+    auto &mod = ir->modules.data[_mod.idx];
+    nkda_append(&mod.exported_data, data.idx);
 }
 
 NkIrProc nkir_createProc(NkIrProg ir) {

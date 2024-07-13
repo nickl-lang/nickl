@@ -348,26 +348,26 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     if (ir_ref.type->as.proc.info.call_conv == NkCallConv_Cdecl) {
                         nkda_append(
                             &relocs,
-                            (Reloc{
+                            {
                                 .instr_index = instr_index,
                                 .arg_index = arg_index,
                                 .ref_index = ref_index,
                                 .target_id = ir_ref.index,
                                 .reloc_type = Reloc_Closure,
                                 .proc_info = &ir_ref.type->as.proc.info,
-                            }));
+                            });
                     } else {
                         nkda_append(
                             &relocs,
-                            (Reloc{
+                            {
                                 .instr_index = instr_index,
                                 .arg_index = arg_index,
                                 .ref_index = ref_index,
                                 .target_id = ir_ref.index,
                                 .reloc_type = Reloc_Proc,
-                            }));
+                            });
                     }
-                    nkda_append(&referenced_procs, NkIrProc{ir_ref.index});
+                    nkda_append(&referenced_procs, {ir_ref.index});
                     break;
                 }
                 case NkIrRef_ExternData: {
@@ -450,13 +450,13 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 arg.ref.kind = NkBcRef_Instr;
                 nkda_append(
                     &relocs,
-                    (Reloc{
+                    {
                         .instr_index = instr_index,
                         .arg_index = arg_index,
                         .ref_index = -1ul,
                         .target_id = ir_arg.id,
                         .reloc_type = Reloc_Block,
-                    }));
+                    });
                 break;
             }
 
@@ -472,7 +472,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         auto const &block = ir.blocks.data[block_id];
 
         while (block_id >= block_info.size) {
-            nkda_append(&block_info, BlockInfo{});
+            nkda_append(&block_info, {});
         }
         block_info.data[block_id].first_instr = bc_proc.instrs.size;
 
@@ -594,7 +594,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     continue;
             }
 
-            nkda_append(&bc_proc.instrs, NkBcInstr{});
+            nkda_append(&bc_proc.instrs, {});
             auto &instr = nk_slice_last(bc_proc.instrs);
             instr.code = code;
             for (usize ai = 0; ai < 3; ai++) {
@@ -687,6 +687,8 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
             .types{NULL, ir->alloc},
             .mtx = nk_mutex_alloc(),
         },
+
+        .error_str{},
     };
 }
 

@@ -86,6 +86,7 @@ typedef struct {
         usize idx;            \
     } NAME
 
+DEFINE_IDX_TYPE(NkIrModule);
 DEFINE_IDX_TYPE(NkIrProc);
 DEFINE_IDX_TYPE(NkIrLabel);
 DEFINE_IDX_TYPE(NkIrLocalVar);
@@ -104,6 +105,11 @@ NkIrProg nkir_createProgram(NkArena *arena);
 NkString nkir_getErrorString(NkIrProg ir);
 
 // Code Generation
+
+NkIrModule nkir_createModule(NkIrProg ir);
+
+void nkir_exportProc(NkIrProg ir, NkIrModule mod, NkIrProc proc);
+void nkir_exportData(NkIrProg ir, NkIrModule mod, NkIrData data);
 
 NkIrProc nkir_createProc(NkIrProg ir);
 NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name);

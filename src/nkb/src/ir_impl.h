@@ -39,7 +39,7 @@ typedef struct {
 typedef struct {
     NkAtom name;
     NkDynArray(usize) instrs;
-} NkIrBlock;
+} NkIrBlock_T;
 
 typedef struct {
     NkAtom name;
@@ -55,21 +55,27 @@ typedef struct {
     nktype_t type;
 } NkIrExternSym_T;
 
+typedef struct {
+    NkDynArray(usize) exported_procs;
+    NkDynArray(usize) exported_data;
+} NkIrModule_T;
+
 struct NkIrProg_T {
     NkAllocator alloc;
 
+    NkDynArray(NkIrModule_T) modules;
     NkDynArray(NkIrProc_T) procs;
-    NkDynArray(NkIrBlock) blocks;
+    NkDynArray(NkIrBlock_T) blocks;
     NkDynArray(NkIrInstr) instrs;
     NkDynArray(NkIrDecl_T) data;
     NkDynArray(NkIrExternSym_T) extern_data;
     NkDynArray(NkIrExternSym_T) extern_procs;
     NkDynArray(NkIrRef) relocs;
 
-    NkIrProc cur_proc{};
-    usize cur_line{};
+    NkIrProc cur_proc;
+    usize cur_line;
 
-    NkString error_str{};
+    NkString error_str;
 };
 
 #ifdef __cplusplus
