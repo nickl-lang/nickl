@@ -216,6 +216,8 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
 
 void nkir_paste(NkIrProg ir, NkIrInstrArray instrs) {
     NK_LOG_TRC("%s", __func__);
+
+    nkir_emitArray(ir, instrs);
 }
 
 void nkir_setLine(NkIrProg ir, usize line) {
@@ -646,7 +648,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
             auto const &instr = ir->instrs.data[instr_id];
 
             if (instr.code == nkir_comment) {
-                nk_stream_printf(out, "%17s" NKS_FMT "\n", "// ", NKS_ARG(instr.arg[1].comment));
+                nk_stream_printf(out, "%19s" NKS_FMT "\n", "// ", NKS_ARG(instr.arg[1].comment));
                 continue;
             }
 
