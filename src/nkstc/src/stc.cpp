@@ -70,7 +70,7 @@ int nkst_compile(NkString in_file) {
         return 1;
     }
 
-    nkl_writeModule(m, nk_cs2s("a.out"));
+    nkl_writeModule(m, nk_cs2s("nkstc.out"));
 
     return 0;
 }
