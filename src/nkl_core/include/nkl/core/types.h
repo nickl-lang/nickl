@@ -116,6 +116,14 @@ NK_INLINE u64 nklt_sizeof(nkltype_t type) {
 
 #define nklval_as(TYPE, VAL) (*(TYPE *)nklval_data(VAL))
 
+NK_INLINE nktype_t nklt2nkirt(nkltype_t type) {
+    return &type->ir_type;
+}
+
+NK_INLINE nkltype_t nkirt2nklt(nktype_t type) {
+    return (nkltype_t)type;
+}
+
 #ifdef __cplusplus
 }
 #endif

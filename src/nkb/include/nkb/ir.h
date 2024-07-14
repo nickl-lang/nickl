@@ -135,6 +135,11 @@ void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
 
+nktype_t nkir_getProcType(NkIrProg ir, NkIrProc proc);
+nktype_t nkir_getLocalType(NkIrProg ir, NkIrLocalVar var);
+nktype_t nkir_getArgType(NkIrProg ir, usize idx);
+nktype_t nkir_getExternProcType(NkIrProg ir, NkIrExternProc proc);
+
 void nkir_emit(NkIrProg ir, NkIrInstr instr);
 
 typedef NkSlice(NkIrInstr const) NkIrInstrArray;
@@ -156,7 +161,7 @@ NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom lib, NkAtom name, nktype_
 NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
-NkIrRef nkir_makeArgRef(NkIrProg ir, usize index);
+NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx);
 NkIrRef nkir_makeRetRef(NkIrProg ir);
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);

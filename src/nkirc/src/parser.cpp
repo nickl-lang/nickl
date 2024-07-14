@@ -743,7 +743,7 @@ private:
         NkIrRef result_ref{};
         u8 indir{};
 
-        bool const deref = accept(t_amper);
+        bool const take_address = accept(t_amper);
 
         while (accept(t_bracket_l)) {
             indir++;
@@ -858,11 +858,11 @@ private:
             ASSIGN(result_ref.type, parseType());
         }
 
-        if (indir && deref) {
+        if (indir && take_address) {
             return error("cannot have both dereference and address of"), NkIrRef{};
         }
 
-        if (deref) {
+        if (take_address) {
             result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler));
         }
 
