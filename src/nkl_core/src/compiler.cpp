@@ -219,21 +219,20 @@ static NkIrRef asRef(Context &ctx, ValueInfo const &val) {
                     nk_assert(!"asRef(DeclKind_ComptimeUnresolved) is not implemented");
                     break;
                 case DeclKind_ExternData:
-                    // TODO: asRef(DeclKind_ExternData)
-                    nk_assert(!"asRef(DeclKind_ExternData) is not implemented");
+                    ref = nkir_makeExternDataRef(c->ir, decl.as.extern_data.id);
                     break;
                 case DeclKind_ExternProc:
-                    // TODO: asRef(DeclKind_ExternProc)
+                    ref = nkir_makeExternProcRef(c->ir, decl.as.extern_proc.id);
                     break;
                 case DeclKind_Local:
                     ref = nkir_makeFrameRef(c->ir, decl.as.local.var);
                     break;
                 case DeclKind_Module: {
                     // TODO: This rodata is supposed to be created where the proc is
-                    ref = nkir_makeDataRef(
-                        c->ir,
-                        nkir_makeRodata(
-                            c->ir, NK_ATOM_INVALID, nklt2nkirt(decl.as.module.val.type), NkIrVisibility_Local));
+                    auto cnst = nkir_makeRodata(
+                        c->ir, NK_ATOM_INVALID, nklt2nkirt(decl.as.module.val.type), NkIrVisibility_Local);
+                    // TODO: Need to fill moduele value
+                    ref = nkir_makeDataRef(c->ir, cnst);
                     break;
                 }
                 case DeclKind_ModuleIncomplete:
@@ -402,6 +401,11 @@ void nkl_writeModule(NklModule m, NkString filename) {
 
     auto c = m->c;
 
+    NkString additional_flags[] = {
+        nk_cs2s("-g"),
+        nk_cs2s("-O0"),
+    };
+
     // TODO: Hardcoded C compiler config
     if (!nkir_write(
             c->ir,
@@ -409,7 +413,7 @@ void nkl_writeModule(NklModule m, NkString filename) {
             getNextTempArena(c, NULL),
             NkIrCompilerConfig{
                 .compiler_binary = nk_cs2s("gcc"),
-                .additional_flags{},
+                .additional_flags{additional_flags, NK_ARRAY_COUNT(additional_flags)},
                 .output_filename = filename,
                 .output_kind = NkbOutput_Executable,
                 .quiet = false,
@@ -581,8 +585,8 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
                 .name = nk_cs2atom("__top_level"), // TODO: Hardcoded toplevel proc name
                 .proc_t = nklt2nkirt(proc_t),
                 .arg_names{},
-                .file{}, // TODO: Ignoring file and line
-                .line{},
+                .file = file,
+                .line = 0,
                 .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
             });
 
@@ -699,6 +703,9 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
     };
 
     auto const &node = src.nodes.data[node_idx];
+
+    auto const &token = src.tokens.data[node.token_idx];
+    nkir_setLine(c->ir, token.lin);
 
     NK_LOG_DBG("Compiling node %zu #%s", node_idx, nk_atom2cs(node.id));
 
@@ -1176,8 +1183,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                     .name = decl ? decl_name : NK_ATOM_INVALID, // TODO: Need to generate names for anonymous procs
                     .proc_t = nklt2nkirt(proc_t),
                     .arg_names{NK_SLICE_INIT(param_names)},
-                    .file{}, // TODO: Ignoring file and line
-                    .line{},
+                    .file = ctx.src->file,
+                    .line = token.lin,
                     .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
                 });
 
@@ -1243,7 +1250,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             if (node.arity) {
                 auto arg_idx = get_next_child(next_idx);
                 DEFINE(arg, compileNode(ctx, arg_idx));
-                asRef(ctx, arg);
+                nkir_emit(c->ir, nkir_make_mov(c->ir, nkir_makeRetRef(c->ir), asRef(ctx, arg)));
             } else {
             }
             nkir_emit(c->ir, nkir_make_ret(c->ir));
