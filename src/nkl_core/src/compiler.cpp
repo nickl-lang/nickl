@@ -2,7 +2,6 @@
 
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
-#include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
 #include "nkl/core/types.h"
@@ -268,7 +267,8 @@ static NkIrRef asRef(Context &ctx, ValueInfo const &val) {
 
 static ValueInfo compileNode(Context &ctx, usize node_idx);
 static Void compileStmt(Context &ctx, usize node_idx);
-static bool compileAst(Context &ctx);
+static void compileAst(Context &ctx);
+static ValueInfo resolveDecl(NklCompiler c, Decl &decl);
 
 usize parentNodeIdx(Context &ctx) {
     return ctx.node_stack->next ? ctx.node_stack->next->node_idx : -1u;
@@ -389,11 +389,12 @@ bool nkl_runModule(NklModule m) {
 
     auto c = m->c;
 
-    if (c->entry_point.idx == NKIR_INVALID_IDX) {
-        // TODO: Report diag outside of core compiler
-        nkl_diag_printError("entry point is not defined");
-        return false;
-    }
+    nkl_errorStateEquip(&c->errors);
+    defer {
+        nkl_errorStateUnequip();
+    };
+
+    nk_assert(c->entry_point.idx != NKIR_INVALID_IDX);
 
     auto run_ctx = nkir_createRunCtx(c->ir, getNextTempArena(c, NULL));
     defer {
@@ -404,9 +405,8 @@ bool nkl_runModule(NklModule m) {
 
     void *rets[] = {&ret_code};
     if (!nkir_invoke(run_ctx, c->entry_point, {}, rets)) {
-        NkString err_str = nkir_getRunErrorString(run_ctx);
-        // TODO: Report diag outside of core compiler
-        nkl_diag_printError("failed to run the program: " NKS_FMT, NKS_ARG(err_str));
+        NkString msg = nkir_getRunErrorString(run_ctx);
+        nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
     }
 
@@ -419,11 +419,10 @@ bool nkl_writeModule(NklModule m, NkString filename) {
 
     auto c = m->c;
 
-    if (c->entry_point.idx == NKIR_INVALID_IDX) {
-        // TODO: Report diag outside of core compiler
-        nkl_diag_printError("entry point is not defined");
-        return false;
-    }
+    nkl_errorStateEquip(&c->errors);
+    defer {
+        nkl_errorStateUnequip();
+    };
 
     NkString additional_flags[] = {
         nk_cs2s("-g"),
@@ -443,7 +442,8 @@ bool nkl_writeModule(NklModule m, NkString filename) {
                 .quiet = false,
             })) {
         // TODO: Report erros properly
-        NK_LOG_ERR(NKS_FMT, NKS_ARG(nkir_getErrorString(c->ir)));
+        auto msg = nkir_getErrorString(c->ir);
+        nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
     }
 
@@ -490,8 +490,6 @@ NK_PRINTF_LIKE(2) static ValueInfo error(Context &ctx, char const *fmt, ...) {
 
     return {};
 }
-
-static ValueInfo resolveDecl(NklCompiler c, Decl &decl);
 
 static ValueInfo resolveComptime(NklCompiler c, Decl &decl) {
     nk_assert(decl.kind == DeclKind_ComptimeUnresolved);
@@ -1513,15 +1511,13 @@ static Void compileStmt(Context &ctx, usize node_idx) {
     return {};
 }
 
-static bool compileAst(Context &ctx) {
+static void compileAst(Context &ctx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     if (ctx.src->nodes.size) {
         compileStmt(ctx, 0);
     }
-
-    return nkl_getErrorCount() == 0;
 }
 
 bool nkl_compileFile(NklModule m, NkString filename) {
