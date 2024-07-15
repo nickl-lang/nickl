@@ -16,6 +16,19 @@ target_link_libraries(${LIB}
     PUBLIC ntk
     )
 
+# TODO: Hardcoded libc name
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(${LIB}
+        PRIVATE LIBC_NAME=""
+        )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_compile_definitions(${LIB}
+        PRIVATE LIBC_NAME="msvcrt.dll"
+        )
+else()
+    message(FATAL_ERROR "Platform is not supported")
+endif()
+
 if(CMAKE_TESTING_ENABLED)
     add_subdirectory(test)
 endif()

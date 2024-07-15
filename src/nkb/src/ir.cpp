@@ -27,9 +27,9 @@ NkIrArg _arg(NkIrRef ref) {
 }
 
 NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
-    auto refs = nk_allocT<NkIrRef>(ir->alloc, args.size);
-    memcpy(refs, args.data, args.size * sizeof(NkIrRef));
-    return {{.refs{refs, args.size}}, NkIrArg_RefArray};
+    NkIrRefArray dst_refs{};
+    nk_slice_copy(ir->alloc, &dst_refs, args);
+    return {{.refs{dst_refs}}, NkIrArg_RefArray};
 }
 
 NkIrArg _arg(NkIrLabel label) {
@@ -199,6 +199,15 @@ void nkir_activateProc(NkIrProg ir, NkIrProc _proc) {
     ir->cur_proc = _proc;
 }
 
+bool nkir_hasActiveProc(NkIrProg ir) {
+    return ir->cur_proc.idx < ir->procs.size;
+}
+
+NkIrProc nkir_getActiveProc(NkIrProg ir) {
+    nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    return ir->cur_proc;
+}
+
 void nkir_finishProc(NkIrProg ir, NkIrProc _proc, usize line) {
     NK_LOG_TRC("%s", __func__);
 
@@ -228,6 +237,32 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     }
     data += ref.post_offset;
     return data;
+}
+
+nktype_t nkir_getProcType(NkIrProg ir, NkIrProc _proc) {
+    auto const &proc = ir->procs.data[_proc.idx];
+    return proc.proc_t;
+}
+
+nktype_t nkir_getLocalType(NkIrProg ir, NkIrLocalVar var) {
+    nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto const &proc = ir->procs.data[ir->cur_proc.idx];
+
+    return proc.locals.data[var.idx].type;
+}
+
+nktype_t nkir_getArgType(NkIrProg ir, usize idx) {
+    nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    auto const &proc = ir->procs.data[ir->cur_proc.idx];
+
+    auto const args_t = proc.proc_t->as.proc.info.args_t;
+    nk_assert(idx < args_t.size && "arg index out of range");
+
+    return args_t.data[idx];
+}
+
+nktype_t nkir_getExternProcType(NkIrProg ir, NkIrExternProc proc) {
+    return ir->extern_procs.data[proc.idx].type;
 }
 
 void nkir_emit(NkIrProg ir, NkIrInstr instr) {
@@ -400,19 +435,19 @@ NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
     };
 }
 
-NkIrRef nkir_makeArgRef(NkIrProg ir, usize index) {
+NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx) {
     NK_LOG_TRC("%s", __func__);
 
     nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
     auto const args_t = proc.proc_t->as.proc.info.args_t;
-    nk_assert(index < args_t.size && "arg index out of range");
+    nk_assert(idx < args_t.size && "arg index out of range");
     return {
-        .index = index,
+        .index = idx,
         .offset = 0,
         .post_offset = 0,
-        .type = args_t.data[index],
+        .type = args_t.data[idx],
         .kind = NkIrRef_Arg,
         .indir = 0,
     };

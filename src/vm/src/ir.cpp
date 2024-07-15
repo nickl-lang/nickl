@@ -204,19 +204,19 @@ NkIrRef nkir_makeFrameRef(NkIrProg p, NkIrLocalVarId var) {
     };
 }
 
-NkIrRef nkir_makeArgRef(NkIrProg p, usize index) {
+NkIrRef nkir_makeArgRef(NkIrProg p, usize idx) {
     nk_assert(p->cur_funct && "no current function");
     nk_assert(
         (p->cur_funct->state == NkIrFunct_Complete || p->cur_funct->fn_info.args_t) &&
         "referencing incomplete function args type");
     auto const args_t =
         p->cur_funct->state == NkIrFunct_Complete ? p->cur_funct->fn_t->as.fn.args_t : p->cur_funct->fn_info.args_t;
-    nk_assert(index < args_t->as.tuple.elems.size && "arg index out of range");
+    nk_assert(idx < args_t->as.tuple.elems.size && "arg index out of range");
     return {
-        .index = index,
+        .index = idx,
         .offset = 0,
         .post_offset = 0,
-        .type = args_t->as.tuple.elems.data[index].type,
+        .type = args_t->as.tuple.elems.data[idx].type,
         .ref_type = NkIrRef_Arg,
         .is_indirect = false,
     };

@@ -5,12 +5,9 @@
     (return 0)
 ]))
 
-main
+(call main [0 0])
 
 /* @output
-main {
-call
-return
-}
+Hello, World!
 
 @endoutput */

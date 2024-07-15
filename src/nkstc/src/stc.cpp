@@ -5,6 +5,7 @@
 #include "nkl/core/compiler.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -23,6 +24,34 @@ NklAstNodeArray parser_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, Nk
     return nkst_parse(alloc, file, text, tokens);
 }
 
+void printDiag(NklState nkl, NklCompiler c) {
+    auto error = nkl_getCompileErrorList(c);
+    while (error) {
+        if (error->file != NK_ATOM_INVALID) {
+            char cwd[NK_MAX_PATH];
+            nk_getCwd(cwd, sizeof(cwd));
+            char relpath[NK_MAX_PATH];
+            nk_relativePath(relpath, sizeof(relpath), nk_atom2cs(error->file), cwd);
+
+            auto src = nkl_getSource(nkl, error->file);
+            nkl_diag_printErrorQuote(
+                src->text,
+                {
+                    .file = nk_cs2s(relpath),
+                    .lin = error->token->lin,
+                    .col = error->token->col,
+                    .len = error->token->len,
+                },
+                NKS_FMT,
+                NKS_ARG(error->msg));
+        } else {
+            nkl_diag_printError(NKS_FMT, NKS_ARG(error->msg));
+        }
+
+        error = error->next;
+    }
+}
+
 } // namespace
 
 int nkst_compile(NkString in_file) {
@@ -39,38 +68,20 @@ int nkst_compile(NkString in_file) {
     };
 
     auto m = nkl_createModule(c);
-    nkl_compileFile(m, in_file);
-
-    auto error = nkl_getCompileErrorList(c);
-    if (error) {
-        while (error) {
-            if (error->file != NK_ATOM_INVALID) {
-                char cwd[NK_MAX_PATH];
-                nk_getCwd(cwd, sizeof(cwd));
-                char relpath[NK_MAX_PATH];
-                nk_relativePath(relpath, sizeof(relpath), nk_atom2cs(error->file), cwd);
-
-                auto src = nkl_getSource(nkl, error->file);
-                nkl_diag_printErrorQuote(
-                    src->text,
-                    {
-                        .file = nk_cs2s(relpath),
-                        .lin = error->token->lin,
-                        .col = error->token->col,
-                        .len = error->token->len,
-                    },
-                    NKS_FMT,
-                    NKS_ARG(error->msg));
-            } else {
-                nkl_diag_printError(NKS_FMT, NKS_ARG(error->msg));
-            }
-
-            error = error->next;
-        }
+    if (!nkl_compileFile(m, in_file)) {
+        printDiag(nkl, c);
         return 1;
     }
 
-    nkl_writeModule(m, nk_cs2s("a.out"));
+    if (!nkl_runModule(m)) {
+        printDiag(nkl, c);
+        return 1;
+    }
+
+    // if (!nkl_writeModule(m, nk_cs2s("nkstc.out"))) {
+    //     printDiag(nkl, c);
+    //     return 1;
+    // }
 
     return 0;
 }

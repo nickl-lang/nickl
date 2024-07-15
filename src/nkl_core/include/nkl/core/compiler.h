@@ -26,7 +26,8 @@ NklError *nkl_getCompileErrorList(NklCompiler c);
 
 NklModule nkl_createModule(NklCompiler c);
 
-void nkl_writeModule(NklModule m, NkString filename);
+bool nkl_runModule(NklModule m);
+bool nkl_writeModule(NklModule m, NkString filename);
 
 bool nkl_compileFile(NklModule m, NkString filename);
 
