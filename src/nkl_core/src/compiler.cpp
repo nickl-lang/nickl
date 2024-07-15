@@ -131,8 +131,6 @@ struct Scope {
 
     DeclMap locals;
 
-    usize tmp_count;
-
     NkIrProc proc;
 };
 
@@ -255,10 +253,7 @@ static NkIrRef asRef(Context &ctx, ValueInfo const &val) {
             auto instr = val.as.instr;
             auto &dst = instr.arg[0].ref;
             if (dst.kind == NkIrRef_None && nklt_sizeof(val.type)) {
-                NKSB_FIXED_BUFFER(tmp_name, 32);
-                nksb_printf(&tmp_name, "tmp%zu", ctx.scope_stack->tmp_count++);
-                dst = nkir_makeFrameRef(
-                    c->ir, nkir_makeLocalVar(c->ir, nk_s2atom({NKS_INIT(tmp_name)}), nklt2nkirt(val.type)));
+                dst = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, NK_ATOM_INVALID, nklt2nkirt(val.type)));
             }
             nkir_emit(c->ir, instr);
             ref = dst;
@@ -294,8 +289,6 @@ static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, Nk
         .temp_frame = nk_arena_grab(temp_arena),
 
         .locals{nullptr, nk_arena_getAllocator(main_arena)},
-
-        .tmp_count{},
 
         .proc = proc,
     };
@@ -775,6 +768,9 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             NkDynArray(NkIrRef) arg_refs{NKDA_INIT(temp_alloc)};
             for (usize i = 0; i < args.size; i++) {
+                if (i == lhs.type->ir_type.as.proc.info.args_t.size) {
+                    nkda_append(&arg_refs, nkir_makeVariadicMarkerRef(c->ir));
+                }
                 nkda_append(&arg_refs, asRef(ctx, args.data[i]));
             }
 
@@ -1207,7 +1203,16 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             CHECK(compileStmt(ctx, body_idx));
 
-            nkir_finishProc(c->ir, proc, 0); // TODO: Ignoring procs finishing line
+            // TODO: A very hacky and unstable way to calculate proc finishing line
+            u32 proc_finish_line = 0;
+            if (next_idx < src.nodes.size) {
+                auto const &next_node = src.nodes.data[next_idx];
+                if (next_node.token_idx) {
+                    proc_finish_line = src.tokens.data[next_node.token_idx - 1].lin;
+                }
+            }
+
+            nkir_finishProc(c->ir, proc, proc_finish_line);
 
             if (decl) {
                 decl->kind = DeclKind_Module;
@@ -1394,22 +1399,24 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto cond_idx = get_next_child(next_idx);
             auto body_idx = get_next_child(next_idx);
 
-            printf("loop:\n");
+            auto const loop_l = nkir_createLabel(c->ir, nk_cs2atom("@loop"));
+            auto const endloop_l = nkir_createLabel(c->ir, nk_cs2atom("@endloop"));
+
+            nkir_emit(c->ir, nkir_make_label(loop_l));
 
             DEFINE(cond, compileNode(ctx, cond_idx));
-            asRef(ctx, cond);
 
             if (cond.type->tclass != NklType_Bool) {
                 // TODO: Improve error message
                 return error(ctx, "bool expected");
             }
 
-            printf("jmpz endloop\n");
+            nkir_emit(c->ir, nkir_make_jmpz(c->ir, asRef(ctx, cond), endloop_l));
 
             CHECK(compileStmt(ctx, body_idx));
 
-            printf("jmp loop\n");
-            printf("endloop:\n");
+            nkir_emit(c->ir, nkir_make_jmp(c->ir, loop_l));
+            nkir_emit(c->ir, nkir_make_label(endloop_l));
 
             break;
         }
@@ -1463,7 +1470,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    DEFINE(file_ctx, importFile(c, filename, &c->perm_arena, &c->temp_arenas[0], nullptr));
+    DEFINE(file_ctx, importFile(c, filename, &c->perm_arena, getNextTempArena(c, nullptr), nullptr));
 
     nkir_mergeModules(m->mod, file_ctx->ctx->m->mod);
 

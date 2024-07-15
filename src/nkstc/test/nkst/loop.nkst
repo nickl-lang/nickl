@@ -12,15 +12,10 @@
 main
 
 /* @output
-main {
-loop:
-cmp lt
-jmpz endloop
-call
-add
-jmp loop
-endloop:
-return
-}
+0
+1
+2
+3
+4
 
 @endoutput */
