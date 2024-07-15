@@ -976,8 +976,8 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                     .flags = proc_flags,
                 });
 
-            // TODO: Empty lib
-            auto const proc = nkir_makeExternProc(c->ir, nk_cs2atom(""), decl_name, nklt2nkirt(proc_t));
+            // TODO: Using hardcoded libc name
+            auto const proc = nkir_makeExternProc(c->ir, nk_cs2atom(LIBC_NAME), decl_name, nklt2nkirt(proc_t));
             CHECK(defineExternProc(ctx, decl_name, proc));
 
             return {{.ref{nkir_makeExternProcRef(c->ir, proc)}}, proc_t, ValueKind_Ref};

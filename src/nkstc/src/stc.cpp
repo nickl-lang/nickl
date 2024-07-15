@@ -74,9 +74,9 @@ int nkst_compile(NkString in_file) {
         return 1;
     }
 
-    if (!nkl_writeModule(m, nk_cs2s("nkstc.out"))) {
-        return 1;
-    }
+    // if (!nkl_writeModule(m, nk_cs2s("nkstc.out"))) {
+    //     return 1;
+    // }
 
     return 0;
 }
