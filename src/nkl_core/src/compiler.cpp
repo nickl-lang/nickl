@@ -169,6 +169,8 @@ struct NklCompiler_T {
     NkArena temp_arenas[2];
     FileMap files;
     NklErrorState errors;
+
+    usize word_size;
 };
 
 static NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
@@ -345,14 +347,17 @@ static Decl &resolve(Scope *scope, NkAtom name) {
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
-    NklCompiler_T *c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
+    auto c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .ir{},
         .entry_point{NKIR_INVALID_IDX},
+
         .nkl = nkl,
         .perm_arena = arena,
         .temp_arenas{},
         .files{},
         .errors{},
+
+        .word_size = 8, // TODO: Hardcoded word size, need to map it from target
     };
     c->files.alloc = nk_arena_getAllocator(&c->perm_arena);
     c->errors.arena = &c->perm_arena;
@@ -405,7 +410,7 @@ bool nkl_runModule(NklModule m) {
 
     void *rets[] = {&ret_code};
     if (!nkir_invoke(run_ctx, c->entry_point, {}, rets)) {
-        NkString msg = nkir_getRunErrorString(run_ctx);
+        auto const msg = nkir_getRunErrorString(run_ctx);
         nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
     }
@@ -424,25 +429,21 @@ bool nkl_writeModule(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    NkString additional_flags[] = {
+    // TODO: Hardcoded C compiler config
+    NkString const additional_flags[] = {
         nk_cs2s("-g"),
         nk_cs2s("-O0"),
     };
+    NkIrCompilerConfig const config{
+        .compiler_binary = nk_cs2s("gcc"),
+        .additional_flags{additional_flags, NK_ARRAY_COUNT(additional_flags)},
+        .output_filename = filename,
+        .output_kind = NkbOutput_Executable,
+        .quiet = false,
+    };
 
-    // TODO: Hardcoded C compiler config
-    if (!nkir_write(
-            c->ir,
-            m->mod,
-            getNextTempArena(c, NULL),
-            NkIrCompilerConfig{
-                .compiler_binary = nk_cs2s("gcc"),
-                .additional_flags{additional_flags, NK_ARRAY_COUNT(additional_flags)},
-                .output_filename = filename,
-                .output_kind = NkbOutput_Executable,
-                .quiet = false,
-            })) {
-        // TODO: Report erros properly
-        auto msg = nkir_getErrorString(c->ir);
+    if (!nkir_write(c->ir, m->mod, getNextTempArena(c, NULL), config)) {
+        auto const msg = nkir_getErrorString(c->ir);
         nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
     }
@@ -581,10 +582,9 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
 
     DEFINE(src, nkl_getSource(nkl, file));
 
-    // TODO: Hardcoded word size
     auto proc_t = nkl_get_proc(
         nkl,
-        8,
+        c->word_size,
         NklProcInfo{
             .param_types{},
             .ret_t = nkl_get_void(nkl),
@@ -659,7 +659,6 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
 
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{};
-    // TODO: Wrong arena?
     sb.alloc = nk_arena_getAllocator(temp_arena);
     nkir_inspectProgram(c->ir, nksb_getStream(&sb));
     NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
@@ -882,8 +881,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto i8_t = nkl_get_numeric(nkl, Int8);
             auto ar_t = nkl_get_array(nkl, i8_t, unescaped_text.size + 1);
-            // TODO: Hardcoded word size
-            auto str_t = nkl_get_ptr(nkl, 8, ar_t, true);
+            auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
 
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
             auto str_ptr = nkir_getDataPtr(c->ir, cnst);
@@ -963,10 +961,9 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto ret_t = nklval_as(nkltype_t, getValueFromInfo(c, ret_t_v));
 
-            // TODO: Hardcoded word size
             auto proc_t = nkl_get_proc(
                 nkl,
-                8,
+                c->word_size,
                 NklProcInfo{
                     .param_types = {NK_SLICE_INIT(param_types)},
                     .ret_t = ret_t,
@@ -982,48 +979,42 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         }
 
         case n_i8: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int8);
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
         }
 
         case n_i16: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int16);
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
         }
 
         case n_i32: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int32);
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
         }
 
         case n_i64: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int64);
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
         }
 
         case n_f32: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Float32);
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
         }
 
         case n_f64: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Float64);
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
@@ -1208,10 +1199,9 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto ret_t = nklval_as(nkltype_t, getValueFromInfo(c, ret_t_v));
 
-            // TODO: Hardcoded word size
             auto proc_t = nkl_get_proc(
                 nkl,
-                8,
+                c->word_size,
                 NklProcInfo{
                     .param_types{NK_SLICE_INIT(param_types)},
                     .ret_t = ret_t,
@@ -1281,7 +1271,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 decl->kind = DeclKind_Module;
                 return {{.decl = decl}, proc_t, ValueKind_Decl};
             } else {
-                // TODO: Should be comptime const instead of ref
+                // TODO: Should be comptime const instead of ref?
                 return {{.ref = nkir_makeProcRef(c->ir, proc)}, proc_t, ValueKind_Ref};
             }
         }
@@ -1302,13 +1292,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 return error(ctx, "value is not known");
             }
 
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
 
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             auto target_t = nklval_as(nkltype_t, getValueFromInfo(c, target));
-            // TODO: Hardcoded word size
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_ptr(nkl, 8, target_t, false);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_ptr(nkl, c->word_size, target_t, false);
 
             return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
         }
@@ -1319,7 +1307,6 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 auto arg_idx = get_next_child(next_idx);
                 DEFINE(arg, compileNode(ctx, arg_idx));
                 nkir_emit(c->ir, nkir_make_mov(c->ir, nkir_makeRetRef(c->ir), asRef(ctx, arg)));
-            } else {
             }
             nkir_emit(c->ir, nkir_make_ret(c->ir));
             return {{}, nkl_get_void(nkl), ValueKind_Void};
@@ -1354,8 +1341,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto i8_t = nkl_get_numeric(nkl, Int8);
             auto ar_t = nkl_get_array(nkl, i8_t, text.size + 1);
-            // TODO: Hardcoded word size
-            auto str_t = nkl_get_ptr(nkl, 8, ar_t, true);
+            auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
 
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
             auto str_ptr = nkir_getDataPtr(c->ir, cnst);
@@ -1410,8 +1396,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto struct_t = nkl_get_struct(nkl, {NK_SLICE_INIT(fields)});
 
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
 
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = struct_t;
@@ -1443,14 +1428,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto var = nkir_makeLocalVar(c->ir, name, nklt2nkirt(type));
             CHECK(defineLocal(ctx, name, var));
 
-            // TODO: Zero init the var
+            // TODO: Zero init the var?
 
             return {{}, nkl_get_void(nkl), ValueKind_Void};
         }
 
         case n_void: {
-            // TODO: Hardcoded word size
-            auto type_t = nkl_get_typeref(nkl, 8);
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
 
             auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_void(nkl);
@@ -1502,7 +1486,6 @@ static Void compileStmt(Context &ctx, usize node_idx) {
     DEFINE(val, compileNode(ctx, node_idx));
     auto ref = asRef(ctx, val);
     if (ref.kind != NkIrRef_None && ref.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
-        // TODO: Inspect ref instead of value?
         NKSB_FIXED_BUFFER(sb, 1024);
         nkir_inspectRef(c->ir, ctx.scope_stack->proc, ref, nksb_getStream(&sb));
         NK_LOG_DBG("Value ignored: " NKS_FMT, NKS_ARG(sb));
