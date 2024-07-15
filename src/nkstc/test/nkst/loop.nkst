@@ -9,7 +9,7 @@
     (return 0)
 ]))
 
-main
+(call main [0 0])
 
 /* @output
 0

@@ -130,6 +130,9 @@ typedef struct {
 void nkir_startProc(NkIrProg ir, NkIrProc proc, NkIrProcDescr descr);
 void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
+bool nkir_hasActiveProc(NkIrProg ir);
+NkIrProc nkir_getActiveProc(NkIrProg ir);
+
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 
 void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);

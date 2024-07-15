@@ -199,6 +199,15 @@ void nkir_activateProc(NkIrProg ir, NkIrProc _proc) {
     ir->cur_proc = _proc;
 }
 
+bool nkir_hasActiveProc(NkIrProg ir) {
+    return ir->cur_proc.idx < ir->procs.size;
+}
+
+NkIrProc nkir_getActiveProc(NkIrProg ir) {
+    nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
+    return ir->cur_proc;
+}
+
 void nkir_finishProc(NkIrProg ir, NkIrProc _proc, usize line) {
     NK_LOG_TRC("%s", __func__);
 

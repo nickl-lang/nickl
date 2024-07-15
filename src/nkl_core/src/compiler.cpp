@@ -2,6 +2,7 @@
 
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
+#include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
 #include "nkl/core/types.h"
@@ -69,7 +70,7 @@ struct Decl {
         } local;
         struct {
             Scope *scope;
-            nklval_t val;
+            NkIrProc proc;
         } module;
         struct {
             usize idx;
@@ -162,6 +163,7 @@ NK_HASH_TREE_DEFINE(FileMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_a
 
 struct NklCompiler_T {
     NkIrProg ir;
+    NkIrProc entry_point;
 
     NklState nkl;
     NkArena perm_arena;
@@ -225,17 +227,9 @@ static NkIrRef asRef(Context &ctx, ValueInfo const &val) {
                 case DeclKind_Local:
                     ref = nkir_makeFrameRef(c->ir, decl.as.local.var);
                     break;
-                case DeclKind_Module: {
-                    // TODO: This rodata is supposed to be created where the proc is
-                    auto cnst = nkir_makeRodata(
-                        c->ir, NK_ATOM_INVALID, nklt2nkirt(decl.as.module.val.type), NkIrVisibility_Local);
-                    // TODO: Need to fill moduele value
-                    ref = nkir_makeDataRef(c->ir, cnst);
-                    break;
-                }
+                case DeclKind_Module:
                 case DeclKind_ModuleIncomplete:
-                    // TODO: asRef(DeclKind_ModuleIncomplete)
-                    nk_assert(!"asRef(DeclKind_ModuleIncomplete) is not implemented");
+                    ref = nkir_makeProcRef(c->ir, decl.as.module.proc);
                     break;
                 case DeclKind_Param:
                     ref = nkir_makeArgRef(c->ir, decl.as.param.idx);
@@ -353,6 +347,7 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
     NklCompiler_T *c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .ir{},
+        .entry_point{NKIR_INVALID_IDX},
         .nkl = nkl,
         .perm_arena = arena,
         .temp_arenas{},
@@ -388,11 +383,47 @@ NklModule nkl_createModule(NklCompiler c) {
     };
 }
 
-void nkl_writeModule(NklModule m, NkString filename) {
+bool nkl_runModule(NklModule m) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
     auto c = m->c;
+
+    if (c->entry_point.idx == NKIR_INVALID_IDX) {
+        // TODO: Report diag outside of core compiler
+        nkl_diag_printError("entry point is not defined");
+        return false;
+    }
+
+    auto run_ctx = nkir_createRunCtx(c->ir, getNextTempArena(c, NULL));
+    defer {
+        nkir_freeRunCtx(run_ctx);
+    };
+
+    i64 ret_code = -1;
+
+    void *rets[] = {&ret_code};
+    if (!nkir_invoke(run_ctx, c->entry_point, {}, rets)) {
+        NkString err_str = nkir_getRunErrorString(run_ctx);
+        // TODO: Report diag outside of core compiler
+        nkl_diag_printError("failed to run the program: " NKS_FMT, NKS_ARG(err_str));
+        return false;
+    }
+
+    return true;
+}
+
+bool nkl_writeModule(NklModule m, NkString filename) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    auto c = m->c;
+
+    if (c->entry_point.idx == NKIR_INVALID_IDX) {
+        // TODO: Report diag outside of core compiler
+        nkl_diag_printError("entry point is not defined");
+        return false;
+    }
 
     NkString additional_flags[] = {
         nk_cs2s("-g"),
@@ -413,13 +444,15 @@ void nkl_writeModule(NklModule m, NkString filename) {
             })) {
         // TODO: Report erros properly
         NK_LOG_ERR(NKS_FMT, NKS_ARG(nkir_getErrorString(c->ir)));
+        return false;
     }
+
+    return true;
 }
 
 static bool isValueKnown(ValueInfo const &val) {
     return val.kind == ValueKind_Void || val.kind == ValueKind_Const ||
-           (val.kind == ValueKind_Decl &&
-            (val.as.decl->kind == DeclKind_Comptime || val.as.decl->kind == DeclKind_Module));
+           (val.kind == ValueKind_Decl && (val.as.decl->kind == DeclKind_Comptime));
 }
 
 static nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val) {
@@ -434,8 +467,6 @@ static nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val) {
             switch (val.as.decl->kind) {
                 case DeclKind_Comptime:
                     return val.as.decl->as.comptime.val;
-                case DeclKind_Module:
-                    return val.as.decl->as.module.val;
                 default:
                     nk_assert(!"unreachable");
                     return {};
@@ -460,6 +491,8 @@ NK_PRINTF_LIKE(2) static ValueInfo error(Context &ctx, char const *fmt, ...) {
     return {};
 }
 
+static ValueInfo resolveDecl(NklCompiler c, Decl &decl);
+
 static ValueInfo resolveComptime(NklCompiler c, Decl &decl) {
     nk_assert(decl.kind == DeclKind_ComptimeUnresolved);
 
@@ -473,24 +506,24 @@ static ValueInfo resolveComptime(NklCompiler c, Decl &decl) {
 
     DEFINE(val, compileNode(ctx, node_idx));
 
-    auto const &node = ctx.src->nodes.data[node_idx];
+    switch (decl.kind) {
+        case DeclKind_ExternData:
+        case DeclKind_ExternProc:
+        case DeclKind_Module:
+        case DeclKind_ModuleIncomplete:
+            return resolveDecl(c, decl);
 
-    if (node.id != n_extern_c_proc && !isValueKnown(val)) {
-        // TODO: Improve error message
-        return error(ctx, "value is not known");
-    }
+        default: {
+            if (!isValueKnown(val)) {
+                // TODO: Improve error message
+                return error(ctx, "value is not known");
+            }
 
-    if (decl.kind == DeclKind_Module || decl.kind == DeclKind_ModuleIncomplete) {
-        decl.as.module.val = getValueFromInfo(c, val);
+            decl.as.comptime.val = getValueFromInfo(c, val);
+            decl.kind = DeclKind_Comptime;
 
-        return {{.decl = &decl}, decl.as.module.val.type, ValueKind_Decl};
-    } else if (decl.kind == DeclKind_ExternProc) {
-        return {{.decl = &decl}, nkirt2nklt(nkir_getExternProcType(c->ir, decl.as.extern_proc.id)), ValueKind_Decl};
-    } else {
-        decl.as.comptime.val = getValueFromInfo(c, val);
-        decl.kind = DeclKind_Comptime;
-
-        return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
+            return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
+        }
     }
 }
 
@@ -500,11 +533,15 @@ static ValueInfo resolveDecl(NklCompiler c, Decl &decl) {
             return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
         case DeclKind_ComptimeUnresolved:
             return resolveComptime(c, decl);
+        case DeclKind_ExternData:
+            return {{.decl = &decl}, nkirt2nklt(nkir_getArgType(c->ir, decl.as.param.idx)), ValueKind_Decl};
+        case DeclKind_ExternProc:
+            return {{.decl = &decl}, nkirt2nklt(nkir_getExternProcType(c->ir, decl.as.extern_proc.id)), ValueKind_Decl};
         case DeclKind_Local:
             return {{.decl = &decl}, nkirt2nklt(nkir_getLocalType(c->ir, decl.as.local.var)), ValueKind_Decl};
         case DeclKind_Module:
         case DeclKind_ModuleIncomplete:
-            return {{.decl = &decl}, decl.as.module.val.type, ValueKind_Decl};
+            return {{.decl = &decl}, nkirt2nklt(nkir_getProcType(c->ir, decl.as.module.proc)), ValueKind_Decl};
         case DeclKind_Param:
             return {{.decl = &decl}, nkirt2nklt(nkir_getArgType(c->ir, decl.as.param.idx)), ValueKind_Decl};
         default:
@@ -571,6 +608,19 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
             .node_stack{},
         };
 
+        // TODO: Boilerplate proc reactivation {
+        bool had_active_proc = nkir_hasActiveProc(c->ir);
+        NkIrProc prev_active_proc;
+        if (had_active_proc) {
+            prev_active_proc = nkir_getActiveProc(c->ir);
+        }
+        defer {
+            if (had_active_proc) {
+                nkir_activateProc(c->ir, prev_active_proc);
+            }
+        };
+        // }
+
         nkir_startProc(
             c->ir,
             file_ctx.proc,
@@ -588,21 +638,23 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
         pushScope(ctx, main_arena, temp_arena, file_ctx.proc);
 
         if (decl) {
-            decl->as.module.val.type = proc_t;
+            decl->as.module.proc = file_ctx.proc;
             decl->as.module.scope = file_ctx.ctx->scope_stack;
             decl->kind = DeclKind_ModuleIncomplete;
         }
 
         CHECK(compileAst(ctx));
 
+        nkir_emit(c->ir, nkir_make_ret(c->ir));
+
         nkir_finishProc(c->ir, file_ctx.proc, 0); // TODO: Ignoring procs finishing line
 
         if (decl) {
-            decl->as.module.val = {(void *)file_ctx.proc.idx, proc_t}; // TODO: Using proc idx as proc ptr
+            decl->as.module.proc = file_ctx.proc;
             decl->kind = DeclKind_Module;
         }
     } else if (decl) {
-        decl->as.module.val = {(void *)file_ctx.proc.idx, proc_t}; // TODO: Using proc idx as proc ptr
+        decl->as.module.proc = file_ctx.proc;
         decl->as.module.scope = file_ctx.ctx->scope_stack;
         decl->kind = DeclKind_Module;
     }
@@ -1172,6 +1224,19 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto const proc = nkir_createProc(c->ir);
             nkir_exportProc(c->ir, m->mod, proc);
 
+            // TODO: Boilerplate proc reactivation {
+            bool had_active_proc = nkir_hasActiveProc(c->ir);
+            NkIrProc prev_active_proc;
+            if (had_active_proc) {
+                prev_active_proc = nkir_getActiveProc(c->ir);
+            }
+            defer {
+                if (had_active_proc) {
+                    nkir_activateProc(c->ir, prev_active_proc);
+                }
+            };
+            // }
+
             nkir_startProc(
                 c->ir,
                 proc,
@@ -1192,7 +1257,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             };
 
             if (decl) {
-                decl->as.module.val.type = proc_t;
+                decl->as.module.proc = proc;
                 decl->as.module.scope = ctx.scope_stack;
                 decl->kind = DeclKind_ModuleIncomplete;
             }
@@ -1471,6 +1536,8 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     };
 
     DEFINE(file_ctx, importFile(c, filename, &c->perm_arena, getNextTempArena(c, nullptr), nullptr));
+
+    c->entry_point = file_ctx->proc;
 
     nkir_mergeModules(m->mod, file_ctx->ctx->m->mod);
 
