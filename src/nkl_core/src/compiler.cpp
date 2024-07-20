@@ -1,5 +1,6 @@
 #include "nkl/core/compiler.h"
 
+#include "compiler_state.h"
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
@@ -10,7 +11,6 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
-#include "ntk/hash_tree.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/os/path.h"
@@ -36,76 +36,6 @@ struct Void {};
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 
-} // namespace
-
-enum DeclKind {
-    DeclKind_Undefined,
-
-    DeclKind_Comptime,
-    DeclKind_ComptimeIncomplete,
-    DeclKind_ComptimeUnresolved,
-    DeclKind_ExternData,
-    DeclKind_ExternProc,
-    DeclKind_Local,
-    DeclKind_Module,
-    DeclKind_ModuleIncomplete,
-    DeclKind_Param,
-};
-
-struct Context;
-struct Scope;
-
-struct Decl {
-    union {
-        struct {
-            nklval_t val;
-        } comptime;
-        struct {
-            Context *ctx;
-            usize node_idx;
-        } comptime_unresolved;
-        struct {
-            NkIrLocalVar var;
-        } local;
-        struct {
-            Scope *scope;
-            NkIrProc proc;
-        } module;
-        struct {
-            usize idx;
-        } param;
-        struct {
-            NkIrExternProc id;
-        } extern_proc;
-        struct {
-            NkIrExternData id;
-        } extern_data;
-    } as;
-    DeclKind kind;
-};
-
-enum ValueKind {
-    ValueKind_Void,
-
-    ValueKind_Const,
-    ValueKind_Decl,
-    ValueKind_Instr,
-    ValueKind_Ref,
-};
-
-struct ValueInfo {
-    union {
-        struct {
-            NkIrData id;
-        } cnst;
-        Decl *decl;
-        NkIrInstr instr;
-        NkIrRef ref;
-    } as;
-    nkltype_t type;
-    ValueKind kind;
-};
-
 static u64 nk_atom_hash(NkAtom const key) {
     return nk_hashVal(key);
 }
@@ -113,82 +43,31 @@ static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
     return lhs == rhs;
 }
 
-struct Decl_kv {
-    NkAtom key;
-    Decl val;
-};
 static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
     return &item->key;
 }
-NK_HASH_TREE_DEFINE(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
-struct Scope {
-    Scope *next;
-
-    NkArena *main_arena;
-    NkArena *temp_arena;
-    NkArenaFrame temp_frame;
-
-    DeclMap locals;
-
-    NkIrProc proc;
-};
-
-struct NodeListNode {
-    NodeListNode *next;
-    usize node_idx;
-};
-
-struct Context {
-    NklModule m;
-    NklSource const *src;
-    Scope *scope_stack;
-    NodeListNode *node_stack;
-};
-
-struct FileContext {
-    NkIrProc proc;
-    Context *ctx;
-};
-
-struct FileContext_kv {
-    NkAtom key;
-    FileContext val;
-};
 static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
     return &item->key;
 }
-NK_HASH_TREE_DEFINE(FileMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
-struct NklCompiler_T {
-    NkIrProg ir;
-    NkIrProc entry_point;
+} // namespace
 
-    NklState nkl;
-    NkArena perm_arena;
-    NkArena temp_arenas[2];
-    FileMap files;
-    NklErrorState errors;
+NK_HASH_TREE_IMPL(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
-    usize word_size;
-};
+NK_HASH_TREE_IMPL(CompilerFileMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 static NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
     return &c->temp_arenas[0] == conflict ? &c->temp_arenas[1] : &c->temp_arenas[0];
 }
 
 FileContext &getContextForFile(NklCompiler c, NkAtom file) {
-    auto found = FileMap_find(&c->files, file);
+    auto found = CompilerFileMap_find(&c->files, file);
     if (!found) {
-        found = FileMap_insert(&c->files, {file, {}});
+        found = CompilerFileMap_insert(&c->files, {file, {}});
     }
     return found->val;
 }
-
-struct NklModule_T {
-    NklCompiler c;
-    NkIrModule mod;
-};
 
 static NkIrRef asRef(Context &ctx, ValueInfo const &val) {
     NkIrRef ref{};
@@ -310,6 +189,7 @@ static void defineComptime(Context &ctx, NkAtom name, nklval_t val) {
 }
 
 static void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx) {
+    // TODO: Why do we need to copy the context??
     auto ctx_copy = nk_arena_allocT<Context>(ctx.scope_stack->main_arena);
     *ctx_copy = ctx;
     makeDecl(ctx, name) = {{.comptime_unresolved{.ctx = ctx_copy, .node_idx = node_idx}}, DeclKind_ComptimeUnresolved};
