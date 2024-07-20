@@ -31,29 +31,11 @@ struct Void {};
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
+#define DEFINE_REF(VAR, VAL) CHECK(auto &VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 
-static u64 nk_atom_hash(NkAtom const key) {
-    return nk_hashVal(key);
-}
-static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
-    return lhs == rhs;
-}
-
-static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
-    return &item->key;
-}
-
-static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
-    return &item->key;
-}
-
 } // namespace
-
-NK_HASH_TREE_IMPL(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
-
-NK_HASH_TREE_IMPL(CompilerFileMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
@@ -252,7 +234,7 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
-static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
+static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
     auto nkl = c->nkl;
 
     auto file = getFileId(filename);
@@ -269,14 +251,10 @@ static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
             .flags{},
         });
 
-    auto &file_ctx = getContextForFile(c, file);
-    if (!file_ctx.ctx) {
-        file_ctx = {
+    auto &pctx = getContextForFile(c, file).val;
+    if (!pctx) {
+        auto &ctx = *(pctx = nk_arena_allocT<Context>(&c->perm_arena)) = {
             .top_level_proc = nkir_createProc(c->ir),
-            .ctx = nk_arena_allocT<Context>(&c->perm_arena),
-        };
-        auto &ctx = *file_ctx.ctx;
-        ctx = {
             .m = nkl_createModule(c),
             .src = src,
             .scope_stack{},
@@ -298,7 +276,7 @@ static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
 
         nkir_startProc(
             c->ir,
-            file_ctx.top_level_proc,
+            ctx.top_level_proc,
             NkIrProcDescr{
                 .name = nk_cs2atom("__top_level"), // TODO: Hardcoded toplevel proc name
                 .proc_t = nklt2nkirt(proc_t),
@@ -311,11 +289,11 @@ static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
         nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
         // NOTE: Not popping the scope to leave it accessible for future imports
-        pushPublicScope(ctx, file_ctx.top_level_proc);
+        pushPublicScope(ctx, ctx.top_level_proc);
 
         if (decl) {
-            decl->as.module.proc = file_ctx.top_level_proc;
-            decl->as.module.scope = file_ctx.ctx->scope_stack;
+            decl->as.module.proc = ctx.top_level_proc;
+            decl->as.module.scope = ctx.scope_stack;
             decl->kind = DeclKind_ModuleIncomplete;
         }
 
@@ -323,15 +301,17 @@ static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
 
         nkir_emit(c->ir, nkir_make_ret(c->ir));
 
-        nkir_finishProc(c->ir, file_ctx.top_level_proc, 0); // TODO: Ignoring procs finishing line
+        nkir_finishProc(c->ir, ctx.top_level_proc, 0); // TODO: Ignoring procs finishing line
 
         if (decl) {
-            decl->as.module.proc = file_ctx.top_level_proc;
+            decl->as.module.proc = ctx.top_level_proc;
             decl->kind = DeclKind_Module;
         }
     } else if (decl) {
-        decl->as.module.proc = file_ctx.top_level_proc;
-        decl->as.module.scope = file_ctx.ctx->scope_stack;
+        auto &ctx = *pctx;
+
+        decl->as.module.proc = ctx.top_level_proc;
+        decl->as.module.scope = ctx.scope_stack;
         decl->kind = DeclKind_Module;
     }
 
@@ -349,7 +329,7 @@ static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
     }
 #endif // ENABLE_LOGGING
 
-    return &file_ctx;
+    return pctx;
 }
 
 static ValueInfo store(Context &ctx, NkIrRef const &dst, ValueInfo src) {
@@ -379,7 +359,7 @@ static ValueInfo getLvalueRef(Context &ctx, usize node_idx) {
         auto token = &ctx.src->tokens.data[node.token_idx];
         auto name_str = nkl_getTokenStr(token, ctx.src->text);
         auto name = nk_s2atom(name_str);
-        auto &decl = resolve(ctx.scope_stack, name);
+        auto &decl = resolve(ctx, name);
         switch (decl.kind) {
             case DeclKind_Undefined:
                 return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
@@ -453,7 +433,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         auto name_idx = get_next_child(next_idx);
         auto const &name_n = src.nodes.data[name_idx];
         decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
-        decl = &resolve(ctx.scope_stack, decl_name);
+        decl = &resolve(ctx, decl_name);
 
         nk_assert(decl->kind == DeclKind_ComptimeIncomplete);
     }
@@ -710,7 +690,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto name_str = nkl_getTokenStr(token, src.text);
             auto name = nk_s2atom(name_str);
 
-            auto &decl = resolve(ctx.scope_stack, name);
+            auto &decl = resolve(ctx, name);
 
             // TODO: Handle cross frame references
 
@@ -744,9 +724,9 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 import_path = path;
             }
 
-            DEFINE(file_ctx, importFile(c, import_path, decl));
+            DEFINE_REF(imported_ctx, *importFile(c, import_path, decl));
 
-            return {{.decl = decl}, nkirt2nklt(nkir_getProcType(c->ir, file_ctx->top_level_proc)), ValueKind_Decl};
+            return {{.decl = decl}, nkirt2nklt(nkir_getProcType(c->ir, imported_ctx.top_level_proc)), ValueKind_Decl};
         }
 
         case n_int: {
@@ -1195,11 +1175,12 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    DEFINE(file_ctx, importFile(c, filename, nullptr));
+    DEFINE_REF(ctx, *importFile(c, filename, nullptr));
 
-    c->entry_point = file_ctx->top_level_proc;
+    // TODO: Storing entry point for the whole compiler on every compileFile call
+    c->entry_point = ctx.top_level_proc;
 
-    nkir_mergeModules(m->mod, file_ctx->ctx->m->mod);
+    nkir_mergeModules(m->mod, ctx.m->mod);
 
     return true;
 }

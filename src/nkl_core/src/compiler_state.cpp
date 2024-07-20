@@ -8,18 +8,36 @@ namespace {
 
 NK_LOG_USE_SCOPE(compiler);
 
+static u64 nk_atom_hash(NkAtom const key) {
+    return nk_hashVal(key);
+}
+static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
+    return lhs == rhs;
+}
+
+static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
+    return &item->key;
+}
+
+static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
+    return &item->key;
+}
+
 } // namespace
+
+NK_HASH_TREE_IMPL(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_IMPL(FileContextMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
     return &c->temp_arenas[0] == conflict ? &c->temp_arenas[1] : &c->temp_arenas[0];
 }
 
-FileContext &getContextForFile(NklCompiler c, NkAtom file) {
-    auto found = CompilerFileMap_find(&c->files, file);
+FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
+    auto found = FileContextMap_find(&c->files, file);
     if (!found) {
-        found = CompilerFileMap_insert(&c->files, {file, {}});
+        found = FileContextMap_insert(&c->files, {file, {}});
     }
-    return found->val;
+    return *found;
 }
 
 NkIrRef asRef(Context &ctx, ValueInfo const &val) {
@@ -178,7 +196,9 @@ void defineExternData(Context &ctx, NkAtom name, NkIrExternData id) {
     makeDecl(ctx, name) = {{.extern_data{.id = id}}, DeclKind_ExternData};
 }
 
-Decl &resolve(Scope *scope, NkAtom name) {
+Decl &resolve(Context &ctx, NkAtom name) {
+    auto scope = ctx.scope_stack;
+
     NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
 
     for (; scope; scope = scope->next) {

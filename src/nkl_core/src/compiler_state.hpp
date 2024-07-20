@@ -99,23 +99,19 @@ struct NodeListNode {
 };
 
 struct Context {
+    NkIrProc top_level_proc;
     NklModule m;
     NklSource const *src;
     Scope *scope_stack;
     NodeListNode *node_stack;
 };
 
-struct FileContext {
-    NkIrProc top_level_proc;
-    Context *ctx;
-};
-
 struct FileContext_kv {
     NkAtom key;
-    FileContext val;
+    Context *val;
 };
-NK_HASH_TREE_TYPEDEF(CompilerFileMap, FileContext_kv);
-NK_HASH_TREE_PROTO(CompilerFileMap, FileContext_kv, NkAtom);
+NK_HASH_TREE_TYPEDEF(FileContextMap, FileContext_kv);
+NK_HASH_TREE_PROTO(FileContextMap, FileContext_kv, NkAtom);
 
 struct NklCompiler_T {
     NkIrProg ir;
@@ -124,7 +120,7 @@ struct NklCompiler_T {
     NklState nkl;
     NkArena perm_arena;
     NkArena temp_arenas[2];
-    CompilerFileMap files;
+    FileContextMap files;
     NklErrorState errors;
 
     usize word_size;
@@ -137,7 +133,7 @@ struct NklModule_T {
 
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
 
-FileContext &getContextForFile(NklCompiler c, NkAtom file);
+FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 NkIrRef asRef(Context &ctx, ValueInfo const &val);
 
@@ -154,7 +150,7 @@ void defineParam(Context &ctx, NkAtom name, usize idx);
 void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id);
 void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
 
-Decl &resolve(Scope *scope, NkAtom name);
+Decl &resolve(Context &ctx, NkAtom name);
 
 bool isValueKnown(ValueInfo const &val);
 nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val);
