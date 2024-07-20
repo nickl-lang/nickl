@@ -1,11 +1,11 @@
-#include "compiler_state.h"
+#include "compiler_state.hpp"
 
 #include "ntk/list.h"
 #include "ntk/log.h"
 
 namespace {
 
-NK_LOG_USE_SCOPE(compiler_state);
+NK_LOG_USE_SCOPE(compiler);
 
 } // namespace
 
@@ -123,7 +123,7 @@ void popScope(Context &ctx) {
     nk_list_pop(ctx.scope_stack);
 }
 
-Decl &makeDecl(Context &ctx, NkAtom name) {
+static Decl &makeDecl(Context &ctx, NkAtom name) {
     nk_assert(ctx.scope_stack && "no current scope");
     NK_LOG_DBG("Declaring name=`%s` scope=%p", nk_atom2cs(name), (void *)ctx.scope_stack);
     // TODO: Check for name conflict

@@ -6,10 +6,6 @@
 #include "nkl/core/types.h"
 #include "ntk/hash_tree.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum DeclKind {
     DeclKind_Undefined,
 
@@ -110,7 +106,7 @@ struct Context {
 };
 
 struct FileContext {
-    NkIrProc proc;
+    NkIrProc top_level_proc;
     Context *ctx;
 };
 
@@ -150,14 +146,10 @@ usize parentNodeIdx(Context &ctx);
 void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc proc);
 void popScope(Context &ctx);
 
-Decl &makeDecl(Context &ctx, NkAtom name);
-
 void defineComptime(Context &ctx, NkAtom name, nklval_t val);
 void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx);
-
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var);
 void defineParam(Context &ctx, NkAtom name, usize idx);
-
 void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id);
 void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
 
@@ -168,9 +160,5 @@ nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val);
 
 bool isModule(ValueInfo const &val);
 Scope *getModuleScope(ValueInfo const &val);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // NKL_CORE_COMPILER_STATE_H_

@@ -1,4 +1,6 @@
-#include "compiler_state.h"
+#include "nkl/core/compiler.h"
+
+#include "compiler_state.hpp"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
@@ -270,7 +272,7 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
     auto &file_ctx = getContextForFile(c, file);
     if (!file_ctx.ctx) {
         file_ctx = {
-            .proc = nkir_createProc(c->ir),
+            .top_level_proc = nkir_createProc(c->ir),
             .ctx = nk_arena_allocT<Context>(&c->perm_arena),
         };
         auto &ctx = *file_ctx.ctx;
@@ -296,7 +298,7 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
 
         nkir_startProc(
             c->ir,
-            file_ctx.proc,
+            file_ctx.top_level_proc,
             NkIrProcDescr{
                 .name = nk_cs2atom("__top_level"), // TODO: Hardcoded toplevel proc name
                 .proc_t = nklt2nkirt(proc_t),
@@ -308,10 +310,10 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
 
         nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
-        pushScope(ctx, main_arena, temp_arena, file_ctx.proc);
+        pushScope(ctx, main_arena, temp_arena, file_ctx.top_level_proc);
 
         if (decl) {
-            decl->as.module.proc = file_ctx.proc;
+            decl->as.module.proc = file_ctx.top_level_proc;
             decl->as.module.scope = file_ctx.ctx->scope_stack;
             decl->kind = DeclKind_ModuleIncomplete;
         }
@@ -320,14 +322,14 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
 
         nkir_emit(c->ir, nkir_make_ret(c->ir));
 
-        nkir_finishProc(c->ir, file_ctx.proc, 0); // TODO: Ignoring procs finishing line
+        nkir_finishProc(c->ir, file_ctx.top_level_proc, 0); // TODO: Ignoring procs finishing line
 
         if (decl) {
-            decl->as.module.proc = file_ctx.proc;
+            decl->as.module.proc = file_ctx.top_level_proc;
             decl->kind = DeclKind_Module;
         }
     } else if (decl) {
-        decl->as.module.proc = file_ctx.proc;
+        decl->as.module.proc = file_ctx.top_level_proc;
         decl->as.module.scope = file_ctx.ctx->scope_stack;
         decl->kind = DeclKind_Module;
     }
@@ -737,7 +739,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(
                 file_ctx, importFile(c, import_path, ctx.scope_stack->main_arena, ctx.scope_stack->temp_arena, decl));
 
-            return {{.decl = decl}, nkirt2nklt(nkir_getProcType(c->ir, file_ctx->proc)), ValueKind_Decl};
+            return {{.decl = decl}, nkirt2nklt(nkir_getProcType(c->ir, file_ctx->top_level_proc)), ValueKind_Decl};
         }
 
         case n_int: {
@@ -1191,7 +1193,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 
     DEFINE(file_ctx, importFile(c, filename, &c->perm_arena, getNextTempArena(c, nullptr), nullptr));
 
-    c->entry_point = file_ctx->proc;
+    c->entry_point = file_ctx->top_level_proc;
 
     nkir_mergeModules(m->mod, file_ctx->ctx->m->mod);
 
