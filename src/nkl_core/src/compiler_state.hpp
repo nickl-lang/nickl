@@ -90,7 +90,7 @@ struct Scope {
 
     DeclMap locals;
 
-    NkIrProc proc;
+    NkIrProc cur_proc;
 };
 
 struct NodeListNode {
@@ -143,7 +143,8 @@ NkIrRef asRef(Context &ctx, ValueInfo const &val);
 
 usize parentNodeIdx(Context &ctx);
 
-void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc proc);
+void pushPublicScope(Context &ctx, NkIrProc cur_proc);
+void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
 void popScope(Context &ctx);
 
 void defineComptime(Context &ctx, NkAtom name, nklval_t val);

@@ -252,7 +252,7 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
-static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_arena, NkArena *temp_arena, Decl *decl) {
+static FileContext *importFile(NklCompiler c, NkString filename, Decl *decl) {
     auto nkl = c->nkl;
 
     auto file = getFileId(filename);
@@ -310,7 +310,8 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
 
         nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
-        pushScope(ctx, main_arena, temp_arena, file_ctx.top_level_proc);
+        // NOTE: Not popping the scope to leave it accessible for future imports
+        pushPublicScope(ctx, file_ctx.top_level_proc);
 
         if (decl) {
             decl->as.module.proc = file_ctx.top_level_proc;
@@ -335,10 +336,17 @@ static FileContext *importFile(NklCompiler c, NkString filename, NkArena *main_a
     }
 
 #ifdef ENABLE_LOGGING
-    NkStringBuilder sb{};
-    sb.alloc = nk_arena_getAllocator(temp_arena);
-    nkir_inspectProgram(c->ir, nksb_getStream(&sb));
-    NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+    {
+        auto arena = &c->perm_arena;
+        auto frame = nk_arena_grab(arena);
+        defer {
+            nk_arena_popFrame(arena, frame);
+        };
+        NkStringBuilder sb{};
+        sb.alloc = nk_arena_getAllocator(arena);
+        nkir_inspectProgram(c->ir, nksb_getStream(&sb));
+        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+    }
 #endif // ENABLE_LOGGING
 
     return &file_ctx;
@@ -736,8 +744,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 import_path = path;
             }
 
-            DEFINE(
-                file_ctx, importFile(c, import_path, ctx.scope_stack->main_arena, ctx.scope_stack->temp_arena, decl));
+            DEFINE(file_ctx, importFile(c, import_path, decl));
 
             return {{.decl = decl}, nkirt2nklt(nkir_getProcType(c->ir, file_ctx->top_level_proc)), ValueKind_Decl};
         }
@@ -818,9 +825,6 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         }
 
         case n_proc: {
-            auto main_arena = decl ? ctx.scope_stack->main_arena : ctx.scope_stack->temp_arena;
-            auto temp_arena = decl ? ctx.scope_stack->temp_arena : getNextTempArena(c, ctx.scope_stack->temp_arena);
-
             auto params_idx = get_next_child(next_idx);
             auto ret_t_idx = get_next_child(next_idx);
             auto body_idx = get_next_child(next_idx);
@@ -916,7 +920,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
-            pushScope(ctx, main_arena, temp_arena, proc);
+            if (decl) {
+                pushPublicScope(ctx, proc);
+            } else {
+                pushPrivateScope(ctx, proc);
+            }
             defer {
                 popScope(ctx);
             };
@@ -996,11 +1004,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         }
 
         case n_scope: {
-            pushScope(
-                ctx,
-                ctx.scope_stack->temp_arena,
-                getNextTempArena(c, ctx.scope_stack->temp_arena),
-                ctx.scope_stack->proc);
+            pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
             defer {
                 popScope(ctx);
             };
@@ -1164,7 +1168,7 @@ static Void compileStmt(Context &ctx, usize node_idx) {
     auto ref = asRef(ctx, val);
     if (ref.kind != NkIrRef_None && ref.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
         NKSB_FIXED_BUFFER(sb, 1024);
-        nkir_inspectRef(c->ir, ctx.scope_stack->proc, ref, nksb_getStream(&sb));
+        nkir_inspectRef(c->ir, ctx.scope_stack->cur_proc, ref, nksb_getStream(&sb));
         NK_LOG_DBG("Value ignored: " NKS_FMT, NKS_ARG(sb));
     }
 
@@ -1191,7 +1195,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    DEFINE(file_ctx, importFile(c, filename, &c->perm_arena, getNextTempArena(c, nullptr), nullptr));
+    DEFINE(file_ctx, importFile(c, filename, nullptr));
 
     c->entry_point = file_ctx->top_level_proc;
 

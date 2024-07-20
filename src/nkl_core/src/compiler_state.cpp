@@ -1,5 +1,6 @@
 #include "compiler_state.hpp"
 
+#include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
 
@@ -102,7 +103,7 @@ usize parentNodeIdx(Context &ctx) {
     return ctx.node_stack->next ? ctx.node_stack->next->node_idx : -1u;
 }
 
-void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc proc) {
+static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc cur_proc) {
     auto scope = new (nk_arena_allocT<Scope>(main_arena)) Scope{
         .next{},
 
@@ -112,9 +113,28 @@ void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc 
 
         .locals{nullptr, nk_arena_getAllocator(main_arena)},
 
-        .proc = proc,
+        .cur_proc = cur_proc,
     };
     nk_list_push(ctx.scope_stack, scope);
+}
+
+void pushPublicScope(Context &ctx, NkIrProc cur_proc) {
+    auto cur_scope = ctx.scope_stack;
+    if (cur_scope) {
+        pushScope(ctx, cur_scope->main_arena, cur_scope->temp_arena, cur_proc);
+    } else {
+        auto m = ctx.m;
+        auto c = m->c;
+        pushScope(ctx, &c->perm_arena, getNextTempArena(c, nullptr), cur_proc);
+    }
+}
+
+void pushPrivateScope(Context &ctx, NkIrProc cur_proc) {
+    auto cur_scope = ctx.scope_stack;
+    nk_assert(cur_scope && "top level scope cannot be private");
+    auto m = ctx.m;
+    auto c = m->c;
+    pushScope(ctx, cur_scope->temp_arena, getNextTempArena(c, cur_scope->temp_arena), cur_proc);
 }
 
 void popScope(Context &ctx) {
