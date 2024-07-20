@@ -139,6 +139,36 @@ struct NklModule_T {
     NkIrModule mod;
 };
 
+NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
+
+FileContext &getContextForFile(NklCompiler c, NkAtom file);
+
+NkIrRef asRef(Context &ctx, ValueInfo const &val);
+
+usize parentNodeIdx(Context &ctx);
+
+void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc proc);
+void popScope(Context &ctx);
+
+Decl &makeDecl(Context &ctx, NkAtom name);
+
+void defineComptime(Context &ctx, NkAtom name, nklval_t val);
+void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx);
+
+void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var);
+void defineParam(Context &ctx, NkAtom name, usize idx);
+
+void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id);
+void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
+
+Decl &resolve(Scope *scope, NkAtom name);
+
+bool isValueKnown(ValueInfo const &val);
+nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val);
+
+bool isModule(ValueInfo const &val);
+Scope *getModuleScope(ValueInfo const &val);
+
 #ifdef __cplusplus
 }
 #endif
