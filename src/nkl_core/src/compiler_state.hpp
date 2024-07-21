@@ -6,82 +6,84 @@
 #include "nkl/core/types.h"
 #include "ntk/hash_tree.h"
 
-enum DeclKind {
-    DeclKind_Undefined,
-
-    DeclKind_Comptime,
-    DeclKind_ComptimeIncomplete,
-    DeclKind_ComptimeUnresolved,
-    DeclKind_Data,
-    DeclKind_ExternData,
-    DeclKind_ExternProc,
-    DeclKind_Local,
-    DeclKind_Module,
-    DeclKind_ModuleIncomplete,
-    DeclKind_Param,
-    DeclKind_Proc,
+enum ValueKind {
+    ValueKind_Rodata,
+    ValueKind_Proc,
+    ValueKind_Data,
+    ValueKind_ExternData,
+    ValueKind_ExternProc,
+    ValueKind_Local,
+    ValueKind_Arg,
 };
 
-struct Context;
 struct Scope;
 
-struct Decl {
+struct Value {
     union {
         struct {
-            nklval_t val;
-        } comptime;
+            NkIrData id;
+            Scope *opt_scope;
+        } rodata;
         struct {
-            Context *ctx;
-            usize node_idx;
-        } comptime_unresolved;
+            NkIrProc id;
+            Scope *opt_scope;
+        } proc;
         struct {
             NkIrData id;
         } data;
         struct {
-            NkIrExternProc id;
-        } extern_proc;
-        struct {
             NkIrExternData id;
         } extern_data;
         struct {
-            NkIrLocalVar var;
+            NkIrExternProc id;
+        } extern_proc;
+        struct {
+            NkIrLocalVar id;
         } local;
         struct {
-            Scope *scope;
-            NkIrProc proc;
-        } module;
-        struct {
             usize idx;
-        } param;
+        } arg;
+    } as;
+    ValueKind kind;
+};
+
+enum DeclKind {
+    DeclKind_Undefined,
+
+    DeclKind_Unresolved,
+    DeclKind_Incomplete,
+    DeclKind_Complete,
+};
+
+struct Context;
+
+struct Decl {
+    union {
         struct {
-            NkIrProc id;
-        } proc;
+            Context *ctx;
+            usize node_idx;
+        } unresolved;
+        Value val;
     } as;
     DeclKind kind;
 };
 
-enum ValueKind {
-    ValueKind_Void,
+enum IntermKind {
+    IntermKind_Void,
 
-    ValueKind_Decl,
-    ValueKind_Instr,
-    ValueKind_Module,
-    ValueKind_Ref,
-    ValueKind_Rodata,
+    IntermKind_Instr,
+    IntermKind_Ref,
+    IntermKind_Val
 };
 
-struct ValueInfo {
+struct Interm {
     union {
-        Decl *decl;
         NkIrInstr instr;
-        struct {
-            // TODO: Fill ValueInfo::as::module
-        } module;
         NkIrRef ref;
-        NkIrData rodata;
+        Value val;
     } as;
     nkltype_t type;
-    ValueKind kind;
+    IntermKind kind;
 };
 
 struct Decl_kv {
@@ -145,7 +147,7 @@ NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
 
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
-NkIrRef asRef(Context &ctx, ValueInfo const &val);
+NkIrRef asRef(Context &ctx, Interm const &val);
 
 usize parentNodeIdx(Context &ctx);
 
@@ -153,7 +155,6 @@ void pushPublicScope(Context &ctx, NkIrProc cur_proc);
 void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
 void popScope(Context &ctx);
 
-void defineComptime(Context &ctx, NkAtom name, nklval_t val);
 void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx);
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var);
 void defineParam(Context &ctx, NkAtom name, usize idx);
@@ -162,10 +163,10 @@ void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
 
 Decl &resolve(Context &ctx, NkAtom name);
 
-bool isValueKnown(ValueInfo const &val);
-nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val);
+bool isValueKnown(Interm const &val);
+nklval_t getValueFromInfo(NklCompiler c, Interm const &val);
 
-bool isModule(ValueInfo const &val);
-Scope *getModuleScope(ValueInfo const &val);
+bool isModule(Interm const &val);
+Scope *getModuleScope(Interm const &val);
 
 #endif // NKL_CORE_COMPILER_STATE_H_

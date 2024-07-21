@@ -1,5 +1,6 @@
 #include "compiler_state.hpp"
 
+#include "nkb/ir.h"
 #include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
@@ -40,61 +41,17 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
     return *found;
 }
 
-NkIrRef asRef(Context &ctx, ValueInfo const &val) {
+NkIrRef asRef(Context &ctx, Interm const &val) {
     NkIrRef ref{};
 
     auto m = ctx.m;
     auto c = m->c;
 
     switch (val.kind) {
-        case ValueKind_Void:
+        case IntermKind_Void:
             break;
 
-        case ValueKind_Rodata:
-            ref = nkir_makeDataRef(c->ir, val.as.rodata);
-            break;
-
-        case ValueKind_Decl: {
-            auto &decl = *val.as.decl;
-            switch (decl.kind) {
-                case DeclKind_Comptime:
-                    // TODO: asRef(DeclKind_Comptime)
-                    nk_assert(!"asRef(DeclKind_Comptime) is not implemented");
-                    break;
-                case DeclKind_ComptimeIncomplete:
-                    // TODO: asRef(DeclKind_ComptimeIncomplete)
-                    nk_assert(!"asRef(DeclKind_ComptimeIncomplete) is not implemented");
-                    break;
-                case DeclKind_ComptimeUnresolved:
-                    // TODO: asRef(DeclKind_ComptimeUnresolved)
-                    nk_assert(!"asRef(DeclKind_ComptimeUnresolved) is not implemented");
-                    break;
-                case DeclKind_ExternData:
-                    ref = nkir_makeExternDataRef(c->ir, decl.as.extern_data.id);
-                    break;
-                case DeclKind_ExternProc:
-                    ref = nkir_makeExternProcRef(c->ir, decl.as.extern_proc.id);
-                    break;
-                case DeclKind_Local:
-                    ref = nkir_makeFrameRef(c->ir, decl.as.local.var);
-                    break;
-                case DeclKind_Module:
-                case DeclKind_ModuleIncomplete:
-                    ref = nkir_makeProcRef(c->ir, decl.as.module.proc);
-                    break;
-                case DeclKind_Param:
-                    ref = nkir_makeArgRef(c->ir, decl.as.param.idx);
-                    break;
-                case DeclKind_Undefined:
-                    nk_assert(!"referencing an undefined declaration");
-                default:
-                    nk_assert(!"unreachable");
-                    break;
-            }
-            break;
-        }
-
-        case ValueKind_Instr: {
+        case IntermKind_Instr: {
             auto instr = val.as.instr;
             auto &dst = instr.arg[0].ref;
             if (dst.kind == NkIrRef_None && nklt_sizeof(val.type)) {
@@ -105,8 +62,32 @@ NkIrRef asRef(Context &ctx, ValueInfo const &val) {
             break;
         }
 
-        case ValueKind_Ref:
+        case IntermKind_Ref:
             ref = val.as.ref;
+            break;
+
+        case IntermKind_Val:
+            switch (val.as.val.kind) {
+                case ValueKind_Rodata:
+                case ValueKind_Data:
+                    ref = nkir_makeDataRef(c->ir, val.as.val.as.data.id);
+                    break;
+                case ValueKind_Proc:
+                    ref = nkir_makeProcRef(c->ir, val.as.val.as.proc.id);
+                    break;
+                case ValueKind_ExternData:
+                    ref = nkir_makeExternDataRef(c->ir, val.as.val.as.extern_data.id);
+                    break;
+                case ValueKind_ExternProc:
+                    ref = nkir_makeExternProcRef(c->ir, val.as.val.as.extern_proc.id);
+                    break;
+                case ValueKind_Local:
+                    ref = nkir_makeFrameRef(c->ir, val.as.val.as.local.id);
+                    break;
+                case ValueKind_Arg:
+                    ref = nkir_makeArgRef(c->ir, val.as.val.as.arg.idx);
+                    break;
+            }
             break;
 
         default:
@@ -169,31 +150,27 @@ static Decl &makeDecl(Context &ctx, NkAtom name) {
     return kv->val;
 }
 
-void defineComptime(Context &ctx, NkAtom name, nklval_t val) {
-    makeDecl(ctx, name) = {{.comptime{.val = val}}, DeclKind_Comptime};
-}
-
 void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx) {
     // TODO: Why do we need to copy the context??
     auto ctx_copy = nk_arena_allocT<Context>(ctx.scope_stack->main_arena);
     *ctx_copy = ctx;
-    makeDecl(ctx, name) = {{.comptime_unresolved{.ctx = ctx_copy, .node_idx = node_idx}}, DeclKind_ComptimeUnresolved};
+    makeDecl(ctx, name) = {{.unresolved{.ctx = ctx_copy, .node_idx = node_idx}}, DeclKind_Unresolved};
 }
 
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var) {
-    makeDecl(ctx, name) = {{.local{.var = var}}, DeclKind_Local};
+    makeDecl(ctx, name) = {{.val{{.local{var}}, ValueKind_Local}}, DeclKind_Complete};
 }
 
 void defineParam(Context &ctx, NkAtom name, usize idx) {
-    makeDecl(ctx, name) = {{.param{.idx = idx}}, DeclKind_Param};
+    makeDecl(ctx, name) = {{.val{{.arg{idx}}, ValueKind_Arg}}, DeclKind_Complete};
 }
 
 void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id) {
-    makeDecl(ctx, name) = {{.extern_proc{.id = id}}, DeclKind_ExternProc};
+    makeDecl(ctx, name) = {{.val{{.extern_proc{id}}, ValueKind_ExternProc}}, DeclKind_Complete};
 }
 
 void defineExternData(Context &ctx, NkAtom name, NkIrExternData id) {
-    makeDecl(ctx, name) = {{.extern_data{.id = id}}, DeclKind_ExternData};
+    makeDecl(ctx, name) = {{.val{{.extern_data{id}}, ValueKind_ExternData}}, DeclKind_Complete};
 }
 
 Decl &resolve(Context &ctx, NkAtom name) {
@@ -212,40 +189,48 @@ Decl &resolve(Context &ctx, NkAtom name) {
     return s_undefined_decl;
 }
 
-bool isValueKnown(ValueInfo const &val) {
-    return val.kind == ValueKind_Void || val.kind == ValueKind_Rodata ||
-           (val.kind == ValueKind_Decl && (val.as.decl->kind == DeclKind_Comptime));
+bool isValueKnown(Interm const &val) {
+    return val.kind == IntermKind_Void ||
+           (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata));
 }
 
-nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val) {
+nklval_t getValueFromInfo(NklCompiler c, Interm const &val) {
     nk_assert(isValueKnown(val) && "trying to get an unknown value");
 
     switch (val.kind) {
-        case ValueKind_Void:
+        case IntermKind_Void:
             return {nullptr, val.type};
-        case ValueKind_Rodata:
-            return {nkir_getDataPtr(c->ir, val.as.rodata), val.type};
-        case ValueKind_Decl: {
-            switch (val.as.decl->kind) {
-                case DeclKind_Comptime:
-                    return val.as.decl->as.comptime.val;
+        case IntermKind_Val:
+            switch (val.as.val.kind) {
+                case ValueKind_Rodata:
+                    return {nkir_getDataPtr(c->ir, val.as.val.as.rodata.id), val.type};
+                case ValueKind_Proc:
+                    nk_assert(!"getValueFromInfo is not implemented for ValueKind_Proc");
+                    return {};
                 default:
                     nk_assert(!"unreachable");
                     return {};
             }
-        }
         default:
             nk_assert(!"unreachable");
             return {};
     }
 }
 
-bool isModule(ValueInfo const &val) {
-    return val.kind == ValueKind_Decl &&
-           (val.as.decl->kind == DeclKind_Module || val.as.decl->kind == DeclKind_ModuleIncomplete);
+bool isModule(Interm const &val) {
+    return val.kind == IntermKind_Val && ((val.as.val.kind == ValueKind_Rodata && val.as.val.as.rodata.opt_scope) ||
+                                          (val.as.val.kind == ValueKind_Proc && val.as.val.as.proc.opt_scope));
 }
 
-Scope *getModuleScope(ValueInfo const &val) {
+Scope *getModuleScope(Interm const &val) {
     nk_assert(isModule(val) && "module expected");
-    return val.as.decl->as.module.scope;
+    switch (val.as.val.kind) {
+        case ValueKind_Rodata:
+            return val.as.val.as.rodata.opt_scope;
+        case ValueKind_Proc:
+            return val.as.val.as.proc.opt_scope;
+        default:
+            nk_assert(!"unreachable");
+            return {};
+    }
 }

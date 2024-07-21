@@ -239,6 +239,11 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     return data;
 }
 
+bool nkir_dataIsReadOnly(NkIrProg ir, NkIrData var) {
+    auto &decl = ir->data.data[var.idx];
+    return decl.read_only;
+}
+
 nktype_t nkir_getProcType(NkIrProg ir, NkIrProc _proc) {
     auto const &proc = ir->procs.data[_proc.idx];
     return proc.proc_t;
@@ -259,6 +264,14 @@ nktype_t nkir_getArgType(NkIrProg ir, usize idx) {
     nk_assert(idx < args_t.size && "arg index out of range");
 
     return args_t.data[idx];
+}
+
+nktype_t nkir_getDataType(NkIrProg ir, NkIrData var) {
+    return ir->data.data[var.idx].type;
+}
+
+nktype_t nkir_getExternDataType(NkIrProg ir, NkIrExternData data) {
+    return ir->extern_data.data[data.idx].type;
 }
 
 nktype_t nkir_getExternProcType(NkIrProg ir, NkIrExternProc proc) {

@@ -1,6 +1,7 @@
 #include "nkl/core/compiler.h"
 
 #include "compiler_state.hpp"
+#include "nkb/ir.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
@@ -143,7 +144,7 @@ bool nkl_writeModule(NklModule m, NkString filename) {
     return true;
 }
 
-NK_PRINTF_LIKE(2) static ValueInfo error(Context &ctx, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) static Interm error(Context &ctx, char const *fmt, ...) {
     auto src = ctx.src;
     auto last_node = ctx.node_stack;
     auto err_token = last_node ? &src->tokens.data[src->nodes.data[last_node->node_idx].token_idx] : nullptr;
@@ -156,62 +157,62 @@ NK_PRINTF_LIKE(2) static ValueInfo error(Context &ctx, char const *fmt, ...) {
     return {};
 }
 
-static ValueInfo compileNode(Context &ctx, usize node_idx);
+static Interm compileNode(Context &ctx, usize node_idx);
 static Void compileStmt(Context &ctx, usize node_idx);
 static void compileAst(Context &ctx);
-static ValueInfo resolveDecl(NklCompiler c, Decl &decl);
+static Interm resolveDecl(NklCompiler c, Decl &decl);
 
-static ValueInfo resolveComptime(NklCompiler c, Decl &decl) {
-    nk_assert(decl.kind == DeclKind_ComptimeUnresolved);
+static Interm resolveComptime(Decl &decl) {
+    nk_assert(decl.kind == DeclKind_Unresolved);
 
-    auto &ctx = *decl.as.comptime_unresolved.ctx;
-    auto node_idx = decl.as.comptime_unresolved.node_idx;
+    auto &ctx = *decl.as.unresolved.ctx;
+    auto node_idx = decl.as.unresolved.node_idx;
 
     decl.as = {};
-    decl.kind = DeclKind_ComptimeIncomplete;
+    decl.kind = DeclKind_Incomplete;
 
     NK_LOG_DBG("Resolving comptime const: node %zu file=`%s`", node_idx, nk_atom2cs(ctx.src->file));
 
     DEFINE(val, compileNode(ctx, node_idx));
 
-    switch (decl.kind) {
-        case DeclKind_ExternData:
-        case DeclKind_ExternProc:
-        case DeclKind_Module:
-        case DeclKind_ModuleIncomplete:
-            return resolveDecl(c, decl);
+    // TODO: Do we need to update the decl kind here or would it happen elsewhere during compilation?
+    decl.kind = DeclKind_Complete;
 
-        default: {
-            if (!isValueKnown(val)) {
-                // TODO: Improve error message
-                return error(ctx, "value is not known");
-            }
+    return val;
+}
 
-            decl.as.comptime.val = getValueFromInfo(c, val);
-            decl.kind = DeclKind_Comptime;
-
-            return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
-        }
+static nkltype_t getValueType(NklCompiler c, Value const &val) {
+    switch (val.kind) {
+        case ValueKind_Rodata:
+            return nkirt2nklt(nkir_getDataType(c->ir, val.as.rodata.id));
+        case ValueKind_Proc:
+            return nkirt2nklt(nkir_getProcType(c->ir, val.as.proc.id));
+        case ValueKind_Data:
+            return nkirt2nklt(nkir_getDataType(c->ir, val.as.data.id));
+        case ValueKind_ExternData:
+            return nkirt2nklt(nkir_getExternDataType(c->ir, val.as.extern_data.id));
+        case ValueKind_ExternProc:
+            return nkirt2nklt(nkir_getExternProcType(c->ir, val.as.extern_proc.id));
+        case ValueKind_Local:
+            return nkirt2nklt(nkir_getLocalType(c->ir, val.as.local.id));
+        case ValueKind_Arg:
+            return nkirt2nklt(nkir_getArgType(c->ir, val.as.arg.idx));
+        default:
+            nk_assert(!"unreachable");
+            return {};
     }
 }
 
-static ValueInfo resolveDecl(NklCompiler c, Decl &decl) {
+static Interm resolveDecl(NklCompiler c, Decl &decl) {
     switch (decl.kind) {
-        case DeclKind_Comptime:
-            return {{.decl = &decl}, decl.as.comptime.val.type, ValueKind_Decl};
-        case DeclKind_ComptimeUnresolved:
-            return resolveComptime(c, decl);
-        case DeclKind_ExternData:
-            return {{.decl = &decl}, nkirt2nklt(nkir_getArgType(c->ir, decl.as.param.idx)), ValueKind_Decl};
-        case DeclKind_ExternProc:
-            return {{.decl = &decl}, nkirt2nklt(nkir_getExternProcType(c->ir, decl.as.extern_proc.id)), ValueKind_Decl};
-        case DeclKind_Local:
-            return {{.decl = &decl}, nkirt2nklt(nkir_getLocalType(c->ir, decl.as.local.var)), ValueKind_Decl};
-        case DeclKind_Module:
-        case DeclKind_ModuleIncomplete:
-            return {{.decl = &decl}, nkirt2nklt(nkir_getProcType(c->ir, decl.as.module.proc)), ValueKind_Decl};
-        case DeclKind_Param:
-            return {{.decl = &decl}, nkirt2nklt(nkir_getArgType(c->ir, decl.as.param.idx)), ValueKind_Decl};
+        case DeclKind_Unresolved:
+            return resolveComptime(decl);
+        case DeclKind_Incomplete:
+            nk_assert(!"resolveDecl is not implemented for DeclKind_Incomplete");
+            return {};
+        case DeclKind_Complete:
+            return {{.val{decl.as.val}}, getValueType(c, decl.as.val), IntermKind_Val};
+
         default:
             nk_assert(!"unreachable");
             return {};
@@ -292,9 +293,7 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
         pushPublicScope(ctx, ctx.top_level_proc);
 
         if (decl) {
-            decl->as.module.proc = ctx.top_level_proc;
-            decl->as.module.scope = ctx.scope_stack;
-            decl->kind = DeclKind_ModuleIncomplete;
+            decl->as.val = {{.proc{.id = ctx.top_level_proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
         }
 
         CHECK(compileAst(ctx));
@@ -304,15 +303,13 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
         nkir_finishProc(c->ir, ctx.top_level_proc, 0); // TODO: Ignoring procs finishing line
 
         if (decl) {
-            decl->as.module.proc = ctx.top_level_proc;
-            decl->kind = DeclKind_Module;
+            decl->kind = DeclKind_Complete;
         }
     } else if (decl) {
         auto &ctx = *pctx;
 
-        decl->as.module.proc = ctx.top_level_proc;
-        decl->as.module.scope = ctx.scope_stack;
-        decl->kind = DeclKind_Module;
+        decl->as.val = {{.proc{.id = ctx.top_level_proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
+        decl->kind = DeclKind_Complete;
     }
 
 #ifdef ENABLE_LOGGING
@@ -332,24 +329,24 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
     return pctx;
 }
 
-static ValueInfo store(Context &ctx, NkIrRef const &dst, ValueInfo src) {
+static Interm store(Context &ctx, NkIrRef const &dst, Interm src) {
     auto m = ctx.m;
     auto c = m->c;
 
     auto const dst_type = dst.type;
     auto const src_type = src.type;
     if (nklt_sizeof(src_type)) {
-        if (src.kind == ValueKind_Instr && src.as.instr.arg[0].ref.kind == NkIrRef_None) {
+        if (src.kind == IntermKind_Instr && src.as.instr.arg[0].ref.kind == NkIrRef_None) {
             src.as.instr.arg[0].ref = dst;
         } else {
-            src = {{.instr{nkir_make_mov(c->ir, dst, asRef(ctx, src))}}, nkirt2nklt(dst_type), ValueKind_Instr};
+            src = {{.instr{nkir_make_mov(c->ir, dst, asRef(ctx, src))}}, nkirt2nklt(dst_type), IntermKind_Instr};
         }
     }
     auto const src_ref = asRef(ctx, src);
-    return {{.ref = src_ref}, nkirt2nklt(src_ref.type), ValueKind_Ref};
+    return {{.ref = src_ref}, nkirt2nklt(src_ref.type), IntermKind_Ref};
 }
 
-static ValueInfo getLvalueRef(Context &ctx, usize node_idx) {
+static Interm getLvalueRef(Context &ctx, usize node_idx) {
     auto m = ctx.m;
     auto c = m->c;
 
@@ -364,20 +361,31 @@ static ValueInfo getLvalueRef(Context &ctx, usize node_idx) {
             case DeclKind_Undefined:
                 return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
 
-            case DeclKind_Local: {
-                auto const ref = nkir_makeFrameRef(c->ir, decl.as.local.var);
-                return {{.ref{ref}}, nkirt2nklt(ref.type), ValueKind_Ref};
-            }
+            case DeclKind_Complete:
+                switch (decl.as.val.kind) {
+                    case ValueKind_Local: {
+                        // TODO: Do we need need to immediately convert decl to ref in getLvalueRef?
+                        auto const ref = asRef(ctx, resolveDecl(c, decl));
+                        return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
+                    }
 
-            case DeclKind_Comptime:
-            case DeclKind_ComptimeIncomplete:
-            case DeclKind_ComptimeUnresolved:
-            case DeclKind_ExternData:
-            case DeclKind_ExternProc:
-            case DeclKind_Module:
-            case DeclKind_ModuleIncomplete:
-            case DeclKind_Param:
+                    case ValueKind_Rodata:
+                    case ValueKind_Proc:
+                    case ValueKind_Data:
+                    case ValueKind_ExternData:
+                    case ValueKind_ExternProc:
+                    case ValueKind_Arg:
+                        return error(ctx, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str));
+                    default:
+                        nk_assert(!"unreachable");
+                        return {};
+                }
+
+            // TODO: Do we need to handle unresolved & incomplete in getLvalueRef?
+            case DeclKind_Unresolved:
+            case DeclKind_Incomplete:
                 return error(ctx, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str));
+
             default:
                 nk_assert(!"unreachable");
                 return {};
@@ -388,7 +396,7 @@ static ValueInfo getLvalueRef(Context &ctx, usize node_idx) {
     }
 }
 
-static ValueInfo compileNode(Context &ctx, usize node_idx) {
+static Interm compileNode(Context &ctx, usize node_idx) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -435,7 +443,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
         decl = &resolve(ctx, decl_name);
 
-        nk_assert(decl->kind == DeclKind_ComptimeIncomplete);
+        nk_assert(decl->kind == DeclKind_Incomplete);
     }
 
     switch (node.id) {
@@ -446,7 +454,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(lhs, compileNode(ctx, lhs_idx));
             DEFINE(rhs, compileNode(ctx, rhs_idx));
             // TODO: Assuming equal and correct types in add
-            return {{.instr{nkir_make_add(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, ValueKind_Instr};
+            return {{.instr{nkir_make_add(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
         }
 
         case n_assign: {
@@ -471,7 +479,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             }
 
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-            NkDynArray(ValueInfo) args{NKDA_INIT(temp_alloc)};
+            NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
 
             auto const &args_n = src.nodes.data[args_idx];
             auto next_arg_idx = args_idx + 1;
@@ -491,7 +499,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return {
                 {.instr{nkir_make_call(c->ir, {}, asRef(ctx, lhs), {NK_SLICE_INIT(arg_refs)})}},
                 nkirt2nklt(lhs.type->ir_type.as.proc.info.ret_t),
-                ValueKind_Instr};
+                IntermKind_Instr};
         }
 
         case n_const: {
@@ -503,7 +511,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             CHECK(defineComptimeUnresolved(ctx, name, value_idx));
 
-            return ValueInfo{};
+            return {};
         }
 
         case n_context: {
@@ -558,7 +566,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return {
                 {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))},
                 str_t,
-                ValueKind_Ref};
+                IntermKind_Ref};
         }
 
         case n_extern_c_proc: {
@@ -640,49 +648,49 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto const proc = nkir_makeExternProc(c->ir, nk_cs2atom(LIBC_NAME), decl_name, nklt2nkirt(proc_t));
             CHECK(defineExternProc(ctx, decl_name, proc));
 
-            return {{.ref{nkir_makeExternProcRef(c->ir, proc)}}, proc_t, ValueKind_Ref};
+            return {{.ref{nkir_makeExternProcRef(c->ir, proc)}}, proc_t, IntermKind_Ref};
         }
 
         case n_i8: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int8);
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_i16: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int16);
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_i32: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int32);
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_i64: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int64);
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_f32: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Float32);
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_f64: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Float64);
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_id: {
@@ -724,19 +732,19 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 import_path = path;
             }
 
-            DEFINE_REF(imported_ctx, *importFile(c, import_path, decl));
+            CHECK(importFile(c, import_path, decl));
 
-            return {{.decl = decl}, nkirt2nklt(nkir_getProcType(c->ir, imported_ctx.top_level_proc)), ValueKind_Decl};
+            return resolveDecl(c, *decl);
         }
 
         case n_int: {
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
-            auto const type = nkl_get_numeric(nkl, Int64);
-            auto const rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type), NkIrVisibility_Local);
+            auto const i64_t = nkl_get_numeric(nkl, Int64);
+            auto const rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(i64_t), NkIrVisibility_Local);
             // TODO: Replace sscanf in compiler
             int res = sscanf(token_str.data, "%" SCNi64, (i64 *)nkir_getDataPtr(c->ir, rodata));
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-            return ValueInfo{{.rodata{rodata}}, type, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, i64_t, IntermKind_Val};
         }
 
         case n_less: {
@@ -749,7 +757,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             return {
                 {.instr{nkir_make_cmp_lt(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}},
                 nkl_get_bool(nkl),
-                ValueKind_Instr};
+                IntermKind_Instr};
         }
 
         case n_list: {
@@ -791,7 +799,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             }
 
             // TODO: Returning null ref in member
-            return {{.ref{}}, found_field->type, ValueKind_Ref};
+            return {{.ref{}}, found_field->type, IntermKind_Ref};
         }
 
         case n_mul: {
@@ -801,7 +809,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             DEFINE(lhs, compileNode(ctx, lhs_idx));
             DEFINE(rhs, compileNode(ctx, rhs_idx));
             // TODO: Assuming equal and correct types in mul
-            return {{.instr{nkir_make_mul(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, ValueKind_Instr};
+            return {{.instr{nkir_make_mul(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
         }
 
         case n_proc: {
@@ -909,10 +917,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 popScope(ctx);
             };
 
+            // TODO: Come up with a better name
+            Value proc_val{{.proc{.id = proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
+
             if (decl) {
-                decl->as.module.proc = proc;
-                decl->as.module.scope = ctx.scope_stack;
-                decl->kind = DeclKind_ModuleIncomplete;
+                decl->as.val = proc_val;
             }
 
             for (usize i = 0; i < params_n.arity; i++) {
@@ -933,12 +942,10 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             nkir_finishProc(c->ir, proc, proc_finish_line);
 
             if (decl) {
-                decl->kind = DeclKind_Module;
-                return {{.decl = decl}, proc_t, ValueKind_Decl};
-            } else {
-                // TODO: Should be comptime const instead of ref?
-                return {{.ref = nkir_makeProcRef(c->ir, proc)}, proc_t, ValueKind_Ref};
+                decl->kind = DeclKind_Complete;
             }
+
+            return {{.val{proc_val}}, proc_t, IntermKind_Val};
         }
 
         case n_ptr: {
@@ -963,7 +970,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto target_t = nklval_as(nkltype_t, getValueFromInfo(c, target));
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_ptr(nkl, c->word_size, target_t, false);
 
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_return: {
@@ -974,13 +981,13 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
                 nkir_emit(c->ir, nkir_make_mov(c->ir, nkir_makeRetRef(c->ir), asRef(ctx, arg)));
             }
             nkir_emit(c->ir, nkir_make_ret(c->ir));
-            return {{}, nkl_get_void(nkl), ValueKind_Void};
+            return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
         case n_run: {
             // TODO: Actually run code
             printf("RUN\n");
-            return {{}, nkl_get_void(nkl), ValueKind_Void};
+            return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
         case n_scope: {
@@ -992,7 +999,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto child_idx = get_next_child(next_idx);
             CHECK(compileStmt(ctx, child_idx));
 
-            return ValueInfo{};
+            return {};
         }
 
             // TODO: Boilerplate code between n_escaped_string and n_string
@@ -1011,10 +1018,10 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             memcpy(str_ptr, text.data, text.size);
             ((char *)str_ptr)[text.size] = '\0';
 
-            return ValueInfo{
-                {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))},
+            return {
+                {.ref{nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))}},
                 str_t,
-                ValueKind_Rodata};
+                IntermKind_Ref};
         }
 
         case n_struct: {
@@ -1062,7 +1069,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = struct_t;
 
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_var: {
@@ -1091,7 +1098,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             // TODO: Zero init the var?
 
-            return {{}, nkl_get_void(nkl), ValueKind_Void};
+            return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
         case n_void: {
@@ -1100,7 +1107,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_void(nkl);
 
-            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_while: {
@@ -1134,7 +1141,7 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         }
     }
 
-    return ValueInfo{};
+    return {};
 }
 
 static Void compileStmt(Context &ctx, usize node_idx) {

@@ -135,12 +135,15 @@ NkIrProc nkir_getActiveProc(NkIrProg ir);
 
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 
-void *nkir_getDataPtr(NkIrProg ir, NkIrData cnst);
+void *nkir_getDataPtr(NkIrProg ir, NkIrData var);
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
+bool nkir_dataIsReadOnly(NkIrProg ir, NkIrData var);
 
 nktype_t nkir_getProcType(NkIrProg ir, NkIrProc proc);
 nktype_t nkir_getLocalType(NkIrProg ir, NkIrLocalVar var);
 nktype_t nkir_getArgType(NkIrProg ir, usize idx);
+nktype_t nkir_getDataType(NkIrProg ir, NkIrData var);
+nktype_t nkir_getExternDataType(NkIrProg ir, NkIrExternData data);
 nktype_t nkir_getExternProcType(NkIrProg ir, NkIrExternProc proc);
 
 void nkir_emit(NkIrProg ir, NkIrInstr instr);
