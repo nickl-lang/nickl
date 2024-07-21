@@ -50,8 +50,8 @@ NkIrRef asRef(Context &ctx, ValueInfo const &val) {
         case ValueKind_Void:
             break;
 
-        case ValueKind_Const:
-            ref = nkir_makeDataRef(c->ir, val.as.cnst.id);
+        case ValueKind_Rodata:
+            ref = nkir_makeDataRef(c->ir, val.as.rodata);
             break;
 
         case ValueKind_Decl: {
@@ -213,7 +213,7 @@ Decl &resolve(Context &ctx, NkAtom name) {
 }
 
 bool isValueKnown(ValueInfo const &val) {
-    return val.kind == ValueKind_Void || val.kind == ValueKind_Const ||
+    return val.kind == ValueKind_Void || val.kind == ValueKind_Rodata ||
            (val.kind == ValueKind_Decl && (val.as.decl->kind == DeclKind_Comptime));
 }
 
@@ -223,8 +223,8 @@ nklval_t getValueFromInfo(NklCompiler c, ValueInfo const &val) {
     switch (val.kind) {
         case ValueKind_Void:
             return {nullptr, val.type};
-        case ValueKind_Const:
-            return {nkir_getDataPtr(c->ir, val.as.cnst.id), val.type};
+        case ValueKind_Rodata:
+            return {nkir_getDataPtr(c->ir, val.as.rodata), val.type};
         case ValueKind_Decl: {
             switch (val.as.decl->kind) {
                 case DeclKind_Comptime:

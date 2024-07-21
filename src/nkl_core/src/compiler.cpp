@@ -548,15 +548,15 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto ar_t = nkl_get_array(nkl, i8_t, unescaped_text.size + 1);
             auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
 
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
-            auto str_ptr = nkir_getDataPtr(c->ir, cnst);
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
+            auto str_ptr = nkir_getDataPtr(c->ir, rodata);
 
             // TODO: Manual copy and null termination
             memcpy(str_ptr, unescaped_text.data, unescaped_text.size);
             ((char *)str_ptr)[unescaped_text.size] = '\0';
 
             return {
-                {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, cnst), nklt2nkirt(str_t))},
+                {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))},
                 str_t,
                 ValueKind_Ref};
         }
@@ -645,44 +645,44 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
         case n_i8: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int8);
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int8);
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_i16: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int16);
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int16);
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_i32: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int32);
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int32);
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_i64: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Int64);
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int64);
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_f32: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Float32);
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Float32);
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_f64: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_numeric(nkl, Float64);
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Float64);
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_id: {
@@ -732,11 +732,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         case n_int: {
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
             auto const type = nkl_get_numeric(nkl, Int64);
-            auto const cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type), NkIrVisibility_Local);
+            auto const rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type), NkIrVisibility_Local);
             // TODO: Replace sscanf in compiler
-            int res = sscanf(token_str.data, "%" SCNi64, (i64 *)nkir_getDataPtr(c->ir, cnst));
+            int res = sscanf(token_str.data, "%" SCNi64, (i64 *)nkir_getDataPtr(c->ir, rodata));
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-            return ValueInfo{{.cnst{cnst}}, type, ValueKind_Const};
+            return ValueInfo{{.rodata{rodata}}, type, ValueKind_Rodata};
         }
 
         case n_less: {
@@ -959,11 +959,11 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
             auto target_t = nklval_as(nkltype_t, getValueFromInfo(c, target));
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_ptr(nkl, c->word_size, target_t, false);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_ptr(nkl, c->word_size, target_t, false);
 
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_return: {
@@ -1004,17 +1004,17 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
             auto ar_t = nkl_get_array(nkl, i8_t, text.size + 1);
             auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
 
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
-            auto str_ptr = nkir_getDataPtr(c->ir, cnst);
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
+            auto str_ptr = nkir_getDataPtr(c->ir, rodata);
 
             // TODO: Manual copy and null termination
             memcpy(str_ptr, text.data, text.size);
             ((char *)str_ptr)[text.size] = '\0';
 
             return ValueInfo{
-                {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, cnst), nklt2nkirt(str_t))},
+                {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))},
                 str_t,
-                ValueKind_Const};
+                ValueKind_Rodata};
         }
 
         case n_struct: {
@@ -1059,10 +1059,10 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
 
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = struct_t;
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = struct_t;
 
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_var: {
@@ -1097,10 +1097,10 @@ static ValueInfo compileNode(Context &ctx, usize node_idx) {
         case n_void: {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
-            auto cnst = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, cnst) = nkl_get_void(nkl);
+            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_void(nkl);
 
-            return ValueInfo{{.cnst{cnst}}, type_t, ValueKind_Const};
+            return ValueInfo{{.rodata{rodata}}, type_t, ValueKind_Rodata};
         }
 
         case n_while: {

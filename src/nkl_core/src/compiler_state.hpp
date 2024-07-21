@@ -12,12 +12,14 @@ enum DeclKind {
     DeclKind_Comptime,
     DeclKind_ComptimeIncomplete,
     DeclKind_ComptimeUnresolved,
+    DeclKind_Data,
     DeclKind_ExternData,
     DeclKind_ExternProc,
     DeclKind_Local,
     DeclKind_Module,
     DeclKind_ModuleIncomplete,
     DeclKind_Param,
+    DeclKind_Proc,
 };
 
 struct Context;
@@ -33,6 +35,15 @@ struct Decl {
             usize node_idx;
         } comptime_unresolved;
         struct {
+            NkIrData id;
+        } data;
+        struct {
+            NkIrExternProc id;
+        } extern_proc;
+        struct {
+            NkIrExternData id;
+        } extern_data;
+        struct {
             NkIrLocalVar var;
         } local;
         struct {
@@ -43,11 +54,8 @@ struct Decl {
             usize idx;
         } param;
         struct {
-            NkIrExternProc id;
-        } extern_proc;
-        struct {
-            NkIrExternData id;
-        } extern_data;
+            NkIrProc id;
+        } proc;
     } as;
     DeclKind kind;
 };
@@ -55,20 +63,22 @@ struct Decl {
 enum ValueKind {
     ValueKind_Void,
 
-    ValueKind_Const,
     ValueKind_Decl,
     ValueKind_Instr,
+    ValueKind_Module,
     ValueKind_Ref,
+    ValueKind_Rodata,
 };
 
 struct ValueInfo {
     union {
-        struct {
-            NkIrData id;
-        } cnst;
         Decl *decl;
         NkIrInstr instr;
+        struct {
+            // TODO: Fill ValueInfo::as::module
+        } module;
         NkIrRef ref;
+        NkIrData rodata;
     } as;
     nkltype_t type;
     ValueKind kind;
