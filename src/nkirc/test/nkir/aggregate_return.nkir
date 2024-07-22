@@ -1,0 +1,28 @@
+extern "c" proc printf(ptr, ...) i32
+
+type Mat2: { [4]f64 }
+
+proc getIdentityMatrix() Mat2 {
+@start
+    mat: Mat2
+    mov :f64 1.0 -> mat+0:f64
+    mov :f64 0.0 -> mat+8:f64
+    mov :f64 0.0 -> mat+16:f64
+    mov :f64 1.0 -> mat+24:f64
+    mov mat -> ret
+    ret
+}
+
+pub proc main(argc: i32, argv: ptr) i32 {
+@start
+    mat: Mat2
+    call getIdentityMatrix, () -> mat
+    call printf, (&"Identity = [[%g, %g], [%g, %g]]\n", ..., mat+0:f64, mat+8:f64, mat+16:f64, mat+24:f64)
+    mov  0 -> ret
+    ret
+}
+
+/* @output
+Identity = [[1, 0], [0, 1]]
+
+@endoutput */

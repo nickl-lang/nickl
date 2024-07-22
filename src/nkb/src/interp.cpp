@@ -1,10 +1,10 @@
 #include "interp.h"
 
-#include <cstring>
 #include <vector>
 
+#include <string.h>
+
 #include "ffi_adapter.h"
-#include "ntk/allocator.h"
 #include "ntk/common.h"
 #include "ntk/log.h"
 #include "ntk/os/syscall.h"
@@ -96,7 +96,7 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
 
     ctx.stack_frame = stack_frame;
     ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, proc->frame_align);
-    std::memset(ctx.base.frame, 0, proc->frame_size);
+    memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (u8 *)args;
     ctx.base.ret = (u8 *)ret;
     ctx.base.instr = (u8 *)proc->instrs.data;
@@ -392,6 +392,11 @@ void interp(NkBcInstr const &instr) {
 #undef FP2I_OP
 #undef I2FP_OP_IT
 #undef FP2I_OP_IT
+
+        case nkop_mov: {
+            memcpy(getRefAddr(instr.arg[0].ref), getRefAddr(instr.arg[1].ref), instr.arg[0].ref.type->size);
+            break;
+        }
 
         case nkop_mov_8: {
             deref<u8>(instr.arg[0]) = deref<u8>(instr.arg[1]);

@@ -1060,7 +1060,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
 
             if (!nkir_invoke(c->run_ctx, proc, {}, {})) {
                 auto const msg = nkir_getRunErrorString(c->run_ctx);
-                nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
+                nkl_reportError(ctx.src->file, &token, NKS_FMT, NKS_ARG(msg));
                 return {};
             }
 
