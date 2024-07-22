@@ -1,4 +1,5 @@
 def_nkirc_run_test(FILE nkir/aggregate.nkir)
+def_nkirc_run_test(FILE nkir/aggregate_return.nkir)
 def_nkirc_run_test(FILE nkir/basic.nkir)
 def_nkirc_run_test(FILE nkir/callback.nkir)
 def_nkirc_run_test(FILE nkir/casts.nkir)
@@ -15,6 +16,7 @@ def_nkirc_run_test(FILE nkir/syscall.nkir PLATFORM "Linux")
 def_nkirc_run_test(FILE nkir/threads.nkir)
 
 def_nkirc_compile_test(FILE nkir/aggregate.nkir ARGS "-lm")
+def_nkirc_compile_test(FILE nkir/aggregate_return.nkir)
 def_nkirc_compile_test(FILE nkir/basic.nkir)
 def_nkirc_compile_test(FILE nkir/callback.nkir)
 def_nkirc_compile_test(FILE nkir/casts.nkir)

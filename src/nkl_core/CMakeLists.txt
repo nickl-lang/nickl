@@ -2,6 +2,7 @@ set(LIB nkl_core)
 
 add_library(${LIB}
     src/compiler.cpp
+    src/compiler_state.cpp
     src/nickl.c
     src/types.c
     )
