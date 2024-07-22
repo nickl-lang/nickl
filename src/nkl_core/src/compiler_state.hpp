@@ -7,6 +7,8 @@
 #include "ntk/hash_tree.h"
 
 enum ValueKind {
+    ValueKind_Void,
+
     ValueKind_Rodata,
     ValueKind_Proc,
     ValueKind_Data,
@@ -167,7 +169,7 @@ void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
 Decl &resolve(Context &ctx, NkAtom name);
 
 bool isValueKnown(Interm const &val);
-nklval_t getValueFromInfo(NklCompiler c, Interm const &val);
+nklval_t getValueFromInterm(NklCompiler c, Interm const &val);
 
 bool isModule(Interm const &val);
 Scope *getModuleScope(Interm const &val);

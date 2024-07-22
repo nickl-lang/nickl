@@ -174,14 +174,23 @@ static Interm resolveComptime(Decl &decl) {
 
     DEFINE(val, compileNode(ctx, node_idx));
 
-    // TODO: Do we need to update the decl kind here or would it happen elsewhere during compilation?
-    decl.kind = DeclKind_Complete;
+    if (decl.kind != DeclKind_Complete) {
+        if (!isValueKnown(val)) {
+            // TODO: Improve error message
+            return error(ctx, "value is not known");
+        }
+
+        decl.as.val = val.as.val;
+        decl.kind = DeclKind_Complete;
+    }
 
     return val;
 }
 
 static nkltype_t getValueType(NklCompiler c, Value const &val) {
     switch (val.kind) {
+        case ValueKind_Void:
+            return nkl_get_void(c->nkl);
         case ValueKind_Rodata:
             return nkirt2nklt(nkir_getDataType(c->ir, val.as.rodata.id));
         case ValueKind_Proc:
@@ -196,10 +205,10 @@ static nkltype_t getValueType(NklCompiler c, Value const &val) {
             return nkirt2nklt(nkir_getLocalType(c->ir, val.as.local.id));
         case ValueKind_Arg:
             return nkirt2nklt(nkir_getArgType(c->ir, val.as.arg.idx));
-        default:
-            nk_assert(!"unreachable");
-            return {};
     }
+
+    nk_assert(!"unreachable");
+    return {};
 }
 
 static Interm resolveDecl(NklCompiler c, Decl &decl) {
@@ -212,10 +221,13 @@ static Interm resolveDecl(NklCompiler c, Decl &decl) {
         case DeclKind_Complete:
             return {{.val{decl.as.val}}, getValueType(c, decl.as.val), IntermKind_Val};
 
-        default:
+        case DeclKind_Undefined:
             nk_assert(!"unreachable");
             return {};
     }
+
+    nk_assert(!"unreachable");
+    return {};
 }
 
 static NkAtom getFileId(NkString filename) {
@@ -368,6 +380,7 @@ static Interm getLvalueRef(Context &ctx, usize node_idx) {
                         return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
                     }
 
+                    case ValueKind_Void:
                     case ValueKind_Rodata:
                     case ValueKind_Proc:
                     case ValueKind_Data:
@@ -375,20 +388,18 @@ static Interm getLvalueRef(Context &ctx, usize node_idx) {
                     case ValueKind_ExternProc:
                     case ValueKind_Arg:
                         return error(ctx, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str));
-                    default:
-                        nk_assert(!"unreachable");
-                        return {};
                 }
+                nk_assert(!"unreachable");
+                return {};
 
             // TODO: Do we need to handle unresolved & incomplete in getLvalueRef?
             case DeclKind_Unresolved:
             case DeclKind_Incomplete:
                 return error(ctx, "cannot assign to `" NKS_FMT "`", NKS_ARG(name_str));
-
-            default:
-                nk_assert(!"unreachable");
-                return {};
         }
+
+        nk_assert(!"unreachable");
+        return {};
     } else {
         // TODO: Improve error msg
         return error(ctx, "invalid lvalue");
@@ -419,7 +430,13 @@ static Interm compileNode(Context &ctx, usize node_idx) {
     auto const &node = src.nodes.data[node_idx];
 
     auto const &token = src.tokens.data[node.token_idx];
+    // TODO: Need to push lines on a stack {
+    auto const prev_line = nkir_getLine(c->ir);
     nkir_setLine(c->ir, token.lin);
+    defer {
+        nkir_setLine(c->ir, prev_line);
+    };
+    // }
 
     NK_LOG_DBG("Compiling node %zu #%s", node_idx, nk_atom2cs(node.id));
 
@@ -454,6 +471,36 @@ static Interm compileNode(Context &ctx, usize node_idx) {
             DEFINE(rhs, compileNode(ctx, rhs_idx));
             // TODO: Assuming equal and correct types in add
             return {{.instr{nkir_make_add(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
+        }
+
+        case n_mul: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+            // TODO: Assuming equal and correct types in mul
+            return {{.instr{nkir_make_mul(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
+        }
+
+        case n_rsh: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+            // TODO: Assuming equal and correct types in rsh
+            return {{.instr{nkir_make_rsh(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
+        }
+
+        case n_bitand: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+            // TODO: Assuming equal and correct types in rsh
+            return {{.instr{nkir_make_and(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
         }
 
         case n_assign: {
@@ -613,7 +660,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                     return error(ctx, "value is not known");
                 }
 
-                auto type = nklval_as(nkltype_t, getValueFromInfo(c, type_v));
+                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
 
                 nkda_append(&param_types, type);
             }
@@ -631,7 +678,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                 return error(ctx, "value is not known");
             }
 
-            auto ret_t = nklval_as(nkltype_t, getValueFromInfo(c, ret_t_v));
+            auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
 
             auto proc_t = nkl_get_proc(
                 nkl,
@@ -763,6 +810,19 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                 IntermKind_Instr};
         }
 
+        case n_neq: {
+            auto lhs_idx = get_next_child(next_idx);
+            auto rhs_idx = get_next_child(next_idx);
+
+            DEFINE(lhs, compileNode(ctx, lhs_idx));
+            DEFINE(rhs, compileNode(ctx, rhs_idx));
+            // TODO: Assuming equal and correct types in add
+            return {
+                {.instr{nkir_make_cmp_ne(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}},
+                nkl_get_bool(nkl),
+                IntermKind_Instr};
+        }
+
         case n_list: {
             for (usize i = 0; i < node.arity; i++) {
                 CHECK(compileStmt(ctx, get_next_child(next_idx)));
@@ -805,16 +865,6 @@ static Interm compileNode(Context &ctx, usize node_idx) {
             return {{.ref{}}, found_field->type, IntermKind_Ref};
         }
 
-        case n_mul: {
-            auto lhs_idx = get_next_child(next_idx);
-            auto rhs_idx = get_next_child(next_idx);
-
-            DEFINE(lhs, compileNode(ctx, lhs_idx));
-            DEFINE(rhs, compileNode(ctx, rhs_idx));
-            // TODO: Assuming equal and correct types in mul
-            return {{.instr{nkir_make_mul(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
-        }
-
         case n_proc: {
             auto params_idx = get_next_child(next_idx);
             auto ret_t_idx = get_next_child(next_idx);
@@ -850,7 +900,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                     return error(ctx, "value is not known");
                 }
 
-                auto type = nklval_as(nkltype_t, getValueFromInfo(c, type_v));
+                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
 
                 nkda_append(&param_names, name);
                 nkda_append(&param_types, type);
@@ -869,7 +919,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                 return error(ctx, "value is not known");
             }
 
-            auto ret_t = nklval_as(nkltype_t, getValueFromInfo(c, ret_t_v));
+            auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
 
             auto proc_t = nkl_get_proc(
                 nkl,
@@ -979,7 +1029,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
             auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            auto target_t = nklval_as(nkltype_t, getValueFromInfo(c, target));
+            auto target_t = nklval_as(nkltype_t, getValueFromInterm(c, target));
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_ptr(nkl, c->word_size, target_t, false);
 
             return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
@@ -1134,7 +1184,7 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                     return error(ctx, "value is not known");
                 }
 
-                auto type = nklval_as(nkltype_t, getValueFromInfo(c, type_v));
+                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
 
                 nkda_append(&fields, NklField{name, type});
             }
@@ -1152,28 +1202,54 @@ static Interm compileNode(Context &ctx, usize node_idx) {
         case n_var: {
             auto name_idx = get_next_child(next_idx);
             auto type_idx = get_next_child(next_idx);
+            auto val_idx = get_next_child(next_idx);
 
             auto const &name_n = src.nodes.data[name_idx];
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
-            DEFINE(type_v, compileNode(ctx, type_idx));
+            auto const &type_n = src.nodes.data[type_idx];
+            auto const &val_n = src.nodes.data[val_idx];
 
-            if (type_v.type->tclass != NklType_Typeref) {
+            if (!type_n.id && !val_n.id) {
                 // TODO: Improve error message
-                return error(ctx, "type expected");
+                return error(ctx, "invalid ast");
             }
 
-            if (!isValueKnown(type_v)) {
-                // TODO: Improve error message
-                return error(ctx, "value is not known");
+            nkltype_t type{};
+
+            if (type_n.id) {
+                DEFINE(type_v, compileNode(ctx, type_idx));
+
+                if (type_v.type->tclass != NklType_Typeref) {
+                    // TODO: Improve error message
+                    return error(ctx, "type expected");
+                }
+
+                if (!isValueKnown(type_v)) {
+                    // TODO: Improve error message
+                    return error(ctx, "value is not known");
+                }
+
+                type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
             }
 
-            auto type = nklval_as(nkltype_t, getValueFromInfo(c, type_v));
+            Interm val{};
+            if (val_n.id) {
+                ASSIGN(val, compileNode(ctx, val_idx));
+
+                if (type_n.id) {
+                    // TODO: Typecheck in n_var
+                } else {
+                    type = val.type;
+                }
+            }
 
             auto var = nkir_makeLocalVar(c->ir, name, nklt2nkirt(type));
             CHECK(defineLocal(ctx, name, var));
 
-            // TODO: Zero init the var?
+            if (val_n.id) {
+                CHECK(store(ctx, nkir_makeFrameRef(c->ir, var), val));
+            }
 
             return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
@@ -1185,6 +1261,54 @@ static Interm compileNode(Context &ctx, usize node_idx) {
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_void(nkl);
 
             return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
+        }
+
+        case n_if: {
+            auto cond_idx = get_next_child(next_idx);
+            auto body_idx = get_next_child(next_idx);
+            auto else_idx = get_next_child(next_idx);
+
+            auto const else_n = src.nodes.data[else_idx];
+
+            auto const endif_l = nkir_createLabel(c->ir, nk_cs2atom("@endif"));
+            NkIrLabel else_l;
+            if (else_n.id) {
+                else_l = nkir_createLabel(c->ir, nk_cs2atom("@else"));
+            } else {
+                else_l = endif_l;
+            }
+
+            DEFINE(cond, compileNode(ctx, cond_idx));
+
+            if (cond.type->tclass != NklType_Bool) {
+                // TODO: Improve error message
+                return error(ctx, "bool expected");
+            }
+
+            nkir_emit(c->ir, nkir_make_jmpz(c->ir, asRef(ctx, cond), else_l));
+
+            {
+                pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
+                defer {
+                    popScope(ctx);
+                };
+                CHECK(compileStmt(ctx, body_idx));
+            }
+
+            if (else_n.id) {
+                nkir_emit(c->ir, nkir_make_label(else_l));
+                {
+                    pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
+                    defer {
+                        popScope(ctx);
+                    };
+                    CHECK(compileStmt(ctx, else_idx));
+                }
+            }
+
+            nkir_emit(c->ir, nkir_make_label(endif_l));
+
+            return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
         case n_while: {
@@ -1205,12 +1329,18 @@ static Interm compileNode(Context &ctx, usize node_idx) {
 
             nkir_emit(c->ir, nkir_make_jmpz(c->ir, asRef(ctx, cond), endloop_l));
 
-            CHECK(compileStmt(ctx, body_idx));
+            {
+                pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
+                defer {
+                    popScope(ctx);
+                };
+                CHECK(compileStmt(ctx, body_idx));
+            }
 
             nkir_emit(c->ir, nkir_make_jmp(c->ir, loop_l));
             nkir_emit(c->ir, nkir_make_label(endloop_l));
 
-            break;
+            return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
         default: {

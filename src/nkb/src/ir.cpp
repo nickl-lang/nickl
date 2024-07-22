@@ -359,9 +359,11 @@ void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) 
 }
 
 void nkir_setLine(NkIrProg ir, usize line) {
-    NK_LOG_TRC("%s", __func__);
-
     ir->cur_line = line;
+}
+
+usize nkir_getLine(NkIrProg ir) {
+    return ir->cur_line;
 }
 
 void nkir_enter(NkIrProg ir) {

@@ -68,6 +68,10 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
 
         case IntermKind_Val:
             switch (val.as.val.kind) {
+                case ValueKind_Void:
+                    ref = {};
+                    break;
+
                 case ValueKind_Rodata:
                 case ValueKind_Data:
                     ref = nkir_makeDataRef(c->ir, val.as.val.as.data.id);
@@ -89,10 +93,6 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
                     break;
             }
             break;
-
-        default:
-            nk_assert(!"unreachable");
-            return {};
     }
 
     return ref;
@@ -194,7 +194,7 @@ bool isValueKnown(Interm const &val) {
            (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata));
 }
 
-nklval_t getValueFromInfo(NklCompiler c, Interm const &val) {
+nklval_t getValueFromInterm(NklCompiler c, Interm const &val) {
     nk_assert(isValueKnown(val) && "trying to get an unknown value");
 
     switch (val.kind) {
@@ -207,14 +207,26 @@ nklval_t getValueFromInfo(NklCompiler c, Interm const &val) {
                 case ValueKind_Proc:
                     nk_assert(!"getValueFromInfo is not implemented for ValueKind_Proc");
                     return {};
-                default:
+
+                case ValueKind_Void:
+                case ValueKind_Data:
+                case ValueKind_ExternData:
+                case ValueKind_ExternProc:
+                case ValueKind_Local:
+                case ValueKind_Arg:
                     nk_assert(!"unreachable");
                     return {};
             }
-        default:
+            return {};
+
+        case IntermKind_Instr:
+        case IntermKind_Ref:
             nk_assert(!"unreachable");
             return {};
     }
+
+    nk_assert(!"unreachable");
+    return {};
 }
 
 bool isModule(Interm const &val) {
@@ -229,8 +241,17 @@ Scope *getModuleScope(Interm const &val) {
             return val.as.val.as.rodata.opt_scope;
         case ValueKind_Proc:
             return val.as.val.as.proc.opt_scope;
-        default:
+
+        case ValueKind_Void:
+        case ValueKind_Data:
+        case ValueKind_ExternData:
+        case ValueKind_ExternProc:
+        case ValueKind_Local:
+        case ValueKind_Arg:
             nk_assert(!"unreachable");
             return {};
     }
+
+    nk_assert(!"unreachable");
+    return {};
 }

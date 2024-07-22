@@ -154,6 +154,7 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs);
 void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena);
 
 void nkir_setLine(NkIrProg ir, usize line);
+usize nkir_getLine(NkIrProg ir);
 
 void nkir_enter(NkIrProg ir);
 void nkir_leave(NkIrProg ir);

@@ -1,3 +1,4 @@
+def_nkstc_test(FILE nkst/fast_exp.nkst)
 def_nkstc_test(FILE nkst/hello_world.nkst)
 def_nkstc_test(FILE nkst/import.nkst)
 def_nkstc_test(FILE nkst/loop.nkst)
