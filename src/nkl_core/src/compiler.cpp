@@ -5,6 +5,7 @@
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
+#include "nkl/core/types.h"
 #include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
@@ -44,6 +45,9 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
         .ir{},
         .entry_point{NKIR_INVALID_IDX},
 
+        .run_ctx_temp_arena{},
+        .run_ctx{},
+
         .nkl = nkl,
         .perm_arena = arena,
         .temp_arenas{},
@@ -55,10 +59,13 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     c->files.alloc = nk_arena_getAllocator(&c->perm_arena);
     c->errors.arena = &c->perm_arena;
     c->ir = nkir_createProgram(&c->perm_arena);
+    c->run_ctx = nkir_createRunCtx(c->ir, &c->run_ctx_temp_arena);
     return c;
 }
 
 void nkl_freeCompiler(NklCompiler c) {
+    nkir_freeRunCtx(c->run_ctx);
+
     nk_arena_free(&c->temp_arenas[0]);
     nk_arena_free(&c->temp_arenas[1]);
 
@@ -94,16 +101,8 @@ bool nkl_runModule(NklModule m) {
 
     nk_assert(c->entry_point.idx != NKIR_INVALID_IDX);
 
-    auto run_ctx = nkir_createRunCtx(c->ir, getNextTempArena(c, NULL));
-    defer {
-        nkir_freeRunCtx(run_ctx);
-    };
-
-    i64 ret_code = -1;
-
-    void *rets[] = {&ret_code};
-    if (!nkir_invoke(run_ctx, c->entry_point, {}, rets)) {
-        auto const msg = nkir_getRunErrorString(run_ctx);
+    if (!nkir_invoke(c->run_ctx, c->entry_point, {}, {})) {
+        auto const msg = nkir_getRunErrorString(c->run_ctx);
         nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
     }
@@ -300,7 +299,21 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
 
         nkir_emit(c->ir, nkir_make_ret(c->ir));
 
-        nkir_finishProc(c->ir, ctx.top_level_proc, 0); // TODO: Ignoring procs finishing line
+        nkir_finishProc(c->ir, ctx.top_level_proc, 0); // TODO: Ignoring proc's finishing line
+
+#ifdef ENABLE_LOGGING
+        {
+            auto temp_arena = &c->perm_arena;
+            auto temp_frame = nk_arena_grab(temp_arena);
+            defer {
+                nk_arena_popFrame(temp_arena, temp_frame);
+            };
+            NkStringBuilder sb{};
+            sb.alloc = nk_arena_getAllocator(temp_arena);
+            nkir_inspectProc(c->ir, ctx.top_level_proc, nksb_getStream(&sb));
+            NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+        }
+#endif // ENABLE_LOGGING
 
         if (decl) {
             decl->kind = DeclKind_Complete;
@@ -311,20 +324,6 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
         decl->as.val = {{.proc{.id = ctx.top_level_proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
         decl->kind = DeclKind_Complete;
     }
-
-#ifdef ENABLE_LOGGING
-    {
-        auto arena = &c->perm_arena;
-        auto frame = nk_arena_grab(arena);
-        defer {
-            nk_arena_popFrame(arena, frame);
-        };
-        NkStringBuilder sb{};
-        sb.alloc = nk_arena_getAllocator(arena);
-        nkir_inspectProgram(c->ir, nksb_getStream(&sb));
-        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
-    }
-#endif // ENABLE_LOGGING
 
     return pctx;
 }
@@ -732,9 +731,13 @@ static Interm compileNode(Context &ctx, usize node_idx) {
                 import_path = path;
             }
 
-            CHECK(importFile(c, import_path, decl));
+            DEFINE_REF(imported_ctx, *importFile(c, import_path, decl));
 
-            return resolveDecl(c, *decl);
+            return {
+                {.val{
+                    {.proc{.id = imported_ctx.top_level_proc, .opt_scope = imported_ctx.scope_stack}}, ValueKind_Proc}},
+                nkirt2nklt(nkir_getProcType(c->ir, imported_ctx.top_level_proc)),
+                IntermKind_Val};
         }
 
         case n_int: {
@@ -941,6 +944,15 @@ static Interm compileNode(Context &ctx, usize node_idx) {
 
             nkir_finishProc(c->ir, proc, proc_finish_line);
 
+#ifdef ENABLE_LOGGING
+            {
+                NkStringBuilder sb{};
+                sb.alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+                nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
+                NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+            }
+#endif // ENABLE_LOGGING
+
             if (decl) {
                 decl->kind = DeclKind_Complete;
             }
@@ -985,8 +997,73 @@ static Interm compileNode(Context &ctx, usize node_idx) {
         }
 
         case n_run: {
-            // TODO: Actually run code
-            printf("RUN\n");
+            auto body_idx = get_next_child(next_idx);
+
+            auto proc_t = nkl_get_proc(
+                nkl,
+                c->word_size,
+                NklProcInfo{
+                    .param_types{},
+                    .ret_t = nkl_get_void(nkl),
+                    .call_conv = NkCallConv_Nk,
+                    .flags{},
+                });
+
+            // TODO: Boilerplate proc reactivation {
+            bool had_active_proc = nkir_hasActiveProc(c->ir);
+            NkIrProc prev_active_proc;
+            if (had_active_proc) {
+                prev_active_proc = nkir_getActiveProc(c->ir);
+            }
+            defer {
+                if (had_active_proc) {
+                    nkir_activateProc(c->ir, prev_active_proc);
+                }
+            };
+            // }
+
+            auto const proc = nkir_createProc(c->ir);
+
+            nkir_startProc(
+                c->ir,
+                proc,
+                NkIrProcDescr{
+                    .name = nk_cs2atom("__comptime"), // TODO: Hardcoded comptime proc name
+                    .proc_t = nklt2nkirt(proc_t),
+                    .arg_names{},
+                    .file = ctx.src->file,
+                    .line = token.lin,
+                    .visibility = NkIrVisibility_Local,
+                });
+
+            nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
+
+            pushPrivateScope(ctx, proc);
+            defer {
+                popScope(ctx);
+            };
+
+            CHECK(compileStmt(ctx, body_idx));
+
+            nkir_emit(c->ir, nkir_make_ret(c->ir));
+
+            nkir_finishProc(c->ir, proc, 0); // TODO: Ignoring proc's finishing line
+
+#ifdef ENABLE_LOGGING
+            {
+                NkStringBuilder sb{};
+                sb.alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+                nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
+                NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+            }
+#endif // ENABLE_LOGGING
+
+            if (!nkir_invoke(c->run_ctx, proc, {}, {})) {
+                auto const msg = nkir_getRunErrorString(c->run_ctx);
+                nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
+                return {};
+            }
+
             return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
@@ -1152,7 +1229,7 @@ static Void compileStmt(Context &ctx, usize node_idx) {
     auto c = m->c;
 
     DEFINE(val, compileNode(ctx, node_idx));
-    auto ref = asRef(ctx, val);
+    auto const ref = asRef(ctx, val);
     if (ref.kind != NkIrRef_None && ref.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
         NKSB_FIXED_BUFFER(sb, 1024);
         nkir_inspectRef(c->ir, ctx.scope_stack->cur_proc, ref, nksb_getStream(&sb));
@@ -1188,6 +1265,8 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     c->entry_point = ctx.top_level_proc;
 
     nkir_mergeModules(m->mod, ctx.m->mod);
+
+    // TODO: Inspect module?
 
     return true;
 }

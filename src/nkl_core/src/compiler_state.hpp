@@ -129,6 +129,9 @@ struct NklCompiler_T {
     NkIrProg ir;
     NkIrProc entry_point;
 
+    NkArena run_ctx_temp_arena;
+    NkIrRunCtx run_ctx;
+
     NklState nkl;
     NkArena perm_arena;
     NkArena temp_arenas[2];

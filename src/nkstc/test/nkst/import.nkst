@@ -1,10 +1,12 @@
-(context (context (import "imported.nkst") bar) A)
+(const A (context (context (import "imported.nkst") bar) A))
 (call (import "imported.nkst") [])
 
+(const printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(call printf ["BTW, A=%zu\n" A])
+
 /* @output
-RUN
-bar {
-}
-call
+Hello from imported:comptime!
+Hello from imported:runtime!
+BTW, A=42
 
 @endoutput */
