@@ -11,8 +11,8 @@
 
     (var a () 1)
 
-    (while (neq n 0) [
-        (if (neq (bitand n 1) 0) [
+    (while (ne n 0) [
+        (if (ne (bitand n 1) 0) [
             (assign a (mul a x))
         ] ())
         (assign n (rsh n 1))

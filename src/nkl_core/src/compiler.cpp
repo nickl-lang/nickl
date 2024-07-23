@@ -479,45 +479,51 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
     auto node_it = nodeIterate(src, node);
 
     switch (node.id) {
-        case n_add: {
-            auto &lhs_n = nextNode(node_it);
-            auto &rhs_n = nextNode(node_it);
+        // TODO: Typecheck arithmetic
+#define COMPILE_NUM(NAME, IR_NAME)                                                              \
+    case NK_CAT(n_, NAME): {                                                                    \
+        DEFINE(lhs, compileNode(ctx, nextNode(node_it)));                                       \
+        DEFINE(rhs, compileNode(ctx, nextNode(node_it)));                                       \
+        return {                                                                                \
+            {.instr{NK_CAT(nkir_make_, IR_NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
+            lhs.type,                                                                           \
+            IntermKind_Instr};                                                                  \
+    }
 
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
-            // TODO: Assuming equal and correct types in add
-            return {{.instr{nkir_make_add(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
-        }
+        COMPILE_NUM(add, add)
+        COMPILE_NUM(sub, sub)
+        COMPILE_NUM(mul, mul)
+        COMPILE_NUM(div, div)
+        COMPILE_NUM(mod, mod)
 
-        case n_mul: {
-            auto &lhs_n = nextNode(node_it);
-            auto &rhs_n = nextNode(node_it);
+        // TODO: Separate int instructions from the float
+        COMPILE_NUM(bitand, and)
+        COMPILE_NUM(bitor, or)
+        COMPILE_NUM(xor, xor)
+        COMPILE_NUM(lsh, lsh)
+        COMPILE_NUM(rsh, rsh)
 
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
-            // TODO: Assuming equal and correct types in mul
-            return {{.instr{nkir_make_mul(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
-        }
+#undef COMPILE_NUM
 
-        case n_rsh: {
-            auto &lhs_n = nextNode(node_it);
-            auto &rhs_n = nextNode(node_it);
+        // TODO: Typecheck comparisons
+#define COMPILE_CMP(NAME)                                                                        \
+    case NK_CAT(n_, NAME): {                                                                     \
+        DEFINE(lhs, compileNode(ctx, nextNode(node_it)));                                        \
+        DEFINE(rhs, compileNode(ctx, nextNode(node_it)));                                        \
+        return {                                                                                 \
+            {.instr{NK_CAT(nkir_make_cmp_, NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
+            nkl_get_bool(nkl),                                                                   \
+            IntermKind_Instr};                                                                   \
+    }
 
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
-            // TODO: Assuming equal and correct types in rsh
-            return {{.instr{nkir_make_rsh(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
-        }
+        COMPILE_CMP(eq)
+        COMPILE_CMP(ne)
+        COMPILE_CMP(lt)
+        COMPILE_CMP(le)
+        COMPILE_CMP(gt)
+        COMPILE_CMP(ge)
 
-        case n_bitand: {
-            auto &lhs_n = nextNode(node_it);
-            auto &rhs_n = nextNode(node_it);
-
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
-            // TODO: Assuming equal and correct types in rsh
-            return {{.instr{nkir_make_and(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, lhs.type, IntermKind_Instr};
-        }
+#undef COMPILE_CMP
 
         case n_assign: {
             auto &lhs_n = nextNode(node_it);
@@ -816,32 +822,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             int res = sscanf(token_str.data, "%lf", (f64 *)nkir_getDataPtr(c->ir, rodata));
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
             return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, f64_t, IntermKind_Val};
-        }
-
-        case n_less: {
-            auto &lhs_n = nextNode(node_it);
-            auto &rhs_n = nextNode(node_it);
-
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
-            // TODO: Assuming equal and correct types in add
-            return {
-                {.instr{nkir_make_cmp_lt(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}},
-                nkl_get_bool(nkl),
-                IntermKind_Instr};
-        }
-
-        case n_neq: {
-            auto &lhs_n = nextNode(node_it);
-            auto &rhs_n = nextNode(node_it);
-
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
-            // TODO: Assuming equal and correct types in add
-            return {
-                {.instr{nkir_make_cmp_ne(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}},
-                nkl_get_bool(nkl),
-                IntermKind_Instr};
         }
 
         case n_list: {
