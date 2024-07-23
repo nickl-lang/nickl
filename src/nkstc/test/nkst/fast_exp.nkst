@@ -1,7 +1,7 @@
 (const printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
 
 (const main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
-    (call printf ["%zi^%zi=%zi\n" base exp (call fast_exp [base exp])])
+    (call printf ["%zi^%zi=%zi\n" BASE EXP (call fast_exp [BASE EXP])])
     (return 0)
 ]))
 
@@ -9,22 +9,21 @@
     (var x () _x)
     (var n () _n)
 
-    (var res () 1)
+    (var a () 1)
 
     (while (neq n 0) [
-        (var rem () (bitand n 1))
-        (if (neq rem 0) [
-            (assign res (mul res x))
+        (if (neq (bitand n 1) 0) [
+            (assign a (mul a x))
         ] ())
         (assign n (rsh n 1))
         (assign x (mul x x))
     ])
 
-    (return res)
+    (return a)
 ]))
 
-(const base 2)
-(const exp 24)
+(const BASE 2)
+(const EXP 24)
 
 (call main [0 0])
 

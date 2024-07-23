@@ -98,8 +98,8 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
     return ref;
 }
 
-usize parentNodeIdx(Context &ctx) {
-    return ctx.node_stack->next ? ctx.node_stack->next->node_idx : -1u;
+NklAstNode const *parentNodePtr(Context &ctx) {
+    return ctx.node_stack->next ? &ctx.node_stack->next->node : nullptr;
 }
 
 static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc cur_proc) {
@@ -150,11 +150,11 @@ static Decl &makeDecl(Context &ctx, NkAtom name) {
     return kv->val;
 }
 
-void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx) {
+void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node) {
     // TODO: Why do we need to copy the context??
     auto ctx_copy = nk_arena_allocT<Context>(ctx.scope_stack->main_arena);
     *ctx_copy = ctx;
-    makeDecl(ctx, name) = {{.unresolved{.ctx = ctx_copy, .node_idx = node_idx}}, DeclKind_Unresolved};
+    makeDecl(ctx, name) = {{.unresolved{.ctx = ctx_copy, .node = &node}}, DeclKind_Unresolved};
 }
 
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var) {

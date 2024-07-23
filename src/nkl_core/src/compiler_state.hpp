@@ -63,7 +63,7 @@ struct Decl {
     union {
         struct {
             Context *ctx;
-            usize node_idx;
+            NklAstNode const *node;
         } unresolved;
         Value val;
     } as;
@@ -109,7 +109,7 @@ struct Scope {
 
 struct NodeListNode {
     NodeListNode *next;
-    usize node_idx;
+    NklAstNode const &node;
 };
 
 struct Context {
@@ -154,13 +154,13 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 NkIrRef asRef(Context &ctx, Interm const &val);
 
-usize parentNodeIdx(Context &ctx);
+NklAstNode const *parentNodePtr(Context &ctx);
 
 void pushPublicScope(Context &ctx, NkIrProc cur_proc);
 void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
 void popScope(Context &ctx);
 
-void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx);
+void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node);
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var);
 void defineParam(Context &ctx, NkAtom name, usize idx);
 void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id);
