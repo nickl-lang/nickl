@@ -154,8 +154,6 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 NkIrRef asRef(Context &ctx, Interm const &val);
 
-NklAstNode const *parentNodePtr(Context &ctx);
-
 void pushPublicScope(Context &ctx, NkIrProc cur_proc);
 void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
 void popScope(Context &ctx);

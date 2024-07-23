@@ -239,7 +239,7 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
-static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
+static Context *importFile(NklCompiler c, NkString filename) {
     auto nkl = c->nkl;
 
     auto file = getFileId(filename);
@@ -289,10 +289,6 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
         // NOTE: Not popping the scope to leave it accessible for future imports
         pushPublicScope(ctx, ctx.top_level_proc);
 
-        if (decl) {
-            decl->as.val = {{.proc{.id = ctx.top_level_proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
-        }
-
         if (src.nodes.size) {
             CHECK(compileStmt(ctx, *src.nodes.data));
         }
@@ -314,15 +310,6 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
             NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
         }
 #endif // ENABLE_LOGGING
-
-        if (decl) {
-            decl->kind = DeclKind_Complete;
-        }
-    } else if (decl) {
-        auto &ctx = *pctx;
-
-        decl->as.val = {{.proc{.id = ctx.top_level_proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
-        decl->kind = DeclKind_Complete;
     }
 
     return pctx;
@@ -441,6 +428,24 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
     }
 }
 
+static NkAtom getConstDeclName(Context &ctx) {
+    nk_assert(ctx.node_stack && ctx.node_stack->next && "no parent node");
+
+    auto &parent_n = ctx.node_stack->next->node;
+    if (parent_n.id == n_const) {
+        auto &src = ctx.src;
+
+        auto parent_it = nodeIterate(src, parent_n);
+
+        auto &name_n = nextNode(parent_it);
+        auto decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
+
+        return decl_name;
+    } else {
+        return NK_ATOM_INVALID;
+    }
+}
+
 static Interm compileNode(Context &ctx, NklAstNode const &node) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -472,19 +477,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
     NK_LOG_DBG("Compiling node %u #%s", nodeIdx(src, node), nk_atom2cs(node.id));
 
     auto node_it = nodeIterate(src, node);
-
-    Decl *decl = nullptr;
-    NkAtom decl_name;
-    auto parent_n = parentNodePtr(ctx);
-    if (parent_n && parent_n->id == n_const) {
-        auto parent_it = nodeIterate(src, *parent_n);
-
-        auto &name_n = nextNode(parent_it);
-        decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
-        decl = &resolve(ctx, decl_name);
-
-        nk_assert(decl->kind == DeclKind_Incomplete);
-    }
 
     switch (node.id) {
         case n_add: {
@@ -637,7 +629,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_extern_c_proc: {
-            if (!decl) {
+            auto const decl_name = getConstDeclName(ctx);
+            if (decl_name == NK_ATOM_INVALID) {
                 // TODO: Improve error message
                 return error(ctx, "decl name needed for extern c proc");
             }
@@ -796,7 +789,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 import_path = path;
             }
 
-            DEFINE(&imported_ctx, *importFile(c, import_path, decl));
+            DEFINE(&imported_ctx, *importFile(c, import_path));
 
             return {
                 {.val{
@@ -863,6 +856,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_proc: {
+            auto const decl_name = getConstDeclName(ctx);
+
             auto &params_n = nextNode(node_it);
             auto &ret_t_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
@@ -938,7 +933,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 c->ir,
                 proc,
                 NkIrProcDescr{
-                    .name = decl ? decl_name : NK_ATOM_INVALID, // TODO: Need to generate names for anonymous procs
+                    .name = decl_name, // TODO: Need to generate names for anonymous procs
                     .proc_t = nklt2nkirt(proc_t),
                     .arg_names{NK_SLICE_INIT(param_names)},
                     .file = ctx.src.file,
@@ -948,7 +943,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
-            if (decl) {
+            if (decl_name != NK_ATOM_INVALID) {
                 pushPublicScope(ctx, proc);
             } else {
                 pushPrivateScope(ctx, proc);
@@ -959,10 +954,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             // TODO: Come up with a better name
             Value proc_val{{.proc{.id = proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
-
-            if (decl) {
-                decl->as.val = proc_val;
-            }
 
             for (usize i = 0; i < params_n.arity; i++) {
                 CHECK(defineParam(ctx, param_names.data[i], i));
@@ -987,10 +978,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
             }
 #endif // ENABLE_LOGGING
-
-            if (decl) {
-                decl->kind = DeclKind_Complete;
-            }
 
             return {{.val{proc_val}}, proc_t, IntermKind_Val};
         }
@@ -1381,7 +1368,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    DEFINE(&ctx, *importFile(c, filename, nullptr));
+    DEFINE(&ctx, *importFile(c, filename));
 
     // TODO: Storing entry point for the whole compiler on every compileFile call
     c->entry_point = ctx.top_level_proc;

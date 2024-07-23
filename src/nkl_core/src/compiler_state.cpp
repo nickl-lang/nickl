@@ -98,10 +98,6 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
     return ref;
 }
 
-NklAstNode const *parentNodePtr(Context &ctx) {
-    return ctx.node_stack->next ? &ctx.node_stack->next->node : nullptr;
-}
-
 static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc cur_proc) {
     auto scope = new (nk_arena_allocT<Scope>(main_arena)) Scope{
         .next{},
