@@ -156,8 +156,23 @@ NK_PRINTF_LIKE(2) static Interm error(Context &ctx, char const *fmt, ...) {
     return {};
 }
 
-static usize nodeIdx(Context &ctx, NklAstNode const &node) {
-    return &node - ctx.src->nodes.data;
+static usize nodeIdx(NklSource const &src, NklAstNode const &node) {
+    return &node - src.nodes.data;
+}
+
+struct AstNodeIterator {
+    NklSource const &src;
+    NklAstNode const *next_node;
+};
+
+static AstNodeIterator nodeIterate(NklSource const &src, NklAstNode const &node) {
+    return {src, &node + 1};
+}
+
+static NklAstNode const &nextChild(AstNodeIterator &it) {
+    auto const &next_child = *it.next_node;
+    it.next_node = &it.src.nodes.data[nkl_ast_nextChild(it.src.nodes, nodeIdx(it.src, *it.next_node))];
+    return next_child;
 }
 
 static Interm compileNode(Context &ctx, NklAstNode const &node);
@@ -174,7 +189,7 @@ static Interm resolveComptime(Decl &decl) {
     decl.as = {};
     decl.kind = DeclKind_Incomplete;
 
-    NK_LOG_DBG("Resolving comptime const: node %zu file=`%s`", nodeIdx(ctx, node), nk_atom2cs(ctx.src->file));
+    NK_LOG_DBG("Resolving comptime const: node %zu file=`%s`", nodeIdx(*ctx.src, node), nk_atom2cs(ctx.src->file));
 
     DEFINE(val, compileNode(ctx, node));
 
@@ -437,23 +452,17 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
     };
     // }
 
-    NK_LOG_DBG("Compiling node %zu #%s", nodeIdx(ctx, node), nk_atom2cs(node.id));
+    NK_LOG_DBG("Compiling node %zu #%s", nodeIdx(src, node), nk_atom2cs(node.id));
 
-    NklAstNode const *next_node = &node + 1;
-
-    auto const get_next_child = [&src](NklAstNode const *&next_child_node) -> NklAstNode const & {
-        auto const &child_node = *next_child_node;
-        next_child_node = &src.nodes.data[nkl_ast_nextChild(src.nodes, next_child_node - src.nodes.data)];
-        return child_node;
-    };
+    auto node_it = nodeIterate(src, node);
 
     Decl *decl = nullptr;
     NkAtom decl_name;
     auto parent_node = parentNodePtr(ctx);
     if (parent_node && parent_node->id == n_const) {
-        auto next_node = parent_node + 1;
+        auto parent_child_it = nodeIterate(src, *parent_node);
 
-        auto &name_n = get_next_child(next_node);
+        auto &name_n = nextChild(parent_child_it);
         decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
         decl = &resolve(ctx, decl_name);
 
@@ -462,8 +471,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
     switch (node.id) {
         case n_add: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -472,8 +481,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_mul: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -482,8 +491,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_rsh: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -492,8 +501,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_bitand: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -502,8 +511,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_assign: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, getLvalueRef(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -512,8 +521,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_call: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &args_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &args_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
 
@@ -525,9 +534,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
             NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
 
-            auto next_arg_node = &args_n + 1;
+            auto next_arg_it = nodeIterate(src, args_n);
             for (usize i = 0; i < args_n.arity; i++) {
-                auto &arg_n = get_next_child(next_arg_node);
+                auto &arg_n = nextChild(next_arg_it);
                 APPEND(&args, compileNode(ctx, arg_n));
             }
 
@@ -546,8 +555,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_const: {
-            auto &name_n = get_next_child(next_node);
-            auto &value_n = get_next_child(next_node);
+            auto &name_n = nextChild(node_it);
+            auto &value_n = nextChild(node_it);
 
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
@@ -557,8 +566,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_context: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &name_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &name_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
 
@@ -616,8 +625,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 return error(ctx, "decl name needed for extern c proc");
             }
 
-            auto &params_n = get_next_child(next_node);
-            auto &ret_t_n = get_next_child(next_node);
+            auto &params_n = nextChild(node_it);
+            auto &ret_t_n = nextChild(node_it);
 
             // TODO: Boilerplate with n_proc
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
@@ -626,9 +635,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             u8 proc_flags = 0;
 
-            auto next_param_node = &params_n + 1;
+            auto params_it = nodeIterate(src, params_n);
             for (usize i = 0; i < params_n.arity; i++) {
-                auto &param_n = get_next_child(next_param_node);
+                auto &param_n = nextChild(params_it);
 
                 if (param_n.id == n_ellipsis) {
                     proc_flags |= NkProcVariadic;
@@ -636,10 +645,10 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                     break;
                 }
 
-                auto next_node = &param_n + 1;
+                auto param_it = nodeIterate(src, param_n);
 
-                get_next_child(next_node); // name
-                auto &type_n = get_next_child(next_node);
+                nextChild(param_it); // name
+                auto &type_n = nextChild(param_it);
 
                 DEFINE(type_v, compileNode(ctx, type_n));
 
@@ -749,7 +758,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_import: {
-            auto &path_n = get_next_child(next_node);
+            auto &path_n = nextChild(node_it);
             auto path_str = nkl_getTokenStr(&src.tokens.data[path_n.token_idx], src.text);
             NkString const path{path_str.data + 1, path_str.size - 2};
 
@@ -790,8 +799,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_less: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -803,8 +812,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_neq: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &rhs_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &rhs_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
             DEFINE(rhs, compileNode(ctx, rhs_n));
@@ -817,14 +826,14 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
         case n_list: {
             for (usize i = 0; i < node.arity; i++) {
-                CHECK(compileStmt(ctx, get_next_child(next_node)));
+                CHECK(compileStmt(ctx, nextChild(node_it)));
             }
             break;
         }
 
         case n_member: {
-            auto &lhs_n = get_next_child(next_node);
-            auto &name_n = get_next_child(next_node);
+            auto &lhs_n = nextChild(node_it);
+            auto &name_n = nextChild(node_it);
 
             DEFINE(lhs, compileNode(ctx, lhs_n));
 
@@ -857,21 +866,21 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_proc: {
-            auto &params_n = get_next_child(next_node);
-            auto &ret_t_n = get_next_child(next_node);
-            auto &body_n = get_next_child(next_node);
+            auto &params_n = nextChild(node_it);
+            auto &ret_t_n = nextChild(node_it);
+            auto &body_n = nextChild(node_it);
 
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
 
             NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
             NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
 
-            auto next_param_node = &params_n + 1;
+            auto params_it = nodeIterate(src, params_n);
             for (usize i = 0; i < params_n.arity; i++) {
-                auto next_node = &get_next_child(next_param_node) + 1;
+                auto param_it = nodeIterate(src, nextChild(params_it));
 
-                auto &name_n = get_next_child(next_node);
-                auto &type_n = get_next_child(next_node);
+                auto &name_n = nextChild(param_it);
+                auto &type_n = nextChild(param_it);
 
                 auto name_token = &src.tokens.data[name_n.token_idx];
                 auto name_str = nkl_getTokenStr(name_token, src.text);
@@ -974,9 +983,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             // TODO: A very hacky and unstable way to calculate proc finishing line
             u32 proc_finish_line = 0;
-            if (next_node < src.nodes.data + src.nodes.size) {
-                if (next_node->token_idx) {
-                    proc_finish_line = src.tokens.data[next_node->token_idx - 1].lin;
+            if (node_it.next_node < src.nodes.data + src.nodes.size) {
+                if (node_it.next_node->token_idx) {
+                    proc_finish_line = src.tokens.data[node_it.next_node->token_idx - 1].lin;
                 }
             }
 
@@ -999,7 +1008,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_ptr: {
-            auto &target_n = get_next_child(next_node);
+            auto &target_n = nextChild(node_it);
 
             DEFINE(target, compileNode(ctx, target_n));
 
@@ -1026,7 +1035,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         case n_return: {
             // TODO: Typecheck the returned value
             if (node.arity) {
-                auto &arg_n = get_next_child(next_node);
+                auto &arg_n = nextChild(node_it);
                 DEFINE(arg, compileNode(ctx, arg_n));
                 nkir_emit(c->ir, nkir_make_mov(c->ir, nkir_makeRetRef(c->ir), asRef(ctx, arg)));
             }
@@ -1035,8 +1044,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_run: {
-            auto &ret_t_n = get_next_child(next_node);
-            auto &body_n = get_next_child(next_node);
+            auto &ret_t_n = nextChild(node_it);
+            auto &body_n = nextChild(node_it);
 
             nkltype_t ret_t{};
             if (ret_t_n.id) {
@@ -1143,7 +1152,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 popScope(ctx);
             };
 
-            auto &child_n = get_next_child(next_node);
+            auto &child_n = nextChild(node_it);
             CHECK(compileStmt(ctx, child_n));
 
             return {};
@@ -1172,19 +1181,19 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_struct: {
-            auto &params_n = get_next_child(next_node);
+            auto &params_n = nextChild(node_it);
 
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
 
             NkDynArray(NklField) fields{NKDA_INIT(temp_alloc)};
 
             // TODO: Boilerplate in param compilation
-            auto next_param_node = &params_n + 1;
+            auto params_it = nodeIterate(src, params_n);
             for (usize i = 0; i < params_n.arity; i++) {
-                auto next_node = &get_next_child(next_param_node) + 1;
+                auto param_it = nodeIterate(src, nextChild(params_it));
 
-                auto &name_n = get_next_child(next_node);
-                auto &type_n = get_next_child(next_node);
+                auto &name_n = nextChild(param_it);
+                auto &type_n = nextChild(param_it);
 
                 auto name_token = &src.tokens.data[name_n.token_idx];
                 auto name_str = nkl_getTokenStr(name_token, src.text);
@@ -1218,9 +1227,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_var: {
-            auto &name_n = get_next_child(next_node);
-            auto &type_n = get_next_child(next_node);
-            auto &val_n = get_next_child(next_node);
+            auto &name_n = nextChild(node_it);
+            auto &type_n = nextChild(node_it);
+            auto &val_n = nextChild(node_it);
 
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
@@ -1278,9 +1287,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_if: {
-            auto &cond_n = get_next_child(next_node);
-            auto &body_n = get_next_child(next_node);
-            auto &else_n = get_next_child(next_node);
+            auto &cond_n = nextChild(node_it);
+            auto &body_n = nextChild(node_it);
+            auto &else_n = nextChild(node_it);
 
             auto const endif_l = nkir_createLabel(c->ir, nk_cs2atom("@endif"));
             NkIrLabel else_l;
@@ -1324,8 +1333,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_while: {
-            auto &cond_n = get_next_child(next_node);
-            auto &body_n = get_next_child(next_node);
+            auto &cond_n = nextChild(node_it);
+            auto &body_n = nextChild(node_it);
 
             auto const loop_l = nkir_createLabel(c->ir, nk_cs2atom("@loop"));
             auto const endloop_l = nkir_createLabel(c->ir, nk_cs2atom("@endloop"));
