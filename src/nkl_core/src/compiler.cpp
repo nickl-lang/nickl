@@ -175,7 +175,7 @@ static NklAstNode const &nextNode(AstNodeIterator &it) {
     return next_node;
 }
 
-static Interm compileNode(Context &ctx, NklAstNode const &node);
+static Interm compile(Context &ctx, NklAstNode const &node);
 static Void compileStmt(Context &ctx, NklAstNode const &node);
 
 static Interm resolveComptime(Decl &decl) {
@@ -189,7 +189,7 @@ static Interm resolveComptime(Decl &decl) {
 
     NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
-    DEFINE(val, compileNode(ctx, node));
+    DEFINE(val, compile(ctx, node));
 
     if (decl.kind != DeclKind_Complete) {
         if (!isValueKnown(val)) {
@@ -363,6 +363,29 @@ static Interm getMember(Context &ctx, Interm const &lhs, NkAtom name) {
     }
 }
 
+static Interm deref(Context &ctx, NkIrRef ref) {
+    auto m = ctx.m;
+    auto c = m->c;
+
+    auto const ptr_t = nkirt2nklt(ref.type);
+    nk_assert(nklt_tclass(ptr_t) == NklType_Pointer);
+
+    auto const target_t = ptr_t->as.ptr.target_type;
+    // TODO: Handle multiple levels of indirection?
+    if (ref.indir) {
+        DEFINE(
+            val,
+            store(
+                ctx,
+                nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, NK_ATOM_INVALID, ref.type)),
+                {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref}));
+        ref = asRef(ctx, val);
+    }
+    ref.indir = 1;
+    ref.type = nklt2nkirt(target_t);
+    return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
+}
+
 static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
     auto new_list_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{nullptr, node};
     nk_list_push(ctx.node_stack, new_list_node);
@@ -417,11 +440,21 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
         auto &lhs_n = nextNode(node_it);
         auto &name_n = nextNode(node_it);
 
-        DEFINE(const lhs, compileNode(ctx, lhs_n));
+        DEFINE(const lhs, compile(ctx, lhs_n));
 
         auto const name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
         return getMember(ctx, lhs, name);
+    } else if (node.id == n_deref) {
+        auto node_it = nodeIterate(src, node);
+
+        auto &arg_n = nextNode(node_it);
+
+        DEFINE(const arg, compile(ctx, arg_n));
+        if (arg.type->tclass != NklType_Pointer) {
+            return error(ctx, "pointer expected in dereference");
+        }
+        return deref(ctx, asRef(ctx, arg));
     } else {
         // TODO: Improve error msg
         return error(ctx, "invalid lvalue");
@@ -446,7 +479,7 @@ static NkAtom getConstDeclName(Context &ctx) {
     }
 }
 
-static Interm compileNode(Context &ctx, NklAstNode const &node) {
+static Interm compile(Context &ctx, NklAstNode const &node) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -482,8 +515,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         // TODO: Typecheck arithmetic
 #define COMPILE_NUM(NAME, IR_NAME)                                                              \
     case NK_CAT(n_, NAME): {                                                                    \
-        DEFINE(lhs, compileNode(ctx, nextNode(node_it)));                                       \
-        DEFINE(rhs, compileNode(ctx, nextNode(node_it)));                                       \
+        DEFINE(lhs, compile(ctx, nextNode(node_it)));                                           \
+        DEFINE(rhs, compile(ctx, nextNode(node_it)));                                           \
         return {                                                                                \
             {.instr{NK_CAT(nkir_make_, IR_NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
             lhs.type,                                                                           \
@@ -508,8 +541,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         // TODO: Typecheck comparisons
 #define COMPILE_CMP(NAME)                                                                        \
     case NK_CAT(n_, NAME): {                                                                     \
-        DEFINE(lhs, compileNode(ctx, nextNode(node_it)));                                        \
-        DEFINE(rhs, compileNode(ctx, nextNode(node_it)));                                        \
+        DEFINE(lhs, compile(ctx, nextNode(node_it)));                                            \
+        DEFINE(rhs, compile(ctx, nextNode(node_it)));                                            \
         return {                                                                                 \
             {.instr{NK_CAT(nkir_make_cmp_, NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
             nkl_get_bool(nkl),                                                                   \
@@ -555,7 +588,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto &rhs_n = nextNode(node_it);
 
             DEFINE(lhs, getLvalueRef(ctx, lhs_n));
-            DEFINE(rhs, compileNode(ctx, rhs_n));
+            DEFINE(rhs, compile(ctx, rhs_n));
 
             return store(ctx, asRef(ctx, lhs), rhs);
         }
@@ -564,7 +597,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto &lhs_n = nextNode(node_it);
             auto &args_n = nextNode(node_it);
 
-            DEFINE(lhs, compileNode(ctx, lhs_n));
+            DEFINE(lhs, compile(ctx, lhs_n));
 
             if (lhs.type->tclass != NklType_Procedure) {
                 // TODO: Improve error message
@@ -577,7 +610,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto args_it = nodeIterate(src, args_n);
             for (usize i = 0; i < args_n.arity; i++) {
                 auto &arg_n = nextNode(args_it);
-                APPEND(&args, compileNode(ctx, arg_n));
+                APPEND(&args, compile(ctx, arg_n));
             }
 
             NkDynArray(NkIrRef) arg_refs{NKDA_INIT(temp_alloc)};
@@ -609,7 +642,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto &lhs_n = nextNode(node_it);
             auto &name_n = nextNode(node_it);
 
-            DEFINE(lhs, compileNode(ctx, lhs_n));
+            DEFINE(lhs, compile(ctx, lhs_n));
 
             if (!isModule(lhs)) {
                 // TODO: Improve error message
@@ -691,7 +724,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 nextNode(param_it); // name
                 auto &type_n = nextNode(param_it);
 
-                DEFINE(type_v, compileNode(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -708,7 +741,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 nkda_append(&param_types, type);
             }
 
-            DEFINE(ret_t_v, compileNode(ctx, ret_t_n));
+            DEFINE(ret_t_v, compile(ctx, ret_t_n));
 
             // TODO: Boilerplate in type checking
             if (ret_t_v.type->tclass != NklType_Typeref) {
@@ -814,9 +847,17 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             break;
         }
 
-        case n_member: {
-            return getLvalueRef(ctx, node);
+        case n_addr: {
+            DEFINE(arg, compile(ctx, nextNode(node_it)));
+            return {
+                {.instr{nkir_make_lea(c->ir, {}, asRef(ctx, arg))}},
+                nkl_get_ptr(nkl, c->word_size, arg.type, false),
+                IntermKind_Instr};
         }
+
+        case n_deref:
+        case n_member:
+            return getLvalueRef(ctx, node);
 
         case n_proc: {
             auto const decl_name = getConstDeclName(ctx);
@@ -841,7 +882,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 auto name_str = nkl_getTokenStr(name_token, src.text);
                 auto name = nk_s2atom(name_str);
 
-                DEFINE(type_v, compileNode(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -859,7 +900,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 nkda_append(&param_types, type);
             }
 
-            DEFINE(ret_t_v, compileNode(ctx, ret_t_n));
+            DEFINE(ret_t_v, compile(ctx, ret_t_n));
 
             // TODO: Boilerplate in type checking
             if (ret_t_v.type->tclass != NklType_Typeref) {
@@ -931,6 +972,8 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 proc_finish_line = src.tokens.data[last_node.token_idx].lin + 1;
             }
 
+            nkir_emit(c->ir, nkir_make_ret(c->ir));
+
             nkir_finishProc(c->ir, proc, proc_finish_line);
 
 #ifdef ENABLE_LOGGING
@@ -948,7 +991,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         case n_ptr: {
             auto &target_n = nextNode(node_it);
 
-            DEFINE(target, compileNode(ctx, target_n));
+            DEFINE(target, compile(ctx, target_n));
 
             // TODO: Boilerplate in type checking
             if (target.type->tclass != NklType_Typeref) {
@@ -974,7 +1017,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             // TODO: Typecheck the returned value
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
-                DEFINE(arg, compileNode(ctx, arg_n));
+                DEFINE(arg, compile(ctx, arg_n));
                 nkir_emit(c->ir, nkir_make_mov(c->ir, nkir_makeRetRef(c->ir), asRef(ctx, arg)));
             }
             nkir_emit(c->ir, nkir_make_ret(c->ir));
@@ -987,7 +1030,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             nkltype_t ret_t{};
             if (ret_t_n.id) {
-                DEFINE(ret_t_v, compileNode(ctx, ret_t_n));
+                DEFINE(ret_t_v, compile(ctx, ret_t_n));
                 // TODO: Boilerplate in type checking
                 if (ret_t_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -1129,7 +1172,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 auto name_str = nkl_getTokenStr(name_token, src.text);
                 auto name = nk_s2atom(name_str);
 
-                DEFINE(type_v, compileNode(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -1171,7 +1214,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             nkltype_t type{};
 
             if (type_n.id) {
-                DEFINE(type_v, compileNode(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -1188,7 +1231,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             Interm val{};
             if (val_n.id) {
-                ASSIGN(val, compileNode(ctx, val_n));
+                ASSIGN(val, compile(ctx, val_n));
 
                 if (type_n.id) {
                     // TODO: Typecheck in n_var
@@ -1220,7 +1263,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 else_l = endif_l;
             }
 
-            DEFINE(cond, compileNode(ctx, cond_n));
+            DEFINE(cond, compile(ctx, cond_n));
 
             if (cond.type->tclass != NklType_Bool) {
                 // TODO: Improve error message
@@ -1262,7 +1305,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             nkir_emit(c->ir, nkir_make_label(loop_l));
 
-            DEFINE(cond, compileNode(ctx, cond_n));
+            DEFINE(cond, compile(ctx, cond_n));
 
             if (cond.type->tclass != NklType_Bool) {
                 // TODO: Improve error message
@@ -1297,7 +1340,7 @@ static Void compileStmt(Context &ctx, NklAstNode const &node) {
     auto m = ctx.m;
     auto c = m->c;
 
-    DEFINE(val, compileNode(ctx, node));
+    DEFINE(val, compile(ctx, node));
     auto const ref = asRef(ctx, val);
     if (ref.kind != NkIrRef_None && ref.type->id != nkl_get_void(ctx.m->c->nkl)->id) {
         NKSB_FIXED_BUFFER(sb, 1024);

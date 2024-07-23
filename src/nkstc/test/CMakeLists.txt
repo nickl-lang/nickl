@@ -1,3 +1,4 @@
+def_nkstc_test(FILE nkst/address.nkst)
 def_nkstc_test(FILE nkst/empty.nkst)
 def_nkstc_test(FILE nkst/fast_exp.nkst)
 def_nkstc_test(FILE nkst/hello_world.nkst)
