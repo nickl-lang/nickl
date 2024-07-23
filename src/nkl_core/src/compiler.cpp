@@ -525,6 +525,31 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
 #undef COMPILE_CMP
 
+#define COMPILE_TYPE(NAME, EXPR)                                                                         \
+    case NK_CAT(n_, NAME): {                                                                             \
+        auto type_t = nkl_get_typeref(nkl, c->word_size);                                                \
+        auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local); \
+        *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = EXPR;                                             \
+        return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};           \
+    }
+
+        COMPILE_TYPE(void, (nkl_get_void(nkl)))
+
+        COMPILE_TYPE(i8, (nkl_get_numeric(nkl, Int8)))
+        COMPILE_TYPE(i16, (nkl_get_numeric(nkl, Int16)))
+        COMPILE_TYPE(i32, (nkl_get_numeric(nkl, Int32)))
+        COMPILE_TYPE(i64, (nkl_get_numeric(nkl, Int64)))
+
+        COMPILE_TYPE(u8, (nkl_get_numeric(nkl, Uint8)))
+        COMPILE_TYPE(u16, (nkl_get_numeric(nkl, Uint16)))
+        COMPILE_TYPE(u32, (nkl_get_numeric(nkl, Uint32)))
+        COMPILE_TYPE(u64, (nkl_get_numeric(nkl, Uint64)))
+
+        COMPILE_TYPE(f32, (nkl_get_numeric(nkl, Float32)))
+        COMPILE_TYPE(f64, (nkl_get_numeric(nkl, Float64)))
+
+#undef COMPILE_TYPE
+
         case n_assign: {
             auto &lhs_n = nextNode(node_it);
             auto &rhs_n = nextNode(node_it);
@@ -713,48 +738,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             CHECK(defineExternProc(ctx, decl_name, proc));
 
             return {{.ref{nkir_makeExternProcRef(c->ir, proc)}}, proc_t, IntermKind_Ref};
-        }
-
-        case n_i8: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int8);
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
-        }
-
-        case n_i16: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int16);
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
-        }
-
-        case n_i32: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int32);
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
-        }
-
-        case n_i64: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Int64);
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
-        }
-
-        case n_f32: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Float32);
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
-        }
-
-        case n_f64: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_numeric(nkl, Float64);
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
         }
 
         case n_id: {
@@ -1224,15 +1207,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             return {{}, nkl_get_void(nkl), IntermKind_Void};
         }
 
-        case n_void: {
-            auto type_t = nkl_get_typeref(nkl, c->word_size);
-
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_void(nkl);
-
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
-        }
-
         case n_if: {
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
@@ -1320,9 +1294,6 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 }
 
 static Void compileStmt(Context &ctx, NklAstNode const &node) {
-    NK_PROF_FUNC();
-    NK_LOG_TRC("%s", __func__);
-
     auto m = ctx.m;
     auto c = m->c;
 
