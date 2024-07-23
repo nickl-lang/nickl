@@ -190,21 +190,14 @@ void nkir_startProc(NkIrProg ir, NkIrProc _proc, NkIrProcDescr descr) {
     proc.start_line = descr.line;
     proc.visibility = descr.visibility;
 
-    nkir_activateProc(ir, _proc);
+    nkir_setActiveProc(ir, _proc);
 }
 
-void nkir_activateProc(NkIrProg ir, NkIrProc _proc) {
-    NK_LOG_TRC("%s", __func__);
-
+void nkir_setActiveProc(NkIrProg ir, NkIrProc _proc) {
     ir->cur_proc = _proc;
 }
 
-bool nkir_hasActiveProc(NkIrProg ir) {
-    return ir->cur_proc.idx < ir->procs.size;
-}
-
 NkIrProc nkir_getActiveProc(NkIrProg ir) {
-    nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     return ir->cur_proc;
 }
 

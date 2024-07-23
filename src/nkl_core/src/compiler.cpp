@@ -292,18 +292,10 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
             .node_stack{},
         };
 
-        // TODO: Boilerplate proc reactivation {
-        bool had_active_proc = nkir_hasActiveProc(c->ir);
-        NkIrProc prev_active_proc;
-        if (had_active_proc) {
-            prev_active_proc = nkir_getActiveProc(c->ir);
-        }
+        auto const prev_proc = nkir_getActiveProc(c->ir);
         defer {
-            if (had_active_proc) {
-                nkir_activateProc(c->ir, prev_active_proc);
-            }
+            nkir_setActiveProc(c->ir, prev_proc);
         };
-        // }
 
         nkir_startProc(
             c->ir,
@@ -444,13 +436,12 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
     };
 
     auto const &token = src.tokens.data[node.token_idx];
-    // TODO: Need to push lines on a stack {
+
     auto const prev_line = nkir_getLine(c->ir);
-    nkir_setLine(c->ir, token.lin);
     defer {
         nkir_setLine(c->ir, prev_line);
     };
-    // }
+    nkir_setLine(c->ir, token.lin);
 
     NK_LOG_DBG("Compiling node %u #%s", nodeIdx(src, node), nk_atom2cs(node.id));
 
@@ -458,11 +449,11 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
     Decl *decl = nullptr;
     NkAtom decl_name;
-    auto parent_node = parentNodePtr(ctx);
-    if (parent_node && parent_node->id == n_const) {
-        auto parent_child_it = nodeIterate(src, *parent_node);
+    auto parent_n = parentNodePtr(ctx);
+    if (parent_n && parent_n->id == n_const) {
+        auto parent_it = nodeIterate(src, *parent_n);
 
-        auto &name_n = nextChild(parent_child_it);
+        auto &name_n = nextChild(parent_it);
         decl_name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
         decl = &resolve(ctx, decl_name);
 
@@ -534,9 +525,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
             NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
 
-            auto next_arg_it = nodeIterate(src, args_n);
+            auto args_it = nodeIterate(src, args_n);
             for (usize i = 0; i < args_n.arity; i++) {
-                auto &arg_n = nextChild(next_arg_it);
+                auto &arg_n = nextChild(args_it);
                 APPEND(&args, compileNode(ctx, arg_n));
             }
 
@@ -932,18 +923,10 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             auto const proc = nkir_createProc(c->ir);
             nkir_exportProc(c->ir, m->mod, proc);
 
-            // TODO: Boilerplate proc reactivation {
-            bool had_active_proc = nkir_hasActiveProc(c->ir);
-            NkIrProc prev_active_proc;
-            if (had_active_proc) {
-                prev_active_proc = nkir_getActiveProc(c->ir);
-            }
+            auto const prev_proc = nkir_getActiveProc(c->ir);
             defer {
-                if (had_active_proc) {
-                    nkir_activateProc(c->ir, prev_active_proc);
-                }
+                nkir_setActiveProc(c->ir, prev_proc);
             };
-            // }
 
             nkir_startProc(
                 c->ir,
@@ -983,11 +966,9 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             // TODO: A very hacky and unstable way to calculate proc finishing line
             u32 proc_finish_line = 0;
-            if (node_it.next_node_idx < src.nodes.size) {
-                auto const &next_node = src.nodes.data[node_it.next_node_idx];
-                if (next_node.token_idx) {
-                    proc_finish_line = src.tokens.data[next_node.token_idx - 1].lin;
-                }
+            if (node_it.next_node_idx - 1 < src.nodes.size) {
+                auto const &last_node = src.nodes.data[node_it.next_node_idx - 1];
+                proc_finish_line = src.tokens.data[last_node.token_idx].lin + 1;
             }
 
             nkir_finishProc(c->ir, proc, proc_finish_line);
@@ -1077,20 +1058,12 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                     .flags{},
                 });
 
-            // TODO: Boilerplate proc reactivation {
-            bool had_active_proc = nkir_hasActiveProc(c->ir);
-            NkIrProc prev_active_proc;
-            if (had_active_proc) {
-                prev_active_proc = nkir_getActiveProc(c->ir);
-            }
-            defer {
-                if (had_active_proc) {
-                    nkir_activateProc(c->ir, prev_active_proc);
-                }
-            };
-            // }
-
             auto const proc = nkir_createProc(c->ir);
+
+            auto const prev_proc = nkir_getActiveProc(c->ir);
+            defer {
+                nkir_setActiveProc(c->ir, prev_proc);
+            };
 
             nkir_startProc(
                 c->ir,
