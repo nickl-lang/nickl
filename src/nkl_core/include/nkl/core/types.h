@@ -124,6 +124,8 @@ NK_INLINE nkltype_t nkirt2nklt(nktype_t type) {
     return (nkltype_t)type;
 }
 
+usize nklt_struct_index(nkltype_t type, NkAtom name);
+
 #ifdef __cplusplus
 }
 #endif

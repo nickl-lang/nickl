@@ -90,7 +90,7 @@ struct ParseEngine {
 
         else if (accept(t_int)) {
             node.id = nk_cs2atom("int");
-        } else if (check(t_float)) {
+        } else if (accept(t_float)) {
             node.id = nk_cs2atom("float");
         }
 

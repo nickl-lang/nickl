@@ -33,7 +33,6 @@ struct Void {};
     }
 
 #define DEFINE(VAR, VAL) CHECK(auto VAR = (VAL))
-#define DEFINE_REF(VAR, VAL) CHECK(auto &VAR = (VAL))
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 
@@ -245,7 +244,7 @@ static Context *importFile(NklCompiler c, NkString filename, Decl *decl) {
 
     auto file = getFileId(filename);
 
-    DEFINE_REF(src, *nkl_getSource(nkl, file));
+    DEFINE(&src, *nkl_getSource(nkl, file));
 
     auto proc_t = nkl_get_proc(
         nkl,
@@ -346,7 +345,44 @@ static Interm store(Context &ctx, NkIrRef const &dst, Interm src) {
     return {{.ref = src_ref}, nkirt2nklt(src_ref.type), IntermKind_Ref};
 }
 
+static NkIrRef tupleIndex(NkIrRef ref, nkltype_t tuple_t, usize i) {
+    nk_assert(i < tuple_t->ir_type.as.aggr.elems.size);
+    ref.type = tuple_t->ir_type.as.aggr.elems.data[i].type;
+    ref.post_offset += tuple_t->ir_type.as.aggr.elems.data[i].offset;
+    return ref;
+}
+
+Interm getStructIndex(Context &ctx, Interm const &lhs, nkltype_t struct_t, NkAtom name) {
+    auto index = nklt_struct_index(struct_t, name);
+    if (index == -1u) {
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+        nkl_type_inspect(lhs.type, nksb_getStream(&sb));
+        return error(ctx, "no field named `%s` in type `" NKS_FMT "`", nk_atom2cs(name), NKS_ARG(sb));
+    }
+    auto const ref = tupleIndex(asRef(ctx, lhs), struct_t->underlying_type, index);
+    return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
+}
+
+static Interm getMember(Context &ctx, Interm const &lhs, NkAtom name) {
+    switch (nklt_tclass(lhs.type)) {
+        case NklType_Struct:
+            return getStructIndex(ctx, lhs, lhs.type, name);
+
+        default: {
+            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+            nkl_type_inspect(lhs.type, nksb_getStream(&sb));
+            return error(ctx, "type `" NKS_FMT "` is not subscriptable", NKS_ARG(sb));
+        }
+    }
+}
+
 static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
+    auto new_list_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{nullptr, node};
+    nk_list_push(ctx.node_stack, new_list_node);
+    defer {
+        nk_list_pop(ctx.node_stack);
+    };
+
     auto &src = ctx.src;
     auto m = ctx.m;
     auto c = m->c;
@@ -388,6 +424,17 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
 
         nk_assert(!"unreachable");
         return {};
+    } else if (node.id == n_member) {
+        auto node_it = nodeIterate(src, node);
+
+        auto &lhs_n = nextNode(node_it);
+        auto &name_n = nextNode(node_it);
+
+        DEFINE(const lhs, compileNode(ctx, lhs_n));
+
+        auto const name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
+
+        return getMember(ctx, lhs, name);
     } else {
         // TODO: Improve error msg
         return error(ctx, "invalid lvalue");
@@ -749,7 +796,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
                 import_path = path;
             }
 
-            DEFINE_REF(imported_ctx, *importFile(c, import_path, decl));
+            DEFINE(&imported_ctx, *importFile(c, import_path, decl));
 
             return {
                 {.val{
@@ -766,6 +813,16 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
             int res = sscanf(token_str.data, "%" SCNi64, (i64 *)nkir_getDataPtr(c->ir, rodata));
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
             return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, i64_t, IntermKind_Val};
+        }
+
+        case n_float: {
+            auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            auto const f64_t = nkl_get_numeric(nkl, Float64);
+            auto const rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(f64_t), NkIrVisibility_Local);
+            // TODO: Replace sscanf in compiler
+            int res = sscanf(token_str.data, "%lf", (f64 *)nkir_getDataPtr(c->ir, rodata));
+            nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, f64_t, IntermKind_Val};
         }
 
         case n_less: {
@@ -802,37 +859,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
         }
 
         case n_member: {
-            auto &lhs_n = nextNode(node_it);
-            auto &name_n = nextNode(node_it);
-
-            DEFINE(lhs, compileNode(ctx, lhs_n));
-
-            if (lhs.type->tclass != NklType_Struct) {
-                // TODO: Improve error message
-                return error(ctx, "struct expected");
-            }
-
-            auto token = &src.tokens.data[name_n.token_idx];
-            auto name_str = nkl_getTokenStr(token, src.text);
-            auto name = nk_s2atom(name_str);
-
-            NklField const *found_field = nullptr;
-
-            for (auto &field : nk_iterate(lhs.type->as.strct.fields)) {
-                if (field.name == name) {
-                    found_field = &field;
-                }
-            }
-
-            if (!found_field) {
-                // TODO: Improve error msg
-                NKSB_FIXED_BUFFER(sb, 1024);
-                nkl_type_inspect(lhs.type, nksb_getStream(&sb));
-                return error(ctx, "no field named `" NKS_FMT "` in `" NKS_FMT "`", NKS_ARG(name_str), NKS_ARG(sb));
-            }
-
-            // TODO: Returning null ref in member
-            return {{.ref{}}, found_field->type, IntermKind_Ref};
+            return getLvalueRef(ctx, node);
         }
 
         case n_proc: {
@@ -1354,7 +1381,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    DEFINE_REF(ctx, *importFile(c, filename, nullptr));
+    DEFINE(&ctx, *importFile(c, filename, nullptr));
 
     // TODO: Storing entry point for the whole compiler on every compileFile call
     c->entry_point = ctx.top_level_proc;
