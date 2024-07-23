@@ -156,22 +156,22 @@ NK_PRINTF_LIKE(2) static Interm error(Context &ctx, char const *fmt, ...) {
     return {};
 }
 
-static usize nodeIdx(NklSource const &src, NklAstNode const &node) {
+static u32 nodeIdx(NklSource const &src, NklAstNode const &node) {
     return &node - src.nodes.data;
 }
 
 struct AstNodeIterator {
     NklSource const &src;
-    NklAstNode const *next_node;
+    u32 next_node_idx;
 };
 
 static AstNodeIterator nodeIterate(NklSource const &src, NklAstNode const &node) {
-    return {src, &node + 1};
+    return {src, nodeIdx(src, node) + 1};
 }
 
 static NklAstNode const &nextChild(AstNodeIterator &it) {
-    auto const &next_child = *it.next_node;
-    it.next_node = &it.src.nodes.data[nkl_ast_nextChild(it.src.nodes, nodeIdx(it.src, *it.next_node))];
+    auto const &next_child = it.src.nodes.data[it.next_node_idx];
+    it.next_node_idx = nkl_ast_nextChild(it.src.nodes, it.next_node_idx);
     return next_child;
 }
 
@@ -189,7 +189,7 @@ static Interm resolveComptime(Decl &decl) {
     decl.as = {};
     decl.kind = DeclKind_Incomplete;
 
-    NK_LOG_DBG("Resolving comptime const: node %zu file=`%s`", nodeIdx(*ctx.src, node), nk_atom2cs(ctx.src->file));
+    NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(*ctx.src, node), nk_atom2cs(ctx.src->file));
 
     DEFINE(val, compileNode(ctx, node));
 
@@ -452,7 +452,7 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
     };
     // }
 
-    NK_LOG_DBG("Compiling node %zu #%s", nodeIdx(src, node), nk_atom2cs(node.id));
+    NK_LOG_DBG("Compiling node %u #%s", nodeIdx(src, node), nk_atom2cs(node.id));
 
     auto node_it = nodeIterate(src, node);
 
@@ -983,9 +983,10 @@ static Interm compileNode(Context &ctx, NklAstNode const &node) {
 
             // TODO: A very hacky and unstable way to calculate proc finishing line
             u32 proc_finish_line = 0;
-            if (node_it.next_node < src.nodes.data + src.nodes.size) {
-                if (node_it.next_node->token_idx) {
-                    proc_finish_line = src.tokens.data[node_it.next_node->token_idx - 1].lin;
+            if (node_it.next_node_idx < src.nodes.size) {
+                auto const &next_node = src.nodes.data[node_it.next_node_idx];
+                if (next_node.token_idx) {
+                    proc_finish_line = src.tokens.data[next_node.token_idx - 1].lin;
                 }
             }
 
