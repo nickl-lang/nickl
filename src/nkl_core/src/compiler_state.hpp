@@ -1,5 +1,5 @@
-#ifndef NKL_CORE_COMPILER_STATE_H_
-#define NKL_CORE_COMPILER_STATE_H_
+#ifndef NKL_CORE_COMPILER_STATE_HPP_
+#define NKL_CORE_COMPILER_STATE_HPP_
 
 #include "nkb/ir.h"
 #include "nkl/core/compiler.h"
@@ -115,7 +115,7 @@ struct NodeListNode {
 struct Context {
     NkIrProc top_level_proc;
     NklModule m;
-    NklSource const *src;
+    NklSource const &src;
     Scope *scope_stack;
     NodeListNode *node_stack;
 };
@@ -174,4 +174,6 @@ nklval_t getValueFromInterm(NklCompiler c, Interm const &val);
 bool isModule(Interm const &val);
 Scope *getModuleScope(Interm const &val);
 
-#endif // NKL_CORE_COMPILER_STATE_H_
+nkltype_t getValueType(NklCompiler c, Value const &val);
+
+#endif // NKL_CORE_COMPILER_STATE_HPP_

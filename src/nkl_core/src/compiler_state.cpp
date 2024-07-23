@@ -151,9 +151,13 @@ static Decl &makeDecl(Context &ctx, NkAtom name) {
 }
 
 void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node) {
-    // TODO: Why do we need to copy the context??
-    auto ctx_copy = nk_arena_allocT<Context>(ctx.scope_stack->main_arena);
-    *ctx_copy = ctx;
+    auto ctx_copy = new (nk_arena_allocT<Context>(ctx.scope_stack->main_arena)) Context{
+        .top_level_proc = ctx.top_level_proc,
+        .m = ctx.m,
+        .src = ctx.src,
+        .scope_stack = ctx.scope_stack,
+        .node_stack = ctx.node_stack,
+    };
     makeDecl(ctx, name) = {{.unresolved{.ctx = ctx_copy, .node = &node}}, DeclKind_Unresolved};
 }
 
@@ -250,6 +254,30 @@ Scope *getModuleScope(Interm const &val) {
         case ValueKind_Arg:
             nk_assert(!"unreachable");
             return {};
+    }
+
+    nk_assert(!"unreachable");
+    return {};
+}
+
+nkltype_t getValueType(NklCompiler c, Value const &val) {
+    switch (val.kind) {
+        case ValueKind_Void:
+            return nkl_get_void(c->nkl);
+        case ValueKind_Rodata:
+            return nkirt2nklt(nkir_getDataType(c->ir, val.as.rodata.id));
+        case ValueKind_Proc:
+            return nkirt2nklt(nkir_getProcType(c->ir, val.as.proc.id));
+        case ValueKind_Data:
+            return nkirt2nklt(nkir_getDataType(c->ir, val.as.data.id));
+        case ValueKind_ExternData:
+            return nkirt2nklt(nkir_getExternDataType(c->ir, val.as.extern_data.id));
+        case ValueKind_ExternProc:
+            return nkirt2nklt(nkir_getExternProcType(c->ir, val.as.extern_proc.id));
+        case ValueKind_Local:
+            return nkirt2nklt(nkir_getLocalType(c->ir, val.as.local.id));
+        case ValueKind_Arg:
+            return nkirt2nklt(nkir_getArgType(c->ir, val.as.arg.idx));
     }
 
     nk_assert(!"unreachable");

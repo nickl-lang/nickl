@@ -77,7 +77,7 @@ typedef struct {
 
 typedef struct {
     NkIrArg arg[3];
-    usize line;
+    u32 line;
     u8 code;
 } NkIrInstr;
 
