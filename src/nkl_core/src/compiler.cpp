@@ -363,25 +363,13 @@ static Interm getMember(Context &ctx, Interm const &lhs, NkAtom name) {
     }
 }
 
-static Interm deref(Context &ctx, NkIrRef ref) {
-    auto m = ctx.m;
-    auto c = m->c;
-
+static Interm deref(NkIrRef ref) {
     auto const ptr_t = nkirt2nklt(ref.type);
     nk_assert(nklt_tclass(ptr_t) == NklType_Pointer);
 
     auto const target_t = ptr_t->as.ptr.target_type;
-    // TODO: Handle multiple levels of indirection?
-    if (ref.indir) {
-        DEFINE(
-            val,
-            store(
-                ctx,
-                nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, NK_ATOM_INVALID, ref.type)),
-                {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref}));
-        ref = asRef(ctx, val);
-    }
-    ref.indir = 1;
+
+    ref.indir++;
     ref.type = nklt2nkirt(target_t);
     return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
 }
@@ -454,7 +442,7 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
         if (arg.type->tclass != NklType_Pointer) {
             return error(ctx, "pointer expected in dereference");
         }
-        return deref(ctx, asRef(ctx, arg));
+        return deref(asRef(ctx, arg));
     } else {
         // TODO: Improve error msg
         return error(ctx, "invalid lvalue");

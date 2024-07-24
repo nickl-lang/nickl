@@ -2,13 +2,13 @@
 
 (const main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (var data (i32) ())
-    (call fillData [(addr data)])
+    (call fillData [(addr (addr data))])
     (call printf ["data=%i\n" data])
     (return 0)
 ]))
 
-(const fillData (proc [(param p (ptr (i32)))] (void) [
-    (assign (deref p) 42)
+(const fillData (proc [(param p (ptr (ptr (i32))))] (void) [
+    (assign (deref (deref p)) 42)
 ]))
 
 (call main [0 0])
