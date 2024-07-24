@@ -1,6 +1,7 @@
 #include "nkl/core/compiler.h"
 
 #include "compiler_state.hpp"
+#include "nkb/common.h"
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
@@ -19,6 +20,7 @@
 #include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/utils.h"
 
 namespace {
 
@@ -175,7 +177,7 @@ static NklAstNode const &nextNode(AstNodeIterator &it) {
     return next_node;
 }
 
-static Interm compile(Context &ctx, NklAstNode const &node);
+static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t type = nullptr);
 static Void compileStmt(Context &ctx, NklAstNode const &node);
 
 static Interm resolveComptime(Decl &decl) {
@@ -189,7 +191,7 @@ static Interm resolveComptime(Decl &decl) {
 
     NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
-    DEFINE(val, compile(ctx, node));
+    DEFINE(val, compile(ctx, node)); // TODO: Add possibility to specify type for const
 
     if (decl.kind != DeclKind_Complete) {
         if (!isValueKnown(val)) {
@@ -304,8 +306,7 @@ static Context *importFile(NklCompiler c, NkString filename) {
             defer {
                 nk_arena_popFrame(temp_arena, temp_frame);
             };
-            NkStringBuilder sb{};
-            sb.alloc = nk_arena_getAllocator(temp_arena);
+            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(temp_arena))};
             nkir_inspectProc(c->ir, ctx.top_level_proc, nksb_getStream(&sb));
             NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
         }
@@ -374,12 +375,20 @@ static Interm deref(NkIrRef ref) {
     return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
 }
 
-static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
-    auto new_list_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{nullptr, node};
-    nk_list_push(ctx.node_stack, new_list_node);
-    defer {
-        nk_list_pop(ctx.node_stack);
+static auto pushNode(Context &ctx, NklAstNode const &node, nkltype_t type) {
+    auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{
+        .next{},
+        .node = node,
+        .type = type,
     };
+    nk_list_push(ctx.node_stack, new_stack_node);
+    return nk_defer([&ctx]() {
+        nk_list_pop(ctx.node_stack);
+    });
+}
+
+static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
+    auto pop_node = pushNode(ctx, node, nullptr); // TODO: Provide type in getLvalueRef
 
     auto &src = ctx.src;
     auto m = ctx.m;
@@ -467,7 +476,7 @@ static NkAtom getConstDeclName(Context &ctx) {
     }
 }
 
-static Interm compile(Context &ctx, NklAstNode const &node) {
+static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -481,11 +490,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
         nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
     };
 
-    auto new_list_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{nullptr, node};
-    nk_list_push(ctx.node_stack, new_list_node);
-    defer {
-        nk_list_pop(ctx.node_stack);
-    };
+    auto pop_node = pushNode(ctx, node, res_type);
 
     auto const &token = src.tokens.data[node.token_idx];
 
@@ -503,8 +508,8 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
         // TODO: Typecheck arithmetic
 #define COMPILE_NUM(NAME, IR_NAME)                                                              \
     case NK_CAT(n_, NAME): {                                                                    \
-        DEFINE(lhs, compile(ctx, nextNode(node_it)));                                           \
-        DEFINE(rhs, compile(ctx, nextNode(node_it)));                                           \
+        DEFINE(lhs, compile(ctx, nextNode(node_it), res_type));                                 \
+        DEFINE(rhs, compile(ctx, nextNode(node_it), lhs.type));                                 \
         return {                                                                                \
             {.instr{NK_CAT(nkir_make_, IR_NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
             lhs.type,                                                                           \
@@ -530,7 +535,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 #define COMPILE_CMP(NAME)                                                                        \
     case NK_CAT(n_, NAME): {                                                                     \
         DEFINE(lhs, compile(ctx, nextNode(node_it)));                                            \
-        DEFINE(rhs, compile(ctx, nextNode(node_it)));                                            \
+        DEFINE(rhs, compile(ctx, nextNode(node_it), lhs.type));                                  \
         return {                                                                                 \
             {.instr{NK_CAT(nkir_make_cmp_, NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
             nkl_get_bool(nkl),                                                                   \
@@ -556,18 +561,9 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 
         COMPILE_TYPE(void, (nkl_get_void(nkl)))
 
-        COMPILE_TYPE(i8, (nkl_get_numeric(nkl, Int8)))
-        COMPILE_TYPE(i16, (nkl_get_numeric(nkl, Int16)))
-        COMPILE_TYPE(i32, (nkl_get_numeric(nkl, Int32)))
-        COMPILE_TYPE(i64, (nkl_get_numeric(nkl, Int64)))
-
-        COMPILE_TYPE(u8, (nkl_get_numeric(nkl, Uint8)))
-        COMPILE_TYPE(u16, (nkl_get_numeric(nkl, Uint16)))
-        COMPILE_TYPE(u32, (nkl_get_numeric(nkl, Uint32)))
-        COMPILE_TYPE(u64, (nkl_get_numeric(nkl, Uint64)))
-
-        COMPILE_TYPE(f32, (nkl_get_numeric(nkl, Float32)))
-        COMPILE_TYPE(f64, (nkl_get_numeric(nkl, Float64)))
+#define COMPILE_NUM_TYPE(NAME, VALUE_TYPE) COMPILE_TYPE(NAME, (nkl_get_numeric(nkl, VALUE_TYPE)))
+        NKIR_NUMERIC_ITERATE(COMPILE_NUM_TYPE)
+#undef COMPILE_NUM_TYPE
 
 #undef COMPILE_TYPE
 
@@ -576,7 +572,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
             auto &rhs_n = nextNode(node_it);
 
             DEFINE(lhs, getLvalueRef(ctx, lhs_n));
-            DEFINE(rhs, compile(ctx, rhs_n));
+            DEFINE(rhs, compile(ctx, rhs_n, lhs.type));
 
             return store(ctx, asRef(ctx, lhs), rhs);
         }
@@ -595,15 +591,18 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
             NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
 
+            auto const param_types = lhs.type->ir_type.as.proc.info.args_t;
+
             auto args_it = nodeIterate(src, args_n);
             for (usize i = 0; i < args_n.arity; i++) {
                 auto &arg_n = nextNode(args_it);
-                APPEND(&args, compile(ctx, arg_n));
+                auto const arg_t = i < param_types.size ? nkirt2nklt(param_types.data[i]) : nullptr;
+                APPEND(&args, compile(ctx, arg_n, arg_t));
             }
 
             NkDynArray(NkIrRef) arg_refs{NKDA_INIT(temp_alloc)};
             for (usize i = 0; i < args.size; i++) {
-                if (i == lhs.type->ir_type.as.proc.info.args_t.size) {
+                if (i == param_types.size) {
                     nkda_append(&arg_refs, nkir_makeVariadicMarkerRef(c->ir));
                 }
                 nkda_append(&arg_refs, asRef(ctx, args.data[i]));
@@ -712,7 +711,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
                 nextNode(param_it); // name
                 auto &type_n = nextNode(param_it);
 
-                DEFINE(type_v, compile(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -729,7 +728,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
                 nkda_append(&param_types, type);
             }
 
-            DEFINE(ret_t_v, compile(ctx, ret_t_n));
+            DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
 
             // TODO: Boilerplate in type checking
             if (ret_t_v.type->tclass != NklType_Typeref) {
@@ -870,7 +869,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
                 auto name_str = nkl_getTokenStr(name_token, src.text);
                 auto name = nk_s2atom(name_str);
 
-                DEFINE(type_v, compile(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -888,7 +887,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
                 nkda_append(&param_types, type);
             }
 
-            DEFINE(ret_t_v, compile(ctx, ret_t_n));
+            DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
 
             // TODO: Boilerplate in type checking
             if (ret_t_v.type->tclass != NklType_Typeref) {
@@ -966,8 +965,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 
 #ifdef ENABLE_LOGGING
             {
-                NkStringBuilder sb{};
-                sb.alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+                NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
                 nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
                 NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
             }
@@ -979,7 +977,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
         case n_ptr: {
             auto &target_n = nextNode(node_it);
 
-            DEFINE(target, compile(ctx, target_n));
+            DEFINE(target, compile(ctx, target_n, nkl_get_typeref(nkl, c->word_size)));
 
             // TODO: Boilerplate in type checking
             if (target.type->tclass != NklType_Typeref) {
@@ -1005,7 +1003,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
             // TODO: Typecheck the returned value
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
-                DEFINE(arg, compile(ctx, arg_n));
+                DEFINE(arg, compile(ctx, arg_n)); // TODO: Get the current proc return type
                 nkir_emit(c->ir, nkir_make_mov(c->ir, nkir_makeRetRef(c->ir), asRef(ctx, arg)));
             }
             nkir_emit(c->ir, nkir_make_ret(c->ir));
@@ -1018,7 +1016,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 
             nkltype_t ret_t{};
             if (ret_t_n.id) {
-                DEFINE(ret_t_v, compile(ctx, ret_t_n));
+                DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
                 // TODO: Boilerplate in type checking
                 if (ret_t_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -1079,8 +1077,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 
 #ifdef ENABLE_LOGGING
             {
-                NkStringBuilder sb{};
-                sb.alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+                NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
                 nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
                 NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
             }
@@ -1160,7 +1157,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
                 auto name_str = nkl_getTokenStr(name_token, src.text);
                 auto name = nk_s2atom(name_str);
 
-                DEFINE(type_v, compile(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -1202,7 +1199,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
             nkltype_t type{};
 
             if (type_n.id) {
-                DEFINE(type_v, compile(ctx, type_n));
+                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
 
                 if (type_v.type->tclass != NklType_Typeref) {
                     // TODO: Improve error message
@@ -1219,7 +1216,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 
             Interm val{};
             if (val_n.id) {
-                ASSIGN(val, compile(ctx, val_n));
+                ASSIGN(val, compile(ctx, val_n, type));
 
                 if (type_n.id) {
                     // TODO: Typecheck in n_var
@@ -1251,7 +1248,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
                 else_l = endif_l;
             }
 
-            DEFINE(cond, compile(ctx, cond_n));
+            DEFINE(cond, compile(ctx, cond_n, nkl_get_bool(nkl)));
 
             if (cond.type->tclass != NklType_Bool) {
                 // TODO: Improve error message
@@ -1293,7 +1290,7 @@ static Interm compile(Context &ctx, NklAstNode const &node) {
 
             nkir_emit(c->ir, nkir_make_label(loop_l));
 
-            DEFINE(cond, compile(ctx, cond_n));
+            DEFINE(cond, compile(ctx, cond_n, nkl_get_bool(nkl)));
 
             if (cond.type->tclass != NklType_Bool) {
                 // TODO: Improve error message
@@ -1358,6 +1355,14 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     nkir_mergeModules(m->mod, ctx.m->mod);
 
     // TODO: Inspect module?
+
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+        nkir_inspectExternSyms(c->ir, nksb_getStream(&sb));
+        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
 
     return true;
 }
