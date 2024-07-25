@@ -644,10 +644,16 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     }
 
 #ifdef ENABLE_LOGGING
-    NkStringBuilder sb{};
-    sb.alloc = tmp_alloc;
+    NkStringBuilder sb{NKSB_INIT(tmp_alloc)};
+    nksb_printf(&sb, "proc ");
+    if (ir_proc.name) {
+        nksb_printf(&sb, "%s", nk_atom2cs(ir_proc.name));
+    } else {
+        nksb_printf(&sb, "_proc%zu", proc.idx);
+    }
+    nksb_printf(&sb, "\n");
     inspect({NK_SLICE_INIT(bc_proc.instrs)}, nksb_getStream(&sb));
-    NK_LOG_INF("proc %s\n" NKS_FMT "", nk_atom2cs(ir_proc.name), NKS_ARG(sb));
+    NK_LOG_INF(NKS_FMT, NKS_ARG(sb));
 #endif // ENABLE_LOGGING
 
     return true;

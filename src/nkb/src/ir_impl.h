@@ -73,7 +73,7 @@ struct NkIrProg_T {
     NkDynArray(NkIrRef) relocs;
 
     NkIrProc cur_proc;
-    usize cur_line;
+    u32 cur_line;
 
     NkString error_str;
 };

@@ -3,6 +3,7 @@
 
 #include "nkl/common/token.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/stream.h"
 
@@ -30,8 +31,8 @@ typedef struct {
 void nkl_ast_inspect(NklSource src, NkStream out);
 
 NK_INLINE u32 nkl_ast_nextChild(NklAstNodeArray nodes, u32 idx) {
-    u32 total_children = idx < nodes.size ? nodes.data[idx].total_children : 0;
-    return idx + total_children + 1;
+    nk_assert(idx < nodes.size && "node index out of range");
+    return idx + nodes.data[idx].total_children + 1;
 }
 
 #ifdef __cplusplus

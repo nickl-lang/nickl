@@ -1,5 +1,5 @@
-#ifndef NKL_CORE_COMPILER_STATE_H_
-#define NKL_CORE_COMPILER_STATE_H_
+#ifndef NKL_CORE_COMPILER_STATE_HPP_
+#define NKL_CORE_COMPILER_STATE_HPP_
 
 #include "nkb/ir.h"
 #include "nkl/core/compiler.h"
@@ -63,7 +63,7 @@ struct Decl {
     union {
         struct {
             Context *ctx;
-            usize node_idx;
+            NklAstNode const *node;
         } unresolved;
         Value val;
     } as;
@@ -109,13 +109,15 @@ struct Scope {
 
 struct NodeListNode {
     NodeListNode *next;
-    usize node_idx;
+
+    NklAstNode const &node;
+    nkltype_t type;
 };
 
 struct Context {
     NkIrProc top_level_proc;
     NklModule m;
-    NklSource const *src;
+    NklSource const &src;
     Scope *scope_stack;
     NodeListNode *node_stack;
 };
@@ -154,13 +156,11 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 NkIrRef asRef(Context &ctx, Interm const &val);
 
-usize parentNodeIdx(Context &ctx);
-
 void pushPublicScope(Context &ctx, NkIrProc cur_proc);
 void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
 void popScope(Context &ctx);
 
-void defineComptimeUnresolved(Context &ctx, NkAtom name, usize node_idx);
+void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node);
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var);
 void defineParam(Context &ctx, NkAtom name, usize idx);
 void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id);
@@ -174,4 +174,6 @@ nklval_t getValueFromInterm(NklCompiler c, Interm const &val);
 bool isModule(Interm const &val);
 Scope *getModuleScope(Interm const &val);
 
-#endif // NKL_CORE_COMPILER_STATE_H_
+nkltype_t getValueType(NklCompiler c, Value const &val);
+
+#endif // NKL_CORE_COMPILER_STATE_HPP_

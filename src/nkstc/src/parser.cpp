@@ -90,7 +90,7 @@ struct ParseEngine {
 
         else if (accept(t_int)) {
             node.id = nk_cs2atom("int");
-        } else if (check(t_float)) {
+        } else if (accept(t_float)) {
             node.id = nk_cs2atom("float");
         }
 
@@ -181,7 +181,7 @@ NklAstNodeArray nkst_parse(NkAllocator alloc, NkAtom file, NkString text, NklTok
     engine.parse();
 
     NK_LOG_INF(
-        "ast:%s", (char const *)[&]() {
+        "AST:%s", (char const *)[&]() {
             // TODO: Use scratch arena
             NkStringBuilder sb{NKSB_INIT(nk_default_allocator)};
             nkl_ast_inspect(

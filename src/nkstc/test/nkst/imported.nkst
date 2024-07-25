@@ -4,7 +4,7 @@
 
 (const printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
 
-(run [
+(run () [
     (call printf ["Hello from %s!\n" "imported:comptime"])
 ])
 

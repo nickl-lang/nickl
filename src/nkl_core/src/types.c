@@ -825,3 +825,12 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
             nk_assert(!"unreachable");
     }
 }
+
+usize nklt_struct_index(nkltype_t type, NkAtom name) {
+    for (usize i = 0; i < type->as.strct.fields.size; i++) {
+        if (name == type->as.strct.fields.data[i].name) {
+            return i;
+        }
+    }
+    return -1u;
+}

@@ -283,8 +283,7 @@ private:
     NK_PRINTF_LIKE(2) void error(char const *fmt, ...) {
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder sb{};
-        sb.alloc = nk_arena_getAllocator(m_tmp_arena);
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(m_tmp_arena))};
         nksb_vprintf(&sb, fmt, ap);
         m_error_msg = {NKS_INIT(sb)};
         va_end(ap);

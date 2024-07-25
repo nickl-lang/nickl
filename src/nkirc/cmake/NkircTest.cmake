@@ -1,4 +1,5 @@
 set(NKIRC_COMPILE_TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/compile_test.sh")
+set(NKIRC_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/nkirc_test_out")
 
 function(def_nkirc_run_test)
     set(options)
@@ -21,10 +22,11 @@ function(def_nkirc_run_test)
     def_output_test(
         NAME nkirc.run
         FILE ${ARG_FILE}
+        WORKING_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
         COMMAND
             "env"
             "LD_LIBRARY_PATH=."
-            "${CMAKE_CROSSCOMPILING_EMULATOR}" "./${EXE}" "-krun"
+            "${CMAKE_CROSSCOMPILING_EMULATOR}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" "-krun"
         )
 endfunction()
 
@@ -51,11 +53,12 @@ function(def_nkirc_compile_test)
     def_output_test(
         NAME nkirc.compile
         FILE ${ARG_FILE}
+        WORKING_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
         COMMAND
             "env"
             "LD_LIBRARY_PATH=."
             "EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
-            "COMPILER=./${EXE}"
+            "COMPILER=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
             "OUT_FILE=${BASE_NAME}.out"
             "${NKIRC_COMPILE_TEST_SCRIPT}" "${ARG_ARGS}"
         )

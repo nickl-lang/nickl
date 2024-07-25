@@ -10,7 +10,7 @@ printUsage() {
   echo "Usage: $(basename $0) [options...]"
   echo "Options:"
   echo "    --file=<filepath>   Path to the test file"
-  echo "    --cmd=<command>     Path to the nkirc executable"
+  echo "    --cmd=<command>     Path to the tested executable"
   echo "    -h,--help           Display this message"
 }
 
@@ -55,43 +55,67 @@ extract_region() {
 EXPECTED_OUTPUTX="$(extract_region "@output" "@endoutput"; echo x)"
 EXPECTED_OUTPUT="${EXPECTED_OUTPUTX%x}"
 
+ERROR_PATTERNX="$(extract_region "@error" "@enderror"; echo x)"
+ERROR_PATTERN="${ERROR_PATTERNX%x}"
+
 EXPECTED_RETCODEX="$(extract_region "@retcode" "@endretcode"; echo x)"
 EXPECTED_RETCODE="${EXPECTED_RETCODEX%x}"
 
-runTest() {
-  COMMAND=$1
+TMPDIR=
+cleanup() {
+  trap - EXIT
+  if [ -n "$TMPDIR" ]; then rm -rf "$TMPDIR"; fi
+  if [ -n "$1" ]; then trap - $1; kill -$1 $$; fi
+}
+TMPDIR=$(mktemp -dt nickl_output_test_XXXXXXXXXX)
+trap 'cleanup' EXIT
+trap 'cleanup HUP' HUP
+trap 'cleanup TERM' TERM
+trap 'cleanup INT' INT
 
-  RESULTX="$(set +e; ($COMMAND; echo x$?) | tr -d '\r')"
-  RETCODE=${RESULTX##*x}
-  OUTPUT="${RESULTX%x*}"
+STDOUT_FILE="$TMPDIR/stdout"
+STDERR_FILE="$TMPDIR/stderr"
 
-  if [ "$RETCODE" -ne "${EXPECTED_RETCODE:-0}" ]; then
+echo "Running command '$ARG_CMD $ARG_FILE'"
+
+set +e
+$ARG_CMD $ARG_FILE 1>"$STDOUT_FILE" 2>"$STDERR_FILE"
+RETCODE=$?
+set -e
+
+OUTPUT_STDOUTX="$(cat "$STDOUT_FILE" | tr -d '\r'; echo x)"
+OUTPUT_STDOUT="${OUTPUT_STDOUTX%x}"
+
+OUTPUT_STDERRX="$(cat "$STDERR_FILE" | tee /dev/stderr | tr -d '\r'; echo x)"
+OUTPUT_STDERR="${OUTPUT_STDERRX%x}"
+
+if [ "$RETCODE" -ne "${EXPECTED_RETCODE:-0}" ]; then
+  echo "TEST FAILED:
+Expected return code: ${EXPECTED_RETCODE:-0}
+Actual   return code: $RETCODE"
+  exit 1
+fi
+
+case "$OUTPUT_STDERR" in
+  *"$ERROR_PATTERN"*)
+    ;;
+  *)
     echo "TEST FAILED:
-  Expected return code: ${EXPECTED_RETCODE:-0}
-  Actual   return code: $RETCODE"
+  Error pattern:
+      \"$ERROR_PATTERN\"
+  Actual  error:
+      \"$OUTPUT_STDERR\""
     exit 1
-  fi
+    ;;
+esac
 
-  if [ "$EXPECTED_OUTPUT" != "$OUTPUT" ]; then
-    echo "TEST FAILED:
-  Expected output:
-      \"$EXPECTED_OUTPUT\"
-  Actual   output:
-      \"$OUTPUT\""
-    exit 1
-  fi
-}
-
-runCommand() {
-  COMMAND=$1
-  echo "Running '$COMMAND'" >&2
-  $COMMAND
-}
-
-testCommand() {
-  runCommand "$ARG_CMD $ARG_FILE"
-}
-
-runTest testCommand
+if [ "$EXPECTED_OUTPUT" != "$OUTPUT_STDOUT" ]; then
+  echo "TEST FAILED:
+Expected output:
+    \"$EXPECTED_OUTPUT\"
+Actual   output:
+    \"$OUTPUT_STDOUT\""
+  exit 1
+fi
 
 echo 'TEST PASSED'

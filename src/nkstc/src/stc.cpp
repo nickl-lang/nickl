@@ -5,7 +5,6 @@
 #include "nkl/core/compiler.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
-#include "ntk/common.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -27,7 +26,7 @@ NklAstNodeArray parser_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, Nk
 void printDiag(NklState nkl, NklCompiler c) {
     auto error = nkl_getCompileErrorList(c);
     while (error) {
-        if (error->file != NK_ATOM_INVALID) {
+        if (error->file) {
             char cwd[NK_MAX_PATH];
             nk_getCwd(cwd, sizeof(cwd));
             char relpath[NK_MAX_PATH];
@@ -54,7 +53,34 @@ void printDiag(NklState nkl, NklCompiler c) {
 
 } // namespace
 
-int nkst_compile(NkString in_file) {
+int nkst_compile(NkString in_file, NkIrCompilerConfig conf) {
+    NK_LOG_TRC("%s", __func__);
+
+    auto nkl = nkl_state_create(lexer_proc, parser_proc);
+    defer {
+        nkl_state_free(nkl);
+    };
+
+    auto c = nkl_createCompiler(nkl, {});
+    defer {
+        nkl_freeCompiler(c);
+    };
+
+    auto m = nkl_createModule(c);
+    if (!nkl_compileFile(m, in_file)) {
+        printDiag(nkl, c);
+        return 1;
+    }
+
+    if (!nkl_writeModule(m, conf)) {
+        printDiag(nkl, c);
+        return 1;
+    }
+
+    return 0;
+}
+
+int nkst_run(NkString in_file) {
     NK_LOG_TRC("%s", __func__);
 
     auto nkl = nkl_state_create(lexer_proc, parser_proc);
@@ -77,11 +103,6 @@ int nkst_compile(NkString in_file) {
         printDiag(nkl, c);
         return 1;
     }
-
-    // if (!nkl_writeModule(m, nk_cs2s("nkstc.out"))) {
-    //     printDiag(nkl, c);
-    //     return 1;
-    // }
 
     return 0;
 }

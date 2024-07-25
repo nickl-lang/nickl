@@ -74,15 +74,16 @@ struct WriterCtx {
     NkDynArray(usize) procs_to_translate{NKDA_INIT(alloc)};
 };
 
-#define LOCAL_CLASS "var"
 #define ARG_CLASS "arg"
 #define CONST_CLASS "const"
 #define GLOBAL_CLASS "global"
+#define LOCAL_CLASS "var"
+#define PROC_CLASS "proc"
 
 void writeName(NkAtom name, usize index, char const *obj_class, NkStringBuilder *src) {
-    if (name != NK_ATOM_INVALID) {
-        auto const str = nk_atom2s(name);
-        nksb_printf(src, NKS_FMT, NKS_ARG(str));
+    if (name) {
+        auto const name_str = nk_atom2s(name);
+        nksb_printf(src, NKS_FMT, NKS_ARG(name_str));
     } else {
         nksb_printf(src, "_%s_%zu", obj_class, index);
     }
@@ -273,7 +274,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                             ctx,
                             NKIR_INVALID_IDX,
                             {
-                                .name = NK_ATOM_INVALID,
+                                .name = 0,
                                 .data = (u8 *)decl.data + offset,
                                 .type = elem.type,
                                 .visibility = NkIrVisibility_Local,
@@ -392,13 +393,16 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 void writeProcSignature(
     WriterCtx &ctx,
     NkStringBuilder *src,
-    NkString name,
+    NkAtom name,
+    usize proc_id,
     nktype_t ret_t,
     NkTypeArray args_t,
     NkAtomArray arg_names,
     bool va = false) {
     writeType(ctx, ret_t, src, true);
-    nksb_printf(src, " " NKS_FMT "(", NKS_ARG(name));
+    nksb_printf(src, " ");
+    writeName(name, proc_id, PROC_CLASS, src);
+    nksb_printf(src, "(");
 
     for (usize i = 0; i < args_t.size; i++) {
         if (i) {
@@ -407,7 +411,7 @@ void writeProcSignature(
         writeType(ctx, args_t.data[i], src);
         if (arg_names.size) {
             nksb_printf(src, " ");
-            writeName(i < arg_names.size ? arg_names.data[i] : (NkAtom)NK_ATOM_INVALID, i, ARG_CLASS, src);
+            writeName(i < arg_names.size ? arg_names.data[i] : 0, i, ARG_CLASS, src);
         }
     }
     if (va) {
@@ -427,7 +431,7 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 }
 
 void writeLineDirective(NkAtom file, usize line, NkStringBuilder *src) {
-    if (file != NK_ATOM_INVALID) {
+    if (file) {
         auto const file_name = nk_atom2s(file);
         nksb_printf(src, "#line %zu \"", line);
         nks_escape(nksb_getStream(src), file_name);
@@ -453,13 +457,13 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     if (getFlag(ctx.procs_translated, proc_id)) {
         return;
     }
-
-    NK_LOG_TRC("%s", __func__);
-    NK_LOG_DBG("proc_id=%zu", proc_id);
-
     getFlag(ctx.procs_translated, proc_id) = true;
 
+    NK_LOG_TRC("%s", __func__);
+
     auto const &proc = ctx.ir->procs.data[proc_id];
+
+    NK_LOG_DBG("Translating proc#%zu %s", proc_id, proc.name ? nk_atom2cs(proc.name) : "(anonymous)");
 
     auto proc_t = proc.proc_t;
     auto args_t = proc_t->as.proc.info.args_t;
@@ -468,16 +472,16 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     auto src = &ctx.main_s;
 
     writeVisibilityAttr(proc.visibility, &ctx.forward_s);
-    writeProcSignature(ctx, &ctx.forward_s, nk_atom2s(proc.name), ret_t, args_t, {});
+    writeProcSignature(ctx, &ctx.forward_s, proc.name, proc_id, ret_t, args_t, {});
     nksb_printf(&ctx.forward_s, ";\n");
 
     nksb_printf(src, "\n");
     writeLineDirective(proc.file, proc.start_line, src);
-    writeProcSignature(ctx, src, nk_atom2s(proc.name), ret_t, args_t, proc.arg_names);
+    writeProcSignature(ctx, src, proc.name, proc_id, ret_t, args_t, proc.arg_names);
     nksb_printf(src, " {\n\n");
 
     for (usize i = 0; auto decl : nk_iterate(proc.locals)) {
-        writeLineDirective(NK_ATOM_INVALID, proc.start_line, src);
+        writeLineDirective(0, proc.start_line, src);
         writeType(ctx, decl.type, src);
         nksb_printf(src, " ");
         writeName(decl.name, i++, LOCAL_CLASS, src);
@@ -489,7 +493,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     }
 
     if (ret_t->size) {
-        writeLineDirective(NK_ATOM_INVALID, proc.start_line, src);
+        writeLineDirective(0, proc.start_line, src);
         writeType(ctx, ret_t, src);
         nksb_printf(src, " _ret={0};\n");
     }
@@ -500,8 +504,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         NK_PROF_SCOPE(nk_cs2s("write_ref"));
         if (ref.kind == NkIrRef_Proc) {
             auto const &proc = ctx.ir->procs.data[ref.index];
-            auto const proc_name = nk_atom2s(proc.name);
-            nksb_printf(src, NKS_FMT, NKS_ARG(proc_name));
+            writeName(proc.name, ref.index, PROC_CLASS, src);
             if (!getFlag(ctx.procs_translated, ref.index)) {
                 nkda_append(&ctx.procs_to_translate, ref.index);
             }
@@ -512,10 +515,12 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             nksb_printf(src, NKS_FMT, NKS_ARG(extern_proc_name));
             if (!getFlag(ctx.ext_procs_translated, ref.index)) {
                 nksb_printf(&ctx.forward_s, "extern ");
+                nk_assert(extern_proc.name && "extern proc name cannot be null");
                 writeProcSignature(
                     ctx,
                     &ctx.forward_s,
-                    extern_proc_name,
+                    extern_proc.name,
+                    0,
                     extern_proc.type->as.proc.info.ret_t,
                     extern_proc.type->as.proc.info.args_t,
                     {},
@@ -572,10 +577,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                 break;
             case NkIrRef_Arg:
                 writeName(
-                    ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (NkAtom)NK_ATOM_INVALID,
-                    ref.index,
-                    ARG_CLASS,
-                    src);
+                    ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : 0, ref.index, ARG_CLASS, src);
                 break;
             case NkIrRef_Ret:
                 nksb_printf(src, "_ret");
@@ -614,7 +616,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             auto const &instr = ctx.ir->instrs.data[ii];
 
             if (instr.line != last_line + 1) {
-                writeLineDirective(NK_ATOM_INVALID, instr.line, src);
+                writeLineDirective(0, instr.line, src);
             }
             last_line = instr.line;
 
@@ -791,7 +793,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         nksb_printf(src, "\n");
     }
 
-    writeLineDirective(NK_ATOM_INVALID, proc.end_line, src);
+    writeLineDirective(0, proc.end_line, src);
     nksb_printf(src, "}\n");
 }
 

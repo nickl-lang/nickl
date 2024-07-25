@@ -77,7 +77,7 @@ typedef struct {
 
 typedef struct {
     NkIrArg arg[3];
-    usize line;
+    u32 line;
     u8 code;
 } NkIrInstr;
 
@@ -128,9 +128,8 @@ typedef struct {
 } NkIrProcDescr;
 
 void nkir_startProc(NkIrProg ir, NkIrProc proc, NkIrProcDescr descr);
-void nkir_activateProc(NkIrProg ir, NkIrProc proc);
 
-bool nkir_hasActiveProc(NkIrProg ir);
+void nkir_setActiveProc(NkIrProg ir, NkIrProc proc);
 NkIrProc nkir_getActiveProc(NkIrProg ir);
 
 void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
