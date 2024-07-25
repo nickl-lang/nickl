@@ -325,7 +325,9 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
     auto c = m->c;
 
     auto const proc = nkir_createProc(c->ir);
-    nkir_exportProc(c->ir, m->mod, proc);
+    if (descr.visibility != NkIrVisibility_Local) {
+        nkir_exportProc(c->ir, m->mod, proc);
+    }
 
     auto const prev_proc = nkir_getActiveProc(c->ir);
     defer {

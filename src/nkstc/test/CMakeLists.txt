@@ -12,7 +12,7 @@ def_nkstc_compile_test(FILE nkst/address.nkst)
 def_nkstc_compile_test(FILE nkst/callback.nkst)
 def_nkstc_compile_test(FILE nkst/fast_exp.nkst)
 def_nkstc_compile_test(FILE nkst/hello_world.nkst)
-#def_nkstc_compile_test(FILE nkst/import.nkst) # TODO: Control exports to avoid duplication
+def_nkstc_compile_test(FILE nkst/import.nkst)
 def_nkstc_compile_test(FILE nkst/loop.nkst)
 def_nkstc_compile_test(FILE nkst/run.nkst)
 def_nkstc_compile_test(FILE nkst/struct.nkst)
