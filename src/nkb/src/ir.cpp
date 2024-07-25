@@ -870,12 +870,12 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
                 auto const name = nk_atom2s(proc.arg_names.data[ref.index]);
                 nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
             } else {
-                nk_stream_printf(out, "arg%" PRIu64, ref.index);
+                nk_stream_printf(out, "_arg%" PRIu64, ref.index);
             }
             break;
         }
         case NkIrRef_Ret:
-            nk_stream_printf(out, "ret");
+            nk_stream_printf(out, "_ret");
             break;
         case NkIrRef_Data: {
             auto const &decl = ir->data.data[ref.index];

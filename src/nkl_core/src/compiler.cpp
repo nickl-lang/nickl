@@ -111,7 +111,7 @@ bool nkl_runModule(NklModule m) {
     return true;
 }
 
-bool nkl_writeModule(NklModule m, NkString filename) {
+bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -122,20 +122,7 @@ bool nkl_writeModule(NklModule m, NkString filename) {
         nkl_errorStateUnequip();
     };
 
-    // TODO: Hardcoded C compiler config
-    NkString const additional_flags[] = {
-        nk_cs2s("-g"),
-        nk_cs2s("-O0"),
-    };
-    NkIrCompilerConfig const config{
-        .compiler_binary = nk_cs2s("gcc"),
-        .additional_flags{additional_flags, NK_ARRAY_COUNT(additional_flags)},
-        .output_filename = filename,
-        .output_kind = NkbOutput_Executable,
-        .quiet = false,
-    };
-
-    if (!nkir_write(c->ir, m->mod, getNextTempArena(c, NULL), config)) {
+    if (!nkir_write(c->ir, m->mod, getNextTempArena(c, NULL), conf)) {
         auto const msg = nkir_getErrorString(c->ir);
         nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
@@ -349,7 +336,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
     nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
-    if (descr.name) {
+    if (descr.name || !ctx.scope_stack) {
         pushPublicScope(ctx, proc);
     } else {
         pushPrivateScope(ctx, proc);
@@ -422,7 +409,7 @@ static Context *importFile(NklCompiler c, NkString filename) {
         auto const proc_info = compileProc(
             ctx,
             NkIrProcDescr{
-                .name = nk_cs2atom("__top_level"), // TODO: Hardcoded toplevel proc name
+                .name = 0, // TODO: Hardcoded toplevel proc name
                 .proc_t = nklt2nkirt(proc_t),
                 .arg_names{},
                 .file = src.file,

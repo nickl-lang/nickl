@@ -1,6 +1,7 @@
 #ifndef NKL_CORE_COMPILER_H_
 #define NKL_CORE_COMPILER_H_
 
+#include "nkb/ir.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/string.h"
@@ -27,7 +28,7 @@ NklError *nkl_getCompileErrorList(NklCompiler c);
 NklModule nkl_createModule(NklCompiler c);
 
 bool nkl_runModule(NklModule m);
-bool nkl_writeModule(NklModule m, NkString filename);
+bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf);
 
 bool nkl_compileFile(NklModule m, NkString filename);
 

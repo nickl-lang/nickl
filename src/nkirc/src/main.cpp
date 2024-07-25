@@ -131,7 +131,7 @@ int main(int /*argc*/, char const *const *argv) {
                 } else {
                     nkl_diag_printError(
                         "invalid output kind `" NKS_FMT
-                        "`. Possible values are `run`, `executable`, `shared`, `static`, `object`",
+                        "`. Possible values are `run`, `exe`, `shared`, `static`, `object`",
                         NKS_ARG(val));
                     printErrorUsage();
                     return 1;
