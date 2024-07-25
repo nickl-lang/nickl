@@ -1,0 +1,9 @@
+undeclared_identifier
+
+/* @error
+error: `undeclared_identifier` is not declared
+@enderror */
+
+/* @retcode
+1
+@endretcode */

@@ -457,13 +457,13 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     if (getFlag(ctx.procs_translated, proc_id)) {
         return;
     }
-
-    NK_LOG_TRC("%s", __func__);
-    NK_LOG_DBG("proc_id=%zu", proc_id);
-
     getFlag(ctx.procs_translated, proc_id) = true;
 
+    NK_LOG_TRC("%s", __func__);
+
     auto const &proc = ctx.ir->procs.data[proc_id];
+
+    NK_LOG_DBG("Translating proc#%zu %s", proc_id, proc.name ? nk_atom2cs(proc.name) : "(anonymous)");
 
     auto proc_t = proc.proc_t;
     auto args_t = proc_t->as.proc.info.args_t;

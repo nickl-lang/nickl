@@ -325,6 +325,8 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
     auto c = m->c;
 
     auto const proc = nkir_createProc(c->ir);
+
+    // TODO: Implement proper exports
     if (descr.visibility != NkIrVisibility_Local) {
         nkir_exportProc(c->ir, m->mod, proc);
     }
@@ -408,17 +410,19 @@ static Context *importFile(NklCompiler c, NkString filename) {
 
         nk_assert(src.nodes.size && "need at least a null node");
 
-        auto const proc_info = compileProc(
-            ctx,
-            NkIrProcDescr{
-                .name = 0, // TODO: Hardcoded toplevel proc name
-                .proc_t = nklt2nkirt(proc_t),
-                .arg_names{},
-                .file = src.file,
-                .line = 0,
-                .visibility = NkIrVisibility_Local,
-            },
-            *src.nodes.data);
+        DEFINE(
+            const proc_info,
+            compileProc(
+                ctx,
+                NkIrProcDescr{
+                    .name = 0, // TODO: Hardcoded toplevel proc name
+                    .proc_t = nklt2nkirt(proc_t),
+                    .arg_names{},
+                    .file = src.file,
+                    .line = 0,
+                    .visibility = NkIrVisibility_Local,
+                },
+                *src.nodes.data));
 
         ctx.top_level_proc = proc_info.id;
 
@@ -514,7 +518,7 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
         auto &decl = resolve(ctx, name);
         switch (decl.kind) {
             case DeclKind_Undefined:
-                return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
+                return error(ctx, "`" NKS_FMT "` is not declared", NKS_ARG(name_str));
 
             case DeclKind_Complete:
                 switch (decl.as.val.kind) {
@@ -761,7 +765,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             if (found) {
                 return resolveDecl(c, found->val);
             } else {
-                return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
+                return error(ctx, "`" NKS_FMT "` is not declared", NKS_ARG(name_str));
             }
 
             break;
@@ -799,7 +803,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                 return error(ctx, "decl name needed for extern c proc");
             }
 
-            auto const proc_t = compileProcType(ctx, node, nullptr, NkCallConv_Cdecl);
+            DEFINE(const proc_t, compileProcType(ctx, node, nullptr, NkCallConv_Cdecl));
 
             // TODO: Using hardcoded libc name
             auto const proc = nkir_makeExternProc(c->ir, nk_cs2atom(LIBC_NAME), decl_name, nklt2nkirt(proc_t));
@@ -818,7 +822,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             // TODO: Handle cross frame references
 
             if (decl.kind == DeclKind_Undefined) {
-                return error(ctx, "`" NKS_FMT "` is not defined", NKS_ARG(name_str));
+                return error(ctx, "`" NKS_FMT "` is not declared", NKS_ARG(name_str));
             } else {
                 return resolveDecl(c, decl);
             }
@@ -904,19 +908,21 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
 
             NkAtomDynArray param_names{NKDA_INIT(temp_alloc)};
-            auto const proc_t = compileProcType(ctx, node, &param_names);
+            DEFINE(const proc_t, compileProcType(ctx, node, &param_names));
 
-            auto const proc_info = compileProc(
-                ctx,
-                NkIrProcDescr{
-                    .name = decl_name, // TODO: Need to generate names for anonymous procs
-                    .proc_t = nklt2nkirt(proc_t),
-                    .arg_names{NK_SLICE_INIT(param_names)},
-                    .file = ctx.src.file,
-                    .line = token.lin,
-                    .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
-                },
-                body_n);
+            DEFINE(
+                const proc_info,
+                compileProc(
+                    ctx,
+                    NkIrProcDescr{
+                        .name = decl_name, // TODO: Need to generate names for anonymous procs
+                        .proc_t = nklt2nkirt(proc_t),
+                        .arg_names{NK_SLICE_INIT(param_names)},
+                        .file = ctx.src.file,
+                        .line = token.lin,
+                        .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
+                    },
+                    body_n));
 
             return {{.val{{.proc{proc_info}}, ValueKind_Proc}}, proc_t, IntermKind_Val};
         }
@@ -1001,17 +1007,19 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                     .flags{},
                 });
 
-            auto const proc_info = compileProc(
-                ctx,
-                NkIrProcDescr{
-                    .name = nk_cs2atom("__comptime"), // TODO: Hardcoded comptime proc name
-                    .proc_t = nklt2nkirt(proc_t),
-                    .arg_names{},
-                    .file = ctx.src.file,
-                    .line = token.lin,
-                    .visibility = NkIrVisibility_Local,
-                },
-                body_n);
+            DEFINE(
+                const proc_info,
+                compileProc(
+                    ctx,
+                    NkIrProcDescr{
+                        .name = nk_cs2atom("__comptime"), // TODO: Hardcoded comptime proc name
+                        .proc_t = nklt2nkirt(proc_t),
+                        .arg_names{},
+                        .file = ctx.src.file,
+                        .line = token.lin,
+                        .visibility = NkIrVisibility_Local,
+                    },
+                    body_n));
 
             void *rets[] = {nullptr};
             NkIrData rodata{};
@@ -1289,7 +1297,9 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 #ifdef ENABLE_LOGGING
     {
         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-        nkir_inspectExternSyms(c->ir, nksb_getStream(&sb));
+        auto const out = nksb_getStream(&sb);
+        nkir_inspectData(c->ir, out);
+        nkir_inspectExternSyms(c->ir, out);
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
 #endif // ENABLE_LOGGING

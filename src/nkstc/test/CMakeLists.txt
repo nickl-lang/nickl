@@ -16,3 +16,5 @@ def_nkstc_compile_test(FILE nkst/import.nkst)
 def_nkstc_compile_test(FILE nkst/loop.nkst)
 def_nkstc_compile_test(FILE nkst/run.nkst)
 def_nkstc_compile_test(FILE nkst/struct.nkst)
+
+def_nkstc_run_test(FILE nkst_errors/undeclared.nkst)
