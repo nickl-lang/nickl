@@ -472,7 +472,7 @@ static NkAtom getConstDeclName(Context &ctx) {
 
         return decl_name;
     } else {
-        return NK_ATOM_INVALID;
+        return 0;
     }
 }
 
@@ -551,12 +551,12 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
 
 #undef COMPILE_CMP
 
-#define COMPILE_TYPE(NAME, EXPR)                                                                         \
-    case NK_CAT(n_, NAME): {                                                                             \
-        auto type_t = nkl_get_typeref(nkl, c->word_size);                                                \
-        auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local); \
-        *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = EXPR;                                             \
-        return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};           \
+#define COMPILE_TYPE(NAME, EXPR)                                                               \
+    case NK_CAT(n_, NAME): {                                                                   \
+        auto type_t = nkl_get_typeref(nkl, c->word_size);                                      \
+        auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);     \
+        *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = EXPR;                                   \
+        return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val}; \
     }
 
         COMPILE_TYPE(void, (nkl_get_void(nkl)))
@@ -666,7 +666,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             auto ar_t = nkl_get_array(nkl, i8_t, unescaped_text.size + 1);
             auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
 
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
+            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(ar_t), NkIrVisibility_Local);
             auto str_ptr = nkir_getDataPtr(c->ir, rodata);
 
             // TODO: Manual copy and null termination
@@ -681,7 +681,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
 
         case n_extern_c_proc: {
             auto const decl_name = getConstDeclName(ctx);
-            if (decl_name == NK_ATOM_INVALID) {
+            if (!decl_name) {
                 // TODO: Improve error message
                 return error(ctx, "decl name needed for extern c proc");
             }
@@ -810,7 +810,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
         case n_int: {
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
             auto const i64_t = nkl_get_numeric(nkl, Int64);
-            auto const rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(i64_t), NkIrVisibility_Local);
+            auto const rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(i64_t), NkIrVisibility_Local);
             // TODO: Replace sscanf in compiler
             int res = sscanf(token_str.data, "%" SCNi64, (i64 *)nkir_getDataPtr(c->ir, rodata));
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
@@ -820,7 +820,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
         case n_float: {
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
             auto const f64_t = nkl_get_numeric(nkl, Float64);
-            auto const rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(f64_t), NkIrVisibility_Local);
+            auto const rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(f64_t), NkIrVisibility_Local);
             // TODO: Replace sscanf in compiler
             int res = sscanf(token_str.data, "%lf", (f64 *)nkir_getDataPtr(c->ir, rodata));
             nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
@@ -934,7 +934,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
 
             nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
 
-            if (decl_name != NK_ATOM_INVALID) {
+            if (decl_name) {
                 pushPublicScope(ctx, proc);
             } else {
                 pushPrivateScope(ctx, proc);
@@ -974,6 +974,77 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             return {{.val{proc_val}}, proc_t, IntermKind_Val};
         }
 
+        case n_proc_type: {
+            auto &params_n = nextNode(node_it);
+            auto &ret_t_n = nextNode(node_it);
+
+            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+
+            NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
+            NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
+
+            auto params_it = nodeIterate(src, params_n);
+            for (usize i = 0; i < params_n.arity; i++) {
+                auto param_it = nodeIterate(src, nextNode(params_it));
+
+                auto &name_n = nextNode(param_it);
+                auto &type_n = nextNode(param_it);
+
+                auto name_token = &src.tokens.data[name_n.token_idx];
+                auto name_str = nkl_getTokenStr(name_token, src.text);
+                auto name = nk_s2atom(name_str);
+
+                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
+
+                if (type_v.type->tclass != NklType_Typeref) {
+                    // TODO: Improve error message
+                    return error(ctx, "type expected");
+                }
+
+                if (!isValueKnown(type_v)) {
+                    // TODO: Improve error message
+                    return error(ctx, "value is not known");
+                }
+
+                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
+
+                nkda_append(&param_names, name);
+                nkda_append(&param_types, type);
+            }
+
+            DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
+
+            // TODO: Boilerplate in type checking
+            if (ret_t_v.type->tclass != NklType_Typeref) {
+                // TODO: Improve error message
+                return error(ctx, "type expected");
+            }
+
+            if (!isValueKnown(ret_t_v)) {
+                // TODO: Improve error message
+                return error(ctx, "value is not known");
+            }
+
+            auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
+
+            auto proc_t = nkl_get_proc(
+                nkl,
+                c->word_size,
+                NklProcInfo{
+                    .param_types{NK_SLICE_INIT(param_types)},
+                    .ret_t = ret_t,
+                    .call_conv = NkCallConv_Nk,
+                    .flags = {},
+                });
+
+            auto type_t = nkl_get_typeref(nkl, c->word_size);
+
+            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);
+            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = proc_t;
+
+            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
+        }
+
         case n_ptr: {
             auto &target_n = nextNode(node_it);
 
@@ -992,7 +1063,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
 
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);
             auto target_t = nklval_as(nkltype_t, getValueFromInterm(c, target));
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_ptr(nkl, c->word_size, target_t, false);
 
@@ -1087,7 +1158,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             NkIrData rodata{};
 
             if (nklt_sizeof(ret_t)) {
-                rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ret_t), NkIrVisibility_Local);
+                rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(ret_t), NkIrVisibility_Local);
                 rets[0] = {nkir_getDataPtr(c->ir, rodata)};
             }
 
@@ -1125,7 +1196,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             auto ar_t = nkl_get_array(nkl, i8_t, text.size + 1);
             auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
 
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(ar_t), NkIrVisibility_Local);
+            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(ar_t), NkIrVisibility_Local);
             auto str_ptr = nkir_getDataPtr(c->ir, rodata);
 
             // TODO: Manual copy and null termination
@@ -1178,7 +1249,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
 
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
-            auto rodata = nkir_makeRodata(c->ir, NK_ATOM_INVALID, nklt2nkirt(type_t), NkIrVisibility_Local);
+            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);
             *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = struct_t;
 
             return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};

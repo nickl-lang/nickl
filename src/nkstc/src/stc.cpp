@@ -27,7 +27,7 @@ NklAstNodeArray parser_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, Nk
 void printDiag(NklState nkl, NklCompiler c) {
     auto error = nkl_getCompileErrorList(c);
     while (error) {
-        if (error->file != NK_ATOM_INVALID) {
+        if (error->file) {
             char cwd[NK_MAX_PATH];
             nk_getCwd(cwd, sizeof(cwd));
             char relpath[NK_MAX_PATH];

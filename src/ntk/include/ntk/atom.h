@@ -20,8 +20,6 @@ NkAtom nk_cs2atom(char const *str);
 
 void nk_atom_define(NkAtom atom, NkString str);
 
-#define NK_ATOM_INVALID ((NkAtom)0)
-
 #ifdef __cplusplus
 }
 #endif

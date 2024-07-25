@@ -96,7 +96,7 @@ struct EmitterState {
             }
 
             else if (accept(t_extern)) {
-                NkAtom lib = NK_ATOM_INVALID;
+                NkAtom lib = 0;
 
                 if (check(t_string)) {
                     auto const lib_name = parseString(m_file_alloc);
@@ -404,8 +404,7 @@ private:
         auto const len = m_cur_token->len - 2;
         getToken();
 
-        NkStringBuilder sb{};
-        sb.alloc = alloc;
+        NkStringBuilder sb{NKSB_INIT(alloc)};
         nks_unescape(nksb_getStream(&sb), {data, len});
         nksb_appendNull(&sb);
         sb.size--;
@@ -433,7 +432,7 @@ private:
             DEFINE(id_token, parseId());
             res.name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         } else {
-            res.name = NK_ATOM_INVALID;
+            res.name = 0;
         }
         EXPECT(t_par_l);
         do {
@@ -444,7 +443,7 @@ private:
                 res.is_variadic = true;
                 break;
             }
-            NkAtom param_name = NK_ATOM_INVALID;
+            NkAtom param_name = 0;
             if (parse_param_names) {
                 DEFINE(id_token, parseId());
                 param_name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
@@ -734,7 +733,7 @@ private:
     }
 
     NkIrData parseConst(nktype_t type) {
-        auto const decl = nkir_makeRodata(m_ir, NK_ATOM_INVALID, type, NkIrVisibility_Local);
+        auto const decl = nkir_makeRodata(m_ir, 0, type, NkIrVisibility_Local);
         CHECK(parseValue(nkir_makeDataRef(m_ir, decl), type));
         return decl;
     }
@@ -789,25 +788,23 @@ private:
         else if (check(t_string)) {
             auto const str = parseString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            auto const decl = nkir_makeRodata(m_ir, NK_ATOM_INVALID, str_t, NkIrVisibility_Local);
+            auto const decl = nkir_makeRodata(m_ir, 0, str_t, NkIrVisibility_Local);
             memcpy(nkir_getDataPtr(m_ir, decl), str.data, str_t->size);
             result_ref = nkir_makeDataRef(m_ir, decl);
         } else if (check(t_escaped_string)) {
             auto const str = parseEscapedString(m_tmp_alloc);
             auto const str_t = nkir_makeArrayType(m_compiler, nkir_makeNumericType(m_compiler, Int8), str.size + 1);
-            auto const decl = nkir_makeRodata(m_ir, NK_ATOM_INVALID, str_t, NkIrVisibility_Local);
+            auto const decl = nkir_makeRodata(m_ir, 0, str_t, NkIrVisibility_Local);
             memcpy(nkir_getDataPtr(m_ir, decl), str.data, str_t->size);
             result_ref = nkir_makeDataRef(m_ir, decl);
         }
 
         else if (check(t_int)) {
-            auto const decl =
-                nkir_makeRodata(m_ir, NK_ATOM_INVALID, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
+            auto const decl = nkir_makeRodata(m_ir, 0, nkir_makeNumericType(m_compiler, Int64), NkIrVisibility_Local);
             CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Int64));
             result_ref = nkir_makeDataRef(m_ir, decl);
         } else if (check(t_f32)) {
-            auto const decl =
-                nkir_makeRodata(m_ir, NK_ATOM_INVALID, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
+            auto const decl = nkir_makeRodata(m_ir, 0, nkir_makeNumericType(m_compiler, Float64), NkIrVisibility_Local);
             CHECK(parseNumeric(nkir_getDataPtr(m_ir, decl), Float64));
             result_ref = nkir_makeDataRef(m_ir, decl);
         }
@@ -948,8 +945,7 @@ private:
 
         va_list ap;
         va_start(ap, fmt);
-        NkStringBuilder sb{};
-        sb.alloc = m_tmp_alloc;
+        NkStringBuilder sb{NKSB_INIT(m_tmp_alloc)};
         nksb_vprintf(&sb, fmt, ap);
         m_error_msg = {NKS_INIT(sb)};
         va_end(ap);

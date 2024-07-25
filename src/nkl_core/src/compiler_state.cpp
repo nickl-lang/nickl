@@ -55,7 +55,7 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
             auto instr = val.as.instr;
             auto &dst = instr.arg[0].ref;
             if (dst.kind == NkIrRef_None && nklt_sizeof(val.type)) {
-                dst = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, NK_ATOM_INVALID, nklt2nkirt(val.type)));
+                dst = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, 0, nklt2nkirt(val.type)));
             }
             nkir_emit(c->ir, instr);
             ref = dst;

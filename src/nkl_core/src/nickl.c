@@ -66,11 +66,7 @@ NklSource const *nkl_getSource(NklState nkl, NkAtom file) {
         NkFileReadResult read_res = nk_file_read(alloc, filename);
         if (!read_res.ok) {
             nkl_reportError(
-                NK_ATOM_INVALID,
-                NULL,
-                "failed to read file `" NKS_FMT "`: %s",
-                NKS_ARG(filename),
-                nk_getLastErrorString());
+                0, NULL, "failed to read file `" NKS_FMT "`: %s", NKS_ARG(filename), nk_getLastErrorString());
         } else {
             src->text = read_res.bytes;
 

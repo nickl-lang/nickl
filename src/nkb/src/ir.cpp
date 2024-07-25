@@ -663,11 +663,11 @@ void nkir_inspectData(NkIrProg ir, NkStream out) {
             auto const &decl = ir->data.data[i];
             if (!isInlineDecl(decl)) {
                 nk_stream_printf(out, "\n%s ", decl.read_only ? "const" : "data");
-                if (decl.name != NK_ATOM_INVALID) {
+                if (decl.name) {
                     auto const decl_name = nk_atom2s(decl.name);
                     nk_stream_printf(out, NKS_FMT, NKS_ARG(decl_name));
                 } else {
-                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", i);
+                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "_const" : "_data", i);
                 }
                 nk_stream_printf(out, ": ");
                 nkirt_inspect(decl.type, out);
@@ -696,11 +696,11 @@ void inspectProcSignature(
             nk_stream_printf(out, ", ");
         }
         if (print_arg_names) {
-            if (i < arg_names.size && arg_names.data[i] != NK_ATOM_INVALID) {
+            if (i < arg_names.size && arg_names.data[i]) {
                 auto const name = nk_atom2s(arg_names.data[i]);
                 nk_stream_printf(out, NKS_FMT ": ", NKS_ARG(name));
             } else {
-                nk_stream_printf(out, "arg%" PRIu64 ": ", i);
+                nk_stream_printf(out, "_arg%" PRIu64 ": ", i);
             }
         }
         nkirt_inspect(proc_info.args_t.data[i], out);
@@ -722,7 +722,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
     if (ir->extern_data.size) {
         for (auto const &data : nk_iterate(ir->extern_data)) {
             nk_stream_printf(out, "\nextern");
-            if (data.lib != NK_ATOM_INVALID) {
+            if (data.lib) {
                 nk_stream_printf(out, " \"%s\"", nk_atom2cs(data.lib));
             }
             nk_stream_printf(out, " data %s: ", nk_atom2cs(data.name));
@@ -734,7 +734,7 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
     if (ir->extern_procs.size) {
         for (auto const &proc : nk_iterate(ir->extern_procs)) {
             nk_stream_printf(out, "\nextern");
-            if (proc.lib != NK_ATOM_INVALID) {
+            if (proc.lib) {
                 nk_stream_printf(out, " \"%s\"", nk_atom2cs(proc.lib));
             }
             nk_stream_printf(out, " proc %s", nk_atom2cs(proc.name));
@@ -747,22 +747,24 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
 void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     auto const &proc = ir->procs.data[_proc.idx];
 
-    nk_stream_printf(
-        out,
-        "\nproc%s %s",
-        (proc.proc_t->as.proc.info.call_conv == NkCallConv_Cdecl ? " cdecl" : ""),
-        nk_atom2cs(proc.name));
+    nk_stream_printf(out, "\nproc%s ", (proc.proc_t->as.proc.info.call_conv == NkCallConv_Cdecl ? " cdecl" : ""));
+    if (proc.name) {
+        auto const decl_name = nk_atom2s(proc.name);
+        nk_stream_printf(out, NKS_FMT, NKS_ARG(decl_name));
+    } else {
+        nk_stream_printf(out, "_proc%" PRIu64, _proc.idx);
+    }
     inspectProcSignature(proc.proc_t->as.proc.info, proc.arg_names, out);
 
     nk_stream_printf(out, " {\n\n");
 
     if (proc.locals.size) {
         for (usize i = 0; i < proc.locals.size; i++) {
-            if (proc.locals.data[i].name != NK_ATOM_INVALID) {
+            if (proc.locals.data[i].name) {
                 auto const local_name = nk_atom2s(proc.locals.data[i].name);
                 nk_stream_printf(out, NKS_FMT ": ", NKS_ARG(local_name));
             } else {
-                nk_stream_printf(out, "var%" PRIu64 ": ", i);
+                nk_stream_printf(out, "_var%" PRIu64 ": ", i);
             }
             nkirt_inspect(proc.locals.data[i].type, out);
             nk_stream_printf(out, "\n");
@@ -811,7 +813,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                         break;
                     }
                     case NkIrArg_Label:
-                        if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name != NK_ATOM_INVALID) {
+                        if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name) {
                             auto const name = nk_atom2s(ir->blocks.data[arg.id].name);
                             nk_stream_printf(out, NKS_FMT "#%zu", NKS_ARG(name), arg.id);
                         } else {
@@ -855,16 +857,16 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
     switch (ref.kind) {
         case NkIrRef_Frame: {
             auto const &decl = proc.locals.data[ref.index];
-            if (decl.name != NK_ATOM_INVALID) {
+            if (decl.name) {
                 auto const local_name = nk_atom2s(decl.name);
                 nk_stream_printf(out, NKS_FMT, NKS_ARG(local_name));
             } else {
-                nk_stream_printf(out, "var%" PRIu64, ref.index);
+                nk_stream_printf(out, "_var%" PRIu64, ref.index);
             }
             break;
         }
         case NkIrRef_Arg: {
-            if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index] != NK_ATOM_INVALID) {
+            if (ref.index < proc.arg_names.size && proc.arg_names.data[ref.index]) {
                 auto const name = nk_atom2s(proc.arg_names.data[ref.index]);
                 nk_stream_printf(out, NKS_FMT, NKS_ARG(name));
             } else {
@@ -881,11 +883,11 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
                 void *data = nkir_dataRefDeref(ir, ref);
                 nkirv_inspect(data, ref.type, out);
             } else {
-                if (decl.name != NK_ATOM_INVALID) {
+                if (decl.name) {
                     auto const decl_name = nk_atom2s(decl.name);
                     nk_stream_printf(out, NKS_FMT, NKS_ARG(decl_name));
                 } else {
-                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "const" : "data", ref.index);
+                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "_const" : "_data", ref.index);
                 }
             }
             break;

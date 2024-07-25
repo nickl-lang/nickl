@@ -118,7 +118,7 @@ protected:
                     .name = nk_cs2atom("foo"),
                     .proc_t = &m_proc_t,
                     .arg_names{},
-                    .file = NK_ATOM_INVALID,
+                    .file = 0,
                     .line = 0,
                     .visibility = NkIrVisibility_Default,
                 });
@@ -154,7 +154,7 @@ protected:
                     auto const endif_l = nkir_createLabel(m_ir, nk_cs2atom("@endif"));
                     nkir_emit(m_ir, nkir_make_jmpnz(m_ir, do_stuff_res_ref, endif_l));
                     // return 42;
-                    auto const forty_two = nkir_makeRodata(m_ir, NK_ATOM_INVALID, &m_i64_t, NkIrVisibility_Local);
+                    auto const forty_two = nkir_makeRodata(m_ir, 0, &m_i64_t, NkIrVisibility_Local);
                     *(i64 *)nkir_getDataPtr(m_ir, forty_two) = 42;
                     nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, forty_two)));
                     nkir_emitArrayCopy(m_ir, {NK_SLICE_INIT(defer_instrs)}, &m_tmp_arena);
@@ -168,7 +168,7 @@ protected:
                 nkir_emitArray(m_ir, {NK_SLICE_INIT(defer_instrs)});
             }
             // return 9;
-            auto const nine = nkir_makeRodata(m_ir, NK_ATOM_INVALID, &m_i64_t, NkIrVisibility_Local);
+            auto const nine = nkir_makeRodata(m_ir, 0, &m_i64_t, NkIrVisibility_Local);
             *(i64 *)nkir_getDataPtr(m_ir, nine) = 9;
             nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, nine)));
             nkir_emit(m_ir, nkir_make_ret(m_ir));
@@ -177,8 +177,7 @@ protected:
         }
 
 #ifdef ENABLE_LOGGING
-        NkStringBuilder sb{};
-        sb.alloc = nk_arena_getAllocator(&m_tmp_arena);
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(&m_tmp_arena))};
         nkir_inspectProgram(m_ir, nksb_getStream(&sb));
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
 #endif // ENABLE_LOGGING

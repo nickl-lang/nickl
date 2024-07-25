@@ -13,6 +13,14 @@
 
 #define ENV_VAR "NK_LOG_LEVEL"
 
+_Static_assert(NkLogLevel_None == 0, "Log level enum changed");
+_Static_assert(NkLogLevel_Fatal == 1, "Log level enum changed");
+_Static_assert(NkLogLevel_Error == 2, "Log level enum changed");
+_Static_assert(NkLogLevel_Warning == 3, "Log level enum changed");
+_Static_assert(NkLogLevel_Info == 4, "Log level enum changed");
+_Static_assert(NkLogLevel_Debug == 5, "Log level enum changed");
+_Static_assert(NkLogLevel_Trace == 6, "Log level enum changed");
+
 static char const *c_color_map[] = {
     NULL,                  // None
     NK_TERM_COLOR_RED,     // Fatal
@@ -24,16 +32,6 @@ static char const *c_color_map[] = {
 };
 
 static char const *c_log_level_map[] = {
-    NULL,
-    "fatal",
-    "error",
-    "warning",
-    "info",
-    "debug",
-    "trace",
-};
-
-static char const *c_env_log_level_map[] = {
     "none",
     "fatal",
     "error",
@@ -57,7 +55,7 @@ static struct LoggerState s_logger;
 static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
     usize i = 0;
     for (; i <= NkLogLevel_Trace; i++) {
-        if (strcmp(env_log_level, c_env_log_level_map[i]) == 0) {
+        if (strcmp(env_log_level, c_log_level_map[i]) == 0) {
             return (NkLogLevel)i;
         }
     }

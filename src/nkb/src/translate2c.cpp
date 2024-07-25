@@ -80,7 +80,7 @@ struct WriterCtx {
 #define GLOBAL_CLASS "global"
 
 void writeName(NkAtom name, usize index, char const *obj_class, NkStringBuilder *src) {
-    if (name != NK_ATOM_INVALID) {
+    if (name) {
         auto const str = nk_atom2s(name);
         nksb_printf(src, NKS_FMT, NKS_ARG(str));
     } else {
@@ -273,7 +273,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                             ctx,
                             NKIR_INVALID_IDX,
                             {
-                                .name = NK_ATOM_INVALID,
+                                .name = 0,
                                 .data = (u8 *)decl.data + offset,
                                 .type = elem.type,
                                 .visibility = NkIrVisibility_Local,
@@ -407,7 +407,7 @@ void writeProcSignature(
         writeType(ctx, args_t.data[i], src);
         if (arg_names.size) {
             nksb_printf(src, " ");
-            writeName(i < arg_names.size ? arg_names.data[i] : (NkAtom)NK_ATOM_INVALID, i, ARG_CLASS, src);
+            writeName(i < arg_names.size ? arg_names.data[i] : 0, i, ARG_CLASS, src);
         }
     }
     if (va) {
@@ -427,7 +427,7 @@ void writeCast(WriterCtx &ctx, NkStringBuilder *src, nktype_t type) {
 }
 
 void writeLineDirective(NkAtom file, usize line, NkStringBuilder *src) {
-    if (file != NK_ATOM_INVALID) {
+    if (file) {
         auto const file_name = nk_atom2s(file);
         nksb_printf(src, "#line %zu \"", line);
         nks_escape(nksb_getStream(src), file_name);
@@ -477,7 +477,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     nksb_printf(src, " {\n\n");
 
     for (usize i = 0; auto decl : nk_iterate(proc.locals)) {
-        writeLineDirective(NK_ATOM_INVALID, proc.start_line, src);
+        writeLineDirective(0, proc.start_line, src);
         writeType(ctx, decl.type, src);
         nksb_printf(src, " ");
         writeName(decl.name, i++, LOCAL_CLASS, src);
@@ -489,7 +489,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     }
 
     if (ret_t->size) {
-        writeLineDirective(NK_ATOM_INVALID, proc.start_line, src);
+        writeLineDirective(0, proc.start_line, src);
         writeType(ctx, ret_t, src);
         nksb_printf(src, " _ret={0};\n");
     }
@@ -572,10 +572,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                 break;
             case NkIrRef_Arg:
                 writeName(
-                    ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : (NkAtom)NK_ATOM_INVALID,
-                    ref.index,
-                    ARG_CLASS,
-                    src);
+                    ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : 0, ref.index, ARG_CLASS, src);
                 break;
             case NkIrRef_Ret:
                 nksb_printf(src, "_ret");
@@ -614,7 +611,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             auto const &instr = ctx.ir->instrs.data[ii];
 
             if (instr.line != last_line + 1) {
-                writeLineDirective(NK_ATOM_INVALID, instr.line, src);
+                writeLineDirective(0, instr.line, src);
             }
             last_line = instr.line;
 
@@ -791,7 +788,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         nksb_printf(src, "\n");
     }
 
-    writeLineDirective(NK_ATOM_INVALID, proc.end_line, src);
+    writeLineDirective(0, proc.end_line, src);
     nksb_printf(src, "}\n");
 }
 
