@@ -82,7 +82,7 @@ void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_
                           (s_logger.color_mode == NkLogColorMode_Auto && nk_isatty(STDERR_FILENO));
 
     i64 now = nk_now_ns();
-    f64 ts = (now - s_logger.start_time) / 1e9;
+    f64 ts = (now - s_logger.start_time) * 1e-9;
 
     nk_mutex_lock(s_logger.mtx);
 

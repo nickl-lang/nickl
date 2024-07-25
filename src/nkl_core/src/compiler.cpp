@@ -241,6 +241,154 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
+using NkAtomDynArray = NkDynArray(NkAtom);
+
+static nkltype_t compileProcType(
+    Context &ctx,
+    NklAstNode const &node,
+    NkAtomDynArray *out_param_names = nullptr,
+    NkCallConv call_conv = NkCallConv_Nk) {
+    auto &src = ctx.src;
+    auto m = ctx.m;
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    auto node_it = nodeIterate(src, node);
+
+    auto &params_n = nextNode(node_it);
+    auto &ret_t_n = nextNode(node_it);
+
+    auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+
+    NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
+
+    u8 proc_flags = 0;
+
+    auto params_it = nodeIterate(src, params_n);
+    for (usize i = 0; i < params_n.arity; i++) {
+        auto &param_n = nextNode(params_it);
+        auto param_it = nodeIterate(src, param_n);
+
+        if (param_n.id == n_ellipsis) {
+            proc_flags |= NkProcVariadic;
+            // TODO: Check that ellipsis is the last param
+            break;
+        }
+
+        auto &name_n = nextNode(param_it);
+        auto &type_n = nextNode(param_it);
+
+        NkAtom name{};
+
+        if (name_n.id) {
+            auto name_token = &src.tokens.data[name_n.token_idx];
+            auto name_str = nkl_getTokenStr(name_token, src.text);
+            name = nk_s2atom(name_str);
+        }
+
+        DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
+
+        if (type_v.type->tclass != NklType_Typeref) {
+            // TODO: Improve error message
+            return error(ctx, "type expected"), nkltype_t{};
+        }
+
+        if (!isValueKnown(type_v)) {
+            // TODO: Improve error message
+            return error(ctx, "value is not known"), nkltype_t{};
+        }
+
+        auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
+
+        if (out_param_names) {
+            nkda_append(out_param_names, name);
+        }
+        nkda_append(&param_types, type);
+    }
+
+    DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
+
+    // TODO: Boilerplate in type checking
+    if (ret_t_v.type->tclass != NklType_Typeref) {
+        // TODO: Improve error message
+        return error(ctx, "type expected"), nkltype_t{};
+    }
+
+    if (!isValueKnown(ret_t_v)) {
+        // TODO: Improve error message
+        return error(ctx, "value is not known"), nkltype_t{};
+    }
+
+    auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
+
+    return nkl_get_proc(
+        nkl,
+        c->word_size,
+        NklProcInfo{
+            .param_types{NK_SLICE_INIT(param_types)},
+            .ret_t = ret_t,
+            .call_conv = call_conv,
+            .flags = proc_flags,
+        });
+}
+
+static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &descr, NklAstNode const &body_n) {
+    auto &src = ctx.src;
+    auto m = ctx.m;
+    auto c = m->c;
+
+    auto const proc = nkir_createProc(c->ir);
+    nkir_exportProc(c->ir, m->mod, proc);
+
+    auto const prev_proc = nkir_getActiveProc(c->ir);
+    defer {
+        nkir_setActiveProc(c->ir, prev_proc);
+    };
+
+    nkir_startProc(c->ir, proc, descr);
+
+    nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
+
+    if (descr.name) {
+        pushPublicScope(ctx, proc);
+    } else {
+        pushPrivateScope(ctx, proc);
+    }
+    defer {
+        popScope(ctx);
+    };
+
+    for (usize i = 0; i < descr.arg_names.size; i++) {
+        CHECK(defineParam(ctx, descr.arg_names.data[i], i));
+    }
+
+    CHECK(compileStmt(ctx, body_n));
+
+    // TODO: A very hacky and unstable way to calculate proc finishing line
+    u32 proc_finish_line = 0;
+    {
+        auto const last_node_idx = nkl_ast_nextChild(src.nodes, nodeIdx(src, body_n)) - 1;
+        if (last_node_idx < src.nodes.size) {
+            auto const &last_node = src.nodes.data[last_node_idx];
+            proc_finish_line = src.tokens.data[last_node.token_idx].lin + 1;
+        }
+    }
+
+    nkir_emit(c->ir, nkir_make_ret(c->ir));
+
+    nkir_finishProc(c->ir, proc, proc_finish_line);
+
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+        nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
+        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
+
+    return {proc, ctx.scope_stack};
+}
+
 static Context *importFile(NklCompiler c, NkString filename) {
     auto nkl = c->nkl;
 
@@ -248,69 +396,45 @@ static Context *importFile(NklCompiler c, NkString filename) {
 
     DEFINE(&src, *nkl_getSource(nkl, file));
 
-    auto proc_t = nkl_get_proc(
-        nkl,
-        c->word_size,
-        NklProcInfo{
-            .param_types{},
-            .ret_t = nkl_get_void(nkl),
-            .call_conv = NkCallConv_Nk,
-            .flags{},
-        });
-
     auto &pctx = getContextForFile(c, file).val;
     if (!pctx) {
         auto &ctx =
             *(pctx = new (nk_arena_allocT<Context>(&c->perm_arena)) Context{
-                  .top_level_proc = nkir_createProc(c->ir),
+                  .top_level_proc{},
                   .m = nkl_createModule(c),
                   .src = src,
                   .scope_stack{},
                   .node_stack{},
               });
 
-        auto const prev_proc = nkir_getActiveProc(c->ir);
-        defer {
-            nkir_setActiveProc(c->ir, prev_proc);
-        };
+        auto proc_t = nkl_get_proc(
+            nkl,
+            c->word_size,
+            NklProcInfo{
+                .param_types{},
+                .ret_t = nkl_get_void(nkl),
+                .call_conv = NkCallConv_Nk,
+                .flags{},
+            });
 
-        nkir_startProc(
-            c->ir,
-            ctx.top_level_proc,
+        nk_assert(src.nodes.size && "need at least a null node");
+
+        auto const proc_info = compileProc(
+            ctx,
             NkIrProcDescr{
                 .name = nk_cs2atom("__top_level"), // TODO: Hardcoded toplevel proc name
                 .proc_t = nklt2nkirt(proc_t),
                 .arg_names{},
-                .file = file,
+                .file = src.file,
                 .line = 0,
-                .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
-            });
+                .visibility = NkIrVisibility_Local,
+            },
+            *src.nodes.data);
 
-        nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
+        ctx.top_level_proc = proc_info.id;
 
-        // NOTE: Not popping the scope to leave it accessible for future imports
-        pushPublicScope(ctx, ctx.top_level_proc);
-
-        if (src.nodes.size) {
-            CHECK(compileStmt(ctx, *src.nodes.data));
-        }
-
-        nkir_emit(c->ir, nkir_make_ret(c->ir));
-
-        nkir_finishProc(c->ir, ctx.top_level_proc, 0); // TODO: Ignoring proc's finishing line
-
-#ifdef ENABLE_LOGGING
-        {
-            auto temp_arena = &c->perm_arena;
-            auto temp_frame = nk_arena_grab(temp_arena);
-            defer {
-                nk_arena_popFrame(temp_arena, temp_frame);
-            };
-            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(temp_arena))};
-            nkir_inspectProc(c->ir, ctx.top_level_proc, nksb_getStream(&sb));
-            NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
-        }
-#endif // ENABLE_LOGGING
+        // NOTE: Pushing the top-level scope again to leave it accessible for future imports
+        nk_list_push(ctx.scope_stack, proc_info.opt_scope);
     }
 
     return pctx;
@@ -686,72 +810,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                 return error(ctx, "decl name needed for extern c proc");
             }
 
-            auto &params_n = nextNode(node_it);
-            auto &ret_t_n = nextNode(node_it);
-
-            // TODO: Boilerplate with n_proc
-            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-
-            NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
-
-            u8 proc_flags = 0;
-
-            auto params_it = nodeIterate(src, params_n);
-            for (usize i = 0; i < params_n.arity; i++) {
-                auto &param_n = nextNode(params_it);
-
-                if (param_n.id == n_ellipsis) {
-                    proc_flags |= NkProcVariadic;
-                    // TODO: Check that ellipsis is the last param
-                    break;
-                }
-
-                auto param_it = nodeIterate(src, param_n);
-
-                nextNode(param_it); // name
-                auto &type_n = nextNode(param_it);
-
-                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
-
-                if (type_v.type->tclass != NklType_Typeref) {
-                    // TODO: Improve error message
-                    return error(ctx, "type expected");
-                }
-
-                if (!isValueKnown(type_v)) {
-                    // TODO: Improve error message
-                    return error(ctx, "value is not known");
-                }
-
-                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
-
-                nkda_append(&param_types, type);
-            }
-
-            DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
-
-            // TODO: Boilerplate in type checking
-            if (ret_t_v.type->tclass != NklType_Typeref) {
-                // TODO: Improve error message
-                return error(ctx, "type expected");
-            }
-
-            if (!isValueKnown(ret_t_v)) {
-                // TODO: Improve error message
-                return error(ctx, "value is not known");
-            }
-
-            auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
-
-            auto proc_t = nkl_get_proc(
-                nkl,
-                c->word_size,
-                NklProcInfo{
-                    .param_types = {NK_SLICE_INIT(param_types)},
-                    .ret_t = ret_t,
-                    .call_conv = NkCallConv_Cdecl,
-                    .flags = proc_flags,
-                });
+            auto const proc_t = compileProcType(ctx, node, nullptr, NkCallConv_Cdecl);
 
             // TODO: Using hardcoded libc name
             auto const proc = nkir_makeExternProc(c->ir, nk_cs2atom(LIBC_NAME), decl_name, nklt2nkirt(proc_t));
@@ -849,80 +908,17 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
         case n_proc: {
             auto const decl_name = getConstDeclName(ctx);
 
-            auto &params_n = nextNode(node_it);
-            auto &ret_t_n = nextNode(node_it);
+            nextNode(node_it); // params
+            nextNode(node_it); // ret_t
             auto &body_n = nextNode(node_it);
 
             auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
 
-            NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
-            NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
+            NkAtomDynArray param_names{NKDA_INIT(temp_alloc)};
+            auto const proc_t = compileProcType(ctx, node, &param_names);
 
-            auto params_it = nodeIterate(src, params_n);
-            for (usize i = 0; i < params_n.arity; i++) {
-                auto param_it = nodeIterate(src, nextNode(params_it));
-
-                auto &name_n = nextNode(param_it);
-                auto &type_n = nextNode(param_it);
-
-                auto name_token = &src.tokens.data[name_n.token_idx];
-                auto name_str = nkl_getTokenStr(name_token, src.text);
-                auto name = nk_s2atom(name_str);
-
-                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
-
-                if (type_v.type->tclass != NklType_Typeref) {
-                    // TODO: Improve error message
-                    return error(ctx, "type expected");
-                }
-
-                if (!isValueKnown(type_v)) {
-                    // TODO: Improve error message
-                    return error(ctx, "value is not known");
-                }
-
-                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
-
-                nkda_append(&param_names, name);
-                nkda_append(&param_types, type);
-            }
-
-            DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
-
-            // TODO: Boilerplate in type checking
-            if (ret_t_v.type->tclass != NklType_Typeref) {
-                // TODO: Improve error message
-                return error(ctx, "type expected");
-            }
-
-            if (!isValueKnown(ret_t_v)) {
-                // TODO: Improve error message
-                return error(ctx, "value is not known");
-            }
-
-            auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
-
-            auto proc_t = nkl_get_proc(
-                nkl,
-                c->word_size,
-                NklProcInfo{
-                    .param_types{NK_SLICE_INIT(param_types)},
-                    .ret_t = ret_t,
-                    .call_conv = NkCallConv_Nk,
-                    .flags = {},
-                });
-
-            auto const proc = nkir_createProc(c->ir);
-            nkir_exportProc(c->ir, m->mod, proc);
-
-            auto const prev_proc = nkir_getActiveProc(c->ir);
-            defer {
-                nkir_setActiveProc(c->ir, prev_proc);
-            };
-
-            nkir_startProc(
-                c->ir,
-                proc,
+            auto const proc_info = compileProc(
+                ctx,
                 NkIrProcDescr{
                     .name = decl_name, // TODO: Need to generate names for anonymous procs
                     .proc_t = nklt2nkirt(proc_t),
@@ -930,112 +926,14 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                     .file = ctx.src.file,
                     .line = token.lin,
                     .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
-                });
+                },
+                body_n);
 
-            nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
-
-            if (decl_name) {
-                pushPublicScope(ctx, proc);
-            } else {
-                pushPrivateScope(ctx, proc);
-            }
-            defer {
-                popScope(ctx);
-            };
-
-            // TODO: Come up with a better name
-            Value proc_val{{.proc{.id = proc, .opt_scope = ctx.scope_stack}}, ValueKind_Proc};
-
-            for (usize i = 0; i < params_n.arity; i++) {
-                CHECK(defineParam(ctx, param_names.data[i], i));
-            }
-
-            CHECK(compileStmt(ctx, body_n));
-
-            // TODO: A very hacky and unstable way to calculate proc finishing line
-            u32 proc_finish_line = 0;
-            if (node_it.next_idx - 1 < src.nodes.size) {
-                auto const &last_node = src.nodes.data[node_it.next_idx - 1];
-                proc_finish_line = src.tokens.data[last_node.token_idx].lin + 1;
-            }
-
-            nkir_emit(c->ir, nkir_make_ret(c->ir));
-
-            nkir_finishProc(c->ir, proc, proc_finish_line);
-
-#ifdef ENABLE_LOGGING
-            {
-                NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-                nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
-                NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
-            }
-#endif // ENABLE_LOGGING
-
-            return {{.val{proc_val}}, proc_t, IntermKind_Val};
+            return {{.val{{.proc{proc_info}}, ValueKind_Proc}}, proc_t, IntermKind_Val};
         }
 
         case n_proc_type: {
-            auto &params_n = nextNode(node_it);
-            auto &ret_t_n = nextNode(node_it);
-
-            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-
-            NkDynArray(NkAtom) param_names{NKDA_INIT(temp_alloc)};
-            NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
-
-            auto params_it = nodeIterate(src, params_n);
-            for (usize i = 0; i < params_n.arity; i++) {
-                auto param_it = nodeIterate(src, nextNode(params_it));
-
-                auto &name_n = nextNode(param_it);
-                auto &type_n = nextNode(param_it);
-
-                auto name_token = &src.tokens.data[name_n.token_idx];
-                auto name_str = nkl_getTokenStr(name_token, src.text);
-                auto name = nk_s2atom(name_str);
-
-                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
-
-                if (type_v.type->tclass != NklType_Typeref) {
-                    // TODO: Improve error message
-                    return error(ctx, "type expected");
-                }
-
-                if (!isValueKnown(type_v)) {
-                    // TODO: Improve error message
-                    return error(ctx, "value is not known");
-                }
-
-                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
-
-                nkda_append(&param_names, name);
-                nkda_append(&param_types, type);
-            }
-
-            DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
-
-            // TODO: Boilerplate in type checking
-            if (ret_t_v.type->tclass != NklType_Typeref) {
-                // TODO: Improve error message
-                return error(ctx, "type expected");
-            }
-
-            if (!isValueKnown(ret_t_v)) {
-                // TODO: Improve error message
-                return error(ctx, "value is not known");
-            }
-
-            auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
-
-            auto proc_t = nkl_get_proc(
-                nkl,
-                c->word_size,
-                NklProcInfo{
-                    .param_types{NK_SLICE_INIT(param_types)},
-                    .ret_t = ret_t,
-                    .call_conv = NkCallConv_Nk,
-                    .flags = {},
-                });
+            DEFINE(const proc_t, compileProcType(ctx, node));
 
             auto type_t = nkl_get_typeref(nkl, c->word_size);
 
@@ -1114,16 +1012,8 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                     .flags{},
                 });
 
-            auto const proc = nkir_createProc(c->ir);
-
-            auto const prev_proc = nkir_getActiveProc(c->ir);
-            defer {
-                nkir_setActiveProc(c->ir, prev_proc);
-            };
-
-            nkir_startProc(
-                c->ir,
-                proc,
+            auto const proc_info = compileProc(
+                ctx,
                 NkIrProcDescr{
                     .name = nk_cs2atom("__comptime"), // TODO: Hardcoded comptime proc name
                     .proc_t = nklt2nkirt(proc_t),
@@ -1131,28 +1021,8 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                     .file = ctx.src.file,
                     .line = token.lin,
                     .visibility = NkIrVisibility_Local,
-                });
-
-            nkir_emit(c->ir, nkir_make_label(nkir_createLabel(c->ir, nk_cs2atom("@start"))));
-
-            pushPrivateScope(ctx, proc);
-            defer {
-                popScope(ctx);
-            };
-
-            CHECK(compileStmt(ctx, body_n));
-
-            nkir_emit(c->ir, nkir_make_ret(c->ir));
-
-            nkir_finishProc(c->ir, proc, 0); // TODO: Ignoring proc's finishing line
-
-#ifdef ENABLE_LOGGING
-            {
-                NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-                nkir_inspectProc(c->ir, proc, nksb_getStream(&sb));
-                NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
-            }
-#endif // ENABLE_LOGGING
+                },
+                body_n);
 
             void *rets[] = {nullptr};
             NkIrData rodata{};
@@ -1162,7 +1032,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                 rets[0] = {nkir_getDataPtr(c->ir, rodata)};
             }
 
-            if (!nkir_invoke(c->run_ctx, proc, {}, rets)) {
+            if (!nkir_invoke(c->run_ctx, proc_info.id, {}, rets)) {
                 auto const msg = nkir_getRunErrorString(c->run_ctx);
                 nkl_reportError(ctx.src.file, &token, NKS_FMT, NKS_ARG(msg));
                 return {};
