@@ -196,7 +196,7 @@ TEST_F(types, proc) {
             nkl,
             word_size,
             NklProcInfo{
-                .param_types = {add_params, NK_ARRAY_COUNT(add_params)},
+                .param_types = {add_params, NK_ARRAY_COUNT(add_params), 1},
                 .ret_t = i32_t,
                 .call_conv = NkCallConv_Nk,
                 .flags = 0,
@@ -316,7 +316,7 @@ TEST_F(types, struct) {
     EXPECT_EQ(ivec2_t->ir_type.id, get_ivec2_t()->ir_type.id);
 
     nkltype_t types[] = {i64_t, i64_t};
-    auto tuple_t = nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types)});
+    auto tuple_t = nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types), 1});
 
     ASSERT_EQ(ivec2_t->as.strct.fields.size, 2);
     ASSERT_EQ(ivec2_t->as.strct.fields.data[0].name, nk_cs2atom("x"));
@@ -336,7 +336,7 @@ TEST_F(types, tuple) {
 
     auto get_vec3_t = [&]() {
         nkltype_t types[] = {f64_t, f64_t, f64_t};
-        return nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types)});
+        return nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types), 1});
     };
 
     auto vec3_t = get_vec3_t();

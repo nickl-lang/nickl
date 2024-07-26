@@ -312,7 +312,7 @@ static nkltype_t compileProcType(
         nkl,
         c->word_size,
         NklProcInfo{
-            .param_types{NK_SLICE_INIT(param_types)},
+            .param_types{param_types.data, param_types.size, 1},
             .ret_t = ret_t,
             .call_conv = call_conv,
             .flags = proc_flags,

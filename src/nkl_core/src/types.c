@@ -195,9 +195,9 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
-        PUSH_VAL(&fp, usize, info.param_types.size);
-        for (usize i = 0; i < info.param_types.size; i++) {
-            PUSH_VAL(&fp, u32, info.param_types.data[i]->id);
+        PUSH_VAL(&fp, usize, info.param_types.strided_size);
+        for (usize i = 0; i < info.param_types.strided_size; i++) {
+            PUSH_VAL(&fp, u32, info.param_types.strided_data[i * info.param_types.stride]->id);
         }
         PUSH_VAL(&fp, u32, info.ret_t->id);
         PUSH_VAL(&fp, u8, info.call_conv);
@@ -221,9 +221,13 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
                 .kind = kind,
                 .id = res.id,
             };
-            // TODO Improve ProcInfo copying
-            nk_slice_copy(
-                nk_arena_getAllocator(&nkl->types.type_arena), &backing->ir_type.as.proc.info.args_t, info.param_types);
+            nkltype_t *param_types_copy =
+                nk_alloc(nk_arena_getAllocator(&nkl->types.type_arena), info.param_types.strided_size * sizeof(void *));
+            for (usize i = 0; i < info.param_types.strided_size; i++) {
+                param_types_copy[i] = info.param_types.strided_data[i * info.param_types.stride];
+            }
+            backing->ir_type.as.proc.info.args_t =
+                (NkTypeArray){(nktype_t *)param_types_copy, info.param_types.strided_size};
         } else {
             backing->ir_type = res.type->ir_type;
         }
@@ -403,9 +407,9 @@ nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info) {
         ByteDynArray fp = {NKDA_INIT(nk_arena_getAllocator(&nkl->types.tmp_arena))};
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
-        PUSH_VAL(&fp, usize, info.param_types.size);
-        for (usize i = 0; i < info.param_types.size; i++) {
-            PUSH_VAL(&fp, u32, info.param_types.data[i]->id);
+        PUSH_VAL(&fp, usize, info.param_types.strided_size);
+        for (usize i = 0; i < info.param_types.strided_size; i++) {
+            PUSH_VAL(&fp, u32, info.param_types.strided_data[i * info.param_types.stride]->id);
         }
         PUSH_VAL(&fp, u32, info.ret_t->id);
         PUSH_VAL(&fp, u8, info.call_conv);
@@ -536,8 +540,8 @@ nkltype_t nkl_get_struct_packed(NklState nkl, NklFieldArray fields) {
     return NULL;
 }
 
-nkltype_t nkl_get_tuple(NklState nkl, NklTypeArray types) {
-    return nkl_get_tupleEx(nkl, types.data, types.size, 1);
+nkltype_t nkl_get_tuple(NklState nkl, NklTypeStridedArray types) {
+    return nkl_get_tupleEx(nkl, types.strided_data, types.strided_size, types.stride);
 }
 
 nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usize stride) {
@@ -570,7 +574,7 @@ nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usi
     return res.type;
 }
 
-nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeArray types) {
+nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeStridedArray types) {
     NK_LOG_TRC("%s", __func__);
 
     (void)nkl;
