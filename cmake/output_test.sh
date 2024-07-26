@@ -90,7 +90,7 @@ OUTPUT_STDERRX="$(cat "$STDERR_FILE" | tee /dev/stderr | tr -d '\r'; echo x)"
 OUTPUT_STDERR="${OUTPUT_STDERRX%x}"
 
 if [ "$RETCODE" -ne "${EXPECTED_RETCODE:-0}" ]; then
-  echo "TEST FAILED:
+  printf "%s" "TEST FAILED:
 Expected return code: ${EXPECTED_RETCODE:-0}
 Actual   return code: $RETCODE"
   exit 1
@@ -100,7 +100,7 @@ case "$OUTPUT_STDERR" in
   *"$ERROR_PATTERN"*)
     ;;
   *)
-    echo "TEST FAILED:
+    printf "%s" "TEST FAILED:
   Error pattern:
       \"$ERROR_PATTERN\"
   Actual  error:
@@ -110,7 +110,7 @@ case "$OUTPUT_STDERR" in
 esac
 
 if [ "$EXPECTED_OUTPUT" != "$OUTPUT_STDOUT" ]; then
-  echo "TEST FAILED:
+  printf "%s" "TEST FAILED:
 Expected output:
     \"$EXPECTED_OUTPUT\"
 Actual   output:

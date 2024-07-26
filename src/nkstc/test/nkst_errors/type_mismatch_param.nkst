@@ -1,0 +1,9 @@
+(proc [(param () 42)] () [])
+
+/* @error
+error: comptime const of type 'type_t' expected
+@enderror */
+
+/* @retcode
+1
+@endretcode */
