@@ -1,6 +1,6 @@
-(const printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(const printf () (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
 
-(const main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (var x () 42)
     (call printf ["%zi^2=%zi\n" x (call apply [x (proc [(param (x) (i64))] (i64) [
         (return (mul x x))
@@ -8,7 +8,7 @@
     (return 0)
 ]))
 
-(const apply (proc [(param x (i64)) (param f (proc_type [(param () (i64))] (i64)))] (i64) [
+(const apply () (proc [(param x (i64)) (param f (proc_type [(param () (i64))] (i64)))] (i64) [
     (return (call f [x]))
 ]))
 

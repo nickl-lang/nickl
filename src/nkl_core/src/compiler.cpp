@@ -317,9 +317,38 @@ static Interm resolveComptime(Decl &decl) {
     decl.as = {};
     decl.kind = DeclKind_Incomplete;
 
+    auto &src = ctx.src;
+    auto m = ctx.m;
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    auto node_it = nodeIterate(src, node);
+
+    nextNode(node_it); // name
+    auto &type_n = nextNode(node_it);
+    auto &val_n = nextNode(node_it);
+
+    if (!type_n.id && !val_n.id) {
+        // TODO: Improve error message
+        return error(ctx, "invalid ast");
+    }
+
+    nkltype_t type{};
+
+    if (type_n.id) {
+        auto const type_t = nkl_get_typeref(nkl, c->word_size);
+        ASSIGN(type, compileConst<nkltype_t>(ctx, type_n, type_t));
+    }
+
     NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
-    DEFINE(val, compile(ctx, node)); // TODO: Add possibility to specify type for const
+    // TODO: Coalesce compileExpectType and compile ?
+    Interm val{};
+    if (type_n.id) {
+        ASSIGN(val, compileExpectType(ctx, val_n, type));
+    } else {
+        ASSIGN(val, compile(ctx, val_n, type));
+    }
 
     if (decl.kind != DeclKind_Complete) {
         if (!isValueKnown(val)) {
@@ -857,11 +886,10 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
 
         case n_const: {
             auto &name_n = nextNode(node_it);
-            auto &value_n = nextNode(node_it);
 
             auto name = nk_s2atom(nkl_getTokenStr(&src.tokens.data[name_n.token_idx], src.text));
 
-            CHECK(defineComptimeUnresolved(ctx, name, value_n));
+            CHECK(defineComptimeUnresolved(ctx, name, node));
 
             return {};
         }

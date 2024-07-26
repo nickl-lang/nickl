@@ -1,11 +1,11 @@
-(const printf (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(const printf () (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
 
-(const main (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (call printf ["%zi^%zi=%zi\n" BASE EXP (call fast_exp [BASE EXP])])
     (return 0)
 ]))
 
-(const fast_exp (proc [(param _x (i64)) (param _n (i64))] (i64) [
+(const fast_exp () (proc [(param _x (i64)) (param _n (i64))] (i64) [
     (var x () _x)
     (var n () _n)
 
@@ -22,8 +22,8 @@
     (return a)
 ]))
 
-(const BASE 2)
-(const EXP 24)
+(const BASE () 2)
+(const EXP () 24)
 
 (call main [0 0])
 
