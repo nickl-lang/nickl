@@ -231,7 +231,27 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type =
 
     auto const pop_node = pushNode(ctx, node, res_type);
 
-    return compileImpl(ctx, node, res_type);
+    DEFINE(val, compileImpl(ctx, node));
+
+    // if (res_type && val.type != res_type) {
+    //     return error(
+    //         ctx,
+    //         "value of type '%s' expected, but got '%s'",
+    //         [&]() {
+    //             NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+    //             nkl_type_inspect(res_type, nksb_getStream(&sb));
+    //             nksb_appendNull(&sb);
+    //             return sb.data;
+    //         }(),
+    //         [&]() {
+    //             NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+    //             nkl_type_inspect(val.type, nksb_getStream(&sb));
+    //             nksb_appendNull(&sb);
+    //             return sb.data;
+    //         }());
+    // }
+
+    return val;
 }
 
 static Interm compileExpectClass(Context &ctx, NklAstNode const &node, NklTypeClass tclass) {
@@ -250,28 +270,6 @@ static Interm compileExpectClass(Context &ctx, NklAstNode const &node, NklTypeCl
     if (nklt_tclass(val.type) != tclass) {
         // TODO: Improve error message
         return error(ctx, "%s value expected", typeClassName(tclass));
-    }
-
-    return val;
-}
-
-static Interm compileExpectType(Context &ctx, NklAstNode const &node, nkltype_t res_type) {
-    NK_PROF_FUNC();
-    NK_LOG_TRC("%s", __func__);
-
-    auto const temp_frame = nk_arena_grab(ctx.scope_stack->temp_arena);
-    defer {
-        nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
-    };
-
-    auto const pop_node = pushNode(ctx, node, nullptr);
-
-    DEFINE(val, compileImpl(ctx, node));
-
-    if (val.type != res_type) {
-        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-        nkl_type_inspect(res_type, nksb_getStream(&sb));
-        return error(ctx, "value of type '" NKS_FMT "' expected", NKS_ARG(sb));
     }
 
     return val;
@@ -342,13 +340,7 @@ static Interm resolveComptime(Decl &decl) {
 
     NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
-    // TODO: Coalesce compileExpectType and compile ?
-    Interm val{};
-    if (type_n.id) {
-        ASSIGN(val, compileExpectType(ctx, val_n, type));
-    } else {
-        ASSIGN(val, compile(ctx, val_n, type));
-    }
+    DEFINE(val, compile(ctx, val_n, type));
 
     if (decl.kind != DeclKind_Complete) {
         if (!isValueKnown(val)) {
@@ -1242,7 +1234,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
                 else_l = endif_l;
             }
 
-            DEFINE(cond, compileExpectType(ctx, cond_n, nkl_get_bool(nkl)));
+            DEFINE(cond, compile(ctx, cond_n, nkl_get_bool(nkl)));
 
             nkir_emit(c->ir, nkir_make_jmpz(c->ir, asRef(ctx, cond), else_l));
 
@@ -1279,7 +1271,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
 
             nkir_emit(c->ir, nkir_make_label(loop_l));
 
-            DEFINE(cond, compileExpectType(ctx, cond_n, nkl_get_bool(nkl)));
+            DEFINE(cond, compile(ctx, cond_n, nkl_get_bool(nkl)));
 
             nkir_emit(c->ir, nkir_make_jmpz(c->ir, asRef(ctx, cond), endloop_l));
 
