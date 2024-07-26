@@ -230,8 +230,6 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
-using NkAtomDynArray = NkDynArray(NkAtom);
-
 struct CompileParamsConfig {
     bool *allow_variadic_marker;
 };
@@ -369,8 +367,8 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
         popScope(ctx);
     };
 
-    for (usize i = 0; i < descr.arg_names.strided_size; i++) {
-        CHECK(defineParam(ctx, descr.arg_names.strided_data[i * descr.arg_names.stride], i));
+    for (usize i = 0; i < descr.arg_names.size; i++) {
+        CHECK(defineParam(ctx, descr.arg_names.data[i * descr.arg_names.stride], i));
     }
 
     CHECK(compileStmt(ctx, body_n));
@@ -435,7 +433,7 @@ static Context *importFile(NklCompiler c, NkString filename) {
             compileProc(
                 ctx,
                 NkIrProcDescr{
-                    .name = 0, // TODO: Hardcoded toplevel proc name
+                    .name = 0, // TODO: Need to generate names for top level procs
                     .proc_t = nklt2nkirt(proc_t),
                     .arg_names{},
                     .file = src.file,

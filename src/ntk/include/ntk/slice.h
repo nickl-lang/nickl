@@ -12,11 +12,11 @@
         usize size; \
     }
 
-#define NkStridedSlice(T)   \
-    struct {                \
-        T *strided_data;    \
-        usize strided_size; \
-        usize stride;       \
+#define NkStridedSlice(T) \
+    struct {              \
+        T *data;          \
+        usize size;       \
+        usize stride;     \
     }
 
 #define NK_SLICE_INIT(slice) .data = (slice).data, .size = (slice).size
