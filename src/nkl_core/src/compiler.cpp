@@ -611,6 +611,26 @@ static NkAtom getConstDeclName(Context &ctx) {
     }
 }
 
+static Interm createString(Context &ctx, NkString text) {
+    auto m = ctx.m;
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    auto i8_t = nkl_get_numeric(nkl, Int8);
+    auto ar_t = nkl_get_array(nkl, i8_t, text.size + 1);
+    auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
+
+    auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(ar_t), NkIrVisibility_Local);
+    auto str_ptr = nkir_getDataPtr(c->ir, rodata);
+
+    // TODO: Manual copy and null termination
+    memcpy(str_ptr, text.data, text.size);
+    ((char *)str_ptr)[text.size] = '\0';
+
+    return {
+        {.ref{nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))}}, str_t, IntermKind_Ref};
+}
+
 static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -787,31 +807,6 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             }
 
             break;
-        }
-
-        case n_escaped_string: {
-            auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
-            NkString const text{token_str.data + 1, token_str.size - 2};
-
-            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-            nks_unescape(nksb_getStream(&sb), text);
-            NkString const unescaped_text{NKS_INIT(sb)};
-
-            auto i8_t = nkl_get_numeric(nkl, Int8);
-            auto ar_t = nkl_get_array(nkl, i8_t, unescaped_text.size + 1);
-            auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
-
-            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(ar_t), NkIrVisibility_Local);
-            auto str_ptr = nkir_getDataPtr(c->ir, rodata);
-
-            // TODO: Manual copy and null termination
-            memcpy(str_ptr, unescaped_text.data, unescaped_text.size);
-            ((char *)str_ptr)[unescaped_text.size] = '\0';
-
-            return {
-                {.ref = nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))},
-                str_t,
-                IntermKind_Ref};
         }
 
         case n_extern_c_proc: {
@@ -1070,26 +1065,22 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             return {};
         }
 
-            // TODO: Boilerplate code between n_escaped_string and n_string
         case n_string: {
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
             NkString const text{token_str.data + 1, token_str.size - 2};
 
-            auto i8_t = nkl_get_numeric(nkl, Int8);
-            auto ar_t = nkl_get_array(nkl, i8_t, text.size + 1);
-            auto str_t = nkl_get_ptr(nkl, c->word_size, ar_t, true);
+            return createString(ctx, text);
+        }
 
-            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(ar_t), NkIrVisibility_Local);
-            auto str_ptr = nkir_getDataPtr(c->ir, rodata);
+        case n_escaped_string: {
+            auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
+            NkString const text{token_str.data + 1, token_str.size - 2};
 
-            // TODO: Manual copy and null termination
-            memcpy(str_ptr, text.data, text.size);
-            ((char *)str_ptr)[text.size] = '\0';
+            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+            nks_unescape(nksb_getStream(&sb), text);
+            NkString const unsescaped_text{NKS_INIT(sb)};
 
-            return {
-                {.ref{nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))}},
-                str_t,
-                IntermKind_Ref};
+            return createString(ctx, unsescaped_text);
         }
 
         case n_struct: {
