@@ -24,7 +24,7 @@
     (return 0)
 ]))
 
-(call main [0 0])
+(call main [0 (null)])
 
 /* @output
 {1 2} dot {2 -1} = 0

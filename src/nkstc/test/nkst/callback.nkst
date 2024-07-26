@@ -12,7 +12,7 @@
     (return (call f [x]))
 ]))
 
-(call main [0 0])
+(call main [0 (null)])
 
 /* @output
 42^2=1764

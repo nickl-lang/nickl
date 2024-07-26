@@ -66,10 +66,13 @@ typedef enum {
     MACRO(i64, Int64 __VA_OPT__(, ) __VA_ARGS__)  \
     MACRO(u64, Uint64 __VA_OPT__(, ) __VA_ARGS__)
 
+#define NKIR_NUMERIC_ITERATE_FLOAT(MACRO, ...)     \
+    MACRO(f32, Float32 __VA_OPT__(, ) __VA_ARGS__) \
+    MACRO(f64, Float64 __VA_OPT__(, ) __VA_ARGS__)
+
 #define NKIR_NUMERIC_ITERATE(MACRO, ...)                       \
     NKIR_NUMERIC_ITERATE_INT(MACRO __VA_OPT__(, ) __VA_ARGS__) \
-    MACRO(f32, Float32 __VA_OPT__(, ) __VA_ARGS__)             \
-    MACRO(f64, Float64 __VA_OPT__(, ) __VA_ARGS__)
+    NKIR_NUMERIC_ITERATE_FLOAT(MACRO __VA_OPT__(, ) __VA_ARGS__)
 
 typedef struct {
     nktype_t type;

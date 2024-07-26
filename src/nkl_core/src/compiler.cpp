@@ -38,6 +38,30 @@ struct Void {};
 #define ASSIGN(SLOT, VAL) CHECK(SLOT = (VAL))
 #define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 
+#ifndef SCNi8
+#define SCNi8 "hhi"
+#endif // SCNi8
+
+#ifndef SCNu8
+#define SCNu8 "hhu"
+#endif // SCNu8
+
+#ifndef SCNx8
+#define SCNx8 "hhx"
+#endif // SCNx8
+
+#define SCNf32 "f"
+#define SCNf64 "lf"
+
+#define SCNXi8 SCNx8
+#define SCNXu8 SCNx8
+#define SCNXi16 SCNx16
+#define SCNXu16 SCNx16
+#define SCNXi32 SCNx32
+#define SCNXu32 SCNx32
+#define SCNXi64 SCNx64
+#define SCNXu64 SCNx64
+
 } // namespace
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
@@ -217,10 +241,10 @@ static char const *typeClassName(NklTypeClass tclass) {
     return "";
 }
 
-static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_type = nullptr);
+static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t = nullptr);
 static Void compileStmt(Context &ctx, NklAstNode const &node);
 
-static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type = nullptr) {
+static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_t = nullptr) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -229,27 +253,37 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type =
         nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
     };
 
-    auto const pop_node = pushNode(ctx, node, res_type);
+    auto const pop_node = pushNode(ctx, node, res_t);
 
-    DEFINE(val, compileImpl(ctx, node));
+    DEFINE(val, compileImpl(ctx, node, res_t));
 
-    // if (res_type && val.type != res_type) {
-    //     return error(
-    //         ctx,
-    //         "value of type '%s' expected, but got '%s'",
-    //         [&]() {
-    //             NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-    //             nkl_type_inspect(res_type, nksb_getStream(&sb));
-    //             nksb_appendNull(&sb);
-    //             return sb.data;
-    //         }(),
-    //         [&]() {
-    //             NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-    //             nkl_type_inspect(val.type, nksb_getStream(&sb));
-    //             nksb_appendNull(&sb);
-    //             return sb.data;
-    //         }());
-    // }
+    if (res_t) {
+        bool const can_cast_array_ptr_to_val_ptr =
+            (nklt_tclass(res_t) == NklType_Pointer && nklt_tclass(val.type) == NklType_Pointer &&
+             nklt_tclass(val.type->as.ptr.target_type) == NklType_Array &&
+             nklt_typeid(nkirt2nklt(val.type->as.ptr.target_type->ir_type.as.aggr.elems.data->type)) ==
+                 nklt_typeid(res_t->as.ptr.target_type));
+
+        if (val.type != res_t && !can_cast_array_ptr_to_val_ptr) {
+            return error(
+                ctx,
+                "value of type '%s' expected, but got '%s'",
+                [&]() {
+                    NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+                    nkl_type_inspect(res_t, nksb_getStream(&sb));
+                    nksb_appendNull(&sb);
+                    return sb.data;
+                }(),
+                [&]() {
+                    NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+                    nkl_type_inspect(val.type, nksb_getStream(&sb));
+                    nksb_appendNull(&sb);
+                    return sb.data;
+                }());
+        }
+
+        val.type = res_t;
+    }
 
     return val;
 }
@@ -276,7 +310,7 @@ static Interm compileExpectClass(Context &ctx, NklAstNode const &node, NklTypeCl
 }
 
 template <class T>
-static T compileConst(Context &ctx, NklAstNode const &node, nkltype_t res_type) {
+static T compileConst(Context &ctx, NklAstNode const &node, nkltype_t res_t) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -285,13 +319,13 @@ static T compileConst(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
         nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
     };
 
-    auto const pop_node = pushNode(ctx, node, res_type);
+    auto const pop_node = pushNode(ctx, node, res_t);
 
-    DEFINE(val, compileImpl(ctx, node, res_type));
+    DEFINE(val, compileImpl(ctx, node, res_t));
 
-    if (val.type != res_type) {
+    if (val.type != res_t) {
         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-        nkl_type_inspect(res_type, nksb_getStream(&sb));
+        nkl_type_inspect(res_t, nksb_getStream(&sb));
         return error<T>(ctx, "comptime const of type '" NKS_FMT "' expected", NKS_ARG(sb));
     }
 
@@ -733,7 +767,7 @@ static NkAtom getConstDeclName(Context &ctx) {
     }
 }
 
-static Interm createString(Context &ctx, NkString text) {
+static Interm makeString(Context &ctx, NkString text) {
     auto m = ctx.m;
     auto c = m->c;
     auto nkl = c->nkl;
@@ -753,7 +787,29 @@ static Interm createString(Context &ctx, NkString text) {
         {.ref{nkir_makeAddressRef(c->ir, nkir_makeDataRef(c->ir, rodata), nklt2nkirt(str_t))}}, str_t, IntermKind_Ref};
 }
 
-static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_type) {
+template <class T>
+static Interm makeNumeric(Context &ctx, nkltype_t num_t, char const *str, char const *fmt) {
+    auto m = ctx.m;
+    auto c = m->c;
+
+    auto const rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(num_t), NkIrVisibility_Local);
+    // TODO: Replace sscanf in compiler
+    int res = sscanf(str, fmt, (T *)nkir_getDataPtr(c->ir, rodata));
+    nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
+    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, num_t, IntermKind_Val};
+}
+
+template <class T>
+static Interm makeValue(Context &ctx, nkltype_t type, T value) {
+    auto m = ctx.m;
+    auto c = m->c;
+
+    auto const rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type), NkIrVisibility_Local);
+    *(T *)nkir_getDataPtr(c->ir, rodata) = value;
+    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type, IntermKind_Val};
+}
+
+static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t) {
     auto &src = ctx.src;
     auto m = ctx.m;
     auto c = m->c;
@@ -771,11 +827,13 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
 
     auto node_it = nodeIterate(src, node);
 
+    auto const temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+
     switch (node.id) {
         // TODO: Typecheck arithmetic
 #define COMPILE_NUM(NAME, IR_NAME)                                                              \
     case NK_CAT(n_, NAME): {                                                                    \
-        DEFINE(lhs, compile(ctx, nextNode(node_it), res_type));                                 \
+        DEFINE(lhs, compile(ctx, nextNode(node_it), res_t));                                    \
         DEFINE(rhs, compile(ctx, nextNode(node_it), lhs.type));                                 \
         return {                                                                                \
             {.instr{NK_CAT(nkir_make_, IR_NAME)(c->ir, {}, asRef(ctx, lhs), asRef(ctx, rhs))}}, \
@@ -818,19 +876,19 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
 
 #undef COMPILE_CMP
 
-#define COMPILE_TYPE(NAME, EXPR)                                                               \
-    case NK_CAT(n_, NAME): {                                                                   \
-        auto const type_t = nkl_get_typeref(nkl, c->word_size);                                \
-        auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);     \
-        *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = EXPR;                                   \
-        return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val}; \
+#define COMPILE_TYPE(NAME, EXPR)                                                           \
+    case NK_CAT(n_, NAME): {                                                               \
+        auto const type_t = nkl_get_typeref(nkl, c->word_size);                            \
+        auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local); \
+        *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = EXPR;                               \
+        return makeValue(ctx, type_t, EXPR);                                               \
     }
 
         COMPILE_TYPE(void, (nkl_get_void(nkl)))
 
-#define COMPILE_NUM_TYPE(NAME, VALUE_TYPE) COMPILE_TYPE(NAME, (nkl_get_numeric(nkl, VALUE_TYPE)))
-        NKIR_NUMERIC_ITERATE(COMPILE_NUM_TYPE)
-#undef COMPILE_NUM_TYPE
+#define X(NAME, VALUE_TYPE) COMPILE_TYPE(NAME, (nkl_get_numeric(nkl, VALUE_TYPE)))
+        NKIR_NUMERIC_ITERATE(X)
+#undef X
 
 #undef COMPILE_TYPE
 
@@ -850,10 +908,9 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
 
             DEFINE(lhs, compileExpectClass(ctx, lhs_n, NklType_Procedure));
 
-            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-            NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
-
             auto const param_types = lhs.type->ir_type.as.proc.info.args_t;
+
+            NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
 
             auto args_it = nodeIterate(src, args_n);
             for (usize i = 0; i < args_n.arity; i++) {
@@ -972,30 +1029,55 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
             DEFINE(&imported_ctx, *importFile(c, import_path));
 
             return {
-                {.val{
-                    {.proc{.id = imported_ctx.top_level_proc, .opt_scope = imported_ctx.scope_stack}}, ValueKind_Proc}},
+                {.val{{.proc{imported_ctx.top_level_proc, imported_ctx.scope_stack}}, ValueKind_Proc}},
                 nkirt2nklt(nkir_getProcType(c->ir, imported_ctx.top_level_proc)),
                 IntermKind_Val};
         }
 
         case n_int: {
+            auto const value_type =
+                (res_t && nklt_tclass(res_t) == NklType_Numeric) ? res_t->ir_type.as.num.value_type : Int64;
+            auto const num_t = nkl_get_numeric(nkl, value_type);
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
-            auto const i64_t = nkl_get_numeric(nkl, Int64);
-            auto const rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(i64_t), NkIrVisibility_Local);
-            // TODO: Replace sscanf in compiler
-            int res = sscanf(token_str.data, "%" SCNi64, (i64 *)nkir_getDataPtr(c->ir, rodata));
-            nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, i64_t, IntermKind_Val};
+            switch (value_type) {
+#define X(TYPE, VALUE_TYPE) \
+    case VALUE_TYPE:        \
+        return makeNumeric<TYPE>(ctx, num_t, token_str.data, "%" NK_CAT(SCN, TYPE));
+                NKIR_NUMERIC_ITERATE(X)
+#undef X
+            }
+            nk_assert(!"unreachable");
+            return {};
         }
 
         case n_float: {
+            auto const value_type =
+                (res_t && nklt_tclass(res_t) == NklType_Numeric) ? res_t->ir_type.as.num.value_type : Float64;
+            auto const num_t = nkl_get_numeric(nkl, value_type);
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
-            auto const f64_t = nkl_get_numeric(nkl, Float64);
-            auto const rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(f64_t), NkIrVisibility_Local);
-            // TODO: Replace sscanf in compiler
-            int res = sscanf(token_str.data, "%lf", (f64 *)nkir_getDataPtr(c->ir, rodata));
-            nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, f64_t, IntermKind_Val};
+            switch (value_type) {
+#define X(TYPE, VALUE_TYPE) \
+    case VALUE_TYPE:        \
+        return makeNumeric<TYPE>(ctx, num_t, token_str.data, "%" NK_CAT(SCN, TYPE));
+                NKIR_NUMERIC_ITERATE_FLOAT(X)
+#undef X
+                default:
+                    nk_assert(!"unreachable");
+                    return {};
+            }
+        }
+
+        case n_false: {
+            return makeValue(ctx, nkl_get_bool(nkl), false);
+        }
+
+        case n_true: {
+            return makeValue(ctx, nkl_get_bool(nkl), true);
+        }
+
+        case n_null: {
+            return makeValue<void *>(
+                ctx, (res_t && nklt_tclass(res_t) == NklType_Pointer) ? res_t : nkl_get_void(nkl), nullptr);
         }
 
         case n_list: {
@@ -1048,11 +1130,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
             DEFINE(const proc_t, compileProcType(ctx, node));
 
             auto const type_t = nkl_get_typeref(nkl, c->word_size);
-
-            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = proc_t;
-
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
+            return makeValue(ctx, type_t, proc_t);
         }
 
         case n_ptr: {
@@ -1062,10 +1140,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
 
             DEFINE(target_t, compileConst<nkltype_t>(ctx, target_n, type_t));
 
-            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = nkl_get_ptr(nkl, c->word_size, target_t, false);
-
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
+            return makeValue(ctx, type_t, nkl_get_ptr(nkl, c->word_size, target_t, false));
         }
 
         case n_return: {
@@ -1152,7 +1227,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
             auto const token_str = nkl_getTokenStr(&src.tokens.data[node.token_idx], src.text);
             NkString const text{token_str.data + 1, token_str.size - 2};
 
-            return createString(ctx, text);
+            return makeString(ctx, text);
         }
 
         case n_escaped_string: {
@@ -1163,7 +1238,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
             nks_unescape(nksb_getStream(&sb), text);
             NkString const unsescaped_text{NKS_INIT(sb)};
 
-            return createString(ctx, unsescaped_text);
+            return makeString(ctx, unsescaped_text);
         }
 
         case n_struct: {
@@ -1174,11 +1249,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_ty
             auto struct_t = nkl_get_struct(nkl, {NK_SLICE_INIT(fields)});
 
             auto const type_t = nkl_get_typeref(nkl, c->word_size);
-
-            auto rodata = nkir_makeRodata(c->ir, 0, nklt2nkirt(type_t), NkIrVisibility_Local);
-            *(nkltype_t *)nkir_getDataPtr(c->ir, rodata) = struct_t;
-
-            return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type_t, IntermKind_Val};
+            return makeValue(ctx, type_t, struct_t);
         }
 
         case n_var: {

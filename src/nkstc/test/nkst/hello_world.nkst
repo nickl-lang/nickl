@@ -5,7 +5,7 @@
     (return 0)
 ]))
 
-(call main [0 0])
+(call main [0 (null)])
 
 /* @output
 Hello, World!

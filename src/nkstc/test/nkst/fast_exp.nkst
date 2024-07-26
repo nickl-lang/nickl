@@ -25,7 +25,7 @@
 (const BASE () 2)
 (const EXP () 24)
 
-(call main [0 0])
+(call main [0 (null)])
 
 /* @output
 2^24=16777216
