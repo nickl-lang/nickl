@@ -154,7 +154,7 @@ void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node)
         .scope_stack = ctx.scope_stack,
         .node_stack = ctx.node_stack,
     };
-    makeDecl(ctx, name) = {{.unresolved{.ctx = ctx_copy, .node = &node}}, DeclKind_Unresolved};
+    makeDecl(ctx, name) = {{.unresolved{ctx_copy, &node}}, DeclKind_Unresolved};
 }
 
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var) {

@@ -126,39 +126,14 @@ void writeVisibilityAttr(NkIrVisibility vis, NkStringBuilder *src) {
 
 void writeNumericType(NkIrNumericValueType value_type, NkStringBuilder *src) {
     switch (value_type) {
-        case Int8:
-            nksb_printf(src, "i8");
-            break;
-        case Int16:
-            nksb_printf(src, "i16");
-            break;
-        case Int32:
-            nksb_printf(src, "i32");
-            break;
-        case Int64:
-            nksb_printf(src, "i64");
-            break;
-        case Uint8:
-            nksb_printf(src, "u8");
-            break;
-        case Uint16:
-            nksb_printf(src, "u16");
-            break;
-        case Uint32:
-            nksb_printf(src, "u32");
-            break;
-        case Uint64:
-            nksb_printf(src, "u64");
-            break;
-        case Float32:
-            nksb_printf(src, "f32");
-            break;
-        case Float64:
-            nksb_printf(src, "f64");
-            break;
-        default:
-            nk_assert(!"unreachable");
-            break;
+#define X(NAME, VALUE_TYPE)      \
+    case VALUE_TYPE:             \
+        nksb_printf(src, #NAME); \
+        return;
+
+        NKIR_NUMERIC_ITERATE(X)
+
+#undef X
     }
 }
 
