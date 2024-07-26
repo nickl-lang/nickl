@@ -148,6 +148,7 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
     usize count_stride);
 
 typedef NkSlice(NkAtom) NkAtomArray;
+typedef NkStridedSlice(NkAtom) NkAtomStridedArray;
 
 #ifdef __cplusplus
 }
