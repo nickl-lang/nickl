@@ -121,7 +121,7 @@ NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name);
 typedef struct {
     NkAtom name;
     nktype_t proc_t;
-    NkAtomArray arg_names;
+    NkAtomStridedArray arg_names;
     NkAtom file;
     usize line;
     NkIrVisibility visibility;

@@ -63,10 +63,10 @@ typedef struct {
     nkltype_t type;
 } nklval_t;
 
-typedef NkSlice(nkltype_t) NklTypeArray;
+typedef NkStridedSlice(nkltype_t) NklTypeStridedArray;
 
 typedef struct {
-    NklTypeArray param_types;
+    NklTypeStridedArray param_types;
     nkltype_t ret_t;
     NkCallConv call_conv;
     u8 flags;
@@ -85,9 +85,9 @@ nkltype_t nkl_get_ptr(NklState nkl, usize word_size, nkltype_t target_type, bool
 nkltype_t nkl_get_slice(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
 nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_struct_packed(NklState nkl, NklFieldArray fields);
-nkltype_t nkl_get_tuple(NklState nkl, NklTypeArray types);
+nkltype_t nkl_get_tuple(NklState nkl, NklTypeStridedArray types);
 nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usize stride);
-nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeArray types);
+nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeStridedArray types);
 nkltype_t nkl_get_typeref(NklState nkl, usize word_size);
 nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_void(NklState nkl);

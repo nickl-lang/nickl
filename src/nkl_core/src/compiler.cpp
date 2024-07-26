@@ -131,7 +131,9 @@ bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf) {
     return true;
 }
 
-NK_PRINTF_LIKE(2) static Interm error(Context &ctx, char const *fmt, ...) {
+template <class TRet = Interm>
+NK_PRINTF_LIKE(2)
+static TRet error(Context &ctx, char const *fmt, ...) {
     auto &src = ctx.src;
 
     auto last_node = ctx.node_stack;
@@ -142,7 +144,7 @@ NK_PRINTF_LIKE(2) static Interm error(Context &ctx, char const *fmt, ...) {
     nkl_vreportError(src.file, err_token, fmt, ap);
     va_end(ap);
 
-    return {};
+    return TRet{};
 }
 
 static u32 nodeIdx(NklSource const &src, NklAstNode const &node) {
@@ -228,37 +230,29 @@ static NkAtom getFileId(NkString filename) {
     return nk_s2atom(canonical_file_path_s);
 }
 
-using NkAtomDynArray = NkDynArray(NkAtom);
+struct CompileParamsConfig {
+    bool *allow_variadic_marker;
+};
 
-static nkltype_t compileProcType(
-    Context &ctx,
-    NklAstNode const &node,
-    NkAtomDynArray *out_param_names = nullptr,
-    NkCallConv call_conv = NkCallConv_Nk) {
+static NklFieldArray compileParams(Context &ctx, NklAstNode const &params_n, CompileParamsConfig const &conf) {
     auto &src = ctx.src;
     auto m = ctx.m;
     auto c = m->c;
     auto nkl = c->nkl;
 
-    auto node_it = nodeIterate(src, node);
-
-    auto &params_n = nextNode(node_it);
-    auto &ret_t_n = nextNode(node_it);
-
     auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-
-    NkDynArray(nkltype_t) param_types{NKDA_INIT(temp_alloc)};
-
-    u8 proc_flags = 0;
+    NkDynArray(NklField) fields{NKDA_INIT(temp_alloc)};
 
     auto params_it = nodeIterate(src, params_n);
     for (usize i = 0; i < params_n.arity; i++) {
         auto &param_n = nextNode(params_it);
         auto param_it = nodeIterate(src, param_n);
 
-        if (param_n.id == n_ellipsis) {
-            proc_flags |= NkProcVariadic;
-            // TODO: Check that ellipsis is the last param
+        if (conf.allow_variadic_marker && param_n.id == n_ellipsis) {
+            if (i != params_n.arity - 1) {
+                return error<NklFieldArray>(ctx, "variadic marker must be the last parameter");
+            }
+            *conf.allow_variadic_marker = true;
             break;
         }
 
@@ -277,20 +271,42 @@ static nkltype_t compileProcType(
 
         if (type_v.type->tclass != NklType_Typeref) {
             // TODO: Improve error message
-            return error(ctx, "type expected"), nkltype_t{};
+            return error<NklFieldArray>(ctx, "type expected");
         }
 
         if (!isValueKnown(type_v)) {
             // TODO: Improve error message
-            return error(ctx, "value is not known"), nkltype_t{};
+            return error<NklFieldArray>(ctx, "value is not known");
         }
 
         auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
 
-        if (out_param_names) {
-            nkda_append(out_param_names, name);
-        }
-        nkda_append(&param_types, type);
+        nkda_append(&fields, {name, type});
+    }
+
+    return {NK_SLICE_INIT(fields)};
+}
+
+static nkltype_t compileProcType(
+    Context &ctx,
+    NklAstNode const &node,
+    NklFieldArray *out_params = nullptr,
+    NkCallConv call_conv = NkCallConv_Nk) {
+    auto &src = ctx.src;
+    auto m = ctx.m;
+    auto c = m->c;
+    auto nkl = c->nkl;
+
+    auto node_it = nodeIterate(src, node);
+
+    auto &params_n = nextNode(node_it);
+    auto &ret_t_n = nextNode(node_it);
+
+    bool variadic_marker_used = false;
+    DEFINE(params, compileParams(ctx, params_n, {&variadic_marker_used}))
+
+    if (out_params) {
+        *out_params = params;
     }
 
     DEFINE(ret_t_v, compile(ctx, ret_t_n, nkl_get_typeref(nkl, c->word_size)));
@@ -298,21 +314,23 @@ static nkltype_t compileProcType(
     // TODO: Boilerplate in type checking
     if (ret_t_v.type->tclass != NklType_Typeref) {
         // TODO: Improve error message
-        return error(ctx, "type expected"), nkltype_t{};
+        return error<nkltype_t>(ctx, "type expected");
     }
 
     if (!isValueKnown(ret_t_v)) {
         // TODO: Improve error message
-        return error(ctx, "value is not known"), nkltype_t{};
+        return error<nkltype_t>(ctx, "value is not known");
     }
 
     auto ret_t = nklval_as(nkltype_t, getValueFromInterm(c, ret_t_v));
+
+    u8 const proc_flags = variadic_marker_used ? NkProcVariadic : 0;
 
     return nkl_get_proc(
         nkl,
         c->word_size,
         NklProcInfo{
-            .param_types{NK_SLICE_INIT(param_types)},
+            .param_types{&params.data->type, params.size, sizeof(params.data[0]) / sizeof(void *)},
             .ret_t = ret_t,
             .call_conv = call_conv,
             .flags = proc_flags,
@@ -350,7 +368,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
     };
 
     for (usize i = 0; i < descr.arg_names.size; i++) {
-        CHECK(defineParam(ctx, descr.arg_names.data[i], i));
+        CHECK(defineParam(ctx, descr.arg_names.data[i * descr.arg_names.stride], i));
     }
 
     CHECK(compileStmt(ctx, body_n));
@@ -415,7 +433,7 @@ static Context *importFile(NklCompiler c, NkString filename) {
             compileProc(
                 ctx,
                 NkIrProcDescr{
-                    .name = 0, // TODO: Hardcoded toplevel proc name
+                    .name = 0, // TODO: Need to generate names for top level procs
                     .proc_t = nklt2nkirt(proc_t),
                     .arg_names{},
                     .file = src.file,
@@ -905,10 +923,8 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
             nextNode(node_it); // ret_t
             auto &body_n = nextNode(node_it);
 
-            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-
-            NkAtomDynArray param_names{NKDA_INIT(temp_alloc)};
-            DEFINE(const proc_t, compileProcType(ctx, node, &param_names));
+            NklFieldArray params{};
+            DEFINE(const proc_t, compileProcType(ctx, node, &params));
 
             DEFINE(
                 const proc_info,
@@ -917,7 +933,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
                     NkIrProcDescr{
                         .name = decl_name, // TODO: Need to generate names for anonymous procs
                         .proc_t = nklt2nkirt(proc_t),
-                        .arg_names{NK_SLICE_INIT(param_names)},
+                        .arg_names{&params.data->name, params.size, sizeof(params.data[0]) / sizeof(NkAtom)},
                         .file = ctx.src.file,
                         .line = token.lin,
                         .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
@@ -1079,38 +1095,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, nkltype_t res_type) 
         case n_struct: {
             auto &params_n = nextNode(node_it);
 
-            auto temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
-
-            NkDynArray(NklField) fields{NKDA_INIT(temp_alloc)};
-
-            // TODO: Boilerplate in param compilation
-            auto params_it = nodeIterate(src, params_n);
-            for (usize i = 0; i < params_n.arity; i++) {
-                auto param_it = nodeIterate(src, nextNode(params_it));
-
-                auto &name_n = nextNode(param_it);
-                auto &type_n = nextNode(param_it);
-
-                auto name_token = &src.tokens.data[name_n.token_idx];
-                auto name_str = nkl_getTokenStr(name_token, src.text);
-                auto name = nk_s2atom(name_str);
-
-                DEFINE(type_v, compile(ctx, type_n, nkl_get_typeref(nkl, c->word_size)));
-
-                if (type_v.type->tclass != NklType_Typeref) {
-                    // TODO: Improve error message
-                    return error(ctx, "type expected");
-                }
-
-                if (!isValueKnown(type_v)) {
-                    // TODO: Improve error message
-                    return error(ctx, "value is not known");
-                }
-
-                auto type = nklval_as(nkltype_t, getValueFromInterm(c, type_v));
-
-                nkda_append(&fields, NklField{name, type});
-            }
+            DEFINE(fields, compileParams(ctx, params_n, {}));
 
             auto struct_t = nkl_get_struct(nkl, {NK_SLICE_INIT(fields)});
 

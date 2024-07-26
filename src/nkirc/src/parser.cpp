@@ -183,7 +183,7 @@ struct EmitterState {
                         .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                         .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
                     }),
-                .arg_names{NK_SLICE_INIT(sig.arg_names)},
+                .arg_names{sig.arg_names.data, sig.arg_names.size, 1},
                 .file = m_file,
                 .line = cur_line,
                 .visibility = vis,
