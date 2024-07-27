@@ -190,8 +190,8 @@ nktype_t nkir_makeAggregateType(NkIrCompiler c, nktype_t const *elem_types, usiz
     }
 
     return getTypeByFp(c, fp, [&]() {
-        auto const layout =
-            nkir_calcAggregateLayout(nk_arena_getAllocator(&c->file_arena), elem_types, elem_counts, n, 1, 1);
+        auto const layout = nkir_calcAggregateLayout(
+            nk_arena_getAllocator(&c->file_arena), elem_types, elem_counts, n, sizeof(nktype_t), sizeof(usize));
 
         return new (nk_arena_allocT<NkIrType>(&c->file_arena)) NkIrType{
             .as{.aggr{

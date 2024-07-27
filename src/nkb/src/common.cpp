@@ -183,9 +183,15 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
 
     auto info_ar = nk_allocT<NkIrAggregateElemInfo>(alloc, n);
 
+    auto type_it = elem_types;
+    auto elem_count_it = elem_counts;
+
     for (usize i = 0; i < n; i++) {
-        auto const type = elem_types[i * type_stride];
-        auto const elem_count = elem_counts ? elem_counts[i * count_stride] : 1;
+        auto const type = *type_it;
+        type_it = (nktype_t const *)((u8 const *)type_it + type_stride);
+
+        auto const elem_count = elem_counts ? *elem_count_it : 1;
+        elem_count_it = (usize const *)((u8 const *)elem_count_it + count_stride);
 
         alignment = nk_maxu(alignment, type->align);
 

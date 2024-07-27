@@ -538,8 +538,10 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
         popScope(ctx);
     };
 
+    auto arg_names_it = descr.arg_names.data;
     for (usize i = 0; i < descr.arg_names.size; i++) {
-        CHECK(defineParam(ctx, descr.arg_names.data[i * descr.arg_names.stride], i));
+        CHECK(defineParam(ctx, *arg_names_it, i));
+        arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
     }
 
     CHECK(compileStmt(ctx, body_n));
@@ -1116,7 +1118,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
                     NkIrProcDescr{
                         .name = decl_name, // TODO: Need to generate names for anonymous procs
                         .proc_t = nklt2nkirt(proc_t),
-                        .arg_names{&params.data->name, params.size, sizeof(params.data[0]) / sizeof(NkAtom)},
+                        .arg_names{&params.data->name, params.size, sizeof(params.data[0])},
                         .file = ctx.src.file,
                         .line = token.lin,
                         .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility

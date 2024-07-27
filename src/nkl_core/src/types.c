@@ -290,7 +290,7 @@ nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count) {
             usize elem_counts[] = {elem_count};
 
             NkIrAggregateLayout layout = nkir_calcAggregateLayout(
-                nk_arena_getAllocator(&nkl->types.tmp_arena), elem_types, elem_counts, 1, 1, 1);
+                nk_arena_getAllocator(&nkl->types.tmp_arena), elem_types, elem_counts, 1, 0, 0);
             get_ir_aggregate(nkl, res.type, layout);
 
             res.type->tclass = tclass;
@@ -516,7 +516,7 @@ nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields) {
 
         if (res.inserted) {
             nkltype_t const underlying_type =
-                nkl_get_tupleEx(nkl, &fields.data->type, fields.size, sizeof(*fields.data) / sizeof(void *));
+                nkl_get_tupleEx(nkl, &fields.data->type, fields.size, sizeof(*fields.data));
 
             nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &res.type->as.strct.fields, fields);
 
@@ -554,15 +554,18 @@ nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usi
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
         PUSH_VAL(&fp, usize, count);
+
+        nkltype_t const *types_it = types;
         for (usize i = 0; i < count; i++) {
-            PUSH_VAL(&fp, u32, types[i * stride]->id);
+            PUSH_VAL(&fp, u32, (*types_it)->id);
+            types_it = (nkltype_t const *)((u8 const *)types_it + stride);
         }
 
         res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
 
         if (res.inserted) {
             NkIrAggregateLayout layout = nkir_calcAggregateLayout(
-                nk_arena_getAllocator(&nkl->types.tmp_arena), (nktype_t *)types, NULL, count, stride, 1);
+                nk_arena_getAllocator(&nkl->types.tmp_arena), (nktype_t *)types, NULL, count, stride, 0);
             get_ir_aggregate(nkl, res.type, layout);
 
             res.type->tclass = tclass;

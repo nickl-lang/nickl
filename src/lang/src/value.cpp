@@ -124,8 +124,11 @@ nktype_t nkl_get_vm_tuple(NkAllocator alloc, nktype_t const *types, usize count,
     pushVal(fp, NkTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, count);
+
+    auto types_it = types;
     for (usize i = 0; i < count; i++) {
-        pushVal(fp, nkt_typeid(types[i * stride]));
+        pushVal(fp, nkt_typeid(*types_it));
+        types_it = (nktype_t const *)((u8 const *)types_it + stride);
     }
 
     return getTypeByFingerprint(std::move(fp), [=]() {
@@ -255,12 +258,15 @@ nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, usize stride) {
     pushVal(fp, NklTypeSubset);
     pushVal(fp, tclass);
     pushVal(fp, types.size);
+
+    auto types_it = types.data;
     for (usize i = 0; i < types.size; i++) {
-        pushVal(fp, nklt_typeid(types.data[i * stride]));
+        pushVal(fp, nklt_typeid(*types_it));
+        types_it = (nkltype_t const *)((u8 const *)types_it + stride);
     }
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        auto layout = nk_calcTupleLayout((nktype_t const *)types.data, types.size, alloc, stride);
+        auto const layout = nk_calcTupleLayout((nktype_t const *)types.data, types.size, alloc, stride);
         return &s_types.emplace_back(NklType{
             .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t const *)types.data, types.size, stride),
             .as{.tuple{
@@ -394,8 +400,7 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields) {
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto fields_data = (NklField *)nk_alloc(alloc, fields.size * sizeof(NklField));
         std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
-        auto underlying_type =
-            nkl_get_tuple(alloc, {&fields.data[0].type, fields.size}, sizeof(NklField) / sizeof(nkltype_t));
+        auto underlying_type = nkl_get_tuple(alloc, {&fields.data[0].type, fields.size}, sizeof(fields.data[0]));
         return &s_types.emplace_back(NklType{
             .vm_type = *tovmt(underlying_type),
             .as{.strct{

@@ -68,7 +68,7 @@ TEST_F(ir, add) {
     auto i32_t = alloct(nkt_get_numeric(Int32));
 
     nktype_t args_types[] = {i32_t, i32_t};
-    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, NK_ARRAY_COUNT(args_types), 1));
+    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, NK_ARRAY_COUNT(args_types), sizeof(nktype_t)));
 
     auto add = nkir_makeFunct(p);
     auto add_fn_t = alloct(nkt_get_fn({i32_t, args_t, NkCallConv_Nk, false}));
@@ -101,13 +101,13 @@ TEST_F(ir, nested_functions) {
 
     auto getEight = nkir_makeFunct(p);
     auto getEight_fn_t =
-        alloct(nkt_get_fn({i32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+        alloct(nkt_get_fn({i32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(getEight, nk_cs2s("getEight"), getEight_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
     auto getFour = nkir_makeFunct(p);
     auto getFour_fn_t =
-        alloct(nkt_get_fn({i32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+        alloct(nkt_get_fn({i32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(getFour, nk_cs2s("getFour"), getFour_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
@@ -137,7 +137,7 @@ TEST_F(ir, isEven) {
 
     auto i32_t = alloct(nkt_get_numeric(Int32));
 
-    auto args_t = alloct(nkt_get_tuple(m_alloc, &i32_t, 1, 1));
+    auto args_t = alloct(nkt_get_tuple(m_alloc, &i32_t, 1, 0));
 
     auto isEven = nkir_makeFunct(p);
     auto isEven_fn_t = alloct(nkt_get_fn({i32_t, args_t, NkCallConv_Nk, false}));
@@ -194,17 +194,17 @@ TEST_F(ir, native_call) {
 
     auto sayHello = nkir_makeFunct(p);
     auto sayHello_fn_t =
-        alloct(nkt_get_fn({void_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+        alloct(nkt_get_fn({void_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(sayHello, nk_cs2s("sayHello"), sayHello_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
     char const *const_str = "Hello, World!";
 
-    auto test_print_args_t = alloct(nkt_get_tuple(m_alloc, &i8_ptr_t, 1, 1));
+    auto test_print_args_t = alloct(nkt_get_tuple(m_alloc, &i8_ptr_t, 1, 0));
 
     auto ar_t = alloct(nkt_get_array(i8_t, std::strlen(const_str) + 1));
     auto str_t = alloct(nkt_get_ptr(ar_t));
-    auto actual_args_t = alloct(nkt_get_tuple(m_alloc, &str_t, 1, 1));
+    auto actual_args_t = alloct(nkt_get_tuple(m_alloc, &str_t, 1, 0));
 
     auto so = nkir_makeShObj(p, nk_cs2s(""));
     auto print_fn = nkir_makeExtSym(
@@ -259,12 +259,12 @@ TEST_F(ir, nested_functions_call_while_compiling) {
 
     auto so = nkir_makeShObj(p, nk_cs2s(""));
 
-    auto log2_args_t = alloct(nkt_get_tuple(m_alloc, &u32_t, 1, 1));
+    auto log2_args_t = alloct(nkt_get_tuple(m_alloc, &u32_t, 1, 0));
     auto log2_fn = nkir_makeExtSym(
         p, so, nk_cs2s("_test_log2"), alloct(nkt_get_fn({u32_t, log2_args_t, NkCallConv_Cdecl, false})));
 
     nktype_t args_types[] = {u8_ptr_t, u32_t};
-    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, NK_ARRAY_COUNT(args_types), 1));
+    auto args_t = alloct(nkt_get_tuple(m_alloc, args_types, NK_ARRAY_COUNT(args_types), sizeof(nktype_t)));
 
     auto fillAr_fn =
         nkir_makeExtSym(p, so, nk_cs2s("_test_fillAr"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
@@ -273,13 +273,13 @@ TEST_F(ir, nested_functions_call_while_compiling) {
         nkir_makeExtSym(p, so, nk_cs2s("_test_printAr"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
 
     auto test = nkir_makeFunct(p);
-    auto test_fn_t = alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+    auto test_fn_t = alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(test, nk_cs2s("test"), test_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
     auto getArrSize = nkir_makeFunct(p);
     auto getArrSize_fn_t =
-        alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+        alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(getArrSize, nk_cs2s("getArrSize"), getArrSize_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
@@ -337,7 +337,7 @@ extern "C" NK_EXPORT void _test_sayHello(void *getName) {
     auto u8_ptr_t = alloct(&arena, nkt_get_ptr(u8_t));
 
     auto getName_fn_t = alloct(
-        &arena, nkt_get_fn({u8_ptr_t, alloct(&arena, nkt_get_tuple(alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+        &arena, nkt_get_fn({u8_ptr_t, alloct(&arena, nkt_get_tuple(alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
 
     char const *name = nullptr;
     nkir_invoke({&getName, getName_fn_t}, {&name, u8_ptr_t}, {});
@@ -360,9 +360,9 @@ TEST_F(ir, callback) {
     auto so = nkir_makeShObj(p, nk_cs2s(""));
 
     auto getName_fn_t =
-        alloct(nkt_get_fn({u8_ptr_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+        alloct(nkt_get_fn({u8_ptr_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
 
-    auto args_t = alloct(nkt_get_tuple(m_alloc, &getName_fn_t, 1, 1));
+    auto args_t = alloct(nkt_get_tuple(m_alloc, &getName_fn_t, 1, 0));
 
     auto sayHello_fn = nkir_makeExtSym(
         p, so, nk_cs2s("_test_sayHello"), alloct(nkt_get_fn({void_t, args_t, NkCallConv_Cdecl, false})));
@@ -375,14 +375,14 @@ TEST_F(ir, callback) {
 
     auto ar_t = alloct(nkt_get_array(u8_t, std::strlen(const_str) + 1));
     auto str_t = alloct(nkt_get_ptr(ar_t));
-    auto actual_args_t = alloct(nkt_get_tuple(m_alloc, &str_t, 1, 1));
+    auto actual_args_t = alloct(nkt_get_tuple(m_alloc, &str_t, 1, 0));
 
     nkir_gen(
         p, nkir_make_mov(nkir_makeRetRef(p), nkir_makeConstRef(p, nkir_makeConst(p, {&const_str, actual_args_t}))));
     nkir_gen(p, nkir_make_ret());
 
     auto test = nkir_makeFunct(p);
-    auto test_fn_t = alloct(nkt_get_fn({void_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+    auto test_fn_t = alloct(nkt_get_fn({void_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(test, nk_cs2s("test"), test_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 
@@ -416,10 +416,10 @@ TEST_F(ir, callback_from_native) {
 
     nktype_t nativeAdd_args_types[] = {u32_t, u32_t};
     auto nativeAdd_args_t =
-        alloct(nkt_get_tuple(m_alloc, nativeAdd_args_types, NK_ARRAY_COUNT(nativeAdd_args_types), 1));
+        alloct(nkt_get_tuple(m_alloc, nativeAdd_args_types, NK_ARRAY_COUNT(nativeAdd_args_types), sizeof(nktype_t)));
     auto nativeAdd_fn_t = alloct(nkt_get_fn({u32_t, nativeAdd_args_t, NkCallConv_Cdecl, false}));
 
-    auto nativeCallback_args_t = alloct(nkt_get_tuple(m_alloc, &nativeAdd_fn_t, 1, 1));
+    auto nativeCallback_args_t = alloct(nkt_get_tuple(m_alloc, &nativeAdd_fn_t, 1, 0));
 
     auto test_nativeCallback_fn = nkir_makeExtSym(
         p,
@@ -438,7 +438,7 @@ TEST_F(ir, callback_from_native) {
     auto nativeAdd_cl = nkir_makeNativeClosure(p, nativeAdd);
 
     auto test = nkir_makeFunct(p);
-    auto test_fn_t = alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 1)), NkCallConv_Nk, false}));
+    auto test_fn_t = alloct(nkt_get_fn({u32_t, alloct(nkt_get_tuple(m_alloc, nullptr, 0, 0)), NkCallConv_Nk, false}));
     nkir_startFunct(test, nk_cs2s("test"), test_fn_t);
     nkir_startBlock(p, nkir_makeBlock(p), nk_cs2s("start"));
 

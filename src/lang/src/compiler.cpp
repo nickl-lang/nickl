@@ -935,7 +935,7 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic, NkCallConv
     } else {
         ret_t = void_t;
     }
-    nkltype_t args_t = nkl_get_tuple(c->alloc, {params_types.data(), params_types.size()}, 1);
+    nkltype_t args_t = nkl_get_tuple(c->alloc, {params_types.data(), params_types.size()}, sizeof(nkltype_t));
 
     auto fn_t = nkl_get_fn({ret_t, args_t, call_conv, is_variadic});
 
@@ -1013,7 +1013,7 @@ ValueInfo compileFnType(NklCompiler c, NklAstNode node, bool is_variadic, NkCall
         return error(c, "type expected"), ValueInfo{};
     }
     auto ret_t = nklval_as(nkltype_t, ret_t_val);
-    nkltype_t args_t = nkl_get_tuple(c->alloc, {params_types.data(), params_types.size()}, 1);
+    nkltype_t args_t = nkl_get_tuple(c->alloc, {params_types.data(), params_types.size()}, sizeof(nkltype_t));
 
     auto fn_t = nkl_get_fn({ret_t, args_t, call_conv, is_variadic});
 
@@ -1097,7 +1097,7 @@ ValueInfo compileAndDiscard(NklCompiler c, NklAstNode node) {
     nkir_startFunct(
         fn,
         nk_cs2s("#comptime"),
-        tovmt(nkl_get_fn(NkltFnInfo{void_t, nkl_get_tuple(c->alloc, {nullptr, 0}, 1), NkCallConv_Nk, false})));
+        tovmt(nkl_get_fn(NkltFnInfo{void_t, nkl_get_tuple(c->alloc, {nullptr, 0}, 0), NkCallConv_Nk, false})));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));
 
     pushFnScope(c, fn);
@@ -1674,7 +1674,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 APPEND(values, compile(c, &nodes.data[i]));
                 types.emplace_back(values.back().type);
             }
-            auto tuple_t = nkl_get_tuple(c->alloc, {types.data(), types.size()}, 1);
+            auto tuple_t = nkl_get_tuple(c->alloc, {types.data(), types.size()}, sizeof(nkltype_t));
             auto const ref = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, tovmt(tuple_t)));
             if (values.size() != tuple_t->as.tuple.elems.size) {
                 return error(c, "invalid number of values in tuple literal"), ValueInfo{};
@@ -1696,7 +1696,8 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 }
                 types.emplace_back(nklval_as(nkltype_t, val));
             }
-            return makeValue<nkltype_t>(c, typeref_t, nkl_get_tuple(c->alloc, {types.data(), types.size()}, 1));
+            return makeValue<nkltype_t>(
+                c, typeref_t, nkl_get_tuple(c->alloc, {types.data(), types.size()}, sizeof(nkltype_t)));
         }
 
         case n_import: {
@@ -1992,7 +1993,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 args_types.emplace_back(param_t ? param_t : val_info.type);
             }
 
-            auto args_t = nkl_get_tuple(c->alloc, {args_types.data(), args_types.size()}, 1);
+            auto args_t = nkl_get_tuple(c->alloc, {args_types.data(), args_types.size()}, sizeof(nkltype_t));
 
             NkIrRef args_ref{};
             if (nklt_sizeof(args_t)) {
@@ -2269,7 +2270,7 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
     NK_PROF_FUNC();
 
     auto fn = nkir_makeFunct(c->ir);
-    NkltFnInfo fn_info{nullptr, nkl_get_tuple(c->alloc, {nullptr, 0}, 1), NkCallConv_Nk, false};
+    NkltFnInfo fn_info{nullptr, nkl_get_tuple(c->alloc, {nullptr, 0}, 0), NkCallConv_Nk, false};
 
     auto pop_fn = pushFn(c, fn);
 
@@ -2349,7 +2350,7 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
     auto fn = nkir_makeFunct(c->ir);
     auto pop_fn = pushFn(c, fn);
 
-    auto top_level_fn_t = nkl_get_fn({void_t, nkl_get_tuple(c->alloc, {nullptr, 0}, 1), NkCallConv_Nk, false});
+    auto top_level_fn_t = nkl_get_fn({void_t, nkl_get_tuple(c->alloc, {nullptr, 0}, 0), NkCallConv_Nk, false});
 
     nkir_startFunct(fn, nk_cs2s("#top_level"), tovmt(top_level_fn_t));
     nkir_startBlock(c->ir, nkir_makeBlock(c->ir), irBlockName(c, "start"));

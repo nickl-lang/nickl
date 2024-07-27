@@ -103,7 +103,8 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     auto const &ir = *p->ir;
 
-    auto frame_layout = nk_calcTupleLayout(fn->locals.data(), fn->locals.size(), nk_default_allocator, 1);
+    auto frame_layout =
+        nk_calcTupleLayout(fn->locals.data(), fn->locals.size(), nk_default_allocator, sizeof(nktype_t));
     defer {
         nk_free(nk_default_allocator, frame_layout.info_ar.data, frame_layout.info_ar.size);
     };
