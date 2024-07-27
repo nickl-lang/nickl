@@ -6,6 +6,8 @@
 #define X(N) XN(N, #N)
 #endif
 
+X(null)
+
 X(add)
 X(addr)
 X(and)
@@ -44,7 +46,7 @@ X(member)
 X(mod)
 X(mul)
 X(ne)
-X(null)
+X(nullptr)
 X(or)
 X(param)
 X(proc)

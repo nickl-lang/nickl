@@ -145,10 +145,13 @@ void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node)
         .c = ctx.c,
         .m = ctx.m,
         .ir = ctx.ir,
+
         .top_level_proc = ctx.top_level_proc,
         .src = ctx.src,
+
         .scope_stack = ctx.scope_stack,
         .node_stack = ctx.node_stack,
+        .proc_stack = ctx.proc_stack,
     };
     makeDecl(ctx, name) = {{.unresolved{ctx_copy, &node}}, DeclKind_Unresolved};
 }

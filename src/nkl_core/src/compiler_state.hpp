@@ -5,6 +5,7 @@
 #include "nkl/core/compiler.h"
 #include "nkl/core/types.h"
 #include "ntk/hash_tree.h"
+#include "ntk/list.h"
 
 enum ValueKind {
     ValueKind_Void,
@@ -113,6 +114,12 @@ struct NodeListNode {
     NklAstNode const &node;
 };
 
+struct ProcListNode {
+    ProcListNode *next;
+
+    NkIrProc proc;
+};
+
 struct Context {
     NklState nkl;
     NklCompiler c;
@@ -121,8 +128,10 @@ struct Context {
 
     NkIrProc top_level_proc;
     NklSource const &src;
+
     Scope *scope_stack;
     NodeListNode *node_stack;
+    ProcListNode *proc_stack;
 };
 
 struct FileContext_kv {

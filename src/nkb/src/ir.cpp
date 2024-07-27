@@ -297,6 +297,11 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
             continue;
         }
 
+        nk_assert(instr.arg[0].kind == NkIrArg_None || instr.arg[0].kind == NkIrArg_Ref);
+        if (instr.code == nkir_mov && instr.arg[0].kind == NkIrArg_Ref && !instr.arg[0].ref.type->size) {
+            continue;
+        }
+
         nk_assert(proc.cur_block < ir->blocks.size && "no current block");
         auto &block = ir->blocks.data[proc.cur_block].instrs;
 

@@ -11,7 +11,7 @@
     (assign (deref (deref p)) 42)
 ]))
 
-(call main [0 (null)])
+(call main [0 (nullptr)])
 
 /* @output
 data=42

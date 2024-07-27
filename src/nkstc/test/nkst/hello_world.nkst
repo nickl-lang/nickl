@@ -5,7 +5,7 @@
     (return 0)
 ]))
 
-(call main [0 (null)])
+(call main [0 (nullptr)])
 
 /* @output
 Hello, World!

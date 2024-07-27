@@ -12,7 +12,7 @@
     (return 42)
 ]))
 
-(call main [0 (null)])
+(call main [0 (nullptr)])
 
 /* @output
 hello comptime

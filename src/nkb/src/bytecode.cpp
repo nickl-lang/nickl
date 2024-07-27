@@ -329,6 +329,8 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             };
 
             switch (ir_ref.kind) {
+                case NkIrRef_None:
+                    break;
                 case NkIrRef_Frame:
                     ref.offset += ir_proc.locals.data[ir_ref.index].offset;
                     break;
@@ -408,10 +410,6 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     ref.kind = NkBcRef_VariadicMarker;
                     break;
                 }
-                default:
-                    nk_assert(!"unreachable");
-                case NkIrRef_None:
-                    break;
             }
 
             return true;
