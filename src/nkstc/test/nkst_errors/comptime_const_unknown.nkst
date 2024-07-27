@@ -1,0 +1,10 @@
+(var T (type_t) ())
+(var v T ())
+
+/* @error
+error: comptime const expected
+@enderror */
+
+/* @retcode
+1
+@endretcode */

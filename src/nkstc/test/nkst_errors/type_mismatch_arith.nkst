@@ -1,0 +1,9 @@
+(add 1 1.0)
+
+/* @error
+error: expected value of type 'i64', but got 'f64'
+@enderror */
+
+/* @retcode
+1
+@endretcode */

@@ -13,6 +13,8 @@ extern "C" {
 typedef struct NklType_T const *nkltype_t;
 
 typedef enum {
+    NklType_None,
+
     NklType_Any,
     NklType_Array,
     NklType_Bool,
