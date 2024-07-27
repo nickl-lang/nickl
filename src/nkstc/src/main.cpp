@@ -266,7 +266,7 @@ int main(int /*argc*/, char const *const *argv) {
                 .additional_flags{NKS_INIT(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,
-                .quiet = false,
+                .quiet = true,
             });
     }
 
