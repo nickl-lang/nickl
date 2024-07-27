@@ -115,8 +115,12 @@ struct NodeListNode {
 };
 
 struct Context {
-    NkIrProc top_level_proc;
+    NklState nkl;
+    NklCompiler c;
     NklModule m;
+    NkIrProg ir;
+
+    NkIrProc top_level_proc;
     NklSource const &src;
     Scope *scope_stack;
     NodeListNode *node_stack;
@@ -169,11 +173,11 @@ void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
 Decl &resolve(Context &ctx, NkAtom name);
 
 bool isValueKnown(Interm const &val);
-nklval_t getValueFromInterm(NklCompiler c, Interm const &val);
+nklval_t getValueFromInterm(Context &ctx, Interm const &val);
 
 bool isModule(Interm const &val);
 Scope *getModuleScope(Interm const &val);
 
-nkltype_t getValueType(NklCompiler c, Value const &val);
+nkltype_t getValueType(Context &ctx, Value const &val);
 
 #endif // NKL_CORE_COMPILER_STATE_HPP_

@@ -44,9 +44,6 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
 NkIrRef asRef(Context &ctx, Interm const &val) {
     NkIrRef ref{};
 
-    auto m = ctx.m;
-    auto c = m->c;
-
     switch (val.kind) {
         case IntermKind_Void:
             break;
@@ -55,9 +52,9 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
             auto instr = val.as.instr;
             auto &dst = instr.arg[0].ref;
             if (dst.kind == NkIrRef_None && nklt_sizeof(val.type)) {
-                dst = nkir_makeFrameRef(c->ir, nkir_makeLocalVar(c->ir, 0, nklt2nkirt(val.type)));
+                dst = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(val.type)));
             }
-            nkir_emit(c->ir, instr);
+            nkir_emit(ctx.ir, instr);
             ref = dst;
             break;
         }
@@ -74,22 +71,22 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
 
                 case ValueKind_Rodata:
                 case ValueKind_Data:
-                    ref = nkir_makeDataRef(c->ir, val.as.val.as.data.id);
+                    ref = nkir_makeDataRef(ctx.ir, val.as.val.as.data.id);
                     break;
                 case ValueKind_Proc:
-                    ref = nkir_makeProcRef(c->ir, val.as.val.as.proc.id);
+                    ref = nkir_makeProcRef(ctx.ir, val.as.val.as.proc.id);
                     break;
                 case ValueKind_ExternData:
-                    ref = nkir_makeExternDataRef(c->ir, val.as.val.as.extern_data.id);
+                    ref = nkir_makeExternDataRef(ctx.ir, val.as.val.as.extern_data.id);
                     break;
                 case ValueKind_ExternProc:
-                    ref = nkir_makeExternProcRef(c->ir, val.as.val.as.extern_proc.id);
+                    ref = nkir_makeExternProcRef(ctx.ir, val.as.val.as.extern_proc.id);
                     break;
                 case ValueKind_Local:
-                    ref = nkir_makeFrameRef(c->ir, val.as.val.as.local.id);
+                    ref = nkir_makeFrameRef(ctx.ir, val.as.val.as.local.id);
                     break;
                 case ValueKind_Arg:
-                    ref = nkir_makeArgRef(c->ir, val.as.val.as.arg.idx);
+                    ref = nkir_makeArgRef(ctx.ir, val.as.val.as.arg.idx);
                     break;
             }
             break;
@@ -118,18 +115,14 @@ void pushPublicScope(Context &ctx, NkIrProc cur_proc) {
     if (cur_scope) {
         pushScope(ctx, cur_scope->main_arena, cur_scope->temp_arena, cur_proc);
     } else {
-        auto m = ctx.m;
-        auto c = m->c;
-        pushScope(ctx, &c->perm_arena, getNextTempArena(c, nullptr), cur_proc);
+        pushScope(ctx, &ctx.c->perm_arena, getNextTempArena(ctx.c, nullptr), cur_proc);
     }
 }
 
 void pushPrivateScope(Context &ctx, NkIrProc cur_proc) {
     auto cur_scope = ctx.scope_stack;
     nk_assert(cur_scope && "top level scope cannot be private");
-    auto m = ctx.m;
-    auto c = m->c;
-    pushScope(ctx, cur_scope->temp_arena, getNextTempArena(c, cur_scope->temp_arena), cur_proc);
+    pushScope(ctx, cur_scope->temp_arena, getNextTempArena(ctx.c, cur_scope->temp_arena), cur_proc);
 }
 
 void popScope(Context &ctx) {
@@ -148,8 +141,11 @@ static Decl &makeDecl(Context &ctx, NkAtom name) {
 
 void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node) {
     auto ctx_copy = new (nk_arena_allocT<Context>(ctx.scope_stack->main_arena)) Context{
-        .top_level_proc = ctx.top_level_proc,
+        .nkl = ctx.nkl,
+        .c = ctx.c,
         .m = ctx.m,
+        .ir = ctx.ir,
+        .top_level_proc = ctx.top_level_proc,
         .src = ctx.src,
         .scope_stack = ctx.scope_stack,
         .node_stack = ctx.node_stack,
@@ -194,7 +190,7 @@ bool isValueKnown(Interm const &val) {
            (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata));
 }
 
-nklval_t getValueFromInterm(NklCompiler c, Interm const &val) {
+nklval_t getValueFromInterm(Context &ctx, Interm const &val) {
     nk_assert(isValueKnown(val) && "trying to get an unknown value");
 
     switch (val.kind) {
@@ -203,7 +199,7 @@ nklval_t getValueFromInterm(NklCompiler c, Interm const &val) {
         case IntermKind_Val:
             switch (val.as.val.kind) {
                 case ValueKind_Rodata:
-                    return {nkir_getDataPtr(c->ir, val.as.val.as.rodata.id), val.type};
+                    return {nkir_getDataPtr(ctx.ir, val.as.val.as.rodata.id), val.type};
                 case ValueKind_Proc:
                     nk_assert(!"getValueFromInfo is not implemented for ValueKind_Proc");
                     return {};
@@ -256,24 +252,24 @@ Scope *getModuleScope(Interm const &val) {
     return {};
 }
 
-nkltype_t getValueType(NklCompiler c, Value const &val) {
+nkltype_t getValueType(Context &ctx, Value const &val) {
     switch (val.kind) {
         case ValueKind_Void:
-            return nkl_get_void(c->nkl);
+            return nkl_get_void(ctx.nkl);
         case ValueKind_Rodata:
-            return nkirt2nklt(nkir_getDataType(c->ir, val.as.rodata.id));
+            return nkirt2nklt(nkir_getDataType(ctx.ir, val.as.rodata.id));
         case ValueKind_Proc:
-            return nkirt2nklt(nkir_getProcType(c->ir, val.as.proc.id));
+            return nkirt2nklt(nkir_getProcType(ctx.ir, val.as.proc.id));
         case ValueKind_Data:
-            return nkirt2nklt(nkir_getDataType(c->ir, val.as.data.id));
+            return nkirt2nklt(nkir_getDataType(ctx.ir, val.as.data.id));
         case ValueKind_ExternData:
-            return nkirt2nklt(nkir_getExternDataType(c->ir, val.as.extern_data.id));
+            return nkirt2nklt(nkir_getExternDataType(ctx.ir, val.as.extern_data.id));
         case ValueKind_ExternProc:
-            return nkirt2nklt(nkir_getExternProcType(c->ir, val.as.extern_proc.id));
+            return nkirt2nklt(nkir_getExternProcType(ctx.ir, val.as.extern_proc.id));
         case ValueKind_Local:
-            return nkirt2nklt(nkir_getLocalType(c->ir, val.as.local.id));
+            return nkirt2nklt(nkir_getLocalType(ctx.ir, val.as.local.id));
         case ValueKind_Arg:
-            return nkirt2nklt(nkir_getArgType(c->ir, val.as.arg.idx));
+            return nkirt2nklt(nkir_getArgType(ctx.ir, val.as.arg.idx));
     }
 
     nk_assert(!"unreachable");
