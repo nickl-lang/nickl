@@ -10,6 +10,7 @@
 #include "ntk/atom.h"
 #include "ntk/log.h"
 #include "ntk/os/path.h"
+#include "ntk/string.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -41,14 +42,16 @@ class compiler_ast : public testing::Test {
 
 protected:
     void test(NklAstNodeArray root) {
-        NK_LOG_INF(
-            "ast:%s\n", (char const *)[&]() {
-                NkStringBuilder sb{};
-                nkl_inspectNode(root.data, &sb);
-                return nk_defer((char const *)sb.data, [=]() mutable {
-                    nksb_free(&sb);
-                });
-            }());
+#ifdef ENABLE_LOGGING
+        {
+            NkStringBuilder sb{};
+            defer {
+                nksb_free(&sb);
+            };
+            nkl_inspectNode(root.data, &sb);
+            NK_LOG_INF("ast:" NKS_FMT "\n", NKS_ARG(sb));
+        }
+#endif // ENABLE_LOGGING
         nkl_compiler_run(m_compiler, root.data);
     }
 

@@ -986,15 +986,16 @@ NklAstNode nkl_parse(NklAst ast, NklTokenArray tokens, std::string &err_str, Nkl
     ParseEngine engine{tokens, ast, err_str};
     NklAstNode root = engine.parse();
 
-    NK_LOG_INF(
-        "root: %s", (char const *)[&]() {
-            NkStringBuilder sb{};
-            nkl_inspectNode(root, &sb);
-            nksb_appendNull(&sb);
-            return nk_defer((char const *)sb.data, [sb]() mutable {
-                nksb_free(&sb);
-            });
-        }());
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        nkl_inspectNode(root, &sb);
+        NK_LOG_INF("root: " NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
 
     if (engine.m_error_occurred) {
         err_token = engine.m_cur_token;

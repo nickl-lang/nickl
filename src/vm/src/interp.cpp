@@ -460,21 +460,29 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
             "instr: %" PRIx64 " %s",
             (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
             s_nk_bc_names[pinstr->code]);
+
+#ifdef ENABLE_LOGGING
+        nkval_t dst_val{};
+        auto const &dst = pinstr->arg[0];
+        if (dst.ref_type != NkBcRef_None) {
+            dst_val = _getValRef(dst);
+        }
+#endif // ENABLE_LOGGING
+
         interp(*pinstr);
-        NK_LOG_DBG(
-            "res=%s", (char const *)[&]() {
-                NkStringBuilder sb{};
-                auto const &ref = pinstr->arg[0];
-                if (ref.ref_type != NkBcRef_None) {
-                    nkval_inspect(_getValRef(ref), &sb);
-                    nksb_printf(&sb, ":");
-                    nkt_inspect(ref.type, &sb);
-                    nksb_appendNull(&sb);
-                }
-                return nk_defer((char const *)sb.data, [sb]() mutable {
-                    nksb_free(&sb);
-                });
-            }());
+
+#ifdef ENABLE_LOGGING
+        if (dst_val.type) {
+            NkStringBuilder sb{};
+            defer {
+                nksb_free(&sb);
+            };
+            nkval_inspect(dst_val, &sb);
+            nksb_printf(&sb, ":");
+            nkt_inspect(dst.type, &sb);
+            NK_LOG_DBG("res=" NKS_FMT, NKS_ARG(sb));
+        }
+#endif // ENABLE_LOGGING
     }
 
     NK_LOG_TRC("exiting...");

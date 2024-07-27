@@ -300,15 +300,16 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     bc_funct.instrs = instrs.data();
 
-    NK_LOG_INF(
-        "bytecode:\n%s", (char const *)[&]() {
-            NkStringBuilder sb{};
-            _inspect(instrs, &sb);
-            nksb_appendNull(&sb);
-            return nk_defer((char const *)sb.data, [sb]() mutable {
-                nksb_free(&sb);
-            });
-        }());
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        _inspect(instrs, &sb);
+        NK_LOG_INF("bytecode:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
 
     for (auto fn : referenced_functs) {
         if (!fn->bc_funct) {

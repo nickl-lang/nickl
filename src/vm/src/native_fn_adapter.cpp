@@ -147,17 +147,16 @@ ffi_type *_getNativeHandle(nktype_t type, bool promote = false) {
         ctx.typemap.emplace(type, ffi_t);
     }
 
-    NK_LOG_DBG(
-        "ffi(type{name=%s}) -> %p",
-        (char const *)[&]() {
-            NkStringBuilder sb{};
-            nkt_inspect(type, &sb);
-            nksb_appendNull(&sb);
-            return nk_defer((char const *)sb.data, [sb]() mutable {
-                nksb_free(&sb);
-            });
-        }(),
-        (void *)ffi_t);
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        nkt_inspect(type, &sb);
+        NK_LOG_DBG("ffi(type{name=" NKS_FMT "}) -> %p", NKS_ARG(sb), (void *)ffi_t);
+    }
+#endif // ENABLE_LOGGING
 
     return ffi_t;
 }

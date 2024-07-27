@@ -188,15 +188,21 @@ static NklAstNode const &nextNode(AstNodeIterator &it) {
     return next_node;
 }
 
-static auto pushNode(Context &ctx, NklAstNode const &node, nkltype_t type) {
+static auto pushNode(Context &ctx, NklAstNode const &node) {
     auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{
         .next{},
         .node = node,
-        .type = type,
     };
     nk_list_push(ctx.node_stack, new_stack_node);
     return nk_defer([&ctx]() {
         nk_list_pop(ctx.node_stack);
+    });
+}
+
+static auto grabTempArena(Context &ctx) {
+    auto const temp_frame = nk_arena_grab(ctx.scope_stack->temp_arena);
+    return nk_defer([&ctx, temp_frame]() {
+        nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
     });
 }
 
@@ -251,12 +257,8 @@ static Interm compile(
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto const temp_frame = nk_arena_grab(ctx.scope_stack->temp_arena);
-    defer {
-        nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
-    };
-
-    auto const pop_node = pushNode(ctx, node, res_t);
+    auto const pop_frame = grabTempArena(ctx);
+    auto const pop_node = pushNode(ctx, node);
 
     DEFINE(val, compileImpl(ctx, node, res_t));
 
@@ -299,12 +301,8 @@ static T compileConst(Context &ctx, NklAstNode const &node, nkltype_t res_t) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto const temp_frame = nk_arena_grab(ctx.scope_stack->temp_arena);
-    defer {
-        nk_arena_popFrame(ctx.scope_stack->temp_arena, temp_frame);
-    };
-
-    auto const pop_node = pushNode(ctx, node, res_t);
+    auto const pop_frame = grabTempArena(ctx);
+    auto const pop_node = pushNode(ctx, node);
 
     DEFINE(val, compileImpl(ctx, node, res_t));
 
@@ -685,8 +683,9 @@ static Interm deref(NkIrRef ref) {
     return makeRef(ref, nkirt2nklt(ref.type));
 }
 
+// TODO: Provide type in getLvalueRef?
 static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
-    auto pop_node = pushNode(ctx, node, nullptr); // TODO: Provide type in getLvalueRef
+    auto pop_node = pushNode(ctx, node);
 
     if (node.id == n_id) {
         auto token = &ctx.src.tokens.data[node.token_idx];

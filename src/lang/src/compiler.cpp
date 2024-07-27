@@ -618,25 +618,19 @@ ValueInfo store(NklCompiler c, NkIrRef const &dst, ValueInfo src) {
         !(nklt_tclass(dst_type) == NkType_Ptr && nklt_tclass(src_type) == NkType_Ptr &&
           nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
           nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type) == nklt_typeid(dst_type->as.ptr.target_type))) {
+        NkStringBuilder src_sb{};
+        NkStringBuilder dst_sb{};
+        defer {
+            nksb_free(&src_sb);
+            nksb_free(&dst_sb);
+        };
+        nklt_inspect(src_type, &src_sb);
+        nklt_inspect(dst_type, &dst_sb);
         return error(
                    c,
-                   "cannot store value of type `%s` into a slot of type `%s`",
-                   (char const *)[&]() {
-                       NkStringBuilder sb{};
-                       nklt_inspect(src_type, &sb);
-                       nksb_appendNull(&sb);
-                       return nk_defer((char const *)sb.data, [sb]() mutable {
-                           nksb_free(&sb);
-                       });
-                   }(),
-                   (char const *)[&]() {
-                       NkStringBuilder sb{};
-                       nklt_inspect(dst_type, &sb);
-                       nksb_appendNull(&sb);
-                       return nk_defer((char const *)sb.data, [sb]() mutable {
-                           nksb_free(&sb);
-                       });
-                   }()),
+                   "cannot store value of type `" NKS_FMT "` into a slot of type `" NKS_FMT "`",
+                   NKS_ARG(src_sb),
+                   NKS_ARG(dst_sb)),
                ValueInfo{};
     }
     if (nklt_sizeof(src_type)) {
@@ -966,15 +960,16 @@ ValueInfo compileFn(NklCompiler c, NklAstNode node, bool is_variadic, NkCallConv
     CHECK(compileStmt(c, narg2(node)));
     gen(c, nkir_make_ret());
 
-    NK_LOG_INF(
-        "ir:\n%s", (char const *)[&]() {
-            NkStringBuilder sb{};
-            nkir_inspectFunct(fn, &sb);
-            nksb_appendNull(&sb);
-            return nk_defer((char const *)sb.data, [sb]() mutable {
-                nksb_free(&sb);
-            });
-        }());
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        nkir_inspectFunct(fn, &sb);
+        NK_LOG_INF("ir:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
 
     if (call_conv == NkCallConv_Nk) {
         return makeValue<void *>(c, fn_t, (void *)fn);
@@ -1196,19 +1191,12 @@ ValueInfo compileStructLiteral(NklCompiler c, nkltype_t struct_t, NklAstNodeArra
             return error(c, "duplicate names"), ValueInfo{};
         }
         if (name && nklt_struct_index(struct_t, name) == -1lu) {
-            return error(
-                       c,
-                       "no field named `%s` in type `%s`",
-                       nk_atom2cs(name),
-                       (char const *)[&]() {
-                           NkStringBuilder sb{};
-                           nklt_inspect(struct_t, &sb);
-                           nksb_appendNull(&sb);
-                           return nk_defer((char const *)sb.data, [sb]() mutable {
-                               nksb_free(&sb);
-                           });
-                       }()),
-                   ValueInfo{};
+            NkStringBuilder sb{};
+            defer {
+                nksb_free(&sb);
+            };
+            nklt_inspect(struct_t, &sb);
+            return error(c, "no field named `%s` in type `" NKS_FMT "`", nk_atom2cs(name), NKS_ARG(sb)), ValueInfo{};
         }
         names.emplace_back(name);
         APPEND(values, compile(c, narg1(init_node), struct_t->underlying_type->as.tuple.elems.data[i].type));
@@ -1585,25 +1573,19 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 }
             }
 
+            NkStringBuilder src_sb{};
+            NkStringBuilder dst_sb{};
+            defer {
+                nksb_free(&src_sb);
+                nksb_free(&dst_sb);
+            };
+            nklt_inspect(src_type, &src_sb);
+            nklt_inspect(dst_type, &dst_sb);
             return error(
                        c,
-                       "cannot cast value of type `%s` to type `%s`",
-                       (char const *)[&]() {
-                           NkStringBuilder sb{};
-                           nklt_inspect(src_type, &sb);
-                           nksb_appendNull(&sb);
-                           return nk_defer((char const *)sb.data, [sb]() mutable {
-                               nksb_free(&sb);
-                           });
-                       }(),
-                       (char const *)[&]() {
-                           NkStringBuilder sb{};
-                           nklt_inspect(dst_type, &sb);
-                           nksb_appendNull(&sb);
-                           return nk_defer((char const *)sb.data, [sb]() mutable {
-                               nksb_free(&sb);
-                           });
-                       }()),
+                       "cannot cast value of type `" NKS_FMT "` to type `" NKS_FMT "`",
+                       NKS_ARG(src_sb),
+                       NKS_ARG(dst_sb)),
                    ValueInfo{};
         }
 
@@ -2300,15 +2282,16 @@ ComptimeConst comptimeCompileNode(NklCompiler c, NklAstNode node, nkltype_t type
 
         cnst = makeFunctComptimeConst(fn);
 
-        NK_LOG_INF(
-            "ir:\n%s", (char const *)[&]() {
-                NkStringBuilder sb{};
-                nkir_inspectFunct(fn, &sb);
-                nksb_appendNull(&sb);
-                return nk_defer((char const *)sb.data, [sb]() mutable {
-                    nksb_free(&sb);
-                });
-            }());
+#ifdef ENABLE_LOGGING
+        {
+            NkStringBuilder sb{};
+            defer {
+                nksb_free(&sb);
+            };
+            nkir_inspectFunct(fn, &sb);
+            NK_LOG_INF("ir:\n" NKS_FMT, NKS_ARG(sb));
+        }
+#endif // ENABLE_LOGGING
     }
 
     return cnst;
@@ -2371,16 +2354,17 @@ NkIrFunct nkl_compile(NklCompiler c, NklAstNode root, bool create_scope = true) 
 
     gen(c, nkir_make_ret());
 
-    NK_LOG_INF(
-        "ir:\n%s", (char const *)[&]() {
-            NkStringBuilder sb{};
-            nkir_inspectFunct(fn, &sb);
-            nkir_inspectExtSyms(c->ir, &sb);
-            nksb_appendNull(&sb);
-            return nk_defer((char const *)sb.data, [sb]() mutable {
-                nksb_free(&sb);
-            });
-        }());
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        nkir_inspectFunct(fn, &sb);
+        nkir_inspectExtSyms(c->ir, &sb);
+        NK_LOG_INF("ir:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
 
     return fn;
 }

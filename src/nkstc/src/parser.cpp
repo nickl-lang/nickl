@@ -180,23 +180,24 @@ NklAstNodeArray nkst_parse(NkAllocator alloc, NkAtom file, NkString text, NklTok
 
     engine.parse();
 
-    NK_LOG_INF(
-        "AST:%s", (char const *)[&]() {
-            // TODO: Use scratch arena
-            NkStringBuilder sb{NKSB_INIT(nk_default_allocator)};
-            nkl_ast_inspect(
-                {
-                    .file = file,
-                    .text = text,
-                    .tokens = tokens,
-                    .nodes = {NK_SLICE_INIT(nodes)},
-                },
-                nksb_getStream(&sb));
-            nksb_appendNull(&sb);
-            return nk_defer((char const *)sb.data, [sb]() mutable {
-                nksb_free(&sb);
-            });
-        }());
+#ifdef ENABLE_LOGGING
+    {
+        // TODO: Use scratch arena
+        NkStringBuilder sb{};
+        defer {
+            nksb_free(&sb);
+        };
+        nkl_ast_inspect(
+            {
+                .file = file,
+                .text = text,
+                .tokens = tokens,
+                .nodes = {NK_SLICE_INIT(nodes)},
+            },
+            nksb_getStream(&sb));
+        NK_LOG_INF("AST:" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
 
     return {NK_SLICE_INIT(nodes)};
 }

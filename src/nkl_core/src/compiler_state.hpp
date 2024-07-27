@@ -111,7 +111,6 @@ struct NodeListNode {
     NodeListNode *next;
 
     NklAstNode const &node;
-    nkltype_t type;
 };
 
 struct Context {
