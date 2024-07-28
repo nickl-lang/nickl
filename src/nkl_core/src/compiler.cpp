@@ -529,7 +529,7 @@ static Void leaveScope(Context &ctx) {
 }
 
 static auto enterPrivateScope(Context &ctx) {
-    pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
+    pushPrivateScope(ctx);
     return nk_defer([&ctx]() {
         leaveScope(ctx);
     });
@@ -545,9 +545,9 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
     // TODO: Choose the scope based on the symbol visibility
     if (descr.name || !ctx.scope_stack) {
-        pushPublicScope(ctx, proc);
+        pushPublicScope(ctx);
     } else {
-        pushPrivateScope(ctx, proc);
+        pushPrivateScope(ctx);
     }
     defer {
         leaveScope(ctx);
@@ -1441,7 +1441,8 @@ static Void compileStmt(Context &ctx, NklAstNode const &node) {
     auto const ref = asRef(ctx, val);
     if (ref.kind != NkIrRef_None && ref.type->size) {
         NKSB_FIXED_BUFFER(sb, 1024);
-        nkir_inspectRef(ctx.ir, ctx.scope_stack->cur_proc, ref, nksb_getStream(&sb));
+        nk_assert(ctx.proc_stack && "no current proc");
+        nkir_inspectRef(ctx.ir, ctx.proc_stack->proc, ref, nksb_getStream(&sb));
         NK_LOG_DBG("Value ignored: " NKS_FMT, NKS_ARG(sb));
     }
 
@@ -1464,6 +1465,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     // TODO: Storing entry point for the whole compiler on every compileFile call
     c->top_level_proc = ctx.top_level_proc;
 
+    // TODO: Check for export conflicts when merging modules
     nkir_mergeModules(m->mod, ctx.m->mod);
 
     // TODO: Inspect module?

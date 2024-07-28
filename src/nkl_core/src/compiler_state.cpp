@@ -101,7 +101,7 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
     return ref;
 }
 
-static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, NkIrProc cur_proc) {
+static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena) {
     auto scope = new (nk_arena_allocT<Scope>(main_arena)) Scope{
         .next{},
 
@@ -111,26 +111,24 @@ static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, Nk
 
         .locals{nullptr, nk_arena_getAllocator(main_arena)},
 
-        .cur_proc = cur_proc,
-
         .export_list{},
     };
     nk_list_push(ctx.scope_stack, scope);
 }
 
-void pushPublicScope(Context &ctx, NkIrProc cur_proc) {
+void pushPublicScope(Context &ctx) {
     auto cur_scope = ctx.scope_stack;
     if (cur_scope) {
-        pushScope(ctx, cur_scope->main_arena, cur_scope->temp_arena, cur_proc);
+        pushScope(ctx, cur_scope->main_arena, cur_scope->temp_arena);
     } else {
-        pushScope(ctx, &ctx.c->perm_arena, getNextTempArena(ctx.c, nullptr), cur_proc);
+        pushScope(ctx, &ctx.c->perm_arena, getNextTempArena(ctx.c, nullptr));
     }
 }
 
-void pushPrivateScope(Context &ctx, NkIrProc cur_proc) {
+void pushPrivateScope(Context &ctx) {
     auto cur_scope = ctx.scope_stack;
     nk_assert(cur_scope && "top level scope cannot be private");
-    pushScope(ctx, cur_scope->temp_arena, getNextTempArena(ctx.c, cur_scope->temp_arena), cur_proc);
+    pushScope(ctx, cur_scope->temp_arena, getNextTempArena(ctx.c, cur_scope->temp_arena));
 }
 
 void popScope(Context &ctx) {

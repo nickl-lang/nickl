@@ -97,7 +97,6 @@ NK_HASH_TREE_PROTO(DeclMap, Decl_kv, NkAtom);
 
 struct NkAtomListNode {
     NkAtomListNode *next;
-
     NkAtom name;
 };
 
@@ -110,20 +109,16 @@ struct Scope {
 
     DeclMap locals;
 
-    NkIrProc cur_proc;
-
     NkAtomListNode *export_list;
 };
 
 struct NodeListNode {
     NodeListNode *next;
-
     NklAstNode const &node;
 };
 
 struct ProcListNode {
     ProcListNode *next;
-
     NkIrProc proc;
 };
 
@@ -181,8 +176,8 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 NkIrRef asRef(Context &ctx, Interm const &val);
 
-void pushPublicScope(Context &ctx, NkIrProc cur_proc);
-void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
+void pushPublicScope(Context &ctx);
+void pushPrivateScope(Context &ctx);
 void popScope(Context &ctx);
 
 void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node);
