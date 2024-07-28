@@ -1,6 +1,7 @@
 #include "compiler_state.hpp"
 
 #include "nkb/ir.h"
+#include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
@@ -24,10 +25,15 @@ static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
     return &item->key;
 }
 
+static NkAtom const *NkAtom_GetKey(NkAtom const *item) {
+    return item;
+}
+
 } // namespace
 
 NK_HASH_TREE_IMPL(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 NK_HASH_TREE_IMPL(FileContextMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_IMPL(NkAtomSet, NkAtom, NkAtom, NkAtom_GetKey, nk_atom_hash, nk_atom_equal);
 
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
     return &c->temp_arenas[0] == conflict ? &c->temp_arenas[1] : &c->temp_arenas[0];
@@ -136,12 +142,17 @@ void popScope(Context &ctx) {
 static Decl &makeDecl(Context &ctx, NkAtom name) {
     nk_assert(ctx.scope_stack && "no current scope");
     NK_LOG_DBG("Declaring name=`%s` scope=%p", nk_atom2cs(name), (void *)ctx.scope_stack);
-    // TODO: Check for name conflict
+    auto const found = DeclMap_find(&ctx.scope_stack->locals, name);
+    if (found) {
+        static Decl s_dummy{};
+        return error(ctx, "redefinition of '%s'", nk_atom2cs(name)), s_dummy;
+    }
     auto kv = DeclMap_insert(&ctx.scope_stack->locals, {name, {}});
     return kv->val;
 }
 
 void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node) {
+    // TODO: Choose arena based on the symbol visibility
     auto ctx_copy = new (nk_arena_allocT<Context>(ctx.scope_stack->main_arena)) Context{
         .nkl = ctx.nkl,
         .c = ctx.c,
@@ -166,14 +177,6 @@ void defineParam(Context &ctx, NkAtom name, usize idx) {
     makeDecl(ctx, name) = {{.val{{.arg{idx}}, ValueKind_Arg}}, DeclKind_Complete};
 }
 
-void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id) {
-    makeDecl(ctx, name) = {{.val{{.extern_proc{id}}, ValueKind_ExternProc}}, DeclKind_Complete};
-}
-
-void defineExternData(Context &ctx, NkAtom name, NkIrExternData id) {
-    makeDecl(ctx, name) = {{.val{{.extern_data{id}}, ValueKind_ExternData}}, DeclKind_Complete};
-}
-
 Decl &resolve(Context &ctx, NkAtom name) {
     auto scope = ctx.scope_stack;
 
@@ -192,7 +195,8 @@ Decl &resolve(Context &ctx, NkAtom name) {
 
 bool isValueKnown(Interm const &val) {
     return val.kind == IntermKind_Void ||
-           (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata));
+           (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata ||
+                                           val.as.val.kind == ValueKind_ExternProc));
 }
 
 nklval_t getValueFromInterm(Context &ctx, Interm const &val) {
@@ -209,10 +213,14 @@ nklval_t getValueFromInterm(Context &ctx, Interm const &val) {
                     nk_assert(!"getValueFromInfo is not implemented for ValueKind_Proc");
                     return {};
 
+                    // TODO: Can we consider extern proc a known value?
+                case ValueKind_ExternProc:
+                    nk_assert(!"trying to get a comptime value from an extern proc const");
+                    return {};
+
                 case ValueKind_Void:
                 case ValueKind_Data:
                 case ValueKind_ExternData:
-                case ValueKind_ExternProc:
                 case ValueKind_Local:
                 case ValueKind_Arg:
                     nk_assert(!"unreachable");
