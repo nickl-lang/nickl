@@ -262,11 +262,34 @@ static char const *typeClassName(NklTypeClass tclass) {
 static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t);
 static Void compileStmt(Context &ctx, NklAstNode const &node);
 
+// // TODO: Establish a common way of extracting comptime constants
+// static NkString getComptimeString(Context &ctx, Interm const &val) {
+//     nk_assert(nklt_tclass(val.type) == NklType_Pointer);
+//     auto ar_t = val.type->as.ptr.target_type;
+//
+//     nk_assert(nklt_tclass(ar_t) == NklType_Array);
+//     nk_assert(ar_t->ir_type.as.aggr.elems.size == 1);
+//     nk_assert(ar_t->ir_type.as.aggr.elems.data[0].type->kind == NkIrType_Numeric);
+//     nk_assert(ar_t->ir_type.as.aggr.elems.data[0].type->as.num.value_type == Int8);
+//
+//     auto str_v = getValueFromInterm(ctx, val);
+//
+//     auto len = ar_t->ir_type.as.aggr.elems.data[0].count;
+//     auto str = nklval_as(char const *, str_v);
+//
+//     if (len && str[len - 1] == '\0') {
+//         len--;
+//     }
+//
+//     return {str, len};
+// }
+
 static Interm compile(
     Context &ctx,
     NklAstNode const &node,
     nkltype_t res_t = nullptr,
-    NklTypeClass res_tclass = NklType_None) {
+    NklTypeClass res_tclass = NklType_None,
+    bool is_const = false) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
@@ -285,7 +308,8 @@ static Interm compile(
         if (val.type != res_t && !can_cast_array_ptr_to_val_ptr) {
             return error(
                 ctx,
-                "expected value of type '%s', but got '%s'",
+                "expected %s of type '%s', but got '%s'",
+                is_const ? "comptime const" : "value",
                 [&]() {
                     NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
                     nkl_type_inspect(res_t, nksb_getStream(&sb));
@@ -306,6 +330,11 @@ static Interm compile(
         return error(ctx, "%s value expected", typeClassName(res_tclass));
     }
 
+    if (is_const && !isValueKnown(val)) {
+        // TODO: Improve error message
+        return error(ctx, "comptime const expected");
+    }
+
     return val;
 }
 
@@ -314,21 +343,9 @@ static T compileConst(Context &ctx, NklAstNode const &node, nkltype_t res_t) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto const pop_frame = grabTempArena(ctx);
-    auto const pop_node = pushNode(ctx, node);
+    nk_assert(res_t && "must specify res_t for comptime const");
 
-    DEFINE(val, compileImpl(ctx, node, res_t));
-
-    if (val.type != res_t) {
-        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-        nkl_type_inspect(res_t, nksb_getStream(&sb));
-        return error<T>(ctx, "comptime const of type '" NKS_FMT "' expected", NKS_ARG(sb));
-    }
-
-    if (!isValueKnown(val)) {
-        // TODO: Improve error message
-        return error<T>(ctx, "comptime const expected");
-    }
+    DEFINE(val, compile(ctx, node, res_t, NklType_None, true));
 
     return nklval_as(T, getValueFromInterm(ctx, val));
 }
@@ -349,7 +366,7 @@ static Interm resolveComptime(Decl &decl) {
     auto &val_n = nextNode(node_it);
 
     if (!type_n.id && !val_n.id) {
-        // TODO: Improve error message
+        // TODO: Validate AST separately
         return error(ctx, "invalid ast");
     }
 
@@ -364,6 +381,7 @@ static Interm resolveComptime(Decl &decl) {
 
     DEFINE(val, compile(ctx, val_n, type));
 
+    // TODO: Do we need this check, or is it always true?
     if (decl.kind != DeclKind_Complete) {
         if (!isValueKnown(val)) {
             // TODO: Improve error message
@@ -489,11 +507,6 @@ static nkltype_t compileProcType(
 static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &descr, NklAstNode const &body_n) {
     auto const proc = nkir_createProc(ctx.ir);
 
-    // TODO: Implement proper exports
-    if (descr.visibility != NkIrVisibility_Local) {
-        nkir_exportProc(ctx.ir, ctx.m->mod, proc);
-    }
-
     if (descr.name || !ctx.scope_stack) {
         pushPublicScope(ctx, proc);
     } else {
@@ -609,6 +622,22 @@ static Interm makeRef(NkIrRef const &ref, nkltype_t type) {
     return {{.ref{ref}}, type, IntermKind_Ref};
 }
 
+template <class T>
+static Interm makeConst(Context &ctx, nkltype_t type, T value) {
+    auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(type), NkIrVisibility_Local);
+    *(T *)nkir_getDataPtr(ctx.ir, rodata) = value;
+    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type, IntermKind_Val};
+}
+
+template <class T>
+static Interm makeNumeric(Context &ctx, nkltype_t num_t, char const *str, char const *fmt) {
+    auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(num_t), NkIrVisibility_Local);
+    // TODO: Replace sscanf in compiler
+    int res = sscanf(str, fmt, (T *)nkir_getDataPtr(ctx.ir, rodata));
+    nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
+    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, num_t, IntermKind_Val};
+}
+
 static Interm makeString(Context &ctx, NkString text) {
     auto i8_t = nkl_get_numeric(ctx.nkl, Int8);
     auto ar_t = nkl_get_array(ctx.nkl, i8_t, text.size + 1);
@@ -622,22 +651,6 @@ static Interm makeString(Context &ctx, NkString text) {
     ((char *)str_ptr)[text.size] = '\0';
 
     return makeRef(nkir_makeAddressRef(ctx.ir, nkir_makeDataRef(ctx.ir, rodata), nklt2nkirt(str_t)), str_t);
-}
-
-template <class T>
-static Interm makeNumeric(Context &ctx, nkltype_t num_t, char const *str, char const *fmt) {
-    auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(num_t), NkIrVisibility_Local);
-    // TODO: Replace sscanf in compiler
-    int res = sscanf(str, fmt, (T *)nkir_getDataPtr(ctx.ir, rodata));
-    nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, num_t, IntermKind_Val};
-}
-
-template <class T>
-static Interm makeConst(Context &ctx, nkltype_t type, T value) {
-    auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(type), NkIrVisibility_Local);
-    *(T *)nkir_getDataPtr(ctx.ir, rodata) = value;
-    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type, IntermKind_Val};
 }
 
 static Interm makeInstr(NkIrInstr const &instr, nkltype_t type) {
@@ -765,17 +778,28 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
     }
 }
 
-static NkAtom getConstDeclName(Context &ctx) {
-    nk_assert(ctx.node_stack && ctx.node_stack->next && "no parent node");
-
-    auto &parent_n = ctx.node_stack->next->node;
-    if (parent_n.id == n_const) {
-        auto parent_it = nodeIterate(ctx.src, parent_n);
+static NkAtom getNameFromConstNode(Context &ctx, NklAstNode const &node) {
+    if (node.id == n_const) {
+        auto parent_it = nodeIterate(ctx.src, node);
 
         auto &name_n = nextNode(parent_it);
         auto decl_name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
 
         return decl_name;
+    } else {
+        return 0;
+    }
+}
+
+static NkAtom getConstDeclName(Context &ctx) {
+    nk_assert(ctx.node_stack && ctx.node_stack->next && "no parent node");
+
+    auto &parent_n = ctx.node_stack->next->node;
+    if (parent_n.id == n_const) {
+        return getNameFromConstNode(ctx, parent_n);
+    } else if (parent_n.id == n_export && ctx.node_stack->next->next) {
+        // TODO: Have to handle a special case for export
+        return getNameFromConstNode(ctx, ctx.node_stack->next->next->node);
     } else {
         return 0;
     }
@@ -943,16 +967,34 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
             break;
         }
 
-        case n_extern_c_proc: {
+        case n_extern: {
             auto const decl_name = getConstDeclName(ctx);
             if (!decl_name) {
                 // TODO: Improve error message
                 return error(ctx, "decl name needed for extern c proc");
             }
 
-            DEFINE(const proc_t, compileProcType(ctx, node, nullptr, NkCallConv_Cdecl));
+            auto &lib_n = nextNode(node_it);
+            auto &proc_n = nextNode(node_it);
 
-            // TODO: Using hardcoded libc name
+            // TODO: Ignoring the lib name
+            (void)lib_n;
+            // DEFINE(lib, compile(ctx, lib_n, nullptr, NklType_Pointer, true));
+            // auto lib_str = getComptimeString(ctx, lib);
+            //
+            // if (nks_equal(lib_str, nk_cs2s("c")) || nks_equal(lib_str, nk_cs2s("C"))) {
+            //     // TODO: Using hard-configured libc name
+            //     lib_str = nk_cs2s(LIBC_NAME);
+            // }
+
+            if (proc_n.id != n_proc) {
+                // TODO: Validate AST separately
+                return error(ctx, "invalid ast");
+            }
+
+            DEFINE(const proc_t, compileProcType(ctx, proc_n, nullptr, NkCallConv_Cdecl));
+
+            // TODO: Using hard-configured libc name
             auto const proc = nkir_makeExternProc(ctx.ir, nk_cs2atom(LIBC_NAME), decl_name, nklt2nkirt(proc_t));
             CHECK(defineExternProc(ctx, decl_name, proc));
 
@@ -1063,38 +1105,55 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
         case n_member:
             return getLvalueRef(ctx, node);
 
-        case n_proc: {
-            auto const decl_name = getConstDeclName(ctx);
+        case n_export: {
+            auto &proc_n = nextNode(node_it);
 
-            nextNode(node_it); // params
-            nextNode(node_it); // ret_t
-            auto &body_n = nextNode(node_it);
+            if (proc_n.id != n_proc || proc_n.arity != 3) {
+                // TODO: Validate AST separately
+                return error(ctx, "invalid ast");
+            }
 
-            NklFieldArray params{};
-            DEFINE(const proc_t, compileProcType(ctx, node, &params));
+            DEFINE(proc, compile(ctx, proc_n));
+            nkir_exportProc(ctx.ir, ctx.m->mod, proc.as.val.as.proc.id);
 
-            DEFINE(
-                const proc_info,
-                compileProc(
-                    ctx,
-                    NkIrProcDescr{
-                        .name = decl_name, // TODO: Need to generate names for anonymous procs
-                        .proc_t = nklt2nkirt(proc_t),
-                        .arg_names{&params.data->name, params.size, sizeof(params.data[0])},
-                        .file = ctx.src.file,
-                        .line = token.lin,
-                        .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
-                    },
-                    body_n));
-
-            return {{.val{{.proc{proc_info}}, ValueKind_Proc}}, proc_t, IntermKind_Val};
+            return proc;
         }
 
-        case n_proc_type: {
-            DEFINE(const proc_t, compileProcType(ctx, node));
+        case n_proc: {
+            if (node.arity == 2) {
+                DEFINE(const proc_t, compileProcType(ctx, node));
 
-            auto const type_t = nkl_get_typeref(ctx.nkl, ctx.c->word_size);
-            return makeConst(ctx, type_t, proc_t);
+                auto const type_t = nkl_get_typeref(ctx.nkl, ctx.c->word_size);
+                return makeConst(ctx, type_t, proc_t);
+            } else if (node.arity == 3) {
+                auto const decl_name = getConstDeclName(ctx);
+
+                nextNode(node_it); // params
+                nextNode(node_it); // ret_t
+                auto &body_n = nextNode(node_it);
+
+                NklFieldArray params{};
+                DEFINE(const proc_t, compileProcType(ctx, node, &params));
+
+                DEFINE(
+                    const proc_info,
+                    compileProc(
+                        ctx,
+                        NkIrProcDescr{
+                            .name = decl_name, // TODO: Need to generate names for anonymous procs
+                            .proc_t = nklt2nkirt(proc_t),
+                            .arg_names{&params.data->name, params.size, sizeof(params.data[0])},
+                            .file = ctx.src.file,
+                            .line = token.lin,
+                            .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility
+                        },
+                        body_n));
+
+                return {{.val{{.proc{proc_info}}, ValueKind_Proc}}, proc_t, IntermKind_Val};
+            } else {
+                // TODO: Validate AST separately
+                return error(ctx, "invalid ast");
+            }
         }
 
         case n_ptr: {
@@ -1228,7 +1287,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
             auto name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
 
             if (!type_n.id && !val_n.id) {
-                // TODO: Improve error message
+                // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
 

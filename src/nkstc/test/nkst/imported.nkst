@@ -2,7 +2,7 @@
     (const A () 42)
 ]))
 
-(const printf () (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(const printf () (extern "c" (proc [(param () (ptr (i8))) ("...")] (i32))))
 
 (run () [
     (call printf ["Hello from %s!\n" "imported:comptime"])

@@ -1,9 +1,7 @@
-(const foo () (proc [] (i32) [
+(proc [] (i32) [
     (var x (i64) ())
     (return x)
-]))
-
-foo
+])
 
 /* @error
 error: expected value of type 'i32', but got 'i64'

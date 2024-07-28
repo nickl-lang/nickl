@@ -1,14 +1,14 @@
-(const printf () (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(const printf () (extern "c" (proc [(param () (ptr (i8))) ("...")] (i32))))
 
-(const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(const main () (export (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (call printf ["A=%zu\n" (run (i64) [
         (call printf ["hello comptime\n"])
-        (return (call get_a []))
+        (return (call getA []))
     ])])
     (return 0)
-]))
+])))
 
-(const get_a () (proc [] (i64) [
+(const getA () (proc [] (i64) [
     (return 42)
 ]))
 
