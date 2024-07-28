@@ -62,12 +62,15 @@ struct Void {};
 #define SCNXi64 SCNx64
 #define SCNXu64 SCNx64
 
+#define ENTRY_POINT_NAME "main"
+
 } // namespace
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
     auto c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .ir{},
+        .top_level_proc{NKIR_INVALID_IDX},
         .entry_point{NKIR_INVALID_IDX},
 
         .run_ctx_temp_arena{},
@@ -124,9 +127,9 @@ bool nkl_runModule(NklModule m) {
         nkl_errorStateUnequip();
     };
 
-    nk_assert(c->entry_point.idx != NKIR_INVALID_IDX);
+    nk_assert(c->top_level_proc.idx != NKIR_INVALID_IDX);
 
-    if (!nkir_invoke(c->run_ctx, c->entry_point, {}, {})) {
+    if (!nkir_invoke(c->run_ctx, c->top_level_proc, {}, {})) {
         auto const msg = nkir_getRunErrorString(c->run_ctx);
         nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
         return false;
@@ -145,6 +148,11 @@ bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf) {
     defer {
         nkl_errorStateUnequip();
     };
+
+    if (conf.output_kind == NkbOutput_Executable && c->entry_point.idx == NKIR_INVALID_IDX) {
+        nkl_reportError(0, 0, "entry point `" ENTRY_POINT_NAME "` either not defined or defined but not exported");
+        return false;
+    }
 
     if (!nkir_write(c->ir, m->mod, getNextTempArena(c, NULL), conf)) {
         auto const msg = nkir_getErrorString(c->ir);
@@ -504,8 +512,37 @@ static nkltype_t compileProcType(
         });
 }
 
+static void leaveScope(Context &ctx) {
+    auto exp = ctx.scope_stack->export_list;
+    while (exp) {
+        auto &decl = resolve(ctx, exp->name);
+        nk_assert(decl.kind != DeclKind_Undefined);
+        auto val = resolveDecl(ctx, decl);
+
+        // TODO: Validate AST
+        nk_assert(val.as.val.kind == ValueKind_Proc);
+        nkir_exportProc(ctx.ir, ctx.m->mod, val.as.val.as.proc.id);
+
+        exp = exp->next;
+    }
+
+    popScope(ctx);
+}
+
+static auto enterPrivateScope(Context &ctx) {
+    pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
+    return nk_defer([&ctx]() {
+        leaveScope(ctx);
+    });
+}
+
 static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &descr, NklAstNode const &body_n) {
     auto const proc = nkir_createProc(ctx.ir);
+
+    // TODO: Handle multiple entry points
+    if (descr.name == nk_cs2atom(ENTRY_POINT_NAME)) {
+        ctx.c->entry_point = proc;
+    }
 
     if (descr.name || !ctx.scope_stack) {
         pushPublicScope(ctx, proc);
@@ -513,7 +550,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
         pushPrivateScope(ctx, proc);
     }
     defer {
-        popScope(ctx);
+        leaveScope(ctx);
     };
 
     auto const pop_proc = pushProc(ctx, proc);
@@ -1106,15 +1143,25 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
             return getLvalueRef(ctx, node);
 
         case n_export: {
-            auto &proc_n = nextNode(node_it);
+            auto &const_n = nextNode(node_it);
 
-            if (proc_n.id != n_proc || proc_n.arity != 3) {
+            if (const_n.id != n_const) {
                 // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
 
-            DEFINE(proc, compile(ctx, proc_n));
-            nkir_exportProc(ctx.ir, ctx.m->mod, proc.as.val.as.proc.id);
+            auto const_it = nodeIterate(ctx.src, const_n);
+
+            auto &name_n = nextNode(const_it);
+            auto name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
+
+            auto new_list_node = new (nk_arena_allocT<NkAtomListNode>(ctx.scope_stack->main_arena)) NkAtomListNode{
+                .next{},
+                .name = name,
+            };
+            nk_list_push(ctx.scope_stack->export_list, new_list_node);
+
+            DEFINE(proc, compile(ctx, const_n));
 
             return proc;
         }
@@ -1239,10 +1286,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
         }
 
         case n_scope: {
-            pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
-            defer {
-                popScope(ctx);
-            };
+            auto const leave = enterPrivateScope(ctx);
 
             auto &child_n = nextNode(node_it);
             CHECK(compileStmt(ctx, child_n));
@@ -1332,20 +1376,14 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
             nkir_emit(ctx.ir, nkir_make_jmpz(ctx.ir, asRef(ctx, cond), else_l));
 
             {
-                pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
-                defer {
-                    popScope(ctx);
-                };
+                auto const leave = enterPrivateScope(ctx);
                 CHECK(compileStmt(ctx, body_n));
             }
 
             if (else_n.id) {
                 nkir_emit(ctx.ir, nkir_make_label(else_l));
                 {
-                    pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
-                    defer {
-                        popScope(ctx);
-                    };
+                    auto const leave = enterPrivateScope(ctx);
                     CHECK(compileStmt(ctx, else_n));
                 }
             }
@@ -1369,10 +1407,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, nkltype_t res_t)
             nkir_emit(ctx.ir, nkir_make_jmpz(ctx.ir, asRef(ctx, cond), endloop_l));
 
             {
-                pushPrivateScope(ctx, ctx.scope_stack->cur_proc);
-                defer {
-                    popScope(ctx);
-                };
+                auto const leave = enterPrivateScope(ctx);
                 CHECK(compileStmt(ctx, body_n));
             }
 
@@ -1417,7 +1452,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     DEFINE(&ctx, *importFile(c, filename));
 
     // TODO: Storing entry point for the whole compiler on every compileFile call
-    c->entry_point = ctx.top_level_proc;
+    c->top_level_proc = ctx.top_level_proc;
 
     nkir_mergeModules(m->mod, ctx.m->mod);
 

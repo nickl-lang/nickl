@@ -2,7 +2,7 @@
 
 (const printf () (extern "c" (proc [(param () (ptr (i8))) ("...")] (i32))))
 
-(const main () (export (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(export (const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (call (import "imported.nkst") [])
     (call printf ["BTW, A=%zu\n" A])
     (return 0)

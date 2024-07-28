@@ -96,6 +96,12 @@ struct Decl_kv {
 NK_HASH_TREE_TYPEDEF(DeclMap, Decl_kv);
 NK_HASH_TREE_PROTO(DeclMap, Decl_kv, NkAtom);
 
+struct NkAtomListNode {
+    NkAtomListNode *next;
+
+    NkAtom name;
+};
+
 struct Scope {
     Scope *next;
 
@@ -106,6 +112,8 @@ struct Scope {
     DeclMap locals;
 
     NkIrProc cur_proc;
+
+    NkAtomListNode *export_list;
 };
 
 struct NodeListNode {
@@ -143,6 +151,7 @@ NK_HASH_TREE_PROTO(FileContextMap, FileContext_kv, NkAtom);
 
 struct NklCompiler_T {
     NkIrProg ir;
+    NkIrProc top_level_proc;
     NkIrProc entry_point;
 
     NkArena run_ctx_temp_arena;

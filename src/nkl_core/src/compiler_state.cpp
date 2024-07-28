@@ -106,6 +106,8 @@ static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena, Nk
         .locals{nullptr, nk_arena_getAllocator(main_arena)},
 
         .cur_proc = cur_proc,
+
+        .export_list{},
     };
     nk_list_push(ctx.scope_stack, scope);
 }

@@ -9,7 +9,7 @@
     (return (add (mul (member a x) (member b x)) (mul (member a y) (member b y))))
 ]))
 
-(const main () (export (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(export (const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     // TODO: Implement struct literals
     (var a Vec2 ())
     (var b Vec2 ())
