@@ -160,3 +160,12 @@ TEST_F(HashTree, alignment) {
     str2int_insert(&ht, str2int_kv{nk_cs2s("one"), 42});
     str2int_insert(&ht, str2int_kv{nk_cs2s("two"), 42});
 }
+
+TEST_F(HashTree, not_found) {
+    str2int ht{};
+    defer {
+        str2int_free(&ht);
+    };
+
+    EXPECT_FALSE(str2int_find(&ht, nk_cs2s("one")));
+}

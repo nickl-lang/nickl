@@ -1,0 +1,10 @@
+(var a (i32) ())
+(var a (i32) ())
+
+/* @error
+error: redefinition of 'a'
+@enderror */
+
+/* @retcode
+1
+@endretcode */

@@ -1,0 +1,13 @@
+(export (const foo () (proc [] (void) [])))
+
+(export (const bar () (proc [] (void) [
+    (export (const foo () (proc [] (void) [])))
+])))
+
+/* @error
+error: symbol 'foo' is already exported in the current module
+@enderror */
+
+/* @retcode
+1
+@endretcode */

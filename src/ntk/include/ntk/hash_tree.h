@@ -62,13 +62,13 @@
                 .child = {0},                                                                               \
             };                                                                                              \
         }                                                                                                   \
-        return &(*res.node)->item;                                                                          \
+        return (TItem *)*res.node;                                                                          \
     }                                                                                                       \
                                                                                                             \
     TItem *TTree##_find(TTree *ht, TKey const key) {                                                        \
         u64 hash = KeyHashFunc(key);                                                                        \
         _##TTree##_SearchResult res = _##TTree##_findNode(&ht->root, &key, hash);                           \
-        return &(*res.node)->item;                                                                          \
+        return (TItem *)*res.node;                                                                          \
     }                                                                                                       \
                                                                                                             \
     static void _##TTree##_freeNode(NkAllocator alloc, _##TTree##_Node *node) {                             \

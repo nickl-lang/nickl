@@ -1,12 +1,12 @@
 (const A () (context (context (import "imported.nkst") bar) A))
 
-(const printf () (extern_c_proc [(param () (ptr (i8))) ("...")] (i32)))
+(const printf () (extern "c" (proc [(param () (ptr (i8))) ("...")] (i32))))
 
-(const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(export (const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
     (call (import "imported.nkst") [])
     (call printf ["BTW, A=%zu\n" A])
     (return 0)
-]))
+])))
 
 (call main [0 (nullptr)])
 

@@ -549,7 +549,8 @@ ValueInfo cast(nkltype_t type, ValueInfo val) {
 Void comptimeStore(NklCompiler c, nklval_t dst, nklval_t src) {
     auto const dst_type = nklval_typeof(dst);
     auto const src_type = nklval_typeof(src);
-    if (nklt_tclass(src_type) == NkType_Ptr && nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
+    if (nklt_tclass(dst_type) == NklType_Slice && nklt_tclass(src_type) == NkType_Ptr &&
+        nklt_tclass(src_type->as.ptr.target_type) == NkType_Array &&
         nklt_typeid(dst_type->as.slice.target_type) == nklt_typeid(src_type->as.ptr.target_type->as.arr.elem_type)) {
         auto data_v = nklval_tuple_at(dst, 0);
         auto size_v = nklval_tuple_at(dst, 1);

@@ -1,7 +1,7 @@
 (var x 42 ())
 
 /* @error
-error: comptime const of type 'type_t' expected
+error: expected comptime const of type 'type_t', but got 'i64'
 @enderror */
 
 /* @retcode

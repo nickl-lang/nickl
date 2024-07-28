@@ -5,7 +5,6 @@
 #include "nkl/core/compiler.h"
 #include "nkl/core/types.h"
 #include "ntk/hash_tree.h"
-#include "ntk/list.h"
 
 enum ValueKind {
     ValueKind_Void,
@@ -96,6 +95,11 @@ struct Decl_kv {
 NK_HASH_TREE_TYPEDEF(DeclMap, Decl_kv);
 NK_HASH_TREE_PROTO(DeclMap, Decl_kv, NkAtom);
 
+struct NkAtomListNode {
+    NkAtomListNode *next;
+    NkAtom name;
+};
+
 struct Scope {
     Scope *next;
 
@@ -105,18 +109,16 @@ struct Scope {
 
     DeclMap locals;
 
-    NkIrProc cur_proc;
+    NkAtomListNode *export_list;
 };
 
 struct NodeListNode {
     NodeListNode *next;
-
     NklAstNode const &node;
 };
 
 struct ProcListNode {
     ProcListNode *next;
-
     NkIrProc proc;
 };
 
@@ -143,6 +145,7 @@ NK_HASH_TREE_PROTO(FileContextMap, FileContext_kv, NkAtom);
 
 struct NklCompiler_T {
     NkIrProg ir;
+    NkIrProc top_level_proc;
     NkIrProc entry_point;
 
     NkArena run_ctx_temp_arena;
@@ -157,9 +160,14 @@ struct NklCompiler_T {
     usize word_size;
 };
 
+NK_HASH_TREE_TYPEDEF(NkAtomSet, NkAtom);
+NK_HASH_TREE_PROTO(NkAtomSet, NkAtom, NkAtom);
+
 struct NklModule_T {
     NklCompiler c;
     NkIrModule mod;
+
+    NkAtomSet export_set;
 };
 
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
@@ -168,15 +176,13 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 NkIrRef asRef(Context &ctx, Interm const &val);
 
-void pushPublicScope(Context &ctx, NkIrProc cur_proc);
-void pushPrivateScope(Context &ctx, NkIrProc cur_proc);
+void pushPublicScope(Context &ctx);
+void pushPrivateScope(Context &ctx);
 void popScope(Context &ctx);
 
 void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node);
 void defineLocal(Context &ctx, NkAtom name, NkIrLocalVar var);
 void defineParam(Context &ctx, NkAtom name, usize idx);
-void defineExternProc(Context &ctx, NkAtom name, NkIrExternProc id);
-void defineExternData(Context &ctx, NkAtom name, NkIrExternData id);
 
 Decl &resolve(Context &ctx, NkAtom name);
 
@@ -187,5 +193,19 @@ bool isModule(Interm const &val);
 Scope *getModuleScope(Interm const &val);
 
 nkltype_t getValueType(Context &ctx, Value const &val);
+
+template <class TRet = Interm>
+NK_PRINTF_LIKE(2)
+static TRet error(Context &ctx, char const *fmt, ...) {
+    auto last_node = ctx.node_stack;
+    auto err_token = last_node ? &ctx.src.tokens.data[last_node->node.token_idx] : nullptr;
+
+    va_list ap;
+    va_start(ap, fmt);
+    nkl_vreportError(ctx.src.file, err_token, fmt, ap);
+    va_end(ap);
+
+    return TRet{};
+}
 
 #endif // NKL_CORE_COMPILER_STATE_HPP_
