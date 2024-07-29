@@ -1006,7 +1006,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             break;
         }
 
-        case n_extern: {
+        case n_link: {
             auto const decl_name = getConstDeclName(ctx);
             if (!decl_name) {
                 // TODO: Validate AST separately
