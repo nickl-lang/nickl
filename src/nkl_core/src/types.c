@@ -772,9 +772,8 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
             nkltype_t ptr_t = (nkltype_t)type->ir_type.as.aggr.elems.data[0].type;
             nk_stream_printf(out, "[]");
             if (ptr_t->as.ptr.is_const) {
-                nk_stream_printf(out, "const");
+                nk_stream_printf(out, "const ");
             }
-            nk_stream_printf(out, " ");
             nkl_type_inspect((nkltype_t)ptr_t->as.ptr.target_type, out);
             break;
         }
