@@ -517,8 +517,8 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             return;
         } else if (ref.kind == NkIrRef_Address) {
             nksb_printf(src, "&");
-            auto const &target_ref = ctx.ir->relocs.data[ref.index];
-            writeData(ctx, target_ref.index, ctx.ir->data.data[target_ref.index], src, true);
+            auto const &reloc = ctx.ir->relocs.data[ref.index];
+            writeData(ctx, reloc.target_ref_idx, ctx.ir->data.data[reloc.target_ref_idx], src, true);
             return;
         }
 

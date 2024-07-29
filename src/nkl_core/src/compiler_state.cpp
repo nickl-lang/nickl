@@ -192,7 +192,7 @@ Decl &resolve(Context &ctx, NkAtom name) {
 }
 
 bool isValueKnown(Interm const &val) {
-    return val.kind == IntermKind_Void ||
+    return val.kind == IntermKind_Void || (val.kind == IntermKind_Ref && val.as.ref.kind == NkIrRef_Address) ||
            (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata ||
                                            val.as.val.kind == ValueKind_ExternProc));
 }
@@ -226,8 +226,10 @@ nklval_t getValueFromInterm(Context &ctx, Interm const &val) {
             }
             return {};
 
-        case IntermKind_Instr:
         case IntermKind_Ref:
+            return {nkir_dataRefDeref(ctx.ir, val.as.ref), val.type};
+
+        case IntermKind_Instr:
             nk_assert(!"unreachable");
             return {};
     }

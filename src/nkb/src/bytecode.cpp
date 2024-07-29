@@ -398,9 +398,9 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     break;
                 }
                 case NkIrRef_Address: {
-                    auto const &target_ref = ir.relocs.data[ir_ref.index];
+                    auto const &reloc = ir.relocs.data[ir_ref.index];
                     auto ref_addr = nk_allocT<void *>(ir.alloc);
-                    *ref_addr = get_data_addr(target_ref.index);
+                    *ref_addr = get_data_addr(reloc.target_ref_idx);
 
                     ref.kind = NkBcRef_Data;
                     ref.offset += (usize)ref_addr;

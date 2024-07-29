@@ -260,27 +260,6 @@ struct CompileConfig {
 static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig const &conf);
 static Void compileStmt(Context &ctx, NklAstNode const &node);
 
-// // TODO: Establish a common way of extracting comptime constants
-// static NkString getComptimeString(Context &ctx, Interm const &val) {
-//     nk_assert(nklt_tclass(val.type) == NklType_Pointer);
-//     auto const ar_t = nklt_ptr_target(val.type);
-//
-//     nk_assert(nklt_tclass(ar_t) == NklType_Array);
-//     nk_assert(nklt_tclass(nklt_array_elemType(ar_t)) == NklType_Numeric);
-//     nk_assert(nklt_numeric_valueType(nklt_array_elemType(ar_t)) == Int8);
-//
-//     auto str_v = getValueFromInterm(ctx, val);
-//
-//     auto len = nklt_array_size(ar_t);
-//     auto str = nklval_as(char const *, str_v);
-//
-//     if (len && str[len - 1] == '\0') {
-//         len--;
-//     }
-//
-//     return {str, len};
-// }
-
 static Interm makeVoid(Context &ctx) {
     return {{}, ctx.c->void_t(), IntermKind_Void};
 }
@@ -379,6 +358,11 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
 
     DEFINE(val, compileImpl(ctx, node, conf));
 
+    if (conf.is_const && !isValueKnown(val)) {
+        // TODO: Improve error message
+        return error(ctx, "comptime const expected");
+    }
+
     auto const dst_t = conf.res_t;
     auto const src_t = val.type;
 
@@ -386,15 +370,26 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
         if (nklt_tclass(dst_t) == NklType_Slice && nklt_tclass(src_t) == NklType_Pointer &&
             nklt_tclass(nklt_ptr_target(src_t)) == NklType_Array &&
             nklt_typeid(nklt_slice_target(dst_t)) == nklt_typeid(nklt_array_elemType(nklt_ptr_target(src_t)))) {
-            auto dst =
-                conf.dst.kind ? conf.dst : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(dst_t)));
-            auto const struct_t = nklt_underlying(dst_t);
-            auto const tuple_t = nklt_underlying(struct_t);
-            auto data_ref = tupleIndex(dst, tuple_t, 0);
-            auto size_ref = tupleIndex(dst, tuple_t, 1);
-            store(ctx, data_ref, cast(nklt_struct_field(nklt_underlying(dst_t), 0).type, val));
-            store(ctx, size_ref, makeUsizeConst(ctx, nklt_array_size(nklt_ptr_target(src_t))));
-            val = makeRef(dst);
+            if (conf.is_const) {
+                val = makeConst(
+                    ctx,
+                    dst_t,
+                    NkString{
+                        nklval_as(char const *, getValueFromInterm(ctx, val)),
+                        nklt_array_size(nklt_ptr_target(src_t)),
+                    });
+            } else {
+                auto const dst = conf.dst.kind
+                                     ? conf.dst
+                                     : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(dst_t)));
+                auto const struct_t = nklt_underlying(dst_t);
+                auto const tuple_t = nklt_underlying(struct_t);
+                auto const data_ref = tupleIndex(dst, tuple_t, 0);
+                auto const size_ref = tupleIndex(dst, tuple_t, 1);
+                store(ctx, data_ref, cast(nklt_struct_field(nklt_underlying(dst_t), 0).type, val));
+                store(ctx, size_ref, makeUsizeConst(ctx, nklt_array_size(nklt_ptr_target(src_t))));
+                val = makeRef(dst);
+            }
         } else {
             bool const can_cast_array_ptr_to_val_ptr =
                 nklt_tclass(dst_t) == NklType_Pointer && nklt_tclass(src_t) == NklType_Pointer &&
@@ -425,11 +420,6 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
     } else if (conf.res_tclass && nklt_tclass(src_t) != conf.res_tclass) {
         // TODO: Improve error message
         return error(ctx, "%s value expected", typeClassName(conf.res_tclass));
-    }
-
-    if (conf.is_const && !isValueKnown(val)) {
-        // TODO: Improve error message
-        return error(ctx, "comptime const expected");
     }
 
     return val;
@@ -1060,25 +1050,22 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto &lib_n = nextNode(node_it);
             auto &proc_n = nextNode(node_it);
 
-            // TODO: Ignoring the lib name
-            (void)lib_n;
-            // DEFINE(lib, compile(ctx, lib_n, nullptr, NklType_Pointer, true));
-            // auto lib_str = getComptimeString(ctx, lib);
-            //
-            // if (nks_equal(lib_str, nk_cs2s("c")) || nks_equal(lib_str, nk_cs2s("C"))) {
-            //     // TODO: Using hard-configured libc name
-            //     lib_str = nk_cs2s(LIBC_NAME);
-            // }
-
             if (proc_n.id != n_proc) {
                 // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
 
+            DEFINE(lib, compileConst<NkString>(ctx, lib_n, ctx.c->str_t()));
+
+            if (nks_equal(lib, nk_cs2s("c")) || nks_equal(lib, nk_cs2s("C"))) {
+                // TODO: Using hard-configured libc name
+                lib = nk_cs2s(LIBC_NAME);
+            }
+
             DEFINE(const proc_t, compileProcType(ctx, proc_n, nullptr, NkCallConv_Cdecl));
 
             // TODO: Using hard-configured libc name
-            auto const proc = nkir_makeExternProc(ctx.ir, nk_cs2atom(LIBC_NAME), decl_name, nklt2nkirt(proc_t));
+            auto const proc = nkir_makeExternProc(ctx.ir, nk_s2atom(lib), decl_name, nklt2nkirt(proc_t));
 
             return {{.val{{.extern_proc{proc}}, ValueKind_ExternProc}}, proc_t, IntermKind_Val};
         }
