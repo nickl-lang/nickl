@@ -254,6 +254,7 @@ struct CompileConfig {
     NklTypeClass res_tclass = NklType_None;
     bool is_const = false;
     Decl *opt_resolved_decl = nullptr;
+    NkIrRef dst{};
 };
 
 static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig const &conf);
@@ -365,7 +366,8 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
             nklt_tclass(val.type->as.ptr.target_type) == NklType_Array &&
             nklt_typeid(res_t->as.strct.fields.data[0].type->as.ptr.target_type) ==
                 nklt_typeid(nkirt2nklt(val.type->as.ptr.target_type->ir_type.as.aggr.elems.data[0].type))) {
-            auto dst = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(res_t)));
+            auto dst =
+                conf.dst.kind ? conf.dst : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(res_t)));
             auto const struct_t = res_t->underlying_type;
             auto const tuple_t = struct_t->underlying_type;
             auto data_ref = tupleIndex(dst, tuple_t, 0);
@@ -1389,18 +1391,26 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 ASSIGN(type, compileConst<nkltype_t>(ctx, type_n, type_t));
             }
 
+            NkIrLocalVar var{};
+            NkIrRef ref{};
+
+            if (type) {
+                var = nkir_makeLocalVar(ctx.ir, name, nklt2nkirt(type));
+                ref = nkir_makeFrameRef(ctx.ir, var);
+            }
+
             Interm val{};
             if (val_n.id) {
-                ASSIGN(val, compile(ctx, val_n, {type}));
+                ASSIGN(val, compile(ctx, val_n, {.res_t = type, .dst = ref}));
                 type = val.type;
+                if (!ref.kind) {
+                    var = nkir_makeLocalVar(ctx.ir, name, nklt2nkirt(type));
+                    ref = nkir_makeFrameRef(ctx.ir, var);
+                    CHECK(store(ctx, ref, val));
+                }
             }
 
-            auto var = nkir_makeLocalVar(ctx.ir, name, nklt2nkirt(type));
             CHECK(defineLocal(ctx, name, var));
-
-            if (val_n.id) {
-                CHECK(store(ctx, nkir_makeFrameRef(ctx.ir, var), val));
-            }
 
             return makeVoid(ctx);
         }
