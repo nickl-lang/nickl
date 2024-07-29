@@ -359,55 +359,56 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
 
     DEFINE(val, compileImpl(ctx, node, conf));
 
-    auto const res_t = conf.res_t;
+    auto const dst_t = conf.res_t;
+    auto const src_t = val.type;
 
-    if (res_t) {
-        if (nklt_tclass(res_t) == NklType_Slice && nklt_tclass(val.type) == NklType_Pointer &&
-            nklt_tclass(val.type->as.ptr.target_type) == NklType_Array &&
-            nklt_typeid(res_t->as.strct.fields.data[0].type->as.ptr.target_type) ==
-                nklt_typeid(nkirt2nklt(val.type->as.ptr.target_type->ir_type.as.aggr.elems.data[0].type))) {
+    if (dst_t) {
+        if (nklt_tclass(dst_t) == NklType_Slice && nklt_tclass(src_t) == NklType_Pointer &&
+            nklt_tclass(src_t->as.ptr.target_type) == NklType_Array &&
+            nklt_typeid(dst_t->as.strct.fields.data[0].type->as.ptr.target_type) ==
+                nklt_typeid(nkirt2nklt(src_t->as.ptr.target_type->ir_type.as.aggr.elems.data[0].type))) {
             auto dst =
-                conf.dst.kind ? conf.dst : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(res_t)));
-            auto const struct_t = res_t->underlying_type;
+                conf.dst.kind ? conf.dst : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(dst_t)));
+            auto const struct_t = dst_t->underlying_type;
             auto const tuple_t = struct_t->underlying_type;
             auto data_ref = tupleIndex(dst, tuple_t, 0);
             auto size_ref = tupleIndex(dst, tuple_t, 1);
-            store(ctx, data_ref, cast(res_t->as.strct.fields.data[0].type, val));
+            store(ctx, data_ref, cast(dst_t->as.strct.fields.data[0].type, val));
             // TODO: Use usize instead of u64
             store(
                 ctx,
                 size_ref,
-                makeConst<u64>(ctx, ctx.c->u64_t(), val.type->as.ptr.target_type->ir_type.as.aggr.elems.data[0].count));
+                makeConst<u64>(ctx, ctx.c->u64_t(), src_t->as.ptr.target_type->ir_type.as.aggr.elems.data[0].count));
             val = makeRef(dst);
         } else {
             bool const can_cast_array_ptr_to_val_ptr =
-                (nklt_tclass(res_t) == NklType_Pointer && nklt_tclass(val.type) == NklType_Pointer &&
-                 nklt_tclass(val.type->as.ptr.target_type) == NklType_Array &&
-                 nklt_typeid(nkirt2nklt(val.type->as.ptr.target_type->ir_type.as.aggr.elems.data->type)) ==
-                     nklt_typeid(res_t->as.ptr.target_type));
+                (nklt_tclass(dst_t) == NklType_Pointer && nklt_tclass(src_t) == NklType_Pointer &&
+                 nklt_tclass(src_t->as.ptr.target_type) == NklType_Array &&
+                 nklt_typeid(nkirt2nklt(src_t->as.ptr.target_type->ir_type.as.aggr.elems.data->type)) ==
+                     nklt_typeid(dst_t->as.ptr.target_type));
 
-            if (val.type != res_t && !can_cast_array_ptr_to_val_ptr) {
+            if (src_t != dst_t && !can_cast_array_ptr_to_val_ptr) {
                 return error(
                     ctx,
                     "expected %s of type '%s', but got '%s'",
                     conf.is_const ? "comptime const" : "value",
                     [&]() {
                         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-                        nkl_type_inspect(res_t, nksb_getStream(&sb));
+                        nkl_type_inspect(dst_t, nksb_getStream(&sb));
                         nksb_appendNull(&sb);
                         return sb.data;
                     }(),
                     [&]() {
                         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-                        nkl_type_inspect(val.type, nksb_getStream(&sb));
+                        nkl_type_inspect(src_t, nksb_getStream(&sb));
                         nksb_appendNull(&sb);
                         return sb.data;
                     }());
             }
 
-            val.type = res_t;
+            val.type = dst_t;
         }
-    } else if (conf.res_tclass && nklt_tclass(val.type) != conf.res_tclass) {
+    } else if (conf.res_tclass && nklt_tclass(src_t) != conf.res_tclass) {
         // TODO: Improve error message
         return error(ctx, "%s value expected", typeClassName(conf.res_tclass));
     }
