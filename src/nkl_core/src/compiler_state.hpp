@@ -169,6 +169,7 @@ struct NklCompiler_T {
     CACHED_TYPE(any_t, nkl_get_any(nkl, word_size))
     CACHED_TYPE(bool_t, nkl_get_bool(nkl))
     CACHED_TYPE(type_t, nkl_get_typeref(nkl, word_size))
+    CACHED_TYPE(usize_t, nkl_get_int(nkl, word_size, false))
     CACHED_TYPE(void_t, nkl_get_void(nkl))
 
 #define X(TYPE, VALUE_TYPE) CACHED_TYPE(NK_CAT(TYPE, _t), nkl_get_numeric(nkl, VALUE_TYPE))

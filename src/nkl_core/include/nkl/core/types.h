@@ -4,6 +4,7 @@
 #include "nkb/common.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus
@@ -82,6 +83,7 @@ nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count);
 nkltype_t nkl_get_bool(NklState nkl);
 nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type);
+nkltype_t nkl_get_int(NklState nkl, usize size, bool is_signed);
 nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info);
 nkltype_t nkl_get_ptr(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
 nkltype_t nkl_get_slice(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
@@ -95,6 +97,14 @@ nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields);
 nkltype_t nkl_get_void(NklState nkl);
 
 void nkl_type_inspect(nkltype_t type, NkStream out);
+
+NK_INLINE nktype_t nklt2nkirt(nkltype_t type) {
+    return &type->ir_type;
+}
+
+NK_INLINE nkltype_t nkirt2nklt(nktype_t type) {
+    return (nkltype_t)type;
+}
 
 NK_INLINE void *nklval_data(nklval_t val) {
     return val.data;
@@ -113,20 +123,104 @@ NK_INLINE NklTypeClass nklt_tclass(nkltype_t type) {
 }
 
 NK_INLINE u64 nklt_sizeof(nkltype_t type) {
-    return type->ir_type.size;
+    return nklt2nkirt(type)->size;
 }
 
 #define nklval_as(TYPE, VAL) (*(TYPE *)nklval_data(VAL))
 
-NK_INLINE nktype_t nklt2nkirt(nkltype_t type) {
-    return &type->ir_type;
+NK_INLINE nkltype_t nklt_underlying(nkltype_t type) {
+    return type->underlying_type;
 }
 
-NK_INLINE nkltype_t nkirt2nklt(nktype_t type) {
-    return (nkltype_t)type;
+NK_INLINE usize nklt_array_size(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Array);
+    return nklt2nkirt(type)->as.aggr.elems.data[0].count;
 }
 
-usize nklt_struct_index(nkltype_t type, NkAtom name);
+NK_INLINE nkltype_t nklt_array_elemType(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Array);
+    return nkirt2nklt(nklt2nkirt(type)->as.aggr.elems.data[0].type);
+}
+
+NK_INLINE usize nklt_proc_paramCount(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Procedure);
+    return nklt2nkirt(type)->as.proc.info.args_t.size;
+}
+
+NK_INLINE nkltype_t nklt_proc_paramType(nkltype_t type, usize idx) {
+    nk_assert(nklt_tclass(type) == NklType_Procedure);
+    NkTypeArray param_types = nklt2nkirt(type)->as.proc.info.args_t;
+    nk_assert(idx < param_types.size && "index out of range");
+    return nkirt2nklt(param_types.data[idx]);
+}
+
+NK_INLINE nkltype_t nklt_proc_retType(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Procedure);
+    return nkirt2nklt(nklt2nkirt(type)->as.proc.info.ret_t);
+}
+
+NK_INLINE NkCallConv nklt_proc_callConv(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Procedure);
+    return nklt2nkirt(type)->as.proc.info.call_conv;
+}
+
+NK_INLINE u8 nklt_proc_flags(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Procedure);
+    return nklt2nkirt(type)->as.proc.info.flags;
+}
+
+NK_INLINE NkIrNumericValueType nklt_numeric_valueType(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Numeric);
+    return nklt2nkirt(type)->as.num.value_type;
+}
+
+NK_INLINE nkltype_t nklt_ptr_target(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Pointer);
+    return type->as.ptr.target_type;
+}
+
+NK_INLINE bool nklt_ptr_isConst(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Pointer);
+    return type->as.ptr.is_const;
+}
+
+NK_INLINE NklField nklt_struct_field(nkltype_t type, usize idx) {
+    nk_assert(nklt_tclass(type) == NklType_Struct);
+    nk_assert(idx < type->as.strct.fields.size && "index out of range");
+    return type->as.strct.fields.data[idx];
+}
+
+NK_INLINE usize nklt_struct_index(nkltype_t type, NkAtom name) {
+    nk_assert(nklt_tclass(type) == NklType_Struct);
+    for (usize i = 0; i < type->as.strct.fields.size; i++) {
+        if (name == type->as.strct.fields.data[i].name) {
+            return i;
+        }
+    }
+    return -1u;
+}
+
+NK_INLINE nkltype_t nklt_slice_target(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Slice);
+    return nklt_ptr_target(nklt_struct_field(nklt_underlying(type), 0).type);
+}
+
+NK_INLINE usize nklt_tuple_size(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Tuple);
+    return nklt2nkirt(type)->as.aggr.elems.size;
+}
+
+NK_INLINE nkltype_t nklt_tuple_elemType(nkltype_t type, usize idx) {
+    nk_assert(nklt_tclass(type) == NklType_Tuple);
+    nk_assert(idx < nklt2nkirt(type)->as.aggr.elems.size && "index out of range");
+    return nkirt2nklt(nklt2nkirt(type)->as.aggr.elems.data[idx].type);
+}
+
+NK_INLINE usize nklt_tuple_elemOffset(nkltype_t type, usize idx) {
+    nk_assert(nklt_tclass(type) == NklType_Tuple);
+    nk_assert(idx < nklt2nkirt(type)->as.aggr.elems.size && "index out of range");
+    return nklt2nkirt(type)->as.aggr.elems.data[idx].offset;
+}
 
 #ifdef __cplusplus
 }
