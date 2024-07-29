@@ -158,6 +158,24 @@ struct NklCompiler_T {
     NklErrorState errors;
 
     usize word_size;
+
+#define CACHED_TYPE(NAME, EXPR)                     \
+    nkltype_t NK_CAT(_cached_, NAME){};             \
+    nkltype_t NAME() {                              \
+        auto &cached = NK_CAT(_cached_, NAME);      \
+        return cached ? cached : (cached = (EXPR)); \
+    };
+
+    CACHED_TYPE(any_t, nkl_get_any(nkl, word_size))
+    CACHED_TYPE(bool_t, nkl_get_bool(nkl))
+    CACHED_TYPE(type_t, nkl_get_typeref(nkl, word_size))
+    CACHED_TYPE(void_t, nkl_get_void(nkl))
+
+#define X(TYPE, VALUE_TYPE) CACHED_TYPE(NK_CAT(TYPE, _t), nkl_get_numeric(nkl, VALUE_TYPE))
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+#undef CACHED_TYPE
 };
 
 NK_HASH_TREE_TYPEDEF(NkAtomSet, NkAtom);
