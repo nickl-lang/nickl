@@ -308,10 +308,11 @@ static Interm makeNumeric(Context &ctx, nkltype_t num_t, char const *str, char c
 
 static Interm makeString(Context &ctx, NkString text) {
     auto i8_t = nkl_get_numeric(ctx.nkl, Int8);
-    auto ar_t = nkl_get_array(ctx.nkl, i8_t, text.size + 1);
+    auto ar_nt_t = nkl_get_array(ctx.nkl, i8_t, text.size + 1);
+    auto ar_t = nkl_get_array(ctx.nkl, i8_t, text.size);
     auto str_t = nkl_get_ptr(ctx.nkl, ctx.c->word_size, ar_t, true);
 
-    auto rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(ar_t), NkIrVisibility_Local);
+    auto rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(ar_nt_t), NkIrVisibility_Local);
     auto str_ptr = nkir_getDataPtr(ctx.ir, rodata);
 
     // TODO: Manual copy and null termination
