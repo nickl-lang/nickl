@@ -81,40 +81,44 @@ void emit(Context &ctx, NkIrInstr const &instr) {
     }
 }
 
-void emitDefers(Context &ctx) {
+static void emitDefersForScope(Context &ctx, Scope const *scope) {
+    auto defer_node = scope->defer_stack;
+    while (defer_node) {
+        NK_LOG_DBG("Emitting defer blocks for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+
+        if (ctx.proc_stack->defer_node) {
+            nkir_instrArrayDupInto(
+                ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &ctx.proc_stack->defer_node->instrs, scope->temp_arena);
+        } else {
+            auto frame = nk_arena_grab(scope->temp_arena);
+            defer {
+                nk_arena_popFrame(scope->temp_arena, frame);
+            };
+            NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(scope->temp_arena))};
+            nkir_instrArrayDupInto(ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &instrs_copy, scope->temp_arena);
+            nkir_emitArray(ctx.ir, {NK_SLICE_INIT(instrs_copy)});
+        }
+
+        defer_node = defer_node->next;
+    }
+}
+
+void emitDefers(Context &ctx, bool all_scopes) {
     if (ctx.proc_stack->has_return_in_last_block) {
         return;
     }
 
     auto scope = ctx.scope_stack;
-    auto const cur_proc = scope->cur_proc;
 
-    while (scope && scope->cur_proc == cur_proc) {
-        auto defer_node = scope->defer_stack;
-        while (defer_node) {
-            NK_LOG_DBG(
-                "Emitting defer blocks for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+    if (all_scopes) {
+        auto const cur_proc = scope->cur_proc;
 
-            if (ctx.proc_stack->defer_node) {
-                nkir_instrArrayDupInto(
-                    ctx.ir,
-                    {NK_SLICE_INIT(defer_node->instrs)},
-                    &ctx.proc_stack->defer_node->instrs,
-                    scope->temp_arena);
-            } else {
-                auto frame = nk_arena_grab(scope->temp_arena);
-                defer {
-                    nk_arena_popFrame(scope->temp_arena, frame);
-                };
-                NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(scope->temp_arena))};
-                nkir_instrArrayDupInto(ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &instrs_copy, scope->temp_arena);
-                nkir_emitArray(ctx.ir, {NK_SLICE_INIT(instrs_copy)});
-            }
-
-            defer_node = defer_node->next;
+        while (scope && scope->cur_proc == cur_proc) {
+            emitDefersForScope(ctx, scope);
+            scope = scope->next;
         }
-
-        scope = scope->next;
+    } else {
+        emitDefersForScope(ctx, scope);
     }
 }
 

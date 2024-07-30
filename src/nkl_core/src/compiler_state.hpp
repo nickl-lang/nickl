@@ -207,7 +207,7 @@ NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 void emit(Context &ctx, NkIrInstr const &instr);
-void emitDefers(Context &ctx);
+void emitDefers(Context &ctx, bool all_scopes);
 
 NkIrRef asRef(Context &ctx, Interm const &val);
 

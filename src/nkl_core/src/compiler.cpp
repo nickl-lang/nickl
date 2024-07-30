@@ -653,7 +653,7 @@ static Void leaveScope(Context &ctx) {
 static auto enterPrivateScope(Context &ctx) {
     pushPrivateScope(ctx);
     return nk_defer([&ctx]() {
-        emitDefers(ctx);
+        emitDefers(ctx, false);
         leaveScope(ctx);
     });
 }
@@ -665,7 +665,7 @@ static auto enterProcScope(Context &ctx, bool is_public) {
         pushPrivateScope(ctx);
     }
     return nk_defer([&ctx]() {
-        emitDefers(ctx);
+        emitDefers(ctx, true);
         emit(ctx, nkir_make_ret(ctx.ir));
         leaveScope(ctx);
     });
@@ -1355,7 +1355,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_return: {
-            emitDefers(ctx);
+            emitDefers(ctx, true);
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
                 auto const ret_t = nklt_proc_retType(nkirt2nklt(nkir_getProcType(ctx.ir, ctx.proc_stack->proc)));

@@ -14,6 +14,14 @@
     (call printf ["world\n"])
 ]))
 
+(const in_a_scope_with_outer () (proc [] (void) [
+    (defer (call printf ["!\n"]))
+    (scope [
+        (defer (call printf ["Hello, "]))
+    ])
+    (call printf ["World"])
+]))
+
 (const with_if () (proc [(param should_close (bool))] (void) [
     (call printf ["open "])
     (defer [
@@ -50,6 +58,7 @@
 (export (const main () (proc [] (i32) [
     (call basic [])
     (call in_a_scope [])
+    (call in_a_scope_with_outer [])
     (call with_if [(false)])
     (call with_if [(true)])
     (call with_nested_defer [])
@@ -64,6 +73,7 @@
 /* @output
 open process close
 hello world
+Hello, World!
 open process open process close
 1 2 3 4
 1 2
