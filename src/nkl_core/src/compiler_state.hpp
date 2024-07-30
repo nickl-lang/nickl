@@ -100,6 +100,13 @@ struct NkAtomListNode {
     NkAtom name;
 };
 
+struct DeferListNode {
+    DeferListNode *next;
+    NkDynArray(NkIrInstr) instrs;
+    NkAtom file;
+    u32 node_idx;
+};
+
 struct Scope {
     Scope *next;
 
@@ -110,6 +117,7 @@ struct Scope {
     DeclMap locals;
 
     NkAtomListNode *export_list;
+    DeferListNode *defer_stack;
 };
 
 struct NodeListNode {
@@ -120,6 +128,7 @@ struct NodeListNode {
 struct ProcListNode {
     ProcListNode *next;
     NkIrProc proc;
+    DeferListNode *defer_node;
 };
 
 struct Context {
@@ -194,6 +203,7 @@ NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
 
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
+void emit(Context &ctx, NkIrInstr const &instr);
 NkIrRef asRef(Context &ctx, Interm const &val);
 
 void pushPublicScope(Context &ctx);

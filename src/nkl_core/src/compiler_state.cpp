@@ -5,6 +5,8 @@
 #include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
+#include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 namespace {
 
@@ -47,6 +49,26 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
     return *found;
 }
 
+void emit(Context &ctx, NkIrInstr const &instr) {
+    nk_assert(ctx.proc_stack && "no current proc");
+#ifdef ENABLE_LOGGING
+    NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+    nkir_inspectInstr(ctx.ir, ctx.proc_stack->proc, instr, nksb_getStream(&sb));
+#endif // ENABLE_LOGGING
+    if (ctx.proc_stack->defer_node) {
+        auto const defer_node = ctx.proc_stack->defer_node;
+        NK_LOG_DBG(
+            "Emitting '" NKS_FMT "' into a defer node %u file=`%s`",
+            NKS_ARG(sb),
+            defer_node->node_idx,
+            nk_atom2cs(defer_node->file));
+        nkda_append(&defer_node->instrs, instr);
+    } else {
+        NK_LOG_DBG("Emitting '" NKS_FMT "'", NKS_ARG(sb));
+        nkir_emit(ctx.ir, instr);
+    }
+}
+
 NkIrRef asRef(Context &ctx, Interm const &val) {
     NkIrRef ref{};
 
@@ -60,7 +82,7 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
             if (dst.kind == NkIrRef_None && nklt_sizeof(val.type)) {
                 dst = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(val.type)));
             }
-            nkir_emit(ctx.ir, instr);
+            emit(ctx, instr);
             ref = dst;
             break;
         }
@@ -102,17 +124,20 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
 }
 
 static void pushScope(Context &ctx, NkArena *main_arena, NkArena *temp_arena) {
-    auto scope = new (nk_arena_allocT<Scope>(main_arena)) Scope{
+    auto const alloc = nk_arena_getAllocator(main_arena);
+    auto scope = new (nk_allocT<Scope>(alloc)) Scope{
         .next{},
 
         .main_arena = main_arena,
         .temp_arena = temp_arena,
         .temp_frame = nk_arena_grab(temp_arena),
 
-        .locals{nullptr, nk_arena_getAllocator(main_arena)},
+        .locals{nullptr, alloc},
 
         .export_list{},
+        .defer_stack{},
     };
+    NK_LOG_DBG("Entering scope=%p", (void *)scope);
     nk_list_push(ctx.scope_stack, scope);
 }
 
@@ -127,6 +152,7 @@ void pushPublicScope(Context &ctx) {
 
 void pushPrivateScope(Context &ctx) {
     auto cur_scope = ctx.scope_stack;
+    NK_LOG_DBG("Leaving scope=%p", (void *)cur_scope);
     nk_assert(cur_scope && "top level scope cannot be private");
     pushScope(ctx, cur_scope->temp_arena, getNextTempArena(ctx.c, cur_scope->temp_arena));
 }

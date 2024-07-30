@@ -230,6 +230,7 @@ void nkir_inspectProgram(NkIrProg ir, NkStream out);
 void nkir_inspectData(NkIrProg ir, NkStream out);
 void nkir_inspectExternSyms(NkIrProg ir, NkStream out);
 void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStream out);
+void nkir_inspectInstr(NkIrProg ir, NkIrProc proc, NkIrInstr instr, NkStream out);
 void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, NkStream out);
 
 #ifdef __cplusplus

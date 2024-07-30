@@ -760,6 +760,66 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
     }
 }
 
+/// @param idx -1u means no padding
+static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStream out, usize idx) {
+    if (instr.code == nkir_comment) {
+        if (idx != -1u) {
+            nk_stream_printf(out, "%19s" NKS_FMT, "// ", NKS_ARG(instr.arg[1].comment));
+        } else {
+            nk_stream_printf(out, "// " NKS_FMT, NKS_ARG(instr.arg[1].comment));
+        }
+        return;
+    }
+
+    if (idx != -1u) {
+        nk_stream_printf(out, "%5zu |%8s", idx, nkirOpcodeName(instr.code));
+    } else {
+        nk_stream_printf(out, "%s", nkirOpcodeName(instr.code));
+    }
+
+    for (usize i = 1; i < 3; i++) {
+        auto const &arg = instr.arg[i];
+        if (arg.kind != NkIrArg_None) {
+            nk_stream_printf(out, ((i > 1) ? ", " : " "));
+        }
+        switch (arg.kind) {
+            case NkIrArg_Ref: {
+                auto const &ref = arg.ref;
+                nkir_inspectRef(ir, _proc, ref, out);
+                break;
+            }
+            case NkIrArg_RefArray: {
+                nk_stream_printf(out, "(");
+                for (usize i = 0; i < arg.refs.size; i++) {
+                    if (i) {
+                        nk_stream_printf(out, ", ");
+                    }
+                    auto const &ref = arg.refs.data[i];
+                    nkir_inspectRef(ir, _proc, ref, out);
+                }
+                nk_stream_printf(out, ")");
+                break;
+            }
+            case NkIrArg_Label:
+                if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name) {
+                    auto const name_str = nk_atom2s(ir->blocks.data[arg.id].name);
+                    nk_stream_printf(out, NKS_FMT "#%zu", NKS_ARG(name_str), arg.id);
+                } else {
+                    nk_stream_printf(out, "(null)");
+                }
+                break;
+            case NkIrArg_None:
+            default:
+                break;
+        }
+    }
+
+    if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
+        nk_stream_printf(out, " -> ");
+        nkir_inspectRef(ir, _proc, instr.arg[0].ref, out);
+    }
+}
+
 void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     auto const &proc = ir->procs.data[_proc.idx];
 
@@ -797,56 +857,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
 
         for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];
-
-            if (instr.code == nkir_comment) {
-                nk_stream_printf(out, "%19s" NKS_FMT "\n", "// ", NKS_ARG(instr.arg[1].comment));
-                continue;
-            }
-
-            nk_stream_printf(out, "%5zu |%8s", instr_index++, nkirOpcodeName(instr.code));
-
-            for (usize i = 1; i < 3; i++) {
-                auto const &arg = instr.arg[i];
-                if (arg.kind != NkIrArg_None) {
-                    nk_stream_printf(out, ((i > 1) ? ", " : " "));
-                }
-                switch (arg.kind) {
-                    case NkIrArg_Ref: {
-                        auto const &ref = arg.ref;
-                        nkir_inspectRef(ir, _proc, ref, out);
-                        break;
-                    }
-                    case NkIrArg_RefArray: {
-                        nk_stream_printf(out, "(");
-                        for (usize i = 0; i < arg.refs.size; i++) {
-                            if (i) {
-                                nk_stream_printf(out, ", ");
-                            }
-                            auto const &ref = arg.refs.data[i];
-                            nkir_inspectRef(ir, _proc, ref, out);
-                        }
-                        nk_stream_printf(out, ")");
-                        break;
-                    }
-                    case NkIrArg_Label:
-                        if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name) {
-                            auto const name_str = nk_atom2s(ir->blocks.data[arg.id].name);
-                            nk_stream_printf(out, NKS_FMT "#%zu", NKS_ARG(name_str), arg.id);
-                        } else {
-                            nk_stream_printf(out, "(null)");
-                        }
-                        break;
-                    case NkIrArg_None:
-                    default:
-                        break;
-                }
-            }
-
-            if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
-                nk_stream_printf(out, " -> ");
-                nkir_inspectRef(ir, _proc, instr.arg[0].ref, out);
-            }
-
+            inspectInstrImpl(ir, _proc, instr, out, instr_index++);
             nk_stream_printf(out, "\n");
         }
 
@@ -854,6 +865,10 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     }
 
     nk_stream_printf(out, "}\n");
+}
+
+void nkir_inspectInstr(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStream out) {
+    inspectInstrImpl(ir, _proc, instr, out, -1u);
 }
 
 void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {

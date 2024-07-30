@@ -79,6 +79,7 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
         .nkl = nkl,
         .perm_arena = arena,
         .temp_arenas{},
+
         .files{},
         .errors{},
 
@@ -185,8 +186,9 @@ static NklAstNode const &nextNode(AstNodeIterator &it) {
     return next_node;
 }
 
+// TODO: Figure out exactly what arenas should be used for node and proc stacks
 static auto pushNode(Context &ctx, NklAstNode const &node) {
-    auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->temp_arena)) NodeListNode{
+    auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{
         .next{},
         .node = node,
     };
@@ -197,11 +199,13 @@ static auto pushNode(Context &ctx, NklAstNode const &node) {
 }
 
 static auto pushProc(Context &ctx, NkIrProc proc) {
-    auto new_stack_node = new (nk_arena_allocT<ProcListNode>(ctx.scope_stack->temp_arena)) ProcListNode{
+    auto const arena = ctx.scope_stack ? ctx.scope_stack->main_arena : getNextTempArena(ctx.c, nullptr);
+    auto proc_node = new (nk_arena_allocT<ProcListNode>(arena)) ProcListNode{
         .next{},
         .proc = proc,
+        .defer_node{},
     };
-    nk_list_push(ctx.proc_stack, new_stack_node);
+    nk_list_push(ctx.proc_stack, proc_node);
     auto const prev_proc = nkir_getActiveProc(ctx.ir);
     return nk_defer([&ctx, prev_proc]() {
         nk_list_pop(ctx.proc_stack);
@@ -615,11 +619,21 @@ static nkltype_t compileProcType(
         });
 }
 
+static void emitDefers(Context &ctx) {
+    auto defer_node = ctx.scope_stack->defer_stack;
+    while (defer_node) {
+        NK_LOG_DBG("Emitting defer blocks for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+        nkir_emitArray(ctx.ir, {NK_SLICE_INIT(defer_node->instrs)});
+
+        defer_node = defer_node->next;
+    }
+}
+
 static Void leaveScope(Context &ctx) {
-    auto exp = ctx.scope_stack->export_list;
-    while (exp) {
+    auto export_node = ctx.scope_stack->export_list;
+    while (export_node) {
         // TODO: Avoid additional search for export?
-        auto &decl = resolve(ctx, exp->name);
+        auto &decl = resolve(ctx, export_node->name);
 
         nk_assert(decl.kind != DeclKind_Undefined);
         // TODO: Verify that condition
@@ -637,8 +651,10 @@ static Void leaveScope(Context &ctx) {
             nk_assert(!"invalid ast");
         }
 
-        exp = exp->next;
+        export_node = export_node->next;
     }
+
+    emitDefers(ctx);
 
     popScope(ctx);
 
@@ -652,6 +668,17 @@ static auto enterPrivateScope(Context &ctx) {
     });
 }
 
+static auto enterProcScope(Context &ctx, bool is_public) {
+    if (is_public || !ctx.scope_stack) {
+        pushPublicScope(ctx);
+    } else {
+        pushPrivateScope(ctx);
+    }
+    return nk_defer([&ctx]() {
+        leaveScope(ctx);
+    });
+}
+
 static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &descr, NklAstNode const &body_n) {
     auto const proc = nkir_createProc(ctx.ir);
 
@@ -660,53 +687,52 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
         ctx.c->entry_point = proc;
     }
 
-    // TODO: Choose the scope based on the symbol visibility
-    if (descr.name || !ctx.scope_stack) {
-        pushPublicScope(ctx);
-    } else {
-        pushPrivateScope(ctx);
-    }
-    defer {
-        leaveScope(ctx);
-    };
-
-    auto const pop_proc = pushProc(ctx, proc);
-
-    nkir_startProc(ctx.ir, proc, descr);
-
-    nkir_emit(ctx.ir, nkir_make_label(nkir_createLabel(ctx.ir, nk_cs2atom("@start"))));
-
-    auto arg_names_it = descr.arg_names.data;
-    for (usize i = 0; i < descr.arg_names.size; i++) {
-        CHECK(defineParam(ctx, *arg_names_it, i));
-        arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
-    }
-
-    CHECK(compileStmt(ctx, body_n));
-
-    // TODO: A very hacky and unstable way to calculate proc finishing line
-    u32 proc_finish_line = 0;
+    Scope *proc_scope = 0;
     {
-        auto const last_node_idx = nkl_ast_nextChild(ctx.src.nodes, nodeIdx(ctx.src, body_n)) - 1;
-        if (last_node_idx < ctx.src.nodes.size) {
-            auto const &last_node = ctx.src.nodes.data[last_node_idx];
-            proc_finish_line = ctx.src.tokens.data[last_node.token_idx].lin + 1;
+        auto const pop_proc = pushProc(ctx, proc);
+        auto const leave = enterProcScope(ctx, descr.name);
+
+        proc_scope = ctx.scope_stack;
+
+        // TODO: Choose the scope based on the symbol visibility
+
+        nkir_startProc(ctx.ir, proc, descr);
+
+        emit(ctx, nkir_make_label(nkir_createLabel(ctx.ir, nk_cs2atom("@start"))));
+
+        auto arg_names_it = descr.arg_names.data;
+        for (usize i = 0; i < descr.arg_names.size; i++) {
+            CHECK(defineParam(ctx, *arg_names_it, i));
+            arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
         }
+
+        CHECK(compileStmt(ctx, body_n));
+
+        // TODO: A very hacky and unstable way to calculate proc finishing line
+        u32 proc_finish_line = 0;
+        {
+            auto const last_node_idx = nkl_ast_nextChild(ctx.src.nodes, nodeIdx(ctx.src, body_n)) - 1;
+            if (last_node_idx < ctx.src.nodes.size) {
+                auto const &last_node = ctx.src.nodes.data[last_node_idx];
+                proc_finish_line = ctx.src.tokens.data[last_node.token_idx].lin + 1;
+            }
+        }
+
+        emitDefers(ctx);
+        emit(ctx, nkir_make_ret(ctx.ir));
+
+        nkir_finishProc(ctx.ir, proc, proc_finish_line);
     }
-
-    nkir_emit(ctx.ir, nkir_make_ret(ctx.ir));
-
-    nkir_finishProc(ctx.ir, proc, proc_finish_line);
 
 #ifdef ENABLE_LOGGING
     {
-        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(getNextTempArena(ctx.c, nullptr)))};
         nkir_inspectProc(ctx.ir, proc, nksb_getStream(&sb));
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
 #endif // ENABLE_LOGGING
 
-    return {proc, ctx.scope_stack};
+    return {proc, proc_scope};
 }
 
 static Context *importFile(NklCompiler c, NkString filename) {
@@ -726,6 +752,7 @@ static Context *importFile(NklCompiler c, NkString filename) {
                   .ir = c->ir,
 
                   .top_level_proc{},
+
                   .src = src,
 
                   .scope_stack{},
@@ -1261,11 +1288,11 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto &name_n = nextNode(const_it);
             auto const name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
 
-            auto new_list_node = new (nk_allocT<NkAtomListNode>(temp_alloc)) NkAtomListNode{
+            auto export_node = new (nk_allocT<NkAtomListNode>(temp_alloc)) NkAtomListNode{
                 .next{},
                 .name = name,
             };
-            nk_list_push(ctx.scope_stack->export_list, new_list_node);
+            nk_list_push(ctx.scope_stack->export_list, export_node);
 
             auto const found = NkAtomSet_find(&ctx.m->export_set, name);
             if (found) {
@@ -1336,17 +1363,16 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_return: {
+            emitDefers(ctx);
+
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
-
-                nk_assert(ctx.proc_stack && "no current proc");
                 auto const ret_t = nklt_proc_retType(nkirt2nklt(nkir_getProcType(ctx.ir, ctx.proc_stack->proc)));
-
                 DEFINE(arg, compile(ctx, arg_n, {ret_t}));
-
-                nkir_emit(ctx.ir, nkir_make_mov(ctx.ir, nkir_makeRetRef(ctx.ir), asRef(ctx, arg)));
+                emit(ctx, nkir_make_mov(ctx.ir, nkir_makeRetRef(ctx.ir), asRef(ctx, arg)));
             }
-            nkir_emit(ctx.ir, nkir_make_ret(ctx.ir));
+            emit(ctx, nkir_make_ret(ctx.ir));
+
             return makeVoid(ctx);
         }
 
@@ -1528,7 +1554,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             DEFINE(cond, compile(ctx, cond_n, {ctx.c->bool_t()}));
 
-            nkir_emit(ctx.ir, nkir_make_jmpz(ctx.ir, asRef(ctx, cond), else_l));
+            emit(ctx, nkir_make_jmpz(ctx.ir, asRef(ctx, cond), else_l));
 
             {
                 auto const leave = enterPrivateScope(ctx);
@@ -1536,14 +1562,14 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             }
 
             if (else_n.id) {
-                nkir_emit(ctx.ir, nkir_make_label(else_l));
+                emit(ctx, nkir_make_label(else_l));
                 {
                     auto const leave = enterPrivateScope(ctx);
                     CHECK(compileStmt(ctx, else_n));
                 }
             }
 
-            nkir_emit(ctx.ir, nkir_make_label(endif_l));
+            emit(ctx, nkir_make_label(endif_l));
 
             return makeVoid(ctx);
         }
@@ -1555,19 +1581,48 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto const loop_l = nkir_createLabel(ctx.ir, nk_cs2atom("@loop"));
             auto const endloop_l = nkir_createLabel(ctx.ir, nk_cs2atom("@endloop"));
 
-            nkir_emit(ctx.ir, nkir_make_label(loop_l));
+            emit(ctx, nkir_make_label(loop_l));
 
             DEFINE(cond, compile(ctx, cond_n, {ctx.c->bool_t()}));
 
-            nkir_emit(ctx.ir, nkir_make_jmpz(ctx.ir, asRef(ctx, cond), endloop_l));
+            emit(ctx, nkir_make_jmpz(ctx.ir, asRef(ctx, cond), endloop_l));
 
             {
                 auto const leave = enterPrivateScope(ctx);
                 CHECK(compileStmt(ctx, body_n));
             }
 
-            nkir_emit(ctx.ir, nkir_make_jmp(ctx.ir, loop_l));
-            nkir_emit(ctx.ir, nkir_make_label(endloop_l));
+            emit(ctx, nkir_make_jmp(ctx.ir, loop_l));
+            emit(ctx, nkir_make_label(endloop_l));
+
+            return makeVoid(ctx);
+        }
+
+        case n_defer_stmt: {
+            auto &stmt_n = nextNode(node_it);
+
+            auto const defer_node = new (nk_allocT<DeferListNode>(temp_alloc)) DeferListNode{
+                .next{},
+                .instrs{NKDA_INIT(temp_alloc)},
+                .file = ctx.src.file,
+                .node_idx = nodeIdx(ctx.src, node),
+            };
+
+            nk_list_push(ctx.scope_stack->defer_stack, defer_node);
+
+            {
+                auto const prev_defer_node = ctx.proc_stack->defer_node;
+                ctx.proc_stack->defer_node = defer_node;
+                defer {
+                    ctx.proc_stack->defer_node = prev_defer_node;
+                };
+
+                NK_LOG_DBG(
+                    "Defer recording start for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+                CHECK(compileStmt(ctx, stmt_n));
+                NK_LOG_DBG(
+                    "Defer recording finish for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+            }
 
             return makeVoid(ctx);
         }

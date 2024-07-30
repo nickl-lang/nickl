@@ -1,0 +1,19 @@
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
+
+(const foo () (proc [] (void) [
+    (defer (call printf ["world\n"]))
+    (call printf ["hello "])
+    (return)
+]))
+
+(export (const main () (proc [] (i32) [
+    (call foo [])
+    (return 0)
+])))
+
+(call main [])
+
+/* @output
+hello world
+
+@endoutput */
