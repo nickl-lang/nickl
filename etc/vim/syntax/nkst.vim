@@ -6,7 +6,7 @@ syn keyword nkstKeyword nullptr proc link const pub const import param call retu
 syn keyword nkstKeyword add sub mul div mod bitand bitor xor lsh rsh
 syn keyword nkstKeyword eq ne lt le gt ge
 
-syn keyword nkstType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void ptr
+syn keyword nkstType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void ptr slice
 syn keyword nkstBoolean true false
 
 syn match nkstComment    display '//.*$'

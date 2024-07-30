@@ -1,0 +1,20 @@
+(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+
+(const string () (slice (i8)))
+
+(export (const main () (proc [] (i32) [
+    (var str string "hello")
+    (call printString [str])
+    (return 0)
+])))
+
+(const printString () (proc [(param str string)] (void) [
+    (call printf ["str='%.*s'\n" (member str size) (member str data)])
+]))
+
+(call main [])
+
+/* @output
+str='hello'
+
+@endoutput */

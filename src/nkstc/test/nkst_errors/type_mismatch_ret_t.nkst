@@ -4,7 +4,7 @@
 ])
 
 /* @error
-error: expected value of type 'i32', but got 'i64'
+error: cannot convert a value of type 'i64' to 'i32'
 @enderror */
 
 /* @retcode

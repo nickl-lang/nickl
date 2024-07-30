@@ -230,8 +230,19 @@ void *nkir_getDataPtr(NkIrProg ir, NkIrData var) {
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
     NK_LOG_TRC("%s", __func__);
 
-    nk_assert(ref.kind == NkIrRef_Data && "data ref expected");
-    auto data = (u8 *)nkir_getDataPtr(ir, {ref.index}) + ref.offset;
+    void *data_ptr;
+
+    if (ref.kind == NkIrRef_Address) {
+        auto const address_ptr = nkir_getDataPtr(ir, {ir->relocs.data[ref.index].address_ref_idx});
+        auto const target_ptr = nkir_getDataPtr(ir, {ir->relocs.data[ref.index].target_ref_idx});
+        *(void **)address_ptr = target_ptr;
+        data_ptr = address_ptr;
+    } else {
+        nk_assert(ref.kind == NkIrRef_Data && "data ref expected");
+        data_ptr = nkir_getDataPtr(ir, {ref.index});
+    }
+
+    auto data = (u8 *)data_ptr + ref.offset;
     int indir = ref.indir;
     while (indir--) {
         data = *(u8 **)data;
@@ -441,8 +452,6 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_
 }
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
-    NK_LOG_TRC("%s", __func__);
-
     nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
@@ -457,8 +466,6 @@ NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var) {
 }
 
 NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx) {
-    NK_LOG_TRC("%s", __func__);
-
     nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
@@ -475,8 +482,6 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx) {
 }
 
 NkIrRef nkir_makeRetRef(NkIrProg ir) {
-    NK_LOG_TRC("%s", __func__);
-
     nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
     auto const &proc = ir->procs.data[ir->cur_proc.idx];
 
@@ -491,8 +496,6 @@ NkIrRef nkir_makeRetRef(NkIrProg ir) {
 }
 
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var) {
-    NK_LOG_TRC("%s", __func__);
-
     return {
         .index = var.idx,
         .offset = 0,
@@ -504,8 +507,6 @@ NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var) {
 }
 
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc) {
-    NK_LOG_TRC("%s", __func__);
-
     return {
         .index = proc.idx,
         .offset = 0,
@@ -530,8 +531,6 @@ NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data) {
 }
 
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
-    NK_LOG_TRC("%s", __func__);
-
     return {
         .index = proc.idx,
         .offset = 0,
@@ -548,7 +547,12 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
     nk_assert(ref.kind == NkIrRef_Data && "invalid address reference");
 
     auto const id = ir->relocs.size;
-    nkda_append(&ir->relocs, ref);
+    nkda_append(
+        &ir->relocs,
+        {
+            .address_ref_idx = nkir_makeDataRef(ir, nkir_makeRodata(ir, 0, ptr_t, NkIrVisibility_Local)).index,
+            .target_ref_idx = ref.index,
+        });
 
     return {
         .index = id,
@@ -561,7 +565,6 @@ NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
 }
 
 NkIrRef nkir_makeVariadicMarkerRef(NkIrProg) {
-    NK_LOG_TRC("%s", __func__);
     return {
         .index = 0,
         .offset = 0,
@@ -927,8 +930,8 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
         }
         case NkIrRef_Address: {
             nk_stream_printf(out, "&");
-            auto const &reloc_ref = ir->relocs.data[ref.index];
-            nkir_inspectRef(ir, _proc, reloc_ref, out);
+            auto const &reloc = ir->relocs.data[ref.index];
+            nkir_inspectRef(ir, _proc, nkir_makeDataRef(ir, {reloc.target_ref_idx}), out);
             break;
         }
         case NkIrRef_None:

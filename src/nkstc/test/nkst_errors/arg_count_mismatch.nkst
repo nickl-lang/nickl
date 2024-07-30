@@ -1,0 +1,10 @@
+(const foo () (link "whatever" (proc [(param () (void)) (param () (void))] (void))))
+(call foo [1 2 3])
+
+/* @error
+error: expected 2 arguments, but got 3
+@enderror */
+
+/* @retcode
+1
+@endretcode */

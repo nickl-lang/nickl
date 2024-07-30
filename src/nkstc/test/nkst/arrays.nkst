@@ -1,0 +1,7 @@
+(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+
+(pub (const main () (proc [] (i32) [
+    (return 0)
+])))
+
+(call main [0 (nullptr)])

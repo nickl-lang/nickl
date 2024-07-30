@@ -3,6 +3,7 @@
 #include "nickl_impl.h"
 #include "nkb/common.h"
 #include "ntk/arena.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/os/thread.h"
@@ -396,6 +397,23 @@ nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type) {
     return res.type;
 }
 
+nkltype_t nkl_get_int(NklState nkl, usize size, bool is_signed) {
+    switch (size) {
+        case 1:
+            return is_signed ? nkl_get_numeric(nkl, Int8) : nkl_get_numeric(nkl, Uint8);
+        case 2:
+            return is_signed ? nkl_get_numeric(nkl, Int16) : nkl_get_numeric(nkl, Uint16);
+        case 4:
+            return is_signed ? nkl_get_numeric(nkl, Int32) : nkl_get_numeric(nkl, Uint32);
+        case 8:
+            return is_signed ? nkl_get_numeric(nkl, Int64) : nkl_get_numeric(nkl, Uint64);
+
+        default:
+            nk_assert(!"invalid integer size");
+            return NULL;
+    }
+}
+
 nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info) {
     NK_LOG_TRC("%s", __func__);
 
@@ -772,9 +790,8 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
             nkltype_t ptr_t = (nkltype_t)type->ir_type.as.aggr.elems.data[0].type;
             nk_stream_printf(out, "[]");
             if (ptr_t->as.ptr.is_const) {
-                nk_stream_printf(out, "const");
+                nk_stream_printf(out, "const ");
             }
-            nk_stream_printf(out, " ");
             nkl_type_inspect((nkltype_t)ptr_t->as.ptr.target_type, out);
             break;
         }
@@ -830,13 +847,4 @@ void nkl_type_inspect(nkltype_t type, NkStream out) {
         default:
             nk_assert(!"unreachable");
     }
-}
-
-usize nklt_struct_index(nkltype_t type, NkAtom name) {
-    for (usize i = 0; i < type->as.strct.fields.size; i++) {
-        if (name == type->as.strct.fields.data[i].name) {
-            return i;
-        }
-    }
-    return -1u;
 }
