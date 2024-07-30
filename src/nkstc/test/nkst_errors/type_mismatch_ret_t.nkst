@@ -1,5 +1,5 @@
 (proc [] (i32) [
-    (var x (i64) ())
+    (var x (i64))
     (return x)
 ])
 

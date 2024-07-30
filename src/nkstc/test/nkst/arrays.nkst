@@ -1,7 +1,28 @@
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
-(pub (const main () (proc [] (i32) [
+(const N (usize) 3)
+(const T (type_t) (i32))
+(const Vec3i () (array N T))
+
+(export (const main () (proc [] (i32) [
+    (var ar Vec3i)
+
+    (assign (index ar 0) 1)
+    (assign (index ar 1) 2)
+    (assign (index ar 2) 3)
+
+    (call printVec3i [ar])
+
     (return 0)
 ])))
 
-(call main [0 (nullptr)])
+(const printVec3i () (proc [(param vec Vec3i)] (void) [
+    (call printf ["vec={x=%i y=%i z=%i}\n" (index vec 0) (index vec 1) (index vec 2)])
+]))
+
+(call main [])
+
+/* @output
+vec={x=1 y=2 z=3}
+
+@endoutput */

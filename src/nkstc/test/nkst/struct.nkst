@@ -1,4 +1,4 @@
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
 (const Vec2 () (struct [
     (param x (f64))
@@ -11,8 +11,8 @@
 
 (export (const main () (proc [] (i32) [
     // TODO: Implement struct literals
-    (var a Vec2 ())
-    (var b Vec2 ())
+    (var a Vec2)
+    (var b Vec2)
     (assign (member a x) 1.0)
     (assign (member a y) 2.0)
     (assign (member b x) 2.0)

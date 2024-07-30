@@ -1,4 +1,4 @@
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
 (export (const main () (proc [] (i32) [
     (var x () 42)
@@ -8,7 +8,7 @@
     (return 0)
 ])))
 
-(const apply () (proc [(param x (i64)) (param f (proc[(param () (i64))] (i64)))] (i64) [
+(const apply () (proc [(param x (i64)) (param f (proc[(param (i64))] (i64)))] (i64) [
     (return (call f [x]))
 ]))
 

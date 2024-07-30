@@ -2,7 +2,7 @@
     (const A () 42)
 ]))
 
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
 (run () [
     (call printf ["Hello from %s!\n" "imported:comptime"])

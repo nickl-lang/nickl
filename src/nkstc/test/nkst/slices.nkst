@@ -1,14 +1,14 @@
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
-(const string () (slice (i8)))
+(const String () (slice (const (i8))))
 
 (export (const main () (proc [] (i32) [
-    (var str string "hello")
+    (var str String "hello")
     (call printString [str])
     (return 0)
 ])))
 
-(const printString () (proc [(param str string)] (void) [
+(const printString () (proc [(param str String)] (void) [
     (call printf ["str='%.*s'\n" (member str size) (member str data)])
 ]))
 

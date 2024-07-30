@@ -699,6 +699,11 @@ nkltype_t nkl_get_void(NklState nkl) {
 void nkl_type_inspect(nkltype_t type, NkStream out) {
     NK_LOG_TRC("%s", __func__);
 
+    if (!type) {
+        nk_stream_printf(out, "(null)");
+        return;
+    }
+
     switch (type->tclass) {
         case NklType_Any:
             nk_stream_printf(out, "any_t");

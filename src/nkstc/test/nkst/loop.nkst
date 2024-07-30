@@ -1,7 +1,7 @@
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
 (export (const main () (proc [] (i32) [
-    (var i (i32) ())
+    (var i (i32))
     (while (lt i 5) [
         (call printf ["%zi\n" i])
         (assign i (add i 1))

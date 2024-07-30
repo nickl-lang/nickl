@@ -350,6 +350,11 @@ static Interm cast(nkltype_t type, Interm val) {
     return val;
 }
 
+static NkIrRef cast(nkltype_t type, NkIrRef ref) {
+    ref.type = nklt2nkirt(type);
+    return ref;
+}
+
 static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const conf = {}) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -455,7 +460,6 @@ static Interm resolveComptime(Decl &decl) {
     auto &val_n = nextNode(node_it);
 
     if (!type_n.id && !val_n.id) {
-        // TODO: Validate AST separately
         return error(ctx, "invalid ast");
     }
 
@@ -539,18 +543,39 @@ static NklFieldArray compileParams(Context &ctx, NklAstNode const &params_n, Com
             break;
         }
 
-        auto &name_n = nextNode(param_it);
-        auto &type_n = nextNode(param_it);
+        NklAstNode const *pname_n{};
+        NklAstNode const *ptype_n{};
+        NklAstNode const *pvalue_n{};
+        // TODO: Implement default values for params
+        (void)pvalue_n;
+
+        switch (param_n.arity) {
+            case 1:
+                ptype_n = &nextNode(param_it);
+                break;
+            case 2:
+                pname_n = &nextNode(param_it);
+                ptype_n = &nextNode(param_it);
+                break;
+            case 3:
+                pname_n = &nextNode(param_it);
+                ptype_n = &nextNode(param_it);
+                pvalue_n = &nextNode(param_it);
+                break;
+            default:
+                nk_assert(!"invalid ast");
+                return {};
+        }
 
         NkAtom name{};
 
-        if (name_n.id) {
-            auto name_token = &ctx.src.tokens.data[name_n.token_idx];
+        if (pname_n) {
+            auto name_token = &ctx.src.tokens.data[pname_n->token_idx];
             auto name_str = nkl_getTokenStr(name_token, ctx.src.text);
             name = nk_s2atom(name_str);
         }
 
-        DEFINE(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
+        DEFINE(type, compileConst<nkltype_t>(ctx, *ptype_n, ctx.c->type_t()));
 
         nkda_append(&fields, {name, type});
     }
@@ -609,7 +634,6 @@ static Void leaveScope(Context &ctx) {
         } else if (val.as.val.kind == ValueKind_Data) {
             nkir_exportData(ctx.ir, ctx.m->mod, val.as.val.as.data.id);
         } else {
-            // TODO: Validate AST separately
             nk_assert(!"invalid ast");
         }
 
@@ -787,9 +811,33 @@ static Interm getMember(Context &ctx, Interm const &lhs, NkAtom name) {
     }
 }
 
+static Interm getIndex(Context &ctx, Interm const &arr, Interm const &idx) {
+    switch (nklt_tclass(arr.type)) {
+        case NklType_Array: {
+            // TODO: Optimize array indexing??
+            auto const elem_t = nklt_array_elemType(arr.type);
+            auto const data_ptr = asRef(ctx, makeInstr(nkir_make_lea(ctx.ir, {}, asRef(ctx, arr)), ctx.c->usize_t()));
+            auto const elem_size = asRef(ctx, makeConst<usize>(ctx, ctx.c->usize_t(), nklt_sizeof(elem_t)));
+            auto const mul = nkir_make_mul(ctx.ir, {}, asRef(ctx, idx), elem_size);
+            auto const offset = asRef(ctx, makeInstr(mul, ctx.c->usize_t()));
+            auto const add = nkir_make_add(ctx.ir, {}, data_ptr, offset);
+            auto const elem_ptr_t = nkl_get_ptr(ctx.nkl, ctx.c->word_size, elem_t, false);
+            return deref(cast(elem_ptr_t, asRef(ctx, makeInstr(add, ctx.c->usize_t()))));
+        }
+
+        default: {
+            NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+            nkl_type_inspect(arr.type, nksb_getStream(&sb));
+            return error(ctx, "type `" NKS_FMT "` is not indexable", NKS_ARG(sb));
+        }
+    }
+}
+
 // TODO: Provide type in getLvalueRef?
 static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
     auto pop_node = pushNode(ctx, node);
+
+    auto node_it = nodeIterate(ctx.src, node);
 
     if (node.id == n_id) {
         auto token = &ctx.src.tokens.data[node.token_idx];
@@ -828,20 +876,23 @@ static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
 
         nk_assert(!"unreachable");
         return {};
-    } else if (node.id == n_member) {
-        auto node_it = nodeIterate(ctx.src, node);
+    } else if (node.id == n_index) {
+        auto &arr_n = nextNode(node_it);
+        auto &idx_n = nextNode(node_it);
 
+        DEFINE(const arr, compile(ctx, arr_n, {.res_tclass = NklType_Array}));
+        DEFINE(const idx, compile(ctx, idx_n, {ctx.c->usize_t()}));
+
+        return getIndex(ctx, arr, idx);
+    } else if (node.id == n_member) {
         auto &lhs_n = nextNode(node_it);
         auto &name_n = nextNode(node_it);
 
         DEFINE(const lhs, compile(ctx, lhs_n));
-
         auto const name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
 
         return getMember(ctx, lhs, name);
     } else if (node.id == n_deref) {
-        auto node_it = nodeIterate(ctx.src, node);
-
         auto &arg_n = nextNode(node_it);
 
         DEFINE(const arg, compile(ctx, arg_n, {.res_tclass = NklType_Pointer}));
@@ -880,6 +931,8 @@ static NkAtom getConstDeclName(Context &ctx) {
 }
 
 static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig const &conf) {
+    // TODO: Validate AST
+
     auto const &token = ctx.src.tokens.data[node.token_idx];
 
     auto const prev_line = nkir_getLine(ctx.ir);
@@ -957,6 +1010,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             COMPILE_TYPE(any_t, ctx.c->any_t())
             COMPILE_TYPE(bool, ctx.c->bool_t())
             COMPILE_TYPE(type_t, ctx.c->type_t())
+            COMPILE_TYPE(usize, ctx.c->usize_t())
             COMPILE_TYPE(void, ctx.c->void_t())
 
 #define X(TYPE, VALUE_TYPE) COMPILE_TYPE(TYPE, ctx.c->NK_CAT(TYPE, _t)())
@@ -1063,7 +1117,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         case n_link: {
             auto const decl_name = getConstDeclName(ctx);
             if (!decl_name) {
-                // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
 
@@ -1073,7 +1126,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto &proc_n = nextNode(node_it);
 
             if (proc_n.id != n_proc) {
-                // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
 
@@ -1193,6 +1245,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_deref:
+        case n_index:
         case n_member:
             return getLvalueRef(ctx, node);
 
@@ -1200,7 +1253,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto &const_n = nextNode(node_it);
 
             if (const_n.id != n_const) {
-                // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
 
@@ -1257,7 +1309,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
                 return {{.val{{.proc{proc_info}}, ValueKind_Proc}}, proc_t, IntermKind_Val};
             } else {
-                // TODO: Validate AST separately
                 return error(ctx, "invalid ast");
             }
         }
@@ -1389,17 +1440,48 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             return makeConst(ctx, ctx.c->type_t(), struct_t);
         }
 
+        case n_array: {
+            switch (node.arity) {
+                case 1: {
+                    return error(ctx, "TODO: array literal is not implemented");
+                }
+                case 2: {
+                    auto &size_n = nextNode(node_it);
+                    auto &type_n = nextNode(node_it);
+
+                    // TODO: Doing a reinterpret cast to the host usize for cross-compilation use case
+                    DEFINE(size, compileConst<usize>(ctx, size_n, ctx.c->usize_t()));
+                    DEFINE(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
+
+                    auto array_t = nkl_get_array(ctx.nkl, type, size);
+                    return makeConst(ctx, ctx.c->type_t(), array_t);
+                }
+            }
+            nk_assert(!"invalid ast");
+            return {};
+        }
+
         case n_var: {
             auto &name_n = nextNode(node_it);
             auto &type_n = nextNode(node_it);
-            auto &val_n = nextNode(node_it);
+            NklAstNode const *pval_n{};
 
-            auto const name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
+            switch (node.arity) {
+                case 2:
+                    break;
+                case 3:
+                    pval_n = &nextNode(node_it);
+                    break;
+                default:
+                    nk_assert(!"invalid ast");
+                    return {};
+            }
 
-            if (!type_n.id && !val_n.id) {
-                // TODO: Validate AST separately
+            if (!type_n.id && !pval_n) {
                 return error(ctx, "invalid ast");
             }
+
+            auto const name = nk_s2atom(nkl_getTokenStr(&ctx.src.tokens.data[name_n.token_idx], ctx.src.text));
 
             nkltype_t type{};
 
@@ -1416,8 +1498,8 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             }
 
             Interm val{};
-            if (val_n.id) {
-                ASSIGN(val, compile(ctx, val_n, {.res_t = type, .dst = ref}));
+            if (pval_n) {
+                ASSIGN(val, compile(ctx, *pval_n, {.res_t = type, .dst = ref}));
                 type = val.type;
                 if (!ref.kind) {
                     var = nkir_makeLocalVar(ctx.ir, name, nklt2nkirt(type));
@@ -1525,13 +1607,11 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 
     DEFINE(&ctx, *importFile(c, filename));
 
-    // TODO: Storing entry point for the whole compiler on every compileFile call
+    // TODO: Storing top level proc for the whole compiler on every compileFile call
     c->top_level_proc = ctx.top_level_proc;
 
     // TODO: Check for export conflicts when merging modules
     nkir_mergeModules(m->mod, ctx.m->mod);
-
-    // TODO: Inspect module?
 
 #ifdef ENABLE_LOGGING
     {

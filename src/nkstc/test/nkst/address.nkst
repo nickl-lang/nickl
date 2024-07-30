@@ -1,7 +1,7 @@
-(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
 (export (const main () (proc [] (i32) [
-    (var data (i32) ())
+    (var data (i32))
     (call fillData [(addr (addr data))])
     (call printf ["data=%i\n" data])
     (return 0)

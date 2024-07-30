@@ -1,5 +1,5 @@
-(var T (type_t) ())
-(var v T ())
+(var T (type_t))
+(var v T)
 
 /* @error
 error: comptime const expected
