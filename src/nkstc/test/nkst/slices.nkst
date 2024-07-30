@@ -2,7 +2,7 @@
 
 (const string () (slice (i8)))
 
-(export (const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(export (const main () (proc [] (i32) [
     (var str string "hello")
     (call printString [str])
     (return 0)
@@ -12,7 +12,7 @@
     (call printf ["str='%.*s'\n" (member str size) (member str data)])
 ]))
 
-(call main [0 (nullptr)])
+(call main [])
 
 /* @output
 str='hello'

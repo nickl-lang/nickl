@@ -985,6 +985,26 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             NkDynArray(Interm) args{NKDA_INIT(temp_alloc)};
 
+            if (nklt_proc_flags(lhs.type) & NkProcVariadic) {
+                if (args_n.arity < param_count) {
+                    return error(
+                        ctx,
+                        "expected at least %zu argument%s, but got %u",
+                        param_count,
+                        (param_count == 1 ? "" : "s"),
+                        args_n.arity);
+                }
+            } else {
+                if (args_n.arity != param_count) {
+                    return error(
+                        ctx,
+                        "expected %zu argument%s, but got %u",
+                        param_count,
+                        (param_count == 1 ? "" : "s"),
+                        args_n.arity);
+                }
+            }
+
             auto args_it = nodeIterate(ctx.src, args_n);
             for (usize i = 0; i < args_n.arity; i++) {
                 auto &arg_n = nextNode(args_it);

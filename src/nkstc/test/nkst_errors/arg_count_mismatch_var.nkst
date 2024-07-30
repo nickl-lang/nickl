@@ -1,0 +1,10 @@
+(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
+(call printf [])
+
+/* @error
+error: expected at least 1 argument, but got 0
+@enderror */
+
+/* @retcode
+1
+@endretcode */

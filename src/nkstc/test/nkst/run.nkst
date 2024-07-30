@@ -1,6 +1,6 @@
 (const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
 
-(export (const main () (proc [(param argc (i32)) (param argv (ptr (ptr (i8))))] (i32) [
+(export (const main () (proc [] (i32) [
     (call printf ["A=%zu\n" (run (i64) [
         (call printf ["hello comptime\n"])
         (return (call getA []))
@@ -12,7 +12,7 @@
     (return 42)
 ]))
 
-(call main [0 (nullptr)])
+(call main [])
 
 /* @output
 hello comptime

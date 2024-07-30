@@ -20,6 +20,8 @@ def_nkstc_compile_test(FILE nkst/run.nkst)
 def_nkstc_compile_test(FILE nkst/slices.nkst)
 def_nkstc_compile_test(FILE nkst/struct.nkst)
 
+def_nkstc_run_test(FILE nkst_errors/arg_count_mismatch.nkst)
+def_nkstc_run_test(FILE nkst_errors/arg_count_mismatch_var.nkst)
 def_nkstc_run_test(FILE nkst_errors/comptime_const_unknown.nkst)
 def_nkstc_run_test(FILE nkst_errors/export_conflict.nkst)
 def_nkstc_run_test(FILE nkst_errors/redefinition.nkst)
