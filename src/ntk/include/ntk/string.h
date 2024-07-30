@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include "ntk/allocator.h"
+#include "ntk/arena.h"
 #include "ntk/common.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
@@ -47,6 +47,12 @@ i32 nks_sanitize(NkStream out, NkString str);
 
 #define NKS_FMT "%.*s"
 #define NKS_ARG(str) (i32)(str).size, (str).data
+
+NK_PRINTF_LIKE(2) char const *nk_tprintf(NkArena *tmp_arena, char const *fmt, ...);
+char const *nk_vtprintf(NkArena *tmp_arena, char const *fmt, va_list ap);
+
+NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *tmp_arena, char const *fmt, ...);
+NkString nk_vtsprintf(NkArena *tmp_arena, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }

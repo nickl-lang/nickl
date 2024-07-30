@@ -963,7 +963,8 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
     auto node_it = nodeIterate(ctx.src, node);
 
-    auto const temp_alloc = nk_arena_getAllocator(ctx.scope_stack->temp_arena);
+    auto const temp_arena = ctx.scope_stack->temp_arena;
+    auto const temp_alloc = nk_arena_getAllocator(temp_arena);
 
     auto const res_t = conf.res_t;
 
@@ -1608,9 +1609,13 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 #ifdef ENABLE_LOGGING
                 NK_LOG_DBG(
                     "Defer recording start for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
-                emit(ctx, nkir_make_comment(ctx.ir, nk_cs2s("defer begin")));
+                emit(
+                    ctx,
+                    nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "begin defer node %u", defer_node->node_idx)));
                 defer {
-                    emit(ctx, nkir_make_comment(ctx.ir, nk_cs2s("defer end")));
+                    emit(
+                        ctx,
+                        nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "end defer node %u", defer_node->node_idx)));
                     NK_LOG_DBG(
                         "Defer recording finish for node %u file=`%s`",
                         defer_node->node_idx,
