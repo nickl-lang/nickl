@@ -333,13 +333,8 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
     }
 }
 
-void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) {
+void nkir_instrArrayDupInto(NkIrProg ir, NkIrInstrArray instrs, NkIrInstrDynArray *out, NkArena *tmp_arena) {
     NK_LOG_TRC("%s", __func__);
-
-    auto frame = nk_arena_grab(tmp_arena);
-    defer {
-        nk_arena_popFrame(tmp_arena, frame);
-    };
 
     struct LabelMapIt {
         usize old_label;
@@ -371,7 +366,7 @@ void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena) 
         auto new_instr = instr;
         replace_label(new_instr.arg[1]);
         replace_label(new_instr.arg[2]);
-        nkir_emit(ir, new_instr);
+        nkda_append(out, new_instr);
     }
 }
 
@@ -764,9 +759,9 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
 static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStream out, usize idx) {
     if (instr.code == nkir_comment) {
         if (idx != -1u) {
-            nk_stream_printf(out, "%19s" NKS_FMT, "// ", NKS_ARG(instr.arg[1].comment));
+            nk_stream_printf(out, "%5zu | %s" NKS_FMT, idx, "<< ", NKS_ARG(instr.arg[1].comment));
         } else {
-            nk_stream_printf(out, "// " NKS_FMT, NKS_ARG(instr.arg[1].comment));
+            nk_stream_printf(out, "<< " NKS_FMT, NKS_ARG(instr.arg[1].comment));
         }
         return;
     }

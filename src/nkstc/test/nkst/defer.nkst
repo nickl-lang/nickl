@@ -1,13 +1,55 @@
 (const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
-(const foo () (proc [] (void) [
+(const one () (proc [] (void) [
     (defer (call printf ["world\n"]))
     (call printf ["hello "])
     (return)
 ]))
 
+(const two () (proc [] (void) [
+    (scope [
+        (defer (call printf ["hello "]))
+    ])
+    (call printf ["world\n"])
+]))
+
+(const three () (proc [] (void) [
+    (call printf ["open "])
+    (defer (call printf ["close\n"]))
+
+    (call printf ["process "])
+]))
+
+(const four () (proc [(param should_close (bool))] (void) [
+    (call printf ["open "])
+    (defer [
+        (if should_close
+            (call printf ["close\n"])
+        ())
+    ])
+
+    (call printf ["process "])
+]))
+
+(const five () (proc [] (void) [
+    (call printf ["1 "])
+    (defer [
+        (defer (call printf ["4\n"]))
+
+        (call printf ["3 "])
+    ])
+
+    (call printf ["2 "])
+]))
+
 (export (const main () (proc [] (i32) [
-    (call foo [])
+    (call one [])
+    (call two [])
+    (call three [])
+    (call four [(false)])
+    (call four [(true)])
+    (call five [])
+
     (return 0)
 ])))
 
@@ -15,5 +57,9 @@
 
 /* @output
 hello world
+hello world
+open process close
+open process open process close
+1 2 3 4
 
 @endoutput */

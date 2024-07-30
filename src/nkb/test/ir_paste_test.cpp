@@ -129,7 +129,7 @@ protected:
                 NkDynArray(NkIrInstr) defer_instrs{NKDA_INIT(nk_arena_getAllocator(&m_tmp_arena))};
                 // defer {
                 {
-                    nkda_append(&defer_instrs, nkir_make_comment(m_ir, nk_cs2s("defer start")));
+                    nkda_append(&defer_instrs, nkir_make_comment(m_ir, nk_cs2s("defer begin")));
                     // if test_shouldFreeResources() != 0 {
                     {
                         auto const should_free_ref =
@@ -157,7 +157,15 @@ protected:
                     auto const forty_two = nkir_makeRodata(m_ir, 0, &m_i64_t, NkIrVisibility_Local);
                     *(i64 *)nkir_getDataPtr(m_ir, forty_two) = 42;
                     nkir_emit(m_ir, nkir_make_mov(m_ir, nkir_makeRetRef(m_ir), nkir_makeDataRef(m_ir, forty_two)));
-                    nkir_emitArrayCopy(m_ir, {NK_SLICE_INIT(defer_instrs)}, &m_tmp_arena);
+                    {
+                        auto frame = nk_arena_grab(&m_tmp_arena);
+                        defer {
+                            nk_arena_popFrame(&m_tmp_arena, frame);
+                        };
+                        NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(&m_tmp_arena))};
+                        nkir_instrArrayDupInto(m_ir, {NK_SLICE_INIT(defer_instrs)}, &instrs_copy, &m_tmp_arena);
+                        nkir_emitArray(m_ir, {NK_SLICE_INIT(instrs_copy)});
+                    }
                     nkir_emit(m_ir, nkir_make_ret(m_ir));
                     // }
                     nkir_emit(m_ir, nkir_make_label(endif_l));

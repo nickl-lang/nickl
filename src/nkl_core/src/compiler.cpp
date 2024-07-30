@@ -204,6 +204,7 @@ static auto pushProc(Context &ctx, NkIrProc proc) {
         .next{},
         .proc = proc,
         .defer_node{},
+        .has_return_in_last_block{},
     };
     nk_list_push(ctx.proc_stack, proc_node);
     auto const prev_proc = nkir_getActiveProc(ctx.ir);
@@ -619,16 +620,6 @@ static nkltype_t compileProcType(
         });
 }
 
-static void emitDefers(Context &ctx) {
-    auto defer_node = ctx.scope_stack->defer_stack;
-    while (defer_node) {
-        NK_LOG_DBG("Emitting defer blocks for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
-        nkir_emitArray(ctx.ir, {NK_SLICE_INIT(defer_node->instrs)});
-
-        defer_node = defer_node->next;
-    }
-}
-
 static Void leaveScope(Context &ctx) {
     auto export_node = ctx.scope_stack->export_list;
     while (export_node) {
@@ -654,8 +645,6 @@ static Void leaveScope(Context &ctx) {
         export_node = export_node->next;
     }
 
-    emitDefers(ctx);
-
     popScope(ctx);
 
     return {};
@@ -664,6 +653,7 @@ static Void leaveScope(Context &ctx) {
 static auto enterPrivateScope(Context &ctx) {
     pushPrivateScope(ctx);
     return nk_defer([&ctx]() {
+        emitDefers(ctx);
         leaveScope(ctx);
     });
 }
@@ -675,11 +665,17 @@ static auto enterProcScope(Context &ctx, bool is_public) {
         pushPrivateScope(ctx);
     }
     return nk_defer([&ctx]() {
+        if (!ctx.proc_stack->has_return_in_last_block) {
+            emitDefers(ctx);
+            emit(ctx, nkir_make_ret(ctx.ir));
+        }
         leaveScope(ctx);
     });
 }
 
 static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &descr, NklAstNode const &body_n) {
+    NK_LOG_DBG("Compiling proc %s", descr.name ? nk_atom2cs(descr.name) : "<anonymous>");
+
     auto const proc = nkir_createProc(ctx.ir);
 
     // TODO: Handle multiple entry points
@@ -717,9 +713,6 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
                 proc_finish_line = ctx.src.tokens.data[last_node.token_idx].lin + 1;
             }
         }
-
-        emitDefers(ctx);
-        emit(ctx, nkir_make_ret(ctx.ir));
 
         nkir_finishProc(ctx.ir, proc, proc_finish_line);
     }
@@ -1364,7 +1357,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
         case n_return: {
             emitDefers(ctx);
-
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
                 auto const ret_t = nklt_proc_retType(nkirt2nklt(nkir_getProcType(ctx.ir, ctx.proc_stack->proc)));
@@ -1608,8 +1600,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 .node_idx = nodeIdx(ctx.src, node),
             };
 
-            nk_list_push(ctx.scope_stack->defer_stack, defer_node);
-
             {
                 auto const prev_defer_node = ctx.proc_stack->defer_node;
                 ctx.proc_stack->defer_node = defer_node;
@@ -1617,12 +1607,23 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                     ctx.proc_stack->defer_node = prev_defer_node;
                 };
 
+#ifdef ENABLE_LOGGING
                 NK_LOG_DBG(
                     "Defer recording start for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+                emit(ctx, nkir_make_comment(ctx.ir, nk_cs2s("defer begin")));
+                defer {
+                    emit(ctx, nkir_make_comment(ctx.ir, nk_cs2s("defer end")));
+                    NK_LOG_DBG(
+                        "Defer recording finish for node %u file=`%s`",
+                        defer_node->node_idx,
+                        nk_atom2cs(defer_node->file));
+                };
+#endif // ENABLE_LOGGING
+
                 CHECK(compileStmt(ctx, stmt_n));
-                NK_LOG_DBG(
-                    "Defer recording finish for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
             }
+
+            nk_list_push(ctx.scope_stack->defer_stack, defer_node);
 
             return makeVoid(ctx);
         }

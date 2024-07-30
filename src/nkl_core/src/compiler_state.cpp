@@ -5,6 +5,7 @@
 #include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -51,21 +52,58 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
 
 void emit(Context &ctx, NkIrInstr const &instr) {
     nk_assert(ctx.proc_stack && "no current proc");
+
+    if (instr.code == nkir_label) {
+        ctx.proc_stack->has_return_in_last_block = false;
+    } else if (instr.code == nkir_ret) {
+        ctx.proc_stack->has_return_in_last_block = true;
+    }
+
 #ifdef ENABLE_LOGGING
     NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
     nkir_inspectInstr(ctx.ir, ctx.proc_stack->proc, instr, nksb_getStream(&sb));
 #endif // ENABLE_LOGGING
+
     if (ctx.proc_stack->defer_node) {
         auto const defer_node = ctx.proc_stack->defer_node;
+
         NK_LOG_DBG(
             "Emitting '" NKS_FMT "' into a defer node %u file=`%s`",
             NKS_ARG(sb),
             defer_node->node_idx,
             nk_atom2cs(defer_node->file));
+
         nkda_append(&defer_node->instrs, instr);
     } else {
         NK_LOG_DBG("Emitting '" NKS_FMT "'", NKS_ARG(sb));
+
         nkir_emit(ctx.ir, instr);
+    }
+}
+
+void emitDefers(Context &ctx) {
+    auto defer_node = ctx.scope_stack->defer_stack;
+    while (defer_node) {
+        NK_LOG_DBG("Emitting defer blocks for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+
+        if (ctx.proc_stack->defer_node) {
+            nkir_instrArrayDupInto(
+                ctx.ir,
+                {NK_SLICE_INIT(defer_node->instrs)},
+                &ctx.proc_stack->defer_node->instrs,
+                ctx.scope_stack->temp_arena);
+        } else {
+            auto frame = nk_arena_grab(ctx.scope_stack->temp_arena);
+            defer {
+                nk_arena_popFrame(ctx.scope_stack->temp_arena, frame);
+            };
+            NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+            nkir_instrArrayDupInto(
+                ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &instrs_copy, ctx.scope_stack->temp_arena);
+            nkir_emitArray(ctx.ir, {NK_SLICE_INIT(instrs_copy)});
+        }
+
+        defer_node = defer_node->next;
     }
 }
 

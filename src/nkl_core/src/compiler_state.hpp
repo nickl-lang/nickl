@@ -102,7 +102,7 @@ struct NkAtomListNode {
 
 struct DeferListNode {
     DeferListNode *next;
-    NkDynArray(NkIrInstr) instrs;
+    NkIrInstrDynArray instrs;
     NkAtom file;
     u32 node_idx;
 };
@@ -129,6 +129,7 @@ struct ProcListNode {
     ProcListNode *next;
     NkIrProc proc;
     DeferListNode *defer_node;
+    bool has_return_in_last_block;
 };
 
 struct Context {
@@ -204,6 +205,8 @@ NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
 
 void emit(Context &ctx, NkIrInstr const &instr);
+void emitDefers(Context &ctx);
+
 NkIrRef asRef(Context &ctx, Interm const &val);
 
 void pushPublicScope(Context &ctx);

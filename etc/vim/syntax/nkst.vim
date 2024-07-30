@@ -2,7 +2,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword nkstKeyword nullptr proc link const pub const import param call return context run var assign struct member if while addr deref export index defer
+syn keyword nkstKeyword nullptr proc link const pub const import param call return context run var assign struct member if while addr deref export index defer scope
 syn keyword nkstKeyword add sub mul div mod bitand bitor xor lsh rsh
 syn keyword nkstKeyword eq ne lt le gt ge
 
