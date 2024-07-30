@@ -107,6 +107,18 @@ struct DeferListNode {
     u32 node_idx;
 };
 
+struct NodeListNode {
+    NodeListNode *next;
+    NklAstNode const &node;
+};
+
+struct ProcListNode {
+    ProcListNode *next;
+    NkIrProc proc;
+    DeferListNode *defer_node;
+    bool has_return_in_last_block;
+};
+
 struct Scope {
     Scope *next;
 
@@ -118,18 +130,8 @@ struct Scope {
 
     NkAtomListNode *export_list;
     DeferListNode *defer_stack;
-};
 
-struct NodeListNode {
-    NodeListNode *next;
-    NklAstNode const &node;
-};
-
-struct ProcListNode {
-    ProcListNode *next;
-    NkIrProc proc;
-    DeferListNode *defer_node;
-    bool has_return_in_last_block;
+    ProcListNode *cur_proc;
 };
 
 struct Context {

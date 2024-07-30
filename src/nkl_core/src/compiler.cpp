@@ -665,10 +665,8 @@ static auto enterProcScope(Context &ctx, bool is_public) {
         pushPrivateScope(ctx);
     }
     return nk_defer([&ctx]() {
-        if (!ctx.proc_stack->has_return_in_last_block) {
-            emitDefers(ctx);
-            emit(ctx, nkir_make_ret(ctx.ir));
-        }
+        emitDefers(ctx);
+        emit(ctx, nkir_make_ret(ctx.ir));
         leaveScope(ctx);
     });
 }
