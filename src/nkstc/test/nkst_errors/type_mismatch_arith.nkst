@@ -1,7 +1,7 @@
 (add 1 1.0)
 
 /* @error
-error: expected value of type 'i64', but got 'f64'
+error: cannot convert a value of type 'f64' to 'i64'
 @enderror */
 
 /* @retcode

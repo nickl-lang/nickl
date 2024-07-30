@@ -1,7 +1,7 @@
 (var x 42 ())
 
 /* @error
-error: expected comptime const of type 'type_t', but got 'i64'
+error: cannot convert a comptime const of type 'i64' to 'type_t'
 @enderror */
 
 /* @retcode

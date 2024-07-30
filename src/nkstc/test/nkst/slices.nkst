@@ -1,4 +1,4 @@
-(const printf () (link "c" (proc [(param () (ptr (i8))) ("...")] (i32))))
+(const printf () (link "c" (proc [(param () (ptr (const (i8)))) ("...")] (i32))))
 
 (const string () (slice (i8)))
 

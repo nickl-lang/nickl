@@ -391,25 +391,27 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
                 val = makeRef(dst);
             }
         } else {
+            // TODO: Distinguish between different types of errors
             bool const can_cast_array_ptr_to_val_ptr =
                 nklt_tclass(dst_t) == NklType_Pointer && nklt_tclass(src_t) == NklType_Pointer &&
                 nklt_tclass(nklt_ptr_target(src_t)) == NklType_Array &&
-                nklt_typeid(nklt_array_elemType(nklt_ptr_target(src_t))) == nklt_typeid(nklt_ptr_target(dst_t));
+                nklt_typeid(nklt_array_elemType(nklt_ptr_target(src_t))) == nklt_typeid(nklt_ptr_target(dst_t)) &&
+                (!nklt_ptr_isConst(src_t) || nklt_ptr_isConst(dst_t));
 
             if (src_t != dst_t && !can_cast_array_ptr_to_val_ptr) {
                 return error(
                     ctx,
-                    "expected %s of type '%s', but got '%s'",
+                    "cannot convert a %s of type '%s' to '%s'",
                     conf.is_const ? "comptime const" : "value",
                     [&]() {
                         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-                        nkl_type_inspect(dst_t, nksb_getStream(&sb));
+                        nkl_type_inspect(src_t, nksb_getStream(&sb));
                         nksb_appendNull(&sb);
                         return sb.data;
                     }(),
                     [&]() {
                         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-                        nkl_type_inspect(src_t, nksb_getStream(&sb));
+                        nkl_type_inspect(dst_t, nksb_getStream(&sb));
                         nksb_appendNull(&sb);
                         return sb.data;
                     }());
@@ -1241,15 +1243,25 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_ptr: {
-            auto &target_n = nextNode(node_it);
-            DEFINE(target_t, compileConst<nkltype_t>(ctx, target_n, ctx.c->type_t()));
-            return makeConst(ctx, ctx.c->type_t(), nkl_get_ptr(ctx.nkl, ctx.c->word_size, target_t, false));
+            auto ptarget_n = &nextNode(node_it);
+            bool const is_const = ptarget_n->id == n_const;
+            if (is_const) {
+                auto it = nodeIterate(ctx.src, *ptarget_n);
+                ptarget_n = &nextNode(it);
+            }
+            DEFINE(target_t, compileConst<nkltype_t>(ctx, *ptarget_n, ctx.c->type_t()));
+            return makeConst(ctx, ctx.c->type_t(), nkl_get_ptr(ctx.nkl, ctx.c->word_size, target_t, is_const));
         }
 
         case n_slice: {
-            auto &target_n = nextNode(node_it);
-            DEFINE(target_t, compileConst<nkltype_t>(ctx, target_n, ctx.c->type_t()));
-            return makeConst(ctx, ctx.c->type_t(), nkl_get_slice(ctx.nkl, ctx.c->word_size, target_t, false));
+            auto ptarget_n = &nextNode(node_it);
+            bool const is_const = ptarget_n->id == n_const;
+            if (is_const) {
+                auto it = nodeIterate(ctx.src, *ptarget_n);
+                ptarget_n = &nextNode(it);
+            }
+            DEFINE(target_t, compileConst<nkltype_t>(ctx, *ptarget_n, ctx.c->type_t()));
+            return makeConst(ctx, ctx.c->type_t(), nkl_get_slice(ctx.nkl, ctx.c->word_size, target_t, is_const));
         }
 
         case n_return: {
