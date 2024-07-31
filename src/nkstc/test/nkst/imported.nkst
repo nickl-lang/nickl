@@ -4,7 +4,7 @@
 
 (const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
 
-(run () [
+(run [
     (call printf ["Hello from %s!\n" "imported:comptime"])
 ])
 

@@ -361,6 +361,14 @@ static NkIrRef cast(nkltype_t type, NkIrRef ref) {
     return ref;
 }
 
+static bool isValid(NklAstNode const *pnode) {
+    return pnode && pnode->id;
+}
+
+static bool isValid(NklAstNode const &pnode) {
+    return pnode.id;
+}
+
 static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const conf = {}) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
@@ -469,13 +477,13 @@ static Interm resolveComptime(Decl &decl) {
     auto &type_n = nextNode(node_it);
     auto &val_n = nextNode(node_it);
 
-    if (!type_n.id && !val_n.id) {
+    if (!isValid(type_n) && !isValid(val_n)) {
         return error(ctx, "invalid ast");
     }
 
     nkltype_t type{};
 
-    if (type_n.id) {
+    if (isValid(type_n)) {
         ASSIGN(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
     }
 
@@ -577,9 +585,11 @@ static NklFieldArray compileParams(Context &ctx, NklAstNode const &params_n, Com
                 return {};
         }
 
+        nk_assert(ptype_n && "invalid ast");
+
         NkAtom name{};
 
-        if (pname_n) {
+        if (isValid(pname_n)) {
             auto name_token = &ctx.src.tokens.data[pname_n->token_idx];
             auto name_str = nkl_getTokenStr(name_token, ctx.src.text);
             name = nk_s2atom(name_str);
@@ -870,7 +880,7 @@ static Interm getIndex(Context &ctx, Interm const &arr, Interm const &idx) {
 
 // TODO: Provide type in getLvalueRef?
 static Interm compileLvalueRef(Context &ctx, NklAstNode const &node) {
-    auto pop_node = pushNode(ctx, node);
+    auto const pop_node = pushNode(ctx, node);
 
     auto node_it = nodeIterate(ctx.src, node);
 
@@ -994,7 +1004,7 @@ static Interm compileLogicExpr(
 }
 
 static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert) {
-    auto pop_node = pushNode(ctx, node);
+    auto const pop_node = pushNode(ctx, node);
 
     auto node_it = nodeIterate(ctx.src, node);
 
@@ -1017,14 +1027,12 @@ static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert) {
         }
 
         default:
-            DEFINE(const arg, compile(ctx, node, {ctx.c->bool_t()}));
-            if (invert) {
-                return makeInstr(
-                    nkir_make_xor(ctx.ir, {}, asRef(ctx, makeConst(ctx, ctx.c->bool_t(), true)), asRef(ctx, arg)),
-                    ctx.c->bool_t());
-            } else {
-                return arg;
-            }
+            DEFINE(const res, compile(ctx, node, {ctx.c->bool_t()}));
+            return invert ? makeInstr(
+                                nkir_make_xor(
+                                    ctx.ir, {}, asRef(ctx, makeConst(ctx, ctx.c->bool_t(), true)), asRef(ctx, res)),
+                                ctx.c->bool_t())
+                          : res;
     }
 
     nk_assert(!"unreachable");
@@ -1456,17 +1464,21 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_run: {
-            auto &ret_t_n = nextNode(node_it);
-            auto &body_n = nextNode(node_it);
+            auto body_n = &nextNode(node_it);
+            NklAstNode const *pret_t_n{};
+            if (node.arity == 2) {
+                pret_t_n = body_n;
+                body_n = &nextNode(node_it);
+            }
 
             nkltype_t ret_t{};
-            if (ret_t_n.id) {
-                ASSIGN(ret_t, compileConst<nkltype_t>(ctx, ret_t_n, ctx.c->type_t()));
+            if (isValid(pret_t_n)) {
+                ASSIGN(ret_t, compileConst<nkltype_t>(ctx, *pret_t_n, ctx.c->type_t()));
             } else {
                 ret_t = ctx.c->void_t();
             }
 
-            auto proc_t = nkl_get_proc(
+            auto const proc_t = nkl_get_proc(
                 ctx.nkl,
                 ctx.c->word_size,
                 NklProcInfo{
@@ -1488,7 +1500,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                         .line = token.lin,
                         .visibility = NkIrVisibility_Local,
                     },
-                    body_n));
+                    *body_n));
 
             void *rets[] = {nullptr};
             NkIrData rodata{};
@@ -1582,7 +1594,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                     return {};
             }
 
-            if (!type_n.id && !pval_n) {
+            if (!isValid(type_n) && !isValid(pval_n)) {
                 return error(ctx, "invalid ast");
             }
 
@@ -1590,7 +1602,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             nkltype_t type{};
 
-            if (type_n.id) {
+            if (isValid(type_n)) {
                 ASSIGN(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
             }
 
@@ -1603,7 +1615,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             }
 
             Interm val{};
-            if (pval_n) {
+            if (isValid(pval_n)) {
                 ASSIGN(val, compile(ctx, *pval_n, {.res_t = type, .dst = ref}));
                 type = val.type;
                 if (!ref.kind) {
@@ -1625,7 +1637,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             auto const endif_l = createLabel(ctx, LabelName_Endif);
             NkIrLabel else_l;
-            if (pelse_n) {
+            if (isValid(pelse_n)) {
                 else_l = createLabel(ctx, LabelName_Else);
             } else {
                 else_l = endif_l;
@@ -1640,9 +1652,8 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 CHECK(compileStmt(ctx, body_n));
             }
 
-            emit(ctx, nkir_make_jmp(ctx.ir, endif_l));
-
-            if (pelse_n) {
+            if (isValid(pelse_n)) {
+                emit(ctx, nkir_make_jmp(ctx.ir, endif_l));
                 emit(ctx, nkir_make_label(else_l));
                 {
                     auto const leave = enterPrivateScope(ctx);
