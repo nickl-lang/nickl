@@ -103,22 +103,16 @@ static void emitDefersForScope(Context &ctx, Scope const *scope) {
     }
 }
 
-void emitDefers(Context &ctx, bool all_scopes) {
+void emitDefers(Context &ctx, Scope const *upto) {
     if (ctx.proc_stack->has_return_in_last_block) {
         return;
     }
 
     auto scope = ctx.scope_stack;
 
-    if (all_scopes) {
-        auto const cur_proc = scope->cur_proc;
-
-        while (scope && scope->cur_proc == cur_proc) {
-            emitDefersForScope(ctx, scope);
-            scope = scope->next;
-        }
-    } else {
+    while (scope != upto) {
         emitDefersForScope(ctx, scope);
+        scope = scope->next;
     }
 }
 

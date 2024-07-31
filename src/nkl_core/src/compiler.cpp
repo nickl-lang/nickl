@@ -652,8 +652,8 @@ static Void leaveScope(Context &ctx) {
 
 static auto enterPrivateScope(Context &ctx) {
     pushPrivateScope(ctx);
-    return nk_defer([&ctx]() {
-        emitDefers(ctx, false);
+    return nk_defer([&ctx, upto = ctx.scope_stack->next]() {
+        emitDefers(ctx, upto);
         leaveScope(ctx);
     });
 }
@@ -664,11 +664,22 @@ static auto enterProcScope(Context &ctx, bool is_public) {
     } else {
         pushPrivateScope(ctx);
     }
-    return nk_defer([&ctx]() {
-        emitDefers(ctx, true);
+    return nk_defer([&ctx, upto = ctx.scope_stack->next]() {
+        emitDefers(ctx, upto);
         emit(ctx, nkir_make_ret(ctx.ir));
         leaveScope(ctx);
     });
+}
+
+static Scope *findNextProcScope(Context &ctx) {
+    auto scope = ctx.scope_stack;
+    auto const cur_proc = scope->cur_proc;
+
+    while (scope && scope->cur_proc == cur_proc) {
+        scope = scope->next;
+    }
+
+    return scope;
 }
 
 static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &descr, NklAstNode const &body_n) {
@@ -1355,7 +1366,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_return: {
-            emitDefers(ctx, true);
+            emitDefers(ctx, findNextProcScope(ctx));
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
                 auto const ret_t = nklt_proc_retType(nkirt2nklt(nkir_getProcType(ctx.ir, ctx.proc_stack->proc)));
