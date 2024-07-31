@@ -25,8 +25,8 @@ struct ControlFrame {
     NkArenaFrame stack_frame;
     u8 *base_frame;
     u8 *base_arg;
-    u8 *base_ret;
     u8 *base_instr;
+    u8 *base_ret;
     NkBcInstr const *pinstr;
 };
 
@@ -35,9 +35,9 @@ struct InterpContext {
         u8 *none;
         u8 *frame;
         u8 *arg;
-        u8 *ret;
         u8 *data;
         u8 *instr;
+        u8 *ret;
     };
 
     union {
@@ -89,8 +89,8 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
         .base_arg = ctx.base.arg,
-        .base_ret = ctx.base.ret,
         .base_instr = ctx.base.instr,
+        .base_ret = ctx.base.ret,
         .pinstr = ctx.pinstr,
     });
 
@@ -98,16 +98,16 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
     ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, proc->frame_align);
     memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (u8 *)args;
-    ctx.base.ret = (u8 *)ret;
     ctx.base.instr = (u8 *)proc->instrs.data;
+    ctx.base.ret = (u8 *)ret;
 
     jumpTo(proc->instrs.data);
 
     NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
     NK_LOG_DBG("arg=%p", (void *)ctx.base.arg);
-    NK_LOG_DBG("ret=%p", (void *)ctx.base.ret);
     NK_LOG_DBG("pinstr=%p", (void *)ctx.pinstr);
+    NK_LOG_DBG("ret=%p", (void *)ctx.base.ret);
 }
 
 void interp(NkBcInstr const &instr) {
@@ -123,6 +123,10 @@ void interp(NkBcInstr const &instr) {
         }
 
         case nkop_ret: {
+            if (instr.arg[1].ref.kind) {
+                memcpy(*(void **)ctx.base.ret, getRefAddr(instr.arg[1].ref), instr.arg[1].ref.type->size);
+            }
+
             auto const fr = ctx.ctrl_stack.back();
             ctx.ctrl_stack.pop_back();
 
@@ -131,8 +135,8 @@ void interp(NkBcInstr const &instr) {
             ctx.stack_frame = fr.stack_frame;
             ctx.base.frame = fr.base_frame;
             ctx.base.arg = fr.base_arg;
-            ctx.base.ret = fr.base_ret;
             ctx.base.instr = fr.base_instr;
+            ctx.base.ret = fr.base_ret;
 
             jumpTo(fr.pinstr);
             break;

@@ -61,8 +61,7 @@ var_f64: f64
     i2fp -10 -> var_f64
     call printf, (&"%g\n", ..., var_f64)
 
-    mov  0 -> ret
-    ret
+    ret  0
 
 }
 

@@ -3,8 +3,7 @@ extern "c" proc printf(ptr, ...) i32
 data g_value: i64
 proc getValue() i64 {
 @start
-    mov g_value -> ret
-    ret
+    ret g_value
 }
 proc setValue(val: i64) void {
 @start
@@ -37,8 +36,7 @@ pub proc main(argc: i32, argv: ptr) i32 {
     call writeValue, (&g_value)
     call printValue, ()
 
-    mov  0 -> ret
-    ret
+    ret  0
 }
 
 /* @output

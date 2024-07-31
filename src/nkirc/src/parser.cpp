@@ -563,7 +563,11 @@ private:
         else if (accept(t_nop)) {
             return nkir_make_nop(m_ir);
         } else if (accept(t_ret)) {
-            return nkir_make_ret(m_ir);
+            NkIrRef arg{};
+            if (!check(t_newline)) {
+                ASSIGN(arg, parseRef());
+            }
+            return nkir_make_ret(m_ir, arg);
         }
 
         else if (accept(t_jmp)) {
@@ -776,8 +780,6 @@ private:
                     nk_assert(!"unreachable");
                     return {};
             }
-        } else if (accept(t_ret)) {
-            result_ref = nkir_makeRetRef(m_ir);
         }
 
         else if (check(t_string)) {

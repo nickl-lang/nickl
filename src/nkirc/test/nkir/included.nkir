@@ -1,7 +1,6 @@
 proc foo() i64 {
 
 @start
-    mov 42 -> ret
-    ret
+    ret 42
 
 }

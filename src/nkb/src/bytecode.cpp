@@ -84,8 +84,6 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
             case NkBcRef_Arg:
                 nk_stream_printf(out, "arg");
                 break;
-            case NkBcRef_Ret:
-                nk_stream_printf(out, "ret");
                 break;
             case NkBcRef_Data:
                 if (expand_values) {
@@ -336,9 +334,6 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     break;
                 case NkIrRef_Arg:
                     ref.offset += ir_ref.index * sizeof(void *);
-                    ref.indir++;
-                    break;
-                case NkIrRef_Ret:
                     ref.indir++;
                     break;
                 case NkIrRef_Data: {

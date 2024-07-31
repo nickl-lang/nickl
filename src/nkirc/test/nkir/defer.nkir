@@ -1,10 +1,11 @@
 extern "c" proc printf(ptr, ...) i32
 
 local proc allocate() i64 {
+    res: i64
 @start
-    mov 42 -> ret
-    call printf, (&"allocate()->%zi\n", ..., ret)
-    ret
+    mov  42 -> res
+    call printf, (&"allocate()->%zi\n", ..., res)
+    ret  res
 }
 
 local proc free(resource: i64) void {
@@ -51,8 +52,7 @@ pub proc main() i32 {
 
 @defer_endif_1
     //         return 1;
-    mov  1 -> ret
-    ret
+    ret  1
 
 @endif
     //     use(resource);
@@ -66,8 +66,7 @@ pub proc main() i32 {
     // printf("done\n");
     call printf, (&"done\n")
     // return 0;
-    mov  0 -> ret
-    ret
+    ret  0
 
 }
 

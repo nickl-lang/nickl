@@ -15,8 +15,7 @@ proc callback() void {
 pub proc main(argc: i32, argv: ptr) i32 {
 @start
     call invoke, (callback)
-    mov  0 -> ret
-    ret
+    ret  0
 }
 
 /* @output

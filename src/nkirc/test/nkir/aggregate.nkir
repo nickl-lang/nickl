@@ -10,8 +10,8 @@ proc Vec2_length(vec: Vec2) f64 {
     mul vec+0:f64, vec+0:f64 -> len_squared
     mul vec+8:f64, vec+8:f64 -> tmp
     add len_squared, tmp -> len_squared
-    call sqrt, (len_squared) -> ret
-    ret
+    call sqrt, (len_squared) -> tmp
+    ret tmp
 }
 
 const c_vec: Vec2 {[1.2, 3.4]}
@@ -21,8 +21,7 @@ pub proc main(argc: i32, argv: ptr) i32 {
     len: f64
     call Vec2_length, (c_vec) -> len
     call printf, (&"%lf\n", ..., len)
-    mov  0 -> ret
-    ret
+    ret  0
 }
 
 /* @output

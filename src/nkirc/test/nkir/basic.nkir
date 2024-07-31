@@ -1,7 +1,6 @@
 pub proc main() i32 {
 @start
-    mov 42 -> ret
-    ret
+    ret 42
 }
 
 /* @retcode

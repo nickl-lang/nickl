@@ -25,7 +25,6 @@ typedef enum {
     NkIrRef_None = 0,
     NkIrRef_Frame,
     NkIrRef_Arg,
-    NkIrRef_Ret,
     NkIrRef_Data,
 
     NkIrRef_Proc,
@@ -170,7 +169,6 @@ NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx);
-NkIrRef nkir_makeRetRef(NkIrProg ir);
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var);
 NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
 NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
@@ -183,7 +181,8 @@ NkIrRef nkir_makeVariadicMarkerRef(NkIrProg ir);
 // Instructions
 
 NkIrInstr nkir_make_nop(NkIrProg ir);
-NkIrInstr nkir_make_ret(NkIrProg ir);
+
+NkIrInstr nkir_make_ret(NkIrProg ir, NkIrRef arg);
 
 NkIrInstr nkir_make_jmp(NkIrProg ir, NkIrLabel label);
 NkIrInstr nkir_make_jmpz(NkIrProg ir, NkIrRef cond, NkIrLabel label);

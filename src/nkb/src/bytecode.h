@@ -26,7 +26,6 @@ typedef enum {
     NkBcRef_None = 0,
     NkBcRef_Frame,
     NkBcRef_Arg,
-    NkBcRef_Ret,
     NkBcRef_Data,
 
     NkBcRef_Instr,

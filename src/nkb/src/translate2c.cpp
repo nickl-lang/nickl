@@ -467,12 +467,6 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         nksb_printf(src, "};\n");
     }
 
-    if (ret_t->size) {
-        writeLineDirective(0, proc.start_line, src);
-        writeType(ctx, ret_t, src);
-        nksb_printf(src, " _ret={0};\n");
-    }
-
     nksb_printf(src, "\n");
 
     auto write_ref = [&](NkIrRef const &ref) {
@@ -554,9 +548,6 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                 writeName(
                     ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : 0, ref.index, ARG_CLASS, src);
                 break;
-            case NkIrRef_Ret:
-                nksb_printf(src, "_ret");
-                break;
             case NkIrRef_Data:
                 writeData(ctx, ref.index, ctx.ir->data.data[ref.index], src);
                 break;
@@ -614,9 +605,9 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
 
             switch (instr.code) {
                 case nkir_ret:
-                    nksb_printf(src, "return");
+                    nksb_printf(src, "return ");
                     if (ret_t->size) {
-                        nksb_printf(src, " _ret");
+                        write_ref(instr.arg[1].ref);
                     }
                     break;
                 case nkir_jmp: {
