@@ -96,8 +96,6 @@ OP(i2fp)
 FP2I_OP(i2fp_32)
 FP2I_OP(i2fp_64)
 
-NUM_OP(neg)
-
 SIZ_OP(mov)
 OP(lea)
 

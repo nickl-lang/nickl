@@ -614,12 +614,7 @@ private:
             return nkir_make_i2fp(m_ir, dst, src);
         }
 
-        else if (accept(t_neg)) {
-            DEFINE(src, parseRef());
-            EXPECT(t_minus_greater);
-            DEFINE(dst, parseRef());
-            return nkir_make_neg(m_ir, dst, src);
-        } else if (accept(t_mov)) {
+        else if (accept(t_mov)) {
             DEFINE(src, parseRef());
             EXPECT(t_minus_greater);
             DEFINE(dst, parseRef());

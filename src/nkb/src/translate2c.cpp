@@ -704,18 +704,6 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                     write_ref(instr.arg[1].ref);
                     break;
 
-#define UN_OP(NAME, OP)              \
-    case NK_CAT(nkir_, NAME):        \
-        nksb_printf(src, "(");       \
-        nksb_printf(src, #OP);       \
-        write_ref(instr.arg[1].ref); \
-        nksb_printf(src, ")");       \
-        break;
-
-                    UN_OP(neg, -)
-
-#undef UN_OP
-
 #define BIN_OP(NAME, OP)              \
     case NK_CAT(nkir_, NAME):         \
         nksb_printf(src, "(");        \

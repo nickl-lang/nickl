@@ -423,19 +423,6 @@ void interp(NkBcInstr const &instr) {
             break;
         }
 
-#define NUM_UN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                  \
-    case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {          \
-        deref<TYPE>(instr.arg[0]) = OP deref<TYPE>(instr.arg[1]); \
-        break;                                                    \
-    }
-
-#define NUM_UN_OP(NAME, OP) NKIR_NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
-
-            NUM_UN_OP(neg, -)
-
-#undef NUM_UN_OP
-#undef NUM_UN_OP_IT
-
 #define NUM_BIN_OP_IT(TYPE, VALUE_TYPE, NAME, OP)                                           \
     case NK_CAT(NK_CAT(NK_CAT(nkop_, NAME), _), TYPE): {                                    \
         deref<TYPE>(instr.arg[0]) = deref<TYPE>(instr.arg[1]) OP deref<TYPE>(instr.arg[2]); \

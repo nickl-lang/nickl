@@ -58,7 +58,6 @@ KW(call)
 KW(mov)
 KW(lea)
 
-KW(neg)
 KW(add)
 KW(sub)
 KW(mul)

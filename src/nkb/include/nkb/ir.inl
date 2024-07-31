@@ -33,8 +33,6 @@ UNA_IR(trunc) // trunc src -> dst
 UNA_IR(fp2i)  // fp2i  src -> dst
 UNA_IR(i2fp)  // i2fp  src -> dst
 
-UNA_IR(neg) // neg arg -> dst
-
 UNA_IR(mov) // mov src -> dst
 UNA_IR(lea) // lea src -> dst
 
