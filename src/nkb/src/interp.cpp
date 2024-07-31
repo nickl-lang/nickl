@@ -1,11 +1,11 @@
 #include "interp.h"
 
-#include <vector>
-
 #include <string.h>
 
 #include "ffi_adapter.h"
+#include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
@@ -22,11 +22,13 @@ struct ProgramFrame {
 };
 
 struct ControlFrame {
+    ControlFrame *next{};
+
     NkArenaFrame stack_frame;
     u8 *base_frame;
     u8 *base_arg;
-    u8 *base_ret;
     u8 *base_instr;
+    void *const *ret;
     NkBcInstr const *pinstr;
 };
 
@@ -35,7 +37,6 @@ struct InterpContext {
         u8 *none;
         u8 *frame;
         u8 *arg;
-        u8 *ret;
         u8 *data;
         u8 *instr;
     };
@@ -45,9 +46,9 @@ struct InterpContext {
         Base base;
     };
     NkArena stack;
-    std::vector<ControlFrame> ctrl_stack;
-    std::vector<NkArenaFrame> stack_frames;
+    ControlFrame *ctrl_stack;
     NkArenaFrame stack_frame;
+    void *const *ret;
     NkBcInstr const *pinstr;
     NkFfiContext *ffi_ctx;
 
@@ -85,28 +86,30 @@ void jumpTo(NkBcArg const &arg) {
 }
 
 void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame stack_frame) {
-    ctx.ctrl_stack.emplace_back(ControlFrame{
+    auto new_ctrl_frame = new (nk_arena_allocT<ControlFrame>(&ctx.stack)) ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
         .base_arg = ctx.base.arg,
-        .base_ret = ctx.base.ret,
         .base_instr = ctx.base.instr,
+        .ret = ctx.ret,
         .pinstr = ctx.pinstr,
-    });
+    };
+    nk_list_push(ctx.ctrl_stack, new_ctrl_frame);
 
     ctx.stack_frame = stack_frame;
     ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, proc->frame_align);
     memset(ctx.base.frame, 0, proc->frame_size);
     ctx.base.arg = (u8 *)args;
-    ctx.base.ret = (u8 *)ret;
     ctx.base.instr = (u8 *)proc->instrs.data;
+
+    ctx.ret = ret;
 
     jumpTo(proc->instrs.data);
 
     NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
     NK_LOG_DBG("arg=%p", (void *)ctx.base.arg);
-    NK_LOG_DBG("ret=%p", (void *)ctx.base.ret);
+    NK_LOG_DBG("ret=%p", (void *)ctx.ret);
     NK_LOG_DBG("pinstr=%p", (void *)ctx.pinstr);
 }
 
@@ -123,16 +126,21 @@ void interp(NkBcInstr const &instr) {
         }
 
         case nkop_ret: {
-            auto const fr = ctx.ctrl_stack.back();
-            ctx.ctrl_stack.pop_back();
+            if (instr.arg[1].ref.kind) {
+                memcpy(*ctx.ret, getRefAddr(instr.arg[1].ref), instr.arg[1].ref.type->size);
+            }
+
+            auto const fr = *ctx.ctrl_stack;
+            nk_list_pop(ctx.ctrl_stack);
 
             nk_arena_popFrame(&ctx.stack, ctx.stack_frame);
 
             ctx.stack_frame = fr.stack_frame;
             ctx.base.frame = fr.base_frame;
             ctx.base.arg = fr.base_arg;
-            ctx.base.ret = fr.base_ret;
             ctx.base.instr = fr.base_instr;
+
+            ctx.ret = fr.ret;
 
             jumpTo(fr.pinstr);
             break;

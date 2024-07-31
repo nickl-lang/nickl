@@ -1,8 +1,10 @@
 pub proc main(argc: i32, argv: ptr) i32 {
 
+    tmp: i64
+
 @start
-    syscall 1, (1, &"hello world\n", 12) -> ret
-    ret
+    syscall 1, (1, &"hello world\n", 12) -> tmp
+    ret tmp
 
 }
 

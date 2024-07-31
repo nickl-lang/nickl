@@ -7,8 +7,7 @@ pub proc main(argc: i32, argv: ptr) i32 {
 @start
     call setTestGlobalVar, (12345)
     call printf, (&"%zi\n", ..., g_test_global_var)
-    mov  0 -> ret
-    ret
+    ret  0
 }
 
 /* @output

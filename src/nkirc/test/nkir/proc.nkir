@@ -1,9 +1,10 @@
 extern "c" proc printf(ptr, ...) i32
 
 proc plus(a: i64, b: i64) i64 {
+    tmp: i64
 @start
-    add a, b -> ret
-    ret
+    add a, b -> tmp
+    ret tmp
 }
 
 pub proc main(argc: i32, argv: ptr) i32 {
@@ -11,8 +12,7 @@ pub proc main(argc: i32, argv: ptr) i32 {
     res: i64
     call plus, (4, 5) -> res
     call printf, (&"%zi\n", ..., res)
-    mov  0 -> ret
-    ret
+    ret  0
 }
 
 /* @output

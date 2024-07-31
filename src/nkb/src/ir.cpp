@@ -476,20 +476,6 @@ NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx) {
     };
 }
 
-NkIrRef nkir_makeRetRef(NkIrProg ir) {
-    nk_assert(ir->cur_proc.idx < ir->procs.size && "no current procedure");
-    auto const &proc = ir->procs.data[ir->cur_proc.idx];
-
-    return {
-        .index = 0,
-        .offset = 0,
-        .post_offset = 0,
-        .type = proc.proc_t->as.proc.info.ret_t,
-        .kind = NkIrRef_Ret,
-        .indir = 0,
-    };
-}
-
 NkIrRef nkir_makeDataRef(NkIrProg ir, NkIrData var) {
     return {
         .index = var.idx,
@@ -575,9 +561,9 @@ NkIrInstr nkir_make_nop(NkIrProg ir) {
     return {{}, ir->cur_line, nkir_nop};
 }
 
-NkIrInstr nkir_make_ret(NkIrProg ir) {
+NkIrInstr nkir_make_ret(NkIrProg ir, NkIrRef arg) {
     NK_LOG_TRC("%s", __func__);
-    return {{}, ir->cur_line, nkir_ret};
+    return {{{}, _arg(arg)}, ir->cur_line, nkir_ret};
 }
 
 NkIrInstr nkir_make_jmp(NkIrProg ir, NkIrLabel label) {
@@ -900,9 +886,6 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
             }
             break;
         }
-        case NkIrRef_Ret:
-            nk_stream_printf(out, "_ret");
-            break;
         case NkIrRef_Data: {
             auto const &decl = ir->data.data[ref.index];
             if (isInlineDecl(decl)) {

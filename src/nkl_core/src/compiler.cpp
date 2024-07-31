@@ -683,7 +683,7 @@ static auto enterProcScope(Context &ctx, bool is_public) {
     }
     return nk_defer([&ctx, upto = ctx.scope_stack->next]() {
         emitDefers(ctx, upto);
-        emit(ctx, nkir_make_ret(ctx.ir));
+        emit(ctx, nkir_make_ret(ctx.ir, {}));
         leaveScope(ctx);
     });
 }
@@ -1474,13 +1474,14 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
         case n_return: {
             emitDefers(ctx, findNextProcScope(ctx));
+            NkIrRef res{};
             if (node.arity) {
                 auto &arg_n = nextNode(node_it);
                 auto const ret_t = nklt_proc_retType(nkirt2nklt(nkir_getProcType(ctx.ir, ctx.proc_stack->proc)));
                 DEFINE(arg, compile(ctx, arg_n, {ret_t}));
-                emit(ctx, nkir_make_mov(ctx.ir, nkir_makeRetRef(ctx.ir), asRef(ctx, arg)));
+                res = asRef(ctx, arg);
             }
-            emit(ctx, nkir_make_ret(ctx.ir));
+            emit(ctx, nkir_make_ret(ctx.ir, res));
 
             return makeVoid(ctx);
         }

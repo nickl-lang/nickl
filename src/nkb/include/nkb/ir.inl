@@ -18,9 +18,9 @@
 #define CMP_IR(NAME) DBL_IR(cmp, NAME)
 #endif
 
-IR(nop)
+IR(nop) // nop
 
-IR(ret)
+IR(ret) // ret arg
 
 IR(jmp)   // jmp         %label
 IR(jmpz)  // jmpz  cond, %label

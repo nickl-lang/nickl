@@ -8,6 +8,5 @@ pub proc setTestGlobalVar(val: i64) void {
 
 pub proc getTestGlobalVar() i64 {
 @start
-    mov g_test_global_var -> ret
-    ret
+    ret g_test_global_var
 }

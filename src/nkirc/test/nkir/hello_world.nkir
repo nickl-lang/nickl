@@ -6,8 +6,7 @@ var: i32
 
 @start
     call printf, (&"Hello, World!\n") -> var
-    mov  0 -> ret
-    ret
+    ret  0
 
 }
 

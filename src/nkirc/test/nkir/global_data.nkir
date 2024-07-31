@@ -11,8 +11,7 @@ pub proc main() i32 {
     call printf, (&"g_init=%zi\n", ..., g_init)
     call printf, (&"c_zero=%zi\n", ..., c_zero)
     call printf, (&"c_init=%zi\n", ..., c_init)
-    mov  0 -> ret
-    ret
+    ret  0
 }
 
 /* @output
