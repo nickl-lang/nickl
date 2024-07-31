@@ -798,7 +798,7 @@ static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStr
             case NkIrArg_Label:
                 if (arg.id < ir->blocks.size && ir->blocks.data[arg.id].name) {
                     auto const name_str = nk_atom2s(ir->blocks.data[arg.id].name);
-                    nk_stream_printf(out, NKS_FMT "#%zu", NKS_ARG(name_str), arg.id);
+                    nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
                 } else {
                     nk_stream_printf(out, "(null)");
                 }
@@ -848,7 +848,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     for (auto block_id : nk_iterate(proc.blocks)) {
         auto const &block = ir->blocks.data[block_id];
 
-        nk_stream_printf(out, "%s#%zu\n", nk_atom2cs(block.name), block_id);
+        nk_stream_printf(out, "%s\n", nk_atom2cs(block.name));
 
         for (auto instr_id : nk_iterate(block.instrs)) {
             auto const &instr = ir->instrs.data[instr_id];

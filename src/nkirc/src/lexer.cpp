@@ -259,13 +259,13 @@ private:
 
     void advance(i64 n = 1) {
         for (i64 i = 0; i < n && chr(); i++) {
-            m_pos++;
             if (on('\n')) {
-                m_col = 0;
+                m_col = 1;
                 m_lin++;
             } else {
                 m_col++;
             }
+            m_pos++;
         }
     }
 

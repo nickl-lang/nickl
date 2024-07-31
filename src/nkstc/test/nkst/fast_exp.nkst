@@ -14,7 +14,7 @@
     (while (ne n 0) [
         (if (ne (bitand n 1) 0) [
             (assign a (mul a x))
-        ] ())
+        ])
         (assign n (rsh n 1))
         (assign x (mul x x))
     ])
