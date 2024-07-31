@@ -1,11 +1,11 @@
 #include "interp.h"
 
-#include <vector>
-
 #include <string.h>
 
 #include "ffi_adapter.h"
+#include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
@@ -22,6 +22,8 @@ struct ProgramFrame {
 };
 
 struct ControlFrame {
+    ControlFrame *next{};
+
     NkArenaFrame stack_frame;
     u8 *base_frame;
     u8 *base_arg;
@@ -44,8 +46,7 @@ struct InterpContext {
         Base base;
     };
     NkArena stack;
-    std::vector<ControlFrame> ctrl_stack;
-    std::vector<NkArenaFrame> stack_frames;
+    ControlFrame *ctrl_stack;
     NkArenaFrame stack_frame;
     void *const *ret;
     NkBcInstr const *pinstr;
@@ -85,14 +86,15 @@ void jumpTo(NkBcArg const &arg) {
 }
 
 void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame stack_frame) {
-    ctx.ctrl_stack.emplace_back(ControlFrame{
+    auto new_ctrl_frame = new (nk_arena_allocT<ControlFrame>(&ctx.stack)) ControlFrame{
         .stack_frame = ctx.stack_frame,
         .base_frame = ctx.base.frame,
         .base_arg = ctx.base.arg,
         .base_instr = ctx.base.instr,
         .ret = ctx.ret,
         .pinstr = ctx.pinstr,
-    });
+    };
+    nk_list_push(ctx.ctrl_stack, new_ctrl_frame);
 
     ctx.stack_frame = stack_frame;
     ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, proc->frame_size, proc->frame_align);
@@ -128,8 +130,8 @@ void interp(NkBcInstr const &instr) {
                 memcpy(*ctx.ret, getRefAddr(instr.arg[1].ref), instr.arg[1].ref.type->size);
             }
 
-            auto const fr = ctx.ctrl_stack.back();
-            ctx.ctrl_stack.pop_back();
+            auto const fr = *ctx.ctrl_stack;
+            nk_list_pop(ctx.ctrl_stack);
 
             nk_arena_popFrame(&ctx.stack, ctx.stack_frame);
 
