@@ -4,6 +4,7 @@
 #include "nkb/common.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/dyn_array.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 
@@ -145,12 +146,13 @@ nktype_t nkir_getDataType(NkIrProg ir, NkIrData var);
 nktype_t nkir_getExternDataType(NkIrProg ir, NkIrExternData data);
 nktype_t nkir_getExternProcType(NkIrProg ir, NkIrExternProc proc);
 
-void nkir_emit(NkIrProg ir, NkIrInstr instr);
-
 typedef NkSlice(NkIrInstr const) NkIrInstrArray;
+typedef NkDynArray(NkIrInstr) NkIrInstrDynArray;
+
+void nkir_emit(NkIrProg ir, NkIrInstr instr);
 void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs);
 
-void nkir_emitArrayCopy(NkIrProg ir, NkIrInstrArray instrs, NkArena *tmp_arena);
+void nkir_instrArrayDupInto(NkIrProg ir, NkIrInstrArray instrs, NkIrInstrDynArray *out, NkArena *tmp_arena);
 
 void nkir_setLine(NkIrProg ir, usize line);
 usize nkir_getLine(NkIrProg ir);
@@ -230,6 +232,7 @@ void nkir_inspectProgram(NkIrProg ir, NkStream out);
 void nkir_inspectData(NkIrProg ir, NkStream out);
 void nkir_inspectExternSyms(NkIrProg ir, NkStream out);
 void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStream out);
+void nkir_inspectInstr(NkIrProg ir, NkIrProc proc, NkIrInstr instr, NkStream out);
 void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, NkStream out);
 
 #ifdef __cplusplus

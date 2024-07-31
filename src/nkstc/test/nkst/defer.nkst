@@ -1,0 +1,82 @@
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
+
+(const basic () (proc [] (void) [
+    (call printf ["open "])
+    (defer (call printf ["close\n"]))
+
+    (call printf ["process "])
+]))
+
+(const in_a_scope () (proc [] (void) [
+    (scope [
+        (defer (call printf ["hello "]))
+    ])
+    (call printf ["world\n"])
+]))
+
+(const in_a_scope_with_outer () (proc [] (void) [
+    (defer (call printf ["!\n"]))
+    (scope [
+        (defer (call printf ["Hello, "]))
+    ])
+    (call printf ["World"])
+]))
+
+(const with_if () (proc [(param should_close (bool))] (void) [
+    (call printf ["open "])
+    (defer [
+        (if should_close [
+            (call printf ["close\n"])
+        ] ())
+    ])
+
+    (call printf ["process "])
+]))
+
+(const with_nested_defer () (proc [] (void) [
+    (call printf ["1 "])
+    (defer [
+        (defer (call printf ["4\n"]))
+
+        (call printf ["3 "])
+    ])
+
+    (call printf ["2 "])
+]))
+
+(const with_early_return () (proc [(param should_return_early (bool))] (void) [
+    (defer (call printf ["2\n"]))
+
+    (if should_return_early [
+        (defer (call printf ["one "]))
+        (return)
+    ] ())
+
+    (call printf ["1 "])
+]))
+
+(export (const main () (proc [] (i32) [
+    (call basic [])
+    (call in_a_scope [])
+    (call in_a_scope_with_outer [])
+    (call with_if [(false)])
+    (call with_if [(true)])
+    (call with_nested_defer [])
+    (call with_early_return [(false)])
+    (call with_early_return [(true)])
+
+    (return 0)
+])))
+
+(call main [])
+
+/* @output
+open process close
+hello world
+Hello, World!
+open process open process close
+1 2 3 4
+1 2
+one 2
+
+@endoutput */
