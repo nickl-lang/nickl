@@ -50,6 +50,41 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
     return *found;
 }
 
+NkIrLabel createLabel(Context &ctx, LabelName name) {
+    char const *fmt;
+    switch (name) {
+        case LabelName_Start:
+            fmt = "@start%u";
+            break;
+        case LabelName_Else:
+            fmt = "@else%u";
+            break;
+        case LabelName_Endif:
+            fmt = "@endif%u";
+            break;
+        case LabelName_True:
+            fmt = "@true%u";
+            break;
+        case LabelName_False:
+            fmt = "@false%u";
+            break;
+        case LabelName_Join:
+            fmt = "@join%u";
+            break;
+        case LabelName_Loop:
+            fmt = "@loop%u";
+            break;
+        case LabelName_Endloop:
+            fmt = "@endloop%u";
+            break;
+
+        case LabelName_Count:
+            nk_assert(!"unreachable");
+    }
+    auto const count = ctx.proc_stack->label_counts[name]++;
+    return nkir_createLabel(ctx.ir, nk_s2atom(nk_tsprintf(ctx.scope_stack->temp_arena, fmt, count)));
+}
+
 void emit(Context &ctx, NkIrInstr const &instr) {
     nk_assert(ctx.proc_stack && "no current proc");
 

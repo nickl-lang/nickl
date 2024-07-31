@@ -205,6 +205,7 @@ static auto pushProc(Context &ctx, NkIrProc proc) {
         .proc = proc,
         .defer_node{},
         .has_return_in_last_block{},
+        .label_counts{},
     };
     nk_list_push(ctx.proc_stack, proc_node);
     auto const prev_proc = nkir_getActiveProc(ctx.ir);
@@ -428,6 +429,10 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
             }
 
             val.type = dst_t;
+
+            if (conf.dst.kind) {
+                val = store(ctx, conf.dst, val);
+            }
         }
     } else if (conf.res_tclass && nklt_tclass(src_t) != conf.res_tclass) {
         // TODO: Improve error message
@@ -703,7 +708,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
         nkir_startProc(ctx.ir, proc, descr);
 
-        emit(ctx, nkir_make_label(nkir_createLabel(ctx.ir, nk_cs2atom("@start"))));
+        emit(ctx, nkir_make_label(createLabel(ctx, LabelName_Start)));
 
         auto arg_names_it = descr.arg_names.data;
         for (usize i = 0; i < descr.arg_names.size; i++) {
@@ -863,7 +868,7 @@ static Interm getIndex(Context &ctx, Interm const &arr, Interm const &idx) {
 }
 
 // TODO: Provide type in getLvalueRef?
-static Interm getLvalueRef(Context &ctx, NklAstNode const &node) {
+static Interm compileLvalueRef(Context &ctx, NklAstNode const &node) {
     auto pop_node = pushNode(ctx, node);
 
     auto node_it = nodeIterate(ctx.src, node);
@@ -959,6 +964,84 @@ static NkAtom getConstDeclName(Context &ctx) {
     }
 }
 
+static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert);
+
+static Interm compileLogicAnd(Context &ctx, NklAstNode const &lhs_n, NklAstNode const &rhs_n, bool invert) {
+    auto const true_l = createLabel(ctx, LabelName_True);
+    auto const join_l = createLabel(ctx, LabelName_Join);
+
+    auto res = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(ctx.c->bool_t())));
+
+    DEFINE(const lhs, compileLogic(ctx, lhs_n, invert));
+    auto lhs_ref = asRef(ctx, lhs);
+    emit(ctx, nkir_make_jmpnz(ctx.ir, lhs_ref, true_l));
+    store(ctx, res, makeRef(lhs_ref));
+    emit(ctx, nkir_make_jmp(ctx.ir, join_l));
+    emit(ctx, nkir_make_label(true_l));
+    DEFINE(const rhs, compileLogic(ctx, rhs_n, invert));
+    store(ctx, res, rhs);
+    emit(ctx, nkir_make_label(join_l));
+
+    return makeRef(res);
+}
+
+static Interm compileLogicOr(Context &ctx, NklAstNode const &lhs_n, NklAstNode const &rhs_n, bool invert) {
+    auto const false_l = createLabel(ctx, LabelName_False);
+    auto const join_l = createLabel(ctx, LabelName_Join);
+
+    auto res = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(ctx.c->bool_t())));
+
+    DEFINE(const lhs, compileLogic(ctx, lhs_n, invert));
+    auto lhs_ref = asRef(ctx, lhs);
+    emit(ctx, nkir_make_jmpz(ctx.ir, lhs_ref, false_l));
+    store(ctx, res, makeRef(lhs_ref));
+    emit(ctx, nkir_make_jmp(ctx.ir, join_l));
+    emit(ctx, nkir_make_label(false_l));
+    DEFINE(const rhs, compileLogic(ctx, rhs_n, invert));
+    store(ctx, res, rhs);
+    emit(ctx, nkir_make_label(join_l));
+
+    return makeRef(res);
+}
+
+static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert) {
+    auto pop_node = pushNode(ctx, node);
+
+    auto node_it = nodeIterate(ctx.src, node);
+
+    switch (node.id) {
+        case n_and: {
+            auto &lhs_n = nextNode(node_it);
+            auto &rhs_n = nextNode(node_it);
+            return invert ? compileLogicOr(ctx, lhs_n, rhs_n, invert) : compileLogicAnd(ctx, lhs_n, rhs_n, invert);
+        }
+
+        case n_or: {
+            auto &lhs_n = nextNode(node_it);
+            auto &rhs_n = nextNode(node_it);
+            return invert ? compileLogicAnd(ctx, lhs_n, rhs_n, invert) : compileLogicOr(ctx, lhs_n, rhs_n, invert);
+        }
+
+        case n_not: {
+            auto &arg_n = nextNode(node_it);
+            return compileLogic(ctx, arg_n, !invert);
+        }
+
+        default:
+            DEFINE(const arg, compile(ctx, node, {ctx.c->bool_t()}));
+            if (invert) {
+                return makeInstr(
+                    nkir_make_xor(ctx.ir, {}, asRef(ctx, makeConst(ctx, ctx.c->bool_t(), true)), asRef(ctx, arg)),
+                    ctx.c->bool_t());
+            } else {
+                return arg;
+            }
+    }
+
+    nk_assert(!"unreachable");
+    return {};
+}
+
 static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig const &conf) {
     // TODO: Validate AST
 
@@ -1049,11 +1132,16 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
 #undef COMPILE_TYPE
 
+        case n_and:
+        case n_not:
+        case n_or:
+            return compileLogic(ctx, node, false);
+
         case n_assign: {
             auto &lhs_n = nextNode(node_it);
             auto &rhs_n = nextNode(node_it);
 
-            DEFINE(lhs, getLvalueRef(ctx, lhs_n));
+            DEFINE(lhs, compileLvalueRef(ctx, lhs_n));
             DEFINE(rhs, compile(ctx, rhs_n, {lhs.type}));
 
             return store(ctx, asRef(ctx, lhs), rhs);
@@ -1277,7 +1365,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         case n_deref:
         case n_index:
         case n_member:
-            return getLvalueRef(ctx, node);
+            return compileLvalueRef(ctx, node);
 
         case n_export: {
             auto &const_n = nextNode(node_it);
@@ -1544,12 +1632,12 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         case n_if: {
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
-            auto &else_n = nextNode(node_it);
+            auto pelse_n = node.arity == 3 ? &nextNode(node_it) : nullptr;
 
-            auto const endif_l = nkir_createLabel(ctx.ir, nk_cs2atom("@endif"));
+            auto const endif_l = createLabel(ctx, LabelName_Endif);
             NkIrLabel else_l;
-            if (else_n.id) {
-                else_l = nkir_createLabel(ctx.ir, nk_cs2atom("@else"));
+            if (pelse_n) {
+                else_l = createLabel(ctx, LabelName_Else);
             } else {
                 else_l = endif_l;
             }
@@ -1563,11 +1651,13 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 CHECK(compileStmt(ctx, body_n));
             }
 
-            if (else_n.id) {
+            emit(ctx, nkir_make_jmp(ctx.ir, endif_l));
+
+            if (pelse_n) {
                 emit(ctx, nkir_make_label(else_l));
                 {
                     auto const leave = enterPrivateScope(ctx);
-                    CHECK(compileStmt(ctx, else_n));
+                    CHECK(compileStmt(ctx, *pelse_n));
                 }
             }
 
@@ -1580,8 +1670,8 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
 
-            auto const loop_l = nkir_createLabel(ctx.ir, nk_cs2atom("@loop"));
-            auto const endloop_l = nkir_createLabel(ctx.ir, nk_cs2atom("@endloop"));
+            auto const loop_l = createLabel(ctx, LabelName_Loop);
+            auto const endloop_l = createLabel(ctx, LabelName_Endloop);
 
             emit(ctx, nkir_make_label(loop_l));
 

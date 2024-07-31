@@ -58,6 +58,7 @@ X(lsh)
 X(rsh)
 
 X(and)
+X(not)
 X(or)
 
 X(addr)

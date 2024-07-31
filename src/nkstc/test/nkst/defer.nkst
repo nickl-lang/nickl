@@ -27,7 +27,7 @@
     (defer [
         (if should_close [
             (call printf ["close\n"])
-        ] ())
+        ])
     ])
 
     (call printf ["process "])
@@ -50,7 +50,7 @@
     (if should_return_early [
         (defer (call printf ["one "]))
         (return)
-    ] ())
+    ])
 
     (call printf ["1 "])
 ]))

@@ -1,0 +1,72 @@
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
+(const puts   () (link "c" (proc [(param (ptr (const (i8))))] (i32))))
+
+(export (const main () (proc [] (i32) [
+    (const yay () (true))
+    (const nay () (false))
+
+    (if (and nay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (and nay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (and yay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (and yay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (or  nay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (or  nay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (or  yay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (or  yay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+
+    (call puts [""])
+
+    (if (not (and nay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (not (and nay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (not (and yay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (not (and yay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (not (or  nay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+    (if (not (or  nay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (not (or  yay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+    (if (not (or  yay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+
+    (call puts [""])
+
+    (if (and (eq (call printf ["one "]) 4) (eq (call printf ["two "]) 4)) (call printf ["yes\n"]) ()) // one two yes
+    (if (and (eq (call printf ["one "]) 4) (eq (call printf ["no\n"]) 0)) (call printf ["nay\n"]) ()) // one no
+    (if (and (eq (call printf ["no\n"]) 0) (eq (call printf ["two "]) 4)) (call printf ["nay\n"]) ()) // no
+
+    (call puts [""])
+
+    (if (or  (eq (call printf ["one "]) 0) (eq (call printf ["two "]) 4)) (call printf ["yes\n"]) ()) // one two yes
+    (if (or  (eq (call printf ["one "]) 0) (eq (call printf ["no\n"]) 0)) (call printf ["nay\n"]) ()) // one no
+    (if (or  (eq (call printf ["one "]) 4) (eq (call printf ["no\n"]) 0)) (call printf ["yes\n"]) ()) // one yes
+
+    (return 0)
+])))
+
+(call main [])
+
+/* @output
+nay
+nay
+nay
+yay
+nay
+yay
+yay
+yay
+
+yay
+yay
+yay
+nay
+yay
+nay
+nay
+nay
+
+one two yes
+one no
+no
+
+one two yes
+one no
+one yes
+
+@endoutput */

@@ -112,11 +112,25 @@ struct NodeListNode {
     NklAstNode const &node;
 };
 
+enum LabelName {
+    LabelName_Start,
+    LabelName_Else,
+    LabelName_Endif,
+    LabelName_True,
+    LabelName_False,
+    LabelName_Join,
+    LabelName_Loop,
+    LabelName_Endloop,
+
+    LabelName_Count,
+};
+
 struct ProcListNode {
     ProcListNode *next;
     NkIrProc proc;
     DeferListNode *defer_node;
     bool has_return_in_last_block;
+    u32 label_counts[LabelName_Count];
 };
 
 struct Scope {
@@ -205,6 +219,8 @@ struct NklModule_T {
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict);
 
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file);
+
+NkIrLabel createLabel(Context &ctx, LabelName name);
 
 void emit(Context &ctx, NkIrInstr const &instr);
 void emitDefers(Context &ctx, Scope const *upto);
