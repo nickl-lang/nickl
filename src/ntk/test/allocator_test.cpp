@@ -5,8 +5,13 @@
 #include <gtest/gtest.h>
 
 #include "ntk/arena.h"
+#include "ntk/dyn_array.h"
 #include "ntk/log.h"
+#include "ntk/slice.h"
+#include "ntk/time.h"
 #include "ntk/utils.h"
+
+NK_LOG_USE_SCOPE(test);
 
 class allocator : public testing::Test {
     void SetUp() override {
@@ -142,4 +147,48 @@ TEST_F(allocator, free_noop) {
 
     EXPECT_EQ(ptr2[0], 0);
     EXPECT_EQ(ptr2[1], 0);
+}
+
+TEST_F(allocator, arena_stress) {
+    NkDynArray(NkArenaFrame) frames{};
+    usize total_size = 0;
+    NkArena arena{};
+    defer {
+        nk_arena_free(&arena);
+        nkda_free(&frames);
+    };
+
+    srand(nk_now_ns());
+
+    static constexpr auto N = 1000000;
+    static constexpr auto MaxAllocSize = 256;
+    static constexpr auto MaxAllocCount = 15;
+
+    for (usize i = 0; i < N; i++) {
+        if (rand() % 2 && frames.size) {
+            auto const frame = nk_slice_last(frames);
+
+            auto const sz_delta = arena.size - frame.size;
+            total_size -= sz_delta;
+            NK_LOG_INF("Popping %zu bytes, total_size=%zu", sz_delta, total_size);
+
+            nk_arena_popFrame(&arena, frame);
+            nkda_pop(&frames, 1);
+        } else if (frames.size < MaxAllocCount) {
+            auto const frame = nk_arena_grab(&arena);
+            nkda_append(&frames, frame);
+
+            usize const sz = rand() % MaxAllocSize + 1;
+
+            u8 align[] = {1, 2, 4, 8, 16};
+            void *data = nk_arena_allocAligned(&arena, sz, align[rand() % 5]);
+            for (usize i = 0; i < sz; i++) {
+                *((char *)data + i) = 'a';
+            }
+
+            auto const sz_delta = arena.size - frame.size;
+            total_size += sz_delta;
+            NK_LOG_INF("Pushing %zu bytes, total_size=%zu", sz_delta, total_size);
+        }
+    }
 }
