@@ -62,11 +62,8 @@ NkIrLabel createLabel(Context &ctx, LabelName name) {
         case LabelName_Endif:
             fmt = "@endif%u";
             break;
-        case LabelName_True:
-            fmt = "@true%u";
-            break;
-        case LabelName_False:
-            fmt = "@false%u";
+        case LabelName_Short:
+            fmt = "@short%u";
             break;
         case LabelName_Join:
             fmt = "@join%u";

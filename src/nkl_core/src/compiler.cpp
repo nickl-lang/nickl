@@ -712,6 +712,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
         auto arg_names_it = descr.arg_names.data;
         for (usize i = 0; i < descr.arg_names.size; i++) {
+            // TODO: Push param nodes to point to the correct place in the code
             CHECK(defineParam(ctx, *arg_names_it, i));
             arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
         }
@@ -966,39 +967,27 @@ static NkAtom getConstDeclName(Context &ctx) {
 
 static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert);
 
-static Interm compileLogicAnd(Context &ctx, NklAstNode const &lhs_n, NklAstNode const &rhs_n, bool invert) {
-    auto const true_l = createLabel(ctx, LabelName_True);
+static Interm compileLogicExpr(
+    Context &ctx,
+    NklAstNode const &lhs_n,
+    NklAstNode const &rhs_n,
+    bool invert,
+    bool is_and) {
+    auto const short_l = createLabel(ctx, LabelName_Short);
     auto const join_l = createLabel(ctx, LabelName_Join);
 
     auto res = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(ctx.c->bool_t())));
 
     DEFINE(const lhs, compileLogic(ctx, lhs_n, invert));
     auto lhs_ref = asRef(ctx, lhs);
-    emit(ctx, nkir_make_jmpnz(ctx.ir, lhs_ref, true_l));
-    store(ctx, res, makeRef(lhs_ref));
-    emit(ctx, nkir_make_jmp(ctx.ir, join_l));
-    emit(ctx, nkir_make_label(true_l));
+    emit(ctx, is_and ? nkir_make_jmpz(ctx.ir, lhs_ref, short_l) : nkir_make_jmpnz(ctx.ir, lhs_ref, short_l));
     DEFINE(const rhs, compileLogic(ctx, rhs_n, invert));
     store(ctx, res, rhs);
-    emit(ctx, nkir_make_label(join_l));
-
-    return makeRef(res);
-}
-
-static Interm compileLogicOr(Context &ctx, NklAstNode const &lhs_n, NklAstNode const &rhs_n, bool invert) {
-    auto const false_l = createLabel(ctx, LabelName_False);
-    auto const join_l = createLabel(ctx, LabelName_Join);
-
-    auto res = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(ctx.c->bool_t())));
-
-    DEFINE(const lhs, compileLogic(ctx, lhs_n, invert));
-    auto lhs_ref = asRef(ctx, lhs);
-    emit(ctx, nkir_make_jmpz(ctx.ir, lhs_ref, false_l));
-    store(ctx, res, makeRef(lhs_ref));
     emit(ctx, nkir_make_jmp(ctx.ir, join_l));
-    emit(ctx, nkir_make_label(false_l));
-    DEFINE(const rhs, compileLogic(ctx, rhs_n, invert));
-    store(ctx, res, rhs);
+
+    emit(ctx, nkir_make_label(short_l));
+    store(ctx, res, makeRef(lhs_ref));
+
     emit(ctx, nkir_make_label(join_l));
 
     return makeRef(res);
@@ -1013,13 +1002,13 @@ static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert) {
         case n_and: {
             auto &lhs_n = nextNode(node_it);
             auto &rhs_n = nextNode(node_it);
-            return invert ? compileLogicOr(ctx, lhs_n, rhs_n, invert) : compileLogicAnd(ctx, lhs_n, rhs_n, invert);
+            return compileLogicExpr(ctx, lhs_n, rhs_n, invert, !invert);
         }
 
         case n_or: {
             auto &lhs_n = nextNode(node_it);
             auto &rhs_n = nextNode(node_it);
-            return invert ? compileLogicAnd(ctx, lhs_n, rhs_n, invert) : compileLogicOr(ctx, lhs_n, rhs_n, invert);
+            return compileLogicExpr(ctx, lhs_n, rhs_n, invert, invert);
         }
 
         case n_not: {
