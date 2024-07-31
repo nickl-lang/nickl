@@ -73,8 +73,12 @@ trap 'cleanup HUP' HUP
 trap 'cleanup TERM' TERM
 trap 'cleanup INT' INT
 
-STDOUT_FILE="$TMPDIR/stdout"
-STDERR_FILE="$TMPDIR/stderr"
+STDOUT_FILE="$TMPDIR/actual_stdout"
+STDERR_FILE="$TMPDIR/actual_stderr"
+
+EXPECTED_STDOUT_FILE="$TMPDIR/expect_stdout"
+
+printf "%s" "$EXPECTED_OUTPUT" > "$EXPECTED_STDOUT_FILE"
 
 echo "Running command '$ARG_CMD $ARG_FILE'"
 
@@ -83,10 +87,10 @@ $ARG_CMD $ARG_FILE 1>"$STDOUT_FILE" 2>"$STDERR_FILE"
 RETCODE=$?
 set -e
 
-OUTPUT_STDOUTX="$(cat "$STDOUT_FILE" | tr -d '\r'; echo x)"
-OUTPUT_STDOUT="${OUTPUT_STDOUTX%x}"
+sed 's/\r//g' -i "$STDOUT_FILE"
+sed 's/\r//g' -i "$STDERR_FILE"
 
-OUTPUT_STDERRX="$(cat "$STDERR_FILE" | tee /dev/stderr | tr -d '\r'; echo x)"
+OUTPUT_STDERRX="$(cat "$STDERR_FILE" | tee /dev/stderr; echo x)"
 OUTPUT_STDERR="${OUTPUT_STDERRX%x}"
 
 if [ "$RETCODE" -ne "${EXPECTED_RETCODE:-0}" ]; then
@@ -109,13 +113,9 @@ case "$OUTPUT_STDERR" in
     ;;
 esac
 
-if [ "$EXPECTED_OUTPUT" != "$OUTPUT_STDOUT" ]; then
-  printf "%s" "TEST FAILED:
-Expected output:
-    \"$EXPECTED_OUTPUT\"
-Actual   output:
-    \"$OUTPUT_STDOUT\""
-  exit 1
+if ! diff --color=auto -u "$STDOUT_FILE" "$EXPECTED_STDOUT_FILE"; then
+    echo '\nTEST FAILED'
+    exit 1
 fi
 
-echo 'TEST PASSED'
+echo '\nTEST PASSED'
