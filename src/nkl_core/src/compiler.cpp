@@ -667,7 +667,9 @@ static Void leaveScope(Context &ctx) {
 
 static auto enterPrivateScope(Context &ctx) {
     pushPrivateScope(ctx);
+    nkir_enter(ctx.ir);
     return nk_defer([&ctx, upto = ctx.scope_stack->next]() {
+        nkir_leave(ctx.ir);
         emitDefers(ctx, upto);
         leaveScope(ctx);
     });
@@ -987,6 +989,26 @@ static Interm compileLogicExpr(
     auto const join_l = createLabel(ctx, LabelName_Join);
 
     auto res = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(ctx.c->bool_t())));
+
+#ifdef ENABLE_LOGGING
+    emit(
+        ctx,
+        nkir_make_comment(
+            ctx.ir,
+            nk_tsprintf(
+                ctx.scope_stack->temp_arena, "begin %s node %u", is_and ? "and" : "or", nodeIdx(ctx.src, lhs_n) - 1)));
+    defer {
+        emit(
+            ctx,
+            nkir_make_comment(
+                ctx.ir,
+                nk_tsprintf(
+                    ctx.scope_stack->temp_arena,
+                    "end %s node %u",
+                    is_and ? "and" : "or",
+                    nodeIdx(ctx.src, lhs_n) - 1)));
+    };
+#endif // ENABLE_LOGGING
 
     DEFINE(const lhs, compileLogic(ctx, lhs_n, invert));
     auto lhs_ref = asRef(ctx, lhs);
