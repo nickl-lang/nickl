@@ -197,8 +197,10 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
         PUSH_VAL(&fp, usize, info.param_types.size);
+        nkltype_t const *types_it = info.param_types.data;
         for (usize i = 0; i < info.param_types.size; i++) {
-            PUSH_VAL(&fp, u32, info.param_types.data[i * info.param_types.stride]->id);
+            PUSH_VAL(&fp, u32, (*types_it)->id);
+            types_it = (nkltype_t const *)((u8 const *)types_it + info.param_types.stride);
         }
         PUSH_VAL(&fp, u32, info.ret_t->id);
         PUSH_VAL(&fp, u8, info.call_conv);
@@ -224,8 +226,10 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
             };
             nkltype_t *param_types_copy =
                 nk_alloc(nk_arena_getAllocator(&nkl->types.type_arena), info.param_types.size * sizeof(void *));
+            nkltype_t const *types_it = info.param_types.data;
             for (usize i = 0; i < info.param_types.size; i++) {
-                param_types_copy[i] = info.param_types.data[i * info.param_types.stride];
+                param_types_copy[i] = *types_it;
+                types_it = (nkltype_t const *)((u8 const *)types_it + info.param_types.stride);
             }
             backing->ir_type.as.proc.info.args_t = (NkTypeArray){(nktype_t *)param_types_copy, info.param_types.size};
         } else {
@@ -425,8 +429,10 @@ nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info) {
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
         PUSH_VAL(&fp, usize, info.param_types.size);
+        nkltype_t const *types_it = info.param_types.data;
         for (usize i = 0; i < info.param_types.size; i++) {
-            PUSH_VAL(&fp, u32, info.param_types.data[i * info.param_types.stride]->id);
+            PUSH_VAL(&fp, u32, (*types_it)->id);
+            types_it = (nkltype_t const *)((u8 const *)types_it + info.param_types.stride);
         }
         PUSH_VAL(&fp, u32, info.ret_t->id);
         PUSH_VAL(&fp, u8, info.call_conv);

@@ -140,6 +140,7 @@ protected:
                         nkda_append(&defer_instrs, nkir_make_jmpz(m_ir, should_free_ref, endif_l));
                         // test_freeResources();
                         nkda_append(&defer_instrs, nkir_make_call(m_ir, {}, test_freeResources_ref, {}));
+                        nkda_append(&defer_instrs, nkir_make_jmp(m_ir, endif_l));
                         // }
                         nkda_append(&defer_instrs, nkir_make_label(endif_l));
                     }

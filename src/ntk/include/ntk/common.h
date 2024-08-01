@@ -82,7 +82,7 @@ constexpr usize nk_alignofval(T const &) {
 
 #ifdef NDEBUG
 #define nk_assert(x) (void)(x)
-#else
+#else // NDEBUG
 // TODO nk_assert depends on libc
 #define nk_assert(x)                                                                             \
     do {                                                                                         \
@@ -92,6 +92,6 @@ constexpr usize nk_alignofval(T const &) {
             nk_trap();                                                                           \
         }                                                                                        \
     } while (0)
-#endif
+#endif // NDEBUG
 
 #endif // NTK_COMMON_H_

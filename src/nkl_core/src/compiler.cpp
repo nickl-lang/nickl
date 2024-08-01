@@ -487,7 +487,7 @@ static Interm resolveComptime(Decl &decl) {
         ASSIGN(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
     }
 
-    NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
+    NK_LOG_DBG("Resolving comptime const: node#%u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
     DEFINE(val, compile(ctx, val_n, {.res_t = type, .is_const = true, .opt_resolved_decl = &decl}));
 
@@ -628,7 +628,7 @@ static nkltype_t compileProcType(
         ctx.nkl,
         ctx.c->word_size,
         NklProcInfo{
-            .param_types{&params.data->type, params.size, sizeof(params.data[0]) / sizeof(void *)},
+            .param_types{&params.data->type, params.size, sizeof(params.data[0])},
             .ret_t = ret_t,
             .call_conv = call_conv,
             .flags = proc_flags,
@@ -683,7 +683,9 @@ static auto enterProcScope(Context &ctx, bool is_public) {
     }
     return nk_defer([&ctx, upto = ctx.scope_stack->next]() {
         emitDefers(ctx, upto);
-        emit(ctx, nkir_make_ret(ctx.ir, {}));
+        if (!ctx.proc_stack->has_return_in_last_block) {
+            emit(ctx, nkir_make_ret(ctx.ir, {}));
+        }
         leaveScope(ctx);
     });
 }
@@ -758,7 +760,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 static Context *importFile(NklCompiler c, NkString filename) {
     auto nkl = c->nkl;
 
-    auto file = getFileId(filename);
+    auto const file = getFileId(filename);
 
     DEFINE(&src, *nkl_getSource(nkl, file));
 
@@ -864,7 +866,7 @@ static Interm getIndex(Context &ctx, Interm const &arr, Interm const &idx) {
             // TODO: Optimize array indexing??
             auto const elem_t = nklt_array_elemType(arr.type);
             auto const data_ptr = asRef(ctx, makeInstr(nkir_make_lea(ctx.ir, {}, asRef(ctx, arr)), ctx.c->usize_t()));
-            auto const elem_size = asRef(ctx, makeConst<usize>(ctx, ctx.c->usize_t(), nklt_sizeof(elem_t)));
+            auto const elem_size = asRef(ctx, makeUsizeConst(ctx, nklt_sizeof(elem_t)));
             auto const mul = nkir_make_mul(ctx.ir, {}, asRef(ctx, idx), elem_size);
             auto const offset = asRef(ctx, makeInstr(mul, ctx.c->usize_t()));
             auto const add = nkir_make_add(ctx.ir, {}, data_ptr, offset);
@@ -996,7 +998,7 @@ static Interm compileLogicExpr(
         nkir_make_comment(
             ctx.ir,
             nk_tsprintf(
-                ctx.scope_stack->temp_arena, "begin %s node %u", is_and ? "and" : "or", nodeIdx(ctx.src, lhs_n) - 1)));
+                ctx.scope_stack->temp_arena, "begin %s node#%u", is_and ? "and" : "or", nodeIdx(ctx.src, lhs_n) - 1)));
     defer {
         emit(
             ctx,
@@ -1004,7 +1006,7 @@ static Interm compileLogicExpr(
                 ctx.ir,
                 nk_tsprintf(
                     ctx.scope_stack->temp_arena,
-                    "end %s node %u",
+                    "end %s node#%u",
                     is_and ? "and" : "or",
                     nodeIdx(ctx.src, lhs_n) - 1)));
     };
@@ -1019,6 +1021,7 @@ static Interm compileLogicExpr(
 
     emit(ctx, nkir_make_label(short_l));
     store(ctx, res, makeRef(lhs_ref));
+    emit(ctx, nkir_make_jmp(ctx.ir, join_l));
 
     emit(ctx, nkir_make_label(join_l));
 
@@ -1072,7 +1075,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
     };
     nkir_setLine(ctx.ir, token.lin);
 
-    NK_LOG_DBG("Compiling node %u #%s", nodeIdx(ctx.src, node), nk_atom2cs(node.id));
+    NK_LOG_DBG("Compiling node#%u #%s", nodeIdx(ctx.src, node), nk_atom2cs(node.id));
 
     auto node_it = nodeIterate(ctx.src, node);
 
@@ -1654,6 +1657,19 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_if: {
+#ifdef ENABLE_LOGGING
+            emit(
+                ctx,
+                nkir_make_comment(
+                    ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "begin if node#%u", nodeIdx(ctx.src, node))));
+            defer {
+                emit(
+                    ctx,
+                    nkir_make_comment(
+                        ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "end if node#%u", nodeIdx(ctx.src, node))));
+            };
+#endif // ENABLE_LOGGING
+
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
             auto pelse_n = node.arity == 3 ? &nextNode(node_it) : nullptr;
@@ -1684,18 +1700,33 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 }
             }
 
+            emit(ctx, nkir_make_jmp(ctx.ir, endif_l));
             emit(ctx, nkir_make_label(endif_l));
 
             return makeVoid(ctx);
         }
 
         case n_while: {
+#ifdef ENABLE_LOGGING
+            emit(
+                ctx,
+                nkir_make_comment(
+                    ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "begin while node#%u", nodeIdx(ctx.src, node))));
+            defer {
+                emit(
+                    ctx,
+                    nkir_make_comment(
+                        ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "end while node#%u", nodeIdx(ctx.src, node))));
+            };
+#endif // ENABLE_LOGGING
+
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
 
             auto const loop_l = createLabel(ctx, LabelName_Loop);
             auto const endloop_l = createLabel(ctx, LabelName_Endloop);
 
+            emit(ctx, nkir_make_jmp(ctx.ir, loop_l));
             emit(ctx, nkir_make_label(loop_l));
 
             DEFINE(cond, compile(ctx, cond_n, {ctx.c->bool_t()}));
@@ -1732,16 +1763,16 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
 #ifdef ENABLE_LOGGING
                 NK_LOG_DBG(
-                    "Defer recording start for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+                    "Defer recording start for node#%u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
                 emit(
                     ctx,
-                    nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "begin defer node %u", defer_node->node_idx)));
+                    nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "begin defer node#%u", defer_node->node_idx)));
                 defer {
                     emit(
                         ctx,
-                        nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "end defer node %u", defer_node->node_idx)));
+                        nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "end defer node#%u", defer_node->node_idx)));
                     NK_LOG_DBG(
-                        "Defer recording finish for node %u file=`%s`",
+                        "Defer recording finish for node#%u file=`%s`",
                         defer_node->node_idx,
                         nk_atom2cs(defer_node->file));
                 };
@@ -1795,6 +1826,15 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 
     // TODO: Check for export conflicts when merging modules
     nkir_mergeModules(m->mod, ctx.m->mod);
+
+    // TODO: Move validation somewhere away along with top level proc storage
+#ifndef NDEBUG
+    if (!nkir_validateProgram(c->ir)) {
+        auto const file = getFileId(filename);
+        nkl_reportError(file, 0, "IR validation failed");
+        return false;
+    }
+#endif // NDEBUG
 
 #ifdef ENABLE_LOGGING
     {

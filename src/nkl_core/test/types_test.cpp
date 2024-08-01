@@ -196,7 +196,7 @@ TEST_F(types, proc) {
             nkl,
             word_size,
             NklProcInfo{
-                .param_types = {add_params, NK_ARRAY_COUNT(add_params), 1},
+                .param_types = {add_params, NK_ARRAY_COUNT(add_params), sizeof(nkltype_t)},
                 .ret_t = i32_t,
                 .call_conv = NkCallConv_Nk,
                 .flags = 0,

@@ -100,7 +100,7 @@ void emit(Context &ctx, NkIrInstr const &instr) {
         auto const defer_node = ctx.proc_stack->defer_node;
 
         NK_LOG_DBG(
-            "Emitting '" NKS_FMT "' into a defer node %u file=`%s`",
+            "Emitting '" NKS_FMT "' into a defer node#%u file=`%s`",
             NKS_ARG(sb),
             defer_node->node_idx,
             nk_atom2cs(defer_node->file));
@@ -116,7 +116,7 @@ void emit(Context &ctx, NkIrInstr const &instr) {
 static void emitDefersForScope(Context &ctx, Scope const *scope) {
     auto defer_node = scope->defer_stack;
     while (defer_node) {
-        NK_LOG_DBG("Emitting defer blocks for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+        NK_LOG_DBG("Emitting defer blocks for node#%u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
 
         if (ctx.proc_stack->defer_node) {
             nkir_instrArrayDupInto(

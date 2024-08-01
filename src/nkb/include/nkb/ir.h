@@ -234,6 +234,11 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc proc, NkStream out);
 void nkir_inspectInstr(NkIrProg ir, NkIrProc proc, NkIrInstr instr, NkStream out);
 void nkir_inspectRef(NkIrProg ir, NkIrProc proc, NkIrRef ref, NkStream out);
 
+// Validation
+
+bool nkir_validateProgram(NkIrProg ir);
+bool nkir_validateProc(NkIrProg ir, NkIrProc proc);
+
 #ifdef __cplusplus
 }
 #endif

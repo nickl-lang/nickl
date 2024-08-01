@@ -210,6 +210,12 @@ struct EmitterState {
         while (!check(t_brace_r) && !check(t_eof)) {
             while (accept(t_newline)) {
             }
+            if (accept(t_int)) {
+                EXPECT(t_bar);
+            }
+            if (check(t_newline)) {
+                continue;
+            }
             if (check(t_id)) {
                 DEFINE(token, parseId());
                 auto const name = nk_s2atom(nkl_getTokenStr(token, m_text));
