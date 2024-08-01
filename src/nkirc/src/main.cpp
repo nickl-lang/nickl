@@ -79,7 +79,7 @@ int main(int /*argc*/, char const *const *argv) {
 
 #ifdef ENABLE_LOGGING
     NkLogOptions log_opts{};
-    log_opts.log_level = NkLogLevel_Error;
+    log_opts.log_level = NkLogLevel_Warning;
 #endif // ENABLE_LOGGING
 
     for (argv++; *argv;) {

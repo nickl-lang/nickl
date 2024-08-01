@@ -16,6 +16,7 @@ proc myatan(x: f64) f64 {
     mov x -> num
     mov :f64 1. -> sign
     mov :f64 1. -> denom
+    jmp @loop
 
 @loop
     cmp lt i, ITER -> cond

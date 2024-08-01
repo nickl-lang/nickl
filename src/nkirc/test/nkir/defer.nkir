@@ -49,6 +49,7 @@ pub proc main() i32 {
     jmpz resource, @defer_endif_1
     //             free(resource);
     call free, (resource)
+    jmp @defer_endif_1
 
 @defer_endif_1
     //         return 1;
@@ -61,6 +62,7 @@ pub proc main() i32 {
     jmpz resource, @defer_endif_2
     //             free(resource);
     call free, (resource)
+    jmp @defer_endif_2
 
 @defer_endif_2
     // printf("done\n");

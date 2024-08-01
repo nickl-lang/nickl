@@ -972,3 +972,39 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
         nkirt_inspect(ref.type, out);
     }
 }
+
+bool nkir_validateProgram(NkIrProg ir) {
+    bool ok = true;
+
+    for (usize idx = 0; idx < ir->procs.size; idx++) {
+        ok &= nkir_validateProc(ir, {idx});
+    }
+
+    return ok;
+}
+
+bool nkir_validateProc(NkIrProg ir, NkIrProc _proc) {
+    bool ok = true;
+
+    auto &proc = ir->procs.data[_proc.idx];
+
+    for (auto block_id : nk_iterate(proc.blocks)) {
+        auto const &block = ir->blocks.data[block_id];
+
+        if (block.instr_ranges.size) {
+            auto const range = nk_slice_last(block.instr_ranges);
+            if (range.begin_idx != range.end_idx) {
+                auto const &instr = ir->instrs.data[range.end_idx - 1];
+                if (instr.code != nkir_ret && instr.code != nkir_jmp) {
+                    NK_LOG_WRN(
+                        "proc=%s block=%s doesn't have jmp or ret at the end",
+                        nk_atom2cs(proc.name),
+                        nk_atom2cs(block.name));
+                    ok = false;
+                }
+            }
+        }
+    }
+
+    return ok;
+}

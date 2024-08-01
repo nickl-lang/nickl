@@ -760,7 +760,7 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 static Context *importFile(NklCompiler c, NkString filename) {
     auto nkl = c->nkl;
 
-    auto file = getFileId(filename);
+    auto const file = getFileId(filename);
 
     DEFINE(&src, *nkl_getSource(nkl, file));
 
@@ -1021,6 +1021,7 @@ static Interm compileLogicExpr(
 
     emit(ctx, nkir_make_label(short_l));
     store(ctx, res, makeRef(lhs_ref));
+    emit(ctx, nkir_make_jmp(ctx.ir, join_l));
 
     emit(ctx, nkir_make_label(join_l));
 
@@ -1699,6 +1700,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 }
             }
 
+            emit(ctx, nkir_make_jmp(ctx.ir, endif_l));
             emit(ctx, nkir_make_label(endif_l));
 
             return makeVoid(ctx);
@@ -1724,6 +1726,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             auto const loop_l = createLabel(ctx, LabelName_Loop);
             auto const endloop_l = createLabel(ctx, LabelName_Endloop);
 
+            emit(ctx, nkir_make_jmp(ctx.ir, loop_l));
             emit(ctx, nkir_make_label(loop_l));
 
             DEFINE(cond, compile(ctx, cond_n, {ctx.c->bool_t()}));
@@ -1823,6 +1826,15 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 
     // TODO: Check for export conflicts when merging modules
     nkir_mergeModules(m->mod, ctx.m->mod);
+
+    // TODO: Move validation somewhere away along with top level proc storage
+#ifndef NDEBUG
+    if (!nkir_validateProgram(c->ir)) {
+        auto const file = getFileId(filename);
+        nkl_reportError(file, 0, "IR validation failed");
+        return false;
+    }
+#endif // NDEBUG
 
 #ifdef ENABLE_LOGGING
     {

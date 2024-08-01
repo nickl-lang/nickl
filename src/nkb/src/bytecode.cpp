@@ -14,6 +14,7 @@
 #include "ntk/os/syscall.h"
 #include "ntk/os/thread.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -262,6 +263,8 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     auto const &ir = *ctx->ir;
     auto const &ir_proc = ir.procs.data[proc.idx];
 
+    NK_LOG_DBG("Translating proc#%zu %s", proc.idx, ir_proc.name ? nk_atom2cs(ir_proc.name) : "(anonymous)");
+
     auto &bc_proc =
         *(ctx->procs.data[proc.idx] = new (nk_allocT<NkBcProc_T>(ir.alloc)) NkBcProc_T{
               .ctx = ctx,
@@ -286,12 +289,24 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     };
 
     struct BlockInfo {
+        usize block_idx;
         usize first_instr;
     };
 
     NkDynArray(BlockInfo) block_info{NKDA_INIT(tmp_alloc)};
     NkDynArray(Reloc) relocs{NKDA_INIT(tmp_alloc)};
     NkDynArray(NkIrProc) referenced_procs{NKDA_INIT(tmp_alloc)};
+
+    for (usize block_idx = 0; block_idx < ir_proc.blocks.size; block_idx++) {
+        auto block_id = ir_proc.blocks.data[block_idx];
+        while (block_id >= block_info.size) {
+            nkda_append(&block_info, {});
+        }
+        block_info.data[block_id] = {
+            .block_idx = block_idx,
+            .first_instr{},
+        };
+    }
 
     auto const get_data_addr = [&](usize index) {
         NK_PROF_SCOPE(nk_cs2s("get_data_addr"));
@@ -464,9 +479,6 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     for (auto block_id : nk_iterate(ir_proc.blocks)) {
         auto const &block = ir.blocks.data[block_id];
 
-        while (block_id >= block_info.size) {
-            nkda_append(&block_info, {});
-        }
         block_info.data[block_id].first_instr = bc_proc.instrs.size;
 
         for (auto const range : nk_iterate(block.instr_ranges)) {
@@ -586,6 +598,11 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
 
                     case nkir_comment:
                         continue;
+
+                    case nkir_jmp:
+                        if (block_info.data[ir_instr.arg[1].id].block_idx == block_info.data[block_id].block_idx + 1) {
+                            continue;
+                        }
                 }
 
                 nkda_append(&bc_proc.instrs, {});
