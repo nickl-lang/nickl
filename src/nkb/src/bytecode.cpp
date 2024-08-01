@@ -469,130 +469,132 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         }
         block_info.data[block_id].first_instr = bc_proc.instrs.size;
 
-        for (auto const &ir_instr_id : nk_iterate(block.instrs)) {
-            auto const &ir_instr = ir.instrs.data[ir_instr_id];
+        for (auto const range : nk_iterate(block.instr_ranges)) {
+            for (auto ii = range.begin_idx; ii < range.end_idx; ii++) {
+                auto const &ir_instr = ir.instrs.data[ii];
 
-            u16 code = s_ir2opcode[ir_instr.code];
+                u16 code = s_ir2opcode[ir_instr.code];
 
-            auto const &arg0 = ir_instr.arg[0];
-            auto const &arg1 = ir_instr.arg[1];
-            auto const &arg2 = ir_instr.arg[2];
+                auto const &arg0 = ir_instr.arg[0];
+                auto const &arg1 = ir_instr.arg[1];
+                auto const &arg2 = ir_instr.arg[2];
 
-            switch (ir_instr.code) {
-                case nkir_call: {
-                    nk_assert(arg1.ref.type->kind == NkIrType_Procedure);
-                    if (arg1.ref.kind == NkIrRef_ExternProc ||
-                        (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
-                        code = nkop_call_ext;
-                        nk_assert(arg2.kind == NkIrArg_RefArray);
-                        for (usize i = 0; i < arg2.refs.size; i++) {
-                            if (arg2.refs.data[i].kind == NkIrRef_VariadicMarker) {
-                                code = nkop_call_extv;
-                                break;
+                switch (ir_instr.code) {
+                    case nkir_call: {
+                        nk_assert(arg1.ref.type->kind == NkIrType_Procedure);
+                        if (arg1.ref.kind == NkIrRef_ExternProc ||
+                            (arg1.ref.kind == NkIrRef_Proc && arg1.ref.type->as.proc.info.call_conv != NkCallConv_Nk)) {
+                            code = nkop_call_ext;
+                            nk_assert(arg2.kind == NkIrArg_RefArray);
+                            for (usize i = 0; i < arg2.refs.size; i++) {
+                                if (arg2.refs.data[i].kind == NkIrRef_VariadicMarker) {
+                                    code = nkop_call_extv;
+                                    break;
+                                }
                             }
-                        }
-                    } else {
-                        code = nkop_call_jmp;
-                    }
-                    break;
-                }
-
-                case nkir_ext:
-                case nkir_trunc: {
-                    auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
-                    auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
-
-                    nk_assert(max_ref.type->kind == NkIrType_Numeric && min_ref.type->kind == NkIrType_Numeric);
-                    nk_assert(
-                        NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
-                        NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
-
-                    if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
-                        nk_assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
-
-                        if (ir_instr.code == nkir_ext) {
-                            code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
-                        }
-
-                        switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
-                            case 1:
-                                code += 0 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
-                                break;
-                            case 2:
-                                code += 2 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
-                                break;
-                            case 4:
-                                code += 6;
-                                break;
-                            default:
-                                nk_assert(!"unreachable");
-                                break;
-                        }
-                    } else {
-                        nk_assert(max_ref.type->as.num.value_type == Float64);
-                        nk_assert(min_ref.type->as.num.value_type == Float32);
-
-                        code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
-                    }
-                    break;
-                }
-
-                case nkir_fp2i: {
-                    code = arg1.ref.type->as.num.value_type == Float32 ? nkop_fp2i_32 : nkop_fp2i_64;
-                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
-                    break;
-                }
-                case nkir_i2fp: {
-                    code = arg0.ref.type->as.num.value_type == Float32 ? nkop_i2fp_32 : nkop_i2fp_64;
-                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
-                    break;
-                }
-
-                case nkir_syscall:
-#if NK_SYSCALLS_AVAILABLE
-                    code += 1 + arg2.refs.size;
-#else  // NK_SYSCALLS_AVAILABLE
-                    reportError(ctx, "syscalls are not available on the host platform");
-                    return false;
-#endif // NK_SYSCALLS_AVAILABLE
-                    break;
-
-#define SIZ_OP(NAME) case NK_CAT(nkir_, NAME):
-#include "bytecode.inl"
-                    {
-                        nk_assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
-                        auto const ref_type = arg0.kind == NkIrArg_Ref ? arg0.ref.type : arg1.ref.type;
-                        if (ref_type->size <= 8 && nk_isZeroOrPowerOf2(ref_type->size)) {
-                            code += 1 + nk_log2u64(ref_type->size);
+                        } else {
+                            code = nkop_call_jmp;
                         }
                         break;
                     }
+
+                    case nkir_ext:
+                    case nkir_trunc: {
+                        auto const &max_ref = ir_instr.arg[ir_instr.code == nkir_trunc].ref;
+                        auto const &min_ref = ir_instr.arg[ir_instr.code == nkir_ext].ref;
+
+                        nk_assert(max_ref.type->kind == NkIrType_Numeric && min_ref.type->kind == NkIrType_Numeric);
+                        nk_assert(
+                            NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type) >
+                            NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type));
+
+                        if (NKIR_NUMERIC_IS_WHOLE(max_ref.type->as.num.value_type)) {
+                            nk_assert(NKIR_NUMERIC_IS_WHOLE(min_ref.type->as.num.value_type));
+
+                            if (ir_instr.code == nkir_ext) {
+                                code = NKIR_NUMERIC_IS_SIGNED(max_ref.type->as.num.value_type) ? nkop_sext : nkop_zext;
+                            }
+
+                            switch (NKIR_NUMERIC_TYPE_SIZE(min_ref.type->as.num.value_type)) {
+                                case 1:
+                                    code += 0 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                                    break;
+                                case 2:
+                                    code += 2 + nk_log2u32(NKIR_NUMERIC_TYPE_SIZE(max_ref.type->as.num.value_type));
+                                    break;
+                                case 4:
+                                    code += 6;
+                                    break;
+                                default:
+                                    nk_assert(!"unreachable");
+                                    break;
+                            }
+                        } else {
+                            nk_assert(max_ref.type->as.num.value_type == Float64);
+                            nk_assert(min_ref.type->as.num.value_type == Float32);
+
+                            code = ir_instr.code == nkir_ext ? nkop_fext : nkop_ftrunc;
+                        }
+                        break;
+                    }
+
+                    case nkir_fp2i: {
+                        code = arg1.ref.type->as.num.value_type == Float32 ? nkop_fp2i_32 : nkop_fp2i_64;
+                        code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
+                        break;
+                    }
+                    case nkir_i2fp: {
+                        code = arg0.ref.type->as.num.value_type == Float32 ? nkop_i2fp_32 : nkop_i2fp_64;
+                        code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                        break;
+                    }
+
+                    case nkir_syscall:
+#if NK_SYSCALLS_AVAILABLE
+                        code += 1 + arg2.refs.size;
+#else  // NK_SYSCALLS_AVAILABLE
+                        reportError(ctx, "syscalls are not available on the host platform");
+                        return false;
+#endif // NK_SYSCALLS_AVAILABLE
+                        break;
+
+#define SIZ_OP(NAME) case NK_CAT(nkir_, NAME):
+#include "bytecode.inl"
+                        {
+                            nk_assert(arg0.kind == NkIrArg_Ref || arg1.kind == NkIrArg_Ref);
+                            auto const ref_type = arg0.kind == NkIrArg_Ref ? arg0.ref.type : arg1.ref.type;
+                            if (ref_type->size <= 8 && nk_isZeroOrPowerOf2(ref_type->size)) {
+                                code += 1 + nk_log2u64(ref_type->size);
+                            }
+                            break;
+                        }
 
 #define BOOL_NUM_OP(NAME)
 #define NUM_OP(NAME) case NK_CAT(nkir_, NAME):
 #define INT_OP(NAME) case NK_CAT(nkir_, NAME):
 #define FP2I_OP(NAME)
 #include "bytecode.inl"
-                    nk_assert(arg0.ref.type->kind == NkIrType_Numeric);
-                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
-                    break;
+                        nk_assert(arg0.ref.type->kind == NkIrType_Numeric);
+                        code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg0.ref.type->as.num.value_type);
+                        break;
 
 #define BOOL_NUM_OP(NAME) case NK_CAT(nkir_, NAME):
 #include "bytecode.inl"
-                    nk_assert(arg1.ref.type->kind == NkIrType_Numeric);
-                    code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
-                    break;
+                        nk_assert(arg1.ref.type->kind == NkIrType_Numeric);
+                        code += 1 + NKIR_NUMERIC_TYPE_INDEX(arg1.ref.type->as.num.value_type);
+                        break;
 
-                case nkir_comment:
-                    continue;
-            }
+                    case nkir_comment:
+                        continue;
+                }
 
-            nkda_append(&bc_proc.instrs, {});
-            auto &instr = nk_slice_last(bc_proc.instrs);
-            instr.code = code;
-            for (usize ai = 0; ai < 3; ai++) {
-                if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
-                    return false;
+                nkda_append(&bc_proc.instrs, {});
+                auto &instr = nk_slice_last(bc_proc.instrs);
+                instr.code = code;
+                for (usize ai = 0; ai < 3; ai++) {
+                    if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
+                        return false;
+                    }
                 }
             }
         }

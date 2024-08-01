@@ -683,7 +683,9 @@ static auto enterProcScope(Context &ctx, bool is_public) {
     }
     return nk_defer([&ctx, upto = ctx.scope_stack->next]() {
         emitDefers(ctx, upto);
-        emit(ctx, nkir_make_ret(ctx.ir, {}));
+        if (!ctx.proc_stack->has_return_in_last_block) {
+            emit(ctx, nkir_make_ret(ctx.ir, {}));
+        }
         leaveScope(ctx);
     });
 }
@@ -864,7 +866,7 @@ static Interm getIndex(Context &ctx, Interm const &arr, Interm const &idx) {
             // TODO: Optimize array indexing??
             auto const elem_t = nklt_array_elemType(arr.type);
             auto const data_ptr = asRef(ctx, makeInstr(nkir_make_lea(ctx.ir, {}, asRef(ctx, arr)), ctx.c->usize_t()));
-            auto const elem_size = asRef(ctx, makeConst<usize>(ctx, ctx.c->usize_t(), nklt_sizeof(elem_t)));
+            auto const elem_size = asRef(ctx, makeUsizeConst(ctx, nklt_sizeof(elem_t)));
             auto const mul = nkir_make_mul(ctx.ir, {}, asRef(ctx, idx), elem_size);
             auto const offset = asRef(ctx, makeInstr(mul, ctx.c->usize_t()));
             auto const add = nkir_make_add(ctx.ir, {}, data_ptr, offset);

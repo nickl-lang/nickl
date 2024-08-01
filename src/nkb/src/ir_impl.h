@@ -37,8 +37,13 @@ typedef struct {
 } NkIrProc_T;
 
 typedef struct {
+    usize begin_idx;
+    usize end_idx;
+} NkIrInstrRange_T;
+
+typedef struct {
     NkAtom name;
-    NkDynArray(usize) instrs;
+    NkDynArray(NkIrInstrRange_T) instr_ranges;
 } NkIrBlock_T;
 
 typedef struct {

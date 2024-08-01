@@ -173,7 +173,7 @@ NkIrLabel nkir_createLabel(NkIrProg ir, NkAtom name) {
         &ir->blocks,
         {
             .name = name,
-            .instrs{NKDA_INIT(ir->alloc)},
+            .instr_ranges{NKDA_INIT(ir->alloc)},
         });
     return id;
 }
@@ -314,7 +314,7 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
         }
 
         nk_assert(proc.cur_block < ir->blocks.size && "no current block");
-        auto &block = ir->blocks.data[proc.cur_block].instrs;
+        auto &ranges = ir->blocks.data[proc.cur_block].instr_ranges;
 
         nk_assert(
             instr.arg[0].kind != NkIrArg_Ref || instr.arg[0].ref.indir ||
@@ -323,13 +323,14 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
 
         auto &instrs = ir->instrs;
 
-        if (instr.code == nkir_ret && block.size && instrs.data[nk_slice_last(block)].code == nkir_ret) {
-            continue;
-        }
-
-        usize id = instrs.size;
+        usize idx = instrs.size;
         nkda_append(&instrs, instr);
-        nkda_append(&block, id);
+
+        if (ranges.size && idx == nk_slice_last(ranges).end_idx) {
+            nk_slice_last(ranges).end_idx++;
+        } else {
+            nkda_append(&ranges, {idx, idx + 1});
+        }
     }
 }
 
@@ -660,6 +661,9 @@ static char const *getVisivilityStr(NkIrVisibility vis) {
         case NkIrVisibility_Local:
             return "local ";
     }
+
+    nk_assert(!"unreachable");
+    return {};
 }
 
 static bool isInlineDecl(NkIrDecl_T const &decl) {
@@ -855,10 +859,12 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
 
         nk_stream_printf(out, "%s\n", nk_atom2cs(block.name));
 
-        for (auto instr_id : nk_iterate(block.instrs)) {
-            auto const &instr = ir->instrs.data[instr_id];
-            inspectInstrImpl(ir, _proc, instr, out, instr_index++);
-            nk_stream_printf(out, "\n");
+        for (auto const range : nk_iterate(block.instr_ranges)) {
+            for (auto instr_idx = range.begin_idx; instr_idx < range.end_idx; instr_idx++) {
+                auto const &instr = ir->instrs.data[instr_idx];
+                inspectInstrImpl(ir, _proc, instr, out, instr_index++);
+                nk_stream_printf(out, "\n");
+            }
         }
 
         nk_stream_printf(out, "\n");
