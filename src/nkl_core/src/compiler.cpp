@@ -628,7 +628,7 @@ static nkltype_t compileProcType(
         ctx.nkl,
         ctx.c->word_size,
         NklProcInfo{
-            .param_types{&params.data->type, params.size, sizeof(params.data[0]) / sizeof(void *)},
+            .param_types{&params.data->type, params.size, sizeof(params.data[0])},
             .ret_t = ret_t,
             .call_conv = call_conv,
             .flags = proc_flags,
