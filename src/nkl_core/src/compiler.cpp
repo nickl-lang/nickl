@@ -487,7 +487,7 @@ static Interm resolveComptime(Decl &decl) {
         ASSIGN(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
     }
 
-    NK_LOG_DBG("Resolving comptime const: node %u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
+    NK_LOG_DBG("Resolving comptime const: node#%u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
     DEFINE(val, compile(ctx, val_n, {.res_t = type, .is_const = true, .opt_resolved_decl = &decl}));
 
@@ -996,7 +996,7 @@ static Interm compileLogicExpr(
         nkir_make_comment(
             ctx.ir,
             nk_tsprintf(
-                ctx.scope_stack->temp_arena, "begin %s node %u", is_and ? "and" : "or", nodeIdx(ctx.src, lhs_n) - 1)));
+                ctx.scope_stack->temp_arena, "begin %s node#%u", is_and ? "and" : "or", nodeIdx(ctx.src, lhs_n) - 1)));
     defer {
         emit(
             ctx,
@@ -1004,7 +1004,7 @@ static Interm compileLogicExpr(
                 ctx.ir,
                 nk_tsprintf(
                     ctx.scope_stack->temp_arena,
-                    "end %s node %u",
+                    "end %s node#%u",
                     is_and ? "and" : "or",
                     nodeIdx(ctx.src, lhs_n) - 1)));
     };
@@ -1072,7 +1072,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
     };
     nkir_setLine(ctx.ir, token.lin);
 
-    NK_LOG_DBG("Compiling node %u #%s", nodeIdx(ctx.src, node), nk_atom2cs(node.id));
+    NK_LOG_DBG("Compiling node#%u #%s", nodeIdx(ctx.src, node), nk_atom2cs(node.id));
 
     auto node_it = nodeIterate(ctx.src, node);
 
@@ -1654,6 +1654,19 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_if: {
+#ifdef ENABLE_LOGGING
+            emit(
+                ctx,
+                nkir_make_comment(
+                    ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "begin if node#%u", nodeIdx(ctx.src, node))));
+            defer {
+                emit(
+                    ctx,
+                    nkir_make_comment(
+                        ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "end if node#%u", nodeIdx(ctx.src, node))));
+            };
+#endif // ENABLE_LOGGING
+
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
             auto pelse_n = node.arity == 3 ? &nextNode(node_it) : nullptr;
@@ -1690,6 +1703,19 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_while: {
+#ifdef ENABLE_LOGGING
+            emit(
+                ctx,
+                nkir_make_comment(
+                    ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "begin while node#%u", nodeIdx(ctx.src, node))));
+            defer {
+                emit(
+                    ctx,
+                    nkir_make_comment(
+                        ctx.ir, nk_tsprintf(ctx.scope_stack->temp_arena, "end while node#%u", nodeIdx(ctx.src, node))));
+            };
+#endif // ENABLE_LOGGING
+
             auto &cond_n = nextNode(node_it);
             auto &body_n = nextNode(node_it);
 
@@ -1732,16 +1758,16 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
 #ifdef ENABLE_LOGGING
                 NK_LOG_DBG(
-                    "Defer recording start for node %u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
+                    "Defer recording start for node#%u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
                 emit(
                     ctx,
-                    nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "begin defer node %u", defer_node->node_idx)));
+                    nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "begin defer node#%u", defer_node->node_idx)));
                 defer {
                     emit(
                         ctx,
-                        nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "end defer node %u", defer_node->node_idx)));
+                        nkir_make_comment(ctx.ir, nk_tsprintf(temp_arena, "end defer node#%u", defer_node->node_idx)));
                     NK_LOG_DBG(
-                        "Defer recording finish for node %u file=`%s`",
+                        "Defer recording finish for node#%u file=`%s`",
                         defer_node->node_idx,
                         nk_atom2cs(defer_node->file));
                 };

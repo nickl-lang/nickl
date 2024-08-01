@@ -7,6 +7,7 @@
 OP(operator_marker, "")
 
 OP(amper, "&")
+OP(bar, "|")
 OP(brace_l, "{")
 OP(brace_r, "}")
 OP(bracket_l, "[")

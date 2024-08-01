@@ -79,7 +79,7 @@ void nkirt_inspect(nktype_t type, NkStream out) {
             if (type->as.proc.info.flags & NkProcVariadic) {
                 nk_stream_printf(out, ", ...");
             }
-            nk_stream_printf(out, ")->");
+            nk_stream_printf(out, ") ");
             nkirt_inspect(type->as.proc.info.ret_t, out);
             break;
         default:
