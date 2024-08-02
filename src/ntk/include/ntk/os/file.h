@@ -9,8 +9,8 @@ extern "C" {
 
 extern char const *nk_null_file;
 
-i32 nk_read(NkOsHandle fd, char *buf, usize n);
-i32 nk_write(NkOsHandle fd, char const *buf, usize n);
+NK_EXPORT i32 nk_read(NkOsHandle fd, char *buf, usize n);
+NK_EXPORT i32 nk_write(NkOsHandle fd, char const *buf, usize n);
 
 typedef enum {
     NkOpenFlags_Read = 1,
@@ -19,13 +19,13 @@ typedef enum {
     NkOpenFlags_Truncate = 8,
 } NkOpenFlags;
 
-NkOsHandle nk_open(char const *file, i32 flags);
+NK_EXPORT NkOsHandle nk_open(char const *file, i32 flags);
 
-i32 nk_close(NkOsHandle fd);
+NK_EXPORT i32 nk_close(NkOsHandle fd);
 
-NkOsHandle nk_stdin(void);
-NkOsHandle nk_stdout(void);
-NkOsHandle nk_stderr(void);
+NK_EXPORT NkOsHandle nk_stdin(void);
+NK_EXPORT NkOsHandle nk_stdout(void);
+NK_EXPORT NkOsHandle nk_stderr(void);
 
 #ifdef __cplusplus
 }

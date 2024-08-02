@@ -43,7 +43,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     )
 endif()
 
-add_library(${LIB} ${SOURCES})
+add_library(${LIB} SHARED
+    ${SOURCES}
+    )
 
 if(ENABLE_LOGGING)
     target_compile_definitions(${LIB}

@@ -8,9 +8,9 @@ extern "C" {
 #endif
 
 // Time Stamp Counter frequency
-u64 nk_getTscFreq(void);
+NK_EXPORT u64 nk_getTscFreq(void);
 
-void nk_usleep(u64 usec);
+NK_EXPORT void nk_usleep(u64 usec);
 
 #ifdef __cplusplus
 }

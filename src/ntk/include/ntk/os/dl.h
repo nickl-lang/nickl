@@ -7,14 +7,14 @@
 extern "C" {
 #endif
 
-extern char const *nkdl_file_extension;
+NK_EXPORT extern char const *nkdl_file_extension;
 
-NkOsHandle nkdl_loadLibrary(char const *name);
-void nkdl_freeLibrary(NkOsHandle dl);
+NK_EXPORT NkOsHandle nkdl_loadLibrary(char const *name);
+NK_EXPORT void nkdl_freeLibrary(NkOsHandle dl);
 
-void *nkdl_resolveSymbol(NkOsHandle dl, char const *name);
+NK_EXPORT void *nkdl_resolveSymbol(NkOsHandle dl, char const *name);
 
-char const *nkdl_getLastErrorString(void);
+NK_EXPORT char const *nkdl_getLastErrorString(void);
 
 #ifdef __cplusplus
 }

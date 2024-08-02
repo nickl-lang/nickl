@@ -7,9 +7,9 @@
 extern "C" {
 #endif
 
-i64 nk_now_ns(void);
+NK_EXPORT i64 nk_now_ns(void);
 
-u64 nk_estimateTscFrequency(void);
+NK_EXPORT u64 nk_estimateTscFrequency(void);
 
 #ifdef __cplusplus
 }

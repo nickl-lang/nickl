@@ -14,21 +14,21 @@ typedef struct {
     usize capacity;
 } NkArena;
 
-NkAllocator nk_arena_getAllocator(NkArena *arena);
+NK_EXPORT NkAllocator nk_arena_getAllocator(NkArena *arena);
 
-void *nk_arena_allocAligned(NkArena *arena, usize size, u8 align);
+NK_EXPORT void *nk_arena_allocAligned(NkArena *arena, usize size, u8 align);
 
 NK_INLINE void *nk_arena_alloc(NkArena *arena, usize size) {
     return nk_arena_allocAligned(arena, size, 1);
 }
 
-void nk_arena_pop(NkArena *arena, usize size);
+NK_EXPORT void nk_arena_pop(NkArena *arena, usize size);
 
 NK_INLINE void nk_arena_clear(NkArena *arena) {
     nk_arena_pop(arena, arena->size);
 }
 
-void nk_arena_free(NkArena *arena);
+NK_EXPORT void nk_arena_free(NkArena *arena);
 
 typedef struct {
     usize size;

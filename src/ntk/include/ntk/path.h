@@ -8,9 +8,9 @@
 extern "C" {
 #endif
 
-void nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base);
+NK_EXPORT void nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base);
 
-NkString nk_path_getParent(NkString full_path);
+NK_EXPORT NkString nk_path_getParent(NkString full_path);
 
 #ifdef __cplusplus
 }

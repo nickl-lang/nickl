@@ -4,6 +4,7 @@
 #include "nkb/ir.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -19,18 +20,18 @@ typedef struct {
 typedef struct NklCompiler_T *NklCompiler;
 typedef struct NklModule_T *NklModule;
 
-NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target);
-void nkl_freeCompiler(NklCompiler c);
+NK_EXPORT NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target);
+NK_EXPORT void nkl_freeCompiler(NklCompiler c);
 
-usize nkl_getCompileErrorCount(NklCompiler c);
-NklError *nkl_getCompileErrorList(NklCompiler c);
+NK_EXPORT usize nkl_getCompileErrorCount(NklCompiler c);
+NK_EXPORT NklError *nkl_getCompileErrorList(NklCompiler c);
 
-NklModule nkl_createModule(NklCompiler c);
+NK_EXPORT NklModule nkl_createModule(NklCompiler c);
 
-bool nkl_runModule(NklModule m);
-bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf);
+NK_EXPORT bool nkl_runModule(NklModule m);
+NK_EXPORT bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf);
 
-bool nkl_compileFile(NklModule m, NkString filename);
+NK_EXPORT bool nkl_compileFile(NklModule m, NkString filename);
 
 #ifdef __cplusplus
 }
