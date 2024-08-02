@@ -200,9 +200,19 @@ NK_INLINE usize nklt_struct_index(nkltype_t type, NkAtom name) {
     return -1u;
 }
 
+NK_INLINE nkltype_t nklt_slice_ptrType(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Slice);
+    return nklt_struct_field(nklt_underlying(type), 0).type;
+}
+
 NK_INLINE nkltype_t nklt_slice_target(nkltype_t type) {
     nk_assert(nklt_tclass(type) == NklType_Slice);
-    return nklt_ptr_target(nklt_struct_field(nklt_underlying(type), 0).type);
+    return nklt_ptr_target(nklt_slice_ptrType(type));
+}
+
+NK_INLINE bool nklt_slice_isConst(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Slice);
+    return nklt_ptr_isConst(nklt_slice_ptrType(type));
 }
 
 NK_INLINE usize nklt_tuple_size(nkltype_t type) {
