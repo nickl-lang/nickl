@@ -1233,7 +1233,32 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 if (i == param_count) {
                     nkda_append(&arg_refs, nkir_makeVariadicMarkerRef(ctx.ir));
                 }
-                nkda_append(&arg_refs, asRef(ctx, args.data[i]));
+                auto arg_ref = asRef(ctx, args.data[i]);
+                if (nklt_proc_callConv(lhs.type) == NkCallConv_Cdecl && i >= param_count &&
+                    nklt_tclass(args.data[i].type) == NklType_Numeric) {
+                    // Variadic promotion
+                    switch (nklt_numeric_valueType(args.data[i].type)) {
+                        case Int8:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->i32_t()));
+                            break;
+                        case Uint8:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->u32_t()));
+                            break;
+                        case Int16:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->i32_t()));
+                            break;
+                        case Uint16:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->u32_t()));
+                            break;
+                        case Float32:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->f64_t()));
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+                nkda_append(&arg_refs, arg_ref);
             }
 
             return makeInstr(
