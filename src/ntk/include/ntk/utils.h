@@ -102,7 +102,7 @@ NK_INLINE void nk_hashCombine(u64 *seed, usize n) {
     *seed ^= n + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
 }
 
-u64 nk_hashArray(u8 const *begin, u8 const *end);
+NK_EXPORT u64 nk_hashArray(u8 const *begin, u8 const *end);
 
 #define nk_hashVal(val) nk_hashArray((u8 const *)&(val), (u8 const *)(&(val) + 1))
 

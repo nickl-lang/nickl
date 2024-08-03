@@ -3,7 +3,7 @@ set(OUTPUT_TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/output_test.sh")
 function(def_output_test)
     set(options)
     set(oneValueArgs NAME FILE WORKING_DIRECTORY)
-    set(multiValueArgs COMMAND)
+    set(multiValueArgs COMMAND EXTRA_ARGS)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -27,6 +27,7 @@ function(def_output_test)
     get_filename_component(TEST_FILE "${ARG_FILE}" ABSOLUTE)
 
     string(JOIN " " CMD ${ARG_COMMAND})
+    string(JOIN " " ARGS ${ARG_EXTRA_ARGS})
 
     make_directory("${ARG_WORKING_DIRECTORY}")
     add_test(
@@ -34,6 +35,7 @@ function(def_output_test)
         COMMAND "${OUTPUT_TEST_SCRIPT}"
             "--file=${TEST_FILE}"
             "--cmd=${CMD}"
+            "--args=${ARGS}"
         WORKING_DIRECTORY "${ARG_WORKING_DIRECTORY}"
         )
 endfunction()

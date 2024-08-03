@@ -59,7 +59,7 @@ NK_INLINE void *nk_alloc_querySpaceLeft(NkAllocator alloc, NkAllocatorSpaceLeftQ
     return alloc.proc(alloc.data, NkAllocatorMode_QuerySpaceLeft, 0, 1, result, 0);
 }
 
-extern NkAllocator nk_default_allocator;
+NK_EXPORT extern NkAllocator nk_default_allocator;
 
 #ifdef __cplusplus
 }

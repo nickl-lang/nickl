@@ -15,10 +15,10 @@ typedef struct {
     NkOsHandle h_process;
 } NkPipeStream;
 
-bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
-bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
+NK_EXPORT bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
+NK_EXPORT bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
 
-i32 nk_pipe_streamClose(NkPipeStream *stream);
+NK_EXPORT i32 nk_pipe_streamClose(NkPipeStream *stream);
 
 #ifdef __cplusplus
 }

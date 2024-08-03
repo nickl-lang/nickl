@@ -24,7 +24,7 @@ static NkAtom const *Source_kv_GetKey(Source_kv const *item) {
 }
 NK_HASH_TREE_IMPL(FileMap, Source_kv, NkAtom, Source_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
-NklState nkl_state_create(NklLexerProc lexer_proc, NklParserProc parser_proc) {
+NklState nkl_state_create(StringSlice args, NklLexerProc lexer_proc, NklParserProc parser_proc) {
 #define XN(N, T) nk_atom_define(NK_CAT(n_, N), nk_cs2s(T));
 #include "nodes.inl"
 
@@ -36,6 +36,7 @@ NklState nkl_state_create(NklLexerProc lexer_proc, NklParserProc parser_proc) {
         .lexer_proc = lexer_proc,
         .parser_proc = parser_proc,
         .files = {0},
+        .cli_args = args,
     };
     nkl->files.alloc = nk_arena_getAllocator(&nkl->permanent_arena);
 

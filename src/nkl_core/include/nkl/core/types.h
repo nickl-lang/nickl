@@ -75,28 +75,28 @@ typedef struct {
     u8 flags;
 } NklProcInfo;
 
-void nkl_types_init(NklState nkl);
-void nkl_types_free(NklState nkl);
+NK_EXPORT void nkl_types_init(NklState nkl);
+NK_EXPORT void nkl_types_free(NklState nkl);
 
-nkltype_t nkl_get_any(NklState nkl, usize word_size);
-nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count);
-nkltype_t nkl_get_bool(NklState nkl);
-nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields);
-nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type);
-nkltype_t nkl_get_int(NklState nkl, usize size, bool is_signed);
-nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info);
-nkltype_t nkl_get_ptr(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
-nkltype_t nkl_get_slice(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
-nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields);
-nkltype_t nkl_get_struct_packed(NklState nkl, NklFieldArray fields);
-nkltype_t nkl_get_tuple(NklState nkl, NklTypeStridedArray types);
-nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usize stride);
-nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeStridedArray types);
-nkltype_t nkl_get_typeref(NklState nkl, usize word_size);
-nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields);
-nkltype_t nkl_get_void(NklState nkl);
+NK_EXPORT nkltype_t nkl_get_any(NklState nkl, usize word_size);
+NK_EXPORT nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count);
+NK_EXPORT nkltype_t nkl_get_bool(NklState nkl);
+NK_EXPORT nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields);
+NK_EXPORT nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type);
+NK_EXPORT nkltype_t nkl_get_int(NklState nkl, usize size, bool is_signed);
+NK_EXPORT nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info);
+NK_EXPORT nkltype_t nkl_get_ptr(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
+NK_EXPORT nkltype_t nkl_get_slice(NklState nkl, usize word_size, nkltype_t target_type, bool is_const);
+NK_EXPORT nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields);
+NK_EXPORT nkltype_t nkl_get_struct_packed(NklState nkl, NklFieldArray fields);
+NK_EXPORT nkltype_t nkl_get_tuple(NklState nkl, NklTypeStridedArray types);
+NK_EXPORT nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usize stride);
+NK_EXPORT nkltype_t nkl_get_tuple_packed(NklState nkl, NklTypeStridedArray types);
+NK_EXPORT nkltype_t nkl_get_typeref(NklState nkl, usize word_size);
+NK_EXPORT nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields);
+NK_EXPORT nkltype_t nkl_get_void(NklState nkl);
 
-void nkl_type_inspect(nkltype_t type, NkStream out);
+NK_EXPORT void nkl_type_inspect(nkltype_t type, NkStream out);
 
 NK_INLINE nktype_t nklt2nkirt(nkltype_t type) {
     return &type->ir_type;
@@ -200,9 +200,19 @@ NK_INLINE usize nklt_struct_index(nkltype_t type, NkAtom name) {
     return -1u;
 }
 
+NK_INLINE nkltype_t nklt_slice_ptrType(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Slice);
+    return nklt_struct_field(nklt_underlying(type), 0).type;
+}
+
 NK_INLINE nkltype_t nklt_slice_target(nkltype_t type) {
     nk_assert(nklt_tclass(type) == NklType_Slice);
-    return nklt_ptr_target(nklt_struct_field(nklt_underlying(type), 0).type);
+    return nklt_ptr_target(nklt_slice_ptrType(type));
+}
+
+NK_INLINE bool nklt_slice_isConst(nkltype_t type) {
+    nk_assert(nklt_tclass(type) == NklType_Slice);
+    return nklt_ptr_isConst(nklt_slice_ptrType(type));
 }
 
 NK_INLINE usize nklt_tuple_size(nkltype_t type) {

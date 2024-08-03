@@ -12,16 +12,18 @@
 extern "C" {
 #endif
 
+typedef NkSlice(NkString) StringSlice;
+
 typedef struct NklState_T *NklState;
 
 typedef NklTokenArray (*NklLexerProc)(NklState nkl, NkAllocator alloc, NkAtom file, NkString text);
 typedef NklAstNodeArray (
     *NklParserProc)(NklState nkl, NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens);
 
-NklState nkl_state_create(NklLexerProc lexer_proc, NklParserProc parser_proc);
-void nkl_state_free(NklState nkl);
+NK_EXPORT NklState nkl_state_create(StringSlice args, NklLexerProc lexer_proc, NklParserProc parser_proc);
+NK_EXPORT void nkl_state_free(NklState nkl);
 
-NklSource const *nkl_getSource(NklState nkl, NkAtom file);
+NK_EXPORT NklSource const *nkl_getSource(NklState nkl, NkAtom file);
 
 typedef struct NklError {
     struct NklError *next;
@@ -40,13 +42,13 @@ typedef struct NklErrorState {
     usize error_count;
 } NklErrorState;
 
-void nkl_errorStateEquip(NklErrorState *state);
-void nkl_errorStateUnequip(void);
+NK_EXPORT void nkl_errorStateEquip(NklErrorState *state);
+NK_EXPORT void nkl_errorStateUnequip(void);
 
-usize nkl_getErrorCount(void);
+NK_EXPORT usize nkl_getErrorCount(void);
 
-NK_PRINTF_LIKE(3) i32 nkl_reportError(NkAtom file, NklToken const *token, char const *fmt, ...);
-i32 nkl_vreportError(NkAtom file, NklToken const *token, char const *fmt, va_list ap);
+NK_EXPORT NK_PRINTF_LIKE(3) i32 nkl_reportError(NkAtom file, NklToken const *token, char const *fmt, ...);
+NK_EXPORT i32 nkl_vreportError(NkAtom file, NklToken const *token, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }

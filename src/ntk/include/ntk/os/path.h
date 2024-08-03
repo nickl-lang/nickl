@@ -19,12 +19,12 @@ extern "C" {
 
 #endif //_WIN32
 
-i32 nk_getBinaryPath(char *buf, usize size);
+NK_EXPORT i32 nk_getBinaryPath(char *buf, usize size);
 
-i32 nk_fullPath(char *buf, char const *path);
-i32 nk_getCwd(char *buf, usize size);
+NK_EXPORT i32 nk_fullPath(char *buf, char const *path);
+NK_EXPORT i32 nk_getCwd(char *buf, usize size);
 
-bool nk_pathIsRelative(char const *path);
+NK_EXPORT bool nk_pathIsRelative(char const *path);
 
 #ifdef __cplusplus
 }

@@ -8,13 +8,13 @@
 extern "C" {
 #endif
 
-void nk_prof_start(char const *filename);
-void nk_prof_threadEnter(u32 tid, usize buffer_size);
-void nk_prof_threadLeave(void);
-void nk_prof_finish(void);
+NK_EXPORT void nk_prof_start(char const *filename);
+NK_EXPORT void nk_prof_threadEnter(u32 tid, usize buffer_size);
+NK_EXPORT void nk_prof_threadLeave(void);
+NK_EXPORT void nk_prof_finish(void);
 
-void nk_prof_scopeBegin(NkString name);
-void nk_prof_scopeEnd(void);
+NK_EXPORT void nk_prof_scopeBegin(NkString name);
+NK_EXPORT void nk_prof_scopeEnd(void);
 
 #ifdef __cplusplus
 }

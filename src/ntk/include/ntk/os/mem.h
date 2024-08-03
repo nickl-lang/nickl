@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-void *nk_mem_reserveAndCommit(usize len);
-i32 nk_mem_release(void *addr, usize len);
+NK_EXPORT void *nk_mem_reserveAndCommit(usize len);
+NK_EXPORT i32 nk_mem_release(void *addr, usize len);
 
 #ifdef __cplusplus
 }

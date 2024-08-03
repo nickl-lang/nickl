@@ -13,11 +13,11 @@ typedef struct {
     NkOsHandle h_write;
 } NkPipe;
 
-NkPipe nk_proc_createPipe(void);
-void nk_proc_closePipe(NkPipe pipe);
+NK_EXPORT NkPipe nk_proc_createPipe(void);
+NK_EXPORT void nk_proc_closePipe(NkPipe pipe);
 
-i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err);
-i32 nk_proc_wait(NkOsHandle h_process, i32 *exit_status);
+NK_EXPORT i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err);
+NK_EXPORT i32 nk_proc_wait(NkOsHandle h_process, i32 *exit_status);
 
 NK_INLINE i32 nk_proc_execSync(char const *cmd, NkPipe *in, NkPipe *out, NkPipe *err, i32 *exit_status) {
     NkOsHandle h_process = NK_OS_HANDLE_ZERO;

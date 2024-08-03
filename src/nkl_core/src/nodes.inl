@@ -8,6 +8,8 @@
 
 X(null)
 
+X(nickl)
+
 X(any_t)
 X(bool)
 X(nullptr)

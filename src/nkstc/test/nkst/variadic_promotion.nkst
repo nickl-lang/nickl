@@ -1,0 +1,47 @@
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
+
+(export (const main () (proc [] (i32) [
+    (var i8v  (i8)  65)
+    (var i16v (i16) 66)
+    (var i32v (i32) 67)
+    (var i64v (i64) 68)
+
+    (var u8v  (u8)  69)
+    (var u16v (u16) 70)
+    (var u32v (u32) 71)
+    (var u64v (u64) 72)
+
+    (var f32v (f32) 3.14)
+    (var f64v (f64) 2.71)
+
+    (call printf [ "i8v  = '%c'\n"  i8v  ])
+    (call printf [ "i16v = '%hi'\n" i16v ])
+    (call printf [ "i32v = '%i'\n"  i32v ])
+    (call printf [ "i64v = '%li'\n" i64v ])
+
+    (call printf [ "u8v  = '%c'\n"  u8v  ])
+    (call printf [ "u16v = '%hu'\n" u16v ])
+    (call printf [ "u32v = '%u'\n"  u32v ])
+    (call printf [ "u64v = '%lu'\n" u64v ])
+
+    (call printf [ "f32v = '%g'\n"  f32v ])
+    (call printf [ "f64v = '%lg'\n" f64v ])
+
+    (return 0)
+])))
+
+(call main [])
+
+/* @output
+i8v  = 'A'
+i16v = '66'
+i32v = '67'
+i64v = '68'
+u8v  = 'E'
+u16v = '70'
+u32v = '71'
+u64v = '72'
+f32v = '3.14'
+f64v = '2.71'
+
+@endoutput */

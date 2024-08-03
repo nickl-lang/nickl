@@ -26,16 +26,16 @@ typedef struct NkErrorState {
     usize error_count;
 } NkErrorState;
 
-void nk_error_pushState(NkErrorState *state);
-void nk_error_popState(void);
+NK_EXPORT void nk_error_pushState(NkErrorState *state);
+NK_EXPORT void nk_error_popState(void);
 
-void nk_error_freeState(void);
+NK_EXPORT void nk_error_freeState(void);
 
-usize nk_error_count(void);
+NK_EXPORT usize nk_error_count(void);
 
 // TODO: Add location info
-NK_PRINTF_LIKE(1) i32 nk_error_printf(char const *fmt, ...);
-i32 nk_error_vprintf(char const *fmt, va_list ap);
+NK_EXPORT NK_PRINTF_LIKE(1) i32 nk_error_printf(char const *fmt, ...);
+NK_EXPORT i32 nk_error_vprintf(char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }

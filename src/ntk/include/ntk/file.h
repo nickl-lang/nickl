@@ -16,9 +16,9 @@ typedef struct {
     bool ok;
 } NkFileReadResult;
 
-NkFileReadResult nk_file_read(NkAllocator alloc, NkString file);
+NK_EXPORT NkFileReadResult nk_file_read(NkAllocator alloc, NkString file);
 
-NkStream nk_file_getStream(NkOsHandle h_file);
+NK_EXPORT NkStream nk_file_getStream(NkOsHandle h_file);
 
 #ifdef __cplusplus
 }

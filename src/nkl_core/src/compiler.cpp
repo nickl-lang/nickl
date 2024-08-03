@@ -860,23 +860,45 @@ static Interm getMember(Context &ctx, Interm const &lhs, NkAtom name) {
     }
 }
 
-static Interm getIndex(Context &ctx, Interm const &arr, Interm const &idx) {
-    switch (nklt_tclass(arr.type)) {
+static Interm getIndex(Context &ctx, Interm const &lhs, Interm const &idx) {
+    switch (nklt_tclass(lhs.type)) {
         case NklType_Array: {
-            // TODO: Optimize array indexing??
-            auto const elem_t = nklt_array_elemType(arr.type);
-            auto const data_ptr = asRef(ctx, makeInstr(nkir_make_lea(ctx.ir, {}, asRef(ctx, arr)), ctx.c->usize_t()));
+            auto const elem_t = nklt_array_elemType(lhs.type);
+            if (isValueKnown(idx)) {
+                auto const idx_val = nklval_as(usize, getValueFromInterm(ctx, idx));
+                auto lhs_ref = asRef(ctx, lhs);
+                lhs_ref.post_offset += idx_val * nklt_sizeof(elem_t);
+                return makeRef(cast(elem_t, lhs_ref));
+            } else {
+                auto const data_ptr =
+                    asRef(ctx, makeInstr(nkir_make_lea(ctx.ir, {}, asRef(ctx, lhs)), ctx.c->usize_t()));
+                auto const elem_size = asRef(ctx, makeUsizeConst(ctx, nklt_sizeof(elem_t)));
+                auto const mul = nkir_make_mul(ctx.ir, {}, asRef(ctx, idx), elem_size);
+                auto const offset = asRef(ctx, makeInstr(mul, ctx.c->usize_t()));
+                auto const add = nkir_make_add(ctx.ir, {}, data_ptr, offset);
+                auto const elem_ptr_t = nkl_get_ptr(ctx.nkl, ctx.c->word_size, elem_t, false);
+                return deref(cast(elem_ptr_t, asRef(ctx, makeInstr(add, ctx.c->usize_t()))));
+            }
+        }
+
+        case NklType_Slice: {
+            auto const elem_t = nklt_slice_target(lhs.type);
+            auto const data_ptr = cast(ctx.c->usize_t(), asRef(ctx, lhs));
             auto const elem_size = asRef(ctx, makeUsizeConst(ctx, nklt_sizeof(elem_t)));
             auto const mul = nkir_make_mul(ctx.ir, {}, asRef(ctx, idx), elem_size);
             auto const offset = asRef(ctx, makeInstr(mul, ctx.c->usize_t()));
             auto const add = nkir_make_add(ctx.ir, {}, data_ptr, offset);
-            auto const elem_ptr_t = nkl_get_ptr(ctx.nkl, ctx.c->word_size, elem_t, false);
+            auto const elem_ptr_t = nklt_slice_ptrType(lhs.type);
             return deref(cast(elem_ptr_t, asRef(ctx, makeInstr(add, ctx.c->usize_t()))));
+        }
+
+        case NklType_Pointer: {
+            return getIndex(ctx, deref(asRef(ctx, lhs)), idx);
         }
 
         default: {
             NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
-            nkl_type_inspect(arr.type, nksb_getStream(&sb));
+            nkl_type_inspect(lhs.type, nksb_getStream(&sb));
             return error(ctx, "type `" NKS_FMT "` is not indexable", NKS_ARG(sb));
         }
     }
@@ -929,7 +951,7 @@ static Interm compileLvalueRef(Context &ctx, NklAstNode const &node) {
         auto &arr_n = nextNode(node_it);
         auto &idx_n = nextNode(node_it);
 
-        DEFINE(const arr, compile(ctx, arr_n, {.res_tclass = NklType_Array}));
+        DEFINE(const arr, compile(ctx, arr_n));
         DEFINE(const idx, compile(ctx, idx_n, {ctx.c->usize_t()}));
 
         return getIndex(ctx, arr, idx);
@@ -1089,6 +1111,11 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             return makeVoid(ctx);
         }
 
+        // TODO: Usint *void as a nickl state ptr type for now
+        case n_nickl: {
+            return makeConst<void *>(ctx, nkl_get_ptr(ctx.nkl, ctx.c->word_size, ctx.c->void_t(), false), ctx.nkl);
+        }
+
 #define COMPILE_NUM(NAME, IR_NAME)                                                                             \
     case NK_CAT(n_, NAME): {                                                                                   \
         DEFINE(lhs, compile(ctx, nextNode(node_it), {.res_t = res_t, .res_tclass = NklType_Numeric}));         \
@@ -1211,7 +1238,32 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                 if (i == param_count) {
                     nkda_append(&arg_refs, nkir_makeVariadicMarkerRef(ctx.ir));
                 }
-                nkda_append(&arg_refs, asRef(ctx, args.data[i]));
+                auto arg_ref = asRef(ctx, args.data[i]);
+                if (nklt_proc_callConv(lhs.type) == NkCallConv_Cdecl && i >= param_count &&
+                    nklt_tclass(args.data[i].type) == NklType_Numeric) {
+                    // Variadic promotion
+                    switch (nklt_numeric_valueType(args.data[i].type)) {
+                        case Int8:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->i32_t()));
+                            break;
+                        case Uint8:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->u32_t()));
+                            break;
+                        case Int16:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->i32_t()));
+                            break;
+                        case Uint16:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->u32_t()));
+                            break;
+                        case Float32:
+                            arg_ref = asRef(ctx, makeInstr(nkir_make_ext(ctx.ir, {}, arg_ref), ctx.c->f64_t()));
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+                nkda_append(&arg_refs, arg_ref);
             }
 
             return makeInstr(

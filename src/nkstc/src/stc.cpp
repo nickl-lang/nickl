@@ -1,27 +1,16 @@
 #include "stc.h"
 
-#include "lexer.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/compiler.h"
-#include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
-#include "parser.h"
 
 namespace {
 
 NK_LOG_USE_SCOPE(nkstc);
-
-NklTokenArray lexer_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, NkString text) {
-    return nkst_lex(alloc, file, text);
-}
-
-NklAstNodeArray parser_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens) {
-    return nkst_parse(alloc, file, text, tokens);
-}
 
 void printDiag(NklState nkl, NklCompiler c) {
     auto error = nkl_getCompileErrorList(c);
@@ -53,13 +42,8 @@ void printDiag(NklState nkl, NklCompiler c) {
 
 } // namespace
 
-int nkst_compile(NkString in_file, NkIrCompilerConfig conf) {
+int nkst_compile(NklState nkl, NkString in_file, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
-
-    auto nkl = nkl_state_create(lexer_proc, parser_proc);
-    defer {
-        nkl_state_free(nkl);
-    };
 
     auto c = nkl_createCompiler(nkl, {});
     defer {
@@ -80,13 +64,8 @@ int nkst_compile(NkString in_file, NkIrCompilerConfig conf) {
     return 0;
 }
 
-int nkst_run(NkString in_file) {
+int nkst_run(NklState nkl, NkString in_file) {
     NK_LOG_TRC("%s", __func__);
-
-    auto nkl = nkl_state_create(lexer_proc, parser_proc);
-    defer {
-        nkl_state_free(nkl);
-    };
 
     auto c = nkl_createCompiler(nkl, {});
     defer {

@@ -56,13 +56,13 @@ typedef NkDynArray(char) NkStringBuilder;
 extern "C" {
 #endif
 
-NK_PRINTF_LIKE(2) i32 nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
-i32 nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
+NK_EXPORT NK_PRINTF_LIKE(2) i32 nksb_printf(NkStringBuilder *sb, char const *fmt, ...);
+NK_EXPORT i32 nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap);
 
-NkStream nksb_getStream(NkStringBuilder *sb);
+NK_EXPORT NkStream nksb_getStream(NkStringBuilder *sb);
 
-bool nksb_readFromStream(NkStringBuilder *sb, NkStream in);
-bool nksb_readFromStreamEx(NkStringBuilder *sb, NkStream in, usize buf_size);
+NK_EXPORT bool nksb_readFromStream(NkStringBuilder *sb, NkStream in);
+NK_EXPORT bool nksb_readFromStreamEx(NkStringBuilder *sb, NkStream in, usize buf_size);
 
 #ifdef __cplusplus
 }

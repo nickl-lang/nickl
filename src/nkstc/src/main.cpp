@@ -1,5 +1,7 @@
+#include "lexer.h"
 #include "nkb/common.h"
 #include "nkl/common/diagnostics.h"
+#include "nkl/core/nickl.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/cli.h"
@@ -8,12 +10,22 @@
 #include "ntk/log.h"
 #include "ntk/os/file.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "parser.h"
 #include "stc.h"
 
 namespace {
+
+NklTokenArray lexer_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, NkString text) {
+    return nkst_lex(alloc, file, text);
+}
+
+NklAstNodeArray parser_proc(NklState /*nkl*/, NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens) {
+    return nkst_parse(alloc, file, text, tokens);
+}
 
 void printErrorUsage() {
     nk_stream_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
@@ -69,16 +81,24 @@ int main(int /*argc*/, char const *const *argv) {
         nk_arena_free(&arena);
     };
 
-    NkDynArray(NkString) link{NKDA_INIT(alloc)};
-    NkDynArray(NkString) link_dirs{NKDA_INIT(alloc)};
-    NkString opt{};
-
 #ifdef ENABLE_LOGGING
     NkLogOptions log_opts{};
     log_opts.log_level = NkLogLevel_Warning;
 #endif // ENABLE_LOGGING
 
+    NkDynArray(NkString) link{NKDA_INIT(alloc)};
+    NkDynArray(NkString) link_dirs{NKDA_INIT(alloc)};
+    NkString opt{};
+
+    NkDynArray(NkString) extra_args{NKDA_INIT(alloc)};
+    bool collecting_extra_args = false;
+
     for (argv++; *argv;) {
+        if (collecting_extra_args) {
+            nkda_append(&extra_args, nk_cs2s(*argv++));
+            continue;
+        }
+
         NkString key{};
         NkString val{};
         NK_CLI_ARG_INIT(&argv, &key, &val);
@@ -144,6 +164,9 @@ int main(int /*argc*/, char const *const *argv) {
             } else if (key == "-O") {
                 GET_VALUE;
                 opt = val;
+            } else if (key == "--") {
+                NO_VALUE;
+                collecting_extra_args = true;
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
                 if (val == "auto") {
@@ -231,9 +254,14 @@ int main(int /*argc*/, char const *const *argv) {
         nk_atom_deinit();
     };
 
+    auto nkl = nkl_state_create({NK_SLICE_INIT(extra_args)}, lexer_proc, parser_proc);
+    defer {
+        nkl_state_free(nkl);
+    };
+
     int code{};
     if (run) {
-        code = nkst_run(in_file);
+        code = nkst_run(nkl, in_file);
     } else {
         NkDynArray(NkString) additional_flags{NKDA_INIT(alloc)};
 
@@ -260,6 +288,7 @@ int main(int /*argc*/, char const *const *argv) {
         }
 
         code = nkst_compile(
+            nkl,
             in_file,
             {
                 .compiler_binary = nk_cs2s("gcc"), // TODO: Hardcoded C compiler

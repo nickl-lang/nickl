@@ -1,7 +1,8 @@
 set(LIB nkl_core)
 
-add_library(${LIB}
+add_library(${LIB} SHARED
     src/compiler.cpp
+    src/compiler_api.c
     src/compiler_state.cpp
     src/nickl.c
     src/types.c
