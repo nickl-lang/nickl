@@ -12,13 +12,15 @@
 extern "C" {
 #endif
 
+typedef NkSlice(NkString) StringSlice;
+
 typedef struct NklState_T *NklState;
 
 typedef NklTokenArray (*NklLexerProc)(NklState nkl, NkAllocator alloc, NkAtom file, NkString text);
 typedef NklAstNodeArray (
     *NklParserProc)(NklState nkl, NkAllocator alloc, NkAtom file, NkString text, NklTokenArray tokens);
 
-NK_EXPORT NklState nkl_state_create(NklLexerProc lexer_proc, NklParserProc parser_proc);
+NK_EXPORT NklState nkl_state_create(StringSlice args, NklLexerProc lexer_proc, NklParserProc parser_proc);
 NK_EXPORT void nkl_state_free(NklState nkl);
 
 NK_EXPORT NklSource const *nkl_getSource(NklState nkl, NkAtom file);

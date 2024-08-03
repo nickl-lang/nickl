@@ -11,6 +11,7 @@ printUsage() {
   echo "Options:"
   echo "    --file=<filepath>   Path to the test file"
   echo "    --cmd=<command>     Path to the tested executable"
+  echo "    --args=<arguments>  Extra arguments to forward"
   echo "    -h,--help           Display this message"
 }
 
@@ -21,6 +22,9 @@ while [ $# -gt 0 ]; do
       ;;
     --cmd=*)
       ARG_CMD="${1#*=}"
+      ;;
+    --args=*)
+      ARG_ARGS="${1#*=}"
       ;;
     -h|--help)
       printUsage
@@ -83,7 +87,7 @@ printf "%s" "$EXPECTED_OUTPUT" > "$EXPECTED_STDOUT_FILE"
 echo "Running command '$ARG_CMD $ARG_FILE'"
 
 set +e
-$ARG_CMD $ARG_FILE 1>"$STDOUT_FILE" 2>"$STDERR_FILE"
+$ARG_CMD $ARG_FILE $ARG_ARGS 1>"$STDOUT_FILE" 2>"$STDERR_FILE"
 RETCODE=$?
 set -e
 
@@ -113,7 +117,7 @@ case "$OUTPUT_STDERR" in
     ;;
 esac
 
-if ! diff --color=auto -u "$STDOUT_FILE" "$EXPECTED_STDOUT_FILE"; then
+if ! diff --color=auto -u "$EXPECTED_STDOUT_FILE" "$STDOUT_FILE"; then
     echo '\nTEST FAILED'
     exit 1
 fi

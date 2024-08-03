@@ -49,6 +49,8 @@ typedef struct NklState_T {
     NklParserProc parser_proc;
 
     FileMap files;
+
+    StringSlice cli_args;
 } NklState_T;
 
 #ifdef __cplusplus

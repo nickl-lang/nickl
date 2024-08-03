@@ -1,0 +1,36 @@
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
+
+(const string () (slice (const (i8))))
+(const nickl_api_getCommandLineArgs () (link "nkl_core" (proc [(param (ptr (void)))] (slice (const string)))))
+
+(export (const main () (proc [] (i32) [
+    (var args () (call nickl_api_getCommandLineArgs [(nickl)]))
+
+    (call printf ["argc=%zu\n" (member args size)])
+    (call printf ["argv=[\n"])
+
+    (var i (usize) 0)
+    (while (lt i (member args size)) [
+        (var str () (index args i))
+        (call printf ["  '%.*s',\n" (member str size) (member str data)])
+
+        (assign i (add i 1))
+    ])
+
+    (call printf ["]\n" (member args size)])
+
+    (return 0)
+])))
+
+(call main [])
+
+/* @output
+argc=4
+argv=[
+  '--one',
+  '1',
+  '--two=2',
+  'three',
+]
+
+@endoutput */

@@ -4,7 +4,7 @@ set(NKSTC_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/nkstc_test_out")
 function(def_nkstc_run_test)
     set(options)
     set(oneValueArgs FILE PLATFORM)
-    set(multiValueArgs)
+    set(multiValueArgs ARGS)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -19,21 +19,28 @@ function(def_nkstc_run_test)
         endif()
     endif()
 
+    if(ARG_ARGS)
+        set(ARGS "--")
+        list(APPEND ARGS ${ARG_ARGS})
+    endif()
+
     def_output_test(
         NAME nkstc.run
         FILE ${ARG_FILE}
         WORKING_DIRECTORY "${NKSTC_TEST_OUT_DIR}"
         COMMAND
-            "env"
+            env
             "LD_LIBRARY_PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-            "${CMAKE_CROSSCOMPILING_EMULATOR}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" "-krun"
+            ${CMAKE_CROSSCOMPILING_EMULATOR} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" -krun
+        EXTRA_ARGS
+            ${ARGS}
         )
 endfunction()
 
 function(def_nkstc_compile_test)
     set(options)
-    set(oneValueArgs FILE ARGS PLATFORM)
-    set(multiValueArgs)
+    set(oneValueArgs FILE PLATFORM)
+    set(multiValueArgs ARGS)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -55,11 +62,11 @@ function(def_nkstc_compile_test)
         FILE ${ARG_FILE}
         WORKING_DIRECTORY "${NKSTC_TEST_OUT_DIR}"
         COMMAND
-            "env"
+            env
             "LD_LIBRARY_PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
             "EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
             "COMPILER=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
             "OUT_FILE=${BASE_NAME}.out"
-            "${NKSTC_COMPILE_TEST_SCRIPT}" "${ARG_ARGS}"
+            "${NKSTC_COMPILE_TEST_SCRIPT}" ${ARG_ARGS}
         )
 endfunction()

@@ -12,7 +12,7 @@ class types : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT({});
 
-        nkl = nkl_state_create({}, {});
+        nkl = nkl_state_create({}, {}, {});
     }
 
     void TearDown() override {

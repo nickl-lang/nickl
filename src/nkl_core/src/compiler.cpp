@@ -1111,6 +1111,11 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             return makeVoid(ctx);
         }
 
+        // TODO: Usint *void as a nickl state ptr type for now
+        case n_nickl: {
+            return makeConst<void *>(ctx, nkl_get_ptr(ctx.nkl, ctx.c->word_size, ctx.c->void_t(), false), ctx.nkl);
+        }
+
 #define COMPILE_NUM(NAME, IR_NAME)                                                                             \
     case NK_CAT(n_, NAME): {                                                                                   \
         DEFINE(lhs, compile(ctx, nextNode(node_it), {.res_t = res_t, .res_tclass = NklType_Numeric}));         \
