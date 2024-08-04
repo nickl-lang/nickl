@@ -72,14 +72,16 @@ void writeName(NkAtom name, usize index, char const *obj_class, NkStringBuilder 
 
 void writePreamble(NkStringBuilder *sb) {
     nksb_printf(sb, R"(
-typedef signed char i8;
-typedef signed short i16;
-typedef signed long i32;
-typedef signed long long i64;
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned long u32;
-typedef unsigned long long u64;
+#include <stdint.h>
+
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
@@ -400,9 +402,17 @@ void writeProcSignature(
     NkTypeArray args_t,
     NkAtomArray arg_names,
     bool va = false) {
+    if (name == nk_cs2atom("printf")) { // TODO: Workaround for printf signature
+        nksb_printf(src, "int printf(char *, ...)");
+        return;
+    }
     writeType(ctx, ret_t, src, true);
     nksb_printf(src, " ");
-    writeName(name, proc_id, PROC_CLASS, src);
+    if (name == nk_cs2atom("main")) { // TODO: Workaround for main signature
+        nksb_printf(src, "__nkl_main");
+    } else {
+        writeName(name, proc_id, PROC_CLASS, src);
+    }
     nksb_printf(src, "(");
 
     for (usize i = 0; i < args_t.size; i++) {
@@ -475,6 +485,13 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     writeVisibilityAttr(proc.visibility, &ctx.forward_s);
     writeProcSignature(ctx, &ctx.forward_s, proc.name, proc_id, ret_t, args_t, {});
     nksb_printf(&ctx.forward_s, ";\n");
+
+    if (proc.name == nk_cs2atom("main")) { // TODO: Workaround for main signature
+        nksb_printf(&ctx.forward_s, R"(int main(int argc, char** argv) {
+    return __nkl_main(argc, argv);
+}
+)");
+    }
 
     nksb_printf(src, "\n");
     writeLineDirective(proc.file, proc.start_line, src);
