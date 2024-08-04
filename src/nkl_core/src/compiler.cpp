@@ -274,11 +274,20 @@ static Interm makeRef(NkIrRef const &ref) {
     return {{.ref{ref}}, nkirt2nklt(ref.type), IntermKind_Ref};
 }
 
+static Interm makeValue(Context &ctx, Value const &val) {
+    return {{.val{val}}, getValueType(ctx, val), IntermKind_Val};
+}
+
+static Interm makeConst(Context &ctx, NkIrData rodata) {
+    nk_assert(nkir_dataIsReadOnly(ctx.ir, rodata));
+    return makeValue(ctx, {{.rodata{rodata, nullptr}}, ValueKind_Rodata});
+}
+
 template <class T>
 static Interm makeConst(Context &ctx, nkltype_t type, T value) {
     auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(type), NkIrVisibility_Local);
     *(T *)nkir_getDataPtr(ctx.ir, rodata) = value;
-    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, type, IntermKind_Val};
+    return makeConst(ctx, rodata);
 }
 
 static Interm makeUsizeConst(Context &ctx, usize value) {
@@ -299,7 +308,7 @@ static Interm makeUsizeConst(Context &ctx, usize value) {
         default:
             nk_assert(!"invalid word size");
     }
-    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, ctx.c->usize_t(), IntermKind_Val};
+    return makeConst(ctx, rodata);
 }
 
 template <class T>
@@ -308,28 +317,36 @@ static Interm makeNumeric(Context &ctx, nkltype_t num_t, char const *str, char c
     // TODO: Replace sscanf in compiler
     int res = sscanf(str, fmt, (T *)nkir_getDataPtr(ctx.ir, rodata));
     nk_assert(res > 0 && res != EOF && "numeric constant parsing failed");
-    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, num_t, IntermKind_Val};
+    return makeConst(ctx, rodata);
 }
 
 static Interm makeString(Context &ctx, NkString text) {
-    auto ar_nt_t = nkl_get_array(ctx.nkl, ctx.c->i8_t(), text.size + 1);
-    auto ar_t = nkl_get_array(ctx.nkl, ctx.c->i8_t(), text.size);
-    auto str_t = nkl_get_ptr(ctx.nkl, ctx.c->word_size, ar_t, true);
+    auto const arr_nt_t = nkl_get_array(ctx.nkl, ctx.c->i8_t(), text.size + 1);
+    auto const arr_t = nkl_get_array(ctx.nkl, ctx.c->i8_t(), text.size);
+    auto const str_t = nkl_get_ptr(ctx.nkl, ctx.c->word_size, arr_t, true);
 
-    auto rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(ar_nt_t), NkIrVisibility_Local);
-    auto str_ptr = nkir_getDataPtr(ctx.ir, rodata);
+    auto const arr_rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(arr_nt_t), NkIrVisibility_Local);
+    auto const str_ptr = nkir_getDataPtr(ctx.ir, arr_rodata);
 
     // TODO: Manual copy and null termination
     memcpy(str_ptr, text.data, text.size);
     ((char *)str_ptr)[text.size] = '\0';
 
-    auto str_ref = nkir_makeDataRef(ctx.ir, nkir_makeRodata(ctx.ir, 0, nklt2nkirt(str_t), NkIrVisibility_Local));
-    nkir_addDataReloc(ctx.ir, str_ref, rodata);
-    return makeRef(str_ref);
+    auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(str_t), NkIrVisibility_Local);
+    nkir_addDataReloc(ctx.ir, nkir_makeDataRef(ctx.ir, rodata), arr_rodata);
+    return makeConst(ctx, rodata);
 }
 
 static Interm makeInstr(NkIrInstr const &instr, nkltype_t type) {
     return {{.instr{instr}}, type, IntermKind_Instr};
+}
+
+static Interm makeExternProc(Context &ctx, NkIrExternProc proc) {
+    return makeValue(ctx, {{.extern_proc{proc}}, ValueKind_ExternProc});
+}
+
+static Interm makeProc(Context &ctx, decltype(Value::as.proc) proc_info) {
+    return makeValue(ctx, {{.proc{proc_info}}, ValueKind_Proc});
 }
 
 static Interm store(Context &ctx, NkIrRef const &dst, Interm src) {
@@ -549,7 +566,7 @@ static Interm resolveDecl(Context &ctx, Decl &decl) {
             nk_assert(!"resolveDecl is not implemented for DeclKind_Incomplete");
             return {};
         case DeclKind_Complete:
-            return {{.val{decl.as.val}}, getValueType(ctx, decl.as.val), IntermKind_Val};
+            return makeValue(ctx, decl.as.val);
 
         case DeclKind_Undefined:
             nk_assert(!"unreachable");
@@ -1359,6 +1376,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             DEFINE(lib, compileConst<NkString>(ctx, lib_n, ctx.c->str_t()));
 
+            // TODO: Hardcoded list of library aliases
             if (nks_equal(lib, nk_cs2s("c")) || nks_equal(lib, nk_cs2s("C"))) {
                 // TODO: Using hard-configured libc name
                 lib = nk_cs2s(LIBC_NAME);
@@ -1366,10 +1384,8 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             DEFINE(const proc_t, compileProcType(ctx, proc_n, nullptr, NkCallConv_Cdecl));
 
-            // TODO: Using hard-configured libc name
             auto const proc = nkir_makeExternProc(ctx.ir, nk_s2atom(lib), decl_name, nklt2nkirt(proc_t));
-
-            return {{.val{{.extern_proc{proc}}, ValueKind_ExternProc}}, proc_t, IntermKind_Val};
+            return makeExternProc(ctx, proc);
         }
 
         case n_id: {
@@ -1412,10 +1428,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             DEFINE(&imported_ctx, *importFile(ctx.c, import_path));
 
-            return {
-                {.val{{.proc{imported_ctx.top_level_proc, imported_ctx.scope_stack}}, ValueKind_Proc}},
-                nkirt2nklt(nkir_getProcType(ctx.ir, imported_ctx.top_level_proc)),
-                IntermKind_Val};
+            return makeProc(ctx, {imported_ctx.top_level_proc, imported_ctx.scope_stack});
         }
 
         case n_int: {
@@ -1535,7 +1548,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                         },
                         body_n));
 
-                return {{.val{{.proc{proc_info}}, ValueKind_Proc}}, proc_t, IntermKind_Val};
+                return makeProc(ctx, proc_info);
             } else {
                 return error(ctx, "invalid ast");
             }
@@ -1631,7 +1644,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             }
 
             if (nklt_sizeof(ret_t)) {
-                return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, ret_t, IntermKind_Val};
+                return makeConst(ctx, rodata);
             } else {
                 return makeVoid(ctx);
             }
@@ -1702,7 +1715,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                         memcpy(data_ptr, val.data, nklt_sizeof(elem_t));
                         data_ptr += nklt_sizeof(elem_t);
                     }
-                    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, array_t, IntermKind_Val};
+                    return makeConst(ctx, rodata);
                 } else {
                     auto const dst = conf.dst.kind
                                          ? conf.dst
