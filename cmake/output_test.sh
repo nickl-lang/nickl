@@ -117,7 +117,7 @@ case "$OUTPUT_STDERR" in
     ;;
 esac
 
-if ! diff --color=auto -u "$EXPECTED_STDOUT_FILE" "$STDOUT_FILE"; then
+if ! diff --color=always -u "$EXPECTED_STDOUT_FILE" "$STDOUT_FILE"; then
     echo '\nTEST FAILED'
     exit 1
 fi

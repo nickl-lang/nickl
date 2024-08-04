@@ -323,7 +323,9 @@ static Interm makeString(Context &ctx, NkString text) {
     memcpy(str_ptr, text.data, text.size);
     ((char *)str_ptr)[text.size] = '\0';
 
-    return makeRef(nkir_makeAddressRef(ctx.ir, nkir_makeDataRef(ctx.ir, rodata), nklt2nkirt(str_t)));
+    auto str_ref = nkir_makeDataRef(ctx.ir, nkir_makeRodata(ctx.ir, 0, nklt2nkirt(str_t), NkIrVisibility_Local));
+    nkir_addDataReloc(ctx.ir, str_ref, rodata);
+    return makeRef(str_ref);
 }
 
 static Interm makeInstr(NkIrInstr const &instr, nkltype_t type) {

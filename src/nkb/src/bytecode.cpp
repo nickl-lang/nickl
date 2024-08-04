@@ -100,13 +100,13 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
                 nk_assert(!"unreachable");
                 break;
         }
-        if (ref.kind != NkBcRef_Data || !expand_values) {
+        if (!expand_values) {
             nk_stream_printf(out, "+%zx", ref.offset);
         }
         for (usize i = 0; i < ref.indir; i++) {
             nk_stream_printf(out, "]");
         }
-        if (ref.post_offset) {
+        if (ref.post_offset && !expand_values) {
             nk_stream_printf(out, "+%zx", ref.post_offset);
         }
         if (ref.type) {
@@ -241,6 +241,29 @@ void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
     }
 }
 
+static void *getDataAddr(NkIrRunCtx ctx, usize index) {
+    NK_PROF_FUNC();
+    while (index >= ctx->data.size) {
+        nkda_append(&ctx->data, nullptr);
+    }
+    auto &data = ctx->data.data[index];
+    if (!data) {
+        auto const &decl = ctx->ir->data.data[index];
+        data = nk_allocAligned(ctx->ir->alloc, decl.type->size, decl.type->align);
+        if (decl.data) {
+            memcpy(data, decl.data, decl.type->size);
+        } else {
+            memset(data, 0, decl.type->size);
+        }
+        auto reloc = decl.relocs;
+        while (reloc) {
+            *(void **)nkir_dataRefDerefEx(reloc->address_ref, data) = getDataAddr(ctx, reloc->target.idx);
+            reloc = reloc->next;
+        }
+    }
+    return data;
+}
+
 bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
     NK_PROF_FUNC();
 
@@ -308,28 +331,6 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         };
     }
 
-    auto const get_data_addr = [&](usize index) {
-        NK_PROF_SCOPE(nk_cs2s("get_data_addr"));
-        while (index >= ctx->data.size) {
-            nkda_append(&ctx->data, nullptr);
-        }
-        auto &data = ctx->data.data[index];
-        if (!data) {
-            auto const &decl = ir.data.data[index];
-            if (decl.data && decl.read_only) {
-                data = decl.data;
-            } else {
-                data = nk_allocAligned(ir.alloc, decl.type->size, decl.type->align);
-                if (decl.data) {
-                    memcpy(data, decl.data, decl.type->size);
-                } else {
-                    memset(data, 0, decl.type->size);
-                }
-            }
-        }
-        return data;
-    };
-
     auto const translate_ref =
         [&](usize instr_index, usize arg_index, usize ref_index, NkBcRef &ref, NkIrRef const &ir_ref) {
             NK_PROF_SCOPE(nk_cs2s("translate_ref"));
@@ -352,7 +353,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     ref.indir++;
                     break;
                 case NkIrRef_Data: {
-                    ref.offset += (usize)get_data_addr(ir_ref.index);
+                    ref.offset += (usize)getDataAddr(ctx, ir_ref.index);
                     break;
                 }
                 case NkIrRef_Proc: {
@@ -407,15 +408,15 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     ref.offset += (usize)sym_addr;
                     break;
                 }
-                case NkIrRef_Address: {
-                    auto const &reloc = ir.relocs.data[ir_ref.index];
-                    auto ref_addr = nk_allocT<void *>(ir.alloc);
-                    *ref_addr = get_data_addr(reloc.target_ref_idx);
-
-                    ref.kind = NkBcRef_Data;
-                    ref.offset += (usize)ref_addr;
-                    break;
-                }
+                // case NkIrRef_Address: {
+                //     auto const &reloc = ir.relocs.data[ir_ref.index];
+                //     auto ref_addr = nk_allocT<void *>(ir.alloc);
+                //     *ref_addr = get_data_addr(reloc.target_ref_idx);
+                //
+                //     ref.kind = NkBcRef_Data;
+                //     ref.offset += (usize)ref_addr;
+                //     break;
+                // }
                 case NkIrRef_VariadicMarker: {
                     ref.kind = NkBcRef_VariadicMarker;
                     break;

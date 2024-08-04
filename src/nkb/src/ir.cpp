@@ -9,6 +9,7 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
+#include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/os/error.h"
 #include "ntk/profiler.h"
@@ -71,7 +72,6 @@ NkIrProg nkir_createProgram(NkArena *arena) {
         .data{NKDA_INIT(alloc)},
         .extern_data{NKDA_INIT(alloc)},
         .extern_procs{NKDA_INIT(alloc)},
-        .relocs{NKDA_INIT(alloc)},
 
         .cur_proc{},
         .cur_line{},
@@ -223,24 +223,24 @@ void *nkir_getDataPtr(NkIrProg ir, NkIrData var) {
     auto &decl = ir->data.data[var.idx];
     if (!decl.data) {
         decl.data = nk_allocAligned(ir->alloc, decl.type->size, decl.type->align);
+        auto reloc = decl.relocs;
+        while (reloc) {
+            // TODO: Assuming word_size=8
+            *(void **)nkir_dataRefDeref(ir, reloc->address_ref) = nkir_getDataPtr(ir, reloc->target);
+
+            reloc = reloc->next;
+        }
     }
     return decl.data;
 }
 
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref) {
+    nk_assert(ref.kind == NkIrRef_Data && "data ref expected");
+    return nkir_dataRefDerefEx(ref, nkir_getDataPtr(ir, {ref.index}));
+}
+
+void *nkir_dataRefDerefEx(NkIrRef ref, void *data_ptr) {
     NK_LOG_TRC("%s", __func__);
-
-    void *data_ptr;
-
-    if (ref.kind == NkIrRef_Address) {
-        auto const address_ptr = nkir_getDataPtr(ir, {ir->relocs.data[ref.index].address_ref_idx});
-        auto const target_ptr = nkir_getDataPtr(ir, {ir->relocs.data[ref.index].target_ref_idx});
-        *(void **)address_ptr = target_ptr;
-        data_ptr = address_ptr;
-    } else {
-        nk_assert(ref.kind == NkIrRef_Data && "data ref expected");
-        data_ptr = nkir_getDataPtr(ir, {ref.index});
-    }
 
     auto data = (u8 *)data_ptr + ref.offset;
     int indir = ref.indir;
@@ -419,7 +419,16 @@ NkIrData nkir_makeData(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility v
     NK_LOG_TRC("%s", __func__);
 
     NkIrData id{ir->data.size};
-    nkda_append(&ir->data, {name, nullptr, type, vis, false});
+    nkda_append(
+        &ir->data,
+        {
+            .name = name,
+            .visibility = vis,
+            .data = nullptr,
+            .type = type,
+            .relocs = nullptr,
+            .read_only = false,
+        });
     return id;
 }
 
@@ -427,7 +436,16 @@ NkIrData nkir_makeRodata(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility
     NK_LOG_TRC("%s", __func__);
 
     NkIrData id{ir->data.size};
-    nkda_append(&ir->data, {name, nullptr, type, vis, true});
+    nkda_append(
+        &ir->data,
+        {
+            .name = name,
+            .visibility = vis,
+            .data = nullptr,
+            .type = type,
+            .relocs = nullptr,
+            .read_only = true,
+        });
     return id;
 }
 
@@ -523,27 +541,20 @@ NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc) {
     };
 }
 
-NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t) {
+void nkir_addDataReloc(NkIrProg ir, NkIrRef address_ref, NkIrData target) {
     NK_LOG_TRC("%s", __func__);
 
-    nk_assert(ref.kind == NkIrRef_Data && "invalid address reference");
+    nk_assert(address_ref.type->kind == NkIrType_Pointer && "pointer type expected in a reloc");
 
-    auto const id = ir->relocs.size;
-    nkda_append(
-        &ir->relocs,
-        {
-            .address_ref_idx = nkir_makeDataRef(ir, nkir_makeRodata(ir, 0, ptr_t, NkIrVisibility_Local)).index,
-            .target_ref_idx = ref.index,
-        });
+    auto &address = ir->data.data[address_ref.index];
 
-    return {
-        .index = id,
-        .offset = 0,
-        .post_offset = 0,
-        .type = ptr_t,
-        .kind = NkIrRef_Address,
-        .indir = 0,
+    auto new_list_node = new (nk_allocT<NkIrRelocNode>(ir->alloc)) NkIrRelocNode{
+        .next{},
+
+        .address_ref = address_ref,
+        .target = target,
     };
+    nk_list_push(address.relocs, new_list_node);
 }
 
 NkIrRef nkir_makeVariadicMarkerRef(NkIrProg) {
@@ -669,7 +680,8 @@ static char const *getVisivilityStr(NkIrVisibility vis) {
 static bool isInlineDecl(NkIrDecl_T const &decl) {
     return decl.read_only && decl.visibility == NkIrVisibility_Local &&
            (decl.type->kind != NkIrType_Aggregate ||
-            (decl.type->as.aggr.elems.size == 1 && decl.type->as.aggr.elems.data[0].type->size == 1));
+            (decl.type->as.aggr.elems.size == 1 && decl.type->as.aggr.elems.data[0].type->kind == NkIrType_Numeric &&
+             decl.type->as.aggr.elems.data[0].type->size == 1));
 }
 
 void nkir_inspectData(NkIrProg ir, NkStream out) {
@@ -946,12 +958,6 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
             nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
             break;
         }
-        case NkIrRef_Address: {
-            nk_stream_printf(out, "&");
-            auto const &reloc = ir->relocs.data[ref.index];
-            nkir_inspectRef(ir, _proc, nkir_makeDataRef(ir, {reloc.target_ref_idx}), out);
-            break;
-        }
         case NkIrRef_None:
         case NkIrRef_VariadicMarker:
         default:
@@ -967,10 +973,8 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
     if (ref.post_offset) {
         nk_stream_printf(out, "+%" PRIu64, ref.post_offset);
     }
-    if (ref.kind != NkIrRef_Address) {
-        nk_stream_printf(out, ":");
-        nkirt_inspect(ref.type, out);
-    }
+    nk_stream_printf(out, ":");
+    nkirt_inspect(ref.type, out);
 }
 
 bool nkir_validateProgram(NkIrProg ir) {

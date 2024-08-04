@@ -1,0 +1,19 @@
+extern "c" proc printf(ptr, ...) i32
+
+type String: { ptr, u64 }
+
+pub const str_data: { [14]i8 } {"Hello, World!"}
+pub const str: String {&str_data, 14}
+
+pub proc main() i32 {
+    sz: u32
+@start
+    trunc str+8:u64 -> sz
+    call printf, (&"%.*s\n", ..., sz, str+0:ptr)
+    ret  0
+}
+
+/* @output
+Hello, World!
+
+@endoutput */

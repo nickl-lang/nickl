@@ -301,7 +301,8 @@ Decl &resolve(Context &ctx, NkAtom name) {
 }
 
 bool isValueKnown(Interm const &val) {
-    return val.kind == IntermKind_Void || (val.kind == IntermKind_Ref && val.as.ref.kind == NkIrRef_Address) ||
+    // TODO: Check that data ref is read only?
+    return val.kind == IntermKind_Void || (val.kind == IntermKind_Ref && val.as.ref.kind == NkIrRef_Data) ||
            (val.kind == IntermKind_Val && (val.as.val.kind == ValueKind_Proc || val.as.val.kind == ValueKind_Rodata ||
                                            val.as.val.kind == ValueKind_ExternProc));
 }

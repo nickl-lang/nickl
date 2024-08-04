@@ -22,26 +22,6 @@ namespace {
 
 NK_LOG_USE_SCOPE(translate2c);
 
-struct DataFp {
-    usize idx;
-    usize offset;
-    usize type_id;
-};
-
-struct DataFpHashSetContext {
-    static u64 hash(DataFp const &val) {
-        u64 seed = 0;
-        nk_hashCombine(&seed, val.idx);
-        nk_hashCombine(&seed, val.offset);
-        nk_hashCombine(&seed, val.type_id);
-        return seed;
-    }
-
-    static bool equal_to(DataFp const &lhs, DataFp const &rhs) {
-        return lhs.idx == rhs.idx && lhs.offset == rhs.offset && lhs.type_id == rhs.type_id;
-    }
-};
-
 typedef NkDynArray(bool) FlagArray;
 
 bool &getFlag(FlagArray &ar, usize i) {
@@ -64,7 +44,7 @@ struct WriterCtx {
     NkHashMap<usize, NkString> type_map = decltype(type_map)::create(alloc);
     usize typedecl_count = 0;
 
-    NkHashMap<DataFp, NkString, DataFpHashSetContext> data_map = decltype(data_map)::create(alloc);
+    NkHashMap<usize, NkString> data_map = decltype(data_map)::create(alloc);
     usize data_count = 0;
 
     FlagArray procs_translated{NKDA_INIT(alloc)};
@@ -221,134 +201,175 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     nksb_printf(src, NKS_FMT, NKS_ARG(type_str));
 }
 
-void writeData(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src, bool is_complex = false) {
-    NK_LOG_TRC("%s", __func__);
-    nk_assert(ref.kind == NkIrRef_Data && "data ref expected in writeData");
+static void writeData(WriterCtx &ctx, NkIrData data, NkStringBuilder *src, bool is_complex = false);
 
-    NK_LOG_DBG("writeData: idx=%zu offset=%zu type.id=%u", ref.index, ref.post_offset, ref.type->id);
+static bool isInlineDecl(NkIrDecl_T const &decl) {
+    return decl.read_only && decl.visibility == NkIrVisibility_Local &&
+           (decl.type->kind != NkIrType_Aggregate ||
+            (decl.type->as.aggr.elems.size == 1 && decl.type->as.aggr.elems.data[0].type->kind == NkIrType_Numeric &&
+             decl.type->as.aggr.elems.data[0].type->size == 1));
+}
 
-    DataFp data_fp{ref.index, ref.post_offset, ref.type->id};
-
-    auto found_str = ctx.data_map.find(data_fp);
-    if (found_str) {
-        nksb_printf(src, NKS_FMT, NKS_ARG(*found_str));
-        return;
+static void escapeStr(NkStringBuilder *src, NkString str) {
+    for (auto const c : nk_iterate(str)) {
+        if (isprint(c)) {
+            nksb_printf(src, "%c", c);
+        } else {
+            nksb_printf(src, "\\%03" PRIo8, c);
+        }
     }
+}
+
+static void writeConst(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src) {
+    NK_LOG_TRC("%s", __func__);
+
+    nk_assert(ref.kind == NkIrRef_Data && "data ref is expected in writeConst");
 
     auto const &decl = ctx.ir->data.data[ref.index];
 
-    bool const native = ref.post_offset == 0 && ref.type->id == decl.type->id;
+    auto data = nkir_dataRefDeref(ctx.ir, ref);
 
-    is_complex |= (native && decl.visibility != NkIrVisibility_Local);
-
-    NkStringBuilder tmp_s{NKSB_INIT(ctx.alloc)};
-
-    if (decl.data) {
-        auto data = nkir_dataRefDeref(ctx.ir, ref);
-
-        switch (ref.type->kind) {
-            case NkIrType_Aggregate: {
-                is_complex = true;
-                nksb_printf(&tmp_s, "{ ");
+    switch (ref.type->kind) {
+        case NkIrType_Aggregate: {
+            nksb_printf(src, "{");
+            if (ref.type->as.aggr.elems.size == 1 && ref.type->as.aggr.elems.data[0].type->kind == NkIrType_Numeric &&
+                ref.type->as.aggr.elems.data[0].type->size == 1) {
+                auto const quote = ref.type->as.aggr.elems.data[0].count == 1 ? '\'' : '"';
+                nksb_printf(src, "%c", quote);
+                escapeStr(src, {(char const *)data, ref.type->as.aggr.elems.data[0].count});
+                nksb_printf(src, "%c", quote);
+            } else {
                 for (usize i = 0; i < ref.type->as.aggr.elems.size; i++) {
                     auto const &elem = ref.type->as.aggr.elems.data[i];
                     if (elem.count > 1) {
-                        nksb_printf(&tmp_s, "{ ");
+                        nksb_printf(src, "{ ");
                     }
                     usize offset = elem.offset;
                     for (usize c = 0; c < elem.count; c++) {
                         auto elem_ref = ref;
                         elem_ref.post_offset += offset;
                         elem_ref.type = elem.type;
-                        writeData(ctx, elem_ref, &tmp_s);
-                        nksb_printf(&tmp_s, ", ");
+                        writeConst(ctx, elem_ref, src);
+                        nksb_printf(src, ", ");
                         offset += elem.type->size;
                     }
                     if (elem.count > 1) {
-                        nksb_printf(&tmp_s, "}, ");
+                        nksb_printf(src, "},");
                     }
                 }
-                nksb_printf(&tmp_s, "}");
-                break;
             }
-            case NkIrType_Numeric: {
-                auto value_type = ref.type->as.num.value_type;
-                switch (value_type) {
-                    case Int8:
-                        nksb_printf(&tmp_s, "%" PRIi8, *(i8 *)data);
-                        break;
-                    case Uint8:
-                        nksb_printf(&tmp_s, "%" PRIu8, *(u8 *)data);
-                        break;
-                    case Int16:
-                        nksb_printf(&tmp_s, "%" PRIi16, *(i16 *)data);
-                        break;
-                    case Uint16:
-                        nksb_printf(&tmp_s, "%" PRIu16, *(u16 *)data);
-                        break;
-                    case Int32:
-                        nksb_printf(&tmp_s, "%" PRIi32, *(i32 *)data);
-                        break;
-                    case Uint32:
-                        nksb_printf(&tmp_s, "%" PRIu32, *(u32 *)data);
-                        break;
-                    case Int64:
-                        nksb_printf(&tmp_s, "%" PRIi64, *(i64 *)data);
-                        break;
-                    case Uint64:
-                        nksb_printf(&tmp_s, "%" PRIu64, *(u64 *)data);
-                        break;
-                    case Float32: {
-                        auto f_val = *(f32 *)data;
-                        nksb_printf(&tmp_s, "%.*g", std::numeric_limits<f32>::max_digits10, f_val);
-                        if (f_val == round(f_val)) {
-                            nksb_printf(&tmp_s, ".");
-                        }
-                        nksb_printf(&tmp_s, "f");
-                        break;
-                    }
-                    case Float64: {
-                        auto f_val = *(f64 *)data;
-                        nksb_printf(&tmp_s, "%.*lg", std::numeric_limits<f64>::max_digits10, f_val);
-                        if (f_val == round(f_val)) {
-                            nksb_printf(&tmp_s, ".");
-                        }
-                        break;
-                    }
-                    default:
-                        nk_assert(!"unreachable");
-                        break;
-                }
-                if (value_type < Float32) {
-                    if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
-                        nksb_printf(&tmp_s, "u");
-                    }
-                    if (ref.type->size == 4) {
-                        nksb_printf(&tmp_s, "l");
-                    } else if (ref.type->size == 8) {
-                        nksb_printf(&tmp_s, "ll");
-                    }
-                }
-                break;
-            }
-            default:
-                nk_assert(!"unreachable");
-                break;
+            nksb_printf(src, "}");
+            break;
         }
+        case NkIrType_Numeric: {
+            auto value_type = ref.type->as.num.value_type;
+            switch (value_type) {
+                case Int8:
+                    nksb_printf(src, "%" PRIi8, *(i8 *)data);
+                    break;
+                case Uint8:
+                    nksb_printf(src, "%" PRIu8, *(u8 *)data);
+                    break;
+                case Int16:
+                    nksb_printf(src, "%" PRIi16, *(i16 *)data);
+                    break;
+                case Uint16:
+                    nksb_printf(src, "%" PRIu16, *(u16 *)data);
+                    break;
+                case Int32:
+                    nksb_printf(src, "%" PRIi32, *(i32 *)data);
+                    break;
+                case Uint32:
+                    nksb_printf(src, "%" PRIu32, *(u32 *)data);
+                    break;
+                case Int64:
+                    nksb_printf(src, "%" PRIi64, *(i64 *)data);
+                    break;
+                case Uint64:
+                    nksb_printf(src, "%" PRIu64, *(u64 *)data);
+                    break;
+                case Float32: {
+                    auto f_val = *(f32 *)data;
+                    nksb_printf(src, "%.*g", std::numeric_limits<f32>::max_digits10, f_val);
+                    if (f_val == round(f_val)) {
+                        nksb_printf(src, ".");
+                    }
+                    nksb_printf(src, "f");
+                    break;
+                }
+                case Float64: {
+                    auto f_val = *(f64 *)data;
+                    nksb_printf(src, "%.*lg", std::numeric_limits<f64>::max_digits10, f_val);
+                    if (f_val == round(f_val)) {
+                        nksb_printf(src, ".");
+                    }
+                    break;
+                }
+                default:
+                    nk_assert(!"unreachable");
+                    break;
+            }
+            if (value_type < Float32) {
+                if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
+                    nksb_printf(src, "u");
+                }
+                if (ref.type->size == 4) {
+                    nksb_printf(src, "l");
+                } else if (ref.type->size == 8) {
+                    nksb_printf(src, "ll");
+                }
+            }
+            break;
+        }
+        case NkIrType_Pointer: {
+            nksb_printf(src, "(void*)&");
+            auto reloc = decl.relocs;
+            while (reloc) {
+                if (reloc->address_ref.post_offset == ref.post_offset) {
+                    writeData(ctx, reloc->target, src, true);
+                    break;
+                }
+                reloc = reloc->next;
+            }
+            nk_assert(reloc && "no reloc found");
+            break;
+        }
+        case NkIrType_Procedure:
+        case NkIrType_Count:
+            nk_assert(!"unreachable");
+            break;
+    }
+}
+
+static void writeData(WriterCtx &ctx, NkIrData _decl, NkStringBuilder *src, bool is_complex) {
+    NK_LOG_TRC("%s", __func__);
+
+    auto found_str = ctx.data_map.find(_decl.idx);
+    if (found_str) {
+        nksb_printf(src, NKS_FMT, NKS_ARG(*found_str));
+        return;
+    }
+
+    auto const &decl = ctx.ir->data.data[_decl.idx];
+
+    is_complex |= !isInlineDecl(decl);
+
+    NkStringBuilder tmp_s{NKSB_INIT(ctx.alloc)};
+
+    if (decl.data) {
+        writeConst(ctx, nkir_makeDataRef(ctx.ir, _decl), &tmp_s);
     }
 
     NkString str{NKS_INIT(tmp_s)};
 
-    if (is_complex && (!native || !getFlag(ctx.data_translated, ref.index))) {
-        auto const name = native ? decl.name : 0;
-
+    if (is_complex && !getFlag(ctx.data_translated, _decl.idx)) {
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
-        writeType(ctx, ref.type, &ctx.forward_s);
+        writeType(ctx, decl.type, &ctx.forward_s);
         if (decl.read_only) {
             nksb_printf(&ctx.forward_s, " const");
         }
         nksb_printf(&ctx.forward_s, " ");
-        writeName(name, ctx.data_count, CONST_CLASS, &ctx.forward_s);
+        writeName(decl.name, ctx.data_count, CONST_CLASS, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " = ");
         if (decl.data) {
             nksb_printf(&ctx.forward_s, NKS_FMT, NKS_ARG(str));
@@ -358,17 +379,15 @@ void writeData(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src, bool is
         nksb_printf(&ctx.forward_s, ";\n");
 
         NkStringBuilder sb{NKSB_INIT(ctx.alloc)};
-        writeName(name, ctx.data_count, CONST_CLASS, &sb);
+        writeName(decl.name, ctx.data_count, CONST_CLASS, &sb);
         str = {NKS_INIT(sb)};
 
         ctx.data_count++;
 
-        if (native) {
-            getFlag(ctx.data_translated, ref.index) = true;
-        }
+        getFlag(ctx.data_translated, _decl.idx) = true;
     }
 
-    ctx.data_map.insert(data_fp, str);
+    ctx.data_map.insert(_decl.idx, str);
     nksb_printf(src, NKS_FMT, NKS_ARG(str));
 }
 
@@ -516,15 +535,11 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                 getFlag(ctx.ext_data_translated, ref.index) = true;
             }
             return;
-        } else if (ref.kind == NkIrRef_Address) {
-            nksb_printf(src, "&");
-            auto const &reloc = ctx.ir->relocs.data[ref.index];
-            writeData(ctx, nkir_makeDataRef(ctx.ir, {reloc.target_ref_idx}), src, true);
-            return;
         }
 
         bool const is_addressable =
             !(ref.kind == NkIrRef_Data && ctx.ir->data.data[ref.index].read_only &&
+              ctx.ir->data.data[ref.index].visibility == NkIrVisibility_Local &&
               ctx.ir->data.data[ref.index].type->kind != NkIrType_Aggregate);
 
         if (is_addressable) {
@@ -556,12 +571,11 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                     ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : 0, ref.index, ARG_CLASS, src);
                 break;
             case NkIrRef_Data:
-                writeData(ctx, ref, src);
+                writeData(ctx, {ref.index}, src);
                 break;
             case NkIrRef_Proc:
             case NkIrRef_ExternProc:
             case NkIrRef_ExternData:
-            case NkIrRef_Address:
             case NkIrRef_None:
             default:
                 nk_assert(!"unreachable");
@@ -589,11 +603,6 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             for (auto ii = range.begin_idx; ii < range.end_idx; ii++) {
                 auto const &instr = ctx.ir->instrs.data[ii];
 
-                if (instr.line != last_line + 1) {
-                    writeLineDirective(0, instr.line, src);
-                }
-                last_line = instr.line;
-
                 switch (instr.code) {
                     case nkir_nop:
                     case nkir_comment:
@@ -602,6 +611,11 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                     default:
                         break;
                 }
+
+                if (instr.line != last_line + 1) {
+                    writeLineDirective(0, instr.line, src);
+                }
+                last_line = instr.line;
 
                 nksb_printf(src, "  ");
 
@@ -791,7 +805,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrModule mod, NkStream src)
     for (auto decl_id : nk_iterate(mod->exported_data)) {
         if (!getFlag(ctx.data_translated, decl_id)) {
             NkStringBuilder dummy_sb{NKSB_INIT(ctx.alloc)};
-            writeData(ctx, nkir_makeDataRef(ir, {decl_id}), &dummy_sb, true);
+            writeData(ctx, {decl_id}, &dummy_sb, true);
         }
     }
 
