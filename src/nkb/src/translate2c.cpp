@@ -8,6 +8,7 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/log.h"
@@ -23,7 +24,7 @@ NK_LOG_USE_SCOPE(translate2c);
 
 struct DataFp {
     usize idx;
-    void *data;
+    usize offset;
     usize type_id;
 };
 
@@ -31,13 +32,13 @@ struct DataFpHashSetContext {
     static u64 hash(DataFp const &val) {
         u64 seed = 0;
         nk_hashCombine(&seed, val.idx);
-        nk_hashCombine(&seed, (usize)val.data);
+        nk_hashCombine(&seed, val.offset);
         nk_hashCombine(&seed, val.type_id);
         return seed;
     }
 
     static bool equal_to(DataFp const &lhs, DataFp const &rhs) {
-        return lhs.idx == rhs.idx && lhs.data == rhs.data && lhs.type_id == rhs.type_id;
+        return lhs.idx == rhs.idx && lhs.offset == rhs.offset && lhs.type_id == rhs.type_id;
     }
 };
 
@@ -220,8 +221,13 @@ void writeType(WriterCtx &ctx, nktype_t type, NkStringBuilder *src, bool allow_v
     nksb_printf(src, NKS_FMT, NKS_ARG(type_str));
 }
 
-void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilder *src, bool is_complex = false) {
-    DataFp data_fp{idx, decl.data, decl.type->id};
+void writeData(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src, bool is_complex = false) {
+    NK_LOG_TRC("%s", __func__);
+    nk_assert(ref.kind == NkIrRef_Data && "data ref expected in writeData");
+
+    NK_LOG_DBG("writeData: idx=%zu offset=%zu type.id=%u", ref.index, ref.post_offset, ref.type->id);
+
+    DataFp data_fp{ref.index, ref.post_offset, ref.type->id};
 
     auto found_str = ctx.data_map.find(data_fp);
     if (found_str) {
@@ -229,33 +235,32 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
         return;
     }
 
-    is_complex |= decl.visibility != NkIrVisibility_Local;
+    auto const &decl = ctx.ir->data.data[ref.index];
+
+    bool const native = ref.post_offset == 0 && ref.type->id == decl.type->id;
+
+    is_complex |= (native && decl.visibility != NkIrVisibility_Local);
 
     NkStringBuilder tmp_s{NKSB_INIT(ctx.alloc)};
 
     if (decl.data) {
-        switch (decl.type->kind) {
+        auto data = nkir_dataRefDeref(ctx.ir, ref);
+
+        switch (ref.type->kind) {
             case NkIrType_Aggregate: {
                 is_complex = true;
                 nksb_printf(&tmp_s, "{ ");
-                for (usize i = 0; i < decl.type->as.aggr.elems.size; i++) {
-                    auto const &elem = decl.type->as.aggr.elems.data[i];
+                for (usize i = 0; i < ref.type->as.aggr.elems.size; i++) {
+                    auto const &elem = ref.type->as.aggr.elems.data[i];
                     if (elem.count > 1) {
                         nksb_printf(&tmp_s, "{ ");
                     }
                     usize offset = elem.offset;
                     for (usize c = 0; c < elem.count; c++) {
-                        writeData(
-                            ctx,
-                            NKIR_INVALID_IDX,
-                            {
-                                .name = 0,
-                                .data = (u8 *)decl.data + offset,
-                                .type = elem.type,
-                                .visibility = NkIrVisibility_Local,
-                                .read_only = decl.read_only,
-                            },
-                            &tmp_s);
+                        auto elem_ref = ref;
+                        elem_ref.post_offset += offset;
+                        elem_ref.type = elem.type;
+                        writeData(ctx, elem_ref, &tmp_s);
                         nksb_printf(&tmp_s, ", ");
                         offset += elem.type->size;
                     }
@@ -267,34 +272,34 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                 break;
             }
             case NkIrType_Numeric: {
-                auto value_type = decl.type->as.num.value_type;
+                auto value_type = ref.type->as.num.value_type;
                 switch (value_type) {
                     case Int8:
-                        nksb_printf(&tmp_s, "%" PRIi8, *(i8 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIi8, *(i8 *)data);
                         break;
                     case Uint8:
-                        nksb_printf(&tmp_s, "%" PRIu8, *(u8 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIu8, *(u8 *)data);
                         break;
                     case Int16:
-                        nksb_printf(&tmp_s, "%" PRIi16, *(i16 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIi16, *(i16 *)data);
                         break;
                     case Uint16:
-                        nksb_printf(&tmp_s, "%" PRIu16, *(u16 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIu16, *(u16 *)data);
                         break;
                     case Int32:
-                        nksb_printf(&tmp_s, "%" PRIi32, *(i32 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIi32, *(i32 *)data);
                         break;
                     case Uint32:
-                        nksb_printf(&tmp_s, "%" PRIu32, *(u32 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIu32, *(u32 *)data);
                         break;
                     case Int64:
-                        nksb_printf(&tmp_s, "%" PRIi64, *(i64 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIi64, *(i64 *)data);
                         break;
                     case Uint64:
-                        nksb_printf(&tmp_s, "%" PRIu64, *(u64 *)decl.data);
+                        nksb_printf(&tmp_s, "%" PRIu64, *(u64 *)data);
                         break;
                     case Float32: {
-                        auto f_val = *(f32 *)decl.data;
+                        auto f_val = *(f32 *)data;
                         nksb_printf(&tmp_s, "%.*g", std::numeric_limits<f32>::max_digits10, f_val);
                         if (f_val == round(f_val)) {
                             nksb_printf(&tmp_s, ".");
@@ -303,7 +308,7 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                         break;
                     }
                     case Float64: {
-                        auto f_val = *(f64 *)decl.data;
+                        auto f_val = *(f64 *)data;
                         nksb_printf(&tmp_s, "%.*lg", std::numeric_limits<f64>::max_digits10, f_val);
                         if (f_val == round(f_val)) {
                             nksb_printf(&tmp_s, ".");
@@ -318,9 +323,9 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
                     if (value_type == Uint8 || value_type == Uint16 || value_type == Uint32 || value_type == Uint64) {
                         nksb_printf(&tmp_s, "u");
                     }
-                    if (decl.type->size == 4) {
+                    if (ref.type->size == 4) {
                         nksb_printf(&tmp_s, "l");
-                    } else if (decl.type->size == 8) {
+                    } else if (ref.type->size == 8) {
                         nksb_printf(&tmp_s, "ll");
                     }
                 }
@@ -334,14 +339,16 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
 
     NkString str{NKS_INIT(tmp_s)};
 
-    if (is_complex && !getFlag(ctx.data_translated, idx)) {
+    if (is_complex && (!native || !getFlag(ctx.data_translated, ref.index))) {
+        auto const name = native ? decl.name : 0;
+
         writeVisibilityAttr(decl.visibility, &ctx.forward_s);
-        writeType(ctx, decl.type, &ctx.forward_s);
+        writeType(ctx, ref.type, &ctx.forward_s);
         if (decl.read_only) {
             nksb_printf(&ctx.forward_s, " const");
         }
         nksb_printf(&ctx.forward_s, " ");
-        writeName(decl.name, ctx.data_count, CONST_CLASS, &ctx.forward_s);
+        writeName(name, ctx.data_count, CONST_CLASS, &ctx.forward_s);
         nksb_printf(&ctx.forward_s, " = ");
         if (decl.data) {
             nksb_printf(&ctx.forward_s, NKS_FMT, NKS_ARG(str));
@@ -351,13 +358,13 @@ void writeData(WriterCtx &ctx, usize idx, NkIrDecl_T const &decl, NkStringBuilde
         nksb_printf(&ctx.forward_s, ";\n");
 
         NkStringBuilder sb{NKSB_INIT(ctx.alloc)};
-        writeName(decl.name, ctx.data_count, CONST_CLASS, &sb);
+        writeName(name, ctx.data_count, CONST_CLASS, &sb);
         str = {NKS_INIT(sb)};
 
         ctx.data_count++;
 
-        if (idx != NKIR_INVALID_IDX) {
-            getFlag(ctx.data_translated, idx) = true;
+        if (native) {
+            getFlag(ctx.data_translated, ref.index) = true;
         }
     }
 
@@ -512,7 +519,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
         } else if (ref.kind == NkIrRef_Address) {
             nksb_printf(src, "&");
             auto const &reloc = ctx.ir->relocs.data[ref.index];
-            writeData(ctx, reloc.target_ref_idx, ctx.ir->data.data[reloc.target_ref_idx], src, true);
+            writeData(ctx, nkir_makeDataRef(ctx.ir, {reloc.target_ref_idx}), src, true);
             return;
         }
 
@@ -549,7 +556,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
                     ref.index < proc.arg_names.size ? proc.arg_names.data[ref.index] : 0, ref.index, ARG_CLASS, src);
                 break;
             case NkIrRef_Data:
-                writeData(ctx, ref.index, ctx.ir->data.data[ref.index], src);
+                writeData(ctx, ref, src);
                 break;
             case NkIrRef_Proc:
             case NkIrRef_ExternProc:
@@ -784,8 +791,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrModule mod, NkStream src)
     for (auto decl_id : nk_iterate(mod->exported_data)) {
         if (!getFlag(ctx.data_translated, decl_id)) {
             NkStringBuilder dummy_sb{NKSB_INIT(ctx.alloc)};
-            auto const &decl = ir->data.data[decl_id];
-            writeData(ctx, decl_id, decl, &dummy_sb, true);
+            writeData(ctx, nkir_makeDataRef(ir, {decl_id}), &dummy_sb, true);
         }
     }
 
