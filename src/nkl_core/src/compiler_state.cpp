@@ -345,6 +345,13 @@ nklval_t getValueFromInterm(Context &ctx, Interm const &val) {
     return {};
 }
 
+NkIrData getRodataFromInterm(Context &ctx, Interm const &val) {
+    nk_assert(isValueKnown(val) && "trying to get an unknown value");
+    auto ref = asRef(ctx, val);
+    nk_assert(ref.kind == NkIrRef_Data && nkir_dataIsReadOnly(ctx.ir, {ref.index}));
+    return {ref.index};
+}
+
 bool isModule(Interm const &val) {
     return val.kind == IntermKind_Val && ((val.as.val.kind == ValueKind_Rodata && val.as.val.as.rodata.opt_scope) ||
                                           (val.as.val.kind == ValueKind_Proc && val.as.val.as.proc.opt_scope));

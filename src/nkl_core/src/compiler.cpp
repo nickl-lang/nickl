@@ -416,14 +416,12 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
         if (nklt_tclass(dst_t) == NklType_Slice && nklt_tclass(src_t) == NklType_Pointer &&
             nklt_tclass(nklt_ptr_target(src_t)) == NklType_Array &&
             nklt_typeid(nklt_slice_target(dst_t)) == nklt_typeid(nklt_array_elemType(nklt_ptr_target(src_t)))) {
-            if (conf.is_const) { // TODO: Not using is_const while cannot put address refs inside of rodata
-                val = makeConst(
-                    ctx,
-                    dst_t,
-                    NkString{
-                        nklval_as(char const *, getValueFromInterm(ctx, val)),
-                        nklt_array_size(nklt_ptr_target(src_t)),
-                    });
+            if (is_known) {
+                auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(dst_t), NkIrVisibility_Local);
+                auto const dst = cast(nklt_slice_ptrType(dst_t), nkir_makeDataRef(ctx.ir, rodata));
+                nkir_addDataReloc(ctx.ir, dst, nkir_ptrGetTarget(ctx.ir, asRef(ctx, val)));
+                (*(NkString *)nkir_getDataPtr(ctx.ir, rodata)).size = nklt_array_size(nklt_ptr_target(src_t));
+                val = makeConst(ctx, rodata);
             } else {
                 auto const dst = conf.dst.kind
                                      ? conf.dst
@@ -441,13 +439,11 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
             nklt_typeid(nklt_slice_target(dst_t)) == nklt_typeid(nklt_array_elemType(src_t))) {
             // TODO: Boilerplate between *[N]T->[]T and [N]T->[T] conversions
             if (is_known) {
-                val = makeConst(
-                    ctx,
-                    dst_t,
-                    NkString{
-                        (char const *)nkir_dataRefDeref(ctx.ir, asRef(ctx, val)),
-                        nklt_array_size(src_t),
-                    });
+                auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(dst_t), NkIrVisibility_Local);
+                auto const dst = cast(nklt_slice_ptrType(dst_t), nkir_makeDataRef(ctx.ir, rodata));
+                nkir_addDataReloc(ctx.ir, dst, getRodataFromInterm(ctx, val));
+                (*(NkString *)nkir_getDataPtr(ctx.ir, rodata)).size = nklt_array_size(src_t);
+                val = makeConst(ctx, rodata);
             } else {
                 auto const dst = conf.dst.kind
                                      ? conf.dst

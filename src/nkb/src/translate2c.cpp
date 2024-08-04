@@ -227,8 +227,6 @@ static void writeConst(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src)
 
     nk_assert(ref.kind == NkIrRef_Data && "data ref is expected in writeConst");
 
-    auto const &decl = ctx.ir->data.data[ref.index];
-
     auto data = nkir_dataRefDeref(ctx.ir, ref);
 
     switch (ref.type->kind) {
@@ -325,15 +323,7 @@ static void writeConst(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src)
         }
         case NkIrType_Pointer: {
             nksb_printf(src, "(void*)&");
-            auto reloc = decl.relocs;
-            while (reloc) {
-                if (reloc->address_ref.post_offset == ref.post_offset) {
-                    writeData(ctx, reloc->target, src, true);
-                    break;
-                }
-                reloc = reloc->next;
-            }
-            nk_assert(reloc && "no reloc found");
+            writeData(ctx, nkir_ptrGetTarget(ctx.ir, ref), src, true);
             break;
         }
         case NkIrType_Procedure:

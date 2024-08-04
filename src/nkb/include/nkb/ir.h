@@ -138,6 +138,8 @@ void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
 void *nkir_dataRefDerefEx(NkIrRef ref, void *data);
 bool nkir_dataIsReadOnly(NkIrProg ir, NkIrData var);
 
+NkIrData nkir_ptrGetTarget(NkIrProg ir, NkIrRef ref);
+
 nktype_t nkir_getProcType(NkIrProg ir, NkIrProc proc);
 nktype_t nkir_getLocalType(NkIrProg ir, NkIrLocalVar var);
 nktype_t nkir_getArgType(NkIrProg ir, usize idx);

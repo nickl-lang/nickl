@@ -221,13 +221,12 @@ void *nkir_getDataPtr(NkIrProg ir, NkIrData var) {
     NK_LOG_TRC("%s", __func__);
 
     auto &decl = ir->data.data[var.idx];
-    if (!decl.data) {
+    if (!decl.data && decl.type->size) {
         decl.data = nk_allocAligned(ir->alloc, decl.type->size, decl.type->align);
         auto reloc = decl.relocs;
         while (reloc) {
             // TODO: Assuming word_size=8
             *(void **)nkir_dataRefDeref(ir, reloc->address_ref) = nkir_getDataPtr(ir, reloc->target);
-
             reloc = reloc->next;
         }
     }
@@ -247,13 +246,26 @@ void *nkir_dataRefDerefEx(NkIrRef ref, void *data_ptr) {
     while (indir--) {
         data = *(u8 **)data;
     }
-    data += ref.post_offset;
-    return data;
+    return data + ref.post_offset;
 }
 
 bool nkir_dataIsReadOnly(NkIrProg ir, NkIrData var) {
     auto &decl = ir->data.data[var.idx];
     return decl.read_only;
+}
+
+NkIrData nkir_ptrGetTarget(NkIrProg ir, NkIrRef ref) {
+    nk_assert(ref.kind == NkIrRef_Data && "data ref expected");
+    auto &decl = ir->data.data[ref.index];
+    auto reloc = decl.relocs;
+    while (reloc) {
+        if (reloc->address_ref.post_offset == ref.post_offset) {
+            break;
+        }
+        reloc = reloc->next;
+    }
+    nk_assert(reloc && "reloc target not found");
+    return reloc->target;
 }
 
 nktype_t nkir_getProcType(NkIrProg ir, NkIrProc _proc) {
