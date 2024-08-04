@@ -353,6 +353,13 @@ static NkIrRef tupleIndex(NkIrRef ref, nkltype_t tuple_t, usize i) {
     return ref;
 }
 
+static NkIrRef arrayIndex(NkIrRef ref, nkltype_t array_t, usize i) {
+    auto const elem_t = nklt_array_elemType(array_t);
+    ref.type = nklt2nkirt(elem_t);
+    ref.post_offset += i * nklt_sizeof(elem_t);
+    return ref;
+}
+
 static Interm cast(nkltype_t type, Interm val) {
     val.type = type;
     return val;
@@ -379,7 +386,8 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
 
     DEFINE(val, compileImpl(ctx, node, conf));
 
-    if (conf.is_const && !isValueKnown(val)) {
+    bool const is_known = isValueKnown(val);
+    if (conf.is_const && !is_known) {
         // TODO: Improve error message
         return error(ctx, "comptime const expected");
     }
@@ -391,7 +399,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
         if (nklt_tclass(dst_t) == NklType_Slice && nklt_tclass(src_t) == NklType_Pointer &&
             nklt_tclass(nklt_ptr_target(src_t)) == NklType_Array &&
             nklt_typeid(nklt_slice_target(dst_t)) == nklt_typeid(nklt_array_elemType(nklt_ptr_target(src_t)))) {
-            if (conf.is_const) {
+            if (conf.is_const) { // TODO: Not using is_const while cannot put address refs inside of rodata
                 val = makeConst(
                     ctx,
                     dst_t,
@@ -407,8 +415,35 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
                 auto const tuple_t = nklt_underlying(struct_t);
                 auto const data_ref = tupleIndex(dst, tuple_t, 0);
                 auto const size_ref = tupleIndex(dst, tuple_t, 1);
-                store(ctx, data_ref, cast(nklt_struct_field(nklt_underlying(dst_t), 0).type, val));
+                store(ctx, data_ref, cast(nklt_struct_field(struct_t, 0).type, val));
                 store(ctx, size_ref, makeUsizeConst(ctx, nklt_array_size(nklt_ptr_target(src_t))));
+                val = makeRef(dst);
+            }
+        } else if (
+            nklt_tclass(dst_t) == NklType_Slice && nklt_tclass(src_t) == NklType_Array &&
+            nklt_typeid(nklt_slice_target(dst_t)) == nklt_typeid(nklt_array_elemType(src_t))) {
+            // TODO: Boilerplate between *[N]T->[]T and [N]T->[T] conversions
+            if (is_known) {
+                val = makeConst(
+                    ctx,
+                    dst_t,
+                    NkString{
+                        (char const *)nkir_dataRefDeref(ctx.ir, asRef(ctx, val)),
+                        nklt_array_size(src_t),
+                    });
+            } else {
+                auto const dst = conf.dst.kind
+                                     ? conf.dst
+                                     : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(dst_t)));
+                auto const struct_t = nklt_underlying(dst_t);
+                auto const tuple_t = nklt_underlying(struct_t);
+                auto const data_ref = tupleIndex(dst, tuple_t, 0);
+                auto const size_ref = tupleIndex(dst, tuple_t, 1);
+                store(
+                    ctx,
+                    data_ref,
+                    makeInstr(nkir_make_lea(ctx.ir, {}, asRef(ctx, val)), nklt_struct_field(struct_t, 0).type));
+                store(ctx, size_ref, makeUsizeConst(ctx, nklt_array_size(src_t)));
                 val = makeRef(dst);
             }
         } else {
@@ -422,8 +457,7 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
             if (src_t != dst_t && !can_cast_array_ptr_to_val_ptr) {
                 return error(
                     ctx,
-                    "cannot convert a %s of type '%s' to '%s'",
-                    conf.is_const ? "comptime const" : "value",
+                    "cannot convert a value of type '%s' to '%s'",
                     [&]() {
                         NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
                         nkl_type_inspect(src_t, nksb_getStream(&sb));
@@ -437,12 +471,12 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
                         return sb.data;
                     }());
             }
+        }
 
-            val.type = dst_t;
+        val.type = dst_t;
 
-            if (conf.dst.kind) {
-                val = store(ctx, conf.dst, val);
-            }
+        if (conf.dst.kind) {
+            val = store(ctx, conf.dst, val);
         }
     } else if (conf.res_tclass && nklt_tclass(src_t) != conf.res_tclass) {
         // TODO: Improve error message
@@ -1638,24 +1672,53 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         }
 
         case n_array: {
-            switch (node.arity) {
-                case 1: {
-                    return error(ctx, "TODO: array literal is not implemented");
-                }
-                case 2: {
-                    auto &size_n = nextNode(node_it);
-                    auto &type_n = nextNode(node_it);
+            auto &type_n = nextNode(node_it);
+            auto &size_n = nextNode(node_it);
 
-                    // TODO: Doing a reinterpret cast to the host usize for cross-compilation use case
-                    DEFINE(size, compileConst<usize>(ctx, size_n, ctx.c->usize_t()));
-                    DEFINE(type, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
+            DEFINE(elem_t, compileConst<nkltype_t>(ctx, type_n, ctx.c->type_t()));
 
-                    auto array_t = nkl_get_array(ctx.nkl, type, size);
-                    return makeConst(ctx, ctx.c->type_t(), array_t);
+            if (size_n.id == n_list) {
+                NkDynArray(Interm) elems{NKDA_INIT(temp_alloc)};
+
+                auto &list_n = size_n;
+                auto list_it = nodeIterate(ctx.src, list_n);
+
+                bool all_known = true;
+                for (usize i = 0; i < list_n.arity; i++) {
+                    auto &elem_n = nextNode(list_it);
+                    DEFINE(elem, compile(ctx, elem_n, {elem_t}));
+                    all_known &= isValueKnown(elem);
+                    nkda_append(&elems, elem);
                 }
+
+                auto const array_t = nkl_get_array(ctx.nkl, elem_t, elems.size);
+
+                if (all_known) {
+                    auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(array_t), NkIrVisibility_Local);
+                    auto data_ptr = (u8 *)nkir_getDataPtr(ctx.ir, rodata);
+                    for (auto const &elem : nk_iterate(elems)) {
+                        auto val = getValueFromInterm(ctx, elem);
+                        // TODO: Manual copy in array literal
+                        memcpy(data_ptr, val.data, nklt_sizeof(elem_t));
+                        data_ptr += nklt_sizeof(elem_t);
+                    }
+                    return {{.val{{.rodata{rodata, nullptr}}, ValueKind_Rodata}}, array_t, IntermKind_Val};
+                } else {
+                    auto const dst = conf.dst.kind
+                                         ? conf.dst
+                                         : nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(array_t)));
+                    for (usize i = 0; i < elems.size; i++) {
+                        store(ctx, arrayIndex(dst, array_t, i), elems.data[i]);
+                    }
+                    return makeRef(dst);
+                }
+            } else {
+                // TODO: Doing a reinterpret cast to the host usize for cross-compilation use case
+                DEFINE(size, compileConst<usize>(ctx, size_n, ctx.c->usize_t()));
+
+                auto const array_t = nkl_get_array(ctx.nkl, elem_t, size);
+                return makeConst(ctx, ctx.c->type_t(), array_t);
             }
-            nk_assert(!"invalid ast");
-            return {};
         }
 
         case n_var: {

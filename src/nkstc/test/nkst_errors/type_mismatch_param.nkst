@@ -1,7 +1,7 @@
 (proc [(param () 42)] () [])
 
 /* @error
-error: cannot convert a comptime const of type 'i64' to 'type_t'
+error: cannot convert a value of type 'i64' to 'type_t'
 @enderror */
 
 /* @retcode

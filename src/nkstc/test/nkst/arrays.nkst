@@ -2,7 +2,7 @@
 
 (const N (usize) 3)
 (const T (type_t) (i32))
-(const Vec3i () (array N T))
+(const Vec3i () (array T N))
 
 (export (const main () (proc [] (i32) [
     (var ar Vec3i)
