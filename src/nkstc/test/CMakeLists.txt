@@ -1,4 +1,5 @@
 def_nkstc_run_test(FILE nkst/address.nkst)
+def_nkstc_run_test(FILE nkst/array_literal.nkst)
 def_nkstc_run_test(FILE nkst/arrays.nkst)
 def_nkstc_run_test(FILE nkst/callback.nkst)
 def_nkstc_run_test(FILE nkst/compiler_cli_api.nkst ARGS --one 1 --two=2 three)
@@ -16,6 +17,7 @@ def_nkstc_run_test(FILE nkst/top_level_return.nkst)
 def_nkstc_run_test(FILE nkst/variadic_promotion.nkst)
 
 def_nkstc_compile_test(FILE nkst/address.nkst)
+def_nkstc_compile_test(FILE nkst/array_literal.nkst)
 def_nkstc_compile_test(FILE nkst/arrays.nkst)
 def_nkstc_compile_test(FILE nkst/callback.nkst)
 def_nkstc_compile_test(FILE nkst/defer.nkst)

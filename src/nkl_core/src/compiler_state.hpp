@@ -238,6 +238,7 @@ Decl &resolve(Context &ctx, NkAtom name);
 
 bool isValueKnown(Interm const &val);
 nklval_t getValueFromInterm(Context &ctx, Interm const &val);
+NkIrData getRodataFromInterm(Context &ctx, Interm const &val);
 
 bool isModule(Interm const &val);
 Scope *getModuleScope(Interm const &val);

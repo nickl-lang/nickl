@@ -30,7 +30,6 @@ typedef enum {
     NkIrRef_Proc,
     NkIrRef_ExternData,
     NkIrRef_ExternProc,
-    NkIrRef_Address,
     NkIrRef_VariadicMarker,
 } NkIrRefKind;
 
@@ -136,7 +135,10 @@ void nkir_finishProc(NkIrProg ir, NkIrProc proc, usize line);
 
 void *nkir_getDataPtr(NkIrProg ir, NkIrData var);
 void *nkir_dataRefDeref(NkIrProg ir, NkIrRef ref);
+void *nkir_dataRefDerefEx(NkIrRef ref, void *data);
 bool nkir_dataIsReadOnly(NkIrProg ir, NkIrData var);
+
+NkIrData nkir_ptrGetTarget(NkIrProg ir, NkIrRef ref);
 
 nktype_t nkir_getProcType(NkIrProg ir, NkIrProc proc);
 nktype_t nkir_getLocalType(NkIrProg ir, NkIrLocalVar var);
@@ -174,7 +176,7 @@ NkIrRef nkir_makeProcRef(NkIrProg ir, NkIrProc proc);
 NkIrRef nkir_makeExternDataRef(NkIrProg ir, NkIrExternData data);
 NkIrRef nkir_makeExternProcRef(NkIrProg ir, NkIrExternProc proc);
 
-NkIrRef nkir_makeAddressRef(NkIrProg ir, NkIrRef ref, nktype_t ptr_t);
+void nkir_addDataReloc(NkIrProg ir, NkIrRef address_ref, NkIrData target);
 
 NkIrRef nkir_makeVariadicMarkerRef(NkIrProg ir);
 

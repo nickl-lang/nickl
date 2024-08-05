@@ -46,11 +46,19 @@ typedef struct {
     NkDynArray(NkIrInstrRange_T) instr_ranges;
 } NkIrBlock_T;
 
+typedef struct NkIrRelocNode_T {
+    struct NkIrRelocNode_T *next;
+
+    NkIrRef address_ref;
+    NkIrData target;
+} NkIrRelocNode;
+
 typedef struct {
     NkAtom name;
+    NkIrVisibility visibility;
     void *data;
     nktype_t type;
-    NkIrVisibility visibility;
+    NkIrRelocNode *relocs;
     bool read_only;
 } NkIrDecl_T;
 
@@ -65,11 +73,6 @@ struct NkIrModule_T {
     NkDynArray(usize) exported_data;
 };
 
-typedef struct {
-    usize address_ref_idx;
-    usize target_ref_idx;
-} NkIrReloc_T;
-
 struct NkIrProg_T {
     NkAllocator alloc;
 
@@ -80,7 +83,6 @@ struct NkIrProg_T {
     NkDynArray(NkIrDecl_T) data;
     NkDynArray(NkIrExternSym_T) extern_data;
     NkDynArray(NkIrExternSym_T) extern_procs;
-    NkDynArray(NkIrReloc_T) relocs;
 
     NkIrProc cur_proc;
     u32 cur_line;

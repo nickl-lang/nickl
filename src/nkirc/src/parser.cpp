@@ -291,7 +291,7 @@ struct EmitterState {
             Decl_Data,
         };
         if (!check(t_newline)) {
-            parseValue(nkir_makeDataRef(m_ir, decl), type);
+            parseValue(nkir_makeDataRef(m_ir, decl));
         }
         return {};
     }
@@ -684,7 +684,8 @@ private:
         }
     }
 
-    Void parseValue(NkIrRef const &result_ref, nktype_t type) {
+    Void parseValue(NkIrRef const &result_ref) {
+        auto const type = result_ref.type;
         switch (type->kind) {
             case NkIrType_Aggregate: {
                 EXPECT(t_brace_l);
@@ -696,22 +697,33 @@ private:
 
                     auto const &elem = type->as.aggr.elems.data[i];
 
-                    if (elem.count > 1) {
-                        EXPECT(t_bracket_l);
-                    }
-
-                    for (usize i = 0; i < elem.count; i++) {
-                        if (i) {
-                            EXPECT(t_comma);
+                    if (elem.type->kind == NkIrType_Numeric && elem.type->size == 1) {
+                        auto const str = parseString(m_tmp_alloc);
+                        if (str.size + 1 != elem.count) {
+                            return error("string length differs from the aggregate size"), Void{};
                         }
                         auto ref = result_ref;
-                        ref.post_offset += elem.offset + elem.type->size * i;
-                        CHECK(parseValue(ref, elem.type));
-                    }
+                        ref.post_offset += elem.offset;
+                        memcpy(nkir_dataRefDeref(m_ir, result_ref), str.data, str.size + 1);
+                    } else {
+                        if (elem.count > 1) {
+                            EXPECT(t_bracket_l);
+                        }
 
-                    if (elem.count > 1) {
-                        accept(t_comma);
-                        EXPECT(t_bracket_r);
+                        for (usize i = 0; i < elem.count; i++) {
+                            if (i) {
+                                EXPECT(t_comma);
+                            }
+                            auto ref = result_ref;
+                            ref.post_offset += elem.offset + elem.type->size * i;
+                            ref.type = elem.type;
+                            CHECK(parseValue(ref));
+                        }
+
+                        if (elem.count > 1) {
+                            accept(t_comma);
+                            EXPECT(t_bracket_r);
+                        }
                     }
                 }
 
@@ -727,7 +739,16 @@ private:
                 break;
             }
 
-            case NkIrType_Pointer:
+            case NkIrType_Pointer: {
+                EXPECT(t_amper);
+                auto target_ref = parseRef();
+                if (target_ref.kind != NkIrRef_Data) {
+                    return error("can only relocate agsinst data"), Void{};
+                }
+                nkir_addDataReloc(m_ir, result_ref, {target_ref.index});
+                break;
+            }
+
             case NkIrType_Procedure:
             default:
                 nk_assert(!"unreachable");
@@ -739,7 +760,7 @@ private:
 
     NkIrData parseConst(nktype_t type) {
         auto const decl = nkir_makeRodata(m_ir, 0, type, NkIrVisibility_Local);
-        CHECK(parseValue(nkir_makeDataRef(m_ir, decl), type));
+        CHECK(parseValue(nkir_makeDataRef(m_ir, decl)));
         return decl;
     }
 
@@ -858,12 +879,19 @@ private:
             ASSIGN(result_ref.type, parseType());
         }
 
-        if (indir && take_address) {
-            return error("cannot have both dereference and address of"), NkIrRef{};
-        }
-
         if (take_address) {
-            result_ref = nkir_makeAddressRef(m_ir, result_ref, nkir_makePointerType(m_compiler));
+            if (indir) {
+                return error("cannot have both dereference and address of"), NkIrRef{};
+            }
+
+            if (result_ref.kind != NkIrRef_Data) {
+                return error("cannot take addres of anything other than data"), NkIrRef{};
+            }
+
+            auto const addr_ref = nkir_makeDataRef(
+                m_ir, nkir_makeRodata(m_ir, 0, nkir_makePointerType(m_compiler), NkIrVisibility_Local));
+            nkir_addDataReloc(m_ir, addr_ref, {result_ref.index});
+            result_ref = addr_ref;
         }
 
         return result_ref;
@@ -889,9 +917,12 @@ private:
     }
 
     Decl *resolve(NkAtom name) {
-        auto found = m_cur_proc->locals.find(name);
-        if (found) {
-            return *found;
+        Decl **found{};
+        if (m_cur_proc) {
+            found = m_cur_proc->locals.find(name);
+            if (found) {
+                return *found;
+            }
         }
         found = m_compiler->parser.decls.find(name);
         if (found) {

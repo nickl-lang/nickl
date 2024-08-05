@@ -1,0 +1,32 @@
+(const printf () (link "c" (proc [(param (ptr (const (i8)))) ("...")] (i32))))
+
+(export (const main () (proc [] (i32) [
+    (var   rt_arr () (array (i32) [1 2 3]))
+    (const ct_arr () (array (i32) [4 5 6]))
+
+    (call printArray [rt_arr])
+    (call printArray [ct_arr])
+
+    (return 0)
+])))
+
+(const printArray () (proc [(param arr (slice (i32)))] (void) [
+    (call printf ["["])
+    (var i (usize))
+    (while (lt i (member arr size)) [
+        (if (ne i 0) [
+            (call printf [", "])
+        ])
+        (call printf ["%i" (index arr i)])
+        (assign i (add i 1))
+    ])
+    (call printf ["]\n"])
+]))
+
+(call main [])
+
+/* @output
+[1, 2, 3]
+[4, 5, 6]
+
+@endoutput */
