@@ -408,15 +408,6 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                     ref.offset += (usize)sym_addr;
                     break;
                 }
-                // case NkIrRef_Address: {
-                //     auto const &reloc = ir.relocs.data[ir_ref.index];
-                //     auto ref_addr = nk_allocT<void *>(ir.alloc);
-                //     *ref_addr = get_data_addr(reloc.target_ref_idx);
-                //
-                //     ref.kind = NkBcRef_Data;
-                //     ref.offset += (usize)ref_addr;
-                //     break;
-                // }
                 case NkIrRef_VariadicMarker: {
                     ref.kind = NkBcRef_VariadicMarker;
                     break;

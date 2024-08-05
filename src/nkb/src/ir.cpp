@@ -1,9 +1,10 @@
 #include "nkb/ir.h"
 
-#include <algorithm>
+#include <float.h>
 
 #include "cc_adapter.h"
 #include "ir_impl.h"
+#include "nkb/common.h"
 #include "ntk/allocator.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
@@ -264,8 +265,7 @@ NkIrData nkir_ptrGetTarget(NkIrProg ir, NkIrRef ref) {
         }
         reloc = reloc->next;
     }
-    nk_assert(reloc && "reloc target not found");
-    return reloc->target;
+    return reloc ? reloc->target : NkIrData{NKIR_INVALID_IDX};
 }
 
 nktype_t nkir_getProcType(NkIrProg ir, NkIrProc _proc) {
@@ -675,14 +675,13 @@ static char const *getVisivilityStr(NkIrVisibility vis) {
     switch (vis) {
         case NkIrVisibility_Default:
             return "pub ";
-        case NkIrVisibility_Hidden:
-            return "priv ";
-        case NkIrVisibility_Protected:
-            return "prot ";
-        case NkIrVisibility_Internal:
-            return "intern ";
         case NkIrVisibility_Local:
             return "local ";
+            // TODO: Properly specify symbol visibility
+        case NkIrVisibility_Hidden:
+        case NkIrVisibility_Protected:
+        case NkIrVisibility_Internal:
+            return "";
     }
 
     nk_assert(!"unreachable");
@@ -694,6 +693,107 @@ static bool isInlineDecl(NkIrDecl_T const &decl) {
            (decl.type->kind != NkIrType_Aggregate ||
             (decl.type->as.aggr.elems.size == 1 && decl.type->as.aggr.elems.data[0].type->kind == NkIrType_Numeric &&
              decl.type->as.aggr.elems.data[0].type->size == 1));
+}
+
+static void inspectVal(NkIrProg ir, NkIrRef const &ref, NkStream out, bool force_value = false) {
+    nk_assert(ref.kind == NkIrRef_Data && "rodata ref expected");
+
+    auto const data = nkir_dataRefDeref(ir, ref);
+    auto const type = ref.type;
+
+    auto const &decl = ir->data.data[ref.index];
+    if (!isInlineDecl(decl) && !force_value) {
+        if (decl.name) {
+            auto const name_str = nk_atom2s(decl.name);
+            nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
+        } else {
+            nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "_const" : "_data", ref.index);
+        }
+        return;
+    }
+
+    switch (type->kind) {
+        case NkIrType_Aggregate: {
+            for (usize elemi = 0; elemi < type->as.aggr.elems.size; elemi++) {
+                if (elemi) {
+                    nk_stream_printf(out, ", ");
+                }
+
+                auto const &elem = type->as.aggr.elems.data[elemi];
+
+                auto elem_ref = ref;
+                elem_ref.post_offset = elem.offset;
+                elem_ref.type = elem.type;
+
+                if (elem.type->kind == NkIrType_Numeric && elem.type->size == 1) {
+                    nk_stream_printf(out, "\"");
+                    nks_escape(out, {(char const *)nkir_dataRefDeref(ir, elem_ref), elem.count});
+                    nk_stream_printf(out, "\"");
+                } else {
+                    if (elemi == 0) {
+                        nk_stream_printf(out, "{");
+                    }
+                    if (elem.count > 1) {
+                        nk_stream_printf(out, "[");
+                    }
+                    for (usize i = 0; i < elem.count; i++) {
+                        if (i) {
+                            nk_stream_printf(out, ", ");
+                        }
+                        inspectVal(ir, elem_ref, out);
+                        elem_ref.post_offset += elem.type->size;
+                    }
+                    if (elem.count > 1) {
+                        nk_stream_printf(out, "]");
+                    }
+                    if (elemi == type->as.aggr.elems.size - 1) {
+                        nk_stream_printf(out, "}");
+                    }
+                }
+            }
+            break;
+        }
+
+        case NkIrType_Numeric: {
+            switch (type->as.num.value_type) {
+#define X(TYPE, VALUE_TYPE)                                          \
+    case VALUE_TYPE:                                                 \
+        nk_stream_printf(out, "%" NK_CAT(PRI, TYPE), *(TYPE *)data); \
+        break;
+                NKIR_NUMERIC_ITERATE_INT(X)
+#undef X
+                case Float32:
+                    nk_stream_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
+                    break;
+                case Float64:
+                    nk_stream_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
+                    break;
+                default:
+                    nk_assert(!"unreachable");
+                    break;
+            }
+            break;
+        }
+
+        case NkIrType_Pointer: {
+            auto const target = nkir_ptrGetTarget(ir, ref);
+            if (target.idx != NKIR_INVALID_IDX) {
+                nk_stream_printf(out, "&");
+                inspectVal(ir, nkir_makeDataRef(ir, target), out);
+            } else {
+                nk_stream_printf(out, "%p", *(void **)data);
+            }
+            break;
+        }
+
+        case NkIrType_Procedure:
+            nk_stream_printf(out, "%p", *(void **)data);
+            break;
+
+        case NkIrType_Count:
+            nk_assert(!"unreachable");
+            break;
+    }
 }
 
 void nkir_inspectData(NkIrProg ir, NkStream out) {
@@ -713,7 +813,7 @@ void nkir_inspectData(NkIrProg ir, NkStream out) {
                 nkirt_inspect(decl.type, out);
                 if (decl.data) {
                     nk_stream_printf(out, " ");
-                    nkirv_inspect(decl.data, decl.type, out);
+                    inspectVal(ir, nkir_makeDataRef(ir, {i}), out, true);
                 }
                 printed = true;
             }
@@ -938,8 +1038,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
         case NkIrRef_Data: {
             auto const &decl = ir->data.data[ref.index];
             if (isInlineDecl(decl)) {
-                void *data = nkir_dataRefDeref(ir, ref);
-                nkirv_inspect(data, ref.type, out);
+                inspectVal(ir, ref, out);
             } else {
                 if (decl.name) {
                     auto const name_str = nk_atom2s(decl.name);

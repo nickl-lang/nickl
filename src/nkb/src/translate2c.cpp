@@ -323,7 +323,9 @@ static void writeConst(WriterCtx &ctx, NkIrRef const &ref, NkStringBuilder *src)
         }
         case NkIrType_Pointer: {
             nksb_printf(src, "(void*)&");
-            writeData(ctx, nkir_ptrGetTarget(ctx.ir, ref), src, true);
+            auto const target = nkir_ptrGetTarget(ctx.ir, ref);
+            nk_assert(target.idx != NKIR_INVALID_IDX && "pointer target is not known");
+            writeData(ctx, target, src, true);
             break;
         }
         case NkIrType_Procedure:
@@ -348,9 +350,7 @@ static void writeData(WriterCtx &ctx, NkIrData _decl, NkStringBuilder *src, bool
 
     NkStringBuilder tmp_s{NKSB_INIT(ctx.alloc)};
 
-    if (decl.data) {
-        writeConst(ctx, nkir_makeDataRef(ctx.ir, _decl), &tmp_s);
-    }
+    writeConst(ctx, nkir_makeDataRef(ctx.ir, _decl), &tmp_s);
 
     NkString str{NKS_INIT(tmp_s)};
 

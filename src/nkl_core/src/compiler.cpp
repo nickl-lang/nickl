@@ -419,7 +419,12 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
             if (is_known) {
                 auto const rodata = nkir_makeRodata(ctx.ir, 0, nklt2nkirt(dst_t), NkIrVisibility_Local);
                 auto const dst = cast(nklt_slice_ptrType(dst_t), nkir_makeDataRef(ctx.ir, rodata));
-                nkir_addDataReloc(ctx.ir, dst, nkir_ptrGetTarget(ctx.ir, asRef(ctx, val)));
+                auto const target = nkir_ptrGetTarget(ctx.ir, asRef(ctx, val));
+                if (target.idx == NKIR_INVALID_IDX) {
+                    // TODO: Improve error message
+                    return error(ctx, "TODO: pointer target is not known");
+                }
+                nkir_addDataReloc(ctx.ir, dst, target);
                 (*(NkString *)nkir_getDataPtr(ctx.ir, rodata)).size = nklt_array_size(nklt_ptr_target(src_t));
                 val = makeConst(ctx, rodata);
             } else {
