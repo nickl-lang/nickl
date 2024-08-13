@@ -259,7 +259,6 @@ struct CompileConfig {
     nkltype_t res_t = nullptr;
     NklTypeClass res_tclass = NklType_None;
     bool is_const = false;
-    Decl *opt_resolved_decl = nullptr;
     NkIrRef dst{};
 };
 
@@ -543,7 +542,7 @@ static Interm resolveComptime(Decl &decl) {
 
     NK_LOG_DBG("Resolving comptime const: node#%u file=`%s`", nodeIdx(ctx.src, node), nk_atom2cs(ctx.src.file));
 
-    DEFINE(val, compile(ctx, val_n, {.res_t = type, .is_const = true, .opt_resolved_decl = &decl}));
+    DEFINE(val, compile(ctx, val_n, {.res_t = type, .is_const = true}));
 
     // TODO: Do we need this check, or is it always true?
     if (decl.kind != DeclKind_Complete) {
@@ -1365,8 +1364,6 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             if (!decl_name) {
                 return error(ctx, "invalid ast");
             }
-
-            nk_assert(conf.opt_resolved_decl && "invalid ast");
 
             auto &lib_n = nextNode(node_it);
             auto &proc_n = nextNode(node_it);

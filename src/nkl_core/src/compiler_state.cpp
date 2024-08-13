@@ -51,7 +51,7 @@ FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
 }
 
 NkIrLabel createLabel(Context &ctx, LabelName name) {
-    char const *fmt;
+    char const *fmt = "<nil>";
     switch (name) {
         case LabelName_Start:
             fmt = "@start%u";
