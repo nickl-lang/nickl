@@ -127,7 +127,7 @@ enum LabelName {
 struct ProcListNode {
     ProcListNode *next;
     NkIrProc proc;
-    DeferListNode *defer_node;
+    DeferListNode *active_defer_node;
     bool has_return_in_last_block;
     u32 label_counts[LabelName_Count];
 };

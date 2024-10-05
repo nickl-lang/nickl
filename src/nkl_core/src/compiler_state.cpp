@@ -96,8 +96,8 @@ void emit(Context &ctx, NkIrInstr const &instr) {
     nkir_inspectInstr(ctx.ir, ctx.proc_stack->proc, instr, nksb_getStream(&sb));
 #endif // ENABLE_LOGGING
 
-    if (ctx.proc_stack->defer_node) {
-        auto const defer_node = ctx.proc_stack->defer_node;
+    if (ctx.proc_stack->active_defer_node) {
+        auto const defer_node = ctx.proc_stack->active_defer_node;
 
         NK_LOG_DBG(
             "Emitting '" NKS_FMT "' into a defer node#%u file=`%s`",
@@ -118,9 +118,9 @@ static void emitDefersForScope(Context &ctx, Scope const *scope) {
     while (defer_node) {
         NK_LOG_DBG("Emitting defer blocks for node#%u file=`%s`", defer_node->node_idx, nk_atom2cs(defer_node->file));
 
-        if (ctx.proc_stack->defer_node) {
+        if (ctx.proc_stack->active_defer_node) {
             nkir_instrArrayDupInto(
-                ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &ctx.proc_stack->defer_node->instrs, scope->temp_arena);
+                ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &ctx.proc_stack->active_defer_node->instrs, scope->temp_arena);
         } else {
             auto frame = nk_arena_grab(scope->temp_arena);
             defer {

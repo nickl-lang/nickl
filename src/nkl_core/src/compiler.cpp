@@ -203,7 +203,7 @@ static auto pushProc(Context &ctx, NkIrProc proc) {
     auto proc_node = new (nk_arena_allocT<ProcListNode>(arena)) ProcListNode{
         .next{},
         .proc = proc,
-        .defer_node{},
+        .active_defer_node{},
         .has_return_in_last_block{},
         .label_counts{},
     };
@@ -544,16 +544,13 @@ static Interm resolveComptime(Decl &decl) {
 
     DEFINE(val, compile(ctx, val_n, {.res_t = type, .is_const = true}));
 
-    // TODO: Do we need this check, or is it always true?
-    if (decl.kind != DeclKind_Complete) {
-        if (!isValueKnown(val)) {
-            // TODO: Improve error message
-            return error(ctx, "value is not known");
-        }
-
-        decl.as.val = val.as.val;
-        decl.kind = DeclKind_Complete;
+    if (!isValueKnown(val)) {
+        // TODO: Improve error message
+        return error(ctx, "value is not known");
     }
+
+    decl.as.val = val.as.val;
+    decl.kind = DeclKind_Complete;
 
     return val;
 }
@@ -695,7 +692,6 @@ static Void leaveScope(Context &ctx) {
         auto &decl = resolve(ctx, export_node->name);
 
         nk_assert(decl.kind != DeclKind_Undefined);
-        // TODO: Verify that condition
         if (decl.kind == DeclKind_Incomplete) { // error occurred
             return {};
         }
@@ -1883,10 +1879,10 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             };
 
             {
-                auto const prev_defer_node = ctx.proc_stack->defer_node;
-                ctx.proc_stack->defer_node = defer_node;
+                auto const prev_defer_node = ctx.proc_stack->active_defer_node;
+                ctx.proc_stack->active_defer_node = defer_node;
                 defer {
-                    ctx.proc_stack->defer_node = prev_defer_node;
+                    ctx.proc_stack->active_defer_node = prev_defer_node;
                 };
 
 #ifdef ENABLE_LOGGING
