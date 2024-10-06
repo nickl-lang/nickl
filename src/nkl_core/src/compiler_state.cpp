@@ -120,7 +120,10 @@ static void emitDefersForScope(Context &ctx, Scope const *scope) {
 
         if (ctx.proc_stack->active_defer_node) {
             nkir_instrArrayDupInto(
-                ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &ctx.proc_stack->active_defer_node->instrs, scope->temp_arena);
+                ctx.ir,
+                {NK_SLICE_INIT(defer_node->instrs)},
+                &ctx.proc_stack->active_defer_node->instrs,
+                scope->temp_arena);
         } else {
             auto frame = nk_arena_grab(scope->temp_arena);
             defer {
@@ -258,9 +261,20 @@ static Decl &makeDecl(Context &ctx, NkAtom name) {
     return kv->val;
 }
 
+// TODO: Figure out having to deep-clone the context for unresolved decls
+template <class TNode>
+static TNode *cloneList(TNode *list, NkArena *arena) {
+    auto new_list = new (nk_arena_allocT<TNode>(arena)) TNode{*list};
+    if (new_list->next) {
+        new_list->next = cloneList(new_list->next, arena);
+    }
+    return new_list;
+}
+
 void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node) {
     // TODO: Choose arena based on the symbol visibility
-    auto ctx_copy = new (nk_arena_allocT<Context>(ctx.scope_stack->main_arena)) Context{
+    auto arena = ctx.scope_stack->main_arena;
+    auto ctx_copy = new (nk_arena_allocT<Context>(arena)) Context{
         .nkl = ctx.nkl,
         .c = ctx.c,
         .m = ctx.m,
@@ -269,9 +283,9 @@ void defineComptimeUnresolved(Context &ctx, NkAtom name, NklAstNode const &node)
         .top_level_proc = ctx.top_level_proc,
         .src = ctx.src,
 
-        .scope_stack = ctx.scope_stack,
-        .node_stack = ctx.node_stack,
-        .proc_stack = ctx.proc_stack,
+        .scope_stack = cloneList(ctx.scope_stack, arena),
+        .node_stack = cloneList(ctx.node_stack, arena),
+        .proc_stack = cloneList(ctx.proc_stack, arena),
     };
     makeDecl(ctx, name) = {{.unresolved{ctx_copy, &node}}, DeclKind_Unresolved};
 }

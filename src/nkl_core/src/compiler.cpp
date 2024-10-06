@@ -186,9 +186,8 @@ static NklAstNode const &nextNode(AstNodeIterator &it) {
     return next_node;
 }
 
-// TODO: Figure out exactly what arenas should be used for node and proc stacks
 static auto pushNode(Context &ctx, NklAstNode const &node) {
-    auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->main_arena)) NodeListNode{
+    auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->temp_arena)) NodeListNode{
         .next{},
         .node = node,
     };
@@ -199,7 +198,7 @@ static auto pushNode(Context &ctx, NklAstNode const &node) {
 }
 
 static auto pushProc(Context &ctx, NkIrProc proc) {
-    auto const arena = ctx.scope_stack ? ctx.scope_stack->main_arena : getNextTempArena(ctx.c, nullptr);
+    auto const arena = ctx.scope_stack ? ctx.scope_stack->temp_arena : getNextTempArena(ctx.c, nullptr);
     auto proc_node = new (nk_arena_allocT<ProcListNode>(arena)) ProcListNode{
         .next{},
         .proc = proc,
@@ -1160,7 +1159,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             return makeVoid(ctx);
         }
 
-        // TODO: Usint *void as a nickl state ptr type for now
+        // TODO: Using *void as a nickl state ptr type for now
         case n_nickl: {
             return makeConst<void *>(ctx, nkl_get_ptr(ctx.nkl, ctx.c->word_size, ctx.c->void_t(), false), ctx.nkl);
         }
