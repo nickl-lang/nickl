@@ -186,27 +186,15 @@ static NklAstNode const &nextNode(AstNodeIterator &it) {
     return next_node;
 }
 
-static auto pushNode(Context &ctx, NklAstNode const &node) {
-    auto new_stack_node = new (nk_arena_allocT<NodeListNode>(ctx.scope_stack->temp_arena)) NodeListNode{
-        .next{},
-        .node = node,
-    };
+static auto pushNode(Context &ctx, NodeListNode *new_stack_node) {
     nk_list_push(ctx.node_stack, new_stack_node);
     return nk_defer([&ctx]() {
         nk_list_pop(ctx.node_stack);
     });
 }
 
-static auto pushProc(Context &ctx, NkIrProc proc) {
-    auto const arena = ctx.scope_stack ? ctx.scope_stack->temp_arena : getNextTempArena(ctx.c, nullptr);
-    auto proc_node = new (nk_arena_allocT<ProcListNode>(arena)) ProcListNode{
-        .next{},
-        .proc = proc,
-        .active_defer_node{},
-        .has_return_in_last_block{},
-        .label_counts{},
-    };
-    nk_list_push(ctx.proc_stack, proc_node);
+static auto pushProc(Context &ctx, ProcListNode *new_stack_node) {
+    nk_list_push(ctx.proc_stack, new_stack_node);
     auto const prev_proc = nkir_getActiveProc(ctx.ir);
     return nk_defer([&ctx, prev_proc]() {
         nk_list_pop(ctx.proc_stack);
@@ -397,7 +385,8 @@ static Interm compile(Context &ctx, NklAstNode const &node, CompileConfig const 
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto const pop_node = pushNode(ctx, node);
+    NodeListNode node_stack_node{{}, node};
+    auto const pop_node = pushNode(ctx, &node_stack_node);
 
     DEFINE(val, compileImpl(ctx, node, conf));
 
@@ -761,7 +750,14 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
     Scope *proc_scope = 0;
     {
-        auto const pop_proc = pushProc(ctx, proc);
+        ProcListNode proc_stack_node{
+            .next{},
+            .proc = proc,
+            .active_defer_node{},
+            .has_return_in_last_block{},
+            .label_counts{},
+        };
+        auto const pop_proc = pushProc(ctx, &proc_stack_node);
         auto const leave = enterProcScope(ctx, descr.name);
 
         proc_scope = ctx.scope_stack;
@@ -954,7 +950,8 @@ static Interm getIndex(Context &ctx, Interm const &lhs, Interm const &idx) {
 
 // TODO: Provide type in getLvalueRef?
 static Interm compileLvalueRef(Context &ctx, NklAstNode const &node) {
-    auto const pop_node = pushNode(ctx, node);
+    NodeListNode node_stack_node{{}, node};
+    auto const pop_node = pushNode(ctx, &node_stack_node);
 
     auto node_it = nodeIterate(ctx.src, node);
 
@@ -1099,7 +1096,8 @@ static Interm compileLogicExpr(
 }
 
 static Interm compileLogic(Context &ctx, NklAstNode const &node, bool invert) {
-    auto const pop_node = pushNode(ctx, node);
+    NodeListNode node_stack_node{{}, node};
+    auto const pop_node = pushNode(ctx, &node_stack_node);
 
     auto node_it = nodeIterate(ctx.src, node);
 
