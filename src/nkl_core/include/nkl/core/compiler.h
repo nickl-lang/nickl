@@ -28,10 +28,10 @@ NK_EXPORT NklError *nkl_getCompileErrorList(NklCompiler c);
 
 NK_EXPORT NklModule nkl_createModule(NklCompiler c);
 
-NK_EXPORT bool nkl_runModule(NklModule m);
 NK_EXPORT bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf);
 
 NK_EXPORT bool nkl_compileFile(NklModule m, NkString filename);
+NK_EXPORT bool nkl_runFile(NklModule m, NkString filename);
 
 #ifdef __cplusplus
 }

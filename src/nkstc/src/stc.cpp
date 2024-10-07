@@ -73,12 +73,7 @@ int nkst_run(NklState nkl, NkString in_file) {
     };
 
     auto m = nkl_createModule(c);
-    if (!nkl_compileFile(m, in_file)) {
-        printDiag(nkl, c);
-        return 1;
-    }
-
-    if (!nkl_runModule(m)) {
+    if (!nkl_runFile(m, in_file)) {
         printDiag(nkl, c);
         return 1;
     }

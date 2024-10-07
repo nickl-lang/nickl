@@ -170,7 +170,6 @@ NK_HASH_TREE_PROTO(FileContextMap, FileContext_kv, NkAtom);
 
 struct NklCompiler_T {
     NkIrProg ir;
-    NkIrProc top_level_proc;
     NkIrProc entry_point;
 
     NkArena run_ctx_temp_arena;

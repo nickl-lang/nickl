@@ -237,15 +237,16 @@ void pushPublicScope(Context &ctx) {
 }
 
 void pushPrivateScope(Context &ctx) {
-    auto cur_scope = ctx.scope_stack;
-    NK_LOG_DBG("Leaving scope=%p", (void *)cur_scope);
+    auto const cur_scope = ctx.scope_stack;
     nk_assert(cur_scope && "top level scope cannot be private");
     pushScope(ctx, cur_scope->temp_arena, getNextTempArena(ctx.c, cur_scope->temp_arena));
 }
 
 void popScope(Context &ctx) {
-    nk_assert(ctx.scope_stack && "no current scope");
-    nk_arena_popFrame(ctx.scope_stack->temp_arena, ctx.scope_stack->temp_frame);
+    auto const cur_scope = ctx.scope_stack;
+    nk_assert(cur_scope && "no current scope");
+    NK_LOG_DBG("Leaving scope=%p", (void *)cur_scope);
+    nk_arena_popFrame(cur_scope->temp_arena, cur_scope->temp_frame);
     nk_list_pop(ctx.scope_stack);
 }
 

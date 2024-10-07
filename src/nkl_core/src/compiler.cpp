@@ -70,7 +70,6 @@ NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
     NkArena arena{};
     auto c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .ir{},
-        .top_level_proc{NKIR_INVALID_IDX},
         .entry_point{NKIR_INVALID_IDX},
 
         .run_ctx_temp_arena{},
@@ -118,28 +117,6 @@ NklModule nkl_createModule(NklCompiler c) {
 
         .export_set{nullptr, alloc},
     };
-}
-
-bool nkl_runModule(NklModule m) {
-    NK_PROF_FUNC();
-    NK_LOG_TRC("%s", __func__);
-
-    auto c = m->c;
-
-    nkl_errorStateEquip(&c->errors);
-    defer {
-        nkl_errorStateUnequip();
-    };
-
-    nk_assert(c->top_level_proc.idx != NKIR_INVALID_IDX);
-
-    if (!nkir_invoke(c->run_ctx, c->top_level_proc, {}, {})) {
-        auto const msg = nkir_getRunErrorString(c->run_ctx);
-        nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
-        return false;
-    }
-
-    return true;
 }
 
 bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf) {
@@ -1942,13 +1919,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
 
     DEFINE(&ctx, *importFile(c, filename));
 
-    // TODO: Storing top level proc for the whole compiler on every compileFile call
-    c->top_level_proc = ctx.top_level_proc;
-
-    // TODO: Check for export conflicts when merging modules
-    nkir_mergeModules(m->mod, ctx.m->mod);
-
-    // TODO: Move validation somewhere away along with top level proc storage
+    // TODO: Move validation somewhere away
 #ifndef NDEBUG
     if (!nkir_validateProgram(c->ir)) {
         auto const file = getFileId(filename);
@@ -1966,6 +1937,50 @@ bool nkl_compileFile(NklModule m, NkString filename) {
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
 #endif // ENABLE_LOGGING
+
+    // TODO: Check for export conflicts when merging modules
+    nkir_mergeModules(m->mod, ctx.m->mod);
+
+    return true;
+}
+
+bool nkl_runFile(NklModule m, NkString filename) {
+    NK_PROF_FUNC();
+    NK_LOG_TRC("%s", __func__);
+
+    auto c = m->c;
+
+    nkl_errorStateEquip(&c->errors);
+    defer {
+        nkl_errorStateUnequip();
+    };
+
+    DEFINE(&ctx, *importFile(c, filename));
+
+    // TODO: Boilerplate between nkl_compileFile and nkl_runFile
+#ifndef NDEBUG
+    if (!nkir_validateProgram(c->ir)) {
+        auto const file = getFileId(filename);
+        nkl_reportError(file, 0, "IR validation failed");
+        return false;
+    }
+#endif // NDEBUG
+
+#ifdef ENABLE_LOGGING
+    {
+        NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(ctx.scope_stack->temp_arena))};
+        auto const out = nksb_getStream(&sb);
+        nkir_inspectData(c->ir, out);
+        nkir_inspectExternSyms(c->ir, out);
+        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif // ENABLE_LOGGING
+
+    if (!nkir_invoke(c->run_ctx, ctx.top_level_proc, {}, {})) {
+        auto const msg = nkir_getRunErrorString(c->run_ctx);
+        nkl_reportError(0, 0, NKS_FMT, NKS_ARG(msg));
+        return false;
+    }
 
     return true;
 }
