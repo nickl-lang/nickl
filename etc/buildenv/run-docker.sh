@@ -36,7 +36,6 @@ docker run \
     $TTY_ARG \
     --rm \
     -h $(hostname) \
-    --device=/dev/dri/card0:/dev/dri/card0 \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /etc/shadow:/etc/shadow:ro \

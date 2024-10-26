@@ -2,9 +2,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword nkstKeyword nullptr proc link const pub const import param call return context run var assign struct member if while addr deref export index defer scope nickl
-syn keyword nkstKeyword add sub mul div mod bitand bitor xor lsh rsh and or not
-syn keyword nkstKeyword eq ne lt le gt ge
+syn match nkstKeyword    display '(\w*'ms=s+1
 
 syn keyword nkstType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void ptr slice array usize string type_t any_t bool
 syn keyword nkstBoolean true false

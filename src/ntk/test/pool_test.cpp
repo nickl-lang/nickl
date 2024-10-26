@@ -50,3 +50,27 @@ TEST_F(Pool, reuse) {
     EXPECT_EQ(*c, 0);
     EXPECT_NE(a, c);
 }
+
+TEST_F(Pool, shared_ptr) {
+    IntPool pool{};
+    defer {
+        IntPool_free(&pool);
+    };
+
+    int *a_addr = nullptr;
+
+    {
+        auto a = IntPool_allocShared(&pool);
+        EXPECT_EQ(*a, 0);
+
+        a_addr = a.get();
+
+        int *b = IntPool_alloc(&pool);
+        EXPECT_EQ(*b, 0);
+        EXPECT_NE(a_addr, b);
+    }
+
+    int *c = IntPool_alloc(&pool);
+    EXPECT_EQ(*c, 0);
+    EXPECT_EQ(a_addr, c);
+}
