@@ -1,0 +1,64 @@
+ARG BASE_IMAGE=buildenv-nickl-new-common:latest
+ARG GCC_IMAGE=buildenv-nickl-new-gcc:latest
+
+FROM $GCC_IMAGE AS gcc
+
+FROM $BASE_IMAGE
+
+COPY --from=gcc /opt/ /opt/gcc/
+
+ADD toolchain_gcc.sh /opt/gcc/toolchain.sh
+
+ARG M4_VERSION=1.4.19
+RUN cd /root \
+ && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
+ && tar xvf m4-$M4_VERSION.tar.gz \
+ && cd m4-$M4_VERSION \
+ && ./configure --prefix=/usr/local \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    automake \
+    libltdl-dev \
+    libtool \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG AUTOCONF_VERSION=2.72
+RUN cd /root \
+ && wget http://ftp.gnu.org/gnu/autoconf/autoconf-$AUTOCONF_VERSION.tar.gz \
+ && tar xvf autoconf-$AUTOCONF_VERSION.tar.gz \
+ && cd autoconf-$AUTOCONF_VERSION \
+ && ./configure --prefix=/usr/local \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
+
+ARG LIBFFI_VERSION=v3.4.7
+RUN cd /root \
+ && git clone --depth=1 --branch=$LIBFFI_VERSION https://github.com/libffi/libffi \
+ && cd libffi \
+ && . /opt/gcc/toolchain.sh \
+ && ./autogen.sh \
+ && ./configure \
+     --disable-docs \
+     CFLAGS="$CFLAGS -fPIC" \
+     CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -fPIC" \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgmock-dev \
+    libgtest-dev \
+    libjson-c-dev \
+ && rm -rf /var/lib/apt/lists/*
+    # libffi-dev \
+
+ADD install_spall.sh /root/
+RUN /root/install_spall.sh /usr
+RUN rm /root/install_spall.sh

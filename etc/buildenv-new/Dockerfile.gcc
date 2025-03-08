@@ -1,0 +1,46 @@
+ARG BASE_IMAGE=buildenv-nickl-new-common:latest
+
+FROM $BASE_IMAGE
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgmp3-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    zstd \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG BINUTILS_VERSION=2.44
+RUN cd /root \
+ && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.zst \
+ && tar xvf binutils-$BINUTILS_VERSION.tar.zst \
+ && cd binutils-$BINUTILS_VERSION \
+ && ./configure -v \
+     --build=x86_64-linux-gnu \
+     --host=x86_64-linux-gnu \
+     --target=x86_64-linux-gnu \
+     --prefix=/opt \
+     --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/binutils-$BINUTILS_VERSION \
+ && rm -rf /root/binutils-$BINUTILS_VERSION.tar.zst \
+ ;
+
+ARG GCC_VERSION=14.2.0
+RUN cd /root \
+ && wget http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
+ && tar xvf gcc-$GCC_VERSION.tar.gz \
+ && cd gcc-$GCC_VERSION \
+ && ./configure -v \
+     --build=x86_64-linux-gnu \
+     --host=x86_64-linux-gnu \
+     --target=x86_64-linux-gnu \
+     --prefix=/opt \
+     --enable-checking=release \
+     --enable-languages=c,c++ \
+     --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/gcc-$GCC_VERSION \
+ && rm -rf /root/gcc-$GCC_VERSION.tar.gz \
+ ;
