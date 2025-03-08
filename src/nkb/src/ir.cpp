@@ -1,5 +1,7 @@
 #include "nkb/ir.h"
 
+#include <algorithm>
+
 #include <float.h>
 
 #include "cc_adapter.h"

@@ -19,11 +19,4 @@ set_target_properties(Shlwapi PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
-set(SYSTEM_DEPS
-    # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libgcc_s_seh-1.dll
-    # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libssp-0.dll
-    # /usr/lib/gcc/${TOOLCHAIN_PREFIX}/${TOOLCHAIN_VERSISON}/libstdc++-6.dll
-    # /usr/${TOOLCHAIN_PREFIX}/lib/libwinpthread-1.dll
-    )
-
-set(PLATFORM_CXX_FLAGS "-fstack-protector -static-libstdc++")
+set(PLATFORM_CXX_FLAGS "-fstack-protector -static-libstdc++ -static-libgcc")

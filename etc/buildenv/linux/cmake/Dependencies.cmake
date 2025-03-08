@@ -3,7 +3,7 @@ set(PLATFORM_INCLUDE_DIR /usr/include)
 
 add_library(Ffi STATIC IMPORTED)
 set_target_properties(Ffi PROPERTIES
-    IMPORTED_LOCATION ${PLATFORM_PREFIX}/libffi.a
+    IMPORTED_LOCATION /usr/local/lib64/libffi.a
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
@@ -13,7 +13,4 @@ set_target_properties(Dl PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 
-set(SYSTEM_DEPS
-    # /lib/x86_64-linux-gnu/libstdc++.so.6
-    # /lib/x86_64-linux-gnu/libgcc_s.so.1
-    )
+set(PLATFORM_CXX_FLAGS "-static-libstdc++ -static-libgcc")
