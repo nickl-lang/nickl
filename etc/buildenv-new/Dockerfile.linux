@@ -3,17 +3,20 @@ ARG GCC_IMAGE=buildenv-nickl-new-gcc:latest
 
 FROM $GCC_IMAGE AS gcc
 
-FROM $BASE_IMAGE
+FROM $BASE_IMAGE AS base
 
 COPY --from=gcc /opt/ /opt/gcc/
 
 ADD toolchain_gcc.sh /opt/gcc/toolchain.sh
+
+FROM base AS libffi
 
 ARG M4_VERSION=1.4.19
 RUN cd /root \
  && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
  && tar xvf m4-$M4_VERSION.tar.gz \
  && cd m4-$M4_VERSION \
+ && . /opt/gcc/toolchain.sh \
  && ./configure --prefix=/usr/local \
  && make -j \
  && make install \
@@ -31,6 +34,7 @@ RUN cd /root \
  && wget http://ftp.gnu.org/gnu/autoconf/autoconf-$AUTOCONF_VERSION.tar.gz \
  && tar xvf autoconf-$AUTOCONF_VERSION.tar.gz \
  && cd autoconf-$AUTOCONF_VERSION \
+ && . /opt/gcc/toolchain.sh \
  && ./configure --prefix=/usr/local \
  && make -j \
  && make install \
@@ -44,6 +48,7 @@ RUN cd /root \
  && . /opt/gcc/toolchain.sh \
  && ./autogen.sh \
  && ./configure \
+     --prefix=/opt/libffi \
      --disable-docs \
      CFLAGS="$CFLAGS -fPIC" \
      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -fPIC" \
@@ -52,12 +57,15 @@ RUN cd /root \
  && rm -rf /root/* \
  ;
 
+FROM base
+
+COPY --from=libffi /opt/libffi/ /usr/local/
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgmock-dev \
     libgtest-dev \
     libjson-c-dev \
  && rm -rf /var/lib/apt/lists/*
-    # libffi-dev \
 
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh /usr

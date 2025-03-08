@@ -2,6 +2,8 @@
 
 TOOLS="/opt/gcc"
 
+export PATH="$TOOLS/bin:$PATH"
+
 export CC="$TOOLS/bin/gcc"
 export CXX="$TOOLS/bin/g++"
 export LD="$TOOLS/bin/ld"

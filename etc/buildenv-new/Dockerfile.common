@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -10,8 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdb \
     git \
     less \
-    libcurl4-openssl-dev \
-    libssl-dev \
     locales \
     ninja-build \
     openssl \
@@ -32,6 +30,12 @@ RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=C
 
+FROM base AS cmake
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 ARG CMAKE_VERSION=3.31.6
 RUN cd /root \
  && wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz \
@@ -39,7 +43,7 @@ RUN cd /root \
  && cd cmake-$CMAKE_VERSION \
  && ./bootstrap \
      --parallel=$(nproc) \
-     --prefix=/usr \
+     --prefix=/opt/cmake \
      -- \
      -DBUILD_TESTING=OFF \
      -DCMAKE_BUILD_TYPE=Release \
@@ -47,3 +51,7 @@ RUN cd /root \
  && make install \
  && rm -rf /root/* \
  ;
+
+ FROM base
+
+ COPY --from=cmake /opt/cmake/ /usr/local/
