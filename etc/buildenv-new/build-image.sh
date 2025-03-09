@@ -3,10 +3,10 @@
 set -e
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 
-if [ -z "$IMAGE" ]; then
-  IMAGE=linux
+if [ -z "$TARGET" ]; then
+  TARGET=linux
 fi
 
-IMAGE_NAME=buildenv-nickl-new-$IMAGE:latest
+IMAGE=buildenv-nickl-new-$TARGET:latest
 
-docker build -t $IMAGE_NAME -f $DIR/Dockerfile.$IMAGE $@ $DIR
+docker build -t $IMAGE --target $TARGET $@ $DIR

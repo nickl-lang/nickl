@@ -1,8 +1,0 @@
-ARG BASE_IMAGE=buildenv-nickl-new-common:latest
-ARG GCC_IMAGE=buildenv-nickl-new-gcc-mingw64:latest
-
-FROM $GCC_IMAGE AS gcc
-
-FROM $BASE_IMAGE AS base
-
-COPY --from=gcc /opt/ /opt/gcc/

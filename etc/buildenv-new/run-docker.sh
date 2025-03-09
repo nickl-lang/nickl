@@ -3,8 +3,8 @@
 set -e
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 
-if [ -z "$IMAGE" ]; then
-  IMAGE=linux
+if [ -z "$TARGET" ]; then
+  TARGET=linux
 fi
 
 PROJECTDIR=$(realpath $DIR/../..)
@@ -12,9 +12,9 @@ DOCKERHOME=$PROJECTDIR/out/home
 
 mkdir -p $DOCKERHOME
 
-IMAGE_NAME=buildenv-nickl-new-$IMAGE:latest
+IMAGE=buildenv-nickl-new-$TARGET:latest
 
-echo "Running docker image $IMAGE_NAME"
+echo "Running docker image $IMAGE"
 
 if [ -t 0 ]; then
   TTY_ARG="-ti"
@@ -22,14 +22,14 @@ else
   TTY_ARG=""
 fi
 
-IMAGE_PRINTABLE=$(echo $IMAGE_NAME | sed 's/:/-/g')
+IMAGE_PRINTABLE=$(echo $IMAGE | sed 's/:/-/g')
 PASSWD_FILE=/etc/passwd
 GROUPS_FILE=/etc/group
 DOCKER_PASSWD_FILE=/tmp/passwd-$IMAGE_PRINTABLE
 DOCKER_GROUPS_FILE=/tmp/group-$IMAGE_PRINTABLE
 
 if [ ! -e $DOCKER_PASSWD_FILE -o ! -e $DOCKER_GROUPS_FILE ]; then
-    ID=$(docker create $IMAGE_NAME)
+    ID=$(docker create $IMAGE)
     if [ ! -e $DOCKER_PASSWD_FILE ]; then
         docker cp $ID:$PASSWD_FILE $DOCKER_PASSWD_FILE
         echo "$(getent passwd $(id -u))" >> $DOCKER_PASSWD_FILE
@@ -74,4 +74,4 @@ docker run \
   -v $DOCKERHOME:$HOME \
   -v $PROJECTDIR:$PROJECTDIR \
   $EXTRA_DOCKER_OPTS \
-  $IMAGE_NAME "$@"
+  $IMAGE "$@"
