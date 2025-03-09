@@ -188,9 +188,21 @@ RUN cd /root/gcc-$GCC_VERSION \
  && make install-strip \
  ;
 
+### toolchain-mingw-common #####################################################
+
+FROM toolchain-common AS toolchain-mingw-common
+
+ARG MINGW_VERSION=v12.0.0
+RUN cd /root \
+ && wget https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-$MINGW_VERSION.tar.bz2/download \
+      -O mingw-w64.tar.bz2 \
+ && tar xvf mingw-w64.tar.bz2 \
+ && rm mingw-w64.tar.bz2 \
+ ;
+
 ### toolchain-mingw ############################################################
 
-FROM toolchain-common AS toolchain-mingw
+FROM toolchain-mingw-common AS toolchain-mingw
 
 RUN cd /root/binutils-$BINUTILS_VERSION \
  && mkdir build \
@@ -205,14 +217,6 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  ;
 
 ENV PATH="/opt/bin/:$PATH"
-
-ARG MINGW_VERSION=v12.0.0
-RUN cd /root \
- && wget https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-$MINGW_VERSION.tar.bz2/download \
-      -O mingw-w64.tar.bz2 \
- && tar xvf mingw-w64.tar.bz2 \
- && rm mingw-w64.tar.bz2 \
- ;
 
 RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
  && mkdir build \
@@ -262,17 +266,6 @@ RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
  && make install-strip \
  ;
 
-RUN ln -sf x86_64-w64-mingw32-gcc /opt/bin/gcc \
- && ln -sf x86_64-w64-mingw32-g++ /opt/bin/g++ \
- && ln -sf x86_64-w64-mingw32-ld /opt/bin/ld \
- && ln -sf x86_64-w64-mingw32-ar /opt/bin/ar \
- && ln -sf x86_64-w64-mingw32-nm /opt/bin/nm \
- && ln -sf x86_64-w64-mingw32-objcopy /opt/bin/objcopy \
- && ln -sf x86_64-w64-mingw32-objdump /opt/bin/objdump \
- && ln -sf x86_64-w64-mingw32-ranlib /opt/bin/ranlib \
- && ln -sf x86_64-w64-mingw32-strip /opt/bin/strip \
- ;
-
 ### linux ######################################################################
 
 FROM common AS linux
@@ -317,6 +310,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh /usr/local
 RUN rm /root/install_spall.sh
+
+### toolchain-mingw-native #####################################################
+
+FROM toolchain-mingw-common AS toolchain-mingw-native
+
+COPY --from=toolchain-mingw /opt/ /opt/toolchain/
+
+ENV PATH="/opt/toolchain/bin:$PATH"
+
+RUN cd /root/binutils-$BINUTILS_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=x86_64-w64-mingw32 \
+      --prefix=/opt/toolchain-native \
+      --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/binutils-gdb \
+ ;
 
 ### mingw ######################################################################
 
@@ -375,6 +388,8 @@ RUN git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/google
  && ninja -C build install \
  && rm -rf /root/* \
  ;
+
+COPY --from=toolchain-mingw-native /opt/ /opt/toolchain/native
 
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh /opt/toolchain
