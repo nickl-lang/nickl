@@ -1,0 +1,70 @@
+ARG BASE_IMAGE=buildenv-nickl-new-common:latest
+
+FROM $BASE_IMAGE
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    zstd \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG BINUTILS_VERSION=2.44
+RUN cd /root \
+ && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.zst \
+ && tar xvf binutils-$BINUTILS_VERSION.tar.zst \
+ && cd binutils-$BINUTILS_VERSION \
+ && ./configure -v \
+     --target=x86_64-w64-mingw32 \
+     --prefix=/opt \
+     --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/* \
+ ;
+
+# ARG BINUTILS_VERSION=binutils-2_44
+# RUN cd /root \
+#  && git clone --depth=1 --branch=$BINUTILS_VERSION git://sourceware.org/git/binutils-gdb.git \
+#  && cd binutils-gdb \
+#  && ./configure -v \
+#      --target=x86_64-w64-mingw32 \
+#      --prefix=/opt \
+#      --disable-multilib \
+#  && make -j \
+#  && make install-strip \
+#  && rm -rf /root/* \
+#  ;
+
+ENV PATH="/opt/bin/:$PATH"
+
+ARG MINGW_VERSION=v12.0.0
+ARG GCC_VERSION=14.2.0
+RUN cd /root \
+ && git clone --depth=1 --branch=$MINGW_VERSION https://git.code.sf.net/p/mingw-w64/mingw-w64 \
+ && wget http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
+ && tar xvf gcc-$GCC_VERSION.tar.gz \
+ && cd /root/gcc-$GCC_VERSION \
+ && ./contrib/download_prerequisites \
+ && cd /root/mingw-w64/mingw-w64-headers \
+ && ./configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/x86_64-w64-mingw32 \
+ && make install \
+ && cd /root/gcc-$GCC_VERSION \
+ && ./configure -v \
+     --target=x86_64-w64-mingw32 \
+     --prefix=/opt \
+     --enable-checking=release \
+     --enable-languages=c,c++ \
+     --disable-multilib \
+ && make -j all-gcc \
+ && make install-strip-gcc \
+ && cd /root/mingw-w64 \
+ && ./configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/x86_64-w64-mingw32 \
+ && make \
+ && make install \
+ && cd /root/gcc-$GCC_VERSION \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/* \
+ ;

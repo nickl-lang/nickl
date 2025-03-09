@@ -22,8 +22,7 @@ RUN cd /root \
      --disable-multilib \
  && make -j \
  && make install-strip \
- && rm -rf /root/binutils-$BINUTILS_VERSION \
- && rm -rf /root/binutils-$BINUTILS_VERSION.tar.zst \
+ && rm -rf /root/* \
  ;
 
 ARG GCC_VERSION=14.2.0
@@ -41,6 +40,5 @@ RUN cd /root \
      --disable-multilib \
  && make -j \
  && make install-strip \
- && rm -rf /root/gcc-$GCC_VERSION \
- && rm -rf /root/gcc-$GCC_VERSION.tar.gz \
+ && rm -rf /root/* \
  ;
