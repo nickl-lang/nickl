@@ -298,9 +298,19 @@ RUN cd /root \
  && rm -rf /root/* \
  ;
 
+ARG GTEST_VERSION=v1.16.0
+RUN git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
+ && cd googletest \
+ && . /opt/toolchain/env.sh \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
+ && ninja -C build \
+ && ninja -C build install \
+ && rm -rf /root/* \
+ ;
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgmock-dev \
-    libgtest-dev \
     libjson-c-dev \
  && rm -rf /var/lib/apt/lists/*
 
