@@ -46,11 +46,11 @@ RUN cd /root \
  && tar xzf cmake-$CMAKE_VERSION.tar.gz \
  && cd cmake-$CMAKE_VERSION \
  && ./bootstrap \
-     --parallel=$(nproc) \
-     --prefix=/opt/cmake \
-     -- \
-     -DBUILD_TESTING=OFF \
-     -DCMAKE_BUILD_TYPE=Release \
+      --parallel=$(nproc) \
+      --prefix=/opt/cmake \
+      -- \
+      -DBUILD_TESTING=OFF \
+      -DCMAKE_BUILD_TYPE=Release \
  && make -j \
  && make install \
  && rm -rf /root/* \
@@ -61,22 +61,6 @@ RUN cd /root \
 FROM base AS common
 
 COPY --from=cmake /opt/cmake/ /usr/local/
-
-### m4 #########################################################################
-
-FROM common AS m4
-
-ARG M4_VERSION=1.4.19
-RUN cd /root \
- && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
- && tar xvf m4-$M4_VERSION.tar.gz \
- && cd m4-$M4_VERSION \
- && ./configure -v \
-      --prefix=/opt \
- && make -j \
- && make install-strip \
- && rm -rf /root/* \
- ;
 
 ### toolchain-common ###########################################################
 
@@ -108,8 +92,8 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --prefix=/opt \
-     --disable-multilib \
+      --prefix=/opt \
+      --disable-multilib \
  && make -j \
  && make install-strip \
  && rm -rf /root/binutils-gdb \
@@ -117,14 +101,26 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
 
 ENV PATH="/opt/bin/:$PATH"
 
-COPY --from=m4 /opt/ /usr/local/
+ARG M4_VERSION=1.4.19
+RUN cd /root \
+ && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
+ && tar xvf m4-$M4_VERSION.tar.gz \
+ && cd m4-$M4_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/usr/local \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/m4-$M4_VERSION \
+ ;
 
 RUN cd /root/gcc-$GCC_VERSION/gmp \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --prefix=/opt \
-     --enable-shared \
+      --prefix=/opt \
+      --enable-shared \
  && make -j \
  && make install-strip \
  && make distclean \
@@ -134,9 +130,9 @@ RUN cd /root/gcc-$GCC_VERSION/mpfr \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --prefix=/opt \
-     --with-gmp=/opt \
-     --enable-shared \
+      --prefix=/opt \
+      --with-gmp=/opt \
+      --enable-shared \
  && make -j \
  && make install-strip \
  && make distclean \
@@ -146,10 +142,10 @@ RUN cd /root/gcc-$GCC_VERSION/mpc \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --prefix=/opt \
-     --with-gmp=/opt \
-     --with-mpfr=/opt \
-     --enable-shared \
+      --prefix=/opt \
+      --with-gmp=/opt \
+      --with-mpfr=/opt \
+      --enable-shared \
  && make -j \
  && make install-strip \
  && make distclean \
@@ -170,12 +166,12 @@ RUN cd /root/gdb-$GDB_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --prefix=/opt \
-     --with-gmp=/opt \
-     --with-mpfr=/opt \
-     --with-mpc=/opt \
-     --with-python=python3 \
-     --with-tui \
+      --prefix=/opt \
+      --with-gmp=/opt \
+      --with-mpfr=/opt \
+      --with-mpc=/opt \
+      --with-python=python3 \
+      --with-tui \
  && make -j \
  && make install-strip \
  ;
@@ -184,10 +180,10 @@ RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --prefix=/opt \
-     --enable-checking=release \
-     --enable-languages=c,c++ \
-     --disable-multilib \
+      --prefix=/opt \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --disable-multilib \
  && make -j \
  && make install-strip \
  ;
@@ -196,15 +192,13 @@ RUN cd /root/gcc-$GCC_VERSION \
 
 FROM toolchain-common AS toolchain-mingw
 
-COPY --from=toolchain-common /root/ /root/
-
 RUN cd /root/binutils-$BINUTILS_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --target=x86_64-w64-mingw32 \
-     --prefix=/opt \
-     --disable-multilib \
+      --target=x86_64-w64-mingw32 \
+      --prefix=/opt \
+      --disable-multilib \
  && make -j \
  && make install-strip \
  && rm -rf /root/binutils-gdb \
@@ -212,10 +206,10 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
 
 ENV PATH="/opt/bin/:$PATH"
 
-# TODO: Try downgrading mingw version?
 ARG MINGW_VERSION=v12.0.0
 RUN cd /root \
- && wget https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-$MINGW_VERSION.tar.bz2/download -O mingw-w64.tar.bz2 \
+ && wget https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-$MINGW_VERSION.tar.bz2/download \
+      -O mingw-w64.tar.bz2 \
  && tar xvf mingw-w64.tar.bz2 \
  && rm mingw-w64.tar.bz2 \
  ;
@@ -224,8 +218,8 @@ RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --host=x86_64-w64-mingw32 \
-     --prefix=/opt/x86_64-w64-mingw32 \
+      --host=x86_64-w64-mingw32 \
+      --prefix=/opt/x86_64-w64-mingw32 \
  && make install \
  ;
 
@@ -233,11 +227,11 @@ RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --target=x86_64-w64-mingw32 \
-     --prefix=/opt \
-     --enable-checking=release \
-     --enable-languages=c,c++ \
-     --disable-multilib \
+      --target=x86_64-w64-mingw32 \
+      --prefix=/opt \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --disable-multilib \
  && make -j all-gcc \
  && make install-strip-gcc \
  ;
@@ -246,8 +240,8 @@ RUN cd /root/mingw-w64-$MINGW_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --host=x86_64-w64-mingw32 \
-     --prefix=/opt/x86_64-w64-mingw32 \
+      --host=x86_64-w64-mingw32 \
+      --prefix=/opt/x86_64-w64-mingw32 \
  && make -j \
  && make install-strip \
  ;
@@ -291,14 +285,14 @@ RUN cd /root \
  && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
  && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
  && cd libffi-$LIBFFI_VERSION \
- && . /opt/toolchain/env.sh \
  && mkdir build \
  && cd build \
+ && . /opt/toolchain/env.sh \
  && ../configure -v \
-     --prefix=/opt/toolchain \
-     --disable-docs \
-     CFLAGS="$CFLAGS -O3 -fPIC" \
-     CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+      --prefix=/opt/toolchain \
+      --disable-docs \
+      CFLAGS="$CFLAGS -O3 -fPIC" \
+      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
  && make -j \
  && make install \
  && rm -rf /root/* \
@@ -321,43 +315,57 @@ FROM common AS mingw
 COPY --from=toolchain-mingw /opt/ /opt/toolchain/
 ADD toolchain-env.sh /opt/toolchain/env.sh
 
-ARG LIBFFI_VERSION=3.4.7
-RUN cd /root \
- && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
- && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
- && cd libffi-$LIBFFI_VERSION \
- && . /opt/toolchain/env.sh \
- && mkdir build \
- && cd build \
- && ../configure -v \
-     --host=x86_64-w64-mingw32 \
-     --prefix=/opt/toolchain \
-     --disable-docs \
-     CFLAGS="$CFLAGS -O3 -fPIC" \
-     CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
- && make -j \
- && make install \
- && rm -rf /root/* \
- ;
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wine \
     winetricks \
  && rm -rf /var/lib/apt/lists/*
 
+ENV WINEPATH=/opt/toolchain/x86_64-w64-mingw32/bin
 ENV WINEDEBUG=-all
 
-ADD install_spall.sh /root/
-RUN /root/install_spall.sh /opt/toolchain
-RUN rm /root/install_spall.sh
+ARG LIBFFI_VERSION=3.4.7
+RUN cd /root \
+ && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
+ && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
+ && cd libffi-$LIBFFI_VERSION \
+ && mkdir build \
+ && cd build \
+ && . /opt/toolchain/env.sh \
+ && ../configure -v \
+      --host=x86_64-w64-mingw32 \
+      --prefix=/opt/toolchain \
+      --disable-docs \
+      CFLAGS="$CFLAGS -O3 -fPIC" \
+      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
 
 ARG DLFCN_VERSION=v1.4.2
 RUN git clone --depth=1 --branch=$DLFCN_VERSION https://github.com/dlfcn-win32/dlfcn-win32 \
  && cd dlfcn-win32 \
  && . /opt/toolchain/env.sh \
  && ./configure \
-     --prefix=/opt/toolchain \
-     --enable-shared \
+      --prefix=/opt/toolchain \
+      --enable-shared \
  && make -j \
  && make install \
+ && rm -rf /root/* \
  ;
+
+ARG GTEST_VERSION=v1.16.0
+RUN git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
+ && cd googletest \
+ && . /opt/toolchain/env.sh \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
+ && ninja -C build \
+ && ninja -C build install \
+ && rm -rf /root/* \
+ ;
+
+ADD install_spall.sh /root/
+RUN /root/install_spall.sh /opt/toolchain
+RUN rm /root/install_spall.sh
