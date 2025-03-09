@@ -62,23 +62,35 @@ FROM base AS common
 
 COPY --from=cmake /opt/cmake/ /usr/local/
 
+### m4 #########################################################################
+
+FROM common AS m4
+
+ARG M4_VERSION=1.4.19
+RUN cd /root \
+ && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
+ && tar xvf m4-$M4_VERSION.tar.gz \
+ && cd m4-$M4_VERSION \
+ && ./configure -v \
+      --prefix=/opt \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/* \
+ ;
+# TODO: Remove m4 dependency?
+
 ### gcc ########################################################################
 
 FROM common AS gcc
 
 ARG BINUTILS_VERSION=2.44
-ARG GCC_VERSION=14.2.0
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    zstd \
- && rm -rf /var/lib/apt/lists/*
-
 RUN cd /root \
- && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.zst \
- && tar xvf binutils-$BINUTILS_VERSION.tar.zst \
- && rm binutils-$BINUTILS_VERSION.tar.zst \
+ && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz \
+ && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
+ && rm binutils-$BINUTILS_VERSION.tar.xz \
  ;
 
+ARG GCC_VERSION=14.2.0
 RUN cd /root \
  && wget http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
  && tar xvf gcc-$GCC_VERSION.tar.gz \
@@ -91,11 +103,68 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
      --disable-multilib \
  && make -j \
  && make install-strip \
+ && rm -rf /root/binutils-gdb \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION \
  && ./contrib/download_prerequisites \
  ;
+
+COPY --from=m4 /opt/ /usr/local/
+
+RUN cd /root/gcc-$GCC_VERSION/gmp \
+ && ./configure -v \
+     --prefix=/opt \
+     --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make distclean \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION/mpfr \
+ && ./configure -v \
+     --prefix=/opt \
+     --with-gmp=/opt \
+     --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make distclean \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION/mpc \
+ && ./configure -v \
+     --prefix=/opt \
+     --with-gmp=/opt \
+     --with-mpfr=/opt \
+     --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make distclean \
+ ;
+
+ARG GDB_VERSION=16.2
+RUN cd /root/ \
+ && wget https://ftp.gnu.org/gnu/gdb/gdb-$GDB_VERSION.tar.xz \
+ && tar xvf gdb-$GDB_VERSION.tar.xz \
+ && rm gdb-$GDB_VERSION.tar.xz \
+ ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN cd /root/gdb-$GDB_VERSION \
+ && ./configure -v \
+     --prefix=/opt \
+     --with-gmp=/opt \
+     --with-mpfr=/opt \
+     --with-mpc=/opt \
+     --with-python=python3 \
+     --with-tui \
+ && make -j \
+ && make install-strip \
+ ;
+ # TODO:  && make distclean \
 
 RUN cd /root/gcc-$GCC_VERSION \
  && ./configure -v \
@@ -103,72 +172,41 @@ RUN cd /root/gcc-$GCC_VERSION \
      --enable-checking=release \
      --enable-languages=c,c++ \
      --disable-multilib \
+ ;
+ # TODO: merge:
+
+RUN cd /root/gcc-$GCC_VERSION \
  && make -j \
  && make install-strip \
  ;
+ # TODO:  && make distclean \
 
 ### linux_base #################################################################
 
 FROM common AS linux_base
 
-COPY --from=gcc /opt/ /opt/gcc/
-ADD toolchain_gcc.sh /opt/gcc/toolchain.sh
-
-### libffi #####################################################################
-
-FROM linux_base AS libffi
-
-ARG M4_VERSION=1.4.19
-RUN cd /root \
- && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
- && tar xvf m4-$M4_VERSION.tar.gz \
- && cd m4-$M4_VERSION \
- && . /opt/gcc/toolchain.sh \
- && ./configure --prefix=/usr/local \
- && make -j \
- && make install \
- && rm -rf /root/* \
- ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    automake \
-    libltdl-dev \
-    libtool \
- && rm -rf /var/lib/apt/lists/*
-
-ARG AUTOCONF_VERSION=2.72
-RUN cd /root \
- && wget http://ftp.gnu.org/gnu/autoconf/autoconf-$AUTOCONF_VERSION.tar.gz \
- && tar xvf autoconf-$AUTOCONF_VERSION.tar.gz \
- && cd autoconf-$AUTOCONF_VERSION \
- && . /opt/gcc/toolchain.sh \
- && ./configure --prefix=/usr/local \
- && make -j \
- && make install \
- && rm -rf /root/* \
- ;
-
-ARG LIBFFI_VERSION=v3.4.7
-RUN cd /root \
- && git clone --depth=1 --branch=$LIBFFI_VERSION https://github.com/libffi/libffi \
- && cd libffi \
- && . /opt/gcc/toolchain.sh \
- && ./autogen.sh \
- && ./configure \
-     --prefix=/opt/libffi \
-     --disable-docs \
-     CFLAGS="$CFLAGS -fPIC" \
-     CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -fPIC" \
- && make -j \
- && make install \
- && rm -rf /root/* \
- ;
+COPY --from=gcc /opt/ /opt/toolchain/
+ADD toolchain_gcc.sh /opt/toolchain/env.sh
 
 ### linux ######################################################################
 
 FROM linux_base AS linux
 
-COPY --from=libffi /opt/libffi/ /usr/local/
+ARG LIBFFI_VERSION=3.4.7
+RUN cd /root \
+ && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
+ && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
+ && cd libffi-$LIBFFI_VERSION \
+ && . /opt/toolchain/env.sh \
+ && ./configure \
+     --prefix=/usr/local \
+     --disable-docs \
+     CFLAGS="$CFLAGS -O3 -fPIC" \
+     CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgmock-dev \

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TOOLS="/opt/gcc"
+TOOLS="/opt/toolchain"
 
 export PATH="$TOOLS/bin:$PATH"
 
