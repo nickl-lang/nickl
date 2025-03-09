@@ -77,11 +77,10 @@ RUN cd /root \
  && make install-strip \
  && rm -rf /root/* \
  ;
-# TODO: Remove m4 dependency?
 
-### toolchain-linux ############################################################
+### toolchain-common ###########################################################
 
-FROM common AS toolchain-linux
+FROM common AS toolchain-common
 
 ARG BINUTILS_VERSION=2.44
 RUN cd /root \
@@ -97,8 +96,18 @@ RUN cd /root \
  && rm gcc-$GCC_VERSION.tar.gz \
  ;
 
+RUN cd /root/gcc-$GCC_VERSION \
+ && ./contrib/download_prerequisites \
+ ;
+
+### toolchain-linux ############################################################
+
+FROM toolchain-common AS toolchain-linux
+
 RUN cd /root/binutils-$BINUTILS_VERSION \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --prefix=/opt \
      --disable-multilib \
  && make -j \
@@ -106,16 +115,14 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && rm -rf /root/binutils-gdb \
  ;
 
-RUN cd /root/gcc-$GCC_VERSION \
- && ./contrib/download_prerequisites \
- ;
-
-# TODO: ENV PATH="/opt/bin/:$PATH" ???
+ENV PATH="/opt/bin/:$PATH"
 
 COPY --from=m4 /opt/ /usr/local/
 
 RUN cd /root/gcc-$GCC_VERSION/gmp \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --prefix=/opt \
      --enable-shared \
  && make -j \
@@ -124,7 +131,9 @@ RUN cd /root/gcc-$GCC_VERSION/gmp \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION/mpfr \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --prefix=/opt \
      --with-gmp=/opt \
      --enable-shared \
@@ -134,7 +143,9 @@ RUN cd /root/gcc-$GCC_VERSION/mpfr \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION/mpc \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --prefix=/opt \
      --with-gmp=/opt \
      --with-mpfr=/opt \
@@ -156,7 +167,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 RUN cd /root/gdb-$GDB_VERSION \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --prefix=/opt \
      --with-gmp=/opt \
      --with-mpfr=/opt \
@@ -166,49 +179,29 @@ RUN cd /root/gdb-$GDB_VERSION \
  && make -j \
  && make install-strip \
  ;
- # TODO:  && make distclean \ ???
 
 RUN cd /root/gcc-$GCC_VERSION \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --prefix=/opt \
      --enable-checking=release \
      --enable-languages=c,c++ \
      --disable-multilib \
- ;
- # TODO: merge:
-
-RUN cd /root/gcc-$GCC_VERSION \
  && make -j \
  && make install-strip \
  ;
- # TODO:  && make distclean \ ???
 
 ### toolchain-mingw ############################################################
 
-FROM common AS toolchain-mingw
+FROM toolchain-common AS toolchain-mingw
 
-# TODO: Add toolchain-common
-
-ARG BINUTILS_VERSION=2.44
-RUN cd /root \
- && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz \
- && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
- && rm binutils-$BINUTILS_VERSION.tar.xz \
- ;
-
-ARG GCC_VERSION=14.2.0
-RUN cd /root \
- && wget http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
- && tar xvf gcc-$GCC_VERSION.tar.gz \
- && rm gcc-$GCC_VERSION.tar.gz \
- ;
-
-RUN cd /root/gcc-$GCC_VERSION \
- && ./contrib/download_prerequisites \
- ;
+COPY --from=toolchain-common /root/ /root/
 
 RUN cd /root/binutils-$BINUTILS_VERSION \
- && ./configure -v \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
      --target=x86_64-w64-mingw32 \
      --prefix=/opt \
      --disable-multilib \
@@ -217,6 +210,8 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && rm -rf /root/binutils-gdb \
  ;
 
+ENV PATH="/opt/bin/:$PATH"
+
 # TODO: Try downgrading mingw version?
 ARG MINGW_VERSION=v12.0.0
 RUN cd /root \
@@ -224,8 +219,6 @@ RUN cd /root \
  && tar xvf mingw-w64.tar.bz2 \
  && rm mingw-w64.tar.bz2 \
  ;
-
-ENV PATH="/opt/bin/:$PATH"
 
 RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
  && mkdir build \
