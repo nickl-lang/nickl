@@ -40,6 +40,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND DEPS
         Shlwapi
+        Winpthread
     )
 endif()
 

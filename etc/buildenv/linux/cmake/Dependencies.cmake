@@ -3,7 +3,7 @@ set(PLATFORM_INCLUDE_DIR /usr/include)
 
 add_library(Ffi STATIC IMPORTED)
 set_target_properties(Ffi PROPERTIES
-    IMPORTED_LOCATION /usr/local/lib64/libffi.a
+    IMPORTED_LOCATION /opt/toolchain/lib64/libffi.a
     INTERFACE_INCLUDE_DIRECTORIES ${PLATFORM_INCLUDE_DIR}
     )
 

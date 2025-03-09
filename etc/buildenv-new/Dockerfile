@@ -257,6 +257,28 @@ RUN cd /root/gcc-$GCC_VERSION/build \
  && make install-strip \
  ;
 
+RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/x86_64-w64-mingw32 \
+     --enable-shared \
+ && make -j \
+ && make install-strip \
+ ;
+
+RUN ln -sf x86_64-w64-mingw32-gcc /opt/bin/gcc \
+ && ln -sf x86_64-w64-mingw32-g++ /opt/bin/g++ \
+ && ln -sf x86_64-w64-mingw32-ld /opt/bin/ld \
+ && ln -sf x86_64-w64-mingw32-ar /opt/bin/ar \
+ && ln -sf x86_64-w64-mingw32-nm /opt/bin/nm \
+ && ln -sf x86_64-w64-mingw32-objcopy /opt/bin/objcopy \
+ && ln -sf x86_64-w64-mingw32-objdump /opt/bin/objdump \
+ && ln -sf x86_64-w64-mingw32-ranlib /opt/bin/ranlib \
+ && ln -sf x86_64-w64-mingw32-strip /opt/bin/strip \
+ ;
+
 ### linux ######################################################################
 
 FROM common AS linux
@@ -270,8 +292,10 @@ RUN cd /root \
  && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
  && cd libffi-$LIBFFI_VERSION \
  && . /opt/toolchain/env.sh \
- && ./configure -v \
-     --prefix=/usr/local \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --prefix=/opt/toolchain \
      --disable-docs \
      CFLAGS="$CFLAGS -O3 -fPIC" \
      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
@@ -287,7 +311,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 ADD install_spall.sh /root/
-RUN /root/install_spall.sh /usr
+RUN /root/install_spall.sh /usr/local
 RUN rm /root/install_spall.sh
 
 ### mingw ######################################################################
@@ -297,7 +321,43 @@ FROM common AS mingw
 COPY --from=toolchain-mingw /opt/ /opt/toolchain/
 ADD toolchain-env.sh /opt/toolchain/env.sh
 
+ARG LIBFFI_VERSION=3.4.7
+RUN cd /root \
+ && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
+ && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
+ && cd libffi-$LIBFFI_VERSION \
+ && . /opt/toolchain/env.sh \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/toolchain \
+     --disable-docs \
+     CFLAGS="$CFLAGS -O3 -fPIC" \
+     CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wine \
     winetricks \
  && rm -rf /var/lib/apt/lists/*
+
+ENV WINEDEBUG=-all
+
+ADD install_spall.sh /root/
+RUN /root/install_spall.sh /opt/toolchain
+RUN rm /root/install_spall.sh
+
+ARG DLFCN_VERSION=v1.4.2
+RUN git clone --depth=1 --branch=$DLFCN_VERSION https://github.com/dlfcn-win32/dlfcn-win32 \
+ && cd dlfcn-win32 \
+ && . /opt/toolchain/env.sh \
+ && ./configure \
+     --prefix=/opt/toolchain \
+     --enable-shared \
+ && make -j \
+ && make install \
+ ;
