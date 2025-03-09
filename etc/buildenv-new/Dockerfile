@@ -79,9 +79,9 @@ RUN cd /root \
  ;
 # TODO: Remove m4 dependency?
 
-### gcc ########################################################################
+### toolchain-linux ############################################################
 
-FROM common AS gcc
+FROM common AS toolchain-linux
 
 ARG BINUTILS_VERSION=2.44
 RUN cd /root \
@@ -109,6 +109,8 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
 RUN cd /root/gcc-$GCC_VERSION \
  && ./contrib/download_prerequisites \
  ;
+
+# TODO: ENV PATH="/opt/bin/:$PATH" ???
 
 COPY --from=m4 /opt/ /usr/local/
 
@@ -164,7 +166,7 @@ RUN cd /root/gdb-$GDB_VERSION \
  && make -j \
  && make install-strip \
  ;
- # TODO:  && make distclean \
+ # TODO:  && make distclean \ ???
 
 RUN cd /root/gcc-$GCC_VERSION \
  && ./configure -v \
@@ -179,18 +181,95 @@ RUN cd /root/gcc-$GCC_VERSION \
  && make -j \
  && make install-strip \
  ;
- # TODO:  && make distclean \
+ # TODO:  && make distclean \ ???
 
-### linux_base #################################################################
+### toolchain-mingw ############################################################
 
-FROM common AS linux_base
+FROM common AS toolchain-mingw
 
-COPY --from=gcc /opt/ /opt/toolchain/
-ADD toolchain_gcc.sh /opt/toolchain/env.sh
+# TODO: Add toolchain-common
+
+ARG BINUTILS_VERSION=2.44
+RUN cd /root \
+ && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz \
+ && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
+ && rm binutils-$BINUTILS_VERSION.tar.xz \
+ ;
+
+ARG GCC_VERSION=14.2.0
+RUN cd /root \
+ && wget http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
+ && tar xvf gcc-$GCC_VERSION.tar.gz \
+ && rm gcc-$GCC_VERSION.tar.gz \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION \
+ && ./contrib/download_prerequisites \
+ ;
+
+RUN cd /root/binutils-$BINUTILS_VERSION \
+ && ./configure -v \
+     --target=x86_64-w64-mingw32 \
+     --prefix=/opt \
+     --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/binutils-gdb \
+ ;
+
+# TODO: Try downgrading mingw version?
+ARG MINGW_VERSION=v12.0.0
+RUN cd /root \
+ && wget https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-$MINGW_VERSION.tar.bz2/download -O mingw-w64.tar.bz2 \
+ && tar xvf mingw-w64.tar.bz2 \
+ && rm mingw-w64.tar.bz2 \
+ ;
+
+ENV PATH="/opt/bin/:$PATH"
+
+RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/x86_64-w64-mingw32 \
+ && make install \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --target=x86_64-w64-mingw32 \
+     --prefix=/opt \
+     --enable-checking=release \
+     --enable-languages=c,c++ \
+     --disable-multilib \
+ && make -j all-gcc \
+ && make install-strip-gcc \
+ ;
+
+RUN cd /root/mingw-w64-$MINGW_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/x86_64-w64-mingw32 \
+ && make -j \
+ && make install-strip \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION/build \
+ && make -j \
+ && make install-strip \
+ ;
 
 ### linux ######################################################################
 
-FROM linux_base AS linux
+FROM common AS linux
+
+COPY --from=toolchain-linux /opt/ /opt/toolchain/
+ADD toolchain-env.sh /opt/toolchain/env.sh
 
 ARG LIBFFI_VERSION=3.4.7
 RUN cd /root \
@@ -198,7 +277,7 @@ RUN cd /root \
  && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
  && cd libffi-$LIBFFI_VERSION \
  && . /opt/toolchain/env.sh \
- && ./configure \
+ && ./configure -v \
      --prefix=/usr/local \
      --disable-docs \
      CFLAGS="$CFLAGS -O3 -fPIC" \
@@ -217,3 +296,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh /usr
 RUN rm /root/install_spall.sh
+
+### mingw ######################################################################
+
+FROM common AS mingw
+
+COPY --from=toolchain-mingw /opt/ /opt/toolchain/
+ADD toolchain-env.sh /opt/toolchain/env.sh
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wine \
+    winetricks \
+ && rm -rf /var/lib/apt/lists/*
