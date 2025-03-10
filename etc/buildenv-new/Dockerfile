@@ -94,26 +94,18 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && ../configure -v \
       --prefix=/opt \
       --disable-multilib \
+      --disable-gprofng \
+      --program-prefix=x86_64-pc-linux-gnu- \
  && make -j \
  && make install-strip \
  && rm -rf /root/binutils-gdb \
  ;
 
-ENV PATH="/opt/bin/:$PATH"
+ENV PATH="/opt/bin:$PATH"
 
-ARG M4_VERSION=1.4.19
-RUN cd /root \
- && wget https://ftp.gnu.org/gnu/m4/m4-$M4_VERSION.tar.gz \
- && tar xvf m4-$M4_VERSION.tar.gz \
- && cd m4-$M4_VERSION \
- && mkdir build \
- && cd build \
- && ../configure -v \
-      --prefix=/usr/local \
- && make -j \
- && make install-strip \
- && rm -rf /root/m4-$M4_VERSION \
- ;
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    m4 \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN cd /root/gcc-$GCC_VERSION/gmp \
  && mkdir build \
@@ -211,12 +203,13 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
       --target=x86_64-w64-mingw32 \
       --prefix=/opt \
       --disable-multilib \
+      --disable-gprofng \
  && make -j \
  && make install-strip \
  && rm -rf /root/binutils-gdb \
  ;
 
-ENV PATH="/opt/bin/:$PATH"
+ENV PATH="/opt/bin:$PATH"
 
 RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
  && mkdir build \
@@ -271,7 +264,7 @@ RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
 FROM common AS linux
 
 COPY --from=toolchain-linux /opt/ /opt/toolchain/
-ADD toolchain-env.sh /opt/toolchain/env.sh
+ADD toolchain-env-linux.sh /opt/toolchain/env.sh
 
 ARG LIBFFI_VERSION=3.4.7
 RUN cd /root \
@@ -326,6 +319,7 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
       --host=x86_64-w64-mingw32 \
       --prefix=/opt/toolchain-native \
       --disable-multilib \
+      --disable-gprofng \
  && make -j \
  && make install-strip \
  && rm -rf /root/binutils-gdb \
@@ -336,7 +330,7 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
 FROM common AS mingw
 
 COPY --from=toolchain-mingw /opt/ /opt/toolchain/
-ADD toolchain-env.sh /opt/toolchain/env.sh
+ADD toolchain-env-mingw.sh /opt/toolchain/env.sh
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wine \
@@ -372,6 +366,7 @@ RUN git clone --depth=1 --branch=$DLFCN_VERSION https://github.com/dlfcn-win32/d
  && ./configure \
       --prefix=/opt/toolchain \
       --enable-shared \
+      --cross-prefix=x86_64-w64-mingw32- \
  && make -j \
  && make install \
  && rm -rf /root/* \
