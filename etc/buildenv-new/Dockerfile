@@ -4,13 +4,11 @@ FROM ubuntu:20.04 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# TODO: Remove system gdb
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     ccache \
     curl \
-    gdb \
     git \
     less \
     locales \
@@ -99,7 +97,7 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
       --program-prefix=x86_64-pc-linux-gnu- \
  && make -j \
  && make install-strip \
- && rm -rf /root/binutils-gdb \
+ && make clean \
  ;
 
 ENV PATH="/opt/bin:$PATH"
@@ -144,16 +142,30 @@ RUN cd /root/gcc-$GCC_VERSION/mpc \
  && make distclean \
  ;
 
+RUN cd /root/gcc-$GCC_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf ./* \
+ ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# TODO: Move gdb download to start
 ARG GDB_VERSION=16.2
 RUN cd /root/ \
  && wget https://ftp.gnu.org/gnu/gdb/gdb-$GDB_VERSION.tar.xz \
  && tar xvf gdb-$GDB_VERSION.tar.xz \
  && rm gdb-$GDB_VERSION.tar.xz \
  ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-dev \
- && rm -rf /var/lib/apt/lists/*
 
 RUN cd /root/gdb-$GDB_VERSION \
  && mkdir build \
@@ -167,18 +179,7 @@ RUN cd /root/gdb-$GDB_VERSION \
       --with-tui \
  && make -j \
  && make install-strip \
- ;
-
-RUN cd /root/gcc-$GCC_VERSION \
- && mkdir build \
- && cd build \
- && ../configure -v \
-      --prefix=/opt \
-      --enable-checking=release \
-      --enable-languages=c,c++ \
-      --disable-multilib \
- && make -j \
- && make install-strip \
+ && rm -rf /root/gdb-$GDB_VERSION \
  ;
 
 ### toolchain-mingw-common #####################################################
@@ -207,7 +208,7 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
       --disable-gprofng \
  && make -j \
  && make install-strip \
- && rm -rf /root/binutils-gdb \
+ && make clean \
  ;
 
 ENV PATH="/opt/bin:$PATH"
@@ -242,11 +243,13 @@ RUN cd /root/mingw-w64-$MINGW_VERSION \
       --prefix=/opt/x86_64-w64-mingw32 \
  && make -j \
  && make install-strip \
+ && make clean \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION/build \
  && make -j \
  && make install-strip \
+ && rm -rf ./* \
  ;
 
 RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
@@ -258,6 +261,7 @@ RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
      --enable-shared \
  && make -j \
  && make install-strip \
+ && make clean \
  ;
 
 ### linux ######################################################################
@@ -338,7 +342,7 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
       --disable-gprofng \
  && make -j \
  && make install-strip \
- && rm -rf /root/binutils-gdb \
+ && make clean \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION \
@@ -353,6 +357,7 @@ RUN cd /root/gcc-$GCC_VERSION \
       --disable-multilib \
  && make -j \
  && make install-strip \
+ && rm -rf ./* \
  ;
 
 RUN mv /opt/toolchain-native/lib/libgcc_s_seh-1.dll /opt/toolchain-native/bin/
@@ -366,6 +371,7 @@ RUN cd /root/mingw-w64-$MINGW_VERSION \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
+ && make clean \
  ;
 
 RUN mv /opt/toolchain-native/x86_64-w64-mingw32/bin/libwinpthread-1.dll /opt/toolchain-native/bin/

@@ -29,7 +29,6 @@ if [ -f /.dockerenv ]; then
          ! -f $BIN_DIR/CMakeCache.txt -o \
          -n "$DEV_BUILD" ]; then
         cmake -S $PROJ_ROOT -B $BIN_DIR -GNinja \
-            -DCMAKE_TOOLCHAIN_FILE=$PLATFORM_ROOT/cmake/Toolchain.cmake \
             -DCMAKE_INSTALL_PREFIX=$PROJ_ROOT/out/install-$PLATFORM_SUFFIX \
             -DDEPLOY_PREFIX=$PROJ_ROOT/out/deploy-$PLATFORM_SUFFIX \
             -DPLATFORM=$PLATFORM \
