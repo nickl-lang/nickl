@@ -27,8 +27,8 @@ TEST_F(dyn_array, init) {
 
     nkda_reserve(&ar, 1);
 
-    EXPECT_EQ(ar.size, 0);
-    EXPECT_EQ(ar.capacity, 1);
+    EXPECT_EQ(ar.size, 0u);
+    EXPECT_EQ(ar.capacity, 1u);
     EXPECT_NE(ar.data, nullptr);
 }
 
@@ -42,8 +42,8 @@ TEST_F(dyn_array, basic) {
     nkda_append(&ar, 1);
     nkda_append(&ar, 2);
 
-    EXPECT_EQ(ar.size, 3);
-    EXPECT_EQ(ar.capacity, 4);
+    EXPECT_EQ(ar.size, 3u);
+    EXPECT_EQ(ar.capacity, 4u);
 
     for (usize i = 0; i < ar.size; i++) {
         EXPECT_EQ(ar.data[i], i);
@@ -51,8 +51,8 @@ TEST_F(dyn_array, basic) {
 
     nkda_clear(&ar);
 
-    EXPECT_EQ(ar.size, 0);
-    EXPECT_EQ(ar.capacity, 4);
+    EXPECT_EQ(ar.size, 0u);
+    EXPECT_EQ(ar.capacity, 4u);
 }
 
 TEST_F(dyn_array, capacity) {
@@ -75,14 +75,14 @@ TEST_F(dyn_array, zero_capacity) {
 
     nkda_reserve(&ar, 0);
 
-    EXPECT_EQ(ar.capacity, 1);
-    EXPECT_EQ(ar.size, 0);
+    EXPECT_EQ(ar.capacity, 1u);
+    EXPECT_EQ(ar.size, 0u);
     EXPECT_NE(ar.data, nullptr);
 
     nkda_append(&ar, 0);
 
-    EXPECT_EQ(ar.capacity, 1);
-    EXPECT_EQ(ar.size, 1);
+    EXPECT_EQ(ar.capacity, 1u);
+    EXPECT_EQ(ar.size, 1u);
     EXPECT_NE(ar.data, nullptr);
 }
 
@@ -94,9 +94,9 @@ TEST_F(dyn_array, zero_init) {
 
     nkda_append(&ar, 42);
 
-    EXPECT_EQ(ar.capacity, 1);
-    EXPECT_EQ(ar.size, 1);
-    EXPECT_EQ(*ar.data, 42);
+    EXPECT_EQ(ar.capacity, 1u);
+    EXPECT_EQ(ar.size, 1u);
+    EXPECT_EQ(*ar.data, 42u);
 }
 
 TEST_F(dyn_array, append) {

@@ -22,7 +22,7 @@ TEST_F(HashSet, basic) {
         set.deinit();
     };
 
-    EXPECT_EQ(set.size(), 0);
+    EXPECT_EQ(set.size(), 0u);
 
     static constexpr int c_test_val = 42;
 
@@ -31,7 +31,7 @@ TEST_F(HashSet, basic) {
 
     set.insert(c_test_val);
 
-    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set.size(), 1u);
 
     found = set.find(c_test_val);
     ASSERT_NE(found, nullptr);
@@ -49,13 +49,13 @@ TEST_F(HashSet, overwrite) {
     static constexpr int c_test_val = 42;
 
     set.insert(c_test_val);
-    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set.size(), 1u);
 
     set.insert(c_test_val);
-    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set.size(), 1u);
 
     set.insert(c_test_val);
-    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set.size(), 1u);
 }
 
 TEST_F(HashSet, iteration) {
@@ -72,7 +72,7 @@ TEST_F(HashSet, iteration) {
     set.insert(3);
     set.insert(2);
 
-    EXPECT_EQ(set.size(), 3);
+    EXPECT_EQ(set.size(), 3u);
 
     int sum = 0;
     for (auto &elem : (set_t const)set) {
@@ -95,7 +95,7 @@ TEST_F(HashSet, allocator) {
 
     set.insert(c_test_val);
 
-    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set.size(), 1u);
 
     auto found = set.find(c_test_val);
     ASSERT_NE(found, nullptr);

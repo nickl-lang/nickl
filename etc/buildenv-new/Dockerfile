@@ -4,6 +4,7 @@ FROM ubuntu:20.04 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# TODO: Remove system gdb
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
@@ -266,6 +267,12 @@ FROM common AS linux
 COPY --from=toolchain-linux /opt/ /opt/toolchain/
 ADD toolchain-env-linux.sh /opt/toolchain/env.sh
 
+ENV CMAKE_TOOLCHAIN_FILE=/opt/toolchain/toolchain.cmake
+ADD toolchain-linux.cmake $CMAKE_TOOLCHAIN_FILE
+
+ENV PATH="/opt/toolchain/bin:$PATH"
+ENV LD_LIBRARY_PATH="/opt/toolchain/lib:/opt/toolchain/lib64:$LD_LIBRARY_PATH"
+
 ARG LIBFFI_VERSION=3.4.7
 RUN cd /root \
  && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
@@ -288,7 +295,6 @@ ARG GTEST_VERSION=v1.16.0
 RUN cd /root \
  && git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
  && cd googletest \
- && . /opt/toolchain/env.sh \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
@@ -301,7 +307,6 @@ ARG JSON_C_VERSION=json-c-0.18-20240915
 RUN cd /root \
  && git clone --depth=1 --branch=$JSON_C_VERSION https://github.com/json-c/json-c \
  && cd json-c \
- && . /opt/toolchain/env.sh \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
@@ -372,13 +377,11 @@ FROM common AS mingw
 COPY --from=toolchain-mingw /opt/ /opt/toolchain/
 ADD toolchain-env-mingw.sh /opt/toolchain/env.sh
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wine \
-    winetricks \
- && rm -rf /var/lib/apt/lists/*
+ENV CMAKE_TOOLCHAIN_FILE=/opt/toolchain/toolchain.cmake
+ADD toolchain-mingw.cmake $CMAKE_TOOLCHAIN_FILE
 
-ENV WINEPATH="/opt/toolchain/x86_64-w64-mingw32/bin;/opt/toolchain-native/bin"
-ENV WINEDEBUG=-all
+ENV PATH="/opt/toolchain/bin:$PATH"
+ENV LD_LIBRARY_PATH="/opt/toolchain/lib:/opt/toolchain/lib64:$LD_LIBRARY_PATH"
 
 ARG LIBFFI_VERSION=3.4.7
 RUN cd /root \
@@ -417,11 +420,9 @@ ARG GTEST_VERSION=v1.16.0
 RUN cd /root \
  && git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
  && cd googletest \
- && . /opt/toolchain/env.sh \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
-      -DCMAKE_SYSTEM_NAME=Windows \
  && ninja -C build \
  && ninja -C build install \
  && rm -rf /root/* \
@@ -429,20 +430,25 @@ RUN cd /root \
 
 COPY --from=toolchain-mingw-native /opt/toolchain-native /opt/toolchain-native
 
-# TODO: Create cmake toolchain file, remove CMAKE_SYSTEM_NAME
 ARG JSON_C_VERSION=json-c-0.18-20240915
 RUN cd /root \
  && git clone --depth=1 --branch=$JSON_C_VERSION https://github.com/json-c/json-c \
  && cd json-c \
- && . /opt/toolchain/env.sh \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/opt/toolchain/x86_64-w64-mingw32 \
-      -DCMAKE_SYSTEM_NAME=Windows \
  && ninja -C build \
  && ninja -C build install \
  && rm -rf /root/* \
  ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wine \
+    winetricks \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV WINEPATH="/opt/toolchain/x86_64-w64-mingw32/bin;/opt/toolchain-native/bin"
+ENV WINEDEBUG=-all
 
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh /opt/toolchain

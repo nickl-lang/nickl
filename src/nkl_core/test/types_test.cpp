@@ -62,7 +62,7 @@ TEST_F(types, array) {
     EXPECT_EQ(vec3_t->ir_type.size, sizeof(f64) * 3);
     EXPECT_EQ(vec3_t->ir_type.align, alignof(f64));
     ASSERT_EQ(vec3_t->ir_type.kind, NkIrType_Aggregate);
-    ASSERT_EQ(vec3_t->ir_type.as.aggr.elems.size, 1);
+    ASSERT_EQ(vec3_t->ir_type.as.aggr.elems.size, 1u);
     EXPECT_EQ(vec3_t->ir_type.as.aggr.elems.data[0].type->id, f64_t->ir_type.id);
     EXPECT_EQ(vec3_t->tclass, NklType_Array);
     EXPECT_EQ(vec3_t->underlying_type, nullptr);
@@ -143,7 +143,7 @@ TEST_F(types, numeric) {
 
     NKSB_FIXED_BUFFER(sb, 64);
 
-    EXPECT_EQ(i8_t->ir_type.size, 1);
+    EXPECT_EQ(i8_t->ir_type.size, 1u);
     EXPECT_EQ(i8_t->ir_type.align, 1);
     ASSERT_EQ(i8_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(i8_t->ir_type.as.num.value_type, Int8);
@@ -154,7 +154,7 @@ TEST_F(types, numeric) {
     nkl_type_inspect(i8_t, nksb_getStream(&sb));
     EXPECT_EQ("i8", nk_s2stdStr({NKS_INIT(sb)}));
 
-    EXPECT_EQ(u32_t->ir_type.size, 4);
+    EXPECT_EQ(u32_t->ir_type.size, 4u);
     EXPECT_EQ(u32_t->ir_type.align, 4);
     ASSERT_EQ(u32_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(u32_t->ir_type.as.num.value_type, Uint32);
@@ -165,7 +165,7 @@ TEST_F(types, numeric) {
     nkl_type_inspect(u32_t, nksb_getStream(&sb));
     EXPECT_EQ("u32", nk_s2stdStr({NKS_INIT(sb)}));
 
-    EXPECT_EQ(i64_t->ir_type.size, 8);
+    EXPECT_EQ(i64_t->ir_type.size, 8u);
     EXPECT_EQ(i64_t->ir_type.align, 8);
     ASSERT_EQ(i64_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(i64_t->ir_type.as.num.value_type, Int64);
@@ -176,7 +176,7 @@ TEST_F(types, numeric) {
     nkl_type_inspect(i64_t, nksb_getStream(&sb));
     EXPECT_EQ("i64", nk_s2stdStr({NKS_INIT(sb)}));
 
-    EXPECT_EQ(f64_t->ir_type.size, 8);
+    EXPECT_EQ(f64_t->ir_type.size, 8u);
     EXPECT_EQ(f64_t->ir_type.align, 8);
     ASSERT_EQ(f64_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(f64_t->ir_type.as.num.value_type, Float64);
@@ -211,7 +211,7 @@ TEST_F(types, proc) {
     EXPECT_EQ(add_t->ir_type.size, sizeof(void *));
     EXPECT_EQ(add_t->ir_type.align, alignof(void *));
     ASSERT_EQ(add_t->ir_type.kind, NkIrType_Procedure);
-    ASSERT_EQ(add_t->ir_type.as.proc.info.args_t.size, 2);
+    ASSERT_EQ(add_t->ir_type.as.proc.info.args_t.size, 2u);
     EXPECT_EQ(add_t->ir_type.as.proc.info.args_t.data[0]->id, i32_t->ir_type.id);
     EXPECT_EQ(add_t->ir_type.as.proc.info.args_t.data[1]->id, i32_t->ir_type.id);
     EXPECT_EQ(add_t->ir_type.as.proc.info.ret_t->id, i32_t->ir_type.id);
@@ -318,7 +318,7 @@ TEST_F(types, struct) {
     nkltype_t types[] = {i64_t, i64_t};
     auto tuple_t = nkl_get_tuple(nkl, {types, NK_ARRAY_COUNT(types), sizeof(nkltype_t)});
 
-    ASSERT_EQ(ivec2_t->as.strct.fields.size, 2);
+    ASSERT_EQ(ivec2_t->as.strct.fields.size, 2u);
     ASSERT_EQ(ivec2_t->as.strct.fields.data[0].name, nk_cs2atom("x"));
     ASSERT_EQ(ivec2_t->as.strct.fields.data[1].name, nk_cs2atom("y"));
     EXPECT_EQ(ivec2_t->tclass, NklType_Struct);
@@ -347,7 +347,7 @@ TEST_F(types, tuple) {
     EXPECT_EQ(vec3_t->ir_type.size, sizeof(f64) * 3);
     EXPECT_EQ(vec3_t->ir_type.align, alignof(f64));
     ASSERT_EQ(vec3_t->ir_type.kind, NkIrType_Aggregate);
-    ASSERT_EQ(vec3_t->ir_type.as.aggr.elems.size, 3);
+    ASSERT_EQ(vec3_t->ir_type.as.aggr.elems.size, 3u);
     EXPECT_EQ(vec3_t->ir_type.as.aggr.elems.data[0].type->id, f64_t->ir_type.id);
     EXPECT_EQ(vec3_t->ir_type.as.aggr.elems.data[1].type->id, f64_t->ir_type.id);
     EXPECT_EQ(vec3_t->ir_type.as.aggr.elems.data[2].type->id, f64_t->ir_type.id);
@@ -362,10 +362,10 @@ TEST_F(types, tuple) {
 
     auto void_t = nkl_get_tuple(nkl, {});
 
-    EXPECT_EQ(void_t->ir_type.size, 0);
+    EXPECT_EQ(void_t->ir_type.size, 0u);
     EXPECT_EQ(void_t->ir_type.align, 1);
     ASSERT_EQ(void_t->ir_type.kind, NkIrType_Aggregate);
-    EXPECT_EQ(void_t->ir_type.as.aggr.elems.size, 0);
+    EXPECT_EQ(void_t->ir_type.as.aggr.elems.size, 0u);
     EXPECT_EQ(void_t->tclass, NklType_Tuple);
     EXPECT_EQ(void_t->underlying_type, nullptr);
 
@@ -415,7 +415,7 @@ TEST_F(types, union) {
     EXPECT_EQ(union_t->ir_type.align, alignof(f64));
     ASSERT_EQ(union_t->ir_type.kind, NkIrType_Numeric);
     EXPECT_EQ(union_t->ir_type.as.num.value_type, Float64);
-    ASSERT_EQ(union_t->as.strct.fields.size, 2);
+    ASSERT_EQ(union_t->as.strct.fields.size, 2u);
     ASSERT_EQ(union_t->as.strct.fields.data[0].name, nk_cs2atom("float64"));
     ASSERT_EQ(union_t->as.strct.fields.data[1].name, nk_cs2atom("uint64"));
     EXPECT_EQ(union_t->tclass, NklType_Union);
@@ -431,8 +431,8 @@ TEST_F(types, void) {
     EXPECT_EQ(void_t->id, nkl_get_void(nkl)->id);
     EXPECT_EQ(void_t->ir_type.id, nkl_get_void(nkl)->ir_type.id);
 
-    EXPECT_EQ(void_t->ir_type.size, 0);
-    EXPECT_EQ(void_t->ir_type.align, 1);
+    EXPECT_EQ(void_t->ir_type.size, 0u);
+    EXPECT_EQ(void_t->ir_type.align, 1u);
     EXPECT_EQ(void_t->ir_type.kind, NkIrType_Aggregate);
     EXPECT_EQ(void_t->tclass, NklType_Tuple);
     EXPECT_EQ(void_t->underlying_type, nullptr);
