@@ -1,0 +1,9 @@
+FROM toolchain-common AS toolchain-mingw-common
+
+ARG MINGW_VERSION=v12.0.0
+RUN cd /root \
+ && wget https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-$MINGW_VERSION.tar.bz2/download \
+      -O mingw-w64.tar.bz2 \
+ && tar xvf mingw-w64.tar.bz2 \
+ && rm mingw-w64.tar.bz2 \
+ ;

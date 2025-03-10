@@ -1,0 +1,3 @@
+FROM base AS common
+
+COPY --from=cmake /opt/cmake/ /usr/local/

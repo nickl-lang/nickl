@@ -1,0 +1,56 @@
+FROM common AS linux
+
+COPY --from=toolchain-linux /opt/ /opt/toolchain/
+ADD toolchain-env-linux.sh /opt/toolchain/env.sh
+
+ENV CMAKE_TOOLCHAIN_FILE=/opt/toolchain/toolchain.cmake
+ADD toolchain-linux.cmake $CMAKE_TOOLCHAIN_FILE
+
+ENV PATH="/opt/toolchain/bin:$PATH"
+ENV LD_LIBRARY_PATH="/opt/toolchain/lib:/opt/toolchain/lib64:$LD_LIBRARY_PATH"
+
+ARG LIBFFI_VERSION=3.4.7
+RUN cd /root \
+ && wget https://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz \
+ && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
+ && cd libffi-$LIBFFI_VERSION \
+ && mkdir build \
+ && cd build \
+ && . /opt/toolchain/env.sh \
+ && ../configure -v \
+      --prefix=/opt/toolchain \
+      --disable-docs \
+      CFLAGS="$CFLAGS -O3 -fPIC" \
+      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+ && make -j \
+ && make install \
+ && rm -rf /root/* \
+ ;
+
+ARG GTEST_VERSION=v1.16.0
+RUN cd /root \
+ && git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
+ && cd googletest \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
+ && ninja -C build \
+ && ninja -C build install \
+ && rm -rf /root/* \
+ ;
+
+ARG JSON_C_VERSION=json-c-0.18-20240915
+RUN cd /root \
+ && git clone --depth=1 --branch=$JSON_C_VERSION https://github.com/json-c/json-c \
+ && cd json-c \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
+ && ninja -C build \
+ && ninja -C build install \
+ && rm -rf /root/* \
+ ;
+
+ADD install_spall.sh /root/
+RUN /root/install_spall.sh /usr/local
+RUN rm /root/install_spall.sh

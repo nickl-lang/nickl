@@ -1,0 +1,96 @@
+FROM toolchain-common AS toolchain-linux
+
+RUN cd /root/binutils-$BINUTILS_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --disable-multilib \
+      --disable-gprofng \
+      --program-prefix=x86_64-pc-linux-gnu- \
+ && make -j \
+ && make install-strip \
+ && make clean \
+ ;
+
+ENV PATH="/opt/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    m4 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN cd /root/gcc-$GCC_VERSION/gmp \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make distclean \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION/mpfr \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --with-gmp=/opt \
+      --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make distclean \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION/mpc \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --with-gmp=/opt \
+      --with-mpfr=/opt \
+      --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make distclean \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --disable-multilib \
+ && make -j \
+ && make install-strip \
+ && rm -rf ./* \
+ ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# TODO: Move gdb download to start
+ARG GDB_VERSION=16.2
+RUN cd /root/ \
+ && wget https://ftp.gnu.org/gnu/gdb/gdb-$GDB_VERSION.tar.xz \
+ && tar xvf gdb-$GDB_VERSION.tar.xz \
+ && rm gdb-$GDB_VERSION.tar.xz \
+ ;
+
+RUN cd /root/gdb-$GDB_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=/opt \
+      --with-gmp=/opt \
+      --with-mpfr=/opt \
+      --with-mpc=/opt \
+      --with-python=python3 \
+      --with-tui \
+ && make -j \
+ && make install-strip \
+ && rm -rf /root/gdb-$GDB_VERSION \
+ ;

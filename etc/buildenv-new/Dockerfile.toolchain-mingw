@@ -1,0 +1,67 @@
+FROM toolchain-mingw-common AS toolchain-mingw
+
+RUN cd /root/binutils-$BINUTILS_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --target=x86_64-w64-mingw32 \
+      --prefix=/opt \
+      --disable-multilib \
+      --disable-gprofng \
+ && make -j \
+ && make install-strip \
+ && make clean \
+ ;
+
+ENV PATH="/opt/bin:$PATH"
+
+RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=x86_64-w64-mingw32 \
+      --prefix=/opt/x86_64-w64-mingw32 \
+ && make install \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --target=x86_64-w64-mingw32 \
+      --prefix=/opt \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --disable-multilib \
+ && make -j all-gcc \
+ && make install-strip-gcc \
+ ;
+
+RUN cd /root/mingw-w64-$MINGW_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=x86_64-w64-mingw32 \
+      --prefix=/opt/x86_64-w64-mingw32 \
+ && make -j \
+ && make install-strip \
+ && make clean \
+ ;
+
+RUN cd /root/gcc-$GCC_VERSION/build \
+ && make -j \
+ && make install-strip \
+ && rm -rf ./* \
+ ;
+
+RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --host=x86_64-w64-mingw32 \
+     --prefix=/opt/x86_64-w64-mingw32 \
+     --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make clean \
+ ;
