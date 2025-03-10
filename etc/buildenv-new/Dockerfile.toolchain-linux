@@ -1,19 +1,22 @@
 FROM toolchain-common AS toolchain-linux
 
+ENV TOOLCHAIN_DIR=/opt/toolchain
+ENV TOOLCHAIN_PREFIX=x86_64-pc-linux-gnu
+
+ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
+
 RUN cd /root/binutils-$BINUTILS_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=/opt \
+      --prefix=$TOOLCHAIN_DIR \
       --disable-multilib \
       --disable-gprofng \
-      --program-prefix=x86_64-pc-linux-gnu- \
+      --program-prefix=$TOOLCHAIN_PREFIX- \
  && make -j \
  && make install-strip \
  && make clean \
  ;
-
-ENV PATH="/opt/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     m4 \
@@ -23,7 +26,7 @@ RUN cd /root/gcc-$GCC_VERSION/gmp \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=/opt \
+      --prefix=$TOOLCHAIN_DIR \
       --enable-shared \
  && make -j \
  && make install-strip \
@@ -34,8 +37,8 @@ RUN cd /root/gcc-$GCC_VERSION/mpfr \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=/opt \
-      --with-gmp=/opt \
+      --prefix=$TOOLCHAIN_DIR \
+      --with-gmp=$TOOLCHAIN_DIR \
       --enable-shared \
  && make -j \
  && make install-strip \
@@ -46,9 +49,9 @@ RUN cd /root/gcc-$GCC_VERSION/mpc \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=/opt \
-      --with-gmp=/opt \
-      --with-mpfr=/opt \
+      --prefix=$TOOLCHAIN_DIR \
+      --with-gmp=$TOOLCHAIN_DIR \
+      --with-mpfr=$TOOLCHAIN_DIR \
       --enable-shared \
  && make -j \
  && make install-strip \
@@ -59,7 +62,7 @@ RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=/opt \
+      --prefix=$TOOLCHAIN_DIR \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
@@ -68,29 +71,5 @@ RUN cd /root/gcc-$GCC_VERSION \
  && rm -rf ./* \
  ;
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-dev \
- && rm -rf /var/lib/apt/lists/*
-
-# TODO: Move gdb download to start
-ARG GDB_VERSION=16.2
-RUN cd /root/ \
- && wget https://ftp.gnu.org/gnu/gdb/gdb-$GDB_VERSION.tar.xz \
- && tar xvf gdb-$GDB_VERSION.tar.xz \
- && rm gdb-$GDB_VERSION.tar.xz \
- ;
-
-RUN cd /root/gdb-$GDB_VERSION \
- && mkdir build \
- && cd build \
- && ../configure -v \
-      --prefix=/opt \
-      --with-gmp=/opt \
-      --with-mpfr=/opt \
-      --with-mpc=/opt \
-      --with-python=python3 \
-      --with-tui \
- && make -j \
- && make install-strip \
- && rm -rf /root/gdb-$GDB_VERSION \
- ;
+ADD toolchain-env-linux.sh $TOOLCHAIN_DIR/env.sh
+ADD toolchain-linux.cmake $TOOLCHAIN_DIR/toolchain.cmake

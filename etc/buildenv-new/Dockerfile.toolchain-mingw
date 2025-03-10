@@ -1,11 +1,16 @@
 FROM toolchain-mingw-common AS toolchain-mingw
 
+ENV TOOLCHAIN_DIR=/opt/toolchain
+ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
+
+ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
+
 RUN cd /root/binutils-$BINUTILS_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --target=x86_64-w64-mingw32 \
-      --prefix=/opt \
+      --target=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR \
       --disable-multilib \
       --disable-gprofng \
  && make -j \
@@ -13,14 +18,12 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && make clean \
  ;
 
-ENV PATH="/opt/bin:$PATH"
-
 RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-headers \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=x86_64-w64-mingw32 \
-      --prefix=/opt/x86_64-w64-mingw32 \
+      --host=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX \
  && make install \
  ;
 
@@ -28,8 +31,8 @@ RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --target=x86_64-w64-mingw32 \
-      --prefix=/opt \
+      --target=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
@@ -41,8 +44,8 @@ RUN cd /root/mingw-w64-$MINGW_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=x86_64-w64-mingw32 \
-      --prefix=/opt/x86_64-w64-mingw32 \
+      --host=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX \
  && make -j \
  && make install-strip \
  && make clean \
@@ -58,10 +61,13 @@ RUN cd /root/mingw-w64-$MINGW_VERSION/mingw-w64-libraries/winpthreads \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --host=x86_64-w64-mingw32 \
-     --prefix=/opt/x86_64-w64-mingw32 \
+     --host=$TOOLCHAIN_PREFIX \
+     --prefix=$TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX \
      --enable-shared \
  && make -j \
  && make install-strip \
  && make clean \
  ;
+
+ADD toolchain-env-mingw.sh $TOOLCHAIN_DIR/env.sh
+ADD toolchain-mingw.cmake $TOOLCHAIN_DIR/toolchain.cmake

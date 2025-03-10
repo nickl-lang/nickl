@@ -1,16 +1,19 @@
 FROM toolchain-mingw-common AS toolchain-mingw-native
 
-COPY --from=toolchain-mingw /opt/ /opt/toolchain/
+ENV TOOLCHAIN_DIR=/opt/toolchain
+ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
 
-ENV PATH="/opt/toolchain/bin:$PATH"
+COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
+
+ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
 RUN cd /root/binutils-$BINUTILS_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=x86_64-w64-mingw32 \
-      --target=x86_64-w64-mingw32 \
-      --prefix=/opt/toolchain-native \
+      --host=$TOOLCHAIN_PREFIX \
+      --target=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR-native \
       --disable-multilib \
       --disable-gprofng \
  && make -j \
@@ -22,9 +25,9 @@ RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=x86_64-w64-mingw32 \
-      --target=x86_64-w64-mingw32 \
-      --prefix=/opt/toolchain-native \
+      --host=$TOOLCHAIN_PREFIX \
+      --target=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR-native \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
@@ -33,18 +36,18 @@ RUN cd /root/gcc-$GCC_VERSION \
  && rm -rf ./* \
  ;
 
-RUN mv /opt/toolchain-native/lib/libgcc_s_seh-1.dll /opt/toolchain-native/bin/
+RUN mv $TOOLCHAIN_DIR-native/lib/libgcc_s_seh-1.dll $TOOLCHAIN_DIR-native/bin/
 
 RUN cd /root/mingw-w64-$MINGW_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=x86_64-w64-mingw32 \
-      --prefix=/opt/toolchain-native/x86_64-w64-mingw32 \
+      --host=$TOOLCHAIN_PREFIX \
+      --prefix=$TOOLCHAIN_DIR-native/$TOOLCHAIN_PREFIX \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
  && make clean \
  ;
 
-RUN mv /opt/toolchain-native/x86_64-w64-mingw32/bin/libwinpthread-1.dll /opt/toolchain-native/bin/
+RUN mv $TOOLCHAIN_DIR-native/$TOOLCHAIN_PREFIX/bin/libwinpthread-1.dll $TOOLCHAIN_DIR-native/bin/

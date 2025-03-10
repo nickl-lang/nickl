@@ -1,26 +1,25 @@
 #!/bin/sh
 
-PREFIX=x86_64-pc-linux-gnu
+export TOOLCHAIN_DIR=/opt/toolchain
+export TOOLCHAIN_PREFIX=x86_64-pc-linux-gnu
 
-TOOLS="/opt/toolchain"
+export PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
-export PATH="$TOOLS/bin:$PATH"
+export CC="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-gcc"
+export CXX="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-g++"
+export LD="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-ld"
+export AR="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-ar"
+export NM="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-nm"
+export OBJCOPY="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-objcopy"
+export OBJDUMP="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-objdump"
+export RANLIB="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-ranlib"
+export STRIP="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_PREFIX-strip"
 
-export CC="$TOOLS/bin/$PREFIX-gcc"
-export CXX="$TOOLS/bin/$PREFIX-g++"
-export LD="$TOOLS/bin/$PREFIX-ld"
-export AR="$TOOLS/bin/$PREFIX-ar"
-export NM="$TOOLS/bin/$PREFIX-nm"
-export OBJCOPY="$TOOLS/bin/$PREFIX-objcopy"
-export OBJDUMP="$TOOLS/bin/$PREFIX-objdump"
-export RANLIB="$TOOLS/bin/$PREFIX-ranlib"
-export STRIP="$TOOLS/bin/$PREFIX-strip"
+export C_INCLUDE_PATH="$TOOLCHAIN_DIR/include:$C_INCLUDE_PATH"
+export CPLUS_INCLUDE_PATH="$TOOLCHAIN_DIR/include:$CPLUS_INCLUDE_PATH"
+export LIBRARY_PATH="$TOOLCHAIN_DIR/lib:$TOOLCHAIN_DIR/lib64:$LIBRARY_PATH"
+export LD_LIBRARY_PATH="$TOOLCHAIN_DIR/lib:$TOOLCHAIN_DIR/lib64:$LD_LIBRARY_PATH"
 
-export C_INCLUDE_PATH="$TOOLS/include:$C_INCLUDE_PATH"
-export CPLUS_INCLUDE_PATH="$TOOLS/include:$CPLUS_INCLUDE_PATH"
-export LIBRARY_PATH="$TOOLS/lib:$TOOLS/lib64:$LIBRARY_PATH"
-export LD_LIBRARY_PATH="$TOOLS/lib:$TOOLS/lib64:$LD_LIBRARY_PATH"
-
-export CFLAGS="$CFLAGS -I$TOOLS/include"
-export CXXFLAGS="$CXXFLAGS -I$TOOLS/include"
-export LDFLAGS="$LDFLAGS -L$TOOLS/lib -L$TOOLS/lib64"
+export CFLAGS="$CFLAGS -I$TOOLCHAIN_DIR/include"
+export CXXFLAGS="$CXXFLAGS -I$TOOLCHAIN_DIR/include"
+export LDFLAGS="$LDFLAGS -L$TOOLCHAIN_DIR/lib -L$TOOLCHAIN_DIR/lib64"

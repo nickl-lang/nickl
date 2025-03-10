@@ -1,13 +1,12 @@
 FROM common AS mingw
 
-COPY --from=toolchain-mingw /opt/ /opt/toolchain/
-ADD toolchain-env-mingw.sh /opt/toolchain/env.sh
+ENV TOOLCHAIN_DIR=/opt/toolchain
+ENV CMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_DIR/toolchain.cmake
 
-ENV CMAKE_TOOLCHAIN_FILE=/opt/toolchain/toolchain.cmake
-ADD toolchain-mingw.cmake $CMAKE_TOOLCHAIN_FILE
+COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
 
-ENV PATH="/opt/toolchain/bin:$PATH"
-ENV LD_LIBRARY_PATH="/opt/toolchain/lib:/opt/toolchain/lib64:$LD_LIBRARY_PATH"
+ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
+ENV LD_LIBRARY_PATH="$TOOLCHAIN_DIR/lib:$TOOLCHAIN_DIR/lib64:$LD_LIBRARY_PATH"
 
 ARG LIBFFI_VERSION=3.4.7
 RUN cd /root \
@@ -16,10 +15,10 @@ RUN cd /root \
  && cd libffi-$LIBFFI_VERSION \
  && mkdir build \
  && cd build \
- && . /opt/toolchain/env.sh \
+ && . $TOOLCHAIN_DIR/env.sh \
  && ../configure -v \
       --host=x86_64-w64-mingw32 \
-      --prefix=/opt/toolchain \
+      --prefix=$TOOLCHAIN_DIR \
       --disable-docs \
       CFLAGS="$CFLAGS -O3 -fPIC" \
       CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
@@ -32,9 +31,9 @@ ARG DLFCN_VERSION=v1.4.2
 RUN cd /root \
  && git clone --depth=1 --branch=$DLFCN_VERSION https://github.com/dlfcn-win32/dlfcn-win32 \
  && cd dlfcn-win32 \
- && . /opt/toolchain/env.sh \
+ && . $TOOLCHAIN_DIR/env.sh \
  && ./configure \
-      --prefix=/opt/toolchain \
+      --prefix=$TOOLCHAIN_DIR \
       --enable-shared \
       --cross-prefix=x86_64-w64-mingw32- \
  && make -j \
@@ -48,13 +47,13 @@ RUN cd /root \
  && cd googletest \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
+      -DCMAKE_INSTALL_PREFIX=$TOOLCHAIN_DIR \
  && ninja -C build \
  && ninja -C build install \
  && rm -rf /root/* \
  ;
 
-COPY --from=toolchain-mingw-native /opt/toolchain-native /opt/toolchain-native
+COPY --from=toolchain-mingw-native $TOOLCHAIN_DIR-native $TOOLCHAIN_DIR-native
 
 ARG JSON_C_VERSION=json-c-0.18-20240915
 RUN cd /root \
@@ -62,7 +61,7 @@ RUN cd /root \
  && cd json-c \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=/opt/toolchain/x86_64-w64-mingw32 \
+      -DCMAKE_INSTALL_PREFIX=$TOOLCHAIN_DIR/x86_64-w64-mingw32 \
  && ninja -C build \
  && ninja -C build install \
  && rm -rf /root/* \
@@ -73,9 +72,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     winetricks \
  && rm -rf /var/lib/apt/lists/*
 
-ENV WINEPATH="/opt/toolchain/x86_64-w64-mingw32/bin;/opt/toolchain-native/bin"
+ENV WINEPATH="$TOOLCHAIN_DIR/x86_64-w64-mingw32/bin;$TOOLCHAIN_DIR-native/bin"
 ENV WINEDEBUG=-all
 
 ADD install_spall.sh /root/
-RUN /root/install_spall.sh /opt/toolchain
+RUN /root/install_spall.sh $TOOLCHAIN_DIR
 RUN rm /root/install_spall.sh
