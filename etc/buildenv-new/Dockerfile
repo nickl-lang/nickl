@@ -285,7 +285,8 @@ RUN cd /root \
  ;
 
 ARG GTEST_VERSION=v1.16.0
-RUN git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
+RUN cd /root \
+ && git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/googletest.git \
  && cd googletest \
  && . /opt/toolchain/env.sh \
  && cmake -B build -GNinja \
@@ -296,9 +297,18 @@ RUN git clone --depth=1 --branch=$GTEST_VERSION https://github.com/google/google
  && rm -rf /root/* \
  ;
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libjson-c-dev \
- && rm -rf /var/lib/apt/lists/*
+ARG JSON_C_VERSION=json-c-0.18-20240915
+RUN cd /root \
+ && git clone --depth=1 --branch=$JSON_C_VERSION https://github.com/json-c/json-c \
+ && cd json-c \
+ && . /opt/toolchain/env.sh \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/toolchain \
+ && ninja -C build \
+ && ninja -C build install \
+ && rm -rf /root/* \
+ ;
 
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh /usr/local
@@ -317,6 +327,7 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && cd build \
  && ../configure -v \
       --host=x86_64-w64-mingw32 \
+      --target=x86_64-w64-mingw32 \
       --prefix=/opt/toolchain-native \
       --disable-multilib \
       --disable-gprofng \
@@ -324,7 +335,6 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
  && make install-strip \
  && rm -rf /root/binutils-gdb \
  ;
- # TODO: Add --target=x86_64-w64-mingw32
 
 RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
@@ -420,7 +430,6 @@ RUN cd /root \
 COPY --from=toolchain-mingw-native /opt/toolchain-native /opt/toolchain-native
 
 # TODO: Create cmake toolchain file, remove CMAKE_SYSTEM_NAME
-
 ARG JSON_C_VERSION=json-c-0.18-20240915
 RUN cd /root \
  && git clone --depth=1 --branch=$JSON_C_VERSION https://github.com/json-c/json-c \
