@@ -1,4 +1,4 @@
-FROM toolchain-mingw-common AS toolchain-mingw-native
+FROM common AS toolchain-mingw-native
 
 ENV TOOLCHAIN_DIR=/opt/toolchain
 ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
@@ -7,7 +7,10 @@ COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
 
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
-RUN cd /root/binutils-$BINUTILS_VERSION \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ && cwget $BINUTILS_URL \
+ && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
+ && cd binutils-$BINUTILS_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
@@ -18,10 +21,13 @@ RUN cd /root/binutils-$BINUTILS_VERSION \
       --disable-gprofng \
  && make -j \
  && make install-strip \
- && make clean \
+ && rm -rf /root/* \
  ;
 
-RUN cd /root/gcc-$GCC_VERSION \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ && cwget $GCC_URL \
+ && tar xvf gcc-$GCC_VERSION.tar.xz \
+ && cd gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
@@ -33,12 +39,15 @@ RUN cd /root/gcc-$GCC_VERSION \
       --disable-multilib \
  && make -j \
  && make install-strip \
- && rm -rf ./* \
+ && rm -rf /root/* \
  ;
 
 RUN mv $TOOLCHAIN_DIR-native/lib/libgcc_s_seh-1.dll $TOOLCHAIN_DIR-native/bin/
 
-RUN cd /root/mingw-w64-$MINGW_VERSION \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ && cwget $MINGW_URL \
+ && tar xvf mingw-w64-v$MINGW_VERSION.tar.bz2 \
+ && cd mingw-w64-v$MINGW_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
@@ -47,7 +56,7 @@ RUN cd /root/mingw-w64-$MINGW_VERSION \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
- && make clean \
+ && rm -rf /root/* \
  ;
 
 RUN mv $TOOLCHAIN_DIR-native/$TOOLCHAIN_PREFIX/bin/libwinpthread-1.dll $TOOLCHAIN_DIR-native/bin/
