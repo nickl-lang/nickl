@@ -2,16 +2,16 @@ FROM common AS toolchain-common
 
 ARG BINUTILS_VERSION=2.44
 RUN cd /root \
- && wget https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz \
+ && wget http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz \
  && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
  && rm binutils-$BINUTILS_VERSION.tar.xz \
  ;
 
 ARG GCC_VERSION=14.2.0
 RUN cd /root \
- && wget http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
- && tar xvf gcc-$GCC_VERSION.tar.gz \
- && rm gcc-$GCC_VERSION.tar.gz \
+ && wget http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz \
+ && tar xvf gcc-$GCC_VERSION.tar.xz \
+ && rm gcc-$GCC_VERSION.tar.xz \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION \

@@ -21,5 +21,8 @@ cat \
   $DIR/Dockerfile.mingw \
   $DIR/Dockerfile.linux \
 |
-  docker build -t $IMAGE -f - --target $TARGET $@ $DIR
-
+  docker build \
+    -t $IMAGE \
+    -f - \
+    --target $TARGET \
+    $@ $DIR

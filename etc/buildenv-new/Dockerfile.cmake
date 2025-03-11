@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ARG CMAKE_VERSION=3.31.6
 RUN cd /root \
- && wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz \
+ && wget http://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz \
  && tar xzf cmake-$CMAKE_VERSION.tar.gz \
  && cd cmake-$CMAKE_VERSION \
  && ./bootstrap \
