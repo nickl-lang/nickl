@@ -5,10 +5,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 ARG CMAKE_VERSION=3.31.6
-RUN cd /root \
- && wget http://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
+ && cwget http://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz \
  && tar xzf cmake-$CMAKE_VERSION.tar.gz \
- && cd cmake-$CMAKE_VERSION \
+ && rm cmake-$CMAKE_VERSION.tar.gz \
+ ;
+
+RUN cd /root/cmake-$CMAKE_VERSION \
  && ./bootstrap \
       --parallel=$(nproc) \
       --prefix=/opt/cmake \

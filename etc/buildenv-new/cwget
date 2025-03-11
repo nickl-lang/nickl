@@ -1,0 +1,57 @@
+#!/bin/sh
+# Cached wget
+
+set -e
+
+print_usage() {
+  echo >&2 "Usage: $0 [-O output_file] URL"
+}
+
+OUTPUT_FILE=""
+URL=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      print_usage
+      exit 0
+      ;;
+    -O)
+      OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    *)
+      if [ -n "$URL" ]; then
+        print_usage
+        exit 1
+      fi
+      URL="$1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$URL" ]; then
+  print_usage
+  exit 1
+fi
+
+if [ -z "$OUTPUT_FILE" ]; then
+  OUTPUT_FILE="$(basename "$URL")"
+fi
+
+if [ -z "$CWGET_CACHE_DIR" ]; then
+  CWGET_CACHE_DIR="/var/cache/cwget"
+fi
+
+mkdir -p "$CWGET_CACHE_DIR"
+
+CACHE_FILE="$CWGET_CACHE_DIR/$OUTPUT_FILE"
+
+if [ -f "$CACHE_FILE" ]; then
+  echo >&2 "Using cached file: $CACHE_FILE"
+else
+  echo >&2 "Downloading $URL"
+  wget -O "$CACHE_FILE" "$URL" || rm "$CACHE_FILE"
+fi
+
+cp "$CACHE_FILE" "$OUTPUT_FILE"
