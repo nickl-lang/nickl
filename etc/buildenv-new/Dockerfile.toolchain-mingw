@@ -5,7 +5,7 @@ ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
 
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $BINUTILS_URL \
  && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
  && cd binutils-$BINUTILS_VERSION \
@@ -21,7 +21,9 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
  && rm -rf /root/* \
  ;
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ARG MINGW_VERSION=12.0.0
+ARG MINGW_URL=http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v$MINGW_VERSION.tar.bz2
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $MINGW_URL \
  && tar xvf mingw-w64-v$MINGW_VERSION.tar.bz2 \
  && rm mingw-w64-v$MINGW_VERSION.tar.bz2 \
@@ -36,7 +38,7 @@ RUN cd /root/mingw-w64-v$MINGW_VERSION/mingw-w64-headers \
  && make install \
  ;
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GCC_URL \
  && tar xvf gcc-$GCC_VERSION.tar.xz \
  && rm gcc-$GCC_VERSION.tar.xz \
@@ -55,6 +57,7 @@ RUN cd /root/gcc-$GCC_VERSION \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
+      --enable-lto \
  && make -j all-gcc \
  && make install-strip-gcc \
  ;

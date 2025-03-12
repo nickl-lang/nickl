@@ -3,12 +3,14 @@ FROM common AS mingw
 ENV TOOLCHAIN_DIR=/opt/toolchain
 ENV CMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_DIR/toolchain.cmake
 
-COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
-
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 ENV LD_LIBRARY_PATH="$TOOLCHAIN_DIR/lib:$TOOLCHAIN_DIR/lib64"
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
+
+ARG LIBFFI_VERSION=3.4.7
+ARG LIBFFI_URL=http://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $LIBFFI_URL \
  && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
  && cd libffi-$LIBFFI_VERSION \
@@ -26,7 +28,9 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
  && rm -rf /root/* \
  ;
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ARG DLFCN_VERSION=1.4.2
+ARG DLFCN_URL=http://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v$DLFCN_VERSION.tar.gz
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $DLFCN_URL \
  && tar xvf v$DLFCN_VERSION.tar.gz \
  && cd dlfcn-win32-$DLFCN_VERSION \
@@ -40,7 +44,9 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
  && rm -rf /root/* \
  ;
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ARG GTEST_VERSION=1.16.0
+ARG GTEST_URL=http://github.com/google/googletest/releases/download/v$GTEST_VERSION/googletest-$GTEST_VERSION.tar.gz
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GTEST_URL \
  && tar xvf googletest-$GTEST_VERSION.tar.gz \
  && cd googletest-$GTEST_VERSION \
@@ -54,7 +60,9 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
 
 COPY --from=toolchain-mingw-native $TOOLCHAIN_DIR-native $TOOLCHAIN_DIR-native
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+ARG JSON_C_VERSION=json-c-0.18-20240915
+ARG JSON_C_URL=http://github.com/json-c/json-c/archive/refs/tags/$JSON_C_VERSION.tar.gz
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $JSON_C_URL \
  && tar xvf $JSON_C_VERSION.tar.gz \
  && cd json-c-$JSON_C_VERSION \

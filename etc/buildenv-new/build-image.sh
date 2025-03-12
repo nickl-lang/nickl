@@ -12,9 +12,11 @@ IMAGE=buildenv-nickl-new-$TARGET:latest
 cat \
   $DIR/Dockerfile.common \
   $DIR/Dockerfile.toolchain-linux \
-  $DIR/Dockerfile.toolchain-mingw \
-  $DIR/Dockerfile.toolchain-mingw-native \
-  $DIR/Dockerfile.mingw \
   $DIR/Dockerfile.linux \
+  $DIR/Dockerfile.gdb-linux \
+  $DIR/Dockerfile.linux-dev \
+  $DIR/Dockerfile.toolchain-mingw \
+  $DIR/Dockerfile.mingw \
+  $DIR/Dockerfile.toolchain-mingw-native \
 | docker build \
     -t $IMAGE -f - --target $TARGET $EXTRA_DOCKER_OPTS $@ $DIR

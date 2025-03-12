@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 ARG CMAKE_VERSION=3.31.6
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget http://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz \
  && tar xzf cmake-$CMAKE_VERSION.tar.gz \
  && rm cmake-$CMAKE_VERSION.tar.gz \
@@ -61,27 +61,3 @@ RUN cd /root/cmake-$CMAKE_VERSION \
 FROM base AS common
 
 COPY --from=cmake /opt/cmake/ /usr/local/
-
-ARG BINUTILS_VERSION=2.44
-ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
-
-ARG GCC_VERSION=14.2.0
-ARG GCC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz
-
-ARG MINGW_VERSION=12.0.0
-ARG MINGW_URL=http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v$MINGW_VERSION.tar.bz2
-
-ARG GDB_VERSION=16.2
-ARG GDB_URL=http://mirrorservice.org/sites/sourceware.org/pub/gdb/releases/gdb-$GDB_VERSION.tar.xz
-
-ARG LIBFFI_VERSION=3.4.7
-ARG LIBFFI_URL=http://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz
-
-ARG GTEST_VERSION=1.16.0
-ARG GTEST_URL=http://github.com/google/googletest/releases/download/v$GTEST_VERSION/googletest-$GTEST_VERSION.tar.gz
-
-ARG JSON_C_VERSION=json-c-0.18-20240915
-ARG JSON_C_URL=http://github.com/json-c/json-c/archive/refs/tags/$JSON_C_VERSION.tar.gz
-
-ARG DLFCN_VERSION=1.4.2
-ARG DLFCN_URL=http://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v$DLFCN_VERSION.tar.gz

@@ -7,7 +7,7 @@ COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
 
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $BINUTILS_URL \
  && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
  && cd binutils-$BINUTILS_VERSION \
@@ -24,7 +24,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
  && rm -rf /root/* \
  ;
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GCC_URL \
  && tar xvf gcc-$GCC_VERSION.tar.xz \
  && cd gcc-$GCC_VERSION \
@@ -37,6 +37,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
+      --enable-lto \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
@@ -44,7 +45,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
 
 RUN mv $TOOLCHAIN_DIR-native/lib/libgcc_s_seh-1.dll $TOOLCHAIN_DIR-native/bin/
 
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR,sharing=locked cd /root \
+RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $MINGW_URL \
  && tar xvf mingw-w64-v$MINGW_VERSION.tar.bz2 \
  && cd mingw-w64-v$MINGW_VERSION \
