@@ -1,6 +1,7 @@
 FROM common AS mingw
 
 ENV TOOLCHAIN_DIR=/opt/toolchain
+ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
 ENV CMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_DIR/toolchain.cmake
 
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
@@ -18,7 +19,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd build \
  && . $TOOLCHAIN_DIR/env.sh \
  && ../configure -v \
-      --host=x86_64-w64-mingw32 \
+      --host=$TOOLCHAIN_PREFIX \
       --prefix=$TOOLCHAIN_DIR \
       --disable-docs \
       CFLAGS="$CFLAGS -O3 -fPIC" \
@@ -38,7 +39,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && ./configure \
       --prefix=$TOOLCHAIN_DIR \
       --enable-shared \
-      --cross-prefix=x86_64-w64-mingw32- \
+      --cross-prefix=$TOOLCHAIN_PREFIX- \
  && make -j \
  && make install \
  && rm -rf /root/* \
