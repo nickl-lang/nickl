@@ -3,10 +3,15 @@ FROM common AS toolchain-mingw-native
 ENV TOOLCHAIN_DIR=/opt/toolchain
 ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
 
-COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
-
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
+COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
+
+RUN mkdir $TOOLCHAIN_DIR-native
+RUN ln -s lib $TOOLCHAIN_DIR-native/lib64
+
+ARG BINUTILS_VERSION=2.44
+ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $BINUTILS_URL \
  && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
@@ -24,10 +29,37 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
+ARG GCC_VERSION=14.2.0
+ARG GCC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz
+ARG GMP_VERSION=6.2.1
+ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
+ARG MPFR_VERSION=4.1.0
+ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
+ARG MPC_VERSION=1.2.1
+ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
+ARG ISL_VERSION=0.24
+ARG ISL_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/isl-$ISL_VERSION.tar.bz2
+ARG GETTEXT_VERSION=0.22
+ARG GETTEXT_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gettext-$GETTEXT_VERSION.tar.gz
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GCC_URL \
  && tar xvf gcc-$GCC_VERSION.tar.xz \
  && cd gcc-$GCC_VERSION \
+ && cwget $GMP_URL \
+ && tar xvf gmp-$GMP_VERSION.tar.bz2 \
+ && ln -s gmp-$GMP_VERSION gmp \
+ && cwget $MPFR_URL \
+ && tar xvf mpfr-$MPFR_VERSION.tar.bz2 \
+ && ln -s mpfr-$MPFR_VERSION mpfr \
+ && cwget $MPC_URL \
+ && tar xvf mpc-$MPC_VERSION.tar.gz \
+ && ln -s mpc-$MPC_VERSION mpc \
+ && cwget $ISL_URL \
+ && tar xvf isl-$ISL_VERSION.tar.bz2 \
+ && ln -s isl-$ISL_VERSION isl \
+ && cwget $GETTEXT_URL \
+ && tar xvf gettext-$GETTEXT_VERSION.tar.gz \
+ && ln -s gettext-$GETTEXT_VERSION gettext \
  && mkdir build \
  && cd build \
  && ../configure -v \
@@ -45,6 +77,8 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
 
 RUN mv $TOOLCHAIN_DIR-native/lib/libgcc_s_seh-1.dll $TOOLCHAIN_DIR-native/bin/
 
+ARG MINGW_VERSION=12.0.0
+ARG MINGW_URL=http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v$MINGW_VERSION.tar.bz2
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $MINGW_URL \
  && tar xvf mingw-w64-v$MINGW_VERSION.tar.bz2 \

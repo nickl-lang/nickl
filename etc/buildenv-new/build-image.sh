@@ -18,5 +18,6 @@ cat \
   $DIR/Dockerfile.toolchain-mingw \
   $DIR/Dockerfile.mingw \
   $DIR/Dockerfile.toolchain-mingw-native \
+  $DIR/Dockerfile.mingw-dev \
 | docker build \
     -t $IMAGE -f - --target $TARGET $EXTRA_DOCKER_OPTS $@ $DIR

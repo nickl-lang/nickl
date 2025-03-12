@@ -44,44 +44,6 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-ARG GTEST_VERSION=1.16.0
-ARG GTEST_URL=http://github.com/google/googletest/releases/download/v$GTEST_VERSION/googletest-$GTEST_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $GTEST_URL \
- && tar xvf googletest-$GTEST_VERSION.tar.gz \
- && cd googletest-$GTEST_VERSION \
- && cmake -B build -GNinja \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=$TOOLCHAIN_DIR \
- && ninja -C build \
- && ninja -C build install \
- && rm -rf /root/* \
- ;
-
-COPY --from=toolchain-mingw-native $TOOLCHAIN_DIR-native $TOOLCHAIN_DIR-native
-
-ARG JSON_C_VERSION=json-c-0.18-20240915
-ARG JSON_C_URL=http://github.com/json-c/json-c/archive/refs/tags/$JSON_C_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $JSON_C_URL \
- && tar xvf $JSON_C_VERSION.tar.gz \
- && cd json-c-$JSON_C_VERSION \
- && cmake -B build -GNinja \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=$TOOLCHAIN_DIR/x86_64-w64-mingw32 \
- && ninja -C build \
- && ninja -C build install \
- && rm -rf /root/* \
- ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wine \
-    winetricks \
- && rm -rf /var/lib/apt/lists/*
-
-ENV WINEPATH="$TOOLCHAIN_DIR/x86_64-w64-mingw32/bin;$TOOLCHAIN_DIR-native/bin"
-ENV WINEDEBUG=-all
-
 ADD install_spall.sh /root/
 RUN /root/install_spall.sh $TOOLCHAIN_DIR
 RUN rm /root/install_spall.sh
