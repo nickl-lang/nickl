@@ -7,10 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 ARG GMP_VERSION=6.2.1
-ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.xz
+ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GMP_URL \
- && tar xvf gmp-$GMP_VERSION.tar.xz \
+ && tar xvf gmp-$GMP_VERSION.tar.bz2 \
  && cd gmp-$GMP_VERSION \
  && mkdir build \
  && cd build \

@@ -5,6 +5,9 @@ ENV TOOLCHAIN_PREFIX=x86_64-pc-linux-gnu
 
 ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
+RUN mkdir $TOOLCHAIN_DIR
+RUN ln -s lib $TOOLCHAIN_DIR/lib64
+
 ARG BINUTILS_VERSION=2.44
 ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
@@ -27,7 +30,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
 ARG GCC_VERSION=14.2.0
 ARG GCC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz
 ARG GMP_VERSION=6.2.1
-ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.xz
+ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
 ARG MPFR_VERSION=4.1.0
 ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
 ARG MPC_VERSION=1.2.1
@@ -41,7 +44,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && tar xvf gcc-$GCC_VERSION.tar.xz \
  && cd gcc-$GCC_VERSION \
  && cwget $GMP_URL \
- && tar xvf gmp-$GMP_VERSION.tar.xz \
+ && tar xvf gmp-$GMP_VERSION.tar.bz2 \
  && ln -s gmp-$GMP_VERSION gmp \
  && cwget $MPFR_URL \
  && tar xvf mpfr-$MPFR_VERSION.tar.bz2 \
