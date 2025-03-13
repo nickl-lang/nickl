@@ -44,7 +44,6 @@ docker run \
     -e DISPLAY \
     -e TERM \
     -e PLATFORM \
-    -e DEV_BUILD \
     -e BUILD_TYPE \
     -e EXTRA_CMAKE_ARGS \
     -u $(id -u):$(id -g) \

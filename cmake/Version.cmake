@@ -21,9 +21,5 @@ function(get_build_version REPO_DIR OUT_VERSION)
         string(APPEND REPO_TAG "-debug")
     endif()
 
-    if(DEV_BUILD)
-        string(APPEND REPO_TAG "-dev")
-    endif()
-
     set(${OUT_VERSION} ${REPO_TAG} PARENT_SCOPE)
 endfunction()

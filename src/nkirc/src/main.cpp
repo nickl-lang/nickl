@@ -66,6 +66,7 @@ int main(int /*argc*/, char const *const *argv) {
     bool help = false;
     bool version = false;
     bool add_debug_info = false;
+    bool enable_asan = false;
 
     NkArena arena{};
     NkAllocator alloc = nk_arena_getAllocator(&arena);
@@ -148,6 +149,9 @@ int main(int /*argc*/, char const *const *argv) {
             } else if (key == "-O") {
                 GET_VALUE;
                 opt = val;
+            } else if (key == "--asan") {
+                NO_VALUE;
+                enable_asan = true;
             } else if (key == "-c" || key == "--color") {
                 GET_VALUE;
                 if (val == "auto") {
@@ -312,8 +316,12 @@ int main(int /*argc*/, char const *const *argv) {
             nkda_append(&additional_flags, c_flags->val);
         }
 
-        if (add_debug_info) {
+        if (add_debug_info || enable_asan) {
             nkda_append(&additional_flags, nk_cs2s("-g"));
+        }
+
+        if (enable_asan) {
+            nkda_append(&additional_flags, nk_cs2s("-fsanitize=address"));
         }
 
         for (auto dir : nk_iterate(link_dirs)) {

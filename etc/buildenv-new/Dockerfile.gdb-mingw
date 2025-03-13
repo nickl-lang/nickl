@@ -81,3 +81,5 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
 #  && make install-strip \
 #  && rm -rf /root/* \
 #  ;
+
+# TODO: gdb-mingw build is unfinished!

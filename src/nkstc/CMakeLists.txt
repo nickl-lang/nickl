@@ -15,12 +15,6 @@ target_link_libraries(${EXE}
     PRIVATE nkl_core
     )
 
-if(NOT DEV_BUILD)
-    target_link_options(${EXE}
-        PRIVATE -s
-        )
-endif()
-
 install(TARGETS ${EXE})
 
 target_compile_definitions(${EXE}

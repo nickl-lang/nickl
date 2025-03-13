@@ -26,14 +26,12 @@ if [ -f /.dockerenv ]; then
     export CCACHE_DIR=$BIN_DIR/ccache
 
     if [ ! -f $BIN_DIR/build.ninja -o \
-         ! -f $BIN_DIR/CMakeCache.txt -o \
-         -n "$DEV_BUILD" ]; then
+         ! -f $BIN_DIR/CMakeCache.txt ]; then
         cmake -S $PROJ_ROOT -B $BIN_DIR -GNinja \
             -DCMAKE_INSTALL_PREFIX=$PROJ_ROOT/out/install-$PLATFORM_SUFFIX \
             -DDEPLOY_PREFIX=$PROJ_ROOT/out/deploy-$PLATFORM_SUFFIX \
             -DPLATFORM=$PLATFORM \
             -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-            ${DEV_BUILD+-DDEV_BUILD=$DEV_BUILD} \
             $EXTRA_CMAKE_ARGS
     fi
 

@@ -4,7 +4,7 @@ function(add_package_target PKG_NAME OUT_DIR)
     add_custom_target(package
         COMMAND mkdir -p ${OUT_DIR}
         COMMAND find . -type f -o -type l | sed -e s/^\\.\\///g | xargs tar czf "${PKG_FILE}" --owner=0 --group=0
-        DEPENDS install
+        DEPENDS install/strip
         COMMENT "Generating package '${PKG_FILENAME}'"
         WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}"
         VERBATIM)

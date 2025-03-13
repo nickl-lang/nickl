@@ -3,7 +3,6 @@ project(nickl)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
-option(DEV_BUILD "Development build" OFF)
 option(BUILD_TESTS "Enable testing" OFF)
 option(ENABLE_LOGGING "Enable logging" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
