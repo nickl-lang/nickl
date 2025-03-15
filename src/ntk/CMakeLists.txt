@@ -4,7 +4,7 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
 
 set(DEPS
     stb
-    Dl
+    ${LIBDL}
     )
 
 set(SOURCES
