@@ -18,6 +18,10 @@ target_link_libraries(${LIB}
     PUBLIC ntk
     )
 
+install(TARGETS ${LIB}
+    RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
+    )
+
 # TODO: Hardcoded libc name
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_compile_definitions(${LIB}

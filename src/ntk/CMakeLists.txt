@@ -69,3 +69,7 @@ endif()
 if(CMAKE_TESTING_ENABLED)
     add_subdirectory(test)
 endif()
+
+install(TARGETS ${LIB}
+    RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
+    )

@@ -17,7 +17,7 @@ set_target_properties(${LIB} PROPERTIES
 
 def_nkirc_run_test(FILE import.nkir)
 
-set(NKIRC_COMPILE_ARGS "-L${NKIRC_TEST_OUT_DIR} -l${LIB} --asan")
+set(NKIRC_COMPILE_ARGS "-L${NKIRC_TEST_OUT_DIR} -l${LIB}")
 if(ENABLE_ASAN)
     set(NKIRC_COMPILE_ARGS "${NKIRC_COMPILE_ARGS} -g --asan")
 endif()

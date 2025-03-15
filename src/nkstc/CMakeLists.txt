@@ -15,6 +15,8 @@ target_link_libraries(${EXE}
     PRIVATE nkl_core
     )
 
+set_target_properties(${EXE} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
+
 install(TARGETS ${EXE})
 
 target_compile_definitions(${EXE}
