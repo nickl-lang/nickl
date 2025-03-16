@@ -1,10 +1,10 @@
 FROM common AS toolchain-mingw-native
 
-COPY --from=toolchain-mingw $PREFIX $PREFIX
-
 ENV PREFIX=/opt/toolchain
 ENV TARGET=x86_64-w64-mingw32
 ENV PATH="$PREFIX/bin:$PATH"
+
+COPY --from=toolchain-mingw $PREFIX $PREFIX
 
 RUN mkdir $PREFIX-native
 RUN ln -s lib $PREFIX-native/lib64

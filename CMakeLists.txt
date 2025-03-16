@@ -37,13 +37,7 @@ endif()
 
 ##### Dependencies #####
 
-list(APPEND CMAKE_PREFIX_PATH /opt/toolchain)
-
-find_package(PkgConfig REQUIRED)
-
-pkg_check_modules(LIBFFI REQUIRED IMPORTED_TARGET libffi)
-add_library(libffi::libffi ALIAS PkgConfig::LIBFFI)
-
+find_library(LIBFFI NAMES ffi REQUIRED)
 find_library(LIBDL NAMES dl REQUIRED)
 
 if(BUILD_TESTS)
@@ -56,7 +50,7 @@ if(BUILD_TESTS)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    list(APPEND CMAKE_PREFIX_PATH /opt/toolchain/x86_64-w64-mingw32/)
+    list(APPEND CMAKE_PREFIX_PATH ${PREFIX}/x86_64-w64-mingw32)
 
     find_library(SHLWAPI NAMES shlwapi REQUIRED)
     find_library(WINPTHREAD NAMES winpthread REQUIRED)

@@ -16,7 +16,7 @@ target_include_directories(${LIB}
 
 target_link_libraries(${LIB}
     PUBLIC ntk
-    PRIVATE libffi::libffi
+    PRIVATE ${LIBFFI}
     PRIVATE ${LIBDL}
     PRIVATE pthread
     )
