@@ -1,12 +1,12 @@
 FROM common AS toolchain-mingw
 
-ENV TOOLCHAIN_DIR=/opt/toolchain
-ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
+ENV PREFIX=/opt/toolchain
+ENV TARGET=x86_64-w64-mingw32
+ENV PATH="$PREFIX/bin:$PATH"
 
-ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
-
-RUN mkdir $TOOLCHAIN_DIR
-RUN ln -s lib $TOOLCHAIN_DIR/lib64
+RUN mkdir $PREFIX
+RUN ln -s lib $PREFIX/lib64
+RUN ln -s bin $PREFIX/sbin
 
 ARG BINUTILS_VERSION=2.44
 ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
@@ -17,10 +17,11 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --target=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR \
-      --disable-multilib \
+      --target=$TARGET \
+      --prefix=$PREFIX \
       --disable-gprofng \
+      --disable-multilib \
+      --disable-nls \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
@@ -38,8 +39,8 @@ RUN cd /root/mingw-w64-v$MINGW_VERSION/mingw-w64-headers \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX \
+      --host=$TARGET \
+      --prefix=$PREFIX/$TARGET \
  && make install \
  ;
 
@@ -51,10 +52,6 @@ ARG MPFR_VERSION=4.1.0
 ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
 ARG MPC_VERSION=1.2.1
 ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
-ARG ISL_VERSION=0.24
-ARG ISL_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/isl-$ISL_VERSION.tar.bz2
-ARG GETTEXT_VERSION=0.22
-ARG GETTEXT_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gettext-$GETTEXT_VERSION.tar.gz
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GCC_URL \
  && tar xvf gcc-$GCC_VERSION.tar.xz \
@@ -72,24 +69,18 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && tar xvf mpc-$MPC_VERSION.tar.gz \
  && rm mpc-$MPC_VERSION.tar.gz \
  && ln -s mpc-$MPC_VERSION mpc \
- && cwget $ISL_URL \
- && tar xvf isl-$ISL_VERSION.tar.bz2 \
- && rm isl-$ISL_VERSION.tar.bz2 \
- && ln -s isl-$ISL_VERSION isl \
- && cwget $GETTEXT_URL \
- && tar xvf gettext-$GETTEXT_VERSION.tar.gz \
- && rm gettext-$GETTEXT_VERSION.tar.gz \
- && ln -s gettext-$GETTEXT_VERSION gettext \
  ;
 
 RUN cd /root/gcc-$GCC_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --target=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR \
+      --target=$TARGET \
+      --prefix=$PREFIX \
       --enable-checking=release \
       --enable-languages=c,c++ \
+      --enable-default-pie \
+      --enable-default-ssp \
       --disable-multilib \
       --enable-lto \
  && make -j all-gcc \
@@ -100,8 +91,8 @@ RUN cd /root/mingw-w64-v$MINGW_VERSION \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX \
+      --host=$TARGET \
+      --prefix=$PREFIX/$TARGET \
  && make -j \
  && make install-strip \
  && make clean \
@@ -117,15 +108,15 @@ RUN cd /root/mingw-w64-v$MINGW_VERSION/mingw-w64-libraries/winpthreads \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --host=$TOOLCHAIN_PREFIX \
-     --prefix=$TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX \
+     --host=$TARGET \
+     --prefix=$PREFIX/$TARGET \
      --enable-shared \
  && make -j \
  && make install-strip \
  && make clean \
  ;
 
-RUN mv $TOOLCHAIN_DIR/$TOOLCHAIN_PREFIX/bin/libwinpthread-1.dll $TOOLCHAIN_DIR/bin/
+RUN mv $PREFIX/$TARGET/bin/libwinpthread-1.dll $PREFIX/bin/
 
-ADD toolchain-env-mingw.sh $TOOLCHAIN_DIR/env.sh
-ADD toolchain-mingw.cmake $TOOLCHAIN_DIR/toolchain.cmake
+ADD toolchain-env-mingw.sh $PREFIX/env.sh
+ADD toolchain-mingw.cmake $PREFIX/toolchain.cmake

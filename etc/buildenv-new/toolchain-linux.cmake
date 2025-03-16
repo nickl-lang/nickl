@@ -1,19 +1,18 @@
 set(CMAKE_SYSTEM_NAME Linux)
 
-set(PREFIX /opt/toolchain)
-# set(TARGET x86_64-pc-linux-gnu)
+set(PREFIX "/opt/toolchain")
 
-set(CMAKE_C_COMPILER ${PREFIX}/bin/gcc)
-set(CMAKE_CXX_COMPILER ${PREFIX}/bin/g++)
-set(CMAKE_ASM_COMPILER ${PREFIX}/bin/gcc)
+set(CMAKE_C_COMPILER "${PREFIX}/bin/gcc")
+set(CMAKE_CXX_COMPILER "${PREFIX}/bin/g++")
+set(CMAKE_ASM_COMPILER "${PREFIX}/bin/gcc")
 
-set(CMAKE_LINKER ${PREFIX}/bin/ld)
-set(CMAKE_AR ${PREFIX}/bin/ar)
-set(CMAKE_NM ${PREFIX}/bin/nm)
-set(CMAKE_OBJCOPY ${PREFIX}/bin/objcopy)
-set(CMAKE_OBJDUMP ${PREFIX}/bin/objdump)
-set(CMAKE_RANLIB ${PREFIX}/bin/ranlib)
-set(CMAKE_STRIP ${PREFIX}/bin/strip)
+set(CMAKE_LINKER "${PREFIX}/bin/ld")
+set(CMAKE_AR "${PREFIX}/bin/ar")
+set(CMAKE_NM "${PREFIX}/bin/nm")
+set(CMAKE_OBJCOPY "${PREFIX}/bin/objcopy")
+set(CMAKE_OBJDUMP "${PREFIX}/bin/objdump")
+set(CMAKE_RANLIB "${PREFIX}/bin/ranlib")
+set(CMAKE_STRIP "${PREFIX}/bin/strip")
 
 set(CMAKE_FIND_ROOT_PATH "${PREFIX}")
 

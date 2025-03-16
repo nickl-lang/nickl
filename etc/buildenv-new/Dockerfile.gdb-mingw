@@ -14,7 +14,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd build \
  && ../configure -v \
       --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR \
+      --prefix=$PREFIX \
       --disable-static \
       --enable-shared \
  && make -j \
@@ -32,8 +32,8 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd build \
  && ../configure -v \
       --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR \
-      --with-gmp=$TOOLCHAIN_DIR \
+      --prefix=$PREFIX \
+      --with-gmp=$PREFIX \
       --disable-static \
       --enable-shared \
  && make -j \
@@ -51,9 +51,9 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd build \
  && ../configure -v \
       --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR \
-      --with-gmp=$TOOLCHAIN_DIR \
-      --with-mpfr=$TOOLCHAIN_DIR \
+      --prefix=$PREFIX \
+      --with-gmp=$PREFIX \
+      --with-mpfr=$PREFIX \
       --disable-static \
       --enable-shared \
  && make -j \
@@ -71,10 +71,10 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
 #  && cd build \
 #  && ../configure -v \
 #       --host=$TOOLCHAIN_PREFIX \
-#       --prefix=$TOOLCHAIN_DIR \
-#       --with-gmp=$TOOLCHAIN_DIR \
-#       --with-mpfr=$TOOLCHAIN_DIR \
-#       --with-mpc=$TOOLCHAIN_DIR \
+#       --prefix=$PREFIX \
+#       --with-gmp=$PREFIX \
+#       --with-mpfr=$PREFIX \
+#       --with-mpc=$PREFIX \
 #       --with-python=python3 \
 #       --with-tui \
 #  && make -j \

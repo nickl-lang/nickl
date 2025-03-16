@@ -1,13 +1,13 @@
 FROM common AS mingw
 
-ENV TOOLCHAIN_DIR=/opt/toolchain
-ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
-ENV CMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_DIR/toolchain.cmake
+ENV PREFIX=/opt/toolchain
+ENV TARGET=x86_64-w64-mingw32
+ENV CMAKE_TOOLCHAIN_FILE=$PREFIX/toolchain.cmake
 
-ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
-ENV LD_LIBRARY_PATH="$TOOLCHAIN_DIR/lib"
+ENV PATH="$PREFIX/bin:$PATH"
+ENV LD_LIBRARY_PATH="$PREFIX/lib"
 
-COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
+COPY --from=toolchain-mingw $PREFIX $PREFIX
 
 ARG LIBFFI_VERSION=3.4.7
 ARG LIBFFI_URL=http://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz
@@ -17,10 +17,10 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd libffi-$LIBFFI_VERSION \
  && mkdir build \
  && cd build \
- && . $TOOLCHAIN_DIR/env.sh \
+ && . $PREFIX/env.sh \
  && ../configure -v \
-      --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR \
+      --host=$TARGET \
+      --prefix=$PREFIX \
       --disable-docs \
       CFLAGS="$CFLAGS -O3 -fPIC" \
       CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
@@ -35,16 +35,16 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $DLFCN_URL \
  && tar xvf v$DLFCN_VERSION.tar.gz \
  && cd dlfcn-win32-$DLFCN_VERSION \
- && . $TOOLCHAIN_DIR/env.sh \
+ && . $PREFIX/env.sh \
  && ./configure \
-      --prefix=$TOOLCHAIN_DIR \
+      --prefix=$PREFIX \
       --enable-shared \
-      --cross-prefix=$TOOLCHAIN_PREFIX- \
+      --cross-prefix=$TARGET- \
  && make -j \
  && make install \
  && rm -rf /root/* \
  ;
 
 ADD install_spall.sh /root/
-RUN /root/install_spall.sh $TOOLCHAIN_DIR
+RUN /root/install_spall.sh $PREFIX
 RUN rm /root/install_spall.sh

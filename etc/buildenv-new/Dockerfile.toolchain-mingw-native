@@ -1,14 +1,14 @@
 FROM common AS toolchain-mingw-native
 
-ENV TOOLCHAIN_DIR=/opt/toolchain
-ENV TOOLCHAIN_PREFIX=x86_64-w64-mingw32
+COPY --from=toolchain-mingw $PREFIX $PREFIX
 
-ENV PATH="$TOOLCHAIN_DIR/bin:$PATH"
+ENV PREFIX=/opt/toolchain
+ENV TARGET=x86_64-w64-mingw32
+ENV PATH="$PREFIX/bin:$PATH"
 
-COPY --from=toolchain-mingw $TOOLCHAIN_DIR $TOOLCHAIN_DIR
-
-RUN mkdir $TOOLCHAIN_DIR-native
-RUN ln -s lib $TOOLCHAIN_DIR-native/lib64
+RUN mkdir $PREFIX-native
+RUN ln -s lib $PREFIX-native/lib64
+RUN ln -s bin $PREFIX-native/sbin
 
 ARG BINUTILS_VERSION=2.44
 ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
@@ -19,9 +19,9 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TOOLCHAIN_PREFIX \
-      --target=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR-native \
+      --host=$TARGET \
+      --target=$TARGET \
+      --prefix=$PREFIX-native \
       --disable-multilib \
       --disable-gprofng \
  && make -j \
@@ -37,10 +37,6 @@ ARG MPFR_VERSION=4.1.0
 ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
 ARG MPC_VERSION=1.2.1
 ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
-ARG ISL_VERSION=0.24
-ARG ISL_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/isl-$ISL_VERSION.tar.bz2
-ARG GETTEXT_VERSION=0.22
-ARG GETTEXT_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gettext-$GETTEXT_VERSION.tar.gz
 RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $GCC_URL \
  && tar xvf gcc-$GCC_VERSION.tar.xz \
@@ -54,18 +50,12 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cwget $MPC_URL \
  && tar xvf mpc-$MPC_VERSION.tar.gz \
  && ln -s mpc-$MPC_VERSION mpc \
- && cwget $ISL_URL \
- && tar xvf isl-$ISL_VERSION.tar.bz2 \
- && ln -s isl-$ISL_VERSION isl \
- && cwget $GETTEXT_URL \
- && tar xvf gettext-$GETTEXT_VERSION.tar.gz \
- && ln -s gettext-$GETTEXT_VERSION gettext \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TOOLCHAIN_PREFIX \
-      --target=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR-native \
+      --host=$TARGET \
+      --target=$TARGET \
+      --prefix=$PREFIX-native \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
@@ -75,7 +65,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-RUN mv $TOOLCHAIN_DIR-native/lib/libgcc_s_seh-1.dll $TOOLCHAIN_DIR-native/bin/
+RUN mv $PREFIX-native/lib/libgcc_s_seh-1.dll $PREFIX-native/bin/
 
 ARG MINGW_VERSION=12.0.0
 ARG MINGW_URL=http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v$MINGW_VERSION.tar.bz2
@@ -86,12 +76,12 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TOOLCHAIN_PREFIX \
-      --prefix=$TOOLCHAIN_DIR-native/$TOOLCHAIN_PREFIX \
+      --host=$TARGET \
+      --prefix=$PREFIX-native/$TARGET \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
  ;
 
-RUN mv $TOOLCHAIN_DIR-native/$TOOLCHAIN_PREFIX/bin/libwinpthread-1.dll $TOOLCHAIN_DIR-native/bin/
+RUN mv $PREFIX-native/$TARGET/bin/libwinpthread-1.dll $PREFIX-native/bin/

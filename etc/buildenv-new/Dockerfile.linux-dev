@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=gdb-linux /opt/gdb $TOOLCHAIN_DIR
+COPY --from=gdb-linux /opt/gdb $PREFIX
 
 ARG GTEST_VERSION=1.16.0
 ARG GTEST_URL=http://github.com/google/googletest/releases/download/v$GTEST_VERSION/googletest-$GTEST_VERSION.tar.gz
@@ -14,7 +14,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd googletest-$GTEST_VERSION \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=$TOOLCHAIN_DIR \
+      -DCMAKE_INSTALL_PREFIX=$PREFIX \
  && ninja -C build \
  && ninja -C build install \
  && rm -rf /root/* \
@@ -28,7 +28,7 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && cd json-c-$JSON_C_VERSION \
  && cmake -B build -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX=$TOOLCHAIN_DIR \
+      -DCMAKE_INSTALL_PREFIX=$PREFIX \
  && ninja -C build \
  && ninja -C build install \
  && rm -rf /root/* \

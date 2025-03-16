@@ -55,6 +55,13 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    list(APPEND CMAKE_PREFIX_PATH /opt/toolchain/x86_64-w64-mingw32/)
+
+    find_library(SHLWAPI NAMES shlwapi REQUIRED)
+    find_library(WINPTHREAD NAMES winpthread REQUIRED)
+endif()
+
 ##### Flags #####
 
 set(FLAGS)
