@@ -26,7 +26,3 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && make install \
  && rm -rf /root/* \
  ;
-
-ADD install_spall.sh /root/
-RUN /root/install_spall.sh /usr/local
-RUN rm /root/install_spall.sh

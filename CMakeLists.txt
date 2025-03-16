@@ -37,8 +37,10 @@ endif()
 
 ##### Dependencies #####
 
-find_library(LIBFFI NAMES ffi REQUIRED)
-find_library(LIBDL NAMES dl REQUIRED)
+include(FindLibraryEx)
+
+find_library_ex(LIBFFI ffi STATIC)
+find_library_ex(LIBDL dl SHARED)
 
 if(BUILD_TESTS)
     enable_testing()
@@ -52,8 +54,8 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND CMAKE_PREFIX_PATH ${PREFIX}/x86_64-w64-mingw32)
 
-    find_library(SHLWAPI NAMES shlwapi REQUIRED)
-    find_library(WINPTHREAD NAMES winpthread REQUIRED)
+    find_library_ex(LIBSHLWAPI shlwapi STATIC)
+    find_library_ex(LIBWINPTHREAD winpthread STATIC)
 endif()
 
 ##### Flags #####

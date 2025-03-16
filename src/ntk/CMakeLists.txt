@@ -3,8 +3,9 @@ set(LIB ntk)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
 
 set(DEPS
-    stb
     ${LIBDL}
+    spall
+    stb
     )
 
 set(SOURCES
@@ -39,8 +40,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND DEPS
-        ${SHLWAPI}
-        ${WINPTHREAD}
+        ${LIBSHLWAPI}
+        ${LIBWINPTHREAD}
     )
 endif()
 

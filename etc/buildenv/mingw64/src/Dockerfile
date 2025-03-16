@@ -62,7 +62,3 @@ RUN pacman -Syu --noconfirm \
 FROM base
 
 COPY --from=mingw /opt /opt
-
-ADD common/scripts/install_spall.sh /root/
-RUN /root/install_spall.sh /opt/mingw64
-RUN rm /root/install_spall.sh

@@ -1,0 +1,10 @@
+function(find_library_ex OUTPUT_VAR LIB_NAME TYPE)
+    if (TYPE STREQUAL "STATIC")
+        set(CMAKE_FIND_LIBRARY_SUFFIXES .a .dll.a .so .dll)
+    elseif (TYPE STREQUAL "SHARED")
+        set(CMAKE_FIND_LIBRARY_SUFFIXES .so .dll .dll.a .a)
+    endif()
+
+    find_library(${OUTPUT_VAR} NAMES ${LIB_NAME} REQUIRED)
+    message(STATUS "Found ${LIB_NAME}: ${${OUTPUT_VAR}}")
+endfunction()
