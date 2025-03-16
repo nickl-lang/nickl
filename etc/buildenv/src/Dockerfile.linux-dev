@@ -1,6 +1,10 @@
-FROM mingw AS mingw-dev
+FROM linux AS linux-dev
 
-COPY --from=toolchain-mingw-native $PREFIX-native $PREFIX-native
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=gdb-linux /opt/gdb $PREFIX
 
 ARG GTEST_VERSION=1.16.0
 ARG GTEST_URL=http://github.com/google/googletest/releases/download/v$GTEST_VERSION/googletest-$GTEST_VERSION.tar.gz
@@ -30,10 +34,4 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wine \
-    winetricks \
- && rm -rf /var/lib/apt/lists/*
-
-ENV WINEPATH="$PREFIX/bin;$PREFIX-native/bin"
-ENV WINEDEBUG=-all
+ENV LD_LIBRARY_PATH="$PREFIX/lib"
