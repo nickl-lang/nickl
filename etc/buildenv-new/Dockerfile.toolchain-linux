@@ -1,8 +1,8 @@
 FROM common AS toolchain-linux
 
-ENV TARGET=x86_64-pc-linux-gnu
-ENV PREFIX=/opt/toolchain
-ENV PATH="$PREFIX/bin:$PATH"
+ARG TARGET=x86_64-pc-linux-gnu
+ARG PREFIX=/opt/toolchain
+ARG PATH="$PREFIX/bin:$PATH"
 
 RUN mkdir $PREFIX
 RUN ln -s lib $PREFIX/lib64

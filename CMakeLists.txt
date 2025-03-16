@@ -95,6 +95,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
 
 ##### Targets #####
 
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+
 include(Version)
 get_build_version(${PROJECT_SOURCE_DIR} BUILD_VERSION)
 string(TIMESTAMP BUILD_TIME UTC)
@@ -102,8 +104,12 @@ message(STATUS "Build version: ${BUILD_VERSION}")
 message(STATUS "Build time: ${BUILD_TIME}")
 
 include(Package)
+string(TOLOWER "${CMAKE_SYSTEM_NAME}" PKG_SYSTEM_NAME)
+if(NOT DEFINED DEPLOY_PREFIX)
+    set(DEPLOY_PREFIX "${CMAKE_BINARY_DIR}")
+endif()
 add_package_target(
-    "${PROJECT_NAME}-${PLATFORM}-${BUILD_VERSION}"
+    "${PROJECT_NAME}-${PKG_SYSTEM_NAME}-${BUILD_VERSION}"
     "${DEPLOY_PREFIX}"
     )
 

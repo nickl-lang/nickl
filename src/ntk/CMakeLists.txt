@@ -1,6 +1,6 @@
 set(LIB ntk)
 
-string(TOLOWER ${CMAKE_SYSTEM_NAME} PLATFORM_DIR)
+string(TOLOWER ${CMAKE_SYSTEM_NAME} SYSTEM_DIR)
 
 set(DEPS
     ${LIBDL}
@@ -9,15 +9,15 @@ set(DEPS
     )
 
 set(SOURCES
-    src/os/${PLATFORM_DIR}/dl.c
-    src/os/${PLATFORM_DIR}/error.c
-    src/os/${PLATFORM_DIR}/file.c
-    src/os/${PLATFORM_DIR}/mem.c
-    src/os/${PLATFORM_DIR}/path.c
-    src/os/${PLATFORM_DIR}/process.c
-    src/os/${PLATFORM_DIR}/term.c
-    src/os/${PLATFORM_DIR}/thread.c
-    src/os/${PLATFORM_DIR}/time.c
+    src/os/${SYSTEM_DIR}/dl.c
+    src/os/${SYSTEM_DIR}/error.c
+    src/os/${SYSTEM_DIR}/file.c
+    src/os/${SYSTEM_DIR}/mem.c
+    src/os/${SYSTEM_DIR}/path.c
+    src/os/${SYSTEM_DIR}/process.c
+    src/os/${SYSTEM_DIR}/term.c
+    src/os/${SYSTEM_DIR}/thread.c
+    src/os/${SYSTEM_DIR}/time.c
     src/allocator.c
     src/arena.c
     src/atom.c
@@ -36,13 +36,13 @@ set(SOURCES
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND SOURCES
-        src/os/${PLATFORM_DIR}/syscall.c
-    )
+        src/os/${SYSTEM_DIR}/syscall.c
+        )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND DEPS
         ${LIBSHLWAPI}
         ${LIBWINPTHREAD}
-    )
+        )
 endif()
 
 add_library(${LIB} SHARED

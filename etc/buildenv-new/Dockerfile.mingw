@@ -1,11 +1,9 @@
 FROM common AS mingw
 
-ENV PREFIX=/opt/toolchain
-ENV TARGET=x86_64-w64-mingw32
+ARG PREFIX=/opt/toolchain
+ARG TARGET=x86_64-w64-mingw32
 ENV CMAKE_TOOLCHAIN_FILE=$PREFIX/toolchain.cmake
-
 ENV PATH="$PREFIX/bin:$PATH"
-ENV LD_LIBRARY_PATH="$PREFIX/lib"
 
 COPY --from=toolchain-mingw $PREFIX $PREFIX
 
@@ -44,7 +42,3 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && make install \
  && rm -rf /root/* \
  ;
-
-ADD install_spall.sh /root/
-RUN /root/install_spall.sh $PREFIX
-RUN rm /root/install_spall.sh

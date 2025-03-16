@@ -1,10 +1,10 @@
 #!/bin/sh
 
 set -e
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
-if [ -z "$TARGET" ]; then
-  TARGET=linux
+if [ -z ${TARGET+x} ]; then
+  TARGET=$(uname -s | tr '[:upper:]' '[:lower:]')
 fi
 
 IMAGE=buildenv-nickl-new-$TARGET:latest

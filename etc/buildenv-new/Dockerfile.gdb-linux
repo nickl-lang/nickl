@@ -1,6 +1,6 @@
 FROM common AS gdb-linux
 
-ENV PREFIX=/opt/toolchain
+ARG PREFIX=/opt/toolchain
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     m4 \

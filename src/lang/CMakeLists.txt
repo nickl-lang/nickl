@@ -43,8 +43,6 @@ target_link_libraries(${EXE}
     PRIVATE nkl
     )
 
-set_target_properties(${EXE} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
-
 install(TARGETS ${EXE})
 
 if(CMAKE_TESTING_ENABLED)

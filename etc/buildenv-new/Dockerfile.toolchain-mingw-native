@@ -1,8 +1,8 @@
 FROM common AS toolchain-mingw-native
 
-ENV PREFIX=/opt/toolchain
-ENV TARGET=x86_64-w64-mingw32
-ENV PATH="$PREFIX/bin:$PATH"
+ARG PREFIX=/opt/toolchain
+ARG TARGET=x86_64-w64-mingw32
+ARG PATH="$PREFIX/bin:$PATH"
 
 COPY --from=toolchain-mingw $PREFIX $PREFIX
 

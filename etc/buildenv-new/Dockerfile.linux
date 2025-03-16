@@ -1,10 +1,8 @@
 FROM common AS linux
 
-ENV PREFIX=/opt/toolchain
+ARG PREFIX=/opt/toolchain
 ENV CMAKE_TOOLCHAIN_FILE=$PREFIX/toolchain.cmake
-
 ENV PATH="$PREFIX/bin:$PATH"
-ENV LD_LIBRARY_PATH="$PREFIX/lib"
 
 COPY --from=toolchain-linux $PREFIX $PREFIX
 
