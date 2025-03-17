@@ -72,6 +72,7 @@ docker run \
   $XSESSION_FILE_ARG \
   $X11_SOCKET_ARG \
   -e TERM \
+  -e BUILD_TYPE \
   -e EXTRA_CMAKE_ARGS \
   -u "$(id -u):$(id -g)" \
   -w "$PROJECT_DIR" \

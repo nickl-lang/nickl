@@ -2,22 +2,20 @@ FROM common AS toolchain-linux
 
 ARG TARGET=x86_64-pc-linux-gnu
 ARG PREFIX=/opt/toolchain
-ARG PATH="$PREFIX/bin:$PATH"
+ARG PATH="${PREFIX}/bin:${PATH}"
 
-RUN mkdir $PREFIX
-RUN ln -s lib $PREFIX/lib64
-RUN ln -s bin $PREFIX/sbin
+RUN mkdir ${PREFIX}
+RUN ln -s lib ${PREFIX}/lib64
+RUN ln -s bin ${PREFIX}/sbin
 
-ARG BINUTILS_VERSION=2.44
-ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $BINUTILS_URL \
- && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
- && cd binutils-$BINUTILS_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{BINUTILS_URL}} \
+ && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
+ && cd binutils-{{BINUTILS_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=$PREFIX \
+      --prefix=${PREFIX} \
       --disable-gprofng \
       --disable-multilib \
       --disable-nls \
@@ -26,31 +24,23 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-ARG GCC_VERSION=14.2.0
-ARG GCC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz
-ARG GMP_VERSION=6.2.1
-ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
-ARG MPFR_VERSION=4.1.0
-ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
-ARG MPC_VERSION=1.2.1
-ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $GCC_URL \
- && tar xvf gcc-$GCC_VERSION.tar.xz \
- && cd gcc-$GCC_VERSION \
- && cwget $GMP_URL \
- && tar xvf gmp-$GMP_VERSION.tar.bz2 \
- && ln -s gmp-$GMP_VERSION gmp \
- && cwget $MPFR_URL \
- && tar xvf mpfr-$MPFR_VERSION.tar.bz2 \
- && ln -s mpfr-$MPFR_VERSION mpfr \
- && cwget $MPC_URL \
- && tar xvf mpc-$MPC_VERSION.tar.gz \
- && ln -s mpc-$MPC_VERSION mpc \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GCC_URL}} \
+ && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
+ && cd gcc-{{GCC_VERSION}} \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && ln -s gmp-{{GMP_VERSION}} gmp \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && ln -s mpfr-{{MPFR_VERSION}} mpfr \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && ln -s mpc-{{MPC_VERSION}} mpc \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=$PREFIX \
+      --prefix=${PREFIX} \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --enable-default-pie \
@@ -62,5 +52,5 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-ADD toolchain-env-linux.sh $PREFIX/env.sh
-ADD toolchain-linux.cmake $PREFIX/toolchain.cmake
+ADD toolchain-env-linux.sh ${PREFIX}/env.sh
+ADD toolchain-linux.cmake ${PREFIX}/toolchain.cmake

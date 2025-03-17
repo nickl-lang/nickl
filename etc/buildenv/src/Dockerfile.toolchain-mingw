@@ -2,23 +2,21 @@ FROM common AS toolchain-mingw
 
 ARG PREFIX=/opt/toolchain
 ARG TARGET=x86_64-w64-mingw32
-ARG PATH="$PREFIX/bin:$PATH"
+ARG PATH="${PREFIX}/bin:${PATH}"
 
-RUN mkdir $PREFIX
-RUN ln -s lib $PREFIX/lib64
-RUN ln -s bin $PREFIX/sbin
+RUN mkdir ${PREFIX}
+RUN ln -s lib ${PREFIX}/lib64
+RUN ln -s bin ${PREFIX}/sbin
 
-ARG BINUTILS_VERSION=2.44
-ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $BINUTILS_URL \
- && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
- && cd binutils-$BINUTILS_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{BINUTILS_URL}} \
+ && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
+ && cd binutils-{{BINUTILS_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --target=$TARGET \
-      --prefix=$PREFIX \
+      --target=${TARGET} \
+      --prefix=${PREFIX} \
       --disable-gprofng \
       --disable-multilib \
       --disable-nls \
@@ -27,56 +25,46 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-ARG MINGW_VERSION=12.0.0
-ARG MINGW_URL=http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v$MINGW_VERSION.tar.bz2
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $MINGW_URL \
- && tar xvf mingw-w64-v$MINGW_VERSION.tar.bz2 \
- && rm mingw-w64-v$MINGW_VERSION.tar.bz2 \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{MINGW_URL}} \
+ && tar xvf mingw-w64-v{{MINGW_VERSION}}.tar.bz2 \
+ && rm mingw-w64-v{{MINGW_VERSION}}.tar.bz2 \
  ;
 
-RUN cd /root/mingw-w64-v$MINGW_VERSION/mingw-w64-headers \
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-headers \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TARGET \
-      --prefix=$PREFIX/$TARGET \
+      --host=${TARGET} \
+      --prefix=${PREFIX}/${TARGET} \
  && make install \
  ;
 
-ARG GCC_VERSION=14.2.0
-ARG GCC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz
-ARG GMP_VERSION=6.2.1
-ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
-ARG MPFR_VERSION=4.1.0
-ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
-ARG MPC_VERSION=1.2.1
-ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $GCC_URL \
- && tar xvf gcc-$GCC_VERSION.tar.xz \
- && rm gcc-$GCC_VERSION.tar.xz \
- && cd gcc-$GCC_VERSION \
- && cwget $GMP_URL \
- && tar xvf gmp-$GMP_VERSION.tar.bz2 \
- && rm gmp-$GMP_VERSION.tar.bz2 \
- && ln -s gmp-$GMP_VERSION gmp \
- && cwget $MPFR_URL \
- && tar xvf mpfr-$MPFR_VERSION.tar.bz2 \
- && rm mpfr-$MPFR_VERSION.tar.bz2 \
- && ln -s mpfr-$MPFR_VERSION mpfr \
- && cwget $MPC_URL \
- && tar xvf mpc-$MPC_VERSION.tar.gz \
- && rm mpc-$MPC_VERSION.tar.gz \
- && ln -s mpc-$MPC_VERSION mpc \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GCC_URL}} \
+ && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
+ && rm gcc-{{GCC_VERSION}}.tar.xz \
+ && cd gcc-{{GCC_VERSION}} \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && rm gmp-{{GMP_VERSION}}.tar.bz2 \
+ && ln -s gmp-{{GMP_VERSION}} gmp \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && rm mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && ln -s mpfr-{{MPFR_VERSION}} mpfr \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && rm mpc-{{MPC_VERSION}}.tar.gz \
+ && ln -s mpc-{{MPC_VERSION}} mpc \
  ;
 
-RUN cd /root/gcc-$GCC_VERSION \
+RUN cd /root/gcc-{{GCC_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --target=$TARGET \
-      --prefix=$PREFIX \
+      --target=${TARGET} \
+      --prefix=${PREFIX} \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --enable-default-pie \
@@ -87,36 +75,36 @@ RUN cd /root/gcc-$GCC_VERSION \
  && make install-strip-gcc \
  ;
 
-RUN cd /root/mingw-w64-v$MINGW_VERSION \
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TARGET \
-      --prefix=$PREFIX/$TARGET \
+      --host=${TARGET} \
+      --prefix=${PREFIX}/${TARGET} \
  && make -j \
  && make install-strip \
  && make clean \
  ;
 
-RUN cd /root/gcc-$GCC_VERSION/build \
+RUN cd /root/gcc-{{GCC_VERSION}}/build \
  && make -j \
  && make install-strip \
  && rm -rf ./* \
  ;
 
-RUN cd /root/mingw-w64-v$MINGW_VERSION/mingw-w64-libraries/winpthreads \
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
  && mkdir build \
  && cd build \
  && ../configure -v \
-     --host=$TARGET \
-     --prefix=$PREFIX/$TARGET \
+     --host=${TARGET} \
+     --prefix=${PREFIX}/${TARGET} \
      --enable-shared \
  && make -j \
  && make install-strip \
  && make clean \
  ;
 
-RUN mv $PREFIX/$TARGET/bin/libwinpthread-1.dll $PREFIX/bin/
+RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
 
-ADD toolchain-env-mingw.sh $PREFIX/env.sh
-ADD toolchain-mingw.cmake $PREFIX/toolchain.cmake
+ADD toolchain-env-mingw.sh ${PREFIX}/env.sh
+ADD toolchain-mingw.cmake ${PREFIX}/toolchain.cmake

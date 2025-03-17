@@ -15,7 +15,9 @@ maybe_tee() {
   fi
 }
 
-echo "$STAGES" | xargs -I{} cat "$DIR/src/Dockerfile.{}" | maybe_tee |
+echo "$STAGES" | xargs -I{} cat "$DIR/src/Dockerfile.{}" |
+  sed $(echo "$ARGS" | jq -r '. | "s@{{\(.key)}}@\(.value)@g"' | xargs -I{} echo -e "-e {}") |
+  maybe_tee |
   docker build \
     -t "$IMAGE" \
     -f - \

@@ -54,5 +54,5 @@ if [ -f /.dockerenv ]; then
 
   $MAKE -C "$BIN_DIR" -j"$NPROC" "$@"
 else
-  "$PROJECT_DIR"/etc/buildenv/run-docker.sh "$DIR/build.sh" "$@"
+  "$PROJECT_DIR/etc/buildenv/run-docker.sh" "$DIR/build.sh" "$@"
 fi

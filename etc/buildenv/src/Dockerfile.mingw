@@ -2,42 +2,38 @@ FROM common AS mingw
 
 ARG PREFIX=/opt/toolchain
 ARG TARGET=x86_64-w64-mingw32
-ENV CMAKE_TOOLCHAIN_FILE=$PREFIX/toolchain.cmake
-ENV PATH="$PREFIX/bin:$PATH"
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
+ENV PATH="${PREFIX}/bin:${PATH}"
 
-COPY --from=toolchain-mingw $PREFIX $PREFIX
+COPY --from=toolchain-mingw ${PREFIX} ${PREFIX}
 
-ARG LIBFFI_VERSION=3.4.7
-ARG LIBFFI_URL=http://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $LIBFFI_URL \
- && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
- && cd libffi-$LIBFFI_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{LIBFFI_URL}} \
+ && tar xvf libffi-{{LIBFFI_VERSION}}.tar.gz \
+ && cd libffi-{{LIBFFI_VERSION}} \
  && mkdir build \
  && cd build \
- && . $PREFIX/env.sh \
+ && . ${PREFIX}/env.sh \
  && ../configure -v \
-      --host=$TARGET \
-      --prefix=$PREFIX \
+      --host=${TARGET} \
+      --prefix=${PREFIX} \
       --disable-docs \
-      CFLAGS="$CFLAGS -O3 -fPIC" \
-      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+      CFLAGS="${CFLAGS} -O3 -fPIC" \
+      CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
  && make -j \
  && make install \
  && rm -rf /root/* \
  ;
 
-ARG DLFCN_VERSION=1.4.2
-ARG DLFCN_URL=http://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v$DLFCN_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $DLFCN_URL \
- && tar xvf v$DLFCN_VERSION.tar.gz \
- && cd dlfcn-win32-$DLFCN_VERSION \
- && . $PREFIX/env.sh \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{DLFCN_URL}} \
+ && tar xvf v{{DLFCN_VERSION}}.tar.gz \
+ && cd dlfcn-win32-{{DLFCN_VERSION}} \
+ && . ${PREFIX}/env.sh \
  && ./configure \
-      --prefix=$PREFIX \
+      --prefix=${PREFIX} \
       --enable-shared \
-      --cross-prefix=$TARGET- \
+      --cross-prefix=${TARGET}- \
  && make -j \
  && make install \
  && rm -rf /root/* \

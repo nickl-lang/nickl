@@ -2,26 +2,24 @@ FROM common AS toolchain-mingw-native
 
 ARG PREFIX=/opt/toolchain
 ARG TARGET=x86_64-w64-mingw32
-ARG PATH="$PREFIX/bin:$PATH"
+ARG PATH="${PREFIX}/bin:${PATH}"
 
-COPY --from=toolchain-mingw $PREFIX $PREFIX
+COPY --from=toolchain-mingw ${PREFIX} ${PREFIX}
 
-RUN mkdir $PREFIX-native
-RUN ln -s lib $PREFIX-native/lib64
-RUN ln -s bin $PREFIX-native/sbin
+RUN mkdir ${PREFIX}-native
+RUN ln -s lib ${PREFIX}-native/lib64
+RUN ln -s bin ${PREFIX}-native/sbin
 
-ARG BINUTILS_VERSION=2.44
-ARG BINUTILS_URL=http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-$BINUTILS_VERSION.tar.xz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $BINUTILS_URL \
- && tar xvf binutils-$BINUTILS_VERSION.tar.xz \
- && cd binutils-$BINUTILS_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{BINUTILS_URL}} \
+ && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
+ && cd binutils-{{BINUTILS_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TARGET \
-      --target=$TARGET \
-      --prefix=$PREFIX-native \
+      --host=${TARGET} \
+      --target=${TARGET} \
+      --prefix=${PREFIX}-native \
       --disable-multilib \
       --disable-gprofng \
  && make -j \
@@ -29,33 +27,25 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-ARG GCC_VERSION=14.2.0
-ARG GCC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz
-ARG GMP_VERSION=6.2.1
-ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
-ARG MPFR_VERSION=4.1.0
-ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
-ARG MPC_VERSION=1.2.1
-ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $GCC_URL \
- && tar xvf gcc-$GCC_VERSION.tar.xz \
- && cd gcc-$GCC_VERSION \
- && cwget $GMP_URL \
- && tar xvf gmp-$GMP_VERSION.tar.bz2 \
- && ln -s gmp-$GMP_VERSION gmp \
- && cwget $MPFR_URL \
- && tar xvf mpfr-$MPFR_VERSION.tar.bz2 \
- && ln -s mpfr-$MPFR_VERSION mpfr \
- && cwget $MPC_URL \
- && tar xvf mpc-$MPC_VERSION.tar.gz \
- && ln -s mpc-$MPC_VERSION mpc \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GCC_URL}} \
+ && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
+ && cd gcc-{{GCC_VERSION}} \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && ln -s gmp-{{GMP_VERSION}} gmp \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && ln -s mpfr-{{MPFR_VERSION}} mpfr \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && ln -s mpc-{{MPC_VERSION}} mpc \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TARGET \
-      --target=$TARGET \
-      --prefix=$PREFIX-native \
+      --host=${TARGET} \
+      --target=${TARGET} \
+      --prefix=${PREFIX}-native \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
@@ -65,23 +55,21 @@ RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
  && rm -rf /root/* \
  ;
 
-RUN mv $PREFIX-native/lib/libgcc_s_seh-1.dll $PREFIX-native/bin/
+RUN mv ${PREFIX}-native/lib/libgcc_s_seh-1.dll ${PREFIX}-native/bin/
 
-ARG MINGW_VERSION=12.0.0
-ARG MINGW_URL=http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v$MINGW_VERSION.tar.bz2
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $MINGW_URL \
- && tar xvf mingw-w64-v$MINGW_VERSION.tar.bz2 \
- && cd mingw-w64-v$MINGW_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{MINGW_URL}} \
+ && tar xvf mingw-w64-v{{MINGW_VERSION}}.tar.bz2 \
+ && cd mingw-w64-v{{MINGW_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --host=$TARGET \
-      --prefix=$PREFIX-native/$TARGET \
+      --host=${TARGET} \
+      --prefix=${PREFIX}-native/${TARGET} \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
  ;
 
-RUN mv $PREFIX-native/$TARGET/bin/libwinpthread-1.dll $PREFIX-native/bin/
+RUN mv ${PREFIX}-native/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}-native/bin/

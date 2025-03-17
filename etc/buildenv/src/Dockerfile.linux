@@ -1,25 +1,23 @@
 FROM common AS linux
 
 ARG PREFIX=/opt/toolchain
-ENV CMAKE_TOOLCHAIN_FILE=$PREFIX/toolchain.cmake
-ENV PATH="$PREFIX/bin:$PATH"
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
+ENV PATH="${PREFIX}/bin:${PATH}"
 
-COPY --from=toolchain-linux $PREFIX $PREFIX
+COPY --from=toolchain-linux ${PREFIX} ${PREFIX}
 
-ARG LIBFFI_VERSION=3.4.7
-ARG LIBFFI_URL=http://github.com/libffi/libffi/releases/download/v$LIBFFI_VERSION/libffi-$LIBFFI_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $LIBFFI_URL \
- && tar xvf libffi-$LIBFFI_VERSION.tar.gz \
- && cd libffi-$LIBFFI_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{LIBFFI_URL}} \
+ && tar xvf libffi-{{LIBFFI_VERSION}}.tar.gz \
+ && cd libffi-{{LIBFFI_VERSION}} \
  && mkdir build \
  && cd build \
- && . $PREFIX/env.sh \
+ && . ${PREFIX}/env.sh \
  && ../configure -v \
-      --prefix=$PREFIX \
+      --prefix=${PREFIX} \
       --disable-docs \
-      CFLAGS="$CFLAGS -O3 -fPIC" \
-      CXXFLAGS="$CXXFLAGS -DFFI_BUILDING_DLL -O3 -fPIC" \
+      CFLAGS="${CFLAGS} -O3 -fPIC" \
+      CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
  && make -j \
  && make install \
  && rm -rf /root/* \

@@ -11,6 +11,7 @@ CONFIG=$(cat "$DIR/config.json")
 
 BASE_NAME=$(echo "$CONFIG" | jq -r '.base_name')
 REMOTE=$(echo "$CONFIG" | jq -r '.remote')
+ARGS=$(echo "$CONFIG" | jq -r '.args | to_entries[]')
 STAGES=$(echo "$CONFIG" | jq -r '.stages[]')
 DEBUG=$(echo "$CONFIG" | jq -r '.debug_image_build')
 

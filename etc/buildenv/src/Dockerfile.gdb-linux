@@ -6,51 +6,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     m4 \
  && rm -rf /var/lib/apt/lists/*
 
-ARG GMP_VERSION=6.2.1
-ARG GMP_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-$GMP_VERSION.tar.bz2
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $GMP_URL \
- && tar xvf gmp-$GMP_VERSION.tar.bz2 \
- && cd gmp-$GMP_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && cd gmp-{{GMP_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=$PREFIX \
+      --prefix=${PREFIX} \
       --enable-shared \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
  ;
 
-ARG MPFR_VERSION=4.1.0
-ARG MPFR_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-$MPFR_VERSION.tar.bz2
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $MPFR_URL \
- && tar xvf mpfr-$MPFR_VERSION.tar.bz2 \
- && cd mpfr-$MPFR_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && cd mpfr-{{MPFR_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=$PREFIX \
-      --with-gmp=$PREFIX \
+      --prefix=${PREFIX} \
+      --with-gmp=${PREFIX} \
       --enable-shared \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
  ;
 
-ARG MPC_VERSION=1.2.1
-ARG MPC_URL=http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-$MPC_VERSION.tar.gz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $MPC_URL \
- && tar xvf mpc-$MPC_VERSION.tar.gz \
- && cd mpc-$MPC_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && cd mpc-{{MPC_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
-      --prefix=$PREFIX \
-      --with-gmp=$PREFIX \
-      --with-mpfr=$PREFIX \
+      --prefix=${PREFIX} \
+      --with-gmp=${PREFIX} \
+      --with-mpfr=${PREFIX} \
       --enable-shared \
  && make -j \
  && make install-strip \
@@ -61,19 +55,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
  && rm -rf /var/lib/apt/lists/*
 
-ARG GDB_VERSION=16.2
-ARG GDB_URL=http://mirrorservice.org/sites/sourceware.org/pub/gdb/releases/gdb-$GDB_VERSION.tar.xz
-RUN --mount=type=cache,dst=$CWGET_CACHE_DIR cd /root \
- && cwget $GDB_URL \
- && tar xvf gdb-$GDB_VERSION.tar.xz \
- && cd gdb-$GDB_VERSION \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GDB_URL}} \
+ && tar xvf gdb-{{GDB_VERSION}}.tar.xz \
+ && cd gdb-{{GDB_VERSION}} \
  && mkdir build \
  && cd build \
  && ../configure -v \
       --prefix=/opt/gdb \
-      --with-gmp=$PREFIX \
-      --with-mpfr=$PREFIX \
-      --with-mpc=$PREFIX \
+      --with-gmp=${PREFIX} \
+      --with-mpfr=${PREFIX} \
+      --with-mpc=${PREFIX} \
       --with-python=python3 \
       --with-tui \
  && make -j \
