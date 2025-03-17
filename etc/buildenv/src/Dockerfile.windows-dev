@@ -1,6 +1,6 @@
-FROM mingw AS mingw-dev
+FROM windows AS windows-dev
 
-COPY --from=toolchain-mingw-native ${PREFIX}-native ${PREFIX}-native
+COPY --from=toolchain-windows-native ${PREFIX}-native ${PREFIX}-native
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GTEST_URL}} \

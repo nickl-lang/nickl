@@ -1,4 +1,4 @@
-FROM common AS toolchain-mingw
+FROM common AS toolchain-windows
 
 ARG PREFIX=/opt/toolchain
 ARG TARGET=x86_64-w64-mingw32
@@ -106,5 +106,5 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
 
 RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
 
-ADD toolchain-env-mingw.sh ${PREFIX}/env.sh
-ADD toolchain-mingw.cmake ${PREFIX}/toolchain.cmake
+ADD toolchain-env-windows.sh ${PREFIX}/env.sh
+ADD toolchain-windows.cmake ${PREFIX}/toolchain.cmake

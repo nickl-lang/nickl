@@ -1,11 +1,11 @@
-FROM common AS mingw
+FROM common AS windows
 
 ARG PREFIX=/opt/toolchain
 ARG TARGET=x86_64-w64-mingw32
 ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
 ENV PATH="${PREFIX}/bin:${PATH}"
 
-COPY --from=toolchain-mingw ${PREFIX} ${PREFIX}
+COPY --from=toolchain-windows ${PREFIX} ${PREFIX}
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{LIBFFI_URL}} \

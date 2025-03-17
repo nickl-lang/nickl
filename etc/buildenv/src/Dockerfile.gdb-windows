@@ -1,4 +1,4 @@
-FROM mingw AS gdb-mingw
+FROM windows AS gdb-windows
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     m4 \
@@ -74,4 +74,4 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
 #  && rm -rf /root/* \
 #  ;
 
-# TODO: gdb-mingw build is unfinished!
+# TODO: gdb-windows build is unfinished!
