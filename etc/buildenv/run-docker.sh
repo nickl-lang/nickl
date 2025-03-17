@@ -71,9 +71,10 @@ docker run \
   -v "$DOCKER_GROUPS_FILE:$GROUPS_FILE:ro" \
   $XSESSION_FILE_ARG \
   $X11_SOCKET_ARG \
-  -e TERM \
   -e BUILD_TYPE \
   -e EXTRA_CMAKE_ARGS \
+  -e MAKE \
+  -e TERM \
   -u "$(id -u):$(id -g)" \
   -w "$PROJECT_DIR" \
   -v "$DOCKER_HOME:$HOME" \
