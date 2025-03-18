@@ -3,8 +3,6 @@
 set -e
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
-ARGS="$*"
-
 print_usage() {
   echo >&2 "Usage: $0 [OPTIONS] [TARGET...]"
 }
@@ -21,73 +19,47 @@ print_help() {
   echo >&2 ""
 }
 
-OPT="hntds:"
-LONGOPT="help,native,test,debug,system:"
-
-PARSED=$(getopt -a -n "$0" -o "$OPT" -l "$LONGOPT" -- "$@")
-if [ $? -ne 0 ]; then
+PARSED=$($DIR/etc/utils/argparse.sh "$0" 'hntds:' 'help,native,test,debug,system:' "$@") || {
+  print_usage
+  echo >&2 "Use --help for more info"
   exit 1
-fi
+}
+eval "$PARSED"
+eval set -- "$__EXTRA_ARGS"
 
-eval set -- "$PARSED"
-
-HELP=0
-NATIVE_BUILD=OFF
-DEBUG_BUILD=OFF
-unset BUILD_TESTS
-unset SYSTEM
-
-while :; do
-  case "$1" in
-    -h|--help)
-      HELP=1
-      shift
-      ;;
-    -n|--native)
-      NATIVE_BUILD=ON
-      shift
-      ;;
-    -t|--test)
-      BUILD_TESTS=ON
-      shift
-      ;;
-    -d|--debug)
-      DEBUG_BUILD=ON
-      shift
-      ;;
-    -s|--system)
-      SYSTEM="$2"
-      shift 2
-      ;;
-    --)
-      shift
-      break
-      ;;
-    *)
-      echo >&2 "ERROR: Invalid option: $1"
-      print_usage
-      exit 1
-      ;;
-  esac
-done
-
-if [ "$HELP" = 1 ]; then
+if [ "$HELP" = 1 ];  then
   print_help
   exit
+fi
+
+if [ "$DEBUG" = 1 ]; then
+  BUILD_TYPE='Debug'
+else
+  BUILD_TYPE='Release'
 fi
 
 if [ -z ${SYSTEM+x} ]; then
   SYSTEM=$(cmake -P "$DIR/cmake/GetSystemName.cmake" | tr '[:upper:]' '[:lower:]')
 fi
 
-if [ "$DEBUG_BUILD" = ON ]; then
-  BUILD_TYPE='Debug'
-else
-  BUILD_TYPE='Release'
-fi
-
 SYSTEM_SUFFIX=$(echo "$SYSTEM-$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
 BIN_DIR="$DIR/out/build-$SYSTEM_SUFFIX"
+
+BUILD_TESTS_INIT=$(cmake -L -N -B "$BIN_DIR" | grep ^BUILD_TESTS | cut -d '=' -f2)
+if [ -z ${BUILD_TESTS+x} ]; then
+  BUILD_TESTS="$BUILD_TESTS_INIT"
+fi
+
+if [ "$TEST" = 1 ]; then
+  BUILD_TESTS=ON
+fi
+
+if [ "$BUILD_TESTS" = ON ]; then
+  TARGET="$SYSTEM-dev"
+else
+  TARGET="$SYSTEM"
+fi
+export TARGET
 
 if [ -z ${MAKE+x} ]; then
   if [ -f "$BIN_DIR/Makefile" ]; then
@@ -99,20 +71,8 @@ if [ -z ${MAKE+x} ]; then
   fi
 fi
 
-BUILD_TESTS_INIT=$(cmake -L -N -B "$BIN_DIR" | grep ^BUILD_TESTS | cut -d '=' -f2)
-if [ -z ${BUILD_TESTS+x} ]; then
-  BUILD_TESTS="$BUILD_TESTS_INIT"
-fi
-
-if [ "$BUILD_TESTS" = ON ]; then
-  TARGET="$SYSTEM-dev"
-else
-  TARGET="$SYSTEM"
-fi
-export TARGET
-
-if [ "$NATIVE_BUILD" = OFF ] && [ ! -f /.dockerenv ]; then
-  "$DIR/etc/buildenv/run-docker.sh" "$DIR/build.sh" $ARGS
+if [ "$NATIVE" != 1 ] && [ ! -f /.dockerenv ]; then
+  "$DIR/etc/buildenv/run-docker.sh" "$DIR/build.sh" $__ALL_ARGS
   exit
 fi
 
