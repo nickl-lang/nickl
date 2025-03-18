@@ -2,14 +2,40 @@
 
 set -e
 
-NAME="$1"
-OPT="$2"
-LONGOPT="$3"
-shift 3
+print_usage() {
+  echo >&2 "Usage: $0 -n NAME -s OPTIONS -l LONGOPTIONS -- ARGS"
+}
 
-echo "__ALL_ARGS=\"$@\""
+if [ "$__ARGPARSE_RECURSIVE" != 1 ]; then
+  PARSED=$(__ARGPARSE_RECURSIVE=1 "$0" "$0" hn:o:l: help,name:,options:,longoptions: "$@") || {
+    print_usage
+    echo >&2 "Use --help for more info"
+    exit 1
+  }
+  eval "$PARSED"
+  eval set -- "$__EXTRA_ARGS"
 
-PARSED=$(getopt -a -n "$NAME" -o "$OPT" -l "$LONGOPT" -- "$@")
+  if [ "$HELP" = 1 ]; then
+    print_usage
+    exit
+  fi
+else
+  NAME="$1"
+  OPTIONS="$2"
+  LONGOPTIONS="$3"
+  shift 3
+fi
+
+emit() {
+  echo "$*"
+  if [ "$ARGPARSE_DEBUG" = 1 ]; then
+    echo >&2 "DEBUG: $*"
+  fi
+}
+
+emit "__ALL_ARGS=\"$*\""
+
+PARSED=$(getopt -a -n "$NAME" -o "$OPTIONS" -l "$LONGOPTIONS" -- "$@")
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -18,12 +44,16 @@ eval set -- "$PARSED"
 
 get_short_idx() {
   i=0
-  len=${#OPT}
+  idx=0
+  len=${#OPTIONS}
   while [ $i -lt "$len" ]; do
-    char=$(echo $OPT | cut -c$((i+1)))
+    char=$(echo "$OPTIONS" | cut -c$((i+1)))
     if [ "$char" = "$1" ]; then
-      echo $i
+      echo $idx
       break
+    fi
+    if [ "$char" != ":" ]; then
+      idx=$((idx+1))
     fi
     i=$((i+1))
   done
@@ -32,7 +62,7 @@ get_short_idx() {
 get_long_by_idx() {
   IFS=','
   i=0
-  for long in $LONGOPT; do
+  for long in $LONGOPTIONS; do
     if [ $i -eq "$1" ]; then
       echo "$long"
       break
@@ -44,7 +74,7 @@ get_long_by_idx() {
 
 get_long_by_name() {
   IFS=','
-  for long in $LONGOPT; do
+  for long in $LONGOPTIONS; do
     if [ "${long%:}" = "$1" ]; then
       echo "$long"
       break
@@ -64,11 +94,11 @@ while :; do
       var_name=$(echo "${name%:}" | tr '[:lower:]-' '[:upper:]_')
       if [ "${name#"${name%?}"}" = ':' ]; then
         value="$2"
-        echo "$var_name=\"$value\""
+        emit "$var_name=\"$value\""
         shift 2
       else
         shift
-        echo "$var_name=1"
+        emit "$var_name=1"
       fi
       ;;
     -*)
@@ -76,10 +106,10 @@ while :; do
       var_name=$(echo "${name%:}" | tr '[:lower:]-' '[:upper:]_')
       if [ "${name#"${name%?}"}" = ':' ]; then
         value="$2"
-        echo "$var_name=\"$value\""
+        emit "$var_name=\"$value\""
         shift 2
       else
-        echo "$var_name=1"
+        emit "$var_name=1"
         shift
       fi
       ;;
@@ -90,6 +120,6 @@ while :; do
   esac
 done
 
-if [ -n "$@" ]; then
-  echo "__EXTRA_ARGS=\"$@\""
+if [ -n "$*" ]; then
+  emit "__EXTRA_ARGS=\"$*\""
 fi

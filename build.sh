@@ -19,7 +19,7 @@ print_help() {
   echo >&2 ""
 }
 
-PARSED=$($DIR/etc/utils/argparse.sh "$0" 'hntds:' 'help,native,test,debug,system:' "$@") || {
+PARSED=$("$DIR/etc/utils/argparse.sh" -n "$0" -o hntds: -l help,native,test,debug,system: -- "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
