@@ -2,86 +2,72 @@
 
 set -e
 
-print_usage() {
-  echo >&2 "Usage: $0 -n NAME -s OPTIONS -l LONGOPTIONS -- ARGS"
-}
+if [ "$__ARGPARSE_RECURSIVE" = 1 ]; then
+  OPTIONS="$1"
+  NAME="$2"
+  shift 2
+else
+  print_usage() {
+    echo >&2 "Usage: $0 [-n NAME] -o OPTIONS -- ARGS"
+  }
 
-if [ "$__ARGPARSE_RECURSIVE" != 1 ]; then
-  PARSED=$(__ARGPARSE_RECURSIVE=1 "$0" "$0" hn:o:l: help,name:,options:,longoptions: "$@") || {
+  PARSED=$(__ARGPARSE_RECURSIVE=1 "$0" '-h,--help:-n,--name,NAME:-o,--options,OPTIONS' "$0" "$@") || {
     print_usage
     echo >&2 "Use --help for more info"
     exit 1
   }
   eval "$PARSED"
-  eval set -- "$__EXTRA_ARGS"
+  eval set -- "$__POS_ARGS"
 
   if [ "$HELP" = 1 ]; then
     print_usage
     exit
   fi
-else
-  NAME="$1"
-  OPTIONS="$2"
-  LONGOPTIONS="$3"
-  shift 3
 fi
 
-emit() {
-  echo "$*"
-  if [ "$ARGPARSE_DEBUG" = 1 ]; then
-    echo >&2 "DEBUG: $*"
+if [ -z "$NAME" ]; then
+  NAME="$0"
+fi
+
+ORIG_ARGS=$*
+
+OPTS=""
+LONGOPTS=""
+MAP=""
+
+IFS=':'; for spec in $OPTIONS; do
+  IFS=','; set -- $spec
+  short_name="$1"
+  long_name="$2"
+  value_name="$3"
+  OPTS="$OPTS${short_name#?}"
+  if [ -n "$value_name" ]; then
+    OPTS="$OPTS:"
   fi
-}
+  if [ -n "$long_name" ]; then
+    var_name=$(echo "${long_name#??}" | tr '[:lower:]-' '[:upper:]_')
+    if [ -n "$LONGOPTS" ]; then
+      LONGOPTS="$LONGOPTS,"
+    fi
+    LONGOPTS="$LONGOPTS${long_name#??}"
+    if [ -n "$value_name" ]; then
+      LONGOPTS="$LONGOPTS:"
+    fi
+  else
+    var_name=$(echo "${short_name#?}" | tr '[:lower:]-' '[:upper:]_')
+  fi
+  MAP="$MAP($short_name)($long_name) $var_name $value_name\n"
+done
 
-emit "__ALL_ARGS=\"$*\""
+unset IFS
 
-PARSED=$(getopt -a -n "$NAME" -o "$OPTIONS" -l "$LONGOPTIONS" -- "$@")
+eval set -- $ORIG_ARGS
+PARSED=$(getopt -a -n "$NAME" -o "$OPTS" -l "$LONGOPTS" -- "$@")
 if [ $? -ne 0 ]; then
   exit 1
 fi
 
 eval set -- "$PARSED"
-
-get_short_idx() {
-  i=0
-  idx=0
-  len=${#OPTIONS}
-  while [ $i -lt "$len" ]; do
-    char=$(echo "$OPTIONS" | cut -c$((i+1)))
-    if [ "$char" = "$1" ]; then
-      echo $idx
-      break
-    fi
-    if [ "$char" != ":" ]; then
-      idx=$((idx+1))
-    fi
-    i=$((i+1))
-  done
-}
-
-get_long_by_idx() {
-  IFS=','
-  i=0
-  for long in $LONGOPTIONS; do
-    if [ $i -eq "$1" ]; then
-      echo "$long"
-      break
-    fi
-    i=$((i+1))
-  done
-  unset IFS
-}
-
-get_long_by_name() {
-  IFS=','
-  for long in $LONGOPTIONS; do
-    if [ "${long%:}" = "$1" ]; then
-      echo "$long"
-      break
-    fi
-  done
-  unset IFS
-}
 
 while :; do
   case "$1" in
@@ -89,37 +75,23 @@ while :; do
       shift
       break
       ;;
-    --*)
-      name=$(get_long_by_name "${1#??}")
-      var_name=$(echo "${name%:}" | tr '[:lower:]-' '[:upper:]_')
-      if [ "${name#"${name%?}"}" = ':' ]; then
-        value="$2"
-        emit "$var_name=\"$value\""
-        shift 2
-      else
-        shift
-        emit "$var_name=1"
-      fi
-      ;;
     -*)
-      name=$(get_long_by_idx "$(get_short_idx "${1#?}")")
-      var_name=$(echo "${name%:}" | tr '[:lower:]-' '[:upper:]_')
-      if [ "${name#"${name%?}"}" = ':' ]; then
-        value="$2"
-        emit "$var_name=\"$value\""
+      spec=$(echo "$MAP" | grep -F "($1)")
+      name=$(echo "$spec" | awk '{print $2}')
+      value=$(echo "$spec" | awk '{print $3}')
+      if [ -n "$value" ]; then
+        echo "$name='$2'"
         shift 2
       else
-        emit "$var_name=1"
+        echo "$name=1"
         shift
       fi
-      ;;
-    *)
-      echo >&2 "ERROR: Invalid option: $1"
-      exit 1
       ;;
   esac
 done
 
+echo "__ALL_ARGS='$ORIG_ARGS'"
+
 if [ -n "$*" ]; then
-  emit "__EXTRA_ARGS=\"$*\""
+  echo "__POS_ARGS=\"$*\""
 fi

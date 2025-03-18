@@ -19,13 +19,13 @@ print_help() {
   echo >&2 ""
 }
 
-PARSED=$("$DIR/etc/utils/argparse.sh" -n "$0" -o hntds: -l help,native,test,debug,system: -- "$@") || {
+PARSED=$("$DIR/etc/utils/argparse.sh" -n "$0" -o '-h,--help:-n,--native:-t,--test:-d,--debug:-s,--system,SYSTEM' -- "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
 }
 eval "$PARSED"
-eval set -- "$__EXTRA_ARGS"
+eval set -- "$__POS_ARGS"
 
 if [ "$HELP" = 1 ];  then
   print_help
