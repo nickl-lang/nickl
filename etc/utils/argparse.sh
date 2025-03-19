@@ -10,75 +10,51 @@ else
   print_usage() {
     echo >&2 "Usage: $0 [-n NAME] -o OPTIONS -- ARGS"
   }
-
-  PARSED=$(__ARGPARSE_RECURSIVE=1 "$0" '-h,--help:-n,--name,NAME:-o,--options,OPTIONS' "$0" "$@") || {
+  PARSED=$(__ARGPARSE_RECURSIVE=1 "$0" '-h,--help:-n,--name,=:-o,--options,=' "$0" "$@") || {
     print_usage
     echo >&2 "Use --help for more info"
     exit 1
   }
   eval "$PARSED"
   eval set -- "$__POS_ARGS"
-
-  if [ "$HELP" = 1 ]; then
-    print_usage
-    exit
-  fi
+  [ "$HELP" = 1 ] && { print_usage; exit; }
 fi
 
-if [ -z "$NAME" ]; then
-  NAME="$0"
-fi
-
+NAME=${NAME:-"$0"}
 ORIG_ARGS=$*
 
-OPTS=""
-LONGOPTS=""
-MAP=""
+OPTS=''
+LONGOPTS=''
+MAP=''
 
 IFS=':'; for spec in $OPTIONS; do
   IFS=','; set -- $spec
-  short_name="$1"
-  long_name="$2"
-  value_name="$3"
-  OPTS="$OPTS${short_name#?}"
-  if [ -n "$value_name" ]; then
-    OPTS="$OPTS:"
+  short="$1"
+  long="$2"
+  value="$3"
+  if [ -n "$short" ]; then
+    OPTS="$OPTS${short#?}${value:+:}"
   fi
-  if [ -n "$long_name" ]; then
-    var_name=$(echo "${long_name#??}" | tr '[:lower:]-' '[:upper:]_')
-    if [ -n "$LONGOPTS" ]; then
-      LONGOPTS="$LONGOPTS,"
-    fi
-    LONGOPTS="$LONGOPTS${long_name#??}"
-    if [ -n "$value_name" ]; then
-      LONGOPTS="$LONGOPTS:"
-    fi
+  if [ -n "$long" ]; then
+     var="${long#??}"
+     LONGOPTS="${LONGOPTS:+$LONGOPTS,}${long#??}${value:+:}"
   else
-    var_name=$(echo "${short_name#?}" | tr '[:lower:]-' '[:upper:]_')
+     var="${short#?}"
   fi
-  MAP="$MAP($short_name)($long_name) $var_name $value_name\n"
+  MAP="$MAP($short)($long) $(echo "$var" | tr '[:lower:]-' '[:upper:]_') $value\n"
 done
-
 unset IFS
 
-eval set -- $ORIG_ARGS
-PARSED=$(getopt -a -n "$NAME" -o "$OPTS" -l "$LONGOPTS" -- "$@")
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-
+PARSED=$(getopt -a -n "$NAME" -o "$OPTS" -l "$LONGOPTS" -- $ORIG_ARGS) || exit 1
 eval set -- "$PARSED"
 
 while :; do
   case "$1" in
-    --)
-      shift
-      break
-      ;;
+    --) shift; break ;;
     -*)
       spec=$(echo "$MAP" | grep -F "($1)")
-      name=$(echo "$spec" | awk '{print $2}')
-      value=$(echo "$spec" | awk '{print $3}')
+      name=$(echo "$spec" | cut -d' ' -f2)
+      value=$(echo "$spec" | cut -d' ' -f3)
       if [ -n "$value" ]; then
         echo "$name='$2'"
         shift 2
@@ -90,8 +66,7 @@ while :; do
   esac
 done
 
-echo "__ALL_ARGS='$ORIG_ARGS'"
+[ -n "$ORIG_ARGS" ] && echo "__ALL_ARGS='$ORIG_ARGS'"
+[ -n "$*" ] && echo "__POS_ARGS=\"$*\""
 
-if [ -n "$*" ]; then
-  echo "__POS_ARGS=\"$*\""
-fi
+exit 0
