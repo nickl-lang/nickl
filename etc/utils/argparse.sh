@@ -2,15 +2,15 @@
 
 set -e
 
-if [ "$__ARGPARSE_RECURSIVE" = 1 ]; then
-  OPTIONS="$1"
-  NAME="$2"
+if [ "$ARGPARSE_SIMPLE" = 1 ]; then
+  NAME="$1"
+  OPTIONS="$2"
   shift 2
 else
   print_usage() {
     echo >&2 "Usage: $0 [-n NAME] -o OPTIONS -- ARGS"
   }
-  PARSED=$(__ARGPARSE_RECURSIVE=1 "$0" '-h,--help:-n,--name,=:-o,--options,=' "$0" "$@") || {
+  PARSED=$(ARGPARSE_SIMPLE=1 "$0" "$0" '-h,--help:-n,--name,=:-o,--options,=' "$@") || {
     print_usage
     echo >&2 "Use --help for more info"
     exit 1
