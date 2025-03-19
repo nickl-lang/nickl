@@ -3,21 +3,41 @@
 set -e
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
+print_usage() {
+  echo >&2 "Usage: $0 [-i IMAGE]"
+}
+
+PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" '-h,--help:-i,--image,=' "$@") || {
+  print_usage
+  echo >&2 "Use --help for more info"
+  exit 1
+}
+eval "$PARSED"
+eval set -- "$__POS_ARGS"
+
 . "$DIR/config.sh"
+
+if [ "$HELP" = 1 ];  then
+  print_usage
+  echo >&2 "Options:"
+  echo >&2 "  -i, --image IMAGE=$DEFAULT_IMAGE    Possible values: $IMAGES"
+  echo >&2 ""
+  exit
+fi
 
 PROJECT_DIR=$(realpath "$DIR/../..")
 DOCKER_HOME="$PROJECT_DIR/out/home"
 
-if [ -z "$(docker images -q "$IMAGE" 2> /dev/null)" ]; then
-    if docker pull "$DOCKER_REGISTRY_URL/$IMAGE" 2> /dev/null; then
-        docker image tag "$DOCKER_REGISTRY_URL/$IMAGE" "$IMAGE"
-        docker image rm "$DOCKER_REGISTRY_URL/$IMAGE"
+if [ -z "$(docker images -q "$TAG" 2> /dev/null)" ]; then
+    if docker pull "$REMOTE/$TAG" 2> /dev/null; then
+        docker image tag "$REMOTE/$TAG" "$TAG"
+        docker image rm "$REMOTE/$TAG"
     else
         "$DIR/build-image.sh"
     fi
 fi
 
-echo >&2 "INFO: Running docker image '$IMAGE'"
+echo >&2 "INFO: Running docker image '$TAG'"
 
 mkdir -p "$DOCKER_HOME"
 
@@ -27,14 +47,14 @@ else
   TTY_ARG=""
 fi
 
-IMAGE_PRINTABLE=$(echo "$IMAGE" | sed 's/:/-/g')
+TAG_PRINTABLE=$(echo "$TAG" | sed 's/:/-/g')
 PASSWD_FILE=/etc/passwd
 GROUPS_FILE=/etc/group
-DOCKER_PASSWD_FILE="/tmp/passwd-$IMAGE_PRINTABLE"
-DOCKER_GROUPS_FILE="/tmp/group-$IMAGE_PRINTABLE"
+DOCKER_PASSWD_FILE="/tmp/passwd-$TAG_PRINTABLE"
+DOCKER_GROUPS_FILE="/tmp/group-$TAG_PRINTABLE"
 
 if [ ! -e "$DOCKER_PASSWD_FILE" ] || [ ! -e "$DOCKER_GROUPS_FILE" ]; then
-  ID=$(docker create "$IMAGE")
+  ID=$(docker create "$TAG")
   if [ ! -e "$DOCKER_PASSWD_FILE" ]; then
       docker cp "$ID:$PASSWD_FILE" "$DOCKER_PASSWD_FILE"
       getent passwd "$(id -u)" >> "$DOCKER_PASSWD_FILE"
@@ -80,4 +100,4 @@ docker run \
   -v "$DOCKER_HOME:$HOME" \
   -v "$PROJECT_DIR:$PROJECT_DIR" \
   $EXTRA_DOCKER_OPTS \
-  "$IMAGE" "$@"
+  "$TAG" "$@"

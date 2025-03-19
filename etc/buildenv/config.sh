@@ -3,9 +3,8 @@
 set -e
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
-if [ -z ${TARGET+x} ]; then
-  TARGET=$(uname -s | tr '[:upper:]' '[:lower:]')
-fi
+DEFAULT_IMAGE=$(uname -s | tr '[:upper:]' '[:lower:]')
+[ -z ${IMAGE+x} ] && IMAGE=$DEFAULT_IMAGE
 
 CONFIG=$(cat "$DIR/config.json")
 
@@ -15,20 +14,14 @@ ARGS=$(echo "$CONFIG" | jq -r '.args | to_entries[]')
 STAGES=$(echo "$CONFIG" | jq -r '.stages[]')
 DEBUG=$(echo "$CONFIG" | jq -r '.debug_image_build')
 
-IMAGE_CONFIG=$(echo "$CONFIG" | jq --arg TARGET "$TARGET" '.images[] | select(.image==$TARGET)')
+IMAGE_NAME=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(startswith($IMAGE + ":"))')
 
-if [ -z "$IMAGE_CONFIG" ]; then
-  echo >&2 "ERROR: Invalid target '$TARGET'"
-  echo "$CONFIG" | jq -r .images[].image | xargs echo >&2 "INFO: Possible targets:"
+IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
+
+[ -z "$IMAGE_NAME" ] && {
+  echo >&2 "ERROR: Invalid image '$IMAGE'"
+  echo >&2 "INFO: Possible images: $IMAGES"
   exit 1
-fi
+}
 
-TAG=$(echo "$IMAGE_CONFIG" | jq -r '.tag')
-
-IMAGE="$BASE_NAME-$TARGET:$TAG"
-
-if [ "$DEBUG" = true ]; then
-  echo >&2 "DEBUG: BASE_NAME=$BASE_NAME"
-  echo >&2 "DEBUG: TARGET=$TARGET"
-  echo >&2 "DEBUG: TAG=$TAG"
-fi
+TAG="$BASE_NAME-$IMAGE_NAME"

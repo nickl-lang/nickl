@@ -7,18 +7,6 @@ print_usage() {
   echo >&2 "Usage: $0 [OPTIONS] [TARGET...]"
 }
 
-print_help() {
-  print_usage
-  echo >&2 ""
-  echo >&2 "Options:"
-  echo >&2 "  -h, --help          Show this message"
-  echo >&2 "  -n, --native        Enable native build, i.e. without docker"
-  echo >&2 "  -t, --test          Build tests"
-  echo >&2 "  -d, --debug         Build with debug information"
-  echo >&2 "  -s, --system SYSTEM Build for SYSTEM"
-  echo >&2 ""
-}
-
 PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" \
   '-h,--help:-n,--native:-t,--test:-d,--debug:-s,--system,=' "$@") || {
   print_usage
@@ -28,10 +16,17 @@ PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" \
 eval "$PARSED"
 eval set -- "$__POS_ARGS"
 
-if [ "$HELP" = 1 ];  then
-  print_help
+[ "$HELP" = 1 ] && {
+  print_usage
+  echo >&2 "Options:"
+  echo >&2 "  -h, --help          Show this message"
+  echo >&2 "  -n, --native        Enable native build, i.e. without docker"
+  echo >&2 "  -t, --test          Build tests"
+  echo >&2 "  -d, --debug         Build with debug information"
+  echo >&2 "  -s, --system SYSTEM Build target, possible values: linux windows"
+  echo >&2 ""
   exit
-fi
+}
 
 if [ "$DEBUG" = 1 ]; then
   BUILD_TYPE='Debug'
@@ -39,28 +34,26 @@ else
   BUILD_TYPE='Release'
 fi
 
-if [ -z ${SYSTEM+x} ]; then
+[ -z ${SYSTEM+x} ] && {
   SYSTEM=$(cmake -P "$DIR/cmake/GetSystemName.cmake" | tr '[:upper:]' '[:lower:]')
-fi
+}
+
+case "$SYSTEM" in
+  linux);;
+  windows);;
+  *)
+    echo >&2 "ERROR: Invalid system '$SYSTEM', possible values are: linux windows"
+    exit 1
+    ;;
+esac
 
 SYSTEM_SUFFIX=$(echo "$SYSTEM-$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
 BIN_DIR="$DIR/out/build-$SYSTEM_SUFFIX"
 
 BUILD_TESTS_INIT=$(cmake -L -N -B "$BIN_DIR" | grep ^BUILD_TESTS | cut -d '=' -f2)
-if [ -z ${BUILD_TESTS+x} ]; then
-  BUILD_TESTS="$BUILD_TESTS_INIT"
-fi
+[ -z ${BUILD_TESTS+x} ] && BUILD_TESTS="$BUILD_TESTS_INIT"
 
-if [ "$TEST" = 1 ]; then
-  BUILD_TESTS=ON
-fi
-
-if [ "$BUILD_TESTS" = ON ]; then
-  TARGET="$SYSTEM-dev"
-else
-  TARGET="$SYSTEM"
-fi
-export TARGET
+[ "$TEST" = 1 ] && BUILD_TESTS='ON'
 
 if [ -z ${MAKE+x} ]; then
   if [ -f "$BIN_DIR/Makefile" ]; then
@@ -73,7 +66,13 @@ if [ -z ${MAKE+x} ]; then
 fi
 
 if [ "$NATIVE" != 1 ] && [ ! -f /.dockerenv ]; then
-  "$DIR/etc/buildenv/run-docker.sh" "$DIR/build.sh" $__ALL_ARGS
+  if [ "$BUILD_TESTS" = 'ON' ]; then
+    IMAGE="$SYSTEM-dev"
+  else
+    IMAGE="$SYSTEM"
+  fi
+
+  "$DIR/etc/buildenv/run-docker.sh" -i "$IMAGE" -- "$DIR/build.sh" $__ALL_ARGS
   exit
 fi
 
@@ -102,12 +101,10 @@ if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
     $EXTRA_CMAKE_ARGS
 fi
 
-if [ -z ${NPROC+x} ]; then
-  NPROC=$(nproc)
-fi
-if [ -z ${CTEST_PARALLEL_LEVEL+x} ]; then
+[ -z ${NPROC+x} ] && NPROC=$(nproc)
+[ -z ${CTEST_PARALLEL_LEVEL+x} ] && {
   CTEST_PARALLEL_LEVEL="$NPROC"
   export CTEST_PARALLEL_LEVEL
-fi
+}
 
 $MAKE -C "$BIN_DIR" -j"$NPROC" "$@"
