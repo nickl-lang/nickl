@@ -23,7 +23,7 @@ class cc_adapter : public testing::Test {
         nksb_printf(
             &m_output_filename_sb,
             "%s%s_test" TEST_EXECUTABLE_EXT,
-            std::filesystem::exists(TEST_FILES_DIR) ? TEST_FILES_DIR : "",
+            std::filesystem::exists(TEST_FILES_DIR) ? TEST_FILES_DIR : "./",
             testing::UnitTest::GetInstance()->current_test_info()->name());
 
         static NkString const additional_flags = nk_cs2s(TEST_CC_FLAGS);

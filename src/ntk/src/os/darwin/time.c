@@ -1,7 +1,6 @@
 #include "ntk/os/time.h"
 
 #include <sys/sysctl.h>
-#include <unistd.h>
 
 #include "ntk/time.h"
 
@@ -13,8 +12,4 @@ u64 nk_getTscFreq(void) {
     } else {
         return nk_estimateTscFrequency();
     }
-}
-
-void nk_usleep(u64 usec) {
-    usleep(usec);
 }

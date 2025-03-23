@@ -48,7 +48,3 @@ u64 nk_getTscFreq(void) {
 
     return tsc_freq;
 }
-
-void nk_usleep(u64 usec) {
-    usleep(usec);
-}
