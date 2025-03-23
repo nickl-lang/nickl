@@ -100,30 +100,30 @@ extern "C" {
 
 typedef struct {
     intptr_t val;
-} NkOsHandle;
+} NkHandle;
 
-#define NK_OS_HANDLE_ZERO (NK_LITERAL(NkOsHandle) NK_ZERO_STRUCT)
+#define NK_HANDLE_ZERO (NK_LITERAL(NkHandle) NK_ZERO_STRUCT)
 
-NK_INLINE bool nkos_handleEqual(NkOsHandle lhs, NkOsHandle rhs) {
+NK_INLINE bool nk_handleEqual(NkHandle lhs, NkHandle rhs) {
     return lhs.val == rhs.val;
 }
 
-NK_INLINE bool nkos_handleIsZero(NkOsHandle handle) {
-    return nkos_handleEqual(handle, NK_OS_HANDLE_ZERO);
+NK_INLINE bool nk_handleIsZero(NkHandle handle) {
+    return nk_handleEqual(handle, NK_HANDLE_ZERO);
 }
 
-NK_INLINE void *nkos_handleToVoidPtr(NkOsHandle handle) {
+NK_INLINE void *nk_handleToVoidPtr(NkHandle handle) {
     return (void *)handle.val;
 }
 
-NK_INLINE NkOsHandle nkos_handleFromVoidPtr(void *ptr) {
-    return NK_LITERAL(NkOsHandle){(intptr_t)ptr};
+NK_INLINE NkHandle nk_handleFromVoidPtr(void *ptr) {
+    return NK_LITERAL(NkHandle){(intptr_t)ptr};
 }
 
 #ifdef __cplusplus
 
-inline bool operator==(NkOsHandle lhs, NkOsHandle rhs) {
-    return nkos_handleEqual(lhs, rhs);
+inline bool operator==(NkHandle lhs, NkHandle rhs) {
+    return nk_handleEqual(lhs, rhs);
 }
 
 #endif // __cplusplus

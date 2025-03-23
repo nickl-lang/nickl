@@ -1,5 +1,5 @@
-#ifndef NTK_OS_DL_H_
-#define NTK_OS_DL_H_
+#ifndef NTK_DL_H_
+#define NTK_DL_H_
 
 #include "ntk/common.h"
 
@@ -9,10 +9,10 @@ extern "C" {
 
 NK_EXPORT extern char const *nkdl_file_extension;
 
-NK_EXPORT NkOsHandle nkdl_loadLibrary(char const *name);
-NK_EXPORT void nkdl_freeLibrary(NkOsHandle dl);
+NK_EXPORT NkHandle nkdl_loadLibrary(char const *name);
+NK_EXPORT void nkdl_freeLibrary(NkHandle dl);
 
-NK_EXPORT void *nkdl_resolveSymbol(NkOsHandle dl, char const *name);
+NK_EXPORT void *nkdl_resolveSymbol(NkHandle dl, char const *name);
 
 NK_EXPORT char const *nkdl_getLastErrorString(void);
 
@@ -20,4 +20,4 @@ NK_EXPORT char const *nkdl_getLastErrorString(void);
 }
 #endif
 
-#endif // NTK_OS_DL_H_
+#endif // NTK_DL_H_

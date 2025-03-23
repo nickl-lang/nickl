@@ -1,5 +1,5 @@
-#ifndef NTK_OS_SYSCALL_H_
-#define NTK_OS_SYSCALL_H_
+#ifndef NTK_SYSCALL_H_
+#define NTK_SYSCALL_H_
 
 #include "ntk/common.h"
 
@@ -31,4 +31,4 @@ NK_EXPORT long nk_syscall6(long n, long a1, long a2, long a3, long a4, long a5, 
 }
 #endif
 
-#endif // NTK_OS_SYSCALL_H_
+#endif // NTK_SYSCALL_H_

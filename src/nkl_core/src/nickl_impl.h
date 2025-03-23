@@ -26,7 +26,7 @@ NK_HASH_TREE_PROTO(TypeMap, Type_kv, ByteArray);
 typedef struct {
     NkArena type_arena;
     TypeMap type_map;
-    NkOsHandle mtx;
+    NkHandle mtx;
     u32 next_id;
 
     // TODO: Use scratch arenas

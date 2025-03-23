@@ -1,5 +1,5 @@
-#ifndef NTK_OS_TTY_H_
-#define NTK_OS_TTY_H_
+#ifndef NTK_TTY_H_
+#define NTK_TTY_H_
 
 #include "ntk/common.h"
 
@@ -23,4 +23,4 @@ NK_EXPORT bool nk_isatty(i32 fd);
 }
 #endif
 
-#endif // NTK_OS_TTY_H_
+#endif // NTK_TTY_H_

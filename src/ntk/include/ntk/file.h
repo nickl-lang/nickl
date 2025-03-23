@@ -17,12 +17,12 @@ typedef struct {
 
 NK_EXPORT NkFileReadResult nk_file_read(NkAllocator alloc, NkString file);
 
-NK_EXPORT NkStream nk_file_getStream(NkOsHandle h_file);
+NK_EXPORT NkStream nk_file_getStream(NkHandle h_file);
 
 extern char const *nk_null_file;
 
-NK_EXPORT i32 nk_read(NkOsHandle fd, char *buf, usize n);
-NK_EXPORT i32 nk_write(NkOsHandle fd, char const *buf, usize n);
+NK_EXPORT i32 nk_read(NkHandle fd, char *buf, usize n);
+NK_EXPORT i32 nk_write(NkHandle fd, char const *buf, usize n);
 
 typedef enum {
     NkOpenFlags_Read = 1,
@@ -31,13 +31,13 @@ typedef enum {
     NkOpenFlags_Truncate = 8,
 } NkOpenFlags;
 
-NK_EXPORT NkOsHandle nk_open(char const *file, i32 flags);
+NK_EXPORT NkHandle nk_open(char const *file, i32 flags);
 
-NK_EXPORT i32 nk_close(NkOsHandle fd);
+NK_EXPORT i32 nk_close(NkHandle fd);
 
-NK_EXPORT NkOsHandle nk_stdin(void);
-NK_EXPORT NkOsHandle nk_stdout(void);
-NK_EXPORT NkOsHandle nk_stderr(void);
+NK_EXPORT NkHandle nk_stdin(void);
+NK_EXPORT NkHandle nk_stdout(void);
+NK_EXPORT NkHandle nk_stderr(void);
 
 #ifdef __cplusplus
 }

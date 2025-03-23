@@ -1,5 +1,5 @@
-#ifndef NTK_OS_MEM_H_
-#define NTK_OS_MEM_H_
+#ifndef NTK_MEM_H_
+#define NTK_MEM_H_
 
 #include "ntk/common.h"
 
@@ -14,4 +14,4 @@ NK_EXPORT i32 nk_mem_release(void *addr, usize len);
 }
 #endif
 
-#endif // NTK_OS_MEM_H_
+#endif // NTK_MEM_H_

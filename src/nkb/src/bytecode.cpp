@@ -171,7 +171,7 @@ NK_PRINTF_LIKE(2) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) 
     ctx->error_str = {NKS_INIT(error)};
 }
 
-NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
+NkHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
     NK_PROF_FUNC();
 
     auto found = ExternLibTree_find(&ctx->extern_libs, name);
@@ -180,7 +180,7 @@ NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
     } else {
         auto const name_str = nk_atom2cs(name);
         auto h_lib = nkdl_loadLibrary(name_str);
-        if (nkos_handleIsZero(h_lib)) {
+        if (nk_handleIsZero(h_lib)) {
             auto const frame = nk_arena_grab(ctx->tmp_arena);
             defer {
                 nk_arena_popFrame(ctx->tmp_arena, frame);
@@ -194,23 +194,23 @@ NkOsHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
             nksb_appendNull(&lib_name);
             h_lib = nkdl_loadLibrary(lib_name.data);
 
-            if (nkos_handleIsZero(h_lib)) {
+            if (nk_handleIsZero(h_lib)) {
                 nksb_clear(&lib_name);
 
                 nksb_printf(&lib_name, "lib%s", name_str);
                 nksb_appendNull(&lib_name);
                 h_lib = nkdl_loadLibrary(lib_name.data);
 
-                if (nkos_handleIsZero(h_lib)) {
+                if (nk_handleIsZero(h_lib)) {
                     nksb_clear(&lib_name);
 
                     nksb_printf(&lib_name, "lib%s.%s", name_str, nkdl_file_extension);
                     nksb_appendNull(&lib_name);
                     h_lib = nkdl_loadLibrary(lib_name.data);
 
-                    if (nkos_handleIsZero(h_lib)) {
+                    if (nk_handleIsZero(h_lib)) {
                         reportError(ctx, "failed to load extern library `%s`: " NKS_FMT, name_str, NKS_ARG(err_str));
-                        return NK_OS_HANDLE_ZERO;
+                        return NK_HANDLE_ZERO;
                     }
                 }
             }
@@ -227,8 +227,8 @@ void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
         return found->val;
     } else {
         auto const name_str = nk_atom2cs(name);
-        NkOsHandle h_lib = getExternLib(ctx, lib_hame);
-        if (nkos_handleIsZero(h_lib)) {
+        NkHandle h_lib = getExternLib(ctx, lib_hame);
+        if (nk_handleIsZero(h_lib)) {
             return NULL;
         }
         auto sym = nkdl_resolveSymbol(h_lib, name_str);

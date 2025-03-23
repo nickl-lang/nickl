@@ -45,7 +45,7 @@ struct LoggerState {
     i64 start_time;
     NkLogLevel log_level;
     NkLogColorMode color_mode;
-    NkOsHandle mtx;
+    NkHandle mtx;
     usize msg_count;
     bool initialized;
 };

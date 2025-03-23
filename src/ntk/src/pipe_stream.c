@@ -23,10 +23,10 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
 
     NkPipe out = nk_proc_createPipe();
     NkPipe null_pipe = {
-        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_OS_HANDLE_ZERO,
-        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_OS_HANDLE_ZERO,
+        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_HANDLE_ZERO,
+        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_HANDLE_ZERO,
     };
-    NkOsHandle h_process = NK_OS_HANDLE_ZERO;
+    NkHandle h_process = NK_HANDLE_ZERO;
     if (nk_proc_execAsync(sb.data, &h_process, NULL, &out, &null_pipe) < 0) {
         nkerr_t err = nk_getLastError();
 
@@ -63,10 +63,10 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
 
     NkPipe in = nk_proc_createPipe();
     NkPipe null_pipe = {
-        NK_OS_HANDLE_ZERO,
-        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_OS_HANDLE_ZERO,
+        NK_HANDLE_ZERO,
+        quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_HANDLE_ZERO,
     };
-    NkOsHandle h_process = NK_OS_HANDLE_ZERO;
+    NkHandle h_process = NK_HANDLE_ZERO;
     if (nk_proc_execAsync(sb.data, &h_process, &in, &null_pipe, &null_pipe) < 0) {
         nkerr_t err = nk_getLastError();
 

@@ -1,5 +1,5 @@
-#ifndef NTK_OS_THREAD_H_
-#define NTK_OS_THREAD_H_
+#ifndef NTK_THREAD_H_
+#define NTK_THREAD_H_
 
 #include "ntk/common.h"
 #include "ntk/utils.h"
@@ -8,11 +8,11 @@
 extern "C" {
 #endif
 
-NK_EXPORT NkOsHandle nk_mutex_alloc(void);
-NK_EXPORT i32 nk_mutex_free(NkOsHandle mutex);
+NK_EXPORT NkHandle nk_mutex_alloc(void);
+NK_EXPORT i32 nk_mutex_free(NkHandle mutex);
 
-NK_EXPORT i32 nk_mutex_lock(NkOsHandle mutex);
-NK_EXPORT i32 nk_mutex_unlock(NkOsHandle mutex);
+NK_EXPORT i32 nk_mutex_lock(NkHandle mutex);
+NK_EXPORT i32 nk_mutex_unlock(NkHandle mutex);
 
 #define NK_MUTEX_GUARD_SCOPE(mtx) NK_DEFER_LOOP(nk_mutex_lock(mtx), nk_mutex_unlock(mtx))
 
@@ -20,4 +20,4 @@ NK_EXPORT i32 nk_mutex_unlock(NkOsHandle mutex);
 }
 #endif
 
-#endif // NTK_OS_THREAD_H_
+#endif // NTK_THREAD_H_

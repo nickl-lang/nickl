@@ -88,12 +88,12 @@ NK_HASH_TREE_PROTO(TypeTree, TypeTree_kv, u32);
 typedef struct {
     NkAllocator alloc;
     TypeTree types;
-    NkOsHandle mtx;
+    NkHandle mtx;
 } NkFfiContext;
 
 typedef struct {
     NkAtom key;
-    NkOsHandle val;
+    NkHandle val;
 } ExternLib_kv;
 
 // TODO Use hash map or linear array for extern libs
