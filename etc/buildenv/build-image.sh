@@ -20,6 +20,7 @@ eval set -- "$__POS_ARGS"
 [ "$HELP" = 1 ] && {
   print_usage
   echo >&2 "Options:"
+  echo >&2 "  -h, --help                          Show this message"
   echo >&2 "  -i, --image IMAGE=$DEFAULT_IMAGE    Possible values: $IMAGES"
   echo >&2 ""
   exit

@@ -19,8 +19,7 @@ IMAGE_NAME=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(sta
 IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
 
 [ -z "$IMAGE_NAME" ] && {
-  echo >&2 "ERROR: Invalid image '$IMAGE'"
-  echo >&2 "INFO: Possible images: $IMAGES"
+  echo >&2 "ERROR: Invalid docker image '$IMAGE', possible images: $IMAGES"
   exit 1
 }
 
