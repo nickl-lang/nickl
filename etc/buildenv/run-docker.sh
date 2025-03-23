@@ -29,12 +29,12 @@ PROJECT_DIR=$(realpath "$DIR/../..")
 DOCKER_HOME="$PROJECT_DIR/out/home"
 
 if [ -z "$(docker images -q "$TAG" 2> /dev/null)" ]; then
-    if docker pull "$REMOTE/$TAG" 2> /dev/null; then
-        docker image tag "$REMOTE/$TAG" "$TAG"
-        docker image rm "$REMOTE/$TAG"
-    else
-        "$DIR/build-image.sh"
-    fi
+  if docker pull "$REMOTE/$TAG" 2> /dev/null; then
+    docker image tag "$REMOTE/$TAG" "$TAG"
+    docker image rm "$REMOTE/$TAG"
+  else
+    "$DIR/build-image.sh" -i "$IMAGE"
+  fi
 fi
 
 echo >&2 "INFO: Running docker image '$TAG'"
@@ -56,12 +56,12 @@ DOCKER_GROUPS_FILE="/tmp/group-$TAG_PRINTABLE"
 if [ ! -e "$DOCKER_PASSWD_FILE" ] || [ ! -e "$DOCKER_GROUPS_FILE" ]; then
   ID=$(docker create "$TAG")
   if [ ! -e "$DOCKER_PASSWD_FILE" ]; then
-      docker cp "$ID:$PASSWD_FILE" "$DOCKER_PASSWD_FILE"
-      getent passwd "$(id -u)" >> "$DOCKER_PASSWD_FILE"
+    docker cp "$ID:$PASSWD_FILE" "$DOCKER_PASSWD_FILE"
+    getent passwd "$(id -u)" >> "$DOCKER_PASSWD_FILE"
   fi
   if [ ! -e "$DOCKER_GROUPS_FILE" ]; then
-      docker cp "$ID:$GROUPS_FILE" "$DOCKER_GROUPS_FILE"
-      echo "$(id -g -n):x:$(id -g):" >> "$DOCKER_GROUPS_FILE"
+    docker cp "$ID:$GROUPS_FILE" "$DOCKER_GROUPS_FILE"
+    echo "$(id -g -n):x:$(id -g):" >> "$DOCKER_GROUPS_FILE"
   fi
   docker rm "$ID" > /dev/null
 fi

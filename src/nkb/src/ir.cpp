@@ -709,7 +709,7 @@ static void inspectVal(NkIrProg ir, NkIrRef const &ref, NkStream out, bool force
             auto const name_str = nk_atom2s(decl.name);
             nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
         } else {
-            nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "_const" : "_data", ref.index);
+            nk_stream_printf(out, "%s%zu", decl.read_only ? "_const" : "_data", ref.index);
         }
         return;
     }
@@ -809,7 +809,7 @@ void nkir_inspectData(NkIrProg ir, NkStream out) {
                     auto const name_str = nk_atom2s(decl.name);
                     nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
                 } else {
-                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "_const" : "_data", i);
+                    nk_stream_printf(out, "%s%zu", decl.read_only ? "_const" : "_data", i);
                 }
                 nk_stream_printf(out, ": ");
                 nkirt_inspect(decl.type, out);
@@ -842,7 +842,7 @@ void inspectProcSignature(
                 auto const name_str = nk_atom2s(arg_names.data[i]);
                 nk_stream_printf(out, NKS_FMT ": ", NKS_ARG(name_str));
             } else {
-                nk_stream_printf(out, "_arg%" PRIu64 ": ", i);
+                nk_stream_printf(out, "_arg%zu: ", i);
             }
         }
         nkirt_inspect(proc_info.args_t.data[i], out);
@@ -958,7 +958,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
         auto const name_str = nk_atom2s(proc.name);
         nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
     } else {
-        nk_stream_printf(out, "_proc%" PRIu64, _proc.idx);
+        nk_stream_printf(out, "_proc%zu", _proc.idx);
     }
     inspectProcSignature(proc.proc_t->as.proc.info, proc.arg_names, out);
 
@@ -970,7 +970,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                 auto const name_str = nk_atom2s(proc.locals.data[i].name);
                 nk_stream_printf(out, NKS_FMT ": ", NKS_ARG(name_str));
             } else {
-                nk_stream_printf(out, "_var%" PRIu64 ": ", i);
+                nk_stream_printf(out, "_var%zu: ", i);
             }
             nkirt_inspect(proc.locals.data[i].type, out);
             nk_stream_printf(out, "\n");
@@ -1024,7 +1024,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
                 auto const name_str = nk_atom2s(decl.name);
                 nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
             } else {
-                nk_stream_printf(out, "_var%" PRIu64, ref.index);
+                nk_stream_printf(out, "_var%zu", ref.index);
             }
             break;
         }
@@ -1033,7 +1033,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
                 auto const name_str = nk_atom2s(proc.arg_names.data[ref.index]);
                 nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
             } else {
-                nk_stream_printf(out, "_arg%" PRIu64, ref.index);
+                nk_stream_printf(out, "_arg%zu", ref.index);
             }
             break;
         }
@@ -1046,7 +1046,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
                     auto const name_str = nk_atom2s(decl.name);
                     nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
                 } else {
-                    nk_stream_printf(out, "%s%" PRIu64, decl.read_only ? "_const" : "_data", ref.index);
+                    nk_stream_printf(out, "%s%zu", decl.read_only ? "_const" : "_data", ref.index);
                 }
             }
             break;
@@ -1057,7 +1057,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
                 auto const name_str = nk_atom2s(name);
                 nk_stream_printf(out, NKS_FMT, NKS_ARG(name_str));
             } else {
-                nk_stream_printf(out, "_proc%" PRIu64, ref.index);
+                nk_stream_printf(out, "_proc%zu", ref.index);
             }
             break;
         }
@@ -1078,13 +1078,13 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
             break;
     }
     if (ref.offset) {
-        nk_stream_printf(out, "+%" PRIu64, ref.offset);
+        nk_stream_printf(out, "+%zu", ref.offset);
     }
     for (usize i = 0; i < ref.indir; i++) {
         nk_stream_printf(out, "]");
     }
     if (ref.post_offset) {
-        nk_stream_printf(out, "+%" PRIu64, ref.post_offset);
+        nk_stream_printf(out, "+%zu", ref.post_offset);
     }
     nk_stream_printf(out, ":");
     nkirt_inspect(ref.type, out);

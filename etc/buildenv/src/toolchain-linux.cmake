@@ -1,5 +1,3 @@
-set(CMAKE_SYSTEM_NAME Linux)
-
 set(PREFIX "/opt/toolchain")
 
 set(CMAKE_C_COMPILER "${PREFIX}/bin/gcc")

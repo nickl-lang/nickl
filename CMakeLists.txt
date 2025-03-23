@@ -14,14 +14,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # ccache
@@ -37,8 +37,8 @@ endif()
 
 include(FindLibraryEx)
 
-find_library_ex(LIBFFI ffi STATIC)
-find_library_ex(LIBDL dl SHARED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules_ex(LIBFFI libffi STATIC)
 
 if(BUILD_TESTS)
     enable_testing()
@@ -49,16 +49,80 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+##### Systems #####
+
+set(FLAGS)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(SYSTEM_INSTALL_DIR lib)
+    set(SYSTEM_RPATH_ORIGIN "$ORIGIN")
+
+    set(SYSTEM_SNPRINTF_PREFIX "")
+
+    set(SYSTEM_LIBC "libc.so.6")
+    set(SYSTEM_LIBM "libm.so.6")
+    set(SYSTEM_LIBPTHREAD "libpthread.so.0")
+    set(SYSTEM_LIBJSONC "libjson-c.so")
+
+    set(SYSTEM_EXPORT_DYNAMIC_FLAG "-export-dynamic")
+
+    set(SYSTEM_EXECUTABLE_EXT "")
+
+    find_library_ex(LIBDL dl SHARED)
+
+    set(FLAGS "${FLAGS} -static-libstdc++")
+    set(FLAGS "${FLAGS} -static-libgcc")
+
+    set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+
+    set(SYSTEM_INSTALL_DIR lib)
+    set(SYSTEM_RPATH_ORIGIN "@executable_path")
+
+    set(SYSTEM_SNPRINTF_PREFIX "")
+
+    set(SYSTEM_LIBC "libSystem.B.dylib")
+    set(SYSTEM_LIBM "libSystem.B.dylib")
+    set(SYSTEM_LIBPTHREAD "libSystem.B.dylib")
+    set(SYSTEM_LIBJSONC "libjson-c.dylib")
+
+    set(SYSTEM_EXPORT_DYNAMIC_FLAG "-rdynamic")
+
+    set(SYSTEM_EXECUTABLE_EXT "")
+
+    set(LIBDL "")
+
+    set(SYSTEM_LIBRARY_PATH DYLD_LIBRARY_PATH)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(SYSTEM_INSTALL_DIR bin)
+    set(SYSTEM_RPATH_ORIGIN "")
+
+    set(SYSTEM_SNPRINTF_PREFIX "_")
+
+    set(SYSTEM_LIBC "msvcrt.dll")
+    set(SYSTEM_LIBM "msvcrt.dll")
+    set(SYSTEM_LIBPTHREAD "libwinpthread-1.dll")
+    set(SYSTEM_LIBJSONC "libjson-c.dll")
+
+    set(SYSTEM_EXPORT_DYNAMIC_FLAG "-Wl,-export-all-symbols")
+
+    set(SYSTEM_EXECUTABLE_EXT ".exe")
+
+    add_compile_definitions(__USE_MINGW_ANSI_STDIO=1)
+
+    find_library_ex(LIBDL dl SHARED)
+
     list(APPEND CMAKE_PREFIX_PATH ${PREFIX}/x86_64-w64-mingw32)
 
     find_library_ex(LIBSHLWAPI shlwapi STATIC)
     find_library_ex(LIBWINPTHREAD winpthread STATIC)
+
+    set(FLAGS "${FLAGS} -static-libstdc++")
+    set(FLAGS "${FLAGS} -static-libgcc")
+else()
+    message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
-
-##### Flags #####
-
-set(FLAGS)
 
 set(FLAGS "${FLAGS} -Wall")
 set(FLAGS "${FLAGS} -Wextra")
@@ -71,13 +135,9 @@ set(FLAGS "${FLAGS} -fvisibility=hidden")
 
 set(FLAGS "${FLAGS} -fdiagnostics-color")
 
-set(FLAGS "${FLAGS} -static-libstdc++")
-set(FLAGS "${FLAGS} -static-libgcc")
-
 if(ENABLE_ASAN)
     set(FLAGS "${FLAGS} -g")
     set(FLAGS "${FLAGS} -fsanitize=address")
-    set(FLAGS "${FLAGS} -fsanitize=leak")
 endif()
 
 set(CXX_FLAGS "${FLAGS}")
@@ -92,8 +152,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
 
 ##### Targets #####
-
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 
 include(Version)
 get_build_version(${PROJECT_SOURCE_DIR} BUILD_VERSION)
@@ -111,14 +169,8 @@ add_package_target(
     "${DEPLOY_PREFIX}"
     )
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(SYSTEM_INSTALL_DIR lib)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(SYSTEM_INSTALL_DIR bin)
-    add_compile_definitions(__USE_MINGW_ANSI_STDIO=1)
-else()
-    message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
-endif()
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+set(CMAKE_INSTALL_RPATH "${SYSTEM_RPATH_ORIGIN}/../lib")
 
 add_subdirectory(src)
 

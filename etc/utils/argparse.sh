@@ -45,7 +45,7 @@ IFS=':'; for spec in $OPTIONS; do
 done
 unset IFS
 
-PARSED=$(getopt -a -n "$NAME" -o "$OPTS" -l "$LONGOPTS" -- $ORIG_ARGS) || exit 1
+PARSED=$(getopt "$OPTS" $ORIG_ARGS) || exit 1
 eval set -- "$PARSED"
 
 while :; do

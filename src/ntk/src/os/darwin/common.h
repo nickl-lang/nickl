@@ -1,7 +1,6 @@
 #ifndef NTK_OS_LINUX_COMMON_H_
 #define NTK_OS_LINUX_COMMON_H_
 
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "ntk/os/common.h"

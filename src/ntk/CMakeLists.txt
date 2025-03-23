@@ -4,6 +4,8 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} SYSTEM_DIR)
 
 set(DEPS
     ${LIBDL}
+    ${LIBSHLWAPI}
+    ${LIBWINPTHREAD}
     spall
     stb
     )
@@ -34,14 +36,9 @@ set(SOURCES
     src/utils.c
     )
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND SOURCES
         src/os/${SYSTEM_DIR}/syscall.c
-        )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    list(APPEND DEPS
-        ${LIBSHLWAPI}
-        ${LIBWINPTHREAD}
         )
 endif()
 
@@ -52,6 +49,12 @@ add_library(${LIB} SHARED
 if(ENABLE_LOGGING)
     target_compile_definitions(${LIB}
         PUBLIC ENABLE_LOGGING=1
+        )
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(${LIB}
+        PRIVATE _GNU_SOURCE
         )
 endif()
 

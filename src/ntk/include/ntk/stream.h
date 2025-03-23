@@ -1,6 +1,7 @@
 #ifndef NTK_STREAM_H_
 #define NTK_STREAM_H_
 
+#include <stdarg.h>
 #include <string.h>
 
 #include "ntk/common.h"

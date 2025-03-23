@@ -1,7 +1,7 @@
 set(CMAKE_CXX_FLAGS "")
 set(CMAKE_C_FLAGS "-g -O0")
 if(ENABLE_ASAN)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address -fsanitize=leak")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address")
 endif()
 
 set(LIB test_import_lib)
@@ -13,7 +13,6 @@ set_target_properties(${LIB} PROPERTIES
    RUNTIME_OUTPUT_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
    LIBRARY_OUTPUT_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
    )
-
 
 def_nkirc_run_test(FILE import.nkir)
 

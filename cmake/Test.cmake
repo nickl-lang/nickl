@@ -35,9 +35,11 @@ function(def_test)
         ${ARG_LINK}
         )
 
-    gtest_discover_tests(${TARGET_NAME}
-        DISCOVERY_TIMEOUT 10
-        )
+    if(NOT CMAKE_CROSSCOMPILING OR DEFINED CMAKE_CROSSCOMPILING_EMULATOR)
+        gtest_discover_tests(${TARGET_NAME}
+            DISCOVERY_TIMEOUT 10
+            )
+    endif()
 endfunction()
 
 function(def_run_test)

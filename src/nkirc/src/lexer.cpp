@@ -1,7 +1,6 @@
 #include "lexer.h"
 
 #include <cctype>
-#include <cinttypes>
 #include <cstdarg>
 #include <cstring>
 #include <iterator>

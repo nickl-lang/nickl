@@ -106,7 +106,7 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
 
     jumpTo(proc->instrs.data);
 
-    NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
+    NK_LOG_DBG("stack_frame=%zu", ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
     NK_LOG_DBG("arg=%p", (void *)ctx.base.arg);
     NK_LOG_DBG("ret=%p", (void *)ctx.ret);

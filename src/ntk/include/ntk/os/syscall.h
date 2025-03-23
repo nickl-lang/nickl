@@ -7,11 +7,13 @@
 extern "C" {
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #define NK_SYSCALLS_AVAILABLE 0
-#else //_WIN32
+#elif defined(__APPLE__)
 #define NK_SYSCALLS_AVAILABLE 1
-#endif //_WIN32
+#else
+#define NK_SYSCALLS_AVAILABLE 1
+#endif
 
 #if NK_SYSCALLS_AVAILABLE
 

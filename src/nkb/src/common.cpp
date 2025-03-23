@@ -22,7 +22,7 @@ void nkirt_inspect(nktype_t type, NkStream out) {
                     }
                     auto const &elem = type->as.aggr.elems.data[i];
                     if (elem.count > 1) {
-                        nk_stream_printf(out, "[%" PRIu64 "]", elem.count);
+                        nk_stream_printf(out, "[%zu]", elem.count);
                     }
                     nkirt_inspect(elem.type, out);
                 }
