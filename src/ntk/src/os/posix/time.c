@@ -1,4 +1,4 @@
-#include "ntk/os/time.h"
+#include "ntk/time.h"
 
 #include <unistd.h>
 

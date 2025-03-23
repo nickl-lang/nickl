@@ -3,8 +3,7 @@
 #include <time.h>
 #include <x86intrin.h>
 
-#include "ntk/os/thread.h"
-#include "ntk/os/time.h"
+#include "ntk/time.h"
 
 i64 nk_now_ns(void) {
     struct timespec ts = {0};

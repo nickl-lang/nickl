@@ -29,10 +29,10 @@
 #include "ntk/common.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
-#include "ntk/os/term.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/term.h"
 #include "ntk/utils.h"
 #include "parser.hpp"
 

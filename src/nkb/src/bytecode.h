@@ -5,9 +5,9 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash_tree.h"
-#include "ntk/os/common.h"
 
 #ifdef __cplusplus
 extern "C" {

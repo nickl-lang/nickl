@@ -1,7 +1,7 @@
-#include "ntk/os/dl.h"
+#include "ntk/dl.h"
 
 #include "common.h"
-#include "ntk/os/error.h"
+#include "ntk/error.h"
 
 char const *nkdl_file_extension = "dll";
 

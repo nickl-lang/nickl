@@ -1,4 +1,4 @@
-#include "ntk/os/time.h"
+#include "ntk/time.h"
 
 #include <linux/perf_event.h>
 #include <sys/mman.h>

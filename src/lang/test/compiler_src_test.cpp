@@ -3,7 +3,7 @@
 #include "nkl/lang/compiler.h"
 #include "nkl/lang/value.h"
 #include "ntk/log.h"
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 #include "ntk/string.h"
 
 namespace {

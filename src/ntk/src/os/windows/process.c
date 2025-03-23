@@ -1,7 +1,7 @@
-#include "ntk/os/process.h"
+#include "ntk/process.h"
 
 #include "common.h"
-#include "ntk/os/file.h"
+#include "ntk/file.h"
 
 NkPipe nk_proc_createPipe(void) {
     NkPipe pip = {0};

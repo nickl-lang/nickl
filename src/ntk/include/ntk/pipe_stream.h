@@ -1,7 +1,7 @@
 #ifndef NTK_PIPE_STREAM_H_
 #define NTK_PIPE_STREAM_H_
 
-#include "ntk/os/common.h"
+#include "ntk/common.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 

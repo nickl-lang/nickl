@@ -4,7 +4,7 @@
 #include <string.h>
 #include <x86intrin.h>
 
-#include "ntk/os/time.h"
+#include "ntk/time.h"
 
 static SpallProfile spall_ctx;
 static _Thread_local SpallBuffer spall_buffer;

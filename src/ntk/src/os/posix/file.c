@@ -1,4 +1,4 @@
-#include "ntk/os/file.h"
+#include "ntk/file.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>

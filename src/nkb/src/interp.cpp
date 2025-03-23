@@ -7,9 +7,9 @@
 #include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
-#include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
+#include "ntk/syscall.h"
 #include "ntk/utils.h"
 
 namespace {

@@ -9,7 +9,7 @@
 #include "ntk/dyn_array.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"

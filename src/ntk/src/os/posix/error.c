@@ -1,4 +1,4 @@
-#include "ntk/os/error.h"
+#include "ntk/error.h"
 
 #include "errno.h"
 #include "string.h"

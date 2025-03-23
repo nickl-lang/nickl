@@ -7,16 +7,16 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
+#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
-#include "ntk/os/common.h"
-#include "ntk/os/dl.h"
-#include "ntk/os/syscall.h"
-#include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/syscall.h"
+#include "ntk/thread.h"
 
 static u32 const *TypeTree_kv_getKey(TypeTree_kv const *item) {
     return &item->key;

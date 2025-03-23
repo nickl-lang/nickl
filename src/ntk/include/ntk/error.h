@@ -37,6 +37,17 @@ NK_EXPORT usize nk_error_count(void);
 NK_EXPORT NK_PRINTF_LIKE(1) i32 nk_error_printf(char const *fmt, ...);
 NK_EXPORT i32 nk_error_vprintf(char const *fmt, va_list ap);
 
+typedef u32 nkerr_t;
+
+NK_EXPORT nkerr_t nk_getLastError(void);
+NK_EXPORT void nk_setLastError(nkerr_t err);
+
+NK_EXPORT char const *nk_getErrorString(nkerr_t err);
+
+NK_INLINE char const *nk_getLastErrorString(void) {
+    return nk_getErrorString(nk_getLastError());
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -3,7 +3,7 @@
 
 #include <unistd.h>
 
-#include "ntk/os/common.h"
+#include "ntk/common.h"
 
 #ifdef __cplusplus
 extern "C" {

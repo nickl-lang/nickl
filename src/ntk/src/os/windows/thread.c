@@ -1,4 +1,4 @@
-#include "ntk/os/thread.h"
+#include "ntk/thread.h"
 
 #include "common.h"
 

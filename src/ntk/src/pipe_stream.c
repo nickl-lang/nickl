@@ -1,10 +1,9 @@
 #include "ntk/pipe_stream.h"
 
+#include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
-#include "ntk/os/error.h"
-#include "ntk/os/file.h"
-#include "ntk/os/process.h"
+#include "ntk/process.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 

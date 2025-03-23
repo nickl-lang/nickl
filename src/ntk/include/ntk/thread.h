@@ -1,7 +1,7 @@
 #ifndef NTK_OS_THREAD_H_
 #define NTK_OS_THREAD_H_
 
-#include "ntk/os/common.h"
+#include "ntk/common.h"
 #include "ntk/utils.h"
 
 #ifdef __cplusplus

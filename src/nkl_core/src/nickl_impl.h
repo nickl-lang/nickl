@@ -4,8 +4,8 @@
 #include "nkl/core/nickl.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/hash_tree.h"
-#include "ntk/os/common.h"
 #include "ntk/slice.h"
 
 #ifdef __cplusplus

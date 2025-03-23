@@ -1,7 +1,7 @@
 #ifndef NTK_OS_DL_H_
 #define NTK_OS_DL_H_
 
-#include "ntk/os/common.h"
+#include "ntk/common.h"
 
 #ifdef __cplusplus
 extern "C" {

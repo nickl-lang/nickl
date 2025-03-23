@@ -1,4 +1,4 @@
-#include "ntk/os/term.h"
+#include "ntk/term.h"
 
 #include <unistd.h>
 

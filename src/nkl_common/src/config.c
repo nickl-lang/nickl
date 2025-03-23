@@ -1,9 +1,9 @@
 #include "nkl/common/config.h"
 
 #include "nkl/common/diagnostics.h"
+#include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/hash_tree.h"
-#include "ntk/os/error.h"
 #include "ntk/string.h"
 
 #define MAX_LINE 4096

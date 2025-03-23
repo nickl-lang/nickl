@@ -6,10 +6,10 @@
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
-#include "ntk/os/thread.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
+#include "ntk/thread.h"
 
 NK_LOG_USE_SCOPE(types);
 

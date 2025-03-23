@@ -1,4 +1,4 @@
-#include "ntk/os/mem.h"
+#include "ntk/mem.h"
 
 #include <sys/mman.h>
 

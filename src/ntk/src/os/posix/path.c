@@ -1,4 +1,4 @@
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 
 #include <stdlib.h>
 #include <string.h>

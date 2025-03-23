@@ -1,4 +1,4 @@
-#include "ntk/os/dl.h"
+#include "ntk/dl.h"
 
 #include <dlfcn.h>
 
