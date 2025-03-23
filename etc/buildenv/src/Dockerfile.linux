@@ -23,7 +23,3 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && make install \
  && rm -rf /root/* \
  ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libarchive-tools \
- && rm -rf /var/lib/apt/lists/*
