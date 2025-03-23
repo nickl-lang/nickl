@@ -11,7 +11,7 @@ i32 nk_getBinaryPath(char *buf, usize size) {
     i32 ret = -1;
     u32 size32 = size;
     if (_NSGetExecutablePath(buf, &size32) == 0) {
-        ret = size32;
+        ret = strlen(buf);
     }
     NK_PROF_FUNC_END();
     return ret;

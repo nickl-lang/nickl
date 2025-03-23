@@ -340,6 +340,11 @@ void _writeFnSig(
     nktype_t ret_t,
     nktype_t args_t,
     bool va = false) {
+    if (name == "main") { // TODO: Workaround for main signature
+        src << "int main(int argc, char **argv)";
+        return;
+    }
+
     _writeType(ctx, ret_t, src, true);
     src << " " << name << "(";
 

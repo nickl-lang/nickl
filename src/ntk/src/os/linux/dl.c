@@ -7,7 +7,7 @@
 char const *nkdl_file_extension = "so";
 
 NkOsHandle nkdl_loadLibrary(char const *name) {
-    return handle_fromNative(dlopen(name, RTLD_LOCAL | RTLD_LAZY));
+    return handle_fromNative(dlopen((name && name[0]) ? name : NULL, RTLD_LOCAL | RTLD_LAZY));
 }
 
 void nkdl_freeLibrary(NkOsHandle h_lib) {
