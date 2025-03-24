@@ -71,7 +71,7 @@ constexpr usize nk_alignofval(T const &) {
 
 #define _nk_assignVoidPtr(dst, src) ((dst) = (src))
 
-#define nk_alignofval(X) alignof(typeof(X))
+#define nk_alignofval alignof
 
 #endif // __cplusplus
 

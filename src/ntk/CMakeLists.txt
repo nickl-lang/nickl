@@ -33,7 +33,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         src/os/posix/mem.c
         src/os/posix/path.c
         src/os/posix/process.c
-        src/os/posix/syscall.c
         src/os/posix/term.c
         src/os/posix/thread.c
         src/os/posix/time.c
@@ -44,6 +43,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND SOURCES
         src/os/linux/dl.c
         src/os/linux/path.c
+        src/os/linux/syscall.c
         src/os/linux/time.c
         )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")

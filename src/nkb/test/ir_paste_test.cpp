@@ -198,6 +198,7 @@ protected:
 
         if (!nkir_invoke(m_run_ctx, m_proc, NULL, rets)) {
             auto const msg = nkir_getRunErrorString(m_run_ctx);
+            (void)msg;
             NK_LOG_ERR(NKS_FMT, NKS_ARG(msg));
         }
 

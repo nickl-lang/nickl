@@ -64,7 +64,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(SYSTEM_LIBPTHREAD "libpthread.so.0")
     set(SYSTEM_LIBJSONC "libjson-c.so")
 
-    set(SYSTEM_EXPORT_DYNAMIC_FLAG "-export-dynamic")
+    set(SYSTEM_EXPORT_DYNAMIC_FLAG "-rdynamic")
 
     set(SYSTEM_EXECUTABLE_EXT "")
 
@@ -94,6 +94,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(LIBDL "")
 
     set(SYSTEM_LIBRARY_PATH DYLD_LIBRARY_PATH)
+
+    set(FLAGS "${FLAGS} -Wno-gnu-alignof-expression")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(SYSTEM_INSTALL_DIR bin)
     set(SYSTEM_RPATH_ORIGIN "")
@@ -126,7 +128,6 @@ endif()
 
 set(FLAGS "${FLAGS} -Wall")
 set(FLAGS "${FLAGS} -Wextra")
-set(FLAGS "${FLAGS} -pedantic")
 set(FLAGS "${FLAGS} -Werror=unused-result")
 set(FLAGS "${FLAGS} -Werror=format")
 set(FLAGS "${FLAGS} -Werror=switch")
