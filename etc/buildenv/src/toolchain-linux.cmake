@@ -1,16 +1,20 @@
 set(PREFIX "/opt/toolchain")
+set(TARGET "$ENV{TARGET}")
 
-set(CMAKE_C_COMPILER "${PREFIX}/bin/gcc")
-set(CMAKE_CXX_COMPILER "${PREFIX}/bin/g++")
-set(CMAKE_ASM_COMPILER "${PREFIX}/bin/gcc")
+if("${TARGET}" STREQUAL "")
+    message(FATAL_ERROR "Specify TARGET")
+endif()
 
-set(CMAKE_LINKER "${PREFIX}/bin/ld")
-set(CMAKE_AR "${PREFIX}/bin/ar")
-set(CMAKE_NM "${PREFIX}/bin/nm")
-set(CMAKE_OBJCOPY "${PREFIX}/bin/objcopy")
-set(CMAKE_OBJDUMP "${PREFIX}/bin/objdump")
-set(CMAKE_RANLIB "${PREFIX}/bin/ranlib")
-set(CMAKE_STRIP "${PREFIX}/bin/strip")
+set(CMAKE_C_COMPILER "${PREFIX}/bin/${TARGET}-cc")
+set(CMAKE_CXX_COMPILER "${PREFIX}/bin/${TARGET}-c++")
+
+set(CMAKE_LINKER "${PREFIX}/bin/${TARGET}-ld" CACHE FILEPATH "ld")
+set(CMAKE_AR "${PREFIX}/bin/${TARGET}-ar" CACHE FILEPATH "ar")
+set(CMAKE_NM "${PREFIX}/bin/${TARGET}-nm" CACHE FILEPATH "nm")
+set(CMAKE_OBJCOPY "${PREFIX}/bin/${TARGET}-objcopy" CACHE FILEPATH "objcopy")
+set(CMAKE_OBJDUMP "${PREFIX}/bin/${TARGET}-objdump" CACHE FILEPATH "objdump")
+set(CMAKE_RANLIB "${PREFIX}/bin/${TARGET}-ranlib" CACHE FILEPATH "ranlib")
+set(CMAKE_STRIP "${PREFIX}/bin/${TARGET}-strip" CACHE FILEPATH "strip")
 
 set(CMAKE_FIND_ROOT_PATH "${PREFIX}")
 

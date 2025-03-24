@@ -1,19 +1,24 @@
 set(CMAKE_SYSTEM_NAME Windows)
 
 set(PREFIX "/opt/toolchain")
-set(TARGET "x86_64-w64-mingw32")
+set(TARGET "$ENV{TARGET}")
 
-set(CMAKE_C_COMPILER "${PREFIX}/bin/${TARGET}-gcc")
-set(CMAKE_CXX_COMPILER "${PREFIX}/bin/${TARGET}-g++")
-set(CMAKE_ASM_COMPILER "${PREFIX}/bin/${TARGET}-gcc")
+if("${TARGET}" STREQUAL "")
+    message(FATAL_ERROR "Specify TARGET")
+endif()
 
-set(CMAKE_LINKER "${PREFIX}/bin/${TARGET}-ld")
-set(CMAKE_AR "${PREFIX}/bin/${TARGET}-ar")
-set(CMAKE_NM "${PREFIX}/bin/${TARGET}-nm")
-set(CMAKE_OBJCOPY "${PREFIX}/bin/${TARGET}-objcopy")
-set(CMAKE_OBJDUMP "${PREFIX}/bin/${TARGET}-objdump")
-set(CMAKE_RANLIB "${PREFIX}/bin/${TARGET}-ranlib")
-set(CMAKE_STRIP "${PREFIX}/bin/${TARGET}-strip")
+string(REGEX MATCH "^[a-zA-Z0-9_]+" CMAKE_SYSTEM_PROCESSOR "${TARGET}")
+
+set(CMAKE_C_COMPILER "${PREFIX}/bin/${TARGET}-cc")
+set(CMAKE_CXX_COMPILER "${PREFIX}/bin/${TARGET}-c++")
+
+set(CMAKE_LINKER "${PREFIX}/bin/${TARGET}-ld" CACHE FILEPATH "ld")
+set(CMAKE_AR "${PREFIX}/bin/${TARGET}-ar" CACHE FILEPATH "ar")
+set(CMAKE_NM "${PREFIX}/bin/${TARGET}-nm" CACHE FILEPATH "nm")
+set(CMAKE_OBJCOPY "${PREFIX}/bin/${TARGET}-objcopy" CACHE FILEPATH "objcopy")
+set(CMAKE_OBJDUMP "${PREFIX}/bin/${TARGET}-objdump" CACHE FILEPATH "objdump")
+set(CMAKE_RANLIB "${PREFIX}/bin/${TARGET}-ranlib" CACHE FILEPATH "ranlib")
+set(CMAKE_STRIP "${PREFIX}/bin/${TARGET}-strip" CACHE FILEPATH "strip")
 
 set(CMAKE_FIND_ROOT_PATH "${PREFIX}")
 

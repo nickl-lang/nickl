@@ -52,5 +52,29 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && rm -rf /root/* \
  ;
 
-ADD toolchain-env-linux.sh ${PREFIX}/env.sh
-ADD toolchain-linux.cmake ${PREFIX}/toolchain.cmake
+# TODO: Merge links to the build commands
+
+RUN ln -sf gcc     ${PREFIX}/bin/cc \
+ && ln -sf g++     ${PREFIX}/bin/c++ \
+ && ln -sf gcc     ${PREFIX}/bin/${TARGET}-gcc \
+ && ln -sf cc      ${PREFIX}/bin/${TARGET}-cc \
+ && ln -sf g++     ${PREFIX}/bin/${TARGET}-g++ \
+ && ln -sf c++     ${PREFIX}/bin/${TARGET}-c++ \
+ && ln -sf ld      ${PREFIX}/bin/${TARGET}-ld \
+ && ln -sf ar      ${PREFIX}/bin/${TARGET}-ar \
+ && ln -sf nm      ${PREFIX}/bin/${TARGET}-nm \
+ && ln -sf objcopy ${PREFIX}/bin/${TARGET}-objcopy \
+ && ln -sf objdump ${PREFIX}/bin/${TARGET}-objdump \
+ && ln -sf ranlib  ${PREFIX}/bin/${TARGET}-ranlib \
+ && ln -sf strip   ${PREFIX}/bin/${TARGET}-strip \
+    ;
+
+RUN ln -sf gcc         ${PREFIX}/bin/${TARGET}-gcc-{{GCC_VERSION}} \
+ && ln -sf gcc-ar      ${PREFIX}/bin/${TARGET}-gcc-ar \
+ && ln -sf gcc-nm      ${PREFIX}/bin/${TARGET}-gcc-nm \
+ && ln -sf gcc-ranlib  ${PREFIX}/bin/${TARGET}-gcc-ranlib \
+ && ln -sf ld          ${PREFIX}/bin/ld.bfd \
+    ;
+
+COPY toolchain-env.sh ${PREFIX}/env.sh
+COPY toolchain-linux.cmake ${PREFIX}/toolchain.cmake

@@ -16,11 +16,13 @@ PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" \
 eval "$PARSED"
 eval set -- "$__POS_ARGS"
 
+SYSTEMS='linux windows darwin-x86 darwin-arm'
+
 [ "$HELP" = 1 ] && {
   print_usage
   echo >&2 "Options:"
   echo >&2 "  -h, --help          Show this message"
-  echo >&2 "  -s, --system SYSTEM Build target, possible values: linux windows darwin"
+  echo >&2 "  -s, --system SYSTEM Build target, possible values: $SYSTEMS"
   echo >&2 "  -n, --native        Enable native build, i.e. without docker"
   echo >&2 "  -d, --debug         Build with debug information"
   echo >&2 "  -t, --test          Build tests"
@@ -41,9 +43,10 @@ eval set -- "$__POS_ARGS"
 case "$SYSTEM" in
   linux);;
   windows);;
-  darwin);;
+  darwin-x86);;
+  darwin-arm);;
   *)
-    echo >&2 "ERROR: Invalid system '$SYSTEM', possible values are: linux windows darwin"
+    echo >&2 "ERROR: Invalid system '$SYSTEM', possible values: $SYSTEMS"
     exit 1
     ;;
 esac

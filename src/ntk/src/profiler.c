@@ -1,8 +1,8 @@
 #include "ntk/profiler.h"
 
 #include <spall.h>
+#include <stdlib.h>
 #include <string.h>
-#include <x86intrin.h>
 
 #include "ntk/time.h"
 
@@ -41,12 +41,12 @@ void nk_prof_finish(void) {
 
 void nk_prof_scopeBegin(NkString name) {
     if (is_thread_running) {
-        spall_buffer_begin_ex(&spall_ctx, &spall_buffer, name.data, name.size, __rdtsc(), tid, 0);
+        spall_buffer_begin_ex(&spall_ctx, &spall_buffer, name.data, name.size, nk_readTsc(), tid, 0);
     }
 }
 
 void nk_prof_scopeEnd(void) {
     if (is_thread_running) {
-        spall_buffer_end_ex(&spall_ctx, &spall_buffer, __rdtsc(), tid, 0);
+        spall_buffer_end_ex(&spall_ctx, &spall_buffer, nk_readTsc(), tid, 0);
     }
 }
