@@ -23,6 +23,7 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && make -j \
  && make install-strip \
  && rm -rf /root/* \
+ && ln -sf ${TARGET}-ld  ${PREFIX}/bin/${TARGET}-ld.bfd \
  ;
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
@@ -90,6 +91,8 @@ RUN cd /root/gcc-{{GCC_VERSION}}/build \
  && make -j \
  && make install-strip \
  && rm -rf ./* \
+ && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
+ && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
  ;
 
 RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
@@ -105,13 +108,6 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
  ;
 
 RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
-
-# TODO: Merge links to the build commands
-
-RUN ln -sf ${TARGET}-ld  ${PREFIX}/bin/${TARGET}-ld.bfd \
- && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
- && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
-    ;
 
 COPY toolchain-env.sh ${PREFIX}/env.sh
 COPY toolchain-windows.cmake ${PREFIX}/toolchain.cmake
