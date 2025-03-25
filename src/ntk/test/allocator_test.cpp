@@ -152,6 +152,7 @@ TEST_F(allocator, free_noop) {
 TEST_F(allocator, arena_stress) {
     NkDynArray(NkArenaFrame) frames{};
     usize total_size = 0;
+    (void)total_size;
     NkArena arena{};
     defer {
         nk_arena_free(&arena);
