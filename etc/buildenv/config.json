@@ -2,10 +2,10 @@
   "base_name": "buildenv-nickl",
   "remote": "ghcr.io/nickl-lang",
   "images": [
-    "linux:1.0",
-    "linux-dev:1.0",
-    "windows:1.0",
-    "windows-dev:1.0"
+    "linux-x86_64:1.0",
+    "linux-x86_64-dev:1.0",
+    "windows-x86_64:1.0",
+    "windows-x86_64-dev:1.0"
   ],
   "args": {
     "DISTRO": "ubuntu:20.04",

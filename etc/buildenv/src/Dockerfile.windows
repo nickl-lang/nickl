@@ -39,3 +39,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && make install \
  && rm -rf /root/* \
  ;
+
+FROM windows AS windows-{{MACHINE}}
