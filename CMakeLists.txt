@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
@@ -49,9 +49,48 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
 endif()
 
-##### Systems #####
+##### Flags #####
 
 set(FLAGS)
+
+set(FLAGS "${FLAGS} -Wall")
+set(FLAGS "${FLAGS} -Wextra")
+set(FLAGS "${FLAGS} -Werror=unused-result")
+set(FLAGS "${FLAGS} -Werror=format")
+set(FLAGS "${FLAGS} -Werror=switch")
+
+set(FLAGS "${FLAGS} -fvisibility=hidden")
+
+set(FLAGS "${FLAGS} -fdiagnostics-color")
+
+if(ENABLE_ASAN)
+    set(FLAGS "${FLAGS} -g")
+    set(FLAGS "${FLAGS} -fsanitize=address")
+endif()
+
+if(NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "${CMAKE_CXX_COMPILER_ID}")
+    message(FATAL_ERROR "Don't mix compilers: CC is ${CMAKE_C_COMPILER_ID}, CXX is ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
+if("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
+    set(FLAGS "${FLAGS} -static-libstdc++")
+    set(FLAGS "${FLAGS} -static-libgcc")
+elseif("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+    set(FLAGS "${FLAGS} -Wno-gnu-alignof-expression")
+endif()
+
+set(CXX_FLAGS "${FLAGS}")
+
+set(C_FLAGS "${FLAGS}")
+set(C_FLAGS "${C_FLAGS} -Werror=implicit-function-declaration")
+set(C_FLAGS "${C_FLAGS} -Werror=implicit-int")
+set(C_FLAGS "${C_FLAGS} -Werror=int-conversion")
+set(C_FLAGS "${C_FLAGS} -Werror=int-to-pointer-cast")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
+
+##### Systems #####
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(SYSTEM_INSTALL_DIR lib)
@@ -69,9 +108,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(SYSTEM_EXECUTABLE_EXT "")
 
     find_library_ex(LIBDL dl SHARED)
-
-    set(FLAGS "${FLAGS} -static-libstdc++")
-    set(FLAGS "${FLAGS} -static-libgcc")
 
     set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -94,8 +130,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(LIBDL "")
 
     set(SYSTEM_LIBRARY_PATH DYLD_LIBRARY_PATH)
-
-    set(FLAGS "${FLAGS} -Wno-gnu-alignof-expression")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(SYSTEM_INSTALL_DIR bin)
     set(SYSTEM_RPATH_ORIGIN "")
@@ -119,38 +153,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     find_library_ex(LIBSHLWAPI shlwapi STATIC)
     find_library_ex(LIBWINPTHREAD winpthread STATIC)
-
-    set(FLAGS "${FLAGS} -static-libstdc++")
-    set(FLAGS "${FLAGS} -static-libgcc")
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
-
-set(FLAGS "${FLAGS} -Wall")
-set(FLAGS "${FLAGS} -Wextra")
-set(FLAGS "${FLAGS} -Werror=unused-result")
-set(FLAGS "${FLAGS} -Werror=format")
-set(FLAGS "${FLAGS} -Werror=switch")
-
-set(FLAGS "${FLAGS} -fvisibility=hidden")
-
-set(FLAGS "${FLAGS} -fdiagnostics-color")
-
-if(ENABLE_ASAN)
-    set(FLAGS "${FLAGS} -g")
-    set(FLAGS "${FLAGS} -fsanitize=address")
-endif()
-
-set(CXX_FLAGS "${FLAGS}")
-
-set(C_FLAGS "${FLAGS}")
-set(C_FLAGS "${C_FLAGS} -Werror=implicit-function-declaration")
-set(C_FLAGS "${C_FLAGS} -Werror=implicit-int")
-set(C_FLAGS "${C_FLAGS} -Werror=int-conversion")
-set(C_FLAGS "${C_FLAGS} -Werror=int-to-pointer-cast")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
 
 ##### Targets #####
 
