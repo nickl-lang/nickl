@@ -7,8 +7,17 @@ print_usage() {
   echo >&2 "Usage: $0 [OPTIONS] [TARGET...]"
 }
 
-PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" \
-  '-h,--help:-s,--system,=:-m,--machine,=:-n,--native:-d,--debug:-t,--test:-l,--logs:-p,--prof:-a,--asan' "$@") || {
+PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" '
+  -h,--help:
+  -s,--system,=:
+  -m,--machine,=:
+  -n,--native:
+  -d,--debug:
+  -t,--test:
+  -l,--logs:
+  -p,--prof:
+  -a,--asan:
+  ' "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
@@ -21,17 +30,17 @@ MACHINES='x86_64 arm64'
 
 [ "$HELP" = 1 ] && {
   print_usage
-  echo >&2 "Options:"
-  echo >&2 "  -h, --help            Show this message"
-  echo >&2 "  -s, --system SYSTEM   Target system, possible values: $SYSTEMS"
-  echo >&2 "  -m, --machine MACHINE Target machine, possible values: $MACHINES"
-  echo >&2 "  -n, --native          Enable native build, i.e. without docker"
-  echo >&2 "  -d, --debug           Build with debug information"
-  echo >&2 "  -t, --test            Build tests"
-  echo >&2 "  -l, --logs            Enable logging support"
-  echo >&2 "  -p, --prof            Enable profiling support"
-  echo >&2 "  -a, --asan            Enable address sanitizer"
-  echo >&2 ""
+  echo >&2 "Options:
+  -h, --help               Show this message
+  -s, --system SYSTEM      Target system, possible values: $SYSTEMS
+  -m, --machine MACHINE    Target machine, possible values: $MACHINES
+  -n, --native             Enable native build, i.e. without docker
+  -d, --debug              Build with debug information
+  -t, --test               Build tests
+  -l, --logs               Enable logging support
+  -p, --prof               Enable profiling support
+  -a, --asan               Enable address sanitizer
+"
   exit
 }
 

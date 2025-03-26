@@ -15,15 +15,6 @@ PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" '-h,--help:-i,--imag
 eval "$PARSED"
 eval set -- "$__POS_ARGS"
 
-[ "$HELP" = 1 ] && {
-  print_usage
-  echo >&2 "Options:"
-  echo >&2 "  -h, --help                          Show this message"
-  echo >&2 "  -i, --image IMAGE=$DEFAULT_IMAGE    Possible values: $IMAGES"
-  echo >&2 ""
-  exit
-}
-
 DEFAULT_IMAGE="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 [ -z ${IMAGE+x} ] && IMAGE=$DEFAULT_IMAGE
 
@@ -33,13 +24,22 @@ IMAGE_CFG_TAG=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(
 
 IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
 
+[ "$HELP" = 1 ] && {
+  print_usage
+  echo >&2 "Options:
+  -h, --help                        Show this message
+  -i, --image IMAGE=$DEFAULT_IMAGE    Possible values: $IMAGES
+"
+  exit
+}
+
 [ -z "$IMAGE_CFG_TAG" ] && {
   echo >&2 "ERROR: Invalid docker image '$IMAGE', possible images: $IMAGES"
   exit 1
 }
 
-SYSTEM=$(echo $IMAGE | cut -d- -f1)
-MACHINE=$(echo $IMAGE | cut -d- -f2)
+SYSTEM=$(echo "$IMAGE" | cut -d- -f1)
+MACHINE=$(echo "$IMAGE" | cut -d- -f2)
 
 BASE_NAME=$(echo "$CONFIG" | jq -r '.base_name')
 REMOTE=$(echo "$CONFIG" | jq -r '.remote')
@@ -60,7 +60,7 @@ ARGS="$ARGS$(cat <<EOF
 EOF
 )"
 
-IMAGE_NAME="$BASE_NAME-$(echo $IMAGE_CFG_TAG | cut -d: -f1)"
-IMAGE_VERSION=$(echo $IMAGE_CFG_TAG | cut -d: -f2)
+IMAGE_NAME="$BASE_NAME-$(echo "$IMAGE_CFG_TAG" | cut -d: -f1)"
+IMAGE_VERSION=$(echo "$IMAGE_CFG_TAG" | cut -d: -f2)
 
 TAG="$IMAGE_NAME:$IMAGE_VERSION"

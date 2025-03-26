@@ -17,7 +17,23 @@ else
   }
   eval "$PARSED"
   eval set -- "$__POS_ARGS"
-  [ "$HELP" = 1 ] && { print_usage; exit; }
+  [ "$HELP" = 1 ] && {
+    print_usage;
+    echo >&2 "Options:
+  -h, --help             Show this message
+  -n, --name PROGNAME    Program name to show in error messages
+  -o, --options SPECS    Colon-separated list of option specs
+
+Spec examples:
+  -o            -- Only short
+  -o,,=         -- Only short with argument
+  ,--option     -- Only long
+  ,--option,=   -- Only long with argument
+  -o,--option   -- Both
+  -o,--option,= -- Both with argument
+"
+    exit;
+  }
 fi
 
 NAME=${NAME:-"$0"}
@@ -27,14 +43,14 @@ OPTS=''
 LONGOPTS=''
 MAP=''
 
+OPTIONS=$(echo "$OPTIONS" | tr -d '[:space:]')
 IFS=':'; for spec in $OPTIONS; do
+  [ -z "$spec" ] && continue
   IFS=','; set -- $spec
   short="$1"
   long="$2"
   value="$3"
-  if [ -n "$short" ]; then
-    OPTS="$OPTS${short#?}${value:+:}"
-  fi
+  [ -n "$short" ] && OPTS="$OPTS${short#?}${value:+:}"
   if [ -n "$long" ]; then
      var="${long#??}"
      LONGOPTS="${LONGOPTS:+$LONGOPTS,}${long#??}${value:+:}"
