@@ -41,6 +41,10 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-headers \
  && make install \
  ;
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GCC_URL}} \
  && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
@@ -72,6 +76,9 @@ RUN cd /root/gcc-{{GCC_VERSION}} \
       --enable-default-ssp \
       --disable-multilib \
       --enable-lto \
+      --disable-nls \
+      --disable-libstdcxx-pch \
+      --with-system-zlib \
  && make -j all-gcc \
  && make install-strip-gcc \
  ;
