@@ -26,7 +26,7 @@ eval set -- "$__POS_ARGS"
   exit
 }
 
-echo >&2 "INFO: Building docker image '$IMAGE'"
+echo >&2 "INFO: Building docker image '$TAG'"
 
 maybe_tee() {
   if [ "$DEBUG" = true ]; then

@@ -8,11 +8,11 @@ DEFAULT_IMAGE="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 
 CONFIG=$(cat "$DIR/config.json")
 
-IMAGE_NAME=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(startswith($IMAGE + ":"))')
+IMAGE_CFG_TAG=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(startswith($IMAGE + ":"))')
 
 IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
 
-[ -z "$IMAGE_NAME" ] && {
+[ -z "$IMAGE_CFG_TAG" ] && {
   echo >&2 "ERROR: Invalid docker image '$IMAGE', possible images: $IMAGES"
   exit 1
 }
@@ -39,4 +39,7 @@ ARGS="$ARGS$(cat <<EOF
 EOF
 )"
 
-TAG="$BASE_NAME-$IMAGE_NAME"
+IMAGE_NAME="$BASE_NAME-$(echo $IMAGE_CFG_TAG | cut -d: -f1)"
+IMAGE_VERSION=$(echo $IMAGE_CFG_TAG | cut -d: -f2)
+
+TAG="$IMAGE_NAME:$IMAGE_VERSION"
