@@ -5,11 +5,9 @@ DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
 . "$DIR/config.sh"
 
-PROJECT_DIR=$(realpath "$DIR/../..")
-DOCKER_HOME="$PROJECT_DIR/out/home"
-
-if [ -z "$(docker images -q "$TAG" 2> /dev/null)" ]; then
-  if docker pull "$REMOTE/$TAG" 2> /dev/null; then
+if [ -z "$(docker images -q "$TAG" 2>/dev/null)" ]; then
+  echo >&2 "INFO: Trying to pull docker image '$TAG'"
+  if docker pull "$REMOTE/$TAG" 2>/dev/null; then
     docker image tag "$REMOTE/$TAG" "$TAG"
     docker image rm "$REMOTE/$TAG"
   else
@@ -17,67 +15,66 @@ if [ -z "$(docker images -q "$TAG" 2> /dev/null)" ]; then
   fi
 fi
 
-echo >&2 "INFO: Running docker image '$TAG'"
+CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
 
-mkdir -p "$DOCKER_HOME"
+[ -z "$(docker ps -a -q -f name="$CONTAINER_NAME")" ] && {
+  echo >&2 "INFO: Creating docker container '$CONTAINER_NAME'"
 
-if [ -t 0 ]; then
-  TTY_ARG="-ti"
-else
-  TTY_ARG=""
-fi
+  PROJECT_DIR=$(realpath "$DIR/../..")
+  DOCKER_HOME="$PROJECT_DIR/out/home"
 
-TAG_PRINTABLE=$(echo "$TAG" | sed 's/:/-/g')
-PASSWD_FILE=/etc/passwd
-GROUPS_FILE=/etc/group
-DOCKER_PASSWD_FILE="/tmp/passwd-$TAG_PRINTABLE"
-DOCKER_GROUPS_FILE="/tmp/group-$TAG_PRINTABLE"
+  mkdir -p "$DOCKER_HOME"
 
-if [ ! -e "$DOCKER_PASSWD_FILE" ] || [ ! -e "$DOCKER_GROUPS_FILE" ]; then
-  ID=$(docker create "$TAG")
-  if [ ! -e "$DOCKER_PASSWD_FILE" ]; then
-    docker cp "$ID:$PASSWD_FILE" "$DOCKER_PASSWD_FILE"
-    getent passwd "$(id -u)" >> "$DOCKER_PASSWD_FILE"
-  fi
-  if [ ! -e "$DOCKER_GROUPS_FILE" ]; then
-    docker cp "$ID:$GROUPS_FILE" "$DOCKER_GROUPS_FILE"
-    echo "$(id -g -n):x:$(id -g):" >> "$DOCKER_GROUPS_FILE"
-  fi
-  docker rm "$ID" > /dev/null
-fi
+  [ -f "$XAUTHORITY" ] && XAUTHORITY_ARG="--volume $XAUTHORITY:$XAUTHORITY"
 
-XSESSION_FILE="$HOME/.Xauthority"
-XSESSION_FILE_ARG="-v $XSESSION_FILE:$XSESSION_FILE"
-DOCKER_XSESSION_FILE="$DOCKER_HOME/$(basename "$XSESSION_FILE")"
-rm -rf "$DOCKER_XSESSION_FILE"
-if [ -f "$XSESSION_FILE" ]; then
-  touch "$DOCKER_XSESSION_FILE"
-elif [ -d "$XSESSION_FILE" ]; then
-  mkdir -p "$DOCKER_XSESSION_FILE"
-else
-  XSESSION_FILE_ARG=""
-fi
+  X11_SOCKET="/tmp/.X11-unix"
+  [ -e $X11_SOCKET ] && X11_SOCKET_ARG="--volume $X11_SOCKET:$X11_SOCKET"
 
-X11_SOCKET_FILE="/tmp/.X11-unix"
-if [ -e $X11_SOCKET_FILE ]; then
-  X11_SOCKET_ARG="-v $X11_SOCKET_FILE:$X11_SOCKET_FILE"
-fi
+  docker run \
+    --detach \
+    --interactive \
+    --hostname "$(hostname)" \
+    --user "$(id -u):$(id -g)" \
+    --workdir "$PROJECT_DIR" \
+    --env BUILD_TYPE \
+    --env EXTRA_CMAKE_ARGS \
+    --env MAKE \
+    --env DISPLAY \
+    --env HOME \
+    --env TERM \
+    --env USER \
+    --env XAUTHORITY \
+    --env XDG_RUNTIME_DIR \
+    $XAUTHORITY_ARG \
+    $X11_SOCKET_ARG \
+    --volume "$DOCKER_HOME:$HOME" \
+    --volume "$PROJECT_DIR:$PROJECT_DIR" \
+    --volume "$XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR" \
+    --name "$CONTAINER_NAME" \
+    $EXTRA_DOCKER_OPTS \
+    "$TAG" >/dev/null
 
-docker run \
+    PASSWD_ENTRY=$(getent passwd "$(id -u)")
+    GROUP_ENTRY="$(id -g -n):x:$(id -g):"
+
+    docker exec --user 0:0 "$CONTAINER_NAME" sh -c "echo '$PASSWD_ENTRY' >> /etc/passwd"
+    docker exec --user 0:0 "$CONTAINER_NAME" sh -c "echo '$GROUP_ENTRY' >> /etc/group"
+}
+
+[ -z "$(docker ps -q -f name="$CONTAINER_NAME")" ] && {
+  echo >&2 "INFO: Starting docker container '$CONTAINER_NAME'"
+  docker start "$CONTAINER_NAME" >/dev/null
+}
+
+echo >&2 "INFO: Running in docker container '$CONTAINER_NAME'"
+
+[ -t 0 ] && TTY_ARG="--tty"
+
+CMD="$*"
+[ -z "$CMD" ] && CMD=bash
+
+docker exec \
+  --interactive \
   $TTY_ARG \
-  --rm \
-  -h "$(hostname)" \
-  -v "$DOCKER_PASSWD_FILE:$PASSWD_FILE:ro" \
-  -v "$DOCKER_GROUPS_FILE:$GROUPS_FILE:ro" \
-  $XSESSION_FILE_ARG \
-  $X11_SOCKET_ARG \
-  -e BUILD_TYPE \
-  -e EXTRA_CMAKE_ARGS \
-  -e MAKE \
-  -e TERM \
-  -u "$(id -u):$(id -g)" \
-  -w "$PROJECT_DIR" \
-  -v "$DOCKER_HOME:$HOME" \
-  -v "$PROJECT_DIR:$PROJECT_DIR" \
-  $EXTRA_DOCKER_OPTS \
-  "$TAG" "$@"
+  "$CONTAINER_NAME" \
+  $CMD
