@@ -54,11 +54,13 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
     $EXTRA_DOCKER_OPTS \
     "$TAG" >/dev/null
 
-    PASSWD_ENTRY=$(getent passwd "$(id -u)")
-    GROUP_ENTRY="$(id -g -n):x:$(id -g):"
-
-    docker exec --user 0:0 "$CONTAINER_NAME" sh -c "echo '$PASSWD_ENTRY' >> /etc/passwd"
-    docker exec --user 0:0 "$CONTAINER_NAME" sh -c "echo '$GROUP_ENTRY' >> /etc/group"
+    docker exec --user 0:0 "$CONTAINER_NAME" sh -c "
+      echo '$(id -u -n):x:$(id -u):$(id -g)::$HOME:/usr/bin/bash' >> /etc/passwd &&
+      echo '$(id -g -n):x:$(id -g):' >> /etc/group &&
+      echo '$(id -u -n):*:0:0:99999:7:::' >> /etc/shadow &&
+      echo '%$(id -g -n) ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/user &&
+      chmod 0440 /etc/sudoers.d/user
+    "
 }
 
 [ -z "$(docker ps -q -f name="$CONTAINER_NAME")" ] && {
