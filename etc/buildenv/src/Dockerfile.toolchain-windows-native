@@ -1,8 +1,8 @@
 FROM common AS toolchain-windows-native
 
 ARG PREFIX=/opt/toolchain
-ARG TARGET=x86_64-w64-mingw32
-ARG PATH="${PREFIX}/bin:${PATH}"
+ENV TARGET=x86_64-w64-mingw32
+ENV PATH="${PREFIX}/bin:${PATH}"
 
 COPY --from=toolchain-windows ${PREFIX} ${PREFIX}
 

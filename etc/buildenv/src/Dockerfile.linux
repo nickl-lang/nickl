@@ -1,7 +1,7 @@
 FROM common AS linux
 
 ARG PREFIX=/opt/toolchain
-ENV TARGET=x86_64-pc-linux-gnu
+ENV TARGET=x86_64-linux-gnu
 ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
 ENV PATH="${PREFIX}/bin:${PATH}"
 ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"

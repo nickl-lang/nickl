@@ -1,8 +1,8 @@
 FROM common AS toolchain-linux
 
-ARG TARGET=x86_64-pc-linux-gnu
 ARG PREFIX=/opt/toolchain
-ARG PATH="${PREFIX}/bin:${PATH}"
+ENV TARGET=x86_64-linux-gnu
+ENV PATH="${PREFIX}/bin:${PATH}"
 
 RUN mkdir ${PREFIX}
 RUN ln -s lib ${PREFIX}/lib64
@@ -15,6 +15,7 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && mkdir build \
  && cd build \
  && ../configure -v \
+      --host=${TARGET} \
       --prefix=${PREFIX} \
       --disable-gprofng \
       --disable-multilib \
@@ -52,6 +53,7 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && mkdir build \
  && cd build \
  && ../configure -v \
+      --host=${TARGET} \
       --prefix=${PREFIX} \
       --enable-checking=release \
       --enable-languages=c,c++ \

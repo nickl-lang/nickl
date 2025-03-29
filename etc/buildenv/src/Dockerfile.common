@@ -19,12 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zsh \
  && rm -rf /var/lib/apt/lists/*
 
-RUN echo "ALL ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/user \
- && chmod 0440 /etc/sudoers.d/user \
- && echo 'account sufficient pam_permit.so' > /etc/pam.d/sudo \
- && echo 'auth    sufficient pam_permit.so' >> /etc/pam.d/sudo \
- ;
-
 RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=C
