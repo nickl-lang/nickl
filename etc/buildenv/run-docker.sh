@@ -25,40 +25,44 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
 
   mkdir -p "$DOCKER_HOME"
 
-  [ -f "$XAUTHORITY" ] && XAUTHORITY_ARG="--volume $XAUTHORITY:$XAUTHORITY"
+  [ -n "${XAUTHORITY+x}" ] &&
+    XAUTHORITY_ARG="--env XAUTHORITY --volume $XAUTHORITY:$XAUTHORITY"
 
   X11_SOCKET="/tmp/.X11-unix"
-  [ -e $X11_SOCKET ] && X11_SOCKET_ARG="--volume $X11_SOCKET:$X11_SOCKET"
+  [ -e $X11_SOCKET ] &&
+    X11_SOCKET_ARG="--volume $X11_SOCKET:$X11_SOCKET"
+
+  [ -n "${XDG_RUNTIME_DIR+x}" ] &&
+    XDG_RUNTIME_DIR_ARG="--env XDG_RUNTIME_DIR --volume "$XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR""
+
+  USER_ID=$(id -u)
+  GROUP_ID=$(id -g)
+  USER=$(id -u -n)
+  GROUP=$(id -g -n)
 
   docker run \
     --detach \
     --interactive \
     --hostname "$(hostname)" \
-    --user "$(id -u):$(id -g)" \
+    --user "$USER_ID:$GROUP_ID" \
     --workdir "$PROJECT_DIR" \
-    --env BUILD_TYPE \
-    --env EXTRA_CMAKE_ARGS \
-    --env MAKE \
     --env DISPLAY \
     --env HOME \
-    --env TERM \
     --env USER \
-    --env XAUTHORITY \
-    --env XDG_RUNTIME_DIR \
     $XAUTHORITY_ARG \
     $X11_SOCKET_ARG \
+    $XDG_RUNTIME_DIR_ARG \
     --volume "$DOCKER_HOME:$HOME" \
     --volume "$PROJECT_DIR:$PROJECT_DIR" \
-    --volume "$XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR" \
     --name "$CONTAINER_NAME" \
     $EXTRA_DOCKER_OPTS \
     "$TAG" >/dev/null
 
     docker exec --user 0:0 "$CONTAINER_NAME" sh -c "
-      echo '$(id -u -n):x:$(id -u):$(id -g)::$HOME:/usr/bin/bash' >> /etc/passwd &&
-      echo '$(id -g -n):x:$(id -g):' >> /etc/group &&
-      echo '$(id -u -n):*:0:0:99999:7:::' >> /etc/shadow &&
-      echo '%$(id -g -n) ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/user &&
+      echo '$USER:x:$USER_ID:$GROUP_ID::$HOME:/usr/bin/bash' >>/etc/passwd &&
+      echo '$GROUP:x:$GROUP_ID:' >>/etc/group &&
+      echo '$USER:*:0:0:99999:7:::' >>/etc/shadow &&
+      echo '%$GROUP ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/user &&
       chmod 0440 /etc/sudoers.d/user
     "
 }
@@ -76,7 +80,11 @@ CMD="$*"
 [ -z "$CMD" ] && CMD=bash
 
 docker exec \
-  --interactive \
   $TTY_ARG \
+  --interactive \
+  --env BUILD_TYPE \
+  --env EXTRA_CMAKE_ARGS \
+  --env MAKE \
+  --env TERM \
   "$CONTAINER_NAME" \
   $CMD
