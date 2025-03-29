@@ -85,9 +85,9 @@ esac
 [ "$DEBUG" = 1 ] && BUILD_TYPE='Debug'
 [ -z ${BUILD_TYPE+x} ] && BUILD_TYPE='Release'
 
-BUILD_SUFFIX="$SYSTEM-$MACHINE-$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')"
-[ -n "${NATIVE+x}" ] && BUILD_SUFFIX="$BUILD_SUFFIX-native"
-BIN_DIR="$DIR/out/build-$BUILD_SUFFIX"
+BUILD="$SYSTEM-$MACHINE-$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')"
+[ -n "${NATIVE+x}" ] && BUILD="$BUILD-native"
+BIN_DIR="$DIR/out/build/$BUILD"
 
 FORCE_CONF=0
 
@@ -154,8 +154,8 @@ if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
    [ ! -f "$BIN_DIR/CMakeCache.txt" ] ||
    [ "$FORCE_CONF" = 1 ]; then
   cmake -S "$DIR" -B "$BIN_DIR" \
-    -DCMAKE_INSTALL_PREFIX="$DIR/out/install-$BUILD_SUFFIX" \
-    -DDEPLOY_PREFIX="$DIR/out/deploy-$BUILD_SUFFIX" \
+    -DCMAKE_INSTALL_PREFIX="$DIR/out/install/$BUILD" \
+    -DDEPLOY_PREFIX="$DIR/out/deploy" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     $EXTRA_CMAKE_ARGS
 fi
