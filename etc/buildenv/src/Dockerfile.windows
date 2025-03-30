@@ -22,7 +22,9 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       CFLAGS="${CFLAGS} -O3 -fPIC" \
       CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
  && make -j \
- && make install \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/libffi/ \
+ && install -m 644 ../LICENSE ${PREFIX}/share/doc/libffi/ \
  && rm -rf /root/* \
  ;
 
@@ -37,6 +39,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --cross-prefix=${TARGET}- \
  && make -j \
  && make install \
+ && mkdir -p ${PREFIX}/share/doc/dlfcn/ \
+ && install -m 644 COPYING ${PREFIX}/share/doc/dlfcn/ \
  && rm -rf /root/* \
  ;
 

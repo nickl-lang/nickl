@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=gdb-linux /opt/gdb ${PREFIX}
+COPY --from=gdb-linux ${PREFIX} ${PREFIX}
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GTEST_URL}} \
@@ -14,7 +14,9 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=${PREFIX} \
  && ninja -C build \
- && ninja -C build install \
+ && ninja -C build install/strip \
+ && mkdir -p ${PREFIX}/share/doc/googletest/ \
+ && install -m 644 LICENSE ${PREFIX}/share/doc/googletest/ \
  && rm -rf /root/* \
  ;
 
@@ -26,7 +28,9 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=${PREFIX} \
  && ninja -C build \
- && ninja -C build install \
+ && ninja -C build install/strip \
+ && mkdir -p ${PREFIX}/share/doc/json-c/ \
+ && install -m 644 COPYING ${PREFIX}/share/doc/json-c/ \
  && rm -rf /root/* \
  ;
 

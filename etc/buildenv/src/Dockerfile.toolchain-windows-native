@@ -1,14 +1,19 @@
 FROM common AS toolchain-windows-native
 
-ARG PREFIX=/opt/toolchain
+ARG CROSS_PREFIX=/opt/toolchain
+ARG PREFIX=${CROSS_PREFIX}-native
 ENV TARGET=x86_64-w64-mingw32
-ENV PATH="${PREFIX}/bin:${PATH}"
+ENV PATH="${CROSS_PREFIX}/bin:${PATH}"
 
-COPY --from=toolchain-windows ${PREFIX} ${PREFIX}
+COPY --from=toolchain-windows ${CROSS_PREFIX} ${CROSS_PREFIX}
 
-RUN mkdir ${PREFIX}-native
-RUN ln -s lib ${PREFIX}-native/lib64
-RUN ln -s bin ${PREFIX}-native/sbin
+RUN mkdir ${PREFIX}
+RUN ln -s lib ${PREFIX}/lib64
+RUN ln -s bin ${PREFIX}/sbin
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texinfo \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{BINUTILS_URL}} \
@@ -19,11 +24,14 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && ../configure -v \
       --host=${TARGET} \
       --target=${TARGET} \
-      --prefix=${PREFIX}-native \
-      --disable-multilib \
+      --prefix=${PREFIX} \
       --disable-gprofng \
+      --disable-multilib \
+      --disable-nls \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/binutils/ \
  && rm -rf /root/* \
  ;
 
@@ -45,17 +53,21 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && ../configure -v \
       --host=${TARGET} \
       --target=${TARGET} \
-      --prefix=${PREFIX}-native \
+      --prefix=${PREFIX} \
       --enable-checking=release \
       --enable-languages=c,c++ \
       --disable-multilib \
       --enable-lto \
+      --disable-nls \
+      --disable-libstdcxx-pch \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
  && rm -rf /root/* \
  ;
 
-RUN mv ${PREFIX}-native/lib/libgcc_s_seh-1.dll ${PREFIX}-native/bin/
+RUN mv ${PREFIX}/lib/libgcc_s_seh-1.dll ${PREFIX}/bin/
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{MINGW_URL}} \
@@ -65,11 +77,16 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cd build \
  && ../configure -v \
       --host=${TARGET} \
-      --prefix=${PREFIX}-native/${TARGET} \
+      --prefix=${PREFIX}/${TARGET} \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/mingw-w64/ \
+ && install -m 644 ../COPYING ${PREFIX}/share/doc/mingw-w64/ \
+ && install -m 644 ../COPYING.MinGW-w64*/* ${PREFIX}/share/doc/mingw-w64/ \
+ && mkdir -p ${PREFIX}/share/doc/winpthreads/ \
+ && install -m 644 ../mingw-w64-libraries/winpthreads/COPYING* ${PREFIX}/share/doc/winpthreads/ \
  && rm -rf /root/* \
  ;
 
-RUN mv ${PREFIX}-native/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}-native/bin/
+RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/

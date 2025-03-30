@@ -8,6 +8,11 @@ RUN mkdir ${PREFIX}
 RUN ln -s lib ${PREFIX}/lib64
 RUN ln -s bin ${PREFIX}/sbin
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texinfo \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{BINUTILS_URL}} \
  && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
@@ -22,6 +27,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --disable-nls \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/binutils/ \
  && rm -rf /root/* \
  && ln -sf ${TARGET}-ld  ${PREFIX}/bin/${TARGET}-ld.bfd \
  ;
@@ -40,10 +47,6 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-headers \
       --prefix=${PREFIX}/${TARGET} \
  && make install \
  ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    zlib1g-dev \
- && rm -rf /var/lib/apt/lists/*
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GCC_URL}} \
@@ -97,6 +100,8 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
 RUN cd /root/gcc-{{GCC_VERSION}}/build \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
  && rm -rf ./* \
  && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
  && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
@@ -112,9 +117,17 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
  && make -j \
  && make install-strip \
  && make clean \
+ && mkdir -p ${PREFIX}/share/doc/winpthreads/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/winpthreads/ \
  ;
 
 RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
+
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
+ && mkdir -p ${PREFIX}/share/doc/mingw-w64/ \
+ && install -m 644 COPYING ${PREFIX}/share/doc/mingw-w64/ \
+ && install -m 644 ./COPYING.MinGW-w64*/* ${PREFIX}/share/doc/mingw-w64/ \
+ ;
 
 COPY toolchain-env.sh ${PREFIX}/env.sh
 COPY toolchain-windows.cmake ${PREFIX}/toolchain.cmake

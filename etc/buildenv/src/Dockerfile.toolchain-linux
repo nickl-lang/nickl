@@ -8,6 +8,11 @@ RUN mkdir ${PREFIX}
 RUN ln -s lib ${PREFIX}/lib64
 RUN ln -s bin ${PREFIX}/sbin
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texinfo \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{BINUTILS_URL}} \
  && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
@@ -22,6 +27,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --disable-nls \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/binutils/ \
  && rm -rf /root/* \
  && ln -sf ld      ${PREFIX}/bin/ld.bfd \
  && ln -sf ld      ${PREFIX}/bin/${TARGET}-ld \
@@ -32,10 +39,6 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && ln -sf ranlib  ${PREFIX}/bin/${TARGET}-ranlib \
  && ln -sf strip   ${PREFIX}/bin/${TARGET}-strip \
  ;
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    zlib1g-dev \
- && rm -rf /var/lib/apt/lists/*
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GCC_URL}} \
@@ -66,6 +69,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --with-system-zlib \
  && make -j \
  && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
  && rm -rf /root/* \
  && ln -sf gcc         ${PREFIX}/bin/cc \
  && ln -sf g++         ${PREFIX}/bin/c++ \
