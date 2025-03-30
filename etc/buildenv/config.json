@@ -5,7 +5,11 @@
     "linux-x86_64:1.0",
     "linux-x86_64-dev:1.0",
     "windows-x86_64:1.0",
-    "windows-x86_64-dev:1.0"
+    "windows-x86_64-dev:1.0",
+    "darwin-x86_64:1.0",
+    "darwin-arm64:1.0",
+    "darwin-x86_64-dev:1.0",
+    "darwin-arm64-dev:1.0"
   ],
   "args": {
     "DISTRO": "ubuntu:20.04",
@@ -41,7 +45,10 @@
     "JSON_C_URL": "http://github.com/json-c/json-c/archive/refs/tags/json-c-0.18-20240915.tar.gz",
 
     "GDB_VERSION": "16.2",
-    "GDB_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gdb/releases/gdb-16.2.tar.xz"
+    "GDB_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gdb/releases/gdb-16.2.tar.xz",
+
+    "CLANG_VERSION": "19",
+    "MACOS_SDK_VERSION": "15.0"
   },
   "stages": [
     "common",
@@ -52,7 +59,10 @@
     "toolchain-windows",
     "windows",
     "toolchain-windows-native",
-    "windows-dev"
+    "windows-dev",
+    "toolchain-darwin",
+    "darwin",
+    "darwin-dev"
   ],
   "debug_image_build": false
 }

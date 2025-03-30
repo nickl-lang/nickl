@@ -1,0 +1,41 @@
+FROM common AS darwin
+
+ARG PREFIX=/opt/toolchain
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
+ENV PATH="${PREFIX}/bin:${PATH}"
+ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+
+COPY --from=toolchain-darwin ${PREFIX} ${PREFIX}
+
+COPY update-alternatives-clang.sh /root
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget http://apt.llvm.org/llvm.sh \
+ && chmod +x ./llvm.sh \
+ && ./llvm.sh {{CLANG_VERSION}} \
+ && ./update-alternatives-clang.sh {{CLANG_VERSION}} 1 \
+ && rm -rf /root/* \
+ ;
+
+ENV TARGET={{MACHINE}}-apple-darwin24
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{LIBFFI_URL}} \
+ && tar xvf libffi-{{LIBFFI_VERSION}}.tar.gz \
+ && cd libffi-{{LIBFFI_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && . ${PREFIX}/env.sh \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX} \
+      --disable-docs \
+      CFLAGS="${CFLAGS} -O3 -fPIC" \
+      CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
+ && make -j \
+ && make install \
+ && mkdir -p ${PREFIX}/share/doc/libffi/ \
+ && install -m 644 ../LICENSE ${PREFIX}/share/doc/libffi/ \
+ && rm -rf /root/* \
+ ;
+
+FROM darwin AS darwin-{{MACHINE}}

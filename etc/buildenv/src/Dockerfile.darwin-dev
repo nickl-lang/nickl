@@ -1,0 +1,17 @@
+FROM darwin AS darwin-dev
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GTEST_URL}} \
+ && tar xvf googletest-{{GTEST_VERSION}}.tar.gz \
+ && cd googletest-{{GTEST_VERSION}} \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+ && ninja -C build \
+ && ninja -C build install/strip \
+ && mkdir -p ${PREFIX}/share/doc/googletest/ \
+ && install -m 644 LICENSE ${PREFIX}/share/doc/googletest/ \
+ && rm -rf /root/* \
+ ;
+
+FROM darwin-dev AS darwin-{{MACHINE}}-dev
