@@ -5,11 +5,11 @@ DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
 . "$DIR/config.sh"
 
-if [ -z "$(docker images -q "$TAG" 2>/dev/null)" ]; then
-  echo >&2 "INFO: Trying to pull docker image '$TAG'"
-  if docker pull "$REMOTE/$TAG" 2>/dev/null; then
-    docker image tag "$REMOTE/$TAG" "$TAG"
-    docker image rm "$REMOTE/$TAG"
+if [ -z "$(docker images -q "$IMAGE_TAG" 2>/dev/null)" ]; then
+  echo >&2 "INFO: Trying to pull docker image '$IMAGE_TAG'"
+  if docker pull "$REMOTE/$IMAGE_TAG" 2>/dev/null; then
+    docker image tag "$REMOTE/$IMAGE_TAG" "$IMAGE_TAG"
+    docker image rm "$REMOTE/$IMAGE_TAG"
   else
     "$DIR/build-image.sh" -i "$IMAGE"
   fi
@@ -20,8 +20,8 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
 [ -z "$(docker ps -a -q -f name="$CONTAINER_NAME")" ] && {
   echo >&2 "INFO: Creating docker container '$CONTAINER_NAME'"
 
-  PROJECT_DIR=$(realpath "$DIR/../..")
-  DOCKER_HOME="$PROJECT_DIR/out/home"
+  REPO_ROOT=$(realpath "$DIR/../..")
+  DOCKER_HOME="$REPO_ROOT/out/home"
 
   mkdir -p "$DOCKER_HOME"
 
@@ -35,8 +35,8 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
   [ -n "${XDG_RUNTIME_DIR+x}" ] &&
     XDG_RUNTIME_DIR_ARG="--env XDG_RUNTIME_DIR --volume "$XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR""
 
-  USER_ID=$(id -u)
-  GROUP_ID=$(id -g)
+  UID=$(id -u)
+  GID=$(id -g)
   USER=$(id -u -n)
   GROUP=$(id -g -n)
 
@@ -44,27 +44,26 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
     --detach \
     --interactive \
     --hostname "$(hostname)" \
-    --user "$USER_ID:$GROUP_ID" \
-    --workdir "$PROJECT_DIR" \
-    --env DISPLAY \
+    --user "$UID:$GID" \
+    --workdir "$REPO_ROOT" \
     --env HOME \
     --env USER \
     $XAUTHORITY_ARG \
     $X11_SOCKET_ARG \
     $XDG_RUNTIME_DIR_ARG \
     --volume "$DOCKER_HOME:$HOME" \
-    --volume "$PROJECT_DIR:$PROJECT_DIR" \
+    --volume "$REPO_ROOT:$REPO_ROOT" \
     --name "$CONTAINER_NAME" \
     $EXTRA_DOCKER_OPTS \
-    "$TAG" >/dev/null
+    "$IMAGE_TAG" >/dev/null
 
-    docker exec --user 0:0 "$CONTAINER_NAME" sh -c "
-      echo '$USER:x:$USER_ID:$GROUP_ID::$HOME:/usr/bin/bash' >>/etc/passwd &&
-      echo '$GROUP:x:$GROUP_ID:' >>/etc/group &&
-      echo '$USER:*:0:0:99999:7:::' >>/etc/shadow &&
-      echo '%$GROUP ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/user &&
-      chmod 0440 /etc/sudoers.d/user
-    "
+  docker exec --user 0:0 "$CONTAINER_NAME" sh -c "
+    echo '$USER:x:$UID:$GID::$HOME:/usr/bin/bash' >>/etc/passwd &&
+    echo '$GROUP:x:$GID:' >>/etc/group &&
+    echo '$USER:*:0:0:99999:7:::' >>/etc/shadow &&
+    echo '%$GROUP ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/user &&
+    chmod 0440 /etc/sudoers.d/user
+  "
 }
 
 [ -z "$(docker ps -q -f name="$CONTAINER_NAME")" ] && {
@@ -85,6 +84,7 @@ docker exec \
   --env BUILD_TYPE \
   --env EXTRA_CMAKE_ARGS \
   --env MAKE \
+  --env DISPLAY \
   --env TERM \
   "$CONTAINER_NAME" \
   $CMD
