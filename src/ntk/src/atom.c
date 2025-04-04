@@ -61,15 +61,18 @@ NkAtom nk_s2atom(NkString str) {
 
     s2atom_kv const *found = str2atom_find(&g_str2atom, str);
 
+    NkAtom ret = 0;
+
     if (found) {
-        NK_PROF_FUNC_END();
-        return found->val;
+        ret = found->val;
     } else {
         NkAtom atom = g_next_atom++;
         nk_atom_define(atom, str);
-        NK_PROF_FUNC_END();
-        return atom;
+        ret = atom;
     }
+
+    NK_PROF_FUNC_END();
+    return ret;
 }
 
 NkAtom nk_cs2atom(char const *str) {

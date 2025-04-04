@@ -8,6 +8,8 @@ char const *nk_null_file = "nul";
 i32 nk_read(NkHandle h_file, char *buf, usize n) {
     NK_PROF_FUNC_BEGIN();
 
+    i32 ret = 0;
+
     DWORD nNumberOfBytesRead = 0;
     BOOL bSuccess = ReadFile(
         handle_toNative(h_file), // HANDLE       hFile
@@ -16,17 +18,17 @@ i32 nk_read(NkHandle h_file, char *buf, usize n) {
         &nNumberOfBytesRead,     // LPDWORD      lpNumberOfBytesRead
         NULL                     // LPOVERLAPPED lpOverlapped
     );
+    ret = nNumberOfBytesRead;
 
     if (!bSuccess) {
         DWORD err = GetLastError();
         if (err != ERROR_IO_PENDING && err != ERROR_BROKEN_PIPE) {
-            NK_PROF_FUNC_END();
-            return -1;
+            ret = -1;
         }
     }
 
     NK_PROF_FUNC_END();
-    return nNumberOfBytesRead;
+    return ret;
 }
 
 i32 nk_write(NkHandle h_file, char const *buf, usize n) {
@@ -75,14 +77,13 @@ NkHandle nk_open(char const *file, i32 flags) {
 }
 
 i32 nk_close(NkHandle h_file) {
+    NK_PROF_FUNC_BEGIN();
+    i32 ret = 0;
     if (!nk_handleIsZero(h_file)) {
-        NK_PROF_FUNC_BEGIN();
-        i32 ret = CloseHandle(handle_toNative(h_file)) ? 0 : -1;
-        NK_PROF_FUNC_END();
-        return ret;
-    } else {
-        return 0;
+        ret = CloseHandle(handle_toNative(h_file)) ? 0 : -1;
     }
+    return ret;
+    NK_PROF_FUNC_END();
 }
 
 NkHandle nk_stdin() {

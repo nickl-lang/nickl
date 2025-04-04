@@ -36,14 +36,13 @@ NkHandle nk_open(char const *file, i32 flags) {
 }
 
 i32 nk_close(NkHandle h_file) {
+    NK_PROF_FUNC_BEGIN();
+    i32 ret = 0;
     if (!nk_handleIsZero(h_file)) {
-        NK_PROF_FUNC_BEGIN();
-        i32 ret = close(handle_toFd(h_file));
-        NK_PROF_FUNC_END();
-        return ret;
-    } else {
-        return 0;
+        ret = close(handle_toFd(h_file));
     }
+    NK_PROF_FUNC_END();
+    return ret;
 }
 
 NkHandle nk_stdin(void) {
