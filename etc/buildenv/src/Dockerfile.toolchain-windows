@@ -45,6 +45,7 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-headers \
  && ../configure -v \
       --host=${TARGET} \
       --prefix=${PREFIX}/${TARGET} \
+      --with-default-msvcrt=ucrt \
  && make install \
  ;
 
@@ -82,6 +83,7 @@ RUN cd /root/gcc-{{GCC_VERSION}} \
       --disable-nls \
       --disable-libstdcxx-pch \
       --with-system-zlib \
+      --enable-threads=posix \
  && make -j all-gcc \
  && make install-strip-gcc \
  ;
@@ -92,19 +94,10 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
  && ../configure -v \
       --host=${TARGET} \
       --prefix=${PREFIX}/${TARGET} \
+      --with-default-msvcrt=ucrt \
  && make -j \
  && make install-strip \
  && make clean \
- ;
-
-RUN cd /root/gcc-{{GCC_VERSION}}/build \
- && make -j \
- && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/gcc/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
- && rm -rf ./* \
- && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
- && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
  ;
 
 RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
@@ -122,6 +115,16 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
  ;
 
 RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
+
+RUN cd /root/gcc-{{GCC_VERSION}}/build \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/doc/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
+ && rm -rf ./* \
+ && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
+ && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
+ ;
 
 RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
  && mkdir -p ${PREFIX}/share/doc/mingw-w64/ \

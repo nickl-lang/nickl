@@ -72,10 +72,7 @@ if(NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "${CMAKE_CXX_COMPILER_ID}")
     message(FATAL_ERROR "Don't mix compilers: CC is ${CMAKE_C_COMPILER_ID}, CXX is ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
-if("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
-    set(FLAGS "${FLAGS} -static-libstdc++")
-    set(FLAGS "${FLAGS} -static-libgcc")
-elseif("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
     set(FLAGS "${FLAGS} -Wno-gnu-alignof-expression")
 endif()
 
@@ -151,8 +148,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     list(APPEND CMAKE_PREFIX_PATH ${PREFIX}/x86_64-w64-mingw32)
 
-    find_library_ex(LIBSHLWAPI shlwapi STATIC)
-    find_library_ex(LIBWINPTHREAD winpthread STATIC)
+    find_library_ex(LIBSHLWAPI shlwapi SHARED)
+    find_library_ex(LIBWINPTHREAD winpthread SHARED)
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-use-cxa-atexit")
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
