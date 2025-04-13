@@ -7,7 +7,18 @@ print_usage() {
   echo >&2 "Usage: $0 [-i IMAGE]"
 }
 
-PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" '-h,--help:-i,--image,=' "$@") || {
+DEFAULT_IMAGE="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
+
+CONFIG=$(cat "$DIR/config.json")
+
+IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
+
+OPTIONS_SPEC="
+  -h, --help                        : Show this message
+  -i, --image IMAGE=$DEFAULT_IMAGE    : Possible values: $IMAGES
+"
+
+PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" "$OPTIONS_SPEC" "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
@@ -15,21 +26,13 @@ PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" '-h,--help:-i,--imag
 eval "$PARSED"
 eval set -- "$__POS_ARGS"
 
-DEFAULT_IMAGE="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 [ -z ${IMAGE+x} ] && IMAGE=$DEFAULT_IMAGE
-
-CONFIG=$(cat "$DIR/config.json")
 
 IMAGE_CFG_TAG=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(startswith($IMAGE + ":"))')
 
-IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
-
 [ "$HELP" = 1 ] && {
   print_usage
-  echo >&2 "Options:
-  -h, --help                        Show this message
-  -i, --image IMAGE=$DEFAULT_IMAGE    Possible values: $IMAGES
-"
+  echo >&2 "Options:$OPTIONS_SPEC"
   exit
 }
 

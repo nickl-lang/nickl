@@ -7,18 +7,23 @@ print_usage() {
   echo >&2 "Usage: $0 [OPTIONS] [TARGET...]"
 }
 
-PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" '
-  -h,--help:
-  -s,--system,=:
-  -m,--machine,=:
-  -n,--native:
-  -d,--debug:
-  -t,--test:
-  -l,--logs:
-  -p,--prof:
-  -a,--asan:
-  -k,--osx-sdk,=:
-  ' "$@") || {
+SYSTEMS='linux windows darwin'
+MACHINES='x86_64 arm64'
+
+OPTIONS_SPEC="
+  -h, --help               : Show this message
+  -s, --system SYSTEM      : Target system, possible values: $SYSTEMS
+  -m, --machine MACHINE    : Target machine, possible values: $MACHINES
+  -n, --native             : Enable native build, i.e. without docker
+  -d, --debug              : Build with debug information
+  -t, --test               : Build tests
+  -l, --logs               : Enable logging support
+  -p, --prof               : Enable profiling support
+  -a, --asan               : Enable address sanitizer
+  -k, --osx-sdk PATH       : Path to OSX SDK
+"
+
+PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" "$OPTIONS_SPEC" "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
@@ -26,23 +31,9 @@ PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" '
 eval "$PARSED"
 eval set -- "$__POS_ARGS"
 
-SYSTEMS='linux windows darwin'
-MACHINES='x86_64 arm64'
-
 [ "$HELP" = 1 ] && {
   print_usage
-  echo >&2 "Options:
-  -h, --help               Show this message
-  -s, --system SYSTEM      Target system, possible values: $SYSTEMS
-  -m, --machine MACHINE    Target machine, possible values: $MACHINES
-  -n, --native             Enable native build, i.e. without docker
-  -d, --debug              Build with debug information
-  -t, --test               Build tests
-  -l, --logs               Enable logging support
-  -p, --prof               Enable profiling support
-  -a, --asan               Enable address sanitizer
-  -k, --osx-sdk PATH       Path to OSX SDK
-"
+  echo >&2 "Options:$OPTIONS_SPEC"
   exit
 }
 

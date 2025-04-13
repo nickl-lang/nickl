@@ -7,10 +7,15 @@ if [ "$ARGPARSE_SIMPLE" = 1 ]; then
   OPTIONS="$2"
   shift 2
 else
+  OPTIONS_SPEC='
+  -h, --help             : Show this message
+  -n, --name PROGNAME    : Program name to show in error messages
+  -o, --options SPECS    : List of option specs
+'
   print_usage() {
     echo >&2 "Usage: $0 [-n NAME] -o OPTIONS -- ARGS"
   }
-  PARSED=$(ARGPARSE_SIMPLE=1 "$0" "$0" '-h,--help:-n,--name,=:-o,--options,=' "$@") || {
+  PARSED=$(ARGPARSE_SIMPLE=1 "$0" "$0" "$OPTIONS_SPEC" "$@") || {
     print_usage
     echo >&2 "Use --help for more info"
     exit 1
@@ -19,37 +24,47 @@ else
   eval set -- "$__POS_ARGS"
   [ "$HELP" = 1 ] && {
     print_usage;
-    echo >&2 "Options:
-  -h, --help             Show this message
-  -n, --name PROGNAME    Program name to show in error messages
-  -o, --options SPECS    Colon-separated list of option specs
-
+  echo >&2 "Options:$OPTIONS_SPEC
 Spec examples:
-  -o            -- Only short
-  -o,,=         -- Only short with argument
-  ,--option     -- Only long
-  ,--option,=   -- Only long with argument
-  -o,--option   -- Both
-  -o,--option,= -- Both with argument
+  -o                  : Only short
+  -o VAL              : Only short with argument
+  --option            : Only long
+  --option VAL        : Only long with argument
+  -o, --option        : Both
+  -o, --option VAL    : Both with argument
 "
     exit;
   }
 fi
 
 NAME=${NAME:-"$0"}
-ORIG_ARGS=$*
+
+quote_args() {
+  for arg; do
+    printf "'%s' " "$(printf "%s" "$arg" | sed "s/'/'\\\\''/g")"
+  done
+}
+ORIG_ARGS="$(quote_args "$@")"
 
 OPTS=''
 LONGOPTS=''
 MAP=''
 
-OPTIONS=$(echo "$OPTIONS" | tr -d '[:space:]')
-IFS=':'; for spec in $OPTIONS; do
-  [ -z "$spec" ] && continue
-  IFS=','; set -- $spec
-  short="$1"
-  long="$2"
-  value="$3"
+while IFS= read -r line; do
+  IFS=':'; set -- $line; line="$1"
+  [ -z "$line" ] && continue
+  IFS=','; set -- $line; field1="$1"; field2="$2"
+  unset IFS
+  set -- $field1; name1="$1"; val1="$2"
+  set -- $field2; name2="$1"; val2="$2"
+  if [ -z "$name2" ]; then
+    case "$name1" in
+      --*) short=''; long="$name1"; value="$val1" ;;
+      *) short="$name1"; long=''; value="$val1" ;;
+    esac
+  else
+    short="$name1"; long="$name2"; value="$val2"
+  fi
   [ -n "$short" ] && OPTS="$OPTS${short#?}${value:+:}"
   if [ -n "$long" ]; then
      var="${long#??}"
@@ -58,13 +73,16 @@ IFS=':'; for spec in $OPTIONS; do
      var="${short#?}"
   fi
   MAP="$MAP($short)($long) $(echo "$var" | tr '[:lower:]-' '[:upper:]_') $value\n"
-done
+done <<EOF
+$OPTIONS
+EOF
 unset IFS
 
+eval "set -- $ORIG_ARGS"
 if getopt >/dev/null 2>&1; then
-  PARSED=$(getopt "$OPTS" $ORIG_ARGS) || exit 1
+  PARSED=$(getopt "$OPTS" "$@") || exit 1
 else
-  PARSED=$(getopt -a -n "$NAME" -o "$OPTS" -l "$LONGOPTS" -- $ORIG_ARGS) || exit 1
+  PARSED=$(getopt -a -n "$NAME" -o "$OPTS" -l "$LONGOPTS" -- "$@") || exit 1
 fi
 eval set -- "$PARSED"
 
@@ -86,7 +104,7 @@ while :; do
   esac
 done
 
-[ -n "$ORIG_ARGS" ] && echo "__ALL_ARGS='$ORIG_ARGS'"
+[ -n "$ORIG_ARGS" ] && echo "__ALL_ARGS=\"$ORIG_ARGS\""
 [ -n "$*" ] && echo "__POS_ARGS=\"$*\""
 
 exit 0
