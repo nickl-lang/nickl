@@ -184,3 +184,4 @@ if(BUILD_TESTS)
 endif()
 
 install(FILES LICENSE DESTINATION share/doc/${PROJECT_NAME}/)
+install(FILES src/3rdparty/libffi/LICENSE DESTINATION share/doc/libffi/)
