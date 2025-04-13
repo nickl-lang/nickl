@@ -1,4 +1,4 @@
-FROM common AS toolchain-darwin
+FROM clang AS toolchain-darwin
 
 ARG PREFIX=/opt/toolchain
 ENV PATH="${PREFIX}/bin:${PATH}"
@@ -14,24 +14,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY update-alternatives-clang.sh /root
-RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
- && cwget http://apt.llvm.org/llvm.sh \
- && chmod +x ./llvm.sh \
- && ./llvm.sh {{CLANG_VERSION}} \
- && ./update-alternatives-clang.sh {{CLANG_VERSION}} 1 \
- && rm -rf /root/* \
- ;
-
-COPY MacOSX{{MACOS_SDK_VERSION}}.sdk.tar.xz /root
-
-RUN cd /root \
- && git clone --branch=master --depth=1 https://github.com/tpoechtrager/osxcross \
+COPY patches/osxcross.diff /root
+RUN --mount=type=bind,src=OSXSDK,dst=${PREFIX}/SDK cd /root \
+ && git clone {{OSXCROSS_URL}} \
  && cd osxcross \
- && mv /root/*sdk.tar.xz ./tarballs/ \
- && UNATTENDED=1 TARGET_DIR=${PREFIX} SDK_VERSION={{MACOS_SDK_VERSION}} ./build.sh \
+ && git checkout {{OSXCROSS_VERSION}} \
+ && git apply /root/osxcross.diff \
+ && UNATTENDED=1 \
+    TARGET_DIR="${PREFIX}" \
+    SDK_VERSION="{{MACOS_SDK_VERSION}}" \
+    ./build.sh \
  && rm -rf /root/* \
  ;
 
-COPY toolchain-env.sh ${PREFIX}/env.sh
-COPY toolchain-darwin.cmake ${PREFIX}/toolchain.cmake
+COPY etc/toolchain-env.sh ${PREFIX}/env.sh
+COPY etc/toolchain-darwin.cmake ${PREFIX}/toolchain.cmake

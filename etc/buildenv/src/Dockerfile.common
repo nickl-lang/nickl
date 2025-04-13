@@ -24,7 +24,7 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=C
 
 ENV CWGET_CACHE_DIR=/var/cache/cwget
-ADD cwget /usr/local/bin/
+ADD scripts/cwget /usr/local/bin/
 RUN mkdir ${CWGET_CACHE_DIR}
 
 FROM base AS cmake

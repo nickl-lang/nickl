@@ -1,4 +1,4 @@
-FROM common AS darwin
+FROM clang AS darwin
 
 ARG PREFIX=/opt/toolchain
 ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
@@ -7,18 +7,10 @@ ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
 
 COPY --from=toolchain-darwin ${PREFIX} ${PREFIX}
 
-COPY update-alternatives-clang.sh /root
-RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
- && cwget http://apt.llvm.org/llvm.sh \
- && chmod +x ./llvm.sh \
- && ./llvm.sh {{CLANG_VERSION}} \
- && ./update-alternatives-clang.sh {{CLANG_VERSION}} 1 \
- && rm -rf /root/* \
- ;
+ENV TARGET={{MACHINE}}-apple-darwin{{DARWIN_TARGET_VERSION}}
 
-ENV TARGET={{MACHINE}}-apple-darwin24
-
-RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} \
+    --mount=type=bind,src=OSXSDK,dst=${PREFIX}/SDK cd /root \
  && cwget {{LIBFFI_URL}} \
  && tar xvf libffi-{{LIBFFI_VERSION}}.tar.gz \
  && cd libffi-{{LIBFFI_VERSION}} \

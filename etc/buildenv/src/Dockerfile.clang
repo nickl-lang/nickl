@@ -1,0 +1,10 @@
+FROM common AS clang
+
+COPY scripts/update-alternatives-clang.sh /root
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget http://apt.llvm.org/llvm.sh \
+ && chmod +x ./llvm.sh \
+ && ./llvm.sh {{CLANG_VERSION}} \
+ && ./update-alternatives-clang.sh {{CLANG_VERSION}} 1 \
+ && rm -rf /root/* \
+ ;

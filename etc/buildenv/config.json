@@ -47,8 +47,12 @@
     "GDB_VERSION": "16.2",
     "GDB_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gdb/releases/gdb-16.2.tar.xz",
 
+    "OSXCROSS_VERSION": "d0376b1c368055bd7ce26da97b86b7fbff2814f1",
+    "OSXCROSS_URL": "https://github.com/tpoechtrager/osxcross",
+
     "CLANG_VERSION": "19",
-    "MACOS_SDK_VERSION": "15.0"
+    "MACOS_SDK_VERSION": "15.4",
+    "DARWIN_TARGET_VERSION": "24.4"
   },
   "stages": [
     "common",
@@ -60,6 +64,7 @@
     "windows",
     "toolchain-windows-native",
     "windows-dev",
+    "clang",
     "toolchain-darwin",
     "darwin",
     "darwin-dev"

@@ -1,0 +1,85 @@
+diff --git a/build.sh b/build.sh
+index 5e4d13b..1af167e 100755
+--- a/build.sh
++++ b/build.sh
+@@ -17,7 +17,6 @@ else
+   guess_sdk_version
+   SDK_VERSION=$guess_sdk_version_result
+ fi
+-set_and_verify_sdk_path
+ 
+ case $SDK_VERSION in
+   10.4*|10.5*)
+@@ -126,6 +125,8 @@ if [ $NEED_TAPI_SUPPORT -eq 1 ]; then
+     pushd $CURRENT_BUILD_PROJECT_NAME &>/dev/null
+     INSTALLPREFIX=$TARGET_DIR ./build.sh
+     ./install.sh
++    mkdir -p $TARGET_DIR/share/doc/apple-libtapi/
++    install -m 644 LICENSE* $TARGET_DIR/share/doc/apple-libtapi/
+     popd &>/dev/null
+     build_success
+   fi
+@@ -154,6 +155,8 @@ if [ $f_res -eq 1 ]; then
+   ./configure $CONFFLAGS
+   $MAKE -j$JOBS
+   $MAKE install -j$JOBS
++  mkdir -p $TARGET_DIR/share/doc/cctools/
++  install -m 644 COPYING $TARGET_DIR/share/doc/cctools/
+   popd &>/dev/null
+ fi
+ 
+@@ -194,41 +197,6 @@ create_symlink osxcross-macports osxcross-mp
+ create_symlink osxcross-macports omp
+ popd &>/dev/null
+ 
+-## Extract SDK and move it to $SDK_DIR ##
+-
+-echo ""
+-extract $SDK
+-
+-rm -rf $SDK_DIR/MacOSX$SDK_VERSION* 2>/dev/null
+-if [ "$(ls -l SDKs/*$SDK_VERSION* 2>/dev/null | wc -l | tr -d ' ')" != "0" ]; then
+-  mv -f SDKs/*$SDK_VERSION* $SDK_DIR
+-else
+-  mv -f *OSX*$SDK_VERSION*sdk* $SDK_DIR
+-fi
+-
+-if [ ! -d "$SDK_DIR/MacOSX$SDK_VERSION.sdk" ]; then
+-  echo "Broken SDK! '$SDK_DIR/MacOSX$SDK_VERSION.sdk' does not exist!"
+-  exit 1
+-fi
+-
+-## Fix broken SDKs ##
+-
+-pushd $SDK_DIR/MacOSX$SDK_VERSION*.sdk &>/dev/null
+-# Remove troublesome libc++ IWYU mapping file that may cause compiler errors
+-# https://github.com/include-what-you-use/include-what-you-use/blob/master/docs/IWYUMappings.md
+-rm -f usr/include/c++/v1/libcxx.imp
+-set +e
+-files=$(echo $BASE_DIR/oclang/quirks/*.h)
+-for file in $files; do
+-  filename=$(basename $file)
+-  if [ ! -f "usr/include/$filename" ]; then
+-    rm -f usr/include/$filename # Broken symlink
+-    cp $file usr/include
+-  fi
+-done
+-set -e
+-popd &>/dev/null
+-
+ popd &>/dev/null
+ 
+ ## Wrapper ##
+diff --git a/tools/tools.sh b/tools/tools.sh
+index f9d1806..7ed821d 100644
+--- a/tools/tools.sh
++++ b/tools/tools.sh
+@@ -520,6 +520,8 @@ function build_xar()
+       ./configure --prefix=$TARGET_DIR
+     $MAKE -j$JOBS
+     $MAKE install -j$JOBS
++    mkdir -p $TARGET_DIR/share/doc/xar/
++    install -m 644 LICENSE $TARGET_DIR/share/doc/xar/
+     popd &>/dev/null
+     build_success
+   fi

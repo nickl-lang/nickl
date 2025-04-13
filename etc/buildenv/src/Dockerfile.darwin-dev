@@ -1,6 +1,7 @@
 FROM darwin AS darwin-dev
 
-RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} \
+    --mount=type=bind,src=OSXSDK,dst=${PREFIX}/SDK cd /root \
  && cwget {{GTEST_URL}} \
  && tar xvf googletest-{{GTEST_VERSION}}.tar.gz \
  && cd googletest-{{GTEST_VERSION}} \

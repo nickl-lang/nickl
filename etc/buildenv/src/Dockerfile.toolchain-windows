@@ -132,5 +132,5 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
  && install -m 644 ./COPYING.MinGW-w64*/* ${PREFIX}/share/doc/mingw-w64/ \
  ;
 
-COPY toolchain-env.sh ${PREFIX}/env.sh
-COPY toolchain-windows.cmake ${PREFIX}/toolchain.cmake
+COPY etc/toolchain-env.sh ${PREFIX}/env.sh
+COPY etc/toolchain-windows.cmake ${PREFIX}/toolchain.cmake

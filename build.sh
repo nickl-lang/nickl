@@ -17,6 +17,7 @@ PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" '
   -l,--logs:
   -p,--prof:
   -a,--asan:
+  -k,--osx-sdk,=:
   ' "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
@@ -40,6 +41,7 @@ MACHINES='x86_64 arm64'
   -l, --logs               Enable logging support
   -p, --prof               Enable profiling support
   -a, --asan               Enable address sanitizer
+  -k, --osx-sdk PATH       Path to OSX SDK
 "
   exit
 }
@@ -131,6 +133,14 @@ if [ "$NATIVE" != 1 ] && [ ! -f /.dockerenv ]; then
   else
     IMAGE="$SYSTEM-$MACHINE"
   fi
+
+  [ "$SYSTEM" = 'darwin' ] && {
+    [ -z "${OSX_SDK+x}" ] && {
+      echo >&2 "ERROR: Provide path to OSX SDK with --osx-sdk"
+      exit 1
+    }
+    export EXTRA_DOCKER_OPTS="$EXTRA_DOCKER_OPTS -v $OSX_SDK:/opt/toolchain/SDK"
+  }
 
   "$DIR/etc/buildenv/run-docker.sh" -i "$IMAGE" -- "$DIR/build.sh" $__ALL_ARGS
   exit

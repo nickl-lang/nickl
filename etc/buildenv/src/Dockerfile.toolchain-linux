@@ -84,5 +84,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && ln -sf gcc-ranlib  ${PREFIX}/bin/${TARGET}-gcc-ranlib \
  ;
 
-COPY toolchain-env.sh ${PREFIX}/env.sh
-COPY toolchain-linux.cmake ${PREFIX}/toolchain.cmake
+COPY etc/toolchain-env.sh ${PREFIX}/env.sh
+COPY etc/toolchain-linux.cmake ${PREFIX}/toolchain.cmake
