@@ -24,7 +24,7 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --with-tui \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/gdb/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/gdb/ \
+ && mkdir -p ${PREFIX}/share/licenses/gdb/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gdb/ \
  && rm -rf /root/* \
  ;

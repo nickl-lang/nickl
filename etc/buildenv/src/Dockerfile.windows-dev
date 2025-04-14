@@ -11,8 +11,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       -DCMAKE_INSTALL_PREFIX=${PREFIX} \
  && ninja -C build \
  && ninja -C build install/strip \
- && mkdir -p ${PREFIX}/share/doc/googletest/ \
- && install -m 644 LICENSE ${PREFIX}/share/doc/googletest/ \
+ && mkdir -p ${PREFIX}/share/licenses/googletest/ \
+ && install -m 644 LICENSE ${PREFIX}/share/licenses/googletest/ \
  && rm -rf /root/* \
  ;
 
@@ -25,8 +25,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       -DCMAKE_INSTALL_PREFIX=${PREFIX} \
  && ninja -C build \
  && ninja -C build install/strip \
- && mkdir -p ${PREFIX}/share/doc/json-c/ \
- && install -m 644 COPYING ${PREFIX}/share/doc/json-c/ \
+ && mkdir -p ${PREFIX}/share/licenses/json-c/ \
+ && install -m 644 COPYING ${PREFIX}/share/licenses/json-c/ \
  && rm -rf /root/* \
  ;
 

@@ -27,8 +27,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --disable-nls \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/binutils/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/binutils/ \
+ && mkdir -p ${PREFIX}/share/licenses/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/binutils/ \
  && rm -rf /root/* \
  && ln -sf ld      ${PREFIX}/bin/ld.bfd \
  && ln -sf ld      ${PREFIX}/bin/${TARGET}-ld \
@@ -69,8 +69,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --with-system-zlib \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/gcc/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
+ && mkdir -p ${PREFIX}/share/licenses/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gcc/ \
  && rm -rf /root/* \
  && ln -sf gcc         ${PREFIX}/bin/cc \
  && ln -sf g++         ${PREFIX}/bin/c++ \
@@ -84,5 +84,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && ln -sf gcc-ranlib  ${PREFIX}/bin/${TARGET}-gcc-ranlib \
  ;
 
-COPY etc/toolchain-env.sh ${PREFIX}/env.sh
-COPY etc/toolchain-linux.cmake ${PREFIX}/toolchain.cmake
+COPY etc/toolchain-env.sh ${PREFIX}/etc/env.sh
+COPY etc/toolchain-linux.cmake ${PREFIX}/etc/toolchain.cmake

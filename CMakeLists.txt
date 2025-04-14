@@ -183,5 +183,5 @@ if(BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-install(FILES LICENSE DESTINATION share/doc/${PROJECT_NAME}/)
-install(FILES src/3rdparty/libffi/LICENSE DESTINATION share/doc/libffi/)
+install(FILES LICENSE DESTINATION share/licenses/${PROJECT_NAME}/)
+install(FILES src/3rdparty/libffi/LICENSE DESTINATION share/licenses/libffi/)

@@ -12,7 +12,7 @@
     "darwin-arm64-dev:1.0"
   ],
   "args": {
-    "DISTRO": "ubuntu:20.04",
+    "DISTRO": "ubuntu:22.04",
 
     "CMAKE_VERSION": "3.31.6",
     "CMAKE_URL": "http://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz",

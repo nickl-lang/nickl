@@ -14,8 +14,8 @@ index 5e4d13b..1af167e 100755
      pushd $CURRENT_BUILD_PROJECT_NAME &>/dev/null
      INSTALLPREFIX=$TARGET_DIR ./build.sh
      ./install.sh
-+    mkdir -p $TARGET_DIR/share/doc/apple-libtapi/
-+    install -m 644 LICENSE* $TARGET_DIR/share/doc/apple-libtapi/
++    mkdir -p $TARGET_DIR/share/licenses/apple-libtapi/
++    install -m 644 LICENSE* $TARGET_DIR/share/licenses/apple-libtapi/
      popd &>/dev/null
      build_success
    fi
@@ -23,8 +23,8 @@ index 5e4d13b..1af167e 100755
    ./configure $CONFFLAGS
    $MAKE -j$JOBS
    $MAKE install -j$JOBS
-+  mkdir -p $TARGET_DIR/share/doc/cctools/
-+  install -m 644 COPYING $TARGET_DIR/share/doc/cctools/
++  mkdir -p $TARGET_DIR/share/licenses/cctools/
++  install -m 644 COPYING $TARGET_DIR/share/licenses/cctools/
    popd &>/dev/null
  fi
  
@@ -78,8 +78,8 @@ index f9d1806..7ed821d 100644
        ./configure --prefix=$TARGET_DIR
      $MAKE -j$JOBS
      $MAKE install -j$JOBS
-+    mkdir -p $TARGET_DIR/share/doc/xar/
-+    install -m 644 LICENSE $TARGET_DIR/share/doc/xar/
++    mkdir -p $TARGET_DIR/share/licenses/xar/
++    install -m 644 LICENSE $TARGET_DIR/share/licenses/xar/
      popd &>/dev/null
      build_success
    fi

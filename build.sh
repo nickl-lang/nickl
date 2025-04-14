@@ -10,7 +10,7 @@ print_usage() {
 SYSTEMS='linux windows darwin'
 MACHINES='x86_64 arm64'
 
-OPTIONS_SPEC="
+OPTIONS="
   -h, --help               : Show this message
   -s, --system SYSTEM      : Target system, possible values: $SYSTEMS
   -m, --machine MACHINE    : Target machine, possible values: $MACHINES
@@ -23,7 +23,7 @@ OPTIONS_SPEC="
   -k, --osx-sdk PATH       : Path to OSX SDK
 "
 
-PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" "$OPTIONS_SPEC" "$@") || {
+PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/etc/utils/argparse.sh" "$0" "$OPTIONS" "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
@@ -33,7 +33,7 @@ eval set -- "$__POS_ARGS"
 
 [ "$HELP" = 1 ] && {
   print_usage
-  echo >&2 "Options:$OPTIONS_SPEC"
+  echo >&2 "Options:$OPTIONS"
   exit
 }
 

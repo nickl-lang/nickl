@@ -24,7 +24,7 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=C
 
 ENV CWGET_CACHE_DIR=/var/cache/cwget
-ADD scripts/cwget /usr/local/bin/
+COPY scripts/cwget /usr/local/bin/
 RUN mkdir ${CWGET_CACHE_DIR}
 
 FROM base AS cmake
@@ -36,10 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{CMAKE_URL}} \
  && tar xzf cmake-{{CMAKE_VERSION}}.tar.gz \
- && rm cmake-{{CMAKE_VERSION}}.tar.gz \
- ;
-
-RUN cd /root/cmake-{{CMAKE_VERSION}} \
+ && cd cmake-{{CMAKE_VERSION}} \
  && ./bootstrap \
       --parallel=$(nproc) \
       --prefix=/opt/cmake \
@@ -53,4 +50,4 @@ RUN cd /root/cmake-{{CMAKE_VERSION}} \
 
 FROM base AS common
 
-COPY --from=cmake /opt/cmake/ /usr/local/
+COPY --from=cmake /opt/cmake /usr/local

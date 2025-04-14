@@ -8,17 +8,15 @@ print_usage() {
 }
 
 DEFAULT_IMAGE="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
-
 CONFIG=$(cat "$DIR/config.json")
-
 IMAGES=$(echo "$CONFIG" | jq -r .images[] | cut -d: -f1 | xargs echo)
 
-OPTIONS_SPEC="
+OPTIONS="
   -h, --help                        : Show this message
   -i, --image IMAGE=$DEFAULT_IMAGE    : Possible values: $IMAGES
 "
 
-PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" "$OPTIONS_SPEC" "$@") || {
+PARSED=$(ARGPARSE_SIMPLE=1 "$DIR/../utils/argparse.sh" "$0" "$OPTIONS" "$@") || {
   print_usage
   echo >&2 "Use --help for more info"
   exit 1
@@ -32,7 +30,7 @@ IMAGE_CFG_TAG=$(echo "$CONFIG" | jq -r --arg IMAGE "$IMAGE" '.images[] | select(
 
 [ "$HELP" = 1 ] && {
   print_usage
-  echo >&2 "Options:$OPTIONS_SPEC"
+  echo >&2 "Options:$OPTIONS"
   exit
 }
 

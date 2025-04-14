@@ -30,8 +30,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --disable-nls \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/binutils/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/binutils/ \
+ && mkdir -p ${PREFIX}/share/licenses/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/binutils/ \
  && rm -rf /root/* \
  ;
 
@@ -63,8 +63,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --disable-libstdcxx-pch \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/gcc/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
+ && mkdir -p ${PREFIX}/share/licenses/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gcc/ \
  && rm -rf /root/* \
  ;
 
@@ -82,11 +82,11 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --with-libraries=winpthreads \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/mingw-w64/ \
- && install -m 644 ../COPYING ${PREFIX}/share/doc/mingw-w64/ \
- && install -m 644 ../COPYING.MinGW-w64*/* ${PREFIX}/share/doc/mingw-w64/ \
- && mkdir -p ${PREFIX}/share/doc/winpthreads/ \
- && install -m 644 ../mingw-w64-libraries/winpthreads/COPYING* ${PREFIX}/share/doc/winpthreads/ \
+ && mkdir -p ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 ../COPYING ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 ../COPYING.MinGW-w64*/* ${PREFIX}/share/licenses/mingw-w64/ \
+ && mkdir -p ${PREFIX}/share/licenses/winpthreads/ \
+ && install -m 644 ../mingw-w64-libraries/winpthreads/COPYING* ${PREFIX}/share/licenses/winpthreads/ \
  && rm -rf /root/* \
  ;
 

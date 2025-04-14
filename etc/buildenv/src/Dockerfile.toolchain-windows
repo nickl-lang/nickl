@@ -27,8 +27,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       --disable-nls \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/binutils/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/binutils/ \
+ && mkdir -p ${PREFIX}/share/licenses/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/binutils/ \
  && rm -rf /root/* \
  && ln -sf ${TARGET}-ld  ${PREFIX}/bin/${TARGET}-ld.bfd \
  ;
@@ -110,8 +110,8 @@ RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
  && make -j \
  && make install-strip \
  && make clean \
- && mkdir -p ${PREFIX}/share/doc/winpthreads/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/winpthreads/ \
+ && mkdir -p ${PREFIX}/share/licenses/winpthreads/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/winpthreads/ \
  ;
 
 RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
@@ -119,18 +119,18 @@ RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
 RUN cd /root/gcc-{{GCC_VERSION}}/build \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/gcc/ \
- && install -m 644 ../COPYING* ${PREFIX}/share/doc/gcc/ \
+ && mkdir -p ${PREFIX}/share/licenses/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gcc/ \
  && rm -rf ./* \
  && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
  && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
  ;
 
 RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
- && mkdir -p ${PREFIX}/share/doc/mingw-w64/ \
- && install -m 644 COPYING ${PREFIX}/share/doc/mingw-w64/ \
- && install -m 644 ./COPYING.MinGW-w64*/* ${PREFIX}/share/doc/mingw-w64/ \
+ && mkdir -p ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 COPYING ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 ./COPYING.MinGW-w64*/* ${PREFIX}/share/licenses/mingw-w64/ \
  ;
 
-COPY etc/toolchain-env.sh ${PREFIX}/env.sh
-COPY etc/toolchain-windows.cmake ${PREFIX}/toolchain.cmake
+COPY etc/toolchain-env.sh ${PREFIX}/etc/env.sh
+COPY etc/toolchain-windows.cmake ${PREFIX}/etc/toolchain.cmake

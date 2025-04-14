@@ -10,8 +10,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} \
       -DCMAKE_INSTALL_PREFIX=${PREFIX} \
  && ninja -C build \
  && ninja -C build install/strip \
- && mkdir -p ${PREFIX}/share/doc/googletest/ \
- && install -m 644 LICENSE ${PREFIX}/share/doc/googletest/ \
+ && mkdir -p ${PREFIX}/share/licenses/googletest/ \
+ && install -m 644 LICENSE ${PREFIX}/share/licenses/googletest/ \
  && rm -rf /root/* \
  ;
 

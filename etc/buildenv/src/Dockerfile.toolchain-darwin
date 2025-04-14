@@ -24,8 +24,9 @@ RUN --mount=type=bind,src=OSXSDK,dst=${PREFIX}/SDK cd /root \
     TARGET_DIR="${PREFIX}" \
     SDK_VERSION="{{MACOS_SDK_VERSION}}" \
     ./build.sh \
+ && rm ${PREFIX}/toolchain.cmake \
  && rm -rf /root/* \
  ;
 
-COPY etc/toolchain-env.sh ${PREFIX}/env.sh
-COPY etc/toolchain-darwin.cmake ${PREFIX}/toolchain.cmake
+COPY etc/toolchain-env.sh ${PREFIX}/etc/env.sh
+COPY etc/toolchain-darwin.cmake ${PREFIX}/etc/toolchain.cmake

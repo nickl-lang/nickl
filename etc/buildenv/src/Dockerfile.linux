@@ -2,7 +2,7 @@ FROM common AS linux
 
 ARG PREFIX=/opt/toolchain
 ENV TARGET=x86_64-linux-gnu
-ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/toolchain.cmake
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/etc/toolchain.cmake
 ENV PATH="${PREFIX}/bin:${PATH}"
 ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
 
@@ -14,7 +14,7 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cd libffi-{{LIBFFI_VERSION}} \
  && mkdir build \
  && cd build \
- && . ${PREFIX}/env.sh \
+ && . ${PREFIX}/etc/env.sh \
  && ../configure -v \
       --host=${TARGET} \
       --prefix=${PREFIX} \
@@ -23,8 +23,8 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
       CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
  && make -j \
  && make install-strip \
- && mkdir -p ${PREFIX}/share/doc/libffi/ \
- && install -m 644 ../LICENSE ${PREFIX}/share/doc/libffi/ \
+ && mkdir -p ${PREFIX}/share/licenses/libffi/ \
+ && install -m 644 ../LICENSE ${PREFIX}/share/licenses/libffi/ \
  && rm -rf /root/* \
  ;
 
