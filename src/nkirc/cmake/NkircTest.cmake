@@ -3,7 +3,7 @@ set(NKIRC_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/nkirc_test_out")
 
 function(def_nkirc_run_test)
     set(options)
-    set(oneValueArgs FILE PLATFORM)
+    set(oneValueArgs FILE SYSTEM)
     set(multiValueArgs)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -12,8 +12,8 @@ function(def_nkirc_run_test)
         message(FATAL_ERROR "FILE argument is required")
     endif()
 
-    if(ARG_PLATFORM)
-        string(REGEX MATCH "${ARG_PLATFORM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
+    if(ARG_SYSTEM)
+        string(REGEX MATCH "${ARG_SYSTEM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
         if(NOT CONTINUE)
             return()
         endif()
@@ -25,14 +25,14 @@ function(def_nkirc_run_test)
         WORKING_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
         COMMAND
             "env"
-            "LD_LIBRARY_PATH=."
+            "${SYSTEM_LIBRARY_PATH}=${NKIRC_TEST_OUT_DIR}:$ENV{${SYSTEM_LIBRARY_PATH}}"
             "${CMAKE_CROSSCOMPILING_EMULATOR}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" "-krun"
         )
 endfunction()
 
 function(def_nkirc_compile_test)
     set(options)
-    set(oneValueArgs FILE ARGS PLATFORM)
+    set(oneValueArgs FILE ARGS SYSTEM)
     set(multiValueArgs)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -41,8 +41,8 @@ function(def_nkirc_compile_test)
         message(FATAL_ERROR "FILE argument is required")
     endif()
 
-    if(ARG_PLATFORM)
-        string(REGEX MATCH "${ARG_PLATFORM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
+    if(ARG_SYSTEM)
+        string(REGEX MATCH "${ARG_SYSTEM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
         if(NOT CONTINUE)
             return()
         endif()
@@ -56,7 +56,7 @@ function(def_nkirc_compile_test)
         WORKING_DIRECTORY "${NKIRC_TEST_OUT_DIR}"
         COMMAND
             "env"
-            "LD_LIBRARY_PATH=."
+            "${SYSTEM_LIBRARY_PATH}=${NKIRC_TEST_OUT_DIR}:$ENV{${SYSTEM_LIBRARY_PATH}}"
             "EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
             "COMPILER=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
             "OUT_FILE=${BASE_NAME}.out"

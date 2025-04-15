@@ -1,29 +1,26 @@
 function(get_build_version REPO_DIR OUT_VERSION)
-    set(REPO_TAG "UNDEFINED")
-
     find_program(GIT git)
     if(GIT)
         execute_process(
             COMMAND ${GIT} describe --tags --dirty
             WORKING_DIRECTORY ${REPO_DIR}
-            OUTPUT_VARIABLE REPO_TAG
+            RESULT_VARIABLE RESULT
+            OUTPUT_VARIABLE VERSION
             OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
         )
-        if(NOT REPO_TAG)
-            message(WARNING "Repo tag is not found")
-            set(REPO_TAG undefined)
+        if(NOT ${RESULT} EQUAL 0)
+            message(WARNING "Repo tag not found")
+            set(VERSION "unknown")
         endif()
     else()
-        message(WARNING "Git is not found")
+        message(WARNING "Git not found")
+        set(VERSION "unknown")
     endif()
 
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        string(APPEND REPO_TAG "-debug")
+        string(APPEND VERSION "-debug")
     endif()
 
-    if(DEV_BUILD)
-        string(APPEND REPO_TAG "-dev")
-    endif()
-
-    set(${OUT_VERSION} ${REPO_TAG} PARENT_SCOPE)
+    set(${OUT_VERSION} ${VERSION} PARENT_SCOPE)
 endfunction()

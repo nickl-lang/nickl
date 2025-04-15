@@ -1,7 +1,7 @@
 #include "ntk/arena.h"
 
 #include "ntk/log.h"
-#include "ntk/os/mem.h"
+#include "ntk/mem.h"
 #include "ntk/utils.h"
 
 #if defined(__SANITIZE_ADDRESS__)

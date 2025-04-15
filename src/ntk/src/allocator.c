@@ -21,7 +21,7 @@ static void *defaultAllocatorProc(
     switch (mode) {
         case NkAllocatorMode_Alloc: {
             void *data = malloc(size);
-            NK_LOG_TRC("malloc(%" PRIu64 ") -> %p", size, data);
+            NK_LOG_TRC("malloc(%zu) -> %p", size, data);
             if (!data) {
                 NK_LOG_ERR("Out of memory");
                 nk_trap();
@@ -37,7 +37,7 @@ static void *defaultAllocatorProc(
 
         case NkAllocatorMode_Realloc: {
             void *data = realloc(old_mem, size);
-            NK_LOG_TRC("realloc(%" PRIu64 ", %p) -> %p", size, old_mem, data);
+            NK_LOG_TRC("realloc(%zu, x) -> %p", size, data);
             if (!data) {
                 NK_LOG_ERR("Out of memory");
                 nk_trap();

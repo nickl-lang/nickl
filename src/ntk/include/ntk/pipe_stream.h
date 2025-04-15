@@ -1,7 +1,7 @@
 #ifndef NTK_PIPE_STREAM_H_
 #define NTK_PIPE_STREAM_H_
 
-#include "ntk/os/common.h"
+#include "ntk/common.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 
@@ -11,8 +11,8 @@ extern "C" {
 
 typedef struct {
     NkStream stream;
-    NkOsHandle h_file;
-    NkOsHandle h_process;
+    NkHandle h_file;
+    NkHandle h_process;
 } NkPipeStream;
 
 NK_EXPORT bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet);

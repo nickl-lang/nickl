@@ -1,4 +1,4 @@
-#include "ntk/os/syscall.h"
+#include "ntk/syscall.h"
 
 #include <unistd.h>
 

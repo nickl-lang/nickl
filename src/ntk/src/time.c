@@ -1,10 +1,8 @@
 #include "ntk/time.h"
 
 #include <time.h>
-#include <x86intrin.h>
 
-#include "ntk/os/thread.h"
-#include "ntk/os/time.h"
+#include "ntk/time.h"
 
 i64 nk_now_ns(void) {
     struct timespec ts = {0};
@@ -18,7 +16,7 @@ u64 nk_estimateTscFrequency(void) {
     // Get time before sleep
     u64 nsc_begin = 0;
     nsc_begin = nk_now_ns();
-    u64 tsc_begin = __rdtsc();
+    u64 tsc_begin = nk_readTsc();
 
     // 10ms gives ~4.5 digits of precision
     // the longer you sleep, the more precise you get
@@ -27,7 +25,7 @@ u64 nk_estimateTscFrequency(void) {
     // Get time after sleep
     u64 nsc_end = nsc_begin + 1;
     nsc_end = nk_now_ns();
-    u64 tsc_end = __rdtsc();
+    u64 tsc_end = nk_readTsc();
 
     if (nsc_end > nsc_begin) {
         // Do the math to extrapolate the RDTSC ticks elapsed in 1 second

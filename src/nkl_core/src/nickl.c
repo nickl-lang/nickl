@@ -8,9 +8,9 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/list.h"
-#include "ntk/os/error.h"
 #include "ntk/string_builder.h"
 
 static u64 nk_atom_hash(NkAtom const key) {

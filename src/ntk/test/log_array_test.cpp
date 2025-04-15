@@ -26,17 +26,17 @@ TEST_F(LogArray, basic) {
 
     ar.reserve(1);
 
-    EXPECT_EQ(ar.size(), 0);
+    EXPECT_EQ(ar.size(), 0u);
 
     *ar.push() = 4;
     *ar.push() = 5;
     *ar.push() = 42;
 
-    EXPECT_EQ(ar.size(), 3);
+    EXPECT_EQ(ar.size(), 3u);
 
-    EXPECT_EQ(ar.at(0), 4);
-    EXPECT_EQ(ar.at(1), 5);
-    EXPECT_EQ(ar.at(2), 42);
+    EXPECT_EQ(ar.at(0), 4u);
+    EXPECT_EQ(ar.at(1), 5u);
+    EXPECT_EQ(ar.at(2), 42u);
 }
 
 TEST_F(LogArray, many_small_pushes) {
@@ -125,13 +125,13 @@ TEST_F(LogArray, pop) {
         ar.reserve(32);
 
         ar.push(32);
-        EXPECT_EQ(ar.size(), 32);
+        EXPECT_EQ(ar.size(), 32u);
         ar.push(64);
-        EXPECT_EQ(ar.size(), 96);
+        EXPECT_EQ(ar.size(), 96u);
         ar.pop(64);
-        EXPECT_EQ(ar.size(), 32);
+        EXPECT_EQ(ar.size(), 32u);
         ar.push(64);
-        EXPECT_EQ(ar.size(), 96);
+        EXPECT_EQ(ar.size(), 96u);
     }
 
     {
@@ -143,13 +143,13 @@ TEST_F(LogArray, pop) {
         ar.reserve(32);
 
         ar.push(32);
-        EXPECT_EQ(ar.size(), 32);
+        EXPECT_EQ(ar.size(), 32u);
         ar.pop(32);
-        EXPECT_EQ(ar.size(), 0);
+        EXPECT_EQ(ar.size(), 0u);
         ar.push(32);
-        EXPECT_EQ(ar.size(), 32);
+        EXPECT_EQ(ar.size(), 32u);
         ar.pop(32);
-        EXPECT_EQ(ar.size(), 0);
+        EXPECT_EQ(ar.size(), 0u);
     }
 }
 
@@ -160,8 +160,8 @@ TEST_F(LogArray, zero_init) {
     };
 
     *ar.push() = 42;
-    EXPECT_EQ(ar.size(), 1);
-    EXPECT_EQ(ar[0], 42);
+    EXPECT_EQ(ar.size(), 1u);
+    EXPECT_EQ(ar[0], 42u);
 }
 
 // TODO Rewrite LogArray to support split push

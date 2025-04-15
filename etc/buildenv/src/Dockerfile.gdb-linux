@@ -1,0 +1,30 @@
+FROM common AS gdb-linux
+
+ARG PREFIX=/opt/toolchain
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgmp-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    python3-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GDB_URL}} \
+ && tar xvf gdb-{{GDB_VERSION}}.tar.xz \
+ && cd gdb-{{GDB_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --prefix=${PREFIX} \
+      --with-gmp=${PREFIX} \
+      --with-mpfr=${PREFIX} \
+      --with-mpc=${PREFIX} \
+      --with-python=python3 \
+      --with-tui \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/gdb/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gdb/ \
+ && rm -rf /root/* \
+ ;

@@ -7,9 +7,9 @@
 #include "ntk/common.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
-#include "ntk/os/syscall.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
+#include "ntk/syscall.h"
 #include "ntk/utils.h"
 
 namespace {
@@ -106,7 +106,7 @@ void jumpCall(NkBcProc proc, void *const *args, void *const *ret, NkArenaFrame s
 
     jumpTo(proc->instrs.data);
 
-    NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
+    NK_LOG_DBG("stack_frame=%zu", ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
     NK_LOG_DBG("arg=%p", (void *)ctx.base.arg);
     NK_LOG_DBG("ret=%p", (void *)ctx.ret);

@@ -3,7 +3,7 @@ set(NKSTC_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/nkstc_test_out")
 
 function(def_nkstc_run_test)
     set(options)
-    set(oneValueArgs FILE PLATFORM)
+    set(oneValueArgs FILE SYSTEM)
     set(multiValueArgs ARGS)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -12,8 +12,8 @@ function(def_nkstc_run_test)
         message(FATAL_ERROR "FILE argument is required")
     endif()
 
-    if(ARG_PLATFORM)
-        string(REGEX MATCH "${ARG_PLATFORM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
+    if(ARG_SYSTEM)
+        string(REGEX MATCH "${ARG_SYSTEM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
         if(NOT CONTINUE)
             return()
         endif()
@@ -30,7 +30,7 @@ function(def_nkstc_run_test)
         WORKING_DIRECTORY "${NKSTC_TEST_OUT_DIR}"
         COMMAND
             env
-            "LD_LIBRARY_PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+            "${SYSTEM_LIBRARY_PATH}=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{${SYSTEM_LIBRARY_PATH}}"
             ${CMAKE_CROSSCOMPILING_EMULATOR} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" -krun
         EXTRA_ARGS
             ${ARGS}
@@ -39,7 +39,7 @@ endfunction()
 
 function(def_nkstc_compile_test)
     set(options)
-    set(oneValueArgs FILE PLATFORM)
+    set(oneValueArgs FILE SYSTEM)
     set(multiValueArgs ARGS)
 
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -48,8 +48,8 @@ function(def_nkstc_compile_test)
         message(FATAL_ERROR "FILE argument is required")
     endif()
 
-    if(ARG_PLATFORM)
-        string(REGEX MATCH "${ARG_PLATFORM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
+    if(ARG_SYSTEM)
+        string(REGEX MATCH "${ARG_SYSTEM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
         if(NOT CONTINUE)
             return()
         endif()
@@ -63,7 +63,7 @@ function(def_nkstc_compile_test)
         WORKING_DIRECTORY "${NKSTC_TEST_OUT_DIR}"
         COMMAND
             env
-            "LD_LIBRARY_PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+            "${SYSTEM_LIBRARY_PATH}=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{${SYSTEM_LIBRARY_PATH}}"
             "EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
             "COMPILER=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
             "OUT_FILE=${BASE_NAME}.out"

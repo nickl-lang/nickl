@@ -114,7 +114,7 @@ void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
 
     _jumpTo(fn->instrs);
 
-    NK_LOG_DBG("stack_frame=%" PRIu64, ctx.stack_frame.size);
+    NK_LOG_DBG("stack_frame=%zu", ctx.stack_frame.size);
     NK_LOG_DBG("frame=%p", (void *)ctx.base.frame);
     NK_LOG_DBG("arg=%p", (void *)ctx.base.arg);
     NK_LOG_DBG("ret=%p", (void *)ctx.base.ret);
@@ -307,8 +307,8 @@ void interp(NkBcInstr const &instr) {
 #define NUM_UN_OP(NAME, OP) NUMERIC_ITERATE(NUM_UN_OP_IT, NAME, OP)
 #define NUM_UN_OP_INT(NAME, OP) NUMERIC_ITERATE_INT(NUM_UN_OP_IT, NAME, OP)
 
-            NUM_UN_OP(not, not )
-            NUM_UN_OP_INT(compl, compl )
+            NUM_UN_OP(not, not)
+            NUM_UN_OP_INT(compl, compl)
             NUM_UN_OP(neg, -)
 
 #undef NUM_UN_OP
@@ -457,9 +457,7 @@ void nk_interp_invoke(NkBcFunct fn, nkval_t ret, nkval_t args) {
         auto pinstr = ctx.pinstr++;
         nk_assert(pinstr->code < nkop_count && "unknown instruction");
         NK_LOG_DBG(
-            "instr: %" PRIx64 " %s",
-            (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr),
-            s_nk_bc_names[pinstr->code]);
+            "instr: %zu %s", (pinstr - (NkBcInstr *)ctx.base.instr) * sizeof(NkBcInstr), s_nk_bc_names[pinstr->code]);
 
 #ifdef ENABLE_LOGGING
         nkval_t dst_val{};

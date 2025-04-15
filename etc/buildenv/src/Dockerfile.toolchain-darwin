@@ -1,0 +1,32 @@
+FROM clang AS toolchain-darwin
+
+ARG PREFIX=/opt/toolchain
+ENV PATH="${PREFIX}/bin:${PATH}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bzip2 \
+    cpio \
+    libssl-dev \
+    libxml2-dev \
+    lzma-dev \
+    unzip \
+    xz-utils \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY patches/osxcross.diff /root
+RUN --mount=type=bind,src=osxsdk,dst=${PREFIX}/SDK cd /root \
+ && git clone {{OSXCROSS_URL}} \
+ && cd osxcross \
+ && git checkout {{OSXCROSS_VERSION}} \
+ && git apply /root/osxcross.diff \
+ && UNATTENDED=1 \
+    TARGET_DIR="${PREFIX}" \
+    SDK_VERSION="{{MACOS_SDK_VERSION}}" \
+    ./build.sh \
+ && rm ${PREFIX}/toolchain.cmake \
+ && rm -rf /root/* \
+ ;
+
+COPY etc/toolchain-env.sh ${PREFIX}/etc/env.sh
+COPY etc/toolchain-darwin.cmake ${PREFIX}/etc/toolchain.cmake

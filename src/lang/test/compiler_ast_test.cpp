@@ -9,7 +9,7 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/log.h"
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
 

@@ -1,7 +1,7 @@
-#ifndef NTK_OS_WINDOWS_COMMON_H_
-#define NTK_OS_WINDOWS_COMMON_H_
+#ifndef NTK_WINDOWS_COMMON_H_
+#define NTK_WINDOWS_COMMON_H_
 
-#include "ntk/os/common.h"
+#include "ntk/common.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -10,16 +10,16 @@
 extern "C" {
 #endif
 
-NK_INLINE HANDLE handle_toNative(NkOsHandle handle) {
+NK_INLINE HANDLE handle_toNative(NkHandle handle) {
     return (HANDLE)handle.val;
 }
 
-NK_INLINE NkOsHandle handle_fromNative(HANDLE native_handle) {
-    return (NkOsHandle){(intptr_t)native_handle};
+NK_INLINE NkHandle handle_fromNative(HANDLE native_handle) {
+    return (NkHandle){(intptr_t)native_handle};
 }
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NTK_OS_WINDOWS_COMMON_H_
+#endif // NTK_WINDOWS_COMMON_H_

@@ -1,0 +1,40 @@
+FROM windows AS windows-dev
+
+COPY --from=toolchain-windows-native ${PREFIX}-native ${PREFIX}-native
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GTEST_URL}} \
+ && tar xvf googletest-{{GTEST_VERSION}}.tar.gz \
+ && cd googletest-{{GTEST_VERSION}} \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+ && ninja -C build \
+ && ninja -C build install/strip \
+ && mkdir -p ${PREFIX}/share/licenses/googletest/ \
+ && install -m 644 LICENSE ${PREFIX}/share/licenses/googletest/ \
+ && rm -rf /root/* \
+ ;
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{JSON_C_URL}} \
+ && tar xvf {{JSON_C_VERSION}}.tar.gz \
+ && cd json-c-{{JSON_C_VERSION}} \
+ && cmake -B build -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+ && ninja -C build \
+ && ninja -C build install/strip \
+ && mkdir -p ${PREFIX}/share/licenses/json-c/ \
+ && install -m 644 COPYING ${PREFIX}/share/licenses/json-c/ \
+ && rm -rf /root/* \
+ ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wine \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV WINEPATH="${PREFIX}/bin;${PREFIX}-native/bin"
+ENV WINEDEBUG=-all
+
+FROM windows-dev AS windows-{{MACHINE}}-dev

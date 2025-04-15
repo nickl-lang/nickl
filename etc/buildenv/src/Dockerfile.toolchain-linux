@@ -1,0 +1,88 @@
+FROM common AS toolchain-linux
+
+ARG PREFIX=/opt/toolchain
+ENV TARGET=x86_64-linux-gnu
+ENV PATH="${PREFIX}/bin:${PATH}"
+
+RUN mkdir ${PREFIX}
+RUN ln -s lib ${PREFIX}/lib64
+RUN ln -s bin ${PREFIX}/sbin
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texinfo \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{BINUTILS_URL}} \
+ && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
+ && cd binutils-{{BINUTILS_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX} \
+      --disable-gprofng \
+      --disable-multilib \
+      --disable-nls \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/binutils/ \
+ && rm -rf /root/* \
+ && ln -sf ld      ${PREFIX}/bin/ld.bfd \
+ && ln -sf ld      ${PREFIX}/bin/${TARGET}-ld \
+ && ln -sf ar      ${PREFIX}/bin/${TARGET}-ar \
+ && ln -sf nm      ${PREFIX}/bin/${TARGET}-nm \
+ && ln -sf objcopy ${PREFIX}/bin/${TARGET}-objcopy \
+ && ln -sf objdump ${PREFIX}/bin/${TARGET}-objdump \
+ && ln -sf ranlib  ${PREFIX}/bin/${TARGET}-ranlib \
+ && ln -sf strip   ${PREFIX}/bin/${TARGET}-strip \
+ ;
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GCC_URL}} \
+ && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
+ && cd gcc-{{GCC_VERSION}} \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && ln -s gmp-{{GMP_VERSION}} gmp \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && ln -s mpfr-{{MPFR_VERSION}} mpfr \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && ln -s mpc-{{MPC_VERSION}} mpc \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX} \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --enable-default-pie \
+      --enable-default-ssp \
+      --disable-multilib \
+      --enable-lto \
+      --disable-nls \
+      --disable-libstdcxx-pch \
+      --with-system-zlib \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gcc/ \
+ && rm -rf /root/* \
+ && ln -sf gcc         ${PREFIX}/bin/cc \
+ && ln -sf g++         ${PREFIX}/bin/c++ \
+ && ln -sf cc          ${PREFIX}/bin/${TARGET}-cc \
+ && ln -sf c++         ${PREFIX}/bin/${TARGET}-c++ \
+ && ln -sf gcc         ${PREFIX}/bin/${TARGET}-gcc \
+ && ln -sf g++         ${PREFIX}/bin/${TARGET}-g++ \
+ && ln -sf gcc         ${PREFIX}/bin/${TARGET}-gcc-{{GCC_VERSION}} \
+ && ln -sf gcc-ar      ${PREFIX}/bin/${TARGET}-gcc-ar \
+ && ln -sf gcc-nm      ${PREFIX}/bin/${TARGET}-gcc-nm \
+ && ln -sf gcc-ranlib  ${PREFIX}/bin/${TARGET}-gcc-ranlib \
+ ;
+
+COPY etc/toolchain-env.sh ${PREFIX}/etc/env.sh
+COPY etc/toolchain-linux.cmake ${PREFIX}/etc/toolchain.cmake

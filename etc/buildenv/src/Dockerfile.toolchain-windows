@@ -1,0 +1,136 @@
+FROM common AS toolchain-windows
+
+ARG PREFIX=/opt/toolchain
+ENV TARGET=x86_64-w64-mingw32
+ENV PATH="${PREFIX}/bin:${PATH}"
+
+RUN mkdir ${PREFIX}
+RUN ln -s lib ${PREFIX}/lib64
+RUN ln -s bin ${PREFIX}/sbin
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texinfo \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{BINUTILS_URL}} \
+ && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
+ && cd binutils-{{BINUTILS_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --target=${TARGET} \
+      --prefix=${PREFIX} \
+      --disable-gprofng \
+      --disable-multilib \
+      --disable-nls \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/binutils/ \
+ && rm -rf /root/* \
+ && ln -sf ${TARGET}-ld  ${PREFIX}/bin/${TARGET}-ld.bfd \
+ ;
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{MINGW_URL}} \
+ && tar xvf mingw-w64-v{{MINGW_VERSION}}.tar.bz2 \
+ && rm mingw-w64-v{{MINGW_VERSION}}.tar.bz2 \
+ ;
+
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-headers \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX}/${TARGET} \
+      --with-default-msvcrt=ucrt \
+ && make install \
+ ;
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GCC_URL}} \
+ && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
+ && rm gcc-{{GCC_VERSION}}.tar.xz \
+ && cd gcc-{{GCC_VERSION}} \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && rm gmp-{{GMP_VERSION}}.tar.bz2 \
+ && ln -s gmp-{{GMP_VERSION}} gmp \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && rm mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && ln -s mpfr-{{MPFR_VERSION}} mpfr \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && rm mpc-{{MPC_VERSION}}.tar.gz \
+ && ln -s mpc-{{MPC_VERSION}} mpc \
+ ;
+
+RUN cd /root/gcc-{{GCC_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --target=${TARGET} \
+      --prefix=${PREFIX} \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --enable-default-pie \
+      --enable-default-ssp \
+      --disable-multilib \
+      --enable-lto \
+      --disable-nls \
+      --disable-libstdcxx-pch \
+      --with-system-zlib \
+      --enable-threads=posix \
+ && make -j all-gcc \
+ && make install-strip-gcc \
+ ;
+
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX}/${TARGET} \
+      --with-default-msvcrt=ucrt \
+ && make -j \
+ && make install-strip \
+ && make clean \
+ ;
+
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}}/mingw-w64-libraries/winpthreads \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+     --host=${TARGET} \
+     --prefix=${PREFIX}/${TARGET} \
+     --enable-shared \
+ && make -j \
+ && make install-strip \
+ && make clean \
+ && mkdir -p ${PREFIX}/share/licenses/winpthreads/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/winpthreads/ \
+ ;
+
+RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
+
+RUN cd /root/gcc-{{GCC_VERSION}}/build \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gcc/ \
+ && rm -rf ./* \
+ && ln -sf ${TARGET}-gcc ${PREFIX}/bin/${TARGET}-cc \
+ && ln -sf ${TARGET}-g++ ${PREFIX}/bin/${TARGET}-c++ \
+ ;
+
+RUN cd /root/mingw-w64-v{{MINGW_VERSION}} \
+ && mkdir -p ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 COPYING ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 ./COPYING.MinGW-w64*/* ${PREFIX}/share/licenses/mingw-w64/ \
+ ;
+
+COPY etc/toolchain-env.sh ${PREFIX}/etc/env.sh
+COPY etc/toolchain-windows.cmake ${PREFIX}/etc/toolchain.cmake

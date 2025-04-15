@@ -8,7 +8,6 @@
 #include "ntk/dyn_array.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
-#include "ntk/os/file.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"

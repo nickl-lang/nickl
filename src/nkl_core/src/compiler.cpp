@@ -14,7 +14,6 @@
 #include "ntk/dyn_array.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
-#include "ntk/os/path.h"
 #include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"

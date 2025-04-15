@@ -41,5 +41,5 @@ TEST_F(atom, backward) {
 TEST_F(atom, nonexistent) {
     auto str = nk_atom2s(999999999);
     EXPECT_EQ(nullptr, str.data);
-    EXPECT_EQ(0, str.size);
+    EXPECT_EQ(0u, str.size);
 }

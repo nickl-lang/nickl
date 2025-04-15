@@ -43,14 +43,14 @@ TEST_F(allocator, basic) {
 
 TEST_F(allocator, frames) {
     nk_alloc(m_alloc, 100);
-    EXPECT_GE(m_arena.size, 100);
+    EXPECT_GE(m_arena.size, 100u);
 
     auto const prev_size = m_arena.size;
 
     auto frame = nk_arena_grab(&m_arena);
 
     nk_alloc(m_alloc, 100);
-    EXPECT_GE(m_arena.size, 200);
+    EXPECT_GE(m_arena.size, 200u);
 
     nk_arena_popFrame(&m_arena, frame);
     EXPECT_EQ(m_arena.size, prev_size);
@@ -60,7 +60,7 @@ TEST_F(allocator, clear) {
     int *ptr = nk_allocT<int>(m_alloc, 5);
     ASSERT_TRUE(ptr);
 
-    EXPECT_EQ((usize)ptr & (alignof(int) - 1), 0);
+    EXPECT_EQ((usize)ptr & (alignof(int) - 1), 0u);
 
     usize const sz = sizeof(*ptr) * 5;
     std::memset(ptr, 0, sz);
@@ -68,11 +68,11 @@ TEST_F(allocator, clear) {
 
     nk_arena_popFrame(&m_arena, {0});
 
-    EXPECT_EQ(m_arena.size, 0);
+    EXPECT_EQ(m_arena.size, 0u);
 }
 
 TEST_F(allocator, realloc) {
-    EXPECT_EQ(m_arena.size, 0);
+    EXPECT_EQ(m_arena.size, 0u);
 
     auto ptr1 = nk_allocT<int>(m_alloc);
     EXPECT_GE(m_arena.size, sizeof(int));
@@ -90,7 +90,7 @@ TEST_F(allocator, realloc) {
 }
 
 TEST_F(allocator, realloc_memcpy) {
-    EXPECT_EQ(m_arena.size, 0);
+    EXPECT_EQ(m_arena.size, 0u);
 
     auto ptr1 = nk_allocT<int>(m_alloc);
     EXPECT_GE(m_arena.size, sizeof(int));
@@ -110,9 +110,9 @@ TEST_F(allocator, realloc_memcpy) {
 }
 
 TEST_F(allocator, align) {
-    EXPECT_EQ(m_arena.size, 0);
+    EXPECT_EQ(m_arena.size, 0u);
     defer {
-        EXPECT_EQ(m_arena.size, 0);
+        EXPECT_EQ(m_arena.size, 0u);
     };
 
     auto const frame = nk_arena_grab(&m_arena);
@@ -121,11 +121,11 @@ TEST_F(allocator, align) {
     };
 
     nk_arena_allocAligned(&m_arena, 1, 1);
-    EXPECT_GE(m_arena.size, 1);
+    EXPECT_GE(m_arena.size, 1u);
 
     void *ptr = nk_arena_allocAligned(&m_arena, 8, 8);
-    EXPECT_EQ((usize)ptr & 7, 0);
-    EXPECT_GE(m_arena.size, 16);
+    EXPECT_EQ((usize)ptr & 7, 0u);
+    EXPECT_GE(m_arena.size, 16u);
 }
 
 TEST_F(allocator, free_noop) {
@@ -152,6 +152,7 @@ TEST_F(allocator, free_noop) {
 TEST_F(allocator, arena_stress) {
     NkDynArray(NkArenaFrame) frames{};
     usize total_size = 0;
+    (void)total_size;
     NkArena arena{};
     defer {
         nk_arena_free(&arena);

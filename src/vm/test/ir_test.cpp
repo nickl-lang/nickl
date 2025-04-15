@@ -295,7 +295,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
 
     u64 ar_size = 0; // Must be aligned to 8
     nkir_invoke({&getArrSize, getArrSize_fn_t}, {&ar_size, u32_t}, {});
-    EXPECT_EQ(ar_size, 6);
+    EXPECT_EQ(ar_size, 6u);
 
     EXPECT_NE(p, nullptr);
 
@@ -323,7 +323,7 @@ TEST_F(ir, nested_functions_call_while_compiling) {
 
     nkir_invoke({&test, test_fn_t}, {}, {});
 
-    EXPECT_EQ(s_test_ar_sum, 15);
+    EXPECT_EQ(s_test_ar_sum, 15u);
 }
 
 extern "C" NK_EXPORT void _test_sayHello(void *getName) {
@@ -452,5 +452,5 @@ TEST_F(ir, callback_from_native) {
 
     u64 res = 0; // Must be aligned to 8
     nkir_invoke({&test, test_fn_t}, {&res, u32_t}, {});
-    EXPECT_EQ(res, 46);
+    EXPECT_EQ(res, 46u);
 }

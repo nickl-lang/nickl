@@ -5,9 +5,9 @@
 #include "nkb/ir.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash_tree.h"
-#include "ntk/os/common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,12 +88,12 @@ NK_HASH_TREE_PROTO(TypeTree, TypeTree_kv, u32);
 typedef struct {
     NkAllocator alloc;
     TypeTree types;
-    NkOsHandle mtx;
+    NkHandle mtx;
 } NkFfiContext;
 
 typedef struct {
     NkAtom key;
-    NkOsHandle val;
+    NkHandle val;
 } ExternLib_kv;
 
 // TODO Use hash map or linear array for extern libs

@@ -51,7 +51,8 @@ typedef size_t usize;
 
 #define NK_LITERAL(T) T
 #define NK_ZERO_STRUCT \
-    {}
+    {                  \
+    }
 
 template <class T>
 T *_nk_assignVoidPtr(T *&dst, void *src) {
@@ -66,8 +67,7 @@ constexpr usize nk_alignofval(T const &) {
 #else // __cplusplus
 
 #define NK_LITERAL(T) (T)
-#define NK_ZERO_STRUCT \
-    { 0 }
+#define NK_ZERO_STRUCT {0}
 
 #define _nk_assignVoidPtr(dst, src) ((dst) = (src))
 
@@ -75,8 +75,16 @@ constexpr usize nk_alignofval(T const &) {
 
 #endif // __cplusplus
 
+#if defined(__has_attribute)
+#if __has_attribute(unused)
+#define NK_UNUSED __attribute__((unused))
+#else
+#define NK_UNUSED
+#endif
+#endif
+
 #define _NK_NOP (void)0
-#define _NK_NOP_TOPLEVEL extern int NK_CAT(_, __LINE__)
+#define _NK_NOP_TOPLEVEL extern NK_UNUSED int NK_CAT(_, __LINE__)
 
 #define nk_trap() __builtin_trap()
 
@@ -93,5 +101,43 @@ constexpr usize nk_alignofval(T const &) {
         }                                                                                        \
     } while (0)
 #endif // NDEBUG
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    intptr_t val;
+} NkHandle;
+
+#define NK_HANDLE_ZERO (NK_LITERAL(NkHandle) NK_ZERO_STRUCT)
+
+NK_INLINE bool nk_handleEqual(NkHandle lhs, NkHandle rhs) {
+    return lhs.val == rhs.val;
+}
+
+NK_INLINE bool nk_handleIsZero(NkHandle handle) {
+    return nk_handleEqual(handle, NK_HANDLE_ZERO);
+}
+
+NK_INLINE void *nk_handleToVoidPtr(NkHandle handle) {
+    return (void *)handle.val;
+}
+
+NK_INLINE NkHandle nk_handleFromVoidPtr(void *ptr) {
+    return NK_LITERAL(NkHandle){(intptr_t)ptr};
+}
+
+#ifdef __cplusplus
+
+inline bool operator==(NkHandle lhs, NkHandle rhs) {
+    return nk_handleEqual(lhs, rhs);
+}
+
+#endif // __cplusplus
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NTK_COMMON_H_

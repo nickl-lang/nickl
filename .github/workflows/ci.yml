@@ -10,20 +10,49 @@ permissions:
   contents: read
 
 jobs:
-  build_and_test:
+  common:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform: [linux, mingw64]
-        build_type: [debug, release]
-    env:
-      PLATFORM: ${{matrix.platform}}
-      BUILD_TYPE: ${{matrix.build_type}}
-      EXTRA_CMAKE_ARGS: -DBUILD_TESTS=ON
+        system: [linux, windows]
+        build_args: [-t, -td]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Build
-        run: ./build.sh
+        run: ./build.sh ${{ matrix.build_args }} -s ${{ matrix.system }}
       - name: Test
-        run: ./build.sh test
+        run: ./build.sh ${{ matrix.build_args }} -s ${{ matrix.system }} test
+
+  native:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_args: [-nt, -ntd]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends libffi-dev libgtest-dev
+      - name: Build
+        run: ./build.sh ${{ matrix.build_args }}
+      - name: Test
+        run: ./build.sh ${{ matrix.build_args }} test
+
+  darwin:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        build_args: [-nt, -ntd]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          brew install googletest
+      - name: Build
+        run: ./build.sh ${{ matrix.build_args }}
+      - name: Test
+        run: ./build.sh ${{ matrix.build_args }} test

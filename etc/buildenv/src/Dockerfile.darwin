@@ -1,0 +1,12 @@
+FROM clang AS darwin
+
+ARG PREFIX=/opt/toolchain
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/etc/toolchain.cmake
+ENV PATH="${PREFIX}/bin:${PATH}"
+ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+
+COPY --from=toolchain-darwin ${PREFIX} ${PREFIX}
+
+ENV TARGET={{MACHINE}}-apple-darwin{{DARWIN_TARGET_VERSION}}
+
+FROM darwin AS darwin-{{MACHINE}}

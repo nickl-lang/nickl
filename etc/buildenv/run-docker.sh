@@ -1,55 +1,90 @@
 #!/bin/sh
 
 set -e
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
-if [ -z ${PLATFORM+x} ]; then
-    PLATFORM=linux
+. "$DIR/config.sh"
+
+if [ -z "$(docker images -q "$IMAGE_TAG" 2>/dev/null)" ]; then
+  echo >&2 "INFO: Trying to pull docker image '$IMAGE_TAG'"
+  if docker pull "$REMOTE/$IMAGE_TAG" 2>/dev/null; then
+    docker image tag "$REMOTE/$IMAGE_TAG" "$IMAGE_TAG"
+    docker image rm "$REMOTE/$IMAGE_TAG"
+  else
+    "$DIR/build-image.sh" -i "$IMAGE"
+  fi
 fi
 
-. $DIR/common/common-info.sh
-. $DIR/$PLATFORM/image-info.sh
+CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
 
-PROJECTDIR=$(realpath $DIR/../..)
-DOCKERHOME=$PROJECTDIR/out/home
+[ -z "$(docker ps -a -q -f name="$CONTAINER_NAME")" ] && {
+  echo >&2 "INFO: Creating docker container '$CONTAINER_NAME'"
 
-mkdir -p $DOCKERHOME
+  REPO_ROOT=$(realpath "$DIR/../..")
+  DOCKER_HOME="$REPO_ROOT/out/home"
 
-if [ -t 0 ]; then
-    TTY_ARG="-ti"
-else
-    TTY_ARG=""
-fi
+  mkdir -p "$DOCKER_HOME"
 
-if [ -z "$(docker images -q $IMAGE 2> /dev/null)" ]; then
-    if docker pull $DOCKER_REGISTRY_URL/$IMAGE 2> /dev/null; then
-        docker image tag $DOCKER_REGISTRY_URL/$IMAGE $IMAGE
-        docker image rm $DOCKER_REGISTRY_URL/$IMAGE
-    else
-        $DIR/build-image.sh
-    fi
-fi
+  [ -n "${XAUTHORITY+x}" ] &&
+    XAUTHORITY_ARG="--env XAUTHORITY --volume $XAUTHORITY:$XAUTHORITY"
 
-echo "Running docker image $IMAGE"
+  X11_SOCKET="/tmp/.X11-unix"
+  [ -e $X11_SOCKET ] &&
+    X11_SOCKET_ARG="--volume $X11_SOCKET:$X11_SOCKET"
 
-docker run \
-    $TTY_ARG \
-    --rm \
-    -h $(hostname) \
-    -v /etc/passwd:/etc/passwd:ro \
-    -v /etc/group:/etc/group:ro \
-    -v /etc/shadow:/etc/shadow:ro \
-    -v $HOME/.Xauthority:$HOME/.Xauthority \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    -e DISPLAY \
-    -e TERM \
-    -e PLATFORM \
-    -e DEV_BUILD \
-    -e BUILD_TYPE \
-    -e EXTRA_CMAKE_ARGS \
-    -u $(id -u):$(id -g) \
-    -w $PROJECTDIR \
-    -v $DOCKERHOME:$HOME \
-    -v $PROJECTDIR:$PROJECTDIR \
+  [ -n "${XDG_RUNTIME_DIR+x}" ] &&
+    XDG_RUNTIME_DIR_ARG="--env XDG_RUNTIME_DIR --volume "$XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR""
+
+  UID=$(id -u)
+  GID=$(id -g)
+  USER=$(id -u -n)
+  GROUP=$(id -g -n)
+
+  docker run \
+    --detach \
+    --interactive \
+    --hostname "$(hostname)" \
+    --user "$UID:$GID" \
+    --workdir "$REPO_ROOT" \
+    --env HOME \
+    --env USER \
+    $XAUTHORITY_ARG \
+    $X11_SOCKET_ARG \
+    $XDG_RUNTIME_DIR_ARG \
+    --volume "$DOCKER_HOME:$HOME" \
+    --volume "$REPO_ROOT:$REPO_ROOT" \
+    --name "$CONTAINER_NAME" \
     $EXTRA_DOCKER_OPTS \
-    $IMAGE "$@"
+    "$IMAGE_TAG" >/dev/null
+
+  docker exec --user 0:0 "$CONTAINER_NAME" sh -c "
+    echo '$USER:x:$UID:$GID::$HOME:/usr/bin/bash' >>/etc/passwd &&
+    echo '$GROUP:x:$GID:' >>/etc/group &&
+    echo '$USER:*:0:0:99999:7:::' >>/etc/shadow &&
+    echo '%$GROUP ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/user &&
+    chmod 0440 /etc/sudoers.d/user
+  "
+}
+
+[ -z "$(docker ps -q -f name="$CONTAINER_NAME")" ] && {
+  echo >&2 "INFO: Starting docker container '$CONTAINER_NAME'"
+  docker start "$CONTAINER_NAME" >/dev/null
+}
+
+echo >&2 "INFO: Running in docker container '$CONTAINER_NAME'"
+
+[ -t 0 ] && TTY_ARG="--tty"
+
+CMD="$*"
+[ -z "$CMD" ] && CMD=bash
+
+docker exec \
+  $TTY_ARG \
+  --interactive \
+  --env BUILD_TYPE \
+  --env EXTRA_CMAKE_ARGS \
+  --env MAKE \
+  --env DISPLAY \
+  --env TERM \
+  "$CONTAINER_NAME" \
+  $CMD

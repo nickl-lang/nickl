@@ -1,12 +1,14 @@
-#include "ntk/os/file.h"
+#include "ntk/file.h"
 
 #include "common.h"
 #include "ntk/profiler.h"
 
 char const *nk_null_file = "nul";
 
-i32 nk_read(NkOsHandle h_file, char *buf, usize n) {
+i32 nk_read(NkHandle h_file, char *buf, usize n) {
     NK_PROF_FUNC_BEGIN();
+
+    i32 ret = 0;
 
     DWORD nNumberOfBytesRead = 0;
     BOOL bSuccess = ReadFile(
@@ -16,20 +18,20 @@ i32 nk_read(NkOsHandle h_file, char *buf, usize n) {
         &nNumberOfBytesRead,     // LPDWORD      lpNumberOfBytesRead
         NULL                     // LPOVERLAPPED lpOverlapped
     );
+    ret = nNumberOfBytesRead;
 
     if (!bSuccess) {
         DWORD err = GetLastError();
         if (err != ERROR_IO_PENDING && err != ERROR_BROKEN_PIPE) {
-            NK_PROF_FUNC_END();
-            return -1;
+            ret = -1;
         }
     }
 
     NK_PROF_FUNC_END();
-    return nNumberOfBytesRead;
+    return ret;
 }
 
-i32 nk_write(NkOsHandle h_file, char const *buf, usize n) {
+i32 nk_write(NkHandle h_file, char const *buf, usize n) {
     NK_PROF_FUNC_BEGIN();
 
     DWORD nNumberOfBytesWritten = 0;
@@ -45,10 +47,10 @@ i32 nk_write(NkOsHandle h_file, char const *buf, usize n) {
     return bSuccess ? (i32)nNumberOfBytesWritten : -1;
 }
 
-NkOsHandle nk_open(char const *file, i32 flags) {
+NkHandle nk_open(char const *file, i32 flags) {
     NK_PROF_FUNC_BEGIN();
 
-    NkOsHandle h_file = NK_OS_HANDLE_ZERO;
+    NkHandle h_file = NK_HANDLE_ZERO;
 
     DWORD dwDesiredAccess =
         ((flags & NkOpenFlags_Read) ? GENERIC_READ : 0) | ((flags & NkOpenFlags_Write) ? GENERIC_WRITE : 0);
@@ -74,25 +76,24 @@ NkOsHandle nk_open(char const *file, i32 flags) {
     return h_file;
 }
 
-i32 nk_close(NkOsHandle h_file) {
-    if (!nkos_handleIsZero(h_file)) {
-        NK_PROF_FUNC_BEGIN();
-        i32 ret = CloseHandle(handle_toNative(h_file)) ? 0 : -1;
-        NK_PROF_FUNC_END();
-        return ret;
-    } else {
-        return 0;
+i32 nk_close(NkHandle h_file) {
+    NK_PROF_FUNC_BEGIN();
+    i32 ret = 0;
+    if (!nk_handleIsZero(h_file)) {
+        ret = CloseHandle(handle_toNative(h_file)) ? 0 : -1;
     }
+    return ret;
+    NK_PROF_FUNC_END();
 }
 
-NkOsHandle nk_stdin() {
+NkHandle nk_stdin() {
     return handle_fromNative(GetStdHandle(STD_INPUT_HANDLE));
 }
 
-NkOsHandle nk_stdout() {
+NkHandle nk_stdout() {
     return handle_fromNative(GetStdHandle(STD_OUTPUT_HANDLE));
 }
 
-NkOsHandle nk_stderr() {
+NkHandle nk_stderr() {
     return handle_fromNative(GetStdHandle(STD_ERROR_HANDLE));
 }

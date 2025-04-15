@@ -1,7 +1,5 @@
 #include "ntk/string_builder.h"
 
-#include <cinttypes>
-
 #include <gtest/gtest.h>
 
 #include "ntk/string.h"
@@ -37,7 +35,7 @@ TEST_F(string_builder, counting) {
     nksb_printf(&sb, "[");
 
     for (usize i = 0; i < 10; i++) {
-        nksb_printf(&sb, "%" PRIu64, i);
+        nksb_printf(&sb, "%zu", i);
     }
 
     nksb_printf(&sb, "]");

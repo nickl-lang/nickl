@@ -1,9 +1,10 @@
-#include "ntk/os/time.h"
+#include "ntk/time.h"
 
 #include <linux/perf_event.h>
 #include <sys/mman.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <x86intrin.h>
 
 #include "ntk/time.h"
 
@@ -49,6 +50,6 @@ u64 nk_getTscFreq(void) {
     return tsc_freq;
 }
 
-void nk_usleep(u64 usec) {
-    usleep(usec);
+u64 nk_readTsc(void) {
+    return __rdtsc();
 }

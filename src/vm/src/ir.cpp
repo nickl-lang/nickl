@@ -373,16 +373,16 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder *sb) {
         }
         switch (ref.ref_type) {
             case NkIrRef_Frame:
-                nksb_printf(sb, "$%" PRIu64 "", ref.index);
+                nksb_printf(sb, "$%zu", ref.index);
                 break;
             case NkIrRef_Arg:
-                nksb_printf(sb, "$arg%" PRIu64 "", ref.index);
+                nksb_printf(sb, "$arg%zu", ref.index);
                 break;
             case NkIrRef_Ret:
                 nksb_printf(sb, "$ret");
                 break;
             case NkIrRef_Global:
-                nksb_printf(sb, "$global%" PRIu64 "", ref.index);
+                nksb_printf(sb, "$global%zu", ref.index);
                 break;
             case NkIrRef_Reg:
                 nksb_printf(sb, "$r%c", (char)('a' + ref.index));
@@ -397,13 +397,13 @@ void nkir_inspectRef(NkIrProg p, NkIrRef ref, NkStringBuilder *sb) {
                 break;
         }
         if (ref.offset) {
-            nksb_printf(sb, "+%" PRIu64 "", ref.offset);
+            nksb_printf(sb, "+%zu", ref.offset);
         }
         if (ref.is_indirect) {
             nksb_printf(sb, "]");
         }
         if (ref.post_offset) {
-            nksb_printf(sb, "+%" PRIu64 "", ref.post_offset);
+            nksb_printf(sb, "+%zu", ref.post_offset);
         }
     }
     nksb_printf(sb, ":");
@@ -430,7 +430,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
         if (i) {
             nksb_printf(sb, ", ");
         }
-        nksb_printf(sb, "$arg%" PRIu64 ":", i);
+        nksb_printf(sb, "$arg%zu:", i);
         nkt_inspect(funct->fn_t->as.fn.args_t->as.tuple.elems.data[i].type, sb);
     }
 
@@ -440,7 +440,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
     if (!funct->locals.empty()) {
         nksb_printf(sb, "\n\n");
         for (usize i = 0; i < funct->locals.size(); i++) {
-            nksb_printf(sb, "$%" PRIu64 ": ", i);
+            nksb_printf(sb, "$%zu: ", i);
             nkt_inspect(funct->locals[i], sb);
             nksb_printf(sb, "\n");
         }
@@ -508,7 +508,7 @@ void nkir_inspectFunct(NkIrFunct funct, NkStringBuilder *sb) {
                                 nk_assert(!"unreachable");
                                 break;
                         }
-                        nksb_printf(sb, "%" PRIu64 "", (usize)NUM_TYPE_SIZE(arg.id) * 8);
+                        nksb_printf(sb, "%zu", (usize)NUM_TYPE_SIZE(arg.id) * 8);
                         break;
                     case NkIrArg_None:
                     default:

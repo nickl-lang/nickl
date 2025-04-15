@@ -1,9 +1,8 @@
 #include "nkl/common/diagnostics.h"
 
 #include "ntk/file.h"
-#include "ntk/os/file.h"
-#include "ntk/os/term.h"
 #include "ntk/string.h"
+#include "ntk/term.h"
 
 static NklColorPolicy s_color_policy;
 

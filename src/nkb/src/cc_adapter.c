@@ -15,7 +15,7 @@ bool nkcc_streamOpen(NkPipeStream *stream, NkIrCompilerConfig conf) {
 
     nksb_printf(
         &cmd,
-        NKS_FMT " -x c - -o " NKS_FMT " -fPIC -fvisibility=hidden",
+        NKS_FMT " -x c - -o " NKS_FMT " -fPIC -fvisibility=hidden -Wno-implicit-function-declaration",
         NKS_ARG(conf.compiler_binary),
         NKS_ARG(conf.output_filename));
 

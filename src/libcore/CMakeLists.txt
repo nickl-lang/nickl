@@ -1,18 +1,6 @@
 set(CORELIB_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CORELIB_DST_DIR ${CMAKE_BINARY_DIR}/core)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(SNPRINTF_PREFIX "")
-    set(LIBPTHREAD "libpthread.so.0")
-    set(LIBJSONC "libjson-c.so")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(SNPRINTF_PREFIX "_")
-    set(LIBPTHREAD "libwinpthread-1.dll")
-    set(LIBJSONC "libjson-c-5.dll")
-else()
-    message(FATAL_ERROR "Platform is not supported")
-endif()
-
 file(GLOB_RECURSE CORELIB_FILES
     RELATIVE ${CORELIB_SRC_DIR}
     ${CORELIB_SRC_DIR}/*.nkl

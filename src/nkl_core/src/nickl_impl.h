@@ -4,8 +4,8 @@
 #include "nkl/core/nickl.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/hash_tree.h"
-#include "ntk/os/common.h"
 #include "ntk/slice.h"
 
 #ifdef __cplusplus
@@ -26,7 +26,7 @@ NK_HASH_TREE_PROTO(TypeMap, Type_kv, ByteArray);
 typedef struct {
     NkArena type_arena;
     TypeMap type_map;
-    NkOsHandle mtx;
+    NkHandle mtx;
     u32 next_id;
 
     // TODO: Use scratch arenas

@@ -1,6 +1,7 @@
 #include "nkl/lang/compiler.h"
 
 #include <algorithm>
+#include <cinttypes>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -28,10 +29,10 @@
 #include "ntk/common.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
-#include "ntk/os/term.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/term.h"
 #include "ntk/utils.h"
 #include "parser.hpp"
 
@@ -298,14 +299,14 @@ Scope &curScope(NklCompiler c) {
 void pushScope(NklCompiler c) {
     NK_PROF_FUNC();
     NkIrFunct cur_fn = c->scopes.size() ? c->scopes.back()->cur_fn : nullptr;
-    NK_LOG_DBG("entering scope=%" PRIu64, c->scopes.size());
+    NK_LOG_DBG("entering scope=%zu", c->scopes.size());
     auto scope = &c->nonpersistent_scope_stack.emplace(Scope{false, cur_fn});
     c->scopes.emplace_back(scope);
 }
 
 void pushFnScope(NklCompiler c, NkIrFunct fn) {
     NK_PROF_FUNC();
-    NK_LOG_DBG("entering persistent scope=%" PRIu64, c->scopes.size());
+    NK_LOG_DBG("entering persistent scope=%zu", c->scopes.size());
     auto scope = &c->persistent_scopes.emplace_back(Scope{false, fn});
     c->scopes.emplace_back(scope);
     c->fn_scopes.emplace(fn, &curScope(c));
@@ -313,7 +314,7 @@ void pushFnScope(NklCompiler c, NkIrFunct fn) {
 
 void pushTopLevelFnScope(NklCompiler c, NkIrFunct fn) {
     NK_PROF_FUNC();
-    NK_LOG_DBG("entering top level scope=%" PRIu64, c->scopes.size());
+    NK_LOG_DBG("entering top level scope=%zu", c->scopes.size());
     auto scope = &c->persistent_scopes.emplace_back(Scope{true, fn});
     c->scopes.emplace_back(scope);
     c->fn_scopes.emplace(fn, &curScope(c));
@@ -329,7 +330,7 @@ void popScope(NklCompiler c) {
         }
     }
     c->scopes.pop_back();
-    NK_LOG_DBG("exiting scope=%" PRIu64, c->scopes.size());
+    NK_LOG_DBG("exiting scope=%zu", c->scopes.size());
 }
 
 void gen(NklCompiler c, NkIrInstr const &instr) {
@@ -344,7 +345,7 @@ ValueInfo makeVoid() {
 Decl &makeDecl(NklCompiler c, NkAtom name) {
     auto &locals = curScope(c).locals;
 
-    NK_LOG_DBG("making declaration name=`" NKS_FMT "` scope=%" PRIu64, NKS_ARG(nk_atom2s(name)), c->scopes.size() - 1);
+    NK_LOG_DBG("making declaration name=`" NKS_FMT "` scope=%zu", NKS_ARG(nk_atom2s(name)), c->scopes.size() - 1);
 
     auto it = locals.find(name);
     if (it != locals.end()) {
@@ -385,7 +386,7 @@ void defineArg(NklCompiler c, NkAtom name, usize index, nkltype_t type) {
 
 // TODO Restrict resolving local through stack frame boundaries
 Decl &resolve(NklCompiler c, NkAtom name) {
-    NK_LOG_DBG("resolving name=`" NKS_FMT "` scope=%" PRIu64, NKS_ARG(nk_atom2s(name)), c->scopes.size() - 1);
+    NK_LOG_DBG("resolving name=`" NKS_FMT "` scope=%zu", NKS_ARG(nk_atom2s(name)), c->scopes.size() - 1);
 
     for (usize i = c->scopes.size(); i > 0; i--) {
         auto &scope = *c->scopes[i - 1];
@@ -1944,7 +1945,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 if (arg_nodes.size < fn_t->as.fn.args_t->as.tuple.elems.size) {
                     return error(
                                c,
-                               "invalid number of arguments, expected at least `%" PRIu64 "`, provided `%" PRIu64 "`",
+                               "invalid number of arguments, expected at least `%zu`, provided `%zu`",
                                fn_t->as.fn.args_t->as.tuple.elems.size,
                                arg_nodes.size),
                            ValueInfo{};
@@ -1953,7 +1954,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 if (arg_nodes.size != fn_t->as.fn.args_t->as.tuple.elems.size) {
                     return error(
                                c,
-                               "invalid number of arguments, expected `%" PRIu64 "`, provided `%" PRIu64 "`",
+                               "invalid number of arguments, expected `%zu`, provided `%zu`",
                                fn_t->as.fn.args_t->as.tuple.elems.size,
                                arg_nodes.size),
                            ValueInfo{};

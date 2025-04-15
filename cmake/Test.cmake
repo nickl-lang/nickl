@@ -24,6 +24,8 @@ function(def_test)
 
     add_executable(${TARGET_NAME} ${ARG_NAME}_test.cpp)
 
+    install(TARGETS ${TARGET_NAME})
+
     target_include_directories(${TARGET_NAME}
         PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
         PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src"
@@ -35,9 +37,11 @@ function(def_test)
         ${ARG_LINK}
         )
 
-    gtest_discover_tests(${TARGET_NAME}
-        DISCOVERY_TIMEOUT 10
-        )
+    if(NOT CMAKE_CROSSCOMPILING OR DEFINED CMAKE_CROSSCOMPILING_EMULATOR)
+        gtest_discover_tests(${TARGET_NAME}
+            DISCOVERY_TIMEOUT 30
+            )
+    endif()
 endfunction()
 
 function(def_run_test)
@@ -82,10 +86,10 @@ function(def_compile_test)
     make_directory("${COMPILE_TEST_OUT_DIR}")
     add_test(
         NAME compile.${ARG_NAME}
-        COMMAND sh -c "\
-            rm -f ./${ARG_NAME} \
-         && ${CMAKE_CROSSCOMPILING_EMULATOR} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME} ${ABS_FILE} >/dev/null 2>&1 \
-         && ${CMAKE_CROSSCOMPILING_EMULATOR} ./${ARG_NAME}"
+        COMMAND sh -c " rm -f ./${ARG_NAME} &&
+            env ${SYSTEM_LIBRARY_PATH}='$ENV{TOOLCHAIN_LIBRARY_PATH}:$ENV{${SYSTEM_LIBRARY_PATH}}' \
+                ${CMAKE_CROSSCOMPILING_EMULATOR} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME} ${ABS_FILE} >/dev/null 2>&1 &&
+            ${CMAKE_CROSSCOMPILING_EMULATOR} ./${ARG_NAME}"
         WORKING_DIRECTORY "${COMPILE_TEST_OUT_DIR}"
         )
 

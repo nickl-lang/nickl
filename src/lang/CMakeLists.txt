@@ -31,12 +31,6 @@ target_link_libraries(nkl
     PUBLIC nkl_lang
     )
 
-if(NOT DEV_BUILD)
-    target_link_options(nkl
-        PRIVATE -s
-        )
-endif()
-
 install(TARGETS nkl
     RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
     )
@@ -48,14 +42,6 @@ add_executable(${EXE}
 target_link_libraries(${EXE}
     PRIVATE nkl
     )
-
-if(NOT DEV_BUILD)
-    target_link_options(${EXE}
-        PRIVATE -s
-        )
-endif()
-
-set_target_properties(${EXE} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
 
 install(TARGETS ${EXE})
 

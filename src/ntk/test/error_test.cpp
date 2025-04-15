@@ -27,7 +27,7 @@ TEST_F(Error, basic) {
 
     nk_error_printf("Hello, %s!", "Error");
 
-    EXPECT_EQ(err.error_count, 1);
+    EXPECT_EQ(err.error_count, 1u);
 
     auto errors = err.errors;
 
@@ -58,7 +58,7 @@ TEST_F(Error, nested) {
 
         nk_error_printf("Nested Error");
 
-        EXPECT_EQ(err.error_count, 1);
+        EXPECT_EQ(err.error_count, 1u);
 
         auto errors = err.errors;
 
@@ -71,7 +71,7 @@ TEST_F(Error, nested) {
 
     nk_error_printf("Error 2");
 
-    EXPECT_EQ(err.error_count, 2);
+    EXPECT_EQ(err.error_count, 2u);
 
     auto errors = err.errors;
 
@@ -100,7 +100,7 @@ TEST_F(Error, arena) {
 
     nk_error_printf("Hello, %s!", "Arena-stored Error");
 
-    EXPECT_EQ(err.error_count, 1);
+    EXPECT_EQ(err.error_count, 1u);
 
     auto errors = err.errors;
 

@@ -1,5 +1,8 @@
 set(CMAKE_CXX_FLAGS "")
 set(CMAKE_C_FLAGS "-g -O0")
+if(ENABLE_ASAN)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address")
+endif()
 
 set(LIB test_import_lib)
 
@@ -12,4 +15,9 @@ set_target_properties(${LIB} PROPERTIES
    )
 
 def_nkirc_run_test(FILE import.nkir)
-def_nkirc_compile_test(FILE import.nkir ARGS "-L${NKIRC_TEST_OUT_DIR} -l${LIB}")
+
+set(NKIRC_COMPILE_ARGS "-L${NKIRC_TEST_OUT_DIR} -l${LIB}")
+if(ENABLE_ASAN)
+    set(NKIRC_COMPILE_ARGS "${NKIRC_COMPILE_ARGS} -g --asan")
+endif()
+def_nkirc_compile_test(FILE import.nkir ARGS "${NKIRC_COMPILE_ARGS}")

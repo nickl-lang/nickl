@@ -1,6 +1,5 @@
 #include "nk/vm/value.h"
 
-#include <cstdalign>
 #include <limits>
 
 #include "ir_impl.hpp"
@@ -90,7 +89,7 @@ NkType nkt_get_void() {
 void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
     switch (type->tclass) {
         case NkType_Array:
-            nksb_printf(sb, "[%" PRIu64 "]", type->as.arr.elem_count);
+            nksb_printf(sb, "[%zu]", type->as.arr.elem_count);
             nkt_inspect(type->as.arr.elem_type, sb);
             break;
         case NkType_Fn: {
@@ -135,7 +134,7 @@ void nkt_inspect(nktype_t type, NkStringBuilder *sb) {
                     nk_assert(!"unreachable");
                     break;
             }
-            nksb_printf(sb, "%" PRIu64, (usize)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
+            nksb_printf(sb, "%zu", (usize)NUM_TYPE_SIZE(type->as.num.value_type) * 8);
             break;
         case NkType_Ptr:
             nksb_printf(sb, "*");

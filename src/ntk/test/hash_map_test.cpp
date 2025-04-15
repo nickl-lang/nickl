@@ -65,7 +65,7 @@ TEST_F(HashMap, basic) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size(), 0);
+    EXPECT_EQ(hm.size(), 0u);
 }
 
 TEST_F(HashMap, insert) {
@@ -78,13 +78,13 @@ TEST_F(HashMap, insert) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size(), 0);
+    EXPECT_EQ(hm.size(), 0u);
 
     EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1));
     EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2));
     EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3));
 
-    EXPECT_EQ(hm.size(), 3);
+    EXPECT_EQ(hm.size(), 3u);
 }
 
 TEST_F(HashMap, find) {
@@ -97,19 +97,19 @@ TEST_F(HashMap, find) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size(), 0);
+    EXPECT_EQ(hm.size(), 0u);
 
-    EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1));
-    EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2));
-    EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3));
+    EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1u));
+    EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2u));
+    EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3u));
 
-    EXPECT_EQ(hm.size(), 3);
+    EXPECT_EQ(hm.size(), 3u);
 
     EXPECT_EQ(hm.find(nk_cs2s("four")), nullptr);
 
-    EXPECT_EQ(*hm.find(nk_cs2s("one")), 1);
-    EXPECT_EQ(*hm.find(nk_cs2s("two")), 2);
-    EXPECT_EQ(*hm.find(nk_cs2s("three")), 3);
+    EXPECT_EQ(*hm.find(nk_cs2s("one")), 1u);
+    EXPECT_EQ(*hm.find(nk_cs2s("two")), 2u);
+    EXPECT_EQ(*hm.find(nk_cs2s("three")), 3u);
 }
 
 TEST_F(HashMap, remove) {
@@ -124,7 +124,7 @@ TEST_F(HashMap, remove) {
 
     EXPECT_TRUE(hm.insert(nk_cs2s("value"), 42));
 
-    EXPECT_EQ(*hm.find(nk_cs2s("value")), 42);
+    EXPECT_EQ(*hm.find(nk_cs2s("value")), 42u);
 
     hm.remove(nk_cs2s("value"));
     EXPECT_EQ(hm.find(nk_cs2s("value")), nullptr);
@@ -141,14 +141,14 @@ TEST_F(HashMap, overwrite) {
     };
 
     hm.insert(nk_cs2s("value"), 0);
-    EXPECT_EQ(*hm.find(nk_cs2s("value")), 0);
+    EXPECT_EQ(*hm.find(nk_cs2s("value")), 0u);
 
-    EXPECT_EQ(hm.size(), 1);
+    EXPECT_EQ(hm.size(), 1u);
 
     hm.insert(nk_cs2s("value"), 42);
-    EXPECT_EQ(*hm.find(nk_cs2s("value")), 42);
+    EXPECT_EQ(*hm.find(nk_cs2s("value")), 42u);
 
-    EXPECT_EQ(hm.size(), 1);
+    EXPECT_EQ(hm.size(), 1u);
 }
 
 TEST_F(HashMap, ptr_key) {
@@ -166,7 +166,7 @@ TEST_F(HashMap, ptr_key) {
 
     val_t *pval = hm.find(nk_cs2s("________ whatever"));
     ASSERT_TRUE(pval);
-    EXPECT_EQ(*pval, 42);
+    EXPECT_EQ(*pval, 42u);
 }
 
 TEST_F(HashMap, str_map) {
@@ -307,15 +307,15 @@ TEST_F(HashMap, zero_init) {
         hm.deinit();
     };
 
-    EXPECT_EQ(hm.size(), 0);
+    EXPECT_EQ(hm.size(), 0u);
     EXPECT_EQ(hm.find(nk_cs2s("val")), nullptr);
 
     EXPECT_TRUE(hm.insert(nk_cs2s("val"), 42));
 
-    EXPECT_EQ(hm.size(), 1);
+    EXPECT_EQ(hm.size(), 1u);
     auto found = hm.find(nk_cs2s("val"));
     ASSERT_TRUE(found);
-    EXPECT_EQ(*found, 42);
+    EXPECT_EQ(*found, 42u);
 }
 
 TEST_F(HashMap, index_operator) {
@@ -332,7 +332,7 @@ TEST_F(HashMap, index_operator) {
 
     hm[1] = nk_cs2s("one");
 
-    EXPECT_EQ(hm.size(), 1);
+    EXPECT_EQ(hm.size(), 1u);
 
     found = hm.find(1);
     ASSERT_TRUE(found);
@@ -340,7 +340,7 @@ TEST_F(HashMap, index_operator) {
 
     hm[42];
 
-    EXPECT_EQ(hm.size(), 2);
+    EXPECT_EQ(hm.size(), 2u);
 
     found = hm.find(42);
     ASSERT_TRUE(found);
@@ -348,7 +348,7 @@ TEST_F(HashMap, index_operator) {
 
     hm[42] = nk_cs2s("forty-two");
 
-    EXPECT_EQ(hm.size(), 2);
+    EXPECT_EQ(hm.size(), 2u);
 
     found = hm.find(42);
     ASSERT_TRUE(found);
@@ -369,7 +369,7 @@ TEST_F(HashMap, iteration) {
     hm.insert(42, 2);
     hm.insert(43, 3);
 
-    EXPECT_EQ(hm.size(), 3);
+    EXPECT_EQ(hm.size(), 3u);
 
     int sum_of_keys = 0;
     int sum_of_values = 0;
@@ -426,11 +426,11 @@ TEST_F(HashMap, allocator) {
         nk_arena_free(&arena);
     };
 
-    EXPECT_EQ(hm.size(), 0);
+    EXPECT_EQ(hm.size(), 0u);
 
     EXPECT_TRUE(hm.insert(nk_cs2s("one"), 1));
     EXPECT_TRUE(hm.insert(nk_cs2s("two"), 2));
     EXPECT_TRUE(hm.insert(nk_cs2s("three"), 3));
 
-    EXPECT_EQ(hm.size(), 3);
+    EXPECT_EQ(hm.size(), 3u);
 }

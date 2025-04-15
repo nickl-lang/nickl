@@ -2,7 +2,7 @@ object :: struct {};
 
 C_TO_STRING_PRETTY :: 1 << 1;
 
-#link("@LIBJSONC@", "json_") {
+#link("@SYSTEM_LIBJSONC@", "json_") {
 
 object_from_file :: (filename: *const i8) -> *object;
 object_to_json_string_ext :: (obj: *object, flags: i32) -> *const i8;

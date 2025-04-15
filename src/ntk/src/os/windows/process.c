@@ -1,7 +1,7 @@
-#include "ntk/os/process.h"
+#include "ntk/process.h"
 
 #include "common.h"
-#include "ntk/os/file.h"
+#include "ntk/file.h"
 
 NkPipe nk_proc_createPipe(void) {
     NkPipe pip = {0};
@@ -30,34 +30,34 @@ void nk_proc_closePipe(NkPipe pipe) {
     nk_close(pipe.h_write);
 }
 
-i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
     siStartInfo.hStdInput =
-        (in && !nkos_handleIsZero(in->h_read)) ? handle_toNative(in->h_read) : GetStdHandle(STD_INPUT_HANDLE);
+        (in && !nk_handleIsZero(in->h_read)) ? handle_toNative(in->h_read) : GetStdHandle(STD_INPUT_HANDLE);
     siStartInfo.hStdOutput =
-        (out && !nkos_handleIsZero(out->h_write)) ? handle_toNative(out->h_write) : GetStdHandle(STD_OUTPUT_HANDLE);
+        (out && !nk_handleIsZero(out->h_write)) ? handle_toNative(out->h_write) : GetStdHandle(STD_OUTPUT_HANDLE);
     siStartInfo.hStdError =
-        (err && !nkos_handleIsZero(err->h_write)) ? handle_toNative(err->h_write) : GetStdHandle(STD_ERROR_HANDLE);
+        (err && !nk_handleIsZero(err->h_write)) ? handle_toNative(err->h_write) : GetStdHandle(STD_ERROR_HANDLE);
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     PROCESS_INFORMATION piProcInfo;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-    if (in && !nkos_handleIsZero(in->h_write)) {
+    if (in && !nk_handleIsZero(in->h_write)) {
         if (!SetHandleInformation(handle_toNative(in->h_write), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (out && !nkos_handleIsZero(out->h_read)) {
+    if (out && !nk_handleIsZero(out->h_read)) {
         if (!SetHandleInformation(handle_toNative(out->h_read), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (err && !nkos_handleIsZero(err->h_read)) {
+    if (err && !nk_handleIsZero(err->h_read)) {
         if (!SetHandleInformation(handle_toNative(err->h_read), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
@@ -99,8 +99,8 @@ i32 nk_proc_execAsync(char const *cmd, NkOsHandle *h_process, NkPipe *in, NkPipe
     return 0;
 }
 
-i32 nk_proc_wait(NkOsHandle h_process, i32 *exit_status) {
-    if (!nkos_handleIsZero(h_process)) {
+i32 nk_proc_wait(NkHandle h_process, i32 *exit_status) {
+    if (!nk_handleIsZero(h_process)) {
         DWORD dwResult = WaitForSingleObject(
             handle_toNative(h_process), // HANDLE hHandle,
             INFINITE                    // DWORD  dwMilliseconds

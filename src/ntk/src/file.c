@@ -1,9 +1,9 @@
 #include "ntk/file.h"
 
+#include "ntk/common.h"
+#include "ntk/file.h"
 #include "ntk/log.h"
-#include "ntk/os/common.h"
-#include "ntk/os/file.h"
-#include "ntk/os/path.h"
+#include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -24,8 +24,8 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
 
     NkFileReadResult res = {0};
 
-    NkOsHandle h_file = nk_open(path.data, NkOpenFlags_Read);
-    if (!nkos_handleIsZero(h_file)) {
+    NkHandle h_file = nk_open(path.data, NkOpenFlags_Read);
+    if (!nk_handleIsZero(h_file)) {
         NkStringBuilder sb = {NKSB_INIT(alloc)};
         if (nksb_readFromStreamEx(&sb, nk_file_getStream(h_file), BUF_SIZE)) {
             res.bytes = (NkString){NKS_INIT(sb)};
@@ -39,7 +39,7 @@ NkFileReadResult nk_file_read(NkAllocator alloc, NkString file) {
 }
 
 static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
-    NkOsHandle h_file = nkos_handleFromVoidPtr(stream_data);
+    NkHandle h_file = nk_handleFromVoidPtr(stream_data);
 
     switch (mode) {
         case NkStreamMode_Read:
@@ -51,6 +51,6 @@ static i32 nk_file_streamProc(void *stream_data, char *buf, usize size, NkStream
     }
 }
 
-NkStream nk_file_getStream(NkOsHandle h_file) {
-    return (NkStream){nkos_handleToVoidPtr(h_file), nk_file_streamProc};
+NkStream nk_file_getStream(NkHandle h_file) {
+    return (NkStream){nk_handleToVoidPtr(h_file), nk_file_streamProc};
 }

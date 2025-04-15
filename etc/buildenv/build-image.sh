@@ -1,16 +1,26 @@
 #!/bin/sh
 
 set -e
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
-if [ -z ${PLATFORM+x} ]; then
-    PLATFORM=linux
-fi
+. "$DIR/config.sh"
 
-COMMON_ROOT=$DIR/common
-PLATFORM_ROOT=$DIR/$PLATFORM
+echo >&2 "INFO: Building docker image '$IMAGE_TAG'"
 
-. $PLATFORM_ROOT/image-info.sh
+maybe_tee() {
+  if [ "$DEBUG" = true ]; then
+    tee Dockerfile.debug
+  else
+    cat -
+  fi
+}
 
-cat $COMMON_ROOT/src/Dockerfile $PLATFORM_ROOT/src/Dockerfile |
-    docker build -t $IMAGE -f - $EXTRA_DOCKER_OPTS $DIR
+echo "$STAGES" | xargs -I{} cat "$DIR/src/Dockerfile.{}" |
+  sed $(echo "$ARGS" | jq -r '. | "s@{{\(.key)}}@\(.value)@g"' | xargs -I{} echo -e "-e {}") |
+  maybe_tee |
+  docker build \
+    -t "$IMAGE_TAG" \
+    -f - \
+    --target "$IMAGE" \
+    "$@" \
+    "$DIR/src"

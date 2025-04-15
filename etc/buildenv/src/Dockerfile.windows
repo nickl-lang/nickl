@@ -1,0 +1,47 @@
+FROM common AS windows
+
+ARG PREFIX=/opt/toolchain
+ENV TARGET=x86_64-w64-mingw32
+ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/etc/toolchain.cmake
+ENV PATH="${PREFIX}/bin:${PATH}"
+ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+
+COPY --from=toolchain-windows ${PREFIX} ${PREFIX}
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{LIBFFI_URL}} \
+ && tar xvf libffi-{{LIBFFI_VERSION}}.tar.gz \
+ && cd libffi-{{LIBFFI_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && . ${PREFIX}/etc/env.sh \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX} \
+      --disable-docs \
+      CFLAGS="${CFLAGS} -O3 -fPIC" \
+      CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/libffi/ \
+ && install -m 644 ../LICENSE ${PREFIX}/share/licenses/libffi/ \
+ && rm -rf /root/* \
+ ;
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{DLFCN_URL}} \
+ && tar xvf v{{DLFCN_VERSION}}.tar.gz \
+ && cd dlfcn-win32-{{DLFCN_VERSION}} \
+ && . ${PREFIX}/etc/env.sh \
+ && ./configure \
+      --prefix=${PREFIX} \
+      --enable-shared \
+      --cross-prefix=${TARGET}- \
+ && make -j \
+ && make install \
+ && mkdir -p ${PREFIX}/share/licenses/dlfcn/ \
+ && install -m 644 COPYING ${PREFIX}/share/licenses/dlfcn/ \
+ && rm -rf /root/* \
+ ;
+
+FROM windows AS windows-{{MACHINE}}

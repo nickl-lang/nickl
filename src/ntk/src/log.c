@@ -5,10 +5,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ntk/os/common.h"
-#include "ntk/os/term.h"
-#include "ntk/os/thread.h"
+#include "ntk/common.h"
 #include "ntk/profiler.h"
+#include "ntk/term.h"
+#include "ntk/thread.h"
 #include "ntk/time.h"
 
 #define ENV_VAR "NK_LOG_LEVEL"
@@ -45,7 +45,7 @@ struct LoggerState {
     i64 start_time;
     NkLogLevel log_level;
     NkLogColorMode color_mode;
-    NkOsHandle mtx;
+    NkHandle mtx;
     usize msg_count;
     bool initialized;
 };

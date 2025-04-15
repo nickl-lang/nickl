@@ -1,0 +1,93 @@
+FROM common AS toolchain-windows-native
+
+ARG CROSS_PREFIX=/opt/toolchain
+ARG PREFIX=${CROSS_PREFIX}-native
+ENV TARGET=x86_64-w64-mingw32
+ENV PATH="${CROSS_PREFIX}/bin:${PATH}"
+
+COPY --from=toolchain-windows ${CROSS_PREFIX} ${CROSS_PREFIX}
+
+RUN mkdir ${PREFIX}
+RUN ln -s lib ${PREFIX}/lib64
+RUN ln -s bin ${PREFIX}/sbin
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texinfo \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{BINUTILS_URL}} \
+ && tar xvf binutils-{{BINUTILS_VERSION}}.tar.xz \
+ && cd binutils-{{BINUTILS_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --target=${TARGET} \
+      --prefix=${PREFIX} \
+      --disable-gprofng \
+      --disable-multilib \
+      --disable-nls \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/binutils/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/binutils/ \
+ && rm -rf /root/* \
+ ;
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{GCC_URL}} \
+ && tar xvf gcc-{{GCC_VERSION}}.tar.xz \
+ && cd gcc-{{GCC_VERSION}} \
+ && cwget {{GMP_URL}} \
+ && tar xvf gmp-{{GMP_VERSION}}.tar.bz2 \
+ && ln -s gmp-{{GMP_VERSION}} gmp \
+ && cwget {{MPFR_URL}} \
+ && tar xvf mpfr-{{MPFR_VERSION}}.tar.bz2 \
+ && ln -s mpfr-{{MPFR_VERSION}} mpfr \
+ && cwget {{MPC_URL}} \
+ && tar xvf mpc-{{MPC_VERSION}}.tar.gz \
+ && ln -s mpc-{{MPC_VERSION}} mpc \
+ && sed -Ei 's/^ *# *include <windows\.h>/#define WIN32_LEAN_AND_MEAN\n&/' $(grep -Flr '<windows.h>') \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --target=${TARGET} \
+      --prefix=${PREFIX} \
+      --enable-checking=release \
+      --enable-languages=c,c++ \
+      --disable-multilib \
+      --enable-lto \
+      --disable-nls \
+      --disable-libstdcxx-pch \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/gcc/ \
+ && install -m 644 ../COPYING* ${PREFIX}/share/licenses/gcc/ \
+ && rm -rf /root/* \
+ ;
+
+RUN mv ${PREFIX}/lib/libgcc_s_seh-1.dll ${PREFIX}/bin/
+
+RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
+ && cwget {{MINGW_URL}} \
+ && tar xvf mingw-w64-v{{MINGW_VERSION}}.tar.bz2 \
+ && cd mingw-w64-v{{MINGW_VERSION}} \
+ && mkdir build \
+ && cd build \
+ && ../configure -v \
+      --host=${TARGET} \
+      --prefix=${PREFIX}/${TARGET} \
+      --with-libraries=winpthreads \
+ && make -j \
+ && make install-strip \
+ && mkdir -p ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 ../COPYING ${PREFIX}/share/licenses/mingw-w64/ \
+ && install -m 644 ../COPYING.MinGW-w64*/* ${PREFIX}/share/licenses/mingw-w64/ \
+ && mkdir -p ${PREFIX}/share/licenses/winpthreads/ \
+ && install -m 644 ../mingw-w64-libraries/winpthreads/COPYING* ${PREFIX}/share/licenses/winpthreads/ \
+ && rm -rf /root/* \
+ ;
+
+RUN mv ${PREFIX}/${TARGET}/bin/libwinpthread-1.dll ${PREFIX}/bin/
