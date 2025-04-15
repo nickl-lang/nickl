@@ -1,4 +1,13 @@
-# nickl v0.2.5
+# v0.3.0
+
+- Toolchain upgrade
+- Add native build support
+- Add Darwin build support
+- Update readme
+- Add nkstc -- a WIP AST compiler
+- Integrate with Spall profiler
+
+# v0.2.5 - 2023.10.22
 
 - Improve CLI interface and diagnostics
 - Improve error handling
@@ -9,7 +18,7 @@
 - Implement running Windows tests under wine
 - Improve robustness of compiler internals
 
-# nickl v0.2.4
+# v0.2.4 - 2023.09.20
 
 - Rename std -> core
 - Add hex int literals
@@ -17,18 +26,26 @@
 - Add nkirc -- a WIP IR compiler
 - Improve stability / memory allocation patterns
 
-# nickl v0.2.3
+# v0.2.3 - 2023.07.08
 
 - Add null keyword
 - Refactor pthread stuff
 - Add 64bit log2
 - Fix defects
 
-# nickl v0.2.1
+# v0.2.2 - 2023.04.15
+
+- Add CI
+
+# v0.2.1 - 2023.04.15
 
 - Reorganize binary delivery packages
 - Add license to the packages
 
-# nickl v0.2.0
+# v0.2.0 - 2023.04.11
 
 - Basic implementation
+
+# v0.1.0 - 2023.03.11
+
+- Initial prototype
