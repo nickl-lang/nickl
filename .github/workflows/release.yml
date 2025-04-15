@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  common:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        system: [linux, windows]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: ./build.sh -s ${{ matrix.system }} package
+      - name: Generate Changelog
+        run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/deploy/*
+          name: nickl ${{ github.ref_name }}
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          draft: false
+          prerelease: true
+
+  darwin:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        machine: [x86_64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: ./build.sh -n -m ${{ matrix.machine }} package
+      - name: Generate Changelog
+        run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/deploy/*
+          name: nickl ${{ github.ref_name }}
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          draft: false
+          prerelease: true
