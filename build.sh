@@ -37,17 +37,6 @@ eval set -- "$__POS_ARGS"
   exit
 }
 
-[ -n "${NATIVE+x}" ] && {
-  [ -n "${SYSTEM+x}" ] && {
-    echo >&2 "ERROR: Cannot use --system and --native together"
-    exit 1
-  }
-  [ -n "${MACHINE+x}" ] && {
-    echo >&2 "ERROR: Cannot use --machine and --native together"
-    exit 1
-  }
-}
-
 [ -z ${SYSTEM+x} ] && {
   SYSTEM=$(cmake -P "$DIR/cmake/GetSystemName.cmake" | tr '[:upper:]' '[:lower:]')
 }
@@ -158,6 +147,7 @@ if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
     -DCMAKE_INSTALL_PREFIX="$DIR/out/install/$BUILD" \
     -DDEPLOY_PREFIX="$DIR/out/deploy" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    -DTARGET_MACHINE="$MACHINE" \
     $EXTRA_CMAKE_ARGS
 fi
 
