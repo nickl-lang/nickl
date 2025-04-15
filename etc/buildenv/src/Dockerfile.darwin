@@ -9,25 +9,4 @@ COPY --from=toolchain-darwin ${PREFIX} ${PREFIX}
 
 ENV TARGET={{MACHINE}}-apple-darwin{{DARWIN_TARGET_VERSION}}
 
-RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} \
-    --mount=type=bind,src=OSXSDK,dst=${PREFIX}/SDK cd /root \
- && cwget {{LIBFFI_URL}} \
- && tar xvf libffi-{{LIBFFI_VERSION}}.tar.gz \
- && cd libffi-{{LIBFFI_VERSION}} \
- && mkdir build \
- && cd build \
- && . ${PREFIX}/etc/env.sh \
- && ../configure -v \
-      --host=${TARGET} \
-      --prefix=${PREFIX} \
-      --disable-docs \
-      CFLAGS="${CFLAGS} -O3 -fPIC" \
-      CXXFLAGS="${CXXFLAGS} -DFFI_BUILDING_DLL -O3 -fPIC" \
- && make -j \
- && make install \
- && mkdir -p ${PREFIX}/share/licenses/libffi/ \
- && install -m 644 ../LICENSE ${PREFIX}/share/licenses/libffi/ \
- && rm -rf /root/* \
- ;
-
 FROM darwin AS darwin-{{MACHINE}}

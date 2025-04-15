@@ -32,8 +32,8 @@
     "MINGW_VERSION": "12.0.0",
     "MINGW_URL": "http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v12.0.0.tar.bz2",
 
-    "LIBFFI_VERSION": "3.4.8",
-    "LIBFFI_URL": "http://github.com/libffi/libffi/releases/download/v3.4.8/libffi-3.4.8.tar.gz",
+    "LIBFFI_VERSION": "3.4.2",
+    "LIBFFI_URL": "http://github.com/libffi/libffi/releases/download/v3.4.2/libffi-3.4.2.tar.gz",
 
     "DLFCN_VERSION": "1.4.2",
     "DLFCN_URL": "http://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v1.4.2.tar.gz",

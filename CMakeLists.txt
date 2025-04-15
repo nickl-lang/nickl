@@ -38,7 +38,7 @@ endif()
 include(FindLibraryEx)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules_ex(LIBFFI libffi STATIC)
+pkg_check_modules_ex(LIBFFI libffi SHARED)
 
 if(BUILD_TESTS)
     enable_testing()
@@ -184,4 +184,3 @@ if(BUILD_TESTS)
 endif()
 
 install(FILES LICENSE DESTINATION share/licenses/${PROJECT_NAME}/)
-install(FILES src/3rdparty/libffi/LICENSE DESTINATION share/licenses/libffi/)

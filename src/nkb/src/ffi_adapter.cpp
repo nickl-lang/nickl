@@ -1,6 +1,10 @@
 #include "ffi_adapter.h"
 
+#if defined(__APPLE__)
+#include <ffi/ffi.h>
+#else
 #include <ffi.h>
+#endif
 
 #include "interp.h"
 #include "nkb/common.h"
