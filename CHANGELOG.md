@@ -1,11 +1,13 @@
-# v0.3.0
+# v0.3.0 - 2025.04.17
 
-- Toolchain upgrade
+- Upgrade toolchain and build scripts
 - Add native build support
 - Add Darwin build support
-- Update readme
+- Update Readme
 - Add nkstc -- a WIP AST compiler
 - Integrate with Spall profiler
+- A lot of refactoring
+- Gather some common compiler logic in core
 
 # v0.2.5 - 2023.10.22
 
