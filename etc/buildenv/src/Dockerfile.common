@@ -1,5 +1,12 @@
 FROM {{DISTRO}} AS base
 
+LABEL org.opencontainers.image.base.name="{{IMAGE_NAME}}:{{IMAGE_VERSION}}"
+LABEL org.opencontainers.image.title="{{IMAGE_NAME}}"
+LABEL org.opencontainers.image.version="{{IMAGE_VERSION}}"
+LABEL org.opencontainers.image.created="{{IMAGE_CREATED}}"
+LABEL org.opencontainers.image.ref.name="{{IMAGE_BASE_NAME}}"
+LABEL org.opencontainers.image.authors="Nick Karter <nkarter@protonmail.com>"
+
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

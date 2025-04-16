@@ -16,3 +16,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} \
  ;
 
 FROM darwin-dev AS darwin-{{MACHINE}}-dev
+
+LABEL org.opencontainers.image.description="Darwin dev build environment for Nickl compiler"

@@ -37,3 +37,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
 ENV TOOLCHAIN_LIBRARY_PATH="${PREFIX}/lib"
 
 FROM linux-dev AS linux-{{MACHINE}}-dev
+
+LABEL org.opencontainers.image.description="Linux dev build environment for Nickl compiler"

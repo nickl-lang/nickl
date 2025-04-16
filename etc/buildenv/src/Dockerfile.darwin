@@ -10,3 +10,5 @@ COPY --from=toolchain-darwin ${PREFIX} ${PREFIX}
 ENV TARGET={{MACHINE}}-apple-darwin{{DARWIN_TARGET_VERSION}}
 
 FROM darwin AS darwin-{{MACHINE}}
+
+LABEL org.opencontainers.image.description="Darwin build environment for Nickl compiler"

@@ -29,3 +29,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  ;
 
 FROM linux AS linux-{{MACHINE}}
+
+LABEL org.opencontainers.image.description="Linux build environment for Nickl compiler"

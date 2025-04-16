@@ -38,3 +38,5 @@ ENV WINEPATH="${PREFIX}/bin;${PREFIX}-native/bin"
 ENV WINEDEBUG=-all
 
 FROM windows-dev AS windows-{{MACHINE}}-dev
+
+LABEL org.opencontainers.image.description="Windows dev build environment for Nickl compiler"

@@ -45,3 +45,5 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  ;
 
 FROM windows AS windows-{{MACHINE}}
+
+LABEL org.opencontainers.image.description="Windows build environment for Nickl compiler"
