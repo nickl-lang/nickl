@@ -13,11 +13,17 @@ function(add_package_target PKG_NAME OUT_DIR)
     endif()
     set(PKG_FILENAME "${PKG_NAME}.tar.gz")
     set(PKG_FILE "${OUT_DIR}/${PKG_FILENAME}")
+    add_custom_target(package_install
+        COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target install
+        )
+    add_custom_target(package_install_strip
+        COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target install/strip
+        )
     add_custom_target(package
         COMMAND mkdir -p "${OUT_DIR}"
         COMMAND ${TAR_CMD} -czf "${PKG_FILE}" -C "${CMAKE_INSTALL_PREFIX}" .
         COMMAND echo "Generated package '${PKG_FILE}'"
-        DEPENDS $<IF:$<CONFIG:Debug>,install,install/strip>
+        DEPENDS $<IF:$<CONFIG:Debug>,package_install,package_install_strip>
         COMMENT "Generating package '${PKG_FILENAME}'"
         VERBATIM
         )

@@ -38,7 +38,7 @@ eval set -- "$__POS_ARGS"
 }
 
 [ -z ${SYSTEM+x} ] && {
-  SYSTEM=$(cmake -P "$DIR/cmake/GetSystemName.cmake" | tr '[:upper:]' '[:lower:]')
+  SYSTEM=$("$DIR/etc/utils/get_system_name.sh" | tr '[:upper:]' '[:lower:]')
 }
 
 case "$SYSTEM" in
@@ -52,7 +52,7 @@ case "$SYSTEM" in
 esac
 
 [ -z ${MACHINE+x} ] && {
-  MACHINE=$(cmake -P "$DIR/cmake/GetMachineName.cmake")
+  MACHINE=$("$DIR/etc/utils/get_machine_name.sh")
 }
 
 case "$MACHINE" in
@@ -73,7 +73,7 @@ BIN_DIR="$DIR/out/build/$BUILD"
 
 FORCE_CONF=0
 
-BUILD_TESTS=$(cmake -L -N -B "$BIN_DIR" | grep ^BUILD_TESTS | cut -d '=' -f2)
+BUILD_TESTS=$("$DIR/etc/utils/get_cmake_cache_var.sh" "$BIN_DIR" BUILD_TESTS)
 [ "$TEST" = 1 ] && {
   [ "$BUILD_TESTS" != 'ON' ] && {
     FORCE_CONF=1
@@ -83,17 +83,17 @@ BUILD_TESTS=$(cmake -L -N -B "$BIN_DIR" | grep ^BUILD_TESTS | cut -d '=' -f2)
 }
 
 [ "$LOGS" = 1 ] && {
-  CUR=$(cmake -L -N -B "$BIN_DIR" | grep ^ENABLE_LOGGING | cut -d '=' -f2)
+  CUR=$("$DIR/etc/utils/get_cmake_cache_var.sh" "$BIN_DIR" ENABLE_LOGGING)
   [ "$CUR" != 'ON' ] && { FORCE_CONF=1; EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DENABLE_LOGGING=ON"; }
 }
 
 [ "$PROF" = 1 ] && {
-  CUR=$(cmake -L -N -B "$BIN_DIR" | grep ^ENABLE_PROFILING | cut -d '=' -f2)
+  CUR=$("$DIR/etc/utils/get_cmake_cache_var.sh" "$BIN_DIR" ENABLE_PROFILING)
   [ "$CUR" != 'ON' ] && { FORCE_CONF=1; EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DENABLE_PROFILING=ON"; }
 }
 
 [ "$ASAN" = 1 ] && {
-  CUR=$(cmake -L -N -B "$BIN_DIR" | grep ^ENABLE_ASAN | cut -d '=' -f2)
+  CUR=$("$DIR/etc/utils/get_cmake_cache_var.sh" "$BIN_DIR" ENABLE_ASAN)
   [ "$CUR" != 'ON' ] && { FORCE_CONF=1; EXTRA_CMAKE_ARGS="$EXTRA_CMAKE_ARGS -DENABLE_ASAN=ON"; }
 }
 
@@ -139,6 +139,11 @@ case "$MAKE" in
     exit 1
     ;;
 esac
+
+command -v cmake >/dev/null 2>&1 || {
+  echo >&2 'ERROR: cmake is not installed'
+  exit 1
+}
 
 if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
    [ ! -f "$BIN_DIR/CMakeCache.txt" ] ||

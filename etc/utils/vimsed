@@ -1,2 +1,2 @@
 #!/bin/sh
-vim -EsnN -u NONE "+norm $1" '+%print' '+q!' "${2:-/dev/stdin}"
+vim -EsnN -u NONE "+norm gg0$1" '+x! /dev/stdout' "${2:-/dev/stdin}"
