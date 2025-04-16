@@ -72,7 +72,8 @@ while IFS= read -r line; do
   else
      var="${short#?}"
   fi
-  MAP="$MAP($short)($long) $(echo "$var" | tr '[:lower:]-' '[:upper:]_') $value\n"
+  MAP="$MAP($short)($long) $(echo "$var" | tr '[:lower:]-' '[:upper:]_') $value
+"
 done <<EOF
 $OPTIONS
 EOF

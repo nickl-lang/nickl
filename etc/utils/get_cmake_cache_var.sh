@@ -8,3 +8,5 @@ command -v cmake >/dev/null 2>&2 && {
 
   cmake -L -N -B "$BIN_DIR" | grep "^$VAR" | cut -d '=' -f2
 }
+
+exit 0

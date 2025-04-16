@@ -4,12 +4,12 @@ set -e
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
 command -v docker >/dev/null 2>&1 || {
-  echo >&2 'ERROR: docker is not installed, use `--native` to build without docker'
+  echo >&2 'ERROR: `docker` is not installed'
   exit 1
 }
 
 command -v jq >/dev/null 2>&1 || {
-  echo >&2 'ERROR: jq is not installed, need it to parse docker buildenv config'
+  echo >&2 'ERROR: `jq` is not installed'
   exit 1
 }
 

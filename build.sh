@@ -141,7 +141,7 @@ case "$MAKE" in
 esac
 
 command -v cmake >/dev/null 2>&1 || {
-  echo >&2 'ERROR: cmake is not installed'
+  echo >&2 'ERROR: `cmake` is not installed'
   exit 1
 }
 
