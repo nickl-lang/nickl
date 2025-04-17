@@ -13,6 +13,15 @@ Nickl is a compiled statically typed programming language that is a part of a re
 focused on exploring the boundaries of what happens when a compiler exposes a rich API
 to the program with ability to execute arbitrary code at compile time.
 
+# Table of Contents
+- [Building from source (with docker)](#building-from-source-with-docker)
+    - [Install build dependencies](#install-build-dependencies)
+    - [Start container runtime](#start-container-runtime)
+    - [Build](#build)
+- [Building from source (native)](#building-from-source-native)
+    - [Install build dependencies](#install-build-dependencies-1)
+    - [Build](#build-1)
+
 # Building from source (with docker)
 
 Nickl build scripts are using docker containers as a build environment by default.
@@ -26,65 +35,105 @@ Currently following platforms are supported:
 > Darwin build with docker must only be done on Apple hardware, because it requires an Apple SDK.
 > [Please read Xcode license agreement.](https://www.apple.com/legal/sla/docs/xcode.pdf)
 
-## Build dependencies
+## Install build dependencies
 
-- Ubuntu
+### Ubuntu
 
+```sh
+sudo apt install docker.io jq
 ```
-# apt install docker.io jq
+
+### Arch
+
+```sh
+sudo pacman -S docker jq
 ```
 
-- Arch
+### Darwin
 
+```sh
+brew install docker colima jq
 ```
-# pacman -S docker jq
+
+## Start container runtime
+
+### Linux
+
+```sh
+sudo systemctl start docker.service
 ```
 
 Don't forget to add your user to the `docker` group.
+```sh
+sudo usermod -aG docker $USER
+newgrp docker # or relogin
 ```
-# usermod -aG docker $USER
-$ newgrp docker # or relogin
+
+### Darwin
+
+```sh
+colima start
 ```
 
 ## Build
 
 Build script will automatically pull the necessary docker container.
 
+### Linux
+
+```sh
+./build.sh
 ```
-$ ./build.sh
+
+### Darwin
+
+```sh
+./build.sh -k /path/to/dir/with/sdk
 ```
 
 # Building from source (native)
 
-## Build dependencies
+## Install build dependencies
 
-- Ubuntu
+### Ubuntu
 
+```sh
+sudo apt install build-essential pkg-config cmake libffi-dev
+
+# Optional:
+sudo apt install ninja-build ccache
+
+# Testing:
+sudo apt install libgtest-dev
 ```
-# apt install build-essential pkg-config cmake libffi-dev
 
-## Optional:
-# apt install ninja-build ccache
+### Arch
 
-## Testing:
-# apt install libgtest-dev
+```sh
+sudo pacman -S gcc make pkgconf cmake libffi
+
+# Optional:
+sudo pacman -S ninja ccache
+
+# Testing:
+sudo pacman -S gtest perl diffutils
 ```
 
-- Arch
+### Darwin
 
-```
-# pacman -S gcc make pkgconf cmake libffi
+```sh
+brew install pkgconf cmake
 
-## Optional:
-# pacman -S ninja ccache
+# Optional:
+brew install ninja ccache
 
-## Testing:
-# pacman -S gtest perl diffutils
+# Testing:
+brew install googletest
 ```
 
 ## Build
 
 For native build use
-```
+```sh
 ./build -n
 ```

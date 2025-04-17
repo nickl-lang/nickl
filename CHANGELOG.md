@@ -1,3 +1,8 @@
+# v0.3.1
+
+- Some fixes in buildenv for Darwin
+- Update Readme with more info
+
 # v0.3.0 - 2025.04.17
 
 - Upgrade toolchain and build scripts
