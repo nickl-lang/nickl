@@ -35,8 +35,8 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
   [ -n "${XDG_RUNTIME_DIR+x}" ] &&
     XDG_RUNTIME_DIR_ARG="--env XDG_RUNTIME_DIR --volume "$XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR""
 
-  UID=$(id -u)
-  GID=$(id -g)
+  USER_ID=$(id -u)
+  GROUP_ID=$(id -g)
   USER=$(id -u -n)
   GROUP=$(id -g -n)
 
@@ -44,7 +44,7 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
     --detach \
     --interactive \
     --hostname "$(hostname)" \
-    --user "$UID:$GID" \
+    --user "$USER_ID:$GROUP_ID" \
     --workdir "$REPO_ROOT" \
     --env HOME \
     --env USER \
@@ -58,8 +58,8 @@ CONTAINER_NAME="$IMAGE_NAME-$IMAGE_VERSION"
     "$IMAGE_TAG" >/dev/null
 
   docker exec --user 0:0 "$CONTAINER_NAME" sh -c "
-    echo '$USER:x:$UID:$GID::$HOME:/usr/bin/bash' >>/etc/passwd &&
-    echo '$GROUP:x:$GID:' >>/etc/group &&
+    echo '$USER:x:$USER_ID:$GROUP_ID::$HOME:/usr/bin/bash' >>/etc/passwd &&
+    echo '$GROUP:x:$GROUP_ID:' >>/etc/group &&
     echo '$USER:*:0:0:99999:7:::' >>/etc/shadow &&
     echo '%$GROUP ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/user &&
     chmod 0440 /etc/sudoers.d/user
