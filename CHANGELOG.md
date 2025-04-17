@@ -1,7 +1,8 @@
-# v0.3.1
+# v0.3.1 - 2025.04.18
 
 - Some fixes in buildenv for Darwin
 - Update Readme with more info
+- Change package naming
 
 # v0.3.0 - 2025.04.17
 
