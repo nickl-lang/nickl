@@ -164,7 +164,12 @@ endif()
 
 include(Version)
 get_build_version(${PROJECT_SOURCE_DIR} BUILD_VERSION)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    string(APPEND VERSION "-debug")
+endif()
+
 string(TIMESTAMP BUILD_TIME UTC)
+
 message(STATUS "Build version: ${BUILD_VERSION}")
 message(STATUS "Build time: ${BUILD_TIME}")
 
@@ -174,7 +179,7 @@ if(NOT DEFINED DEPLOY_PREFIX)
     set(DEPLOY_PREFIX "${CMAKE_BINARY_DIR}")
 endif()
 add_package_target(
-    "${PROJECT_NAME}-${SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${BUILD_VERSION}"
+    "${PROJECT_NAME}-${BUILD_VERSION}-${CMAKE_SYSTEM_PROCESSOR}-${SYSTEM_NAME}"
     "${DEPLOY_PREFIX}"
     )
 
