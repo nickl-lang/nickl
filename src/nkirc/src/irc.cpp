@@ -122,15 +122,14 @@ bool nkir_compileFile(NkIrCompiler c, NkString base_file, NkString in_file) {
 
     auto const in_file_s = NkString{in_file_path_str.c_str(), in_file_path_str.size()};
 
-    auto read_res = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file_s);
-    if (!read_res.ok) {
+    NkString text;
+    bool const ok = nk_file_read(nk_arena_getAllocator(&c->file_arena), in_file_s, &text);
+    if (!ok) {
         nkl_diag_printError("failed to read file `%s`", in_file_path_str.c_str());
         return false;
     }
 
     auto const in_file_id = nk_s2atom(in_file_s);
-
-    auto const text = read_res.bytes;
 
     NkIrLexerState lexer{};
     {

@@ -9,13 +9,7 @@
 extern "C" {
 #endif
 
-// TODO Refactor NkFileReadResult
-typedef struct {
-    NkString bytes;
-    bool ok;
-} NkFileReadResult;
-
-NK_EXPORT NkFileReadResult nk_file_read(NkAllocator alloc, NkString file);
+NK_EXPORT bool nk_file_read(NkAllocator alloc, NkString filepath, NkString *out);
 
 NK_EXPORT NkStream nk_file_getStream(NkHandle h_file);
 

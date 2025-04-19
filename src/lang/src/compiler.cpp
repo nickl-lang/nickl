@@ -2518,9 +2518,10 @@ NkIrFunct nkl_compileFile(NklCompiler c, fs::path path, bool create_scope) {
         c->file_stack.pop();
     };
 
-    auto res = nk_file_read(c->alloc, {path_str.c_str(), path_str.size()});
-    if (res.ok) {
-        return nkl_compileSrc(c, res.bytes, create_scope);
+    NkString src;
+    bool const ok = nk_file_read(c->alloc, {path_str.c_str(), path_str.size()}, &src);
+    if (ok) {
+        return nkl_compileSrc(c, src, create_scope);
     } else {
         printError(c, "failed to open file `%.*s`", (int)path_str.size(), path_str.c_str());
         return {};

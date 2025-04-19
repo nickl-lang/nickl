@@ -64,12 +64,13 @@ NklSource const *nkl_getSource(NklState nkl, NkAtom file) {
 
         NkString filename = nk_atom2s(file);
 
-        NkFileReadResult read_res = nk_file_read(alloc, filename);
-        if (!read_res.ok) {
+        NkString text;
+        bool const ok = nk_file_read(alloc, filename, &text);
+        if (!ok) {
             nkl_reportError(
                 0, NULL, "failed to read file `" NKS_FMT "`: %s", NKS_ARG(filename), nk_getLastErrorString());
         } else {
-            src->text = read_res.bytes;
+            src->text = text;
 
             src->tokens = nkl->lexer_proc(nkl, alloc, file, src->text);
             if (!nkl_getErrorCount()) {

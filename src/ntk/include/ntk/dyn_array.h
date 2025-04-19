@@ -104,10 +104,6 @@
 #include <utility>
 
 template <class TAr>
-void nkda_maybeGrow(TAr *ar, usize cap) {
-    _nkda_maybeGrow(ar, cap);
-}
-template <class TAr>
 void nkda_reserve(TAr *ar, usize cap) {
     _nkda_reserve(ar, cap);
 }
@@ -142,7 +138,6 @@ void nkda_clear(TAr *ar) {
 
 #else // __cplusplus
 
-#define nkda_maybeGrow _nkda_maybeGrow
 #define nkda_reserve _nkda_reserve
 #define nkda_append _nkda_append
 #define nkda_tryAppend _nkda_tryAppend
