@@ -42,10 +42,7 @@ typedef struct {
     u8 indir;
 } NkIrRef;
 
-typedef struct {
-    NkIrRef const *data;
-    usize size;
-} NkIrRefArray;
+typedef NkSlice(NkIrRef const) NkIrRefArray;
 
 typedef enum {
     NkIrArg_None,
