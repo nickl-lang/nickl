@@ -5,6 +5,7 @@ add_library(${LIB} SHARED
     src/compiler_api.c
     src/compiler_state.cpp
     src/nickl.c
+    src/search.cpp
     src/types.c
     )
 

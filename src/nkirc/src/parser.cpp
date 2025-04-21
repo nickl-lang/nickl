@@ -248,7 +248,6 @@ struct EmitterState {
         new (makeGlobalDecl(sig.name)) Decl{
             {.extern_proc = nkir_makeExternProc(
                  m_ir,
-                 lib,
                  sig.name,
                  nkir_makeProcedureType(
                      m_compiler,
@@ -260,6 +259,8 @@ struct EmitterState {
                      }))},
             Decl_ExternProc,
         };
+
+        nkda_append(&m_compiler->extern_sym, (ExternSym{lib, sig.name}));
 
         return {};
     }
@@ -302,9 +303,12 @@ struct EmitterState {
         DEFINE(type, parseType());
         auto name = nk_s2atom(nkl_getTokenStr(id_token, m_text));
         new (makeGlobalDecl(name)) Decl{
-            {.extern_data = nkir_makeExternData(m_ir, lib, name, type)},
+            {.extern_data = nkir_makeExternData(m_ir, name, type)},
             Decl_ExternData,
         };
+
+        nkda_append(&m_compiler->extern_sym, (ExternSym{lib, name}));
+
         return {};
     }
 

@@ -4,7 +4,13 @@
 #include "lexer.h"
 #include "nkb/ir.h"
 #include "nkl/common/diagnostics.h"
+#include "nkl/core/search.h"
 #include "ntk/allocator.h"
+#include "ntk/arena.h"
+#include "ntk/atom.h"
+#include "ntk/common.h"
+#include "ntk/dl.h"
+#include "ntk/dyn_array.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
@@ -27,6 +33,7 @@ NkIrCompiler nkirc_create(NkArena *tmp_arena, NkIrcConfig conf) {
         .conf = conf,
     };
     c->parser.decls = decltype(NkIrParserState::decls)::create(nk_arena_getAllocator(&c->parse_arena));
+    c->extern_sym = {NKDA_INIT(nk_arena_getAllocator(&c->parse_arena))};
     return c;
 }
 
@@ -89,6 +96,19 @@ int nkir_run(NkIrCompiler c, NkString in_file) {
     defer {
         nkir_freeRunCtx(run_ctx);
     };
+
+    for (auto const &sym : nk_iterate(c->extern_sym)) {
+        NK_LOG_DBG("Loading library `%s`", nk_atom2cs(sym.lib));
+        auto const lib = nkl_findLibrary(sym.lib);
+        if (nk_handleIsZero(lib)) {
+            nkl_diag_printError("failed to load library `%s`: %s", nk_atom2cs(sym.lib), nkdl_getLastErrorString());
+            return 1;
+        }
+        NK_LOG_DBG("Resolving symbol `%s`", nk_atom2cs(sym.sym));
+        auto const addr = nkdl_resolveSymbol(lib, nk_atom2cs(sym.sym));
+        NK_LOG_DBG("`%s` is @%p", nk_atom2cs(sym.sym), addr);
+        nkir_setExternSymAddr(run_ctx, sym.sym, addr);
+    }
 
     int argc = 1;
     char const *argv[] = {""};

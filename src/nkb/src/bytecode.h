@@ -81,7 +81,7 @@ typedef struct {
     void *val;
 } TypeTree_kv;
 
-// TODO Use hash map for types
+// TODO: Use hash map for types
 NK_HASH_TREE_TYPEDEF(TypeTree, TypeTree_kv);
 NK_HASH_TREE_PROTO(TypeTree, TypeTree_kv, u32);
 
@@ -93,19 +93,10 @@ typedef struct {
 
 typedef struct {
     NkAtom key;
-    NkHandle val;
-} ExternLib_kv;
-
-// TODO Use hash map or linear array for extern libs
-NK_HASH_TREE_TYPEDEF(ExternLibTree, ExternLib_kv);
-NK_HASH_TREE_PROTO(ExternLibTree, ExternLib_kv, NkAtom);
-
-typedef struct {
-    NkAtom key;
     void *val;
 } ExternSym_kv;
 
-// TODO Use hash map or linear array for extern syms
+// TODO: Use hash map or linear array for extern syms
 NK_HASH_TREE_TYPEDEF(ExternSymTree, ExternSym_kv);
 NK_HASH_TREE_PROTO(ExternSymTree, ExternSym_kv, NkAtom);
 
@@ -115,7 +106,6 @@ struct NkIrRunCtx_T {
 
     NkDynArray(NkBcProc) procs;
     NkDynArray(void *) data;
-    ExternLibTree extern_libs;
     ExternSymTree extern_syms;
 
     NkFfiContext ffi_ctx;

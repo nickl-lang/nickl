@@ -63,7 +63,6 @@ typedef struct {
 } NkIrDecl_T;
 
 typedef struct {
-    NkAtom lib;
     NkAtom name;
     nktype_t type;
 } NkIrExternSym_T;

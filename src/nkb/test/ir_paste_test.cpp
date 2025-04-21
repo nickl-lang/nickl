@@ -98,14 +98,14 @@ protected:
 
         m_ir = nkir_createProgram(&m_arena);
 
-        auto const test_shouldFreeResources_ref = nkir_makeExternProcRef(
-            m_ir, nkir_makeExternProc(m_ir, nk_cs2atom(""), nk_cs2atom("test_shouldFreeResources"), &m_proc_t));
-        auto const test_freeResources_ref = nkir_makeExternProcRef(
-            m_ir, nkir_makeExternProc(m_ir, nk_cs2atom(""), nk_cs2atom("test_freeResources"), &m_proc_t));
-        auto const test_doStuff_ref = nkir_makeExternProcRef(
-            m_ir, nkir_makeExternProc(m_ir, nk_cs2atom(""), nk_cs2atom("test_doStuff"), &m_proc_t));
-        auto const test_doMoreStuff_ref = nkir_makeExternProcRef(
-            m_ir, nkir_makeExternProc(m_ir, nk_cs2atom(""), nk_cs2atom("test_doMoreStuff"), &m_proc_t));
+        auto const test_shouldFreeResources_ref =
+            nkir_makeExternProcRef(m_ir, nkir_makeExternProc(m_ir, nk_cs2atom("test_shouldFreeResources"), &m_proc_t));
+        auto const test_freeResources_ref =
+            nkir_makeExternProcRef(m_ir, nkir_makeExternProc(m_ir, nk_cs2atom("test_freeResources"), &m_proc_t));
+        auto const test_doStuff_ref =
+            nkir_makeExternProcRef(m_ir, nkir_makeExternProc(m_ir, nk_cs2atom("test_doStuff"), &m_proc_t));
+        auto const test_doMoreStuff_ref =
+            nkir_makeExternProcRef(m_ir, nkir_makeExternProc(m_ir, nk_cs2atom("test_doMoreStuff"), &m_proc_t));
 
         m_proc = nkir_createProc(m_ir);
 
@@ -190,6 +190,11 @@ protected:
 #endif // ENABLE_LOGGING
 
         m_run_ctx = nkir_createRunCtx(m_ir, &m_tmp_arena);
+
+        nkir_setExternSymAddr(m_run_ctx, nk_cs2atom("test_shouldFreeResources"), (void *)test_shouldFreeResources);
+        nkir_setExternSymAddr(m_run_ctx, nk_cs2atom("test_freeResources"), (void *)test_freeResources);
+        nkir_setExternSymAddr(m_run_ctx, nk_cs2atom("test_doStuff"), (void *)test_doStuff);
+        nkir_setExternSymAddr(m_run_ctx, nk_cs2atom("test_doMoreStuff"), (void *)test_doMoreStuff);
     }
 
     i64 invokeProc() {

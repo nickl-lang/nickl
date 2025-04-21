@@ -163,8 +163,8 @@ void nkir_leave(NkIrProg ir);
 NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, NkAtom name, nktype_t type);
 NkIrData nkir_makeData(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility vis);
 NkIrData nkir_makeRodata(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility vis);
-NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t type);
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t proc_t);
+NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom name, nktype_t type);
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom name, nktype_t proc_t);
 
 NkIrRef nkir_makeFrameRef(NkIrProg ir, NkIrLocalVar var);
 NkIrRef nkir_makeArgRef(NkIrProg ir, usize idx);
@@ -223,6 +223,8 @@ void nkir_freeRunCtx(NkIrRunCtx ctx);
 bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret);
 
 NkString nkir_getRunErrorString(NkIrRunCtx ctx);
+
+void nkir_setExternSymAddr(NkIrRunCtx ctx, NkAtom sym, void *addr);
 
 // Inspection
 
