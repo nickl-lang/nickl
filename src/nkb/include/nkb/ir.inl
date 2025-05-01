@@ -26,7 +26,7 @@ IR(jmp)   // jmp         %label
 IR(jmpz)  // jmpz  cond, %label
 IR(jmpnz) // jmpnz cond, %label
 
-IR(call) // call proc, (args, ...)
+IR(call) // call proc, (args, ...) -> dst
 
 UNA_IR(ext)   // ext   src -> dst
 UNA_IR(trunc) // trunc src -> dst
@@ -55,7 +55,7 @@ CMP_IR(le) // cmp le lhs, rhs -> dst
 CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
-IR(syscall) // syscall n, (args, ...)
+IR(syscall) // syscall n, (args, ...) -> dst
 
 // IR(cmpxchg)
 

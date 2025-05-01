@@ -52,7 +52,7 @@ struct WriterCtx {
     FlagArray ext_data_translated{NKDA_INIT(alloc)};
     FlagArray ext_procs_translated{NKDA_INIT(alloc)};
 
-    NkDynArray(usize) procs_to_translate{NKDA_INIT(alloc)};
+    NkDynArray(usize) procs_to_translate { NKDA_INIT(alloc) };
 };
 
 #define ARG_CLASS "arg"
@@ -477,10 +477,13 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
     nksb_printf(&ctx.forward_s, ";\n");
 
     if (proc.name == nk_cs2atom("main")) { // TODO: Workaround for main signature
-        nksb_printf(&ctx.forward_s, R"(int main(int argc, char** argv) {
-    return __nkl_main(argc, argv);
+        nksb_printf(
+            &ctx.forward_s,
+            R"(int main(int argc, char** argv) {
+    return __nkl_main(%s);
 }
-)");
+)",
+            proc.proc_t->as.proc.info.args_t.size == 2 ? "argc, argv" : "");
     }
 
     nksb_printf(src, "\n");
