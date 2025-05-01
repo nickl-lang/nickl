@@ -7,7 +7,7 @@
 #include "nkb/common.h"
 #include "nkb/ir.h"
 #include "nkl/common/token.h"
-#include "ntk/allocator.h"
+#include "ntk/dyn_array.h"
 #include "ntk/hash_map.hpp"
 #include "ntk/string.h"
 
@@ -56,6 +56,11 @@ struct NkIrParserState {
     bool ok{};
 };
 
+struct ExternSym {
+    NkAtom lib;
+    NkAtom sym;
+};
+
 struct NkIrCompiler_T {
     NkArena *tmp_arena;
     NkIrcConfig conf;
@@ -71,6 +76,8 @@ struct NkIrCompiler_T {
     NkHashMap<NkString, nktype_t> fpmap{};
     u32 next_id{1};
     std::mutex mtx{};
+
+    NkDynArray(ExternSym) extern_sym {};
 };
 
 #ifdef __cplusplus

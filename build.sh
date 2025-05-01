@@ -157,7 +157,7 @@ if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
 fi
 
 numcores() {
-  case $(uname -s) in
+  case $(uname) in
     Linux) nproc ;;
     Darwin) sysctl -n hw.logicalcpu 2>/dev/null ;;
     *) echo 1 ;;

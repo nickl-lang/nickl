@@ -17,7 +17,7 @@ print_usage() {
   echo >&2 "Usage: $0 [-i IMAGE]"
 }
 
-DEFAULT_IMAGE="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
+DEFAULT_IMAGE="$(uname | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 CONFIG=$(cat "$DIR/config.json")
 IMAGES=$(echo "$CONFIG" | jq -rc .images[] | cut -d: -f1 | xargs echo)
 

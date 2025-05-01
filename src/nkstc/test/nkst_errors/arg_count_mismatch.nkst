@@ -1,4 +1,4 @@
-(const foo () (link "whatever" (proc [(param () (void)) (param () (void))] (void))))
+(const foo () (proc [(param a (void)) (param b (void))] (void) []))
 (call foo [1 2 3])
 
 /* @error

@@ -6,11 +6,13 @@
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
+#include "nkl/core/search.h"
 #include "nkl/core/types.h"
 #include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
@@ -113,7 +115,6 @@ NklModule nkl_createModule(NklCompiler c) {
     return new (nk_allocT<NklModule_T>(alloc)) NklModule_T{
         .c = c,
         .mod = nkir_createModule(c->ir),
-
         .export_set{nullptr, alloc},
     };
 }
@@ -1351,7 +1352,18 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             DEFINE(const proc_t, compileProcType(ctx, proc_n, nullptr, NkCallConv_Cdecl));
 
-            auto const proc = nkir_makeExternProc(ctx.ir, nk_s2atom(lib), decl_name, nklt2nkirt(proc_t));
+            // TODO: Only load symbols dynamically if they're needed
+            auto const dl = nkl_findLibrary(nk_s2atom(lib));
+            if (nk_handleIsZero(dl)) {
+                return error(ctx, "failed to load library `" NKS_FMT "`", NKS_ARG(lib));
+            }
+            auto const addr = nkdl_resolveSymbol(dl, nk_atom2cs(decl_name));
+            if (!addr) {
+                return error(ctx, "undefined reference to `%s`", nk_atom2cs(decl_name));
+            }
+            nkir_setExternSymAddr(ctx.c->run_ctx, decl_name, addr);
+
+            auto const proc = nkir_makeExternProc(ctx.ir, decl_name, nklt2nkirt(proc_t));
             return makeExternProc(ctx, proc);
         }
 

@@ -77,7 +77,7 @@ colima start
 
 ## Build
 
-Build script will automatically pull the necessary docker container.
+Build script will automatically pull or build the necessary docker image.
 
 ### Linux
 

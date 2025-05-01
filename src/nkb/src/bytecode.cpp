@@ -8,7 +8,6 @@
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
@@ -32,10 +31,6 @@ static bool u32_equal(u32 lhs, u32 rhs) {
 
 NK_HASH_TREE_IMPL(TypeTree, TypeTree_kv, u32, TypeTree_kv_getKey, u32_hash, u32_equal);
 
-static NkAtom const *ExternLib_kv_getKey(ExternLib_kv const *item) {
-    return &item->key;
-}
-
 static NkAtom const *ExternSym_kv_getKey(ExternSym_kv const *item) {
     return &item->key;
 }
@@ -48,7 +43,6 @@ static bool NkAtom_equal(NkAtom lhs, NkAtom rhs) {
     return lhs == rhs;
 }
 
-NK_HASH_TREE_IMPL(ExternLibTree, ExternLib_kv, NkAtom, ExternLib_kv_getKey, NkAtom_hash, NkAtom_equal);
 NK_HASH_TREE_IMPL(ExternSymTree, ExternSym_kv, NkAtom, ExternSym_kv_getKey, NkAtom_hash, NkAtom_equal);
 
 namespace {
@@ -169,76 +163,6 @@ NK_PRINTF_LIKE(2) static void reportError(NkIrRunCtx ctx, char const *fmt, ...) 
     va_end(ap);
 
     ctx->error_str = {NKS_INIT(error)};
-}
-
-NkHandle getExternLib(NkIrRunCtx ctx, NkAtom name) {
-    NK_PROF_FUNC();
-
-    auto found = ExternLibTree_find(&ctx->extern_libs, name);
-    if (found) {
-        return found->val;
-    } else {
-        auto const name_str = nk_atom2cs(name);
-        auto h_lib = nkdl_loadLibrary(name_str);
-        if (nk_handleIsZero(h_lib)) {
-            auto const frame = nk_arena_grab(ctx->tmp_arena);
-            defer {
-                nk_arena_popFrame(ctx->tmp_arena, frame);
-            };
-
-            NkStringBuilder err_str{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};
-            nksb_printf(&err_str, "%s", nkdl_getLastErrorString());
-
-            NkStringBuilder lib_name{NKSB_INIT(nk_arena_getAllocator(ctx->tmp_arena))};
-            nksb_printf(&lib_name, "%s.%s", name_str, nkdl_file_extension);
-            nksb_appendNull(&lib_name);
-            h_lib = nkdl_loadLibrary(lib_name.data);
-
-            if (nk_handleIsZero(h_lib)) {
-                nksb_clear(&lib_name);
-
-                nksb_printf(&lib_name, "lib%s", name_str);
-                nksb_appendNull(&lib_name);
-                h_lib = nkdl_loadLibrary(lib_name.data);
-
-                if (nk_handleIsZero(h_lib)) {
-                    nksb_clear(&lib_name);
-
-                    nksb_printf(&lib_name, "lib%s.%s", name_str, nkdl_file_extension);
-                    nksb_appendNull(&lib_name);
-                    h_lib = nkdl_loadLibrary(lib_name.data);
-
-                    if (nk_handleIsZero(h_lib)) {
-                        reportError(ctx, "failed to load extern library `%s`: " NKS_FMT, name_str, NKS_ARG(err_str));
-                        return NK_HANDLE_ZERO;
-                    }
-                }
-            }
-        }
-        NK_LOG_DBG("loaded extern library `%s`: %zu", name_str, h_lib.val);
-        return ExternLibTree_insert(&ctx->extern_libs, {name, h_lib})->val;
-    }
-}
-
-void *getExternSym(NkIrRunCtx ctx, NkAtom lib_hame, NkAtom name) {
-    NK_PROF_FUNC();
-    auto found = ExternSymTree_find(&ctx->extern_syms, name);
-    if (found) {
-        return found->val;
-    } else {
-        auto const name_str = nk_atom2cs(name);
-        NkHandle h_lib = getExternLib(ctx, lib_hame);
-        if (nk_handleIsZero(h_lib)) {
-            return NULL;
-        }
-        auto sym = nkdl_resolveSymbol(h_lib, name_str);
-        if (!sym) {
-            reportError(ctx, "failed to load extern symbol `%s`: %s", name_str, nkdl_getLastErrorString());
-            return NULL;
-        }
-        NK_LOG_DBG("loaded extern symbol `%s`: %p", name_str, sym);
-        return ExternSymTree_insert(&ctx->extern_syms, {name, sym})->val;
-    }
 }
 
 static void *getDataAddr(NkIrRunCtx ctx, usize index) {
@@ -385,24 +309,26 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
                 case NkIrRef_ExternData: {
                     auto data = ir.extern_data.data[ir_ref.index];
-                    auto sym = getExternSym(ctx, data.lib, data.name);
+                    auto sym = ExternSymTree_find(&ctx->extern_syms, data.name);
                     if (!sym) {
+                        reportError(ctx, "undefined reference to `%s`", nk_atom2cs(data.name));
                         return false;
                     }
 
                     ref.kind = NkBcRef_Data;
-                    ref.offset += (usize)sym;
+                    ref.offset += (usize)sym->val;
                     break;
                 }
                 case NkIrRef_ExternProc: {
                     auto proc = ir.extern_procs.data[ir_ref.index];
-                    auto sym = getExternSym(ctx, proc.lib, proc.name);
+                    auto sym = ExternSymTree_find(&ctx->extern_syms, proc.name);
                     if (!sym) {
+                        reportError(ctx, "undefined reference to `%s`", nk_atom2cs(proc.name));
                         return false;
                     }
 
                     auto sym_addr = nk_allocT<void *>(ir.alloc);
-                    *sym_addr = sym;
+                    *sym_addr = sym->val;
 
                     ref.kind = NkBcRef_Data;
                     ref.offset += (usize)sym_addr;
@@ -689,7 +615,6 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
 
         .procs{NKDA_INIT(ir->alloc)},
         .data{NKDA_INIT(ir->alloc)},
-        .extern_libs{NULL, ir->alloc},
         .extern_syms{NULL, ir->alloc},
 
         .ffi_ctx{
@@ -723,4 +648,8 @@ bool nkir_invoke(NkIrRunCtx ctx, NkIrProc proc, void **args, void **ret) {
 
 NkString nkir_getRunErrorString(NkIrRunCtx ctx) {
     return ctx->error_str;
+}
+
+void nkir_setExternSymAddr(NkIrRunCtx ctx, NkAtom sym, void *addr) {
+    ExternSymTree_insert(&ctx->extern_syms, ExternSym_kv{sym, addr});
 }

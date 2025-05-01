@@ -463,19 +463,19 @@ NkIrData nkir_makeRodata(NkIrProg ir, NkAtom name, nktype_t type, NkIrVisibility
     return id;
 }
 
-NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t type) {
+NkIrExternData nkir_makeExternData(NkIrProg ir, NkAtom name, nktype_t type) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternData id{ir->extern_data.size};
-    nkda_append(&ir->extern_data, {lib, name, type});
+    nkda_append(&ir->extern_data, {name, type});
     return id;
 }
 
-NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom lib, NkAtom name, nktype_t proc_t) {
+NkIrExternProc nkir_makeExternProc(NkIrProg ir, NkAtom name, nktype_t proc_t) {
     NK_LOG_TRC("%s", __func__);
 
     NkIrExternProc id{ir->extern_procs.size};
-    nkda_append(&ir->extern_procs, {lib, name, proc_t});
+    nkda_append(&ir->extern_procs, {name, proc_t});
     return id;
 }
 
@@ -864,9 +864,6 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
     if (ir->extern_data.size) {
         for (auto const &data : nk_iterate(ir->extern_data)) {
             nk_stream_printf(out, "\nextern");
-            if (data.lib) {
-                nk_stream_printf(out, " \"%s\"", nk_atom2cs(data.lib));
-            }
             nk_stream_printf(out, " data %s: ", nk_atom2cs(data.name));
             nkirt_inspect(data.type, out);
         }
@@ -876,9 +873,6 @@ void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
     if (ir->extern_procs.size) {
         for (auto const &proc : nk_iterate(ir->extern_procs)) {
             nk_stream_printf(out, "\nextern");
-            if (proc.lib) {
-                nk_stream_printf(out, " \"%s\"", nk_atom2cs(proc.lib));
-            }
             nk_stream_printf(out, " proc %s", nk_atom2cs(proc.name));
             inspectProcSignature(proc.type->as.proc.info, {}, out, false);
         }

@@ -36,3 +36,4 @@ def_nkirc_compile_test(FILE nkir/threads.nkir ARGS -lpthread)
 
 add_subdirectory(test_export)
 add_subdirectory(test_import)
+add_subdirectory(test_import_static)
