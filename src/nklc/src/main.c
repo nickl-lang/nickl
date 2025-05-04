@@ -1,5 +1,6 @@
 #include "nkl/common/diagnostics.h"
 #include "ntk/cli.h"
+#include "ntk/common.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
@@ -31,6 +32,8 @@ static void printVersion() {
 }
 
 int main(int NK_UNUSED argc, char const *const *argv) {
+    int code = 0;
+
     NK_DEFER_LOOP(NK_PROF_START(NK_BINARY_NAME ".spall"), NK_PROF_FINISH())
     NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
     NK_DEFER_LOOP(NK_PROF_FUNC_BEGIN(), NK_PROF_FUNC_END()) {
@@ -55,7 +58,7 @@ int main(int NK_UNUSED argc, char const *const *argv) {
         if (!val.size) {                                                                      \
             nkl_diag_printError("argument `" NKS_FMT "` requires a parameter", NKS_ARG(key)); \
             printErrorUsage();                                                                \
-            return 1;                                                                         \
+            goto error;                                                                       \
         }                                                                                     \
     } while (0)
 
@@ -64,7 +67,7 @@ int main(int NK_UNUSED argc, char const *const *argv) {
         if (val.size) {                                                                            \
             nkl_diag_printError("argument `" NKS_FMT "` doesn't accept parameters", NKS_ARG(key)); \
             printErrorUsage();                                                                     \
-            return 1;                                                                              \
+            goto error;                                                                            \
         }                                                                                          \
     } while (0)
 
@@ -88,7 +91,7 @@ int main(int NK_UNUSED argc, char const *const *argv) {
                             "invalid color mode `" NKS_FMT "`. Possible values are `auto`, `always`, `never`",
                             NKS_ARG(val));
                         printErrorUsage();
-                        return 1;
+                        goto error;
                     }
 #ifdef ENABLE_LOGGING
                     if (nks_equal(val, nk_cs2s("auto"))) {
@@ -118,43 +121,48 @@ int main(int NK_UNUSED argc, char const *const *argv) {
                             "`. Possible values are `none`, `error`, `warning`, `info`, `debug`, `trace`",
                             NKS_ARG(val));
                         printErrorUsage();
-                        return 1;
+                        goto error;
                     }
 #endif // ENABLE_LOGGING
                 } else {
                     nkl_diag_printError("invalid argument `" NKS_FMT "`", NKS_ARG(key));
                     printErrorUsage();
-                    return 1;
+                    goto error;
                 }
             } else if (!in_file.size) {
                 in_file = val;
             } else {
                 nkl_diag_printError("extra argument `" NKS_FMT "`", NKS_ARG(val));
                 printErrorUsage();
-                return 1;
+                goto error;
             }
         }
 
         if (help) {
             printUsage();
-            return 0;
+            goto end;
         }
 
         if (version) {
             printVersion();
-            return 0;
+            goto end;
         }
 
         if (!in_file.size) {
             nkl_diag_printError("no input file");
             printErrorUsage();
-            return 1;
+            goto error;
         }
 
         NK_LOG_INIT(log_opts);
 
         int code = 0;
 
-        return code;
+    error:
+        code = 1;
+    end:
+        _NK_NOP;
     }
+
+    return code;
 }

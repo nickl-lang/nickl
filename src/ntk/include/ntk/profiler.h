@@ -25,8 +25,8 @@ NK_EXPORT void nk_prof_scopeEnd(void);
 #define NK_PROF_START(filename) nk_prof_start(filename)
 #define NK_PROF_FINISH() nk_prof_finish()
 
-#define NK_PROF_THREAD_ENTER(tid, buffer_size) nk_prof_threadEnter((tid), (buffer_size));
-#define NK_PROF_THREAD_LEAVE() nk_prof_threadLeave();
+#define NK_PROF_THREAD_ENTER(tid, buffer_size) nk_prof_threadEnter((tid), (buffer_size))
+#define NK_PROF_THREAD_LEAVE() nk_prof_threadLeave()
 
 #define NK_PROF_SCOPE_BEGIN(str) nk_prof_scopeBegin(str)
 #define NK_PROF_SCOPE_END() nk_prof_scopeEnd()
@@ -48,7 +48,9 @@ struct _NkProfScopeGuard {
 
 #define NK_PROF_SCOPE(str)                            \
     _NkProfScopeGuard NK_CAT(_prof_guard, __LINE__) { \
-        { NK_SLICE_INIT(str) }                        \
+        {                                             \
+            NK_SLICE_INIT(str)                        \
+        }                                             \
     }
 
 #define NK_PROF_FUNC() NK_PROF_SCOPE(nk_cs2s(__func__))
