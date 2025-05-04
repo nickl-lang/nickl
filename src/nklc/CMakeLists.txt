@@ -7,8 +7,7 @@ add_executable(${EXE}
 target_link_libraries(${EXE}
     PRIVATE ntk
     PRIVATE nkl_common
-    # PRIVATE nkb
-    # PRIVATE nkl_core
+    PRIVATE nkl_core2
     )
 
 install(TARGETS ${EXE})

@@ -1,4 +1,5 @@
 #include "nkl/common/diagnostics.h"
+#include "nkl/core/nickl.h"
 #include "ntk/cli.h"
 #include "ntk/common.h"
 #include "ntk/file.h"
@@ -32,7 +33,7 @@ static void printVersion() {
 }
 
 int main(int NK_UNUSED argc, char const *const *argv) {
-    int code = 0;
+    int ret_code = 0;
 
     NK_DEFER_LOOP(NK_PROF_START(NK_BINARY_NAME ".spall"), NK_PROF_FINISH())
     NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
@@ -156,13 +157,29 @@ int main(int NK_UNUSED argc, char const *const *argv) {
 
         NK_LOG_INIT(log_opts);
 
-        int code = 0;
+        NklState nkl;
+        NK_DEFER_LOOP(nkl = nkl_newState(), nkl_freeState(nkl))
+        NK_DEFER_LOOP(nkl_pushState(nkl), nkl_popState()) {
+            NklCompiler const c = nkl_newCompilerHost();
+            NklModule const mod = nkl_newModule(c);
 
+            if (!nkl_compileFile(mod, in_file)) {
+                // TODO: Implement quoting
+                NklError const *err = nkl_getErrors(nkl);
+                while (err) {
+                    nkl_diag_printError(NKS_FMT, NKS_ARG(err->msg));
+                    err = err->next;
+                }
+                ret_code = 1;
+            }
+        }
+
+        goto end;
     error:
-        code = 1;
+        ret_code = 1;
     end:
         _NK_NOP;
     }
 
-    return code;
+    return ret_code;
 }
