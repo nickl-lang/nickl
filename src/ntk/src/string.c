@@ -85,11 +85,29 @@ bool nks_equal(NkString lhs, NkString rhs) {
     return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
 }
 
-bool nks_startsWith(NkString str, NkString pref) {
-    if (pref.size > str.size) {
+NkString nks_left(NkString str, usize n) {
+    usize const size = nk_minu(str.size, n);
+    return (NkString){str.data, size};
+}
+
+NkString nks_right(NkString str, usize n) {
+    usize const size = nk_minu(str.size, n);
+    return (NkString){str.data + str.size - size, size};
+}
+
+bool nks_startsWith(NkString str, NkString prefix) {
+    if (prefix.size > str.size) {
         return false;
     } else {
-        return nks_equal((NkString){str.data, pref.size}, pref);
+        return nks_equal(nks_left(str, prefix.size), prefix);
+    }
+}
+
+bool nks_endsWith(NkString str, NkString suffix) {
+    if (suffix.size > str.size) {
+        return false;
+    } else {
+        return nks_equal(nks_right(str, suffix.size), suffix);
     }
 }
 
@@ -216,7 +234,7 @@ char const *nk_tprintf(NkArena *tmp_arena, char const *fmt, ...) {
 }
 
 char const *nk_vtprintf(NkArena *tmp_arena, char const *fmt, va_list ap) {
-    return nk_vtsprintf(tmp_arena, fmt, ap).data;
+    return nk_vtsprintf(tmp_arena, fmt, ap).data; // TODO: Null-terminate here?
 }
 
 NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *tmp_arena, char const *fmt, ...) {

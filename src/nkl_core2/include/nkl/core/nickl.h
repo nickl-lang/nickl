@@ -49,14 +49,10 @@ NK_EXPORT NklModule nkl_newModule(NklCompiler c);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
 
-NK_EXPORT bool nkl_compileFile(NklModule mod, NkString in_file);
-
-// *.nkir
-NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString in_file);
-// *.nkst
-NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString in_file);
-// *.nkl
-NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString in_file);
+NK_EXPORT bool nkl_compileFile(NklModule mod, NkString file);
+NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString file);  // *.nkir
+NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString file); // *.nkst
+NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString file); // *.nkl
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 

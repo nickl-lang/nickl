@@ -1,5 +1,6 @@
 #include "ntk/path.h"
 
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 static usize commonPrefixLength(char const *lhs, char const *rhs) {
@@ -61,9 +62,28 @@ void nk_relativePath(char *buf, usize size, char const *full_path, char const *f
     nksb_appendNull(&sb);
 }
 
-NkString nk_path_getParent(NkString full_path) {
-    // TODO: Handle trailing separator
-    NkString parent = full_path;
-    nks_chopByDelimReverse(&parent, NK_PATH_SEPARATOR);
-    return parent;
+NkString nk_path_getParent(NkString path) {
+    nks_chopByDelimReverse(&path, NK_PATH_SEPARATOR);
+    return path;
+}
+
+NK_EXPORT NkString nk_path_getFilename(NkString path) {
+    return nks_chopByDelimReverse(&path, NK_PATH_SEPARATOR);
+}
+
+NK_EXPORT NkString nk_path_getExtension(NkString path) {
+    NkString name = nk_path_getFilename(path);
+
+    NkString const orig_basename = name;
+    NkString ext = nks_chopByDelimReverse(&name, '.');
+    if (name.size == 0 && nks_equal(orig_basename, ext)) {
+        return (NkString){0};
+    }
+
+    char const sep = NK_PATH_SEPARATOR;
+    if (nks_endsWith(ext, (NkString){&sep, 1})) {
+        ext = nks_left(ext, ext.size - 1);
+    }
+
+    return ext;
 }

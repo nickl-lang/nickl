@@ -2,6 +2,8 @@
 
 #include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/path.h"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 typedef struct NklState_T {
@@ -57,6 +59,8 @@ NklState nkl_newState() {
 }
 
 void nkl_freeState(NklState nkl) {
+    nk_assert(nkl && "state is null");
+
     NkArena arena = nkl->arena;
     nk_arena_free(&arena);
 }
@@ -64,6 +68,8 @@ void nkl_freeState(NklState nkl) {
 static _Thread_local NklState s_nkl;
 
 void nkl_pushState(NklState nkl) {
+    nk_assert(nkl && "state is null");
+
     nkl->next = s_nkl;
     s_nkl = nkl;
 }
@@ -77,12 +83,16 @@ NklCompiler nkl_newCompiler(NklTargetTriple target) {
     nk_assert(s_nkl && "no active state");
     NklState nkl = s_nkl;
 
-    reportError(nkl, "TODO: `nkl_newCompiler` is not implemented");
-    return NULL;
+    (void)target; // TODO: Use target triple
+    NklCompiler c = nk_arena_allocT(&nkl->arena, NklCompiler_T);
+    *c = (NklCompiler_T){
+        .nkl = nkl,
+    };
+    return c;
 }
 
 NklCompiler nkl_newCompilerHost() {
-    // TODO: Actually fill host target tripple
+    // TODO: Actually fill host target triple
     return nkl_newCompiler((NklTargetTriple){0});
 }
 
@@ -93,8 +103,11 @@ NklModule nkl_newModule(NklCompiler c) {
 
     NklState nkl = c->nkl;
 
-    reportError(nkl, "TODO: `nkl_newCompiler` is not implemented");
-    return NULL;
+    NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
+    *mod = (NklModule_T){
+        .c = c,
+    };
+    return mod;
 }
 
 bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
@@ -116,46 +129,59 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     return false;
 }
 
-bool nkl_compileFile(NklModule mod, NkString in_file) {
+bool nkl_compileFile(NklModule mod, NkString file) {
     if (!mod) {
         return false;
     }
 
     NklState nkl = mod->c->nkl;
 
-    reportError(nkl, "TODO: `nkl_compileFile` is not implemented");
-    return false;
+    NkString const ext = nk_path_getExtension(file);
+
+    if (nks_equal(ext, nk_cs2s("nkir"))) {
+        return nkl_compileFileIr(mod, file);
+    } else if (nks_equal(ext, nk_cs2s("nkst"))) {
+        return nkl_compileFileAst(mod, file);
+    } else if (nks_equal(ext, nk_cs2s("nkl"))) {
+        return nkl_compileFileNkl(mod, file);
+    } else {
+        reportError(nkl, "unsupported source file extension `" NKS_FMT "`", NKS_ARG(ext));
+        return false;
+    }
 }
 
-bool nkl_compileFileIr(NklModule mod, NkString in_file) {
+bool nkl_compileFileIr(NklModule mod, NkString file) {
     if (!mod) {
         return false;
     }
 
     NklState nkl = mod->c->nkl;
 
+    (void)file;
     reportError(nkl, "TODO: `nkl_compileFileIr` is not implemented");
     return false;
 }
 
-bool nkl_compileFileAst(NklModule mod, NkString in_file) {
+bool nkl_compileFileAst(NklModule mod, NkString file) {
     if (!mod) {
         return false;
     }
 
     NklState nkl = mod->c->nkl;
 
+    (void)file;
     reportError(nkl, "TODO: `nkl_compileFileAst` is not implemented");
     return false;
 }
 
-bool nkl_compileFileNkl(NklModule mod, NkString in_file) {
+bool nkl_compileFileNkl(NklModule mod, NkString file) {
     if (!mod) {
         return false;
     }
 
     NklState nkl = mod->c->nkl;
 
+    (void)file;
     reportError(nkl, "TODO: `nkl_compileFileNkl` is not implemented");
     return false;
 }
@@ -167,6 +193,8 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     NklState nkl = mod->c->nkl;
 
+    (void)out_file;
+    (void)kind;
     reportError(nkl, "TODO: `nkl_exportModule` is not implemented");
     return false;
 }
