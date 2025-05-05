@@ -2,122 +2,81 @@
 
 #include <gtest/gtest.h>
 
-// TODO: Simplify this test impl
+#include "ntk/arena.h"
+#include "ntk/string_builder.h"
 
-static void fixPath(char *buf, char const *path) {
-    usize i = 0;
-    for (; *path; path++, i++) {
-        buf[i] = *path == '/' ? NK_PATH_SEPARATOR : *path;
+static NkArena s_arena;
+
+static NkString PATH(char const *path) {
+    NkStringBuilder sb{NKSB_INIT(nk_arena_getAllocator(&s_arena))};
+    for (; *path; path++) {
+        nksb_append(&sb, *path == '/' ? NK_PATH_SEPARATOR : *path);
     }
-    buf[i] = '\0';
+    nksb_appendNull(&sb);
+    return (NkString){sb.data, sb.size - 1};
 }
 
-#define TEST_RELPATH(path, base, expected)                         \
-    {                                                              \
-        char path_fixed[NK_MAX_PATH]{};                            \
-        fixPath(path_fixed, path);                                 \
-                                                                   \
-        char base_fixed[NK_MAX_PATH]{};                            \
-        fixPath(base_fixed, base);                                 \
-                                                                   \
-        char expected_fixed[NK_MAX_PATH]{};                        \
-        fixPath(expected_fixed, expected);                         \
-                                                                   \
-        char buf[NK_MAX_PATH]{};                                   \
-        nk_relativePath(buf, sizeof(buf), path_fixed, base_fixed); \
-        EXPECT_STREQ(buf, expected_fixed);                         \
-    }
+static NkString relativePath(NkString path, NkString base) {
+    char *buf = (char *)nk_arena_alloc(&s_arena, NK_MAX_PATH);
+    i32 len = nk_relativePath(buf, NK_MAX_PATH, path.data, base.data);
+    nk_arena_pop(&s_arena, NK_MAX_PATH - len);
+    return {buf, (usize)len - 1};
+}
 
 TEST(utils, relative_path) {
-    TEST_RELPATH("", "", "");
+    EXPECT_EQ(relativePath(PATH(""), PATH("")), PATH(""));
 
-    TEST_RELPATH("/", "/", ".");
-    TEST_RELPATH("/one/two", "/one/two", ".");
-    TEST_RELPATH("/one/two", "/one", "two");
-    TEST_RELPATH("/one/two/three", "/one", "two/three");
-    TEST_RELPATH("/one", "/one/two", "..");
-    TEST_RELPATH("/one", "/one/two/three", "../..");
-    TEST_RELPATH("/one/two/three", "/one/four", "../two/three");
+    EXPECT_EQ(relativePath(PATH("/"), PATH("/")), PATH("."));
+    EXPECT_EQ(relativePath(PATH("/one/two"), PATH("/one/two")), PATH("."));
+    EXPECT_EQ(relativePath(PATH("/one/two"), PATH("/one")), PATH("two"));
+    EXPECT_EQ(relativePath(PATH("/one/two/three"), PATH("/one")), PATH("two/three"));
+    EXPECT_EQ(relativePath(PATH("/one"), PATH("/one/two")), PATH(".."));
+    EXPECT_EQ(relativePath(PATH("/one"), PATH("/one/two/three")), PATH("../.."));
+    EXPECT_EQ(relativePath(PATH("/one/two/three"), PATH("/one/four")), PATH("../two/three"));
 
-    TEST_RELPATH("C:/", "C:/", ".");
-    TEST_RELPATH("C:/one/two", "C:/one/two", ".");
-    TEST_RELPATH("C:/one/two", "C:/one", "two");
-    TEST_RELPATH("C:/one/two/three", "C:/one", "two/three");
-    TEST_RELPATH("C:/one", "C:/one/two", "..");
-    TEST_RELPATH("C:/one", "C:/one/two/three", "../..");
-    TEST_RELPATH("C:/one/two/three", "C:/one/four", "../two/three");
+    EXPECT_EQ(relativePath(PATH("C:/"), PATH("C:/")), PATH("."));
+    EXPECT_EQ(relativePath(PATH("C:/one/two"), PATH("C:/one/two")), PATH("."));
+    EXPECT_EQ(relativePath(PATH("C:/one/two"), PATH("C:/one")), PATH("two"));
+    EXPECT_EQ(relativePath(PATH("C:/one/two/three"), PATH("C:/one")), PATH("two/three"));
+    EXPECT_EQ(relativePath(PATH("C:/one"), PATH("C:/one/two")), PATH(".."));
+    EXPECT_EQ(relativePath(PATH("C:/one"), PATH("C:/one/two/three")), PATH("../.."));
+    EXPECT_EQ(relativePath(PATH("C:/one/two/three"), PATH("C:/one/four")), PATH("../two/three"));
 
-    TEST_RELPATH("C:/one", "D:/one", "");
+    EXPECT_EQ(relativePath(PATH("C:/one"), PATH("D:/one")), PATH(""));
 }
-
-#define TEST_PARENT(path, expected)                              \
-    {                                                            \
-        char path_fixed[NK_MAX_PATH]{};                          \
-        fixPath(path_fixed, path);                               \
-                                                                 \
-        char expected_fixed[NK_MAX_PATH]{};                      \
-        fixPath(expected_fixed, expected);                       \
-                                                                 \
-        auto const res = nk_path_getParent(nk_cs2s(path_fixed)); \
-        EXPECT_EQ(res, nk_cs2s(expected_fixed));                 \
-    }
 
 TEST(utils, parent) {
-    TEST_PARENT("one/two/three", "one/two");
-    TEST_PARENT("one/two/", "one/two");
-    TEST_PARENT("one", "");
-    TEST_PARENT("", "");
+    EXPECT_EQ(nk_path_getParent(PATH("one/two/three")), PATH("one/two"));
+    EXPECT_EQ(nk_path_getParent(PATH("one/two/")), PATH("one/two"));
+    EXPECT_EQ(nk_path_getParent(PATH("one")), PATH(""));
+    EXPECT_EQ(nk_path_getParent(PATH("")), PATH(""));
 }
-
-#define TEST_FILENAME(path, expected)                              \
-    {                                                              \
-        char path_fixed[NK_MAX_PATH]{};                            \
-        fixPath(path_fixed, path);                                 \
-                                                                   \
-        char expected_fixed[NK_MAX_PATH]{};                        \
-        fixPath(expected_fixed, expected);                         \
-                                                                   \
-        auto const res = nk_path_getFilename(nk_cs2s(path_fixed)); \
-        EXPECT_EQ(res, nk_cs2s(expected_fixed));                   \
-    }
 
 TEST(utils, filename) {
-    TEST_FILENAME("one", "one");
-    TEST_FILENAME("one.two", "one.two");
-    TEST_FILENAME("one.two.three", "one.two.three");
+    EXPECT_EQ(nk_path_getFilename(PATH("one")), PATH("one"));
+    EXPECT_EQ(nk_path_getFilename(PATH("one.two")), PATH("one.two"));
+    EXPECT_EQ(nk_path_getFilename(PATH("one.two.three")), PATH("one.two.three"));
 
-    TEST_FILENAME("zero/one", "one");
-    TEST_FILENAME("zero/one/two", "two");
-    TEST_FILENAME("zero/one/two.three", "two.three");
+    EXPECT_EQ(nk_path_getFilename(PATH("zero/one")), PATH("one"));
+    EXPECT_EQ(nk_path_getFilename(PATH("zero/one/two")), PATH("two"));
+    EXPECT_EQ(nk_path_getFilename(PATH("zero/one/two.three")), PATH("two.three"));
 }
 
-#define TEST_EXTENSION(path, expected)                              \
-    {                                                               \
-        char path_fixed[NK_MAX_PATH]{};                             \
-        fixPath(path_fixed, path);                                  \
-                                                                    \
-        char expected_fixed[NK_MAX_PATH]{};                         \
-        fixPath(expected_fixed, expected);                          \
-                                                                    \
-        auto const res = nk_path_getExtension(nk_cs2s(path_fixed)); \
-        EXPECT_EQ(res, nk_cs2s(expected_fixed));                    \
-    }
-
 TEST(utils, extension) {
-    TEST_EXTENSION("one", "");
-    TEST_EXTENSION("one.two", "two");
-    TEST_EXTENSION("one.two.three", "three");
+    EXPECT_EQ(nk_path_getExtension(PATH("one")), PATH(""));
+    EXPECT_EQ(nk_path_getExtension(PATH("one.two")), PATH("two"));
+    EXPECT_EQ(nk_path_getExtension(PATH("one.two.three")), PATH("three"));
 
-    TEST_EXTENSION("zero/one", "");
-    TEST_EXTENSION("zero/one.two", "two");
-    TEST_EXTENSION("zero/one.two.three", "three");
+    EXPECT_EQ(nk_path_getExtension(PATH("zero/one")), PATH(""));
+    EXPECT_EQ(nk_path_getExtension(PATH("zero/one.two")), PATH("two"));
+    EXPECT_EQ(nk_path_getExtension(PATH("zero/one.two.three")), PATH("three"));
 
-    TEST_EXTENSION(".zero/one", "");
-    TEST_EXTENSION(".zero/one.two", "two");
+    EXPECT_EQ(nk_path_getExtension(PATH(".zero/one")), PATH(""));
+    EXPECT_EQ(nk_path_getExtension(PATH(".zero/one.two")), PATH("two"));
 
-    TEST_EXTENSION(".git", "git");
-    TEST_EXTENSION("repo/.git", "git");
+    EXPECT_EQ(nk_path_getExtension(PATH(".git")), PATH("git"));
+    EXPECT_EQ(nk_path_getExtension(PATH("repo/.git")), PATH("git"));
 
-    TEST_EXTENSION("..git", "git");
-    TEST_EXTENSION("repo/..git", "git");
+    EXPECT_EQ(nk_path_getExtension(PATH("..git")), PATH("git"));
+    EXPECT_EQ(nk_path_getExtension(PATH("repo/..git")), PATH("git"));
 }

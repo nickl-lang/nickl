@@ -23,10 +23,11 @@ static usize commonPrefixLength(char const *lhs, char const *rhs) {
     return res;
 }
 
-void nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base) {
+i32 nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base) {
     usize offset = commonPrefixLength(full_base, full_path);
     if (!offset) {
-        return;
+        buf[0] = '\0';
+        return 1;
     }
 
     char const *path_suffix = full_path + offset;
@@ -60,6 +61,8 @@ void nk_relativePath(char *buf, usize size, char const *full_path, char const *f
     }
 
     nksb_appendNull(&sb);
+
+    return sb.size;
 }
 
 NkString nk_path_getParent(NkString path) {
