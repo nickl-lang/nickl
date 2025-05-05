@@ -7,12 +7,12 @@ syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void ptr
 syn keyword nkirBoolean true false
 
 syn match nkirComment    display '//.*$'
-syn match nkirFunction   display '\<\w\+[(]'me=e-1
+syn match nkirFunction   display '\<[a-zA-Z_]\+[(]'me=e-1
 syn match nkirSymbol     display '#\w\+'
 syn match nkirDollar     display '\$\w\+'
 syn match nkirAt         display '@\w\+'
 syn match nkirComptime   display '\<\w\+\s*::'me=e-2
-syn match nkirNumber     display '\(0x[0-9a-fA-F_]\+\|\.[0-9_]\+\|\<[0-9_]\+\.\=\d*\)\([eE][-+]\=\d\+\>\)\='
+syn match nkirNumber     display '\(0x[0-9a-fA-F]\+\|\.[0-9]\+\|\<[0-9]\+\.\=\d*\)\([eE][-+]\=\d\+\>\)\='
 
 syn region nkirComment   start="/\*"    end="\*/"
 
