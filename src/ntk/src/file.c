@@ -16,25 +16,22 @@ bool nk_file_read(NkAllocator alloc, NkString filepath, NkString *out) {
     NK_LOG_TRC("%s", __func__);
     NK_LOG_DBG("Reading file `" NKS_FMT "`", NKS_ARG(filepath));
 
-    NK_PROF_FUNC_BEGIN();
-
-    NKSB_FIXED_BUFFER(path, NK_MAX_PATH);
-    nksb_tryAppendStr(&path, filepath);
-    nksb_tryAppendNull(&path);
-
     bool ok = false;
+    NK_PROF_FUNC() {
+        NKSB_FIXED_BUFFER(path, NK_MAX_PATH);
+        nksb_tryAppendStr(&path, filepath);
+        nksb_tryAppendNull(&path);
 
-    NkHandle h_file = nk_open(path.data, NkOpenFlags_Read);
-    if (!nk_handleIsZero(h_file)) {
-        NkStringBuilder sb = {NKSB_INIT(alloc)};
-        if (nksb_readFromStreamEx(&sb, nk_file_getStream(h_file), BUF_SIZE)) {
-            *out = (NkString){NKS_INIT(sb)};
-            ok = true;
+        NkHandle h_file = nk_open(path.data, NkOpenFlags_Read);
+        if (!nk_handleIsZero(h_file)) {
+            NkStringBuilder sb = {NKSB_INIT(alloc)};
+            if (nksb_readFromStreamEx(&sb, nk_file_getStream(h_file), BUF_SIZE)) {
+                *out = (NkString){NKS_INIT(sb)};
+                ok = true;
+            }
         }
+        nk_close(h_file);
     }
-    nk_close(h_file);
-
-    NK_PROF_FUNC_END();
     return ok;
 }
 

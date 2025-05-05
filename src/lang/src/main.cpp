@@ -17,16 +17,17 @@ void printErrorUsage() {
 }
 
 void printUsage() {
-    printf("Usage: " NKL_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
+    printf(
+        "Usage: " NKL_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
 #ifdef ENABLE_LOGGING
-           "\n    -c, --color {auto,always,never}                      Choose when to color output"
-           "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
+        "\n    -c, --color {auto,always,never}                      Choose when to color output"
+        "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
 #endif // ENABLE_LOGGING
-           "\n    -h, --help                                           Display this message and exit"
-           "\n    -v, --version                                        Show version information"
-           "\n");
+        "\n    -h, --help                                           Display this message and exit"
+        "\n    -v, --version                                        Show version information"
+        "\n");
 }
 
 void printVersion() {
@@ -35,7 +36,7 @@ void printVersion() {
 
 } // namespace
 
-int nkl_main(int /*argc*/, char const *const *argv) {
+int nkl_main(int /*argc*/, char **argv) {
     NK_PROF_START(NKL_BINARY_NAME ".spall");
     NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024);
     defer {

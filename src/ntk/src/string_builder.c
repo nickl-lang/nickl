@@ -57,19 +57,19 @@ bool nksb_readFromStream(NkStringBuilder *sb, NkStream in) {
 }
 
 bool nksb_readFromStreamEx(NkStringBuilder *sb, NkStream in, usize buf_size) {
-    NK_PROF_FUNC_BEGIN();
-
-    i32 res = 0;
-    for (;;) {
-        nksb_reserve(sb, sb->size + buf_size);
-        res = nk_stream_read(in, nk_slice_end(sb), buf_size);
-        if (res > 0) {
-            sb->size += res;
-        } else {
-            break;
+    bool ret;
+    NK_PROF_FUNC() {
+        i32 res = 0;
+        for (;;) {
+            nksb_reserve(sb, sb->size + buf_size);
+            res = nk_stream_read(in, nk_slice_end(sb), buf_size);
+            if (res > 0) {
+                sb->size += res;
+            } else {
+                break;
+            }
         }
+        ret = res == 0;
     }
-
-    NK_PROF_FUNC_END();
-    return res == 0;
+    return ret;
 }

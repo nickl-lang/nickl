@@ -13,8 +13,8 @@ NK_EXPORT void nk_prof_threadEnter(u32 tid, usize buffer_size);
 NK_EXPORT void nk_prof_threadLeave(void);
 NK_EXPORT void nk_prof_finish(void);
 
-NK_EXPORT void nk_prof_scopeBegin(NkString name);
-NK_EXPORT void nk_prof_scopeEnd(void);
+NK_EXPORT void nk_prof_begin(NkString name);
+NK_EXPORT void nk_prof_end(void);
 
 #ifdef __cplusplus
 }
@@ -28,11 +28,9 @@ NK_EXPORT void nk_prof_scopeEnd(void);
 #define NK_PROF_THREAD_ENTER(tid, buffer_size) nk_prof_threadEnter((tid), (buffer_size))
 #define NK_PROF_THREAD_LEAVE() nk_prof_threadLeave()
 
-#define NK_PROF_SCOPE_BEGIN(str) nk_prof_scopeBegin(str)
-#define NK_PROF_SCOPE_END() nk_prof_scopeEnd()
-
+#define NK_PROF_SCOPE_BEGIN(str) nk_prof_begin(str)
 #define NK_PROF_FUNC_BEGIN() NK_PROF_SCOPE_BEGIN(nk_cs2s(__func__))
-#define NK_PROF_FUNC_END() NK_PROF_SCOPE_END()
+#define NK_PROF_END() nk_prof_end()
 
 #ifdef __cplusplus
 
@@ -42,7 +40,7 @@ struct _NkProfScopeGuard {
     }
 
     NK_FORCEINLINE ~_NkProfScopeGuard() {
-        NK_PROF_SCOPE_END();
+        NK_PROF_END();
     }
 };
 
@@ -55,6 +53,11 @@ struct _NkProfScopeGuard {
 
 #define NK_PROF_FUNC() NK_PROF_SCOPE(nk_cs2s(__func__))
 
+#else // __cplusplus
+
+#define NK_PROF_SCOPE(str) NK_DEFER_LOOP(NK_PROF_SCOPE_BEGIN(str), NK_PROF_END())
+#define NK_PROF_FUNC() NK_DEFER_LOOP(NK_PROF_FUNC_BEGIN(), NK_PROF_END())
+
 #endif // __cplusplus
 
 #else // ENABLE_PROFILING
@@ -66,15 +69,18 @@ struct _NkProfScopeGuard {
 #define NK_PROF_THREAD_LEAVE() _NK_NOP
 
 #define NK_PROF_SCOPE_BEGIN(str) _NK_NOP
-#define NK_PROF_SCOPE_END() _NK_NOP
-
 #define NK_PROF_FUNC_BEGIN() _NK_NOP
-#define NK_PROF_FUNC_END() _NK_NOP
+#define NK_PROF_END() _NK_NOP
 
 #ifdef __cplusplus
 
 #define NK_PROF_SCOPE(str) _NK_NOP
 #define NK_PROF_FUNC() _NK_NOP
+
+#else // __cplusplus
+
+#define NK_PROF_SCOPE(str) if (1)
+#define NK_PROF_FUNC() if (1)
 
 #endif // __cplusplus
 

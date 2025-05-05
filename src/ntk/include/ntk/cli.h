@@ -6,7 +6,7 @@
 #include "ntk/utils.h"
 
 #define NK_CLI_ARG_INIT(pargv, pkey, pval)                                          \
-    char const *const **_nk_cli_pargv = (pargv);                                    \
+    char ***_nk_cli_pargv = (pargv);                                                \
     NkString *_nk_cli_pkey = (pkey);                                                \
     NkString *_nk_cli_pval = (pval);                                                \
     do {                                                                            \

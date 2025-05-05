@@ -1,6 +1,7 @@
 set(LIB nkl_core2)
 
 add_library(${LIB} SHARED
+    src/lexer.c
     src/nickl.c
     )
 

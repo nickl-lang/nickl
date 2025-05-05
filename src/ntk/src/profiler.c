@@ -39,13 +39,13 @@ void nk_prof_finish(void) {
     spall_quit(&spall_ctx);
 }
 
-void nk_prof_scopeBegin(NkString name) {
+void nk_prof_begin(NkString name) {
     if (is_thread_running) {
         spall_buffer_begin_ex(&spall_ctx, &spall_buffer, name.data, name.size, nk_readTsc(), tid, 0);
     }
 }
 
-void nk_prof_scopeEnd(void) {
+void nk_prof_end(void) {
     if (is_thread_running) {
         spall_buffer_end_ex(&spall_ctx, &spall_buffer, nk_readTsc(), tid, 0);
     }

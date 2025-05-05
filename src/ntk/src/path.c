@@ -70,16 +70,16 @@ NkString nk_path_getParent(NkString path) {
     return path;
 }
 
-NK_EXPORT NkString nk_path_getFilename(NkString path) {
+NkString nk_path_getFilename(NkString path) {
     return nks_chopByDelimReverse(&path, NK_PATH_SEPARATOR);
 }
 
-NK_EXPORT NkString nk_path_getExtension(NkString path) {
+NkString nk_path_getExtension(NkString path) {
     NkString name = nk_path_getFilename(path);
 
-    NkString const orig_basename = name;
+    NkString const orig_name = name;
     NkString ext = nks_chopByDelimReverse(&name, '.');
-    if (name.size == 0 && nks_equal(orig_basename, ext)) {
+    if (name.size == 0 && nks_equal(orig_name, ext)) {
         return (NkString){0};
     }
 

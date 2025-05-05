@@ -31,22 +31,23 @@ void printErrorUsage() {
 }
 
 void printUsage() {
-    printf("Usage: " NK_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
-           "\n    -o, --output <file>                      Output file path"
-           "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
-           "\n    -l <lib>                                 Link the library <lib>"
-           "\n    -L <dir>                                 Search dir for linked libraries"
-           "\n    -g                                       Add debug information"
-           "\n    -c, --color {auto,always,never}          Choose when to color output"
-           "\n    -h, --help                               Display this message and exit"
-           "\n    -v, --version                            Show version information"
+    printf(
+        "Usage: " NK_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
+        "\n    -o, --output <file>                      Output file path"
+        "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
+        "\n    -l <lib>                                 Link the library <lib>"
+        "\n    -L <dir>                                 Search dir for linked libraries"
+        "\n    -g                                       Add debug information"
+        "\n    -c, --color {auto,always,never}          Choose when to color output"
+        "\n    -h, --help                               Display this message and exit"
+        "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
-           "\nDeveloper options:"
-           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+        "\nDeveloper options:"
+        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-           "\n");
+        "\n");
 }
 
 void printVersion() {
@@ -55,7 +56,7 @@ void printVersion() {
 
 } // namespace
 
-int main(int /*argc*/, char const *const *argv) {
+int main(int /*argc*/, char **argv) {
     NK_PROF_START(NK_BINARY_NAME ".spall");
     NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024);
     defer {

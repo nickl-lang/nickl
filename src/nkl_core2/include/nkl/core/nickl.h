@@ -36,14 +36,14 @@ typedef struct NklError {
     NklToken const *token;
 } NklError;
 
-NK_EXPORT NklState nkl_newState();
+NK_EXPORT NklState nkl_newState(void);
 NK_EXPORT void nkl_freeState(NklState nkl);
 
 NK_EXPORT void nkl_pushState(NklState nkl);
-NK_EXPORT void nkl_popState();
+NK_EXPORT void nkl_popState(void);
 
 NK_EXPORT NklCompiler nkl_newCompiler(NklTargetTriple target);
-NK_EXPORT NklCompiler nkl_newCompilerHost();
+NK_EXPORT NklCompiler nkl_newCompilerHost(void);
 
 NK_EXPORT NklModule nkl_newModule(NklCompiler c);
 

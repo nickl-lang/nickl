@@ -1,10 +1,16 @@
 #include "nkl/core/nickl.h"
 
+#include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/error.h"
+#include "ntk/file.h"
+#include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+
+NK_LOG_USE_SCOPE(nickl);
 
 typedef struct NklState_T {
     struct NklState_T *next;
@@ -40,6 +46,8 @@ static i32 vreportError(NklState nkl, char const *fmt, va_list ap) {
 }
 
 NK_PRINTF_LIKE(2) static int reportError(NklState nkl, char const *fmt, ...) {
+    NK_LOG_TRC("%s", __func__);
+
     va_list ap;
     va_start(ap, fmt);
     i32 res = vreportError(nkl, fmt, ap);
@@ -48,7 +56,9 @@ NK_PRINTF_LIKE(2) static int reportError(NklState nkl, char const *fmt, ...) {
     return res;
 }
 
-NklState nkl_newState() {
+NklState nkl_newState(void) {
+    NK_LOG_TRC("%s", __func__);
+
     NkArena arena = {0};
     NklState nkl = nk_arena_allocT(&arena, NklState_T);
     *nkl = (NklState_T){
@@ -59,6 +69,8 @@ NklState nkl_newState() {
 }
 
 void nkl_freeState(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
     nk_assert(nkl && "state is null");
 
     NkArena arena = nkl->arena;
@@ -68,18 +80,24 @@ void nkl_freeState(NklState nkl) {
 static _Thread_local NklState s_nkl;
 
 void nkl_pushState(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
     nk_assert(nkl && "state is null");
 
     nkl->next = s_nkl;
     s_nkl = nkl;
 }
 
-void nkl_popState() {
+void nkl_popState(void) {
+    NK_LOG_TRC("%s", __func__);
+
     nk_assert(s_nkl && "no active state");
     s_nkl = s_nkl->next;
 }
 
 NklCompiler nkl_newCompiler(NklTargetTriple target) {
+    NK_LOG_TRC("%s", __func__);
+
     nk_assert(s_nkl && "no active state");
     NklState nkl = s_nkl;
 
@@ -91,12 +109,16 @@ NklCompiler nkl_newCompiler(NklTargetTriple target) {
     return c;
 }
 
-NklCompiler nkl_newCompilerHost() {
+NklCompiler nkl_newCompilerHost(void) {
+    NK_LOG_TRC("%s", __func__);
+
     // TODO: Actually fill host target triple
     return nkl_newCompiler((NklTargetTriple){0});
 }
 
 NklModule nkl_newModule(NklCompiler c) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!c) {
         return NULL;
     }
@@ -111,6 +133,8 @@ NklModule nkl_newModule(NklCompiler c) {
 }
 
 bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!dst_mod) {
         return false;
     }
@@ -130,6 +154,8 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
 }
 
 bool nkl_compileFile(NklModule mod, NkString file) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!mod) {
         return false;
     }
@@ -145,24 +171,41 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     } else if (nks_equal(ext, nk_cs2s("nkl"))) {
         return nkl_compileFileNkl(mod, file);
     } else {
-        reportError(nkl, "unsupported source file extension `" NKS_FMT "`", NKS_ARG(ext));
+        reportError(
+            nkl, "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkir`, `*.nkst`, `*.nkl`.", NKS_ARG(ext));
         return false;
     }
 }
 
 bool nkl_compileFileIr(NklModule mod, NkString file) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!mod) {
         return false;
     }
 
     NklState nkl = mod->c->nkl;
 
-    (void)file;
-    reportError(nkl, "TODO: `nkl_compileFileIr` is not implemented");
+    NkString text;
+    if (!nk_file_read(nk_arena_getAllocator(&nkl->arena), file, &text)) {
+        reportError(nkl, "failed to read file `" NKS_FMT "`: %s", NKS_ARG(file), nk_getLastErrorString());
+        return false;
+    }
+
+    NklLexerData lexer_data = {
+        .keywords = {},
+        .operators = {},
+    };
+    NklTokenArray tokens = nkl_lex(&lexer_data, &nkl->arena, text);
+
+    // (void)file;
+    // reportError(nkl, "TODO: `nkl_compileFileIr` is not implemented");
     return false;
 }
 
 bool nkl_compileFileAst(NklModule mod, NkString file) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!mod) {
         return false;
     }
@@ -175,6 +218,8 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
 }
 
 bool nkl_compileFileNkl(NklModule mod, NkString file) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!mod) {
         return false;
     }
@@ -187,6 +232,8 @@ bool nkl_compileFileNkl(NklModule mod, NkString file) {
 }
 
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
+    NK_LOG_TRC("%s", __func__);
+
     if (!mod) {
         return false;
     }
