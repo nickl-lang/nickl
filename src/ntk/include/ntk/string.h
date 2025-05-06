@@ -38,6 +38,7 @@ NK_EXPORT NkString nks_chopByDelimReverse(NkString *str, char delim);
 
 NK_EXPORT u64 nks_hash(NkString str);
 NK_EXPORT bool nks_equal(NkString lhs, NkString rhs);
+NK_EXPORT bool nks_equalCStr(NkString lhs, char const *rhs);
 
 NK_EXPORT NkString nks_left(NkString str, usize n);
 NK_EXPORT NkString nks_right(NkString str, usize n);

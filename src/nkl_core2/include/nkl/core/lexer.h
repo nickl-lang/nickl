@@ -11,27 +11,27 @@
 extern "C" {
 #endif
 
-typedef enum {
-    NklToken_Eof = 0,
+enum {
+    NklBaseToken_Eof = 0,
 
-    NklToken_Empty,
-    NklToken_Unknown,
+    NklBaseToken_Empty,
+    NklBaseToken_Unknown,
 
-    NklToken_Id,
-    NklToken_Int,
-    NklToken_Float,
-    NklToken_String,
+    NklBaseToken_Id,
+    NklBaseToken_Int,
+    NklBaseToken_Float,
+    NklBaseToken_String,
 
-    NklTokenId_Count,
-} NklTokenId;
-
-typedef NkSlice(NkString) NkStringArray;
+    NklBaseToken_Count,
+};
 
 typedef struct {
-    NkStringArray keywords;
-    NkStringArray operators;
-    u32 keywords_id_base;
-    u32 operators_id_base;
+    char const **keywords;
+    char const **operators;
+    char const *tag_prefixes;
+    u32 keywords_base;
+    u32 operators_base;
+    u32 tags_base;
 } NklLexerData;
 
 NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text);

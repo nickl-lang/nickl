@@ -1,8 +1,9 @@
 #include "nkl/core/lexer.h"
 
-// #include <cctype>
+#include <ctype.h>
+#include <stddef.h>
+#include <string.h>
 // #include <cstdarg>
-// #include <cstring>
 // #include <iterator>
 
 #include "nkl/common/token.h"
@@ -48,50 +49,6 @@ NK_LOG_USE_SCOPE(lexer);
 //     }
 
 // private:
-//     char chr(i64 offset = 0) {
-//         return m_pos + offset < (u32)m_text.size ? m_text.data[m_pos + offset] : '\0';
-//     }
-
-//     template <int (*F)(int)>
-//     int chk(i64 offset = 0) {
-//         return F(chr(offset));
-//     }
-
-//     bool on(char c, i64 offset = 0) {
-//         return chr(offset) == c;
-//     }
-
-//     bool onAlphaOrUscr(i64 offset = 0) {
-//         return chk<isalpha>(offset) || on('_', offset);
-//     }
-
-//     bool onAlnumOrUscr(i64 offset = 0) {
-//         return chk<isalnum>(offset) || on('_', offset);
-//     }
-
-//     void advance(i64 n = 1) {
-//         for (i64 i = 0; i < n && chr(); i++) {
-//             if (on('\n')) {
-//                 m_col = 1;
-//                 m_lin++;
-//             } else {
-//                 m_col++;
-//             }
-//             m_pos++;
-//         }
-//     }
-
-//     void skipSpaces() {
-//         while (chk<isspace>()) {
-//             advance();
-//         }
-//     }
-
-//     void accept(i64 n = 1) {
-//         advance(n);
-//         m_token.len += n;
-//     }
-
 //     NK_PRINTF_LIKE(2) void error(char const *fmt, ...) {
 //         va_list ap;
 //         va_start(ap, fmt);
@@ -106,56 +63,130 @@ NK_LOG_USE_SCOPE(lexer);
 // } // namespace
 
 typedef struct {
-    NkString text;
+    NkString const text;
 
-    NkStringArray keywords;
-    NkStringArray operators;
-    u32 keywords_id_base;
-    u32 operators_id_base;
+    char const **const keywords;
+    char const **const operators;
+    char const *const tag_prefixes;
+    u32 const keywords_base;
+    u32 const operators_base;
+    u32 const tags_base;
+
+    u32 pos;
+    u32 lin;
+    u32 col;
 
     NklToken token;
 } LexerState;
 
+static char chr(LexerState const *lex, i64 offset) {
+    return lex->pos + offset < (u32)lex->text.size ? lex->text.data[lex->pos + offset] : '\0';
+}
+
+static bool on(LexerState const *lex, char c, i64 offset) {
+    return chr(lex, offset) == c;
+}
+
+static int onSpace(LexerState const *lex, i64 offset) {
+    return isspace(chr(lex, offset));
+}
+
+static int onAlpha(LexerState const *lex, i64 offset) {
+    return isalpha(chr(lex, offset));
+}
+
+static int onAlnum(LexerState const *lex, i64 offset) {
+    return isalnum(chr(lex, offset));
+}
+
+static int onDigit(LexerState const *lex, i64 offset) {
+    return isdigit(chr(lex, offset));
+}
+
+static int onLower(LexerState const *lex, i64 offset) {
+    return tolower(chr(lex, offset));
+}
+
+static bool onAlphaOrUscr(LexerState const *lex, i64 offset) {
+    return onAlpha(lex, offset) || on(lex, '_', offset);
+}
+
+static bool onAlnumOrUscr(LexerState const *lex, i64 offset) {
+    return onAlnum(lex, offset) || on(lex, '_', offset);
+}
+
+static void advance(LexerState *lex, i64 n) {
+    for (i64 i = 0; i < n && chr(lex, 0); i++) {
+        if (on(lex, '\n', 0)) {
+            lex->col = 1;
+            lex->lin++;
+        } else {
+            lex->col++;
+        }
+        lex->pos++;
+    }
+}
+
+static void accept(LexerState *lex, i64 n) {
+    advance(lex, n);
+    lex->token.len += n;
+}
+
+static void discard(LexerState *lex) {
+    lex->pos -= lex->token.len;
+    lex->col -= lex->token.len;
+    lex->token.len = 0;
+}
+
+static void skipSpaces(LexerState *lex) {
+    while (onSpace(lex, 0)) {
+        advance(lex, 1);
+    }
+}
+
 static bool scan(LexerState *lex) {
-    // skipSpaces();
+    skipSpaces(lex);
 
-    // if (m_pos == 0 && on('#') && on('!', 1)) {
-    //     while (chr() && !on('\n')) {
-    //         advance();
-    //     }
-    //     skipSpaces();
-    // }
+    if (lex->pos == 0 && on(lex, '#', 0) && on(lex, '!', 1)) {
+        while (chr(lex, 0) && !on(lex, '\n', 0)) {
+            advance(lex, 1);
+        }
+        skipSpaces(lex);
+    }
 
-    // while ((on('/') && on('/', 1)) || (on('/') && on('*', 1))) {
-    //     if (on('/', 1)) {
-    //         while (!on('\n')) {
-    //             advance();
-    //         }
-    //     } else {
-    //         advance(2);
-    //         while (chr()) {
-    //             if (on('*') && on('/', 1)) {
-    //                 advance(2);
-    //                 break;
-    //             } else {
-    //                 advance();
-    //             }
-    //         }
-    //     }
-    //     skipSpaces();
-    // }
+    while ((on(lex, '/', 0) && on(lex, '/', 1)) || (on(lex, '/', 0) && on(lex, '*', 1))) {
+        if (on(lex, '/', 1)) {
+            while (!on(lex, '\n', 0)) {
+                advance(lex, 1);
+            }
+        } else {
+            advance(lex, 2);
+            while (chr(lex, 0)) {
+                if (on(lex, '*', 0) && on(lex, '/', 1)) {
+                    advance(lex, 2);
+                    break;
+                } else {
+                    advance(lex, 1);
+                }
+            }
+        }
+        skipSpaces(lex);
+    }
 
-    // m_token = {
-    //     .id = t_empty,
-    //     .pos = m_pos,
-    //     .len = 0,
-    //     .lin = m_lin,
-    //     .col = m_col,
-    // };
+    lex->token = (NklToken){
+        .id = NklBaseToken_Empty,
+        .pos = lex->pos,
+        .len = 0,
+        .lin = lex->lin,
+        .col = lex->col,
+    };
 
-    // if (!chr()) {
-    //     m_token.id = t_eof;
-    // } else if (on('"')) {
+    if (!chr(lex, 0)) {
+        lex->token.id = NklBaseToken_Eof;
+        return true;
+    }
+
+    // if (on(lex, '"', 0)) {
     //     accept();
 
     //     bool escaped = false;
@@ -177,10 +208,10 @@ static bool scan(LexerState *lex) {
     //                     if (!chr()) {
     //                         return error("unexpected end of file");
     //                     } else {
-    //                         m_token.pos = m_pos - 1;
-    //                         m_token.len = 2;
-    //                         m_token.lin = m_lin;
-    //                         m_token.col = m_col - 1;
+    //                         lex->token.pos = lex->pos - 1;
+    //                         lex->token.len = 2;
+    //                         lex->token.lin = lex->lin;
+    //                         lex->token.col = lex->col - 1;
     //                         if (isprint(chr())) {
     //                             return error("invalid escape sequence `\\%c`", chr());
     //                         } else {
@@ -196,79 +227,125 @@ static bool scan(LexerState *lex) {
     //         return error("invalid string constant");
     //     }
 
-    //     m_token.id = escaped ? t_escaped_string : t_string;
+    //     lex->token.id = escaped ? t_escaped_string : t_string;
 
     //     accept();
-    // } else if (chk<isdigit>(on('-') ? 1 : 0)) {
-    //     if (on('-')) {
-    //         accept();
-    //     }
-
-    //     m_token.id = t_int;
-
-    //     while (chk<isdigit>()) {
-    //         accept();
-    //     }
-
-    //     if (on('.')) {
-    //         m_token.id = t_float;
-    //         do {
-    //             accept();
-    //         } while (chk<isdigit>());
-    //     }
-
-    //     if (chk<tolower>() == 'e') {
-    //         m_token.id = t_float;
-    //         accept();
-    //         if (on('-') || on('+')) {
-    //             accept();
-    //         }
-    //         if (!chk<isdigit>()) {
-    //             return error("invalid float literal");
-    //         }
-    //         while (chk<isdigit>()) {
-    //             accept();
-    //         }
-    //     }
-
-    //     if (chk<isalpha>()) {
-    //         accept();
-    //         return error("invalid suffix");
-    //     }
-    // } else if (onAlphaOrUscr()) {
-    //     while (onAlnumOrUscr()) {
-    //         accept();
-    //     }
-    //     m_token.id = t_id;
-    // } else {
-    //     usize op_index = 0;
-    //     usize op_len = 0;
-
-    //     for (auto it = std::begin(s_operators); it != std::end(s_operators); ++it) {
-    //         const usize len = strlen(*it);
-    //         usize i = 0;
-    //         for (; i < len && !on('\0', i) && on((*it)[i], i); i++) {
-    //         }
-    //         if (i == len) {
-    //             op_index = std::distance(std::begin(s_operators), it);
-    //             op_len = len;
-    //         }
-    //     }
-
-    //     if (op_index > 0) {
-    //         accept(op_len);
-    //         m_token.id = (NkStTokenId)(t_operator_marker + op_index);
-    //     } else {
-    //         accept();
-    //         if (isprint(chr(-1))) {
-    //             return error("unexpected character `%c`", chr(-1));
-    //         } else {
-    //             return error("unexpected byte `\\x%" PRIx8 "`", chr(-1) & 0xff);
-    //         }
-    //     }
+    //     return true;
     // }
 
-    return false;
+    if (onDigit(lex, on(lex, '-', 0) ? 1 : 0)) {
+        if (on(lex, '-', 0)) {
+            accept(lex, 1);
+        }
+
+        lex->token.id = NklBaseToken_Int;
+
+        while (onDigit(lex, 0)) {
+            accept(lex, 1);
+        }
+
+        if (on(lex, '.', 0)) {
+            lex->token.id = NklBaseToken_Float;
+            do {
+                accept(lex, 1);
+            } while (onDigit(lex, 0));
+        }
+
+        if (onLower(lex, 0) == 'e') {
+            lex->token.id = NklBaseToken_Float;
+            accept(lex, 1);
+            if (on(lex, '-', 0) || on(lex, '+', 0)) {
+                accept(lex, 1);
+            }
+            if (!onDigit(lex, 0)) {
+                NK_LOG_ERR("invalid float literal");
+                // return error("invalid float literal");
+                return false;
+            }
+            while (onDigit(lex, 0)) {
+                accept(lex, 1);
+            }
+        }
+
+        if (onAlpha(lex, 0)) {
+            accept(lex, 1);
+            NK_LOG_ERR("invalid suffix");
+            // return error("invalid suffix");
+            return false;
+        }
+
+        return true;
+    }
+
+    if (onAlphaOrUscr(lex, 0)) {
+        while (onAlnumOrUscr(lex, 0)) {
+            accept(lex, 1);
+        }
+
+        NkString const token_str = nkl_getTokenStr(&lex->token, lex->text);
+        char const **it = lex->keywords;
+        for (; *it && !nks_equalCStr(token_str, *it); it++) {
+        }
+
+        if (*it) {
+            ptrdiff_t const idx = it - lex->keywords;
+            lex->token.id = lex->keywords_base + idx;
+        } else {
+            lex->token.id = NklBaseToken_Id;
+        }
+
+        return true;
+    }
+
+    {
+        char const *it = lex->tag_prefixes;
+        for (; *it && !(on(lex, *it, 0) && onAlphaOrUscr(lex, 1)); it++) {
+        }
+
+        if (*it) {
+            do {
+                accept(lex, 1);
+            } while (onAlnumOrUscr(lex, 0));
+
+            ptrdiff_t const idx = it - lex->tag_prefixes;
+            lex->token.id = lex->tags_base + idx;
+            return true;
+        }
+    }
+
+    {
+        char const **it = lex->operators;
+        for (; *it; it++) {
+            char const *op = *it;
+
+            while (*op && on(lex, *op, 0)) {
+                accept(lex, 1);
+                op++;
+            }
+
+            if (*op) {
+                discard(lex);
+            } else {
+                break;
+            }
+        }
+
+        if (*it) {
+            ptrdiff_t const idx = it - lex->operators;
+            lex->token.id = lex->operators_base + idx;
+            return true;
+        }
+    }
+
+    if (isprint(chr(lex, 0))) {
+        NK_LOG_ERR("unexpected character `%c`", chr(lex, 0));
+        // return error("unexpected character `%c`", chr(lex, 0));
+        return false;
+    } else {
+        NK_LOG_ERR("unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
+        // return error("unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
+        return false;
+    }
 }
 
 NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text) {
@@ -282,8 +359,14 @@ NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text) {
 
         .keywords = data->keywords,
         .operators = data->operators,
-        .keywords_id_base = data->keywords_id_base,
-        .operators_id_base = data->operators_id_base,
+        .tag_prefixes = data->tag_prefixes,
+        .keywords_base = data->keywords_base,
+        .operators_base = data->operators_base,
+        .tags_base = data->tags_base,
+
+        .pos = 0,
+        .lin = 1,
+        .col = 1,
 
         .token = {0},
     };
@@ -301,9 +384,9 @@ NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text) {
 #ifdef ENABLE_LOGGING
         NKSB_FIXED_BUFFER(sb, 256);
         nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&lex.token, text));
-        NK_LOG_DBG("%s: \"" NKS_FMT "\"", "TODO" /*s_nkst_token_id[lex.token.id]*/, NKS_ARG(sb));
+        NK_LOG_DBG("%u: \"" NKS_FMT "\" @%u:%u", lex.token.id, NKS_ARG(sb), lex.token.lin, lex.token.col);
 #endif // ENABLE_LOGGING
-    } while (lex.token.id != NklToken_Eof);
+    } while (lex.token.id != NklBaseToken_Eof);
 
     return (NklTokenArray){NK_SLICE_INIT(tokens)};
 }

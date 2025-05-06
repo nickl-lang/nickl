@@ -177,6 +177,50 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     }
 }
 
+char const *s_ir_keywords[] = {
+    "pub",
+    "proc",
+    "i32",
+    "ret",
+
+    NULL,
+};
+
+char const *s_ir_operators[] = {
+    "(",
+    ")",
+    "{",
+    "}",
+
+    NULL,
+};
+
+char const s_ir_tag_prefixes[] = {
+    '@',
+
+    0,
+};
+
+enum {
+    NklIrToken_KeywordsBase = NklBaseToken_Count,
+
+    NklIrToken_Pub = NklIrToken_KeywordsBase,
+    NklIrToken_Proc,
+    NklIrToken_I32,
+    NklIrToken_Ret,
+
+    NklIrToken_OperatorsBase,
+
+    NklIrToken_LParen = NklIrToken_OperatorsBase,
+    NklIrToken_RParen,
+    NklIrToken_LBrace,
+    NklIrToken_RBrace,
+
+    NklIrToken_TagsBase,
+
+    NklIrToken_AtTag = NklIrToken_TagsBase,
+};
+
 bool nkl_compileFileIr(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
@@ -192,14 +236,19 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         return false;
     }
 
-    NklLexerData lexer_data = {
-        .keywords = {},
-        .operators = {},
-    };
-    NklTokenArray tokens = nkl_lex(&lexer_data, &nkl->arena, text);
+    NklTokenArray tokens = nkl_lex(
+        &(NklLexerData){
+            .keywords = s_ir_keywords,
+            .operators = s_ir_operators,
+            .tag_prefixes = s_ir_tag_prefixes,
+            .keywords_base = NklIrToken_KeywordsBase,
+            .operators_base = NklIrToken_OperatorsBase,
+            .tags_base = NklIrToken_TagsBase,
+        },
+        &nkl->arena,
+        text);
 
-    // (void)file;
-    // reportError(nkl, "TODO: `nkl_compileFileIr` is not implemented");
+    reportError(nkl, "TODO: `nkl_compileFileIr` is not finished");
     return false;
 }
 

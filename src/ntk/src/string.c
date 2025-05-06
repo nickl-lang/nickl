@@ -85,6 +85,18 @@ bool nks_equal(NkString lhs, NkString rhs) {
     return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
 }
 
+bool nks_equalCStr(NkString lhs, char const *rhs) {
+    while (*rhs) {
+        if (lhs.size == 0 || *rhs != *lhs.data) {
+            return false;
+        }
+        lhs.data++;
+        lhs.size--;
+        rhs++;
+    }
+    return lhs.size == 0;
+}
+
 NkString nks_left(NkString str, usize n) {
     usize const size = nk_minu(str.size, n);
     return (NkString){str.data, size};
