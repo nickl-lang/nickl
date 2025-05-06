@@ -14,13 +14,12 @@ extern "C" {
 enum {
     NklBaseToken_Eof = 0,
 
-    NklBaseToken_Empty,
-    NklBaseToken_Unknown,
-
     NklBaseToken_Id,
     NklBaseToken_Int,
     NklBaseToken_Float,
     NklBaseToken_String,
+
+    NklBaseToken_Error,
 
     NklBaseToken_Count,
 };

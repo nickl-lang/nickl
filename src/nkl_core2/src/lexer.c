@@ -1,66 +1,17 @@
 #include "nkl/core/lexer.h"
 
 #include <ctype.h>
-#include <stddef.h>
-#include <string.h>
-// #include <cstdarg>
-// #include <iterator>
 
 #include "nkl/common/token.h"
-#include "nkl/core/nickl.h"
-#include "ntk/allocator.h"
 #include "ntk/arena.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
+#include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
-// const char *s_nkst_token_id[] = {
-//     #define OP(ID, TEXT) #ID,
-//     #define SP(ID, TEXT) #ID,
-//     #include "tokens.inl"
-// };
-
-// const char *s_nkst_token_text[] = {
-//     #define OP(ID, TEXT) TEXT,
-//     #define SP(ID, TEXT) TEXT,
-//     #include "tokens.inl"
-// };
-
-// char const *s_operators[] = {
-//     #define OP(id, text) text,
-//     #include "tokens.inl"
-// };
-
 NK_LOG_USE_SCOPE(lexer);
-
-// struct ScannerState {
-//     NkAtom const m_file;
-//     NkString const m_text;
-
-//     u32 m_pos = 0;
-//     u32 m_lin = 1;
-//     u32 m_col = 1;
-
-//     NklToken m_token{};
-
-//     void scan() {
-//     }
-
-// private:
-//     NK_PRINTF_LIKE(2) void error(char const *fmt, ...) {
-//         va_list ap;
-//         va_start(ap, fmt);
-//         // TODO: Leaking error token, need to use scatch arena
-//         auto token = nk_allocT<NklToken>(nk_default_allocator);
-//         *token = m_token;
-//         nkl_vreportError(m_file, token, fmt, ap);
-//         va_end(ap);
-//     }
-// };
-
-// } // namespace
 
 typedef struct {
     NkString const text;
@@ -68,15 +19,14 @@ typedef struct {
     char const **const keywords;
     char const **const operators;
     char const *const tag_prefixes;
-    u32 const keywords_base;
-    u32 const operators_base;
-    u32 const tags_base;
+
+    u32 const first_keyword_id;
+    u32 const first_operator_id;
+    u32 const first_tag_id;
 
     u32 pos;
     u32 lin;
     u32 col;
-
-    NklToken token;
 } LexerState;
 
 static char chr(LexerState const *lex, i64 offset) {
@@ -127,15 +77,15 @@ static void advance(LexerState *lex, i64 n) {
     }
 }
 
-static void accept(LexerState *lex, i64 n) {
+static void accept(LexerState *lex, NklToken *token, i64 n) {
     advance(lex, n);
-    lex->token.len += n;
+    token->len += n;
 }
 
-static void discard(LexerState *lex) {
-    lex->pos -= lex->token.len;
-    lex->col -= lex->token.len;
-    lex->token.len = 0;
+static void discard(LexerState *lex, NklToken *token) {
+    lex->pos -= token->len;
+    lex->col -= token->len;
+    token->len = 0;
 }
 
 static void skipSpaces(LexerState *lex) {
@@ -144,7 +94,7 @@ static void skipSpaces(LexerState *lex) {
     }
 }
 
-static bool scan(LexerState *lex) {
+static NklToken scan(LexerState *lex) {
     skipSpaces(lex);
 
     if (lex->pos == 0 && on(lex, '#', 0) && on(lex, '!', 1)) {
@@ -173,8 +123,8 @@ static bool scan(LexerState *lex) {
         skipSpaces(lex);
     }
 
-    lex->token = (NklToken){
-        .id = NklBaseToken_Empty,
+    NklToken token = {
+        .id = NklBaseToken_Error,
         .pos = lex->pos,
         .len = 0,
         .lin = lex->lin,
@@ -182,119 +132,72 @@ static bool scan(LexerState *lex) {
     };
 
     if (!chr(lex, 0)) {
-        lex->token.id = NklBaseToken_Eof;
-        return true;
+        token.id = NklBaseToken_Eof;
+        return token;
     }
-
-    // if (on(lex, '"', 0)) {
-    //     accept();
-
-    //     bool escaped = false;
-
-    //     while (chr() && !on('\"') && !on('\n')) {
-    //         accept();
-    //         if (on('\\', -1)) {
-    //             switch (chr()) {
-    //                 case 'n':
-    //                 case 't':
-    //                 case '0':
-    //                 case '\\':
-    //                 case '"':
-    //                 case '\n':
-    //                     escaped = true;
-    //                     accept();
-    //                     break;
-    //                 default:
-    //                     if (!chr()) {
-    //                         return error("unexpected end of file");
-    //                     } else {
-    //                         lex->token.pos = lex->pos - 1;
-    //                         lex->token.len = 2;
-    //                         lex->token.lin = lex->lin;
-    //                         lex->token.col = lex->col - 1;
-    //                         if (isprint(chr())) {
-    //                             return error("invalid escape sequence `\\%c`", chr());
-    //                         } else {
-    //                             return error("invalid escape sequence `\\\\x%" PRIx8 "`", chr() & 0xff);
-    //                         }
-    //                     }
-    //             }
-    //         }
-    //     }
-
-    //     if (!on('\"')) {
-    //         accept();
-    //         return error("invalid string constant");
-    //     }
-
-    //     lex->token.id = escaped ? t_escaped_string : t_string;
-
-    //     accept();
-    //     return true;
-    // }
 
     if (onDigit(lex, on(lex, '-', 0) ? 1 : 0)) {
         if (on(lex, '-', 0)) {
-            accept(lex, 1);
+            accept(lex, &token, 1);
         }
 
-        lex->token.id = NklBaseToken_Int;
+        token.id = NklBaseToken_Int;
 
         while (onDigit(lex, 0)) {
-            accept(lex, 1);
+            accept(lex, &token, 1);
         }
 
         if (on(lex, '.', 0)) {
-            lex->token.id = NklBaseToken_Float;
+            token.id = NklBaseToken_Float;
             do {
-                accept(lex, 1);
+                accept(lex, &token, 1);
             } while (onDigit(lex, 0));
         }
 
         if (onLower(lex, 0) == 'e') {
-            lex->token.id = NklBaseToken_Float;
-            accept(lex, 1);
+            token.id = NklBaseToken_Float;
+            accept(lex, &token, 1);
             if (on(lex, '-', 0) || on(lex, '+', 0)) {
-                accept(lex, 1);
+                accept(lex, &token, 1);
             }
             if (!onDigit(lex, 0)) {
                 NK_LOG_ERR("invalid float literal");
                 // return error("invalid float literal");
-                return false;
+                return token;
             }
             while (onDigit(lex, 0)) {
-                accept(lex, 1);
+                accept(lex, &token, 1);
             }
         }
 
         if (onAlpha(lex, 0)) {
-            accept(lex, 1);
+            accept(lex, &token, 1);
             NK_LOG_ERR("invalid suffix");
             // return error("invalid suffix");
-            return false;
+            return token;
         }
 
-        return true;
+        return token;
     }
 
     if (onAlphaOrUscr(lex, 0)) {
         while (onAlnumOrUscr(lex, 0)) {
-            accept(lex, 1);
+            accept(lex, &token, 1);
         }
 
-        NkString const token_str = nkl_getTokenStr(&lex->token, lex->text);
+        NkString const token_str = nkl_getTokenStr(&token, lex->text);
         char const **it = lex->keywords;
         for (; *it && !nks_equalCStr(token_str, *it); it++) {
         }
 
         if (*it) {
             ptrdiff_t const idx = it - lex->keywords;
-            lex->token.id = lex->keywords_base + idx;
+            token.id = lex->first_keyword_id + idx;
         } else {
-            lex->token.id = NklBaseToken_Id;
+            token.id = NklBaseToken_Id;
         }
 
-        return true;
+        return token;
     }
 
     {
@@ -304,12 +207,12 @@ static bool scan(LexerState *lex) {
 
         if (*it) {
             do {
-                accept(lex, 1);
+                accept(lex, &token, 1);
             } while (onAlnumOrUscr(lex, 0));
 
             ptrdiff_t const idx = it - lex->tag_prefixes;
-            lex->token.id = lex->tags_base + idx;
-            return true;
+            token.id = lex->first_tag_id + idx;
+            return token;
         }
     }
 
@@ -319,12 +222,12 @@ static bool scan(LexerState *lex) {
             char const *op = *it;
 
             while (*op && on(lex, *op, 0)) {
-                accept(lex, 1);
+                accept(lex, &token, 1);
                 op++;
             }
 
             if (*op) {
-                discard(lex);
+                discard(lex, &token);
             } else {
                 break;
             }
@@ -332,61 +235,60 @@ static bool scan(LexerState *lex) {
 
         if (*it) {
             ptrdiff_t const idx = it - lex->operators;
-            lex->token.id = lex->operators_base + idx;
-            return true;
+            token.id = lex->first_operator_id + idx;
+            return token;
         }
     }
 
     if (isprint(chr(lex, 0))) {
         NK_LOG_ERR("unexpected character `%c`", chr(lex, 0));
         // return error("unexpected character `%c`", chr(lex, 0));
-        return false;
+        return token;
     } else {
         NK_LOG_ERR("unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
         // return error("unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
-        return false;
+        return token;
     }
 }
 
 NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text) {
     NK_LOG_TRC("%s", __func__);
 
-    NklTokenDynArray tokens = {NKDA_INIT(nk_arena_getAllocator(arena))};
-    nkda_reserve(&tokens, 1000);
+    NklTokenArray ret;
+    NK_PROF_FUNC() {
+        NklTokenDynArray tokens = {NKDA_INIT(nk_arena_getAllocator(arena))};
+        nkda_reserve(&tokens, 1000);
 
-    LexerState lex = {
-        .text = text,
+        LexerState lex = {
+            .text = text,
 
-        .keywords = data->keywords,
-        .operators = data->operators,
-        .tag_prefixes = data->tag_prefixes,
-        .keywords_base = data->keywords_base,
-        .operators_base = data->operators_base,
-        .tags_base = data->tags_base,
+            .keywords = data->keywords,
+            .operators = data->operators,
+            .tag_prefixes = data->tag_prefixes,
 
-        .pos = 0,
-        .lin = 1,
-        .col = 1,
+            .first_keyword_id = data->keywords_base + 1,
+            .first_operator_id = data->operators_base + 1,
+            .first_tag_id = data->tags_base + 1,
 
-        .token = {0},
-    };
+            .pos = 0,
+            .lin = 1,
+            .col = 1,
+        };
 
-    do {
-        if (!scan(&lex)) {
-            return (NklTokenArray){0};
-        }
-        nkda_append(&tokens, lex.token);
-
-        // if (nkl_getErrorCount()) {
-        //     return {};
-        // }
+        NklToken token;
+        do {
+            token = scan(&lex);
+            nkda_append(&tokens, token);
 
 #ifdef ENABLE_LOGGING
-        NKSB_FIXED_BUFFER(sb, 256);
-        nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&lex.token, text));
-        NK_LOG_DBG("%u: \"" NKS_FMT "\" @%u:%u", lex.token.id, NKS_ARG(sb), lex.token.lin, lex.token.col);
+            NKSB_FIXED_BUFFER(sb, 256);
+            nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&token, text));
+            NK_LOG_DBG("%u:%u: \"" NKS_FMT "\":%u", token.lin, token.col, NKS_ARG(sb), token.id);
 #endif // ENABLE_LOGGING
-    } while (lex.token.id != NklBaseToken_Eof);
+        } while (token.id != NklBaseToken_Error && token.id != NklBaseToken_Eof);
 
-    return (NklTokenArray){NK_SLICE_INIT(tokens)};
+        ret = (NklTokenArray){NK_SLICE_INIT(tokens)};
+    }
+
+    return ret;
 }

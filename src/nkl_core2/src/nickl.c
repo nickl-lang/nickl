@@ -204,21 +204,21 @@ char const s_ir_tag_prefixes[] = {
 enum {
     NklIrToken_KeywordsBase = NklBaseToken_Count,
 
-    NklIrToken_Pub = NklIrToken_KeywordsBase,
+    NklIrToken_Pub,
     NklIrToken_Proc,
     NklIrToken_I32,
     NklIrToken_Ret,
 
     NklIrToken_OperatorsBase,
 
-    NklIrToken_LParen = NklIrToken_OperatorsBase,
+    NklIrToken_LParen,
     NklIrToken_RParen,
     NklIrToken_LBrace,
     NklIrToken_RBrace,
 
     NklIrToken_TagsBase,
 
-    NklIrToken_AtTag = NklIrToken_TagsBase,
+    NklIrToken_AtTag,
 };
 
 bool nkl_compileFileIr(NklModule mod, NkString file) {
