@@ -2,6 +2,8 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/dyn_array.h"
+#include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 
@@ -102,24 +104,21 @@ typedef enum {
     NkIrArg_RefArray,
     NkIrArg_Label,
     NkIrArg_RelLabel,
-    NkIrArg_Type,
+    NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
     NkIrArg_File,
     NkIrArg_Line,
     NkIrArg_Comment,
 } NkIrArgKind;
 
-typedef struct {
-    NkIrRef const *data;
-    usize size;
-} NkIrRefArray;
+typedef NkSlice(NkIrRef const) NkIrRefArray;
 
 typedef struct {
     union {
         NkIrRef ref;       // Ref
         NkIrRefArray refs; // RefArray
         struct {
-            NkAtom name;  // Label
-            isize offset; // RelLabel
+            NkAtom name; // Label
+            i32 offset;  // RelLabel
         } label;
         NkIrType type; // Type
         NkString str;  // File, Comment
@@ -133,25 +132,8 @@ typedef struct {
     u8 code;
 } NkIrInstr;
 
-typedef enum {
-    NkIrVisibility_Hidden = 0,
-    NkIrVisibility_Default,
-    NkIrVisibility_Protected,
-    NkIrVisibility_Internal,
-    NkIrVisibility_Local,
-} NkIrVisibility;
-
-typedef struct {
-    NkIrInstr const *data;
-    usize size;
-} NkIrInstrArray;
-
-typedef struct {
-    NkIrInstr *data;
-    usize size;
-    usize capacity;
-    NkAllocator alloc;
-} NkIrInstrDynArray;
+typedef NkSlice(NkIrInstr const) NkIrInstrArray;
+typedef NkDynArray(NkIrInstr) NkIrInstrDynArray;
 
 typedef enum {
     NkIrSymbol_Extern,
@@ -159,6 +141,7 @@ typedef enum {
     NkIrSymbol_Proc,
 } NkIrSymbolKind;
 
+// TODO: NkIrExtern will probably only be used in bytecode translation, think whether we need it as a symbol.
 typedef struct {
     NkIrType type;
     void *addr;
@@ -169,10 +152,7 @@ typedef struct {
     usize offset;
 } NkIrReloc;
 
-typedef struct {
-    NkIrReloc const *data;
-    usize size;
-} NkIrRelocArray;
+typedef NkSlice(NkIrReloc const) NkIrRelocArray;
 
 typedef struct {
     NkIrType type;
@@ -190,10 +170,7 @@ typedef struct {
     NkIrType type;
 } NkIrParam;
 
-typedef struct {
-    NkIrParam const *data;
-    usize size;
-} NkIrParamArray;
+typedef NkSlice(NkIrParam const) NkIrParamArray;
 
 typedef struct {
     NkIrParamArray params;
@@ -203,6 +180,14 @@ typedef struct {
     u32 line;
     NkIrProcFlags flags;
 } NkIrProc;
+
+typedef enum {
+    NkIrVisibility_Hidden = 0,
+    NkIrVisibility_Default,
+    NkIrVisibility_Protected,
+    NkIrVisibility_Internal,
+    NkIrVisibility_Local,
+} NkIrVisibility;
 
 typedef enum {
     NkIrSymbol_ThreadLocal = 1 << 0,
@@ -216,16 +201,11 @@ typedef struct {
     };
     NkAtom name;
     NkIrVisibility vis;
-    NkIrSymbolKind kind;
     NkIrSymbolFlags flags;
+    NkIrSymbolKind kind;
 } NkIrSymbol;
 
-typedef struct {
-    NkIrSymbol const *data;
-    usize size;
-} NkIrSymbolArray;
-
-typedef NkIrSymbolArray NkIrModule;
+typedef NkSlice(NkIrSymbol) NkIrModule;
 
 /// Main
 
