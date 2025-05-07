@@ -1,3 +1,8 @@
+# v0.3.2
+
+- Start core2, add nklc for testing
+- Update Readme
+
 # v0.3.1 - 2025.04.18
 
 - Some fixes in buildenv for Darwin
