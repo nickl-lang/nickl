@@ -1,7 +1,7 @@
 #ifndef NKL_CORE_NICKL_H_
 #define NKL_CORE_NICKL_H_
 
-#include "nkl/common/token.h"
+#include "nkl/common/diagnostics.h"
 #include "ntk/atom.h"
 #include "ntk/string.h"
 
@@ -32,8 +32,7 @@ typedef struct NklError {
     struct NklError *next;
 
     NkString msg;
-    NkAtom file;
-    NklToken const *token;
+    NklSourceLocation loc;
 } NklError;
 
 NK_EXPORT NklState nkl_newState(void);
@@ -48,6 +47,7 @@ NK_EXPORT NklCompiler nkl_newCompilerHost(void);
 NK_EXPORT NklModule nkl_newModule(NklCompiler c);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
+NK_EXPORT bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library);
 
 NK_EXPORT bool nkl_compileFile(NklModule mod, NkString file);
 NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString file);  // *.nkir

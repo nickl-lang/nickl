@@ -15,6 +15,8 @@ NK_LOG_USE_SCOPE(lexer);
 
 typedef struct {
     NkString const text;
+    NkArena *arena;
+    NkString *error;
 
     char const **const keywords;
     char const **const operators;
@@ -94,6 +96,23 @@ static void skipSpaces(LexerState *lex) {
     }
 }
 
+static i32 vreportError(LexerState *lex, char const *fmt, va_list ap) {
+    i32 res = 0;
+    if (lex->error) {
+        *lex->error = nk_vtsprintf(lex->arena, fmt, ap);
+    }
+    return res;
+}
+
+NK_PRINTF_LIKE(2) static i32 reportError(LexerState *lex, char const *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    i32 res = vreportError(lex, fmt, ap);
+    va_end(ap);
+
+    return res;
+}
+
 static NklToken scan(LexerState *lex) {
     skipSpaces(lex);
 
@@ -161,8 +180,7 @@ static NklToken scan(LexerState *lex) {
                 accept(lex, &token, 1);
             }
             if (!onDigit(lex, 0)) {
-                NK_LOG_ERR("invalid float literal");
-                // return error("invalid float literal");
+                reportError(lex, "invalid float literal");
                 return token;
             }
             while (onDigit(lex, 0)) {
@@ -172,8 +190,7 @@ static NklToken scan(LexerState *lex) {
 
         if (onAlpha(lex, 0)) {
             accept(lex, &token, 1);
-            NK_LOG_ERR("invalid suffix");
-            // return error("invalid suffix");
+            reportError(lex, "invalid suffix");
             return token;
         }
 
@@ -241,26 +258,26 @@ static NklToken scan(LexerState *lex) {
     }
 
     if (isprint(chr(lex, 0))) {
-        NK_LOG_ERR("unexpected character `%c`", chr(lex, 0));
-        // return error("unexpected character `%c`", chr(lex, 0));
+        reportError(lex, "unexpected character `%c`", chr(lex, 0));
         return token;
     } else {
-        NK_LOG_ERR("unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
-        // return error("unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
+        reportError(lex, "unexpected byte `\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
         return token;
     }
 }
 
-NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text) {
+bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    NklTokenArray ret;
+    bool ret;
     NK_PROF_FUNC() {
-        NklTokenDynArray tokens = {NKDA_INIT(nk_arena_getAllocator(arena))};
+        NklTokenDynArray tokens = {NKDA_INIT(nk_arena_getAllocator(data->arena))};
         nkda_reserve(&tokens, 1000);
 
         LexerState lex = {
-            .text = text,
+            .text = data->text,
+            .arena = data->arena,
+            .error = data->error,
 
             .keywords = data->keywords,
             .operators = data->operators,
@@ -282,12 +299,13 @@ NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text) {
 
 #ifdef ENABLE_LOGGING
             NKSB_FIXED_BUFFER(sb, 256);
-            nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&token, text));
+            nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&token, data->text));
             NK_LOG_DBG("%u:%u: \"" NKS_FMT "\":%u", token.lin, token.col, NKS_ARG(sb), token.id);
 #endif // ENABLE_LOGGING
         } while (token.id != NklBaseToken_Error && token.id != NklBaseToken_Eof);
 
-        ret = (NklTokenArray){NK_SLICE_INIT(tokens)};
+        *out_tokens = (NklTokenArray){NK_SLICE_INIT(tokens)};
+        ret = token.id == NklBaseToken_Eof;
     }
 
     return ret;

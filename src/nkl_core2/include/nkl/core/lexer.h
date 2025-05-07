@@ -4,7 +4,6 @@
 #include "nkl/common/token.h"
 #include "ntk/arena.h"
 #include "ntk/common.h"
-#include "ntk/slice.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -25,15 +24,20 @@ enum {
 };
 
 typedef struct {
+    NkString text;
+    NkArena *arena;
+    NkString *error;
+
     char const **keywords;
     char const **operators;
     char const *tag_prefixes;
+
     u32 keywords_base;
     u32 operators_base;
     u32 tags_base;
 } NklLexerData;
 
-NklTokenArray nkl_lex(NklLexerData const *data, NkArena *arena, NkString text);
+bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens);
 
 #ifdef __cplusplus
 }

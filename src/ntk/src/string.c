@@ -236,31 +236,32 @@ i32 nks_sanitize(NkStream out, NkString str) {
     return ret;
 }
 
-char const *nk_tprintf(NkArena *tmp_arena, char const *fmt, ...) {
+char const *nk_tprintf(NkArena *arena, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    char const *str = nk_vtprintf(tmp_arena, fmt, ap);
+    char const *str = nk_vtprintf(arena, fmt, ap);
     va_end(ap);
 
     return str;
 }
 
-char const *nk_vtprintf(NkArena *tmp_arena, char const *fmt, va_list ap) {
-    return nk_vtsprintf(tmp_arena, fmt, ap).data; // TODO: Null-terminate here?
+char const *nk_vtprintf(NkArena *arena, char const *fmt, va_list ap) {
+    return nk_vtsprintf(arena, fmt, ap).data;
 }
 
-NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *tmp_arena, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *arena, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    NkString str = nk_vtsprintf(tmp_arena, fmt, ap);
+    NkString str = nk_vtsprintf(arena, fmt, ap);
     va_end(ap);
 
     return str;
 }
 
-NkString nk_vtsprintf(NkArena *tmp_arena, char const *fmt, va_list ap) {
-    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(tmp_arena))};
+NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap) {
+    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(arena))};
     nksb_vprintf(&sb, fmt, ap);
     nksb_appendNull(&sb);
+    nk_arena_pop(arena, sb.capacity - sb.size);
     return (NkString){sb.data, sb.size - 1};
 }

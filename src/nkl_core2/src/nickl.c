@@ -1,5 +1,7 @@
 #include "nkl/core/nickl.h"
 
+#include "nkl/common/diagnostics.h"
+#include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/common.h"
@@ -7,8 +9,8 @@
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -27,33 +29,23 @@ typedef struct NklModule_T {
     NklCompiler c;
 } NklModule_T;
 
-static i32 vreportError(NklState nkl, char const *fmt, va_list ap) {
+static void vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap) {
     NklError *err = nk_arena_allocT(&nkl->arena, NklError);
     *err = (NklError){
         .next = nkl->error,
-        .msg = {0},
-        .file = 0,
-        .token = NULL,
+        .msg = nk_vtsprintf(&nkl->arena, fmt, ap),
+        .loc = loc,
     };
     nkl->error = err;
-
-    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(&nkl->arena))};
-    i32 res = nksb_vprintf(&sb, fmt, ap);
-    nk_arena_pop(&nkl->arena, sb.capacity - sb.size);
-    err->msg = (NkString){NKS_INIT(sb)};
-
-    return res;
 }
 
-NK_PRINTF_LIKE(2) static int reportError(NklState nkl, char const *fmt, ...) {
+NK_PRINTF_LIKE(3) static void reportError(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {
     NK_LOG_TRC("%s", __func__);
 
     va_list ap;
     va_start(ap, fmt);
-    i32 res = vreportError(nkl, fmt, ap);
+    vreportError(nkl, loc, fmt, ap);
     va_end(ap);
-
-    return res;
 }
 
 NklState nkl_newState(void) {
@@ -142,14 +134,30 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     NklState nkl = dst_mod->c->nkl;
 
     if (!src_mod) {
-        reportError(nkl, "src_mod is null");
+        reportError(nkl, (NklSourceLocation){0}, "src_mod is null");
         return false;
     }
 
     if (dst_mod->c != src_mod->c) {
-        reportError(nkl, "mixed modules from different compilers");
+        reportError(nkl, (NklSourceLocation){0}, "mixed modules from different compilers");
     }
 
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkModule` is not implemented");
+    return false;
+}
+
+bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library) {
+    NK_LOG_TRC("%s", __func__);
+
+    if (!dst_mod) {
+        return false;
+    }
+
+    NklState nkl = dst_mod->c->nkl;
+
+    (void)name;
+    (void)library;
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkLibrary` is not implemented");
     return false;
 }
 
@@ -172,7 +180,10 @@ bool nkl_compileFile(NklModule mod, NkString file) {
         return nkl_compileFileNkl(mod, file);
     } else {
         reportError(
-            nkl, "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkir`, `*.nkst`, `*.nkl`.", NKS_ARG(ext));
+            nkl,
+            (NklSourceLocation){0},
+            "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkir`, `*.nkst`, `*.nkl`.",
+            NKS_ARG(ext));
         return false;
     }
 }
@@ -232,23 +243,47 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 
     NkString text;
     if (!nk_file_read(nk_arena_getAllocator(&nkl->arena), file, &text)) {
-        reportError(nkl, "failed to read file `" NKS_FMT "`: %s", NKS_ARG(file), nk_getLastErrorString());
+        reportError(
+            nkl,
+            (NklSourceLocation){0},
+            "failed to read file `" NKS_FMT "`: %s",
+            NKS_ARG(file),
+            nk_getLastErrorString());
         return false;
     }
 
-    NklTokenArray tokens = nkl_lex(
-        &(NklLexerData){
-            .keywords = s_ir_keywords,
-            .operators = s_ir_operators,
-            .tag_prefixes = s_ir_tag_prefixes,
-            .keywords_base = NklIrToken_KeywordsBase,
-            .operators_base = NklIrToken_OperatorsBase,
-            .tags_base = NklIrToken_TagsBase,
-        },
-        &nkl->arena,
-        text);
+    NkString lex_error;
+    NklTokenArray tokens;
+    if (!nkl_lex(
+            &(NklLexerData){
+                .text = text,
+                .arena = &nkl->arena,
+                .error = &lex_error,
 
-    reportError(nkl, "TODO: `nkl_compileFileIr` is not finished");
+                .keywords = s_ir_keywords,
+                .operators = s_ir_operators,
+                .tag_prefixes = s_ir_tag_prefixes,
+
+                .keywords_base = NklIrToken_KeywordsBase,
+                .operators_base = NklIrToken_OperatorsBase,
+                .tags_base = NklIrToken_TagsBase,
+            },
+            &tokens)) {
+        NklToken err_token = nk_slice_last(tokens);
+        reportError(
+            nkl,
+            (NklSourceLocation){
+                .file = file,
+                .lin = err_token.lin,
+                .col = err_token.col,
+                .len = err_token.len,
+            },
+            NKS_FMT,
+            NKS_ARG(lex_error));
+        return false;
+    }
+
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
     return false;
 }
 
@@ -262,7 +297,7 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
     NklState nkl = mod->c->nkl;
 
     (void)file;
-    reportError(nkl, "TODO: `nkl_compileFileAst` is not implemented");
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not implemented");
     return false;
 }
 
@@ -276,7 +311,7 @@ bool nkl_compileFileNkl(NklModule mod, NkString file) {
     NklState nkl = mod->c->nkl;
 
     (void)file;
-    reportError(nkl, "TODO: `nkl_compileFileNkl` is not implemented");
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileNkl` is not implemented");
     return false;
 }
 
@@ -291,7 +326,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     (void)out_file;
     (void)kind;
-    reportError(nkl, "TODO: `nkl_exportModule` is not implemented");
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_exportModule` is not implemented");
     return false;
 }
 

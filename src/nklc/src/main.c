@@ -1,13 +1,15 @@
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/nickl.h"
+#include "ntk/allocator.h"
 #include "ntk/cli.h"
 #include "ntk/common.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
+#include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/utils.h"
+#include "ntk/string_builder.h"
 
 static void printErrorUsage() {
     nk_stream_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
@@ -32,17 +34,49 @@ static void printVersion() {
     printf(NK_BINARY_NAME " " NK_BUILD_VERSION " " NK_BUILD_TIME "\n");
 }
 
+static void printDiag(NklState nkl) {
+    NklError const *err = nkl_getErrors(nkl);
+    while (err) {
+        if (err->loc.file.size) {
+            char cwd[NK_MAX_PATH];
+            nk_getCwd(cwd, sizeof(cwd));
+
+            // TODO: Avoid null termination
+            NKSB_FIXED_BUFFER(file_nt, NK_MAX_PATH);
+            nksb_printf(&file_nt, NKS_FMT, NKS_ARG(err->loc.file));
+            nksb_appendNull(&file_nt);
+
+            // TODO: Canonicalize elsewhere
+            char fullpath[NK_MAX_PATH];
+            nk_fullPath(fullpath, file_nt.data);
+
+            char relpath[NK_MAX_PATH];
+            nk_relativePath(relpath, sizeof(relpath), fullpath, cwd);
+
+            NklSourceLocation loc = err->loc;
+            loc.file = nk_cs2s(relpath);
+
+            // TODO: Avoid reading file again
+            NkString text;
+            if (!nk_file_read(nk_default_allocator, err->loc.file, &text)) {
+                return;
+            }
+            nkl_diag_printErrorQuote(text, loc, NKS_FMT, NKS_ARG(err->msg));
+            nk_free(nk_default_allocator, (void *)text.data, text.size);
+        } else {
+            nkl_diag_printError(NKS_FMT, NKS_ARG(err->msg));
+        }
+
+        err = err->next;
+    }
+}
+
 static int run(NklState nkl, NkString in_file) {
     NklCompiler const c = nkl_newCompilerHost();
     NklModule const mod = nkl_newModule(c);
 
     if (!nkl_compileFile(mod, in_file)) {
-        // TODO: Implement quoting
-        NklError const *err = nkl_getErrors(nkl);
-        while (err) {
-            nkl_diag_printError(NKS_FMT, NKS_ARG(err->msg));
-            err = err->next;
-        }
+        printDiag(nkl);
         return 1;
     }
 
