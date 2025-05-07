@@ -67,14 +67,12 @@ bool nk_log_check(NkLogLevel log_level) {
 }
 
 void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
-    NK_PROF_FUNC_BEGIN();
-
-    va_list ap;
-    va_start(ap, fmt);
-    nk_log_vwrite(log_level, scope, fmt, ap);
-    va_end(ap);
-
-    NK_PROF_FUNC_END();
+    NK_PROF_FUNC() {
+        va_list ap;
+        va_start(ap, fmt);
+        nk_log_vwrite(log_level, scope, fmt, ap);
+        va_end(ap);
+    }
 }
 
 void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
@@ -103,24 +101,22 @@ void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_
 }
 
 void nk_log_init(NkLogOptions opt) {
-    NK_PROF_FUNC_BEGIN();
+    NK_PROF_FUNC() {
+        s_logger = (struct LoggerState){0};
 
-    s_logger = (struct LoggerState){0};
+        s_logger.start_time = nk_now_ns();
 
-    s_logger.start_time = nk_now_ns();
+        char const *env_log_level = getenv(ENV_VAR);
+        if (env_log_level) {
+            s_logger.log_level = parseEnvLogLevel(env_log_level);
+        } else {
+            s_logger.log_level = opt.log_level;
+        }
 
-    char const *env_log_level = getenv(ENV_VAR);
-    if (env_log_level) {
-        s_logger.log_level = parseEnvLogLevel(env_log_level);
-    } else {
-        s_logger.log_level = opt.log_level;
+        s_logger.color_mode = opt.color_mode;
+
+        s_logger.mtx = nk_mutex_alloc();
+
+        s_logger.initialized = true;
     }
-
-    s_logger.color_mode = opt.color_mode;
-
-    s_logger.mtx = nk_mutex_alloc();
-
-    s_logger.initialized = true;
-
-    NK_PROF_FUNC_END();
 }

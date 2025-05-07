@@ -1,5 +1,6 @@
 #include "ntk/path.h"
 
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 static usize commonPrefixLength(char const *lhs, char const *rhs) {
@@ -22,10 +23,11 @@ static usize commonPrefixLength(char const *lhs, char const *rhs) {
     return res;
 }
 
-void nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base) {
+i32 nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base) {
     usize offset = commonPrefixLength(full_base, full_path);
     if (!offset) {
-        return;
+        buf[0] = '\0';
+        return 1;
     }
 
     char const *path_suffix = full_path + offset;
@@ -59,11 +61,32 @@ void nk_relativePath(char *buf, usize size, char const *full_path, char const *f
     }
 
     nksb_appendNull(&sb);
+
+    return sb.size;
 }
 
-NkString nk_path_getParent(NkString full_path) {
-    // TODO: Handle trailing separator
-    NkString parent = full_path;
-    nks_chopByDelimReverse(&parent, NK_PATH_SEPARATOR);
-    return parent;
+NkString nk_path_getParent(NkString path) {
+    nks_chopByDelimReverse(&path, NK_PATH_SEPARATOR);
+    return path;
+}
+
+NkString nk_path_getFilename(NkString path) {
+    return nks_chopByDelimReverse(&path, NK_PATH_SEPARATOR);
+}
+
+NkString nk_path_getExtension(NkString path) {
+    NkString name = nk_path_getFilename(path);
+
+    NkString const orig_name = name;
+    NkString ext = nks_chopByDelimReverse(&name, '.');
+    if (name.size == 0 && nks_equal(orig_name, ext)) {
+        return (NkString){0};
+    }
+
+    char const sep = NK_PATH_SEPARATOR;
+    if (nks_endsWith(ext, (NkString){&sep, 1})) {
+        ext = nks_left(ext, ext.size - 1);
+    }
+
+    return ext;
 }

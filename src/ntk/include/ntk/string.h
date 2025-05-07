@@ -38,8 +38,13 @@ NK_EXPORT NkString nks_chopByDelimReverse(NkString *str, char delim);
 
 NK_EXPORT u64 nks_hash(NkString str);
 NK_EXPORT bool nks_equal(NkString lhs, NkString rhs);
+NK_EXPORT bool nks_equalCStr(NkString lhs, char const *rhs);
 
-NK_EXPORT bool nks_startsWith(NkString str, NkString pref);
+NK_EXPORT NkString nks_left(NkString str, usize n);
+NK_EXPORT NkString nks_right(NkString str, usize n);
+
+NK_EXPORT bool nks_startsWith(NkString str, NkString prefix);
+NK_EXPORT bool nks_endsWith(NkString str, NkString suffix);
 
 NK_EXPORT i32 nks_escape(NkStream out, NkString str);
 NK_EXPORT i32 nks_unescape(NkStream out, NkString str);
@@ -48,11 +53,11 @@ NK_EXPORT i32 nks_sanitize(NkStream out, NkString str);
 #define NKS_FMT "%.*s"
 #define NKS_ARG(str) (i32)(str).size, (str).data
 
-NK_EXPORT NK_PRINTF_LIKE(2) char const *nk_tprintf(NkArena *tmp_arena, char const *fmt, ...);
-NK_EXPORT char const *nk_vtprintf(NkArena *tmp_arena, char const *fmt, va_list ap);
+NK_EXPORT NK_PRINTF_LIKE(2) char const *nk_tprintf(NkArena *arena, char const *fmt, ...);
+NK_EXPORT char const *nk_vtprintf(NkArena *arena, char const *fmt, va_list ap);
 
-NK_EXPORT NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *tmp_arena, char const *fmt, ...);
-NK_EXPORT NkString nk_vtsprintf(NkArena *tmp_arena, char const *fmt, va_list ap);
+NK_EXPORT NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *arena, char const *fmt, ...);
+NK_EXPORT NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }

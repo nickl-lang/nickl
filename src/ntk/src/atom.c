@@ -46,10 +46,12 @@ void nk_atom_deinit(void) {
 }
 
 NkString nk_atom2s(NkAtom atom) {
-    NK_PROF_FUNC_BEGIN();
-    atom2s_kv const *found = atom2str_find(&g_atom2str, atom);
-    NK_PROF_FUNC_END();
-    return found ? found->val : (NkString){0};
+    NkString ret;
+    NK_PROF_FUNC() {
+        atom2s_kv const *found = atom2str_find(&g_atom2str, atom);
+        ret = found ? found->val : (NkString){0};
+    }
+    return ret;
 }
 
 char const *nk_atom2cs(NkAtom atom) {
@@ -57,21 +59,18 @@ char const *nk_atom2cs(NkAtom atom) {
 }
 
 NkAtom nk_s2atom(NkString str) {
-    NK_PROF_FUNC_BEGIN();
-
-    s2atom_kv const *found = str2atom_find(&g_str2atom, str);
-
     NkAtom ret = 0;
+    NK_PROF_FUNC() {
+        s2atom_kv const *found = str2atom_find(&g_str2atom, str);
 
-    if (found) {
-        ret = found->val;
-    } else {
-        NkAtom atom = g_next_atom++;
-        nk_atom_define(atom, str);
-        ret = atom;
+        if (found) {
+            ret = found->val;
+        } else {
+            NkAtom atom = g_next_atom++;
+            nk_atom_define(atom, str);
+            ret = atom;
+        }
     }
-
-    NK_PROF_FUNC_END();
     return ret;
 }
 
@@ -80,11 +79,9 @@ NkAtom nk_cs2atom(char const *str) {
 }
 
 void nk_atom_define(NkAtom atom, NkString str) {
-    NK_PROF_FUNC_BEGIN();
-
-    NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
-    str2atom_insert(&g_str2atom, (s2atom_kv){str_copy, atom});
-    atom2str_insert(&g_atom2str, (atom2s_kv){atom, str_copy});
-
-    NK_PROF_FUNC_END();
+    NK_PROF_FUNC() {
+        NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
+        str2atom_insert(&g_str2atom, (s2atom_kv){str_copy, atom});
+        atom2str_insert(&g_atom2str, (atom2s_kv){atom, str_copy});
+    }
 }

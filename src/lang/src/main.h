@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-int NK_EXPORT nkl_main(int argc, char const *const *argv);
+int NK_EXPORT nkl_main(int argc, char **argv);
 
 #ifdef __cplusplus
 }

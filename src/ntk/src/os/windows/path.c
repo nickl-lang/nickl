@@ -8,14 +8,16 @@
 #include "ntk/profiler.h"
 
 i32 nk_getBinaryPath(char *buf, usize size) {
-    NK_PROF_FUNC_BEGIN();
-    DWORD dwBytesWritten = GetModuleFileName(
-        NULL, // HMODULE hModule
-        buf,  // LPSTR   lpFilename
-        size  // DWORD   nSize
-    );
-    NK_PROF_FUNC_END();
-    return dwBytesWritten > 0 ? (i32)dwBytesWritten : -1;
+    i32 ret;
+    NK_PROF_FUNC() {
+        DWORD dwBytesWritten = GetModuleFileName(
+            NULL, // HMODULE hModule
+            buf,  // LPSTR   lpFilename
+            size  // DWORD   nSize
+        );
+        ret = dwBytesWritten > 0 ? (i32)dwBytesWritten : -1;
+    }
+    return ret;
 }
 
 i32 nk_fullPath(char *buf, char const *path) {

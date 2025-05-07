@@ -1,0 +1,8 @@
+pub proc _entry() i32 {
+@start
+    ret 42
+}
+
+/* @retcode
+42
+@endretcode */

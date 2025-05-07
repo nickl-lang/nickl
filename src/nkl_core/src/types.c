@@ -47,35 +47,33 @@ typedef struct {
 } TypeSearchResult;
 
 static TypeSearchResult getTypeByFingerprint(NklState nkl, ByteArray fp, NklType *backing) {
-    NK_PROF_FUNC_BEGIN();
     NK_LOG_TRC("%s", __func__);
 
     TypeSearchResult res = {0};
+    NK_PROF_FUNC() {
+        nk_mutex_lock(nkl->types.mtx);
 
-    nk_mutex_lock(nkl->types.mtx);
-
-    Type_kv *found = TypeMap_find(&nkl->types.type_map, fp);
-    if (found) {
-        res.type = found->val;
-    } else {
-        if (backing) {
-            res.type = backing;
+        Type_kv *found = TypeMap_find(&nkl->types.type_map, fp);
+        if (found) {
+            res.type = found->val;
         } else {
-            res.type = nk_arena_alloc(&nkl->types.type_arena, sizeof(NklType));
-            *res.type = (NklType){0};
+            if (backing) {
+                res.type = backing;
+            } else {
+                res.type = nk_arena_alloc(&nkl->types.type_arena, sizeof(NklType));
+                *res.type = (NklType){0};
+            }
+            res.inserted = true;
+            res.id = nkl->types.next_id++;
+
+            ByteArray fp_copy;
+            nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &fp_copy, fp);
+
+            TypeMap_insert(&nkl->types.type_map, (Type_kv){fp_copy, res.type});
         }
-        res.inserted = true;
-        res.id = nkl->types.next_id++;
 
-        ByteArray fp_copy;
-        nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &fp_copy, fp);
-
-        TypeMap_insert(&nkl->types.type_map, (Type_kv){fp_copy, res.type});
+        nk_mutex_unlock(nkl->types.mtx);
     }
-
-    nk_mutex_unlock(nkl->types.mtx);
-
-    NK_PROF_FUNC_END();
     return res;
 }
 

@@ -11,42 +11,44 @@
 NK_LOG_USE_SCOPE(cc_adapter);
 
 NkPipeStream nkcc_streamOpen(NkIrCompilerConfig const conf) {
-    NK_PROF_FUNC_BEGIN();
     NK_LOG_TRC("%s", __func__);
 
-    NkStringBuilder sb = {0};
-
-    nksb_printf(
-        &sb,
-        NKS_FMT " -x c - -o " NKS_FMT " -lm " NKS_FMT,
-        NKS_ARG(conf.compiler_binary),
-        NKS_ARG(conf.output_filename),
-        NKS_ARG(conf.additional_flags));
-
     NkPipeStream src;
-    nk_pipe_streamOpenWrite(&src, (NkString){NKS_INIT(sb)}, conf.quiet);
+    NK_PROF_FUNC() {
+        NkStringBuilder sb = {0};
 
-    nksb_free(&sb);
-    NK_PROF_FUNC_END();
+        nksb_printf(
+            &sb,
+            NKS_FMT " -x c - -o " NKS_FMT " -lm " NKS_FMT,
+            NKS_ARG(conf.compiler_binary),
+            NKS_ARG(conf.output_filename),
+            NKS_ARG(conf.additional_flags));
+
+        nk_pipe_streamOpenWrite(&src, (NkString){NKS_INIT(sb)}, conf.quiet);
+
+        nksb_free(&sb);
+    }
     return src;
 }
 
 int nkcc_streamClose(NkPipeStream *stream) {
-    NK_PROF_FUNC_BEGIN();
     NK_LOG_TRC("%s", __func__);
 
-    int ret = nk_pipe_streamClose(stream);
-    NK_PROF_FUNC_END();
+    int ret;
+    NK_PROF_FUNC() {
+        ret = nk_pipe_streamClose(stream);
+    }
     return ret;
 }
 
 bool nkir_compile(NkIrCompilerConfig const conf, NkIrProg ir, NkIrFunct entry_point) {
-    NK_PROF_FUNC_BEGIN();
     NK_LOG_TRC("%s", __func__);
 
-    NkPipeStream src = nkcc_streamOpen(conf);
-    nkir_translateToC(ir, entry_point, src.stream);
-    int ret = nkcc_streamClose(&src);
-    NK_PROF_FUNC_END();
+    int ret;
+    NK_PROF_FUNC() {
+        NkPipeStream src = nkcc_streamOpen(conf);
+        nkir_translateToC(ir, entry_point, src.stream);
+        ret = nkcc_streamClose(&src);
+    }
     return ret;
 }

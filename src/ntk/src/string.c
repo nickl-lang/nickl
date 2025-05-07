@@ -85,11 +85,41 @@ bool nks_equal(NkString lhs, NkString rhs) {
     return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
 }
 
-bool nks_startsWith(NkString str, NkString pref) {
-    if (pref.size > str.size) {
+bool nks_equalCStr(NkString lhs, char const *rhs) {
+    while (*rhs) {
+        if (lhs.size == 0 || *rhs != *lhs.data) {
+            return false;
+        }
+        lhs.data++;
+        lhs.size--;
+        rhs++;
+    }
+    return lhs.size == 0;
+}
+
+NkString nks_left(NkString str, usize n) {
+    usize const size = nk_minu(str.size, n);
+    return (NkString){str.data, size};
+}
+
+NkString nks_right(NkString str, usize n) {
+    usize const size = nk_minu(str.size, n);
+    return (NkString){str.data + str.size - size, size};
+}
+
+bool nks_startsWith(NkString str, NkString prefix) {
+    if (prefix.size > str.size) {
         return false;
     } else {
-        return nks_equal((NkString){str.data, pref.size}, pref);
+        return nks_equal(nks_left(str, prefix.size), prefix);
+    }
+}
+
+bool nks_endsWith(NkString str, NkString suffix) {
+    if (suffix.size > str.size) {
+        return false;
+    } else {
+        return nks_equal(nks_right(str, suffix.size), suffix);
     }
 }
 
@@ -99,138 +129,139 @@ bool nks_startsWith(NkString str, NkString pref) {
         if (_res < 0) {    \
             return -1;     \
         }                  \
-        res += _res;       \
+        ret += _res;       \
     } while (0)
 
 i32 nks_escape(NkStream out, NkString str) {
-    NK_PROF_FUNC_BEGIN();
-    i32 res = 0;
-    for (usize i = 0; i < str.size; i++) {
-        switch (str.data[i]) {
-            case '\a':
-                WRITE(nk_stream_writeCStr(out, "\\a"));
-                break;
-            case '\b':
-                WRITE(nk_stream_writeCStr(out, "\\b"));
-                break;
-            case '\f':
-                WRITE(nk_stream_writeCStr(out, "\\f"));
-                break;
-            case '\n':
-                WRITE(nk_stream_writeCStr(out, "\\n"));
-                break;
-            case '\r':
-                WRITE(nk_stream_writeCStr(out, "\\r"));
-                break;
-            case '\t':
-                WRITE(nk_stream_writeCStr(out, "\\t"));
-                break;
-            case '\v':
-                WRITE(nk_stream_writeCStr(out, "\\v"));
-                break;
-            case '\0':
-                WRITE(nk_stream_writeCStr(out, "\\0"));
-                break;
-            case '\"':
-                WRITE(nk_stream_writeCStr(out, "\\\""));
-                break;
-            case '\\':
-                WRITE(nk_stream_writeCStr(out, "\\\\"));
-                break;
-            default:
-                if (isprint(str.data[i])) {
-                    WRITE(nk_stream_write(out, &str.data[i], 1));
-                } else {
-                    WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
-                }
-                break;
+    i32 ret = 0;
+    NK_PROF_FUNC() {
+        for (usize i = 0; i < str.size; i++) {
+            switch (str.data[i]) {
+                case '\a':
+                    WRITE(nk_stream_writeCStr(out, "\\a"));
+                    break;
+                case '\b':
+                    WRITE(nk_stream_writeCStr(out, "\\b"));
+                    break;
+                case '\f':
+                    WRITE(nk_stream_writeCStr(out, "\\f"));
+                    break;
+                case '\n':
+                    WRITE(nk_stream_writeCStr(out, "\\n"));
+                    break;
+                case '\r':
+                    WRITE(nk_stream_writeCStr(out, "\\r"));
+                    break;
+                case '\t':
+                    WRITE(nk_stream_writeCStr(out, "\\t"));
+                    break;
+                case '\v':
+                    WRITE(nk_stream_writeCStr(out, "\\v"));
+                    break;
+                case '\0':
+                    WRITE(nk_stream_writeCStr(out, "\\0"));
+                    break;
+                case '\"':
+                    WRITE(nk_stream_writeCStr(out, "\\\""));
+                    break;
+                case '\\':
+                    WRITE(nk_stream_writeCStr(out, "\\\\"));
+                    break;
+                default:
+                    if (isprint(str.data[i])) {
+                        WRITE(nk_stream_write(out, &str.data[i], 1));
+                    } else {
+                        WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+                    }
+                    break;
+            }
         }
     }
-    NK_PROF_FUNC_END();
-    return res;
+    return ret;
 }
 
 i32 nks_unescape(NkStream out, NkString str) {
-    NK_PROF_FUNC_BEGIN();
-    i32 res = 0;
-    for (usize i = 0; i < str.size; i++) {
-        if (str.data[i] == '\\' && i < str.size - 1) {
-            switch (str.data[++i]) {
-                case 'a':
-                    WRITE(nk_stream_writeCStr(out, "\a"));
-                    break;
-                case 'b':
-                    WRITE(nk_stream_writeCStr(out, "\b"));
-                    break;
-                case 'f':
-                    WRITE(nk_stream_writeCStr(out, "\f"));
-                    break;
-                case 'n':
-                    WRITE(nk_stream_writeCStr(out, "\n"));
-                    break;
-                case 'r':
-                    WRITE(nk_stream_writeCStr(out, "\r"));
-                    break;
-                case 't':
-                    WRITE(nk_stream_writeCStr(out, "\t"));
-                    break;
-                case 'v':
-                    WRITE(nk_stream_writeCStr(out, "\v"));
-                    break;
-                case '0':
-                    WRITE(nk_stream_write(out, "\0", 1));
-                    break;
-                default:
-                    WRITE(nk_stream_write(out, &str.data[i], 1));
-                    break;
+    i32 ret = 0;
+    NK_PROF_FUNC() {
+        for (usize i = 0; i < str.size; i++) {
+            if (str.data[i] == '\\' && i < str.size - 1) {
+                switch (str.data[++i]) {
+                    case 'a':
+                        WRITE(nk_stream_writeCStr(out, "\a"));
+                        break;
+                    case 'b':
+                        WRITE(nk_stream_writeCStr(out, "\b"));
+                        break;
+                    case 'f':
+                        WRITE(nk_stream_writeCStr(out, "\f"));
+                        break;
+                    case 'n':
+                        WRITE(nk_stream_writeCStr(out, "\n"));
+                        break;
+                    case 'r':
+                        WRITE(nk_stream_writeCStr(out, "\r"));
+                        break;
+                    case 't':
+                        WRITE(nk_stream_writeCStr(out, "\t"));
+                        break;
+                    case 'v':
+                        WRITE(nk_stream_writeCStr(out, "\v"));
+                        break;
+                    case '0':
+                        WRITE(nk_stream_write(out, "\0", 1));
+                        break;
+                    default:
+                        WRITE(nk_stream_write(out, &str.data[i], 1));
+                        break;
+                }
+            } else {
+                WRITE(nk_stream_write(out, &str.data[i], 1));
             }
-        } else {
-            WRITE(nk_stream_write(out, &str.data[i], 1));
         }
     }
-    NK_PROF_FUNC_END();
-    return res;
+    return ret;
 }
 
 i32 nks_sanitize(NkStream out, NkString str) {
-    NK_PROF_FUNC_BEGIN();
-    i32 res = 0;
-    for (usize i = 0; i < str.size; i++) {
-        if (isprint(str.data[i])) {
-            WRITE(nk_stream_write(out, &str.data[i], 1));
-        } else {
-            WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+    i32 ret = 0;
+    NK_PROF_FUNC() {
+        for (usize i = 0; i < str.size; i++) {
+            if (isprint(str.data[i])) {
+                WRITE(nk_stream_write(out, &str.data[i], 1));
+            } else {
+                WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+            }
         }
     }
-    NK_PROF_FUNC_END();
-    return res;
+    return ret;
 }
 
-char const *nk_tprintf(NkArena *tmp_arena, char const *fmt, ...) {
+char const *nk_tprintf(NkArena *arena, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    char const *str = nk_vtprintf(tmp_arena, fmt, ap);
+    char const *str = nk_vtprintf(arena, fmt, ap);
     va_end(ap);
 
     return str;
 }
 
-char const *nk_vtprintf(NkArena *tmp_arena, char const *fmt, va_list ap) {
-    return nk_vtsprintf(tmp_arena, fmt, ap).data;
+char const *nk_vtprintf(NkArena *arena, char const *fmt, va_list ap) {
+    return nk_vtsprintf(arena, fmt, ap).data;
 }
 
-NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *tmp_arena, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *arena, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    NkString str = nk_vtsprintf(tmp_arena, fmt, ap);
+    NkString str = nk_vtsprintf(arena, fmt, ap);
     va_end(ap);
 
     return str;
 }
 
-NkString nk_vtsprintf(NkArena *tmp_arena, char const *fmt, va_list ap) {
-    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(tmp_arena))};
+NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap) {
+    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(arena))};
     nksb_vprintf(&sb, fmt, ap);
     nksb_appendNull(&sb);
+    nk_arena_pop(arena, sb.capacity - sb.size);
     return (NkString){sb.data, sb.size - 1};
 }
