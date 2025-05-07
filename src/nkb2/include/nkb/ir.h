@@ -1,0 +1,291 @@
+#include "ntk/allocator.h"
+#include "ntk/arena.h"
+#include "ntk/atom.h"
+#include "ntk/common.h"
+#include "ntk/stream.h"
+#include "ntk/string.h"
+
+/// Instrs
+
+// nop
+
+// ret arg
+
+// jmp         %label
+// jmpz  cond, %label
+// jmpnz cond, %label
+
+// call proc, (args, ...) -> dst
+
+// store ptr, src
+// load  ptr -> dst
+
+// alloc $type -> ptr
+
+// mov src -> dst
+
+// ext   src -> dst
+// trunc src -> dst
+// fp2i  src -> dst
+// i2fp  src -> dst
+
+// add lhs, rhs -> dst
+// sub lhs, rhs -> dst
+// mul lhs, rhs -> dst
+// div lhs, rhs -> dst
+// mod lhs, rhs -> dst
+
+// and lhs, rhs -> dst
+// or  lhs, rhs -> dst
+// xor lhs, rhs -> dst
+// lsh lhs, rhs -> dst
+// rsh lhs, rhs -> dst
+
+// cmp eq lhs, rhs -> dst
+// cmp ne lhs, rhs -> dst
+// cmp lt lhs, rhs -> dst
+// cmp le lhs, rhs -> dst
+// cmp gt lhs, rhs -> dst
+// cmp ge lhs, rhs -> dst
+
+// label %label
+
+// file "str"
+// line idx
+// comment "str"
+
+/// Common
+
+// i8 u8 i16 u16 i32 u32 i64 u64
+// f32 f64
+// Aggregate
+// Union
+typedef struct NkIrType_T *NkIrType;
+
+typedef enum {
+    NkIrRef_None = 0,
+
+    NkIrRef_Local,
+    NkIrRef_Param,
+    NkIrRef_Global,
+    NkIrRef_Imm,
+
+    NkIrRef_VariadicMarker,
+} NkIrRefKind;
+
+typedef union {
+    i8 i8;
+    u8 u8;
+    i16 i16;
+    u16 u16;
+    i32 i32;
+    u32 u32;
+    i64 i64;
+    u64 u64;
+    f32 f32;
+    f64 f64;
+} NkIrImm;
+
+typedef struct {
+    union {
+        NkAtom sym;  // Local, Param, Global
+        NkIrImm imm; // Imm
+    };
+    NkIrType type;
+    NkIrRefKind kind;
+} NkIrRef;
+
+typedef enum {
+    NkIrArg_None = 0,
+
+    NkIrArg_Ref,
+    NkIrArg_RefArray,
+    NkIrArg_Label,
+    NkIrArg_RelLabel,
+    NkIrArg_Type,
+    NkIrArg_File,
+    NkIrArg_Line,
+    NkIrArg_Comment,
+} NkIrArgKind;
+
+typedef struct {
+    NkIrRef const *data;
+    usize size;
+} NkIrRefArray;
+
+typedef struct {
+    union {
+        NkIrRef ref;       // Ref
+        NkIrRefArray refs; // RefArray
+        struct {
+            NkAtom name;  // Label
+            isize offset; // RelLabel
+        } label;
+        NkIrType type; // Type
+        NkString str;  // File, Comment
+        u32 idx;       // Line
+    };
+    NkIrArgKind kind;
+} NkIrArg;
+
+typedef struct {
+    NkIrArg arg[3];
+    u8 code;
+} NkIrInstr;
+
+typedef enum {
+    NkIrVisibility_Hidden = 0,
+    NkIrVisibility_Default,
+    NkIrVisibility_Protected,
+    NkIrVisibility_Internal,
+    NkIrVisibility_Local,
+} NkIrVisibility;
+
+typedef struct {
+    NkIrInstr const *data;
+    usize size;
+} NkIrInstrArray;
+
+typedef struct {
+    NkIrInstr *data;
+    usize size;
+    usize capacity;
+    NkAllocator alloc;
+} NkIrInstrDynArray;
+
+typedef enum {
+    NkIrSymbol_Extern,
+    NkIrSymbol_Data,
+    NkIrSymbol_Proc,
+} NkIrSymbolKind;
+
+typedef struct {
+    NkIrType type;
+    void *addr;
+} NkIrExtern;
+
+typedef struct {
+    NkAtom sym;
+    usize offset;
+} NkIrReloc;
+
+typedef struct {
+    NkIrReloc const *data;
+    usize size;
+} NkIrRelocArray;
+
+typedef struct {
+    NkIrType type;
+    NkIrRelocArray relocs;
+    void *addr;
+    bool read_only;
+} NkIrData;
+
+typedef enum {
+    NkIrProc_Variadic = 1 << 0,
+} NkIrProcFlags;
+
+typedef struct {
+    NkAtom name;
+    NkIrType type;
+} NkIrParam;
+
+typedef struct {
+    NkIrParam const *data;
+    usize size;
+} NkIrParamArray;
+
+typedef struct {
+    NkIrParamArray params;
+    NkIrType ret_type;
+    NkIrInstrArray instrs;
+    NkString file;
+    u32 line;
+    NkIrProcFlags flags;
+} NkIrProc;
+
+typedef enum {
+    NkIrSymbol_ThreadLocal = 1 << 0,
+} NkIrSymbolFlags;
+
+typedef struct {
+    union {
+        NkIrExtern extrn; // Extern
+        NkIrData data;    // Data
+        NkIrProc proc;    // Proc
+    };
+    NkAtom name;
+    NkIrVisibility vis;
+    NkIrSymbolKind kind;
+    NkIrSymbolFlags flags;
+} NkIrSymbol;
+
+typedef struct {
+    NkIrSymbol const *data;
+    usize size;
+} NkIrSymbolArray;
+
+typedef NkIrSymbolArray NkIrModule;
+
+/// Main
+
+void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
+
+/// Refs
+
+NkIrRef nkir_makeRefLocal(NkAtom sym, NkIrType type);
+NkIrRef nkir_makeRefParam(NkAtom sym, NkIrType type);
+NkIrRef nkir_makeRefGlobal(NkAtom sym, NkIrType type);
+NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
+
+/// Codegen
+
+NkIrInstr nkir_make_nop();
+
+NkIrInstr nkir_make_ret(NkIrRef arg);
+
+NkIrInstr nkir_make_jmp(NkAtom label);
+NkIrInstr nkir_make_jmpz(NkIrRef cond, NkAtom label);
+NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkAtom label);
+
+NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
+
+NkIrInstr nkir_make_store(NkIrRef ptr, NkIrRef src);
+NkIrInstr nkir_make_load(NkIrRef dst, NkIrRef ptr);
+
+NkIrInstr nkir_make_alloc(NkIrRef ptr, NkIrType type);
+
+#define UNA_IR(NAME) NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg);
+#define BIN_IR(NAME) NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+#define DBL_IR(NAME1, NAME2) NkIrInstr nkir_make_##NAME1##_##NAME2(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+// #include "nkb/ir.inl"
+
+NkIrInstr nkir_make_label(NkAtom label);
+
+NkIrInstr nkir_make_file(NkString file);
+NkIrInstr nkir_make_line(u32 line);
+NkIrInstr nkir_make_comment(NkString comment);
+
+/// Output
+
+void nkir_exportModule(NkIrModule m, NkString path /*, c_compiler_config */);
+
+/// Execution
+
+typedef struct NkIrRunCtx_T *NkIrRunCtx;
+
+NkIrRunCtx nkir_createRunCtx(NkIrModule *m, NkArena *arena);
+
+bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
+
+/// Inspection
+
+void nkir_inspectModule(NkIrModule m, NkStream out);
+void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out);
+void nkir_inspectInstr(NkIrInstr instr, NkStream out);
+void nkir_inspectRef(NkIrRef ref, NkStream out);
+
+/// Validation
+
+bool nkir_validateModule(NkIrModule m);
+bool nkir_validateProc(NkIrProc const *proc);

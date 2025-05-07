@@ -22,6 +22,7 @@ typedef float f32;
 typedef double f64;
 
 typedef size_t usize;
+typedef i64 isize;
 
 #ifdef _WIN32
 #define NK_EXPORT __declspec(dllexport)
