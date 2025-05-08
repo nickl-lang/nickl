@@ -1,16 +1,20 @@
 #include "nkl/core/nickl.h"
 
+#include "nkb/ir.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
+#include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/slice.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -27,6 +31,7 @@ typedef struct NklCompiler_T {
 
 typedef struct NklModule_T {
     NklCompiler c;
+    NkIrSymbolDynArray ir;
 } NklModule_T;
 
 static void vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap) {
@@ -120,6 +125,7 @@ NklModule nkl_newModule(NklCompiler c) {
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
         .c = c,
+        .ir = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))},
     };
     return mod;
 }
@@ -281,6 +287,73 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
             NKS_FMT,
             NKS_ARG(lex_error));
         return false;
+    }
+
+    { // TODO: Dummy IR
+      // TODO: Add ir types
+        NkIrType const i8_t = NULL;
+        NkIrType const i32_t = NULL;
+        NkIrType const i64_t = NULL;
+        NkIrType const ptr_t = i64_t;
+        NkIrType const hello_t = NULL;
+
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .data =
+                    {
+                        .type = hello_t,
+                        .relocs = {0},
+                        .addr = "Hello, World!\n",
+                        .flags = NkIrData_ReadOnly,
+                    },
+                .name = nk_cs2atom("hello"),
+                .vis = NkIrVisibility_Local,
+                .flags = 0,
+                .kind = NkIrSymbol_Data,
+            }));
+
+        NkDynArray(NkIrInstr) main_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+
+        // @start
+        nkda_append(&main_instrs, nkir_make_label(nk_cs2atom("start")));
+
+        // call printf, ("Hello, World!", ...)
+        NkIrRef const printf_args[] = {
+            nkir_makeRefGlobal(nk_cs2atom("hello"), ptr_t),
+            nkir_makeVariadicMarker(),
+        };
+        nkda_append(
+            &main_instrs,
+            nkir_make_call(
+                nkir_makeRefNull(i32_t),
+                nkir_makeRefGlobal(nk_cs2atom("printf"), ptr_t),
+                (NkIrRefArray){printf_args, NK_ARRAY_COUNT(printf_args)}));
+
+        // ret 0
+        nkda_append(&main_instrs, nkir_make_ret(nkir_makeRefImm((NkIrImm){.i32 = 0}, i32_t)));
+
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {0},
+                        .ret_type = i32_t,
+                        .instrs = {NK_SLICE_INIT(main_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("main"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkStringBuilder sb = {NKSB_INIT(nk_arena_getAllocator(&nkl->arena))};
+        nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, nksb_getStream(&sb));
+        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
 
     reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");

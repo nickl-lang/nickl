@@ -24,6 +24,7 @@ typedef struct NkIrType_T *NkIrType;
 typedef enum {
     NkIrRef_None = 0,
 
+    NkIrRef_Null,
     NkIrRef_Local,
     NkIrRef_Param,
     NkIrRef_Global,
@@ -110,11 +111,15 @@ typedef struct {
 
 typedef NkSlice(NkIrReloc const) NkIrRelocArray;
 
+typedef enum {
+    NkIrData_ReadOnly = 1 << 0,
+} NkIrDataFlags;
+
 typedef struct {
     NkIrType type;
     NkIrRelocArray relocs;
     void *addr;
-    bool read_only;
+    NkIrDataFlags flags;
 } NkIrData;
 
 typedef struct {
@@ -161,7 +166,10 @@ typedef struct {
     NkIrSymbolKind kind;
 } NkIrSymbol;
 
-typedef NkSlice(NkIrSymbol) NkIrModule;
+typedef NkSlice(NkIrSymbol const) NkIrSymbolArray;
+typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
+
+typedef NkIrSymbolArray NkIrModule;
 
 /// Main
 
@@ -169,10 +177,13 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
 /// Refs
 
+NkIrRef nkir_makeRefNull(NkIrType type);
 NkIrRef nkir_makeRefLocal(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefParam(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefGlobal(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
+
+NkIrRef nkir_makeVariadicMarker();
 
 /// Codegen
 

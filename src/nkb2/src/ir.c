@@ -59,6 +59,13 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out) {
     nk_assert(!"TODO: `nkir_convertToPic` not implemented");
 }
 
+NkIrRef nkir_makeRefNull(NkIrType type) {
+    return (NkIrRef){
+        .type = type,
+        .kind = NkIrRef_Null,
+    };
+}
+
 NkIrRef nkir_makeRefLocal(NkAtom sym, NkIrType type) {
     return (NkIrRef){
         .sym = sym,
@@ -88,6 +95,12 @@ NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type) {
         .imm = imm,
         .type = type,
         .kind = NkIrRef_Imm,
+    };
+}
+
+NkIrRef nkir_makeVariadicMarker() {
+    return (NkIrRef){
+        .kind = NkIrRef_VariadicMarker,
     };
 }
 
