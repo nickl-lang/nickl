@@ -1,6 +1,7 @@
 #include "nkl/core/nickl.h"
 
 #include "nkb/ir.h"
+#include "nkb/types.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
@@ -290,19 +291,28 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     }
 
     { // TODO: Dummy IR
-      // TODO: Add ir types
-        NkIrType const i8_t = NULL;
-        NkIrType const i32_t = NULL;
-        NkIrType const i64_t = NULL;
-        NkIrType const ptr_t = i64_t;
-        NkIrType const hello_t = NULL;
+        NkIrType_T const i8_t = {.num = Int8, .size = 1, .align = 1, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const i32_t = {.num = Int32, .size = 4, .align = 4, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const i64_t = {.num = Int64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const ptr_t = i64_t;
+
+        NkIrAggregateElemInfo const hello_str_elems[] = {
+            {.type = &i8_t, .count = 14, .offset = 0},
+        };
+        NkIrType_T const hello_str_t = {
+            .aggr = {hello_str_elems, NK_ARRAY_COUNT(hello_str_elems)},
+            .size = 14,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
 
         nkda_append(
             &mod->ir,
             ((NkIrSymbol){
                 .data =
                     {
-                        .type = hello_t,
+                        .type = &hello_str_t,
                         .relocs = {0},
                         .addr = "Hello, World!\n",
                         .flags = NkIrData_ReadOnly,
@@ -320,18 +330,18 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 
         // call printf, ("Hello, World!", ...)
         NkIrRef const printf_args[] = {
-            nkir_makeRefGlobal(nk_cs2atom("hello"), ptr_t),
+            nkir_makeRefGlobal(nk_cs2atom("hello"), &ptr_t),
             nkir_makeVariadicMarker(),
         };
         nkda_append(
             &main_instrs,
             nkir_make_call(
-                nkir_makeRefNull(i32_t),
-                nkir_makeRefGlobal(nk_cs2atom("printf"), ptr_t),
+                nkir_makeRefNull(&i32_t),
+                nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
                 (NkIrRefArray){printf_args, NK_ARRAY_COUNT(printf_args)}));
 
         // ret 0
-        nkda_append(&main_instrs, nkir_make_ret(nkir_makeRefImm((NkIrImm){.i32 = 0}, i32_t)));
+        nkda_append(&main_instrs, nkir_make_ret(nkir_makeRefImm((NkIrImm){.i32 = 0}, &i32_t)));
 
         nkda_append(
             &mod->ir,
@@ -339,7 +349,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .proc =
                     {
                         .params = {0},
-                        .ret_type = i32_t,
+                        .ret_type = &i32_t,
                         .instrs = {NK_SLICE_INIT(main_instrs)},
                         .file = {0},
                         .line = 0,

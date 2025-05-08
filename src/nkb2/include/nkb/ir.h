@@ -1,3 +1,7 @@
+#ifndef NKB_IR_H_
+#define NKB_IR_H_
+
+#include "nkb/types.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
@@ -5,6 +9,10 @@
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /// Instrs
 
@@ -14,12 +22,6 @@ enum {
 };
 
 /// Common
-
-// i8 u8 i16 u16 i32 u32 i64 u64
-// f32 f64
-// Aggregate
-// Union
-typedef struct NkIrType_T *NkIrType;
 
 typedef enum {
     NkIrRef_None = 0,
@@ -237,3 +239,9 @@ void nkir_inspectRef(NkIrRef ref, NkStream out);
 
 bool nkir_validateModule(NkIrModule m);
 bool nkir_validateProc(NkIrProc const *proc);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NKB_IR_H_
