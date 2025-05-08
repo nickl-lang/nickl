@@ -1,4 +1,3 @@
-#include "ntk/allocator.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
@@ -9,52 +8,10 @@
 
 /// Instrs
 
-// nop
-
-// ret arg
-
-// jmp         %label
-// jmpz  cond, %label
-// jmpnz cond, %label
-
-// call proc, (args, ...) -> dst
-
-// store ptr, src
-// load  ptr -> dst
-
-// alloc $type -> ptr
-
-// mov src -> dst
-
-// ext   src -> dst
-// trunc src -> dst
-// fp2i  src -> dst
-// i2fp  src -> dst
-
-// add lhs, rhs -> dst
-// sub lhs, rhs -> dst
-// mul lhs, rhs -> dst
-// div lhs, rhs -> dst
-// mod lhs, rhs -> dst
-
-// and lhs, rhs -> dst
-// or  lhs, rhs -> dst
-// xor lhs, rhs -> dst
-// lsh lhs, rhs -> dst
-// rsh lhs, rhs -> dst
-
-// cmp eq lhs, rhs -> dst
-// cmp ne lhs, rhs -> dst
-// cmp lt lhs, rhs -> dst
-// cmp le lhs, rhs -> dst
-// cmp gt lhs, rhs -> dst
-// cmp ge lhs, rhs -> dst
-
-// label %label
-
-// file "str"
-// line idx
-// comment "str"
+enum {
+#define IR(NAME) NK_CAT(NkIrOp_, NAME),
+#include "nkb/ir.inl"
+};
 
 /// Common
 
@@ -105,9 +62,8 @@ typedef enum {
     NkIrArg_Label,
     NkIrArg_RelLabel,
     NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
-    NkIrArg_File,
-    NkIrArg_Line,
-    NkIrArg_Comment,
+    NkIrArg_String,
+    NkIrArg_Idx,
 } NkIrArgKind;
 
 typedef NkSlice(NkIrRef const) NkIrRefArray;
@@ -121,8 +77,8 @@ typedef struct {
             i32 offset;  // RelLabel
         } label;
         NkIrType type; // Type
-        NkString str;  // File, Comment
-        u32 idx;       // Line
+        NkString str;  // String
+        u32 idx;       // Idx
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -161,16 +117,16 @@ typedef struct {
     bool read_only;
 } NkIrData;
 
-typedef enum {
-    NkIrProc_Variadic = 1 << 0,
-} NkIrProcFlags;
-
 typedef struct {
     NkAtom name;
     NkIrType type;
 } NkIrParam;
 
 typedef NkSlice(NkIrParam const) NkIrParamArray;
+
+typedef enum {
+    NkIrProc_Variadic = 1 << 0,
+} NkIrProcFlags;
 
 typedef struct {
     NkIrParamArray params;
@@ -235,10 +191,11 @@ NkIrInstr nkir_make_load(NkIrRef dst, NkIrRef ptr);
 
 NkIrInstr nkir_make_alloc(NkIrRef ptr, NkIrType type);
 
-#define UNA_IR(NAME) NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef arg);
-#define BIN_IR(NAME) NkIrInstr nkir_make_##NAME(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-#define DBL_IR(NAME1, NAME2) NkIrInstr nkir_make_##NAME1##_##NAME2(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
-// #include "nkb/ir.inl"
+#define UNA_IR(NAME) NkIrInstr NK_CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg);
+#define BIN_IR(NAME) NkIrInstr NK_CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+#define DBL_IR(NAME1, NAME2) \
+    NkIrInstr NK_CAT(nkir_make_, NK_CAT(NAME1, NK_CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
+#include "nkb/ir.inl"
 
 NkIrInstr nkir_make_label(NkAtom label);
 
