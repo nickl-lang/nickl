@@ -291,6 +291,8 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     }
 
     { // TODO: Dummy IR
+        NkIrType_T const void_t = {.aggr = {0}, .size = 0, .align = 1, .id = 0, .kind = NkIrType_Aggregate};
+
         NkIrType_T const i8_t = {.num = Int8, .size = 1, .align = 1, .id = 0, .kind = NkIrType_Numeric};
         NkIrType_T const i32_t = {.num = Int32, .size = 4, .align = 4, .id = 0, .kind = NkIrType_Numeric};
         NkIrType_T const i64_t = {.num = Int64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
@@ -306,7 +308,6 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
             .id = 0,
             .kind = NkIrType_Aggregate,
         };
-
         nkda_append(
             &mod->ir,
             ((NkIrSymbol){
@@ -340,6 +341,9 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
                 (NkIrRefArray){printf_args, NK_ARRAY_COUNT(printf_args)}));
 
+        // // This is a comment...
+        nkda_append(&main_instrs, nkir_make_comment(nk_cs2s("This is a comment...")));
+
         // ret 0
         nkda_append(&main_instrs, nkir_make_ret(nkir_makeRefImm((NkIrImm){.i32 = 0}, &i32_t)));
 
@@ -356,6 +360,137 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                         .flags = 0,
                     },
                 .name = nk_cs2atom("main"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkDynArray(NkIrInstr) plus_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+
+        // @start
+        nkda_append(&plus_instrs, nkir_make_label(nk_cs2atom("start")));
+
+        // add a, b -> tmp:i64
+        nkda_append(
+            &plus_instrs,
+            nkir_make_add(
+                nkir_makeRefLocal(nk_cs2atom("tmp"), &i64_t),
+                nkir_makeRefParam(nk_cs2atom("a"), &i64_t),
+                nkir_makeRefParam(nk_cs2atom("b"), &i64_t)));
+
+        // ret tmp:i64
+        nkda_append(&plus_instrs, nkir_make_ret(nkir_makeRefLocal(nk_cs2atom("tmp"), &i64_t)));
+
+        NkIrParam plus_params[] = {
+            {.name = nk_cs2atom("a"), .type = &i64_t},
+            {.name = nk_cs2atom("b"), .type = &i64_t},
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {plus_params, NK_ARRAY_COUNT(plus_params)},
+                        .ret_type = &i64_t,
+                        .instrs = {NK_SLICE_INIT(plus_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("plus"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkIrAggregateElemInfo const fmt_str_elems[] = {
+            {.type = &i8_t, .count = 4, .offset = 0},
+        };
+        NkIrType_T const fmt_str_t = {
+            .aggr = {fmt_str_elems, NK_ARRAY_COUNT(fmt_str_elems)},
+            .size = 4,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .data =
+                    {
+                        .type = &fmt_str_t,
+                        .relocs = {0},
+                        .addr = "%zi\n",
+                        .flags = NkIrData_ReadOnly,
+                    },
+                .name = nk_cs2atom("fmt"),
+                .vis = NkIrVisibility_Local,
+                .flags = 0,
+                .kind = NkIrSymbol_Data,
+            }));
+
+        NkDynArray(NkIrInstr) loop_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+
+        // @loop
+        nkda_append(&loop_instrs, nkir_make_label(nk_cs2atom("loop")));
+
+        // cmp lt i, 5 -> cond
+        nkda_append(
+            &loop_instrs,
+            nkir_make_cmp_lt(
+                nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t),
+                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+                nkir_makeRefImm((NkIrImm){.i64 = 5}, &i64_t)));
+
+        // jmpz cond, @endloop
+        nkda_append(&loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), nk_cs2atom("endloop")));
+
+        // call printf, ("%zi\n", ..., i)
+        NkIrRef const printf_args2[] = {
+            nkir_makeRefGlobal(nk_cs2atom("fmt"), &ptr_t),
+            nkir_makeVariadicMarker(),
+            nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+        };
+        nkda_append(
+            &loop_instrs,
+            nkir_make_call(
+                nkir_makeRefNull(&i32_t),
+                nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
+                (NkIrRefArray){printf_args2, NK_ARRAY_COUNT(printf_args2)}));
+
+        // // This is another comment...
+        nkda_append(&loop_instrs, nkir_make_comment(nk_cs2s("This is another comment...")));
+
+        // add i, 1 -> i
+        nkda_append(
+            &loop_instrs,
+            nkir_make_add(
+                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+                nkir_makeRefImm((NkIrImm){.i64 = 1}, &i64_t)));
+
+        // jmp @loop
+        nkda_append(&loop_instrs, nkir_make_jmp(nk_cs2atom("loop")));
+
+        // @endloop
+        nkda_append(&loop_instrs, nkir_make_label(nk_cs2atom("endloop")));
+
+        // ret
+        nkda_append(&loop_instrs, nkir_make_ret((NkIrRef){0}));
+
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {0},
+                        .ret_type = &void_t,
+                        .instrs = {NK_SLICE_INIT(loop_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("loop"),
                 .vis = NkIrVisibility_Default,
                 .flags = 0,
                 .kind = NkIrSymbol_Proc,

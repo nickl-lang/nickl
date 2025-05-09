@@ -3,6 +3,7 @@
 
 #include "ntk/common.h"
 #include "ntk/slice.h"
+#include "ntk/stream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,6 +77,9 @@ typedef struct NkIrType_T {
     u32 id;
     NkIrTypeKind kind;
 } NkIrType_T;
+
+void nkir_inspectType(NkIrType type, NkStream out);
+void nkir_inspectVal(void *data, NkIrType type, NkStream out);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,142 @@
+#include "nkb/types.h"
+
+#include <float.h>
+
+#include "ntk/string.h"
+
+void nkir_inspectType(NkIrType type, NkStream out) {
+    if (!type) {
+        nk_stream_printf(out, "(null)");
+        return;
+    }
+    switch (type->kind) {
+        case NkIrType_Union: // TODO: Distinguish unions
+        case NkIrType_Aggregate:
+            if (type->aggr.size) {
+                nk_stream_printf(out, "{");
+                for (usize i = 0; i < type->aggr.size; i++) {
+                    if (i) {
+                        nk_stream_printf(out, ", ");
+                    }
+                    NkIrAggregateElemInfo const *elem = &type->aggr.data[i];
+                    if (elem->count > 1) {
+                        nk_stream_printf(out, "[%" PRIu32 "]", elem->count);
+                    }
+                    nkir_inspectType(elem->type, out);
+                }
+                nk_stream_printf(out, "}");
+            } else {
+                nk_stream_printf(out, "void");
+            }
+            break;
+        case NkIrType_Numeric:
+            switch (type->num) {
+                case Int8:
+                    nk_stream_printf(out, "i8");
+                    break;
+                case Uint8:
+                    nk_stream_printf(out, "u8");
+                    break;
+                case Int16:
+                    nk_stream_printf(out, "i16");
+                    break;
+                case Uint16:
+                    nk_stream_printf(out, "u16");
+                    break;
+                case Int32:
+                    nk_stream_printf(out, "i32");
+                    break;
+                case Uint32:
+                    nk_stream_printf(out, "u32");
+                    break;
+                case Int64:
+                    nk_stream_printf(out, "i64");
+                    break;
+                case Uint64:
+                    nk_stream_printf(out, "u64");
+                    break;
+                case Float32:
+                    nk_stream_printf(out, "f32");
+                    break;
+                case Float64:
+                    nk_stream_printf(out, "f64");
+                    break;
+            }
+            break;
+    }
+}
+
+void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
+    if (!data) {
+        nk_stream_printf(out, "(null)");
+        return;
+    }
+    switch (type->kind) {
+        case NkIrType_Union:
+        case NkIrType_Aggregate:
+            for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
+                NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
+                u8 *ptr = (u8 *)data + elem->offset;
+                if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
+                    nk_stream_printf(out, "\"");
+                    nks_escape(out, (NkString){(char const *)ptr, elem->count});
+                    nk_stream_printf(out, "\"");
+                } else {
+                    if (elemi == 0) {
+                        nk_stream_printf(out, "{");
+                    }
+                    if (elem->count) {
+                        nk_stream_printf(out, "[");
+                    }
+                    for (usize i = 0; i < elem->count; i++) {
+                        if (i) {
+                            nk_stream_printf(out, ", ");
+                        }
+                        nkir_inspectVal(ptr, elem->type, out);
+                        ptr += elem->type->size;
+                    }
+                    if (elem->count) {
+                        nk_stream_printf(out, "]");
+                    }
+                    if (elemi == type->aggr.size - 1) {
+                        nk_stream_printf(out, "}");
+                    }
+                }
+            }
+            break;
+        case NkIrType_Numeric:
+            switch (type->num) {
+                case Int8:
+                    nk_stream_printf(out, "%" PRIi8, *(i8 *)data);
+                    break;
+                case Uint8:
+                    nk_stream_printf(out, "%" PRIu8, *(u8 *)data);
+                    break;
+                case Int16:
+                    nk_stream_printf(out, "%" PRIi16, *(i16 *)data);
+                    break;
+                case Uint16:
+                    nk_stream_printf(out, "%" PRIu16, *(u16 *)data);
+                    break;
+                case Int32:
+                    nk_stream_printf(out, "%" PRIi32, *(i32 *)data);
+                    break;
+                case Uint32:
+                    nk_stream_printf(out, "%" PRIu32, *(u32 *)data);
+                    break;
+                case Int64:
+                    nk_stream_printf(out, "%" PRIi64, *(i64 *)data);
+                    break;
+                case Uint64:
+                    nk_stream_printf(out, "%" PRIu64, *(u64 *)data);
+                    break;
+                case Float32:
+                    nk_stream_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
+                    break;
+                case Float64:
+                    nk_stream_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
+                    break;
+            }
+            break;
+    }
+}

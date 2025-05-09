@@ -2,6 +2,7 @@ set(LIB nkb2)
 
 add_library(${LIB}
     src/ir.c
+    src/types.c
     )
 
 target_include_directories(${LIB}
