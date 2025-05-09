@@ -296,6 +296,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         NkIrType_T const i8_t = {.num = Int8, .size = 1, .align = 1, .id = 0, .kind = NkIrType_Numeric};
         NkIrType_T const i32_t = {.num = Int32, .size = 4, .align = 4, .id = 0, .kind = NkIrType_Numeric};
         NkIrType_T const i64_t = {.num = Int64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const f64_t = {.num = Float64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
         NkIrType_T const ptr_t = i64_t;
 
         NkIrAggregateElemInfo const hello_str_elems[] = {
@@ -491,6 +492,47 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                         .flags = 0,
                     },
                 .name = nk_cs2atom("loop"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkIrAggregateElemInfo const vec2_elems[] = {
+            {.type = &f64_t, .count = 2, .offset = 0},
+        };
+        NkIrType_T const vec2_t = {
+            .aggr = {vec2_elems, NK_ARRAY_COUNT(vec2_elems)},
+            .size = 16,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
+
+        NkDynArray(NkIrInstr) makeVec2_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+
+        // @start
+        nkda_append(&makeVec2_instrs, nkir_make_label(nk_cs2atom("start")));
+
+        // ret
+        nkda_append(&makeVec2_instrs, nkir_make_ret((NkIrRef){0}));
+
+        NkIrParam makeVec2_params[] = {
+            {.name = nk_cs2atom("x"), .type = &f64_t},
+            {.name = nk_cs2atom("y"), .type = &f64_t},
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {makeVec2_params, NK_ARRAY_COUNT(makeVec2_params)},
+                        .ret_type = &vec2_t,
+                        .instrs = {NK_SLICE_INIT(makeVec2_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("makeVec2"),
                 .vis = NkIrVisibility_Default,
                 .flags = 0,
                 .kind = NkIrSymbol_Proc,

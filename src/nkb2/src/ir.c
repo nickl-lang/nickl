@@ -396,7 +396,7 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
                 }
                 NkIrParam const *param = &sym->proc.params.data[i];
                 if (param->name) {
-                    nk_stream_printf(out, "%s: ", nk_atom2cs(param->name));
+                    nk_stream_printf(out, "%%%s: ", nk_atom2cs(param->name));
                 }
                 nkir_inspectType(param->type, out);
             }
@@ -437,6 +437,9 @@ void nkir_inspectRef(NkIrRef ref, NkStream out) {
 
         case NkIrRef_Local:
         case NkIrRef_Param:
+            nk_stream_printf(out, "%%%s", nk_atom2cs(ref.sym));
+            break;
+
         case NkIrRef_Global:
             nk_stream_printf(out, "%s", nk_atom2cs(ref.sym));
             break;
