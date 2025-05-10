@@ -36,7 +36,8 @@
                     if (KeyEqualFunc(*key, *existing_key)) {                                                \
                         return NK_LITERAL(_##TTree##_SearchResult){node, true};                             \
                     }                                                                                       \
-                } /*fallthrough*/                                                                           \
+                    [[fallthrough]];                                                                        \
+                }                                                                                           \
                 case -1:                                                                                    \
                     node = (*node)->child + 0;                                                              \
                     break;                                                                                  \

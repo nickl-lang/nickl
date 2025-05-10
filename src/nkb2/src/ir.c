@@ -325,7 +325,7 @@ static void inspectInstrImpl(NkIrInstr instr, NkStream out, usize idx) {
                 break;
 
             case NkIrArg_RelLabel:
-                nk_stream_printf(out, "<TODO:NkIrArg_RelLabel>");
+                nk_stream_printf(out, "@%s:%i", nk_atom2cs(arg->label.name), arg->label.offset);
                 break;
 
             case NkIrArg_Type:

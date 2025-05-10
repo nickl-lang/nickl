@@ -10,7 +10,6 @@ void nkir_inspectType(NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
-        case NkIrType_Union: // TODO: Distinguish unions
         case NkIrType_Aggregate:
             if (type->aggr.size) {
                 nk_stream_printf(out, "{");
@@ -23,6 +22,7 @@ void nkir_inspectType(NkIrType type, NkStream out) {
                         nk_stream_printf(out, "[%" PRIu32 "]", elem->count);
                     }
                     nkir_inspectType(elem->type, out);
+                    nk_stream_printf(out, "@%" PRIu32, elem->offset);
                 }
                 nk_stream_printf(out, "}");
             } else {
@@ -72,7 +72,6 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
-        case NkIrType_Union:
         case NkIrType_Aggregate:
             for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
                 NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
