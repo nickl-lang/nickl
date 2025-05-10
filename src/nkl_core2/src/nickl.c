@@ -300,11 +300,11 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         NkIrType_T const ptr_t = i64_t;
 
         NkIrAggregateElemInfo const hello_str_elems[] = {
-            {.type = &i8_t, .count = 14, .offset = 0},
+            {.type = &i8_t, .count = 15, .offset = 0},
         };
         NkIrType_T const hello_str_t = {
             .aggr = {hello_str_elems, NK_ARRAY_COUNT(hello_str_elems)},
-            .size = 14,
+            .size = 15,
             .align = 1,
             .id = 0,
             .kind = NkIrType_Aggregate,
@@ -405,11 +405,11 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
             }));
 
         NkIrAggregateElemInfo const fmt_str_elems[] = {
-            {.type = &i8_t, .count = 4, .offset = 0},
+            {.type = &i8_t, .count = 5, .offset = 0},
         };
         NkIrType_T const fmt_str_t = {
             .aggr = {fmt_str_elems, NK_ARRAY_COUNT(fmt_str_elems)},
-            .size = 4,
+            .size = 5,
             .align = 1,
             .id = 0,
             .kind = NkIrType_Aggregate,
@@ -513,8 +513,30 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         // @start
         nkda_append(&makeVec2_instrs, nkir_make_label(nk_cs2atom("start")));
 
+        // alloc :vec2 -> %vec:i64
+        nkda_append(&makeVec2_instrs, nkir_make_alloc(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t), &vec2_t));
+
+        // store %vec, %x
+        nkda_append(
+            &makeVec2_instrs,
+            nkir_make_store(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t), nkir_makeRefParam(nk_cs2atom("x"), &f64_t)));
+
+        // add %vec:i64, 8:i64 -> %y_addr:i64
+        nkda_append(
+            &makeVec2_instrs,
+            nkir_make_add(
+                nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t),
+                nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t),
+                nkir_makeRefImm((NkIrImm){.i64 = 8}, &i64_t)));
+
+        // store %vec, %x
+        nkda_append(
+            &makeVec2_instrs,
+            nkir_make_store(
+                nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t), nkir_makeRefParam(nk_cs2atom("y"), &f64_t)));
+
         // ret
-        nkda_append(&makeVec2_instrs, nkir_make_ret((NkIrRef){0}));
+        nkda_append(&makeVec2_instrs, nkir_make_ret(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t)));
 
         NkIrParam makeVec2_params[] = {
             {.name = nk_cs2atom("x"), .type = &f64_t},

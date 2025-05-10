@@ -202,7 +202,7 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 NkIrInstr nkir_make_store(NkIrRef ptr, NkIrRef src);
 NkIrInstr nkir_make_load(NkIrRef dst, NkIrRef ptr);
 
-NkIrInstr nkir_make_alloc(NkIrRef ptr, NkIrType type);
+NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type);
 
 #define UNA_IR(NAME) NkIrInstr NK_CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef arg);
 #define BIN_IR(NAME) NkIrInstr NK_CAT(nkir_make_, NAME)(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);

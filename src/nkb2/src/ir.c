@@ -163,9 +163,9 @@ NkIrInstr nkir_make_load(NkIrRef dst, NkIrRef ptr) {
     };
 }
 
-NkIrInstr nkir_make_alloc(NkIrRef ptr, NkIrType type) {
+NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type) {
     return (NkIrInstr){
-        .arg = {argRef(ptr), argType(type), argNull()},
+        .arg = {argRef(dst), argType(type), argNull()},
         .code = NkIrOp_alloc,
     };
 }
@@ -329,6 +329,7 @@ static void inspectInstrImpl(NkIrInstr instr, NkStream out, usize idx) {
                 break;
 
             case NkIrArg_Type:
+                nk_stream_printf(out, ":");
                 nkir_inspectType(arg->type, out);
                 break;
 

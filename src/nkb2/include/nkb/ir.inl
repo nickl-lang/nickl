@@ -31,7 +31,7 @@ IR(call) // call proc, (args, ...) -> dst
 IR(store) // store ptr, src
 IR(load)  // load  ptr -> dst
 
-IR(alloc) // alloc $type -> ptr
+IR(alloc) // alloc $type -> dst
 
 UNA_IR(mov) // mov src -> dst
 
