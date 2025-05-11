@@ -100,7 +100,6 @@ typedef enum {
 
 // TODO: NkIrExtern will probably only be used in bytecode translation, think whether we need it as a symbol.
 typedef struct {
-    NkIrType type;
     void *addr;
 } NkIrExtern;
 
@@ -197,7 +196,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkAtom label);
 
 NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
-NkIrInstr nkir_make_store(NkIrRef ptr, NkIrRef src);
+NkIrInstr nkir_make_store(NkIrRef dst, NkIrRef src);
 NkIrInstr nkir_make_load(NkIrRef dst, NkIrRef ptr);
 
 NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type);

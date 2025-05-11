@@ -195,9 +195,9 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args) {
     };
 }
 
-NkIrInstr nkir_make_store(NkIrRef ptr, NkIrRef src) {
+NkIrInstr nkir_make_store(NkIrRef dst, NkIrRef src) {
     return (NkIrInstr){
-        .arg = {argNull(), argRef(ptr), argRef(src)},
+        .arg = {argRef(dst), argRef(src), argNull()},
         .code = NkIrOp_store,
     };
 }
@@ -327,19 +327,35 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
         nk_stream_printf(out, "%5zu |%8s ", idx, opcode_name);
     }
 
-    for (usize i = 1; i < 3; i++) {
-        NkIrArg const *arg = &instr.arg[i];
-        if (arg->kind != NkIrArg_None && i > 1) {
-            nk_stream_printf(out, ", ");
+    for (usize i = 0; i < 3; i++) {
+        usize const arg_idx = (i + 1) % 3;
+
+        NkIrArg const *arg = &instr.arg[arg_idx];
+
+        if (arg->kind != NkIrArg_None) {
+            if (arg_idx == 0) {
+                nk_stream_printf(out, " -> ");
+            } else if (arg_idx == 2) {
+                nk_stream_printf(out, ", ");
+            }
         }
 
         switch (arg->kind) {
             case NkIrArg_None:
                 break;
 
-            case NkIrArg_Ref:
+            case NkIrArg_Ref: {
+                bool const indir =
+                    (instr.code == NkIrOp_load && arg_idx == 1) || (instr.code == NkIrOp_store && arg_idx == 0);
+                if (indir) {
+                    nk_stream_printf(out, "[");
+                }
                 nkir_inspectRef(arg->ref, out);
+                if (indir) {
+                    nk_stream_printf(out, "]");
+                }
                 break;
+            }
 
             case NkIrArg_RefArray:
                 nk_stream_printf(out, "(");
@@ -382,11 +398,6 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
                 break;
         }
     }
-
-    if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
-        nk_stream_printf(out, " -> ");
-        nkir_inspectRef(instr.arg[0].ref, out);
-    }
 }
 
 void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
@@ -411,7 +422,7 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
 
     switch (sym->kind) {
         case NkIrSymbol_Extern:
-            nk_stream_printf(out, "<TODO:NkIrSymbol_Extern>");
+            nk_stream_printf(out, "extern %s = @0x%p;", nk_atom2cs(sym->name), sym->extrn.addr);
             break;
 
         case NkIrSymbol_Data:
