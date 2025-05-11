@@ -67,6 +67,10 @@ static bool onAlnumOrUscr(LexerState const *lex, i64 offset) {
     return onAlnum(lex, offset) || on(lex, '_', offset);
 }
 
+static int onPrint(LexerState const *lex, i64 offset) {
+    return isprint(chr(lex, offset));
+}
+
 static void advance(LexerState *lex, i64 n) {
     for (i64 i = 0; i < n && chr(lex, 0); i++) {
         if (on(lex, '\n', 0)) {
@@ -155,6 +159,57 @@ static NklToken scan(LexerState *lex) {
         return token;
     }
 
+    if (on(lex, '"', 0)) {
+        accept(lex, &token, 1);
+
+        bool escaped = false;
+
+        while (chr(lex, 0) && !on(lex, '\"', 0) && !on(lex, '\n', 0)) {
+            accept(lex, &token, 1);
+            if (on(lex, '\\', -1)) {
+                switch (chr(lex, 0)) {
+                    case 'n':
+                    case 't':
+                    case '0':
+                    case '\\':
+                    case '"':
+                    case '\n':
+                        escaped = true;
+                        accept(lex, &token, 1);
+                        break;
+                    default:
+                        if (!chr(lex, 0)) {
+                            reportError(lex, "unexpected end of file");
+                            return token;
+                        } else {
+                            token.pos = lex->pos - 1;
+                            token.len = 2;
+                            token.lin = lex->lin;
+                            token.col = lex->col - 1;
+                            if (onPrint(lex, 0)) {
+                                reportError(lex, "invalid escape sequence `\\%c`", chr(lex, 0));
+                                return token;
+                            } else {
+                                reportError(lex, "invalid escape sequence `\\\\x%" PRIx8 "`", chr(lex, 0) & 0xff);
+                                return token;
+                            }
+                        }
+                }
+            }
+        }
+
+        if (!on(lex, '\"', 0)) {
+            accept(lex, &token, 1);
+            reportError(lex, "invalid string constant");
+            return token;
+        }
+
+        token.id = escaped ? NklBaseToken_EscapedString : NklBaseToken_String;
+
+        accept(lex, &token, 1);
+        return token;
+    }
+
     if (onDigit(lex, on(lex, '-', 0) ? 1 : 0)) {
         if (on(lex, '-', 0)) {
             accept(lex, &token, 1);
@@ -204,10 +259,10 @@ static NklToken scan(LexerState *lex) {
 
         NkString const token_str = nkl_getTokenStr(&token, lex->text);
         char const **it = lex->keywords;
-        for (; *it && !nks_equalCStr(token_str, *it); it++) {
+        for (; it && *it && !nks_equalCStr(token_str, *it); it++) {
         }
 
-        if (*it) {
+        if (it && *it) {
             ptrdiff_t const idx = it - lex->keywords;
             token.id = lex->first_keyword_id + idx;
         } else {
@@ -219,10 +274,10 @@ static NklToken scan(LexerState *lex) {
 
     {
         char const *it = lex->tag_prefixes;
-        for (; *it && !(on(lex, *it, 0) && onAlphaOrUscr(lex, 1)); it++) {
+        for (; it && *it && !(on(lex, *it, 0) && onAlphaOrUscr(lex, 1)); it++) {
         }
 
-        if (*it) {
+        if (it && *it) {
             do {
                 accept(lex, &token, 1);
             } while (onAlnumOrUscr(lex, 0));
@@ -235,7 +290,7 @@ static NklToken scan(LexerState *lex) {
 
     {
         char const **it = lex->operators;
-        for (; *it; it++) {
+        for (; it && *it; it++) {
             char const *op = *it;
 
             while (*op && on(lex, *op, 0)) {
@@ -250,14 +305,14 @@ static NklToken scan(LexerState *lex) {
             }
         }
 
-        if (*it) {
+        if (it && *it) {
             ptrdiff_t const idx = it - lex->operators;
             token.id = lex->first_operator_id + idx;
             return token;
         }
     }
 
-    if (isprint(chr(lex, 0))) {
+    if (onPrint(lex, 0)) {
         reportError(lex, "unexpected character `%c`", chr(lex, 0));
         return token;
     } else {

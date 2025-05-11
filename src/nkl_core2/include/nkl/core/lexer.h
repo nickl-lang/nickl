@@ -17,6 +17,7 @@ enum {
     NklBaseToken_Int,
     NklBaseToken_Float,
     NklBaseToken_String,
+    NklBaseToken_EscapedString,
 
     NklBaseToken_Error,
 
