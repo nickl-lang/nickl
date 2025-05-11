@@ -2,6 +2,7 @@
 
 - Start core2, add nklc for testing
 - Update Readme
+- Sketch out new backend api
 
 # v0.3.1 - 2025.04.18
 
