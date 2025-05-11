@@ -12,8 +12,8 @@ extern "C" {
 typedef struct NkIrType_T const *NkIrType;
 
 typedef enum {
-    NkIrType_Numeric,
     NkIrType_Aggregate,
+    NkIrType_Numeric,
 } NkIrTypeKind;
 
 // 0x<index><size>

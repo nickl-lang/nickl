@@ -75,13 +75,11 @@ typedef struct {
     union {
         NkIrRef ref;       // Ref
         NkIrRefArray refs; // RefArray
-        struct {
-            NkAtom name; // Label
-            i32 offset;  // RelLabel
-        } label;
-        NkIrType type; // Type
-        NkString str;  // String
-        u32 idx;       // Idx
+        NkAtom label;      // Label
+        i32 offset;        // RelLabel
+        NkIrType type;     // Type
+        NkString str;      // String
+        u32 idx;           // Idx
     };
     NkIrArgKind kind;
 } NkIrArg;

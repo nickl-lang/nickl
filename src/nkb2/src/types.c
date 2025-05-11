@@ -22,7 +22,7 @@ void nkir_inspectType(NkIrType type, NkStream out) {
                         nk_stream_printf(out, "[%" PRIu32 "]", elem->count);
                     }
                     nkir_inspectType(elem->type, out);
-                    nk_stream_printf(out, "@%" PRIu32, elem->offset);
+                    nk_stream_printf(out, "@%" PRIu32, elem->offset); // TODO: Print conservatively
                 }
                 nk_stream_printf(out, "}");
             } else {
@@ -64,6 +64,8 @@ void nkir_inspectType(NkIrType type, NkStream out) {
             }
             break;
     }
+
+    // TODO: Print alignment conservatively
 }
 
 void nkir_inspectVal(void *data, NkIrType type, NkStream out) {

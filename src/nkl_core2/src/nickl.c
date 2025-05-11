@@ -248,8 +248,10 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 
     NklState nkl = mod->c->nkl;
 
+    NkAllocator alloc = nk_arena_getAllocator(&nkl->arena);
+
     NkString text;
-    if (!nk_file_read(nk_arena_getAllocator(&nkl->arena), file, &text)) {
+    if (!nk_file_read(alloc, file, &text)) {
         reportError(
             nkl,
             (NklSourceLocation){0},
@@ -332,7 +334,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .kind = NkIrSymbol_Data,
             }));
 
-        NkDynArray(NkIrInstr) main_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+        NkIrInstrDynArray main_instrs = {NKDA_INIT(alloc)};
 
         // @start
         nkda_append(&main_instrs, nkir_make_label(l_start));
@@ -373,7 +375,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .kind = NkIrSymbol_Proc,
             }));
 
-        NkDynArray(NkIrInstr) plus_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+        NkIrInstrDynArray plus_instrs = {NKDA_INIT(alloc)};
 
         // @start
         nkda_append(&plus_instrs, nkir_make_label(l_start));
@@ -437,10 +439,10 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .kind = NkIrSymbol_Data,
             }));
 
-        NkDynArray(NkIrInstr) loop_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+        NkIrInstrDynArray loop_instrs = {NKDA_INIT(alloc)};
 
         // @loop
-        nkda_append(&loop_instrs, nkir_make_label(nk_cs2atom("loop")));
+        nkda_append(&loop_instrs, nkir_make_label(l_loop));
 
         // cmp lt i, 5 -> cond
         nkda_append(
@@ -451,7 +453,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 nkir_makeRefImm((NkIrImm){.i64 = 5}, &i64_t)));
 
         // jmpz cond, @endloop
-        nkda_append(&loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), nk_cs2atom("endloop")));
+        nkda_append(&loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), l_endloop));
 
         // call printf, ("%zi\n", ..., i)
         NkIrRef const printf_args2[] = {
@@ -486,6 +488,9 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         // ret
         nkda_append(&loop_instrs, nkir_make_ret((NkIrRef){0}));
 
+        NkIrInstrDynArray loop_instrs_pic = {NKDA_INIT(alloc)};
+        nkir_convertToPic((NkIrInstrArray){NK_SLICE_INIT(loop_instrs)}, &loop_instrs_pic);
+
         nkda_append(
             &mod->ir,
             ((NkIrSymbol){
@@ -493,7 +498,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                     {
                         .params = {0},
                         .ret_type = &void_t,
-                        .instrs = {NK_SLICE_INIT(loop_instrs)},
+                        .instrs = {NK_SLICE_INIT(loop_instrs_pic)},
                         .file = {0},
                         .line = 0,
                         .flags = 0,
@@ -515,7 +520,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
             .kind = NkIrType_Aggregate,
         };
 
-        NkDynArray(NkIrInstr) makeVec2_instrs = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))};
+        NkIrInstrDynArray makeVec2_instrs = {NKDA_INIT(alloc)};
 
         // @start
         nkda_append(&makeVec2_instrs, nkir_make_label(l_start));
@@ -567,7 +572,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .kind = NkIrSymbol_Proc,
             }));
 
-        NkStringBuilder sb = {NKSB_INIT(nk_arena_getAllocator(&nkl->arena))};
+        NkStringBuilder sb = {NKSB_INIT(alloc)};
         nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, nksb_getStream(&sb));
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
