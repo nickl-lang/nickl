@@ -31,7 +31,7 @@ jobs:
           prerelease: true
 
   darwin:
-    runs-on: macos-latest
+    runs-on: macos-15
     strategy:
       matrix:
         machine: [x86_64, arm64]
