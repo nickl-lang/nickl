@@ -292,6 +292,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         return false;
     }
 
+#if 0
     { // TODO: Dummy IR
         NkIrType_T const void_t = {.aggr = {0}, .size = 0, .align = 1, .id = 0, .kind = NkIrType_Aggregate};
 
@@ -576,6 +577,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, nksb_getStream(&sb));
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
+#endif
 
     reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
     return false;
