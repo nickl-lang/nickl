@@ -85,3 +85,12 @@ void nk_atom_define(NkAtom atom, NkString str) {
         atom2str_insert(&g_atom2str, (atom2s_kv){atom, str_copy});
     }
 }
+
+NkAtom nk_atom_unique(NkString str) {
+    NkAtom atom = g_next_atom++;
+    NK_PROF_FUNC() {
+        NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
+        atom2str_insert(&g_atom2str, (atom2s_kv){atom, str_copy});
+    }
+    return atom;
+}

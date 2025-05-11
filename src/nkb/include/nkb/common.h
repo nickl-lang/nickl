@@ -3,6 +3,7 @@
 
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
+#include "ntk/slice.h"
 #include "ntk/stream.h"
 
 #ifdef __cplusplus
@@ -91,15 +92,9 @@ typedef enum {
     NkProcVariadic = 1 << 0,
 } NkProcFlags;
 
-typedef struct {
-    nktype_t const *data;
-    usize size;
-} NkTypeArray;
+typedef NkSlice(nktype_t const) NkTypeArray;
 
-typedef struct {
-    NkIrAggregateElemInfo const *data;
-    usize size;
-} NkIrAggregateElemInfoArray;
+typedef NkSlice(NkIrAggregateElemInfo const) NkIrAggregateElemInfoArray;
 
 typedef struct {
     NkTypeArray args_t;

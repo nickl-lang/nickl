@@ -43,3 +43,17 @@ TEST_F(atom, nonexistent) {
     EXPECT_EQ(nullptr, str.data);
     EXPECT_EQ(0u, str.size);
 }
+
+TEST_F(atom, unique) {
+    static constexpr char const *c_str_hello = "hello";
+
+    NkAtom const hello = nk_cs2atom(c_str_hello);
+    NkAtom const hello2 = nk_cs2atom(c_str_hello);
+
+    NkAtom const hello_unique = nk_atom_unique(nk_cs2s(c_str_hello));
+
+    EXPECT_EQ(hello, hello2);
+    EXPECT_NE(hello, hello_unique);
+
+    EXPECT_EQ(c_str_hello, nk_s2stdView(nk_atom2s(hello_unique)));
+}

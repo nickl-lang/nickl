@@ -1,6 +1,7 @@
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
+#include "ntk/atom.h"
 #include "ntk/cli.h"
 #include "ntk/common.h"
 #include "ntk/file.h"
@@ -206,6 +207,7 @@ static int parseArgsAndRun(char **argv) {
     NklState nkl;
     int ret_code = 0;
 
+    NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
     NK_DEFER_LOOP(nkl = nkl_newState(), nkl_freeState(nkl))
     NK_DEFER_LOOP(nkl_pushState(nkl), nkl_popState()) {
         ret_code = run(nkl, in_file);

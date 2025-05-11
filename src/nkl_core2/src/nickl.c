@@ -1,16 +1,21 @@
 #include "nkl/core/nickl.h"
 
+#include "nkb/ir.h"
+#include "nkb/types.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
+#include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/slice.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -27,6 +32,7 @@ typedef struct NklCompiler_T {
 
 typedef struct NklModule_T {
     NklCompiler c;
+    NkIrSymbolDynArray ir;
 } NklModule_T;
 
 static void vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap) {
@@ -120,6 +126,7 @@ NklModule nkl_newModule(NklCompiler c) {
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
         .c = c,
+        .ir = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))},
     };
     return mod;
 }
@@ -241,8 +248,10 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 
     NklState nkl = mod->c->nkl;
 
+    NkAllocator alloc = nk_arena_getAllocator(&nkl->arena);
+
     NkString text;
-    if (!nk_file_read(nk_arena_getAllocator(&nkl->arena), file, &text)) {
+    if (!nk_file_read(alloc, file, &text)) {
         reportError(
             nkl,
             (NklSourceLocation){0},
@@ -282,6 +291,293 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
             NKS_ARG(lex_error));
         return false;
     }
+
+#if 0
+    { // TODO: Dummy IR
+        NkIrType_T const void_t = {.aggr = {0}, .size = 0, .align = 1, .id = 0, .kind = NkIrType_Aggregate};
+
+        NkIrType_T const i8_t = {.num = Int8, .size = 1, .align = 1, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const i32_t = {.num = Int32, .size = 4, .align = 4, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const i64_t = {.num = Int64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const f64_t = {.num = Float64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
+        NkIrType_T const ptr_t = i64_t;
+
+        NkAtom l_start = nk_atom_unique(nk_cs2s("start"));
+        NkAtom l_loop = nk_atom_unique(nk_cs2s("loop"));
+        NkAtom l_endloop = nk_atom_unique(nk_cs2s("endloop"));
+
+        NkAtom s_hello = nk_atom_unique(nk_cs2s("hello"));
+        NkAtom s_fmt = nk_atom_unique(nk_cs2s("fmt"));
+
+        NkIrAggregateElemInfo const hello_str_elems[] = {
+            {.type = &i8_t, .count = 15, .offset = 0},
+        };
+        NkIrType_T const hello_str_t = {
+            .aggr = {hello_str_elems, NK_ARRAY_COUNT(hello_str_elems)},
+            .size = 15,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .data =
+                    {
+                        .type = &hello_str_t,
+                        .relocs = {0},
+                        .addr = "Hello, World!\n",
+                        .flags = NkIrData_ReadOnly,
+                    },
+                .name = s_hello,
+                .vis = NkIrVisibility_Local,
+                .flags = 0,
+                .kind = NkIrSymbol_Data,
+            }));
+
+        NkIrInstrDynArray main_instrs = {NKDA_INIT(alloc)};
+
+        // @start
+        nkda_append(&main_instrs, nkir_make_label(l_start));
+
+        // call printf, ("Hello, World!", ...)
+        NkIrRef const printf_args[] = {
+            nkir_makeRefGlobal(s_hello, &ptr_t),
+            nkir_makeVariadicMarker(),
+        };
+        nkda_append(
+            &main_instrs,
+            nkir_make_call(
+                nkir_makeRefNull(&i32_t),
+                nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
+                (NkIrRefArray){printf_args, NK_ARRAY_COUNT(printf_args)}));
+
+        // // This is a comment...
+        nkda_append(&main_instrs, nkir_make_comment(nk_cs2s("This is a comment...")));
+
+        // ret 0
+        nkda_append(&main_instrs, nkir_make_ret(nkir_makeRefImm((NkIrImm){.i32 = 0}, &i32_t)));
+
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {0},
+                        .ret_type = &i32_t,
+                        .instrs = {NK_SLICE_INIT(main_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("main"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkIrInstrDynArray plus_instrs = {NKDA_INIT(alloc)};
+
+        // @start
+        nkda_append(&plus_instrs, nkir_make_label(l_start));
+
+        // add a, b -> tmp:i64
+        nkda_append(
+            &plus_instrs,
+            nkir_make_add(
+                nkir_makeRefLocal(nk_cs2atom("tmp"), &i64_t),
+                nkir_makeRefParam(nk_cs2atom("a"), &i64_t),
+                nkir_makeRefParam(nk_cs2atom("b"), &i64_t)));
+
+        // ret tmp:i64
+        nkda_append(&plus_instrs, nkir_make_ret(nkir_makeRefLocal(nk_cs2atom("tmp"), &i64_t)));
+
+        NkIrParam plus_params[] = {
+            {.name = nk_cs2atom("a"), .type = &i64_t},
+            {.name = nk_cs2atom("b"), .type = &i64_t},
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {plus_params, NK_ARRAY_COUNT(plus_params)},
+                        .ret_type = &i64_t,
+                        .instrs = {NK_SLICE_INIT(plus_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("plus"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkIrAggregateElemInfo const fmt_str_elems[] = {
+            {.type = &i8_t, .count = 5, .offset = 0},
+        };
+        NkIrType_T const fmt_str_t = {
+            .aggr = {fmt_str_elems, NK_ARRAY_COUNT(fmt_str_elems)},
+            .size = 5,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .data =
+                    {
+                        .type = &fmt_str_t,
+                        .relocs = {0},
+                        .addr = "%zi\n",
+                        .flags = NkIrData_ReadOnly,
+                    },
+                .name = s_fmt,
+                .vis = NkIrVisibility_Local,
+                .flags = 0,
+                .kind = NkIrSymbol_Data,
+            }));
+
+        NkIrInstrDynArray loop_instrs = {NKDA_INIT(alloc)};
+
+        // @loop
+        nkda_append(&loop_instrs, nkir_make_label(l_loop));
+
+        // cmp lt i, 5 -> cond
+        nkda_append(
+            &loop_instrs,
+            nkir_make_cmp_lt(
+                nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t),
+                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+                nkir_makeRefImm((NkIrImm){.i64 = 5}, &i64_t)));
+
+        // jmpz cond, @endloop
+        nkda_append(&loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), l_endloop));
+
+        // call printf, ("%zi\n", ..., i)
+        NkIrRef const printf_args2[] = {
+            nkir_makeRefGlobal(s_fmt, &ptr_t),
+            nkir_makeVariadicMarker(),
+            nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+        };
+        nkda_append(
+            &loop_instrs,
+            nkir_make_call(
+                nkir_makeRefNull(&i32_t),
+                nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
+                (NkIrRefArray){printf_args2, NK_ARRAY_COUNT(printf_args2)}));
+
+        // // This is another comment...
+        nkda_append(&loop_instrs, nkir_make_comment(nk_cs2s("This is another comment...")));
+
+        // add i, 1 -> i
+        nkda_append(
+            &loop_instrs,
+            nkir_make_add(
+                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
+                nkir_makeRefImm((NkIrImm){.i64 = 1}, &i64_t)));
+
+        // jmp @loop
+        nkda_append(&loop_instrs, nkir_make_jmp(l_loop));
+
+        // @endloop
+        nkda_append(&loop_instrs, nkir_make_label(l_endloop));
+
+        // ret
+        nkda_append(&loop_instrs, nkir_make_ret((NkIrRef){0}));
+
+        NkIrInstrDynArray loop_instrs_pic = {NKDA_INIT(alloc)};
+        nkir_convertToPic((NkIrInstrArray){NK_SLICE_INIT(loop_instrs)}, &loop_instrs_pic);
+
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {0},
+                        .ret_type = &void_t,
+                        .instrs = {NK_SLICE_INIT(loop_instrs_pic)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = l_loop,
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkIrAggregateElemInfo const vec2_elems[] = {
+            {.type = &f64_t, .count = 2, .offset = 0},
+        };
+        NkIrType_T const vec2_t = {
+            .aggr = {vec2_elems, NK_ARRAY_COUNT(vec2_elems)},
+            .size = 16,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
+
+        NkIrInstrDynArray makeVec2_instrs = {NKDA_INIT(alloc)};
+
+        // @start
+        nkda_append(&makeVec2_instrs, nkir_make_label(l_start));
+
+        // alloc :vec2 -> %vec:i64
+        nkda_append(&makeVec2_instrs, nkir_make_alloc(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t), &vec2_t));
+
+        // store %vec, %x
+        nkda_append(
+            &makeVec2_instrs,
+            nkir_make_store(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t), nkir_makeRefParam(nk_cs2atom("x"), &f64_t)));
+
+        // add %vec:i64, 8:i64 -> %y_addr:i64
+        nkda_append(
+            &makeVec2_instrs,
+            nkir_make_add(
+                nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t),
+                nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t),
+                nkir_makeRefImm((NkIrImm){.i64 = 8}, &i64_t)));
+
+        // store %vec, %x
+        nkda_append(
+            &makeVec2_instrs,
+            nkir_make_store(
+                nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t), nkir_makeRefParam(nk_cs2atom("y"), &f64_t)));
+
+        // ret
+        nkda_append(&makeVec2_instrs, nkir_make_ret(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t)));
+
+        NkIrParam makeVec2_params[] = {
+            {.name = nk_cs2atom("x"), .type = &f64_t},
+            {.name = nk_cs2atom("y"), .type = &f64_t},
+        };
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .proc =
+                    {
+                        .params = {makeVec2_params, NK_ARRAY_COUNT(makeVec2_params)},
+                        .ret_type = &vec2_t,
+                        .instrs = {NK_SLICE_INIT(makeVec2_instrs)},
+                        .file = {0},
+                        .line = 0,
+                        .flags = 0,
+                    },
+                .name = nk_cs2atom("makeVec2"),
+                .vis = NkIrVisibility_Default,
+                .flags = 0,
+                .kind = NkIrSymbol_Proc,
+            }));
+
+        NkStringBuilder sb = {NKSB_INIT(alloc)};
+        nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, nksb_getStream(&sb));
+        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+    }
+#endif
 
     reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
     return false;

@@ -1,13 +1,5 @@
 set(LIB ntk)
 
-set(DEPS
-    ${LIBDL}
-    ${LIBSHLWAPI}
-    ${LIBWINPTHREAD}
-    spall
-    stb
-    )
-
 set(SOURCES
     src/allocator.c
     src/arena.c
@@ -88,7 +80,13 @@ target_include_directories(${LIB}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
-target_link_libraries(${LIB} ${DEPS})
+target_link_libraries(${LIB}
+    PRIVATE ${LIBDL}
+    PRIVATE ${LIBSHLWAPI}
+    PRIVATE ${LIBWINPTHREAD}
+    PRIVATE spall
+    PRIVATE stb
+    )
 
 if(ENABLE_PROFILING)
     target_compile_definitions(${LIB}

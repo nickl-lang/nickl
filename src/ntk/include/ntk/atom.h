@@ -20,6 +20,8 @@ NK_EXPORT NkAtom nk_cs2atom(char const *str);
 
 NK_EXPORT void nk_atom_define(NkAtom atom, NkString str);
 
+NK_EXPORT NkAtom nk_atom_unique(NkString str);
+
 #ifdef __cplusplus
 }
 #endif

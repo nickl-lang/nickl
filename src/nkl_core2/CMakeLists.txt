@@ -12,6 +12,7 @@ target_include_directories(${LIB}
 target_link_libraries(${LIB}
     PUBLIC nkl_common
     PUBLIC ntk
+    PUBLIC nkb2
     )
 
 install(TARGETS ${LIB}
