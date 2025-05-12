@@ -88,7 +88,7 @@ constexpr usize nk_alignofval(T const &) {
 
 #if defined(__has_attribute)
 #if __has_attribute(fallthrough)
-#define NK_FALLTHROUGH [[fallthrough]]
+#define NK_FALLTHROUGH __attribute__((fallthrough))
 #else
 #define NK_FALLTHROUGH
 #endif

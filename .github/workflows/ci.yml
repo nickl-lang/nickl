@@ -42,7 +42,7 @@ jobs:
         run: ./build.sh ${{ matrix.build_args }} test
 
   darwin:
-    runs-on: macos-15
+    runs-on: macos-latest
     strategy:
       matrix:
         build_args: [-nt, -ntd]
