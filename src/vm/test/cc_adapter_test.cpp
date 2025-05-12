@@ -75,7 +75,7 @@ TEST_F(cc_adapter, empty) {
 TEST_F(cc_adapter, empty_main) {
     auto src = nkcc_streamOpen(m_conf);
 
-    nk_stream_printf(src.stream, "%s", "int main() {}\n");
+    nk_printf(src.stream, "%s", "int main() {}\n");
 
     EXPECT_FALSE(nkcc_streamClose(&src));
 
@@ -85,7 +85,7 @@ TEST_F(cc_adapter, empty_main) {
 TEST_F(cc_adapter, hello_world) {
     auto src = nkcc_streamOpen(m_conf);
 
-    nk_stream_printf(src.stream, "%s", R"(
+    nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
@@ -100,7 +100,7 @@ int main() {
 TEST_F(cc_adapter, undefined_var) {
     auto src = nkcc_streamOpen(m_conf);
 
-    nk_stream_printf(src.stream, "%s", R"(
+    nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("%i", var);

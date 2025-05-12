@@ -11,22 +11,24 @@ extern "C" {
 #endif
 
 enum {
-    NklBaseToken_Eof = 0,
+    NklToken_Eof = 0,
 
-    NklBaseToken_Id,
-    NklBaseToken_Int,
-    NklBaseToken_Float,
-    NklBaseToken_String,
+    NklToken_Id,
+    NklToken_Int,
+    NklToken_Float,
+    NklToken_String,
+    NklToken_EscapedString,
 
-    NklBaseToken_Error,
+    NklToken_Error,
 
-    NklBaseToken_Count,
+    NklToken_Count,
 };
 
 typedef struct {
     NkString text;
     NkArena *arena;
-    NkString *error;
+
+    NkString *err_str;
 
     char const **keywords;
     char const **operators;

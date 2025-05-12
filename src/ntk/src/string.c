@@ -171,7 +171,7 @@ i32 nks_escape(NkStream out, NkString str) {
                     if (isprint(str.data[i])) {
                         WRITE(nk_stream_write(out, &str.data[i], 1));
                     } else {
-                        WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+                        WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
                     }
                     break;
             }
@@ -229,7 +229,7 @@ i32 nks_sanitize(NkStream out, NkString str) {
             if (isprint(str.data[i])) {
                 WRITE(nk_stream_write(out, &str.data[i], 1));
             } else {
-                WRITE(nk_stream_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+                WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
             }
         }
     }

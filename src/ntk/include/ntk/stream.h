@@ -34,8 +34,8 @@ NK_INLINE i32 nk_stream_writeCStr(NkStream out, char const *str) {
     return nk_stream_write(out, str, strlen(str));
 }
 
-NK_EXPORT NK_PRINTF_LIKE(2) i32 nk_stream_printf(NkStream out, char const *fmt, ...);
-NK_EXPORT i32 nk_stream_vprintf(NkStream out, char const *fmt, va_list ap);
+NK_EXPORT NK_PRINTF_LIKE(2) i32 nk_printf(NkStream out, char const *fmt, ...);
+NK_EXPORT i32 nk_vprintf(NkStream out, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 }

@@ -1,9 +1,12 @@
 #include "nkl/core/nickl.h"
 
+#include "ast_tokens.h"
 #include "nkb/ir.h"
 #include "nkb/types.h"
+#include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
+#include "nkl/core/ast_parser.h"
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
@@ -220,7 +223,7 @@ char const s_ir_tag_prefixes[] = {
 };
 
 enum {
-    NklIrToken_KeywordsBase = NklBaseToken_Count,
+    NklIrToken_KeywordsBase = NklToken_Count,
 
     NklIrToken_Pub,
     NklIrToken_Proc,
@@ -261,13 +264,13 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         return false;
     }
 
-    NkString lex_error;
+    NkString err_str;
     NklTokenArray tokens;
     if (!nkl_lex(
             &(NklLexerData){
                 .text = text,
                 .arena = &nkl->arena,
-                .error = &lex_error,
+                .err_str = &err_str,
 
                 .keywords = s_ir_keywords,
                 .operators = s_ir_operators,
@@ -278,7 +281,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .tags_base = NklIrToken_TagsBase,
             },
             &tokens)) {
-        NklToken err_token = nk_slice_last(tokens);
+        NklToken const err_token = nk_slice_last(tokens);
         reportError(
             nkl,
             (NklSourceLocation){
@@ -288,7 +291,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .len = err_token.len,
             },
             NKS_FMT,
-            NKS_ARG(lex_error));
+            NKS_ARG(err_str));
         return false;
     }
 
@@ -583,6 +586,38 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     return false;
 }
 
+char const *s_ast_operators[] = {
+    "(",
+    ")",
+    "{",
+    "}",
+    "[",
+    "]",
+
+    NULL,
+};
+
+char const *s_ast_token_names[] = {
+    "end of file", // NklToken_Eof
+
+    "identifier",      // NklToken_Id
+    "int constant",    // NklToken_Int
+    "float constant",  // NklToken_Float
+    "string constant", // NklToken_String
+    "string constant", // NklToken_EscapedString
+
+    "error", // NklToken_Error
+
+    NULL, // NklAstToken_OperatorsBase
+
+    "(", // NklAstToken_LParen
+    ")", // NklAstToken_RParen
+    "{", // NklAstToken_LBrace
+    "}", // NklAstToken_RBrace
+    "[", // NklAstToken_LBraket
+    "]", // NklAstToken_RBraket
+};
+
 bool nkl_compileFileAst(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
@@ -592,8 +627,71 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
 
     NklState nkl = mod->c->nkl;
 
-    (void)file;
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not implemented");
+    NkAllocator alloc = nk_arena_getAllocator(&nkl->arena);
+
+    NkString text = {0};
+    if (!nk_file_read(alloc, file, &text)) {
+        reportError(
+            nkl,
+            (NklSourceLocation){0},
+            "failed to read file `" NKS_FMT "`: %s",
+            NKS_ARG(file),
+            nk_getLastErrorString());
+        return false;
+    }
+
+    NkString err_str = {0};
+    NklTokenArray tokens = {0};
+    if (!nkl_lex(
+            &(NklLexerData){
+                .text = text,
+                .arena = &nkl->arena,
+                .err_str = &err_str,
+
+                .operators = s_ast_operators,
+                .operators_base = NklAstToken_OperatorsBase,
+            },
+            &tokens)) {
+        NklToken const err_token = nk_slice_last(tokens);
+        reportError(
+            nkl,
+            (NklSourceLocation){
+                .file = file,
+                .lin = err_token.lin,
+                .col = err_token.col,
+                .len = err_token.len,
+            },
+            NKS_FMT,
+            NKS_ARG(err_str));
+        return false;
+    }
+
+    NklToken err_token = {0};
+    NklAstNodeArray nodes = {0};
+    if (!nkl_ast_parse(
+            &(NklAstParserData){
+                .text = text,
+                .tokens = tokens,
+                .arena = &nkl->arena,
+                .err_str = &err_str,
+                .err_token = &err_token,
+                .token_names = s_ast_token_names,
+            },
+            &nodes)) {
+        reportError(
+            nkl,
+            (NklSourceLocation){
+                .file = file,
+                .lin = err_token.lin,
+                .col = err_token.col,
+                .len = err_token.len,
+            },
+            NKS_FMT,
+            NKS_ARG(err_str));
+        return false;
+    }
+
+    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not finished");
     return false;
 }
 

@@ -824,6 +824,6 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrModule mod, NkStream src)
         stderr, NKS_FMT "\n" NKS_FMT "\n" NKS_FMT, NKS_ARG(ctx.types_s), NKS_ARG(ctx.forward_s), NKS_ARG(ctx.main_s));
 #endif
 
-    nk_stream_printf(
+    nk_printf(
         src, NKS_FMT "\n" NKS_FMT "\n" NKS_FMT, NKS_ARG(ctx.types_s), NKS_ARG(ctx.forward_s), NKS_ARG(ctx.main_s));
 }
