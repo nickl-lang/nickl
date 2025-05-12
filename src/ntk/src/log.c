@@ -103,8 +103,14 @@ void nk_log_streamClose(NkStream out) {
         nk_stream_printf(out, NK_TERM_COLOR_NONE);
     }
 
-    fputc('\n', stderr);
+    nk_stream_printf(out, "\n");
 
+    nk_mutex_unlock(s_logger.mtx);
+}
+
+void nk_log_injectStream(NkStream out) {
+    nk_mutex_lock(s_logger.mtx);
+    s_logger.out = out;
     nk_mutex_unlock(s_logger.mtx);
 }
 

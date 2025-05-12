@@ -1,38 +1,52 @@
 #include "ntk/log.h"
 
 #include <atomic>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <thread>
 
 #include <gtest/gtest.h>
-#include <unistd.h>
+
+#include "ntk/string.h"
 
 NK_LOG_USE_SCOPE(test);
 
 #define MSG_BUF_SIZE 4096
 
+struct StreamBuf {
+    char data[MSG_BUF_SIZE];
+    usize size;
+};
+
+static i32 testStreamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
+    if (mode == NkStreamMode_Write) {
+        std::cerr << std::string_view{buf, size};
+
+        auto const stream_buf = (StreamBuf *)stream_data;
+
+        usize const cpy_count = std::min(size, MSG_BUF_SIZE - stream_buf->size);
+        memcpy(stream_buf->data + stream_buf->size, buf, cpy_count);
+        stream_buf->size += cpy_count;
+
+        return size;
+    } else {
+        return -1;
+    }
+}
+
 class log : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT(NkLogOptions{NkLogLevel_Trace, NkLogColorMode_Never});
-
-        setvbuf(stderr, m_msg_buffer, _IOFBF, MSG_BUF_SIZE); // Assign test msg buffer to STDERR
+        nk_log_injectStream({&m_buf, testStreamProc});
     }
 
     void TearDown() override {
-        setvbuf(stderr, nullptr, _IONBF, MSG_BUF_SIZE); // Reset STDERR buffer
     }
 
 protected:
     void writeTestMsg(NkLogLevel level, char const *msg) {
-        fflush(stderr);                        // Flush any existing data
-        memset(m_msg_buffer, 0, MSG_BUF_SIZE); // Clear the test msg buffer
-
+        m_buf.size = 0;
         NK_LOG_SEV(level, "%s", msg);
-
-        fflush(stderr); // Flush any test msg data
     }
 
     struct LogMsg {
@@ -44,7 +58,7 @@ protected:
     };
 
     LogMsg parseLogMsg() {
-        std::istringstream ss{m_msg_buffer};
+        std::istringstream ss{nk_s2stdStr(NkString{m_buf.data, m_buf.size})};
 
         LogMsg msg{};
 
@@ -59,7 +73,7 @@ protected:
     }
 
 protected:
-    char m_msg_buffer[MSG_BUF_SIZE];
+    StreamBuf m_buf{};
 };
 
 #define EXPECT_LOG_MSG(IDX, LEV, SCOPE, TEXT) \

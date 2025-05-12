@@ -37,7 +37,9 @@ NK_EXPORT NK_PRINTF_LIKE(3) void nk_log_write(NkLogLevel log_level, char const *
 NK_EXPORT void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap);
 
 NK_EXPORT NkStream nk_log_streamOpen(NkLogLevel log_level, char const *scope);
-NK_EXPORT void nk_log_streamClose(NkStream stream);
+NK_EXPORT void nk_log_streamClose(NkStream out);
+
+NK_EXPORT void nk_log_injectStream(NkStream out);
 
 NK_EXPORT void nk_log_init(NkLogOptions opt);
 
