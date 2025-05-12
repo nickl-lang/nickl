@@ -1,12 +1,11 @@
 #include "ntk/log.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "ntk/common.h"
+#include "ntk/file.h"
 #include "ntk/profiler.h"
+#include "ntk/stream.h"
 #include "ntk/term.h"
 #include "ntk/thread.h"
 #include "ntk/time.h"
@@ -41,16 +40,17 @@ static char const *c_log_level_map[] = {
     "trace",
 };
 
-struct LoggerState {
+typedef struct {
+    NkStream out;
     i64 start_time;
     NkLogLevel log_level;
-    NkLogColorMode color_mode;
     NkHandle mtx;
     usize msg_count;
     bool initialized;
-};
+    bool to_color;
+} LoggerState;
 
-static struct LoggerState s_logger;
+static LoggerState s_logger;
 
 static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
     usize i = 0;
@@ -76,23 +76,22 @@ void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...)
 }
 
 void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
-    bool const to_color = s_logger.color_mode == NkLogColorMode_Always ||
-                          (s_logger.color_mode == NkLogColorMode_Auto && nk_isatty(STDERR_FILENO));
+    i64 const now = nk_now_ns();
+    f64 const ts = (now - s_logger.start_time) * 1e-9;
 
-    i64 now = nk_now_ns();
-    f64 ts = (now - s_logger.start_time) * 1e-9;
+    NkStream const out = s_logger.out;
 
     nk_mutex_lock(s_logger.mtx);
 
-    if (to_color) {
-        fprintf(stderr, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
+    if (s_logger.to_color) {
+        nk_stream_printf(out, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
     }
 
-    fprintf(stderr, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
-    vfprintf(stderr, fmt, ap);
+    nk_stream_printf(out, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
+    nk_stream_vprintf(out, fmt, ap);
 
-    if (to_color) {
-        fprintf(stderr, NK_TERM_COLOR_NONE);
+    if (s_logger.to_color) {
+        nk_stream_printf(out, NK_TERM_COLOR_NONE);
     }
 
     fputc('\n', stderr);
@@ -102,21 +101,15 @@ void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_
 
 void nk_log_init(NkLogOptions opt) {
     NK_PROF_FUNC() {
-        s_logger = (struct LoggerState){0};
-
-        s_logger.start_time = nk_now_ns();
-
         char const *env_log_level = getenv(ENV_VAR);
-        if (env_log_level) {
-            s_logger.log_level = parseEnvLogLevel(env_log_level);
-        } else {
-            s_logger.log_level = opt.log_level;
-        }
-
-        s_logger.color_mode = opt.color_mode;
-
-        s_logger.mtx = nk_mutex_alloc();
-
-        s_logger.initialized = true;
+        s_logger = (LoggerState){
+            .out = nk_file_getStream(nk_stderr()),
+            .start_time = nk_now_ns(),
+            .log_level = env_log_level ? parseEnvLogLevel(env_log_level) : opt.log_level,
+            .mtx = nk_mutex_alloc(),
+            .to_color =
+                opt.color_mode == NkLogColorMode_Always || (opt.color_mode == NkLogColorMode_Auto && nk_isatty(2)),
+            .initialized = true,
+        };
     }
 }
