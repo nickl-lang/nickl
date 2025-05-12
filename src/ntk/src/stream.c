@@ -3,10 +3,10 @@
 #include "ntk/profiler.h"
 #include "stb/sprintf.h"
 
-i32 nk_stream_printf(NkStream out, char const *fmt, ...) {
+i32 nk_printf(NkStream out, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    i32 res = nk_stream_vprintf(out, fmt, ap);
+    i32 res = nk_vprintf(out, fmt, ap);
     va_end(ap);
 
     return res;
@@ -27,7 +27,7 @@ static char *sprintfCallback(char const *buf, void *user, i32 len) {
     return ret;
 }
 
-i32 nk_stream_vprintf(NkStream out, char const *fmt, va_list ap) {
+i32 nk_vprintf(NkStream out, char const *fmt, va_list ap) {
     i32 ret;
     NK_PROF_FUNC() {
         char buf[STB_SPRINTF_MIN];

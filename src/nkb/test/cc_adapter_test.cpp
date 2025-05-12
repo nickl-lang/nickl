@@ -84,7 +84,7 @@ TEST_F(cc_adapter, empty_main) {
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_stream_printf(src.stream, "%s", "int main() {}\n");
+        nk_printf(src.stream, "%s", "int main() {}\n");
     }
 
     EXPECT_FALSE(nkcc_streamClose(&src));
@@ -98,7 +98,7 @@ TEST_F(cc_adapter, hello_world) {
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_stream_printf(src.stream, "%s", R"(
+        nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
@@ -117,7 +117,7 @@ TEST_F(cc_adapter, undefined_var) {
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_stream_printf(src.stream, "%s", R"(
+        nk_printf(src.stream, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("%i", var);

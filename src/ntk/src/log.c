@@ -77,7 +77,7 @@ void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...)
 
 void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
     NkStream const out = nk_log_streamOpen(log_level, scope);
-    nk_stream_vprintf(out, fmt, ap);
+    nk_vprintf(out, fmt, ap);
     nk_log_streamClose(out);
 }
 
@@ -90,20 +90,20 @@ NkStream nk_log_streamOpen(NkLogLevel log_level, char const *scope) {
     nk_mutex_lock(s_logger.mtx);
 
     if (s_logger.to_color) {
-        nk_stream_printf(out, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
+        nk_printf(out, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
     }
 
-    nk_stream_printf(out, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
+    nk_printf(out, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
 
     return out;
 }
 
 void nk_log_streamClose(NkStream out) {
     if (s_logger.to_color) {
-        nk_stream_printf(out, NK_TERM_COLOR_NONE);
+        nk_printf(out, NK_TERM_COLOR_NONE);
     }
 
-    nk_stream_printf(out, "\n");
+    nk_printf(out, "\n");
 
     nk_mutex_unlock(s_logger.mtx);
 }

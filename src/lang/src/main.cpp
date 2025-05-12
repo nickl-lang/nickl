@@ -17,17 +17,16 @@ void printErrorUsage() {
 }
 
 void printUsage() {
-    printf(
-        "Usage: " NKL_BINARY_NAME
-        " [options] file"
-        "\nOptions:"
+    printf("Usage: " NKL_BINARY_NAME
+           " [options] file"
+           "\nOptions:"
 #ifdef ENABLE_LOGGING
-        "\n    -c, --color {auto,always,never}                      Choose when to color output"
-        "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
+           "\n    -c, --color {auto,always,never}                      Choose when to color output"
+           "\n    -l, --loglevel {none,error,warning,info,debug,trace} Select logging level"
 #endif // ENABLE_LOGGING
-        "\n    -h, --help                                           Display this message and exit"
-        "\n    -v, --version                                        Show version information"
-        "\n");
+           "\n    -h, --help                                           Display this message and exit"
+           "\n    -v, --version                                        Show version information"
+           "\n");
 }
 
 void printVersion() {

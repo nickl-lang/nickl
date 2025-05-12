@@ -70,9 +70,9 @@ static void getToken(ParserState *p) {
     if (nk_log_check(NkLogLevel_Debug)) {
         NkStream log;
         NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-            nk_stream_printf(log, "next token: \"");
+            nk_printf(log, "next token: \"");
             nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-            nk_stream_printf(log, "\":%u", curToken(p)->id);
+            nk_printf(log, "\":%u", curToken(p)->id);
         }
     }
 #endif // ENABLE_LOGGING
@@ -84,9 +84,9 @@ static bool accept(ParserState *p, u32 id) {
         if (nk_log_check(NkLogLevel_Debug)) {
             NkStream log;
             NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-                nk_stream_printf(log, "accept \"");
+                nk_printf(log, "accept \"");
                 nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-                nk_stream_printf(log, "\":%u", curToken(p)->id);
+                nk_printf(log, "\":%u", curToken(p)->id);
             }
         }
 #endif // ENABLE_LOGGING

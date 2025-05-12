@@ -51,8 +51,8 @@ TEST_F(string_builder, stream) {
 
     auto stream = nksb_getStream(&sb);
 
-    nk_stream_printf(stream, "Hello");
-    nk_stream_printf(stream, ", %s!", "World");
+    nk_printf(stream, "Hello");
+    nk_printf(stream, ", %s!", "World");
 
     EXPECT_EQ(nk_s2stdView({NKS_INIT(sb)}), "Hello, World!");
 }
