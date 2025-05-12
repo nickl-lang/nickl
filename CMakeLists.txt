@@ -86,7 +86,6 @@ set(C_FLAGS "${C_FLAGS} -Werror=implicit-int")
 set(C_FLAGS "${C_FLAGS} -Werror=int-conversion")
 set(C_FLAGS "${C_FLAGS} -Werror=int-to-pointer-cast")
 set(C_FLAGS "${C_FLAGS} -Werror=incompatible-pointer-types")
-set(C_FLAGS "${C_FLAGS} -Werror=implicit-fallthrough")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")

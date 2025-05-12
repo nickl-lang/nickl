@@ -82,6 +82,18 @@ constexpr usize nk_alignofval(T const &) {
 #else
 #define NK_UNUSED
 #endif
+#else
+#define NK_UNUSED
+#endif
+
+#if defined(__has_attribute)
+#if __has_attribute(fallthrough)
+#define NK_FALLTHROUGH [[fallthrough]]
+#else
+#define NK_FALLTHROUGH
+#endif
+#else
+#define NK_FALLTHROUGH
 #endif
 
 #define _NK_NOP (void)0
