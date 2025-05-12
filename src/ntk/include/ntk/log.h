@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 #include "ntk/common.h"
+#include "ntk/stream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +35,9 @@ NK_EXPORT bool nk_log_check(NkLogLevel log_level);
 NK_EXPORT NK_PRINTF_LIKE(3) void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...);
 
 NK_EXPORT void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap);
+
+NK_EXPORT NkStream nk_log_streamOpen(NkLogLevel log_level, char const *scope);
+NK_EXPORT void nk_log_streamClose(NkStream stream);
 
 NK_EXPORT void nk_log_init(NkLogOptions opt);
 

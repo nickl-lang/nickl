@@ -76,6 +76,12 @@ void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...)
 }
 
 void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
+    NkStream const out = nk_log_streamOpen(log_level, scope);
+    nk_stream_vprintf(out, fmt, ap);
+    nk_log_streamClose(out);
+}
+
+NkStream nk_log_streamOpen(NkLogLevel log_level, char const *scope) {
     i64 const now = nk_now_ns();
     f64 const ts = (now - s_logger.start_time) * 1e-9;
 
@@ -88,8 +94,11 @@ void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_
     }
 
     nk_stream_printf(out, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
-    nk_stream_vprintf(out, fmt, ap);
 
+    return out;
+}
+
+void nk_log_streamClose(NkStream out) {
     if (s_logger.to_color) {
         nk_stream_printf(out, NK_TERM_COLOR_NONE);
     }

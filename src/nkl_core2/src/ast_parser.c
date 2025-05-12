@@ -6,15 +6,15 @@
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/slice.h"
+#include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(parser);
-
-#define LOG_TOKEN(ID) "(%s, \"%s\")", "<TODO:TokenId>", "<TODO:TokenName>"
 
 #define TRY(EXPR)         \
     do {                  \
@@ -64,12 +64,33 @@ static bool on(ParserState const *p, u32 id) {
 static void getToken(ParserState *p) {
     nk_assert(!on(p, NklToken_Eof));
     p->cur_token_idx++;
-    NK_LOG_DBG("next token: " LOG_TOKEN(curToken(p)->id));
+
+    // TODO: Simplify stream logging
+#ifdef ENABLE_LOGGING
+    if (nk_log_check(NkLogLevel_Debug)) {
+        NkStream log;
+        NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
+            nk_stream_printf(log, "next token: \"");
+            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
+            nk_stream_printf(log, "\":%u", curToken(p)->id);
+        }
+    }
+#endif // ENABLE_LOGGING
 }
 
 static bool accept(ParserState *p, u32 id) {
     if (on(p, id)) {
-        NK_LOG_DBG("accept" LOG_TOKEN(id));
+#ifdef ENABLE_LOGGING
+        if (nk_log_check(NkLogLevel_Debug)) {
+            NkStream log;
+            NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
+                nk_stream_printf(log, "accept \"");
+                nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
+                nk_stream_printf(log, "\":%u", curToken(p)->id);
+            }
+        }
+#endif // ENABLE_LOGGING
+
         getToken(p);
         return true;
     }
@@ -101,10 +122,7 @@ static NklAstNode *pushNode(ParserState *p) {
     nkda_append(
         &p->nodes,
         ((NklAstNode){
-            .id = 0,
             .token_idx = p->cur_token_idx,
-            .total_children = 0,
-            .arity = 0,
         }));
     return &nk_slice_last(p->nodes);
 }
