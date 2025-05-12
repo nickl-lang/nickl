@@ -14,8 +14,11 @@ typedef struct {
     NkString text;
     NklTokenArray tokens;
     NkArena *arena;
+
     NkString *err_str;
     NklToken *err_token;
+
+    char const **token_names;
 } NklAstParserData;
 
 bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes);

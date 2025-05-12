@@ -25,10 +25,13 @@ NK_LOG_USE_SCOPE(parser);
 
 typedef struct {
     NkString const text;
-    NkArena *const arena;
     NklTokenArray const tokens;
+    NkArena *const arena;
+
     NkString *const err_str;
     NklToken *const err_token;
+
+    char const **token_names;
 
     NklAstNodeDynArray nodes;
 
@@ -100,7 +103,11 @@ static bool accept(ParserState *p, u32 id) {
 static bool expect(ParserState *p, u32 id) {
     if (!accept(p, id)) {
         NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
-        reportError(p, "expected `%s` before `" NKS_FMT "`", "<TODO:TokenName>", NKS_ARG(token_str));
+        reportError(
+            p,
+            "expected `%s` before `" NKS_FMT "`",
+            p->token_names ? p->token_names[id] : "??TokenNameUnavailable??",
+            NKS_ARG(token_str));
         return false;
     }
     return true;
@@ -205,10 +212,13 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
 
     ParserState p = {
         .text = data->text,
-        .arena = data->arena,
         .tokens = data->tokens,
+        .arena = data->arena,
+
         .err_str = data->err_str,
         .err_token = data->err_token,
+
+        .token_names = data->token_names,
 
         .nodes = {NKDA_INIT(nk_arena_getAllocator(data->arena))},
 

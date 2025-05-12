@@ -27,6 +27,7 @@ enum {
 typedef struct {
     NkString text;
     NkArena *arena;
+
     NkString *err_str;
 
     char const **keywords;

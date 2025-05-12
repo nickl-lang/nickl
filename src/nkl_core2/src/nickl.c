@@ -597,6 +597,27 @@ char const *s_ast_operators[] = {
     NULL,
 };
 
+char const *s_ast_token_names[] = {
+    "end of file", // NklToken_Eof
+
+    "identifier",      // NklToken_Id
+    "int constant",    // NklToken_Int
+    "float constant",  // NklToken_Float
+    "string constant", // NklToken_String
+    "string constant", // NklToken_EscapedString
+
+    "error", // NklToken_Error
+
+    NULL, // NklAstToken_OperatorsBase
+
+    "(", // NklAstToken_LParen
+    ")", // NklAstToken_RParen
+    "{", // NklAstToken_LBrace
+    "}", // NklAstToken_RBrace
+    "[", // NklAstToken_LBraket
+    "]", // NklAstToken_RBraket
+};
+
 bool nkl_compileFileAst(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
@@ -654,6 +675,7 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
                 .arena = &nkl->arena,
                 .err_str = &err_str,
                 .err_token = &err_token,
+                .token_names = s_ast_token_names,
             },
             &nodes)) {
         reportError(
