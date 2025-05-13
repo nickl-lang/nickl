@@ -1,6 +1,7 @@
 #include "nkl/common/diagnostics.h"
 
 #include "ntk/file.h"
+#include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/term.h"
 
@@ -36,8 +37,12 @@ void nkl_diag_printErrorQuote(NkString src, NklSourceLocation loc, char const *f
 }
 
 void nkl_diag_vprintError(char const *fmt, va_list ap) {
+    char buf[512];
+    NkFileStreamBuf stream_buf = {.file = nk_stderr(), .buf = buf, .size = sizeof(buf)};
+    NkStream out = nk_file_getBufferedWriteStream(&stream_buf);
+
     bool const to_color = toColor();
-    NkStream out = nk_file_getStream(nk_stderr());
+
     if (to_color) {
         nk_printf(out, NK_TERM_COLOR_RED);
     }
@@ -48,12 +53,18 @@ void nkl_diag_vprintError(char const *fmt, va_list ap) {
     nk_printf(out, " ");
     nk_vprintf(out, fmt, ap);
     nk_printf(out, "\n");
+
+    nk_stream_flush(out);
 }
 
 void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap) {
-    NkStream out = nk_file_getStream(nk_stderr());
+    char buf[512];
+    NkFileStreamBuf stream_buf = {.file = nk_stderr(), .buf = buf, .size = sizeof(buf)};
+    NkStream out = nk_file_getBufferedWriteStream(&stream_buf);
+
     if (loc.file.size) {
         bool const to_color = toColor();
+
         if (to_color) {
             nk_printf(out, NK_TERM_COLOR_WHITE);
         }
@@ -70,15 +81,20 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
         }
         nk_printf(out, " ");
     }
+
+    nk_stream_flush(out);
+
     nkl_diag_vprintError(fmt, ap);
 }
 
 #define MAX_LINE_QUOTE 120
 
 void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, va_list ap) {
-    nkl_diag_vprintErrorFile(loc, fmt, ap);
+    char buf[512];
+    NkFileStreamBuf stream_buf = {.file = nk_stderr(), .buf = buf, .size = sizeof(buf)};
+    NkStream out = nk_file_getBufferedWriteStream(&stream_buf);
 
-    NkStream out = nk_file_getStream(nk_stderr());
+    nkl_diag_vprintErrorFile(loc, fmt, ap);
 
     bool const to_color = toColor();
 
@@ -135,4 +151,6 @@ void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *
             nk_printf(out, "\n");
         }
     }
+
+    nk_stream_flush(out);
 }
