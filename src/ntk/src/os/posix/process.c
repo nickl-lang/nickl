@@ -18,22 +18,22 @@ NkPipe nk_proc_createPipe(void) {
 
     i32 pipefd[2];
     if (pipe(pipefd) == 0) {
-        pip.h_read = handle_fromFd(pipefd[0]);
-        pip.h_write = handle_fromFd(pipefd[1]);
+        pip.read_file = fd2handle(pipefd[0]);
+        pip.write_file = fd2handle(pipefd[1]);
     }
 
     return pip;
 }
 
 void nk_proc_closePipe(NkPipe pipe) {
-    nk_close(pipe.h_read);
-    nk_close(pipe.h_write);
+    nk_close(pipe.read_file);
+    nk_close(pipe.write_file);
 }
 
 #define MAX_ARGS 31
 #define CMD_BUF_SIZE 4095
 
-i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_proc_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     char cmd_buf[CMD_BUF_SIZE + 1];
     usize cmd_buf_pos = 0;
 
@@ -84,24 +84,24 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *
             fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
 
             if (in) {
-                if (!nk_handleIsZero(in->h_read) && dup2(handle_toFd(in->h_read), STDIN_FILENO) < 0) {
+                if (!nk_handleIsZero(in->read_file) && dup2(handle2fd(in->read_file), STDIN_FILENO) < 0) {
                     goto error;
                 }
-                nk_close(in->h_write);
+                nk_close(in->write_file);
             }
 
             if (out) {
-                if (!nk_handleIsZero(out->h_write) && dup2(handle_toFd(out->h_write), STDOUT_FILENO) < 0) {
+                if (!nk_handleIsZero(out->write_file) && dup2(handle2fd(out->write_file), STDOUT_FILENO) < 0) {
                     goto error;
                 }
-                nk_close(out->h_read);
+                nk_close(out->read_file);
             }
 
             if (err) {
-                if (!nk_handleIsZero(err->h_write) && dup2(handle_toFd(err->h_write), STDERR_FILENO) < 0) {
+                if (!nk_handleIsZero(err->write_file) && dup2(handle2fd(err->write_file), STDERR_FILENO) < 0) {
                     goto error;
                 }
-                nk_close(err->h_read);
+                nk_close(err->read_file);
             }
 
             execvp(args[0], (char *const *)args);
@@ -112,18 +112,18 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *
             _exit(EX_OSERR);
 
         default:
-            *h_process = handle_fromPid(pid);
+            *process = pid2handle(pid);
 
             if (in) {
-                nk_close(in->h_read);
+                nk_close(in->read_file);
             }
 
             if (out) {
-                nk_close(out->h_write);
+                nk_close(out->write_file);
             }
 
             if (err) {
-                nk_close(err->h_write);
+                nk_close(err->write_file);
             }
 
             close(err_pipe[1]);
@@ -135,11 +135,11 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *
     }
 }
 
-i32 nk_proc_wait(NkHandle h_process, i32 *exit_status) {
-    if (!nk_handleIsZero(h_process)) {
+i32 nk_proc_wait(NkHandle process, i32 *exit_status) {
+    if (!nk_handleIsZero(process)) {
         for (;;) {
             i32 wstatus = 0;
-            if (waitpid(handle_toPid(h_process), &wstatus, 0) < 0) {
+            if (waitpid(handle2pid(process), &wstatus, 0) < 0) {
                 return -1;
             }
 

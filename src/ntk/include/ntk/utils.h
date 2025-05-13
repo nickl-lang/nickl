@@ -164,13 +164,13 @@ _NkDeferWithData<T, F> nk_defer(T &&data, F &&f) {
 #ifdef NDEBUG
 #define nk_assert(x) (void)(x)
 #else // NDEBUG
-#define nk_assert(x)                                                                             \
-    do {                                                                                         \
-        if (!(x)) {                                                                              \
-            NkStream const _out = nk_file_getStream(nk_stderr());                                \
-            nk_printf(_out, __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
-            nk_trap();                                                                           \
-        }                                                                                        \
+#define nk_assert(x)                                                                                                 \
+    do {                                                                                                             \
+        if (!(x)) {                                                                                                  \
+            nk_printf(                                                                                               \
+                nk_file_getStream(nk_stderr()), __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
+            nk_trap();                                                                                               \
+        }                                                                                                            \
     } while (0)
 #endif // NDEBUG
 

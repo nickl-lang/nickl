@@ -35,7 +35,7 @@ i32 nksb_vprintf(NkStringBuilder *sb, char const *fmt, va_list ap) {
     return printf_res;
 }
 
-static i32 nksb_streamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
+static i32 streamProc(void *stream_data, char *buf, usize size, NkStreamMode mode) {
     if (mode == NkStreamMode_Write) {
         NkStringBuilder *sb = (NkStringBuilder *)stream_data;
         usize prev_size = sb->size;
@@ -47,7 +47,7 @@ static i32 nksb_streamProc(void *stream_data, char *buf, usize size, NkStreamMod
 }
 
 NkStream nksb_getStream(NkStringBuilder *sb) {
-    return (NkStream){sb, nksb_streamProc};
+    return (NkStream){sb, streamProc};
 }
 
 #define DEFAULT_BUF_SIZE 1024

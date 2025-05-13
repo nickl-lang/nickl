@@ -27,11 +27,11 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
             quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_HANDLE_ZERO,
             quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_HANDLE_ZERO,
         };
-        NkHandle h_process = NK_HANDLE_ZERO;
-        if (nk_proc_execAsync(sb.data, &h_process, NULL, &out, &null_pipe) < 0) {
+        NkHandle process = NK_HANDLE_ZERO;
+        if (nk_proc_execAsync(sb.data, &process, NULL, &out, &null_pipe) < 0) {
             nkerr_t err = nk_getLastError();
 
-            nk_proc_wait(h_process, NULL);
+            nk_proc_wait(process, NULL);
 
             nk_proc_closePipe(out);
             nk_proc_closePipe(null_pipe);
@@ -39,9 +39,9 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
             nk_setLastError(err);
         } else {
             *pipe_stream = (NkPipeStream){
-                nk_file_getStream(out.h_read),
-                out.h_read,
-                h_process,
+                nk_file_getStream(out.read_file),
+                out.read_file,
+                process,
             };
             ret = true;
         }
@@ -64,11 +64,11 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
             NK_HANDLE_ZERO,
             quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_HANDLE_ZERO,
         };
-        NkHandle h_process = NK_HANDLE_ZERO;
-        if (nk_proc_execAsync(sb.data, &h_process, &in, &null_pipe, &null_pipe) < 0) {
+        NkHandle process = NK_HANDLE_ZERO;
+        if (nk_proc_execAsync(sb.data, &process, &in, &null_pipe, &null_pipe) < 0) {
             nkerr_t err = nk_getLastError();
 
-            nk_proc_wait(h_process, NULL);
+            nk_proc_wait(process, NULL);
 
             nk_proc_closePipe(in);
             nk_proc_closePipe(null_pipe);
@@ -76,9 +76,9 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
             nk_setLastError(err);
         } else {
             *pipe_stream = (NkPipeStream){
-                nk_file_getStream(in.h_write),
-                in.h_write,
-                h_process,
+                nk_file_getStream(in.write_file),
+                in.write_file,
+                process,
             };
             ret = true;
         }
@@ -91,8 +91,8 @@ i32 nk_pipe_streamClose(NkPipeStream *pipe_stream) {
 
     i32 ret = 1;
     NK_PROF_FUNC() {
-        nk_close(pipe_stream->h_file);
-        nk_proc_wait(pipe_stream->h_process, &ret);
+        nk_close(pipe_stream->_file);
+        nk_proc_wait(pipe_stream->_process, &ret);
 
         *pipe_stream = (NkPipeStream){0};
     }
