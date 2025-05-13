@@ -12,16 +12,16 @@ typedef struct {
     NkHandle write_file;
 } NkPipe;
 
-NK_EXPORT NkPipe nk_proc_createPipe(void);
-NK_EXPORT void nk_proc_closePipe(NkPipe pipe);
+NK_EXPORT NkPipe nk_pipe_create(void);
+NK_EXPORT void nk_pipe_close(NkPipe pipe);
 
-NK_EXPORT i32 nk_proc_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err);
-NK_EXPORT i32 nk_proc_wait(NkHandle process, i32 *exit_status);
+NK_EXPORT i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err);
+NK_EXPORT i32 nk_waitProc(NkHandle process, i32 *exit_status);
 
-NK_INLINE i32 nk_proc_execSync(char const *cmd, NkPipe *in, NkPipe *out, NkPipe *err, i32 *exit_status) {
+NK_INLINE i32 nk_exec(char const *cmd, NkPipe *in, NkPipe *out, NkPipe *err, i32 *exit_status) {
     NkHandle process = NK_HANDLE_ZERO;
-    i32 res = nk_proc_execAsync(cmd, &process, in, out, err);
-    nk_proc_wait(process, exit_status);
+    i32 res = nk_execAsync(cmd, &process, in, out, err);
+    nk_waitProc(process, exit_status);
     return res;
 }
 

@@ -13,7 +13,7 @@
 #include "ntk/file.h"
 #include "ntk/string.h"
 
-NkPipe nk_proc_createPipe(void) {
+NkPipe nk_pipe_create(void) {
     NkPipe pip = {0};
 
     i32 pipefd[2];
@@ -25,7 +25,7 @@ NkPipe nk_proc_createPipe(void) {
     return pip;
 }
 
-void nk_proc_closePipe(NkPipe pipe) {
+void nk_pipe_close(NkPipe pipe) {
     nk_close(pipe.read_file);
     nk_close(pipe.write_file);
 }
@@ -33,7 +33,7 @@ void nk_proc_closePipe(NkPipe pipe) {
 #define MAX_ARGS 31
 #define CMD_BUF_SIZE 4095
 
-i32 nk_proc_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     char cmd_buf[CMD_BUF_SIZE + 1];
     usize cmd_buf_pos = 0;
 
@@ -135,7 +135,7 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *ou
     }
 }
 
-i32 nk_proc_wait(NkHandle process, i32 *exit_status) {
+i32 nk_waitProc(NkHandle process, i32 *exit_status) {
     if (!nk_handleIsZero(process)) {
         for (;;) {
             i32 wstatus = 0;

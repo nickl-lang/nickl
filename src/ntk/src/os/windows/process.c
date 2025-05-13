@@ -3,7 +3,7 @@
 #include "common.h"
 #include "ntk/file.h"
 
-NkPipe nk_proc_createPipe(void) {
+NkPipe nk_pipe_create(void) {
     NkPipe pip = {0};
 
     SECURITY_ATTRIBUTES saAttr = {0};
@@ -25,12 +25,12 @@ NkPipe nk_proc_createPipe(void) {
     return pip;
 }
 
-void nk_proc_closePipe(NkPipe pipe) {
+void nk_pipe_close(NkPipe pipe) {
     nk_close(pipe.read_file);
     nk_close(pipe.write_file);
 }
 
-i32 nk_proc_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
@@ -99,7 +99,7 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *ou
     return 0;
 }
 
-i32 nk_proc_wait(NkHandle process, i32 *exit_status) {
+i32 nk_waitProc(NkHandle process, i32 *exit_status) {
     if (!nk_handleIsZero(process)) {
         DWORD dwResult = WaitForSingleObject(
             handle2native(process), // HANDLE hHandle,
