@@ -4,6 +4,7 @@
 
 #include "ntk/common.h"
 #include "ntk/log.h"
+#include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(mem);
 

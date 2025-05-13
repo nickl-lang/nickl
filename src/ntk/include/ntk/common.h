@@ -101,20 +101,6 @@ constexpr usize nk_alignofval(T const &) {
 
 #define nk_trap() __builtin_trap()
 
-#ifdef NDEBUG
-#define nk_assert(x) (void)(x)
-#else // NDEBUG
-// TODO nk_assert depends on libc
-#define nk_assert(x)                                                                             \
-    do {                                                                                         \
-        if (!(x)) {                                                                              \
-            fprintf(stderr, __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
-            fflush(stderr);                                                                      \
-            nk_trap();                                                                           \
-        }                                                                                        \
-    } while (0)
-#endif // NDEBUG
-
 #ifdef __cplusplus
 extern "C" {
 #endif
