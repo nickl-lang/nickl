@@ -139,7 +139,7 @@ inline bool operator==(NkHandle lhs, NkHandle rhs) {
 }
 #endif
 
-#define NK_DEFER_LOOP(begin, end) \
-    for (int _nk_defer_loop_i = ((begin), 0); !_nk_defer_loop_i; _nk_defer_loop_i += 1, (end))
+#define NK_DEFER_LOOP(begin, end) for (int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
+#define NK_DEFER_LOOP_OPT(enable, begin, end) for (int _i_ = !((enable) && ((begin), 1)); !_i_; _i_ += 1, (end))
 
 #endif // NTK_COMMON_H_

@@ -4,6 +4,7 @@
 #include "nkl/core/lexer.h"
 #include "ntk/log.h"
 #include "ntk/stream.h"
+#include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(ir_parser);
 
@@ -61,31 +62,22 @@ static void getToken(ParserState *p) {
     nk_assert(!on(p, NklToken_Eof));
     p->cur_token_idx++;
 
-    // TODO: Simplify stream logging
-#ifdef ENABLE_LOGGING
-    if (nk_log_check(NkLogLevel_Debug)) {
-        NkStream log;
-        NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-            nk_printf(log, "next token: \"");
-            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-            nk_printf(log, "\":%u", curToken(p)->id);
-        }
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "next token: \"");
+        nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
+        nk_printf(log, "\":%u", curToken(p)->id);
     }
-#endif // ENABLE_LOGGING
 }
 
 static bool accept(ParserState *p, u32 id) {
     if (on(p, id)) {
-#ifdef ENABLE_LOGGING
-        if (nk_log_check(NkLogLevel_Debug)) {
-            NkStream log;
-            NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-                nk_printf(log, "accept \"");
-                nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-                nk_printf(log, "\":%u", curToken(p)->id);
-            }
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "accept \"");
+            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
+            nk_printf(log, "\":%u", curToken(p)->id);
         }
-#endif // ENABLE_LOGGING
 
         getToken(p);
         return true;
@@ -133,17 +125,12 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
 
     TRY(parse(&p));
 
-    // TODO: Simplify stream logging
-#ifdef ENABLE_LOGGING
-    if (nk_log_check(NkLogLevel_Info)) {
-        NkStream log;
-        NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Info, _nk_log_scope), nk_log_streamClose(log)) {
-            nk_printf(log, "IR:\n");
-            NkIrModule const syms = {out_syms->data + start_idx, out_syms->size - start_idx};
-            nkir_inspectModule(syms, log);
-        }
+    NK_LOG_STREAM_INF {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "IR:\n");
+        NkIrModule const syms = {out_syms->data + start_idx, out_syms->size - start_idx};
+        nkir_inspectModule(syms, log);
     }
-#endif // ENABLE_LOGGING
 
     return true;
 }

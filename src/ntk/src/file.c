@@ -54,6 +54,7 @@ static i32 streamProc(void *stream_data, char *buf, usize size, NkStreamMode mod
     }
 
     nk_assert(!"unreachable");
+    return -1;
 }
 
 NkStream nk_file_getStream(NkHandle file) {
@@ -95,6 +96,7 @@ static i32 bufferedWriteStreamProc(void *stream_data, char *buf, usize const siz
     }
 
     nk_assert(!"unreachable");
+    return -1;
 }
 
 NkStream nk_file_getBufferedWriteStream(NkFileStreamBuf *stream_buf) {

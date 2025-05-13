@@ -12,7 +12,6 @@
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(ast_parser);
 
@@ -68,31 +67,22 @@ static void getToken(ParserState *p) {
     nk_assert(!on(p, NklToken_Eof));
     p->cur_token_idx++;
 
-    // TODO: Simplify stream logging
-#ifdef ENABLE_LOGGING
-    if (nk_log_check(NkLogLevel_Debug)) {
-        NkStream log;
-        NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-            nk_printf(log, "next token: \"");
-            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-            nk_printf(log, "\":%u", curToken(p)->id);
-        }
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "next token: \"");
+        nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
+        nk_printf(log, "\":%u", curToken(p)->id);
     }
-#endif // ENABLE_LOGGING
 }
 
 static bool accept(ParserState *p, u32 id) {
     if (on(p, id)) {
-#ifdef ENABLE_LOGGING
-        if (nk_log_check(NkLogLevel_Debug)) {
-            NkStream log;
-            NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-                nk_printf(log, "accept \"");
-                nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-                nk_printf(log, "\":%u", curToken(p)->id);
-            }
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "accept \"");
+            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
+            nk_printf(log, "\":%u", curToken(p)->id);
         }
-#endif // ENABLE_LOGGING
 
         getToken(p);
         return true;
@@ -228,9 +218,9 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
 
     TRY(parse(&p));
 
-#ifdef ENABLE_LOGGING
-    {
-        NkStringBuilder sb = {0};
+    NK_LOG_STREAM_INF {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "AST:");
         nkl_ast_inspect(
             (NklSource){
                 .file = 0,
@@ -238,11 +228,8 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
                 .tokens = data->tokens,
                 .nodes = {NK_SLICE_INIT(p.nodes)},
             },
-            nksb_getStream(&sb));
-        NK_LOG_INF("AST:" NKS_FMT, NKS_ARG(sb));
-        nksb_free(&sb); // TODO: Use scratch arena
+            log);
     }
-#endif // ENABLE_LOGGING
 
     *out_nodes = (NklAstNodeArray){NK_SLICE_INIT(p.nodes)};
     return true;
