@@ -1,7 +1,7 @@
-#ifndef NKL_CORE_AST_PARSER_H_
-#define NKL_CORE_AST_PARSER_H_
+#ifndef NKL_CORE_IR_PARSER_H_
+#define NKL_CORE_IR_PARSER_H_
 
-#include "nkl/common/ast.h"
+#include "nkb/ir.h"
 #include "nkl/common/token.h"
 #include "ntk/arena.h"
 #include "ntk/string.h"
@@ -18,12 +18,12 @@ typedef struct {
     NkString *err_str;
     NklToken *err_token;
     char const **token_names;
-} NklAstParserData;
+} NklIrParserData;
 
-bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes);
+bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NKL_CORE_AST_PARSER_H_
+#endif // NKL_CORE_IR_PARSER_H_

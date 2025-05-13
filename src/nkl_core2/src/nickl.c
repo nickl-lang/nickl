@@ -7,6 +7,7 @@
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
 #include "nkl/core/ast_parser.h"
+#include "nkl/core/ir_parser.h"
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
@@ -240,6 +241,36 @@ enum {
     NklIrToken_TagsBase,
 
     NklIrToken_AtTag,
+};
+
+char const *s_ir_token_names[] = {
+    "end of file", // NklToken_Eof
+
+    "identifier",      // NklToken_Id
+    "int constant",    // NklToken_Int
+    "float constant",  // NklToken_Float
+    "string constant", // NklToken_String
+    "string constant", // NklToken_EscapedString
+
+    "error", // NklToken_Error
+
+    NULL, // NklIrToken_KeywordsBase
+
+    "pub",  // NklIrToken_Pub
+    "proc", // NklIrToken_Proc
+    "i32",  // NklIrToken_I32
+    "ret",  // NklIrToken_Ret
+
+    NULL, // NklIrToken_OperatorsBase
+
+    "(", // NklIrToken_LParen
+    ")", // NklIrToken_RParen
+    "{", // NklIrToken_LBrace
+    "}", // NklIrToken_RBrace
+
+    NULL, // NklIrToken_TagsBase
+
+    "@", // NklIrToken_AtTag
 };
 
 bool nkl_compileFileIr(NklModule mod, NkString file) {
@@ -581,6 +612,30 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
     }
 #endif
+
+    NklToken err_token = {0};
+    if (!nkl_ir_parse(
+            &(NklIrParserData){
+                .text = text,
+                .tokens = tokens,
+                .arena = &nkl->arena,
+                .err_str = &err_str,
+                .err_token = &err_token,
+                .token_names = s_ir_token_names,
+            },
+            &mod->ir)) {
+        reportError(
+            nkl,
+            (NklSourceLocation){
+                .file = file,
+                .lin = err_token.lin,
+                .col = err_token.col,
+                .len = err_token.len,
+            },
+            NKS_FMT,
+            NKS_ARG(err_str));
+        return false;
+    }
 
     reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
     return false;

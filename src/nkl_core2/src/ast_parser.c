@@ -14,7 +14,7 @@
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
-NK_LOG_USE_SCOPE(parser);
+NK_LOG_USE_SCOPE(ast_parser);
 
 #define TRY(EXPR)         \
     do {                  \
