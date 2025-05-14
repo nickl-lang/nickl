@@ -84,21 +84,21 @@ i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, Nk
             fcntl(err_pipe[1], F_SETFD, FD_CLOEXEC);
 
             if (in) {
-                if (!nk_handleIsZero(in->read_file) && dup2(handle2fd(in->read_file), STDIN_FILENO) < 0) {
+                if (!nk_handleIsNull(in->read_file) && dup2(handle2fd(in->read_file), STDIN_FILENO) < 0) {
                     goto error;
                 }
                 nk_close(in->write_file);
             }
 
             if (out) {
-                if (!nk_handleIsZero(out->write_file) && dup2(handle2fd(out->write_file), STDOUT_FILENO) < 0) {
+                if (!nk_handleIsNull(out->write_file) && dup2(handle2fd(out->write_file), STDOUT_FILENO) < 0) {
                     goto error;
                 }
                 nk_close(out->read_file);
             }
 
             if (err) {
-                if (!nk_handleIsZero(err->write_file) && dup2(handle2fd(err->write_file), STDERR_FILENO) < 0) {
+                if (!nk_handleIsNull(err->write_file) && dup2(handle2fd(err->write_file), STDERR_FILENO) < 0) {
                     goto error;
                 }
                 nk_close(err->read_file);
@@ -136,7 +136,7 @@ i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, Nk
 }
 
 i32 nk_waitProc(NkHandle process, i32 *exit_status) {
-    if (!nk_handleIsZero(process)) {
+    if (!nk_handleIsNull(process)) {
         for (;;) {
             i32 wstatus = 0;
             if (waitpid(handle2pid(process), &wstatus, 0) < 0) {

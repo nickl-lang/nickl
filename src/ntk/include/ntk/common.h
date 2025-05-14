@@ -109,14 +109,14 @@ typedef struct {
     intptr_t val;
 } NkHandle;
 
-#define NK_HANDLE_ZERO (NK_LITERAL(NkHandle) NK_ZERO_STRUCT)
+#define NK_NULL_HANDLE (NK_LITERAL(NkHandle) NK_ZERO_STRUCT)
 
 NK_INLINE bool nk_handleEqual(NkHandle lhs, NkHandle rhs) {
     return lhs.val == rhs.val;
 }
 
-NK_INLINE bool nk_handleIsZero(NkHandle handle) {
-    return nk_handleEqual(handle, NK_HANDLE_ZERO);
+NK_INLINE bool nk_handleIsNull(NkHandle handle) {
+    return nk_handleEqual(handle, NK_NULL_HANDLE);
 }
 
 NK_INLINE void *nk_handleToVoidPtr(NkHandle handle) {

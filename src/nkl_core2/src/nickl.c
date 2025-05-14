@@ -1,6 +1,7 @@
 #include "nkl/core/nickl.h"
 
 #include "ast_tokens.h"
+#include "ir_tokens.h"
 #include "nkb/ir.h"
 #include "nkb/types.h"
 #include "nkl/common/ast.h"
@@ -18,6 +19,7 @@
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/slice.h"
+#include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
@@ -199,7 +201,7 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     }
 }
 
-char const *s_ir_keywords[] = {
+static char const *s_ir_keywords[] = {
     "pub",
     "proc",
     "i32",
@@ -208,7 +210,7 @@ char const *s_ir_keywords[] = {
     NULL,
 };
 
-char const *s_ir_operators[] = {
+static char const *s_ir_operators[] = {
     "(",
     ")",
     "{",
@@ -217,33 +219,13 @@ char const *s_ir_operators[] = {
     NULL,
 };
 
-char const s_ir_tag_prefixes[] = {
+static char const s_ir_tag_prefixes[] = {
     '@',
 
     0,
 };
 
-enum {
-    NklIrToken_KeywordsBase = NklToken_Count,
-
-    NklIrToken_Pub,
-    NklIrToken_Proc,
-    NklIrToken_I32,
-    NklIrToken_Ret,
-
-    NklIrToken_OperatorsBase,
-
-    NklIrToken_LParen,
-    NklIrToken_RParen,
-    NklIrToken_LBrace,
-    NklIrToken_RBrace,
-
-    NklIrToken_TagsBase,
-
-    NklIrToken_AtTag,
-};
-
-char const *s_ir_token_names[] = {
+static char const *s_ir_token_names[] = {
     "end of file", // NklToken_Eof
 
     "identifier",      // NklToken_Id
@@ -251,6 +233,7 @@ char const *s_ir_token_names[] = {
     "float constant",  // NklToken_Float
     "string constant", // NklToken_String
     "string constant", // NklToken_EscapedString
+    "newline",         // NklToken_Newline
 
     "error", // NklToken_Error
 
@@ -326,7 +309,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         return false;
     }
 
-#if 0
+#if 1
     { // TODO: Dummy IR
         NkIrType_T const void_t = {.aggr = {0}, .size = 0, .align = 1, .id = 0, .kind = NkIrType_Aggregate};
 
@@ -607,9 +590,11 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .kind = NkIrSymbol_Proc,
             }));
 
-        NkStringBuilder sb = {NKSB_INIT(alloc)};
-        nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, nksb_getStream(&sb));
-        NK_LOG_INF("IR:\n" NKS_FMT, NKS_ARG(sb));
+        NK_LOG_STREAM_INF {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "IR:\n");
+            nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, log);
+        }
     }
 #endif
 
@@ -641,7 +626,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     return false;
 }
 
-char const *s_ast_operators[] = {
+static char const *s_ast_operators[] = {
     "(",
     ")",
     "{",
@@ -652,7 +637,7 @@ char const *s_ast_operators[] = {
     NULL,
 };
 
-char const *s_ast_token_names[] = {
+static char const *s_ast_token_names[] = {
     "end of file", // NklToken_Eof
 
     "identifier",      // NklToken_Id
@@ -660,6 +645,7 @@ char const *s_ast_token_names[] = {
     "float constant",  // NklToken_Float
     "string constant", // NklToken_String
     "string constant", // NklToken_EscapedString
+    "newline",         // NklToken_Newline
 
     "error", // NklToken_Error
 

@@ -56,17 +56,8 @@ NK_EXPORT void nk_log_init(NkLogOptions opt);
 
 #define NK_LOG_USE_SCOPE(NAME) static char const *_nk_log_scope = #NAME
 
-#define NK_LOG(LEVEL, ...)                                 \
-    if (nk_log_check(LEVEL)) {                             \
-        nk_log_write((LEVEL), _nk_log_scope, __VA_ARGS__); \
-    } else                                                 \
-        _NK_NOP
-
-#define NK_LOGV(LEVEL, FMT, AP)                             \
-    if (nk_log_check(LEVEL)) {                              \
-        nk_log_vwrite((LEVEL), _nk_log_scope, (FMT), (AP)); \
-    } else                                                  \
-        _NK_NOP
+#define NK_LOG(LEVEL, ...) (nk_log_check(LEVEL) && (nk_log_write((LEVEL), _nk_log_scope, __VA_ARGS__), 1))
+#define NK_LOGV(LEVEL, FMT, AP) (nk_log_check(LEVEL) && (nk_log_vwrite((LEVEL), _nk_log_scope, (FMT), (AP)), 1))
 
 #define NK_LOG_FAT(...) NK_LOG(NkLogLevel_Fatal, __VA_ARGS__)
 #define NK_LOG_ERR(...) NK_LOG(NkLogLevel_Error, __VA_ARGS__)

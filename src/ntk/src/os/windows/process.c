@@ -35,29 +35,29 @@ i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, Nk
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
     siStartInfo.hStdInput =
-        (in && !nk_handleIsZero(in->read_file)) ? handle2native(in->read_file) : GetStdHandle(STD_INPUT_HANDLE);
+        (in && !nk_handleIsNull(in->read_file)) ? handle2native(in->read_file) : GetStdHandle(STD_INPUT_HANDLE);
     siStartInfo.hStdOutput =
-        (out && !nk_handleIsZero(out->write_file)) ? handle2native(out->write_file) : GetStdHandle(STD_OUTPUT_HANDLE);
+        (out && !nk_handleIsNull(out->write_file)) ? handle2native(out->write_file) : GetStdHandle(STD_OUTPUT_HANDLE);
     siStartInfo.hStdError =
-        (err && !nk_handleIsZero(err->write_file)) ? handle2native(err->write_file) : GetStdHandle(STD_ERROR_HANDLE);
+        (err && !nk_handleIsNull(err->write_file)) ? handle2native(err->write_file) : GetStdHandle(STD_ERROR_HANDLE);
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     PROCESS_INFORMATION piProcInfo;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-    if (in && !nk_handleIsZero(in->write_file)) {
+    if (in && !nk_handleIsNull(in->write_file)) {
         if (!SetHandleInformation(handle2native(in->write_file), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (out && !nk_handleIsZero(out->read_file)) {
+    if (out && !nk_handleIsNull(out->read_file)) {
         if (!SetHandleInformation(handle2native(out->read_file), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (err && !nk_handleIsZero(err->read_file)) {
+    if (err && !nk_handleIsNull(err->read_file)) {
         if (!SetHandleInformation(handle2native(err->read_file), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
@@ -100,7 +100,7 @@ i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, Nk
 }
 
 i32 nk_waitProc(NkHandle process, i32 *exit_status) {
-    if (!nk_handleIsZero(process)) {
+    if (!nk_handleIsNull(process)) {
         DWORD dwResult = WaitForSingleObject(
             handle2native(process), // HANDLE hHandle,
             INFINITE                // DWORD  dwMilliseconds

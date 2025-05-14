@@ -17,7 +17,7 @@ NkHandle nkl_findLibrary(NkAtom name) {
     // TODO: Cache found libraries
     auto const name_str = nk_atom2cs(name);
     auto h_lib = nkdl_loadLibrary(name_str);
-    if (nk_handleIsZero(h_lib)) {
+    if (nk_handleIsNull(h_lib)) {
         // TODO: Fixed buffer, use scratch arena
         NKSB_FIXED_BUFFER(err_str, 1024);
         nksb_printf(&err_str, "%s", nkdl_getLastErrorString());
@@ -28,24 +28,24 @@ NkHandle nkl_findLibrary(NkAtom name) {
         nksb_appendNull(&lib_name);
         h_lib = nkdl_loadLibrary(lib_name.data);
 
-        if (nk_handleIsZero(h_lib)) {
+        if (nk_handleIsNull(h_lib)) {
             nksb_clear(&lib_name);
 
             nksb_printf(&lib_name, "lib%s", name_str);
             nksb_appendNull(&lib_name);
             h_lib = nkdl_loadLibrary(lib_name.data);
 
-            if (nk_handleIsZero(h_lib)) {
+            if (nk_handleIsNull(h_lib)) {
                 nksb_clear(&lib_name);
 
                 nksb_printf(&lib_name, "lib%s.%s", name_str, nkdl_file_extension);
                 nksb_appendNull(&lib_name);
                 h_lib = nkdl_loadLibrary(lib_name.data);
 
-                if (nk_handleIsZero(h_lib)) {
+                if (nk_handleIsNull(h_lib)) {
                     // TODO: Report error to the user instead of logging
                     NK_LOG_ERR("failed to load extern library `%s`: " NKS_FMT, name_str, NKS_ARG(err_str));
-                    return NK_HANDLE_ZERO;
+                    return NK_NULL_HANDLE;
                 }
             }
         }

@@ -34,18 +34,14 @@ typedef struct {
 
     NklAstNodeDynArray nodes;
 
-    u32 cur_token_idx;
+    NklToken const *cur_token;
 } ParserState;
-
-static NklToken const *curToken(ParserState const *p) {
-    return &p->tokens.data[p->cur_token_idx];
-}
 
 static i32 vreportError(ParserState *p, char const *fmt, va_list ap) {
     i32 res = 0;
     if (p->err_str) {
         *p->err_str = nk_vtsprintf(p->arena, fmt, ap);
-        *p->err_token = *curToken(p);
+        *p->err_token = *p->cur_token;
     }
     return res;
 }
@@ -60,18 +56,21 @@ NK_PRINTF_LIKE(2) static i32 reportError(ParserState *p, char const *fmt, ...) {
 }
 
 static bool on(ParserState const *p, u32 id) {
-    return curToken(p)->id == id;
+    return p->cur_token->id == id;
 }
 
 static void getToken(ParserState *p) {
     nk_assert(!on(p, NklToken_Eof));
-    p->cur_token_idx++;
+
+    do {
+        p->cur_token++;
+    } while (on(p, NklToken_Newline));
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_printf(log, "next token: \"");
-        nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-        nk_printf(log, "\":%u", curToken(p)->id);
+        nks_escape(log, nkl_getTokenStr(p->cur_token, p->text));
+        nk_printf(log, "\":%u", p->cur_token->id);
     }
 }
 
@@ -80,8 +79,8 @@ static bool accept(ParserState *p, u32 id) {
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
             nk_printf(log, "accept \"");
-            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-            nk_printf(log, "\":%u", curToken(p)->id);
+            nks_escape(log, nkl_getTokenStr(p->cur_token, p->text));
+            nk_printf(log, "\":%u", p->cur_token->id);
         }
 
         getToken(p);
@@ -92,7 +91,7 @@ static bool accept(ParserState *p, u32 id) {
 
 static bool expect(ParserState *p, u32 id) {
     if (!accept(p, id)) {
-        NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+        NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
         reportError(
             p,
             "expected `%s` before `" NKS_FMT "`",
@@ -111,6 +110,7 @@ static bool parseNodeList(ParserState *p, NklAstNode *node) {
         TRY(parseNode(p));
         node->arity++;
     }
+
     node->total_children = p->nodes.size - old_count;
     return true;
 }
@@ -119,7 +119,7 @@ static NklAstNode *pushNode(ParserState *p) {
     nkda_append(
         &p->nodes,
         ((NklAstNode){
-            .token_idx = p->cur_token_idx,
+            .token_idx = p->cur_token - p->tokens.data,
         }));
     return &nk_slice_last(p->nodes);
 }
@@ -130,16 +130,16 @@ static bool parseNode(ParserState *p) {
     if (accept(p, NklAstToken_LParen)) {
         if (!accept(p, NklAstToken_RParen)) {
             if (on(p, NklToken_Id)) {
-                NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+                NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
                 node->id = nk_s2atom(token_str);
                 getToken(p);
             } else if (on(p, NklToken_String)) {
-                char const *data = p->text.data + curToken(p)->pos + 1;
-                usize const len = curToken(p)->len - 2;
+                char const *data = p->text.data + p->cur_token->pos + 1;
+                usize const len = p->cur_token->len - 2;
                 node->id = nk_s2atom((NkString){data, len});
                 getToken(p);
             } else {
-                NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+                NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
                 reportError(p, "unexpected token `" NKS_FMT "`", NKS_ARG(token_str));
                 return false;
             }
@@ -172,7 +172,7 @@ static bool parseNode(ParserState *p) {
     }
 
     else {
-        NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+        NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
         reportError(p, "unexpected token `" NKS_FMT "`", NKS_ARG(token_str));
         return false;
     }
@@ -189,7 +189,7 @@ static bool parse(ParserState *p) {
     TRY(parseNodeList(p, node));
 
     if (!on(p, NklToken_Eof)) {
-        NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+        NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
         reportError(p, "unexpected token `" NKS_FMT "`", NKS_ARG(token_str));
         return false;
     }
@@ -212,7 +212,7 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
 
         .nodes = {NKDA_INIT(nk_arena_getAllocator(data->arena))},
 
-        .cur_token_idx = 0,
+        .cur_token = p.tokens.data,
     };
     nkda_reserve(&p.nodes, 1000);
 

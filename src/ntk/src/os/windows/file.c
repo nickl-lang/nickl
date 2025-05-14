@@ -56,7 +56,7 @@ i32 nk_flush(NkHandle file) {
 }
 
 NkHandle nk_open(char const *path, i32 flags) {
-    NkHandle file = NK_HANDLE_ZERO;
+    NkHandle file = NK_NULL_HANDLE;
     NK_PROF_FUNC() {
         DWORD dwDesiredAccess =
             ((flags & NkOpenFlags_Read) ? GENERIC_READ : 0) | ((flags & NkOpenFlags_Write) ? GENERIC_WRITE : 0);
@@ -84,7 +84,7 @@ NkHandle nk_open(char const *path, i32 flags) {
 i32 nk_close(NkHandle file) {
     i32 ret = 0;
     NK_PROF_FUNC() {
-        if (!nk_handleIsZero(file)) {
+        if (!nk_handleIsNull(file)) {
             ret = CloseHandle(handle2native(file)) ? 0 : -1;
         }
     }

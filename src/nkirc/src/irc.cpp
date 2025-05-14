@@ -100,7 +100,7 @@ int nkir_run(NkIrCompiler c, NkString in_file) {
     for (auto const &sym : nk_iterate(c->extern_sym)) {
         NK_LOG_DBG("Loading library `%s`", nk_atom2cs(sym.lib));
         auto const lib = nkl_findLibrary(sym.lib);
-        if (nk_handleIsZero(lib)) {
+        if (nk_handleIsNull(lib)) {
             nkl_diag_printError("failed to load library `%s`: %s", nk_atom2cs(sym.lib), nkdl_getLastErrorString());
             return 1;
         }

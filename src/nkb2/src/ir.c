@@ -318,13 +318,7 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
     NkIrInstr const instr = instrs.data[idx];
 
     if (instr.code != NkIrOp_label) {
-        char const *opcode_name = NULL;
-        if (instr.code == NkIrOp_comment) {
-            opcode_name = "//";
-        } else {
-            opcode_name = s_opcode_names[instr.code];
-        }
-        nk_printf(out, "%5zu |%8s ", idx, opcode_name);
+        nk_printf(out, "%5zu |%8s ", idx, s_opcode_names[instr.code]);
     }
 
     for (usize i = 0; i < 3; i++) {
@@ -390,7 +384,7 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
                 break;
 
             case NkIrArg_String:
-                nk_printf(out, NKS_FMT, NKS_ARG(arg->str));
+                nk_printf(out, "\"" NKS_FMT "\"", NKS_ARG(arg->str));
                 break;
 
             case NkIrArg_Idx:
@@ -437,7 +431,6 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
                 nk_printf(out, " = ");
                 nkir_inspectVal(sym->data.addr, sym->data.type, out);
             }
-            nk_printf(out, ";");
             break;
 
         case NkIrSymbol_Proc:

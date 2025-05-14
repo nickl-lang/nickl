@@ -18,6 +18,7 @@ enum {
     NklToken_Float,
     NklToken_String,
     NklToken_EscapedString,
+    NklToken_Newline,
 
     NklToken_Error,
 

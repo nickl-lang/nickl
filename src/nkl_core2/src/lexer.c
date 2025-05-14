@@ -95,7 +95,7 @@ static void discard(LexerState *l, NklToken *token) {
 }
 
 static void skipSpaces(LexerState *l) {
-    while (onSpace(l, 0)) {
+    while (onSpace(l, 0) && !on(l, '\n', 0)) {
         advance(l, 1);
     }
 }
@@ -156,6 +156,14 @@ static NklToken scan(LexerState *l) {
 
     if (!chr(l, 0)) {
         token.id = NklToken_Eof;
+        return token;
+    }
+
+    if (on(l, '\n', 0)) {
+        while (on(l, '\n', 0)) {
+            accept(l, &token, 1);
+        }
+        token.id = NklToken_Newline;
         return token;
     }
 

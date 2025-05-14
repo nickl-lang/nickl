@@ -1354,7 +1354,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             // TODO: Only load symbols dynamically if they're needed
             auto const dl = nkl_findLibrary(nk_s2atom(lib));
-            if (nk_handleIsZero(dl)) {
+            if (nk_handleIsNull(dl)) {
                 return error(ctx, "failed to load library `" NKS_FMT "`", NKS_ARG(lib));
             }
             auto const addr = nkdl_resolveSymbol(dl, nk_atom2cs(decl_name));

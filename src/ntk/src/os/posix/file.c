@@ -49,7 +49,7 @@ NkHandle nk_open(char const *path, i32 flags) {
 i32 nk_close(NkHandle file) {
     i32 ret = 0;
     NK_PROF_FUNC() {
-        if (!nk_handleIsZero(file)) {
+        if (!nk_handleIsNull(file)) {
             ret = close(handle2fd(file));
         }
     }
