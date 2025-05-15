@@ -70,6 +70,7 @@ typedef enum {
 } NkIrArgKind;
 
 typedef NkSlice(NkIrRef const) NkIrRefArray;
+typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
 typedef struct {
     union {
@@ -109,6 +110,7 @@ typedef struct {
 } NkIrReloc;
 
 typedef NkSlice(NkIrReloc const) NkIrRelocArray;
+typedef NkDynArray(NkIrReloc) NkIrRelocDynArray;
 
 typedef enum {
     NkIrData_ReadOnly = 1 << 0,
@@ -127,6 +129,7 @@ typedef struct {
 } NkIrParam;
 
 typedef NkSlice(NkIrParam const) NkIrParamArray;
+typedef NkDynArray(NkIrParam) NkIrParamDynArray;
 
 typedef enum {
     NkIrProc_Variadic = 1 << 0,

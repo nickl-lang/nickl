@@ -8,10 +8,17 @@
 enum {
     NklIrToken_KeywordsBase = NklToken_Count,
 
-    NklIrToken_pub,
-    NklIrToken_proc,
     NklIrToken_cmp,
+    NklIrToken_const,
+    NklIrToken_data,
+    NklIrToken_local,
+    NklIrToken_proc,
+    NklIrToken_pub,
     NklIrToken_void,
+
+#define X(TYPE, VALUE_TYPE) NK_CAT(NklIrToken_, TYPE),
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
 
 #define IR(NAME) NK_CAT(NklIrToken_, NAME),
 #define UNA_IR(NAME) NK_CAT(NklIrToken_, NAME),
@@ -19,21 +26,23 @@ enum {
 #define CMP_IR(NAME) NK_CAT(NklIrToken_, NAME),
 #include "nkb/ir.inl"
 
-#define X(TYPE, VALUE_TYPE) NK_CAT(NklIrToken_, TYPE),
-    NKIR_NUMERIC_ITERATE(X)
-#undef X
-
         NklIrToken_OperatorsBase,
 
     NklIrToken_LParen,
     NklIrToken_RParen,
-    NklIrToken_LBrace,
-    NklIrToken_RBrace,
     NklIrToken_Comma,
     NklIrToken_MinusGreater,
+    NklIrToken_Ellipsis,
+    NklIrToken_Colon,
+    NklIrToken_Equal,
+    NklIrToken_LBracket,
+    NklIrToken_RBracket,
+    NklIrToken_LBrace,
+    NklIrToken_RBrace,
 
     NklIrToken_TagsBase,
 
+    NklIrToken_PercentTag,
     NklIrToken_AtTag,
 };
 

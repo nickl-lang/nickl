@@ -202,23 +202,30 @@ bool nkl_compileFile(NklModule mod, NkString file) {
 }
 
 static char const *s_ir_tokens[] = {
-    "end of file", // NklToken_Eof
+    "end of file", // NklToken_Eof,
 
-    "identifier",      // NklToken_Id
-    "int constant",    // NklToken_Int
-    "float constant",  // NklToken_Float
-    "string constant", // NklToken_String
-    "string constant", // NklToken_EscapedString
-    "newline",         // NklToken_Newline
+    "identifier",      // NklToken_Id,
+    "int constant",    // NklToken_Int,
+    "float constant",  // NklToken_Float,
+    "string constant", // NklToken_String,
+    "string constant", // NklToken_EscapedString,
+    "newline",         // NklToken_Newline,
 
-    "error", // NklToken_Error
+    "error", // NklToken_Error,
 
-    NULL, // NklIrToken_KeywordsBase
+    NULL, // NklIrToken_KeywordsBase,
 
-    "pub",  // NklIrToken_Pub
-    "proc", // NklIrToken_Proc
-    "cmp",  // NklIrToken_Cmp
-    "void", // NklIrToken_Void
+    "cmp",   // NklIrToken_cmp,
+    "const", // NklIrToken_const,
+    "data",  // NklIrToken_data,
+    "local", // NklIrToken_local,
+    "proc",  // NklIrToken_proc,
+    "pub",   // NklIrToken_pub,
+    "void",  // NklIrToken_void,
+
+#define X(TYPE, VALUE_TYPE) #TYPE,
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
 
 #define IR(NAME) #NAME,
 #define UNA_IR(NAME) #NAME,
@@ -226,22 +233,24 @@ static char const *s_ir_tokens[] = {
 #define CMP_IR(NAME) #NAME,
 #include "nkb/ir.inl"
 
-#define X(TYPE, VALUE_TYPE) #TYPE,
-    NKIR_NUMERIC_ITERATE(X)
-#undef X
+        NULL, // NklIrToken_OperatorsBase,
 
-        NULL, // NklIrToken_OperatorsBase
+    "(",   // NklIrToken_LParen,
+    ")",   // NklIrToken_RParen,
+    ",",   // NklIrToken_Comma,
+    "->",  // NklIrToken_MinusGreater,
+    "...", // NklIrToken_Ellipsis,
+    ":",   // NklIrToken_Colon,
+    "=",   // NklIrToken_Equal,
+    "[",   // NklIrToken_LBracket,
+    "]",   // NklIrToken_RBracket,
+    "{",   // NklIrToken_LBrace,
+    "}",   // NklIrToken_RBrace,
 
-    "(",  // NklIrToken_LParen
-    ")",  // NklIrToken_RParen
-    "{",  // NklIrToken_LBrace
-    "}",  // NklIrToken_RBrace
-    ",",  // NklIrToken_Comma
-    "->", // NklIrToken_MinusGreater
+    NULL, // NklIrToken_TagsBase,
 
-    NULL, // NklIrToken_TagsBase
-
-    "@", // NklIrToken_AtTag
+    "%", // NklIrToken_PercentTag,
+    "@", // NklIrToken_AtTag,
 
     NULL,
 };

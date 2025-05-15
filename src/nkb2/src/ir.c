@@ -154,10 +154,7 @@ NkIrRef nkir_makeVariadicMarker() {
 }
 
 NkIrInstr nkir_make_nop() {
-    return (NkIrInstr){
-        .arg = {argNull(), argNull(), argNull()},
-        .code = NkIrOp_nop,
-    };
+    return (NkIrInstr){0};
 }
 
 NkIrInstr nkir_make_ret(NkIrRef arg) {
