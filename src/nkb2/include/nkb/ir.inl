@@ -22,16 +22,16 @@ IR(nop) // nop
 
 IR(ret) // ret arg
 
-IR(jmp)   // jmp         %label
-IR(jmpz)  // jmpz  cond, %label
-IR(jmpnz) // jmpnz cond, %label
+IR(jmp)   // jmp         @label
+IR(jmpz)  // jmpz  cond, @label
+IR(jmpnz) // jmpnz cond, @label
 
 IR(call) // call proc, (args, ...) -> dst
 
-IR(store) // store ptr, src
-IR(load)  // load  ptr -> dst
+IR(store) // store src  -> [dst]
+IR(load)  // load [src] ->  dst
 
-IR(alloc) // alloc $type -> dst
+IR(alloc) // alloc :type -> dst
 
 UNA_IR(mov) // mov src -> dst
 
@@ -59,7 +59,7 @@ CMP_IR(le) // cmp le lhs, rhs -> dst
 CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
-IR(label) // label %label
+IR(label) // @label
 
 IR(file)    // file "str"
 IR(line)    // line idx

@@ -18,13 +18,13 @@ typedef struct {
     NkArena *const arena;
     NkString *const err_str;
 
-    char const **const keywords;
-    char const **const operators;
-    char const *const tag_prefixes;
-
     u32 const first_keyword_id;
     u32 const first_operator_id;
     u32 const first_tag_id;
+
+    char const **const keywords;
+    char const **const operators;
+    char const **const tag_prefixes;
 
     u32 pos;
     u32 lin;
@@ -100,21 +100,17 @@ static void skipSpaces(LexerState *l) {
     }
 }
 
-static i32 vreportError(LexerState *l, char const *fmt, va_list ap) {
-    i32 res = 0;
+static void vreportError(LexerState *l, char const *fmt, va_list ap) {
     if (l->err_str) {
         *l->err_str = nk_vtsprintf(l->arena, fmt, ap);
     }
-    return res;
 }
 
-NK_PRINTF_LIKE(2) static i32 reportError(LexerState *l, char const *fmt, ...) {
+static NK_PRINTF_LIKE(2) void reportError(LexerState *l, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    i32 res = vreportError(l, fmt, ap);
+    vreportError(l, fmt, ap);
     va_end(ap);
-
-    return res;
 }
 
 static NklToken scan(LexerState *l) {
@@ -281,8 +277,8 @@ static NklToken scan(LexerState *l) {
     }
 
     {
-        char const *it = l->tag_prefixes;
-        for (; it && *it && !(on(l, *it, 0) && onAlphaOrUscr(l, 1)); it++) {
+        char const **it = l->tag_prefixes;
+        for (; it && *it && !(on(l, **it, 0) && onAlphaOrUscr(l, 1)); it++) {
         }
 
         if (it && *it) {
@@ -342,13 +338,13 @@ bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
             .arena = data->arena,
             .err_str = data->err_str,
 
-            .keywords = data->keywords,
-            .operators = data->operators,
-            .tag_prefixes = data->tag_prefixes,
-
             .first_keyword_id = data->keywords_base + 1,
             .first_operator_id = data->operators_base + 1,
             .first_tag_id = data->tags_base + 1,
+
+            .keywords = data->tokens + l.first_keyword_id,
+            .operators = data->tokens + l.first_operator_id,
+            .tag_prefixes = data->tokens + l.first_tag_id,
 
             .pos = 0,
             .lin = 1,

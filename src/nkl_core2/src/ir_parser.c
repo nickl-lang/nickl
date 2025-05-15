@@ -45,7 +45,49 @@ typedef struct {
     NkIrSymbolDynArray *ir;
 
     NklToken const *cur_token;
+
+    NkArena scratch;
+
+#define X(TYPE, VALUE_TYPE) NkIrType NK_CAT(_cached_, TYPE);
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+    NkIrType _cached_void;
+
+    NkIrParamArray proc_params;
+    NkIrType proc_ret_t;
 } ParserState;
+
+static NkIrType allocNumericType(ParserState *p, NkIrNumericValueType value_type) {
+    NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
+    *type = (NkIrType_T){
+        .num = value_type,
+        .size = NKIR_NUMERIC_TYPE_SIZE(value_type),
+        .align = NKIR_NUMERIC_TYPE_SIZE(value_type),
+        .id = 0,
+        .kind = NkIrType_Numeric,
+    };
+    return type;
+}
+
+static NkIrType allocVoidType(ParserState *p) {
+    NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
+    *type = (NkIrType_T){0};
+    return type;
+}
+
+#define CACHED_TYPE(NAME, EXPR)                        \
+    NkIrType NK_CAT(get_, NAME)(ParserState * p) {     \
+        NkIrType *cached = &p->NK_CAT(_cached_, NAME); \
+        return *cached ? *cached : (*cached = (EXPR)); \
+    };
+
+#define X(TYPE, VALUE_TYPE) CACHED_TYPE(TYPE, allocNumericType(p, VALUE_TYPE))
+NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+CACHED_TYPE(void, allocVoidType(p));
+
+#undef CACHED_TYPE
 
 // TODO: Reuse some code between parsers?
 
@@ -116,16 +158,17 @@ static NklToken const *expect(ParserState *p, u32 id) {
 }
 
 static NkIrType parseType(ParserState *p) {
-    NkIrType_T *ret = NULL;
+    NkIrType ret = NULL;
 
-    if (accept(p, NklIrToken_I32)) {
-        *(ret = nk_arena_allocT(p->arena, NkIrType_T)) = (NkIrType_T){
-            .num = Int32,
-            .size = 4,
-            .align = 4,
-            .id = 0,
-            .kind = NkIrType_Numeric,
-        };
+#define X(TYPE, VALUE_TYPE)                     \
+    if (accept(p, NK_CAT(NklIrToken_, TYPE))) { \
+        ret = NK_CAT(get_, TYPE)(p);            \
+    } else
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+    if (accept(p, NklIrToken_void)) {
+        ret = get_void(p);
     }
 
     return ret;
@@ -138,20 +181,10 @@ static NkIrImm parseImm(ParserState *p, NkIrNumericValueType value_type) {
         if (!on(p, NklToken_Int)) {
             ERROR("integer constant expected");
         }
-    } else {
-        if (!on(p, NklToken_Float)) {
-            ERROR("float constant expected");
-        }
     }
 
     NkString const token_str = tokenStr(p);
-
-    // TODO: Use scratch arena
-    NKSB_FIXED_BUFFER(sb, 128);
-    nksb_printf(&sb, NKS_FMT, NKS_ARG(token_str));
-    nksb_appendNull(&sb);
-    char const *cstr = sb.data;
-
+    char const *cstr = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(token_str));
     getToken(p);
 
     char *endptr = NULL;
@@ -196,21 +229,17 @@ static NkIrImm parseImm(ParserState *p, NkIrNumericValueType value_type) {
     return ret;
 }
 
-static NkIrRef parseRef(ParserState *p) {
+static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     NkIrRef ret = {0};
 
     if (on(p, NklToken_Int)) {
-        NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
-        *type = (NkIrType_T){
-            .num = Int64,
-            .size = 8,
-            .align = 8,
-            .id = 0,
-            .kind = NkIrType_Numeric,
-        };
-
-        TRY(NkIrImm imm = parseImm(p, Int64));
-        ret = nkir_makeRefImm(imm, type);
+        bool const type_is_numeric = (type_opt && type_opt->kind == NkIrType_Numeric);
+        TRY(NkIrImm imm = parseImm(p, type_is_numeric ? type_opt->num : Int64));
+        ret = nkir_makeRefImm(imm, type_is_numeric ? type_opt : get_i64(p));
+    } else if (on(p, NklToken_Float)) {
+        bool const type_is_numeric = type_opt && type_opt->kind == NkIrType_Numeric;
+        TRY(NkIrImm imm = parseImm(p, type_is_numeric ? type_opt->num : Float64));
+        ret = nkir_makeRefImm(imm, type_is_numeric ? type_opt : get_f64(p));
     }
 
     return ret;
@@ -227,9 +256,44 @@ static NkIrInstr parseInstr(ParserState *p) {
         ret = nkir_make_label(label);
     }
 
-    else if (accept(p, NklIrToken_Ret)) {
-        TRY(NkIrRef arg = parseRef(p));
+    else if (accept(p, NklIrToken_ret)) {
+        TRY(NkIrRef arg = parseRef(p, p->proc_ret_t));
         ret = nkir_make_ret(arg);
+    }
+
+    else if (0) {
+    }
+#define UNA_IR(NAME)                                   \
+    else if (accept(p, NK_CAT(NklIrToken_, NAME))) {   \
+        TRY(NkIrRef arg = parseRef(p, p->proc_ret_t)); \
+        EXPECT(NklIrToken_MinusGreater);               \
+        TRY(NkIrRef dst = parseRef(p, p->proc_ret_t)); \
+        ret = NK_CAT(nkir_make_, NAME)(dst, arg);      \
+    }
+#define BIN_IR(NAME)                                   \
+    else if (accept(p, NK_CAT(NklIrToken_, NAME))) {   \
+        TRY(NkIrRef lhs = parseRef(p, p->proc_ret_t)); \
+        EXPECT(NklIrToken_Comma);                      \
+        TRY(NkIrRef rhs = parseRef(p, p->proc_ret_t)); \
+        EXPECT(NklIrToken_MinusGreater);               \
+        TRY(NkIrRef dst = parseRef(p, p->proc_ret_t)); \
+        ret = NK_CAT(nkir_make_, NAME)(dst, lhs, rhs); \
+    }
+#include "nkb/ir.inl"
+
+    else if (accept(p, NklIrToken_cmp)) {
+        if (0) {
+        }
+#define CMP_IR(NAME)                                       \
+    else if (accept(p, NK_CAT(NklIrToken_, NAME))) {       \
+        TRY(NkIrRef lhs = parseRef(p, p->proc_ret_t));     \
+        EXPECT(NklIrToken_Comma);                          \
+        TRY(NkIrRef rhs = parseRef(p, p->proc_ret_t));     \
+        EXPECT(NklIrToken_MinusGreater);                   \
+        TRY(NkIrRef dst = parseRef(p, p->proc_ret_t));     \
+        ret = NK_CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs); \
+    }
+#include "nkb/ir.inl"
     }
 
     else if (on(p, NklToken_Eof)) {
@@ -256,6 +320,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
     EXPECT(NklIrToken_RParen);
 
     TRY(NkIrType ret_t = parseType(p));
+    p->proc_ret_t = ret_t;
 
     EXPECT(NklIrToken_LBrace);
 
@@ -301,8 +366,8 @@ static Void parseSymbol(ParserState *p) {
     while (accept(p, NklToken_Newline)) {
     }
 
-    if (accept(p, NklIrToken_Pub)) {
-        if (accept(p, NklIrToken_Proc)) {
+    if (accept(p, NklIrToken_pub)) {
+        if (accept(p, NklIrToken_proc)) {
             TRY(parseProc(p, NkIrVisibility_Default));
         }
     }
@@ -325,7 +390,7 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
 
     usize const start_idx = out_syms->size;
 
-    ParserState *p = &(ParserState){
+    ParserState p = {
         .text = data->text,
         .tokens = data->tokens,
         .arena = data->arena,
@@ -336,11 +401,13 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
         .token_names = data->token_names,
 
         .ir = out_syms,
-    };
-    p->cur_token = p->tokens.data;
 
-    bool const ret = false;
-    TRY(parse(p));
+        .cur_token = p.tokens.data,
+    };
+
+    parse(&p);
+
+    nk_arena_free(&p.scratch);
 
     NK_LOG_STREAM_INF {
         NkStream log = nk_log_getStream();
@@ -349,5 +416,5 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
         nkir_inspectModule(syms, log);
     }
 
-    return true;
+    return !p.error_occurred;
 }

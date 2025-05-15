@@ -201,31 +201,7 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     }
 }
 
-static char const *s_ir_keywords[] = {
-    "pub",
-    "proc",
-    "i32",
-    "ret",
-
-    NULL,
-};
-
-static char const *s_ir_operators[] = {
-    "(",
-    ")",
-    "{",
-    "}",
-
-    NULL,
-};
-
-static char const s_ir_tag_prefixes[] = {
-    '@',
-
-    0,
-};
-
-static char const *s_ir_token_names[] = {
+static char const *s_ir_tokens[] = {
     "end of file", // NklToken_Eof
 
     "identifier",      // NklToken_Id
@@ -241,19 +217,33 @@ static char const *s_ir_token_names[] = {
 
     "pub",  // NklIrToken_Pub
     "proc", // NklIrToken_Proc
-    "i32",  // NklIrToken_I32
-    "ret",  // NklIrToken_Ret
+    "cmp",  // NklIrToken_Cmp
+    "void", // NklIrToken_Void
 
-    NULL, // NklIrToken_OperatorsBase
+#define IR(NAME) #NAME,
+#define UNA_IR(NAME) #NAME,
+#define BIN_IR(NAME) #NAME,
+#define CMP_IR(NAME) #NAME,
+#include "nkb/ir.inl"
 
-    "(", // NklIrToken_LParen
-    ")", // NklIrToken_RParen
-    "{", // NklIrToken_LBrace
-    "}", // NklIrToken_RBrace
+#define X(TYPE, VALUE_TYPE) #TYPE,
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+        NULL, // NklIrToken_OperatorsBase
+
+    "(",  // NklIrToken_LParen
+    ")",  // NklIrToken_RParen
+    "{",  // NklIrToken_LBrace
+    "}",  // NklIrToken_RBrace
+    ",",  // NklIrToken_Comma
+    "->", // NklIrToken_MinusGreater
 
     NULL, // NklIrToken_TagsBase
 
     "@", // NklIrToken_AtTag
+
+    NULL,
 };
 
 bool nkl_compileFileIr(NklModule mod, NkString file) {
@@ -286,10 +276,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .arena = &nkl->arena,
                 .err_str = &err_str,
 
-                .keywords = s_ir_keywords,
-                .operators = s_ir_operators,
-                .tag_prefixes = s_ir_tag_prefixes,
-
+                .tokens = s_ir_tokens,
                 .keywords_base = NklIrToken_KeywordsBase,
                 .operators_base = NklIrToken_OperatorsBase,
                 .tags_base = NklIrToken_TagsBase,
@@ -606,7 +593,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .arena = &nkl->arena,
                 .err_str = &err_str,
                 .err_token = &err_token,
-                .token_names = s_ir_token_names,
+                .token_names = s_ir_tokens,
             },
             &mod->ir)) {
         reportError(
@@ -626,18 +613,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     return false;
 }
 
-static char const *s_ast_operators[] = {
-    "(",
-    ")",
-    "{",
-    "}",
-    "[",
-    "]",
-
-    NULL,
-};
-
-static char const *s_ast_token_names[] = {
+static char const *s_ast_tokens[] = {
     "end of file", // NklToken_Eof
 
     "identifier",      // NklToken_Id
@@ -657,6 +633,8 @@ static char const *s_ast_token_names[] = {
     "}", // NklAstToken_RBrace
     "[", // NklAstToken_LBraket
     "]", // NklAstToken_RBraket
+
+    NULL,
 };
 
 bool nkl_compileFileAst(NklModule mod, NkString file) {
@@ -689,7 +667,7 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
                 .arena = &nkl->arena,
                 .err_str = &err_str,
 
-                .operators = s_ast_operators,
+                .tokens = s_ast_tokens,
                 .operators_base = NklAstToken_OperatorsBase,
             },
             &tokens)) {
@@ -716,7 +694,7 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
                 .arena = &nkl->arena,
                 .err_str = &err_str,
                 .err_token = &err_token,
-                .token_names = s_ast_token_names,
+                .token_names = s_ast_tokens,
             },
             &nodes)) {
         reportError(

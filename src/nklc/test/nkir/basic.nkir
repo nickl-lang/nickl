@@ -1,6 +1,33 @@
-pub proc _entry() i32 {
+pub proc _entry() void {
+
 @start
+    ret
     ret 42
+
+    ext   1 -> 1
+    trunc 1 -> 1
+    fp2i  1 -> 1
+    i2fp  1 -> 1
+
+    add 1, 1 -> 1
+    sub 1, 1 -> 1
+    mul 1, 1 -> 1
+    div 1, 1 -> 1
+    mod 1, 1 -> 1
+
+    and 1, 1 -> 1
+    or  1, 1 -> 1
+    xor 1, 1 -> 1
+    lsh 1, 1 -> 1
+    rsh 1, 1 -> 1
+
+    cmp eq 1, 1 -> 1
+    cmp ne 1, 1 -> 1
+    cmp lt 1, 1 -> 1
+    cmp le 1, 1 -> 1
+    cmp gt 1, 1 -> 1
+    cmp ge 1, 1 -> 1
+
 }
 
 /* @retcode

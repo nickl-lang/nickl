@@ -31,10 +31,7 @@ typedef struct {
 
     NkString *err_str;
 
-    char const **keywords;
-    char const **operators;
-    char const *tag_prefixes;
-
+    char const **tokens;
     u32 keywords_base;
     u32 operators_base;
     u32 tags_base;
