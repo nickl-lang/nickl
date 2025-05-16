@@ -411,6 +411,8 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
         nk_printf(out, "thread_local ");
     }
 
+    NkString const sym_str = nk_atom2s(sym->name);
+
     switch (sym->kind) {
         case NkIrSymbol_Extern:
             nk_printf(out, "extern %s = @0x%p;", nk_atom2cs(sym->name), sym->extrn.addr);
@@ -422,7 +424,13 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             } else {
                 nk_printf(out, "data ");
             }
-            nk_printf(out, "%s: ", nk_atom2cs(sym->name));
+            // TODO: Inline strings
+            if (sym_str.size) {
+                nk_printf(out, NKS_FMT, NKS_ARG(sym_str));
+            } else {
+                nk_printf(out, "_%" PRIu32, sym->name);
+            }
+            nk_printf(out, ": ");
             nkir_inspectType(sym->data.type, out);
             if (sym->data.addr) {
                 nk_printf(out, " = ");
@@ -431,7 +439,13 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             break;
 
         case NkIrSymbol_Proc:
-            nk_printf(out, "proc %s(", nk_atom2cs(sym->name));
+            nk_printf(out, "proc ");
+            if (sym_str.size) {
+                nk_printf(out, NKS_FMT, NKS_ARG(sym_str));
+            } else {
+                nk_printf(out, "_%" PRIu32, sym->name);
+            }
+            nk_printf(out, ": (");
             for (usize i = 0; i < sym->proc.params.size; i++) {
                 if (i) {
                     nk_printf(out, ", ");
@@ -477,9 +491,15 @@ void nkir_inspectRef(NkIrRef ref, NkStream out) {
             nk_printf(out, "%%%s", nk_atom2cs(ref.sym));
             break;
 
-        case NkIrRef_Global:
-            nk_printf(out, "%s", nk_atom2cs(ref.sym));
+        case NkIrRef_Global: {
+            NkString const sym_str = nk_atom2s(ref.sym);
+            if (sym_str.size) {
+                nk_printf(out, NKS_FMT, NKS_ARG(sym_str));
+            } else {
+                nk_printf(out, "_%" PRIu32, ref.sym);
+            }
             break;
+        }
 
         case NkIrRef_Imm:
             nkir_inspectVal(&ref.imm, ref.type, out);

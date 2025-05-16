@@ -111,7 +111,7 @@ void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *
         if (line.size > MAX_LINE_QUOTE) {
             line.size = MAX_LINE_QUOTE;
         }
-        if (loc.col && loc.col > line.size) {
+        if (loc.col && loc.col > line.size) { // TODO: Allow pointing past end of the line
             loc.col = line.size;
         }
         if (loc.col && loc.len && loc.len > line.size - loc.col) {

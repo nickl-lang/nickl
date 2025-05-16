@@ -10,48 +10,52 @@ pub proc _entry(%x: f32, %y: f32) void {
     jmpz  1, @start
     jmpnz 1, @start
 
-    // call printf, ("%zi", ..., 42) -> %x
+    call printf:i64, ("%zi\n", ..., 42) -> %a:i32
 
     store 1  -> [1]
-    load [1] -> %x:i32
+    load [1] -> %a:i32
 
-    // alloc :i32 -> %x:i32
+    alloc :i32 -> %a:i32
 
-    mov x:i64  -> %y:i64
-    ext   1 -> %x
-    trunc 1 -> %x
-    fp2i  1 -> %x
-    i2fp  1 -> %x
+    mov x:i64   -> %a:i64
 
-    add 1:f64, 1 -> %x
-    sub 1, 1 -> %x
-    mul 1, 1 -> %x
-    div 1, 1 -> %x
-    mod 1, 1 -> %x
+    ext 1:i8    -> %a:i32
+    trunc 1     -> %a:i32
+    fp2i 1:f32  -> %a:i32
+    i2fp 1      -> %a:f32
 
-    and 1, 1 -> %a:i32
-    or  1, 1 -> %a:i32
-    xor 1, 1 -> %a:i32
-    lsh 1, 1 -> %a:i32
-    rsh 1, 1 -> %a:i32
+    add %x, 1 -> %a
+    sub %y, %x -> %a
+    mul 3.14, 1 -> %a
+    div 1.0:f32, 3.14 -> %a
+    mod 1, 1 -> %a
 
-    cmp eq 1, 1 -> %a
-    cmp ne 1, 1 -> %a
-    cmp lt 1, 1 -> %a
-    cmp le 1, 1 -> %a:i32
-    cmp gt 1, 1 -> %a:i32
-    cmp ge 1, 1 -> %a:i32
+    and 1, 1 -> %b:i32
+    or  1, 1 -> %b:i32
+    xor 1, 1 -> %b:i32
+    lsh 1, 1 -> %b:i32
+    rsh 1, 1 -> %b:i32
 
-    // label "loop"
-    // file "/file/path"
-    // line 123
-    // comment "This is a comment"
+    cmp eq 1, 1 -> %b
+    cmp ne 1, 1 -> %b
+    cmp lt 1, 1 -> %b
+    cmp le 1, 1 -> %b:i32
+    cmp gt 1, 1 -> %b:i32
+    cmp ge 1, 1 -> %b:i32
+
+    file "/file/path"
+    line 123
+    comment "This is a comment"
 
 }
 
-// local const one = 123
+local const one = 123
 
-// data two = 3.14:f32
+data two: i32 = 42
+
+data three: i64
+
+// data four = 3.14:f32
 
 /* @retcode
 42
