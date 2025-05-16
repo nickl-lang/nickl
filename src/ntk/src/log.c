@@ -133,7 +133,7 @@ void nk_log_init(NkLogOptions opt) {
 
             .start_time = nk_now_ns(),
             .log_level = env_log_level ? parseEnvLogLevel(env_log_level) : opt.log_level,
-            .mtx = nk_mutex_alloc(),
+            .mtx = nk_mutex_alloc(NkMutex_Recursive),
             .to_color =
                 opt.color_mode == NkLogColorMode_Always || (opt.color_mode == NkLogColorMode_Auto && nk_isatty(2)),
             .initialized = true,

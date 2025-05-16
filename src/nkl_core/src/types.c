@@ -81,7 +81,7 @@ void nkl_types_init(NklState nkl) {
     nkl->types = (NklTypeStorage){
         .type_arena = {0},
         .type_map = {NULL, nk_arena_getAllocator(&nkl->types.type_arena)},
-        .mtx = nk_mutex_alloc(),
+        .mtx = nk_mutex_alloc(0),
         .next_id = 1,
 
         .tmp_arena = {0},

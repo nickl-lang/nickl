@@ -8,7 +8,11 @@
 extern "C" {
 #endif
 
-NK_EXPORT NkHandle nk_mutex_alloc(void);
+enum {
+    NkMutex_Recursive = 1 << 0,
+};
+
+NK_EXPORT NkHandle nk_mutex_alloc(i32 flags);
 NK_EXPORT i32 nk_mutex_free(NkHandle mutex);
 
 NK_EXPORT i32 nk_mutex_lock(NkHandle mutex);

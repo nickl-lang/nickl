@@ -10,12 +10,18 @@ NK_POOL_DEFINE(MutexPool, pthread_mutex_t);
 static MutexPool g_mutex_pool;
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-NkHandle nk_mutex_alloc(void) {
+NkHandle nk_mutex_alloc(i32 flags) {
     pthread_mutex_lock(&g_mutex);
     pthread_mutex_t *mutex = MutexPool_alloc(&g_mutex_pool);
     pthread_mutex_unlock(&g_mutex);
 
-    pthread_mutex_init(mutex, NULL);
+    pthread_mutexattr_t attr = {0};
+    pthread_mutexattr_init(&attr);
+    if (flags & NkMutex_Recursive) {
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    }
+
+    pthread_mutex_init(mutex, &attr);
     return native2handle(mutex);
 }
 

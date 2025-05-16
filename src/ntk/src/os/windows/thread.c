@@ -2,7 +2,8 @@
 
 #include "common.h"
 
-NkHandle nk_mutex_alloc(void) {
+NkHandle nk_mutex_alloc(i32 flags) {
+    (void)flags;
     return native2handle(CreateMutex(NULL, FALSE, NULL));
 }
 
