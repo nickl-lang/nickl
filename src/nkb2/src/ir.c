@@ -291,8 +291,6 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret) {
 }
 
 void nkir_inspectModule(NkIrModule m, NkStream out) {
-    NK_LOG_TRC("%s", __func__);
-
     for (usize i = 0; i < m.size; i++) {
         nk_printf(out, "\n");
         NkIrSymbol const *sym = &m.data[i];
@@ -392,8 +390,6 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
 }
 
 void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
-    NK_LOG_TRC("%s", __func__);
-
     switch (sym->vis) {
         case NkIrVisibility_Default:
             nk_printf(out, "pub ");
@@ -471,14 +467,10 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
 }
 
 void nkir_inspectInstr(NkIrInstr instr, NkStream out) {
-    NK_LOG_TRC("%s", __func__);
-
     inspectInstrImpl((NkIrInstrArray){&instr, 1}, 0, out);
 }
 
 void nkir_inspectRef(NkIrRef ref, NkStream out) {
-    NK_LOG_TRC("%s", __func__);
-
     switch (ref.kind) {
         case NkIrRef_None:
             return;

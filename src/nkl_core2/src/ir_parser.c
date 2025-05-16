@@ -387,29 +387,29 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                 .kind = NkIrSymbol_Data,
             }));
 
-        ret = nkir_makeRefGlobal(sym, type);
+        return nkir_makeRefGlobal(sym, type);
     }
 
     else if (on(p, NklIrToken_PercentTag)) {
-        TRY(ret = parseLocal(p, type_opt, false));
+        TRY(NkIrRef const ref = parseLocal(p, type_opt, false));
+        return ref;
     }
 
     else if (on(p, NklToken_Id)) {
         NkString const str = getToken(p);
         NkAtom const id = nk_s2atom(str);
-        ret = nkir_makeRefGlobal(id, NULL);
-    }
 
-    else {
-        NkString const str = curTokenStr(p);
-        ERROR("unexpected token `" NKS_FMT "`", NKS_ARG(str));
-    }
-
-    if (!ret.type) {
         EXPECT(NklIrToken_Colon);
-        TRY(ret.type = parseType(p));
-    } else if (accept(p, NklIrToken_Colon)) {
-        TRY(ret.type = parseType(p));
+        TRY(NkIrType const type = parseType(p));
+
+        return nkir_makeRefGlobal(id, type);
+    }
+
+    else if (on(p, NklToken_Eof)) {
+        ERROR("unexpected end of file, expected a reference");
+    } else {
+        NkString const str = curTokenStr(p);
+        ERROR("unexpected token `" NKS_FMT "`, expected a reference", NKS_ARG(str));
     }
 
     return ret;
@@ -561,10 +561,10 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     else if (on(p, NklToken_Eof)) {
-        ERROR("unexpected end of file");
+        ERROR("unexpected end of file, expected an instruction");
     } else {
         NkString const str = curTokenStr(p);
-        ERROR("unexpected token `" NKS_FMT "`", NKS_ARG(str));
+        ERROR("unexpected token `" NKS_FMT "`, expected an instruction", NKS_ARG(str));
     }
 
     EXPECT(NklToken_Newline);
@@ -623,6 +623,10 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RBrace);
 
+    EXPECT(NklToken_Newline);
+    while (accept(p, NklToken_Newline)) {
+    }
+
     nkda_append(
         p->ir,
         ((NkIrSymbol){
@@ -670,6 +674,10 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         }
     }
 
+    EXPECT(NklToken_Newline);
+    while (accept(p, NklToken_Newline)) {
+    }
+
     nkda_append(
         p->ir,
         ((NkIrSymbol){
@@ -709,13 +717,11 @@ static Void parseSymbol(ParserState *p) {
         TRY(parseData(p, vis, 0));
     }
 
-    else {
+    else if (on(p, NklToken_Eof)) {
+        ERROR("unexpected end of file, expected a symbol");
+    } else {
         NkString const str = curTokenStr(p);
-        ERROR("unexpected token `" NKS_FMT "`", NKS_ARG(str));
-    }
-
-    EXPECT(NklToken_Newline);
-    while (accept(p, NklToken_Newline)) {
+        ERROR("unexpected token `" NKS_FMT "`, expected a symbol", NKS_ARG(str));
     }
 
     return ret;
