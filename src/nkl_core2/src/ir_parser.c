@@ -19,12 +19,11 @@
 
 NK_LOG_USE_SCOPE(ir_parser);
 
-#define TRY(STMT)            \
-    STMT;                    \
-    if (p->error_occurred) { \
-        return ret;          \
-    } else                   \
-        _NK_NOP
+#define TRY(STMT)               \
+    STMT;                       \
+    while (p->error_occurred) { \
+        return ret;             \
+    }
 
 #define EXPECT(ID) TRY(expect(p, (ID)))
 
@@ -99,9 +98,11 @@ Void const ret;
 static void vreportError(ParserState *p, char const *fmt, va_list ap) {
     if (p->err_str) {
         *p->err_str = nk_vtsprintf(p->arena, fmt, ap);
-        *p->err_token = *p->cur_token;
-        p->error_occurred = true;
     }
+    if (p->err_token) {
+        *p->err_token = *p->cur_token;
+    }
+    p->error_occurred = true;
 }
 
 static NK_PRINTF_LIKE(2) void reportError(ParserState *p, char const *fmt, ...) {

@@ -426,10 +426,10 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             } else {
                 nk_printf(out, "_%" PRIu32, sym->name);
             }
-            nk_printf(out, ": ");
+            nk_printf(out, " :");
             nkir_inspectType(sym->data.type, out);
             if (sym->data.addr) {
-                nk_printf(out, " = ");
+                nk_printf(out, " ");
                 nkir_inspectVal(sym->data.addr, sym->data.type, out);
             }
             break;
@@ -441,18 +441,19 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             } else {
                 nk_printf(out, "_%" PRIu32, sym->name);
             }
-            nk_printf(out, ": (");
+            nk_printf(out, "(");
             for (usize i = 0; i < sym->proc.params.size; i++) {
                 if (i) {
                     nk_printf(out, ", ");
                 }
                 NkIrParam const *param = &sym->proc.params.data[i];
                 if (param->name) {
-                    nk_printf(out, "%%%s: ", nk_atom2cs(param->name));
+                    nk_printf(out, "%%%s ", nk_atom2cs(param->name));
                 }
+                nk_printf(out, ":");
                 nkir_inspectType(param->type, out);
             }
-            nk_printf(out, ") ");
+            nk_printf(out, ") :");
             nkir_inspectType(sym->proc.ret_type, out);
             nk_printf(out, " {\n");
             for (usize i = 0; i < sym->proc.instrs.size; i++) {
@@ -471,39 +472,44 @@ void nkir_inspectInstr(NkIrInstr instr, NkStream out) {
 }
 
 void nkir_inspectRef(NkIrRef ref, NkStream out) {
+    if (ref.kind == NkIrRef_None) {
+        return;
+    }
+
+    if (ref.kind == NkIrRef_VariadicMarker) {
+        nk_printf(out, "...");
+        return;
+    }
+
+    nk_printf(out, ":");
+    nkir_inspectType(ref.type, out);
+
     switch (ref.kind) {
-        case NkIrRef_None:
-            return;
-
-        case NkIrRef_Null:
-            break;
-
         case NkIrRef_Local:
         case NkIrRef_Param:
-            nk_printf(out, "%%%s", nk_atom2cs(ref.sym));
+            nk_printf(out, " %%%s", nk_atom2cs(ref.sym));
             break;
 
         case NkIrRef_Global: {
             NkString const sym_str = nk_atom2s(ref.sym);
             if (sym_str.size) {
-                nk_printf(out, NKS_FMT, NKS_ARG(sym_str));
+                nk_printf(out, " " NKS_FMT, NKS_ARG(sym_str));
             } else {
-                nk_printf(out, "_%" PRIu32, ref.sym);
+                nk_printf(out, " _%" PRIu32, ref.sym);
             }
             break;
         }
 
         case NkIrRef_Imm:
+            nk_printf(out, " ");
             nkir_inspectVal(&ref.imm, ref.type, out);
             break;
 
+        case NkIrRef_None:
+        case NkIrRef_Null:
         case NkIrRef_VariadicMarker:
-            nk_printf(out, "...");
-            return;
+            break;
     }
-
-    nk_printf(out, ":");
-    nkir_inspectType(ref.type, out);
 }
 
 bool nkir_validateModule(NkIrModule m) {

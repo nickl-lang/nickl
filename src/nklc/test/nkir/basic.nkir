@@ -4,44 +4,44 @@ pub proc _entry(%x: f32, %y: f32) void {
     nop
 
     ret
-    ret 42:i32
+    ret :i32 42
 
     jmp      @start
     jmpz  1, @start
     jmpnz 1, @start
 
-    call printf:i64, ("%zi\n", ..., 42) -> %a:i32
+    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %a
 
     store 1  -> [1]
-    load [1] -> %a:i32
+    load [1] -> :i32 %a
 
-    alloc :i32 -> %a:i32
+    alloc :i32 -> :i32 %a
 
-    mov x:i64   -> %a:i64
+    mov :i64 x  -> :i64 %a
 
-    ext 1:i8    -> %a:i32
-    trunc 1     -> %a:i32
-    fp2i 1:f32  -> %a:i32
-    i2fp 1      -> %a:f32
+    ext :i8 1   -> :i32 %a
+    trunc 1     -> :i32 %a
+    fp2i :f32 1 -> :i32 %a
+    i2fp 1      -> :f32 %a
 
-    add %x, 1 -> %a
-    sub %y, %x -> %a
-    mul 3.14, 1 -> %a
-    div 1.0:f32, 3.14 -> %a
-    mod 1, 1 -> %a
+    add %x, 1          -> %a
+    sub %y, %x         -> %a
+    mul 3.14, 1        -> %a
+    div :f32 1.0, 3.14 -> %a
+    mod 1, 1           -> %a
 
-    and 1, 1 -> %b:i32
-    or  1, 1 -> %b:i32
-    xor 1, 1 -> %b:i32
-    lsh 1, 1 -> %b:i32
-    rsh 1, 1 -> %b:i32
+    and 1, 1 -> :i32 %b
+    or  1, 1 -> :i32 %b
+    xor 1, 1 -> :i32 %b
+    lsh 1, 1 -> :i32 %b
+    rsh 1, 1 -> :i32 %b
 
     cmp eq 1, 1 -> %b
     cmp ne 1, 1 -> %b
     cmp lt 1, 1 -> %b
-    cmp le 1, 1 -> %b:i32
-    cmp gt 1, 1 -> %b:i32
-    cmp ge 1, 1 -> %b:i32
+    cmp le 1, 1 -> :i32 %b
+    cmp gt 1, 1 -> :i32 %b
+    cmp ge 1, 1 -> :i32 %b
 
     file "/file/path"
     line 123
