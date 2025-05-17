@@ -1,9 +1,10 @@
-pub proc _entry(%x: f32, %y: f32) void {
+pub proc _entry(%x :f32, %y :f32) :i16 {
 
 @start
     nop
 
     ret
+    ret 42
     ret :i32 42
 
     jmp      @start
@@ -49,13 +50,13 @@ pub proc _entry(%x: f32, %y: f32) void {
 
 }
 
-local const one = 123
+local const one 123
 
-data two: i32 = 42
+data two :i32 42
 
-data three: i64
+data three :i64
 
-// data four = 3.14:f32
+// data four :f32 3.14
 
 /* @retcode
 42

@@ -25,6 +25,7 @@ NK_LOG_USE_SCOPE(ir_parser);
         return ret;             \
     }
 
+#define ACCEPT(ID) accept(p, (ID))
 #define EXPECT(ID) TRY(expect(p, (ID)))
 
 #define ERROR(...)               \
@@ -93,7 +94,7 @@ CACHED_TYPE(void, allocVoidType(p));
 
 typedef struct {
 } Void;
-Void const ret;
+static Void const ret;
 
 static void vreportError(ParserState *p, char const *fmt, va_list ap) {
     if (p->err_str) {
@@ -159,7 +160,7 @@ static bool accept(ParserState *p, u32 id) {
 
 static NklToken const *expect(ParserState *p, u32 id) {
     NklToken const *ret = p->cur_token;
-    if (!accept(p, id)) {
+    if (!ACCEPT(id)) {
         NkString const str = curTokenStr(p);
         ERROR(
             "expected `%s` before `" NKS_FMT "`",
@@ -174,14 +175,14 @@ static NkIrType parseType(ParserState *p) {
 
     if (0) {
     }
-#define X(TYPE, VALUE_TYPE)                          \
-    else if (accept(p, NK_CAT(NklIrToken_, TYPE))) { \
-        ret = NK_CAT(get_, TYPE)(p);                 \
+#define X(TYPE, VALUE_TYPE)                       \
+    else if (ACCEPT(NK_CAT(NklIrToken_, TYPE))) { \
+        ret = NK_CAT(get_, TYPE)(p);              \
     }
     NKIR_NUMERIC_ITERATE(X)
 #undef X
 
-    else if (accept(p, NklIrToken_void)) {
+    else if (ACCEPT(NklIrToken_void)) {
         ret = get_void(p);
     }
 
@@ -239,45 +240,6 @@ static NkIrImm parseImm(ParserState *p, NkString str, NkIrNumericValueType value
     return ret;
 }
 
-static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
-    NkIrRef ret = {0};
-
-    if (!on(p, NklIrToken_PercentTag)) {
-        ERROR("local expected");
-    }
-
-    NkString const str = getToken(p);
-    NkAtom const local = nk_s2atom((NkString){str.data + 1, str.size - 1});
-
-    NkIrType type = type_opt;
-    bool is_param = false;
-
-    for (usize i = 0; i < p->proc_params.size; i++) {
-        NkIrParam const *param = &p->proc_params.data[i];
-        if (local == param->name) {
-            if (!type) {
-                type = param->type;
-            }
-            is_param = true;
-            break;
-        }
-    }
-
-    if (is_param && to_write) {
-        p->cur_token--;
-        ERROR("cannot write to param");
-    }
-
-    if (!type) {
-        EXPECT(NklIrToken_Colon);
-        TRY(type = parseType(p));
-    } else if (accept(p, NklIrToken_Colon)) {
-        TRY(type = parseType(p));
-    }
-
-    return is_param ? nkir_makeRefParam(local, type) : nkir_makeRefLocal(local, type);
-}
-
 static NkString parseString(ParserState *p) {
     NkString ret = {0};
 
@@ -318,37 +280,42 @@ static u32 parseIdx(ParserState *p) {
 static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     NkIrRef ret = {0};
 
-    if (accept(p, NklIrToken_Ellipsis)) {
+    if (ACCEPT(NklIrToken_Ellipsis)) {
         return nkir_makeVariadicMarker();
     }
 
+    NkIrType type = NULL;
+    if (ACCEPT(NklIrToken_Colon)) {
+        TRY(type = parseType(p));
+    } else {
+        type = type_opt;
+    }
+
     if (on(p, NklToken_Int)) {
-        NkString const str = getToken(p);
-        NkIrType type = NULL;
-        if (accept(p, NklIrToken_Colon)) {
-            TRY(type = parseType(p));
-        } else if (type_opt && type_opt->kind == NkIrType_Numeric) {
-            type = type_opt;
-        } else {
+        if (!type) {
             type = get_i64(p);
         }
+
+        if (type->kind != NkIrType_Numeric) {
+            ERROR("incorrect value for type `TODO:nkir_inspectType`");
+        }
+
+        NkString const str = getToken(p);
         TRY(NkIrImm imm = parseImm(p, str, type->num));
+
         return nkir_makeRefImm(imm, type);
     } else if (on(p, NklToken_Float)) {
-        NkString const str = getToken(p);
-        NkIrType type = NULL;
-        if (accept(p, NklIrToken_Colon)) {
-            TRY(type = parseType(p));
-        } else if (type_opt && type_opt->kind == NkIrType_Numeric) {
-            type = type_opt;
-        } else {
+        if (!type) {
             type = get_f64(p);
         }
-        if (!NKIR_NUMERIC_IS_FLT(type->num)) {
-            p->cur_token--;
-            ERROR("floating point type expected");
+
+        if (type->kind != NkIrType_Numeric && !NKIR_NUMERIC_IS_FLT(type->num)) {
+            ERROR("incorrect value for type `TODO:nkir_inspectType`");
         }
+
+        NkString const str = getToken(p);
         TRY(NkIrImm imm = parseImm(p, str, type->num));
+
         return nkir_makeRefImm(imm, type);
     }
 
@@ -388,20 +355,43 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                 .kind = NkIrSymbol_Data,
             }));
 
-        return nkir_makeRefGlobal(sym, type);
+        return nkir_makeRefGlobal(sym, get_i64(p)); // TODO:Hardcoded pointer type
     }
 
     else if (on(p, NklIrToken_PercentTag)) {
-        TRY(NkIrRef const ref = parseLocal(p, type_opt, false));
-        return ref;
+        NkString const str = getToken(p);
+        NkAtom const local = nk_s2atom((NkString){str.data + 1, str.size - 1});
+
+        bool is_param = false;
+
+        for (usize i = 0; i < p->proc_params.size; i++) {
+            NkIrParam const *param = &p->proc_params.data[i];
+            if (local == param->name) {
+                if (!type) {
+                    type = param->type;
+                }
+                is_param = true;
+                break;
+            }
+        }
+
+        if (!type) {
+            ERROR("type must be specified");
+        }
+
+        // TODO: Only allow local to the right of ->
+        // TODO: Disallow writing into params
+
+        return is_param ? nkir_makeRefParam(local, type) : nkir_makeRefLocal(local, type);
     }
 
     else if (on(p, NklToken_Id)) {
+        if (!type) {
+            ERROR("type must be specified");
+        }
+
         NkString const str = getToken(p);
         NkAtom const id = nk_s2atom(str);
-
-        EXPECT(NklIrToken_Colon);
-        TRY(NkIrType const type = parseType(p));
 
         return nkir_makeRefGlobal(id, type);
     }
@@ -426,7 +416,7 @@ static NkIrRefArray parseRefArray(ParserState *p) {
     while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
         TRY(NkIrRef const ref = parseRef(p, NULL));
         nkda_append(&refs, ref);
-        accept(p, NklIrToken_Comma);
+        ACCEPT(NklIrToken_Comma);
     }
 
     EXPECT(NklIrToken_RParen);
@@ -447,16 +437,20 @@ static NkAtom parseLabel(ParserState *p) {
 static NkIrInstr parseInstr(ParserState *p) {
     NkIrInstr ret = {0};
 
+    if (ACCEPT(NklToken_Int)) {
+        EXPECT(NklIrToken_Pipe);
+    }
+
     if (on(p, NklIrToken_AtTag)) {
         TRY(NkAtom const label = parseLabel(p));
         ret = nkir_make_label(label);
     }
 
-    else if (accept(p, NklIrToken_nop)) {
+    else if (ACCEPT(NklIrToken_nop)) {
         ret = nkir_make_nop();
     }
 
-    else if (accept(p, NklIrToken_ret)) {
+    else if (ACCEPT(NklIrToken_ret)) {
         NkIrRef arg = {0};
         if (!on(p, NklToken_Newline)) {
             TRY(arg = parseRef(p, p->proc_ret_t));
@@ -464,99 +458,99 @@ static NkIrInstr parseInstr(ParserState *p) {
         ret = nkir_make_ret(arg);
     }
 
-    else if (accept(p, NklIrToken_jmp)) {
+    else if (ACCEPT(NklIrToken_jmp)) {
         TRY(NkAtom const label = parseLabel(p));
         ret = nkir_make_jmp(label);
-    } else if (accept(p, NklIrToken_jmpz)) {
+    } else if (ACCEPT(NklIrToken_jmpz)) {
         TRY(NkIrRef const cond = parseRef(p, NULL));
         EXPECT(NklIrToken_Comma);
         TRY(NkAtom const label = parseLabel(p));
         ret = nkir_make_jmpz(cond, label);
-    } else if (accept(p, NklIrToken_jmpnz)) {
+    } else if (ACCEPT(NklIrToken_jmpnz)) {
         TRY(NkIrRef const cond = parseRef(p, NULL));
         EXPECT(NklIrToken_Comma);
         TRY(NkAtom const label = parseLabel(p));
         ret = nkir_make_jmpnz(cond, label);
     }
 
-    else if (accept(p, NklIrToken_call)) {
+    else if (ACCEPT(NklIrToken_call)) {
         TRY(NkIrRef const proc = parseRef(p, NULL)); // TODO: Infer pointer types
         EXPECT(NklIrToken_Comma);
         TRY(NkIrRefArray const args = parseRefArray(p));
         EXPECT(NklIrToken_MinusGreater);
-        TRY(NkIrRef const dst = parseLocal(p, NULL, true));
+        TRY(NkIrRef const dst = parseRef(p, NULL));
         ret = nkir_make_call(dst, proc, args);
     }
 
-    else if (accept(p, NklIrToken_store)) {
+    else if (ACCEPT(NklIrToken_store)) {
         TRY(NkIrRef const src = parseRef(p, NULL));
         EXPECT(NklIrToken_MinusGreater);
         EXPECT(NklIrToken_LBracket);
         TRY(NkIrRef const dst = parseRef(p, NULL));
         ret = nkir_make_store(dst, src);
         EXPECT(NklIrToken_RBracket);
-    } else if (accept(p, NklIrToken_load)) {
+    } else if (ACCEPT(NklIrToken_load)) {
         EXPECT(NklIrToken_LBracket);
         TRY(NkIrRef const src = parseRef(p, NULL));
         EXPECT(NklIrToken_RBracket);
         EXPECT(NklIrToken_MinusGreater);
-        TRY(NkIrRef const dst = parseLocal(p, NULL, true));
+        TRY(NkIrRef const dst = parseRef(p, NULL));
         ret = nkir_make_load(dst, src);
     }
 
-    else if (accept(p, NklIrToken_alloc)) {
+    else if (ACCEPT(NklIrToken_alloc)) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
         EXPECT(NklIrToken_MinusGreater);
-        TRY(NkIrRef const dst = parseLocal(p, NULL, true));
+        TRY(NkIrRef const dst = parseRef(p, NULL));
         ret = nkir_make_alloc(dst, type);
     }
 
     else if (0) {
     }
     // TODO: Check and derive types in UNA and BIN IR
-#define UNA_IR(NAME)                                        \
-    else if (accept(p, NK_CAT(NklIrToken_, NAME))) {        \
-        TRY(NkIrRef const arg = parseRef(p, NULL));         \
-        EXPECT(NklIrToken_MinusGreater);                    \
-        TRY(NkIrRef const dst = parseLocal(p, NULL, true)); \
-        ret = NK_CAT(nkir_make_, NAME)(dst, arg);           \
+#define UNA_IR(NAME)                                \
+    else if (ACCEPT(NK_CAT(NklIrToken_, NAME))) {   \
+        TRY(NkIrRef const arg = parseRef(p, NULL)); \
+        EXPECT(NklIrToken_MinusGreater);            \
+        TRY(NkIrRef const dst = parseRef(p, NULL)); \
+        ret = NK_CAT(nkir_make_, NAME)(dst, arg);   \
     }
-#define BIN_IR(NAME)                                            \
-    else if (accept(p, NK_CAT(NklIrToken_, NAME))) {            \
-        TRY(NkIrRef const lhs = parseRef(p, NULL));             \
-        EXPECT(NklIrToken_Comma);                               \
-        TRY(NkIrRef const rhs = parseRef(p, lhs.type));         \
-        EXPECT(NklIrToken_MinusGreater);                        \
-        TRY(NkIrRef const dst = parseLocal(p, lhs.type, true)); \
-        ret = NK_CAT(nkir_make_, NAME)(dst, lhs, rhs);          \
+#define BIN_IR(NAME)                                    \
+    else if (ACCEPT(NK_CAT(NklIrToken_, NAME))) {       \
+        TRY(NkIrRef const lhs = parseRef(p, NULL));     \
+        EXPECT(NklIrToken_Comma);                       \
+        TRY(NkIrRef const rhs = parseRef(p, lhs.type)); \
+        EXPECT(NklIrToken_MinusGreater);                \
+        TRY(NkIrRef const dst = parseRef(p, lhs.type)); \
+        ret = NK_CAT(nkir_make_, NAME)(dst, lhs, rhs);  \
     }
 #include "nkb/ir.inl"
 
-    else if (accept(p, NklIrToken_cmp)) {
+    else if (ACCEPT(NklIrToken_cmp)) {
         if (0) {
         }
-#define CMP_IR(NAME)                                             \
-    else if (accept(p, NK_CAT(NklIrToken_, NAME))) {             \
-        TRY(NkIrRef const lhs = parseRef(p, NULL));              \
-        EXPECT(NklIrToken_Comma);                                \
-        TRY(NkIrRef const rhs = parseRef(p, lhs.type));          \
-        EXPECT(NklIrToken_MinusGreater);                         \
-        TRY(NkIrRef const dst = parseLocal(p, get_i8(p), true)); \
-        ret = NK_CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs);       \
+#define CMP_IR(NAME)                                       \
+    else if (ACCEPT(NK_CAT(NklIrToken_, NAME))) {          \
+        TRY(NkIrRef const lhs = parseRef(p, NULL));        \
+        EXPECT(NklIrToken_Comma);                          \
+        TRY(NkIrRef const rhs = parseRef(p, lhs.type));    \
+        EXPECT(NklIrToken_MinusGreater);                   \
+        TRY(NkIrRef const dst = parseRef(p, get_i8(p)));   \
+        ret = NK_CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs); \
     }
 #include "nkb/ir.inl"
     }
 
-    else if (accept(p, NklIrToken_file)) {
+    else if (ACCEPT(NklIrToken_file)) {
         TRY(NkString const str = parseString(p));
         ret = nkir_make_file(str);
-    } else if (accept(p, NklIrToken_comment)) {
+    } else if (ACCEPT(NklIrToken_comment)) {
         TRY(NkString const str = parseString(p));
         ret = nkir_make_comment(str);
     }
 
-    else if (accept(p, NklIrToken_line)) {
+    else if (ACCEPT(NklIrToken_line)) {
         TRY(u32 const idx = parseIdx(p));
         ret = nkir_make_line(idx);
     }
@@ -569,7 +563,7 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     EXPECT(NklToken_Newline);
-    while (accept(p, NklToken_Newline)) {
+    while (ACCEPT(NklToken_Newline)) {
     }
 
     return ret;
@@ -592,7 +586,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
 
-        accept(p, NklIrToken_Comma);
+        ACCEPT(NklIrToken_Comma);
 
         nkda_append(
             &params,
@@ -606,13 +600,14 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RParen);
 
+    EXPECT(NklIrToken_Colon);
     TRY(NkIrType const ret_t = parseType(p));
     p->proc_ret_t = ret_t;
 
     EXPECT(NklIrToken_LBrace);
 
     EXPECT(NklToken_Newline);
-    while (accept(p, NklToken_Newline)) {
+    while (ACCEPT(NklToken_Newline)) {
     }
 
     NkIrInstrDynArray instrs = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
@@ -625,7 +620,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
     EXPECT(NklIrToken_RBrace);
 
     EXPECT(NklToken_Newline);
-    while (accept(p, NklToken_Newline)) {
+    while (ACCEPT(NklToken_Newline)) {
     }
 
     nkda_append(
@@ -655,17 +650,12 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     NkAtom const name = nk_s2atom(name_str);
 
     NkIrType type = NULL;
-    if (accept(p, NklIrToken_Colon)) {
+    if (ACCEPT(NklIrToken_Colon)) {
         TRY(type = parseType(p));
     }
 
-    if (flags & NkIrData_ReadOnly) {
-        EXPECT(NklIrToken_Equal);
-        p->cur_token--; // TODO: A hack. Maybe add assertOn?
-    }
-
     void *addr = NULL;
-    if (accept(p, NklIrToken_Equal)) {
+    if (!on(p, NklToken_Newline)) {
         // TODO: Total hack
         u32 *val = nk_arena_allocT(p->arena, u32);
         TRY(*val = parseIdx(p));
@@ -676,7 +666,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     }
 
     EXPECT(NklToken_Newline);
-    while (accept(p, NklToken_Newline)) {
+    while (ACCEPT(NklToken_Newline)) {
     }
 
     nkda_append(
@@ -699,22 +689,22 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 }
 
 static Void parseSymbol(ParserState *p) {
-    while (accept(p, NklToken_Newline)) {
+    while (ACCEPT(NklToken_Newline)) {
     }
 
     NkIrVisibility vis = NkIrVisibility_Hidden;
 
-    if (accept(p, NklIrToken_pub)) {
+    if (ACCEPT(NklIrToken_pub)) {
         vis = NkIrVisibility_Default;
-    } else if (accept(p, NklIrToken_local)) {
+    } else if (ACCEPT(NklIrToken_local)) {
         vis = NkIrVisibility_Local;
     }
 
-    if (accept(p, NklIrToken_proc)) {
+    if (ACCEPT(NklIrToken_proc)) {
         TRY(parseProc(p, vis));
-    } else if (accept(p, NklIrToken_const)) {
+    } else if (ACCEPT(NklIrToken_const)) {
         TRY(parseData(p, vis, NkIrData_ReadOnly));
-    } else if (accept(p, NklIrToken_data)) {
+    } else if (ACCEPT(NklIrToken_data)) {
         TRY(parseData(p, vis, 0));
     }
 

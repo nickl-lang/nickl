@@ -34,10 +34,10 @@ enum {
     NklIrToken_MinusGreater,
     NklIrToken_Ellipsis,
     NklIrToken_Colon,
-    NklIrToken_Equal,
     NklIrToken_LBracket,
     NklIrToken_RBracket,
     NklIrToken_LBrace,
+    NklIrToken_Pipe,
     NklIrToken_RBrace,
 
     NklIrToken_TagsBase,
