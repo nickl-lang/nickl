@@ -51,13 +51,11 @@ pub proc _entry(%x :f32, %y :f32) :i16 {
 }
 
 local const one 123
-
-data two :i32 42
-
+pub data two :i32 42
 data three :i64
-
-// data four :f32 3.14
+const four :f32 3.14
+const five "a string"
 
 /* @retcode
-42
+0
 @endretcode */

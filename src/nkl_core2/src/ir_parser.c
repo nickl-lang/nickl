@@ -28,9 +28,21 @@ NK_LOG_USE_SCOPE(ir_parser);
 #define ACCEPT(ID) accept(p, (ID))
 #define EXPECT(ID) TRY(expect(p, (ID)))
 
-#define ERROR(...)               \
-    reportError(p, __VA_ARGS__); \
-    return ret
+#define ERROR(...)                   \
+    do {                             \
+        reportError(p, __VA_ARGS__); \
+        return ret;                  \
+    } while (0)
+
+#define ERROR_EXPECT(FMT, ...)                                                                                \
+    do {                                                                                                      \
+        if (on(p, NklToken_Eof)) {                                                                            \
+            ERROR("unexpected end of file, expected " FMT __VA_OPT__(, ) __VA_ARGS__);                        \
+        } else {                                                                                              \
+            NkString const _str = escapedCurTokenStr(p);                                                      \
+            ERROR("unexpected token `" NKS_FMT "`, expected " FMT, NKS_ARG(_str) __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                                                     \
+    } while (0)
 
 typedef struct {
     NkString const text;
@@ -90,6 +102,24 @@ CACHED_TYPE(void, allocVoidType(p));
 
 #undef CACHED_TYPE
 
+static NkIrType allocStringType(ParserState *p, usize size) {
+    NkIrAggregateElemInfo *elem = nk_arena_allocT(p->arena, NkIrAggregateElemInfo);
+    *elem = (NkIrAggregateElemInfo){
+        .type = get_i8(p),
+        .count = size + 1,
+        .offset = 0,
+    };
+    NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
+    *type = (NkIrType_T){
+        .aggr = {elem, 1},
+        .size = size + 1,
+        .align = 1,
+        .id = 0,
+        .kind = NkIrType_Aggregate,
+    };
+    return type;
+}
+
 // TODO: Reuse some code between parsers?
 
 typedef struct {
@@ -123,6 +153,12 @@ static NkString tokenStr(ParserState *p, NklToken const *token) {
 
 static NkString curTokenStr(ParserState *p) {
     return tokenStr(p, p->cur_token);
+}
+
+static NkString escapedCurTokenStr(ParserState *p) {
+    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(&p->scratch))};
+    nks_escape(nksb_getStream(&sb), curTokenStr(p));
+    return (NkString){NKS_INIT(sb)};
 }
 
 static void getTokenImpl(ParserState *p) {
@@ -161,7 +197,7 @@ static bool accept(ParserState *p, u32 id) {
 static NklToken const *expect(ParserState *p, u32 id) {
     NklToken const *ret = p->cur_token;
     if (!ACCEPT(id)) {
-        NkString const str = curTokenStr(p);
+        NkString const str = escapedCurTokenStr(p);
         ERROR(
             "expected `%s` before `" NKS_FMT "`",
             p->token_names ? p->token_names[id] : "??TokenNameUnavailable??",
@@ -186,50 +222,52 @@ static NkIrType parseType(ParserState *p) {
         ret = get_void(p);
     }
 
+    else if (ACCEPT(NklIrToken_RBrace)) {
+        ERROR("TODO: parse aggregate type");
+    }
+
     else {
-        ERROR("type expected");
+        ERROR_EXPECT("a type");
     }
 
     return ret;
 }
 
-static NkIrImm parseImm(ParserState *p, NkString str, NkIrNumericValueType value_type) {
-    NkIrImm ret = {0};
-
+static Void parseNumber(ParserState *p, void *addr, NkString str, NkIrNumericValueType value_type) {
     char const *cstr = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(str));
 
     char *endptr = NULL;
 
     switch (value_type) {
         case Int8:
-            ret.i8 = strtol(cstr, &endptr, 10);
+            *(i8 *)addr = strtol(cstr, &endptr, 10);
             break;
         case Uint8:
-            ret.u8 = strtoul(cstr, &endptr, 10);
+            *(u8 *)addr = strtoul(cstr, &endptr, 10);
             break;
         case Int16:
-            ret.i16 = strtol(cstr, &endptr, 10);
+            *(i16 *)addr = strtol(cstr, &endptr, 10);
             break;
         case Uint16:
-            ret.u16 = strtoul(cstr, &endptr, 10);
+            *(u16 *)addr = strtoul(cstr, &endptr, 10);
             break;
         case Int32:
-            ret.i32 = strtol(cstr, &endptr, 10);
+            *(i32 *)addr = strtol(cstr, &endptr, 10);
             break;
         case Uint32:
-            ret.u32 = strtoul(cstr, &endptr, 10);
+            *(u32 *)addr = strtoul(cstr, &endptr, 10);
             break;
         case Int64:
-            ret.i64 = strtoll(cstr, &endptr, 10);
+            *(i64 *)addr = strtoll(cstr, &endptr, 10);
             break;
         case Uint64:
-            ret.u64 = strtoull(cstr, &endptr, 10);
+            *(u64 *)addr = strtoull(cstr, &endptr, 10);
             break;
         case Float32:
-            ret.f32 = strtof(cstr, &endptr);
+            *(f32 *)addr = strtof(cstr, &endptr);
             break;
         case Float64:
-            ret.f64 = strtod(cstr, &endptr);
+            *(f64 *)addr = strtod(cstr, &endptr);
             break;
     }
 
@@ -272,9 +310,31 @@ static u32 parseIdx(ParserState *p) {
     }
 
     NkString const str = getToken(p);
-    TRY(NkIrImm imm = parseImm(p, str, Uint32));
+    TRY(parseNumber(p, &ret, str, Uint32));
 
-    return imm.u32;
+    return ret;
+}
+
+static Void parseNumericConst(ParserState *p, void *addr, NkIrType type) {
+    nk_assert(type->kind == NkIrType_Numeric);
+
+    if (on(p, NklToken_Int)) {
+        NkString const str = getToken(p);
+        TRY(parseNumber(p, addr, str, type->num));
+    } else if (on(p, NklToken_Float)) {
+        if (!NKIR_NUMERIC_IS_FLT(type->num)) {
+            ERROR("incorrect value for type `TODO:nkir_inspectType`");
+        }
+
+        NkString const str = getToken(p);
+        TRY(parseNumber(p, addr, str, type->num));
+    }
+
+    else {
+        ERROR_EXPECT("a numeric constant");
+    }
+
+    return ret;
 }
 
 static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
@@ -291,74 +351,15 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         type = type_opt;
     }
 
-    if (on(p, NklToken_Int)) {
-        if (!type) {
+    if (!type) {
+        if (on(p, NklToken_Int)) {
             type = get_i64(p);
-        }
-
-        if (type->kind != NkIrType_Numeric) {
-            ERROR("incorrect value for type `TODO:nkir_inspectType`");
-        }
-
-        NkString const str = getToken(p);
-        TRY(NkIrImm imm = parseImm(p, str, type->num));
-
-        return nkir_makeRefImm(imm, type);
-    } else if (on(p, NklToken_Float)) {
-        if (!type) {
+        } else if (on(p, NklToken_Float)) {
             type = get_f64(p);
         }
-
-        if (type->kind != NkIrType_Numeric && !NKIR_NUMERIC_IS_FLT(type->num)) {
-            ERROR("incorrect value for type `TODO:nkir_inspectType`");
-        }
-
-        NkString const str = getToken(p);
-        TRY(NkIrImm imm = parseImm(p, str, type->num));
-
-        return nkir_makeRefImm(imm, type);
     }
 
-    else if (on(p, NklToken_String) || on(p, NklToken_EscapedString)) {
-        TRY(NkString const str = parseString(p));
-
-        NkIrAggregateElemInfo *elem = nk_arena_allocT(p->arena, NkIrAggregateElemInfo);
-        *elem = (NkIrAggregateElemInfo){
-            .type = get_i8(p),
-            .count = str.size + 1,
-            .offset = 0,
-        };
-        NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
-        *type = (NkIrType_T){
-            .aggr = {elem, 1},
-            .size = str.size + 1,
-            .align = 1,
-            .id = 0,
-            .kind = NkIrType_Aggregate,
-        };
-
-        NkAtom const sym = nk_atom_unique((NkString){0});
-
-        nkda_append(
-            p->ir,
-            ((NkIrSymbol){
-                .data =
-                    {
-                        .type = type,
-                        .relocs = {0},
-                        .addr = (void *)str.data,
-                        .flags = NkIrData_ReadOnly,
-                    },
-                .name = sym,
-                .vis = NkIrVisibility_Local,
-                .flags = 0,
-                .kind = NkIrSymbol_Data,
-            }));
-
-        return nkir_makeRefGlobal(sym, get_i64(p)); // TODO:Hardcoded pointer type
-    }
-
-    else if (on(p, NklIrToken_PercentTag)) {
+    if (on(p, NklIrToken_PercentTag)) {
         NkString const str = getToken(p);
         NkAtom const local = nk_s2atom((NkString){str.data + 1, str.size - 1});
 
@@ -396,11 +397,52 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         return nkir_makeRefGlobal(id, type);
     }
 
-    else if (on(p, NklToken_Eof)) {
-        ERROR("unexpected end of file, expected a reference");
-    } else {
-        NkString const str = curTokenStr(p);
-        ERROR("unexpected token `" NKS_FMT "`, expected a reference", NKS_ARG(str));
+    else if (type) {
+        switch (type->kind) {
+            case NkIrType_Aggregate:
+                ERROR("TODO:NkIrType_Aggregate");
+                break;
+            case NkIrType_Numeric: {
+                NkIrImm imm;
+                TRY(parseNumericConst(p, &imm, type));
+                ret = nkir_makeRefImm(imm, type);
+                break;
+            }
+        }
+    }
+
+    else if (on(p, NklToken_String) || on(p, NklToken_EscapedString)) {
+        TRY(NkString const str = parseString(p));
+
+        NkIrType type = allocStringType(p, str.size);
+
+        NkAtom const sym = nk_atom_unique((NkString){0});
+
+        nkda_append(
+            p->ir,
+            ((NkIrSymbol){
+                .data =
+                    {
+                        .type = type,
+                        .relocs = {0},
+                        .addr = (void *)str.data,
+                        .flags = NkIrData_ReadOnly,
+                    },
+                .name = sym,
+                .vis = NkIrVisibility_Local,
+                .flags = 0,
+                .kind = NkIrSymbol_Data,
+            }));
+
+        return nkir_makeRefGlobal(sym, get_i64(p)); // TODO:Hardcoded pointer type
+    }
+
+    else if (on(p, NklIrToken_LBrace)) {
+        ERROR("TODO: parse untyped aggregate");
+    }
+
+    else {
+        ERROR_EXPECT("a reference");
     }
 
     return ret;
@@ -555,11 +597,8 @@ static NkIrInstr parseInstr(ParserState *p) {
         ret = nkir_make_line(idx);
     }
 
-    else if (on(p, NklToken_Eof)) {
-        ERROR("unexpected end of file, expected an instruction");
-    } else {
-        NkString const str = curTokenStr(p);
-        ERROR("unexpected token `" NKS_FMT "`, expected an instruction", NKS_ARG(str));
+    else {
+        ERROR_EXPECT("an instruction");
     }
 
     EXPECT(NklToken_Newline);
@@ -654,15 +693,52 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         TRY(type = parseType(p));
     }
 
+    if (!type) {
+        if (on(p, NklToken_Int)) {
+            type = get_i64(p);
+        } else if (on(p, NklToken_Float)) {
+            type = get_f64(p);
+        }
+    }
+
     void *addr = NULL;
     if (!on(p, NklToken_Newline)) {
-        // TODO: Total hack
-        u32 *val = nk_arena_allocT(p->arena, u32);
-        TRY(*val = parseIdx(p));
-        addr = val;
-        if (!type) {
-            type = get_u32(p);
+        if (type) {
+            switch (type->kind) {
+                case NkIrType_Aggregate:
+                    ERROR("TODO:NkIrType_Aggregate");
+                    break;
+                case NkIrType_Numeric: {
+                    addr = nk_arena_allocAligned(p->arena, type->size, type->align);
+                    TRY(parseNumericConst(p, addr, type));
+                    break;
+                }
+            }
         }
+
+        else if (on(p, NklToken_String) || on(p, NklToken_EscapedString)) {
+            TRY(NkString const str = parseString(p));
+
+            type = allocStringType(p, str.size);
+            addr = (void *)str.data;
+        }
+
+        else if (on(p, NklIrToken_LBrace)) {
+            ERROR("TODO: parse untyped aggregate");
+        }
+
+        else {
+            ERROR_EXPECT("a constant");
+        }
+    }
+
+    if (!addr && flags & NkIrData_ReadOnly) {
+        ERROR("constant must have a value");
+    }
+
+    if (!type) {
+        NkString const str = escapedCurTokenStr(p);
+        ERROR("unexpected token `" NKS_FMT "`, expected type or a constant", NKS_ARG(str));
     }
 
     EXPECT(NklToken_Newline);
@@ -708,11 +784,8 @@ static Void parseSymbol(ParserState *p) {
         TRY(parseData(p, vis, 0));
     }
 
-    else if (on(p, NklToken_Eof)) {
-        ERROR("unexpected end of file, expected a symbol");
-    } else {
-        NkString const str = curTokenStr(p);
-        ERROR("unexpected token `" NKS_FMT "`, expected a symbol", NKS_ARG(str));
+    else {
+        ERROR_EXPECT("a symbol");
     }
 
     return ret;
