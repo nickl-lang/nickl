@@ -9,6 +9,8 @@
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
+#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/slice.h"
@@ -91,7 +93,10 @@ static NkIrType allocVoidType(ParserState *p) {
 #define CACHED_TYPE(NAME, EXPR)                        \
     NkIrType NK_CAT(get_, NAME)(ParserState * p) {     \
         NkIrType *cached = &p->NK_CAT(_cached_, NAME); \
-        return *cached ? *cached : (*cached = (EXPR)); \
+        if (!*cached) {                                \
+            *cached = (EXPR);                          \
+        }                                              \
+        return *cached;                                \
     };
 
 #define X(TYPE, VALUE_TYPE) CACHED_TYPE(TYPE, allocNumericType(p, VALUE_TYPE))
@@ -209,28 +214,22 @@ static NklToken const *expect(ParserState *p, u32 id) {
 static NkIrType parseType(ParserState *p) {
     NkIrType ret = NULL;
 
-    if (0) {
-    }
-#define X(TYPE, VALUE_TYPE)                       \
-    else if (ACCEPT(NK_CAT(NklIrToken_, TYPE))) { \
-        ret = NK_CAT(get_, TYPE)(p);              \
+#define X(TYPE, VALUE_TYPE)                  \
+    if (ACCEPT(NK_CAT(NklIrToken_, TYPE))) { \
+        return NK_CAT(get_, TYPE)(p);        \
     }
     NKIR_NUMERIC_ITERATE(X)
 #undef X
 
-    else if (ACCEPT(NklIrToken_void)) {
-        ret = get_void(p);
+    if (ACCEPT(NklIrToken_void)) {
+        return get_void(p);
     }
 
-    else if (ACCEPT(NklIrToken_RBrace)) {
+    if (ACCEPT(NklIrToken_RBrace)) {
         ERROR("TODO: parse aggregate type");
     }
 
-    else {
-        ERROR_EXPECT("a type");
-    }
-
-    return ret;
+    ERROR_EXPECT("a type");
 }
 
 static Void parseNumber(ParserState *p, void *addr, NkString str, NkIrNumericValueType value_type) {
@@ -281,7 +280,7 @@ static Void parseNumber(ParserState *p, void *addr, NkString str, NkIrNumericVal
 static NkString parseString(ParserState *p) {
     NkString ret = {0};
 
-    if (!(on(p, NklToken_String) || on(p, NklToken_EscapedString))) {
+    if (!on(p, NklToken_String) && !on(p, NklToken_EscapedString)) {
         ERROR("string expected");
     }
 
@@ -418,7 +417,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     }
 
     if (on(p, NklIrToken_PercentTag)) {
-        return parseLocal(p, type_opt, false);
+        return parseLocal(p, type, false);
     }
 
     else if (on(p, NklToken_Id)) {
@@ -794,11 +793,52 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     return ret;
 }
 
+static Void parseExtern(ParserState *p) {
+    TRY(NkString lib_str = parseString(p));
+    if (nks_equalCStr(lib_str, "c")) { // TODO: Hardcoded libc, implement lib aliases
+        lib_str = nk_cs2s("libc.so.6");
+    }
+    char const *lib_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(lib_str));
+
+    TRY(NklToken const *sym_token = expect(p, NklToken_Id));
+    NkString const sym_str = tokenStr(p, sym_token);
+    char const *sym_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(sym_str));
+
+    NkHandle dl = nkdl_loadLibrary(lib_nt);
+    if (nk_handleIsNull(dl)) {
+        ERROR("failed to load library `" NKS_FMT "`: %s", NKS_ARG(lib_str), nkdl_getLastErrorString());
+    }
+
+    void *sym = nkdl_resolveSymbol(dl, sym_nt);
+    if (!sym) {
+        ERROR("failed to load symbol `" NKS_FMT "`: %s", NKS_ARG(sym_str), nkdl_getLastErrorString());
+    }
+
+    nkda_append(
+        p->ir,
+        ((NkIrSymbol){
+            .extrn =
+                {
+                    .addr = sym,
+                },
+            .name = nk_s2atom(sym_str),
+            .vis = 0,
+            .flags = 0,
+            .kind = NkIrSymbol_Extern,
+        }));
+
+    return ret;
+}
+
 static Void parseSymbol(ParserState *p) {
     while (ACCEPT(NklToken_Newline)) {
     }
 
     NkIrVisibility vis = NkIrVisibility_Hidden;
+
+    if (ACCEPT(NklIrToken_extern)) {
+        return parseExtern(p);
+    }
 
     if (ACCEPT(NklIrToken_pub)) {
         vis = NkIrVisibility_Default;
@@ -807,18 +847,14 @@ static Void parseSymbol(ParserState *p) {
     }
 
     if (ACCEPT(NklIrToken_proc)) {
-        TRY(parseProc(p, vis));
+        return parseProc(p, vis);
     } else if (ACCEPT(NklIrToken_const)) {
-        TRY(parseData(p, vis, NkIrData_ReadOnly));
+        return parseData(p, vis, NkIrData_ReadOnly);
     } else if (ACCEPT(NklIrToken_data)) {
-        TRY(parseData(p, vis, 0));
+        return parseData(p, vis, 0);
     }
 
-    else {
-        ERROR_EXPECT("a symbol");
-    }
-
-    return ret;
+    ERROR_EXPECT("a symbol");
 }
 
 static Void parse(ParserState *p) {

@@ -215,13 +215,14 @@ static char const *s_ir_tokens[] = {
 
     NULL, // NklIrToken_KeywordsBase,
 
-    "cmp",   // NklIrToken_cmp,
-    "const", // NklIrToken_const,
-    "data",  // NklIrToken_data,
-    "local", // NklIrToken_local,
-    "proc",  // NklIrToken_proc,
-    "pub",   // NklIrToken_pub,
-    "void",  // NklIrToken_void,
+    "cmp",    // NklIrToken_cmp,
+    "const",  // NklIrToken_const,
+    "data",   // NklIrToken_data,
+    "extern", // NklIrToken_extern,
+    "local",  // NklIrToken_local,
+    "proc",   // NklIrToken_proc,
+    "pub",    // NklIrToken_pub,
+    "void",   // NklIrToken_void,
 
 #define X(TYPE, VALUE_TYPE) #TYPE,
     NKIR_NUMERIC_ITERATE(X)

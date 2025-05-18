@@ -1,0 +1,21 @@
+extern "c" printf
+
+pub proc _entry() :void {
+@loop
+    cmp lt :i64 %i, 5 -> :i8 %cond
+    jmpz :i8 %cond, @endloop
+    call printf, ("%zi\n", ..., :i64 %i) -> :i32
+    add :i64 %i, 1 -> :i64 %i
+    jmp @loop
+@endloop
+    ret
+}
+
+/* @output
+0
+1
+2
+3
+4
+
+@endoutput */
