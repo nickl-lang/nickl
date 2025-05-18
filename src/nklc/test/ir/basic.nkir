@@ -1,0 +1,4 @@
+pub proc _entry() :void {
+@start
+    ret
+}

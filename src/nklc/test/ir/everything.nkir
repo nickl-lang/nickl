@@ -31,9 +31,9 @@ pub proc _entry(%x :f32, %y :f32) :i16 {
     div :f32 1.0, 3.14 -> %a
     mod 1, 1           -> %a
 
-    and 1, 1 -> :i32 %b
-    or  1, 1 -> :i32 %b
-    xor 1, 1 -> :i32 %b
+    and 1, 1 -> %b
+    or  1, 1 -> %b
+    xor 1, 1 -> %b
     lsh 1, 1 -> :i32 %b
     rsh 1, 1 -> :i32 %b
 
