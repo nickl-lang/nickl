@@ -1,14 +1,21 @@
 extern "c" $printf
 
 pub proc $_entry() :void {
+
+    alloc :u64 -> %i
+
 @loop
-    cmp lt :i64 %i, 5 -> :i8 %cond
+    load [%i] -> :u64 %_1
+    cmp lt :u64 %_1, 5 -> :i8 %cond
     jmpz :i8 %cond, @endloop
-    call $printf, ("%zi\n", ..., :i64 %i) -> :i32
-    add :i64 %i, 1 -> :i64 %i
+    call $printf, ("%zi\n", ..., :u64 %_1) -> :i32
+    add :u64 %_1, 1 -> :u64 %_1
+    store :u64 %_1 -> [%i]
     jmp @loop
+
 @endloop
     ret
+
 }
 
 /* @output

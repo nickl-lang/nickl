@@ -125,6 +125,10 @@ static NkIrType allocStringType(ParserState *p, usize size) {
     return type;
 }
 
+static NkIrType get_ptr_t(ParserState *p) {
+    return get_i64(p); // TODO: Hardcoded pointer size
+}
+
 // TODO: Reuse some code between parsers?
 
 typedef struct {
@@ -425,7 +429,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         NkString const token_str = getToken(p);
         NkAtom const sym = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
 
-        return nkir_makeRefGlobal(sym, get_i64(p)); // TODO:Hardcoded pointer type
+        return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
 
     else if (type) {
@@ -468,7 +472,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                 .kind = NkIrSymbol_Data,
             }));
 
-        return nkir_makeRefGlobal(sym, get_i64(p)); // TODO:Hardcoded pointer type
+        return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
 
     else if (on(p, NklIrToken_LBrace)) {
@@ -550,7 +554,7 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     else if (ACCEPT(NklIrToken_call)) {
-        TRY(NkIrRef const proc = parseRef(p, NULL)); // TODO: Infer pointer types
+        TRY(NkIrRef const proc = parseRef(p, get_ptr_t(p)));
         EXPECT(NklIrToken_Comma);
         TRY(NkIrRefArray const args = parseRefArray(p));
         EXPECT(NklIrToken_MinusGreater);
@@ -562,12 +566,12 @@ static NkIrInstr parseInstr(ParserState *p) {
         TRY(NkIrRef const src = parseRef(p, NULL));
         EXPECT(NklIrToken_MinusGreater);
         EXPECT(NklIrToken_LBracket);
-        TRY(NkIrRef const dst = parseRef(p, NULL));
+        TRY(NkIrRef const dst = parseRef(p, get_ptr_t(p)));
         ret = nkir_make_store(dst, src);
         EXPECT(NklIrToken_RBracket);
     } else if (ACCEPT(NklIrToken_load)) {
         EXPECT(NklIrToken_LBracket);
-        TRY(NkIrRef const src = parseRef(p, NULL));
+        TRY(NkIrRef const src = parseRef(p, get_ptr_t(p)));
         EXPECT(NklIrToken_RBracket);
         EXPECT(NklIrToken_MinusGreater);
         TRY(NkIrRef const dst = parseDst(p, NULL, false));
@@ -578,7 +582,7 @@ static NkIrInstr parseInstr(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
         EXPECT(NklIrToken_MinusGreater);
-        TRY(NkIrRef const dst = parseDst(p, NULL, false));
+        TRY(NkIrRef const dst = parseDst(p, get_ptr_t(p), false));
         ret = nkir_make_alloc(dst, type);
     }
 
