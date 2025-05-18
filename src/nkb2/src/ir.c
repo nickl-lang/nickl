@@ -411,7 +411,7 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
 
     switch (sym->kind) {
         case NkIrSymbol_Extern:
-            nk_printf(out, "// extern %s@0x%p", nk_atom2cs(sym->name), sym->extrn.addr);
+            nk_printf(out, "// extern $%s@0x%p", nk_atom2cs(sym->name), sym->extrn.addr);
             break;
 
         case NkIrSymbol_Data:
@@ -422,11 +422,10 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             }
             // TODO: Inline strings
             if (sym_str.size) {
-                nk_printf(out, NKS_FMT, NKS_ARG(sym_str));
+                nk_printf(out, "$" NKS_FMT " :", NKS_ARG(sym_str));
             } else {
-                nk_printf(out, "_%" PRIu32, sym->name);
+                nk_printf(out, "$_%" PRIu32 " :", sym->name);
             }
-            nk_printf(out, " :");
             nkir_inspectType(sym->data.type, out);
             if (sym->data.addr) {
                 nk_printf(out, " ");
@@ -435,13 +434,11 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             break;
 
         case NkIrSymbol_Proc:
-            nk_printf(out, "proc ");
             if (sym_str.size) {
-                nk_printf(out, NKS_FMT, NKS_ARG(sym_str));
+                nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
             } else {
-                nk_printf(out, "_%" PRIu32, sym->name);
+                nk_printf(out, "proc $_%" PRIu32 "(", sym->name);
             }
-            nk_printf(out, "(");
             for (usize i = 0; i < sym->proc.params.size; i++) {
                 if (i) {
                     nk_printf(out, ", ");
@@ -493,9 +490,9 @@ void nkir_inspectRef(NkIrRef ref, NkStream out) {
         case NkIrRef_Global: {
             NkString const sym_str = nk_atom2s(ref.sym);
             if (sym_str.size) {
-                nk_printf(out, " " NKS_FMT, NKS_ARG(sym_str));
+                nk_printf(out, " $" NKS_FMT, NKS_ARG(sym_str));
             } else {
-                nk_printf(out, " _%" PRIu32, ref.sym);
+                nk_printf(out, " $_%" PRIu32, ref.sym);
             }
             break;
         }

@@ -250,6 +250,7 @@ static char const *s_ir_tokens[] = {
 
     NULL, // NklIrToken_TagsBase,
 
+    "$", // NklIrToken_DollarTag,
     "%", // NklIrToken_PercentTag,
     "@", // NklIrToken_AtTag,
 

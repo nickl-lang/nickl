@@ -43,6 +43,7 @@ enum {
 
     NklIrToken_TagsBase,
 
+    NklIrToken_DollarTag,
     NklIrToken_PercentTag,
     NklIrToken_AtTag,
 };

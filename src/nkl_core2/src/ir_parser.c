@@ -308,8 +308,8 @@ static u32 parseIdx(ParserState *p) {
         ERROR("integer constant expected");
     }
 
-    NkString const str = getToken(p);
-    TRY(parseNumber(p, &ret, str, Uint32));
+    NkString const token_str = getToken(p);
+    TRY(parseNumber(p, &ret, token_str, Uint32));
 
     return ret;
 }
@@ -318,18 +318,19 @@ static Void parseNumericConst(ParserState *p, void *addr, NkIrType type) {
     nk_assert(type->kind == NkIrType_Numeric);
 
     if (on(p, NklToken_Int)) {
-        NkString const str = getToken(p);
-        TRY(parseNumber(p, addr, str, type->num));
+        NkString const token_str = getToken(p);
+        TRY(parseNumber(p, addr, token_str, type->num));
     } else if (on(p, NklToken_Float)) {
         if (!NKIR_NUMERIC_IS_FLT(type->num)) {
             ERROR("incorrect value for type `TODO:nkir_inspectType`");
         }
 
-        NkString const str = getToken(p);
-        TRY(parseNumber(p, addr, str, type->num));
+        NkString const token_str = getToken(p);
+        TRY(parseNumber(p, addr, token_str, type->num));
     }
 
     else {
+        // TODO: Improve error message accuracy
         ERROR_EXPECT("a numeric constant");
     }
 
@@ -341,8 +342,8 @@ static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
 
     NkIrType type = type_opt;
 
-    NkString const str = getToken(p);
-    NkAtom const name = nk_s2atom((NkString){str.data + 1, str.size - 1});
+    NkString const token_str = getToken(p);
+    NkAtom const name = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
 
     bool is_param = false;
 
@@ -420,11 +421,11 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         return parseLocal(p, type, false);
     }
 
-    else if (on(p, NklToken_Id)) {
-        NkString const str = getToken(p);
-        NkAtom const id = nk_s2atom(str);
+    else if (on(p, NklIrToken_DollarTag)) {
+        NkString const token_str = getToken(p);
+        NkAtom const sym = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
 
-        return nkir_makeRefGlobal(id, get_i64(p)); // TODO:Hardcoded pointer type
+        return nkir_makeRefGlobal(sym, get_i64(p)); // TODO:Hardcoded pointer type
     }
 
     else if (type) {
@@ -501,8 +502,8 @@ static NkIrRefArray parseRefArray(ParserState *p) {
 static NkAtom parseLabel(ParserState *p) {
     nk_assert(on(p, NklIrToken_AtTag));
 
-    NkString const str = getToken(p);
-    NkAtom const label = nk_s2atom((NkString){str.data + 1, str.size - 1});
+    NkString const token_str = getToken(p);
+    NkAtom const label = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
     return label;
 }
 
@@ -639,9 +640,9 @@ static NkIrInstr parseInstr(ParserState *p) {
 }
 
 static Void parseProc(ParserState *p, NkIrVisibility vis) {
-    TRY(NklToken const *name_token = expect(p, NklToken_Id));
-    NkString const name_str = tokenStr(p, name_token);
-    NkAtom const name = nk_s2atom(name_str);
+    TRY(NklToken const *name_token = expect(p, NklIrToken_DollarTag));
+    NkString const name_token_str = tokenStr(p, name_token);
+    NkAtom const name = nk_s2atom((NkString){name_token_str.data + 1, name_token_str.size - 1});
 
     EXPECT(NklIrToken_LParen);
 
@@ -649,8 +650,8 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
         TRY(NklToken const *arg_name_token = expect(p, NklIrToken_PercentTag));
-        NkString const arg_name_str = tokenStr(p, arg_name_token);
-        NkAtom const arg_name = nk_s2atom((NkString){arg_name_str.data + 1, arg_name_str.size - 1});
+        NkString const arg_name_token_str = tokenStr(p, arg_name_token);
+        NkAtom const arg_name = nk_s2atom((NkString){arg_name_token_str.data + 1, arg_name_token_str.size - 1});
 
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
@@ -714,9 +715,9 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 }
 
 static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
-    TRY(NklToken const *name_token = expect(p, NklToken_Id));
-    NkString const name_str = tokenStr(p, name_token);
-    NkAtom const name = nk_s2atom(name_str);
+    TRY(NklToken const *name_token = expect(p, NklIrToken_DollarTag));
+    NkString const token_str = tokenStr(p, name_token);
+    NkAtom const name = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
 
     NkIrType type = NULL;
     if (ACCEPT(NklIrToken_Colon)) {
@@ -800,8 +801,9 @@ static Void parseExtern(ParserState *p) {
     }
     char const *lib_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(lib_str));
 
-    TRY(NklToken const *sym_token = expect(p, NklToken_Id));
-    NkString const sym_str = tokenStr(p, sym_token);
+    TRY(NklToken const *sym_token = expect(p, NklIrToken_DollarTag));
+    NkString const token_str = tokenStr(p, sym_token);
+    NkString const sym_str = {token_str.data + 1, token_str.size - 1};
     char const *sym_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(sym_str));
 
     NkHandle dl = nkdl_loadLibrary(lib_nt);

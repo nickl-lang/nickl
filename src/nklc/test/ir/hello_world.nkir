@@ -1,9 +1,9 @@
-extern "c" printf
+extern "c" $printf
 
-pub proc _entry() :void {
+pub proc $_entry() :void {
 
 @start
-    call printf, ("Hello, World!\n", ...) -> :i32
+    call $printf, ("Hello, World!\n", ...) -> :i32
     ret
 
 }
