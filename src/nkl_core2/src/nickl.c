@@ -323,6 +323,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 
         NkAtom s_hello = nk_atom_unique(nk_cs2s("hello"));
         NkAtom s_fmt = nk_atom_unique(nk_cs2s("fmt"));
+        NkAtom s_vec_union = nk_atom_unique(nk_cs2s("vec_union"));
 
         NkIrAggregateElemInfo const hello_str_elems[] = {
             {.type = &i8_t, .count = 15, .offset = 0},
@@ -526,7 +527,8 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
             }));
 
         NkIrAggregateElemInfo const vec2_elems[] = {
-            {.type = &f64_t, .count = 2, .offset = 0},
+            {.type = &f64_t, .count = 1, .offset = 0},
+            {.type = &f64_t, .count = 1, .offset = 8},
         };
         NkIrType_T const vec2_t = {
             .aggr = {vec2_elems, NK_ARRAY_COUNT(vec2_elems)},
@@ -586,6 +588,46 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .vis = NkIrVisibility_Default,
                 .flags = 0,
                 .kind = NkIrSymbol_Proc,
+            }));
+
+        NkIrAggregateElemInfo const f64_pair_elems[] = {
+            {.type = &f64_t, .count = 2, .offset = 0},
+        };
+        NkIrType_T const f64_pair_t = {
+            .aggr = {f64_pair_elems, NK_ARRAY_COUNT(f64_pair_elems)},
+            .size = 16,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Aggregate,
+        };
+
+        NkIrAggregateElemInfo const vec_union_elems[] = {
+            {.type = &vec2_t, .count = 1, .offset = 0},
+            {.type = &f64_pair_t, .count = 1, .offset = 0},
+        };
+        NkIrType_T const vec_union_t = {
+            .aggr = {vec_union_elems, NK_ARRAY_COUNT(vec_union_elems)},
+            .size = 16,
+            .align = 1,
+            .id = 0,
+            .kind = NkIrType_Union,
+        };
+
+        double vec_union[] = {1.23, 4.56};
+        nkda_append(
+            &mod->ir,
+            ((NkIrSymbol){
+                .data =
+                    {
+                        .type = &vec_union_t,
+                        .relocs = {0},
+                        .addr = &vec_union,
+                        .flags = NkIrData_ReadOnly,
+                    },
+                .name = s_vec_union,
+                .vis = NkIrVisibility_Local,
+                .flags = 0,
+                .kind = NkIrSymbol_Data,
             }));
 
         NK_LOG_STREAM_INF {

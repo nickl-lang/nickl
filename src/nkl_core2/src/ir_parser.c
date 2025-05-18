@@ -438,6 +438,9 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                 TRY(parseNumericConst(p, &imm, type));
                 ret = nkir_makeRefImm(imm, type);
                 break;
+                case NkIrType_Union:
+                    ERROR("TODO:NkIrType_Union");
+                    break;
             }
         }
     }
@@ -743,6 +746,9 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
                     addr = nk_arena_allocAligned(p->arena, type->size, type->align);
                     TRY(parseNumericConst(p, addr, type));
                     break;
+                    case NkIrType_Union:
+                        ERROR("TODO:NkIrType_Union");
+                        break;
                 }
             }
         }
@@ -815,6 +821,8 @@ static Void parseExtern(ParserState *p) {
     if (!sym) {
         ERROR("failed to load symbol `" NKS_FMT "`: %s", NKS_ARG(sym_str), nkdl_getLastErrorString());
     }
+
+    // TODO: Store extern lib for reproducibility purposes
 
     nkda_append(
         p->ir,

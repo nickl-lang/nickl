@@ -10,25 +10,26 @@ void nkir_inspectType(NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
+        case NkIrType_Union:
         case NkIrType_Aggregate:
             if (type->aggr.size) {
                 nk_printf(out, "{");
                 for (usize i = 0; i < type->aggr.size; i++) {
                     if (i) {
-                        nk_printf(out, ", ");
+                        nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
                     }
                     NkIrAggregateElemInfo const *elem = &type->aggr.data[i];
                     if (elem->count > 1) {
                         nk_printf(out, "[%" PRIu32 "]", elem->count);
                     }
                     nkir_inspectType(elem->type, out);
-                    nk_printf(out, "@%" PRIu32, elem->offset); // TODO: Print conservatively
                 }
                 nk_printf(out, "}");
             } else {
                 nk_printf(out, "void");
             }
             break;
+
         case NkIrType_Numeric:
             switch (type->num) {
                 case Int8:
@@ -74,8 +75,12 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
+        case NkIrType_Union: // TODO: Remember and print only active element of a union
         case NkIrType_Aggregate:
             for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
+                if (elemi) {
+                    nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
+                }
                 NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
                 u8 *ptr = (u8 *)data + elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
@@ -86,7 +91,7 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                     if (elemi == 0) {
                         nk_printf(out, "{");
                     }
-                    if (elem->count) {
+                    if (elem->count > 1) {
                         nk_printf(out, "[");
                     }
                     for (usize i = 0; i < elem->count; i++) {
@@ -96,7 +101,7 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                         nkir_inspectVal(ptr, elem->type, out);
                         ptr += elem->type->size;
                     }
-                    if (elem->count) {
+                    if (elem->count > 1) {
                         nk_printf(out, "]");
                     }
                     if (elemi == type->aggr.size - 1) {
@@ -105,6 +110,7 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                 }
             }
             break;
+
         case NkIrType_Numeric:
             switch (type->num) {
                 case Int8:

@@ -14,6 +14,7 @@ typedef struct NkIrType_T const *NkIrType;
 typedef enum {
     NkIrType_Aggregate,
     NkIrType_Numeric,
+    NkIrType_Union,
 } NkIrTypeKind;
 
 // 0x<index><size>
