@@ -204,12 +204,12 @@ bool nkl_compileFile(NklModule mod, NkString file) {
 static char const *s_ir_tokens[] = {
     "end of file", // NklToken_Eof,
 
-    "identifier",      // NklToken_Id,
-    "int constant",    // NklToken_Int,
-    "float constant",  // NklToken_Float,
-    "string constant", // NklToken_String,
-    "string constant", // NklToken_EscapedString,
-    "newline",         // NklToken_Newline,
+    "identifier",       // NklToken_Id,
+    "integer constant", // NklToken_Int,
+    "float constant",   // NklToken_Float,
+    "string constant",  // NklToken_String,
+    "string constant",  // NklToken_EscapedString,
+    "newline",          // NklToken_Newline,
 
     "error", // NklToken_Error,
 
@@ -642,6 +642,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     NklToken err_token = {0};
     if (!nkl_ir_parse(
             &(NklIrParserData){
+                .file = file,
                 .text = text,
                 .tokens = tokens,
                 .arena = &nkl->arena,

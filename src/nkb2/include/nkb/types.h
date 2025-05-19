@@ -13,9 +13,7 @@ extern "C" {
 typedef struct NkIrType_T const *NkIrType;
 
 typedef enum {
-    NkIrType_None = 0,
-
-    NkIrType_Aggregate,
+    NkIrType_Aggregate = 0,
     NkIrType_Numeric,
     NkIrType_Union,
 } NkIrTypeKind;
