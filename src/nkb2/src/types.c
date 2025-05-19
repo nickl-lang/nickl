@@ -10,6 +10,10 @@ void nkir_inspectType(NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
+        case NkIrType_None:
+            nk_printf(out, "(null)");
+            break;
+
         case NkIrType_Union:
         case NkIrType_Aggregate:
             if (type->aggr.size) {
@@ -75,6 +79,10 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
+        case NkIrType_None:
+            nk_printf(out, "(null)");
+            break;
+
         case NkIrType_Union: // TODO: Remember and print only active element of a union
         case NkIrType_Aggregate:
             for (usize elemi = 0; elemi < type->aggr.size; elemi++) {

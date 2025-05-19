@@ -1,0 +1,21 @@
+extern "c" $printf
+
+local proc $invoke(%cb :i64) :void {
+    call %cb, ()
+    ret
+}
+
+local proc $callback() :void {
+    call $printf, ("Callback has been called!\n", ...) -> :i32
+    ret
+}
+
+pub proc $_entry() :void {
+    call $invoke, ($callback)
+    ret
+}
+
+/* @output
+Callback has been called!
+
+@endoutput */

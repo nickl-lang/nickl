@@ -222,6 +222,7 @@ static char const *s_ir_tokens[] = {
     "local",  // NklIrToken_local,
     "proc",   // NklIrToken_proc,
     "pub",    // NklIrToken_pub,
+    "type",   // NklIrToken_type,
     "void",   // NklIrToken_void,
 
 #define X(TYPE, VALUE_TYPE) #TYPE,

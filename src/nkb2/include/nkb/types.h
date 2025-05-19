@@ -2,6 +2,7 @@
 #define NKB_TYPES_H_
 
 #include "ntk/common.h"
+#include "ntk/dyn_array.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 
@@ -12,6 +13,8 @@ extern "C" {
 typedef struct NkIrType_T const *NkIrType;
 
 typedef enum {
+    NkIrType_None = 0,
+
     NkIrType_Aggregate,
     NkIrType_Numeric,
     NkIrType_Union,
@@ -66,6 +69,7 @@ typedef struct {
 } NkIrAggregateElemInfo;
 
 typedef NkSlice(NkIrAggregateElemInfo const) NkIrAggregateElemInfoArray;
+typedef NkDynArray(NkIrAggregateElemInfo) NkIrAggregateElemInfoDynArray;
 
 typedef struct NkIrType_T {
     union {

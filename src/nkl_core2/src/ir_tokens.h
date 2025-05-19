@@ -15,6 +15,7 @@ enum {
     NklIrToken_local,
     NklIrToken_proc,
     NklIrToken_pub,
+    NklIrToken_type,
     NklIrToken_void,
 
 #define X(TYPE, VALUE_TYPE) NK_CAT(NklIrToken_, TYPE),

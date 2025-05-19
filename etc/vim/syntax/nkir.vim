@@ -28,7 +28,7 @@ hi def link nkirString     String
 hi def link nkirComment    Comment
 hi def link nkirFunction   Function
 hi def link nkirSymbol     PreProc
-hi def link nkirDollar     PreProc
+hi def link nkirDollar     Function
 hi def link nkirAt         PreProc
 hi def link nkirType       Type
 hi def link nkirBoolean    Boolean
