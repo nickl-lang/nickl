@@ -1,5 +1,7 @@
 #include "nkb/ir.h"
 
+#include <float.h>
+
 #include "nkb/types.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
@@ -364,6 +366,80 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
     }
 }
 
+// TODO: A bit ugly solution for relocs printing
+static void inspectVal(void *data, usize base_offset, NkIrRelocArray relocs, NkIrType type, NkStream out) {
+    if (!data) {
+        nk_printf(out, "(null)");
+        return;
+    }
+    switch (type->kind) {
+        case NkIrType_Union: // TODO: Remember and print only active element of a union
+        case NkIrType_Aggregate:
+            for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
+                if (elemi) {
+                    nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
+                }
+                NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
+                usize offset = base_offset + elem->offset;
+                if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
+                    u8 const *addr = (u8 *)data + offset;
+                    nk_printf(out, "\"");
+                    nks_escape(out, (NkString){(char const *)addr, elem->count});
+                    nk_printf(out, "\"");
+                } else {
+                    if (elemi == 0) {
+                        nk_printf(out, "{");
+                    }
+                    if (elem->count > 1) {
+                        nk_printf(out, "[");
+                    }
+                    for (usize i = 0; i < elem->count; i++) {
+                        if (i) {
+                            nk_printf(out, ", ");
+                        }
+                        usize ri = 0;
+                        for (; ri < relocs.size; ri++) {
+                            NkIrReloc const *reloc = &relocs.data[ri];
+                            if (reloc->offset == offset) {
+                                nk_printf(out, "$%s", nk_atom2cs(reloc->sym));
+                                break;
+                            }
+                        }
+                        if (ri == relocs.size) {
+                            inspectVal(data, offset, relocs, elem->type, out);
+                        }
+                        offset += elem->type->size;
+                    }
+                    if (elem->count > 1) {
+                        nk_printf(out, "]");
+                    }
+                    if (elemi == type->aggr.size - 1) {
+                        nk_printf(out, "}");
+                    }
+                }
+            }
+            break;
+
+        case NkIrType_Numeric: {
+            u8 const *addr = (u8 *)data + base_offset;
+            switch (type->num) {
+#define X(TYPE, VALUE_TYPE)                                   \
+    case VALUE_TYPE:                                          \
+        nk_printf(out, "%" NK_CAT(PRI, TYPE), *(TYPE *)addr); \
+        break;
+                NKIR_NUMERIC_ITERATE_INT(X)
+#undef X
+                case Float32:
+                    nk_printf(out, "%.*g", FLT_DIG, *(f32 *)addr);
+                    break;
+                case Float64:
+                    nk_printf(out, "%.*g", DBL_DIG, *(f64 *)addr);
+                    break;
+            }
+            break;
+        }
+    }
+}
 void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
     switch (sym->vis) {
         case NkIrVisibility_Default:
@@ -404,7 +480,7 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
             nkir_inspectType(sym->data.type, out);
             if (sym->data.addr) {
                 nk_printf(out, " ");
-                nkir_inspectVal(sym->data.addr, sym->data.type, out);
+                inspectVal(sym->data.addr, 0, sym->data.relocs, sym->data.type, out);
             }
             break;
 
@@ -477,7 +553,7 @@ void nkir_inspectRef(NkIrRef ref, NkStream out) {
 
         case NkIrRef_Imm:
             nk_printf(out, " ");
-            nkir_inspectVal(&ref.imm, ref.type, out);
+            inspectVal(&ref.imm, 0, (NkIrRelocArray){0}, ref.type, out);
             break;
 
         case NkIrRef_None:

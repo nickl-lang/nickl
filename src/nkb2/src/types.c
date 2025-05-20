@@ -113,30 +113,12 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
 
         case NkIrType_Numeric:
             switch (type->num) {
-                case Int8:
-                    nk_printf(out, "%" PRIi8, *(i8 *)data);
-                    break;
-                case Uint8:
-                    nk_printf(out, "%" PRIu8, *(u8 *)data);
-                    break;
-                case Int16:
-                    nk_printf(out, "%" PRIi16, *(i16 *)data);
-                    break;
-                case Uint16:
-                    nk_printf(out, "%" PRIu16, *(u16 *)data);
-                    break;
-                case Int32:
-                    nk_printf(out, "%" PRIi32, *(i32 *)data);
-                    break;
-                case Uint32:
-                    nk_printf(out, "%" PRIu32, *(u32 *)data);
-                    break;
-                case Int64:
-                    nk_printf(out, "%" PRIi64, *(i64 *)data);
-                    break;
-                case Uint64:
-                    nk_printf(out, "%" PRIu64, *(u64 *)data);
-                    break;
+#define X(TYPE, VALUE_TYPE)                                   \
+    case VALUE_TYPE:                                          \
+        nk_printf(out, "%" NK_CAT(PRI, TYPE), *(TYPE *)data); \
+        break;
+                NKIR_NUMERIC_ITERATE_INT(X)
+#undef X
                 case Float32:
                     nk_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
                     break;

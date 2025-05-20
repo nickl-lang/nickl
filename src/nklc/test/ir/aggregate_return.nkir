@@ -24,7 +24,8 @@ pub proc $_entry() {
     load [%mat] -> :f64 %m10
     add 8, %mat -> %mat
     load [%mat] -> :f64 %m11
-    call $printf, ("Identity = [[%g, %g], [%g, %g]]\n", ..., :f64 %m00, :f64 %m01, :f64 %m10, :f64 %m11) -> :i32
+    call $printf, ("Identity = [[%g, %g], [%g, %g]]\n", ..., \
+        :f64 %m00, :f64 %m01, :f64 %m10, :f64 %m11) -> :i32
     ret
 }
 

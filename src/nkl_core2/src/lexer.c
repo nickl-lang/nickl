@@ -95,8 +95,13 @@ static void discard(LexerState *l, NklToken *token) {
 }
 
 static void skipSpaces(LexerState *l) {
-    while (onSpace(l, 0) && !on(l, '\n', 0)) {
-        advance(l, 1);
+    // TODO: Properly handle backslash in the source
+    while ((onSpace(l, 0) || (on(l, '\\', 0) && on(l, '\n', 1))) && !on(l, '\n', 0)) {
+        if (on(l, '\\', 0) && on(l, '\n', 1)) {
+            advance(l, 2);
+        } else {
+            advance(l, 1);
+        }
     }
 }
 
