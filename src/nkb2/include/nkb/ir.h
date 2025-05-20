@@ -66,7 +66,6 @@ typedef enum {
     NkIrArg_RelLabel,
     NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
     NkIrArg_String,
-    NkIrArg_Idx,
 } NkIrArgKind;
 
 typedef NkSlice(NkIrRef const) NkIrRefArray;
@@ -80,7 +79,6 @@ typedef struct {
         i32 offset;        // RelLabel
         NkIrType type;     // Type
         NkString str;      // String
-        u32 idx;           // Idx
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -139,8 +137,6 @@ typedef struct {
     NkIrParamArray params;
     NkIrType ret_type;
     NkIrInstrArray instrs;
-    NkString file;
-    u32 line;
     NkIrProcFlags flags;
 } NkIrProc;
 
@@ -212,8 +208,6 @@ NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type);
 
 NkIrInstr nkir_make_label(NkAtom label);
 
-NkIrInstr nkir_make_file(NkString file);
-NkIrInstr nkir_make_line(u32 line);
 NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output

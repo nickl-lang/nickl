@@ -11,7 +11,6 @@ extern "C" {
 #endif
 
 typedef struct {
-    NkString file;
     NkString text;
     NklTokenArray tokens;
     NkArena *arena;

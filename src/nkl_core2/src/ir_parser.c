@@ -47,7 +47,6 @@ NK_LOG_USE_SCOPE(ir_parser);
     } while (0)
 
 typedef struct {
-    NkString const file;
     NkString const text;
     NklTokenArray const tokens;
     NkArena *const arena;
@@ -806,13 +805,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     NkIrInstrDynArray instrs = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
 
-    u32 line = name_token->lin;
     while (!on(p, NklIrToken_RBrace) && !on(p, NklToken_Eof)) {
-        if (p->cur_token->lin != line) {
-            line = p->cur_token->lin;
-            nkda_append(&instrs, (nkir_make_line(line)));
-        }
-
         TRY(NkIrInstr const instr = parseInstr(p));
         nkda_append(&instrs, instr);
     }
@@ -831,8 +824,6 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
                     .params = p->proc_params,
                     .ret_type = p->proc_ret_t,
                     .instrs = {NK_SLICE_INIT(instrs)},
-                    .file = p->file,
-                    .line = name_token->lin,
                     .flags = 0,
                 },
             .name = name,
@@ -1022,7 +1013,6 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
     usize const start_idx = out_syms->size;
 
     ParserState p = {
-        .file = nk_tsprintf(data->arena, NKS_FMT, NKS_ARG(data->file)),
         .text = data->text,
         .tokens = data->tokens,
         .arena = data->arena,

@@ -49,13 +49,6 @@ static NkIrArg argString(NkString str) {
     };
 }
 
-static NkIrArg argIdx(u32 idx) {
-    return (NkIrArg){
-        .idx = idx,
-        .kind = NkIrArg_Idx,
-    };
-}
-
 static bool isJumpInstr(u8 code) {
     switch (code) {
         case NkIrOp_jmp:
@@ -243,20 +236,6 @@ NkIrInstr nkir_make_label(NkAtom label) {
     };
 }
 
-NkIrInstr nkir_make_file(NkString file) {
-    return (NkIrInstr){
-        .arg = {argNull(), argString(file), argNull()},
-        .code = NkIrOp_file,
-    };
-}
-
-NkIrInstr nkir_make_line(u32 line) {
-    return (NkIrInstr){
-        .arg = {argNull(), argIdx(line), argNull()},
-        .code = NkIrOp_line,
-    };
-}
-
 NkIrInstr nkir_make_comment(NkString comment) {
     return (NkIrInstr){
         .arg = {argNull(), argString(comment), argNull()},
@@ -380,10 +359,6 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
 
             case NkIrArg_String:
                 nk_printf(out, "\"" NKS_FMT "\"", NKS_ARG(arg->str));
-                break;
-
-            case NkIrArg_Idx:
-                nk_printf(out, "%" PRIu32, arg->idx);
                 break;
         }
     }

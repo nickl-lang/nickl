@@ -60,9 +60,6 @@ CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
 IR(label) // @label
-
-IR(file)    // file "str"
-IR(line)    // line idx
 IR(comment) // comment "str"
 
 #undef CMP_IR

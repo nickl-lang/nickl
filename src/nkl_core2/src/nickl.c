@@ -383,8 +383,6 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                         .params = {0},
                         .ret_type = &i32_t,
                         .instrs = {NK_SLICE_INIT(main_instrs)},
-                        .file = {0},
-                        .line = 0,
                         .flags = 0,
                     },
                 .name = nk_cs2atom("main"),
@@ -421,8 +419,6 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                         .params = {plus_params, NK_ARRAY_COUNT(plus_params)},
                         .ret_type = &i64_t,
                         .instrs = {NK_SLICE_INIT(plus_instrs)},
-                        .file = {0},
-                        .line = 0,
                         .flags = 0,
                     },
                 .name = nk_cs2atom("plus"),
@@ -517,8 +513,6 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                         .params = {0},
                         .ret_type = &void_t,
                         .instrs = {NK_SLICE_INIT(loop_instrs_pic)},
-                        .file = {0},
-                        .line = 0,
                         .flags = 0,
                     },
                 .name = l_loop,
@@ -581,8 +575,6 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                         .params = {makeVec2_params, NK_ARRAY_COUNT(makeVec2_params)},
                         .ret_type = &vec2_t,
                         .instrs = {NK_SLICE_INIT(makeVec2_instrs)},
-                        .file = {0},
-                        .line = 0,
                         .flags = 0,
                     },
                 .name = nk_cs2atom("makeVec2"),
@@ -642,7 +634,6 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     NklToken err_token = {0};
     if (!nkl_ir_parse(
             &(NklIrParserData){
-                .file = file,
                 .text = text,
                 .tokens = tokens,
                 .arena = &nkl->arena,
@@ -671,12 +662,12 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 static char const *s_ast_tokens[] = {
     "end of file", // NklToken_Eof
 
-    "identifier",      // NklToken_Id
-    "int constant",    // NklToken_Int
-    "float constant",  // NklToken_Float
-    "string constant", // NklToken_String
-    "string constant", // NklToken_EscapedString
-    "newline",         // NklToken_Newline
+    "identifier",       // NklToken_Id
+    "integer constant", // NklToken_Int
+    "float constant",   // NklToken_Float
+    "string constant",  // NklToken_String
+    "string constant",  // NklToken_EscapedString
+    "newline",          // NklToken_Newline
 
     "error", // NklToken_Error
 
