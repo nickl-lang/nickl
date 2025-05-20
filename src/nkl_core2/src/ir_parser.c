@@ -69,7 +69,7 @@ typedef struct {
     NkIrType _cached_void;
 
     NkIrParamArray proc_params;
-    NkIrType proc_ret_t;
+    NkIrParam proc_ret;
 
     NkIrParamDynArray types;
 } ParserState;
@@ -364,6 +364,7 @@ static NkIrType parseType(ParserState *p) {
             }
         }
 
+        p->cur_token--;
         ERROR("undefined type alias `" NKS_FMT "`", NKS_ARG(name_token_str));
     }
 
@@ -463,18 +464,23 @@ static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
 
     bool is_param = false;
 
-    for (usize i = 0; i < p->proc_params.size; i++) {
-        NkIrParam const *param = &p->proc_params.data[i];
-        if (name == param->name) {
-            if (!type) {
-                if (param->type->kind == NkIrType_Numeric) {
-                    type = param->type;
-                } else {
-                    type = get_ptr_t(p);
+    if (name == p->proc_ret.name) {
+        is_param = true;
+        type = get_ptr_t(p);
+    } else {
+        for (usize i = 0; i < p->proc_params.size; i++) {
+            NkIrParam const *param = &p->proc_params.data[i];
+            if (name == param->name) {
+                if (!type) {
+                    if (param->type->kind == NkIrType_Numeric) {
+                        type = param->type;
+                    } else {
+                        type = get_ptr_t(p);
+                    }
                 }
+                is_param = true;
+                break;
             }
-            is_param = true;
-            break;
         }
     }
 
@@ -655,7 +661,7 @@ static NkIrInstr parseInstr(ParserState *p) {
     else if (ACCEPT(NklIrToken_ret)) {
         NkIrRef arg = {0};
         if (!on(p, NklToken_Newline)) {
-            TRY(arg = parseRef(p, p->proc_ret_t));
+            TRY(arg = parseRef(p, p->proc_ret.type));
         }
         ret = nkir_make_ret(arg);
     }
@@ -793,9 +799,19 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RParen);
 
-    EXPECT(NklIrToken_Colon);
-    TRY(NkIrType const ret_t = parseType(p));
-    p->proc_ret_t = ret_t;
+    if (ACCEPT(NklIrToken_Colon)) {
+        TRY(p->proc_ret.type = parseType(p));
+    } else {
+        p->proc_ret.type = get_void(p);
+    }
+
+    if (p->proc_ret.type->size > get_ptr_t(p)->size) {
+        TRY(NklToken const *ret_ref_token = expect(p, NklIrToken_PercentTag));
+        NkString const ret_ref_token_str = tokenStr(p, ret_ref_token);
+        p->proc_ret.name = nk_s2atom((NkString){ret_ref_token_str.data + 1, ret_ref_token_str.size - 1});
+    } else {
+        p->proc_ret.name = 0;
+    }
 
     EXPECT(NklIrToken_LBrace);
 
@@ -822,7 +838,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
             .proc =
                 {
                     .params = p->proc_params,
-                    .ret_type = p->proc_ret_t,
+                    .ret = p->proc_ret,
                     .instrs = {NK_SLICE_INIT(instrs)},
                     .flags = 0,
                 },
@@ -914,6 +930,8 @@ static Void parseExtern(ParserState *p) {
         lib_str = nk_cs2s("libc.so.6");
     } else if (nks_equalCStr(lib_str, "m")) {
         lib_str = nk_cs2s("libm.so.6");
+    } else if (nks_equalCStr(lib_str, "pthread")) {
+        lib_str = nk_cs2s("libpthread.so.0");
     }
     char const *lib_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(lib_str));
 

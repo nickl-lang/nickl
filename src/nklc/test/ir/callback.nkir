@@ -1,16 +1,16 @@
-extern "c" $printf
+extern "c" $puts
 
-local proc $invoke(%cb :i64) :void {
+local proc $invoke(%cb :i64) {
     call %cb, ()
     ret
 }
 
-local proc $callback() :void {
-    call $printf, ("Callback has been called!\n", ...) -> :i32
+local proc $callback() {
+    call $puts, ("Callback has been called!") -> :i32
     ret
 }
 
-pub proc $_entry() :void {
+pub proc $_entry() {
     call $invoke, ($callback)
     ret
 }

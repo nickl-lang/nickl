@@ -381,7 +381,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .proc =
                     {
                         .params = {0},
-                        .ret_type = &i32_t,
+                        .ret = {0, &i32_t},
                         .instrs = {NK_SLICE_INIT(main_instrs)},
                         .flags = 0,
                     },
@@ -417,7 +417,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .proc =
                     {
                         .params = {plus_params, NK_ARRAY_COUNT(plus_params)},
-                        .ret_type = &i64_t,
+                        .ret = {0, &i64_t},
                         .instrs = {NK_SLICE_INIT(plus_instrs)},
                         .flags = 0,
                     },
@@ -511,7 +511,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .proc =
                     {
                         .params = {0},
-                        .ret_type = &void_t,
+                        .ret = {0, &void_t},
                         .instrs = {NK_SLICE_INIT(loop_instrs_pic)},
                         .flags = 0,
                     },
@@ -573,7 +573,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .proc =
                     {
                         .params = {makeVec2_params, NK_ARRAY_COUNT(makeVec2_params)},
-                        .ret_type = &vec2_t,
+                        .ret = {0, &vec2_t},
                         .instrs = {NK_SLICE_INIT(makeVec2_instrs)},
                         .flags = 0,
                     },

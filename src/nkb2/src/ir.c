@@ -426,7 +426,10 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
                 nkir_inspectType(param->type, out);
             }
             nk_printf(out, ") :");
-            nkir_inspectType(sym->proc.ret_type, out);
+            nkir_inspectType(sym->proc.ret.type, out);
+            if (sym->proc.ret.name) {
+                nk_printf(out, " %%%s", nk_atom2cs(sym->proc.ret.name));
+            }
             nk_printf(out, " {\n");
             for (usize i = 0; i < sym->proc.instrs.size; i++) {
                 inspectInstrImpl(sym->proc.instrs, i, out);

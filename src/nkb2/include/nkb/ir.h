@@ -135,7 +135,7 @@ typedef enum {
 
 typedef struct {
     NkIrParamArray params;
-    NkIrType ret_type;
+    NkIrParam ret;
     NkIrInstrArray instrs;
     NkIrProcFlags flags;
 } NkIrProc;

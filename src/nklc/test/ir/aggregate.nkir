@@ -14,7 +14,7 @@ local proc $Vec2_length(%vec :Vec2) :f64 {
     ret %len
 }
 
-pub proc $_entry() :void {
+pub proc $_entry() {
     call $Vec2_length, (:Vec2 {[1.2, 3.4]}) -> :f64 %len
     call $printf, ("%lf\n", ..., :f64 %len) -> :i32
     ret
