@@ -372,6 +372,7 @@ static void inspectVal(void *base_addr, usize base_offset, NkIrRelocArray relocs
     switch (type->kind) {
         case NkIrType_Union:
         case NkIrType_Aggregate:
+            nk_printf(out, "{");
             for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
                 if (elemi) {
                     nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
@@ -384,9 +385,6 @@ static void inspectVal(void *base_addr, usize base_offset, NkIrRelocArray relocs
                     nks_escape(out, (NkString){addr, elem->count});
                     nk_printf(out, "\"");
                 } else {
-                    if (elemi == 0) {
-                        nk_printf(out, "{");
-                    }
                     if (elem->count > 1) {
                         nk_printf(out, "[");
                     }
@@ -410,11 +408,9 @@ static void inspectVal(void *base_addr, usize base_offset, NkIrRelocArray relocs
                     if (elem->count > 1) {
                         nk_printf(out, "]");
                     }
-                    if (elemi == type->aggr.size - 1) {
-                        nk_printf(out, "}");
-                    }
                 }
             }
+            nk_printf(out, "}");
             break;
 
         case NkIrType_Numeric: {

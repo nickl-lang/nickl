@@ -2,8 +2,7 @@ extern "c" $printf
 
 type String :{ i64, u64 }
 
-// local const $str_data :{ [14]i8 } {"Hello, World!"}
-local const $str_data :{ [14]i8 } {[ 72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33, 0, ]}
+local const $str_data :{ [14]i8 } {"Hello, World!\0"}
 local const $str :String {$str_data, 14}
 
 pub proc $_entry() {

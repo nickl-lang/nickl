@@ -390,7 +390,9 @@ static NkString parseString(ParserState *p) {
     } else {
         NkStringBuilder sb = {NKSB_INIT(nk_arena_getAllocator(p->arena))};
         nks_unescape(nksb_getStream(&sb), str);
-        nksb_appendNull(&sb);
+        if (nks_last(sb)) {
+            nksb_appendNull(&sb);
+        }
 
         return (NkString){sb.data, sb.size - 1};
     }
@@ -403,11 +405,20 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
         case NkIrType_Aggregate: {
             EXPECT(NklIrToken_LBrace);
 
-            usize offset = 0;
             NkIrRelocDynArray relocs = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
             for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
                 NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
-                offset = elem->offset;
+                usize offset = elem->offset;
+                if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1 &&
+                    (on(p, NklToken_String) || on(p, NklToken_EscapedString))) {
+                    TRY(NkString const str = parseString(p));
+                    if (str.size + 1 != elem->count) {
+                        p->cur_token--;
+                        ERROR("invalid string length: expected %u characters, got %zu", elem->count, str.size + 1);
+                    }
+                    memcpy((u8 *)addr + offset, str.data, elem->count); // TODO: Extra copy
+                    continue;
+                }
                 if (elem->count > 1) {
                     EXPECT(NklIrToken_LBracket);
                 }
