@@ -1,0 +1,26 @@
+extern "c" $printf
+
+pub data  $g_zero :i64
+pub data  $g_init :i64 42
+pub const $c_zero :i64
+pub const $c_init :i64 42
+
+pub proc $_entry() {
+    load [$g_zero] -> :i64 %val
+    call $printf, ("g_zero=%zi\n", ..., :i64 %val) -> :i32
+    load [$g_init] -> :i64 %val
+    call $printf, ("g_init=%zi\n", ..., :i64 %val) -> :i32
+    load [$c_zero] -> :i64 %val
+    call $printf, ("c_zero=%zi\n", ..., :i64 %val) -> :i32
+    load [$c_init] -> :i64 %val
+    call $printf, ("c_init=%zi\n", ..., :i64 %val) -> :i32
+    ret
+}
+
+/* @output
+g_zero=0
+g_init=42
+c_zero=0
+c_init=42
+
+@endoutput */

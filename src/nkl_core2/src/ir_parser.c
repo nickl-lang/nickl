@@ -939,10 +939,6 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         }
     }
 
-    if (!addr && flags & NkIrData_ReadOnly) {
-        ERROR("constant must have a value");
-    }
-
     if (!type) {
         ERROR_EXPECT("type or a constant");
     }
