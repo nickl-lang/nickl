@@ -398,6 +398,26 @@ static NkString parseString(ParserState *p) {
     }
 }
 
+static NkAtom parseId(ParserState *p) {
+    NkAtom ret = 0;
+
+    if (!on(p, NklToken_Id) && !on(p, NklIrToken_DollarTag)) {
+        ERROR_EXPECT("identifier");
+    }
+
+    if (on(p, NklToken_Id)) {
+        NkString const token_str = getToken(p);
+        return nk_s2atom(token_str);
+    }
+
+    if (on(p, NklIrToken_DollarTag)) {
+        NkString const token_str = getToken(p);
+        return nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
+    }
+
+    return ret;
+}
+
 static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
     NkIrRelocArray ret = {0};
 
@@ -423,12 +443,11 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                     EXPECT(NklIrToken_LBracket);
                 }
                 for (usize i = 0; i < elem->count; i++) {
-                    if (on(p, NklIrToken_DollarTag)) {
+                    if (on(p, NklToken_Id) || on(p, NklIrToken_DollarTag)) {
                         if (elem->type->size != get_ptr_t(p)->size) {
                             ERROR("can only put reloc on a pointer type");
                         }
-                        NkString const token_str = getToken(p);
-                        NkAtom const sym = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
+                        TRY(NkAtom const sym = parseId(p));
                         nkda_append(
                             &relocs,
                             ((NkIrReloc){
@@ -591,10 +610,8 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         return parseLocal(p, type, false);
     }
 
-    else if (on(p, NklIrToken_DollarTag)) {
-        NkString const token_str = getToken(p);
-        NkAtom const sym = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
-
+    else if (on(p, NklToken_Id) || on(p, NklIrToken_DollarTag)) {
+        TRY(NkAtom const sym = parseId(p));
         return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
 
@@ -803,7 +820,7 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     else {
-        ERROR_EXPECT("an instruction");
+        ERROR_EXPECT("instruction");
     }
 
     EXPECT(NklToken_Newline);
@@ -814,9 +831,7 @@ static NkIrInstr parseInstr(ParserState *p) {
 }
 
 static Void parseProc(ParserState *p, NkIrVisibility vis) {
-    TRY(NklToken const *name_token = expect(p, NklIrToken_DollarTag));
-    NkString const name_token_str = tokenStr(p, name_token);
-    NkAtom const name = nk_s2atom((NkString){name_token_str.data + 1, name_token_str.size - 1});
+    TRY(NkAtom const name = parseId(p));
 
     EXPECT(NklIrToken_LParen);
 
@@ -897,9 +912,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 }
 
 static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
-    TRY(NklToken const *name_token = expect(p, NklIrToken_DollarTag));
-    NkString const token_str = tokenStr(p, name_token);
-    NkAtom const name = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
+    TRY(NkAtom const name = parseId(p));
 
     NkIrType type = NULL;
     if (ACCEPT(NklIrToken_Colon)) {
@@ -940,7 +953,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     }
 
     if (!type) {
-        ERROR_EXPECT("type or a constant");
+        ERROR_EXPECT("type or constant");
     }
 
     EXPECT(NklToken_Newline);
@@ -977,10 +990,8 @@ static Void parseExtern(ParserState *p) {
     }
     char const *lib_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(lib_str));
 
-    TRY(NklToken const *sym_token = expect(p, NklIrToken_DollarTag));
-    NkString const token_str = tokenStr(p, sym_token);
-    NkString const sym_str = {token_str.data + 1, token_str.size - 1};
-    char const *sym_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(sym_str));
+    TRY(NkAtom const sym_name = parseId(p));
+    char const *sym_nt = nk_atom2cs(sym_name);
 
     NkHandle dl = nkdl_loadLibrary(lib_nt);
     if (nk_handleIsNull(dl)) {
@@ -989,7 +1000,7 @@ static Void parseExtern(ParserState *p) {
 
     void *sym = nkdl_resolveSymbol(dl, sym_nt);
     if (!sym) {
-        ERROR("failed to load symbol `" NKS_FMT "`: %s", NKS_ARG(sym_str), nkdl_getLastErrorString());
+        ERROR("failed to load symbol `%s`: %s", nk_atom2cs(sym_name), nkdl_getLastErrorString());
     }
 
     // TODO: Store extern lib for reproducibility purposes
@@ -1001,7 +1012,7 @@ static Void parseExtern(ParserState *p) {
                 {
                     .addr = sym,
                 },
-            .name = nk_s2atom(sym_str),
+            .name = sym_name,
             .vis = 0,
             .flags = 0,
             .kind = NkIrSymbol_Extern,

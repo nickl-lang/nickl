@@ -1,8 +1,8 @@
-extern "c" $printf
+extern "c" printf
 
-local const $ITER :i64 10
+local const ITER :i64 10
 
-local proc $myatan(:f64 %x) :f64 {
+local proc myatan(:f64 %x) :f64 {
     mov %x -> :f64 %sum
     mov %x -> :f64 %num
     mov 1. -> :f64 %sign
@@ -10,7 +10,7 @@ local proc $myatan(:f64 %x) :f64 {
     jmp @loop
 
 @loop
-    load [$ITER] -> :i64 %iter
+    load [ITER] -> :i64 %iter
     cmp lt :i64 %i, %iter -> :i8 %cond
     jmpz :i8 %cond, @endloop
 
@@ -29,15 +29,15 @@ local proc $myatan(:f64 %x) :f64 {
     ret %sum
 }
 
-pub proc $_entry() {
-    call $myatan, (0.2) -> :f64 %pi
-    call $myatan, (0.0041841004184100415) -> :f64 %tmp
+pub proc _entry() {
+    call myatan, (0.2) -> :f64 %pi
+    call myatan, (0.0041841004184100415) -> :f64 %tmp
 
     mul :f64 %pi, 4    -> %pi
     sub :f64 %pi, %tmp -> %pi
     mul :f64 %pi, 4    -> %pi
 
-    call $printf, ("pi = %.*g\n", ..., :i32 16, :f64 %pi) -> :i32
+    call printf, ("pi = %.*g\n", ..., :i32 16, :f64 %pi) -> :i32
 
     ret
 }

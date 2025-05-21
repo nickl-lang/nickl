@@ -1,17 +1,17 @@
-extern "c" $puts
+extern "c" puts
 
-local proc $invoke(:i64 %cb) {
+local proc invoke(:i64 %cb) {
     call %cb, ()
     ret
 }
 
-local proc $callback() {
-    call $puts, ("Callback has been called!") -> :i32
+local proc callback() {
+    call puts, ("Callback has been called!") -> :i32
     ret
 }
 
-pub proc $_entry() {
-    call $invoke, ($callback)
+pub proc _entry() {
+    call invoke, (callback)
     ret
 }
 

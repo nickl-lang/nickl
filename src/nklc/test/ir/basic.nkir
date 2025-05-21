@@ -1,3 +1,3 @@
-pub proc $_entry() :void {
+pub proc _entry() :void {
     ret
 }

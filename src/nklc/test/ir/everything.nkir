@@ -1,6 +1,6 @@
-extern "c" $printf
+extern "c" printf
 
-pub proc $_entry(:f32 %x, :f32 %y) :i16 {
+pub proc _entry(:f32 %x, :f32 %y) :i16 {
 
 @start
     nop
@@ -13,14 +13,14 @@ pub proc $_entry(:f32 %x, :f32 %y) :i16 {
     jmpz  1, @start
     jmpnz 1, @start
 
-    call :i64 $printf, ("%zi\n", ..., 42) -> :i32 %a
+    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %a
 
     store 1  -> [1]
     load [1] -> :i32 %a
 
     alloc :i32 -> :i32 %a
 
-    mov :i64 $x  -> :i64 %a
+    mov :i64 x  -> :i64 %a
 
     ext :i8 1   -> :i32 %a
     trunc 1     -> :i32 %a
@@ -50,11 +50,11 @@ pub proc $_entry(:f32 %x, :f32 %y) :i16 {
 
 }
 
-local const $one 123
-pub data $two :i32 42
-data $three :i64
-const $four :f32 3.14
-const $five "a string"
+local const one 123
+pub data two :i32 42
+data three :i64
+const four :f32 3.14
+const five "a string"
 
 /* @retcode
 0

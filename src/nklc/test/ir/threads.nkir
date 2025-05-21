@@ -1,19 +1,19 @@
-extern "c" $puts
+extern "c" puts
 
-extern "pthread" $pthread_create
-extern "pthread" $pthread_join
+extern "pthread" pthread_create
+extern "pthread" pthread_join
 
-proc $threadProc(:i64 %arg) {
-    call $puts, ("hello") -> :i32
+proc threadProc(:i64 %arg) {
+    call puts, ("hello") -> :i32
     ret
 }
 
-pub proc $_entry() {
+pub proc _entry() {
     alloc :i64 -> %thread_ptr
-    call $pthread_create, (:i64 %thread_ptr, 0, $threadProc, 0) -> :i32
+    call pthread_create, (:i64 %thread_ptr, 0, threadProc, 0) -> :i32
 
     load [%thread_ptr] -> :i64 %thread
-    call $pthread_join, (:i64 %thread, 0) -> :i32
+    call pthread_join, (:i64 %thread, 0) -> :i32
 
     ret
 }
