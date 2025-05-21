@@ -413,6 +413,9 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                 }
                 for (usize i = 0; i < elem->count; i++) {
                     if (on(p, NklIrToken_DollarTag)) {
+                        if (elem->type->size != get_ptr_t(p)->size) {
+                            ERROR("can only put reloc on a pointer type");
+                        }
                         NkString const token_str = getToken(p);
                         NkAtom const sym = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
                         nkda_append(
@@ -435,14 +438,21 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                         }
                     }
                     offset += elem->type->size;
-                    if (i == elem->count - 1) {
-                        ACCEPT(NklIrToken_Comma);
-                    } else {
-                        EXPECT(NklIrToken_Comma);
+                    if (elem->count > 1) {
+                        if (i == elem->count - 1) {
+                            ACCEPT(NklIrToken_Comma);
+                        } else {
+                            EXPECT(NklIrToken_Comma);
+                        }
                     }
                 }
                 if (elem->count > 1) {
                     EXPECT(NklIrToken_RBracket);
+                }
+                if (elemi == type->aggr.size - 1) {
+                    ACCEPT(NklIrToken_Comma);
+                } else {
+                    EXPECT(NklIrToken_Comma);
                 }
             }
             ret = (NkIrRelocArray){NK_SLICE_INIT(relocs)};

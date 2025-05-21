@@ -538,30 +538,27 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         // @start
         nkda_append(&makeVec2_instrs, nkir_make_label(l_start));
 
-        // alloc :vec2 -> %vec:i64
-        nkda_append(&makeVec2_instrs, nkir_make_alloc(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t), &vec2_t));
-
-        // store %vec, %x
+        // store :f64 %x -> [%vec]
         nkda_append(
             &makeVec2_instrs,
-            nkir_make_store(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t), nkir_makeRefParam(nk_cs2atom("x"), &f64_t)));
+            nkir_make_store(nkir_makeRefParam(nk_cs2atom("vec"), &ptr_t), nkir_makeRefParam(nk_cs2atom("x"), &f64_t)));
 
-        // add %vec:i64, 8:i64 -> %y_addr:i64
+        // add 8, %vec -> %y_addr
         nkda_append(
             &makeVec2_instrs,
             nkir_make_add(
                 nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t),
-                nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t),
-                nkir_makeRefImm((NkIrImm){.i64 = 8}, &i64_t)));
+                nkir_makeRefImm((NkIrImm){.i64 = 8}, &i64_t),
+                nkir_makeRefParam(nk_cs2atom("vec"), &ptr_t)));
 
-        // store %vec, %x
+        // store :f64 %y -> [%y_addr]
         nkda_append(
             &makeVec2_instrs,
             nkir_make_store(
                 nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t), nkir_makeRefParam(nk_cs2atom("y"), &f64_t)));
 
         // ret
-        nkda_append(&makeVec2_instrs, nkir_make_ret(nkir_makeRefLocal(nk_cs2atom("vec"), &ptr_t)));
+        nkda_append(&makeVec2_instrs, nkir_make_ret((NkIrRef){0}));
 
         NkIrParam makeVec2_params[] = {
             {.name = nk_cs2atom("x"), .type = &f64_t},
@@ -573,7 +570,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .proc =
                     {
                         .params = {makeVec2_params, NK_ARRAY_COUNT(makeVec2_params)},
-                        .ret = {0, &vec2_t},
+                        .ret = {nk_cs2atom("vec"), &vec2_t},
                         .instrs = {NK_SLICE_INIT(makeVec2_instrs)},
                         .flags = 0,
                     },
