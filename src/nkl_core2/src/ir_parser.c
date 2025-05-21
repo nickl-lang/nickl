@@ -984,29 +984,17 @@ static Void parseExtern(ParserState *p) {
     } else if (nks_equalCStr(lib_str, "pthread")) {
         lib_str = nk_cs2s("libpthread.so.0");
     }
-    char const *lib_nt = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(lib_str));
+
+    NkAtom const lib = nk_s2atom(lib_str);
 
     TRY(NkAtom const sym_name = parseId(p));
-    char const *sym_nt = nk_atom2cs(sym_name);
-
-    NkHandle dl = nkdl_loadLibrary(lib_nt);
-    if (nk_handleIsNull(dl)) {
-        ERROR("failed to load library `" NKS_FMT "`: %s", NKS_ARG(lib_str), nkdl_getLastErrorString());
-    }
-
-    void *sym = nkdl_resolveSymbol(dl, sym_nt);
-    if (!sym) {
-        ERROR("failed to load symbol `%s`: %s", nk_atom2cs(sym_name), nkdl_getLastErrorString());
-    }
-
-    // TODO: Store extern lib for reproducibility purposes
 
     nkda_append(
         p->ir,
         ((NkIrSymbol){
             .extrn =
                 {
-                    .addr = sym,
+                    .lib = lib,
                 },
             .name = sym_name,
             .vis = 0,

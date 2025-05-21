@@ -97,9 +97,8 @@ typedef enum {
     NkIrSymbol_Proc,
 } NkIrSymbolKind;
 
-// TODO: NkIrExtern will probably only be used in bytecode translation, think whether we need it as a symbol.
 typedef struct {
-    void *addr;
+    NkAtom lib;
 } NkIrExtern;
 
 typedef struct {

@@ -433,7 +433,7 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
 
     switch (sym->kind) {
         case NkIrSymbol_Extern:
-            nk_printf(out, "// extern $%s@0x%p", nk_atom2cs(sym->name), sym->extrn.addr);
+            nk_printf(out, "extern \"%s\" $%s", nk_atom2cs(sym->extrn.lib), nk_atom2cs(sym->name));
             break;
 
         case NkIrSymbol_Data:
