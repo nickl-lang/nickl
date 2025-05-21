@@ -1,6 +1,6 @@
 extern "c" $printf
 
-local proc $plus(%a :i64, %b :i64) :i64 {
+local proc $plus(:i64 %a, :i64 %b) :i64 {
     add %a, %b -> %tmp
     ret %tmp
 }

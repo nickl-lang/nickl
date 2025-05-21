@@ -3,7 +3,7 @@ extern "c" $puts
 extern "pthread" $pthread_create
 extern "pthread" $pthread_join
 
-proc $threadProc(%arg :i64) {
+proc $threadProc(:i64 %arg) {
     call $puts, ("hello") -> :i32
     ret
 }

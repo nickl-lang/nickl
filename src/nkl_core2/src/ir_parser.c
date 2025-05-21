@@ -823,12 +823,12 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
     NkIrParamDynArray params = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
 
     while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
+        EXPECT(NklIrToken_Colon);
+        TRY(NkIrType const type = parseType(p));
+
         TRY(NklToken const *arg_name_token = expect(p, NklIrToken_PercentTag));
         NkString const arg_name_token_str = tokenStr(p, arg_name_token);
         NkAtom const arg_name = nk_s2atom((NkString){arg_name_token_str.data + 1, arg_name_token_str.size - 1});
-
-        EXPECT(NklIrToken_Colon);
-        TRY(NkIrType const type = parseType(p));
 
         ACCEPT(NklIrToken_Comma);
 

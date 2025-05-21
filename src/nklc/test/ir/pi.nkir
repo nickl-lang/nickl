@@ -2,7 +2,7 @@ extern "c" $printf
 
 local const $ITER :i64 10
 
-local proc $myatan(%x :f64) :f64 {
+local proc $myatan(:f64 %x) :f64 {
     mov %x -> :f64 %sum
     mov %x -> :f64 %num
     mov 1. -> :f64 %sign

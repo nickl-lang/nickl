@@ -475,11 +475,11 @@ void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out) {
                     nk_printf(out, ", ");
                 }
                 NkIrParam const *param = &sym->proc.params.data[i];
-                if (param->name) {
-                    nk_printf(out, "%%%s ", nk_atom2cs(param->name));
-                }
                 nk_printf(out, ":");
                 nkir_inspectType(param->type, out);
+                if (param->name) {
+                    nk_printf(out, " %%%s", nk_atom2cs(param->name));
+                }
             }
             nk_printf(out, ") :");
             nkir_inspectType(sym->proc.ret.type, out);

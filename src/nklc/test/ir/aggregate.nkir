@@ -3,7 +3,7 @@ extern "m" $sqrt
 
 type Vec2 :{[2]f64}
 
-local proc $Vec2_length(%vec :Vec2) :f64 {
+local proc $Vec2_length(:Vec2 %vec) :f64 {
     load [%vec] -> :f64 %x
     add %vec, 8 -> %y_addr
     load [%y_addr] -> :f64 %y

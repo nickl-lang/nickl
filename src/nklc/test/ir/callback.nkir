@@ -1,6 +1,6 @@
 extern "c" $puts
 
-local proc $invoke(%cb :i64) {
+local proc $invoke(:i64 %cb) {
     call %cb, ()
     ret
 }
