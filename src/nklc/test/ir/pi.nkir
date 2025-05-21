@@ -10,7 +10,7 @@ local proc myatan(:f64 %x) :f64 {
     jmp @loop
 
 @loop
-    load [ITER] -> :i64 %iter
+    load ITER -> :i64 %iter
     cmp lt :i64 %i, %iter -> :i8 %cond
     jmpz :i8 %cond, @endloop
 

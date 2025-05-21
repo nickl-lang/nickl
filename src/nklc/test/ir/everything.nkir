@@ -1,4 +1,4 @@
-extern "c" printf
+extern "c" $printf
 
 pub proc _entry(:f32 %x, :f32 %y) :i16 {
 
@@ -15,8 +15,8 @@ pub proc _entry(:f32 %x, :f32 %y) :i16 {
 
     call :i64 printf, ("%zi\n", ..., 42) -> :i32 %a
 
-    store 1  -> [1]
-    load [1] -> :i32 %a
+    store 1 -> 1
+    load  1 -> :i32 %a
 
     alloc :i32 -> :i32 %a
 

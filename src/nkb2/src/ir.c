@@ -312,18 +312,9 @@ static void inspectInstrImpl(NkIrInstrArray instrs, usize idx, NkStream out) {
             case NkIrArg_None:
                 break;
 
-            case NkIrArg_Ref: {
-                bool const indir =
-                    (instr.code == NkIrOp_load && arg_idx == 1) || (instr.code == NkIrOp_store && arg_idx == 0);
-                if (indir) {
-                    nk_printf(out, "[");
-                }
+            case NkIrArg_Ref:
                 nkir_inspectRef(arg->ref, out);
-                if (indir) {
-                    nk_printf(out, "]");
-                }
                 break;
-            }
 
             case NkIrArg_RefArray:
                 nk_printf(out, "(");

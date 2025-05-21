@@ -757,14 +757,10 @@ static NkIrInstr parseInstr(ParserState *p) {
     else if (ACCEPT(NklIrToken_store)) {
         TRY(NkIrRef const src = parseRef(p, NULL));
         EXPECT(NklIrToken_MinusGreater);
-        EXPECT(NklIrToken_LBracket);
         TRY(NkIrRef const dst = parseRef(p, get_ptr_t(p)));
         ret = nkir_make_store(dst, src);
-        EXPECT(NklIrToken_RBracket);
     } else if (ACCEPT(NklIrToken_load)) {
-        EXPECT(NklIrToken_LBracket);
         TRY(NkIrRef const src = parseRef(p, get_ptr_t(p)));
-        EXPECT(NklIrToken_RBracket);
         EXPECT(NklIrToken_MinusGreater);
         TRY(NkIrRef const dst = parseDst(p, NULL, false));
         ret = nkir_make_load(dst, src);
