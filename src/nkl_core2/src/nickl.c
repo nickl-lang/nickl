@@ -21,7 +21,6 @@
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -243,6 +242,8 @@ static char const *s_ir_tokens[] = {
     "->",  // NklIrToken_MinusGreater,
     "...", // NklIrToken_Ellipsis,
     ":",   // NklIrToken_Colon,
+    "@+",  // NklIrToken_AtPlus,
+    "@-",  // NklIrToken_AtMinus,
     "[",   // NklIrToken_LBracket,
     "]",   // NklIrToken_RBracket,
     "{",   // NklIrToken_LBrace,
@@ -467,7 +468,8 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 nkir_makeRefImm((NkIrImm){.i64 = 5}, &i64_t)));
 
         // jmpz cond, @endloop
-        nkda_append(&loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), l_endloop));
+        nkda_append(
+            &loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), nkir_makeLabelAbs(l_endloop)));
 
         // call printf, ("%zi\n", ..., i)
         NkIrRef const printf_args2[] = {
@@ -494,7 +496,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 nkir_makeRefImm((NkIrImm){.i64 = 1}, &i64_t)));
 
         // jmp @loop
-        nkda_append(&loop_instrs, nkir_make_jmp(l_loop));
+        nkda_append(&loop_instrs, nkir_make_jmp(nkir_makeLabelAbs(l_loop)));
 
         // @endloop
         nkda_append(&loop_instrs, nkir_make_label(l_endloop));

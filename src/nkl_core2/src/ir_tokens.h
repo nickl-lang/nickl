@@ -36,6 +36,8 @@ enum {
     NklIrToken_MinusGreater,
     NklIrToken_Ellipsis,
     NklIrToken_Colon,
+    NklIrToken_AtPlus,
+    NklIrToken_AtMinus,
     NklIrToken_LBracket,
     NklIrToken_RBracket,
     NklIrToken_LBrace,

@@ -11,7 +11,6 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/slice.h"
@@ -621,8 +620,11 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
             TRY(parseConst(p, &imm, type));
             return nkir_makeRefImm(imm, type);
         } else {
-            void *addr = nk_arena_allocAligned(p->arena, type->size, type->align);
-            memset(addr, 0, type->size);
+            void *addr = NULL;
+            if (type->size) {
+                addr = nk_arena_allocAligned(p->arena, type->size, type->align);
+                memset(addr, 0, type->size);
+            }
             TRY(NkIrRelocArray relocs = parseConst(p, addr, type));
 
             NkAtom const sym = nk_atom_unique((NkString){0});
@@ -696,12 +698,28 @@ static NkIrRefArray parseRefArray(ParserState *p) {
     return ret;
 }
 
-static NkAtom parseLabel(ParserState *p) {
-    nk_assert(on(p, NklIrToken_AtTag));
+static NkIrLabel parseLabel(ParserState *p, bool allow_rel) {
+    NkIrLabel ret = {0};
 
-    NkString const token_str = getToken(p);
-    NkAtom const label = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
-    return label;
+    if (on(p, NklIrToken_AtTag)) {
+        NkString const token_str = getToken(p);
+        NkAtom const label = nk_s2atom((NkString){token_str.data + 1, token_str.size - 1});
+        return nkir_makeLabelAbs(label);
+    } else if (allow_rel) {
+        if (ACCEPT(NklIrToken_AtPlus)) {
+            TRY(u32 offset = parseIdx(p));
+            return nkir_makeLabelRel(offset);
+        } else if (ACCEPT(NklIrToken_AtMinus)) {
+            TRY(u32 offset = parseIdx(p));
+            return nkir_makeLabelRel(-offset);
+        }
+    }
+
+    if (allow_rel) {
+        ERROR_EXPECT("label");
+    } else {
+        ERROR_EXPECT("absolute label");
+    }
 }
 
 static NkIrInstr parseInstr(ParserState *p) {
@@ -712,8 +730,8 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     if (on(p, NklIrToken_AtTag)) {
-        TRY(NkAtom const label = parseLabel(p));
-        ret = nkir_make_label(label);
+        TRY(NkIrLabel const label = parseLabel(p, false));
+        ret = nkir_make_label(label.name);
     }
 
     else if (ACCEPT(NklIrToken_nop)) {
@@ -729,17 +747,17 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     else if (ACCEPT(NklIrToken_jmp)) {
-        TRY(NkAtom const label = parseLabel(p));
+        TRY(NkIrLabel const label = parseLabel(p, true));
         ret = nkir_make_jmp(label);
     } else if (ACCEPT(NklIrToken_jmpz)) {
         TRY(NkIrRef const cond = parseRef(p, NULL));
         EXPECT(NklIrToken_Comma);
-        TRY(NkAtom const label = parseLabel(p));
+        TRY(NkIrLabel const label = parseLabel(p, true));
         ret = nkir_make_jmpz(cond, label);
     } else if (ACCEPT(NklIrToken_jmpnz)) {
         TRY(NkIrRef const cond = parseRef(p, NULL));
         EXPECT(NklIrToken_Comma);
-        TRY(NkAtom const label = parseLabel(p));
+        TRY(NkIrLabel const label = parseLabel(p, true));
         ret = nkir_make_jmpnz(cond, label);
     }
 
@@ -810,7 +828,7 @@ static NkIrInstr parseInstr(ParserState *p) {
 #include "nkb/ir.inl"
     }
 
-    else if (ACCEPT(NklIrToken_comment)) {
+    else if (ACCEPT(NklIrToken_comment)) { // TODO: Pass comments from the lexer
         TRY(NkString const str = parseString(p));
         ret = nkir_make_comment(str);
     }
@@ -927,8 +945,11 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     NkIrRelocArray relocs = {0};
     if (!on(p, NklToken_Newline)) {
         if (type) {
-            addr = nk_arena_allocAligned(p->arena, type->size, type->align);
-            memset(addr, 0, type->size);
+            void *addr = NULL;
+            if (type->size) {
+                addr = nk_arena_allocAligned(p->arena, type->size, type->align);
+                memset(addr, 0, type->size);
+            }
             TRY(relocs = parseConst(p, addr, type));
         }
 

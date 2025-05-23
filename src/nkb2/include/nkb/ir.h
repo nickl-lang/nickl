@@ -63,7 +63,7 @@ typedef enum {
     NkIrArg_Ref,
     NkIrArg_RefArray,
     NkIrArg_Label,
-    NkIrArg_RelLabel,
+    NkIrArg_LabelRel,
     NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
     NkIrArg_String,
 } NkIrArgKind;
@@ -76,7 +76,7 @@ typedef struct {
         NkIrRef ref;       // Ref
         NkIrRefArray refs; // RefArray
         NkAtom label;      // Label
-        i32 offset;        // RelLabel
+        i32 offset;        // LabelRel
         NkIrType type;     // Type
         NkString str;      // String
     };
@@ -168,6 +168,19 @@ typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 
 typedef NkIrSymbolArray NkIrModule;
 
+typedef enum {
+    NkIrLabel_Abs,
+    NkIrLabel_Rel,
+} NkIrLabelKind;
+
+typedef struct {
+    union {
+        NkAtom name;
+        i32 offset;
+    };
+    NkIrLabelKind kind;
+} NkIrLabel;
+
 /// Main
 
 void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
@@ -182,15 +195,20 @@ NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
 
 NkIrRef nkir_makeVariadicMarker();
 
+/// Labels
+
+NkIrLabel nkir_makeLabelAbs(NkAtom name);
+NkIrLabel nkir_makeLabelRel(i32 offset);
+
 /// Codegen
 
 NkIrInstr nkir_make_nop();
 
 NkIrInstr nkir_make_ret(NkIrRef arg);
 
-NkIrInstr nkir_make_jmp(NkAtom label);
-NkIrInstr nkir_make_jmpz(NkIrRef cond, NkAtom label);
-NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkAtom label);
+NkIrInstr nkir_make_jmp(NkIrLabel label);
+NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrLabel label);
+NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label);
 
 NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 

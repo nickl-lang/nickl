@@ -282,6 +282,7 @@ static NklToken scan(LexerState *l) {
     }
 
     {
+        // TODO: Allow multicharacter tags
         char const **it = l->tag_prefixes;
         for (; it && *it && !(on(l, **it, 0) && onAlphaOrUscr(l, 1)); it++) {
         }
