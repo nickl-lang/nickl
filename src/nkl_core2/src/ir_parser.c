@@ -945,7 +945,6 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     NkIrRelocArray relocs = {0};
     if (!on(p, NklToken_Newline)) {
         if (type) {
-            void *addr = NULL;
             if (type->size) {
                 addr = nk_arena_allocAligned(p->arena, type->size, type->align);
                 memset(addr, 0, type->size);
@@ -1113,7 +1112,7 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
         NkStream log = nk_log_getStream();
         nk_printf(log, "IR:\n");
         NkIrModule const syms = {out_syms->data + start_idx, out_syms->size - start_idx};
-        nkir_inspectModule(syms, log);
+        nkir_inspectModule(log, syms);
     }
 
     return !p.error_occurred;

@@ -241,10 +241,10 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
 
 /// Inspection
 
-void nkir_inspectModule(NkIrModule m, NkStream out);
-void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out);
-void nkir_inspectInstr(NkIrInstr instr, NkStream out);
-void nkir_inspectRef(NkIrRef ref, NkStream out);
+void nkir_inspectModule(NkStream out, NkIrModule m);
+void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym);
+void nkir_inspectInstr(NkStream out, NkIrInstr instr);
+void nkir_inspectRef(NkStream out, NkIrRef ref);
 
 /// Validation
 

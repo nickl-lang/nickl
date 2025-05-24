@@ -625,7 +625,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         NK_LOG_STREAM_INF {
             NkStream log = nk_log_getStream();
             nk_printf(log, "IR:\n");
-            nkir_inspectModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, log);
+            nkir_inspectModule(log, (NkIrModule){NK_SLICE_INIT(mod->ir)});
         }
     }
 #endif
