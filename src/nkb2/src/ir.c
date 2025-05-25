@@ -606,8 +606,6 @@ void nkir_inspectInstr(NkStream out, NkIrInstr instr) {
         0,
         (InspectInstrCtx){
             .instrs = (NkIrInstrArray){&instr, 1},
-            .labels = {0},
-            .indices = NULL,
         });
 }
 

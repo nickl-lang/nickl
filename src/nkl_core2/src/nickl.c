@@ -1,63 +1,18 @@
 #include "nkl/core/nickl.h"
 
-#include "ast_tokens.h"
-#include "ir_tokens.h"
-#include "nkb/ir.h"
-#include "nkb/types.h"
+#include "nickl_impl.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
-#include "nkl/core/ast_parser.h"
 #include "nkl/core/ir_parser.h"
-#include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
-#include "ntk/common.h"
 #include "ntk/dyn_array.h"
-#include "ntk/error.h"
-#include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
-#include "ntk/slice.h"
-#include "ntk/stream.h"
 #include "ntk/string.h"
 
 NK_LOG_USE_SCOPE(nickl);
-
-typedef struct NklState_T {
-    struct NklState_T *next;
-
-    NkArena arena;
-    NklError *error;
-} NklState_T;
-
-typedef struct NklCompiler_T {
-    NklState nkl;
-} NklCompiler_T;
-
-typedef struct NklModule_T {
-    NklCompiler c;
-    NkIrSymbolDynArray ir;
-} NklModule_T;
-
-static void vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap) {
-    NklError *err = nk_arena_allocT(&nkl->arena, NklError);
-    *err = (NklError){
-        .next = nkl->error,
-        .msg = nk_vtsprintf(&nkl->arena, fmt, ap),
-        .loc = loc,
-    };
-    nkl->error = err;
-}
-
-NK_PRINTF_LIKE(3) static void reportError(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {
-    NK_LOG_TRC("%s", __func__);
-
-    va_list ap;
-    va_start(ap, fmt);
-    vreportError(nkl, loc, fmt, ap);
-    va_end(ap);
-}
 
 NklState nkl_newState(void) {
     NK_LOG_TRC("%s", __func__);
@@ -79,8 +34,6 @@ void nkl_freeState(NklState nkl) {
     NkArena arena = nkl->arena;
     nk_arena_free(&arena);
 }
-
-static _Thread_local NklState s_nkl;
 
 void nkl_pushState(NklState nkl) {
     NK_LOG_TRC("%s", __func__);
@@ -119,12 +72,18 @@ NklCompiler nkl_newCompilerHost(void) {
     return nkl_newCompiler((NklTargetTriple){0});
 }
 
+// TODO: Reuse TRY macro
+#define TRY(EXPR)      \
+    do {               \
+        if (!(EXPR)) { \
+            return 0;  \
+        }              \
+    } while (0)
+
 NklModule nkl_newModule(NklCompiler c) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!c) {
-        return NULL;
-    }
+    TRY(c);
 
     NklState nkl = c->nkl;
 
@@ -139,46 +98,40 @@ NklModule nkl_newModule(NklCompiler c) {
 bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!dst_mod) {
-        return false;
-    }
+    TRY(dst_mod);
 
     NklState nkl = dst_mod->c->nkl;
 
     if (!src_mod) {
-        reportError(nkl, (NklSourceLocation){0}, "src_mod is null");
+        nickl_reportError(nkl, (NklSourceLocation){0}, "src_mod is null");
         return false;
     }
 
     if (dst_mod->c != src_mod->c) {
-        reportError(nkl, (NklSourceLocation){0}, "mixed modules from different compilers");
+        nickl_reportError(nkl, (NklSourceLocation){0}, "mixed modules from different compilers");
     }
 
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkModule` is not implemented");
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkModule` is not implemented");
     return false;
 }
 
 bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!dst_mod) {
-        return false;
-    }
+    TRY(dst_mod);
 
     NklState nkl = dst_mod->c->nkl;
 
     (void)name;
     (void)library;
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkLibrary` is not implemented");
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkLibrary` is not implemented");
     return false;
 }
 
 bool nkl_compileFile(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!mod) {
-        return false;
-    }
+    TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
@@ -191,7 +144,7 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     } else if (nks_equal(ext, nk_cs2s("nkl"))) {
         return nkl_compileFileNkl(mod, file);
     } else {
-        reportError(
+        nickl_reportError(
             nkl,
             (NklSourceLocation){0},
             "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkir`, `*.nkst`, `*.nkl`.",
@@ -200,437 +153,21 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     }
 }
 
-static char const *s_ir_tokens[] = {
-    "end of file", // NklToken_Eof,
-
-    "identifier",       // NklToken_Id,
-    "integer constant", // NklToken_Int,
-    "float constant",   // NklToken_Float,
-    "string constant",  // NklToken_String,
-    "string constant",  // NklToken_EscapedString,
-    "newline",          // NklToken_Newline,
-
-    "error", // NklToken_Error,
-
-    NULL, // NklIrToken_KeywordsBase,
-
-    "cmp",    // NklIrToken_cmp,
-    "const",  // NklIrToken_const,
-    "data",   // NklIrToken_data,
-    "extern", // NklIrToken_extern,
-    "local",  // NklIrToken_local,
-    "proc",   // NklIrToken_proc,
-    "pub",    // NklIrToken_pub,
-    "type",   // NklIrToken_type,
-    "void",   // NklIrToken_void,
-
-#define X(TYPE, VALUE_TYPE) #TYPE,
-    NKIR_NUMERIC_ITERATE(X)
-#undef X
-
-#define IR(NAME) #NAME,
-#define UNA_IR(NAME) #NAME,
-#define BIN_IR(NAME) #NAME,
-#define CMP_IR(NAME) #NAME,
-#include "nkb/ir.inl"
-
-        NULL, // NklIrToken_OperatorsBase,
-
-    "(",   // NklIrToken_LParen,
-    ")",   // NklIrToken_RParen,
-    ",",   // NklIrToken_Comma,
-    "->",  // NklIrToken_MinusGreater,
-    "...", // NklIrToken_Ellipsis,
-    ":",   // NklIrToken_Colon,
-    "@+",  // NklIrToken_AtPlus,
-    "@-",  // NklIrToken_AtMinus,
-    "[",   // NklIrToken_LBracket,
-    "]",   // NklIrToken_RBracket,
-    "{",   // NklIrToken_LBrace,
-    "|",   // NklIrToken_Pipe,
-    "}",   // NklIrToken_RBrace,
-
-    NULL, // NklIrToken_TagsBase,
-
-    "$", // NklIrToken_DollarTag,
-    "%", // NklIrToken_PercentTag,
-    "@", // NklIrToken_AtTag,
-
-    NULL,
-};
-
 bool nkl_compileFileIr(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!mod) {
-        return false;
-    }
+    TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
-    NkAllocator alloc = nk_arena_getAllocator(&nkl->arena);
-
     NkString text;
-    if (!nk_file_read(alloc, file, &text)) {
-        reportError(
-            nkl,
-            (NklSourceLocation){0},
-            "failed to read file `" NKS_FMT "`: %s",
-            NKS_ARG(file),
-            nk_getLastErrorString());
-        return false;
-    }
+    TRY(nickl_getText(nkl, nk_s2atom(file), &text));
 
-    NkString err_str;
     NklTokenArray tokens;
-    if (!nkl_lex(
-            &(NklLexerData){
-                .text = text,
-                .arena = &nkl->arena,
-                .err_str = &err_str,
-
-                .tokens = s_ir_tokens,
-                .keywords_base = NklIrToken_KeywordsBase,
-                .operators_base = NklIrToken_OperatorsBase,
-                .tags_base = NklIrToken_TagsBase,
-            },
-            &tokens)) {
-        NklToken const err_token = nk_slice_last(tokens);
-        reportError(
-            nkl,
-            (NklSourceLocation){
-                .file = file,
-                .lin = err_token.lin,
-                .col = err_token.col,
-                .len = err_token.len,
-            },
-            NKS_FMT,
-            NKS_ARG(err_str));
-        return false;
-    }
-
-#if 1
-    { // TODO: Dummy IR
-        NkIrType_T const void_t = {.aggr = {0}, .size = 0, .align = 1, .id = 0, .kind = NkIrType_Aggregate};
-
-        NkIrType_T const i8_t = {.num = Int8, .size = 1, .align = 1, .id = 0, .kind = NkIrType_Numeric};
-        NkIrType_T const i32_t = {.num = Int32, .size = 4, .align = 4, .id = 0, .kind = NkIrType_Numeric};
-        NkIrType_T const i64_t = {.num = Int64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
-        NkIrType_T const f64_t = {.num = Float64, .size = 8, .align = 8, .id = 0, .kind = NkIrType_Numeric};
-        NkIrType_T const ptr_t = i64_t;
-
-        NkAtom l_start = nk_atom_unique(nk_cs2s("start"));
-        NkAtom l_loop = nk_atom_unique(nk_cs2s("loop"));
-        NkAtom l_endloop = nk_atom_unique(nk_cs2s("endloop"));
-
-        NkAtom s_hello = nk_atom_unique(nk_cs2s("hello"));
-        NkAtom s_fmt = nk_atom_unique(nk_cs2s("fmt"));
-        NkAtom s_vec_union = nk_atom_unique(nk_cs2s("vec_union"));
-
-        NkIrAggregateElemInfo const hello_str_elems[] = {
-            {.type = &i8_t, .count = 15, .offset = 0},
-        };
-        NkIrType_T const hello_str_t = {
-            .aggr = {hello_str_elems, NK_ARRAY_COUNT(hello_str_elems)},
-            .size = 15,
-            .align = 1,
-            .id = 0,
-            .kind = NkIrType_Aggregate,
-        };
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .data =
-                    {
-                        .type = &hello_str_t,
-                        .relocs = {0},
-                        .addr = "Hello, World!\n",
-                        .flags = NkIrData_ReadOnly,
-                    },
-                .name = s_hello,
-                .vis = NkIrVisibility_Local,
-                .flags = 0,
-                .kind = NkIrSymbol_Data,
-            }));
-
-        NkIrInstrDynArray main_instrs = {NKDA_INIT(alloc)};
-
-        // @start
-        nkda_append(&main_instrs, nkir_make_label(l_start));
-
-        // call printf, ("Hello, World!", ...)
-        NkIrRef const printf_args[] = {
-            nkir_makeRefGlobal(s_hello, &ptr_t),
-            nkir_makeVariadicMarker(),
-        };
-        nkda_append(
-            &main_instrs,
-            nkir_make_call(
-                nkir_makeRefNull(&i32_t),
-                nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
-                (NkIrRefArray){printf_args, NK_ARRAY_COUNT(printf_args)}));
-
-        // // This is a comment...
-        nkda_append(&main_instrs, nkir_make_comment(nk_cs2s("This is a comment...")));
-
-        // ret 0
-        nkda_append(&main_instrs, nkir_make_ret(nkir_makeRefImm((NkIrImm){.i32 = 0}, &i32_t)));
-
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .proc =
-                    {
-                        .params = {0},
-                        .ret = {0, &i32_t},
-                        .instrs = {NK_SLICE_INIT(main_instrs)},
-                        .flags = 0,
-                    },
-                .name = nk_cs2atom("main"),
-                .vis = NkIrVisibility_Default,
-                .flags = 0,
-                .kind = NkIrSymbol_Proc,
-            }));
-
-        NkIrInstrDynArray plus_instrs = {NKDA_INIT(alloc)};
-
-        // @start
-        nkda_append(&plus_instrs, nkir_make_label(l_start));
-
-        // add a, b -> tmp:i64
-        nkda_append(
-            &plus_instrs,
-            nkir_make_add(
-                nkir_makeRefLocal(nk_cs2atom("tmp"), &i64_t),
-                nkir_makeRefParam(nk_cs2atom("a"), &i64_t),
-                nkir_makeRefParam(nk_cs2atom("b"), &i64_t)));
-
-        // ret tmp:i64
-        nkda_append(&plus_instrs, nkir_make_ret(nkir_makeRefLocal(nk_cs2atom("tmp"), &i64_t)));
-
-        NkIrParam plus_params[] = {
-            {.name = nk_cs2atom("a"), .type = &i64_t},
-            {.name = nk_cs2atom("b"), .type = &i64_t},
-        };
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .proc =
-                    {
-                        .params = {plus_params, NK_ARRAY_COUNT(plus_params)},
-                        .ret = {0, &i64_t},
-                        .instrs = {NK_SLICE_INIT(plus_instrs)},
-                        .flags = 0,
-                    },
-                .name = nk_cs2atom("plus"),
-                .vis = NkIrVisibility_Default,
-                .flags = 0,
-                .kind = NkIrSymbol_Proc,
-            }));
-
-        NkIrAggregateElemInfo const fmt_str_elems[] = {
-            {.type = &i8_t, .count = 5, .offset = 0},
-        };
-        NkIrType_T const fmt_str_t = {
-            .aggr = {fmt_str_elems, NK_ARRAY_COUNT(fmt_str_elems)},
-            .size = 5,
-            .align = 1,
-            .id = 0,
-            .kind = NkIrType_Aggregate,
-        };
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .data =
-                    {
-                        .type = &fmt_str_t,
-                        .relocs = {0},
-                        .addr = "%zi\n",
-                        .flags = NkIrData_ReadOnly,
-                    },
-                .name = s_fmt,
-                .vis = NkIrVisibility_Local,
-                .flags = 0,
-                .kind = NkIrSymbol_Data,
-            }));
-
-        NkIrInstrDynArray loop_instrs = {NKDA_INIT(alloc)};
-
-        // @loop
-        nkda_append(&loop_instrs, nkir_make_label(l_loop));
-
-        // cmp lt i, 5 -> cond
-        nkda_append(
-            &loop_instrs,
-            nkir_make_cmp_lt(
-                nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t),
-                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
-                nkir_makeRefImm((NkIrImm){.i64 = 5}, &i64_t)));
-
-        // jmpz cond, @endloop
-        nkda_append(
-            &loop_instrs, nkir_make_jmpz(nkir_makeRefLocal(nk_cs2atom("cond"), &i8_t), nkir_makeLabelAbs(l_endloop)));
-
-        // call printf, ("%zi\n", ..., i)
-        NkIrRef const printf_args2[] = {
-            nkir_makeRefGlobal(s_fmt, &ptr_t),
-            nkir_makeVariadicMarker(),
-            nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
-        };
-        nkda_append(
-            &loop_instrs,
-            nkir_make_call(
-                nkir_makeRefNull(&i32_t),
-                nkir_makeRefGlobal(nk_cs2atom("printf"), &ptr_t),
-                (NkIrRefArray){printf_args2, NK_ARRAY_COUNT(printf_args2)}));
-
-        // // This is another comment...
-        nkda_append(&loop_instrs, nkir_make_comment(nk_cs2s("This is another comment...")));
-
-        // add i, 1 -> i
-        nkda_append(
-            &loop_instrs,
-            nkir_make_add(
-                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
-                nkir_makeRefLocal(nk_cs2atom("i"), &i64_t),
-                nkir_makeRefImm((NkIrImm){.i64 = 1}, &i64_t)));
-
-        // jmp @loop
-        nkda_append(&loop_instrs, nkir_make_jmp(nkir_makeLabelAbs(l_loop)));
-
-        // @endloop
-        nkda_append(&loop_instrs, nkir_make_label(l_endloop));
-
-        // ret
-        nkda_append(&loop_instrs, nkir_make_ret((NkIrRef){0}));
-
-        NkIrInstrDynArray loop_instrs_pic = {NKDA_INIT(alloc)};
-        nkir_convertToPic((NkIrInstrArray){NK_SLICE_INIT(loop_instrs)}, &loop_instrs_pic);
-
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .proc =
-                    {
-                        .params = {0},
-                        .ret = {0, &void_t},
-                        .instrs = {NK_SLICE_INIT(loop_instrs_pic)},
-                        .flags = 0,
-                    },
-                .name = l_loop,
-                .vis = NkIrVisibility_Default,
-                .flags = 0,
-                .kind = NkIrSymbol_Proc,
-            }));
-
-        NkIrAggregateElemInfo const vec2_elems[] = {
-            {.type = &f64_t, .count = 1, .offset = 0},
-            {.type = &f64_t, .count = 1, .offset = 8},
-        };
-        NkIrType_T const vec2_t = {
-            .aggr = {vec2_elems, NK_ARRAY_COUNT(vec2_elems)},
-            .size = 16,
-            .align = 1,
-            .id = 0,
-            .kind = NkIrType_Aggregate,
-        };
-
-        NkIrInstrDynArray makeVec2_instrs = {NKDA_INIT(alloc)};
-
-        // @start
-        nkda_append(&makeVec2_instrs, nkir_make_label(l_start));
-
-        // store :f64 %x -> [%vec]
-        nkda_append(
-            &makeVec2_instrs,
-            nkir_make_store(nkir_makeRefParam(nk_cs2atom("vec"), &ptr_t), nkir_makeRefParam(nk_cs2atom("x"), &f64_t)));
-
-        // add 8, %vec -> %y_addr
-        nkda_append(
-            &makeVec2_instrs,
-            nkir_make_add(
-                nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t),
-                nkir_makeRefImm((NkIrImm){.i64 = 8}, &i64_t),
-                nkir_makeRefParam(nk_cs2atom("vec"), &ptr_t)));
-
-        // store :f64 %y -> [%y_addr]
-        nkda_append(
-            &makeVec2_instrs,
-            nkir_make_store(
-                nkir_makeRefLocal(nk_cs2atom("y_addr"), &ptr_t), nkir_makeRefParam(nk_cs2atom("y"), &f64_t)));
-
-        // ret
-        nkda_append(&makeVec2_instrs, nkir_make_ret((NkIrRef){0}));
-
-        NkIrParam makeVec2_params[] = {
-            {.name = nk_cs2atom("x"), .type = &f64_t},
-            {.name = nk_cs2atom("y"), .type = &f64_t},
-        };
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .proc =
-                    {
-                        .params = {makeVec2_params, NK_ARRAY_COUNT(makeVec2_params)},
-                        .ret = {nk_cs2atom("vec"), &vec2_t},
-                        .instrs = {NK_SLICE_INIT(makeVec2_instrs)},
-                        .flags = 0,
-                    },
-                .name = nk_cs2atom("makeVec2"),
-                .vis = NkIrVisibility_Default,
-                .flags = 0,
-                .kind = NkIrSymbol_Proc,
-            }));
-
-        NkIrAggregateElemInfo const f64_pair_elems[] = {
-            {.type = &f64_t, .count = 2, .offset = 0},
-        };
-        NkIrType_T const f64_pair_t = {
-            .aggr = {f64_pair_elems, NK_ARRAY_COUNT(f64_pair_elems)},
-            .size = 16,
-            .align = 1,
-            .id = 0,
-            .kind = NkIrType_Aggregate,
-        };
-
-        NkIrAggregateElemInfo const vec_union_elems[] = {
-            {.type = &vec2_t, .count = 1, .offset = 0},
-            {.type = &f64_pair_t, .count = 1, .offset = 0},
-        };
-        NkIrType_T const vec_union_t = {
-            .aggr = {vec_union_elems, NK_ARRAY_COUNT(vec_union_elems)},
-            .size = 16,
-            .align = 1,
-            .id = 0,
-            .kind = NkIrType_Union,
-        };
-
-        double vec_union[] = {1.23, 4.56};
-        nkda_append(
-            &mod->ir,
-            ((NkIrSymbol){
-                .data =
-                    {
-                        .type = &vec_union_t,
-                        .relocs = {0},
-                        .addr = &vec_union,
-                        .flags = NkIrData_ReadOnly,
-                    },
-                .name = s_vec_union,
-                .vis = NkIrVisibility_Local,
-                .flags = 0,
-                .kind = NkIrSymbol_Data,
-            }));
-
-        NK_LOG_STREAM_INF {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "IR:\n");
-            nkir_inspectModule(log, (NkIrModule){NK_SLICE_INIT(mod->ir)});
-        }
-    }
-#endif
+    TRY(nickl_getTokensIr(nkl, nk_s2atom(file), &tokens));
 
     NklToken err_token = {0};
+    NkString err_str = {0};
     if (!nkl_ir_parse(
             &(NklIrParserData){
                 .text = text,
@@ -641,7 +178,7 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
                 .token_names = s_ir_tokens,
             },
             &mod->ir)) {
-        reportError(
+        nickl_reportError(
             nkl,
             (NklSourceLocation){
                 .file = file,
@@ -654,137 +191,46 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
         return false;
     }
 
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
     return false;
 }
-
-static char const *s_ast_tokens[] = {
-    "end of file", // NklToken_Eof
-
-    "identifier",       // NklToken_Id
-    "integer constant", // NklToken_Int
-    "float constant",   // NklToken_Float
-    "string constant",  // NklToken_String
-    "string constant",  // NklToken_EscapedString
-    "newline",          // NklToken_Newline
-
-    "error", // NklToken_Error
-
-    NULL, // NklAstToken_OperatorsBase
-
-    "(", // NklAstToken_LParen
-    ")", // NklAstToken_RParen
-    "{", // NklAstToken_LBrace
-    "}", // NklAstToken_RBrace
-    "[", // NklAstToken_LBraket
-    "]", // NklAstToken_RBraket
-
-    NULL,
-};
 
 bool nkl_compileFileAst(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!mod) {
-        return false;
-    }
+    TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
-    NkAllocator alloc = nk_arena_getAllocator(&nkl->arena);
+    NklAstNodeArray nodes;
+    TRY(nickl_getAst(nkl, nk_s2atom(file), &nodes));
 
-    NkString text = {0};
-    if (!nk_file_read(alloc, file, &text)) {
-        reportError(
-            nkl,
-            (NklSourceLocation){0},
-            "failed to read file `" NKS_FMT "`: %s",
-            NKS_ARG(file),
-            nk_getLastErrorString());
-        return false;
-    }
-
-    NkString err_str = {0};
-    NklTokenArray tokens = {0};
-    if (!nkl_lex(
-            &(NklLexerData){
-                .text = text,
-                .arena = &nkl->arena,
-                .err_str = &err_str,
-
-                .tokens = s_ast_tokens,
-                .operators_base = NklAstToken_OperatorsBase,
-            },
-            &tokens)) {
-        NklToken const err_token = nk_slice_last(tokens);
-        reportError(
-            nkl,
-            (NklSourceLocation){
-                .file = file,
-                .lin = err_token.lin,
-                .col = err_token.col,
-                .len = err_token.len,
-            },
-            NKS_FMT,
-            NKS_ARG(err_str));
-        return false;
-    }
-
-    NklToken err_token = {0};
-    NklAstNodeArray nodes = {0};
-    if (!nkl_ast_parse(
-            &(NklAstParserData){
-                .text = text,
-                .tokens = tokens,
-                .arena = &nkl->arena,
-                .err_str = &err_str,
-                .err_token = &err_token,
-                .token_names = s_ast_tokens,
-            },
-            &nodes)) {
-        reportError(
-            nkl,
-            (NklSourceLocation){
-                .file = file,
-                .lin = err_token.lin,
-                .col = err_token.col,
-                .len = err_token.len,
-            },
-            NKS_FMT,
-            NKS_ARG(err_str));
-        return false;
-    }
-
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not finished");
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not finished");
     return false;
 }
 
 bool nkl_compileFileNkl(NklModule mod, NkString file) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!mod) {
-        return false;
-    }
+    TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
     (void)file;
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileNkl` is not implemented");
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileNkl` is not implemented");
     return false;
 }
 
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
-    if (!mod) {
-        return false;
-    }
+    TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
     (void)out_file;
     (void)kind;
-    reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_exportModule` is not implemented");
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_exportModule` is not implemented");
     return false;
 }
 

@@ -671,10 +671,6 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
 
-    else if (on(p, NklIrToken_LBrace)) {
-        ERROR("TODO: parse untyped aggregate");
-    }
-
     ERROR_EXPECT("reference");
 }
 
@@ -957,10 +953,6 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 
             type = allocStringType(p, str.size);
             addr = (void *)str.data;
-        }
-
-        else if (on(p, NklIrToken_LBrace)) {
-            ERROR("TODO: parse untyped aggregate");
         }
 
         else {

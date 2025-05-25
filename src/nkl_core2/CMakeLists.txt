@@ -5,6 +5,7 @@ add_library(${LIB} SHARED
     src/ir_parser.c
     src/lexer.c
     src/nickl.c
+    src/nickl_impl.c
     )
 
 target_include_directories(${LIB}
