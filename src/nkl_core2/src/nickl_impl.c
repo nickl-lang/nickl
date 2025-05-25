@@ -33,11 +33,11 @@ void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va
     nkl->error = err;
 }
 
-#define TRY(EXPR)         \
-    do {                  \
-        if (!(EXPR)) {    \
-            return false; \
-        }                 \
+#define TRY(EXPR)      \
+    do {               \
+        if (!(EXPR)) { \
+            return 0;  \
+        }              \
     } while (0)
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
@@ -70,15 +70,16 @@ char const *s_ir_tokens[] = {
 
     NULL, // NklIrToken_KeywordsBase,
 
-    "cmp",    // NklIrToken_cmp,
-    "const",  // NklIrToken_const,
-    "data",   // NklIrToken_data,
-    "extern", // NklIrToken_extern,
-    "local",  // NklIrToken_local,
-    "proc",   // NklIrToken_proc,
-    "pub",    // NklIrToken_pub,
-    "type",   // NklIrToken_type,
-    "void",   // NklIrToken_void,
+    "cmp",     // NklIrToken_cmp,
+    "const",   // NklIrToken_const,
+    "data",    // NklIrToken_data,
+    "extern",  // NklIrToken_extern,
+    "include", // NklIrToken_include,
+    "local",   // NklIrToken_local,
+    "proc",    // NklIrToken_proc,
+    "pub",     // NklIrToken_pub,
+    "type",    // NklIrToken_type,
+    "void",    // NklIrToken_void,
 
 #define X(TYPE, VALUE_TYPE) #TYPE,
     NKIR_NUMERIC_ITERATE(X)
@@ -123,7 +124,7 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     NkString text;
     TRY(nickl_getText(nkl, file, &text));
 
-    NkString err_str;
+    NkString err_str = {0};
     if (!nkl_lex(
             &(NklLexerData){
                 .text = text,
@@ -229,4 +230,10 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
         out_nodes));
 
     return true;
+}
+
+NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
+    NK_LOG_TRC("%s", __func__);
+
+    return 0;
 }

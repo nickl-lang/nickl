@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+// TODO: Rewrite to use NkString
 NK_EXPORT i32 nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base);
 
 NK_EXPORT NkString nk_path_getParent(NkString path);

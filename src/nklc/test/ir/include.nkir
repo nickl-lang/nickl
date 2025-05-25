@@ -1,0 +1,21 @@
+include "vec2.nkir"
+
+extern "c" printf
+
+pub proc _entry() {
+    alloc :Vec2 -> %vec
+
+    call make_vec2, (11., 12.) -> :Vec2 %vec
+
+    load %vec -> :f64 %x
+    add 8, %vec -> %y_addr
+    load %y_addr -> :f64 %y
+    call printf, ("vec=[%g, %g]=\n", ..., :f64 %x, :f64 %y) -> :i32
+
+    ret
+}
+
+/* @output
+vec=[11, 12]
+
+@endoutput */

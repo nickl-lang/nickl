@@ -1031,7 +1031,7 @@ static Void parseSymbol(ParserState *p) {
         return parseExtern(p);
     }
 
-    if (ACCEPT(NklIrToken_type)) {
+    else if (ACCEPT(NklIrToken_type)) {
         TRY(NklToken const *name_token = expect(p, NklToken_Id));
         NkString const name_token_str = tokenStr(p, name_token);
         NkAtom const name = nk_s2atom(name_token_str);
@@ -1046,26 +1046,41 @@ static Void parseSymbol(ParserState *p) {
                 .type = type,
             }));
 
-        EXPECT(NklToken_Newline);
-        while (ACCEPT(NklToken_Newline)) {
+        return ret;
+    }
+
+    else if (ACCEPT(NklIrToken_include)) {
+        TRY(NkString const name = parseString(p));
+        NkAtom const file = nickl_findFile(p->nkl, p->file, name);
+
+        NK_LOG_ERR("found file=%s", nk_atom2cs(file));
+
+        ERROR("TODO: include parsing unfinished");
+    }
+
+    else {
+        if (ACCEPT(NklIrToken_pub)) {
+            vis = NkIrVisibility_Default;
+        } else if (ACCEPT(NklIrToken_local)) {
+            vis = NkIrVisibility_Local;
+        }
+
+        if (ACCEPT(NklIrToken_proc)) {
+            return parseProc(p, vis);
+        } else if (ACCEPT(NklIrToken_const)) {
+            return parseData(p, vis, NkIrData_ReadOnly);
+        } else if (ACCEPT(NklIrToken_data)) {
+            return parseData(p, vis, 0);
+        } else {
+            ERROR_EXPECT("symbol");
         }
     }
 
-    if (ACCEPT(NklIrToken_pub)) {
-        vis = NkIrVisibility_Default;
-    } else if (ACCEPT(NklIrToken_local)) {
-        vis = NkIrVisibility_Local;
+    EXPECT(NklToken_Newline);
+    while (ACCEPT(NklToken_Newline)) {
     }
 
-    if (ACCEPT(NklIrToken_proc)) {
-        return parseProc(p, vis);
-    } else if (ACCEPT(NklIrToken_const)) {
-        return parseData(p, vis, NkIrData_ReadOnly);
-    } else if (ACCEPT(NklIrToken_data)) {
-        return parseData(p, vis, 0);
-    }
-
-    ERROR_EXPECT("symbol");
+    return ret;
 }
 
 static Void parse(ParserState *p) {

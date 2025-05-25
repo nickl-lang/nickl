@@ -12,6 +12,7 @@ enum {
     NklIrToken_const,
     NklIrToken_data,
     NklIrToken_extern,
+    NklIrToken_include,
     NklIrToken_local,
     NklIrToken_proc,
     NklIrToken_pub,

@@ -6,9 +6,11 @@
 #include "nkl/common/diagnostics.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -126,21 +128,21 @@ bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library) {
     return false;
 }
 
-bool nkl_compileFile(NklModule mod, NkString file) {
+bool nkl_compileFile(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
-    NkString const ext = nk_path_getExtension(file);
+    NkString const ext = nk_path_getExtension(path);
 
     if (nks_equal(ext, nk_cs2s("nkir"))) {
-        return nkl_compileFileIr(mod, file);
+        return nkl_compileFileIr(mod, path);
     } else if (nks_equal(ext, nk_cs2s("nkst"))) {
-        return nkl_compileFileAst(mod, file);
+        return nkl_compileFileAst(mod, path);
     } else if (nks_equal(ext, nk_cs2s("nkl"))) {
-        return nkl_compileFileNkl(mod, file);
+        return nkl_compileFileNkl(mod, path);
     } else {
         nickl_reportError(
             nkl,
@@ -151,20 +153,53 @@ bool nkl_compileFile(NklModule mod, NkString file) {
     }
 }
 
-bool nkl_compileFileIr(NklModule mod, NkString file) {
+static NkAtom canonicalize(NkString base, NkString path) {
+    // TODO: Do null termination in ntk?
+
+    NKSB_FIXED_BUFFER(sb, NK_MAX_PATH);
+
+    nksb_printf(&sb, NKS_FMT, NKS_ARG(path));
+    nksb_appendNull(&sb);
+
+    char const *path_nt = sb.data;
+
+    if (nk_pathIsRelative(path_nt)) {
+        nksb_clear(&sb);
+
+        nksb_printf(&sb, NKS_FMT "%c" NKS_FMT, NKS_ARG(base), NK_PATH_SEPARATOR, NKS_ARG(path));
+        nksb_appendNull(&sb);
+    }
+
+    NK_LOG_ERR("path_nt=%s", path_nt);
+
+    char path_canon[NK_MAX_PATH];
+    if (nk_fullPath(path_canon, path_nt) < 0) {
+        return 0;
+    }
+
+    return nk_cs2atom(path_canon);
+}
+
+bool nkl_compileFileIr(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
-    // TODO: Canonicalize the file path before atomizing
-    NkAtom afile = nk_s2atom(file);
+    char cwd[NK_MAX_PATH];
+    nk_getCwd(cwd, sizeof(cwd));
+
+    NkAtom file = canonicalize(nk_cs2s(cwd), path);
+    if (!file) {
+        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
 
     TRY(nkl_ir_parse(
         &(NklIrParserData){
             .nkl = nkl,
-            .file = afile,
+            .file = file,
             .token_names = s_ir_tokens,
         },
         &mod->ir));
@@ -173,31 +208,37 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     return false;
 }
 
-bool nkl_compileFileAst(NklModule mod, NkString file) {
+bool nkl_compileFileAst(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
-    // TODO: Canonicalize the file path before atomizing
-    NkAtom afile = nk_s2atom(file);
+    char cwd[NK_MAX_PATH];
+    nk_getCwd(cwd, sizeof(cwd));
+
+    NkAtom file = canonicalize(nk_cs2s(cwd), path);
+    if (!file) {
+        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
 
     NklAstNodeArray nodes;
-    TRY(nickl_getAst(nkl, afile, &nodes));
+    TRY(nickl_getAst(nkl, file, &nodes));
 
     nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not finished");
     return false;
 }
 
-bool nkl_compileFileNkl(NklModule mod, NkString file) {
+bool nkl_compileFileNkl(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
 
     NklState nkl = mod->c->nkl;
 
-    (void)file;
+    (void)path;
     nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileNkl` is not implemented");
     return false;
 }
