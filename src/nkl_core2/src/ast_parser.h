@@ -2,10 +2,8 @@
 #define NKL_CORE_AST_PARSER_H_
 
 #include "nkl/common/ast.h"
-#include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
-#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,9 +12,6 @@ extern "C" {
 typedef struct {
     NklState nkl;
     NkAtom file;
-
-    NkString *err_str;
-    NklToken *err_token;
     char const **token_names;
 } NklAstParserData;
 

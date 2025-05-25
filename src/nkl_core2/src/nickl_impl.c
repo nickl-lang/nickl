@@ -220,29 +220,13 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
 
     // TODO: Cache ast
 
-    NkString err_str = {0};
-    NklToken err_token = {0};
-    if (!nkl_ast_parse(
-            &(NklAstParserData){
-                .nkl = nkl,
-                .file = file,
-                .err_str = &err_str,
-                .err_token = &err_token,
-                .token_names = s_ast_tokens,
-            },
-            out_nodes)) {
-        nickl_reportError(
-            nkl,
-            (NklSourceLocation){
-                .file = nk_atom2s(file),
-                .lin = err_token.lin,
-                .col = err_token.col,
-                .len = err_token.len,
-            },
-            NKS_FMT,
-            NKS_ARG(err_str));
-        return false;
-    }
+    TRY(nkl_ast_parse(
+        &(NklAstParserData){
+            .nkl = nkl,
+            .file = file,
+            .token_names = s_ast_tokens,
+        },
+        out_nodes));
 
     return true;
 }

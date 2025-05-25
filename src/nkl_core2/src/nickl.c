@@ -4,10 +4,8 @@
 #include "nickl_impl.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
-#include "nkl/common/token.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
-#include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -163,29 +161,13 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
     // TODO: Canonicalize the file path before atomizing
     NkAtom afile = nk_s2atom(file);
 
-    NklToken err_token = {0};
-    NkString err_str = {0};
-    if (!nkl_ir_parse(
-            &(NklIrParserData){
-                .nkl = nkl,
-                .file = afile,
-                .err_str = &err_str,
-                .err_token = &err_token,
-                .token_names = s_ir_tokens,
-            },
-            &mod->ir)) {
-        nickl_reportError(
-            nkl,
-            (NklSourceLocation){
-                .file = file,
-                .lin = err_token.lin,
-                .col = err_token.col,
-                .len = err_token.len,
-            },
-            NKS_FMT,
-            NKS_ARG(err_str));
-        return false;
-    }
+    TRY(nkl_ir_parse(
+        &(NklIrParserData){
+            .nkl = nkl,
+            .file = afile,
+            .token_names = s_ir_tokens,
+        },
+        &mod->ir));
 
     nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
     return false;

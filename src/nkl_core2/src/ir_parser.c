@@ -9,6 +9,7 @@
 #include "nkb/types.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
+#include "nkl/core/nickl.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
@@ -22,11 +23,13 @@
 
 NK_LOG_USE_SCOPE(ir_parser);
 
-#define TRY(STMT)               \
-    STMT;                       \
-    while (p->error_occurred) { \
-        return ret;             \
-    }
+#define TRY(STMT)                \
+    STMT;                        \
+    do {                         \
+        if (p->error_occurred) { \
+            return ret;          \
+        }                        \
+    } while (0)
 
 #define ACCEPT(ID) accept(p, (ID))
 #define EXPECT(ID) TRY(expect(p, (ID)))
@@ -48,19 +51,19 @@ NK_LOG_USE_SCOPE(ir_parser);
     } while (0)
 
 typedef struct {
+    NklState const nkl;
+    NkAtom const file;
     NkString const text;
     NklTokenArray const tokens;
     NkArena *const arena;
 
-    NkString *const err_str;
-    NklToken *const err_token;
-    bool error_occurred;
+    char const **const token_names;
 
-    char const **token_names;
-
-    NkIrSymbolDynArray *ir;
+    NkIrSymbolDynArray *const ir;
 
     NklToken const *cur_token;
+
+    bool error_occurred;
 
     NkArena scratch;
 
@@ -143,12 +146,16 @@ typedef struct {
 static Void const ret;
 
 static void vreportError(ParserState *p, char const *fmt, va_list ap) {
-    if (p->err_str) {
-        *p->err_str = nk_vtsprintf(p->arena, fmt, ap);
-    }
-    if (p->err_token) {
-        *p->err_token = *p->cur_token;
-    }
+    nickl_vreportError(
+        p->nkl,
+        (NklSourceLocation){
+            .file = nk_atom2s(p->file),
+            .lin = p->cur_token->lin,
+            .col = p->cur_token->col,
+            .len = p->cur_token->len,
+        },
+        fmt,
+        ap);
     p->error_occurred = true;
 }
 
@@ -1076,30 +1083,28 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
 
     usize const start_idx = out_syms->size;
 
+    NklState const nkl = data->nkl;
+    NkAtom const file = data->file;
+
     NkString text;
-    if (!nickl_getText(data->nkl, data->file, &text)) {
+    if (!nickl_getText(nkl, file, &text)) {
         return false;
     }
 
     NklTokenArray tokens;
-    if (!nickl_getTokensIr(data->nkl, data->file, &tokens)) {
+    if (!nickl_getTokensIr(nkl, file, &tokens)) {
         return false;
     }
 
     ParserState p = {
+        .nkl = nkl,
+        .file = file,
         .text = text,
         .tokens = tokens,
-        .arena = &data->nkl->arena,
-
-        .err_str = data->err_str,
-        .err_token = data->err_token,
-
+        .arena = &nkl->arena,
         .token_names = data->token_names,
-
         .ir = out_syms,
-
         .cur_token = p.tokens.data,
-
         .types = {.alloc = nk_arena_getAllocator(p.arena)},
     };
 

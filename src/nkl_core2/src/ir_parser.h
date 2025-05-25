@@ -2,9 +2,7 @@
 #define NKL_CORE_IR_PARSER_H_
 
 #include "nkb/ir.h"
-#include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
-#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,9 +11,6 @@ extern "C" {
 typedef struct {
     NklState nkl;
     NkAtom file;
-
-    NkString *err_str;
-    NklToken *err_token;
     char const **token_names;
 } NklIrParserData;
 

@@ -24,12 +24,11 @@ NK_LOG_USE_SCOPE(ast_parser);
     } while (0)
 
 typedef struct {
+    NklState const nkl;
+    NkAtom const file;
     NkString const text;
     NklTokenArray const tokens;
     NkArena *const arena;
-
-    NkString *const err_str;
-    NklToken *const err_token;
 
     char const **token_names;
 
@@ -38,22 +37,24 @@ typedef struct {
     NklToken const *cur_token;
 } ParserState;
 
-static i32 vreportError(ParserState *p, char const *fmt, va_list ap) {
-    i32 res = 0;
-    if (p->err_str) {
-        *p->err_str = nk_vtsprintf(p->arena, fmt, ap);
-        *p->err_token = *p->cur_token;
-    }
-    return res;
+static void vreportError(ParserState *p, char const *fmt, va_list ap) {
+    nickl_vreportError(
+        p->nkl,
+        (NklSourceLocation){
+            .file = nk_atom2s(p->file),
+            .lin = p->cur_token->lin,
+            .col = p->cur_token->col,
+            .len = p->cur_token->len,
+        },
+        fmt,
+        ap);
 }
 
-NK_PRINTF_LIKE(2) static i32 reportError(ParserState *p, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) static void reportError(ParserState *p, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    i32 res = vreportError(p, fmt, ap);
+    vreportError(p, fmt, ap);
     va_end(ap);
-
-    return res;
 }
 
 static bool on(ParserState const *p, u32 id) {
@@ -201,29 +202,28 @@ static bool parse(ParserState *p) {
 bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
     NK_LOG_TRC("%s", __func__);
 
+    NklState const nkl = data->nkl;
+    NkAtom const file = data->file;
+
     NkString text;
-    if (!nickl_getText(data->nkl, data->file, &text)) {
+    if (!nickl_getText(nkl, file, &text)) {
         return false;
     }
 
     NklTokenArray tokens;
-    if (!nickl_getTokensAst(data->nkl, data->file, &tokens)) {
+    if (!nickl_getTokensAst(nkl, file, &tokens)) {
         return false;
     }
 
     ParserState p = {
+        .nkl = nkl,
+        .file = file,
         .text = text,
         .tokens = tokens,
-        .arena = &data->nkl->arena,
-
-        .err_str = data->err_str,
-        .err_token = data->err_token,
-
+        .arena = &nkl->arena,
         .token_names = data->token_names,
-
-        .nodes = {.alloc = nk_arena_getAllocator(&data->nkl->arena)},
-
         .cur_token = p.tokens.data,
+        .nodes = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
     nkda_reserve(&p.nodes, 1000);
 
