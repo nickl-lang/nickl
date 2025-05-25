@@ -1,9 +1,10 @@
-#include "nkl/core/ir_parser.h"
+#include "ir_parser.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "ir_tokens.h"
+#include "nickl_impl.h"
 #include "nkb/ir.h"
 #include "nkb/types.h"
 #include "nkl/common/token.h"
@@ -171,7 +172,7 @@ static NkString curTokenStr(ParserState *p) {
 }
 
 static NkString escapedCurTokenStr(ParserState *p) {
-    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(&p->scratch))};
+    NkStringBuilder sb = (NkStringBuilder){.alloc = nk_arena_getAllocator(&p->scratch)};
     nks_escape(nksb_getStream(&sb), curTokenStr(p));
     return (NkString){NKS_INIT(sb)};
 }
@@ -294,7 +295,7 @@ static NkIrType parseType(ParserState *p) {
     }
 
     if (ACCEPT(NklIrToken_LBrace)) {
-        NkIrAggregateElemInfoDynArray elems = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
+        NkIrAggregateElemInfoDynArray elems = {.alloc = nk_arena_getAllocator(p->arena)};
         NkIrTypeKind kind = NkIrType_Aggregate;
 
         u32 offset = 0;
@@ -357,8 +358,7 @@ static NkIrType parseType(ParserState *p) {
         NkString const name_token_str = tokenStr(p, name_token);
         NkAtom const name = nk_s2atom(name_token_str);
 
-        for (usize i = 0; i < p->types.size; i++) {
-            NkIrParam const *rec = &p->types.data[i];
+        NK_ITERATE(NkIrParam const *, rec, p->types) {
             if (rec->name == name) {
                 return rec->type;
             }
@@ -387,7 +387,7 @@ static NkString parseString(ParserState *p) {
         char const *cstr = nk_tprintf(p->arena, NKS_FMT, NKS_ARG(str));
         return (NkString){cstr, str.size};
     } else {
-        NkStringBuilder sb = {NKSB_INIT(nk_arena_getAllocator(p->arena))};
+        NkStringBuilder sb = {.alloc = nk_arena_getAllocator(p->arena)};
         nks_unescape(nksb_getStream(&sb), str);
         if (nks_last(sb)) {
             nksb_appendNull(&sb);
@@ -424,9 +424,8 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
         case NkIrType_Aggregate: {
             EXPECT(NklIrToken_LBrace);
 
-            NkIrRelocDynArray relocs = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
-            for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
-                NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
+            NkIrRelocDynArray relocs = {.alloc = nk_arena_getAllocator(p->arena)};
+            NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                 usize offset = elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1 &&
                     (on(p, NklToken_String) || on(p, NklToken_EscapedString))) {
@@ -455,9 +454,8 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                             }));
                     } else {
                         TRY(NkIrRelocArray const relocs2 = parseConst(p, (u8 *)addr + offset, elem->type));
-                        for (usize ri = 0; ri < relocs2.size; ri++) {
-                            // TODO: Switch recursion to iteration to avoid merge?
-                            NkIrReloc const *reloc = &relocs2.data[ri];
+                        // TODO: Switch recursion to iteration to avoid merge?
+                        NK_ITERATE(NkIrReloc const *, reloc, relocs2) {
                             nkda_append(
                                 &relocs,
                                 ((NkIrReloc){
@@ -478,7 +476,7 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                 if (elem->count > 1) {
                     EXPECT(NklIrToken_RBracket);
                 }
-                if (elemi == type->aggr.size - 1) {
+                if (NK_INDEX(elem, type->aggr) == type->aggr.size - 1) {
                     ACCEPT(NklIrToken_Comma);
                 } else {
                     EXPECT(NklIrToken_Comma);
@@ -530,8 +528,7 @@ static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
         is_param = true;
         type = get_ptr_t(p);
     } else {
-        for (usize i = 0; i < p->proc_params.size; i++) {
-            NkIrParam const *param = &p->proc_params.data[i];
+        NK_ITERATE(NkIrParam const *, param, p->proc_params) {
             if (name == param->name) {
                 if (!type) {
                     if (param->type->kind == NkIrType_Numeric) {
@@ -677,7 +674,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
 static NkIrRefArray parseRefArray(ParserState *p) {
     NkIrRefArray ret = {0};
 
-    NkIrRefDynArray refs = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
+    NkIrRefDynArray refs = {.alloc = nk_arena_getAllocator(p->arena)};
 
     EXPECT(NklIrToken_LParen);
 
@@ -845,7 +842,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_LParen);
 
-    NkIrParamDynArray params = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
+    NkIrParamDynArray params = {.alloc = nk_arena_getAllocator(p->arena)};
 
     while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
         EXPECT(NklIrToken_Colon);
@@ -889,7 +886,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
     while (ACCEPT(NklToken_Newline)) {
     }
 
-    NkIrInstrDynArray instrs = {NKDA_INIT(nk_arena_getAllocator(p->arena))};
+    NkIrInstrDynArray instrs = {.alloc = nk_arena_getAllocator(p->arena)};
 
     while (!on(p, NklIrToken_RBrace) && !on(p, NklToken_Eof)) {
         TRY(NkIrInstr const instr = parseInstr(p));
@@ -1079,10 +1076,20 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
 
     usize const start_idx = out_syms->size;
 
+    NkString text;
+    if (!nickl_getText(data->nkl, data->file, &text)) {
+        return false;
+    }
+
+    NklTokenArray tokens;
+    if (!nickl_getTokensIr(data->nkl, data->file, &tokens)) {
+        return false;
+    }
+
     ParserState p = {
-        .text = data->text,
-        .tokens = data->tokens,
-        .arena = data->arena,
+        .text = text,
+        .tokens = tokens,
+        .arena = &data->nkl->arena,
 
         .err_str = data->err_str,
         .err_token = data->err_token,
@@ -1093,7 +1100,7 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
 
         .cur_token = p.tokens.data,
 
-        .types = {NKDA_INIT(nk_arena_getAllocator(p.arena))},
+        .types = {.alloc = nk_arena_getAllocator(p.arena)},
     };
 
     parse(&p);

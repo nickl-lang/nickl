@@ -336,7 +336,7 @@ bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
 
     bool ret;
     NK_PROF_FUNC() {
-        NklTokenDynArray tokens = {NKDA_INIT(nk_arena_getAllocator(data->arena))};
+        NklTokenDynArray tokens = {.alloc = nk_arena_getAllocator(data->arena)};
         nkda_reserve(&tokens, 1000);
 
         LexerState l = {

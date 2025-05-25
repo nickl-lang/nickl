@@ -3,7 +3,8 @@
 
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
-#include "ntk/arena.h"
+#include "nkl/core/nickl.h"
+#include "ntk/atom.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -11,9 +12,8 @@ extern "C" {
 #endif
 
 typedef struct {
-    NkString text;
-    NklTokenArray tokens;
-    NkArena *arena;
+    NklState nkl;
+    NkAtom file;
 
     NkString *err_str;
     NklToken *err_token;

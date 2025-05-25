@@ -1,10 +1,10 @@
 #include "nkl/core/nickl.h"
 
+#include "ir_parser.h"
 #include "nickl_impl.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/common/token.h"
-#include "nkl/core/ir_parser.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
@@ -90,7 +90,7 @@ NklModule nkl_newModule(NklCompiler c) {
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
         .c = c,
-        .ir = {NKDA_INIT(nk_arena_getAllocator(&nkl->arena))},
+        .ir = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
     return mod;
 }
@@ -160,19 +160,15 @@ bool nkl_compileFileIr(NklModule mod, NkString file) {
 
     NklState nkl = mod->c->nkl;
 
-    NkString text;
-    TRY(nickl_getText(nkl, nk_s2atom(file), &text));
-
-    NklTokenArray tokens;
-    TRY(nickl_getTokensIr(nkl, nk_s2atom(file), &tokens));
+    // TODO: Canonicalize the file path before atomizing
+    NkAtom afile = nk_s2atom(file);
 
     NklToken err_token = {0};
     NkString err_str = {0};
     if (!nkl_ir_parse(
             &(NklIrParserData){
-                .text = text,
-                .tokens = tokens,
-                .arena = &nkl->arena,
+                .nkl = nkl,
+                .file = afile,
                 .err_str = &err_str,
                 .err_token = &err_token,
                 .token_names = s_ir_tokens,
@@ -202,8 +198,11 @@ bool nkl_compileFileAst(NklModule mod, NkString file) {
 
     NklState nkl = mod->c->nkl;
 
+    // TODO: Canonicalize the file path before atomizing
+    NkAtom afile = nk_s2atom(file);
+
     NklAstNodeArray nodes;
-    TRY(nickl_getAst(nkl, nk_s2atom(file), &nodes));
+    TRY(nickl_getAst(nkl, afile, &nodes));
 
     nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not finished");
     return false;

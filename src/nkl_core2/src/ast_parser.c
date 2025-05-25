@@ -1,6 +1,7 @@
-#include "nkl/core/ast_parser.h"
+#include "ast_parser.h"
 
 #include "ast_tokens.h"
+#include "nickl_impl.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
@@ -200,17 +201,27 @@ static bool parse(ParserState *p) {
 bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
     NK_LOG_TRC("%s", __func__);
 
+    NkString text;
+    if (!nickl_getText(data->nkl, data->file, &text)) {
+        return false;
+    }
+
+    NklTokenArray tokens;
+    if (!nickl_getTokensAst(data->nkl, data->file, &tokens)) {
+        return false;
+    }
+
     ParserState p = {
-        .text = data->text,
-        .tokens = data->tokens,
-        .arena = data->arena,
+        .text = text,
+        .tokens = tokens,
+        .arena = &data->nkl->arena,
 
         .err_str = data->err_str,
         .err_token = data->err_token,
 
         .token_names = data->token_names,
 
-        .nodes = {NKDA_INIT(nk_arena_getAllocator(data->arena))},
+        .nodes = {.alloc = nk_arena_getAllocator(&data->nkl->arena)},
 
         .cur_token = p.tokens.data,
     };
@@ -224,8 +235,8 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
         nkl_ast_inspect(
             (NklSource){
                 .file = 0,
-                .text = data->text,
-                .tokens = data->tokens,
+                .text = text,
+                .tokens = tokens,
                 .nodes = {NK_SLICE_INIT(p.nodes)},
             },
             log);

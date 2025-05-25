@@ -28,7 +28,7 @@ bool nk_file_read(NkAllocator alloc, NkString filepath, NkString *out) {
 
         NkHandle file = nk_open(path.data, NkOpenFlags_Read);
         if (!nk_handleIsNull(file)) {
-            NkStringBuilder sb = {NKSB_INIT(alloc)};
+            NkStringBuilder sb = {.alloc = alloc};
             if (nksb_readFromStreamEx(&sb, nk_file_getStream(file), BUF_SIZE)) {
                 *out = (NkString){NKS_INIT(sb)};
                 ok = true;

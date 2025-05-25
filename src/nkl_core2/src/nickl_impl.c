@@ -1,8 +1,8 @@
 #include "nickl_impl.h"
 
+#include "ast_parser.h"
 #include "ast_tokens.h"
 #include "ir_tokens.h"
-#include "nkl/core/ast_parser.h"
 #include "nkl/core/lexer.h"
 #include "ntk/atom.h"
 #include "ntk/error.h"
@@ -220,19 +220,12 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
 
     // TODO: Cache ast
 
-    NkString text;
-    TRY(nickl_getText(nkl, file, &text));
-
-    NklTokenArray tokens;
-    TRY(nickl_getTokensAst(nkl, file, &tokens));
-
     NkString err_str = {0};
     NklToken err_token = {0};
     if (!nkl_ast_parse(
             &(NklAstParserData){
-                .text = text,
-                .tokens = tokens,
-                .arena = &nkl->arena,
+                .nkl = nkl,
+                .file = file,
                 .err_str = &err_str,
                 .err_token = &err_token,
                 .token_names = s_ast_tokens,
