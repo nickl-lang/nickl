@@ -10,7 +10,6 @@
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -153,33 +152,6 @@ bool nkl_compileFile(NklModule mod, NkString path) {
     }
 }
 
-static NkAtom canonicalize(NkString base, NkString path) {
-    // TODO: Do null termination in ntk?
-
-    NKSB_FIXED_BUFFER(sb, NK_MAX_PATH);
-
-    nksb_printf(&sb, NKS_FMT, NKS_ARG(path));
-    nksb_appendNull(&sb);
-
-    char const *path_nt = sb.data;
-
-    if (nk_pathIsRelative(path_nt)) {
-        nksb_clear(&sb);
-
-        nksb_printf(&sb, NKS_FMT "%c" NKS_FMT, NKS_ARG(base), NK_PATH_SEPARATOR, NKS_ARG(path));
-        nksb_appendNull(&sb);
-    }
-
-    NK_LOG_ERR("path_nt=%s", path_nt);
-
-    char path_canon[NK_MAX_PATH];
-    if (nk_fullPath(path_canon, path_nt) < 0) {
-        return 0;
-    }
-
-    return nk_cs2atom(path_canon);
-}
-
 bool nkl_compileFileIr(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
@@ -188,9 +160,12 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
     NklState nkl = mod->c->nkl;
 
     char cwd[NK_MAX_PATH];
-    nk_getCwd(cwd, sizeof(cwd));
+    if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
+        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
 
-    NkAtom file = canonicalize(nk_cs2s(cwd), path);
+    NkAtom const file = canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
         nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
@@ -216,9 +191,12 @@ bool nkl_compileFileAst(NklModule mod, NkString path) {
     NklState nkl = mod->c->nkl;
 
     char cwd[NK_MAX_PATH];
-    nk_getCwd(cwd, sizeof(cwd));
+    if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
+        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
 
-    NkAtom file = canonicalize(nk_cs2s(cwd), path);
+    NkAtom const file = canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
         nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;

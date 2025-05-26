@@ -8,6 +8,8 @@
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
+#include "ntk/path.h"
+#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 _Thread_local NklState s_nkl;
@@ -48,8 +50,7 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
     NkAllocator const alloc = nk_arena_getAllocator(&nkl->arena);
 
     if (!nk_file_read(alloc, nk_atom2s(file), out_text)) {
-        nickl_reportError(
-            nkl, (NklSourceLocation){0}, "failed to read file `%s`: %s", nk_atom2cs(file), nk_getLastErrorString());
+        nickl_reportError(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
         return false;
     }
 
@@ -232,8 +233,37 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
     return true;
 }
 
+NkAtom canonicalizePath(NkString base, NkString path) {
+    // TODO: Do null termination in ntk?
+
+    NKSB_FIXED_BUFFER(sb, NK_MAX_PATH);
+
+    nksb_printf(&sb, NKS_FMT, NKS_ARG(path));
+    nksb_appendNull(&sb);
+
+    char const *path_nt = sb.data;
+
+    if (nk_pathIsRelative(path_nt)) {
+        nksb_clear(&sb);
+
+        nksb_printf(&sb, NKS_FMT "%c" NKS_FMT, NKS_ARG(base), NK_PATH_SEPARATOR, NKS_ARG(path));
+        nksb_appendNull(&sb);
+    }
+
+    char path_canon[NK_MAX_PATH];
+    if (nk_fullPath(path_canon, path_nt) < 0) {
+        return 0;
+    }
+
+    return nk_cs2atom(path_canon);
+}
+
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
     NK_LOG_TRC("%s", __func__);
 
-    return 0;
+    // TODO: Add include search paths
+    (void)nkl;
+
+    NkString const base_dir = nk_path_getParent(nk_atom2s(base));
+    return canonicalizePath(base_dir, name);
 }

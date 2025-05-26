@@ -44,6 +44,7 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens);
 
 bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes);
 
+NkAtom canonicalizePath(NkString base, NkString path);
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
 
 #ifdef __cplusplus

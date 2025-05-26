@@ -14,6 +14,7 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
+#include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
@@ -50,20 +51,22 @@ NK_LOG_USE_SCOPE(ir_parser);
         }                                                                                                     \
     } while (0)
 
-typedef struct {
-    NklState const nkl;
-    NkAtom const file;
-    NkString const text;
-    NklTokenArray const tokens;
-    NkArena *const arena;
+typedef struct SourceInfo {
+    struct SourceInfo *next;
 
-    char const **const token_names;
-
-    NkIrSymbolDynArray *const ir;
+    NkAtom file;
+    NkString text;
 
     NklToken const *cur_token;
+} SourceInfo;
 
-    bool error_occurred;
+typedef struct {
+    NklState const nkl;
+    NkArena *const arena;
+    char const **const token_names;
+    NkIrSymbolDynArray *const ir;
+
+    SourceInfo *src;
 
     NkArena scratch;
 
@@ -76,6 +79,8 @@ typedef struct {
     NkIrParam proc_ret;
 
     NkIrParamDynArray types;
+
+    bool error_occurred;
 } ParserState;
 
 // TODO: Type ids are all zero
@@ -139,7 +144,6 @@ static NkIrType get_ptr_t(ParserState *p) {
 
 // TODO: Reuse some code between parsers?
 // TODO: Improve error message accuracy
-// TODO: Support includes
 
 typedef struct {
 } Void;
@@ -149,10 +153,10 @@ static void vreportError(ParserState *p, char const *fmt, va_list ap) {
     nickl_vreportError(
         p->nkl,
         (NklSourceLocation){
-            .file = nk_atom2s(p->file),
-            .lin = p->cur_token->lin,
-            .col = p->cur_token->col,
-            .len = p->cur_token->len,
+            .file = nk_atom2s(p->src->file),
+            .lin = p->src->cur_token->lin,
+            .col = p->src->cur_token->col,
+            .len = p->src->cur_token->len,
         },
         fmt,
         ap);
@@ -167,15 +171,15 @@ static NK_PRINTF_LIKE(2) void reportError(ParserState *p, char const *fmt, ...) 
 }
 
 static bool on(ParserState const *p, u32 id) {
-    return p->cur_token->id == id;
+    return p->src->cur_token->id == id;
 }
 
 static NkString tokenStr(ParserState *p, NklToken const *token) {
-    return nkl_getTokenStr(token, p->text);
+    return nkl_getTokenStr(token, p->src->text);
 }
 
 static NkString curTokenStr(ParserState *p) {
-    return tokenStr(p, p->cur_token);
+    return tokenStr(p, p->src->cur_token);
 }
 
 static NkString escapedCurTokenStr(ParserState *p) {
@@ -186,13 +190,13 @@ static NkString escapedCurTokenStr(ParserState *p) {
 
 static void getTokenImpl(ParserState *p) {
     nk_assert(!on(p, NklToken_Eof));
-    p->cur_token++;
+    p->src->cur_token++;
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_printf(log, "next token: \"");
         nks_escape(log, curTokenStr(p));
-        nk_printf(log, "\":%u", p->cur_token->id);
+        nk_printf(log, "\":%u", p->src->cur_token->id);
     }
 }
 
@@ -208,7 +212,7 @@ static bool accept(ParserState *p, u32 id) {
             NkStream log = nk_log_getStream();
             nk_printf(log, "accept \"");
             nks_escape(log, curTokenStr(p));
-            nk_printf(log, "\":%u", p->cur_token->id);
+            nk_printf(log, "\":%u", p->src->cur_token->id);
         }
 
         getTokenImpl(p);
@@ -218,7 +222,7 @@ static bool accept(ParserState *p, u32 id) {
 }
 
 static NklToken const *expect(ParserState *p, u32 id) {
-    NklToken const *ret = p->cur_token;
+    NklToken const *ret = p->src->cur_token;
     if (!ACCEPT(id)) {
         NkString const str = escapedCurTokenStr(p);
         ERROR(
@@ -371,7 +375,7 @@ static NkIrType parseType(ParserState *p) {
             }
         }
 
-        p->cur_token--;
+        p->src->cur_token--;
         ERROR("undefined type alias `" NKS_FMT "`", NKS_ARG(name_token_str));
     }
 
@@ -385,7 +389,7 @@ static NkString parseString(ParserState *p) {
         ERROR("string expected");
     }
 
-    u32 const token_id = p->cur_token->id;
+    u32 const token_id = p->src->cur_token->id;
 
     NkString const token_str = getToken(p);
     NkString const str = (NkString){token_str.data + 1, token_str.size - 2};
@@ -438,7 +442,7 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                     (on(p, NklToken_String) || on(p, NklToken_EscapedString))) {
                     TRY(NkString const str = parseString(p));
                     if (str.size + 1 != elem->count) {
-                        p->cur_token--;
+                        p->src->cur_token--;
                         ERROR("invalid string length: expected %u characters, got %zu", elem->count, str.size + 1);
                     }
                     memcpy((u8 *)addr + offset, str.data, elem->count); // TODO: Extra copy
@@ -551,12 +555,12 @@ static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
     }
 
     if (!type) {
-        p->cur_token--;
+        p->src->cur_token--;
         ERROR("type must be specified");
     }
 
     if (is_param && to_write) {
-        p->cur_token--;
+        p->src->cur_token--;
         ERROR("params are read-only");
     }
 
@@ -902,10 +906,6 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RBrace);
 
-    EXPECT(NklToken_Newline);
-    while (ACCEPT(NklToken_Newline)) {
-    }
-
     nkda_append(
         p->ir,
         ((NkIrSymbol){
@@ -968,10 +968,6 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         ERROR_EXPECT("type or constant");
     }
 
-    EXPECT(NklToken_Newline);
-    while (ACCEPT(NklToken_Newline)) {
-    }
-
     nkda_append(
         p->ir,
         ((NkIrSymbol){
@@ -1021,6 +1017,39 @@ static Void parseExtern(ParserState *p) {
     return ret;
 }
 
+static bool pushSource(ParserState *p, NkAtom file) {
+    NkString text;
+    if (!nickl_getText(p->nkl, file, &text)) {
+        p->error_occurred = true;
+        return false;
+    }
+
+    NklTokenArray tokens;
+    if (!nickl_getTokensIr(p->nkl, file, &tokens)) {
+        p->error_occurred = true;
+        return false;
+    }
+
+    nk_assert(tokens.size && nk_slice_last(tokens).id == NklToken_Eof && "ill-formed token stream");
+
+    SourceInfo *src = nk_arena_allocT(&p->scratch, SourceInfo);
+    *src = (SourceInfo){
+        .file = file,
+        .text = text,
+        .cur_token = tokens.data,
+    };
+    nk_list_push(p->src, src);
+
+    return true;
+}
+
+static void popSource(ParserState *p) {
+    nk_assert(p->src && "no source");
+    nk_list_pop(p->src);
+}
+
+static Void parse(ParserState *p);
+
 static Void parseSymbol(ParserState *p) {
     while (ACCEPT(NklToken_Newline)) {
     }
@@ -1028,7 +1057,7 @@ static Void parseSymbol(ParserState *p) {
     NkIrVisibility vis = NkIrVisibility_Hidden;
 
     if (ACCEPT(NklIrToken_extern)) {
-        return parseExtern(p);
+        TRY(parseExtern(p));
     }
 
     else if (ACCEPT(NklIrToken_type)) {
@@ -1045,17 +1074,20 @@ static Void parseSymbol(ParserState *p) {
                 .name = name,
                 .type = type,
             }));
-
-        return ret;
     }
 
     else if (ACCEPT(NklIrToken_include)) {
         TRY(NkString const name = parseString(p));
-        NkAtom const file = nickl_findFile(p->nkl, p->file, name);
+        NkAtom const file = nickl_findFile(p->nkl, p->src->file, name);
 
-        NK_LOG_ERR("found file=%s", nk_atom2cs(file));
+        if (!file) {
+            p->src->cur_token--;
+            ERROR("file `" NKS_FMT "` not found", NKS_ARG(name));
+        }
 
-        ERROR("TODO: include parsing unfinished");
+        TRY(pushSource(p, file));
+        TRY(parse(p));
+        popSource(p);
     }
 
     else {
@@ -1066,11 +1098,11 @@ static Void parseSymbol(ParserState *p) {
         }
 
         if (ACCEPT(NklIrToken_proc)) {
-            return parseProc(p, vis);
+            TRY(parseProc(p, vis));
         } else if (ACCEPT(NklIrToken_const)) {
-            return parseData(p, vis, NkIrData_ReadOnly);
+            TRY(parseData(p, vis, NkIrData_ReadOnly));
         } else if (ACCEPT(NklIrToken_data)) {
-            return parseData(p, vis, 0);
+            TRY(parseData(p, vis, 0));
         } else {
             ERROR_EXPECT("symbol");
         }
@@ -1084,8 +1116,6 @@ static Void parseSymbol(ParserState *p) {
 }
 
 static Void parse(ParserState *p) {
-    nk_assert(p->tokens.size && nk_slice_last(p->tokens).id == NklToken_Eof && "ill-formed token stream");
-
     while (!on(p, NklToken_Eof)) {
         TRY(parseSymbol(p));
     }
@@ -1099,31 +1129,18 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
     usize const start_idx = out_syms->size;
 
     NklState const nkl = data->nkl;
-    NkAtom const file = data->file;
-
-    NkString text;
-    if (!nickl_getText(nkl, file, &text)) {
-        return false;
-    }
-
-    NklTokenArray tokens;
-    if (!nickl_getTokensIr(nkl, file, &tokens)) {
-        return false;
-    }
 
     ParserState p = {
         .nkl = nkl,
-        .file = file,
-        .text = text,
-        .tokens = tokens,
         .arena = &nkl->arena,
         .token_names = data->token_names,
         .ir = out_syms,
-        .cur_token = p.tokens.data,
         .types = {.alloc = nk_arena_getAllocator(p.arena)},
     };
 
-    parse(&p);
+    if (pushSource(&p, data->file)) {
+        parse(&p);
+    }
 
     nk_arena_free(&p.scratch);
 
