@@ -22,7 +22,7 @@ NklState nkl_newState(void) {
     *nkl = (NklState_T){
         .arena = arena,
     };
-    nkl->lib_aliases.alloc = nk_arena_getAllocator(&nkl->arena);
+    // nkl->lib_aliases.alloc = nk_arena_getAllocator(&nkl->arena);
     return nkl;
 }
 
@@ -58,11 +58,12 @@ NklCompiler nkl_newCompiler(NklTargetTriple target) {
     NklState nkl = s_nkl;
 
     (void)target; // TODO: Use target triple
-    NklCompiler c = nk_arena_allocT(&nkl->arena, NklCompiler_T);
-    *c = (NklCompiler_T){
+    NklCompiler com = nk_arena_allocT(&nkl->arena, NklCompiler_T);
+    *com = (NklCompiler_T){
         .nkl = nkl,
+        .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
-    return c;
+    return com;
 }
 
 NklCompiler nkl_newCompilerHost(void) {
@@ -80,17 +81,18 @@ NklCompiler nkl_newCompilerHost(void) {
         }              \
     } while (0)
 
-NklModule nkl_newModule(NklCompiler c) {
+NklModule nkl_newModule(NklCompiler com) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(c);
+    TRY(com);
 
-    NklState nkl = c->nkl;
+    NklState nkl = com->nkl;
 
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
-        .c = c,
+        .com = com,
         .ir = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+        .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
     return mod;
 }
@@ -100,14 +102,14 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
 
     TRY(dst_mod);
 
-    NklState nkl = dst_mod->c->nkl;
+    NklState nkl = dst_mod->com->nkl;
 
     if (!src_mod) {
         nickl_reportError(nkl, (NklSourceLocation){0}, "src_mod is null");
         return false;
     }
 
-    if (dst_mod->c != src_mod->c) {
+    if (dst_mod->com != src_mod->com) {
         nickl_reportError(nkl, (NklSourceLocation){0}, "mixed modules from different compilers");
     }
 
@@ -115,17 +117,36 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     return false;
 }
 
-bool nkl_linkLibrary(NklModule dst_mod, NkString alias, NkString lib) {
+bool nkl_addLibraryAliasGlobal(NklCompiler com, NkString alias, NkString lib) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(dst_mod);
+    TRY(com);
 
-    NklState nkl = dst_mod->c->nkl;
+    NklState nkl = com->nkl;
 
     // TODO: Validate input
 
     nkda_append(
-        &nkl->lib_aliases,
+        &com->lib_aliases,
+        ((LibAlias){
+            .lib = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(lib)),
+            .alias = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(alias)),
+        }));
+
+    return true;
+}
+
+bool nkl_addLibraryAlias(NklModule dst_mod, NkString alias, NkString lib) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(dst_mod);
+
+    NklState nkl = dst_mod->com->nkl;
+
+    // TODO: Validate input
+
+    nkda_append(
+        &dst_mod->lib_aliases,
         ((LibAlias){
             .lib = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(lib)),
             .alias = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(alias)),
@@ -139,7 +160,7 @@ bool nkl_compileFile(NklModule mod, NkString path) {
 
     TRY(mod);
 
-    NklState nkl = mod->c->nkl;
+    NklState nkl = mod->com->nkl;
 
     NkString const ext = nk_path_getExtension(path);
 
@@ -164,7 +185,7 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
 
     TRY(mod);
 
-    NklState nkl = mod->c->nkl;
+    NklState nkl = mod->com->nkl;
 
     char cwd[NK_MAX_PATH];
     if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
@@ -180,7 +201,7 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
 
     TRY(nkl_ir_parse(
         &(NklIrParserData){
-            .nkl = nkl,
+            .mod = mod,
             .file = file,
             .token_names = s_ir_tokens,
         },
@@ -195,7 +216,7 @@ bool nkl_compileFileAst(NklModule mod, NkString path) {
 
     TRY(mod);
 
-    NklState nkl = mod->c->nkl;
+    NklState nkl = mod->com->nkl;
 
     char cwd[NK_MAX_PATH];
     if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
@@ -221,7 +242,7 @@ bool nkl_compileFileNkl(NklModule mod, NkString path) {
 
     TRY(mod);
 
-    NklState nkl = mod->c->nkl;
+    NklState nkl = mod->com->nkl;
 
     (void)path;
     nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileNkl` is not implemented");
@@ -233,7 +254,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     TRY(mod);
 
-    NklState nkl = mod->c->nkl;
+    NklState nkl = mod->com->nkl;
 
     (void)out_file;
     (void)kind;

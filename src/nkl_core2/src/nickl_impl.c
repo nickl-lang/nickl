@@ -270,8 +270,14 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
     return nickl_canonicalizePath(base_dir, name);
 }
 
-NkString nickl_translateLib(NklState nkl, NkString alias) {
-    NK_ITERATE(LibAlias const *, it, nkl->lib_aliases) {
+NkString nickl_translateLib(NklModule mod, NkString alias) {
+    NK_ITERATE(LibAlias const *, it, mod->lib_aliases) {
+        if (nks_equal(alias, it->alias)) {
+            return it->lib;
+        }
+    }
+
+    NK_ITERATE(LibAlias const *, it, mod->com->lib_aliases) {
         if (nks_equal(alias, it->alias)) {
             return it->lib;
         }

@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    NklState nkl;
+    NklModule mod;
     NkAtom file;
     char const **token_names;
 } NklIrParserData;

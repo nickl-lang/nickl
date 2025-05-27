@@ -61,7 +61,7 @@ typedef struct SourceInfo {
 } SourceInfo;
 
 typedef struct {
-    NklState const nkl;
+    NklModule const mod;
     NkArena *const arena;
     char const **const token_names;
     NkIrSymbolDynArray *const ir;
@@ -151,7 +151,7 @@ static Void const ret;
 
 static void vreportError(ParserState *p, char const *fmt, va_list ap) {
     nickl_vreportError(
-        p->nkl,
+        p->mod->com->nkl,
         (NklSourceLocation){
             .file = nk_atom2s(p->src->file),
             .lin = p->src->cur_token->lin,
@@ -968,7 +968,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 }
 
 static Void parseExtern(ParserState *p) {
-    TRY(NkString const lib_str = nickl_translateLib(p->nkl, parseString(p)));
+    TRY(NkString const lib_str = nickl_translateLib(p->mod, parseString(p)));
     NkAtom const lib = nk_s2atom(lib_str);
 
     TRY(NkAtom const sym_name = parseId(p));
@@ -991,13 +991,13 @@ static Void parseExtern(ParserState *p) {
 
 static bool pushSource(ParserState *p, NkAtom file) {
     NkString text;
-    if (!nickl_getText(p->nkl, file, &text)) {
+    if (!nickl_getText(p->mod->com->nkl, file, &text)) {
         p->error_occurred = true;
         return false;
     }
 
     NklTokenArray tokens;
-    if (!nickl_getTokensIr(p->nkl, file, &tokens)) {
+    if (!nickl_getTokensIr(p->mod->com->nkl, file, &tokens)) {
         p->error_occurred = true;
         return false;
     }
@@ -1050,7 +1050,7 @@ static Void parseSymbol(ParserState *p) {
 
     else if (ACCEPT(NklIrToken_include)) {
         TRY(NkString const name = parseString(p));
-        NkAtom const file = nickl_findFile(p->nkl, p->src->file, name);
+        NkAtom const file = nickl_findFile(p->mod->com->nkl, p->src->file, name);
 
         if (!file) {
             p->src->cur_token--;
@@ -1100,10 +1100,10 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
 
     usize const start_idx = out_syms->size;
 
-    NklState const nkl = data->nkl;
+    NklState nkl = data->mod->com->nkl;
 
     ParserState p = {
-        .nkl = nkl,
+        .mod = data->mod,
         .arena = &nkl->arena,
         .token_names = data->token_names,
         .ir = out_syms,

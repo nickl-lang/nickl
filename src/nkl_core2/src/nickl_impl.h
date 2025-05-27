@@ -14,27 +14,29 @@
 extern "C" {
 #endif
 
-typedef struct {
-    NkString lib;
-    NkString alias;
-} LibAlias;
-
 typedef struct NklState_T {
     struct NklState_T *next;
 
     NkArena arena;
     NklError *error;
-
-    NkDynArray(LibAlias) lib_aliases;
 } NklState_T;
+
+typedef struct {
+    NkString lib;
+    NkString alias;
+} LibAlias;
 
 typedef struct NklCompiler_T {
     NklState nkl;
+
+    NkDynArray(LibAlias) lib_aliases;
 } NklCompiler_T;
 
 typedef struct NklModule_T {
-    NklCompiler c;
+    NklCompiler com;
     NkIrSymbolDynArray ir;
+
+    NkDynArray(LibAlias) lib_aliases;
 } NklModule_T;
 
 extern _Thread_local NklState s_nkl;
@@ -55,7 +57,7 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes);
 NkAtom nickl_canonicalizePath(NkString base, NkString path);
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
 
-NkString nickl_translateLib(NklState nkl, NkString alias);
+NkString nickl_translateLib(NklModule mod, NkString alias);
 
 #ifdef __cplusplus
 }
