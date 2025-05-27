@@ -47,7 +47,7 @@ NK_EXPORT NklCompiler nkl_newCompilerHost(void);
 NK_EXPORT NklModule nkl_newModule(NklCompiler c);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
-NK_EXPORT bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library);
+NK_EXPORT bool nkl_linkLibrary(NklModule dst_mod, NkString alias, NkString lib);
 
 NK_EXPORT bool nkl_compileFile(NklModule mod, NkString path);
 NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString path);  // *.nkir

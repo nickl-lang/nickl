@@ -457,12 +457,11 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
         return;
     }
     switch (type->kind) {
-        case NkIrType_Union:
         case NkIrType_Aggregate:
             nk_printf(out, "{");
             NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                 if (NK_INDEX(elem, type->aggr)) {
-                    nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
+                    nk_printf(out, ", ");
                 }
                 usize offset = base_offset + elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {

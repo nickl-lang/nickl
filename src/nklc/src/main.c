@@ -72,6 +72,13 @@ static int run(NklState nkl, NkString in_file) {
     NklCompiler const c = nkl_newCompilerHost();
     NklModule const mod = nkl_newModule(c);
 
+    // TODO: Specify global aliases?
+
+    // TODO: Hardcoded lib names
+    nkl_linkLibrary(mod, nk_cs2s("c"), nk_cs2s("libc.so.6"));
+    nkl_linkLibrary(mod, nk_cs2s("m"), nk_cs2s("libm.so.6"));
+    nkl_linkLibrary(mod, nk_cs2s("pthread"), nk_cs2s("libpthread.so.0"));
+
     if (!nkl_compileFile(mod, in_file)) {
         printDiag(nkl);
         return 1;

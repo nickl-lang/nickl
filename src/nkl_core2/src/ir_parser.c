@@ -307,7 +307,6 @@ static NkIrType parseType(ParserState *p) {
 
     if (ACCEPT(NklIrToken_LBrace)) {
         NkIrAggregateElemInfoDynArray elems = {.alloc = nk_arena_getAllocator(p->arena)};
-        NkIrTypeKind kind = NkIrType_Aggregate;
 
         u32 offset = 0;
         u8 align = 1;
@@ -333,21 +332,7 @@ static NkIrType parseType(ParserState *p) {
             offset += type->size * count;
 
             if (!on(p, NklIrToken_RBrace)) {
-                if (kind) {
-                    if (kind == NkIrType_Aggregate) {
-                        EXPECT(NklIrToken_Comma);
-                    } else {
-                        EXPECT(NklIrToken_Pipe);
-                    }
-                } else {
-                    if (ACCEPT(NklIrToken_Comma)) {
-                        kind = NkIrType_Aggregate;
-                    } else if (ACCEPT(NklIrToken_Pipe)) {
-                        kind = NkIrType_Union;
-                    } else {
-                        ERROR_EXPECT("`,` or `|`"); // TODO: Actually take into account union type
-                    }
-                }
+                EXPECT(NklIrToken_Comma);
             }
         }
         u64 const size = nk_roundUpSafe(offset, align);
@@ -513,11 +498,6 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                 TRY(parseNumber(p, addr, token_str, type->num));
             }
 
-            break;
-        }
-
-        case NkIrType_Union: {
-            ERROR("TODO: parse union const");
             break;
         }
     }
@@ -988,15 +968,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 }
 
 static Void parseExtern(ParserState *p) {
-    TRY(NkString lib_str = parseString(p));
-    if (nks_equalCStr(lib_str, "c")) { // TODO: Hardcoded libc, implement lib aliases
-        lib_str = nk_cs2s("libc.so.6");
-    } else if (nks_equalCStr(lib_str, "m")) {
-        lib_str = nk_cs2s("libm.so.6");
-    } else if (nks_equalCStr(lib_str, "pthread")) {
-        lib_str = nk_cs2s("libpthread.so.0");
-    }
-
+    TRY(NkString const lib_str = nickl_translateLib(p->nkl, parseString(p)));
     NkAtom const lib = nk_s2atom(lib_str);
 
     TRY(NkAtom const sym_name = parseId(p));

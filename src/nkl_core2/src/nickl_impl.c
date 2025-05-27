@@ -5,10 +5,12 @@
 #include "ir_tokens.h"
 #include "nkl/core/lexer.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -233,7 +235,7 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
     return true;
 }
 
-NkAtom canonicalizePath(NkString base, NkString path) {
+NkAtom nickl_canonicalizePath(NkString base, NkString path) {
     // TODO: Do null termination in ntk?
 
     NKSB_FIXED_BUFFER(sb, NK_MAX_PATH);
@@ -265,5 +267,15 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
     (void)nkl;
 
     NkString const base_dir = nk_path_getParent(nk_atom2s(base));
-    return canonicalizePath(base_dir, name);
+    return nickl_canonicalizePath(base_dir, name);
+}
+
+NkString nickl_translateLib(NklState nkl, NkString alias) {
+    NK_ITERATE(LibAlias const *, it, nkl->lib_aliases) {
+        if (nks_equal(alias, it->alias)) {
+            return it->lib;
+        }
+    }
+
+    return alias;
 }

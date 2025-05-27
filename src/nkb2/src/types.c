@@ -2,6 +2,7 @@
 
 #include <float.h>
 
+#include "ntk/common.h"
 #include "ntk/string.h"
 
 void nkir_inspectType(NkIrType type, NkStream out) {
@@ -10,15 +11,13 @@ void nkir_inspectType(NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
-        case NkIrType_Union:
         case NkIrType_Aggregate:
             if (type->aggr.size) {
                 nk_printf(out, "{");
-                for (usize i = 0; i < type->aggr.size; i++) {
-                    if (i) {
-                        nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
+                NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                    if (NK_INDEX(elem, type->aggr)) {
+                        nk_printf(out, ", ");
                     }
-                    NkIrAggregateElemInfo const *elem = &type->aggr.data[i];
                     if (elem->count > 1) {
                         nk_printf(out, "[%" PRIu32 "]", elem->count);
                     }
@@ -75,22 +74,18 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
         return;
     }
     switch (type->kind) {
-        case NkIrType_Union: // TODO: Remember and print only active element of a union
         case NkIrType_Aggregate:
-            for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
-                if (elemi) {
-                    nk_printf(out, type->kind == NkIrType_Union ? " | " : ", ");
+            nk_printf(out, "{");
+            NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                if (NK_INDEX(elem, type->aggr)) {
+                    nk_printf(out, ", ");
                 }
-                NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
                 u8 *ptr = (u8 *)data + elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
                     nk_printf(out, "\"");
                     nks_escape(out, (NkString){(char const *)ptr, elem->count});
                     nk_printf(out, "\"");
                 } else {
-                    if (elemi == 0) {
-                        nk_printf(out, "{");
-                    }
                     if (elem->count > 1) {
                         nk_printf(out, "[");
                     }
@@ -104,11 +99,9 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                     if (elem->count > 1) {
                         nk_printf(out, "]");
                     }
-                    if (elemi == type->aggr.size - 1) {
-                        nk_printf(out, "}");
-                    }
                 }
             }
+            nk_printf(out, "}");
             break;
 
         case NkIrType_Numeric:

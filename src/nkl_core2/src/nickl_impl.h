@@ -7,17 +7,25 @@
 #include "nkl/common/token.h"
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
+#include "ntk/dyn_array.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef struct {
+    NkString lib;
+    NkString alias;
+} LibAlias;
+
 typedef struct NklState_T {
     struct NklState_T *next;
 
     NkArena arena;
     NklError *error;
+
+    NkDynArray(LibAlias) lib_aliases;
 } NklState_T;
 
 typedef struct NklCompiler_T {
@@ -44,8 +52,10 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens);
 
 bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes);
 
-NkAtom canonicalizePath(NkString base, NkString path);
+NkAtom nickl_canonicalizePath(NkString base, NkString path);
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
+
+NkString nickl_translateLib(NklState nkl, NkString alias);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,7 @@
 #include "nkl/common/diagnostics.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
@@ -20,8 +21,8 @@ NklState nkl_newState(void) {
     NklState nkl = nk_arena_allocT(&arena, NklState_T);
     *nkl = (NklState_T){
         .arena = arena,
-        .error = NULL,
     };
+    nkl->lib_aliases.alloc = nk_arena_getAllocator(&nkl->arena);
     return nkl;
 }
 
@@ -114,17 +115,23 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     return false;
 }
 
-bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library) {
+bool nkl_linkLibrary(NklModule dst_mod, NkString alias, NkString lib) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(dst_mod);
 
     NklState nkl = dst_mod->c->nkl;
 
-    (void)name;
-    (void)library;
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkLibrary` is not implemented");
-    return false;
+    // TODO: Validate input
+
+    nkda_append(
+        &nkl->lib_aliases,
+        ((LibAlias){
+            .lib = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(lib)),
+            .alias = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(alias)),
+        }));
+
+    return true;
 }
 
 bool nkl_compileFile(NklModule mod, NkString path) {
@@ -165,7 +172,7 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
         return false;
     }
 
-    NkAtom const file = canonicalizePath(nk_cs2s(cwd), path);
+    NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
         nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
@@ -196,7 +203,7 @@ bool nkl_compileFileAst(NklModule mod, NkString path) {
         return false;
     }
 
-    NkAtom const file = canonicalizePath(nk_cs2s(cwd), path);
+    NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
         nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
