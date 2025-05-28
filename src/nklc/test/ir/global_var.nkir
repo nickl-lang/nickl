@@ -1,0 +1,43 @@
+extern "c" printf
+
+data g_value :i64
+proc getValue() :i64 {
+    load g_value -> :i64 %val
+    ret %val
+}
+proc setValue(:i64 %val) {
+    store %val -> g_value
+    ret
+}
+
+const c_value :i64 42
+proc writeValue(:i64 %pval) {
+    load c_value -> :i64 %val
+    store :i64 %val -> %pval
+    ret
+}
+
+proc printValue() {
+    call getValue, () -> :i64 %val
+    call printf, ("%zi\n", ..., :i64 %val) -> :i32
+    ret
+}
+
+pub proc _entry() {
+    call printValue, ()
+
+    call setValue, (24)
+    call printValue, ()
+
+    call writeValue, (g_value)
+    call printValue, ()
+
+    ret
+}
+
+/* @output
+0
+24
+42
+
+@endoutput */

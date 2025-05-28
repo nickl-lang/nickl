@@ -259,7 +259,7 @@ NK_PRINTF_LIKE(2) NkString nk_tsprintf(NkArena *arena, char const *fmt, ...) {
 }
 
 NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap) {
-    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(nk_arena_getAllocator(arena))};
+    NkStringBuilder sb = (NkStringBuilder){.alloc = nk_arena_getAllocator(arena)};
     nksb_vprintf(&sb, fmt, ap);
     nksb_appendNull(&sb);
     nk_arena_pop(arena, sb.capacity - sb.size);

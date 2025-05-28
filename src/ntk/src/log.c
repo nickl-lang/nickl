@@ -40,17 +40,23 @@ static char const *c_log_level_map[] = {
     "trace",
 };
 
+#define LOG_BUFFER_SIZE 4096
+
 typedef struct {
+    NkFileStreamBuf stream_buf;
     NkStream out;
+
     i64 start_time;
     NkLogLevel log_level;
     NkHandle mtx;
     usize msg_count;
-    bool initialized;
     bool to_color;
+    bool initialized;
+
+    char buf[LOG_BUFFER_SIZE];
 } LoggerState;
 
-static LoggerState s_logger;
+static LoggerState s_log;
 
 static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
     usize i = 0;
@@ -63,7 +69,7 @@ static NkLogLevel parseEnvLogLevel(char const *env_log_level) {
 }
 
 bool nk_log_check(NkLogLevel log_level) {
-    return s_logger.initialized && log_level <= s_logger.log_level;
+    return s_log.initialized && log_level <= s_log.log_level;
 }
 
 void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...) {
@@ -76,52 +82,58 @@ void nk_log_write(NkLogLevel log_level, char const *scope, char const *fmt, ...)
 }
 
 void nk_log_vwrite(NkLogLevel log_level, char const *scope, char const *fmt, va_list ap) {
-    NkStream const out = nk_log_streamOpen(log_level, scope);
-    nk_vprintf(out, fmt, ap);
-    nk_log_streamClose(out);
+    nk_log_streamOpen(log_level, scope);
+    nk_vprintf(s_log.out, fmt, ap);
+    nk_log_streamClose();
 }
 
-NkStream nk_log_streamOpen(NkLogLevel log_level, char const *scope) {
+void nk_log_streamOpen(NkLogLevel log_level, char const *scope) {
     i64 const now = nk_now_ns();
-    f64 const ts = (now - s_logger.start_time) * 1e-9;
+    f64 const ts = (now - s_log.start_time) * 1e-9;
 
-    NkStream const out = s_logger.out;
+    nk_mutex_lock(s_log.mtx);
 
-    nk_mutex_lock(s_logger.mtx);
-
-    if (s_logger.to_color) {
-        nk_printf(out, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
+    if (s_log.to_color) {
+        nk_printf(s_log.out, NK_TERM_COLOR_NONE "%s", c_color_map[log_level]);
     }
-
-    nk_printf(out, "%04zu %lf %s %s ", ++s_logger.msg_count, ts, c_log_level_map[log_level], scope);
-
-    return out;
+    nk_printf(s_log.out, "%04zu %lf %s %s ", ++s_log.msg_count, ts, c_log_level_map[log_level], scope);
 }
 
-void nk_log_streamClose(NkStream out) {
-    if (s_logger.to_color) {
-        nk_printf(out, NK_TERM_COLOR_NONE);
+void nk_log_streamClose(void) {
+    if (s_log.to_color) {
+        nk_printf(s_log.out, NK_TERM_COLOR_NONE);
     }
+    nk_printf(s_log.out, "\n");
+    nk_stream_flush(s_log.out);
 
-    nk_printf(out, "\n");
-
-    nk_mutex_unlock(s_logger.mtx);
+    nk_mutex_unlock(s_log.mtx);
 }
 
-void nk_log_injectStream(NkStream out) {
-    nk_mutex_lock(s_logger.mtx);
-    s_logger.out = out;
-    nk_mutex_unlock(s_logger.mtx);
+NkStream nk_log_getStream() {
+    return s_log.out;
+}
+
+void nk_log_setStream(NkStream out) {
+    nk_mutex_lock(s_log.mtx);
+    s_log.out = out;
+    nk_mutex_unlock(s_log.mtx);
 }
 
 void nk_log_init(NkLogOptions opt) {
     NK_PROF_FUNC() {
         char const *env_log_level = getenv(ENV_VAR);
-        s_logger = (LoggerState){
-            .out = nk_file_getStream(nk_stderr()),
+        s_log = (LoggerState){
+            .stream_buf =
+                {
+                    .file = nk_stderr(),
+                    .buf = s_log.buf,
+                    .size = LOG_BUFFER_SIZE,
+                },
+            .out = nk_file_getBufferedWriteStream(&s_log.stream_buf),
+
             .start_time = nk_now_ns(),
             .log_level = env_log_level ? parseEnvLogLevel(env_log_level) : opt.log_level,
-            .mtx = nk_mutex_alloc(),
+            .mtx = nk_mutex_alloc(NkMutex_Recursive),
             .to_color =
                 opt.color_mode == NkLogColorMode_Always || (opt.color_mode == NkLogColorMode_Auto && nk_isatty(2)),
             .initialized = true,

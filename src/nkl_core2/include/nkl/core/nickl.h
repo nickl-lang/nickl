@@ -44,15 +44,17 @@ NK_EXPORT void nkl_popState(void);
 NK_EXPORT NklCompiler nkl_newCompiler(NklTargetTriple target);
 NK_EXPORT NklCompiler nkl_newCompilerHost(void);
 
-NK_EXPORT NklModule nkl_newModule(NklCompiler c);
+NK_EXPORT NklModule nkl_newModule(NklCompiler com);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
-NK_EXPORT bool nkl_linkLibrary(NklModule dst_mod, NkString name, NkString library);
 
-NK_EXPORT bool nkl_compileFile(NklModule mod, NkString file);
-NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString file);  // *.nkir
-NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString file); // *.nkst
-NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString file); // *.nkl
+NK_EXPORT bool nkl_addLibraryAliasGlobal(NklCompiler com, NkString alias, NkString lib);
+NK_EXPORT bool nkl_addLibraryAlias(NklModule dst_mod, NkString alias, NkString lib);
+
+NK_EXPORT bool nkl_compileFile(NklModule mod, NkString path);
+NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString path);  // *.nkir
+NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString path); // *.nkst
+NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString path); // *.nkl
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 

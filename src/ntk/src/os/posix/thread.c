@@ -10,19 +10,25 @@ NK_POOL_DEFINE(MutexPool, pthread_mutex_t);
 static MutexPool g_mutex_pool;
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-NkHandle nk_mutex_alloc(void) {
+NkHandle nk_mutex_alloc(i32 flags) {
     pthread_mutex_lock(&g_mutex);
     pthread_mutex_t *mutex = MutexPool_alloc(&g_mutex_pool);
     pthread_mutex_unlock(&g_mutex);
 
-    pthread_mutex_init(mutex, NULL);
-    return handle_fromNative(mutex);
+    pthread_mutexattr_t attr = {0};
+    pthread_mutexattr_init(&attr);
+    if (flags & NkMutex_Recursive) {
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    }
+
+    pthread_mutex_init(mutex, &attr);
+    return native2handle(mutex);
 }
 
 i32 nk_mutex_free(NkHandle h_mutex) {
-    nk_assert(!nk_handleIsZero(h_mutex) && "Using uninitialized mutex");
+    nk_assert(!nk_handleIsNull(h_mutex) && "Using uninitialized mutex");
 
-    pthread_mutex_t *mutex = handle_toNative(h_mutex);
+    pthread_mutex_t *mutex = handle2native(h_mutex);
     i32 res = pthread_mutex_destroy(mutex);
 
     pthread_mutex_lock(&g_mutex);
@@ -33,11 +39,11 @@ i32 nk_mutex_free(NkHandle h_mutex) {
 }
 
 i32 nk_mutex_lock(NkHandle h_mutex) {
-    nk_assert(!nk_handleIsZero(h_mutex) && "Using uninitialized mutex");
-    return pthread_mutex_lock(handle_toNative(h_mutex));
+    nk_assert(!nk_handleIsNull(h_mutex) && "Using uninitialized mutex");
+    return pthread_mutex_lock(handle2native(h_mutex));
 }
 
 i32 nk_mutex_unlock(NkHandle h_mutex) {
-    nk_assert(!nk_handleIsZero(h_mutex) && "Using uninitialized mutex");
-    return pthread_mutex_unlock(handle_toNative(h_mutex));
+    nk_assert(!nk_handleIsNull(h_mutex) && "Using uninitialized mutex");
+    return pthread_mutex_unlock(handle2native(h_mutex));
 }

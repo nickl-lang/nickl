@@ -1,0 +1,61 @@
+extern "c" $printf
+
+pub proc _entry(:f32 %x, :f32 %y) :i16 {
+
+@start
+    nop
+
+    ret
+    ret 42
+    ret :i32 42
+
+    jmp      @start
+    jmpz  1, @start
+    jmpnz 1, @start
+
+    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %a
+
+    store 1 -> 1
+    load  1 -> :i32 %a
+
+    alloc :i32 -> :i32 %a
+
+    mov :i64 x  -> :i64 %a
+
+    ext :i8 1   -> :i32 %a
+    trunc 1     -> :i32 %a
+    fp2i :f32 1 -> :i32 %a
+    i2fp 1      -> :f32 %a
+
+    add %x, 1          -> %a
+    sub %y, %x         -> %a
+    mul 3.14, 1        -> %a
+    div :f32 1.0, 3.14 -> %a
+    mod 1, 1           -> %a
+
+    and 1, 1 -> %b
+    or  1, 1 -> %b
+    xor 1, 1 -> %b
+    lsh 1, 1 -> :i32 %b
+    rsh 1, 1 -> :i32 %b
+
+    cmp eq 1, 1 -> %b
+    cmp ne 1, 1 -> %b
+    cmp lt 1, 1 -> %b
+    cmp le 1, 1 -> :i32 %b
+    cmp gt 1, 1 -> :i32 %b
+    cmp ge 1, 1 -> :i32 %b
+
+    comment "This is a comment"
+
+}
+
+local const one 123
+pub data two :i32 42
+data three :i64
+const four :f32 3.14
+const five "a string"
+
+/* @retcode
+0
+@endretcode */

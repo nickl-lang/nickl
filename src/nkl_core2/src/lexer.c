@@ -18,13 +18,13 @@ typedef struct {
     NkArena *const arena;
     NkString *const err_str;
 
-    char const **const keywords;
-    char const **const operators;
-    char const *const tag_prefixes;
-
     u32 const first_keyword_id;
     u32 const first_operator_id;
     u32 const first_tag_id;
+
+    char const **const keywords;
+    char const **const operators;
+    char const **const tag_prefixes;
 
     u32 pos;
     u32 lin;
@@ -95,26 +95,27 @@ static void discard(LexerState *l, NklToken *token) {
 }
 
 static void skipSpaces(LexerState *l) {
-    while (onSpace(l, 0)) {
-        advance(l, 1);
+    // TODO: Properly handle backslash in the source
+    while ((onSpace(l, 0) || (on(l, '\\', 0) && on(l, '\n', 1))) && !on(l, '\n', 0)) {
+        if (on(l, '\\', 0) && on(l, '\n', 1)) {
+            advance(l, 2);
+        } else {
+            advance(l, 1);
+        }
     }
 }
 
-static i32 vreportError(LexerState *l, char const *fmt, va_list ap) {
-    i32 res = 0;
+static void vreportError(LexerState *l, char const *fmt, va_list ap) {
     if (l->err_str) {
         *l->err_str = nk_vtsprintf(l->arena, fmt, ap);
     }
-    return res;
 }
 
-NK_PRINTF_LIKE(2) static i32 reportError(LexerState *l, char const *fmt, ...) {
+static NK_PRINTF_LIKE(2) void reportError(LexerState *l, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    i32 res = vreportError(l, fmt, ap);
+    vreportError(l, fmt, ap);
     va_end(ap);
-
-    return res;
 }
 
 static NklToken scan(LexerState *l) {
@@ -156,6 +157,14 @@ static NklToken scan(LexerState *l) {
 
     if (!chr(l, 0)) {
         token.id = NklToken_Eof;
+        return token;
+    }
+
+    if (on(l, '\n', 0)) {
+        while (on(l, '\n', 0)) {
+            accept(l, &token, 1);
+        }
+        token.id = NklToken_Newline;
         return token;
     }
 
@@ -273,8 +282,9 @@ static NklToken scan(LexerState *l) {
     }
 
     {
-        char const *it = l->tag_prefixes;
-        for (; it && *it && !(on(l, *it, 0) && onAlphaOrUscr(l, 1)); it++) {
+        // TODO: Allow multicharacter tags
+        char const **it = l->tag_prefixes;
+        for (; it && *it && !(on(l, **it, 0) && onAlphaOrUscr(l, 1)); it++) {
         }
 
         if (it && *it) {
@@ -326,7 +336,7 @@ bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
 
     bool ret;
     NK_PROF_FUNC() {
-        NklTokenDynArray tokens = {NKDA_INIT(nk_arena_getAllocator(data->arena))};
+        NklTokenDynArray tokens = {.alloc = nk_arena_getAllocator(data->arena)};
         nkda_reserve(&tokens, 1000);
 
         LexerState l = {
@@ -334,13 +344,13 @@ bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
             .arena = data->arena,
             .err_str = data->err_str,
 
-            .keywords = data->keywords,
-            .operators = data->operators,
-            .tag_prefixes = data->tag_prefixes,
-
             .first_keyword_id = data->keywords_base + 1,
             .first_operator_id = data->operators_base + 1,
             .first_tag_id = data->tags_base + 1,
+
+            .keywords = data->tokens + l.first_keyword_id,
+            .operators = data->tokens + l.first_operator_id,
+            .tag_prefixes = data->tokens + l.first_tag_id,
 
             .pos = 0,
             .lin = 1,

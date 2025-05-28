@@ -63,23 +63,22 @@ typedef enum {
     NkIrArg_Ref,
     NkIrArg_RefArray,
     NkIrArg_Label,
-    NkIrArg_RelLabel,
+    NkIrArg_LabelRel,
     NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
     NkIrArg_String,
-    NkIrArg_Idx,
 } NkIrArgKind;
 
 typedef NkSlice(NkIrRef const) NkIrRefArray;
+typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
 typedef struct {
     union {
         NkIrRef ref;       // Ref
         NkIrRefArray refs; // RefArray
         NkAtom label;      // Label
-        i32 offset;        // RelLabel
+        i32 offset;        // LabelRel
         NkIrType type;     // Type
         NkString str;      // String
-        u32 idx;           // Idx
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -98,9 +97,8 @@ typedef enum {
     NkIrSymbol_Proc,
 } NkIrSymbolKind;
 
-// TODO: NkIrExtern will probably only be used in bytecode translation, think whether we need it as a symbol.
 typedef struct {
-    void *addr;
+    NkAtom lib;
 } NkIrExtern;
 
 typedef struct {
@@ -109,6 +107,7 @@ typedef struct {
 } NkIrReloc;
 
 typedef NkSlice(NkIrReloc const) NkIrRelocArray;
+typedef NkDynArray(NkIrReloc) NkIrRelocDynArray;
 
 typedef enum {
     NkIrData_ReadOnly = 1 << 0,
@@ -127,6 +126,7 @@ typedef struct {
 } NkIrParam;
 
 typedef NkSlice(NkIrParam const) NkIrParamArray;
+typedef NkDynArray(NkIrParam) NkIrParamDynArray;
 
 typedef enum {
     NkIrProc_Variadic = 1 << 0,
@@ -134,10 +134,8 @@ typedef enum {
 
 typedef struct {
     NkIrParamArray params;
-    NkIrType ret_type;
+    NkIrParam ret;
     NkIrInstrArray instrs;
-    NkString file;
-    u32 line;
     NkIrProcFlags flags;
 } NkIrProc;
 
@@ -170,6 +168,19 @@ typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 
 typedef NkIrSymbolArray NkIrModule;
 
+typedef enum {
+    NkIrLabel_Abs,
+    NkIrLabel_Rel,
+} NkIrLabelKind;
+
+typedef struct {
+    union {
+        NkAtom name;
+        i32 offset;
+    };
+    NkIrLabelKind kind;
+} NkIrLabel;
+
 /// Main
 
 void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
@@ -184,15 +195,20 @@ NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
 
 NkIrRef nkir_makeVariadicMarker();
 
+/// Labels
+
+NkIrLabel nkir_makeLabelAbs(NkAtom name);
+NkIrLabel nkir_makeLabelRel(i32 offset);
+
 /// Codegen
 
 NkIrInstr nkir_make_nop();
 
 NkIrInstr nkir_make_ret(NkIrRef arg);
 
-NkIrInstr nkir_make_jmp(NkAtom label);
-NkIrInstr nkir_make_jmpz(NkIrRef cond, NkAtom label);
-NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkAtom label);
+NkIrInstr nkir_make_jmp(NkIrLabel label);
+NkIrInstr nkir_make_jmpz(NkIrRef cond, NkIrLabel label);
+NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label);
 
 NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
@@ -209,8 +225,6 @@ NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type);
 
 NkIrInstr nkir_make_label(NkAtom label);
 
-NkIrInstr nkir_make_file(NkString file);
-NkIrInstr nkir_make_line(u32 line);
 NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
@@ -227,10 +241,10 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
 
 /// Inspection
 
-void nkir_inspectModule(NkIrModule m, NkStream out);
-void nkir_inspectSymbol(NkIrSymbol const *sym, NkStream out);
-void nkir_inspectInstr(NkIrInstr instr, NkStream out);
-void nkir_inspectRef(NkIrRef ref, NkStream out);
+void nkir_inspectModule(NkStream out, NkIrModule m);
+void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym);
+void nkir_inspectInstr(NkStream out, NkIrInstr instr);
+void nkir_inspectRef(NkStream out, NkIrRef ref);
 
 /// Validation
 

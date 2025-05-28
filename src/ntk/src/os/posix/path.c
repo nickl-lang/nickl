@@ -13,7 +13,7 @@ i32 nk_fullPath(char *buf, char const *path) {
 }
 
 i32 nk_getCwd(char *buf, usize size) {
-    return getcwd(buf, size) ? -1 : 0;
+    return getcwd(buf, size) ? 0 : -1;
 }
 
 bool nk_pathIsRelative(char const *path) {

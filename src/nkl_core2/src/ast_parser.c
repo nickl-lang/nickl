@@ -1,6 +1,7 @@
-#include "nkl/core/ast_parser.h"
+#include "ast_parser.h"
 
 #include "ast_tokens.h"
+#include "nickl_impl.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
@@ -12,9 +13,8 @@
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 
-NK_LOG_USE_SCOPE(parser);
+NK_LOG_USE_SCOPE(ast_parser);
 
 #define TRY(EXPR)         \
     do {                  \
@@ -24,75 +24,66 @@ NK_LOG_USE_SCOPE(parser);
     } while (0)
 
 typedef struct {
+    NklState const nkl;
+    NkAtom const file;
     NkString const text;
     NklTokenArray const tokens;
     NkArena *const arena;
-
-    NkString *const err_str;
-    NklToken *const err_token;
 
     char const **token_names;
 
     NklAstNodeDynArray nodes;
 
-    u32 cur_token_idx;
+    NklToken const *cur_token;
 } ParserState;
 
-static NklToken const *curToken(ParserState const *p) {
-    return &p->tokens.data[p->cur_token_idx];
+static void vreportError(ParserState *p, char const *fmt, va_list ap) {
+    nickl_vreportError(
+        p->nkl,
+        (NklSourceLocation){
+            .file = nk_atom2s(p->file),
+            .lin = p->cur_token->lin,
+            .col = p->cur_token->col,
+            .len = p->cur_token->len,
+        },
+        fmt,
+        ap);
 }
 
-static i32 vreportError(ParserState *p, char const *fmt, va_list ap) {
-    i32 res = 0;
-    if (p->err_str) {
-        *p->err_str = nk_vtsprintf(p->arena, fmt, ap);
-        *p->err_token = *curToken(p);
-    }
-    return res;
-}
-
-NK_PRINTF_LIKE(2) static i32 reportError(ParserState *p, char const *fmt, ...) {
+NK_PRINTF_LIKE(2) static void reportError(ParserState *p, char const *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    i32 res = vreportError(p, fmt, ap);
+    vreportError(p, fmt, ap);
     va_end(ap);
-
-    return res;
 }
 
 static bool on(ParserState const *p, u32 id) {
-    return curToken(p)->id == id;
+    return p->cur_token->id == id;
 }
 
 static void getToken(ParserState *p) {
     nk_assert(!on(p, NklToken_Eof));
-    p->cur_token_idx++;
 
-    // TODO: Simplify stream logging
-#ifdef ENABLE_LOGGING
-    if (nk_log_check(NkLogLevel_Debug)) {
-        NkStream log;
-        NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-            nk_printf(log, "next token: \"");
-            nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-            nk_printf(log, "\":%u", curToken(p)->id);
-        }
+    do {
+        p->cur_token++;
+    } while (on(p, NklToken_Newline));
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "next token: \"");
+        nks_escape(log, nkl_getTokenStr(p->cur_token, p->text));
+        nk_printf(log, "\":%u", p->cur_token->id);
     }
-#endif // ENABLE_LOGGING
 }
 
 static bool accept(ParserState *p, u32 id) {
     if (on(p, id)) {
-#ifdef ENABLE_LOGGING
-        if (nk_log_check(NkLogLevel_Debug)) {
-            NkStream log;
-            NK_DEFER_LOOP(log = nk_log_streamOpen(NkLogLevel_Debug, _nk_log_scope), nk_log_streamClose(log)) {
-                nk_printf(log, "accept \"");
-                nks_escape(log, nkl_getTokenStr(curToken(p), p->text));
-                nk_printf(log, "\":%u", curToken(p)->id);
-            }
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "accept \"");
+            nks_escape(log, nkl_getTokenStr(p->cur_token, p->text));
+            nk_printf(log, "\":%u", p->cur_token->id);
         }
-#endif // ENABLE_LOGGING
 
         getToken(p);
         return true;
@@ -102,7 +93,7 @@ static bool accept(ParserState *p, u32 id) {
 
 static bool expect(ParserState *p, u32 id) {
     if (!accept(p, id)) {
-        NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+        NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
         reportError(
             p,
             "expected `%s` before `" NKS_FMT "`",
@@ -121,6 +112,7 @@ static bool parseNodeList(ParserState *p, NklAstNode *node) {
         TRY(parseNode(p));
         node->arity++;
     }
+
     node->total_children = p->nodes.size - old_count;
     return true;
 }
@@ -129,7 +121,7 @@ static NklAstNode *pushNode(ParserState *p) {
     nkda_append(
         &p->nodes,
         ((NklAstNode){
-            .token_idx = p->cur_token_idx,
+            .token_idx = p->cur_token - p->tokens.data,
         }));
     return &nk_slice_last(p->nodes);
 }
@@ -140,16 +132,16 @@ static bool parseNode(ParserState *p) {
     if (accept(p, NklAstToken_LParen)) {
         if (!accept(p, NklAstToken_RParen)) {
             if (on(p, NklToken_Id)) {
-                NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+                NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
                 node->id = nk_s2atom(token_str);
                 getToken(p);
             } else if (on(p, NklToken_String)) {
-                char const *data = p->text.data + curToken(p)->pos + 1;
-                usize const len = curToken(p)->len - 2;
+                char const *data = p->text.data + p->cur_token->pos + 1;
+                usize const len = p->cur_token->len - 2;
                 node->id = nk_s2atom((NkString){data, len});
                 getToken(p);
             } else {
-                NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+                NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
                 reportError(p, "unexpected token `" NKS_FMT "`", NKS_ARG(token_str));
                 return false;
             }
@@ -182,7 +174,7 @@ static bool parseNode(ParserState *p) {
     }
 
     else {
-        NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+        NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
         reportError(p, "unexpected token `" NKS_FMT "`", NKS_ARG(token_str));
         return false;
     }
@@ -199,7 +191,7 @@ static bool parse(ParserState *p) {
     TRY(parseNodeList(p, node));
 
     if (!on(p, NklToken_Eof)) {
-        NkString const token_str = nkl_getTokenStr(curToken(p), p->text);
+        NkString const token_str = nkl_getTokenStr(p->cur_token, p->text);
         reportError(p, "unexpected token `" NKS_FMT "`", NKS_ARG(token_str));
         return false;
     }
@@ -210,39 +202,45 @@ static bool parse(ParserState *p) {
 bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
     NK_LOG_TRC("%s", __func__);
 
+    NklState const nkl = data->nkl;
+    NkAtom const file = data->file;
+
+    NkString text;
+    if (!nickl_getText(nkl, file, &text)) {
+        return false;
+    }
+
+    NklTokenArray tokens;
+    if (!nickl_getTokensAst(nkl, file, &tokens)) {
+        return false;
+    }
+
     ParserState p = {
-        .text = data->text,
-        .tokens = data->tokens,
-        .arena = data->arena,
-
-        .err_str = data->err_str,
-        .err_token = data->err_token,
-
+        .nkl = nkl,
+        .file = file,
+        .text = text,
+        .tokens = tokens,
+        .arena = &nkl->arena,
         .token_names = data->token_names,
-
-        .nodes = {NKDA_INIT(nk_arena_getAllocator(data->arena))},
-
-        .cur_token_idx = 0,
+        .cur_token = p.tokens.data,
+        .nodes = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
     nkda_reserve(&p.nodes, 1000);
 
     TRY(parse(&p));
 
-#ifdef ENABLE_LOGGING
-    {
-        NkStringBuilder sb = {0};
+    NK_LOG_STREAM_INF {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "AST:");
         nkl_ast_inspect(
             (NklSource){
                 .file = 0,
-                .text = data->text,
-                .tokens = data->tokens,
+                .text = text,
+                .tokens = tokens,
                 .nodes = {NK_SLICE_INIT(p.nodes)},
             },
-            nksb_getStream(&sb));
-        NK_LOG_INF("AST:" NKS_FMT, NKS_ARG(sb));
-        nksb_free(&sb); // TODO: Use scratch arena
+            log);
     }
-#endif // ENABLE_LOGGING
 
     *out_nodes = (NklAstNodeArray){NK_SLICE_INIT(p.nodes)};
     return true;

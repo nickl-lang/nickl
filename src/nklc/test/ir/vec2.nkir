@@ -1,0 +1,8 @@
+type Vec2 :{[2]f64}
+
+local proc make_vec2(:f64 %x, :f64 %y) :Vec2 %vec {
+    store %x -> %vec
+    add 8, %vec -> %y_addr
+    store %y -> %y_addr
+    ret
+}

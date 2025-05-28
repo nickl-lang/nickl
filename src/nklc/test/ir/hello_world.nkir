@@ -1,0 +1,13 @@
+extern "c" $printf
+
+pub proc $_entry() {
+
+    call $printf, ("Hello, World!\n", ...) -> :i32
+    ret
+
+}
+
+/* @output
+Hello, World!
+
+@endoutput */

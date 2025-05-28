@@ -5,16 +5,16 @@
 
 char const *nk_null_file = "nul";
 
-i32 nk_read(NkHandle h_file, char *buf, usize n) {
+i32 nk_read(NkHandle file, char *buf, usize n) {
     i32 ret = 0;
     NK_PROF_FUNC() {
         DWORD nNumberOfBytesRead = 0;
         BOOL bSuccess = ReadFile(
-            handle_toNative(h_file), // HANDLE       hFile
-            buf,                     // LPVOID       lpBuffer
-            n,                       // DWORD        nNumberOfBytesToRead
-            &nNumberOfBytesRead,     // LPDWORD      lpNumberOfBytesRead
-            NULL                     // LPOVERLAPPED lpOverlapped
+            handle2native(file), // HANDLE       hFile
+            buf,                 // LPVOID       lpBuffer
+            n,                   // DWORD        nNumberOfBytesToRead
+            &nNumberOfBytesRead, // LPDWORD      lpNumberOfBytesRead
+            NULL                 // LPOVERLAPPED lpOverlapped
         );
         ret = nNumberOfBytesRead;
 
@@ -28,16 +28,16 @@ i32 nk_read(NkHandle h_file, char *buf, usize n) {
     return ret;
 }
 
-i32 nk_write(NkHandle h_file, char const *buf, usize n) {
+i32 nk_write(NkHandle file, char const *buf, usize n) {
     i32 ret;
     NK_PROF_FUNC() {
         DWORD nNumberOfBytesWritten = 0;
         BOOL bSuccess = WriteFile(
-            handle_toNative(h_file), // HANDLE       hFile
-            buf,                     // LPCVOID      lpBuffer
-            n,                       // DWORD        nNumberOfBytesToWrite
-            &nNumberOfBytesWritten,  // LPDWORD      lpNumberOfBytesWritten
-            NULL                     // LPOVERLAPPED lpOverlapped
+            handle2native(file),    // HANDLE       hFile
+            buf,                    // LPCVOID      lpBuffer
+            n,                      // DWORD        nNumberOfBytesToWrite
+            &nNumberOfBytesWritten, // LPDWORD      lpNumberOfBytesWritten
+            NULL                    // LPOVERLAPPED lpOverlapped
         );
 
         ret = bSuccess ? (i32)nNumberOfBytesWritten : -1;
@@ -45,8 +45,18 @@ i32 nk_write(NkHandle h_file, char const *buf, usize n) {
     return ret;
 }
 
-NkHandle nk_open(char const *file, i32 flags) {
-    NkHandle h_file = NK_HANDLE_ZERO;
+i32 nk_flush(NkHandle file) {
+    i32 ret;
+    NK_PROF_FUNC() {
+        BOOL bSuccess = FlushFileBuffers(handle2native(file) //  HANDLE hFile
+        );
+        ret = bSuccess ? 0 : -1;
+    }
+    return ret;
+}
+
+NkHandle nk_open(char const *path, i32 flags) {
+    NkHandle file = NK_NULL_HANDLE;
     NK_PROF_FUNC() {
         DWORD dwDesiredAccess =
             ((flags & NkOpenFlags_Read) ? GENERIC_READ : 0) | ((flags & NkOpenFlags_Write) ? GENERIC_WRITE : 0);
@@ -56,7 +66,7 @@ NkHandle nk_open(char const *file, i32 flags) {
                                       : (flags & NkOpenFlags_Truncate) ? TRUNCATE_EXISTING
                                                                        : OPEN_EXISTING;
         HANDLE hFile = CreateFile(
-            file,                  // LPCSTR                lpFileName,
+            path,                  // LPCSTR                lpFileName,
             dwDesiredAccess,       // DWORD                 dwDesiredAccess,
             dwShareMode,           // DWORD                 dwShareMode,
             NULL,                  // LPSECURITY_ATTRIBUTES lpSecurityAttributes,
@@ -65,30 +75,30 @@ NkHandle nk_open(char const *file, i32 flags) {
             NULL                   // HANDLE                hTemplateFile
         );
         if (hFile != INVALID_HANDLE_VALUE) {
-            h_file = handle_fromNative(hFile);
+            file = native2handle(hFile);
         }
     }
-    return h_file;
+    return file;
 }
 
-i32 nk_close(NkHandle h_file) {
+i32 nk_close(NkHandle file) {
     i32 ret = 0;
     NK_PROF_FUNC() {
-        if (!nk_handleIsZero(h_file)) {
-            ret = CloseHandle(handle_toNative(h_file)) ? 0 : -1;
+        if (!nk_handleIsNull(file)) {
+            ret = CloseHandle(handle2native(file)) ? 0 : -1;
         }
     }
     return ret;
 }
 
 NkHandle nk_stdin() {
-    return handle_fromNative(GetStdHandle(STD_INPUT_HANDLE));
+    return native2handle(GetStdHandle(STD_INPUT_HANDLE));
 }
 
 NkHandle nk_stdout() {
-    return handle_fromNative(GetStdHandle(STD_OUTPUT_HANDLE));
+    return native2handle(GetStdHandle(STD_OUTPUT_HANDLE));
 }
 
 NkHandle nk_stderr() {
-    return handle_fromNative(GetStdHandle(STD_ERROR_HANDLE));
+    return native2handle(GetStdHandle(STD_ERROR_HANDLE));
 }

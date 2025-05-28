@@ -10,11 +10,11 @@
 extern "C" {
 #endif
 
-NK_INLINE HANDLE handle_toNative(NkHandle handle) {
+NK_INLINE HANDLE handle2native(NkHandle handle) {
     return (HANDLE)handle.val;
 }
 
-NK_INLINE NkHandle handle_fromNative(HANDLE native_handle) {
+NK_INLINE NkHandle native2handle(HANDLE native_handle) {
     return (NkHandle){(intptr_t)native_handle};
 }
 

@@ -2,8 +2,10 @@ set(LIB nkl_core2)
 
 add_library(${LIB} SHARED
     src/ast_parser.c
+    src/ir_parser.c
     src/lexer.c
     src/nickl.c
+    src/nickl_impl.c
     )
 
 target_include_directories(${LIB}

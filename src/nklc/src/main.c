@@ -17,17 +17,18 @@ static void printErrorUsage() {
 }
 
 static void printUsage() {
-    printf("Usage: " NK_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
-           "\n    -c, --color {auto,always,never}          Choose when to color output"
-           "\n    -h, --help                               Display this message and exit"
-           "\n    -v, --version                            Show version information"
+    printf(
+        "Usage: " NK_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
+        "\n    -c, --color {auto,always,never}          Choose when to color output"
+        "\n    -h, --help                               Display this message and exit"
+        "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
-           "\nDeveloper options:"
-           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+        "\nDeveloper options:"
+        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-           "\n");
+        "\n");
 }
 
 static void printVersion() {
@@ -41,28 +42,24 @@ static void printDiag(NklState nkl) {
             char cwd[NK_MAX_PATH];
             nk_getCwd(cwd, sizeof(cwd));
 
-            // TODO: Avoid null termination
             NKSB_FIXED_BUFFER(file_nt, NK_MAX_PATH);
             nksb_printf(&file_nt, NKS_FMT, NKS_ARG(err->loc.file));
             nksb_appendNull(&file_nt);
 
-            // TODO: Canonicalize elsewhere
-            char fullpath[NK_MAX_PATH];
-            nk_fullPath(fullpath, file_nt.data);
-
             char relpath[NK_MAX_PATH];
-            nk_relativePath(relpath, sizeof(relpath), fullpath, cwd);
+            nk_relativePath(relpath, sizeof(relpath), file_nt.data, cwd);
 
             NklSourceLocation loc = err->loc;
             loc.file = nk_cs2s(relpath);
 
             // TODO: Avoid reading file again
             NkString text;
-            if (!nk_file_read(nk_default_allocator, err->loc.file, &text)) {
-                return;
+            if (nk_file_read(nk_default_allocator, err->loc.file, &text)) {
+                nkl_diag_printErrorQuote(text, loc, NKS_FMT, NKS_ARG(err->msg));
+                nk_free(nk_default_allocator, (void *)text.data, text.size);
+            } else {
+                nkl_diag_printErrorFile(loc, NKS_FMT, NKS_ARG(err->msg));
             }
-            nkl_diag_printErrorQuote(text, loc, NKS_FMT, NKS_ARG(err->msg));
-            nk_free(nk_default_allocator, (void *)text.data, text.size);
         } else {
             nkl_diag_printError(NKS_FMT, NKS_ARG(err->msg));
         }
@@ -72,8 +69,14 @@ static void printDiag(NklState nkl) {
 }
 
 static int run(NklState nkl, NkString in_file) {
-    NklCompiler const c = nkl_newCompilerHost();
-    NklModule const mod = nkl_newModule(c);
+    NklCompiler const com = nkl_newCompilerHost();
+
+    // TODO: Hardcoded lib names
+    nkl_addLibraryAliasGlobal(com, nk_cs2s("c"), nk_cs2s("libc.so.6"));
+    nkl_addLibraryAliasGlobal(com, nk_cs2s("m"), nk_cs2s("libm.so.6"));
+    nkl_addLibraryAliasGlobal(com, nk_cs2s("pthread"), nk_cs2s("libpthread.so.0"));
+
+    NklModule const mod = nkl_newModule(com);
 
     if (!nkl_compileFile(mod, in_file)) {
         printDiag(nkl);

@@ -3,7 +3,7 @@
 #include "common.h"
 #include "ntk/file.h"
 
-NkPipe nk_proc_createPipe(void) {
+NkPipe nk_pipe_create(void) {
     NkPipe pip = {0};
 
     SECURITY_ATTRIBUTES saAttr = {0};
@@ -18,47 +18,47 @@ NkPipe nk_proc_createPipe(void) {
             &saAttr, // LPSECURITY_ATTRIBUTES lpPipeAttributes
             0        // DWORD                 nSize
             )) {
-        pip.h_read = handle_fromNative(hRead);
-        pip.h_write = handle_fromNative(hWrite);
+        pip.read_file = native2handle(hRead);
+        pip.write_file = native2handle(hWrite);
     }
 
     return pip;
 }
 
-void nk_proc_closePipe(NkPipe pipe) {
-    nk_close(pipe.h_read);
-    nk_close(pipe.h_write);
+void nk_pipe_close(NkPipe pipe) {
+    nk_close(pipe.read_file);
+    nk_close(pipe.write_file);
 }
 
-i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
     siStartInfo.hStdInput =
-        (in && !nk_handleIsZero(in->h_read)) ? handle_toNative(in->h_read) : GetStdHandle(STD_INPUT_HANDLE);
+        (in && !nk_handleIsNull(in->read_file)) ? handle2native(in->read_file) : GetStdHandle(STD_INPUT_HANDLE);
     siStartInfo.hStdOutput =
-        (out && !nk_handleIsZero(out->h_write)) ? handle_toNative(out->h_write) : GetStdHandle(STD_OUTPUT_HANDLE);
+        (out && !nk_handleIsNull(out->write_file)) ? handle2native(out->write_file) : GetStdHandle(STD_OUTPUT_HANDLE);
     siStartInfo.hStdError =
-        (err && !nk_handleIsZero(err->h_write)) ? handle_toNative(err->h_write) : GetStdHandle(STD_ERROR_HANDLE);
+        (err && !nk_handleIsNull(err->write_file)) ? handle2native(err->write_file) : GetStdHandle(STD_ERROR_HANDLE);
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     PROCESS_INFORMATION piProcInfo;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-    if (in && !nk_handleIsZero(in->h_write)) {
-        if (!SetHandleInformation(handle_toNative(in->h_write), HANDLE_FLAG_INHERIT, 0)) {
+    if (in && !nk_handleIsNull(in->write_file)) {
+        if (!SetHandleInformation(handle2native(in->write_file), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (out && !nk_handleIsZero(out->h_read)) {
-        if (!SetHandleInformation(handle_toNative(out->h_read), HANDLE_FLAG_INHERIT, 0)) {
+    if (out && !nk_handleIsNull(out->read_file)) {
+        if (!SetHandleInformation(handle2native(out->read_file), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
 
-    if (err && !nk_handleIsZero(err->h_read)) {
-        if (!SetHandleInformation(handle_toNative(err->h_read), HANDLE_FLAG_INHERIT, 0)) {
+    if (err && !nk_handleIsNull(err->read_file)) {
+        if (!SetHandleInformation(handle2native(err->read_file), HANDLE_FLAG_INHERIT, 0)) {
             return -1;
         }
     }
@@ -77,15 +77,15 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *
     );
 
     if (in) {
-        nk_close(in->h_read);
+        nk_close(in->read_file);
     }
 
     if (out) {
-        nk_close(out->h_write);
+        nk_close(out->write_file);
     }
 
     if (err) {
-        nk_close(err->h_write);
+        nk_close(err->write_file);
     }
 
     CloseHandle(piProcInfo.hThread);
@@ -94,16 +94,16 @@ i32 nk_proc_execAsync(char const *cmd, NkHandle *h_process, NkPipe *in, NkPipe *
         return -1;
     }
 
-    *h_process = handle_fromNative(piProcInfo.hProcess);
+    *process = native2handle(piProcInfo.hProcess);
 
     return 0;
 }
 
-i32 nk_proc_wait(NkHandle h_process, i32 *exit_status) {
-    if (!nk_handleIsZero(h_process)) {
+i32 nk_waitProc(NkHandle process, i32 *exit_status) {
+    if (!nk_handleIsNull(process)) {
         DWORD dwResult = WaitForSingleObject(
-            handle_toNative(h_process), // HANDLE hHandle,
-            INFINITE                    // DWORD  dwMilliseconds
+            handle2native(process), // HANDLE hHandle,
+            INFINITE                // DWORD  dwMilliseconds
         );
 
         if (dwResult == WAIT_FAILED) {
@@ -113,13 +113,13 @@ i32 nk_proc_wait(NkHandle h_process, i32 *exit_status) {
         if (exit_status) {
             DWORD dwExitCode = 1;
             GetExitCodeProcess(
-                handle_toNative(h_process), // HANDLE  hProcess,
-                &dwExitCode                 // LPDWORD lpExitCode
+                handle2native(process), // HANDLE  hProcess,
+                &dwExitCode             // LPDWORD lpExitCode
             );
             *exit_status = dwExitCode;
         }
 
-        nk_close(h_process);
+        nk_close(process);
     }
 
     return 0;

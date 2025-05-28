@@ -37,7 +37,7 @@ static i32 testStreamProc(void *stream_data, char *buf, usize size, NkStreamMode
 class log : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT(NkLogOptions{NkLogLevel_Trace, NkLogColorMode_Never});
-        nk_log_injectStream({&m_buf, testStreamProc});
+        nk_log_setStream({&m_buf, testStreamProc});
     }
 
     void TearDown() override {
@@ -46,7 +46,7 @@ class log : public testing::Test {
 protected:
     void writeTestMsg(NkLogLevel level, char const *msg) {
         m_buf.size = 0;
-        NK_LOG_SEV(level, "%s", msg);
+        NK_LOG(level, "%s", msg);
     }
 
     struct LogMsg {

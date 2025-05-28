@@ -2,6 +2,7 @@
 
 #include <float.h>
 
+#include "ntk/common.h"
 #include "ntk/string.h"
 
 void nkir_inspectType(NkIrType type, NkStream out) {
@@ -13,22 +14,21 @@ void nkir_inspectType(NkIrType type, NkStream out) {
         case NkIrType_Aggregate:
             if (type->aggr.size) {
                 nk_printf(out, "{");
-                for (usize i = 0; i < type->aggr.size; i++) {
-                    if (i) {
+                NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                    if (NK_INDEX(elem, type->aggr)) {
                         nk_printf(out, ", ");
                     }
-                    NkIrAggregateElemInfo const *elem = &type->aggr.data[i];
                     if (elem->count > 1) {
                         nk_printf(out, "[%" PRIu32 "]", elem->count);
                     }
                     nkir_inspectType(elem->type, out);
-                    nk_printf(out, "@%" PRIu32, elem->offset); // TODO: Print conservatively
                 }
                 nk_printf(out, "}");
             } else {
                 nk_printf(out, "void");
             }
             break;
+
         case NkIrType_Numeric:
             switch (type->num) {
                 case Int8:
@@ -75,18 +75,18 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
     }
     switch (type->kind) {
         case NkIrType_Aggregate:
-            for (usize elemi = 0; elemi < type->aggr.size; elemi++) {
-                NkIrAggregateElemInfo const *elem = &type->aggr.data[elemi];
+            nk_printf(out, "{");
+            NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                if (NK_INDEX(elem, type->aggr)) {
+                    nk_printf(out, ", ");
+                }
                 u8 *ptr = (u8 *)data + elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
                     nk_printf(out, "\"");
                     nks_escape(out, (NkString){(char const *)ptr, elem->count});
                     nk_printf(out, "\"");
                 } else {
-                    if (elemi == 0) {
-                        nk_printf(out, "{");
-                    }
-                    if (elem->count) {
+                    if (elem->count > 1) {
                         nk_printf(out, "[");
                     }
                     for (usize i = 0; i < elem->count; i++) {
@@ -96,41 +96,22 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                         nkir_inspectVal(ptr, elem->type, out);
                         ptr += elem->type->size;
                     }
-                    if (elem->count) {
+                    if (elem->count > 1) {
                         nk_printf(out, "]");
-                    }
-                    if (elemi == type->aggr.size - 1) {
-                        nk_printf(out, "}");
                     }
                 }
             }
+            nk_printf(out, "}");
             break;
+
         case NkIrType_Numeric:
             switch (type->num) {
-                case Int8:
-                    nk_printf(out, "%" PRIi8, *(i8 *)data);
-                    break;
-                case Uint8:
-                    nk_printf(out, "%" PRIu8, *(u8 *)data);
-                    break;
-                case Int16:
-                    nk_printf(out, "%" PRIi16, *(i16 *)data);
-                    break;
-                case Uint16:
-                    nk_printf(out, "%" PRIu16, *(u16 *)data);
-                    break;
-                case Int32:
-                    nk_printf(out, "%" PRIi32, *(i32 *)data);
-                    break;
-                case Uint32:
-                    nk_printf(out, "%" PRIu32, *(u32 *)data);
-                    break;
-                case Int64:
-                    nk_printf(out, "%" PRIi64, *(i64 *)data);
-                    break;
-                case Uint64:
-                    nk_printf(out, "%" PRIu64, *(u64 *)data);
-                    break;
+#define X(TYPE, VALUE_TYPE)                                   \
+    case VALUE_TYPE:                                          \
+        nk_printf(out, "%" NK_CAT(PRI, TYPE), *(TYPE *)data); \
+        break;
+                NKIR_NUMERIC_ITERATE_INT(X)
+#undef X
                 case Float32:
                     nk_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
                     break;

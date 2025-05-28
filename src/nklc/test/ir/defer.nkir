@@ -1,0 +1,69 @@
+extern "c" printf
+
+local proc allocate() :i64 {
+    mov 42 -> :i64 %res
+    call printf, ("allocate()->%zi\n", ..., :i64 %res) -> :i32
+    ret :i64 %res
+}
+
+local proc free(:i64 %resource) {
+    call printf, ("free(%zi)\n", ..., resource) -> :i32
+    ret
+}
+
+local proc use(:i64 %resource) {
+    call printf, ("use(%zi)\n", ..., resource) -> :i32
+    ret
+}
+
+pub proc _entry() {
+
+/*
+    resource := allocate();
+    {
+        defer {
+            if resource {
+                free(resource);
+            }
+        }
+        if !resource {
+            return;
+        }
+        use(resource);
+    }
+    printf("done\n");
+    return;
+*/
+
+    call allocate, () -> :i64 %resource
+    jmpnz :i64 %resource, @endif
+comment ">>>>>> begin defer"
+    jmpz :i64 %resource, @+3
+    call free, (:i64 %resource)
+    jmp @+1
+
+@defer_endif
+comment "<<<<<< end defer"
+    ret
+
+@endif
+    call use, (:i64 %resource)
+comment ">>>>>> begin defer"
+    jmpz :i64 %resource, @+3
+    call free, (:i64 %resource)
+    jmp @+1
+
+@defer_endif
+comment "<<<<<< end defer"
+    call printf, ("done\n", ...) -> :i32
+    ret
+
+}
+
+/* @output
+allocate()->42
+use(42)
+free(42)
+done
+
+@endoutput */

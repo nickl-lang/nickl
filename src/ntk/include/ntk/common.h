@@ -101,20 +101,6 @@ constexpr usize nk_alignofval(T const &) {
 
 #define nk_trap() __builtin_trap()
 
-#ifdef NDEBUG
-#define nk_assert(x) (void)(x)
-#else // NDEBUG
-// TODO nk_assert depends on libc
-#define nk_assert(x)                                                                             \
-    do {                                                                                         \
-        if (!(x)) {                                                                              \
-            fprintf(stderr, __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
-            fflush(stderr);                                                                      \
-            nk_trap();                                                                           \
-        }                                                                                        \
-    } while (0)
-#endif // NDEBUG
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -123,14 +109,14 @@ typedef struct {
     intptr_t val;
 } NkHandle;
 
-#define NK_HANDLE_ZERO (NK_LITERAL(NkHandle) NK_ZERO_STRUCT)
+#define NK_NULL_HANDLE (NK_LITERAL(NkHandle) NK_ZERO_STRUCT)
 
 NK_INLINE bool nk_handleEqual(NkHandle lhs, NkHandle rhs) {
     return lhs.val == rhs.val;
 }
 
-NK_INLINE bool nk_handleIsZero(NkHandle handle) {
-    return nk_handleEqual(handle, NK_HANDLE_ZERO);
+NK_INLINE bool nk_handleIsNull(NkHandle handle) {
+    return nk_handleEqual(handle, NK_NULL_HANDLE);
 }
 
 NK_INLINE void *nk_handleToVoidPtr(NkHandle handle) {
@@ -153,7 +139,10 @@ inline bool operator==(NkHandle lhs, NkHandle rhs) {
 }
 #endif
 
-#define NK_DEFER_LOOP(begin, end) \
-    for (int _nk_defer_loop_i = ((begin), 0); !_nk_defer_loop_i; _nk_defer_loop_i += 1, (end))
+#define NK_DEFER_LOOP(begin, end) for (int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
+#define NK_DEFER_LOOP_OPT(enable, begin, end) for (int _i_ = !((enable) && ((begin), 1)); !_i_; _i_ += 1, (end))
+
+#define NK_ITERATE(TYPE, IT, SLICE) for (TYPE IT = (SLICE).data; IT < (SLICE).data + (SLICE).size; IT++)
+#define NK_INDEX(IT, SLICE) (usize)((IT) - (SLICE).data)
 
 #endif // NTK_COMMON_H_

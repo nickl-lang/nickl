@@ -14,4 +14,4 @@ enum {
     NklAstToken_RBraket,
 };
 
-#endif //  NKL_CORE_AST_TOKENS_H_
+#endif // NKL_CORE_AST_TOKENS_H_

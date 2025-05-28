@@ -1,0 +1,17 @@
+extern "c" printf
+
+local proc plus(:i64 %a, :i64 %b) :i64 {
+    add %a, %b -> %tmp
+    ret %tmp
+}
+
+pub proc _entry() {
+    call plus, (4, 5) -> :i64 %res
+    call printf, ("%zi\n", ..., :i64 %res) -> :i32
+    ret
+}
+
+/* @output
+9
+
+@endoutput */

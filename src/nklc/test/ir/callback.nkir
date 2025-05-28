@@ -1,0 +1,21 @@
+extern "c" puts
+
+local proc invoke(:i64 %cb) {
+    call %cb, ()
+    ret
+}
+
+local proc callback() {
+    call puts, ("Callback has been called!") -> :i32
+    ret
+}
+
+pub proc _entry() {
+    call invoke, (callback)
+    ret
+}
+
+/* @output
+Callback has been called!
+
+@endoutput */

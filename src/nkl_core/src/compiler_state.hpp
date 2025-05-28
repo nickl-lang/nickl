@@ -208,7 +208,7 @@ NK_HASH_TREE_TYPEDEF(NkAtomSet, NkAtom);
 NK_HASH_TREE_PROTO(NkAtomSet, NkAtom, NkAtom);
 
 struct NklModule_T {
-    NklCompiler c;
+    NklCompiler com;
     NkIrModule mod;
     NkAtomSet export_set;
 };

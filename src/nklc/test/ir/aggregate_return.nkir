@@ -1,0 +1,35 @@
+extern "c" printf
+
+type Mat2 :{[4]f64}
+
+proc getIdentityMatrix() :Mat2 %mat {
+    mov %mat -> :i64 %elem
+    store 1.0 -> %elem
+    add 8, %elem -> %elem
+    store 0.0 -> %elem
+    add 8, %elem -> %elem
+    store 0.0 -> %elem
+    add 8, %elem -> %elem
+    store 1.0 -> %elem
+    ret
+}
+
+pub proc _entry() {
+    alloc :Mat2 -> %mat
+    call getIdentityMatrix, () -> :Mat2 %mat
+    load %mat -> :f64 %m00
+    add 8, %mat -> %mat
+    load %mat -> :f64 %m01
+    add 8, %mat -> %mat
+    load %mat -> :f64 %m10
+    add 8, %mat -> %mat
+    load %mat -> :f64 %m11
+    call printf, ("Identity = [[%g, %g], [%g, %g]]\n", ..., \
+        :f64 %m00, :f64 %m01, :f64 %m10, :f64 %m11) -> :i32
+    ret
+}
+
+/* @output
+Identity = [[1, 0], [0, 1]]
+
+@endoutput */

@@ -64,7 +64,7 @@ i32 nk_error_vprintf(char const *fmt, va_list ap) {
     }
     g_error_state->error_count++;
 
-    NkStringBuilder sb = (NkStringBuilder){NKSB_INIT(alloc)};
+    NkStringBuilder sb = (NkStringBuilder){.alloc = alloc};
     i32 res = nksb_vprintf(&sb, fmt, ap);
     sb.data = nk_realloc(alloc, sb.size, sb.data, sb.capacity);
     node->msg = (NkString){NKS_INIT(sb)};

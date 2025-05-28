@@ -13,6 +13,7 @@ extern "C" {
 typedef enum {
     NkStreamMode_Read,
     NkStreamMode_Write,
+    NkStreamMode_Flush,
 } NkStreamMode;
 
 typedef i32 (*NkStreamProc)(void *stream_data, char *buf, usize size, NkStreamMode mode);
@@ -28,6 +29,10 @@ NK_INLINE i32 nk_stream_read(NkStream in, char *buf, usize size) {
 
 NK_INLINE i32 nk_stream_write(NkStream out, char const *buf, usize size) {
     return out.proc(out.data, (char *)buf, size, NkStreamMode_Write);
+}
+
+NK_INLINE i32 nk_stream_flush(NkStream out) {
+    return out.proc(out.data, NULL, 0, NkStreamMode_Flush);
 }
 
 NK_INLINE i32 nk_stream_writeCStr(NkStream out, char const *str) {

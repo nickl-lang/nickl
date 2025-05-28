@@ -113,7 +113,7 @@ NklError *nkl_getCompileErrorList(NklCompiler c) {
 NklModule nkl_createModule(NklCompiler c) {
     auto const alloc = nk_arena_getAllocator(&c->perm_arena);
     return new (nk_allocT<NklModule_T>(alloc)) NklModule_T{
-        .c = c,
+        .com = c,
         .mod = nkir_createModule(c->ir),
         .export_set{nullptr, alloc},
     };
@@ -123,7 +123,7 @@ bool nkl_writeModule(NklModule m, NkIrCompilerConfig conf) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto c = m->c;
+    auto c = m->com;
 
     nkl_errorStateEquip(&c->errors);
     defer {
@@ -1354,7 +1354,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             // TODO: Only load symbols dynamically if they're needed
             auto const dl = nkl_findLibrary(nk_s2atom(lib));
-            if (nk_handleIsZero(dl)) {
+            if (nk_handleIsNull(dl)) {
                 return error(ctx, "failed to load library `" NKS_FMT "`", NKS_ARG(lib));
             }
             auto const addr = nkdl_resolveSymbol(dl, nk_atom2cs(decl_name));
@@ -1921,7 +1921,7 @@ bool nkl_compileFile(NklModule m, NkString filename) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto c = m->c;
+    auto c = m->com;
 
     nkl_errorStateEquip(&c->errors);
     defer {
@@ -1959,7 +1959,7 @@ bool nkl_runFile(NklModule m, NkString filename) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto c = m->c;
+    auto c = m->com;
 
     nkl_errorStateEquip(&c->errors);
     defer {

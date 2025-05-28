@@ -620,7 +620,7 @@ NkIrRunCtx nkir_createRunCtx(NkIrProg ir, NkArena *tmp_arena) {
         .ffi_ctx{
             .alloc = ir->alloc,
             .types{NULL, ir->alloc},
-            .mtx = nk_mutex_alloc(),
+            .mtx = nk_mutex_alloc(0),
         },
 
         .error_str{},
