@@ -3,9 +3,9 @@ extern "c" puts
 extern "pthread" pthread_create
 extern "pthread" pthread_join
 
-proc threadProc(:i64 %arg) {
+proc threadProc(:i64 %arg) :i64 {
     call puts, ("hello") -> :i32
-    ret
+    ret 0
 }
 
 pub proc _entry() {

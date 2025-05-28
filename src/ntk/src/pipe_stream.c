@@ -39,9 +39,9 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
             nk_setLastError(err);
         } else {
             *pipe_stream = (NkPipeStream){
-                nk_file_getStream(out.read_file),
-                out.read_file,
-                process,
+                .stream = nk_file_getStream(out.read_file),
+                ._file = out.read_file,
+                ._process = process,
             };
             ret = true;
         }
@@ -76,9 +76,9 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
             nk_setLastError(err);
         } else {
             *pipe_stream = (NkPipeStream){
-                nk_file_getStream(in.write_file),
-                in.write_file,
-                process,
+                .stream = nk_file_getStream(in.write_file),
+                ._file = in.write_file,
+                ._process = process,
             };
             ret = true;
         }
