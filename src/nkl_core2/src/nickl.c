@@ -2,6 +2,7 @@
 
 #include "ir_parser.h"
 #include "nickl_impl.h"
+#include "nkb/ir.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
 #include "ntk/arena.h"
@@ -10,6 +11,7 @@
 #include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 
 NK_LOG_USE_SCOPE(nickl);
@@ -207,8 +209,7 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
         },
         &mod->ir));
 
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileIr` is not finished");
-    return false;
+    return true;
 }
 
 bool nkl_compileFileAst(NklModule mod, NkString path) {
@@ -254,12 +255,11 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     TRY(mod);
 
-    NklState nkl = mod->com->nkl;
+    // TODO: Handle errors
 
-    (void)out_file;
-    (void)kind;
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_exportModule` is not implemented");
-    return false;
+    nkir_exportModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, out_file);
+
+    return true;
 }
 
 NklError const *nkl_getErrors(NklState nkl) {

@@ -2,6 +2,7 @@ set(LIB nkb2)
 
 add_library(${LIB}
     src/ir.c
+    src/llvm_stream.c
     src/types.c
     )
 

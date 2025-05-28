@@ -83,6 +83,11 @@ static int run(NklState nkl, NkString in_file) {
         return 1;
     }
 
+    if (!nkl_exportModule(mod, nk_cs2s("a.out"), NklOutput_Binary)) {
+        printDiag(nkl);
+        return 1;
+    }
+
     return 0;
 }
 

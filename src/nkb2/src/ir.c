@@ -1,5 +1,6 @@
 #include "nkb/ir.h"
 
+#include "llvm_stream.h"
 #include "nkb/types.h"
 #include "ntk/allocator.h"
 #include "ntk/atom.h"
@@ -319,9 +320,25 @@ NkIrInstr nkir_make_comment(NkString comment) {
 void nkir_exportModule(NkIrModule m, NkString path /*, c_compiler_config */) {
     NK_LOG_TRC("%s", __func__);
 
-    (void)m;
-    (void)path;
-    nk_assert(!"TODO: `nkir_exportModule` not implemented");
+    NkPipeStream ps = {0};
+    nk_llvm_stream_open(&ps);
+
+    NkStream out = ps.stream;
+
+    nk_printf(
+        out,
+        "                                                             \
+@fmt = private constant [15 x i8] c\"Hello, World!\\0A\\00\", align 1 \
+                                                                      \
+define i32 @main() {                                                  \
+    call i32 (ptr, ...) @printf(ptr @fmt)                             \
+    ret i32 0                                                         \
+}                                                                     \
+                                                                      \
+declare i32 @printf(ptr, ...)                                         \
+");
+
+    nk_llvm_stream_close(&ps);
 }
 
 NkIrRunCtx nkir_createRunCtx(NkIrModule *m, NkArena *arena) {
