@@ -50,6 +50,10 @@ NK_EXPORT i32 nks_escape(NkStream out, NkString str);
 NK_EXPORT i32 nks_unescape(NkStream out, NkString str);
 NK_EXPORT i32 nks_sanitize(NkStream out, NkString str);
 
+typedef NkSlice(NkString) NkStringArray;
+
+NK_EXPORT NkStringArray nks_shell_lex(NkArena *arena, NkString str);
+
 #define NKS_FMT "%.*s"
 #define NKS_ARG(str) (i32)(str).size, (str).data
 

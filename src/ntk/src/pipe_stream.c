@@ -11,7 +11,7 @@ NK_LOG_USE_SCOPE(pipe_stream);
 
 #define CMD_BUF_SIZE 4096
 
-bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet) {
+bool nk_pipe_streamOpenRead(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;
@@ -28,7 +28,7 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
             quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_NULL_HANDLE,
         };
         NkHandle process = NK_NULL_HANDLE;
-        if (nk_execAsync(sb.data, &process, NULL, &out, &null_pipe) < 0) {
+        if (nk_execAsync(scratch, sb.data, &process, NULL, &out, &null_pipe) < 0) {
             nkerr_t err = nk_getLastError();
 
             nk_waitProc(process, NULL);
@@ -49,7 +49,7 @@ bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet)
     return ret;
 }
 
-bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet) {
+bool nk_pipe_streamOpenWrite(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;
@@ -65,7 +65,7 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet
             quiet ? nk_open(nk_null_file, NkOpenFlags_Write) : NK_NULL_HANDLE,
         };
         NkHandle process = NK_NULL_HANDLE;
-        if (nk_execAsync(sb.data, &process, &in, &null_pipe, &null_pipe) < 0) {
+        if (nk_execAsync(scratch, sb.data, &process, &in, &null_pipe, &null_pipe) < 0) {
             nkerr_t err = nk_getLastError();
 
             nk_waitProc(process, NULL);

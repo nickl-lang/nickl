@@ -33,6 +33,8 @@ void nkl_freeState(NklState nkl) {
 
     nk_assert(nkl && "state is null");
 
+    nk_arena_free(&nkl->scratch);
+
     NkArena arena = nkl->arena;
     nk_arena_free(&arena);
 }
@@ -255,9 +257,11 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     TRY(mod);
 
+    NklState nkl = mod->com->nkl;
+
     // TODO: Handle errors
 
-    nkir_exportModule((NkIrModule){NK_SLICE_INIT(mod->ir)}, out_file);
+    nkir_exportModule(&nkl->scratch, (NkIrModule){NK_SLICE_INIT(mod->ir)}, out_file);
 
     return true;
 }

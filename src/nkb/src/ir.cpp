@@ -649,7 +649,7 @@ bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerCon
     NK_LOG_TRC("%s", __func__);
 
     NkPipeStream src{};
-    bool res = nkcc_streamOpen(&src, conf);
+    bool res = nkcc_streamOpen(tmp_arena, &src, conf);
     if (res) {
         nkir_translate2c(tmp_arena, ir, mod, src.stream);
         if (nkcc_streamClose(&src)) {

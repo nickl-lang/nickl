@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "nkb/ir.h"
+#include "ntk/arena.h"
 #include "ntk/log.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/stream.h"
@@ -37,13 +38,14 @@ class cc_adapter : public testing::Test {
     }
 
     void TearDown() override {
+        nk_arena_free(&m_scratch);
         nksb_free(&m_output_filename_sb);
     }
 
 protected:
     std::string runGetStdout() {
         NkPipeStream in;
-        auto res = nk_pipe_streamOpenRead(&in, m_conf.output_filename, false);
+        auto res = nk_pipe_streamOpenRead(&m_scratch, &in, m_conf.output_filename, false);
         defer {
             nk_pipe_streamClose(&in);
         };
@@ -64,6 +66,7 @@ protected:
     }
 
 protected:
+    NkArena m_scratch{};
     NkStringBuilder m_output_filename_sb{};
     NkIrCompilerConfig m_conf;
 };
@@ -72,7 +75,7 @@ protected:
 
 TEST_F(cc_adapter, empty) {
     NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    auto res = nkcc_streamOpen(&m_scratch, &src, m_conf);
     EXPECT_TRUE(res);
 
     EXPECT_TRUE(nkcc_streamClose(&src));
@@ -80,7 +83,7 @@ TEST_F(cc_adapter, empty) {
 
 TEST_F(cc_adapter, empty_main) {
     NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    auto res = nkcc_streamOpen(&m_scratch, &src, m_conf);
     EXPECT_TRUE(res);
 
     if (res) {
@@ -94,7 +97,7 @@ TEST_F(cc_adapter, empty_main) {
 
 TEST_F(cc_adapter, hello_world) {
     NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    auto res = nkcc_streamOpen(&m_scratch, &src, m_conf);
     EXPECT_TRUE(res);
 
     if (res) {
@@ -113,7 +116,7 @@ int main() {
 
 TEST_F(cc_adapter, undefined_var) {
     NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    auto res = nkcc_streamOpen(&m_scratch, &src, m_conf);
     EXPECT_TRUE(res);
 
     if (res) {

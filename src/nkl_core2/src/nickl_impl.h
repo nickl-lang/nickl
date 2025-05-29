@@ -18,6 +18,7 @@ typedef struct NklState_T {
     struct NklState_T *next;
 
     NkArena arena;
+    NkArena scratch;
     NklError *error;
 } NklState_T;
 

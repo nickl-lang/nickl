@@ -317,14 +317,15 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-void nkir_exportModule(NkIrModule m, NkString path /*, c_compiler_config */) {
+void nkir_exportModule(NkArena *scratch, NkIrModule m, NkString path /*, c_compiler_config */) {
     NK_LOG_TRC("%s", __func__);
 
     NkPipeStream ps = {0};
-    nk_llvm_stream_open(&ps);
+    nk_llvm_stream_open(scratch, &ps, path);
 
     NkStream out = ps.stream;
 
+    // TODO: Dummy IR
     nk_printf(
         out,
         "                                                             \

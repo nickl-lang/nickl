@@ -30,7 +30,7 @@ void nk_pipe_close(NkPipe pipe) {
     nk_close(pipe.write_file);
 }
 
-i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_execAsync(NkArena *scratch, char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);

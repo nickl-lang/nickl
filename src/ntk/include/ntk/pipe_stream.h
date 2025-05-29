@@ -1,6 +1,7 @@
 #ifndef NTK_PIPE_STREAM_H_
 #define NTK_PIPE_STREAM_H_
 
+#include "ntk/arena.h"
 #include "ntk/common.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
@@ -15,8 +16,8 @@ typedef struct {
     NkHandle _process;
 } NkPipeStream;
 
-NK_EXPORT bool nk_pipe_streamOpenRead(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
-NK_EXPORT bool nk_pipe_streamOpenWrite(NkPipeStream *pipe_stream, NkString cmd, bool quiet);
+NK_EXPORT bool nk_pipe_streamOpenRead(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet);
+NK_EXPORT bool nk_pipe_streamOpenWrite(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet);
 
 NK_EXPORT i32 nk_pipe_streamClose(NkPipeStream *stream);
 

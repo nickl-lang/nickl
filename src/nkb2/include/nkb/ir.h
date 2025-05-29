@@ -229,7 +229,7 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-void nkir_exportModule(NkIrModule m, NkString path /*, c_compiler_config */);
+void nkir_exportModule(NkArena *scratch, NkIrModule m, NkString path /*, c_compiler_config */);
 
 /// Execution
 
