@@ -6,6 +6,7 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
+#include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
@@ -321,7 +322,11 @@ void nkir_exportModule(NkArena *scratch, NkIrModule m, NkString path /*, c_compi
     NK_LOG_TRC("%s", __func__);
 
     NkPipeStream ps = {0};
-    nk_llvm_stream_open(scratch, &ps, path);
+    if (!nk_llvm_stream_open(scratch, &ps, path)) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("%s", nk_getLastErrorString());
+        return;
+    }
 
     NkStream out = ps.stream;
 

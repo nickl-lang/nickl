@@ -100,15 +100,17 @@ static i32 execAsyncImpl(char const *const *args, NkHandle *process, NkPipe *in,
     }
 }
 
-i32 nk_execAsync(NkArena *scratch, char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+i32 nk_execAsync(NkArena *scratch, NkString cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     i32 ret = 0;
     NK_ARENA_SCOPE(scratch) {
-        NkStringArray const strs = nks_shell_lex(scratch, nk_cs2s(cmd));
+        NkStringArray const strs = nks_shell_lex(scratch, cmd);
+
         char const **args = nk_arena_allocTn(scratch, char const *, strs.size + 1);
         NK_ITERATE(NkString const *, it, strs) {
             args[NK_INDEX(it, strs)] = it->data;
         }
         args[strs.size] = NULL;
+
         ret = execAsyncImpl(args, process, in, out, err);
     }
     return ret;

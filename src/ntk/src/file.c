@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "ntk/common.h"
+#include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
