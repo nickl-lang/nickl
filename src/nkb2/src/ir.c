@@ -1,5 +1,6 @@
 #include "nkb/ir.h"
 
+#include "emit_llvm.h"
 #include "llvm_stream.h"
 #include "nkb/types.h"
 #include "ntk/allocator.h"
@@ -318,7 +319,7 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-void nkir_exportModule(NkArena *scratch, NkIrModule m, NkString path /*, c_compiler_config */) {
+void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_compiler_config */) {
     NK_LOG_TRC("%s", __func__);
 
     NkPipeStream ps = {0};
@@ -328,29 +329,15 @@ void nkir_exportModule(NkArena *scratch, NkIrModule m, NkString path /*, c_compi
         return;
     }
 
-    NkStream out = ps.stream;
-
-    // TODO: Dummy IR
-    nk_printf(
-        out,
-        "                                                             \
-@fmt = private constant [15 x i8] c\"Hello, World!\\0A\\00\", align 1 \
-                                                                      \
-define i32 @main() {                                                  \
-    call i32 (ptr, ...) @printf(ptr @fmt)                             \
-    ret i32 0                                                         \
-}                                                                     \
-                                                                      \
-declare i32 @printf(ptr, ...)                                         \
-");
+    nkir_emit_llvm(ps.stream, mod);
 
     nk_llvm_stream_close(&ps);
 }
 
-NkIrRunCtx nkir_createRunCtx(NkIrModule *m, NkArena *arena) {
+NkIrRunCtx nkir_createRunCtx(NkIrModule *mod, NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
 
-    (void)m;
+    (void)mod;
     (void)arena;
     nk_assert(!"TODO: `nkir_createRunCtx` not implemented");
 }
@@ -365,8 +352,8 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret) {
     nk_assert(!"TODO: `nkir_invoke` not implemented");
 }
 
-void nkir_inspectModule(NkStream out, NkIrModule m) {
-    NK_ITERATE(NkIrSymbol const *, sym, m) {
+void nkir_inspectModule(NkStream out, NkIrModule mod) {
+    NK_ITERATE(NkIrSymbol const *, sym, mod) {
         nk_printf(out, "\n");
         nkir_inspectSymbol(out, sym);
     }
@@ -672,10 +659,10 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
     }
 }
 
-bool nkir_validateModule(NkIrModule m) {
+bool nkir_validateModule(NkIrModule mod) {
     NK_LOG_TRC("%s", __func__);
 
-    (void)m;
+    (void)mod;
     nk_assert(!"TODO: `nkir_validateModule` not implemented");
 }
 

@@ -229,26 +229,26 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-void nkir_exportModule(NkArena *scratch, NkIrModule m, NkString path /*, c_compiler_config */);
+void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_compiler_config */);
 
 /// Execution
 
 typedef struct NkIrRunCtx_T *NkIrRunCtx;
 
-NkIrRunCtx nkir_createRunCtx(NkIrModule *m, NkArena *arena);
+NkIrRunCtx nkir_createRunCtx(NkIrModule *mod, NkArena *arena);
 
 bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
 
 /// Inspection
 
-void nkir_inspectModule(NkStream out, NkIrModule m);
+void nkir_inspectModule(NkStream out, NkIrModule mod);
 void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym);
 void nkir_inspectInstr(NkStream out, NkIrInstr instr);
 void nkir_inspectRef(NkStream out, NkIrRef ref);
 
 /// Validation
 
-bool nkir_validateModule(NkIrModule m);
+bool nkir_validateModule(NkIrModule mod);
 bool nkir_validateProc(NkIrProc const *proc);
 
 #ifdef __cplusplus

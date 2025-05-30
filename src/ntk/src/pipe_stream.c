@@ -5,15 +5,23 @@
 #include "ntk/log.h"
 #include "ntk/process.h"
 #include "ntk/profiler.h"
+#include "ntk/string.h"
 
 NK_LOG_USE_SCOPE(pipe_stream);
+
+// TODO: Add buffering to pipe stream
 
 bool nk_pipe_streamOpenRead(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;
     NK_PROF_FUNC() {
-        NK_LOG_DBG("exec(\"" NKS_FMT "\")", NKS_ARG(cmd));
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "exec(\"");
+            nks_escape(log, cmd);
+            nk_printf(log, "\")");
+        }
 
         NkPipe out = nk_pipe_create();
         NkPipe null_pipe = {
@@ -47,7 +55,12 @@ bool nk_pipe_streamOpenWrite(NkArena *scratch, NkPipeStream *pipe_stream, NkStri
 
     bool ret = false;
     NK_PROF_FUNC() {
-        NK_LOG_DBG("exec(\"" NKS_FMT "\")", NKS_ARG(cmd));
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "exec(\"");
+            nks_escape(log, cmd);
+            nk_printf(log, "\")");
+        }
 
         NkPipe in = nk_pipe_create();
         NkPipe null_pipe = {
