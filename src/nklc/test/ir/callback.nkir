@@ -1,6 +1,6 @@
 extern "c" puts
 
-local proc invoke(:i64 %cb) {
+local proc invoke(:ptr %cb) {
     call %cb, ()
     ret
 }

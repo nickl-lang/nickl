@@ -74,6 +74,7 @@ typedef struct {
     NKIR_NUMERIC_ITERATE(X)
 #undef X
     NkIrType _cached_void;
+    NkIrType _cached_ptr;
 
     NkIrParamArray proc_params;
     NkIrParam proc_ret;
@@ -103,13 +104,24 @@ static NkIrType allocVoidType(ParserState *p) {
     return type;
 }
 
-#define CACHED_TYPE(NAME, EXPR)                        \
-    NkIrType NK_CAT(get_, NAME)(ParserState * p) {     \
-        NkIrType *cached = &p->NK_CAT(_cached_, NAME); \
-        if (!*cached) {                                \
-            *cached = (EXPR);                          \
-        }                                              \
-        return *cached;                                \
+static NkIrType allocPtrType(ParserState *p) {
+    NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
+    *type = (NkIrType_T){
+        .size = 8, // TODO: Hardcoded ptr size
+        .align = 8,
+        .id = 0,
+        .kind = NkIrType_Pointer,
+    };
+    return type;
+}
+
+#define CACHED_TYPE(NAME, EXPR)                                \
+    NkIrType NK_CAT(NK_CAT(get_, NAME), _t)(ParserState * p) { \
+        NkIrType *cached = &p->NK_CAT(_cached_, NAME);         \
+        if (!*cached) {                                        \
+            *cached = (EXPR);                                  \
+        }                                                      \
+        return *cached;                                        \
     };
 
 #define X(TYPE, VALUE_TYPE) CACHED_TYPE(TYPE, allocNumericType(p, VALUE_TYPE))
@@ -117,13 +129,14 @@ NKIR_NUMERIC_ITERATE(X)
 #undef X
 
 CACHED_TYPE(void, allocVoidType(p));
+CACHED_TYPE(ptr, allocPtrType(p));
 
 #undef CACHED_TYPE
 
 static NkIrType allocStringType(ParserState *p, usize size) {
     NkIrAggregateElemInfo *elem = nk_arena_allocT(p->arena, NkIrAggregateElemInfo);
     *elem = (NkIrAggregateElemInfo){
-        .type = get_i8(p),
+        .type = get_i8_t(p),
         .count = size + 1,
         .offset = 0,
     };
@@ -136,10 +149,6 @@ static NkIrType allocStringType(ParserState *p, usize size) {
         .kind = NkIrType_Aggregate,
     };
     return type;
-}
-
-static NkIrType get_ptr_t(ParserState *p) {
-    return get_i64(p); // TODO: Hardcoded ptr size
 }
 
 // TODO: Reuse some code between parsers?
@@ -234,6 +243,8 @@ static NklToken const *expect(ParserState *p, u32 id) {
 }
 
 static Void parseNumber(ParserState *p, void *addr, NkString str, NkIrNumericValueType value_type) {
+    // TODO: Add support for hex constants
+
     char const *cstr = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(str));
 
     char *endptr = NULL;
@@ -294,15 +305,19 @@ static u32 parseIdx(ParserState *p) {
 static NkIrType parseType(ParserState *p) {
     NkIrType ret = NULL;
 
-#define X(TYPE, VALUE_TYPE)                  \
-    if (ACCEPT(NK_CAT(NklIrToken_, TYPE))) { \
-        return NK_CAT(get_, TYPE)(p);        \
+#define X(TYPE, VALUE_TYPE)                       \
+    if (ACCEPT(NK_CAT(NklIrToken_, TYPE))) {      \
+        return NK_CAT(NK_CAT(get_, TYPE), _t)(p); \
     }
     NKIR_NUMERIC_ITERATE(X)
 #undef X
 
     if (ACCEPT(NklIrToken_void)) {
-        return get_void(p);
+        return get_void_t(p);
+    }
+
+    if (ACCEPT(NklIrToken_ptr)) {
+        return get_ptr_t(p);
     }
 
     if (ACCEPT(NklIrToken_LBrace)) {
@@ -500,6 +515,13 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
 
             break;
         }
+
+        case NkIrType_Pointer: {
+            TRY(NklToken const *token = expect(p, NklToken_Int));
+            NkString const token_str = tokenStr(p, token);
+            TRY(parseNumber(p, addr, token_str, Int64)); // TODO: Hardcoded ptr size
+            break;
+        }
     }
 
     return ret;
@@ -587,9 +609,9 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
 
     if (!type) {
         if (on(p, NklToken_Int)) {
-            type = get_i64(p);
+            type = get_i64_t(p);
         } else if (on(p, NklToken_Float)) {
-            type = get_f64(p);
+            type = get_f64_t(p);
         }
     }
 
@@ -749,7 +771,7 @@ static NkIrInstr parseInstr(ParserState *p) {
         TRY(NkIrRef const proc = parseRef(p, get_ptr_t(p)));
         EXPECT(NklIrToken_Comma);
         TRY(NkIrRefArray const args = parseRefArray(p));
-        NkIrRef dst = nkir_makeRefNull(get_void(p));
+        NkIrRef dst = nkir_makeRefNull(get_void_t(p));
         if (ACCEPT(NklIrToken_MinusGreater)) {
             TRY(dst = parseDst(p, NULL, true));
         }
@@ -800,14 +822,14 @@ static NkIrInstr parseInstr(ParserState *p) {
     else if (ACCEPT(NklIrToken_cmp)) {
         if (0) {
         }
-#define CMP_IR(NAME)                                            \
-    else if (ACCEPT(NK_CAT(NklIrToken_, NAME))) {               \
-        TRY(NkIrRef const lhs = parseRef(p, NULL));             \
-        EXPECT(NklIrToken_Comma);                               \
-        TRY(NkIrRef const rhs = parseRef(p, lhs.type));         \
-        EXPECT(NklIrToken_MinusGreater);                        \
-        TRY(NkIrRef const dst = parseDst(p, get_i8(p), false)); \
-        ret = NK_CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs);      \
+#define CMP_IR(NAME)                                              \
+    else if (ACCEPT(NK_CAT(NklIrToken_, NAME))) {                 \
+        TRY(NkIrRef const lhs = parseRef(p, NULL));               \
+        EXPECT(NklIrToken_Comma);                                 \
+        TRY(NkIrRef const rhs = parseRef(p, lhs.type));           \
+        EXPECT(NklIrToken_MinusGreater);                          \
+        TRY(NkIrRef const dst = parseDst(p, get_i8_t(p), false)); \
+        ret = NK_CAT(nkir_make_cmp_, NAME)(dst, lhs, rhs);        \
     }
 #include "nkb/ir.inl"
     }
@@ -860,7 +882,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
     if (ACCEPT(NklIrToken_Colon)) {
         TRY(p->proc_ret.type = parseType(p));
     } else {
-        p->proc_ret.type = get_void(p);
+        p->proc_ret.type = get_void_t(p);
     }
 
     if (p->proc_ret.type->size > get_ptr_t(p)->size) {
@@ -915,9 +937,9 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 
     if (!type) {
         if (on(p, NklToken_Int)) {
-            type = get_i64(p);
+            type = get_i64_t(p);
         } else if (on(p, NklToken_Float)) {
-            type = get_f64(p);
+            type = get_f64_t(p);
         }
     }
 

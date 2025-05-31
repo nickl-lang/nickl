@@ -31,37 +31,17 @@ void nkir_inspectType(NkIrType type, NkStream out) {
 
         case NkIrType_Numeric:
             switch (type->num) {
-                case Int8:
-                    nk_printf(out, "i8");
-                    break;
-                case Uint8:
-                    nk_printf(out, "u8");
-                    break;
-                case Int16:
-                    nk_printf(out, "i16");
-                    break;
-                case Uint16:
-                    nk_printf(out, "u16");
-                    break;
-                case Int32:
-                    nk_printf(out, "i32");
-                    break;
-                case Uint32:
-                    nk_printf(out, "u32");
-                    break;
-                case Int64:
-                    nk_printf(out, "i64");
-                    break;
-                case Uint64:
-                    nk_printf(out, "u64");
-                    break;
-                case Float32:
-                    nk_printf(out, "f32");
-                    break;
-                case Float64:
-                    nk_printf(out, "f64");
-                    break;
+#define X(TYPE, VALUE_TYPE)    \
+    case VALUE_TYPE:           \
+        nk_printf(out, #TYPE); \
+        break;
+                NKIR_NUMERIC_ITERATE(X)
+#undef X
             }
+            break;
+
+        case NkIrType_Pointer:
+            nk_printf(out, "ptr");
             break;
     }
 
@@ -119,6 +99,11 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                     nk_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
                     break;
             }
+            break;
+
+        case NkIrType_Pointer:
+            // TODO: Assuming host pointer size
+            nk_printf(out, "0x%jX", (intptr_t)*(void **)data);
             break;
     }
 }

@@ -7,7 +7,7 @@ local proc myatan(:f64 %x) :f64 {
     alloc :f64 -> %num_addr
     alloc :f64 -> %sign_addr
     alloc :f64 -> %denom_addr
-    alloc :i64 -> %i_addr
+    alloc :u64 -> %i_addr
 
     store %x -> %sum_addr
     store %x -> %num_addr
@@ -22,10 +22,10 @@ local proc myatan(:f64 %x) :f64 {
     load %sum_addr -> :f64 %sum
     load %sign_addr -> :f64 %sign
     load %denom_addr -> :f64 %denom
-    load %i_addr -> :i64 %i
+    load %i_addr -> :u64 %i
 
-    load ITER -> :i64 %iter
-    cmp lt :i64 %i, %iter -> :i8 %cond
+    load ITER -> :u64 %iter
+    cmp lt :u64 %i, %iter -> :i8 %cond
     jmpz :i8 %cond, @endloop
 
     mul %x, %num -> %num1
@@ -42,7 +42,7 @@ local proc myatan(:f64 %x) :f64 {
     store :f64 %sum1 -> %sum_addr
     store :f64 %sign1 -> %sign_addr
     store :f64 %denom1 -> %denom_addr
-    store :i64 %i1 -> %i_addr
+    store :u64 %i1 -> %i_addr
 
     jmp @loop
 

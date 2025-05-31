@@ -56,6 +56,10 @@ static void writeType(NkStream out, NkIrType type) {
                     break;
             }
             break;
+
+        case NkIrType_Pointer:
+            nk_printf(out, "ptr");
+            break;
     }
 }
 
@@ -337,8 +341,11 @@ void writeData(NkStream out, NkIrData const *data) {
 
     writeType(out, data->type);
 
+    // TODO: Ignoring relocs
+
     switch (data->type->kind) {
         case NkIrType_Aggregate:
+            // TODO: Ignoring aggregate types other than string
             nk_printf(out, " c\"");
             nks_sanitize(out, (NkString){data->addr, data->type->aggr.data[0].count});
             nk_printf(out, "\"");
@@ -348,6 +355,13 @@ void writeData(NkStream out, NkIrData const *data) {
             nk_printf(out, " ");
             nkir_inspectVal(data->addr, data->type, out);
             break;
+
+        case NkIrType_Pointer: {
+            void *ptr = *(void **)data->addr;
+            nk_assert(!ptr && "ptr constant may only be null");
+            nk_printf(out, " null");
+            break;
+        }
     }
 
     nk_printf(out, "\n");

@@ -3,17 +3,17 @@ extern "c" puts
 extern "pthread" pthread_create
 extern "pthread" pthread_join
 
-proc threadProc(:i64 %arg) :i64 {
+proc threadProc(:ptr %arg) :ptr {
     call puts, ("hello") -> :i32
     ret 0
 }
 
 pub proc _entry() {
-    alloc :i64 -> %thread_addr
-    call pthread_create, (:i64 %thread_addr, 0, threadProc, 0) -> :i32
+    alloc :ptr -> %thread_addr
+    call pthread_create, (:ptr %thread_addr, 0, threadProc, 0) -> :i32
 
-    load %thread_addr -> :i64 %thread
-    call pthread_join, (:i64 %thread, 0) -> :i32
+    load %thread_addr -> :ptr %thread
+    call pthread_join, (:ptr %thread, 0) -> :i32
 
     ret
 }
