@@ -7,7 +7,7 @@
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
-static void printType(NkStream out, NkIrType type) {
+static void writeType(NkStream out, NkIrType type) {
     if (!type) {
         return;
     }
@@ -31,7 +31,7 @@ static void printType(NkStream out, NkIrType type) {
     }
 }
 
-static void printVisibility(NkStream out, NkIrVisibility vis) {
+static void writeVisibility(NkStream out, NkIrVisibility vis) {
     switch (vis) {
         case NkIrVisibility_Hidden:
             nk_assert(!"TODO not implemented");
@@ -50,16 +50,26 @@ static void printVisibility(NkStream out, NkIrVisibility vis) {
     }
 }
 
-static void printName(NkStream out, NkAtom name) {
+static void writeName(NkStream out, NkAtom name) {
     NkString const name_str = nk_atom2s(name);
     if (name_str.size) {
-        nk_printf(out, "@" NKS_FMT, NKS_ARG(name_str));
+        nk_printf(out, NKS_FMT, NKS_ARG(name_str));
     } else {
-        nk_printf(out, "@_%u", name);
+        nk_printf(out, "_%u", name);
     }
 }
 
-static void printRefUntyped(NkStream out, NkIrRef const *ref) {
+static void writeGlobal(NkStream out, NkAtom name) {
+    nk_printf(out, "@");
+    writeName(out, name);
+}
+
+static void writeLocal(NkStream out, NkAtom name) {
+    nk_printf(out, "%%");
+    writeName(out, name);
+}
+
+static void writeRefUntyped(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
         case NkIrRef_None:
             break;
@@ -68,19 +78,16 @@ static void printRefUntyped(NkStream out, NkIrRef const *ref) {
             break;
 
         case NkIrRef_Local:
-            nk_assert(!"TODO not implemented");
-            break;
-
         case NkIrRef_Param:
-            nk_assert(!"TODO not implemented");
+            writeLocal(out, ref->sym);
             break;
 
         case NkIrRef_Global:
-            printName(out, ref->sym);
+            writeGlobal(out, ref->sym);
             break;
 
         case NkIrRef_Imm:
-            nk_assert(!"TODO not implemented");
+            nkir_inspectVal((void *)&ref->imm, ref->type, out);
             break;
 
         case NkIrRef_VariadicMarker:
@@ -89,7 +96,7 @@ static void printRefUntyped(NkStream out, NkIrRef const *ref) {
     }
 }
 
-static void printRefType(NkStream out, NkIrRef const *ref) {
+static void writeRefType(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
         case NkIrRef_None:
 
@@ -101,7 +108,7 @@ static void printRefType(NkStream out, NkIrRef const *ref) {
         case NkIrRef_Null:
         case NkIrRef_Local:
         case NkIrRef_Param:
-            printType(out, ref->type);
+            writeType(out, ref->type);
             break;
 
         case NkIrRef_VariadicMarker:
@@ -110,25 +117,34 @@ static void printRefType(NkStream out, NkIrRef const *ref) {
     }
 }
 
-static void printRef(NkStream out, NkIrRef const *ref) {
-    printRefType(out, ref);
+static void writeRef(NkStream out, NkIrRef const *ref) {
+    writeRefType(out, ref);
     nk_printf(out, " ");
-    printRefUntyped(out, ref);
+    writeRefUntyped(out, ref);
 }
 
-static void printInstr(NkStream out, NkIrInstr const *instr) {
+static void writeInstr(NkStream out, NkIrInstr const *instr) {
     nk_printf(out, "  ");
 
     switch (instr->code) {
+        case NkIrOp_add: {
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = add ");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", ");
+            writeRefUntyped(out, &instr->arg[2].ref);
+            break;
+        }
+
         case NkIrOp_call: {
             NkIrRef const *dst_ref = &instr->arg[0].ref;
             if (dst_ref->kind && dst_ref->kind != NkIrRef_Null) {
-                printRef(out, dst_ref);
+                writeRefUntyped(out, dst_ref);
                 nk_printf(out, " = ");
             }
             nk_printf(out, "call ");
             if (dst_ref->kind) {
-                printType(out, dst_ref->type);
+                writeType(out, dst_ref->type);
                 nk_printf(out, " ");
             } else {
                 nk_printf(out, "void ");
@@ -138,10 +154,13 @@ static void printInstr(NkStream out, NkIrInstr const *instr) {
                 if (NK_INDEX(arg_ref, instr->arg[2].refs)) {
                     nk_printf(out, ", ");
                 }
-                printRefType(out, arg_ref);
+                writeRefType(out, arg_ref);
+                if (arg_ref->kind == NkIrRef_VariadicMarker) {
+                    break;
+                }
             }
             nk_printf(out, ") ");
-            printRefUntyped(out, &instr->arg[1].ref);
+            writeRefUntyped(out, &instr->arg[1].ref);
             nk_printf(out, "(");
             NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
@@ -150,7 +169,7 @@ static void printInstr(NkStream out, NkIrInstr const *instr) {
                 if (NK_INDEX(arg_ref, instr->arg[2].refs)) {
                     nk_printf(out, ", ");
                 }
-                printRef(out, arg_ref);
+                writeRef(out, arg_ref);
             }
             nk_printf(out, ")");
             break;
@@ -159,7 +178,7 @@ static void printInstr(NkStream out, NkIrInstr const *instr) {
         case NkIrOp_ret:
             nk_printf(out, "ret ");
             if (instr->arg[1].ref.kind) {
-                printRef(out, &instr->arg[1].ref);
+                writeRef(out, &instr->arg[1].ref);
             } else {
                 nk_printf(out, "void");
             }
@@ -207,12 +226,12 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
                     nk_assert(!"TODO not implemented");
                 }
 
-                printName(out, sym->name);
+                writeGlobal(out, sym->name);
                 nk_printf(out, " = ");
-                printVisibility(out, sym->vis);
+                writeVisibility(out, sym->vis);
                 // TODO: Abstract constness printing
                 nk_printf(out, " constant [%u x ", sym->data.type->aggr.data[0].count);
-                printType(out, sym->data.type->aggr.data[0].type);
+                writeType(out, sym->data.type->aggr.data[0].type);
                 nk_printf(out, "] c\"");
                 nks_sanitize(out, (NkString){sym->data.addr, sym->data.type->aggr.data[0].count});
                 nk_printf(out, "\"\n");
@@ -221,12 +240,21 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
 
             case NkIrSymbol_Proc:
                 nk_printf(out, "define ");
-                printType(out, sym->proc.ret.type);
+                writeType(out, sym->proc.ret.type);
                 nk_printf(out, " ");
-                printName(out, sym->name);
-                nk_printf(out, "() {\n");
+                writeGlobal(out, sym->name);
+                nk_printf(out, "(");
+                NK_ITERATE(NkIrParam const *, param, sym->proc.params) {
+                    if (NK_INDEX(param, sym->proc.params)) {
+                        nk_printf(out, ", ");
+                    }
+                    writeType(out, param->type);
+                    nk_printf(out, " ");
+                    writeLocal(out, param->name);
+                }
+                nk_printf(out, ") {\n");
                 NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
-                    printInstr(out, instr);
+                    writeInstr(out, instr);
                 }
                 nk_printf(out, "}\n");
                 break;
