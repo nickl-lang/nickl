@@ -1,6 +1,7 @@
 #include "emit_llvm.h"
 
 #include "nkb/ir.h"
+#include "nkb/types.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/stream.h"
@@ -20,12 +21,28 @@ static void writeType(NkStream out, NkIrType type) {
 
         case NkIrType_Numeric:
             switch (type->num) {
-#define X(TYPE, VALUE_TYPE)    \
-    case VALUE_TYPE:           \
-        nk_printf(out, #TYPE); \
-        break;
-                NKIR_NUMERIC_ITERATE(X)
-#undef X
+                case Int8:
+                case Uint8:
+                    nk_printf(out, "i8");
+                    break;
+                case Int16:
+                case Uint16:
+                    nk_printf(out, "i16");
+                    break;
+                case Int32:
+                case Uint32:
+                    nk_printf(out, "i32");
+                    break;
+                case Int64:
+                case Uint64:
+                    nk_printf(out, "i64");
+                    break;
+                case Float32:
+                    nk_printf(out, "f32");
+                    break;
+                case Float64:
+                    nk_printf(out, "f64");
+                    break;
             }
             break;
     }
@@ -99,6 +116,7 @@ static void writeRefUntyped(NkStream out, NkIrRef const *ref) {
 static void writeRefType(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
         case NkIrRef_None:
+            break;
 
         case NkIrRef_Global:
             nk_printf(out, "ptr");
@@ -124,17 +142,86 @@ static void writeRef(NkStream out, NkIrRef const *ref) {
 }
 
 static void writeInstr(NkStream out, NkIrInstr const *instr) {
-    nk_printf(out, "  ");
+    if (instr->code != NkIrOp_label) {
+        nk_printf(out, "  ");
+    }
 
     switch (instr->code) {
-        case NkIrOp_add: {
+        case NkIrOp_alloc:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = alloca ");
+            writeType(out, instr->arg[1].type);
+            break;
+
+        case NkIrOp_load:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = load ");
+            writeRefType(out, &instr->arg[0].ref);
+            nk_printf(out, ", ptr ");
+            writeRefUntyped(out, &instr->arg[1].ref);
+            break;
+
+        case NkIrOp_store:
+            nk_printf(out, "store ");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", ptr ");
+            writeRefUntyped(out, &instr->arg[0].ref);
+            break;
+
+        case NkIrOp_jmp:
+            nk_printf(out, "br label %%");
+            writeName(out, instr->arg[1].label);
+            break;
+
+        case NkIrOp_jmpz:
+            nk_printf(out, "br i1 ");
+            writeRefUntyped(out, &instr->arg[1].ref);
+            // TODO: Count inserted labels
+            nk_printf(out, ", label %%.nonzero");
+            nk_printf(out, ", label %%");
+            writeName(out, instr->arg[2].label);
+            nk_printf(out, "\n.nonzero:");
+            break;
+
+        case NkIrOp_jmpnz:
+            nk_printf(out, "br i1 ");
+            writeRefUntyped(out, &instr->arg[1].ref);
+            nk_printf(out, ", label %%");
+            writeName(out, instr->arg[2].label);
+            // TODO: Count inserted labels
+            nk_printf(out, ", label %%.zero\n.zero:");
+            break;
+
+        case NkIrOp_cmp_lt:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
+            // TODO: Hardcoded integer cmp
+            nk_printf(out, " = icmp %clt ", NKIR_NUMERIC_IS_SIGNED(instr->arg[1].ref.type->num) ? 's' : 'u');
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", ");
+            writeRefUntyped(out, &instr->arg[2].ref);
+            break;
+
+        case NkIrOp_mov:
+            // TODO: Expressing mov as add
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = add ");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", 0");
+            break;
+
+        case NkIrOp_label:
+            writeName(out, instr->arg[1].label);
+            nk_printf(out, ":");
+            break;
+
+        case NkIrOp_add:
             writeRefUntyped(out, &instr->arg[0].ref);
             nk_printf(out, " = add ");
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", ");
             writeRefUntyped(out, &instr->arg[2].ref);
             break;
-        }
 
         case NkIrOp_call: {
             NkIrRef const *dst_ref = &instr->arg[0].ref;
