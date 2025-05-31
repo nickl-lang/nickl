@@ -6,7 +6,11 @@
 #include "ntk/common.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 #include "ntk/utils.h"
+// #include "ntk/log.h"
+
+// NK_LOG_USE_SCOPE(emit_llvm);
 
 static void writeType(NkStream out, NkIrType type) {
     if (!type) {
@@ -15,8 +19,15 @@ static void writeType(NkStream out, NkIrType type) {
 
     switch (type->kind) {
         case NkIrType_Aggregate:
-            // TODO: Treating aggregate as void
-            nk_printf(out, "void");
+            if (type->size) {
+                // TODO: Only writing string types
+                nk_printf(out, "[%u x ", type->aggr.data[0].count);
+                writeType(out, type->aggr.data[0].type);
+                nk_printf(out, "]");
+            } else {
+                nk_printf(out, "void");
+            }
+
             break;
 
         case NkIrType_Numeric:
@@ -38,10 +49,10 @@ static void writeType(NkStream out, NkIrType type) {
                     nk_printf(out, "i64");
                     break;
                 case Float32:
-                    nk_printf(out, "f32");
+                    nk_printf(out, "float");
                     break;
                 case Float64:
-                    nk_printf(out, "f64");
+                    nk_printf(out, "double");
                     break;
             }
             break;
@@ -103,9 +114,26 @@ static void writeRefUntyped(NkStream out, NkIrRef const *ref) {
             writeGlobal(out, ref->sym);
             break;
 
-        case NkIrRef_Imm:
-            nkir_inspectVal((void *)&ref->imm, ref->type, out);
+        case NkIrRef_Imm: {
+            // TODO: Print floats in hex
+            // TODO: Investigate precision loss in ir
+            NKSB_FIXED_BUFFER(sb, 128);
+            NkStream s = NKIR_NUMERIC_IS_FLT(ref->type->num) ? nksb_getStream(&sb) : out;
+            nkir_inspectVal((void *)&ref->imm, ref->type, s);
+            if (NKIR_NUMERIC_IS_FLT(ref->type->num)) {
+                usize i = 0;
+                for (; i < sb.size; i++) {
+                    if (sb.data[i] == '.') {
+                        break;
+                    }
+                }
+                nk_printf(out, NKS_FMT, NKS_ARG(sb));
+                if (i == sb.size) {
+                    nk_printf(out, ".");
+                }
+            }
             break;
+        }
 
         case NkIrRef_VariadicMarker:
             nk_printf(out, "...");
@@ -203,11 +231,15 @@ static void writeInstr(NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_mov:
+            nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
             // TODO: Expressing mov as add
             writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = add ");
+            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", 0");
+            if (NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num)) {
+                nk_printf(out, ".");
+            }
             break;
 
         case NkIrOp_label:
@@ -217,7 +249,28 @@ static void writeInstr(NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_add:
             writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = add ");
+            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", ");
+            writeRefUntyped(out, &instr->arg[2].ref);
+            break;
+        case NkIrOp_sub:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = %ssub ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", ");
+            writeRefUntyped(out, &instr->arg[2].ref);
+            break;
+        case NkIrOp_mul:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = %smul ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", ");
+            writeRefUntyped(out, &instr->arg[2].ref);
+            break;
+        case NkIrOp_div:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = %sdiv ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", ");
             writeRefUntyped(out, &instr->arg[2].ref);
@@ -279,6 +332,27 @@ static void writeInstr(NkStream out, NkIrInstr const *instr) {
     nk_printf(out, "\n");
 }
 
+void writeData(NkStream out, NkIrData const *data) {
+    nk_printf(out, "%s ", (data->flags & NkIrData_ReadOnly) ? "constant" : "global");
+
+    writeType(out, data->type);
+
+    switch (data->type->kind) {
+        case NkIrType_Aggregate:
+            nk_printf(out, " c\"");
+            nks_sanitize(out, (NkString){data->addr, data->type->aggr.data[0].count});
+            nk_printf(out, "\"");
+            break;
+
+        case NkIrType_Numeric:
+            nk_printf(out, " ");
+            nkir_inspectVal(data->addr, data->type, out);
+            break;
+    }
+
+    nk_printf(out, "\n");
+}
+
 void nkir_emit_llvm(NkStream out, NkIrModule mod) {
     NK_ITERATE(NkIrSymbol const *, sym, mod) {
         switch (sym->kind) {
@@ -288,41 +362,11 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
                 break;
 
             case NkIrSymbol_Data:
-                if (!sym->data.addr) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (!(sym->data.flags & NkIrData_ReadOnly)) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (sym->data.relocs.size) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (sym->data.type->kind != NkIrType_Aggregate) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (sym->data.type->aggr.size != 1) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (sym->data.type->aggr.data[0].type->kind != NkIrType_Numeric) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (sym->data.type->aggr.data[0].type->size != 1) {
-                    nk_assert(!"TODO not implemented");
-                }
-                if (sym->vis != NkIrVisibility_Local) {
-                    nk_assert(!"TODO not implemented");
-                }
-
                 writeGlobal(out, sym->name);
                 nk_printf(out, " = ");
                 writeVisibility(out, sym->vis);
-                // TODO: Abstract constness printing
-                nk_printf(out, " constant [%u x ", sym->data.type->aggr.data[0].count);
-                writeType(out, sym->data.type->aggr.data[0].type);
-                nk_printf(out, "] c\"");
-                nks_sanitize(out, (NkString){sym->data.addr, sym->data.type->aggr.data[0].count});
-                nk_printf(out, "\"\n");
-
+                nk_printf(out, " ");
+                writeData(out, &sym->data);
                 break;
 
             case NkIrSymbol_Proc:
@@ -346,6 +390,7 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
                 nk_printf(out, "}\n");
                 break;
         }
+        nk_printf(out, "\n");
     }
 
     // TODO: Inserting name for libc compatibility main
