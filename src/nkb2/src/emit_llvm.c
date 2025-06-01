@@ -173,6 +173,7 @@ static void writeRef(NkStream out, NkIrRef const *ref) {
 typedef struct {
     NkArena *scratch;
     usize next_local;
+    usize next_label;
 } Context;
 
 static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
@@ -195,6 +196,10 @@ static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
 }
 
 static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
+    if (instr->code == NkIrOp_comment) {
+        return;
+    }
+
     if (instr->code != NkIrOp_label) {
         nk_printf(out, "  ");
     }
@@ -235,34 +240,47 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             writeName(out, instr->arg[1].label);
             break;
 
-        case NkIrOp_jmpz:
-            nk_printf(out, "br i1 ");
-            writeRefUntyped(out, &instr->arg[1].ref);
-            // TODO: Count inserted labels
-            nk_printf(out, ", label %%.nonzero");
+        case NkIrOp_jmpz: {
+            usize const label = ctx->next_label++;
+            usize const reg = ctx->next_local++;
+            nk_printf(out, "%%.%zu = icmp eq ", reg);
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", 0\n  br i1 %%.%zu", reg);
             nk_printf(out, ", label %%");
             writeName(out, instr->arg[2].label);
-            nk_printf(out, "\n.nonzero:");
+            nk_printf(out, ", label %%.label%zu", label);
+            nk_printf(out, "\n.label%zu:", label);
             break;
+        }
 
-        case NkIrOp_jmpnz:
-            nk_printf(out, "br i1 ");
-            writeRefUntyped(out, &instr->arg[1].ref);
+        case NkIrOp_jmpnz: {
+            usize const label = ctx->next_label++;
+            usize const reg = ctx->next_local++;
+            nk_printf(out, "%%.%zu = icmp ne ", reg);
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, ", 0\n  br i1 %%.%zu", reg);
             nk_printf(out, ", label %%");
             writeName(out, instr->arg[2].label);
             // TODO: Count inserted labels
-            nk_printf(out, ", label %%.zero\n.zero:");
+            nk_printf(out, ", label %%.label%zu\n.label%zu:", label, label);
             break;
+        }
 
-        case NkIrOp_cmp_lt:
-            writeRefUntyped(out, &instr->arg[0].ref);
+        case NkIrOp_cmp_lt: {
+            usize const reg = ctx->next_local++;
             nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
             // TODO: Hardcoded integer cmp
-            nk_printf(out, " = icmp %clt ", NKIR_NUMERIC_IS_SIGNED(instr->arg[1].ref.type->num) ? 's' : 'u');
+            nk_printf(out, "%%.%zu = icmp %clt ", reg, NKIR_NUMERIC_IS_SIGNED(instr->arg[1].ref.type->num) ? 's' : 'u');
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", ");
             writeRefUntyped(out, &instr->arg[2].ref);
+            nk_printf(out, "\n  ");
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(
+                out, " = %cext i1 %%.%zu to ", NKIR_NUMERIC_IS_SIGNED(instr->arg[0].ref.type->num) ? 's' : 'z', reg);
+            writeRefType(out, &instr->arg[0].ref);
             break;
+        }
 
         case NkIrOp_mov:
             nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
@@ -424,7 +442,7 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                 nk_printf(out, ") {\n");
                 Context ctx = {
                     .scratch = scratch,
-                    .next_local = 1,
+                    .next_local = 0,
                 };
                 NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
                     writeInstr(&ctx, out, instr);
