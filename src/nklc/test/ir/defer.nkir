@@ -7,12 +7,12 @@ local proc allocate() :i64 {
 }
 
 local proc free(:i64 %resource) {
-    call printf, ("free(%zi)\n", ..., resource) -> :i32
+    call printf, ("free(%zi)\n", ..., %resource) -> :i32
     ret
 }
 
 local proc use(:i64 %resource) {
-    call printf, ("use(%zi)\n", ..., resource) -> :i32
+    call printf, ("use(%zi)\n", ..., %resource) -> :i32
     ret
 }
 

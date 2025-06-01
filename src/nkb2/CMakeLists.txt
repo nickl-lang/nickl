@@ -1,6 +1,7 @@
 set(LIB nkb2)
 
 add_library(${LIB}
+    src/common.c
     src/emit_llvm.c
     src/ir.c
     src/llvm_stream.c

@@ -1,5 +1,8 @@
 #include "emit_llvm.h"
 
+#include <unistd.h>
+
+#include "common.h"
 #include "nkb/ir.h"
 #include "nkb/types.h"
 #include "ntk/arena.h"
@@ -172,6 +175,12 @@ static void writeRef(NkStream out, NkIrRef const *ref) {
 
 typedef struct {
     NkArena *scratch;
+
+    NkIrInstrArray instrs;
+
+    LabelArray labels;
+    u32 *indices;
+
     usize next_local;
     usize next_label;
 } Context;
@@ -193,6 +202,41 @@ static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
     }
 
     return (NkString){NKS_INIT(sb)};
+}
+
+static void writeLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize arg_idx) {
+    NkIrArg const *arg = &instr->arg[arg_idx];
+    usize const instr_idx = NK_INDEX(instr, ctx->instrs);
+
+    nk_assert(arg->kind == NkIrArg_Label || arg->kind == NkIrArg_LabelRel);
+
+    Label const *label = NULL;
+
+    switch (arg->kind) {
+        case NkIrArg_Label:
+            label = ctx->instrs.data[instr_idx].code == NkIrOp_label ? findLabelByIdx(ctx->labels, instr_idx)
+                                                                     : findLabelByName(ctx->labels, arg->label);
+            break;
+
+        case NkIrArg_LabelRel: {
+            usize const target_idx = instr_idx + arg->offset;
+            label = findLabelByIdx(ctx->labels, target_idx);
+            break;
+        }
+
+        default:
+            nk_assert(!"unreachable");
+            break;
+    }
+
+    nk_assert(label && "invalid label");
+
+    u32 const label_idx = ctx->indices[NK_INDEX(label, ctx->labels)];
+    if (label_idx) {
+        nk_printf(out, "%s%u", nk_atom2cs(label->name), label_idx);
+    } else {
+        nk_printf(out, "%s", nk_atom2cs(label->name));
+    }
 }
 
 static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
@@ -237,7 +281,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_jmp:
             nk_printf(out, "br label %%");
-            writeName(out, instr->arg[1].label);
+            writeLabel(ctx, out, instr, 1);
             break;
 
         case NkIrOp_jmpz: {
@@ -247,7 +291,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", 0\n  br i1 %%.%zu", reg);
             nk_printf(out, ", label %%");
-            writeName(out, instr->arg[2].label);
+            writeLabel(ctx, out, instr, 2);
             nk_printf(out, ", label %%.label%zu", label);
             nk_printf(out, "\n.label%zu:", label);
             break;
@@ -260,8 +304,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", 0\n  br i1 %%.%zu", reg);
             nk_printf(out, ", label %%");
-            writeName(out, instr->arg[2].label);
-            // TODO: Count inserted labels
+            writeLabel(ctx, out, instr, 2);
             nk_printf(out, ", label %%.label%zu\n.label%zu:", label, label);
             break;
         }
@@ -295,7 +338,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_label:
-            writeName(out, instr->arg[1].label);
+            writeLabel(ctx, out, instr, 1);
             nk_printf(out, ":");
             break;
 
@@ -426,6 +469,18 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                 break;
 
             case NkIrSymbol_Proc: {
+                LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
+                LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
+
+                u32 *indices = countLabels(labels);
+
+                Context ctx = {
+                    .scratch = scratch,
+                    .instrs = sym->proc.instrs,
+                    .labels = labels,
+                    .indices = indices,
+                };
+
                 nk_printf(out, "define ");
                 writeType(out, sym->proc.ret.type);
                 nk_printf(out, " ");
@@ -440,14 +495,12 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                     writeLocal(out, param->name);
                 }
                 nk_printf(out, ") {\n");
-                Context ctx = {
-                    .scratch = scratch,
-                    .next_local = 0,
-                };
                 NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
                     writeInstr(&ctx, out, instr);
                 }
                 nk_printf(out, "}\n");
+
+                nk_freeTn(nk_default_allocator, indices, u32, labels.size); // TODO: Use scratch arena
                 break;
             }
         }
