@@ -74,7 +74,6 @@ typedef struct {
     NKIR_NUMERIC_ITERATE(X)
 #undef X
     NkIrType _cached_void;
-    NkIrType _cached_ptr;
 
     NkIrParamArray proc_params;
     NkIrParam proc_ret;
@@ -104,17 +103,6 @@ static NkIrType allocVoidType(ParserState *p) {
     return type;
 }
 
-static NkIrType allocPtrType(ParserState *p) {
-    NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
-    *type = (NkIrType_T){
-        .size = 8, // TODO: Hardcoded ptr size
-        .align = 8,
-        .id = 0,
-        .kind = NkIrType_Pointer,
-    };
-    return type;
-}
-
 #define CACHED_TYPE(NAME, EXPR)                                \
     NkIrType NK_CAT(NK_CAT(get_, NAME), _t)(ParserState * p) { \
         NkIrType *cached = &p->NK_CAT(_cached_, NAME);         \
@@ -129,7 +117,6 @@ NKIR_NUMERIC_ITERATE(X)
 #undef X
 
 CACHED_TYPE(void, allocVoidType(p));
-CACHED_TYPE(ptr, allocPtrType(p));
 
 #undef CACHED_TYPE
 
@@ -149,6 +136,10 @@ static NkIrType allocStringType(ParserState *p, usize size) {
         .kind = NkIrType_Aggregate,
     };
     return type;
+}
+
+NkIrType get_ptr_t(ParserState *p) {
+    return get_i64_t(p); // TODO: Hardcoded ptr size
 }
 
 // TODO: Reuse some code between parsers?
@@ -314,10 +305,6 @@ static NkIrType parseType(ParserState *p) {
 
     if (ACCEPT(NklIrToken_void)) {
         return get_void_t(p);
-    }
-
-    if (ACCEPT(NklIrToken_ptr)) {
-        return get_ptr_t(p);
     }
 
     if (ACCEPT(NklIrToken_LBrace)) {
@@ -513,13 +500,6 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                 TRY(parseNumber(p, addr, token_str, type->num));
             }
 
-            break;
-        }
-
-        case NkIrType_Pointer: {
-            TRY(NklToken const *token = expect(p, NklToken_Int));
-            NkString const token_str = tokenStr(p, token);
-            TRY(parseNumber(p, addr, token_str, Int64)); // TODO: Hardcoded ptr size
             break;
         }
     }

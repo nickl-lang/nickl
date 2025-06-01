@@ -39,10 +39,6 @@ void nkir_inspectType(NkIrType type, NkStream out) {
 #undef X
             }
             break;
-
-        case NkIrType_Pointer:
-            nk_printf(out, "ptr");
-            break;
     }
 
     // TODO: Print alignment conservatively
@@ -99,11 +95,6 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                     nk_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
                     break;
             }
-            break;
-
-        case NkIrType_Pointer:
-            // TODO: Assuming host pointer size
-            nk_printf(out, "0x%jX", (intptr_t)*(void **)data);
             break;
     }
 }

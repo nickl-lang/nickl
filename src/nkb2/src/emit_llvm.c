@@ -56,10 +56,6 @@ static void writeType(NkStream out, NkIrType type) {
                     break;
             }
             break;
-
-        case NkIrType_Pointer:
-            nk_printf(out, "ptr");
-            break;
     }
 }
 
@@ -355,13 +351,6 @@ void writeData(NkStream out, NkIrData const *data) {
             nk_printf(out, " ");
             nkir_inspectVal(data->addr, data->type, out);
             break;
-
-        case NkIrType_Pointer: {
-            void *ptr = *(void **)data->addr;
-            nk_assert(!ptr && "ptr constant may only be null");
-            nk_printf(out, " null");
-            break;
-        }
     }
 
     nk_printf(out, "\n");

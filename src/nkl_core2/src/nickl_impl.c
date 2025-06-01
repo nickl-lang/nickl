@@ -80,7 +80,6 @@ char const *s_ir_tokens[] = {
     "include", // NklIrToken_include,
     "local",   // NklIrToken_local,
     "proc",    // NklIrToken_proc,
-    "ptr",     // NklIrToken_ptr,
     "pub",     // NklIrToken_pub,
     "type",    // NklIrToken_type,
     "void",    // NklIrToken_void,

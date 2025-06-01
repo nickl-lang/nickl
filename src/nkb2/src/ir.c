@@ -508,7 +508,6 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
             nk_printf(out, "}");
             break;
 
-        case NkIrType_Pointer:
         case NkIrType_Numeric: {
             void *addr = (u8 *)base_addr + base_offset;
             nkir_inspectVal(addr, type, out);
