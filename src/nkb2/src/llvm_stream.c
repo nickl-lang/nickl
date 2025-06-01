@@ -17,7 +17,7 @@ bool nk_llvm_stream_open(NkArena *scratch, NkPipeStream *ps, NkString out_file) 
     NK_ARENA_SCOPE(scratch) {
         NkString const cmd = nk_tsprintf(
             scratch,
-            "sh -c \"tee /dev/stderr | llc -O3 --relocation-model=pic - | clang -x assembler -o\\\"" NKS_FMT "\\\" -\"",
+            "sh -c \"tee /dev/stderr | opt -O3 - | llc --relocation-model=pic - | clang -x assembler -o\\\"" NKS_FMT "\\\" -\"",
             NKS_ARG(out_file));
         ret = nk_pipe_streamOpenWrite(scratch, ps, cmd, false);
     }

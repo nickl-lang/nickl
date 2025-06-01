@@ -169,32 +169,65 @@ static void writeRef(NkStream out, NkIrRef const *ref) {
     writeRefUntyped(out, ref);
 }
 
-static void writeInstr(NkStream out, NkIrInstr const *instr) {
+typedef struct {
+    usize next_local;
+} Context;
+
+static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
     if (instr->code != NkIrOp_label) {
         nk_printf(out, "  ");
     }
 
     switch (instr->code) {
-        case NkIrOp_alloc:
-            writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = alloca ");
+        case NkIrOp_alloc: {
+            usize const reg = ctx->next_local++;
+            nk_printf(out, "%%.%zu = alloca ", reg);
             writeType(out, instr->arg[1].type);
+            nk_printf(out, "\n  ");
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = ptrtoint ptr %%.%zu to ", reg);
+            writeRefType(out, &instr->arg[0].ref);
             break;
+        }
 
-        case NkIrOp_load:
+        case NkIrOp_load: {
+            usize reg = 0;
+            if (instr->arg[1].ref.kind != NkIrRef_Global) {
+                reg = ctx->next_local++;
+                nk_printf(out, "%%.%zu = inttoptr ", reg);
+                writeRef(out, &instr->arg[1].ref);
+                nk_printf(out, " to ptr\n  ");
+            }
             writeRefUntyped(out, &instr->arg[0].ref);
             nk_printf(out, " = load ");
             writeRefType(out, &instr->arg[0].ref);
             nk_printf(out, ", ptr ");
-            writeRefUntyped(out, &instr->arg[1].ref);
+            if (instr->arg[1].ref.kind != NkIrRef_Global) {
+                nk_printf(out, "%%.%zu", reg);
+            } else {
+                writeRefUntyped(out, &instr->arg[1].ref);
+            }
             break;
+        }
 
-        case NkIrOp_store:
+        case NkIrOp_store: {
+            usize reg = 0;
+            if (instr->arg[1].ref.kind != NkIrRef_Global) {
+                reg = ctx->next_local++;
+                nk_printf(out, "%%.%zu = inttoptr ", reg);
+                writeRef(out, &instr->arg[0].ref);
+                nk_printf(out, " to ptr\n  ");
+            }
             nk_printf(out, "store ");
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", ptr ");
-            writeRefUntyped(out, &instr->arg[0].ref);
+            if (instr->arg[1].ref.kind != NkIrRef_Global) {
+                nk_printf(out, "%%.%zu", reg);
+            } else {
+                writeRefUntyped(out, &instr->arg[0].ref);
+            }
             break;
+        }
 
         case NkIrOp_jmp:
             nk_printf(out, "br label %%");
@@ -277,6 +310,13 @@ static void writeInstr(NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_call: {
+            usize reg = 0;
+            if (instr->arg[1].ref.kind != NkIrRef_Global) {
+                reg = ctx->next_local++;
+                nk_printf(out, "%%.%zu = inttoptr ", reg);
+                writeRef(out, &instr->arg[1].ref);
+                nk_printf(out, " to ptr\n  ");
+            }
             NkIrRef const *dst_ref = &instr->arg[0].ref;
             if (dst_ref->kind && dst_ref->kind != NkIrRef_Null) {
                 writeRefUntyped(out, dst_ref);
@@ -300,7 +340,11 @@ static void writeInstr(NkStream out, NkIrInstr const *instr) {
                 }
             }
             nk_printf(out, ") ");
-            writeRefUntyped(out, &instr->arg[1].ref);
+            if (instr->arg[1].ref.kind != NkIrRef_Global) {
+                nk_printf(out, "%%.%zu", reg);
+            } else {
+                writeRefUntyped(out, &instr->arg[1].ref);
+            }
             nk_printf(out, "(");
             NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
@@ -372,7 +416,7 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
                 writeData(out, &sym->data);
                 break;
 
-            case NkIrSymbol_Proc:
+            case NkIrSymbol_Proc: {
                 nk_printf(out, "define ");
                 writeType(out, sym->proc.ret.type);
                 nk_printf(out, " ");
@@ -387,11 +431,15 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
                     writeLocal(out, param->name);
                 }
                 nk_printf(out, ") {\n");
+                Context ctx = {
+                    .next_local = 1,
+                };
                 NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
-                    writeInstr(out, instr);
+                    writeInstr(&ctx, out, instr);
                 }
                 nk_printf(out, "}\n");
                 break;
+            }
         }
         nk_printf(out, "\n");
     }
