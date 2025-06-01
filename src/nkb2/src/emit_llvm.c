@@ -66,18 +66,19 @@ static void writeType(NkStream out, NkIrType type) {
 static void writeVisibility(NkStream out, NkIrVisibility vis) {
     switch (vis) {
         case NkIrVisibility_Hidden:
-            nk_assert(!"TODO not implemented");
+            nk_printf(out, "hidden");
             break;
         case NkIrVisibility_Default:
+            nk_printf(out, "dso_local");
             break;
         case NkIrVisibility_Protected:
-            nk_assert(!"TODO not implemented");
+            nk_printf(out, "protected");
             break;
         case NkIrVisibility_Internal:
-            nk_assert(!"TODO not implemented");
+            nk_printf(out, "hidden");
             break;
         case NkIrVisibility_Local:
-            nk_printf(out, "private");
+            nk_printf(out, "internal");
             break;
     }
 }
@@ -494,6 +495,8 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                 };
 
                 nk_printf(out, "define ");
+                writeVisibility(out, sym->vis);
+                nk_printf(out, " ");
                 writeType(out, sym->proc.ret.type);
                 nk_printf(out, " ");
                 writeGlobal(out, sym->name);
@@ -522,7 +525,7 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
     // TODO: Inserting name for libc compatibility main
     nk_printf(
         out,
-        "define i32 @main() {\n\
+        "define dso_local i32 @main() {\n\
   call void () @_entry()\n\
   ret i32 0\n\
 }\n");
