@@ -2,6 +2,7 @@
 
 #include "nkb/ir.h"
 #include "nkb/types.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/stream.h"
@@ -170,8 +171,28 @@ static void writeRef(NkStream out, NkIrRef const *ref) {
 }
 
 typedef struct {
+    NkArena *scratch;
     usize next_local;
 } Context;
+
+static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
+    NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
+    NkStream tmp = nksb_getStream(&sb);
+
+    if (ref->kind == NkIrRef_Global) {
+        writeRefUntyped(tmp, ref);
+    } else {
+        usize const reg = ctx->next_local++;
+
+        nk_printf(out, "%%.%zu = inttoptr ", reg);
+        writeRef(out, ref);
+        nk_printf(out, " to ptr\n  ");
+
+        nk_printf(tmp, "%%.%zu", reg);
+    }
+
+    return (NkString){NKS_INIT(sb)};
+}
 
 static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
     if (instr->code != NkIrOp_label) {
@@ -191,41 +212,21 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
         }
 
         case NkIrOp_load: {
-            usize reg = 0;
-            if (instr->arg[1].ref.kind != NkIrRef_Global) {
-                reg = ctx->next_local++;
-                nk_printf(out, "%%.%zu = inttoptr ", reg);
-                writeRef(out, &instr->arg[1].ref);
-                nk_printf(out, " to ptr\n  ");
-            }
+            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref);
             writeRefUntyped(out, &instr->arg[0].ref);
             nk_printf(out, " = load ");
             writeRefType(out, &instr->arg[0].ref);
             nk_printf(out, ", ptr ");
-            if (instr->arg[1].ref.kind != NkIrRef_Global) {
-                nk_printf(out, "%%.%zu", reg);
-            } else {
-                writeRefUntyped(out, &instr->arg[1].ref);
-            }
+            nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             break;
         }
 
         case NkIrOp_store: {
-            usize reg = 0;
-            if (instr->arg[1].ref.kind != NkIrRef_Global) {
-                reg = ctx->next_local++;
-                nk_printf(out, "%%.%zu = inttoptr ", reg);
-                writeRef(out, &instr->arg[0].ref);
-                nk_printf(out, " to ptr\n  ");
-            }
+            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[0].ref);
             nk_printf(out, "store ");
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", ptr ");
-            if (instr->arg[1].ref.kind != NkIrRef_Global) {
-                nk_printf(out, "%%.%zu", reg);
-            } else {
-                writeRefUntyped(out, &instr->arg[0].ref);
-            }
+            nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             break;
         }
 
@@ -310,13 +311,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_call: {
-            usize reg = 0;
-            if (instr->arg[1].ref.kind != NkIrRef_Global) {
-                reg = ctx->next_local++;
-                nk_printf(out, "%%.%zu = inttoptr ", reg);
-                writeRef(out, &instr->arg[1].ref);
-                nk_printf(out, " to ptr\n  ");
-            }
+            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref);
             NkIrRef const *dst_ref = &instr->arg[0].ref;
             if (dst_ref->kind && dst_ref->kind != NkIrRef_Null) {
                 writeRefUntyped(out, dst_ref);
@@ -340,11 +335,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                 }
             }
             nk_printf(out, ") ");
-            if (instr->arg[1].ref.kind != NkIrRef_Global) {
-                nk_printf(out, "%%.%zu", reg);
-            } else {
-                writeRefUntyped(out, &instr->arg[1].ref);
-            }
+            nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             nk_printf(out, "(");
             NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
@@ -400,7 +391,7 @@ void writeData(NkStream out, NkIrData const *data) {
     nk_printf(out, "\n");
 }
 
-void nkir_emit_llvm(NkStream out, NkIrModule mod) {
+void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
     NK_ITERATE(NkIrSymbol const *, sym, mod) {
         switch (sym->kind) {
             case NkIrSymbol_Extern:
@@ -432,6 +423,7 @@ void nkir_emit_llvm(NkStream out, NkIrModule mod) {
                 }
                 nk_printf(out, ") {\n");
                 Context ctx = {
+                    .scratch = scratch,
                     .next_local = 1,
                 };
                 NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {

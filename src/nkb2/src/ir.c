@@ -329,7 +329,7 @@ void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_com
         return;
     }
 
-    nkir_emit_llvm(ps.stream, mod);
+    nkir_emit_llvm(ps.stream, scratch, mod);
 
     nk_llvm_stream_close(&ps);
 }
