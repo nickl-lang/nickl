@@ -432,21 +432,33 @@ void writeData(NkStream out, NkIrData const *data) {
     nk_printf(out, "%s ", (data->flags & NkIrData_ReadOnly) ? "constant" : "global");
 
     writeType(out, data->type);
+    nk_printf(out, " ");
 
     // TODO: Ignoring relocs
 
-    switch (data->type->kind) {
-        case NkIrType_Aggregate:
-            // TODO: Ignoring aggregate types other than string
-            nk_printf(out, " c\"");
-            nks_sanitize(out, (NkString){data->addr, data->type->aggr.data[0].count});
-            nk_printf(out, "\"");
-            break;
+    if (data->addr) {
+        switch (data->type->kind) {
+            case NkIrType_Aggregate:
+                // TODO: Ignoring aggregate types other than string
+                nk_printf(out, "c\"");
+                nks_sanitize(out, (NkString){data->addr, data->type->aggr.data[0].count});
+                nk_printf(out, "\"");
+                break;
 
-        case NkIrType_Numeric:
-            nk_printf(out, " ");
-            nkir_inspectVal(data->addr, data->type, out);
-            break;
+            case NkIrType_Numeric:
+                nkir_inspectVal(data->addr, data->type, out);
+                break;
+        }
+    } else {
+        switch (data->type->kind) {
+            case NkIrType_Aggregate:
+                nk_assert(!"TODO not implemented");
+                break;
+
+            case NkIrType_Numeric:
+                nk_printf(out, "0");
+                break;
+        }
     }
 
     nk_printf(out, "\n");
