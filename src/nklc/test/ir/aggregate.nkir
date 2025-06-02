@@ -7,9 +7,9 @@ local proc Vec2_length(:Vec2 %vec) :f64 {
     load %vec -> :f64 %x
     add %vec, 8 -> %y_addr
     load %y_addr -> :f64 %y
-    mul :f64 %x, %x -> %x
-    mul :f64 %y, %y -> %y
-    add :f64 %x, %y -> %len2
+    mul :f64 %x, %x -> %x2
+    mul :f64 %y, %y -> %y2
+    add :f64 %x2, %y2 -> %len2
     call sqrt, (:f64 %len2) -> :f64 %len
     ret %len
 }

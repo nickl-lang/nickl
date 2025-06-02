@@ -24,10 +24,17 @@ static void writeType(NkStream out, NkIrType type) {
     switch (type->kind) {
         case NkIrType_Aggregate:
             if (type->size) {
-                // TODO: Only writing string types
-                nk_printf(out, "[%u x ", type->aggr.data[0].count);
-                writeType(out, type->aggr.data[0].type);
-                nk_printf(out, "]");
+                nk_printf(out, "{");
+                NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                    if (elem->count > 1) {
+                        nk_printf(out, "[%u x ", elem->count);
+                    }
+                    writeType(out, elem->type);
+                    if (elem->count > 1) {
+                        nk_printf(out, "]");
+                    }
+                }
+                nk_printf(out, "}");
             } else {
                 nk_printf(out, "void");
             }
@@ -182,15 +189,33 @@ typedef struct {
     LabelArray labels;
     u32 *indices;
 
+    NkIrParamArray proc_params;
+    NkIrParam proc_ret;
+
     usize next_local;
     usize next_label;
 } Context;
+
+static bool refIsPtr(Context *ctx, NkIrRef const *ref) {
+    bool ret = ref->kind == NkIrRef_Global;
+
+    if (ref->kind == NkIrRef_Param) {
+        NK_ITERATE(NkIrParam const *, param, ctx->proc_params) {
+            if (param->name == ref->sym && param->type->kind == NkIrType_Aggregate) {
+                ret = true;
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
 
 static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
     NkStream tmp = nksb_getStream(&sb);
 
-    if (ref->kind == NkIrRef_Global) {
+    if (refIsPtr(ctx, ref)) {
         writeRefUntyped(tmp, ref);
     } else {
         usize const reg = ctx->next_local++;
@@ -200,6 +225,27 @@ static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
         nk_printf(out, " to ptr\n  ");
 
         nk_printf(tmp, "%%.%zu", reg);
+    }
+
+    return (NkString){NKS_INIT(sb)};
+}
+
+static NkString refIntoInt(Context *ctx, NkStream out, NkIrRef const *ref) {
+    NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
+    NkStream tmp = nksb_getStream(&sb);
+
+    if (refIsPtr(ctx, ref)) {
+        usize const reg = ctx->next_local++;
+
+        nk_printf(out, "%%.%zu = ptrtoint ptr ", reg);
+        writeRefUntyped(out, ref);
+        nk_printf(out, " to ");
+        writeType(out, ref->type);
+        nk_printf(out, "\n  ");
+
+        nk_printf(tmp, "%%.%zu", reg);
+    } else {
+        writeRefUntyped(tmp, ref);
     }
 
     return (NkString){NKS_INIT(sb)};
@@ -343,13 +389,19 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             nk_printf(out, ":");
             break;
 
-        case NkIrOp_add:
+        case NkIrOp_add: {
+            NkString const lhs = refIntoInt(ctx, out, &instr->arg[1].ref);
+            NkString const rhs = refIntoInt(ctx, out, &instr->arg[2].ref);
+            NkIrType const type = instr->arg[1].ref.type;
             writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
-            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(type->num) ? "f" : "");
+            writeType(out, type);
+            nk_printf(out, " ");
+            nk_printf(out, NKS_FMT, NKS_ARG(lhs));
             nk_printf(out, ", ");
-            writeRefUntyped(out, &instr->arg[2].ref);
+            nk_printf(out, NKS_FMT, NKS_ARG(rhs));
             break;
+        }
         case NkIrOp_sub:
             writeRefUntyped(out, &instr->arg[0].ref);
             nk_printf(out, " = %ssub ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
@@ -429,35 +481,77 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
     nk_printf(out, "\n");
 }
 
-void writeData(NkStream out, NkIrData const *data) {
-    nk_printf(out, "%s ", (data->flags & NkIrData_ReadOnly) ? "constant" : "global");
+static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocArray relocs, NkIrType type) {
+    nk_assert(base_addr && "trying to inspect nullptr");
 
-    writeType(out, data->type);
+    writeType(out, type);
     nk_printf(out, " ");
+
+    switch (type->kind) {
+        case NkIrType_Aggregate:
+            nk_printf(out, "{");
+            NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                if (NK_INDEX(elem, type->aggr)) {
+                    nk_printf(out, ", ");
+                }
+                usize offset = elem->offset;
+                if (elem->count > 1) {
+                    nk_printf(out, "[%u x ", elem->count);
+                }
+                writeType(out, elem->type);
+                if (elem->count > 1) {
+                    nk_printf(out, "]");
+                }
+                nk_printf(out, " ");
+                if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
+                    char const *addr = (char *)base_addr + offset;
+                    nk_printf(out, "c\"");
+                    nks_sanitize(out, (NkString){addr, type->aggr.data[0].count});
+                    nk_printf(out, "\"");
+                } else {
+                    // TODO: Process relocs
+                    if (elem->count > 1) {
+                        nk_printf(out, "[");
+                    }
+                    for (usize i = 0; i < elem->count; i++) {
+                        if (i) {
+                            nk_printf(out, ", ");
+                        }
+                        inspectVal(out, base_addr, offset, relocs, elem->type);
+                        offset += elem->type->size;
+                    }
+                    if (elem->count > 1) {
+                        nk_printf(out, "]");
+                    }
+                }
+            }
+            nk_printf(out, "}");
+            break;
+
+        case NkIrType_Numeric: {
+            void *addr = (u8 *)base_addr + base_offset;
+            nkir_inspectVal(addr, type, out);
+            break;
+        }
+    }
+}
+
+static void writeData(NkStream out, NkIrData const *data) {
+    nk_printf(out, "%s ", (data->flags & NkIrData_ReadOnly) ? "constant" : "global");
 
     // TODO: Ignoring relocs
 
     if (data->addr) {
-        switch (data->type->kind) {
-            case NkIrType_Aggregate:
-                // TODO: Ignoring aggregate types other than string
-                nk_printf(out, "c\"");
-                nks_sanitize(out, (NkString){data->addr, data->type->aggr.data[0].count});
-                nk_printf(out, "\"");
-                break;
-
-            case NkIrType_Numeric:
-                nkir_inspectVal(data->addr, data->type, out);
-                break;
-        }
+        inspectVal(out, data->addr, 0, data->relocs, data->type);
     } else {
+        writeType(out, data->type);
         switch (data->type->kind) {
             case NkIrType_Aggregate:
-                nk_assert(!"TODO not implemented");
+                nk_printf(out, " zeroinitializer");
                 break;
 
             case NkIrType_Numeric:
-                nk_printf(out, "0");
+                nk_printf(out, " 0");
                 break;
         }
     }
@@ -489,9 +583,14 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
 
                 Context ctx = {
                     .scratch = scratch,
+
                     .instrs = sym->proc.instrs,
+
                     .labels = labels,
                     .indices = indices,
+
+                    .proc_params = sym->proc.params,
+                    .proc_ret = sym->proc.ret,
                 };
 
                 nk_printf(out, "define ");
@@ -505,7 +604,13 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                     if (NK_INDEX(param, sym->proc.params)) {
                         nk_printf(out, ", ");
                     }
+                    if (param->type->kind == NkIrType_Aggregate) {
+                        nk_printf(out, "ptr byval(");
+                    }
                     writeType(out, param->type);
+                    if (param->type->kind == NkIrType_Aggregate) {
+                        nk_printf(out, ") align %u", param->type->align);
+                    }
                     nk_printf(out, " ");
                     writeLocal(out, param->name);
                 }

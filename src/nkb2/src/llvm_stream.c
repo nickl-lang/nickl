@@ -15,9 +15,11 @@ bool nk_llvm_stream_open(NkArena *scratch, NkPipeStream *ps, NkString out_file) 
 
     NK_PROF_FUNC()
     NK_ARENA_SCOPE(scratch) {
+        // TODO: Hardcoded -lm
         NkString const cmd = nk_tsprintf(
             scratch,
-            "sh -c \"tee /dev/stderr | opt -O3 - | llc -O3 --relocation-model=pic - | clang -x assembler -o\\\"" NKS_FMT "\\\" -\"",
+            "sh -c \"tee /dev/stderr | opt -O3 - | llc -O3 --relocation-model=pic - | clang -O3 -x assembler -lm "
+            "-o\\\"" NKS_FMT "\\\" -\"",
             NKS_ARG(out_file));
         ret = nk_pipe_streamOpenWrite(scratch, ps, cmd, false);
     }
