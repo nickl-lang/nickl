@@ -16,7 +16,7 @@
 
 // NK_LOG_USE_SCOPE(emit_llvm);
 
-static void writeType(NkStream out, NkIrType type) {
+static void writeTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrRelocArray relocs) {
     if (!type) {
         return;
     }
@@ -26,10 +26,24 @@ static void writeType(NkStream out, NkIrType type) {
             if (type->size) {
                 nk_printf(out, "{");
                 NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
+                    if (NK_INDEX(elem, type->aggr)) {
+                        nk_printf(out, ", ");
+                    }
+                    usize const offset = base_offset + elem->offset;
                     if (elem->count > 1) {
                         nk_printf(out, "[%u x ", elem->count);
                     }
-                    writeType(out, elem->type);
+                    bool found_reloc = false;
+                    NK_ITERATE(NkIrReloc const *, reloc, relocs) {
+                        if (reloc->offset == offset && elem->type->size == 8) { // TODO: Hardcoded ptr size
+                            nk_printf(out, "ptr");
+                            found_reloc = true;
+                            break;
+                        }
+                    }
+                    if (!found_reloc) {
+                        writeTypeEx(out, elem->type, offset, relocs);
+                    }
                     if (elem->count > 1) {
                         nk_printf(out, "]");
                     }
@@ -68,6 +82,10 @@ static void writeType(NkStream out, NkIrType type) {
             }
             break;
     }
+}
+
+static void writeType(NkStream out, NkIrType type) {
+    writeTypeEx(out, type, 0, (NkIrRelocArray){0});
 }
 
 static void writeVisibility(NkStream out, NkIrVisibility vis) {
@@ -304,6 +322,14 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
     }
 
     switch (instr->code) {
+        case NkIrOp_trunc:
+            writeRefUntyped(out, &instr->arg[0].ref);
+            nk_printf(out, " = trunc ");
+            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, " to ");
+            writeRefType(out, &instr->arg[0].ref);
+            break;
+
         case NkIrOp_alloc: {
             usize const reg = ctx->next_local++;
             nk_printf(out, "%%.%zu = alloca ", reg);
@@ -518,7 +544,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocArray relocs, NkIrType type) {
     nk_assert(base_addr && "trying to inspect nullptr");
 
-    writeType(out, type);
+    writeTypeEx(out, type, base_offset, relocs);
     nk_printf(out, " ");
 
     switch (type->kind) {
@@ -528,22 +554,18 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
                 if (NK_INDEX(elem, type->aggr)) {
                     nk_printf(out, ", ");
                 }
-                usize offset = elem->offset;
+                usize offset = base_offset + elem->offset;
                 if (elem->count > 1) {
                     nk_printf(out, "[%u x ", elem->count);
+                    writeTypeEx(out, elem->type, offset, relocs);
+                    nk_printf(out, "] ");
                 }
-                writeType(out, elem->type);
-                if (elem->count > 1) {
-                    nk_printf(out, "]");
-                }
-                nk_printf(out, " ");
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
                     char const *addr = (char *)base_addr + offset;
                     nk_printf(out, "c\"");
                     nks_sanitize(out, (NkString){addr, type->aggr.data[0].count});
                     nk_printf(out, "\"");
                 } else {
-                    // TODO: Process relocs
                     if (elem->count > 1) {
                         nk_printf(out, "[");
                     }
@@ -551,7 +573,18 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
                         if (i) {
                             nk_printf(out, ", ");
                         }
-                        inspectVal(out, base_addr, offset, relocs, elem->type);
+                        bool found_reloc = false;
+                        NK_ITERATE(NkIrReloc const *, reloc, relocs) {
+                            if (reloc->offset == offset && elem->type->size == 8) { // TODO: Hardcoded ptr size
+                                nk_printf(out, "ptr ");
+                                writeGlobal(out, reloc->sym);
+                                found_reloc = true;
+                                break;
+                            }
+                        }
+                        if (!found_reloc) {
+                            inspectVal(out, base_addr, offset, relocs, elem->type);
+                        }
                         offset += elem->type->size;
                     }
                     if (elem->count > 1) {
@@ -641,8 +674,8 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                 if (ctx.proc_ret.name) {
                     nk_printf(out, "ptr sret(");
                     writeType(out, ctx.proc_ret.type);
-                    nk_printf(out, ") align %u %%", ctx.proc_ret.type->align);
-                    writeName(out, ctx.proc_ret.name);
+                    nk_printf(out, ") align %u ", ctx.proc_ret.type->align);
+                    writeLocal(out, ctx.proc_ret.name);
                 }
                 NK_ITERATE(NkIrParam const *, param, ctx.proc_params) {
                     if (NK_INDEX(param, sym->proc.params) || ctx.proc_ret.name) {
