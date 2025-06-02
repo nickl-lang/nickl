@@ -10,7 +10,7 @@ pub proc _entry() {
     load %vec -> :f64 %x
     add 8, %vec -> %y_addr
     load %y_addr -> :f64 %y
-    call printf, ("vec=[%g, %g]=\n", ..., :f64 %x, :f64 %y) -> :i32
+    call printf, ("vec=[%g, %g]\n", ..., :f64 %x, :f64 %y) -> :i32
 
     ret
 }

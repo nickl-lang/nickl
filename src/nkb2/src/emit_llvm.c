@@ -197,21 +197,25 @@ typedef struct {
 } Context;
 
 static bool refIsPtr(Context *ctx, NkIrRef const *ref) {
-    bool ret = ref->kind == NkIrRef_Global;
+    bool is_ptr = ref->kind == NkIrRef_Global;
 
     if (ref->kind == NkIrRef_Param) {
         NK_ITERATE(NkIrParam const *, param, ctx->proc_params) {
             if (param->name == ref->sym && param->type->kind == NkIrType_Aggregate) {
-                ret = true;
+                is_ptr = true;
                 break;
             }
         }
+
+        if (ctx->proc_ret.name && ctx->proc_ret.name == ref->sym) {
+            is_ptr = true;
+        }
     }
 
-    return ret;
+    return is_ptr;
 }
 
-static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
+static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrType int_t) {
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
     NkStream tmp = nksb_getStream(&sb);
 
@@ -220,8 +224,12 @@ static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref) {
     } else {
         usize const reg = ctx->next_local++;
 
+        NkIrType const type = int_t ? int_t : ref->type;
+
         nk_printf(out, "%%.%zu = inttoptr ", reg);
-        writeRef(out, ref);
+        writeType(out, type);
+        nk_printf(out, " ");
+        writeRefUntyped(out, ref);
         nk_printf(out, " to ptr\n  ");
 
         nk_printf(tmp, "%%.%zu", reg);
@@ -308,7 +316,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
         }
 
         case NkIrOp_load: {
-            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref);
+            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref, NULL);
             writeRefUntyped(out, &instr->arg[0].ref);
             nk_printf(out, " = load ");
             writeRefType(out, &instr->arg[0].ref);
@@ -318,7 +326,7 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
         }
 
         case NkIrOp_store: {
-            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[0].ref);
+            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[0].ref, NULL);
             nk_printf(out, "store ");
             writeRef(out, &instr->arg[1].ref);
             nk_printf(out, ", ptr ");
@@ -374,10 +382,13 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_mov:
             nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
+            NkString const arg = refIntoInt(ctx, out, &instr->arg[1].ref);
             // TODO: Expressing mov as add
             writeRefUntyped(out, &instr->arg[0].ref);
             nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
-            writeRef(out, &instr->arg[1].ref);
+            writeType(out, instr->arg[1].ref.type);
+            nk_printf(out, " ");
+            nk_printf(out, NKS_FMT, NKS_ARG(arg));
             nk_printf(out, ", 0");
             if (NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num)) {
                 nk_printf(out, ".");
@@ -425,22 +436,40 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_call: {
-            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref);
+            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref, NULL);
             NkIrRef const *dst_ref = &instr->arg[0].ref;
+            NkString dst_str = {0};
+            bool sret = false;
             if (dst_ref->kind && dst_ref->kind != NkIrRef_Null) {
-                writeRefUntyped(out, dst_ref);
-                nk_printf(out, " = ");
+                if (dst_ref->type->kind == NkIrType_Aggregate && dst_ref->type->size) {
+                    NkIrType_T const ptr_t = {
+                        // TODO: Hardcoded ptr type
+                        .num = Int64,
+                        .size = 8,
+                        .align = 8,
+                        .id = 0,
+                        .kind = NkIrType_Numeric,
+                    };
+                    dst_str = refIntoPtr(ctx, out, dst_ref, &ptr_t);
+                    sret = true;
+                } else {
+                    writeRefUntyped(out, dst_ref);
+                    nk_printf(out, " = ");
+                }
             }
             nk_printf(out, "call ");
-            if (dst_ref->kind) {
+            if (sret || !dst_ref->kind) {
+                nk_printf(out, "void ");
+            } else {
                 writeType(out, dst_ref->type);
                 nk_printf(out, " ");
-            } else {
-                nk_printf(out, "void ");
             }
             nk_printf(out, "(");
+            if (sret) {
+                nk_printf(out, "ptr");
+            }
             NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
-                if (NK_INDEX(arg_ref, instr->arg[2].refs)) {
+                if (NK_INDEX(arg_ref, instr->arg[2].refs) || sret) {
                     nk_printf(out, ", ");
                 }
                 writeRefType(out, arg_ref);
@@ -451,11 +480,16 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             nk_printf(out, ") ");
             nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             nk_printf(out, "(");
+            if (sret) {
+                nk_printf(out, "ptr sret(");
+                writeType(out, dst_ref->type);
+                nk_printf(out, ") align %u " NKS_FMT, dst_ref->type->align, NKS_ARG(dst_str));
+            }
             NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
                     continue;
                 }
-                if (NK_INDEX(arg_ref, instr->arg[2].refs)) {
+                if (NK_INDEX(arg_ref, instr->arg[2].refs) || sret) {
                     nk_printf(out, ", ");
                 }
                 writeRef(out, arg_ref);
@@ -596,12 +630,22 @@ void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
                 nk_printf(out, "define ");
                 writeVisibility(out, sym->vis);
                 nk_printf(out, " ");
-                writeType(out, sym->proc.ret.type);
+                if (ctx.proc_ret.name) {
+                    nk_printf(out, "void");
+                } else {
+                    writeType(out, sym->proc.ret.type);
+                }
                 nk_printf(out, " ");
                 writeGlobal(out, sym->name);
                 nk_printf(out, "(");
-                NK_ITERATE(NkIrParam const *, param, sym->proc.params) {
-                    if (NK_INDEX(param, sym->proc.params)) {
+                if (ctx.proc_ret.name) {
+                    nk_printf(out, "ptr sret(");
+                    writeType(out, ctx.proc_ret.type);
+                    nk_printf(out, ") align %u %%", ctx.proc_ret.type->align);
+                    writeName(out, ctx.proc_ret.name);
+                }
+                NK_ITERATE(NkIrParam const *, param, ctx.proc_params) {
+                    if (NK_INDEX(param, sym->proc.params) || ctx.proc_ret.name) {
                         nk_printf(out, ", ");
                     }
                     if (param->type->kind == NkIrType_Aggregate) {
