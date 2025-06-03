@@ -648,11 +648,13 @@ NkIrInstr nkir_make_comment(NkIrProg ir, NkString comment) {
 bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
-    NkPipeStream src{};
-    bool res = nkcc_streamOpen(tmp_arena, &src, conf);
+    char buf[512];
+    NkStream src;
+    NkPipeStream ps{};
+    bool res = nkcc_streamOpen(tmp_arena, &ps, NK_STATIC_BUF(buf), conf, &src);
     if (res) {
-        nkir_translate2c(tmp_arena, ir, mod, src.stream);
-        if (nkcc_streamClose(&src)) {
+        nkir_translate2c(tmp_arena, ir, mod, src);
+        if (nkcc_streamClose(&ps)) {
             reportError(ir, "C compiler `" NKS_FMT "` returned nonzero exit code", NKS_ARG(conf.compiler_binary));
             return false;
         }

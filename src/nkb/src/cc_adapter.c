@@ -7,7 +7,12 @@
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
-bool nkcc_streamOpen(NkArena *scratch, NkPipeStream *stream, NkIrCompilerConfig conf) {
+bool nkcc_streamOpen(
+    NkArena *scratch,
+    NkPipeStream *ps,
+    NkStringBuf opt_buf,
+    NkIrCompilerConfig const conf,
+    NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret;
@@ -42,17 +47,25 @@ bool nkcc_streamOpen(NkArena *scratch, NkPipeStream *stream, NkIrCompilerConfig 
                 break;
         }
 
-        ret = nk_pipe_streamOpenWrite(scratch, stream, (NkString){NKS_INIT(cmd)}, conf.quiet);
+        ret = nk_pipe_streamOpenWrite(
+            ps,
+            (NkPipeStreamInfo){
+                .scratch = scratch,
+                .cmd = {NKS_INIT(cmd)},
+                .opt_buf = opt_buf,
+                .quiet = conf.quiet,
+            },
+            out);
     }
     return ret;
 }
 
-int nkcc_streamClose(NkPipeStream *stream) {
+int nkcc_streamClose(NkPipeStream *ps) {
     NK_LOG_TRC("%s", __func__);
 
     int ret;
     NK_PROF_FUNC() {
-        ret = nk_pipe_streamClose(stream);
+        ret = nk_pipe_streamClose(ps);
     }
     return ret;
 }

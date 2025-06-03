@@ -3,6 +3,7 @@
 
 #include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/file.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 
@@ -11,15 +12,22 @@ extern "C" {
 #endif
 
 typedef struct {
-    NkStream stream;
-    NkHandle _file;
+    NkStream *_stream;
+    NkFileStreamBuf _buf;
     NkHandle _process;
 } NkPipeStream;
 
-NK_EXPORT bool nk_pipe_streamOpenRead(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet);
-NK_EXPORT bool nk_pipe_streamOpenWrite(NkArena *scratch, NkPipeStream *pipe_stream, NkString cmd, bool quiet);
+typedef struct {
+    NkArena *scratch;
+    NkString cmd;
+    NkStringBuf opt_buf;
+    bool quiet;
+} NkPipeStreamInfo;
 
-NK_EXPORT i32 nk_pipe_streamClose(NkPipeStream *stream);
+NK_EXPORT bool nk_pipe_streamOpenRead(NkPipeStream *ps, NkPipeStreamInfo const info, NkStream *out);
+NK_EXPORT bool nk_pipe_streamOpenWrite(NkPipeStream *ps, NkPipeStreamInfo const info, NkStream *out);
+
+NK_EXPORT i32 nk_pipe_streamClose(NkPipeStream *ps);
 
 #ifdef __cplusplus
 }

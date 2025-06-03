@@ -38,8 +38,10 @@ void nkl_diag_printErrorQuote(NkString src, NklSourceLocation loc, char const *f
 
 void nkl_diag_vprintError(char const *fmt, va_list ap) {
     char buf[512];
-    NkFileStreamBuf stream_buf = {.file = nk_stderr(), .buf = buf, .size = sizeof(buf)};
-    NkStream out = nk_file_getBufferedWriteStream(&stream_buf);
+    NkStream out = nk_file_getBufferedWriteStream(&(NkFileStreamBuf){
+        .file = nk_stderr(),
+        .buf = {buf, sizeof(buf)},
+    });
 
     bool const to_color = toColor();
 
@@ -59,8 +61,10 @@ void nkl_diag_vprintError(char const *fmt, va_list ap) {
 
 void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap) {
     char buf[512];
-    NkFileStreamBuf stream_buf = {.file = nk_stderr(), .buf = buf, .size = sizeof(buf)};
-    NkStream out = nk_file_getBufferedWriteStream(&stream_buf);
+    NkStream out = nk_file_getBufferedWriteStream(&(NkFileStreamBuf){
+        .file = nk_stderr(),
+        .buf = {buf, sizeof(buf)},
+    });
 
     if (loc.file.size) {
         bool const to_color = toColor();
@@ -91,8 +95,10 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
 
 void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, va_list ap) {
     char buf[512];
-    NkFileStreamBuf stream_buf = {.file = nk_stderr(), .buf = buf, .size = sizeof(buf)};
-    NkStream out = nk_file_getBufferedWriteStream(&stream_buf);
+    NkStream out = nk_file_getBufferedWriteStream(&(NkFileStreamBuf){
+        .file = nk_stderr(),
+        .buf = {buf, sizeof(buf)},
+    });
 
     nkl_diag_vprintErrorFile(loc, fmt, ap);
 

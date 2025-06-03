@@ -5,15 +5,20 @@
 #include "ntk/log.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/profiler.h"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "translate_to_c.h"
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
-NkPipeStream nkcc_streamOpen(NkArena *scratch, NkIrCompilerConfig const conf) {
+void nkcc_streamOpen(
+    NkArena *scratch,
+    NkPipeStream *ps,
+    NkStringBuf opt_buf,
+    NkIrCompilerConfig const conf,
+    NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
-    NkPipeStream src;
     NK_PROF_FUNC() {
         NkStringBuilder sb = {0};
 
@@ -24,19 +29,26 @@ NkPipeStream nkcc_streamOpen(NkArena *scratch, NkIrCompilerConfig const conf) {
             NKS_ARG(conf.output_filename),
             NKS_ARG(conf.additional_flags));
 
-        nk_pipe_streamOpenWrite(scratch, &src, (NkString){NKS_INIT(sb)}, conf.quiet);
+        nk_pipe_streamOpenWrite(
+            ps,
+            (NkPipeStreamInfo){
+                .scratch = scratch,
+                .cmd = {NKS_INIT(sb)},
+                .opt_buf = opt_buf,
+                .quiet = conf.quiet,
+            },
+            out);
 
         nksb_free(&sb);
     }
-    return src;
 }
 
-int nkcc_streamClose(NkPipeStream *stream) {
+int nkcc_streamClose(NkPipeStream *ps) {
     NK_LOG_TRC("%s", __func__);
 
     int ret;
     NK_PROF_FUNC() {
-        ret = nk_pipe_streamClose(stream);
+        ret = nk_pipe_streamClose(ps);
     }
     return ret;
 }
@@ -46,9 +58,12 @@ bool nkir_compile(NkArena *scratch, NkIrCompilerConfig const conf, NkIrProg ir, 
 
     int ret;
     NK_PROF_FUNC() {
-        NkPipeStream src = nkcc_streamOpen(scratch, conf);
-        nkir_translateToC(ir, entry_point, src.stream);
-        ret = nkcc_streamClose(&src);
+        char buf[512];
+        NkStream src;
+        NkPipeStream ps;
+        nkcc_streamOpen(scratch, &ps, NK_STATIC_BUF(buf), conf, &src);
+        nkir_translateToC(ir, entry_point, src);
+        ret = nkcc_streamClose(&ps);
     }
     return ret;
 }

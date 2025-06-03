@@ -17,19 +17,18 @@ static void printErrorUsage() {
 }
 
 static void printUsage() {
-    printf(
-        "Usage: " NK_BINARY_NAME
-        " [options] file"
-        "\nOptions:"
-        "\n    -o, --output <file>                      Output file path"
-        "\n    -c, --color {auto,always,never}          Choose when to color output"
-        "\n    -h, --help                               Display this message and exit"
-        "\n    -v, --version                            Show version information"
+    printf("Usage: " NK_BINARY_NAME
+           " [options] file"
+           "\nOptions:"
+           "\n    -o, --output <file>                      Output file path"
+           "\n    -c, --color {auto,always,never}          Choose when to color output"
+           "\n    -h, --help                               Display this message and exit"
+           "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
-        "\nDeveloper options:"
-        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+           "\nDeveloper options:"
+           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-        "\n");
+           "\n");
 }
 
 static void printVersion() {

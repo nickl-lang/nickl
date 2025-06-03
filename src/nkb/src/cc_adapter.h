@@ -4,13 +4,19 @@
 #include "nkb/ir.h"
 #include "ntk/arena.h"
 #include "ntk/pipe_stream.h"
+#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool nkcc_streamOpen(NkArena *scratch, NkPipeStream *stream, NkIrCompilerConfig conf);
-int nkcc_streamClose(NkPipeStream *stream);
+bool nkcc_streamOpen(
+    NkArena *scratch,
+    NkPipeStream *ps,
+    NkStringBuf opt_buf,
+    NkIrCompilerConfig const conf,
+    NkStream *out);
+int nkcc_streamClose(NkPipeStream *ps);
 
 #ifdef __cplusplus
 }
