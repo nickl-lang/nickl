@@ -47,8 +47,8 @@ protected:
         NkStream in;
         NkPipeStream ps;
         bool const res = nk_pipe_streamOpenRead(
-            &ps,
             {
+                .ps = &ps,
                 .scratch = &m_scratch,
                 .cmd = m_conf.output_filename,
                 .opt_buf = {},

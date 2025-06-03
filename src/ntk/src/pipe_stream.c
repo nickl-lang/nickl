@@ -10,7 +10,7 @@
 
 NK_LOG_USE_SCOPE(pipe_stream);
 
-bool nk_pipe_streamOpenRead(NkPipeStream *ps, NkPipeStreamInfo const info, NkStream *out) {
+bool nk_pipe_streamOpenRead(NkPipeStreamInfo const info, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;
@@ -38,7 +38,7 @@ bool nk_pipe_streamOpenRead(NkPipeStream *ps, NkPipeStreamInfo const info, NkStr
 
             nk_setLastError(err);
         } else {
-            *ps = (NkPipeStream){
+            *info.ps = (NkPipeStream){
                 ._stream = out,
                 ._buf =
                     {
@@ -47,14 +47,14 @@ bool nk_pipe_streamOpenRead(NkPipeStream *ps, NkPipeStreamInfo const info, NkStr
                     },
                 ._process = process,
             };
-            *out = nk_file_getBufferedWriteStream(&ps->_buf);
+            *out = nk_file_getBufferedWriteStream(&info.ps->_buf);
             ret = true;
         }
     }
     return ret;
 }
 
-bool nk_pipe_streamOpenWrite(NkPipeStream *ps, NkPipeStreamInfo const info, NkStream *out) {
+bool nk_pipe_streamOpenWrite(NkPipeStreamInfo const info, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;
@@ -82,7 +82,7 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *ps, NkPipeStreamInfo const info, NkSt
 
             nk_setLastError(err);
         } else {
-            *ps = (NkPipeStream){
+            *info.ps = (NkPipeStream){
                 ._stream = out,
                 ._buf =
                     {
@@ -91,7 +91,7 @@ bool nk_pipe_streamOpenWrite(NkPipeStream *ps, NkPipeStreamInfo const info, NkSt
                     },
                 ._process = process,
             };
-            *out = nk_file_getBufferedWriteStream(&ps->_buf);
+            *out = nk_file_getBufferedWriteStream(&info.ps->_buf);
             ret = true;
         }
     }

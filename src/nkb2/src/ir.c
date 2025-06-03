@@ -13,7 +13,6 @@
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(ir);
@@ -270,7 +269,14 @@ void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_com
     char buf[512];
     NkStream src;
     NkPipeStream ps = {0};
-    if (!nk_llvm_stream_open(scratch, &ps, NK_STATIC_BUF(buf), path, &src)) {
+    if (!nk_llvm_stream_open(
+            (NkLlvmStreamInfo){
+                .scratch = scratch,
+                .ps = &ps,
+                .opt_buf = NK_STATIC_BUF(buf),
+                .out_file = path,
+            },
+            &src)) {
         // TODO: Report errors properly
         NK_LOG_ERR("%s", nk_getLastErrorString());
         return;

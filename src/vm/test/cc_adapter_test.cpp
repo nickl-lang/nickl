@@ -44,8 +44,8 @@ protected:
         NkStream in;
         NkPipeStream ps;
         auto res = nk_pipe_streamOpenRead(
-            &ps,
             {
+                .ps = &ps,
                 .scratch = &m_scratch,
                 .cmd = m_conf.output_filename,
                 .opt_buf = {},

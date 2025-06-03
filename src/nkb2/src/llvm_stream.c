@@ -8,25 +8,25 @@
 
 NK_LOG_USE_SCOPE(llvm_stream);
 
-bool nk_llvm_stream_open(NkArena *scratch, NkPipeStream *ps, NkStringBuf opt_buf, NkString out_file, NkStream *out) {
+bool nk_llvm_stream_open(NkLlvmStreamInfo const info, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret;
 
     NK_PROF_FUNC()
-    NK_ARENA_SCOPE(scratch) {
+    NK_ARENA_SCOPE(info.scratch) {
         // TODO: Hardcoded -lm
         NkString const cmd = nk_tsprintf(
-            scratch,
+            info.scratch,
             "sh -c \"tee -a /dev/stderr | opt -O3 - | llc -O3 --relocation-model=pic - | clang -O3 -x assembler -lm "
             "-o\\\"" NKS_FMT "\\\" -\"",
-            NKS_ARG(out_file));
+            NKS_ARG(info.out_file));
         ret = nk_pipe_streamOpenWrite(
-            ps,
             (NkPipeStreamInfo){
-                .scratch = scratch,
+                .ps = info.ps,
+                .scratch = info.scratch,
                 .cmd = cmd,
-                .opt_buf = opt_buf,
+                .opt_buf = info.opt_buf,
                 .quiet = false,
             },
             out);

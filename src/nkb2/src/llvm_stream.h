@@ -9,7 +9,14 @@
 extern "C" {
 #endif
 
-bool nk_llvm_stream_open(NkArena *scratch, NkPipeStream *ps, NkStringBuf opt_buf, NkString out_file, NkStream *out);
+typedef struct {
+    NkArena *scratch;
+    NkPipeStream *ps;
+    NkStringBuf opt_buf;
+    NkString out_file;
+} NkLlvmStreamInfo;
+
+bool nk_llvm_stream_open(NkLlvmStreamInfo const info, NkStream *out);
 i32 nk_llvm_stream_close(NkPipeStream *ps);
 
 #ifdef __cplusplus

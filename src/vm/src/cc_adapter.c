@@ -30,8 +30,8 @@ void nkcc_streamOpen(
             NKS_ARG(conf.additional_flags));
 
         nk_pipe_streamOpenWrite(
-            ps,
             (NkPipeStreamInfo){
+                .ps = ps,
                 .scratch = scratch,
                 .cmd = {NKS_INIT(sb)},
                 .opt_buf = opt_buf,

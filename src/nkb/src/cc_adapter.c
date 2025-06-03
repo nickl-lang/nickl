@@ -48,8 +48,8 @@ bool nkcc_streamOpen(
         }
 
         ret = nk_pipe_streamOpenWrite(
-            ps,
             (NkPipeStreamInfo){
+                .ps = ps,
                 .scratch = scratch,
                 .cmd = {NKS_INIT(cmd)},
                 .opt_buf = opt_buf,
