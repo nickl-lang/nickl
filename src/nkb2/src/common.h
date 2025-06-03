@@ -18,7 +18,7 @@ typedef NkSlice(Label) LabelArray;
 typedef NkDynArray(Label) LabelDynArray;
 
 LabelArray collectLabels(NkIrInstrArray instrs, LabelDynArray *out);
-u32 *countLabels(LabelArray labels);
+u32 *countLabels(NkArena *arena, LabelArray labels);
 
 Label const *findLabelByName(LabelArray labels, NkAtom name);
 Label const *findLabelByIdx(LabelArray labels, u32 idx);

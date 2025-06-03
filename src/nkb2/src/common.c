@@ -1,5 +1,7 @@
 #include "common.h"
 
+#include "ntk/arena.h"
+
 LabelArray collectLabels(NkIrInstrArray instrs, LabelDynArray *out) {
     NK_ITERATE(NkIrInstr const *, instr, instrs) {
         if (instr->code == NkIrOp_label) {
@@ -14,8 +16,8 @@ LabelArray collectLabels(NkIrInstrArray instrs, LabelDynArray *out) {
     return (LabelArray){NK_SLICE_INIT(*out)};
 }
 
-u32 *countLabels(LabelArray labels) {
-    u32 *indices = nk_allocTn(nk_default_allocator, u32, labels.size);
+u32 *countLabels(NkArena *arena, LabelArray labels) {
+    u32 *indices = nk_arena_allocTn(arena, u32, labels.size);
 
     NK_ITERATE(Label const *, label1, labels) {
         u32 count = 0;

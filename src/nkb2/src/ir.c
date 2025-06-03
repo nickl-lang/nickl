@@ -4,7 +4,7 @@
 #include "emit_llvm.h"
 #include "llvm_stream.h"
 #include "nkb/types.h"
-#include "ntk/allocator.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
@@ -78,33 +78,33 @@ static bool isJumpInstr(u8 code) {
     }
 }
 
-void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out) {
+void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out) {
     NK_LOG_TRC("%s", __func__);
 
-    LabelDynArray da_labels = {0};
-    LabelArray const labels = collectLabels(instrs, &da_labels);
+    NK_ARENA_SCOPE(scratch) {
+        LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
+        LabelArray const labels = collectLabels(instrs, &da_labels);
 
-    NK_ITERATE(NkIrInstr const *, instr, instrs) {
-        nkda_append(out, *instr);
-        NkIrInstr *instr_copy = &nk_slice_last(*out);
+        NK_ITERATE(NkIrInstr const *, instr, instrs) {
+            nkda_append(out, *instr);
+            NkIrInstr *instr_copy = &nk_slice_last(*out);
 
-        if (isJumpInstr(instr_copy->code)) {
-            for (usize ai = 1; ai < 3; ai++) {
-                NkIrArg *arg = &instr_copy->arg[ai];
+            if (isJumpInstr(instr_copy->code)) {
+                for (usize ai = 1; ai < 3; ai++) {
+                    NkIrArg *arg = &instr_copy->arg[ai];
 
-                if (arg->kind == NkIrArg_Label) {
-                    Label const *label = findLabelByName(labels, arg->label);
-                    if (label) {
-                        arg->offset = label->idx - NK_INDEX(instr, instrs);
-                        arg->kind = NkIrArg_LabelRel;
-                        break;
+                    if (arg->kind == NkIrArg_Label) {
+                        Label const *label = findLabelByName(labels, arg->label);
+                        if (label) {
+                            arg->offset = label->idx - NK_INDEX(instr, instrs);
+                            arg->kind = NkIrArg_LabelRel;
+                            break;
+                        }
                     }
                 }
             }
         }
     }
-
-    nkda_free(&da_labels); // TODO: Use scratch arena
 }
 
 NkIrRef nkir_makeRefNull(NkIrType type) {
@@ -305,10 +305,10 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret) {
     nk_assert(!"TODO: `nkir_invoke` not implemented");
 }
 
-void nkir_inspectModule(NkStream out, NkIrModule mod) {
+void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod) {
     NK_ITERATE(NkIrSymbol const *, sym, mod) {
         nk_printf(out, "\n");
-        nkir_inspectSymbol(out, sym);
+        nkir_inspectSymbol(out, scratch, sym);
     }
 }
 
@@ -469,7 +469,7 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
     }
 }
 
-void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
+void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     switch (sym->vis) {
         case NkIrVisibility_Default:
             nk_printf(out, "pub ");
@@ -514,10 +514,10 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
             break;
 
         case NkIrSymbol_Proc: {
-            LabelDynArray da_labels = {0};
+            LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
 
-            u32 *indices = countLabels(labels);
+            u32 *indices = countLabels(scratch, labels);
 
             if (sym_str.size) {
                 nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
@@ -552,9 +552,6 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
                 nk_printf(out, "\n");
             }
             nk_printf(out, "}");
-
-            nkda_free(&da_labels);                                      // TODO: Use scratch arena
-            nk_freeTn(nk_default_allocator, indices, u32, labels.size); // TODO: Use scratch arena
             break;
         }
     }

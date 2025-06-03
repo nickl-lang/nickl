@@ -1,7 +1,5 @@
 #include "emit_llvm.h"
 
-#include <unistd.h>
-
 #include "common.h"
 #include "nkb/ir.h"
 #include "nkb/types.h"
@@ -225,7 +223,7 @@ static bool refIsPtr(Context *ctx, NkIrRef const *ref) {
             }
         }
 
-        if (ctx->proc_ret.name && ctx->proc_ret.name == ref->sym) {
+        if (ctx->proc_ret.name == ref->sym) {
             is_ptr = true;
         }
     }
@@ -233,7 +231,7 @@ static bool refIsPtr(Context *ctx, NkIrRef const *ref) {
     return is_ptr;
 }
 
-static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrType int_t) {
+static NkString refIntToPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrType int_t) {
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
     NkStream tmp = nksb_getStream(&sb);
 
@@ -256,7 +254,7 @@ static NkString refIntoPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrT
     return (NkString){NKS_INIT(sb)};
 }
 
-static NkString refIntoInt(Context *ctx, NkStream out, NkIrRef const *ref) {
+static NkString refPtrToInt(Context *ctx, NkStream out, NkIrRef const *ref) {
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
     NkStream tmp = nksb_getStream(&sb);
 
@@ -321,13 +319,17 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
         nk_printf(out, "  ");
     }
 
+    NkIrRef const *ref0 = &instr->arg[0].ref;
+    NkIrRef const *ref1 = &instr->arg[1].ref;
+    NkIrRef const *ref2 = &instr->arg[2].ref;
+
     switch (instr->code) {
         case NkIrOp_trunc:
-            writeRefUntyped(out, &instr->arg[0].ref);
+            writeRefUntyped(out, ref0);
             nk_printf(out, " = trunc ");
-            writeRef(out, &instr->arg[1].ref);
+            writeRef(out, ref1);
             nk_printf(out, " to ");
-            writeRefType(out, &instr->arg[0].ref);
+            writeRefType(out, ref0);
             break;
 
         case NkIrOp_alloc: {
@@ -335,26 +337,26 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             nk_printf(out, "%%.%zu = alloca ", reg);
             writeType(out, instr->arg[1].type);
             nk_printf(out, "\n  ");
-            writeRefUntyped(out, &instr->arg[0].ref);
+            writeRefUntyped(out, ref0);
             nk_printf(out, " = ptrtoint ptr %%.%zu to ", reg);
-            writeRefType(out, &instr->arg[0].ref);
+            writeRefType(out, ref0);
             break;
         }
 
         case NkIrOp_load: {
-            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref, NULL);
-            writeRefUntyped(out, &instr->arg[0].ref);
+            NkString const ptr = refIntToPtr(ctx, out, ref1, NULL);
+            writeRefUntyped(out, ref0);
             nk_printf(out, " = load ");
-            writeRefType(out, &instr->arg[0].ref);
+            writeRefType(out, ref0);
             nk_printf(out, ", ptr ");
             nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             break;
         }
 
         case NkIrOp_store: {
-            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[0].ref, NULL);
+            NkString const ptr = refIntToPtr(ctx, out, ref0, NULL);
             nk_printf(out, "store ");
-            writeRef(out, &instr->arg[1].ref);
+            writeRef(out, ref1);
             nk_printf(out, ", ptr ");
             nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             break;
@@ -369,12 +371,10 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             usize const label = ctx->next_label++;
             usize const reg = ctx->next_local++;
             nk_printf(out, "%%.%zu = icmp eq ", reg);
-            writeRef(out, &instr->arg[1].ref);
-            nk_printf(out, ", 0\n  br i1 %%.%zu", reg);
-            nk_printf(out, ", label %%");
+            writeRef(out, ref1);
+            nk_printf(out, ", 0\n  br i1 %%.%zu, label %%", reg);
             writeLabel(ctx, out, instr, 2);
-            nk_printf(out, ", label %%.label%zu", label);
-            nk_printf(out, "\n.label%zu:", label);
+            nk_printf(out, ", label %%.label%zu\n.label%zu:", label, label);
             break;
         }
 
@@ -382,9 +382,8 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             usize const label = ctx->next_label++;
             usize const reg = ctx->next_local++;
             nk_printf(out, "%%.%zu = icmp ne ", reg);
-            writeRef(out, &instr->arg[1].ref);
-            nk_printf(out, ", 0\n  br i1 %%.%zu", reg);
-            nk_printf(out, ", label %%");
+            writeRef(out, ref1);
+            nk_printf(out, ", 0\n  br i1 %%.%zu, label %%", reg);
             writeLabel(ctx, out, instr, 2);
             nk_printf(out, ", label %%.label%zu\n.label%zu:", label, label);
             break;
@@ -392,31 +391,29 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_cmp_lt: {
             usize const reg = ctx->next_local++;
-            nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
+            nk_assert(ref1->type->kind == NkIrType_Numeric);
             // TODO: Hardcoded integer cmp
-            nk_printf(out, "%%.%zu = icmp %clt ", reg, NKIR_NUMERIC_IS_SIGNED(instr->arg[1].ref.type->num) ? 's' : 'u');
-            writeRef(out, &instr->arg[1].ref);
+            nk_printf(out, "%%.%zu = icmp %clt ", reg, NKIR_NUMERIC_IS_SIGNED(ref1->type->num) ? 's' : 'u');
+            writeRef(out, ref1);
             nk_printf(out, ", ");
-            writeRefUntyped(out, &instr->arg[2].ref);
+            writeRefUntyped(out, ref2);
             nk_printf(out, "\n  ");
-            writeRefUntyped(out, &instr->arg[0].ref);
+            writeRefUntyped(out, ref0);
             nk_printf(
                 out, " = %cext i1 %%.%zu to ", NKIR_NUMERIC_IS_SIGNED(instr->arg[0].ref.type->num) ? 's' : 'z', reg);
-            writeRefType(out, &instr->arg[0].ref);
+            writeRefType(out, ref0);
             break;
         }
 
         case NkIrOp_mov:
-            nk_assert(instr->arg[1].ref.type->kind == NkIrType_Numeric);
-            NkString const arg = refIntoInt(ctx, out, &instr->arg[1].ref);
+            nk_assert(ref1->type->kind == NkIrType_Numeric);
+            NkString const arg = refPtrToInt(ctx, out, ref1);
             // TODO: Expressing mov as add
-            writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
-            writeType(out, instr->arg[1].ref.type);
-            nk_printf(out, " ");
-            nk_printf(out, NKS_FMT, NKS_ARG(arg));
-            nk_printf(out, ", 0");
-            if (NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num)) {
+            writeRefUntyped(out, ref0);
+            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(ref1->type->num) ? "f" : "");
+            writeType(out, ref1->type);
+            nk_printf(out, " " NKS_FMT ", 0", NKS_ARG(arg));
+            if (NKIR_NUMERIC_IS_FLT(ref1->type->num)) {
                 nk_printf(out, ".");
             }
             break;
@@ -426,45 +423,48 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             nk_printf(out, ":");
             break;
 
-        case NkIrOp_add: {
-            NkString const lhs = refIntoInt(ctx, out, &instr->arg[1].ref);
-            NkString const rhs = refIntoInt(ctx, out, &instr->arg[2].ref);
-            NkIrType const type = instr->arg[1].ref.type;
-            writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(type->num) ? "f" : "");
-            writeType(out, type);
-            nk_printf(out, " ");
-            nk_printf(out, NKS_FMT, NKS_ARG(lhs));
-            nk_printf(out, ", ");
-            nk_printf(out, NKS_FMT, NKS_ARG(rhs));
-            break;
-        }
-        case NkIrOp_sub:
-            writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = %ssub ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
-            writeRef(out, &instr->arg[1].ref);
-            nk_printf(out, ", ");
-            writeRefUntyped(out, &instr->arg[2].ref);
-            break;
-        case NkIrOp_mul:
-            writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = %smul ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
-            writeRef(out, &instr->arg[1].ref);
-            nk_printf(out, ", ");
-            writeRefUntyped(out, &instr->arg[2].ref);
-            break;
-        case NkIrOp_div:
-            writeRefUntyped(out, &instr->arg[0].ref);
-            nk_printf(out, " = %sdiv ", NKIR_NUMERIC_IS_FLT(instr->arg[1].ref.type->num) ? "f" : "");
-            writeRef(out, &instr->arg[1].ref);
-            nk_printf(out, ", ");
-            writeRefUntyped(out, &instr->arg[2].ref);
-            break;
+            // TODO: Unify binary ops
+#define X(OP)                                                                                          \
+    case NK_CAT(NkIrOp_, OP): {                                                                        \
+        NkString const lhs = refPtrToInt(ctx, out, ref1);                                              \
+        NkString const rhs = refPtrToInt(ctx, out, ref2);                                              \
+        writeRefUntyped(out, ref0);                                                                    \
+        nk_printf(out, " = %s" NK_STRINGIFY(OP) " ", NKIR_NUMERIC_IS_FLT(ref1->type->num) ? "f" : ""); \
+        writeType(out, ref1->type);                                                                    \
+        nk_printf(out, " " NKS_FMT ", " NKS_FMT, NKS_ARG(lhs), NKS_ARG(rhs));                          \
+        break;                                                                                         \
+    }
+            X(add)
+            X(sub)
+            X(mul)
+#undef X
+
+#define X(OP, STR)                                                            \
+    case NK_CAT(NkIrOp_, OP): {                                               \
+        NkString const lhs = refPtrToInt(ctx, out, ref1);                     \
+        NkString const rhs = refPtrToInt(ctx, out, ref2);                     \
+        writeRefUntyped(out, ref0);                                           \
+        nk_printf(                                                            \
+            out,                                                              \
+            " = %s" STR " ",                                                  \
+            NKIR_NUMERIC_IS_FLT(ref1->type->num)      ? "f"                   \
+            : NKIR_NUMERIC_IS_SIGNED(ref1->type->num) ? "s"                   \
+                                                      : "u");                 \
+        writeType(out, ref1->type);                                           \
+        nk_printf(out, " " NKS_FMT ", " NKS_FMT, NKS_ARG(lhs), NKS_ARG(rhs)); \
+        break;                                                                \
+    }
+            X(div, "div")
+            X(mod, "rem")
+#undef X
 
         case NkIrOp_call: {
-            NkString const ptr = refIntoPtr(ctx, out, &instr->arg[1].ref, NULL);
-            NkIrRef const *dst_ref = &instr->arg[0].ref;
-            NkString dst_str = {0};
+            NkIrRef const *dst_ref = ref0;
+            NkIrRefArray const arg_refs = instr->arg[2].refs;
+
+            NkString const proc = refIntToPtr(ctx, out, ref1, NULL);
+            NkString dst = {0};
+
             bool sret = false;
             if (dst_ref->kind && dst_ref->kind != NkIrRef_Null) {
                 if (dst_ref->type->kind == NkIrType_Aggregate && dst_ref->type->size) {
@@ -476,26 +476,28 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                         .id = 0,
                         .kind = NkIrType_Numeric,
                     };
-                    dst_str = refIntoPtr(ctx, out, dst_ref, &ptr_t);
+                    dst = refIntToPtr(ctx, out, dst_ref, &ptr_t);
                     sret = true;
                 } else {
                     writeRefUntyped(out, dst_ref);
                     nk_printf(out, " = ");
                 }
             }
+
             nk_printf(out, "call ");
             if (sret || !dst_ref->kind) {
-                nk_printf(out, "void ");
+                nk_printf(out, "void");
             } else {
                 writeType(out, dst_ref->type);
-                nk_printf(out, " ");
             }
-            nk_printf(out, "(");
+
+            nk_printf(out, " (");
             if (sret) {
                 nk_printf(out, "ptr");
             }
-            NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
-                if (NK_INDEX(arg_ref, instr->arg[2].refs) || sret) {
+
+            NK_ITERATE(NkIrRef const *, arg_ref, arg_refs) {
+                if (NK_INDEX(arg_ref, arg_refs) || sret) {
                     nk_printf(out, ", ");
                 }
                 writeRefType(out, arg_ref);
@@ -503,31 +505,34 @@ static void writeInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                     break;
                 }
             }
-            nk_printf(out, ") ");
-            nk_printf(out, NKS_FMT, NKS_ARG(ptr));
-            nk_printf(out, "(");
+
+            nk_printf(out, ") " NKS_FMT "(", NKS_ARG(proc));
+
             if (sret) {
                 nk_printf(out, "ptr sret(");
                 writeType(out, dst_ref->type);
-                nk_printf(out, ") align %u " NKS_FMT, dst_ref->type->align, NKS_ARG(dst_str));
+                nk_printf(out, ") align %u " NKS_FMT, dst_ref->type->align, NKS_ARG(dst));
             }
-            NK_ITERATE(NkIrRef const *, arg_ref, instr->arg[2].refs) {
+
+            NK_ITERATE(NkIrRef const *, arg_ref, arg_refs) {
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
                     continue;
                 }
-                if (NK_INDEX(arg_ref, instr->arg[2].refs) || sret) {
+                if (NK_INDEX(arg_ref, arg_refs) || sret) {
                     nk_printf(out, ", ");
                 }
                 writeRef(out, arg_ref);
             }
+
             nk_printf(out, ")");
+
             break;
         }
 
         case NkIrOp_ret:
             nk_printf(out, "ret ");
-            if (instr->arg[1].ref.kind) {
-                writeRef(out, &instr->arg[1].ref);
+            if (ref1->kind) {
+                writeRef(out, ref1);
             } else {
                 nk_printf(out, "void");
             }
@@ -624,89 +629,93 @@ static void writeData(NkStream out, NkIrData const *data) {
     nk_printf(out, "\n");
 }
 
-void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
-    NK_ITERATE(NkIrSymbol const *, sym, mod) {
-        switch (sym->kind) {
-            case NkIrSymbol_Extern:
-                // TODO: Add types to externs
-                nk_printf(out, "@%s = external global ptr\n", nk_atom2cs(sym->name));
-                break;
+static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
+    switch (sym->kind) {
+        case NkIrSymbol_Extern:
+            // TODO: Add types to externs
+            nk_printf(out, "@%s = external global ptr\n", nk_atom2cs(sym->name));
+            break;
 
-            case NkIrSymbol_Data:
-                writeGlobal(out, sym->name);
-                nk_printf(out, " = ");
-                writeVisibility(out, sym->vis);
-                nk_printf(out, " ");
-                writeData(out, &sym->data);
-                break;
+        case NkIrSymbol_Data:
+            writeGlobal(out, sym->name);
+            nk_printf(out, " = ");
+            writeVisibility(out, sym->vis);
+            nk_printf(out, " ");
+            writeData(out, &sym->data);
+            break;
 
-            case NkIrSymbol_Proc: {
-                LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
-                LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
+        case NkIrSymbol_Proc: {
+            LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
+            LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
 
-                u32 *indices = countLabels(labels);
+            u32 *indices = countLabels(scratch, labels);
 
-                Context ctx = {
-                    .scratch = scratch,
+            Context ctx = {
+                .scratch = scratch,
 
-                    .instrs = sym->proc.instrs,
+                .instrs = sym->proc.instrs,
 
-                    .labels = labels,
-                    .indices = indices,
+                .labels = labels,
+                .indices = indices,
 
-                    .proc_params = sym->proc.params,
-                    .proc_ret = sym->proc.ret,
-                };
+                .proc_params = sym->proc.params,
+                .proc_ret = sym->proc.ret,
+            };
 
-                nk_printf(out, "define ");
-                writeVisibility(out, sym->vis);
-                nk_printf(out, " ");
-                if (ctx.proc_ret.name) {
-                    nk_printf(out, "void");
-                } else {
-                    writeType(out, sym->proc.ret.type);
-                }
-                nk_printf(out, " ");
-                writeGlobal(out, sym->name);
-                nk_printf(out, "(");
-                if (ctx.proc_ret.name) {
-                    nk_printf(out, "ptr sret(");
-                    writeType(out, ctx.proc_ret.type);
-                    nk_printf(out, ") align %u ", ctx.proc_ret.type->align);
-                    writeLocal(out, ctx.proc_ret.name);
-                }
-                NK_ITERATE(NkIrParam const *, param, ctx.proc_params) {
-                    if (NK_INDEX(param, sym->proc.params) || ctx.proc_ret.name) {
-                        nk_printf(out, ", ");
-                    }
-                    if (param->type->kind == NkIrType_Aggregate) {
-                        nk_printf(out, "ptr byval(");
-                    }
-                    writeType(out, param->type);
-                    if (param->type->kind == NkIrType_Aggregate) {
-                        nk_printf(out, ") align %u", param->type->align);
-                    }
-                    nk_printf(out, " ");
-                    writeLocal(out, param->name);
-                }
-                nk_printf(out, ") {\n");
-                NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
-                    writeInstr(&ctx, out, instr);
-                }
-                nk_printf(out, "}\n");
-
-                nk_freeTn(nk_default_allocator, indices, u32, labels.size); // TODO: Use scratch arena
-                break;
+            nk_printf(out, "define ");
+            writeVisibility(out, sym->vis);
+            nk_printf(out, " ");
+            if (ctx.proc_ret.name) {
+                nk_printf(out, "void");
+            } else {
+                writeType(out, sym->proc.ret.type);
             }
+            nk_printf(out, " ");
+            writeGlobal(out, sym->name);
+            nk_printf(out, "(");
+            if (ctx.proc_ret.name) {
+                nk_printf(out, "ptr sret(");
+                writeType(out, ctx.proc_ret.type);
+                nk_printf(out, ") align %u ", ctx.proc_ret.type->align);
+                writeLocal(out, ctx.proc_ret.name);
+            }
+            NK_ITERATE(NkIrParam const *, param, ctx.proc_params) {
+                if (NK_INDEX(param, sym->proc.params) || ctx.proc_ret.name) {
+                    nk_printf(out, ", ");
+                }
+                if (param->type->kind == NkIrType_Aggregate) {
+                    nk_printf(out, "ptr byval(");
+                }
+                writeType(out, param->type);
+                if (param->type->kind == NkIrType_Aggregate) {
+                    nk_printf(out, ") align %u", param->type->align);
+                }
+                nk_printf(out, " ");
+                writeLocal(out, param->name);
+            }
+            nk_printf(out, ") {\n");
+            NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
+                writeInstr(&ctx, out, instr);
+            }
+            nk_printf(out, "}\n");
+            break;
         }
-        nk_printf(out, "\n");
     }
+    nk_printf(out, "\n");
+}
 
-    // TODO: Inserting name for libc compatibility main
-    nk_printf(
-        out,
-        "define dso_local i32 @main() {\n\
+void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
+    NK_ARENA_SCOPE(scratch) {
+        NK_ITERATE(NkIrSymbol const *, sym, mod) {
+            emitSymbol(out, scratch, sym);
+        }
+
+        // TODO: Inserting name for libc compatibility main
+        nk_printf(
+            out,
+            "define dso_local i32 @main() {\n\
   call void () @_entry()\n\
   ret i32 0\n\
 }\n");
+    }
 }

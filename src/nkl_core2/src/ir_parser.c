@@ -1119,10 +1119,12 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
     nk_arena_free(&p.scratch);
 
     NK_LOG_STREAM_INF {
+        NkArena scratch = {0};
         NkStream log = nk_log_getStream();
         nk_printf(log, "IR:\n");
         NkIrModule const syms = {out_syms->data + start_idx, out_syms->size - start_idx};
-        nkir_inspectModule(log, syms);
+        nkir_inspectModule(log, &scratch, syms);
+        nk_arena_free(&scratch);
     }
 
     return !p.error_occurred;

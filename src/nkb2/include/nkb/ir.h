@@ -183,7 +183,7 @@ typedef struct {
 
 /// Main
 
-void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
+void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
 /// Refs
 
@@ -241,8 +241,8 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
 
 /// Inspection
 
-void nkir_inspectModule(NkStream out, NkIrModule mod);
-void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym);
+void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod);
+void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym);
 void nkir_inspectInstr(NkStream out, NkIrInstr instr);
 void nkir_inspectRef(NkStream out, NkIrRef ref);
 
