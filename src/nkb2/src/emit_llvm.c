@@ -606,8 +606,6 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
 static void writeData(NkStream out, NkIrData const *data) {
     nk_printf(out, "%s ", (data->flags & NkIrData_ReadOnly) ? "constant" : "global");
 
-    // TODO: Ignoring relocs
-
     if (data->addr) {
         inspectVal(out, data->addr, 0, data->relocs, data->type);
     } else {

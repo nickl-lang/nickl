@@ -21,6 +21,7 @@ static void printUsage() {
         "Usage: " NK_BINARY_NAME
         " [options] file"
         "\nOptions:"
+        "\n    -o, --output <file>                      Output file path"
         "\n    -c, --color {auto,always,never}          Choose when to color output"
         "\n    -h, --help                               Display this message and exit"
         "\n    -v, --version                            Show version information"
@@ -68,7 +69,7 @@ static void printDiag(NklState nkl) {
     }
 }
 
-static int run(NklState nkl, NkString in_file) {
+static int run(NklState nkl, NkString in_file, NkString out_file) {
     NklCompiler const com = nkl_newCompilerHost();
 
     // TODO: Hardcoded lib names
@@ -83,7 +84,7 @@ static int run(NklState nkl, NkString in_file) {
         return 1;
     }
 
-    if (!nkl_exportModule(mod, nk_cs2s("nklc.out"), NklOutput_Binary)) {
+    if (!nkl_exportModule(mod, out_file, NklOutput_Binary)) {
         printDiag(nkl);
         return 1;
     }
@@ -93,6 +94,7 @@ static int run(NklState nkl, NkString in_file) {
 
 static int parseArgsAndRun(char **argv) {
     NkString in_file = {0};
+    NkString out_file = nk_cs2s("a.out");
 
     bool help = false;
     bool version = false;
@@ -133,6 +135,9 @@ static int parseArgsAndRun(char **argv) {
             } else if (nks_equal(key, nk_cs2s("-v")) || nks_equal(key, nk_cs2s("--version"))) {
                 NO_VALUE;
                 version = true;
+            } else if (nks_equal(key, nk_cs2s("-o")) || nks_equal(key, nk_cs2s("--output"))) {
+                GET_VALUE;
+                out_file = val;
             } else if (nks_equal(key, nk_cs2s("-c")) || nks_equal(key, nk_cs2s("--color"))) {
                 GET_VALUE;
                 if (nks_equal(val, nk_cs2s("auto"))) {
@@ -217,7 +222,7 @@ static int parseArgsAndRun(char **argv) {
     NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
     NK_DEFER_LOOP(nkl = nkl_newState(), nkl_freeState(nkl))
     NK_DEFER_LOOP(nkl_pushState(nkl), nkl_popState()) {
-        ret_code = run(nkl, in_file);
+        ret_code = run(nkl, in_file, out_file);
     }
 
     return ret_code;
