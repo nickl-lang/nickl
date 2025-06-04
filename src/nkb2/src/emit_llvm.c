@@ -433,73 +433,54 @@ static void emitCond(Context *ctx, NkStream out, NkIrInstr const *instr, char co
     emitRefType(out, ref0);
 }
 
-static void emitTrunc(Context *ctx, NkStream out, NkIrInstr const *instr) {
-    (void)ctx;
-
+static void emitMov(Context *ctx, NkStream out, NkIrInstr const *instr) {
     NkIrRef const *ref0 = &instr->arg[0].ref;
     NkIrRef const *ref1 = &instr->arg[1].ref;
 
-    NkIrType const type = ref1->type;
-    nk_assert(type->kind == NkIrType_Numeric);
+    NkIrType const src_t = ref1->type;
+    NkIrType const dst_t = ref0->type;
+    nk_assert(src_t->kind == NkIrType_Numeric);
+    nk_assert(dst_t->kind == NkIrType_Numeric);
 
-    char const *opcode_prefix = NKIR_NUMERIC_IS_INT(type->num) ? "" : "fp";
+    bool const src_is_int = NKIR_NUMERIC_IS_INT(src_t->num);
+    bool const dst_is_int = NKIR_NUMERIC_IS_INT(dst_t->num);
+    bool const src_is_signed = NKIR_NUMERIC_IS_SIGNED(src_t->num);
+    bool const dst_is_signed = NKIR_NUMERIC_IS_SIGNED(dst_t->num);
 
-    emitRefUntyped(out, ref0);
-    nk_printf(out, " = %strunc ", opcode_prefix);
-    emitRef(out, ref1);
-    nk_printf(out, " to ");
-    emitRefType(out, ref0);
-}
+    char const *op = "";
+    char const *src = "";
+    char const *dst = "";
 
-static void emitExt(Context *ctx, NkStream out, NkIrInstr const *instr) {
-    (void)ctx;
-
-    NkIrRef const *ref0 = &instr->arg[0].ref;
-    NkIrRef const *ref1 = &instr->arg[1].ref;
-
-    NkIrType const type = ref1->type;
-    nk_assert(type->kind == NkIrType_Numeric);
-
-    char const *opcode_prefix = NKIR_NUMERIC_IS_INT(type->num) ? "" : "fp";
-
-    if (NKIR_NUMERIC_IS_INT(type->num)) {
-        if (NKIR_NUMERIC_IS_SIGNED(type->num)) {
-            opcode_prefix = "s";
+    if (src_is_int == dst_is_int) {
+        if (src_t->size == dst_t->size) {
+            op = "bitcast";
+        } else if (src_t->size < dst_t->size) {
+            op = "ext";
+            src = src_is_int ? (src_is_signed ? "s" : "z") : "fp";
         } else {
-            opcode_prefix = "z";
+            op = "trunc";
+            src = src_is_int ? "" : "fp";
         }
+    } else {
+        op = "to";
+        src = src_is_int ? (src_is_signed ? "si" : "ui") : "fp";
+        dst = dst_is_int ? (dst_is_signed ? "si" : "ui") : "fp";
     }
 
-    emitRefUntyped(out, ref0);
-    nk_printf(out, " = %sext ", opcode_prefix);
-    emitRef(out, ref1);
-    nk_printf(out, " to ");
-    emitRefType(out, ref0);
-}
+    NkString const lhs = ptrToInt(ctx, out, ref0);
+    NkString const rhs = ptrToInt(ctx, out, ref1);
 
-static void emitCast(Context *ctx, NkStream out, NkIrInstr const *instr) {
-    (void)ctx;
-
-    NkIrRef const *ref0 = &instr->arg[0].ref;
-    NkIrRef const *ref1 = &instr->arg[1].ref;
-
-    NkIrType const dst_type = ref0->type;
-    NkIrType const src_type = ref1->type;
-
-    nk_assert(dst_type->kind == NkIrType_Numeric);
-    nk_assert(src_type->kind == NkIrType_Numeric);
-
-    char const *dst = NKIR_NUMERIC_IS_INT(dst_type->num) ? (NKIR_NUMERIC_IS_SIGNED(dst_type->num) ? "si" : "ui") : "fp";
-    char const *src = NKIR_NUMERIC_IS_INT(src_type->num) ? (NKIR_NUMERIC_IS_SIGNED(src_type->num) ? "si" : "ui") : "fp";
-
-    emitRefUntyped(out, ref0);
-    nk_printf(out, " = %sto%s ", src, dst);
-    emitRef(out, ref1);
-    nk_printf(out, " to ");
+    nk_printf(out, NKS_FMT " = %s%s%s ", NKS_ARG(lhs), src, op, dst);
+    emitType(out, ref1->type);
+    nk_printf(out, " " NKS_FMT " to ", NKS_ARG(rhs));
     emitRefType(out, ref0);
 }
 
 static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
+    if (instr->code == NkIrOp_nop) {
+        return;
+    }
+
     if (instr->code != NkIrOp_label) {
         nk_printf(out, "  ");
     }
@@ -508,25 +489,15 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
     NkIrRef const *ref1 = &instr->arg[1].ref;
 
     switch ((NkIrOpcode)instr->code) {
-        case NkIrOp_fp2i:
-        case NkIrOp_i2fp:
-            emitCast(ctx, out, instr);
+        case NkIrOp_nop:
+            break;
+
+        case NkIrOp_mov:
+            emitMov(ctx, out, instr);
             break;
 
         case NkIrOp_comment:
             nk_printf(out, "; " NKS_FMT, NKS_ARG(instr->arg[1].str));
-            break;
-
-        case NkIrOp_nop:
-            nk_printf(out, "call void @llvm.donothing()");
-            break;
-
-        case NkIrOp_trunc:
-            emitTrunc(ctx, out, instr);
-            break;
-
-        case NkIrOp_ext:
-            emitExt(ctx, out, instr);
             break;
 
         case NkIrOp_alloc: {
@@ -589,19 +560,6 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
         case NkIrOp_cmp_le:
             emitCond(ctx, out, instr, "le", Prefix_Sign);
-            break;
-
-        case NkIrOp_mov:
-            nk_assert(ref1->type->kind == NkIrType_Numeric);
-            NkString const arg = ptrToInt(ctx, out, ref1);
-            // TODO: Expressing mov as add
-            emitRefUntyped(out, ref0);
-            nk_printf(out, " = %sadd ", NKIR_NUMERIC_IS_FLT(ref1->type->num) ? "f" : "");
-            emitType(out, ref1->type);
-            nk_printf(out, " " NKS_FMT ", 0", NKS_ARG(arg));
-            if (NKIR_NUMERIC_IS_FLT(ref1->type->num)) {
-                nk_printf(out, ".");
-            }
             break;
 
         case NkIrOp_label:

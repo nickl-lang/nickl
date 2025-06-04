@@ -10,7 +10,7 @@ pub proc _entry() {
 
     add str, 8 -> %sz_ptr
     load %sz_ptr -> :u64 %sz64
-    trunc :u64 %sz64 -> :u32 %sz32
+    mov :u64 %sz64 -> :u32 %sz32
 
     call printf, ("%.*s\n", ..., :u32 %sz32, :i64 %data) -> :i32
 
