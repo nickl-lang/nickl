@@ -767,10 +767,10 @@ static void inspectVal(NkIrProg ir, NkIrRef const &ref, NkStream out, bool force
                 NKIR_NUMERIC_ITERATE_INT(X)
 #undef X
                 case Float32:
-                    nk_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
+                    nk_printf(out, "%.*g", FLT_DECIMAL_DIG, *(f32 *)data);
                     break;
                 case Float64:
-                    nk_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
+                    nk_printf(out, "%.*g", DBL_DECIMAL_DIG, *(f64 *)data);
                     break;
                 default:
                     nk_assert(!"unreachable");

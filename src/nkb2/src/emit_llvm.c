@@ -1,5 +1,7 @@
 #include "emit_llvm.h"
 
+#include <float.h>
+
 #include "common.h"
 #include "nkb/ir.h"
 #include "nkb/types.h"
@@ -125,6 +127,26 @@ static void emitLocal(NkStream out, NkAtom name) {
     emitName(out, name);
 }
 
+static void emitFloat(NkStream out, void *addr, NkIrNumericValueType value_type) {
+    switch (value_type) {
+        case Float32: {
+            f32 const val = *(f32 *)addr;
+            nk_printf(out, "%.*e", FLT_DECIMAL_DIG, val);
+            break;
+        }
+
+        case Float64: {
+            f64 const val = *(f64 *)addr;
+            nk_printf(out, "%.*e", DBL_DECIMAL_DIG, val);
+            break;
+        }
+
+        default:
+            nk_assert(!"unreachable");
+            break;
+    }
+}
+
 static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
         case NkIrRef_None:
@@ -143,22 +165,11 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
             break;
 
         case NkIrRef_Imm: {
-            // TODO: Print floats in hex
-            // TODO: Investigate precision loss in ir
-            NKSB_FIXED_BUFFER(sb, 128);
-            NkStream s = NKIR_NUMERIC_IS_FLT(ref->type->num) ? nksb_getStream(&sb) : out;
-            nkir_inspectVal((void *)&ref->imm, ref->type, s);
-            if (NKIR_NUMERIC_IS_FLT(ref->type->num)) {
-                usize i = 0;
-                for (; i < sb.size; i++) {
-                    if (sb.data[i] == '.') {
-                        break;
-                    }
-                }
-                nk_printf(out, NKS_FMT, NKS_ARG(sb));
-                if (i == sb.size) {
-                    nk_printf(out, ".0");
-                }
+            void *addr = (void *)&ref->imm;
+            if (NKIR_NUMERIC_IS_INT(ref->type->num)) {
+                nkir_inspectVal(addr, ref->type, out);
+            } else {
+                emitFloat(out, addr, ref->type->num);
             }
             break;
         }
@@ -739,7 +750,11 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
 
         case NkIrType_Numeric: {
             void *addr = (u8 *)base_addr + base_offset;
-            nkir_inspectVal(addr, type, out);
+            if (NKIR_NUMERIC_IS_INT(type->num)) {
+                nkir_inspectVal(addr, type, out);
+            } else {
+                emitFloat(out, addr, type->num);
+            }
             break;
         }
     }
