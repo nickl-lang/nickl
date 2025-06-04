@@ -1,60 +1,146 @@
 extern "c" $printf
 
-pub proc _entry(:f32 %x, :f32 %y) :i16 {
+type Vec2 :{[2]f64}
+
+local proc make_vec2(:f64 %x, :f64 %y) :Vec2 %vec {
+    store %x -> %vec
+    add 8, %vec -> %y_addr
+    store %y -> %y_addr
+    ret
+}
+
+local data x :i64
+
+pub proc foo(:f64 %x, :f64 %y) :f64 {
+
+    // TODO: Fix f32 constants
 
 @start
     nop
 
-    ret
-    ret 42
-    ret :i32 42
+    jmp      @label
+    jmpz  1, @label
+    jmpnz 1, @label
+    jmpz  1.0, @label
+    jmpnz 1.0, @label
+    jmpz  :f32 1.0, @label
+    jmpnz :f32 1.0, @label
 
-    jmp      @start
-    jmpz  1, @start
-    jmpnz 1, @start
-
-    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %a
+    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %_0
 
     store 1 -> 1
-    load  1 -> :i32 %a
+    load  1 -> :i32 %_1
 
-    alloc :i32 -> :i32 %a
+    alloc :i32 -> :i32 %_2
 
-    mov :i64 x  -> :i64 %a
+    mov :i64 x -> :i64 %_3
 
-    ext :i8 1   -> :i32 %a
-    trunc 1     -> :i32 %a
-    fp2i :f32 1 -> :i32 %a
-    i2fp 1      -> :f32 %a
+    ext :i8  1 -> :i16 %_4
+    ext :i8  1 -> :i32 %_5
+    ext :i8  1 -> :i64 %_6
+    ext :i16 1 -> :i32 %_7
+    ext :i16 1 -> :i64 %_8
+    ext :i32 1 -> :i64 %_9
+    ext :u8  1 -> :u16 %_10
+    ext :u8  1 -> :u32 %_11
+    ext :u8  1 -> :u64 %_12
+    ext :u16 1 -> :u32 %_13
+    ext :u16 1 -> :u64 %_14
+    ext :u32 1 -> :u64 %_15
+    ext :f32 1 -> :f64 %_16
 
-    add %x, 1          -> %a
-    sub %y, %x         -> %a
-    mul 3.14, 1        -> %a
-    div :f32 1.0, 3.14 -> %a
-    mod 1, 1           -> %a
+    trunc :i16 1 -> :i8  %_17
+    trunc :i32 1 -> :i8  %_18
+    trunc :i64 1 -> :i8  %_19
+    trunc :i32 1 -> :i16 %_20
+    trunc :i64 1 -> :i16 %_21
+    trunc :i64 1 -> :i32 %_22
+    trunc :u16 1 -> :u8  %_23
+    trunc :u32 1 -> :u8  %_24
+    trunc :u64 1 -> :u8  %_25
+    trunc :u32 1 -> :u16 %_26
+    trunc :u64 1 -> :u16 %_27
+    trunc :u64 1 -> :u32 %_28
+    trunc :f64 1 -> :f32 %_29
 
-    and 1, 1 -> %b
-    or  1, 1 -> %b
-    xor 1, 1 -> %b
-    lsh 1, 1 -> :i32 %b
-    rsh 1, 1 -> :i32 %b
+    fp2i :f32 1 -> :i8  %_30
+    fp2i :f32 1 -> :i16 %_31
+    fp2i :f32 1 -> :i32 %_32
+    fp2i :f32 1 -> :i64 %_33
+    fp2i :f32 1 -> :u8  %_34
+    fp2i :f32 1 -> :u16 %_35
+    fp2i :f32 1 -> :u32 %_36
+    fp2i :f32 1 -> :u64 %_37
+    fp2i :f64 1 -> :i8  %_38
+    fp2i :f64 1 -> :i16 %_39
+    fp2i :f64 1 -> :i32 %_40
+    fp2i :f64 1 -> :i64 %_41
+    fp2i :f64 1 -> :u8  %_42
+    fp2i :f64 1 -> :u16 %_43
+    fp2i :f64 1 -> :u32 %_44
+    fp2i :f64 1 -> :u64 %_45
 
-    cmp eq 1, 1 -> %b
-    cmp ne 1, 1 -> %b
-    cmp lt 1, 1 -> %b
-    cmp le 1, 1 -> :i32 %b
-    cmp gt 1, 1 -> :i32 %b
-    cmp ge 1, 1 -> :i32 %b
+    i2fp :i8  1 -> :f32 %_46
+    i2fp :i16 1 -> :f32 %_47
+    i2fp :i32 1 -> :f32 %_48
+    i2fp :i64 1 -> :f32 %_49
+    i2fp :u8  1 -> :f32 %_50
+    i2fp :u16 1 -> :f32 %_51
+    i2fp :u32 1 -> :f32 %_52
+    i2fp :u64 1 -> :f32 %_53
+    i2fp :i8  1 -> :f64 %_54
+    i2fp :i16 1 -> :f64 %_55
+    i2fp :i32 1 -> :f64 %_56
+    i2fp :i64 1 -> :f64 %_57
+    i2fp :u8  1 -> :f64 %_58
+    i2fp :u16 1 -> :f64 %_59
+    i2fp :u32 1 -> :f64 %_60
+    i2fp :u64 1 -> :f64 %_61
+
+    add %x, 1          -> %_62
+    sub %y, %x         -> %_63
+    mul 3.14, 1        -> %_64
+    div :f64 1.0, 3.14 -> %_65
+    mod 1, 1           -> %_66
+
+    jmp @label
+@label
+
+    and 1, 1 -> %_67
+    or  1, 1 -> %_68
+    xor 1, 1 -> %_69
+
+    lsh 1, 1 -> %_70
+    rsh 1, 1 -> %_71
+    lsh :u64 1, 1 -> %_72
+    rsh :u64 1, 1 -> %_73
+
+    cmp eq 1, 1 -> %_74
+    cmp ne 1, 1 -> %_75
+    cmp lt 1, 1 -> %_76
+    cmp le 1, 1 -> :i32 %_77
+    cmp gt 1, 1 -> :i32 %_78
+    cmp ge 1, 1 -> :i32 %_79
 
     comment "This is a comment"
 
+    ret 42
+
+}
+
+proc bar() :f64 {
+    ret :f64 3.14
 }
 
 local const one 123
 pub data two :i32 42
 data three :i64
-const four :f32 3.14
+const four :f64 3.14
 const five "a string"
+
+local proc _entry() {
+    ret
+}
 
 /* @retcode
 0

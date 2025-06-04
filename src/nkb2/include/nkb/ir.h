@@ -16,10 +16,10 @@ extern "C" {
 
 /// Instrs
 
-enum {
+typedef enum {
 #define IR(NAME) NK_CAT(NkIrOp_, NAME),
 #include "nkb/ir.inl"
-};
+} NkIrOpcode;
 
 /// Common
 
