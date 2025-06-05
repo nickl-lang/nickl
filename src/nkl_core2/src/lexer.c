@@ -55,6 +55,10 @@ static int onDigit(LexerState const *l, i64 offset) {
     return isdigit(chr(l, offset));
 }
 
+static int onXdigit(LexerState const *l, i64 offset) {
+    return isxdigit(chr(l, offset));
+}
+
 static int onLower(LexerState const *l, i64 offset) {
     return tolower(chr(l, offset));
 }
@@ -189,6 +193,7 @@ static NklToken scan(LexerState *l) {
                     default:
                         if (!chr(l, 0)) {
                             reportError(l, "unexpected end of file");
+                            token.id = NklToken_Error;
                             return token;
                         } else {
                             token.pos = l->pos - 1;
@@ -197,9 +202,11 @@ static NklToken scan(LexerState *l) {
                             token.col = l->col - 1;
                             if (onPrint(l, 0)) {
                                 reportError(l, "invalid escape sequence `\\%c`", chr(l, 0));
+                                token.id = NklToken_Error;
                                 return token;
                             } else {
                                 reportError(l, "invalid escape sequence `\\\\x%" PRIx8 "`", chr(l, 0) & 0xff);
+                                token.id = NklToken_Error;
                                 return token;
                             }
                         }
@@ -210,6 +217,7 @@ static NklToken scan(LexerState *l) {
         if (!on(l, '\"', 0)) {
             accept(l, &token, 1);
             reportError(l, "invalid string constant");
+            token.id = NklToken_Error;
             return token;
         }
 
@@ -220,45 +228,74 @@ static NklToken scan(LexerState *l) {
     }
 
     if (onDigit(l, on(l, '-', 0) ? 1 : 0)) {
-        if (on(l, '-', 0)) {
-            accept(l, &token, 1);
-        }
+        if (on(l, '0', 0) && on(l, 'x', 1)) {
+            token.id = NklToken_IntHex;
 
-        token.id = NklToken_Int;
+            accept(l, &token, 2);
 
-        while (onDigit(l, 0)) {
-            accept(l, &token, 1);
-        }
+            bool invalid_num = false;
 
-        if (on(l, '.', 0)) {
-            token.id = NklToken_Float;
-            do {
-                accept(l, &token, 1);
-            } while (onDigit(l, 0));
-        }
-
-        if (onLower(l, 0) == 'e') {
-            token.id = NklToken_Float;
-            accept(l, &token, 1);
-            if (on(l, '-', 0) || on(l, '+', 0)) {
-                accept(l, &token, 1);
+            if (!onAlnum(l, 0)) {
+                invalid_num = true;
+            } else {
+                while (onAlnum(l, 0)) {
+                    if (!onXdigit(l, 0)) {
+                        invalid_num = true;
+                    }
+                    accept(l, &token, 1);
+                }
             }
-            if (!onDigit(l, 0)) {
-                reportError(l, "invalid float literal");
+
+            if (invalid_num) {
+                reportError(l, "invalid hex constant");
+                token.id = NklToken_Error;
                 return token;
             }
+
+            return token;
+        } else {
+            if (on(l, '-', 0)) {
+                accept(l, &token, 1);
+            }
+
+            token.id = NklToken_Int;
+
             while (onDigit(l, 0)) {
                 accept(l, &token, 1);
             }
-        }
 
-        if (onAlpha(l, 0)) {
-            accept(l, &token, 1);
-            reportError(l, "invalid suffix");
+            if (on(l, '.', 0)) {
+                token.id = NklToken_Float;
+                do {
+                    accept(l, &token, 1);
+                } while (onDigit(l, 0));
+            }
+
+            if (onLower(l, 0) == 'e') {
+                token.id = NklToken_Float;
+                accept(l, &token, 1);
+                if (on(l, '-', 0) || on(l, '+', 0)) {
+                    accept(l, &token, 1);
+                }
+                if (!onDigit(l, 0)) {
+                    reportError(l, "invalid float literal");
+                    token.id = NklToken_Error;
+                    return token;
+                }
+                while (onDigit(l, 0)) {
+                    accept(l, &token, 1);
+                }
+            }
+
+            if (onAlpha(l, 0)) {
+                accept(l, &token, 1);
+                reportError(l, "invalid suffix");
+                token.id = NklToken_Error;
+                return token;
+            }
+
             return token;
         }
-
-        return token;
     }
 
     if (onAlphaOrUscr(l, 0)) {
@@ -324,9 +361,11 @@ static NklToken scan(LexerState *l) {
 
     if (onPrint(l, 0)) {
         reportError(l, "unexpected character `%c`", chr(l, 0));
+        token.id = NklToken_Error;
         return token;
     } else {
         reportError(l, "unexpected byte `\\x%" PRIx8 "`", chr(l, 0) & 0xff);
+        token.id = NklToken_Error;
         return token;
     }
 }

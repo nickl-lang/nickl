@@ -6,7 +6,6 @@
 #include "ntk/common.h"
 #include "ntk/file.h"
 #include "ntk/stream.h"
-#include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,6 +110,9 @@ NK_EXPORT u64 nk_hashArray(u8 const *begin, u8 const *end);
 NK_INLINE u64 nk_hashCStr(char const *str) {
     return nk_hashArray((u8 *)str, (u8 *)str + strlen(str));
 }
+
+NK_EXPORT void printFloat32Exact(NkStream out, f32 val);
+NK_EXPORT void printFloat64Exact(NkStream out, f64 val);
 
 #ifdef __cplusplus
 }

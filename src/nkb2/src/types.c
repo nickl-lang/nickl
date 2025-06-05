@@ -4,6 +4,7 @@
 
 #include "ntk/common.h"
 #include "ntk/string.h"
+#include "ntk/utils.h"
 
 void nkir_inspectType(NkIrType type, NkStream out) {
     if (!type) {
@@ -89,10 +90,10 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                 NKIR_NUMERIC_ITERATE_INT(X)
 #undef X
                 case Float32:
-                    nk_printf(out, "%.*g", FLT_DECIMAL_DIG, *(f32 *)data);
+                    printFloat32Exact(out, *(f32 *)data);
                     break;
                 case Float64:
-                    nk_printf(out, "%.*g", DBL_DECIMAL_DIG, *(f64 *)data);
+                    printFloat64Exact(out, *(f64 *)data);
                     break;
             }
             break;

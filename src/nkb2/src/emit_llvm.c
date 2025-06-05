@@ -1,6 +1,7 @@
 #include "emit_llvm.h"
 
 #include <float.h>
+#include <inttypes.h>
 
 #include "common.h"
 #include "nkb/ir.h"
@@ -131,13 +132,13 @@ static void emitFloat(NkStream out, void *addr, NkIrNumericValueType value_type)
     switch (value_type) {
         case Float32: {
             f32 const val = *(f32 *)addr;
-            nk_printf(out, "%.*e", FLT_DECIMAL_DIG, val);
+            printFloat32Exact(out, val);
             break;
         }
 
         case Float64: {
             f64 const val = *(f64 *)addr;
-            nk_printf(out, "%.*e", DBL_DECIMAL_DIG, val);
+            printFloat64Exact(out, val);
             break;
         }
 

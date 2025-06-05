@@ -53,7 +53,7 @@ local proc myatan(:f64 %x) :f64 {
 
 pub proc _entry() {
     call myatan, (0.2) -> :f64 %_1
-    call myatan, (0.0041841004184100415) -> :f64 %_2
+    call myatan, (:f64 0x3F712358E75D3033) -> :f64 %_2
 
     mul :f64 %_1, 4   -> %_3
     sub :f64 %_3, %_2 -> %_4

@@ -242,34 +242,51 @@ static Void parseNumber(ParserState *p, void *addr, NkString str, NkIrNumericVal
 
     switch (value_type) {
         case Int8:
-            *(i8 *)addr = strtol(cstr, &endptr, 10);
+            *(i8 *)addr = strtol(cstr, &endptr, 0);
             break;
         case Uint8:
-            *(u8 *)addr = strtoul(cstr, &endptr, 10);
+            *(u8 *)addr = strtoul(cstr, &endptr, 0);
             break;
         case Int16:
-            *(i16 *)addr = strtol(cstr, &endptr, 10);
+            *(i16 *)addr = strtol(cstr, &endptr, 0);
             break;
         case Uint16:
-            *(u16 *)addr = strtoul(cstr, &endptr, 10);
+            *(u16 *)addr = strtoul(cstr, &endptr, 0);
             break;
         case Int32:
-            *(i32 *)addr = strtol(cstr, &endptr, 10);
+            *(i32 *)addr = strtol(cstr, &endptr, 0);
             break;
         case Uint32:
-            *(u32 *)addr = strtoul(cstr, &endptr, 10);
+            *(u32 *)addr = strtoul(cstr, &endptr, 0);
             break;
         case Int64:
-            *(i64 *)addr = strtoll(cstr, &endptr, 10);
+            *(i64 *)addr = strtoll(cstr, &endptr, 0);
             break;
         case Uint64:
-            *(u64 *)addr = strtoull(cstr, &endptr, 10);
+            *(u64 *)addr = strtoull(cstr, &endptr, 0);
             break;
-        case Float32:
-            *(f32 *)addr = strtof(cstr, &endptr);
+        case Float32: {
+            if (nks_startsWith(str, nk_cs2s("0x"))) {
+                union {
+                    f32 f;
+                    u32 i;
+                } pun = {.i = strtoul(cstr, &endptr, 0)};
+                *(f32 *)addr = pun.f;
+            } else {
+                *(f32 *)addr = strtof(cstr, &endptr);
+            }
             break;
+        }
         case Float64:
-            *(f64 *)addr = strtod(cstr, &endptr);
+            if (nks_startsWith(str, nk_cs2s("0x"))) {
+                union {
+                    f64 f;
+                    u64 i;
+                } pun = {.i = strtoull(cstr, &endptr, 0)};
+                *(f64 *)addr = pun.f;
+            } else {
+                *(f64 *)addr = strtod(cstr, &endptr);
+            }
             break;
     }
 
@@ -489,11 +506,13 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
 
         case NkIrType_Numeric: {
             if (NKIR_NUMERIC_IS_INT(type->num)) {
-                TRY(NklToken const *token = expect(p, NklToken_Int));
-                NkString const token_str = tokenStr(p, token);
+                if (!on(p, NklToken_Int) && !on(p, NklToken_IntHex)) {
+                    ERROR_EXPECT("integer constant");
+                }
+                NkString const token_str = getToken(p);
                 TRY(parseNumber(p, addr, token_str, type->num));
             } else {
-                if (!on(p, NklToken_Int) && !on(p, NklToken_Float)) {
+                if (!on(p, NklToken_Int) && !on(p, NklToken_IntHex) && !on(p, NklToken_Float)) {
                     ERROR_EXPECT("numeric constant");
                 }
                 NkString const token_str = getToken(p);
@@ -918,6 +937,8 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     if (!type) {
         if (on(p, NklToken_Int)) {
             type = get_i64_t(p);
+        } else if (on(p, NklToken_IntHex)) {
+            type = get_u64_t(p);
         } else if (on(p, NklToken_Float)) {
             type = get_f64_t(p);
         }

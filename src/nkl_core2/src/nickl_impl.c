@@ -62,12 +62,13 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
 char const *s_ir_tokens[] = {
     "end of file", // NklToken_Eof,
 
-    "identifier",       // NklToken_Id,
-    "integer constant", // NklToken_Int,
-    "float constant",   // NklToken_Float,
-    "string constant",  // NklToken_String,
-    "string constant",  // NklToken_EscapedString,
-    "newline",          // NklToken_Newline,
+    "identifier",           // NklToken_Id,
+    "integer constant",     // NklToken_Int,
+    "hex integer constant", // NklToken_IntHex,
+    "float constant",       // NklToken_Float,
+    "string constant",      // NklToken_String,
+    "string constant",      // NklToken_EscapedString,
+    "newline",              // NklToken_Newline,
 
     "error", // NklToken_Error,
 
@@ -161,12 +162,13 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
 char const *s_ast_tokens[] = {
     "end of file", // NklToken_Eof
 
-    "identifier",       // NklToken_Id
-    "integer constant", // NklToken_Int
-    "float constant",   // NklToken_Float
-    "string constant",  // NklToken_String
-    "string constant",  // NklToken_EscapedString
-    "newline",          // NklToken_Newline
+    "identifier",           // NklToken_Id
+    "integer constant",     // NklToken_Int
+    "hex integer constant", // NklToken_IntHex,
+    "float constant",       // NklToken_Float
+    "string constant",      // NklToken_String
+    "string constant",      // NklToken_EscapedString
+    "newline",              // NklToken_Newline
 
     "error", // NklToken_Error
 
