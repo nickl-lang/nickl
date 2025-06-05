@@ -1,0 +1,53 @@
+extern "c" printf
+
+local proc fast_exp(:i64 %_x, :i64 %_n) :i64 {
+    alloc :i64 -> %a_addr
+    alloc :i64 -> %x_addr
+    alloc :i64 -> %n_addr
+    store 1   -> %a_addr
+    store %_x -> %x_addr
+    store %_n -> %n_addr
+    jmp @loop
+
+@loop
+    load %n_addr -> :i64 %n0
+    cmp ne 0, %n0 -> :u8 %cond0
+    jmpz :u8 %cond0, @endloop
+    and 1, %n0 -> %_1
+    cmp ne 0, %_1 -> :u8 %cond1
+    jmpz :u8 %cond1, @endif
+    load %a_addr -> :i64 %a0
+    load %x_addr -> :i64 %x0
+    mul :i64 %a0, %x0 -> %a1
+    store :i64 %a1 -> %a_addr
+    jmp @endif
+
+@endif
+    load %n_addr -> :i64 %n1
+    rsh :i64 %n1, 1 -> %n2
+    load %x_addr -> :i64 %x1
+    mul :i64 %x1, %x1 -> %x2
+    store :i64 %x2 -> %x_addr
+    store :i64 %n2 -> %n_addr
+    jmp @loop
+
+@endloop
+    load %a_addr -> :i64 %a2
+    ret %a2
+}
+
+local const BASE 2
+local const EXP 24
+
+pub proc _entry() {
+    load BASE -> :i64 %base
+    load EXP  -> :i64 %exp
+    call fast_exp, (:i64 %base, :i64 %exp) -> :i64 %res
+    call printf, ("%zi^%zi=%zi\n", ..., :i64 %base, :i64 %exp, :i64 %res) -> :i32
+    ret
+}
+
+/* @output
+2^24=16777216
+
+@endoutput */
