@@ -92,14 +92,30 @@ typedef NkSlice(NkIrInstr const) NkIrInstrArray;
 typedef NkDynArray(NkIrInstr) NkIrInstrDynArray;
 
 typedef enum {
-    NkIrSymbol_Extern,
-    NkIrSymbol_Data,
     NkIrSymbol_Proc,
+    NkIrSymbol_Data,
+    NkIrSymbol_ExternProc,
+    NkIrSymbol_ExternData,
 } NkIrSymbolKind;
+
+typedef enum {
+    NkIrProc_Variadic = 1 << 0,
+} NkIrProcFlags;
+
+typedef NkSlice(NkIrType const) NkIrTypeArray;
+typedef NkDynArray(NkIrType) NkIrTypeDynArray;
 
 typedef struct {
     NkAtom lib;
-} NkIrExtern;
+    NkIrTypeArray param_types;
+    NkIrType ret_type;
+    NkIrProcFlags flags;
+} NkIrExternProc;
+
+typedef struct {
+    NkAtom lib;
+    NkIrType type;
+} NkIrExternData;
 
 typedef struct {
     NkAtom sym;
@@ -128,10 +144,6 @@ typedef struct {
 typedef NkSlice(NkIrParam const) NkIrParamArray;
 typedef NkDynArray(NkIrParam) NkIrParamDynArray;
 
-typedef enum {
-    NkIrProc_Variadic = 1 << 0,
-} NkIrProcFlags;
-
 typedef struct {
     NkIrParamArray params;
     NkIrParam ret;
@@ -153,9 +165,10 @@ typedef enum {
 
 typedef struct {
     union {
-        NkIrExtern extrn; // Extern
-        NkIrData data;    // Data
-        NkIrProc proc;    // Proc
+        NkIrProc proc;              // Proc
+        NkIrData data;              // Data
+        NkIrExternProc extern_proc; // ExternProc
+        NkIrExternData extern_data; // ExternData
     };
     NkAtom name;
     NkIrVisibility vis;

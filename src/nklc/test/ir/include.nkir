@@ -1,6 +1,6 @@
 include "vec2.nkir"
 
-extern "c" printf
+extern "c" proc printf(:i64, ...) :i32
 
 pub proc _entry() {
     alloc :Vec2 -> %vec

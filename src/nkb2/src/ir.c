@@ -490,29 +490,6 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     NkString const sym_str = nk_atom2s(sym->name);
 
     switch (sym->kind) {
-        case NkIrSymbol_Extern:
-            nk_printf(out, "extern \"%s\" $%s", nk_atom2cs(sym->extrn.lib), nk_atom2cs(sym->name));
-            break;
-
-        case NkIrSymbol_Data:
-            if (sym->data.flags & NkIrData_ReadOnly) {
-                nk_printf(out, "const ");
-            } else {
-                nk_printf(out, "data ");
-            }
-            // TODO: Inline strings
-            if (sym_str.size) {
-                nk_printf(out, "$" NKS_FMT " :", NKS_ARG(sym_str));
-            } else {
-                nk_printf(out, "$_%" PRIu32 " :", sym->name);
-            }
-            nkir_inspectType(sym->data.type, out);
-            if (sym->data.addr) {
-                nk_printf(out, " ");
-                inspectVal(out, sym->data.addr, 0, sym->data.relocs, sym->data.type);
-            }
-            break;
-
         case NkIrSymbol_Proc: {
             LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
@@ -554,6 +531,57 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             nk_printf(out, "}");
             break;
         }
+
+        case NkIrSymbol_Data:
+            if (sym->data.flags & NkIrData_ReadOnly) {
+                nk_printf(out, "const ");
+            } else {
+                nk_printf(out, "data ");
+            }
+            // TODO: Inline strings
+            if (sym_str.size) {
+                nk_printf(out, "$" NKS_FMT " :", NKS_ARG(sym_str));
+            } else {
+                nk_printf(out, "$_%" PRIu32 " :", sym->name);
+            }
+            nkir_inspectType(sym->data.type, out);
+            if (sym->data.addr) {
+                nk_printf(out, " ");
+                inspectVal(out, sym->data.addr, 0, sym->data.relocs, sym->data.type);
+            }
+            break;
+
+        case NkIrSymbol_ExternProc:
+            nk_printf(out, "extern ");
+            if (sym->extern_proc.lib) {
+                nk_printf(out, "\"");
+                nks_escape(out, nk_atom2s(sym->extern_proc.lib));
+                nk_printf(out, "\" ");
+            }
+            nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
+            NK_ITERATE(NkIrType const *, type, sym->extern_proc.param_types) {
+                if (NK_INDEX(type, sym->extern_proc.param_types)) {
+                    nk_printf(out, ", ");
+                }
+                nkir_inspectType(*type, out);
+            }
+            if (sym->extern_proc.flags & NkIrProc_Variadic) {
+                nk_printf(out, ", ...");
+            }
+            nk_printf(out, ") :");
+            nkir_inspectType(sym->extern_proc.ret_type, out);
+            break;
+
+        case NkIrSymbol_ExternData:
+            nk_printf(out, "extern ");
+            if (sym->extern_data.lib) {
+                nk_printf(out, "\"");
+                nks_escape(out, nk_atom2s(sym->extern_data.lib));
+                nk_printf(out, "\" ");
+            }
+            nk_printf(out, "data $" NKS_FMT " :", NKS_ARG(sym_str));
+            nkir_inspectType(sym->extern_data.type, out);
+            break;
     }
 
     nk_printf(out, "\n");

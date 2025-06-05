@@ -1,4 +1,4 @@
-extern "c" printf
+extern "c" proc printf(:i64, ...) :i32
 
 local proc fast_exp(:i64 %_x, :i64 %_n) :i64 {
     alloc :i64 -> %a_addr

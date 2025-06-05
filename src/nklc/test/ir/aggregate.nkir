@@ -1,5 +1,5 @@
-extern "c" printf
-extern "m" sqrt
+extern "c" proc printf(:i64, ...) :i32
+extern "m" proc sqrt(:f64) :f64
 
 type Vec2 :{[2]f64}
 

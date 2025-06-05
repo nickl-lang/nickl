@@ -993,23 +993,77 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 }
 
 static Void parseExtern(ParserState *p) {
-    TRY(NkString const lib_str = nickl_translateLib(p->mod, parseString(p)));
-    NkAtom const lib = nk_s2atom(lib_str);
+    NkAtom lib = 0;
+    if (on(p, NklToken_String)) {
+        TRY(NkString const str = parseString(p));
+        TRY(NkString const lib_str = nickl_translateLib(p->mod, str));
+        lib = nk_s2atom(lib_str);
+    }
 
-    TRY(NkAtom const sym_name = parseId(p));
+    if (ACCEPT(NklIrToken_proc)) {
+        TRY(NkAtom const sym_name = parseId(p));
 
-    nkda_append(
-        p->ir,
-        ((NkIrSymbol){
-            .extrn =
-                {
-                    .lib = lib,
-                },
-            .name = sym_name,
-            .vis = 0,
-            .flags = 0,
-            .kind = NkIrSymbol_Extern,
-        }));
+        NkIrTypeDynArray param_types = {.alloc = nk_arena_getAllocator(p->arena)};
+        bool is_variadic = false;
+
+        EXPECT(NklIrToken_LParen);
+
+        while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
+            EXPECT(NklIrToken_Colon);
+            TRY(NkIrType const type = parseType(p));
+
+            nkda_append(&param_types, type);
+
+            ACCEPT(NklIrToken_Comma);
+
+            if (ACCEPT(NklIrToken_Ellipsis)) {
+                is_variadic = true;
+                break;
+            }
+        }
+
+        EXPECT(NklIrToken_RParen);
+
+        EXPECT(NklIrToken_Colon);
+        TRY(NkIrType const ret_type = parseType(p));
+
+        nkda_append(
+            p->ir,
+            ((NkIrSymbol){
+                .extern_proc =
+                    {
+                        .lib = lib,
+                        .param_types = {NK_SLICE_INIT(param_types)},
+                        .ret_type = ret_type,
+                        .flags = is_variadic ? NkIrProc_Variadic : 0,
+                    },
+                .name = sym_name,
+                .vis = 0,
+                .flags = 0,
+                .kind = NkIrSymbol_ExternProc,
+            }));
+    }
+
+    else if (ACCEPT(NklIrToken_data)) {
+        TRY(NkAtom const sym_name = parseId(p));
+
+        EXPECT(NklIrToken_Colon);
+        TRY(NkIrType const type = parseType(p));
+
+        nkda_append(
+            p->ir,
+            ((NkIrSymbol){
+                .extern_data =
+                    {
+                        .lib = lib,
+                        .type = type,
+                    },
+                .name = sym_name,
+                .vis = 0,
+                .flags = 0,
+                .kind = NkIrSymbol_ExternData,
+            }));
+    }
 
     return ret;
 }

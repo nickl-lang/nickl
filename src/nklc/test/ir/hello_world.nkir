@@ -1,4 +1,4 @@
-extern "c" $printf
+extern "c" proc $printf(:i64, ...) :i32
 
 pub proc $_entry() {
 

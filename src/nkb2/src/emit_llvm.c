@@ -801,19 +801,6 @@ static void emitData(NkStream out, NkIrData const *data) {
 
 static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     switch (sym->kind) {
-        case NkIrSymbol_Extern:
-            // TODO: Add types to externs
-            nk_printf(out, "@%s = external global ptr\n", nk_atom2cs(sym->name));
-            break;
-
-        case NkIrSymbol_Data:
-            emitGlobal(out, sym->name);
-            nk_printf(out, " = ");
-            emitVisibility(out, sym->vis);
-            nk_printf(out, " ");
-            emitData(out, &sym->data);
-            break;
-
         case NkIrSymbol_Proc: {
             LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
@@ -870,7 +857,58 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             nk_printf(out, "}\n");
             break;
         }
+
+        case NkIrSymbol_Data:
+            emitGlobal(out, sym->name);
+            nk_printf(out, " = ");
+            emitVisibility(out, sym->vis);
+            nk_printf(out, " ");
+            emitData(out, &sym->data);
+            break;
+
+        case NkIrSymbol_ExternProc: {
+            bool const sret = sym->extern_proc.ret_type->size > 8; // TODO: Hardcoded ptr size
+            nk_printf(out, "declare ");
+            if (sret) {
+                nk_printf(out, "void");
+            } else {
+                emitType(out, sym->extern_proc.ret_type);
+            }
+            nk_printf(out, " ");
+            emitGlobal(out, sym->name);
+            nk_printf(out, "(");
+            if (sret) {
+                nk_printf(out, "ptr sret(");
+                emitType(out, sym->extern_proc.ret_type);
+                nk_printf(out, ") align %u", sym->extern_proc.ret_type->align);
+            }
+            NK_ITERATE(NkIrType const *, type, sym->extern_proc.param_types) {
+                if (NK_INDEX(type, sym->extern_proc.param_types) || sret) {
+                    nk_printf(out, ", ");
+                }
+                if ((*type)->kind == NkIrType_Aggregate) {
+                    nk_printf(out, "ptr byval(");
+                }
+                emitType(out, *type);
+                if ((*type)->kind == NkIrType_Aggregate) {
+                    nk_printf(out, ") align %u", (*type)->align);
+                }
+            }
+            if (sym->extern_proc.flags & NkIrProc_Variadic) {
+                nk_printf(out, ", ...");
+            }
+            nk_printf(out, ")\n");
+            break;
+        }
+
+        case NkIrSymbol_ExternData:
+            emitGlobal(out, sym->name);
+            nk_printf(out, " = external global ");
+            emitType(out, sym->extern_data.type);
+            nk_printf(out, "\n");
+            break;
     }
+
     nk_printf(out, "\n");
 }
 
