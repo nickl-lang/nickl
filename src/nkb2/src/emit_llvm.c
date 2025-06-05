@@ -132,7 +132,7 @@ static void emitFloat(NkStream out, void *addr, NkIrNumericValueType value_type)
     switch (value_type) {
         case Float32: {
             f32 const val = *(f32 *)addr;
-            printFloat32Exact(out, val);
+            printFloat64Exact(out, (f64)val); // LLVM doens't support 32bit hex float constants
             break;
         }
 
@@ -449,6 +449,19 @@ static void emitMov(Context *ctx, NkStream out, NkIrInstr const *instr) {
     NkIrRef const *ref0 = &instr->arg[0].ref;
     NkIrRef const *ref1 = &instr->arg[1].ref;
 
+    NkString const lhs = ptrToInt(ctx, out, ref0);
+    NkString const rhs = ptrToInt(ctx, out, ref1);
+
+    nk_printf(out, NKS_FMT " = bitcast ", NKS_ARG(lhs));
+    emitType(out, ref1->type);
+    nk_printf(out, " " NKS_FMT " to ", NKS_ARG(rhs));
+    emitRefType(out, ref0);
+}
+
+static void emitCast(Context *ctx, NkStream out, NkIrInstr const *instr) {
+    NkIrRef const *ref0 = &instr->arg[0].ref;
+    NkIrRef const *ref1 = &instr->arg[1].ref;
+
     NkIrType const src_t = ref1->type;
     NkIrType const dst_t = ref0->type;
     nk_assert(src_t->kind == NkIrType_Numeric);
@@ -506,6 +519,10 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_mov:
             emitMov(ctx, out, instr);
+            break;
+
+        case NkIrOp_cast:
+            emitCast(ctx, out, instr);
             break;
 
         case NkIrOp_comment:

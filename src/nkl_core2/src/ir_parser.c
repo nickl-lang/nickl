@@ -609,6 +609,8 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     if (!type) {
         if (on(p, NklToken_Int)) {
             type = get_i64_t(p);
+        } else if (on(p, NklToken_IntHex)) {
+            type = get_u64_t(p);
         } else if (on(p, NklToken_Float)) {
             type = get_f64_t(p);
         }

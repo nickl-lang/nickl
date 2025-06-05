@@ -24,7 +24,6 @@ NklState nkl_newState(void) {
     *nkl = (NklState_T){
         .arena = arena,
     };
-    // nkl->lib_aliases.alloc = nk_arena_getAllocator(&nkl->arena);
     return nkl;
 }
 
