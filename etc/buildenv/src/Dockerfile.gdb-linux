@@ -1,6 +1,6 @@
 FROM common AS gdb-linux
 
-ARG PREFIX=/opt/toolchain
+ARG PREFIX=/opt
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgmp-dev \

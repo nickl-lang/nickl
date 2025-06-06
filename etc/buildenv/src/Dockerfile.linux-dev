@@ -1,10 +1,9 @@
 FROM linux AS linux-dev
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdb \
     python3-dev \
  && rm -rf /var/lib/apt/lists/*
-
-COPY --from=gdb-linux ${PREFIX} ${PREFIX}
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GTEST_URL}} \

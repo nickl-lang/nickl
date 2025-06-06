@@ -290,7 +290,7 @@ int main(int /*argc*/, char **argv) {
             nkl,
             in_file,
             {
-                .compiler_binary = nk_cs2s("gcc"), // TODO: Hardcoded C compiler
+                .compiler_binary = nk_cs2s("cc"), // TODO: Hardcoded C compiler
                 .additional_flags{NKS_INIT(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,

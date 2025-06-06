@@ -1,6 +1,6 @@
 usize = 8
 
-c_compiler = gcc
+c_compiler = cc
 c_flags = -O2
 
 libc_name = @SYSTEM_LIBC@

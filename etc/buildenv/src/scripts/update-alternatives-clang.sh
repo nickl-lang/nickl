@@ -36,6 +36,7 @@ register_clang_version() {
     --slave   /usr/bin/asan_symbolize        asan_symbolize        /usr/bin/asan_symbolize-${VERSION} \
     --slave   /usr/bin/clang-cpp             clang-cpp             /usr/bin/clang-cpp-${VERSION} \
     --slave   /usr/bin/opt                   opt                   /usr/bin/opt-${VERSION} \
+    --slave   /usr/bin/llc                   llc                   /usr/bin/llc-${VERSION} \
     --slave   /usr/bin/clang-check           clang-check           /usr/bin/clang-check-${VERSION} \
     --slave   /usr/bin/clang-cl              clang-cl              /usr/bin/clang-cl-${VERSION} \
     --slave   /usr/bin/ld.lld                ld.lld                /usr/bin/ld.lld-${VERSION} \

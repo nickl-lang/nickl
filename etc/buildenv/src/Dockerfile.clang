@@ -1,4 +1,4 @@
-FROM common AS clang
+FROM base AS clang
 
 COPY scripts/update-alternatives-clang.sh /root
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
@@ -8,3 +8,6 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && ./update-alternatives-clang.sh {{CLANG_VERSION}} 1 \
  && rm -rf /root/* \
  ;
+
+ENV CC=clang
+ENV CXX=clang++
