@@ -24,6 +24,15 @@ typedef enum {
 /// Common
 
 typedef enum {
+    NkIrOutput_None = 0,
+
+    NkIrOutput_Object,
+    NkIrOutput_Static,
+    NkIrOutput_Shared,
+    NkIrOutput_Binary,
+} NkIrOutputKind;
+
+typedef enum {
     NkIrRef_None = 0,
 
     NkIrRef_Null,
@@ -242,7 +251,7 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_compiler_config */);
+void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind);
 
 /// Execution
 

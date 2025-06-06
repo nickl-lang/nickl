@@ -11,24 +11,27 @@
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "ntk/utils.h"
 
 static void printErrorUsage() {
     nk_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
 }
 
 static void printUsage() {
-    printf("Usage: " NK_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
-           "\n    -o, --output <file>                      Output file path"
-           "\n    -c, --color {auto,always,never}          Choose when to color output"
-           "\n    -h, --help                               Display this message and exit"
-           "\n    -v, --version                            Show version information"
+    printf(
+        "Usage: " NK_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
+        "\n    -o, --output <file>                      Output file path"
+        "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
+        "\n    -c, --color {auto,always,never}          Choose when to color output"
+        "\n    -h, --help                               Display this message and exit"
+        "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
-           "\nDeveloper options:"
-           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+        "\nDeveloper options:"
+        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-           "\n");
+        "\n");
 }
 
 static void printVersion() {
@@ -68,7 +71,15 @@ static void printDiag(NklState nkl) {
     }
 }
 
-static int run(NklState nkl, NkString in_file, NkString out_file) {
+typedef struct {
+    NklState nkl;
+    NkString in_file;
+    NkString out_file;
+    NklOutputKind out_kind;
+    bool run;
+} RunInfo;
+
+static int run(RunInfo const info) {
     NklCompiler const com = nkl_newCompilerHost();
 
     // TODO: Hardcoded lib names
@@ -78,22 +89,29 @@ static int run(NklState nkl, NkString in_file, NkString out_file) {
 
     NklModule const mod = nkl_newModule(com);
 
-    if (!nkl_compileFile(mod, in_file)) {
-        printDiag(nkl);
+    if (!nkl_compileFile(mod, info.in_file)) {
+        printDiag(info.nkl);
         return 1;
     }
 
-    if (!nkl_exportModule(mod, out_file, NklOutput_Binary)) {
-        printDiag(nkl);
+    if (info.run) {
+        nk_assert(!"TODO: run is not implemented");
         return 1;
+    } else {
+        if (!nkl_exportModule(mod, info.out_file, info.out_kind)) {
+            printDiag(info.nkl);
+            return 1;
+        }
     }
 
     return 0;
 }
 
 static int parseArgsAndRun(char **argv) {
-    NkString in_file = {0};
-    NkString out_file = nk_cs2s("a.out");
+    RunInfo run_info = {
+        .out_file = nk_cs2s("a.out"),
+        .out_kind = NklOutput_Binary,
+    };
 
     bool help = false;
     bool version = false;
@@ -136,7 +154,27 @@ static int parseArgsAndRun(char **argv) {
                 version = true;
             } else if (nks_equal(key, nk_cs2s("-o")) || nks_equal(key, nk_cs2s("--output"))) {
                 GET_VALUE;
-                out_file = val;
+                run_info.out_file = val;
+            } else if (nks_equal(key, nk_cs2s("-k")) || nks_equal(key, nk_cs2s("--kind"))) {
+                GET_VALUE;
+                if (nks_equal(val, nk_cs2s("run"))) {
+                    run_info.run = true;
+                } else if (nks_equal(val, nk_cs2s("exe"))) {
+                    run_info.out_kind = NklOutput_Binary;
+                } else if (nks_equal(val, nk_cs2s("shared"))) {
+                    run_info.out_kind = NklOutput_Shared;
+                } else if (nks_equal(val, nk_cs2s("static"))) {
+                    run_info.out_kind = NklOutput_Static;
+                } else if (nks_equal(val, nk_cs2s("obj"))) {
+                    run_info.out_kind = NklOutput_Object;
+                } else {
+                    nkl_diag_printError(
+                        "invalid output kind `" NKS_FMT
+                        "`. Possible values are `run`, `exe`, `shared`, `static`, `object`",
+                        NKS_ARG(val));
+                    printErrorUsage();
+                    return 1;
+                }
             } else if (nks_equal(key, nk_cs2s("-c")) || nks_equal(key, nk_cs2s("--color"))) {
                 GET_VALUE;
                 if (nks_equal(val, nk_cs2s("auto"))) {
@@ -188,8 +226,8 @@ static int parseArgsAndRun(char **argv) {
                 printErrorUsage();
                 return 1;
             }
-        } else if (!in_file.size) {
-            in_file = val;
+        } else if (!run_info.in_file.size) {
+            run_info.in_file = val;
         } else {
             nkl_diag_printError("extra argument `" NKS_FMT "`", NKS_ARG(val));
             printErrorUsage();
@@ -207,7 +245,7 @@ static int parseArgsAndRun(char **argv) {
         return 0;
     }
 
-    if (!in_file.size) {
+    if (!run_info.in_file.size) {
         nkl_diag_printError("no input file");
         printErrorUsage();
         return 1;
@@ -221,7 +259,7 @@ static int parseArgsAndRun(char **argv) {
     NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
     NK_DEFER_LOOP(nkl = nkl_newState(), nkl_freeState(nkl))
     NK_DEFER_LOOP(nkl_pushState(nkl), nkl_popState()) {
-        ret_code = run(nkl, in_file, out_file);
+        ret_code = run(run_info);
     }
 
     return ret_code;

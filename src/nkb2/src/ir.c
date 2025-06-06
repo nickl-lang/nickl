@@ -10,6 +10,7 @@
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
+#include "ntk/process.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
@@ -263,8 +264,35 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_compiler_config */) {
-    NK_LOG_TRC("%s", __func__);
+void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
+    // TODO: Hardcoded file extensions
+    switch (kind) {
+        case NkIrOutput_Object:
+            if (!nks_endsWith(out_file, nk_cs2s(".o"))) {
+                out_file = nk_tsprintf(scratch, NKS_FMT ".o", NKS_ARG(out_file));
+            }
+            break;
+
+        case NkIrOutput_Static:
+            if (!nks_endsWith(out_file, nk_cs2s(".a"))) {
+                out_file = nk_tsprintf(scratch, NKS_FMT ".a", NKS_ARG(out_file));
+            }
+            break;
+
+        case NkIrOutput_Shared:
+            if (!nks_endsWith(out_file, nk_cs2s(".so"))) {
+                out_file = nk_tsprintf(scratch, NKS_FMT ".so", NKS_ARG(out_file));
+            }
+            break;
+
+        case NkIrOutput_Binary:
+        case NkIrOutput_None:
+            break;
+    }
+
+    // TODO: Generate temporary file more rebustly, and cleanup
+    NkString out_obj_file =
+        kind == NkIrOutput_Object ? out_file : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
     char buf[512];
     NkStream src;
@@ -274,17 +302,60 @@ void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString path /*, c_com
                 .scratch = scratch,
                 .ps = &ps,
                 .opt_buf = NK_STATIC_BUF(buf),
-                .out_file = path,
+                .out_file = out_obj_file,
             },
             &src)) {
         // TODO: Report errors properly
         NK_LOG_ERR("%s", nk_getLastErrorString());
         return;
     }
-
     nkir_emit_llvm(src, scratch, mod);
-
     nk_llvm_stream_close(&ps);
+
+    NkString link_cmd;
+    switch (kind) {
+        case NkIrOutput_Static:
+            link_cmd = nk_tsprintf(
+                scratch, "ar rcs \"" NKS_FMT "\" \"" NKS_FMT "\"", NKS_ARG(out_file), NKS_ARG(out_obj_file));
+            break;
+
+        case NkIrOutput_Shared:
+            link_cmd = nk_tsprintf(
+                scratch, "ld -shared -o\"" NKS_FMT "\" \"" NKS_FMT "\" -lc", NKS_ARG(out_file), NKS_ARG(out_obj_file));
+            break;
+
+        case NkIrOutput_Binary:
+            // TODO: Hardcoded libm
+            // TODO: Hardcoded libc locations
+            link_cmd = nk_tsprintf(
+                scratch,
+                "ld -o\"" NKS_FMT "\" \"" NKS_FMT
+                "\" -lc -lm -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o "
+                "/usr/lib/crtn.o",
+                NKS_ARG(out_file),
+                NKS_ARG(out_obj_file));
+            break;
+
+        case NkIrOutput_None:
+        case NkIrOutput_Object:
+            return;
+    }
+
+    NK_LOG_DBG("linking: " NKS_FMT, NKS_ARG(link_cmd));
+
+    if (nk_exec(scratch, link_cmd, NULL, NULL, NULL, NULL) < 0) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("%s", nk_getLastErrorString());
+        return;
+    }
+}
+
+void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_ARENA_SCOPE(scratch) {
+        exportModuleImpl(scratch, mod, out_file, kind);
+    }
 }
 
 NkIrRunCtx nkir_createRunCtx(NkIrModule *mod, NkArena *arena) {

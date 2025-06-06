@@ -18,8 +18,7 @@ bool nk_llvm_stream_open(NkLlvmStreamInfo const info, NkStream *out) {
         // TODO: Hardcoded -lm
         NkString const cmd = nk_tsprintf(
             info.scratch,
-            "sh -c \"tee -a /dev/stderr | opt -O3 - | llc -O3 --relocation-model=pic - | clang -O3 -x assembler -lm "
-            "-o\\\"" NKS_FMT "\\\" -\"",
+            "sh -c \"opt -O3 - | llc -O3 --relocation-model=pic --filetype=obj -o \\\"" NKS_FMT "\\\"\"",
             NKS_ARG(info.out_file));
         ret = nk_pipe_streamOpenWrite(
             (NkPipeStreamInfo){

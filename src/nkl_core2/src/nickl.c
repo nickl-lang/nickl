@@ -1,5 +1,7 @@
 #include "nkl/core/nickl.h"
 
+#include <assert.h>
+
 #include "ir_parser.h"
 #include "nickl_impl.h"
 #include "nkb/ir.h"
@@ -251,6 +253,12 @@ bool nkl_compileFileNkl(NklModule mod, NkString path) {
     return false;
 }
 
+static_assert((int)NklOutput_None == NkIrOutput_None, "");
+static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
+static_assert((int)NklOutput_Static == NkIrOutput_Static, "");
+static_assert((int)NklOutput_Shared == NkIrOutput_Shared, "");
+static_assert((int)NklOutput_Binary == NkIrOutput_Binary, "");
+
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
@@ -260,7 +268,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     // TODO: Handle errors
 
-    nkir_exportModule(&nkl->scratch, (NkIrModule){NK_SLICE_INIT(mod->ir)}, out_file);
+    nkir_exportModule(&nkl->scratch, (NkIrModule){NK_SLICE_INIT(mod->ir)}, out_file, (NkIrOutputKind)kind);
 
     return true;
 }

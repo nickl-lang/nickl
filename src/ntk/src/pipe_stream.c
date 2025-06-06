@@ -15,12 +15,7 @@ bool nk_pipe_streamOpenRead(NkPipeStreamInfo const info, NkStream *out) {
 
     bool ret = false;
     NK_PROF_FUNC() {
-        NK_LOG_STREAM_DBG {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "exec(\"");
-            nks_escape(log, info.cmd);
-            nk_printf(log, "\")");
-        }
+        NK_LOG_DBG("exec: " NKS_FMT, NKS_ARG(info.cmd));
 
         NkPipe out_pipe = nk_pipe_create();
         NkPipe null_pipe = {
@@ -59,12 +54,7 @@ bool nk_pipe_streamOpenWrite(NkPipeStreamInfo const info, NkStream *out) {
 
     bool ret = false;
     NK_PROF_FUNC() {
-        NK_LOG_STREAM_DBG {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "exec(\"");
-            nks_escape(log, info.cmd);
-            nk_printf(log, "\")");
-        }
+        NK_LOG_DBG("exec: " NKS_FMT, NKS_ARG(info.cmd));
 
         NkPipe in_pipe = nk_pipe_create();
         NkPipe null_pipe = {
