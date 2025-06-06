@@ -10,10 +10,13 @@
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
+#include "ntk/path.h"
+#include "ntk/pipe_stream.h"
 #include "ntk/process.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(ir);
@@ -264,30 +267,72 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
+// TODO: Do not depend on gcc for finding crt
+static bool findCrt(NkArena *scratch, NkString *out_path) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkStream out;
+    NkPipeStream ps;
+    if (!nk_pipe_streamOpenRead(
+            (NkPipeStreamInfo){
+                .ps = &ps,
+                .scratch = scratch,
+                .cmd = nk_cs2s("gcc -print-file-name=crt1.o"),
+                .opt_buf = {0},
+                .quiet = false,
+            },
+            &out)) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("failed to find crt: %s", nk_getLastErrorString());
+        return false;
+    }
+
+    NKSB_FIXED_BUFFER(path, NK_MAX_PATH);
+    nksb_readFromStream(&path, out);
+
+    if (nk_pipe_streamClose(&ps)) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("failed to find crt: %s", nk_getLastErrorString());
+        return false;
+    }
+
+    path.size = nks_trimRight((NkString){NKS_INIT(path)}).size;
+    nksb_appendNull(&path);
+
+    char full_path[NK_MAX_PATH];
+    if (nk_fullPath(full_path, path.data) < 0) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("failed to find crt: %s", nk_getLastErrorString());
+        return false;
+    }
+
+    NkString dir = nk_path_getParent(nk_cs2s(full_path));
+
+    NK_LOG_DBG("found crt location: " NKS_FMT, NKS_ARG(dir));
+
+    *out_path = nk_tsprintf(scratch, NKS_FMT, NKS_ARG(dir));
+    return true;
+}
+
+static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
     // TODO: Hardcoded file extensions
+    char const *file_ext = "";
     switch (kind) {
         case NkIrOutput_Object:
-            if (!nks_endsWith(out_file, nk_cs2s(".o"))) {
-                out_file = nk_tsprintf(scratch, NKS_FMT ".o", NKS_ARG(out_file));
-            }
+            file_ext = ".o";
             break;
-
         case NkIrOutput_Static:
-            if (!nks_endsWith(out_file, nk_cs2s(".a"))) {
-                out_file = nk_tsprintf(scratch, NKS_FMT ".a", NKS_ARG(out_file));
-            }
+            file_ext = ".a";
             break;
-
         case NkIrOutput_Shared:
-            if (!nks_endsWith(out_file, nk_cs2s(".so"))) {
-                out_file = nk_tsprintf(scratch, NKS_FMT ".so", NKS_ARG(out_file));
-            }
+            file_ext = ".so";
             break;
-
         case NkIrOutput_Binary:
         case NkIrOutput_None:
             break;
+    }
+    if (!nks_endsWith(out_file, nk_cs2s(file_ext))) {
+        out_file = nk_tsprintf(scratch, NKS_FMT "%s", NKS_ARG(out_file), file_ext);
     }
 
     // TODO: Generate temporary file more rebustly, and cleanup
@@ -324,17 +369,25 @@ void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrO
                 scratch, "ld -shared -o\"" NKS_FMT "\" \"" NKS_FMT "\" -lc", NKS_ARG(out_file), NKS_ARG(out_obj_file));
             break;
 
-        case NkIrOutput_Binary:
+        case NkIrOutput_Binary: {
+            NkString crt_path;
+            if (!findCrt(scratch, &crt_path)) {
+                return;
+            }
+
             // TODO: Hardcoded libm
             // TODO: Hardcoded libc locations
             link_cmd = nk_tsprintf(
                 scratch,
-                "ld -o\"" NKS_FMT "\" \"" NKS_FMT
-                "\" -lc -lm -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o "
-                "/usr/lib/crtn.o",
+                "ld -o\"" NKS_FMT "\" \"" NKS_FMT "\" " NKS_FMT "/crt1.o " NKS_FMT "/crti.o " NKS_FMT
+                "/crtn.o -dynamic-linker /lib64/ld-linux-x86-64.so.2 -lc -lm",
                 NKS_ARG(out_file),
-                NKS_ARG(out_obj_file));
+                NKS_ARG(out_obj_file),
+                NKS_ARG(crt_path),
+                NKS_ARG(crt_path),
+                NKS_ARG(crt_path));
             break;
+        }
 
         case NkIrOutput_None:
         case NkIrOutput_Object:
@@ -343,7 +396,7 @@ void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrO
 
     NK_LOG_DBG("linking: " NKS_FMT, NKS_ARG(link_cmd));
 
-    if (nk_exec(scratch, link_cmd, NULL, NULL, NULL, NULL) < 0) {
+    if (nk_exec(scratch, link_cmd, NULL, NULL, NULL, NULL)) {
         // TODO: Report errors properly
         NK_LOG_ERR("%s", nk_getLastErrorString());
         return;

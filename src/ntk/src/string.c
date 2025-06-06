@@ -23,7 +23,7 @@ NkString nks_copyNt(NkAllocator alloc, NkString src) {
 }
 
 NkString nks_trimLeft(NkString str) {
-    while (str.size && nks_first(str) == ' ') {
+    while (str.size && isspace(nks_first(str))) {
         str.size -= 1;
         str.data += 1;
     }
@@ -31,7 +31,7 @@ NkString nks_trimLeft(NkString str) {
 }
 
 NkString nks_trimRight(NkString str) {
-    while (str.size && nks_last(str) == ' ') {
+    while (str.size && isspace(nks_last(str))) {
         str.size -= 1;
     }
     return str;

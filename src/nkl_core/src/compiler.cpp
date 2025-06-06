@@ -68,6 +68,7 @@ struct Void {};
 } // namespace
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
+    (void)target;
     NkArena arena{};
     auto c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .ir{},
