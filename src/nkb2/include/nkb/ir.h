@@ -26,10 +26,11 @@ typedef enum {
 typedef enum {
     NkIrOutput_None = 0,
 
-    NkIrOutput_Object,
+    NkIrOutput_Binary,
     NkIrOutput_Static,
     NkIrOutput_Shared,
-    NkIrOutput_Binary,
+    NkIrOutput_Archiv,
+    NkIrOutput_Object,
 } NkIrOutputKind;
 
 typedef enum {

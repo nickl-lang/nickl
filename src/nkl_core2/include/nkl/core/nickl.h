@@ -22,10 +22,11 @@ typedef struct {
 typedef enum {
     NklOutput_None = 0,
 
-    NklOutput_Object,
+    NklOutput_Binary,
     NklOutput_Static,
     NklOutput_Shared,
-    NklOutput_Binary,
+    NklOutput_Archiv,
+    NklOutput_Object,
 } NklOutputKind;
 
 typedef struct NklError {

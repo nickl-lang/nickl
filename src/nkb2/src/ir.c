@@ -272,13 +272,14 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
         case NkIrOutput_Object:
             file_ext = ".o";
             break;
-        case NkIrOutput_Static:
-            file_ext = ".a";
-            break;
         case NkIrOutput_Shared:
             file_ext = ".so";
             break;
+        case NkIrOutput_Archiv:
+            file_ext = ".a";
+            break;
         case NkIrOutput_Binary:
+        case NkIrOutput_Static:
         case NkIrOutput_None:
             break;
     }

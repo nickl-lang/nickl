@@ -21,11 +21,11 @@ static void printUsage() {
     printf("Usage: " NK_BINARY_NAME
            " [options] file"
            "\nOptions:"
-           "\n    -o, --output <file>                      Output file path"
-           "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
-           "\n    -c, --color {auto,always,never}          Choose when to color output"
-           "\n    -h, --help                               Display this message and exit"
-           "\n    -v, --version                            Show version information"
+           "\n    -o, --output <file>                              Output file path"
+           "\n    -k, --kind {run,exe,static,shared,archive,obj}   Output file kind"
+           "\n    -c, --color {auto,always,never}                  Choose when to color output"
+           "\n    -h, --help                                       Display this message and exit"
+           "\n    -v, --version                                    Show version information"
 #ifdef ENABLE_LOGGING
            "\nDeveloper options:"
            "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
@@ -160,16 +160,18 @@ static int parseArgsAndRun(char **argv) {
                     run_info.run = true;
                 } else if (nks_equal(val, nk_cs2s("exe"))) {
                     run_info.out_kind = NklOutput_Binary;
-                } else if (nks_equal(val, nk_cs2s("shared"))) {
-                    run_info.out_kind = NklOutput_Shared;
                 } else if (nks_equal(val, nk_cs2s("static"))) {
                     run_info.out_kind = NklOutput_Static;
+                } else if (nks_equal(val, nk_cs2s("shared"))) {
+                    run_info.out_kind = NklOutput_Shared;
+                } else if (nks_equal(val, nk_cs2s("archive"))) {
+                    run_info.out_kind = NklOutput_Archiv;
                 } else if (nks_equal(val, nk_cs2s("obj"))) {
                     run_info.out_kind = NklOutput_Object;
                 } else {
                     nkl_diag_printError(
                         "invalid output kind `" NKS_FMT
-                        "`. Possible values are `run`, `exe`, `shared`, `static`, `object`",
+                        "`. Possible values are `run`, `exe`, `static`, `shared`, `archive`, `obj`",
                         NKS_ARG(val));
                     printErrorUsage();
                     return 1;

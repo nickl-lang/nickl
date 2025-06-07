@@ -253,12 +253,6 @@ bool nkl_compileFileNkl(NklModule mod, NkString path) {
     return false;
 }
 
-static_assert((int)NklOutput_None == NkIrOutput_None, "");
-static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
-static_assert((int)NklOutput_Static == NkIrOutput_Static, "");
-static_assert((int)NklOutput_Shared == NkIrOutput_Shared, "");
-static_assert((int)NklOutput_Binary == NkIrOutput_Binary, "");
-
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
@@ -267,6 +261,13 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     NklState nkl = mod->com->nkl;
 
     // TODO: Handle errors
+
+    static_assert((int)NklOutput_None == NkIrOutput_None, "");
+    static_assert((int)NklOutput_Binary == NkIrOutput_Binary, "");
+    static_assert((int)NklOutput_Static == NkIrOutput_Static, "");
+    static_assert((int)NklOutput_Shared == NkIrOutput_Shared, "");
+    static_assert((int)NklOutput_Archiv == NkIrOutput_Archiv, "");
+    static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
 
     nkir_exportModule(&nkl->scratch, (NkIrModule){NKS_INIT(mod->ir)}, out_file, (NkIrOutputKind)kind);
 
