@@ -68,13 +68,40 @@ bool nk_link(NkLikerOpts const opts) {
         return false;
     }
 
-    NkStringBuilder link_cmd = {.alloc = nk_arena_getAllocator(opts.scratch)};
+    NkStringBuilder link_cmd = {.alloc = nk_arena_getAllocator(scratch)};
 
     if (kind == NkIrOutput_Archiv) {
         nksb_printf(&link_cmd, "ar rcs");
         nksb_printf(&link_cmd, " \"" NKS_FMT "\"", NKS_ARG(opts.out_file));
         nksb_printf(&link_cmd, " \"" NKS_FMT "\"", NKS_ARG(opts.obj_file));
     } else {
+#if defined(__APPLE__)
+        // TODO: Falling back to clang on darwin
+        nksb_printf(&link_cmd, "clang");
+
+        switch (kind) {
+            case NkIrOutput_Binary:
+                break;
+
+            case NkIrOutput_Static:
+                nksb_printf(&link_cmd, " -static");
+                break;
+
+            case NkIrOutput_Shared:
+                nksb_printf(&link_cmd, " -shared");
+                break;
+
+            case NkIrOutput_None:
+            case NkIrOutput_Archiv:
+            case NkIrOutput_Object:
+                nk_assert(!"unreachable");
+                break;
+        }
+
+        nksb_printf(&link_cmd, " -o \"" NKS_FMT "\"", NKS_ARG(opts.out_file));
+        nksb_printf(&link_cmd, " \"" NKS_FMT "\"", NKS_ARG(opts.obj_file));
+        nksb_printf(&link_cmd, " -lm"); // TODO: Hardcoded libm
+#else
         bool const is_static = kind == NkIrOutput_Static;
         bool const is_exe = kind == NkIrOutput_Binary || is_static;
         bool const is_dynamic = !is_static;
@@ -124,15 +151,16 @@ bool nk_link(NkLikerOpts const opts) {
         if (is_dynamic) {
             nksb_printf(&link_cmd, " -lgcc_s");
         }
-        nksb_printf(&link_cmd, " -lm");
+        nksb_printf(&link_cmd, " -lm"); // TODO: Hardcoded libm
         nksb_printf(&link_cmd, " --no-as-needed");
         nksb_printf(&link_cmd, " " NKS_FMT, NKS_ARG(crtend));
         nksb_printf(&link_cmd, " " NKS_FMT, NKS_ARG(crtn));
+#endif
     }
 
     NK_LOG_INF("Linking: " NKS_FMT, NKS_ARG(link_cmd));
 
-    if (nk_exec(opts.scratch, (NkString){NKS_INIT(link_cmd)}, NULL, NULL, NULL, NULL)) {
+    if (nk_exec(scratch, (NkString){NKS_INIT(link_cmd)}, NULL, NULL, NULL, NULL)) {
         NK_LOG_ERR("%s", nk_getLastErrorString());
         return false;
     }
