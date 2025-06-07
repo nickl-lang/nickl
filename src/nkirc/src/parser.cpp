@@ -57,7 +57,7 @@ struct EmitterState {
     ProcRecord *m_cur_proc{};
 
     Void emit() {
-        nk_assert(m_tokens.size && nk_slice_last(m_tokens).id == t_eof && "ill-formed token stream");
+        nk_assert(m_tokens.size && nks_last(m_tokens).id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
@@ -178,7 +178,7 @@ struct EmitterState {
                 .proc_t = nkir_makeProcedureType(
                     m_compiler,
                     {
-                        .args_t{NK_SLICE_INIT(sig.args_t)},
+                        .args_t{NKS_INIT(sig.args_t)},
                         .ret_t = sig.ret_t,
                         .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                         .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
@@ -252,7 +252,7 @@ struct EmitterState {
                  nkir_makeProcedureType(
                      m_compiler,
                      NkIrProcInfo{
-                         .args_t{NK_SLICE_INIT(sig.args_t)},
+                         .args_t{NKS_INIT(sig.args_t)},
                          .ret_t = sig.ret_t,
                          .call_conv = NkCallConv_Cdecl,
                          .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
@@ -540,7 +540,7 @@ private:
             return nkir_makeProcedureType(
                 m_compiler,
                 {
-                    .args_t{NK_SLICE_INIT(sig.args_t)},
+                    .args_t{NKS_INIT(sig.args_t)},
                     .ret_t = sig.ret_t,
                     .call_conv = sig.is_cdecl ? NkCallConv_Cdecl : NkCallConv_Nk,
                     .flags = (u8)(sig.is_variadic ? NkProcVariadic : 0),
@@ -949,7 +949,7 @@ private:
             }
         } while (accept(t_comma));
         EXPECT(t_par_r);
-        return {NK_SLICE_INIT(refs)};
+        return {NKS_INIT(refs)};
     }
 
     void getToken() {

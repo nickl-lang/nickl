@@ -127,13 +127,13 @@ void nkir_mergeModules(NkIrModule dst, NkIrModule src) {
     // TODO: Linear manual search in nkir module merge. Maybe just allow duplicates?
 
     for (auto const proc_id : nk_iterate(src->exported_procs)) {
-        if (!std::count(nk_slice_begin(&dst->exported_procs), nk_slice_end(&dst->exported_procs), proc_id)) {
+        if (!std::count(nks_begin(&dst->exported_procs), nks_end(&dst->exported_procs), proc_id)) {
             nkda_append(&dst->exported_procs, proc_id);
         }
     }
 
     for (auto const decl_id : nk_iterate(src->exported_data)) {
-        if (!std::count(nk_slice_begin(&dst->exported_data), nk_slice_end(&dst->exported_data), decl_id)) {
+        if (!std::count(nks_begin(&dst->exported_data), nks_end(&dst->exported_data), decl_id)) {
             nkda_append(&dst->exported_data, decl_id);
         }
     }
@@ -340,8 +340,8 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
         usize idx = instrs.size;
         nkda_append(&instrs, instr);
 
-        if (ranges.size && idx == nk_slice_last(ranges).end_idx) {
-            nk_slice_last(ranges).end_idx++;
+        if (ranges.size && idx == nks_last(ranges).end_idx) {
+            nks_last(ranges).end_idx++;
         } else {
             nkda_append(&ranges, {idx, idx + 1});
         }
@@ -410,7 +410,7 @@ void nkir_leave(NkIrProg ir) {
 
     nk_assert(proc.scopes.size && "mismatched enter/leave");
 
-    proc.cur_frame_size = nk_slice_last(proc.scopes);
+    proc.cur_frame_size = nks_last(proc.scopes);
     nkda_pop(&proc.scopes, 1);
 }
 
@@ -1105,7 +1105,7 @@ bool nkir_validateProc(NkIrProg ir, NkIrProc _proc) {
         auto const &block = ir->blocks.data[block_id];
 
         if (block.instr_ranges.size) {
-            auto const range = nk_slice_last(block.instr_ranges);
+            auto const range = nks_last(block.instr_ranges);
             if (range.begin_idx != range.end_idx) {
                 auto const &instr = ir->instrs.data[range.end_idx - 1];
                 if (instr.code != nkir_ret && instr.code != nkir_jmp) {

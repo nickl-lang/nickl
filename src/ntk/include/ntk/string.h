@@ -15,14 +15,6 @@ extern "C" {
 typedef NkSlice(char const) NkString;
 typedef NkSlice(char) NkStringBuf;
 
-#define NKS_INIT NK_SLICE_INIT
-
-#define nks_begin nk_slice_begin
-#define nks_end nk_slice_end
-
-#define nks_first nk_slice_first
-#define nks_last nk_slice_last
-
 #define NK_STATIC_BUF(BUF) (NK_LITERAL(NkStringBuf){.data = (BUF), .size = sizeof(BUF)})
 
 NK_INLINE NkString nk_cs2s(char const *str) {

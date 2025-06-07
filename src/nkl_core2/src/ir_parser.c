@@ -360,7 +360,7 @@ static NkIrType parseType(ParserState *p) {
 
         NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
         *type = (NkIrType_T){
-            .aggr = {NK_SLICE_INIT(elems)},
+            .aggr = {NKS_INIT(elems)},
             .size = size,
             .align = align,
             .id = 0,
@@ -497,7 +497,7 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                     EXPECT(NklIrToken_Comma);
                 }
             }
-            ret = (NkIrRelocArray){NK_SLICE_INIT(relocs)};
+            ret = (NkIrRelocArray){NKS_INIT(relocs)};
 
             EXPECT(NklIrToken_RBrace);
 
@@ -700,7 +700,7 @@ static NkIrRefArray parseRefArray(ParserState *p) {
 
     EXPECT(NklIrToken_RParen);
 
-    ret = (NkIrRefArray){NK_SLICE_INIT(refs)};
+    ret = (NkIrRefArray){NKS_INIT(refs)};
 
     return ret;
 }
@@ -876,7 +876,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
             }));
     }
 
-    p->proc_params = (NkIrParamArray){NK_SLICE_INIT(params)};
+    p->proc_params = (NkIrParamArray){NKS_INIT(params)};
 
     EXPECT(NklIrToken_RParen);
 
@@ -916,7 +916,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
                 {
                     .params = p->proc_params,
                     .ret = p->proc_ret,
-                    .instrs = {NK_SLICE_INIT(instrs)},
+                    .instrs = {NKS_INIT(instrs)},
                     .flags = 0,
                 },
             .name = name,
@@ -1033,7 +1033,7 @@ static Void parseExtern(ParserState *p) {
                 .extern_proc =
                     {
                         .lib = lib,
-                        .param_types = {NK_SLICE_INIT(param_types)},
+                        .param_types = {NKS_INIT(param_types)},
                         .ret_type = ret_type,
                         .flags = is_variadic ? NkIrProc_Variadic : 0,
                     },
@@ -1081,7 +1081,7 @@ static bool pushSource(ParserState *p, NkAtom file) {
         return false;
     }
 
-    nk_assert(tokens.size && nk_slice_last(tokens).id == NklToken_Eof && "ill-formed token stream");
+    nk_assert(tokens.size && nks_last(tokens).id == NklToken_Eof && "ill-formed token stream");
 
     SourceInfo *src = nk_arena_allocT(&p->scratch, SourceInfo);
     *src = (SourceInfo){

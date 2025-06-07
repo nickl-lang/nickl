@@ -110,7 +110,7 @@ static void get_ir_aggregate(NklState nkl, NklType *backing, NkIrAggregateLayout
             PUSH_VAL(&fp, u32, layout.info_ar.data[i].count);
         }
 
-        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, backing);
+        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, backing);
 
         if (res.inserted) {
             backing->ir_type = (NkIrType){
@@ -140,7 +140,7 @@ static void get_ir_numeric(NklState nkl, NklType *backing, NkIrNumericValueType 
         PUSH_VAL(&fp, u8, kind);
         PUSH_VAL(&fp, u8, value_type);
 
-        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, backing);
+        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, backing);
 
         if (res.inserted) {
             backing->ir_type = (NkIrType){
@@ -168,7 +168,7 @@ static void get_ir_ptr(NklState nkl, usize word_size, NklType *backing, nktype_t
         PUSH_VAL(&fp, u8, kind);
         PUSH_VAL(&fp, u32, target_type->id);
 
-        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, backing);
+        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, backing);
 
         if (res.inserted) {
             backing->ir_type = (NkIrType){
@@ -204,7 +204,7 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
         PUSH_VAL(&fp, u8, info.call_conv);
         PUSH_VAL(&fp, u8, info.flags);
 
-        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, backing);
+        TypeSearchResult res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, backing);
 
         if (res.inserted) {
             backing->ir_type = (NkIrType){
@@ -247,7 +247,7 @@ nkltype_t nkl_get_any(NklState nkl, usize word_size) {
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             NklField fields[] = {
@@ -286,7 +286,7 @@ nkltype_t nkl_get_array(NklState nkl, nkltype_t elem_type, usize elem_count) {
         PUSH_VAL(&fp, u32, elem_type->id);
         PUSH_VAL(&fp, usize, elem_count);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             nktype_t elem_types[] = {&elem_type->ir_type};
@@ -315,7 +315,7 @@ nkltype_t nkl_get_bool(NklState nkl) {
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             nkltype_t const underlying_type = nkl_get_numeric(nkl, Int8);
@@ -347,7 +347,7 @@ nkltype_t nkl_get_enum(NklState nkl, NklFieldArray fields) {
             PUSH_VAL(&fp, u32, fields.data[i].type->id);
         }
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             NklField enum_fields[] = {
@@ -386,7 +386,7 @@ nkltype_t nkl_get_numeric(NklState nkl, NkIrNumericValueType value_type) {
         PUSH_VAL(&fp, u8, tclass);
         PUSH_VAL(&fp, u8, value_type);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             get_ir_numeric(nkl, res.type, value_type);
@@ -436,7 +436,7 @@ nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info) {
         PUSH_VAL(&fp, u8, info.call_conv);
         PUSH_VAL(&fp, u8, info.flags);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             get_ir_proc(nkl, word_size, res.type, info);
@@ -462,7 +462,7 @@ nkltype_t nkl_get_ptr(NklState nkl, usize word_size, nkltype_t target_type, bool
         PUSH_VAL(&fp, u32, target_type->id);
         PUSH_VAL(&fp, u8, is_const);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             get_ir_ptr(nkl, word_size, res.type, &target_type->ir_type);
@@ -491,7 +491,7 @@ nkltype_t nkl_get_slice(NklState nkl, usize word_size, nkltype_t target_type, bo
         PUSH_VAL(&fp, u32, target_type->id);
         PUSH_VAL(&fp, u8, is_const);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             NklField fields[] = {
@@ -534,7 +534,7 @@ nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields) {
             PUSH_VAL(&fp, u32, fields.data[i].type->id);
         }
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             nkltype_t const underlying_type =
@@ -583,7 +583,7 @@ nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usi
             types_it = (nkltype_t const *)((u8 const *)types_it + stride);
         }
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             NkIrAggregateLayout layout = nkir_calcAggregateLayout(
@@ -618,7 +618,7 @@ nkltype_t nkl_get_typeref(NklState nkl, usize word_size) {
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             nkltype_t const underlying_type = nkl_get_ptr(nkl, word_size, nkl_get_void(nkl), true);
@@ -650,7 +650,7 @@ nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields) {
             PUSH_VAL(&fp, u32, fields.data[i].type->id);
         }
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             nkltype_t largest_type = nkl_get_void(nkl);
@@ -687,7 +687,7 @@ nkltype_t nkl_get_void(NklState nkl) {
         PUSH_VAL(&fp, u8, tclass);
         PUSH_VAL(&fp, usize, 0);
 
-        res = getTypeByFingerprint(nkl, (ByteArray){NK_SLICE_INIT(fp)}, NULL);
+        res = getTypeByFingerprint(nkl, (ByteArray){NKS_INIT(fp)}, NULL);
 
         if (res.inserted) {
             get_ir_aggregate(nkl, res.type, (NkIrAggregateLayout){{0}, 0, 1});

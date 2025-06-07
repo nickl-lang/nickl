@@ -13,7 +13,7 @@ LabelArray collectLabels(NkIrInstrArray instrs, LabelDynArray *out) {
                 }));
         }
     }
-    return (LabelArray){NK_SLICE_INIT(*out)};
+    return (LabelArray){NKS_INIT(*out)};
 }
 
 u32 *countLabels(NkArena *arena, LabelArray labels) {

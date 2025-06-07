@@ -268,7 +268,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     // TODO: Handle errors
 
-    nkir_exportModule(&nkl->scratch, (NkIrModule){NK_SLICE_INIT(mod->ir)}, out_file, (NkIrOutputKind)kind);
+    nkir_exportModule(&nkl->scratch, (NkIrModule){NKS_INIT(mod->ir)}, out_file, (NkIrOutputKind)kind);
 
     return true;
 }

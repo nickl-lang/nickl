@@ -120,18 +120,15 @@ static void emitDefersForScope(Context &ctx, Scope const *scope) {
 
         if (ctx.proc_stack->active_defer_node) {
             nkir_instrArrayDupInto(
-                ctx.ir,
-                {NK_SLICE_INIT(defer_node->instrs)},
-                &ctx.proc_stack->active_defer_node->instrs,
-                scope->temp_arena);
+                ctx.ir, {NKS_INIT(defer_node->instrs)}, &ctx.proc_stack->active_defer_node->instrs, scope->temp_arena);
         } else {
             auto frame = nk_arena_grab(scope->temp_arena);
             defer {
                 nk_arena_popFrame(scope->temp_arena, frame);
             };
             NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(scope->temp_arena))};
-            nkir_instrArrayDupInto(ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &instrs_copy, scope->temp_arena);
-            nkir_emitArray(ctx.ir, {NK_SLICE_INIT(instrs_copy)});
+            nkir_instrArrayDupInto(ctx.ir, {NKS_INIT(defer_node->instrs)}, &instrs_copy, scope->temp_arena);
+            nkir_emitArray(ctx.ir, {NKS_INIT(instrs_copy)});
         }
 
         defer_node = defer_node->next;

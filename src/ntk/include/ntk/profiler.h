@@ -47,7 +47,7 @@ struct _NkProfScopeGuard {
 #define NK_PROF_SCOPE(str)                            \
     _NkProfScopeGuard NK_CAT(_prof_guard, __LINE__) { \
         {                                             \
-            NK_SLICE_INIT(str)                        \
+            NKS_INIT(str)                             \
         }                                             \
     }
 

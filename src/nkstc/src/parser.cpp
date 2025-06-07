@@ -37,10 +37,10 @@ struct ParseEngine {
     u32 m_cur_token_idx{};
 
     Void parse() {
-        nk_assert(m_tokens.size && nk_slice_last(m_tokens).id == t_eof && "ill-formed token stream");
+        nk_assert(m_tokens.size && nks_last(m_tokens).id == t_eof && "ill-formed token stream");
 
         nkda_append(m_nodes, NklAstNode{0, m_cur_token_idx, 0, 0});
-        auto &node = nk_slice_last(*m_nodes);
+        auto &node = nks_last(*m_nodes);
         node.id = nk_cs2atom("list");
         node.total_children = m_nodes->size;
         CHECK(parseNodeList(node));
@@ -55,7 +55,7 @@ struct ParseEngine {
 
     Void parseNode() {
         nkda_append(m_nodes, NklAstNode{0, m_cur_token_idx, 0, 0});
-        auto &node = nk_slice_last(*m_nodes);
+        auto &node = nks_last(*m_nodes);
 
         if (accept(t_par_l)) {
             if (!accept(t_par_r)) {
@@ -192,12 +192,12 @@ NklAstNodeArray nkst_parse(NkAllocator alloc, NkAtom file, NkString text, NklTok
                 .file = file,
                 .text = text,
                 .tokens = tokens,
-                .nodes = {NK_SLICE_INIT(nodes)},
+                .nodes = {NKS_INIT(nodes)},
             },
             nksb_getStream(&sb));
         NK_LOG_INF("AST:" NKS_FMT, NKS_ARG(sb));
     }
 #endif // ENABLE_LOGGING
 
-    return {NK_SLICE_INIT(nodes)};
+    return {NKS_INIT(nodes)};
 }

@@ -282,5 +282,5 @@ NklTokenArray nkst_lex(NkAllocator alloc, NkAtom file, NkString text) {
 #endif // ENABLE_LOGGING
     } while (scanner.m_token.id != t_eof);
 
-    return {NK_SLICE_INIT(tokens)};
+    return {NKS_INIT(tokens)};
 }

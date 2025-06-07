@@ -163,8 +163,8 @@ protected:
                             nk_arena_popFrame(&m_tmp_arena, frame);
                         };
                         NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(&m_tmp_arena))};
-                        nkir_instrArrayDupInto(m_ir, {NK_SLICE_INIT(defer_instrs)}, &instrs_copy, &m_tmp_arena);
-                        nkir_emitArray(m_ir, {NK_SLICE_INIT(instrs_copy)});
+                        nkir_instrArrayDupInto(m_ir, {NKS_INIT(defer_instrs)}, &instrs_copy, &m_tmp_arena);
+                        nkir_emitArray(m_ir, {NKS_INIT(instrs_copy)});
                     }
                     nkir_emit(m_ir, nkir_make_ret(m_ir, nkir_makeDataRef(m_ir, forty_two)));
                     // }
@@ -173,7 +173,7 @@ protected:
                 // test_doMoreStuff();
                 nkir_emit(m_ir, nkir_make_call(m_ir, {}, test_doMoreStuff_ref, {}));
                 // }
-                nkir_emitArray(m_ir, {NK_SLICE_INIT(defer_instrs)});
+                nkir_emitArray(m_ir, {NKS_INIT(defer_instrs)});
             }
             // return 9;
             auto const nine = nkir_makeRodata(m_ir, 0, &m_i64_t, NkIrVisibility_Local);

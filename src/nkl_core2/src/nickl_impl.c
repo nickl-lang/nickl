@@ -142,7 +142,7 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             },
             out_tokens)) {
         nk_assert(out_tokens->size);
-        NklToken const err_token = nk_slice_last(*out_tokens);
+        NklToken const err_token = nks_last(*out_tokens);
         nickl_reportError(
             nkl,
             (NklSourceLocation){
@@ -204,7 +204,7 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             },
             out_tokens)) {
         nk_assert(out_tokens->size);
-        NklToken const err_token = nk_slice_last(*out_tokens);
+        NklToken const err_token = nks_last(*out_tokens);
         nickl_reportError(
             nkl,
             (NklSourceLocation){

@@ -253,7 +253,7 @@ int main(int /*argc*/, char **argv) {
         nk_atom_deinit();
     };
 
-    auto nkl = nkl_state_create({NK_SLICE_INIT(extra_args)}, lexer_proc, parser_proc);
+    auto nkl = nkl_state_create({NKS_INIT(extra_args)}, lexer_proc, parser_proc);
     defer {
         nkl_state_free(nkl);
     };

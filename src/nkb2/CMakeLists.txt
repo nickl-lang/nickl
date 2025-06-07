@@ -4,6 +4,7 @@ add_library(${LIB}
     src/common.c
     src/emit_llvm.c
     src/ir.c
+    src/linker.c
     src/llvm_stream.c
     src/types.c
     )

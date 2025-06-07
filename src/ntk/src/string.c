@@ -280,7 +280,7 @@ NkStringArray nks_shell_lex(NkArena *arena, NkString str) {
         nkda_append(&tokens, ((NkString){NKS_INIT(token)}));
     }
 
-    return (NkStringArray){NK_SLICE_INIT(tokens)};
+    return (NkStringArray){NKS_INIT(tokens)};
 }
 
 char const *nk_tprintf(NkArena *arena, char const *fmt, ...) {

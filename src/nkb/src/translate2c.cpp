@@ -806,7 +806,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrModule mod, NkStream src)
         translateProc(ctx, proc_id);
 
         while (ctx.procs_to_translate.size) {
-            auto proc = nk_slice_last(ctx.procs_to_translate);
+            auto proc = nks_last(ctx.procs_to_translate);
             nkda_pop(&ctx.procs_to_translate, 1);
             translateProc(ctx, proc);
         }

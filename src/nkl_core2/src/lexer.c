@@ -408,7 +408,7 @@ bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
 #endif // ENABLE_LOGGING
         } while (token.id != NklToken_Error && token.id != NklToken_Eof);
 
-        *out_tokens = (NklTokenArray){NK_SLICE_INIT(tokens)};
+        *out_tokens = (NklTokenArray){NKS_INIT(tokens)};
         ret = token.id == NklToken_Eof;
     }
 

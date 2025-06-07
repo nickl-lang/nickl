@@ -167,7 +167,7 @@ TEST_F(allocator, arena_stress) {
 
     for (usize i = 0; i < N; i++) {
         if (rand() % 2 && frames.size) {
-            auto const frame = nk_slice_last(frames);
+            auto const frame = nks_last(frames);
 
             auto const sz_delta = arena.size - frame.size;
             total_size -= sz_delta;
