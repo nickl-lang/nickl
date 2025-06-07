@@ -16,7 +16,7 @@ typedef struct {
     NkString out_file;
 } NkLikerOpts;
 
-void nk_link(NkLikerOpts const opts);
+bool nk_link(NkLikerOpts const opts);
 
 #ifdef __cplusplus
 }

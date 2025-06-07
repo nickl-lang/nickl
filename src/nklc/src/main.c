@@ -254,12 +254,11 @@ static int parseArgsAndRun(char **argv) {
 
     NK_LOG_INIT(log_opts);
 
-    NklState nkl;
     int ret_code = 0;
 
     NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
-    NK_DEFER_LOOP(nkl = nkl_newState(), nkl_freeState(nkl))
-    NK_DEFER_LOOP(nkl_pushState(nkl), nkl_popState()) {
+    NK_DEFER_LOOP(run_info.nkl = nkl_newState(), nkl_freeState(run_info.nkl))
+    NK_DEFER_LOOP(nkl_pushState(run_info.nkl), nkl_popState()) {
         ret_code = run(run_info);
     }
 
