@@ -37,4 +37,13 @@ function(target_link_llvm)
             PRIVATE LLVM
             )
     endif()
+
+    target_include_directories(${ARG_TARGET}
+        PRIVATE ${LLVM_INCLUDE_DIRS}
+    )
+
+    separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+    target_compile_definitions(${ARG_TARGET}
+        PRIVATE ${LLVM_DEFINITIONS_LIST}
+    )
 endfunction()

@@ -1,20 +1,24 @@
 #include "nkb/ir.h"
 
+#include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/IRReader.h>
+#include <llvm-c/Linker.h>
+#include <llvm-c/Types.h>
+
 #include "common.h"
 #include "emit_llvm.h"
 #include "linker.h"
-#include "llvm_stream.h"
 #include "nkb/types.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
-#include "ntk/error.h"
 #include "ntk/log.h"
-#include "ntk/pipe_stream.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(ir);
@@ -288,26 +292,59 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
     }
 
     // TODO: Generate temporary file more rebustly, and cleanup
-    NkString obj_file =
-        kind == NkIrOutput_Object ? out_file : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
+    NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
+                                                  : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    char buf[512];
-    NkStream src;
-    NkPipeStream ps = {0};
-    if (!nk_llvm_stream_open(
-            (NkLlvmStreamInfo){
-                .scratch = scratch,
-                .ps = &ps,
-                .opt_buf = NK_STATIC_BUF(buf),
-                .out_file = obj_file,
-            },
-            &src)) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("%s", nk_getLastErrorString());
-        return;
+    NkArena llvm_ir_arena = {0};
+    NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(&llvm_ir_arena)};
+    nkir_emit_llvm(nksb_getStream(&llvm_ir), scratch, mod);
+    nksb_appendNull(&llvm_ir);
+
+    NK_LOG_STREAM_INF {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
     }
-    nkir_emit_llvm(src, scratch, mod);
-    nk_llvm_stream_close(&ps);
+
+    { // TODO: Move LLVM out
+        LLVMInitializeNativeTarget();
+        LLVMInitializeNativeAsmPrinter();
+
+        LLVMContextRef context = LLVMContextCreate();
+        char *error = NULL;
+
+        LLVMModuleRef module = LLVMModuleCreateWithName("main");
+
+        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
+
+        if (LLVMParseIRInContext(context, buffer, &module, &error)) {
+            NK_LOG_ERR("Error parsing IR: %s\n", error);
+            return;
+        }
+
+        char *triple = LLVMGetDefaultTargetTriple();
+
+        LLVMTargetRef target;
+        if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
+            NK_LOG_ERR("Failed to get target from triple: %s\n", error);
+            return;
+        }
+
+        LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+            target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
+
+        if (LLVMTargetMachineEmitToFile(tm, module, obj_file.data, LLVMObjectFile, &error) != 0) {
+            NK_LOG_ERR("Failed to emit object file: %s\n", error);
+            return;
+        }
+
+        LLVMDisposeTargetMachine(tm);
+        LLVMDisposeMessage(triple);
+
+        LLVMContextDispose(context);
+    }
+
+    // TODO: Use twin scratch arenas
+    nk_arena_free(&llvm_ir_arena);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){
