@@ -42,6 +42,10 @@ include(FindLibraryEx)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules_ex(LIBFFI libffi SHARED)
 
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
 if(BUILD_TESTS)
     enable_testing()
 

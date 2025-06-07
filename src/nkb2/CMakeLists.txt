@@ -16,3 +16,18 @@ target_include_directories(${LIB}
 target_link_libraries(${LIB}
     PUBLIC ntk
     )
+
+include(LinkLLVM)
+target_link_llvm(
+    TARGET ${LIB}
+    COMPONENTS
+        Core
+        ExecutionEngine
+        IRReader
+        Linker
+        MCJIT
+        Support
+        Target
+        X86CodeGen
+        X86Desc
+    )
