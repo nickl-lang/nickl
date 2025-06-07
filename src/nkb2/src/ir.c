@@ -317,7 +317,8 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
         LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
 
         if (LLVMParseIRInContext(context, buffer, &module, &error)) {
-            NK_LOG_ERR("Error parsing IR: %s\n", error);
+            NK_LOG_ERR("Error parsing IR: %s", error);
+            LLVMContextDispose(context);
             return;
         }
 
@@ -325,7 +326,8 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
 
         LLVMTargetRef target;
         if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
-            NK_LOG_ERR("Failed to get target from triple: %s\n", error);
+            NK_LOG_ERR("Failed to get target from triple: %s", error);
+            LLVMContextDispose(context);
             return;
         }
 
@@ -333,7 +335,10 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
             target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
 
         if (LLVMTargetMachineEmitToFile(tm, module, obj_file.data, LLVMObjectFile, &error) != 0) {
-            NK_LOG_ERR("Failed to emit object file: %s\n", error);
+            NK_LOG_ERR("Failed to emit object file: %s", error);
+            LLVMDisposeTargetMachine(tm);
+            LLVMDisposeMessage(triple);
+            LLVMContextDispose(context);
             return;
         }
 
@@ -380,6 +385,72 @@ bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret) {
     (void)args;
     (void)ret;
     nk_assert(!"TODO: `nkir_invoke` not implemented");
+}
+
+bool nkir_run(NkIrModule mod) {
+    NkArena scratch = {0};
+    NkArena llvm_ir_arena = {0};
+    NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(&llvm_ir_arena)};
+    nkir_emit_llvm(nksb_getStream(&llvm_ir), &scratch, mod);
+    nksb_appendNull(&llvm_ir);
+
+    NK_LOG_STREAM_INF {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
+    }
+
+    { // TODO: Move LLVM out
+        LLVMInitializeNativeTarget();
+        LLVMInitializeNativeAsmPrinter();
+        LLVMLinkInMCJIT();
+
+        LLVMContextRef context = LLVMContextCreate();
+        char *error = NULL;
+
+        LLVMModuleRef module = LLVMModuleCreateWithName("main");
+
+        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
+
+        if (LLVMParseIRInContext(context, buffer, &module, &error)) {
+            NK_LOG_ERR("Error parsing IR: %s", error);
+            LLVMContextDispose(context);
+            return false;
+        }
+
+        LLVMExecutionEngineRef engine;
+        if (LLVMCreateExecutionEngineForModule(&engine, module, &error)) {
+            NK_LOG_ERR("Failed creating execution engine: %s", error);
+            LLVMContextDispose(context);
+            return false;
+        }
+
+        LLVMValueRef entry_func = LLVMGetNamedFunction(module, "_entry");
+        if (!entry_func) {
+            NK_LOG_ERR("Failed to find `_entry`");
+            LLVMDisposeExecutionEngine(engine);
+            LLVMContextDispose(context);
+            return false;
+        }
+
+        void (*entry)() = LLVMGetPointerToGlobal(engine, entry_func);
+        if (!entry) {
+            NK_LOG_ERR("`_entry` is NULL");
+            LLVMDisposeExecutionEngine(engine);
+            LLVMContextDispose(context);
+            return false;
+        }
+
+        entry();
+
+        LLVMDisposeExecutionEngine(engine);
+        LLVMContextDispose(context);
+    }
+
+    // TODO: Use twin scratch arenas
+    nk_arena_free(&llvm_ir_arena);
+    nk_arena_free(&scratch);
+
+    return true;
 }
 
 void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod) {

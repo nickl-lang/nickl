@@ -1,6 +1,42 @@
 set(NKLC_COMPILE_TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/compile_test.sh")
 set(NKLC_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/nklc_test_out")
 
+function(def_nklc_run_test)
+    set(options)
+    set(oneValueArgs FILE SYSTEM)
+    set(multiValueArgs ARGS)
+
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(NOT ARG_FILE)
+        message(FATAL_ERROR "FILE argument is required")
+    endif()
+
+    if(ARG_SYSTEM)
+        string(REGEX MATCH "${ARG_SYSTEM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
+        if(NOT CONTINUE)
+            return()
+        endif()
+    endif()
+
+    if(ARG_ARGS)
+        set(ARGS "--")
+        list(APPEND ARGS ${ARG_ARGS})
+    endif()
+
+    def_output_test(
+        NAME nklc.run
+        FILE ${ARG_FILE}
+        WORKING_DIRECTORY "${NKLC_TEST_OUT_DIR}"
+        COMMAND
+            env
+            "${SYSTEM_LIBRARY_PATH}=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{${SYSTEM_LIBRARY_PATH}}"
+            ${CMAKE_CROSSCOMPILING_EMULATOR} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}" -krun
+        EXTRA_ARGS
+            ${ARGS}
+        )
+endfunction()
+
 function(def_nklc_compile_test)
     set(options)
     set(oneValueArgs FILE SYSTEM)

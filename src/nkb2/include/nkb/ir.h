@@ -261,6 +261,8 @@ typedef struct NkIrRunCtx_T *NkIrRunCtx;
 NkIrRunCtx nkir_createRunCtx(NkIrModule *mod, NkArena *arena);
 
 bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
+// TODO: Adding a hack to just run _entry
+bool nkir_run(NkIrModule mod);
 
 /// Inspection
 

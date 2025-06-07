@@ -59,6 +59,9 @@ NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString path); // *.nkl
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 
+// TODO: Rethink run API, maybe we should operate granularly with symbols
+NK_EXPORT bool nkl_runModule(NklModule mod);
+
 NK_EXPORT NklError const *nkl_getErrors(NklState nkl);
 
 #ifdef __cplusplus

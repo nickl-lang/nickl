@@ -274,6 +274,10 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     return true;
 }
 
+NK_EXPORT bool nkl_runModule(NklModule mod) {
+    return nkir_run((NkIrModule){NKS_INIT(mod->ir)});
+}
+
 NklError const *nkl_getErrors(NklState nkl) {
     return nkl->error;
 }
