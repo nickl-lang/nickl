@@ -14,8 +14,6 @@
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
-_Thread_local NklState s_nkl;
-
 NK_LOG_USE_SCOPE(nickl);
 
 NK_PRINTF_LIKE(3) void nickl_reportError(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {

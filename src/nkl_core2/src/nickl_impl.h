@@ -40,8 +40,6 @@ typedef struct NklModule_T {
     NkDynArray(LibAlias) lib_aliases;
 } NklModule_T;
 
-extern _Thread_local NklState s_nkl;
-
 extern char const *s_ir_tokens[];
 extern char const *s_ast_tokens[];
 

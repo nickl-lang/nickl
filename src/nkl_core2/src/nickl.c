@@ -40,27 +40,8 @@ void nkl_freeState(NklState nkl) {
     nk_arena_free(&arena);
 }
 
-void nkl_pushState(NklState nkl) {
+NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple target) {
     NK_LOG_TRC("%s", __func__);
-
-    nk_assert(nkl && "state is null");
-
-    nkl->next = s_nkl;
-    s_nkl = nkl;
-}
-
-void nkl_popState(void) {
-    NK_LOG_TRC("%s", __func__);
-
-    nk_assert(s_nkl && "no active state");
-    s_nkl = s_nkl->next;
-}
-
-NklCompiler nkl_newCompiler(NklTargetTriple target) {
-    NK_LOG_TRC("%s", __func__);
-
-    nk_assert(s_nkl && "no active state");
-    NklState nkl = s_nkl;
 
     (void)target; // TODO: Use target triple
     NklCompiler com = nk_arena_allocT(&nkl->arena, NklCompiler_T);
@@ -71,11 +52,11 @@ NklCompiler nkl_newCompiler(NklTargetTriple target) {
     return com;
 }
 
-NklCompiler nkl_newCompilerHost(void) {
+NklCompiler nkl_newCompilerHost(NklState nkl) {
     NK_LOG_TRC("%s", __func__);
 
     // TODO: Actually fill host target triple
-    return nkl_newCompiler((NklTargetTriple){0});
+    return nkl_newCompiler(nkl, (NklTargetTriple){0});
 }
 
 // TODO: Reuse TRY macro

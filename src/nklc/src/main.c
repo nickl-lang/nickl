@@ -1,4 +1,3 @@
-#include "nkb/ir.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
@@ -12,7 +11,6 @@
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
-#include "ntk/utils.h"
 
 static void printErrorUsage() {
     nk_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
@@ -81,7 +79,9 @@ typedef struct {
 } RunInfo;
 
 static int run(RunInfo const info) {
-    NklCompiler const com = nkl_newCompilerHost();
+    NklState const nkl = info.nkl;
+
+    NklCompiler const com = nkl_newCompilerHost(nkl);
 
     // TODO: Hardcoded lib names
     nkl_addLibraryAliasGlobal(com, nk_cs2s("c"), nk_cs2s("libc.so.6"));
@@ -91,7 +91,7 @@ static int run(RunInfo const info) {
     NklModule const mod = nkl_newModule(com);
 
     if (!nkl_compileFile(mod, info.in_file)) {
-        printDiag(info.nkl);
+        printDiag(nkl);
         return 1;
     }
 
@@ -99,7 +99,7 @@ static int run(RunInfo const info) {
         return !nkl_runModule(mod);
     } else {
         if (!nkl_exportModule(mod, info.out_file, info.out_kind)) {
-            printDiag(info.nkl);
+            printDiag(nkl);
             return 1;
         }
     }
@@ -258,8 +258,7 @@ static int parseArgsAndRun(char **argv) {
     int ret_code = 0;
 
     NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
-    NK_DEFER_LOOP(run_info.nkl = nkl_newState(), nkl_freeState(run_info.nkl))
-    NK_DEFER_LOOP(nkl_pushState(run_info.nkl), nkl_popState()) {
+    NK_DEFER_LOOP(run_info.nkl = nkl_newState(), nkl_freeState(run_info.nkl)) {
         ret_code = run(run_info);
     }
 
