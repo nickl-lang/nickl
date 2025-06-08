@@ -4,7 +4,8 @@
 #include <llvm-c/Error.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/IRReader.h>
-#include <llvm-c/Linker.h>
+#include <llvm-c/LLJIT.h>
+#include <llvm-c/Orc.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 
 #include "common.h"
@@ -417,95 +418,91 @@ bool nkir_run(NkIrModule mod) {
     { // TODO: Move LLVM out
         LLVMInitializeNativeTarget();
         LLVMInitializeNativeAsmPrinter();
-        LLVMLinkInMCJIT();
 
         LLVMContextRef context = LLVMContextCreate();
+
         char *error = NULL;
+        LLVMErrorRef err_ref = NULL;
 
-        LLVMModuleRef module = LLVMModuleCreateWithName("main");
+        LLVMOrcLLJITBuilderRef builder = LLVMOrcCreateLLJITBuilder();
+        LLVMOrcLLJITRef jit;
+        if ((err_ref = LLVMOrcCreateLLJIT(&jit, builder))) {
+            char *err_msg = LLVMGetErrorMessage(err_ref);
+            NK_LOG_ERR("Failed to create jit: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+        }
 
-        LLVMExecutionEngineRef engine;
-        if (LLVMCreateExecutionEngineForModule(&engine, module, &error)) {
-            NK_LOG_ERR("Failed creating execution engine: %s", error);
+        LLVMOrcJITDylibRef jit_dylib = LLVMOrcLLJITGetMainJITDylib(jit);
+
+        LLVMOrcThreadSafeContextRef tsc = LLVMOrcCreateNewThreadSafeContext();
+        char *triple = LLVMGetDefaultTargetTriple();
+
+        NK_LOG_INF("JIT target: %s", triple);
+
+        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
+
+        LLVMModuleRef module = NULL;
+        if (LLVMParseIRInContext(context, buffer, &module, &error)) {
+            NK_LOG_ERR("Error parsing IR: %s", error);
             LLVMContextDispose(context);
             return false;
         }
+        LLVMSetTarget(module, triple);
+        // LLVMSetDataLayout(module, dataLayout);
 
-        const char *triple = LLVMGetTarget(module);
-        const char *dataLayout = LLVMGetDataLayoutStr(module);
-
-        {
-            LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
-
-            LLVMModuleRef temp_module = NULL;
-            if (LLVMParseIRInContext(context, buffer, &temp_module, &error)) {
-                NK_LOG_ERR("Error parsing IR: %s", error);
+        { // Optimization
+            LLVMTargetRef target;
+            if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
+                NK_LOG_ERR("Failed to get target from triple: %s", error);
+                LLVMDisposeMessage(error);
+                LLVMDisposeModule(module);
+                LLVMDisposeMessage(triple);
+                LLVMOrcDisposeThreadSafeContext(tsc);
+                LLVMOrcDisposeLLJIT(jit);
                 LLVMContextDispose(context);
                 return false;
             }
-            LLVMSetTarget(temp_module, triple);
-            LLVMSetDataLayout(temp_module, dataLayout);
+            LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+                target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelJITDefault);
 
-            { // Optimization
-                char *triple = LLVMGetDefaultTargetTriple();
-                LLVMTargetRef target;
-                if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
-                    NK_LOG_ERR("Failed to get target from triple: %s", error);
-                    LLVMDisposeMessage(error);
-                    LLVMDisposeModule(temp_module);
-                    LLVMDisposeExecutionEngine(engine);
-                    LLVMContextDispose(context);
-                    return false;
-                }
-                LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
-                    target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelJITDefault);
-
-                LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
-                LLVMErrorRef opt_err;
-                if ((opt_err = LLVMRunPasses(temp_module, "default<O3>", tm, pbo))) { // TODO: Hardcoded opt level
-                    char *err_msg = LLVMGetErrorMessage(opt_err);
-                    NK_LOG_ERR("Failed to optimize: %s", err_msg);
-                    LLVMDisposeErrorMessage(err_msg);
-                    LLVMDisposePassBuilderOptions(pbo);
-                    LLVMDisposeTargetMachine(tm);
-                    LLVMDisposeMessage(triple);
-                    LLVMDisposeExecutionEngine(engine);
-                    LLVMContextDispose(context);
-                    return false;
-                }
-
-                LLVMDisposeMessage(triple);
+            LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+            if ((err_ref = LLVMRunPasses(module, "default<O3>", tm, pbo))) { // TODO: Hardcoded opt level
+                char *err_msg = LLVMGetErrorMessage(err_ref);
+                NK_LOG_ERR("Failed to optimize: %s", err_msg);
+                LLVMDisposeErrorMessage(err_msg);
                 LLVMDisposePassBuilderOptions(pbo);
                 LLVMDisposeTargetMachine(tm);
-            }
-
-            if (LLVMLinkModules2(module, temp_module)) {
-                NK_LOG_ERR("Failed to link module\n");
-                LLVMDisposeExecutionEngine(engine);
+                LLVMDisposeMessage(triple);
+                LLVMOrcDisposeThreadSafeContext(tsc);
+                LLVMOrcDisposeLLJIT(jit);
                 LLVMContextDispose(context);
                 return false;
             }
+
+            LLVMDisposeMessage(triple);
+            LLVMDisposePassBuilderOptions(pbo);
+            LLVMDisposeTargetMachine(tm);
         }
 
-        LLVMValueRef entry_func = LLVMGetNamedFunction(module, "_entry");
-        if (!entry_func) {
-            NK_LOG_ERR("Failed to find `_entry`");
-            LLVMDisposeExecutionEngine(engine);
+        LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(module, tsc);
+        LLVMOrcLLJITAddLLVMIRModule(jit, jit_dylib, tsm);
+
+        LLVMOrcExecutorAddress entry_func;
+        if ((err_ref = LLVMOrcLLJITLookup(jit, &entry_func, "_entry"))) {
+            char *err_msg = LLVMGetErrorMessage(err_ref);
+            NK_LOG_ERR("Failed to find `_entry`: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+            LLVMOrcDisposeThreadSafeContext(tsc);
+            LLVMOrcDisposeLLJIT(jit);
             LLVMContextDispose(context);
             return false;
         }
 
-        void (*entry)() = LLVMGetPointerToGlobal(engine, entry_func);
-        if (!entry) {
-            NK_LOG_ERR("`_entry` is NULL");
-            LLVMDisposeExecutionEngine(engine);
-            LLVMContextDispose(context);
-            return false;
-        }
-
+        void (*entry)() = (void (*)())entry_func;
         entry();
 
-        LLVMDisposeExecutionEngine(engine);
+        LLVMOrcDisposeThreadSafeContext(tsc);
+        LLVMOrcDisposeLLJIT(jit);
         LLVMContextDispose(context);
     }
 

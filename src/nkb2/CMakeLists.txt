@@ -25,7 +25,7 @@ target_link_llvm(
         ExecutionEngine
         IRReader
         Linker
-        MCJIT
+        OrcJIT
         Passes
         Support
         Target
