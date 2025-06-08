@@ -24,6 +24,10 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && rm -rf /root/* \
  ;
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libzstd-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 FROM linux AS linux-{{MACHINE}}
 
 LABEL org.opencontainers.image.description="Linux build environment for Nickl compiler"
