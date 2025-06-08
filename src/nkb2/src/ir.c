@@ -7,6 +7,8 @@
 #include <llvm-c/LLJIT.h>
 #include <llvm-c/Orc.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+#include <math.h>    // TODO: Remove this, only used for hardcode
+#include <pthread.h> // TODO: Remove this, only used for hardcode
 
 #include "common.h"
 #include "emit_llvm.h"
@@ -434,6 +436,40 @@ bool nkir_run(NkIrModule mod) {
 
         LLVMOrcJITDylibRef jit_dylib = LLVMOrcLLJITGetMainJITDylib(jit);
 
+        LLVMOrcExecutionSessionRef es = LLVMOrcLLJITGetExecutionSession(jit);
+        // TODO: Hardcoded external syms
+        LLVMOrcCSymbolMapPair syms[] = {
+            {
+                .Name = LLVMOrcExecutionSessionIntern(es, "printf"),
+                .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)printf, {0}},
+            },
+            {
+                .Name = LLVMOrcExecutionSessionIntern(es, "puts"),
+                .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)puts, {0}},
+            },
+            {
+                .Name = LLVMOrcExecutionSessionIntern(es, "pthread_create"),
+                .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)pthread_create, {0}},
+            },
+            {
+                .Name = LLVMOrcExecutionSessionIntern(es, "pthread_join"),
+                .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)pthread_join, {0}},
+            },
+            {
+                .Name = LLVMOrcExecutionSessionIntern(es, "sqrt"),
+                .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)sqrt, {0}},
+            },
+        };
+        LLVMOrcMaterializationUnitRef mu = LLVMOrcAbsoluteSymbols(syms, sizeof(syms) / sizeof(syms[0]));
+        if ((err_ref = LLVMOrcJITDylibDefine(jit_dylib, mu))) {
+            char *err_msg = LLVMGetErrorMessage(err_ref);
+            NK_LOG_ERR("define symbol: %s\n", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+            LLVMOrcDisposeLLJIT(jit);
+            LLVMContextDispose(context);
+            return false;
+        }
+
         LLVMOrcThreadSafeContextRef tsc = LLVMOrcCreateNewThreadSafeContext();
         char *triple = LLVMGetDefaultTargetTriple();
 
@@ -447,7 +483,7 @@ bool nkir_run(NkIrModule mod) {
             LLVMContextDispose(context);
             return false;
         }
-        LLVMSetTarget(module, triple);
+        // LLVMSetTarget(module, triple);
         // LLVMSetDataLayout(module, dataLayout);
 
         { // Optimization
