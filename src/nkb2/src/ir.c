@@ -1,10 +1,11 @@
 #include "nkb/ir.h"
 
 #include <llvm-c/Core.h>
+#include <llvm-c/Error.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/IRReader.h>
 #include <llvm-c/Linker.h>
-#include <llvm-c/Types.h>
+#include <llvm-c/Transforms/PassBuilder.h>
 
 #include "common.h"
 #include "emit_llvm.h"
@@ -323,16 +324,30 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
         }
 
         char *triple = LLVMGetDefaultTargetTriple();
-
         LLVMTargetRef target;
         if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
             NK_LOG_ERR("Failed to get target from triple: %s", error);
             LLVMContextDispose(context);
             return;
         }
-
         LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
             target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
+
+        { // Optimization
+            LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+            LLVMErrorRef opt_err;
+            if ((opt_err = LLVMRunPasses(module, "default<O3>", tm, pbo))) { // TODO: Hardcoded opt level
+                char *err_msg = LLVMGetErrorMessage(opt_err);
+                NK_LOG_ERR("Failed to optimize: %s", err_msg);
+                LLVMDisposeErrorMessage(err_msg);
+                LLVMDisposePassBuilderOptions(pbo);
+                LLVMDisposeTargetMachine(tm);
+                LLVMDisposeMessage(triple);
+                LLVMContextDispose(context);
+                return;
+            }
+            LLVMDisposePassBuilderOptions(pbo);
+        }
 
         if (LLVMTargetMachineEmitToFile(tm, module, obj_file.data, LLVMObjectFile, &error) != 0) {
             NK_LOG_ERR("Failed to emit object file: %s", error);
@@ -409,19 +424,67 @@ bool nkir_run(NkIrModule mod) {
 
         LLVMModuleRef module = LLVMModuleCreateWithName("main");
 
-        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
-
-        if (LLVMParseIRInContext(context, buffer, &module, &error)) {
-            NK_LOG_ERR("Error parsing IR: %s", error);
-            LLVMContextDispose(context);
-            return false;
-        }
-
         LLVMExecutionEngineRef engine;
         if (LLVMCreateExecutionEngineForModule(&engine, module, &error)) {
             NK_LOG_ERR("Failed creating execution engine: %s", error);
             LLVMContextDispose(context);
             return false;
+        }
+
+        const char *triple = LLVMGetTarget(module);
+        const char *dataLayout = LLVMGetDataLayoutStr(module);
+
+        {
+            LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
+
+            LLVMModuleRef temp_module = NULL;
+            if (LLVMParseIRInContext(context, buffer, &temp_module, &error)) {
+                NK_LOG_ERR("Error parsing IR: %s", error);
+                LLVMContextDispose(context);
+                return false;
+            }
+            LLVMSetTarget(temp_module, triple);
+            LLVMSetDataLayout(temp_module, dataLayout);
+
+            { // Optimization
+                char *triple = LLVMGetDefaultTargetTriple();
+                LLVMTargetRef target;
+                if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
+                    NK_LOG_ERR("Failed to get target from triple: %s", error);
+                    LLVMDisposeMessage(error);
+                    LLVMDisposeModule(temp_module);
+                    LLVMDisposeExecutionEngine(engine);
+                    LLVMContextDispose(context);
+                    return false;
+                }
+                LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+                    target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelJITDefault);
+
+                LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+                LLVMErrorRef opt_err;
+                if ((opt_err = LLVMRunPasses(temp_module, "default<O3>", tm, pbo))) { // TODO: Hardcoded opt level
+                    char *err_msg = LLVMGetErrorMessage(opt_err);
+                    NK_LOG_ERR("Failed to optimize: %s", err_msg);
+                    LLVMDisposeErrorMessage(err_msg);
+                    LLVMDisposePassBuilderOptions(pbo);
+                    LLVMDisposeTargetMachine(tm);
+                    LLVMDisposeMessage(triple);
+                    LLVMDisposeExecutionEngine(engine);
+                    LLVMContextDispose(context);
+                    return false;
+                }
+
+                LLVMDisposeMessage(triple);
+                LLVMDisposePassBuilderOptions(pbo);
+                LLVMDisposeTargetMachine(tm);
+            }
+
+            if (LLVMLinkModules2(module, temp_module)) {
+                NK_LOG_ERR("Failed to link module\n");
+                LLVMDisposeExecutionEngine(engine);
+                LLVMContextDispose(context);
+                return false;
+            }
         }
 
         LLVMValueRef entry_func = LLVMGetNamedFunction(module, "_entry");

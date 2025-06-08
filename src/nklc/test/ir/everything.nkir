@@ -260,7 +260,7 @@ const four :f64 0x40091eb851eb851f
 const five :f32 1
 const six "a string"
 
-local proc _entry() {
+proc _entry() {
     ret
 }
 

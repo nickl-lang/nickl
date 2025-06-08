@@ -26,6 +26,7 @@ target_link_llvm(
         IRReader
         Linker
         MCJIT
+        Passes
         Support
         Target
         X86CodeGen
