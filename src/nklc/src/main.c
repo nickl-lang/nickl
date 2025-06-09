@@ -84,9 +84,9 @@ static int run(RunInfo const info) {
     NklCompiler const com = nkl_newCompilerHost(nkl);
 
     // TODO: Hardcoded lib names
-    nkl_addLibraryAliasGlobal(com, nk_cs2s("c"), nk_cs2s("libc.so.6"));
-    nkl_addLibraryAliasGlobal(com, nk_cs2s("m"), nk_cs2s("libm.so.6"));
-    nkl_addLibraryAliasGlobal(com, nk_cs2s("pthread"), nk_cs2s("libpthread.so.0"));
+    nkl_addLibraryAlias(com, nk_cs2s("c"), nk_cs2s("libc.so.6"));
+    nkl_addLibraryAlias(com, nk_cs2s("m"), nk_cs2s("libm.so.6"));
+    nkl_addLibraryAlias(com, nk_cs2s("pthread"), nk_cs2s("libpthread.so.0"));
 
     NklModule const mod = nkl_newModule(com);
 

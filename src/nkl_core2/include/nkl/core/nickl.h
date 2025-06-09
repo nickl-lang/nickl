@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+// TODO: Provide a C version for Nickl API without dependencies
+
 typedef struct NklState_T *NklState;
 typedef struct NklCompiler_T *NklCompiler;
 typedef struct NklModule_T *NklModule;
@@ -46,8 +48,7 @@ NK_EXPORT NklModule nkl_newModule(NklCompiler com);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
 
-NK_EXPORT bool nkl_addLibraryAliasGlobal(NklCompiler com, NkString alias, NkString lib);
-NK_EXPORT bool nkl_addLibraryAlias(NklModule dst_mod, NkString alias, NkString lib);
+NK_EXPORT bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib);
 
 NK_EXPORT bool nkl_compileFile(NklModule mod, NkString path);
 NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString path);  // *.nkir
@@ -56,7 +57,9 @@ NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString path); // *.nkl
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 
-// TODO: Rethink run API, maybe we should operate granularly with symbols
+NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkString name);
+
+// TODO: Remove runModule in favor of getSymbolAddress
 NK_EXPORT bool nkl_runModule(NklModule mod);
 
 NK_EXPORT NklError const *nkl_getErrors(NklState nkl);

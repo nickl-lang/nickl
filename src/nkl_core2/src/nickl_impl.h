@@ -33,11 +33,14 @@ typedef struct NklCompiler_T {
     NkDynArray(LibAlias) lib_aliases;
 } NklCompiler_T;
 
+typedef NkDynArray(NklModule) NklModuleDynArray;
+
 typedef struct NklModule_T {
     NklCompiler com;
     NkIrSymbolDynArray ir;
 
-    NkDynArray(LibAlias) lib_aliases;
+    NklModuleDynArray linked_in;
+    NklModuleDynArray linked_to;
 } NklModule_T;
 
 extern char const *s_ir_tokens[];
@@ -57,6 +60,8 @@ NkAtom nickl_canonicalizePath(NkString base, NkString path);
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
 
 NkString nickl_translateLib(NklModule mod, NkString alias);
+
+bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym);
 
 #ifdef __cplusplus
 }

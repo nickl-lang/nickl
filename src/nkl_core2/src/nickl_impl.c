@@ -6,6 +6,7 @@
 #include "nkl/core/lexer.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
@@ -271,12 +272,6 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
 }
 
 NkString nickl_translateLib(NklModule mod, NkString alias) {
-    NK_ITERATE(LibAlias const *, it, mod->lib_aliases) {
-        if (nks_equal(alias, it->alias)) {
-            return it->lib;
-        }
-    }
-
     NK_ITERATE(LibAlias const *, it, mod->com->lib_aliases) {
         if (nks_equal(alias, it->alias)) {
             return it->lib;
@@ -284,4 +279,10 @@ NkString nickl_translateLib(NklModule mod, NkString alias) {
     }
 
     return alias;
+}
+
+bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
+    // TODO: Check for symbol conflicts
+    nkda_append(&mod->ir, *sym);
+    return true;
 }

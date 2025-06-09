@@ -7,6 +7,7 @@
 #include <llvm-c/LLJIT.h>
 #include <llvm-c/Orc.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+#include <llvm-c/Types.h>
 #include <math.h>    // TODO: Remove this, only used for hardcode
 #include <pthread.h> // TODO: Remove this, only used for hardcode
 
@@ -515,7 +516,6 @@ bool nkir_run(NkIrModule mod) {
                 return false;
             }
 
-            LLVMDisposeMessage(triple);
             LLVMDisposePassBuilderOptions(pbo);
             LLVMDisposeTargetMachine(tm);
         }
@@ -528,6 +528,7 @@ bool nkir_run(NkIrModule mod) {
             char *err_msg = LLVMGetErrorMessage(err_ref);
             NK_LOG_ERR("Failed to find `_entry`: %s", err_msg);
             LLVMDisposeErrorMessage(err_msg);
+            LLVMDisposeMessage(triple);
             LLVMOrcDisposeThreadSafeContext(tsc);
             LLVMOrcDisposeLLJIT(jit);
             LLVMContextDispose(context);
@@ -537,6 +538,7 @@ bool nkir_run(NkIrModule mod) {
         void (*entry)() = (void (*)())entry_func;
         entry();
 
+        LLVMDisposeMessage(triple);
         LLVMOrcDisposeThreadSafeContext(tsc);
         LLVMOrcDisposeLLJIT(jit);
         LLVMContextDispose(context);

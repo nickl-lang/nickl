@@ -64,7 +64,6 @@ typedef struct {
     NklModule const mod;
     NkArena *const arena;
     char const **const token_names;
-    NkIrSymbolDynArray *const ir;
 
     SourceInfo *src;
 
@@ -592,6 +591,14 @@ static NkIrRef parseDst(ParserState *p, NkIrType type_opt, bool allow_null) {
     }
 }
 
+static Void defineSymbol(ParserState *p, NkIrSymbol const *sym) {
+    if (!nickl_defineSymbol(p->mod, sym)) {
+        // TODO: Report proper conflict errors
+        ERROR("failed to define symbol");
+    }
+    return ret;
+}
+
 static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     NkIrRef ret = {0};
 
@@ -639,9 +646,9 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
             TRY(NkIrRelocArray relocs = parseConst(p, addr, type));
 
             NkAtom const sym = nk_atom_unique((NkString){0});
-            nkda_append(
-                p->ir,
-                ((NkIrSymbol){
+            defineSymbol(
+                p,
+                &(NkIrSymbol){
                     .data =
                         {
                             .type = type,
@@ -653,7 +660,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                     .vis = NkIrVisibility_Local,
                     .flags = 0,
                     .kind = NkIrSymbol_Data,
-                }));
+                });
             return nkir_makeRefGlobal(sym, get_ptr_t(p));
         }
     }
@@ -664,9 +671,9 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         NkIrType type = allocStringType(p, str.size);
 
         NkAtom const sym = nk_atom_unique((NkString){0});
-        nkda_append(
-            p->ir,
-            ((NkIrSymbol){
+        defineSymbol(
+            p,
+            &(NkIrSymbol){
                 .data =
                     {
                         .type = type,
@@ -678,7 +685,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                 .vis = NkIrVisibility_Local,
                 .flags = 0,
                 .kind = NkIrSymbol_Data,
-            }));
+            });
         return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
 
@@ -909,9 +916,9 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RBrace);
 
-    nkda_append(
-        p->ir,
-        ((NkIrSymbol){
+    defineSymbol(
+        p,
+        &(NkIrSymbol){
             .proc =
                 {
                     .params = p->proc_params,
@@ -923,7 +930,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
             .vis = vis,
             .flags = 0,
             .kind = NkIrSymbol_Proc,
-        }));
+        });
 
     return ret;
 }
@@ -973,9 +980,9 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         ERROR_EXPECT("type or constant");
     }
 
-    nkda_append(
-        p->ir,
-        ((NkIrSymbol){
+    defineSymbol(
+        p,
+        &(NkIrSymbol){
             .data =
                 {
                     .type = type,
@@ -987,7 +994,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
             .vis = vis,
             .flags = 0,
             .kind = NkIrSymbol_Data,
-        }));
+        });
 
     return ret;
 }
@@ -1027,9 +1034,9 @@ static Void parseExtern(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const ret_type = parseType(p));
 
-        nkda_append(
-            p->ir,
-            ((NkIrSymbol){
+        defineSymbol(
+            p,
+            &(NkIrSymbol){
                 .extern_proc =
                     {
                         .lib = lib,
@@ -1041,7 +1048,7 @@ static Void parseExtern(ParserState *p) {
                 .vis = 0,
                 .flags = 0,
                 .kind = NkIrSymbol_ExternProc,
-            }));
+            });
     }
 
     else if (ACCEPT(NklIrToken_data)) {
@@ -1050,9 +1057,9 @@ static Void parseExtern(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
 
-        nkda_append(
-            p->ir,
-            ((NkIrSymbol){
+        defineSymbol(
+            p,
+            &(NkIrSymbol){
                 .extern_data =
                     {
                         .lib = lib,
@@ -1062,7 +1069,7 @@ static Void parseExtern(ParserState *p) {
                 .vis = 0,
                 .flags = 0,
                 .kind = NkIrSymbol_ExternData,
-            }));
+            });
     }
 
     return ret;
@@ -1174,18 +1181,19 @@ static Void parse(ParserState *p) {
     return ret;
 }
 
-bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
+bool nkl_ir_parse(NklIrParserData const *data) {
     NK_LOG_TRC("%s", __func__);
 
-    usize const start_idx = out_syms->size;
+    NklModule const mod = data->mod;
 
-    NklState nkl = data->mod->com->nkl;
+    usize const start_idx = mod->ir.size;
+
+    NklState nkl = mod->com->nkl;
 
     ParserState p = {
-        .mod = data->mod,
+        .mod = mod,
         .arena = &nkl->arena,
         .token_names = data->token_names,
-        .ir = out_syms,
         .types = {.alloc = nk_arena_getAllocator(p.arena)},
     };
 
@@ -1199,7 +1207,7 @@ bool nkl_ir_parse(NklIrParserData const *data, NkIrSymbolDynArray *out_syms) {
         NkArena scratch = {0};
         NkStream log = nk_log_getStream();
         nk_printf(log, "IR:\n");
-        NkIrModule const syms = {out_syms->data + start_idx, out_syms->size - start_idx};
+        NkIrModule const syms = {mod->ir.data + start_idx, mod->ir.size - start_idx};
         nkir_inspectModule(log, &scratch, syms);
         nk_arena_free(&scratch);
     }

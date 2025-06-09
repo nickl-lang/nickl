@@ -78,7 +78,8 @@ NklModule nkl_newModule(NklCompiler com) {
     *mod = (NklModule_T){
         .com = com,
         .ir = {.alloc = nk_arena_getAllocator(&nkl->arena)},
-        .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+        .linked_in = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+        .linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
     return mod;
 }
@@ -99,11 +100,15 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
         nickl_reportError(nkl, (NklSourceLocation){0}, "mixed modules from different compilers");
     }
 
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_linkModule` is not implemented");
-    return false;
+    nkda_append(&dst_mod->linked_in, src_mod);
+    nkda_append(&src_mod->linked_to, dst_mod);
+
+    // TODO: Check for symbol conflicts
+
+    return true;
 }
 
-bool nkl_addLibraryAliasGlobal(NklCompiler com, NkString alias, NkString lib) {
+bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(com);
@@ -114,25 +119,6 @@ bool nkl_addLibraryAliasGlobal(NklCompiler com, NkString alias, NkString lib) {
 
     nkda_append(
         &com->lib_aliases,
-        ((LibAlias){
-            .lib = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(lib)),
-            .alias = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(alias)),
-        }));
-
-    return true;
-}
-
-bool nkl_addLibraryAlias(NklModule dst_mod, NkString alias, NkString lib) {
-    NK_LOG_TRC("%s", __func__);
-
-    TRY(dst_mod);
-
-    NklState nkl = dst_mod->com->nkl;
-
-    // TODO: Validate input
-
-    nkda_append(
-        &dst_mod->lib_aliases,
         ((LibAlias){
             .lib = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(lib)),
             .alias = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(alias)),
@@ -185,13 +171,11 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
         return false;
     }
 
-    TRY(nkl_ir_parse(
-        &(NklIrParserData){
-            .mod = mod,
-            .file = file,
-            .token_names = s_ir_tokens,
-        },
-        &mod->ir));
+    TRY(nkl_ir_parse(&(NklIrParserData){
+        .mod = mod,
+        .file = file,
+        .token_names = s_ir_tokens,
+    }));
 
     return true;
 }
@@ -255,7 +239,19 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     return true;
 }
 
-NK_EXPORT bool nkl_runModule(NklModule mod) {
+void *nkl_getSymbolAddress(NklModule mod, NkString name) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    NklState nkl = mod->com->nkl;
+
+    (void)name;
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_getSymbolAddress` is not implemented");
+    return NULL;
+}
+
+bool nkl_runModule(NklModule mod) {
     return nkir_run((NkIrModule){NKS_INIT(mod->ir)});
 }
 
