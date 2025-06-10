@@ -7,6 +7,7 @@ add_library(${LIB}
     src/linker.c
     src/llvm_stream.c
     src/types.c
+    src/llvm.cpp
     )
 
 target_include_directories(${LIB}

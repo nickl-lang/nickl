@@ -38,7 +38,7 @@ function(target_link_llvm)
             )
     endif()
 
-    target_include_directories(${ARG_TARGET}
+    target_include_directories(${ARG_TARGET} SYSTEM
         PRIVATE ${LLVM_INCLUDE_DIRS}
     )
 

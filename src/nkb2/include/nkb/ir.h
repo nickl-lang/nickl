@@ -25,6 +25,7 @@ typedef enum {
 
 typedef struct NkbState_T *NkbState;
 typedef struct NkIrModule_T *NkIrModule;
+typedef struct NkIrRuntime_T *NkIrRuntime;
 
 typedef enum {
     NkIrOutput_None = 0,
@@ -207,6 +208,14 @@ typedef struct {
     NkIrLabelKind kind;
 } NkIrLabel;
 
+typedef struct {
+    NkAtom sym;
+    void *addr;
+} NkIrSymbolAddress;
+
+typedef NkSlice(NkIrSymbolAddress const) NkIrSymbolAddressArray;
+typedef NkDynArray(NkIrSymbolAddress) NkIrSymbolAddressDynArray;
+
 /// Main
 
 NkbState nkir_newState(void);
@@ -276,14 +285,16 @@ void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString out_file, NkIr
 
 /// Runtime
 
-typedef struct NkIrRuntime_T *NkIrRuntime;
-
-NkIrRuntime nkir_createRuntime(NkbState nkb);
-NkIrRuntime nkir_freeRuntime(NkbState nkb);
+// TODO: Hide NkIrRuntime completely?
+NkIrRuntime nkir_getRuntime(NkbState nkb);
 
 bool nkir_invoke(NkIrRuntime rt, NkAtom sym, void **args, void **ret);
 // TODO: Adding a hack to just run _entry
-bool nkir_run(NkIrModule mod);
+bool nkir_run(NkIrRuntime rt, NkIrModule mod);
+
+void *nkir_getSymbolAddress(NkbState nkb, NkAtom sym);
+
+bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms);
 
 /// Inspection
 

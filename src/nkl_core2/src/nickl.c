@@ -1,6 +1,8 @@
 #include "nkl/core/nickl.h"
 
 #include <assert.h>
+#include <math.h>    // TODO: Remove this, only used for hardcode
+#include <pthread.h> // TODO: Remove this, only used for hardcode
 
 #include "ir_parser.h"
 #include "nickl_impl.h"
@@ -9,6 +11,7 @@
 #include "nkl/common/diagnostics.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
@@ -254,7 +257,34 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 }
 
 bool nkl_runModule(NklModule mod) {
-    return nkir_run(mod->ir);
+    NklState nkl = mod->com->nkl;
+
+    // TODO: Hardcoded external syms
+    NkIrSymbolAddress syms[] = {
+        {
+            .sym = nk_cs2atom("printf"),
+            .addr = printf,
+        },
+        {
+            .sym = nk_cs2atom("puts"),
+            .addr = puts,
+        },
+        {
+            .sym = nk_cs2atom("pthread_create"),
+            .addr = pthread_create,
+        },
+        {
+            .sym = nk_cs2atom("pthread_join"),
+            .addr = pthread_join,
+        },
+        {
+            .sym = nk_cs2atom("sqrt"),
+            .addr = sqrt,
+        },
+    };
+    nkir_defineExternSymbols(mod->ir, (NkIrSymbolAddressArray){syms, NK_ARRAY_COUNT(syms)});
+
+    return nkir_run(nkir_getRuntime(nkl->nkb), mod->ir);
 }
 
 NklError const *nkl_getErrors(NklState nkl) {
