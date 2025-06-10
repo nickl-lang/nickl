@@ -11,12 +11,7 @@
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
-void nkcc_streamOpen(
-    NkArena *scratch,
-    NkPipeStream *ps,
-    NkStringBuf opt_buf,
-    NkIrCompilerConfig const conf,
-    NkStream *out) {
+void nkcc_streamOpen(NkArena *scratch, NkPipeStream *ps, NkStringBuf opt_buf, NkIrCompilerConfig conf, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
@@ -53,7 +48,7 @@ int nkcc_streamClose(NkPipeStream *ps) {
     return ret;
 }
 
-bool nkir_compile(NkArena *scratch, NkIrCompilerConfig const conf, NkIrProg ir, NkIrFunct entry_point) {
+bool nkir_compile(NkArena *scratch, NkIrCompilerConfig conf, NkIrProg ir, NkIrFunct entry_point) {
     NK_LOG_TRC("%s", __func__);
 
     int ret;

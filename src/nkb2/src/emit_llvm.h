@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod);
+void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrSymbolArray mod);
 
 #ifdef __cplusplus
 }

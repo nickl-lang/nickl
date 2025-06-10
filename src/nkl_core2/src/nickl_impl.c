@@ -3,10 +3,10 @@
 #include "ast_parser.h"
 #include "ast_tokens.h"
 #include "ir_tokens.h"
+#include "nkb/ir.h"
 #include "nkl/core/lexer.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
@@ -282,7 +282,15 @@ NkString nickl_translateLib(NklModule mod, NkString alias) {
 }
 
 bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
+    NK_LOG_STREAM_INF {
+        NkArena scratch = {0};
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "new symbol:\n");
+        nkir_inspectSymbol(log, &scratch, sym);
+        nk_arena_free(&scratch); // TODO: Use existing scratch arena
+    }
+
     // TODO: Check for symbol conflicts
-    nkda_append(&mod->ir, *sym);
+    nkir_moduleDefineSymbol(mod->ir, sym);
     return true;
 }

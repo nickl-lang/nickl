@@ -21,7 +21,10 @@ typedef enum {
 #include "nkb/ir.inl"
 } NkIrOpcode;
 
-/// Common
+/// Types
+
+typedef struct NkbState_T *NkbState;
+typedef struct NkIrModule_T *NkIrModule;
 
 typedef enum {
     NkIrOutput_None = 0,
@@ -102,6 +105,8 @@ typedef NkSlice(NkIrInstr const) NkIrInstrArray;
 typedef NkDynArray(NkIrInstr) NkIrInstrDynArray;
 
 typedef enum {
+    NkIrSymbol_None = 0,
+
     NkIrSymbol_Proc,
     NkIrSymbol_Data,
     NkIrSymbol_ExternProc,
@@ -189,8 +194,6 @@ typedef struct {
 typedef NkSlice(NkIrSymbol const) NkIrSymbolArray;
 typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 
-typedef NkIrSymbolArray NkIrModule;
-
 typedef enum {
     NkIrLabel_Abs,
     NkIrLabel_Rel,
@@ -205,6 +208,23 @@ typedef struct {
 } NkIrLabel;
 
 /// Main
+
+NkbState nkir_newState(void);
+void nkir_freeState(NkbState nkb);
+
+NkIrModule nkir_newModule(NkbState nkb);
+
+NkArena *nkir_moduleGetArena(NkIrModule mod);
+
+void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym);
+
+NkIrRefDynArray nkir_moduleNewRefArray(NkIrModule mod);
+NkIrInstrDynArray nkir_moduleNewInstrArray(NkIrModule mod);
+NkIrTypeDynArray nkir_moduleNewTypeArray(NkIrModule mod);
+NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod);
+NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod);
+
+/// Utility
 
 void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
@@ -254,13 +274,14 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind);
 
-/// Execution
+/// Runtime
 
-typedef struct NkIrRunCtx_T *NkIrRunCtx;
+typedef struct NkIrRuntime_T *NkIrRuntime;
 
-NkIrRunCtx nkir_createRunCtx(NkIrModule *mod, NkArena *arena);
+NkIrRuntime nkir_createRuntime(NkbState nkb);
+NkIrRuntime nkir_freeRuntime(NkbState nkb);
 
-bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
+bool nkir_invoke(NkIrRuntime rt, NkAtom sym, void **args, void **ret);
 // TODO: Adding a hack to just run _entry
 bool nkir_run(NkIrModule mod);
 

@@ -13,7 +13,6 @@
 #include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
-#include "ntk/slice.h"
 #include "ntk/string.h"
 
 NK_LOG_USE_SCOPE(nickl);
@@ -25,6 +24,7 @@ NklState nkl_newState(void) {
     NklState nkl = nk_arena_allocT(&arena, NklState_T);
     *nkl = (NklState_T){
         .arena = arena,
+        .nkb = nkir_newState(),
     };
     return nkl;
 }
@@ -35,6 +35,8 @@ void nkl_freeState(NklState nkl) {
     nk_assert(nkl && "state is null");
 
     nk_arena_free(&nkl->scratch);
+
+    nkir_freeState(nkl->nkb);
 
     NkArena arena = nkl->arena;
     nk_arena_free(&arena);
@@ -77,7 +79,7 @@ NklModule nkl_newModule(NklCompiler com) {
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
         .com = com,
-        .ir = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+        .ir = nkir_newModule(nkl->nkb),
         .linked_in = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
@@ -234,7 +236,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     static_assert((int)NklOutput_Archiv == NkIrOutput_Archiv, "");
     static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
 
-    nkir_exportModule(&nkl->scratch, (NkIrModule){NKS_INIT(mod->ir)}, out_file, (NkIrOutputKind)kind);
+    nkir_exportModule(&nkl->scratch, mod->ir, out_file, (NkIrOutputKind)kind);
 
     return true;
 }
@@ -252,7 +254,7 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 }
 
 bool nkl_runModule(NklModule mod) {
-    return nkir_run((NkIrModule){NKS_INIT(mod->ir)});
+    return nkir_run(mod->ir);
 }
 
 NklError const *nkl_getErrors(NklState nkl) {

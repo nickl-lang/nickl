@@ -10,12 +10,7 @@
 extern "C" {
 #endif
 
-void nkcc_streamOpen(
-    NkArena *scratch,
-    NkPipeStream *ps,
-    NkStringBuf opt_buf,
-    NkIrCompilerConfig const conf,
-    NkStream *out);
+void nkcc_streamOpen(NkArena *scratch, NkPipeStream *ps, NkStringBuf opt_buf, NkIrCompilerConfig conf, NkStream *out);
 int nkcc_streamClose(NkPipeStream *ps);
 
 #ifdef __cplusplus

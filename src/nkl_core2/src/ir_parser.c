@@ -385,7 +385,7 @@ static NkIrType parseType(ParserState *p) {
     ERROR_EXPECT("type");
 }
 
-static NkString parseString(ParserState *p) {
+static NkString parseString(ParserState *p, NkArena *arena) {
     NkString ret = {0};
 
     if (!on(p, NklToken_String) && !on(p, NklToken_EscapedString)) {
@@ -398,10 +398,10 @@ static NkString parseString(ParserState *p) {
     NkString const str = (NkString){token_str.data + 1, token_str.size - 2};
 
     if (token_id == NklToken_String) {
-        char const *cstr = nk_tprintf(p->arena, NKS_FMT, NKS_ARG(str));
+        char const *cstr = nk_tprintf(arena, NKS_FMT, NKS_ARG(str));
         return (NkString){cstr, str.size};
     } else {
-        NkStringBuilder sb = {.alloc = nk_arena_getAllocator(p->arena)};
+        NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
         nks_unescape(nksb_getStream(&sb), str);
         if (nks_last(sb)) {
             nksb_appendNull(&sb);
@@ -438,12 +438,12 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
         case NkIrType_Aggregate: {
             EXPECT(NklIrToken_LBrace);
 
-            NkIrRelocDynArray relocs = {.alloc = nk_arena_getAllocator(p->arena)};
+            NkIrRelocDynArray relocs = nkir_moduleNewRelocArray(p->mod->ir);
             NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                 usize offset = elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1 &&
                     (on(p, NklToken_String) || on(p, NklToken_EscapedString))) {
-                    TRY(NkString const str = parseString(p));
+                    TRY(NkString const str = parseString(p, &p->scratch));
                     if (str.size + 1 != elem->count) {
                         p->src->cur_token--;
                         ERROR("invalid string length: expected %u characters, got %zu", elem->count, str.size + 1);
@@ -666,7 +666,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     }
 
     else if (on(p, NklToken_String) || on(p, NklToken_EscapedString)) {
-        TRY(NkString const str = parseString(p));
+        TRY(NkString const str = parseString(p, nkir_moduleGetArena(p->mod->ir)));
 
         NkIrType type = allocStringType(p, str.size);
 
@@ -695,7 +695,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
 static NkIrRefArray parseRefArray(ParserState *p) {
     NkIrRefArray ret = {0};
 
-    NkIrRefDynArray refs = {.alloc = nk_arena_getAllocator(p->arena)};
+    NkIrRefDynArray refs = nkir_moduleNewRefArray(p->mod->ir);
 
     EXPECT(NklIrToken_LParen);
 
@@ -843,7 +843,7 @@ static NkIrInstr parseInstr(ParserState *p) {
     }
 
     else if (ACCEPT(NklIrToken_comment)) { // TODO: Pass comments from the lexer
-        TRY(NkString const str = parseString(p));
+        TRY(NkString const str = parseString(p, nkir_moduleGetArena(p->mod->ir)));
         ret = nkir_make_comment(str);
     }
 
@@ -863,7 +863,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_LParen);
 
-    NkIrParamDynArray params = {.alloc = nk_arena_getAllocator(p->arena)};
+    NkIrParamDynArray params = nkir_moduleNewParamArray(p->mod->ir);
 
     while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
         EXPECT(NklIrToken_Colon);
@@ -907,7 +907,7 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
     while (ACCEPT(NklToken_Newline)) {
     }
 
-    NkIrInstrDynArray instrs = {.alloc = nk_arena_getAllocator(p->arena)};
+    NkIrInstrDynArray instrs = nkir_moduleNewInstrArray(p->mod->ir);
 
     while (!on(p, NklIrToken_RBrace) && !on(p, NklToken_Eof)) {
         TRY(NkIrInstr const instr = parseInstr(p));
@@ -965,7 +965,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         }
 
         else if (on(p, NklToken_String) || on(p, NklToken_EscapedString)) {
-            TRY(NkString const str = parseString(p));
+            TRY(NkString const str = parseString(p, nkir_moduleGetArena(p->mod->ir)));
 
             type = allocStringType(p, str.size);
             addr = (void *)str.data;
@@ -1002,7 +1002,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
 static Void parseExtern(ParserState *p) {
     NkAtom lib = 0;
     if (on(p, NklToken_String)) {
-        TRY(NkString const str = parseString(p));
+        TRY(NkString const str = parseString(p, &p->scratch));
         TRY(NkString const lib_str = nickl_translateLib(p->mod, str));
         lib = nk_s2atom(lib_str);
     }
@@ -1010,7 +1010,7 @@ static Void parseExtern(ParserState *p) {
     if (ACCEPT(NklIrToken_proc)) {
         TRY(NkAtom const sym_name = parseId(p));
 
-        NkIrTypeDynArray param_types = {.alloc = nk_arena_getAllocator(p->arena)};
+        NkIrTypeDynArray param_types = nkir_moduleNewTypeArray(p->mod->ir);
         bool is_variadic = false;
 
         EXPECT(NklIrToken_LParen);
@@ -1135,7 +1135,7 @@ static Void parseSymbol(ParserState *p) {
     }
 
     else if (ACCEPT(NklIrToken_include)) {
-        TRY(NkString const name = parseString(p));
+        TRY(NkString const name = parseString(p, &p->scratch));
         NkAtom const file = nickl_findFile(p->mod->com->nkl, p->src->file, name);
 
         if (!file) {
@@ -1186,8 +1186,6 @@ bool nkl_ir_parse(NklIrParserData const *data) {
 
     NklModule const mod = data->mod;
 
-    usize const start_idx = mod->ir.size;
-
     NklState nkl = mod->com->nkl;
 
     ParserState p = {
@@ -1202,15 +1200,6 @@ bool nkl_ir_parse(NklIrParserData const *data) {
     }
 
     nk_arena_free(&p.scratch);
-
-    NK_LOG_STREAM_INF {
-        NkArena scratch = {0};
-        NkStream log = nk_log_getStream();
-        nk_printf(log, "IR:\n");
-        NkIrModule const syms = {mod->ir.data + start_idx, mod->ir.size - start_idx};
-        nkir_inspectModule(log, &scratch, syms);
-        nk_arena_free(&scratch);
-    }
 
     return !p.error_occurred;
 }

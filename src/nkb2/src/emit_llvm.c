@@ -807,6 +807,9 @@ static void emitData(NkStream out, NkIrData const *data) {
 
 static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     switch (sym->kind) {
+        case NkIrSymbol_None:
+            break;
+
         case NkIrSymbol_Proc: {
             LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
@@ -920,7 +923,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     nk_printf(out, "\n");
 }
 
-void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrModule mod) {
+void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
     NK_ARENA_SCOPE(scratch) {
         NK_ITERATE(NkIrSymbol const *, sym, mod) {
             emitSymbol(out, scratch, sym);

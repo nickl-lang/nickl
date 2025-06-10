@@ -7,12 +7,7 @@
 
 NK_LOG_USE_SCOPE(cc_adapter);
 
-bool nkcc_streamOpen(
-    NkArena *scratch,
-    NkPipeStream *ps,
-    NkStringBuf opt_buf,
-    NkIrCompilerConfig const conf,
-    NkStream *out) {
+bool nkcc_streamOpen(NkArena *scratch, NkPipeStream *ps, NkStringBuf opt_buf, NkIrCompilerConfig conf, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret;

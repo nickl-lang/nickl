@@ -89,6 +89,84 @@ static bool isJumpInstr(u8 code) {
     }
 }
 
+typedef struct NkbState_T {
+    NkArena arena;
+
+    LLVMContextRef llvm_ctx;
+} NkbState_T;
+
+typedef struct NkIrModule_T {
+    NkbState nkb;
+    NkIrSymbolDynArray syms;
+} NkIrModule_T;
+
+typedef struct NkIrRuntime_T {
+    NkbState nkb;
+} NkIrRuntime_T;
+
+NkbState nkir_newState(void) {
+    NK_LOG_TRC("%s", __func__);
+
+    LLVMInitializeNativeTarget();
+    LLVMInitializeNativeAsmPrinter();
+
+    NkArena arena = {0};
+    NkbState nkb = nk_arena_allocT(&arena, NkbState_T);
+    *nkb = (NkbState_T){
+        .arena = arena,
+
+        .llvm_ctx = LLVMContextCreate(),
+    };
+
+    return nkb;
+}
+
+void nkir_freeState(NkbState nkb) {
+    NK_LOG_TRC("%s", __func__);
+
+    LLVMContextDispose(nkb->llvm_ctx);
+
+    NkArena arena = nkb->arena;
+    nk_arena_free(&arena);
+}
+
+NkIrModule nkir_newModule(NkbState nkb) {
+    NkIrModule mod = nk_arena_allocT(&nkb->arena, NkIrModule_T);
+    *mod = (NkIrModule_T){
+        .nkb = nkb,
+        .syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
+    };
+    return mod;
+}
+
+NkArena *nkir_moduleGetArena(NkIrModule mod) {
+    return &mod->nkb->arena;
+}
+
+void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym) {
+    nkda_append(&mod->syms, *sym);
+}
+
+NkIrRefDynArray nkir_moduleNewRefArray(NkIrModule mod) {
+    return (NkIrRefDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
+}
+
+NkIrInstrDynArray nkir_moduleNewInstrArray(NkIrModule mod) {
+    return (NkIrInstrDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
+}
+
+NkIrTypeDynArray nkir_moduleNewTypeArray(NkIrModule mod) {
+    return (NkIrTypeDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
+}
+
+NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod) {
+    return (NkIrParamDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
+}
+
+NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod) {
+    return (NkIrRelocDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
+}
+
 void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out) {
     NK_LOG_TRC("%s", __func__);
 
@@ -302,7 +380,7 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
 
     NkArena llvm_ir_arena = {0};
     NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(&llvm_ir_arena)};
-    nkir_emit_llvm(nksb_getStream(&llvm_ir), scratch, mod);
+    nkir_emit_llvm(nksb_getStream(&llvm_ir), scratch, (NkIrSymbolArray){NKS_INIT(mod->syms)});
     nksb_appendNull(&llvm_ir);
 
     NK_LOG_STREAM_INF {
@@ -311,19 +389,16 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
     }
 
     { // TODO: Move LLVM out
-        LLVMInitializeNativeTarget();
-        LLVMInitializeNativeAsmPrinter();
+        NkbState nkb = mod->nkb;
 
-        LLVMContextRef context = LLVMContextCreate();
         char *error = NULL;
 
-        LLVMModuleRef module = LLVMModuleCreateWithName("main");
+        LLVMModuleRef module = LLVMModuleCreateWithNameInContext("main", nkb->llvm_ctx);
 
         LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
 
-        if (LLVMParseIRInContext(context, buffer, &module, &error)) {
+        if (LLVMParseIRInContext(nkb->llvm_ctx, buffer, &module, &error)) {
             NK_LOG_ERR("Error parsing IR: %s", error);
-            LLVMContextDispose(context);
             return;
         }
 
@@ -331,7 +406,6 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
         LLVMTargetRef target;
         if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
             NK_LOG_ERR("Failed to get target from triple: %s", error);
-            LLVMContextDispose(context);
             return;
         }
         LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
@@ -347,7 +421,6 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
                 LLVMDisposePassBuilderOptions(pbo);
                 LLVMDisposeTargetMachine(tm);
                 LLVMDisposeMessage(triple);
-                LLVMContextDispose(context);
                 return;
             }
             LLVMDisposePassBuilderOptions(pbo);
@@ -357,14 +430,11 @@ static void exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
             NK_LOG_ERR("Failed to emit object file: %s", error);
             LLVMDisposeTargetMachine(tm);
             LLVMDisposeMessage(triple);
-            LLVMContextDispose(context);
             return;
         }
 
         LLVMDisposeTargetMachine(tm);
         LLVMDisposeMessage(triple);
-
-        LLVMContextDispose(context);
     }
 
     // TODO: Use twin scratch arenas
@@ -388,18 +458,20 @@ void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString out_file, NkIr
     }
 }
 
-NkIrRunCtx nkir_createRunCtx(NkIrModule *mod, NkArena *arena) {
+NkIrRuntime nkir_createRuntime(NkbState nkb) {
     NK_LOG_TRC("%s", __func__);
 
-    (void)mod;
-    (void)arena;
-    nk_assert(!"TODO: `nkir_createRunCtx` not implemented");
+    NkIrRuntime rt = nk_arena_allocT(&nkb->arena, NkIrRuntime_T);
+    *rt = (NkIrRuntime_T){
+        .nkb = nkb,
+    };
+    return rt;
 }
 
-bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret) {
+bool nkir_invoke(NkIrRuntime rt, NkAtom sym, void **args, void **ret) {
     NK_LOG_TRC("%s", __func__);
 
-    (void)ctx;
+    (void)rt;
     (void)sym;
     (void)args;
     (void)ret;
@@ -410,7 +482,7 @@ bool nkir_run(NkIrModule mod) {
     NkArena scratch = {0};
     NkArena llvm_ir_arena = {0};
     NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(&llvm_ir_arena)};
-    nkir_emit_llvm(nksb_getStream(&llvm_ir), &scratch, mod);
+    nkir_emit_llvm(nksb_getStream(&llvm_ir), &scratch, (NkIrSymbolArray){NKS_INIT(mod->syms)});
     nksb_appendNull(&llvm_ir);
 
     NK_LOG_STREAM_INF {
@@ -419,10 +491,7 @@ bool nkir_run(NkIrModule mod) {
     }
 
     { // TODO: Move LLVM out
-        LLVMInitializeNativeTarget();
-        LLVMInitializeNativeAsmPrinter();
-
-        LLVMContextRef context = LLVMContextCreate();
+        NkbState nkb = mod->nkb;
 
         char *error = NULL;
         LLVMErrorRef err_ref = NULL;
@@ -467,7 +536,6 @@ bool nkir_run(NkIrModule mod) {
             NK_LOG_ERR("define symbol: %s\n", err_msg);
             LLVMDisposeErrorMessage(err_msg);
             LLVMOrcDisposeLLJIT(jit);
-            LLVMContextDispose(context);
             return false;
         }
 
@@ -479,9 +547,8 @@ bool nkir_run(NkIrModule mod) {
         LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
 
         LLVMModuleRef module = NULL;
-        if (LLVMParseIRInContext(context, buffer, &module, &error)) {
+        if (LLVMParseIRInContext(nkb->llvm_ctx, buffer, &module, &error)) {
             NK_LOG_ERR("Error parsing IR: %s", error);
-            LLVMContextDispose(context);
             return false;
         }
         // LLVMSetTarget(module, triple);
@@ -496,7 +563,6 @@ bool nkir_run(NkIrModule mod) {
                 LLVMDisposeMessage(triple);
                 LLVMOrcDisposeThreadSafeContext(tsc);
                 LLVMOrcDisposeLLJIT(jit);
-                LLVMContextDispose(context);
                 return false;
             }
             LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
@@ -512,7 +578,6 @@ bool nkir_run(NkIrModule mod) {
                 LLVMDisposeMessage(triple);
                 LLVMOrcDisposeThreadSafeContext(tsc);
                 LLVMOrcDisposeLLJIT(jit);
-                LLVMContextDispose(context);
                 return false;
             }
 
@@ -531,7 +596,6 @@ bool nkir_run(NkIrModule mod) {
             LLVMDisposeMessage(triple);
             LLVMOrcDisposeThreadSafeContext(tsc);
             LLVMOrcDisposeLLJIT(jit);
-            LLVMContextDispose(context);
             return false;
         }
 
@@ -541,7 +605,6 @@ bool nkir_run(NkIrModule mod) {
         LLVMDisposeMessage(triple);
         LLVMOrcDisposeThreadSafeContext(tsc);
         LLVMOrcDisposeLLJIT(jit);
-        LLVMContextDispose(context);
     }
 
     // TODO: Use twin scratch arenas
@@ -552,7 +615,7 @@ bool nkir_run(NkIrModule mod) {
 }
 
 void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod) {
-    NK_ITERATE(NkIrSymbol const *, sym, mod) {
+    NK_ITERATE(NkIrSymbol const *, sym, mod->syms) {
         nk_printf(out, "\n");
         nkir_inspectSymbol(out, scratch, sym);
     }
@@ -736,6 +799,9 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     NkString const sym_str = nk_atom2s(sym->name);
 
     switch (sym->kind) {
+        case NkIrSymbol_None:
+            break;
+
         case NkIrSymbol_Proc: {
             LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);

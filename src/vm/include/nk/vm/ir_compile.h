@@ -15,7 +15,7 @@ typedef struct {
     bool quiet;
 } NkIrCompilerConfig;
 
-bool nkir_compile(NkArena *scratch, NkIrCompilerConfig const conf, NkIrProg ir, NkIrFunct entry_point);
+bool nkir_compile(NkArena *scratch, NkIrCompilerConfig conf, NkIrProg ir, NkIrFunct entry_point);
 
 #ifdef __cplusplus
 }

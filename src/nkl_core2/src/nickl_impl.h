@@ -15,10 +15,9 @@ extern "C" {
 #endif
 
 typedef struct NklState_T {
-    struct NklState_T *next;
-
     NkArena arena;
     NkArena scratch;
+    NkbState nkb;
     NklError *error;
 } NklState_T;
 
@@ -37,7 +36,7 @@ typedef NkDynArray(NklModule) NklModuleDynArray;
 
 typedef struct NklModule_T {
     NklCompiler com;
-    NkIrSymbolDynArray ir;
+    NkIrModule ir;
 
     NklModuleDynArray linked_in;
     NklModuleDynArray linked_to;

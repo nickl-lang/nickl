@@ -10,7 +10,7 @@
 
 NK_LOG_USE_SCOPE(pipe_stream);
 
-bool nk_pipe_streamOpenRead(NkPipeStreamInfo const info, NkStream *out) {
+bool nk_pipe_streamOpenRead(NkPipeStreamInfo info, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;
@@ -49,7 +49,7 @@ bool nk_pipe_streamOpenRead(NkPipeStreamInfo const info, NkStream *out) {
     return ret;
 }
 
-bool nk_pipe_streamOpenWrite(NkPipeStreamInfo const info, NkStream *out) {
+bool nk_pipe_streamOpenWrite(NkPipeStreamInfo info, NkStream *out) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret = false;

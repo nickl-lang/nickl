@@ -25,8 +25,8 @@ typedef struct {
     bool quiet;
 } NkPipeStreamInfo;
 
-NK_EXPORT bool nk_pipe_streamOpenRead(NkPipeStreamInfo const info, NkStream *out);
-NK_EXPORT bool nk_pipe_streamOpenWrite(NkPipeStreamInfo const info, NkStream *out);
+NK_EXPORT bool nk_pipe_streamOpenRead(NkPipeStreamInfo info, NkStream *out);
+NK_EXPORT bool nk_pipe_streamOpenWrite(NkPipeStreamInfo info, NkStream *out);
 
 NK_EXPORT i32 nk_pipe_streamClose(NkPipeStream *ps);
 
