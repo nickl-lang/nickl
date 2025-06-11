@@ -281,19 +281,12 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-void nkir_exportModule(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind);
+bool nkir_exportModule(NkIrModule mod, NkString out_file, NkIrOutputKind kind);
 
 /// Runtime
 
-// TODO: Hide NkIrRuntime completely?
-NkIrRuntime nkir_getRuntime(NkbState nkb);
-
-bool nkir_invoke(NkIrRuntime rt, NkAtom sym, void **args, void **ret);
-// TODO: Adding a hack to just run _entry
-bool nkir_run(NkIrRuntime rt, NkIrModule mod);
-
-void *nkir_getSymbolAddress(NkbState nkb, NkAtom sym);
-
+bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret);
+void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym);
 bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms);
 
 /// Inspection

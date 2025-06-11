@@ -59,9 +59,6 @@ NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind 
 
 NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkString name);
 
-// TODO: Remove runModule in favor of getSymbolAddress
-NK_EXPORT bool nkl_runModule(NklModule mod);
-
 NK_EXPORT NklError const *nkl_getErrors(NklState nkl);
 
 #ifdef __cplusplus

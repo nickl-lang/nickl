@@ -1,3 +1,4 @@
+#include "nkb/ir.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
@@ -96,7 +97,12 @@ static int run(RunInfo const info) {
     }
 
     if (info.run) {
-        return !nkl_runModule(mod);
+        void (*entry)() = nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
+        if (!entry) {
+            printDiag(nkl);
+            return 1;
+        }
+        entry();
     } else {
         if (!nkl_exportModule(mod, info.out_file, info.out_kind)) {
             printDiag(nkl);

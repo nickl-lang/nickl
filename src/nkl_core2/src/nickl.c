@@ -228,8 +228,6 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     TRY(mod);
 
-    NklState nkl = mod->com->nkl;
-
     // TODO: Handle errors
 
     static_assert((int)NklOutput_None == NkIrOutput_None, "");
@@ -239,7 +237,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     static_assert((int)NklOutput_Archiv == NkIrOutput_Archiv, "");
     static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
 
-    nkir_exportModule(&nkl->scratch, mod->ir, out_file, (NkIrOutputKind)kind);
+    nkir_exportModule(mod->ir, out_file, (NkIrOutputKind)kind);
 
     return true;
 }
@@ -248,16 +246,6 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
-
-    NklState nkl = mod->com->nkl;
-
-    (void)name;
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_getSymbolAddress` is not implemented");
-    return NULL;
-}
-
-bool nkl_runModule(NklModule mod) {
-    NklState nkl = mod->com->nkl;
 
     // TODO: Hardcoded external syms
     NkIrSymbolAddress syms[] = {
@@ -284,7 +272,7 @@ bool nkl_runModule(NklModule mod) {
     };
     nkir_defineExternSymbols(mod->ir, (NkIrSymbolAddressArray){syms, NK_ARRAY_COUNT(syms)});
 
-    return nkir_run(nkir_getRuntime(nkl->nkb), mod->ir);
+    return nkir_getSymbolAddress(mod->ir, nk_s2atom(name));
 }
 
 NklError const *nkl_getErrors(NklState nkl) {
