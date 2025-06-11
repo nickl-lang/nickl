@@ -1,16 +1,5 @@
 #include "nkb/ir.h"
 
-#include <llvm-c/Core.h>
-#include <llvm-c/Error.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/IRReader.h>
-#include <llvm-c/LLJIT.h>
-#include <llvm-c/Orc.h>
-#include <llvm-c/TargetMachine.h>
-#include <llvm-c/Transforms/PassBuilder.h>
-#include <llvm-c/Types.h>
-#include <unistd.h> // TODO: Remove this, only used for _exit
-
 #include "common.h"
 #include "linker.h"
 #include "llvm_adapter.h"
@@ -92,57 +81,26 @@ typedef struct NkbState_T {
     NkArena arena;
     NkArena scratch[2];
 
-    LLVMContextRef llvm_ctx;
-    NkIrRuntime _rt;
-    LLVMPassBuilderOptionsRef pbo;
-    char *triple;
-    LLVMTargetMachineRef tm;
+    NkLlvmRuntime _llvm_rt;
+    NkLlvmState_T llvm;
 } NkbState_T;
 
 typedef struct NkIrModule_T {
     NkbState nkb;
     NkIrSymbolDynArray syms;
-    LLVMOrcJITDylibRef _jd;
+    NkLlvmRuntimeModule _llvm_rt_mod;
 } NkIrModule_T;
-
-typedef struct NkIrRuntime_T {
-    NkbState nkb;
-    LLVMOrcThreadSafeContextRef tsc;
-    LLVMOrcLLJITRef jit;
-    char *triple;
-    LLVMTargetMachineRef tm;
-} NkIrRuntime_T;
 
 NkbState nkir_newState(void) {
     NK_LOG_TRC("%s", __func__);
-
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-
-    char *error = NULL;
-
-    LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
-
-    char *triple = LLVMGetDefaultTargetTriple();
-    LLVMTargetRef target;
-    if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
-        NK_LOG_ERR("Failed to get target from triple: %s", error);
-        _exit(1);
-        return NULL;
-    }
-    LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
-        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
 
     NkArena arena = {0};
     NkbState nkb = nk_arena_allocT(&arena, NkbState_T);
     *nkb = (NkbState_T){
         .arena = arena,
-
-        .llvm_ctx = LLVMContextCreate(),
-        .pbo = pbo,
-        .triple = triple,
-        .tm = tm,
     };
+
+    nk_llvm_init(&nkb->llvm);
 
     return nkb;
 }
@@ -150,20 +108,11 @@ NkbState nkir_newState(void) {
 void nkir_freeState(NkbState nkb) {
     NK_LOG_TRC("%s", __func__);
 
-    if (nkb->_rt) {
-        NkIrRuntime rt = nkb->_rt;
-
-        LLVMDisposeTargetMachine(rt->tm);
-        LLVMDisposeMessage(rt->triple);
-        LLVMOrcDisposeLLJIT(rt->jit);
-        LLVMOrcDisposeThreadSafeContext(rt->tsc);
+    if (nkb->_llvm_rt) {
+        nk_llvm_freeRuntime(nkb->_llvm_rt);
     }
 
-    LLVMDisposePassBuilderOptions(nkb->pbo);
-    LLVMDisposeMessage(nkb->triple);
-    LLVMDisposeTargetMachine(nkb->tm);
-
-    LLVMContextDispose(nkb->llvm_ctx);
+    nk_llvm_free(&nkb->llvm);
 
     nk_arena_free(&nkb->scratch[0]);
     nk_arena_free(&nkb->scratch[1]);
@@ -394,11 +343,7 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-static NkArena *getNextScratch(NkbState nkb, NkArena *conflict) {
-    return conflict != &nkb->scratch[0] ? &nkb->scratch[0] : &nkb->scratch[1];
-}
-
-bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
+static bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
     NkbState nkb = mod->nkb;
@@ -428,17 +373,7 @@ bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrO
     NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                                                   : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    LLVMModuleRef module = nk_llvm_createModule(
-        scratch, getNextScratch(nkb, scratch), (NkIrSymbolArray){NKS_INIT(mod->syms)}, nkb->llvm_ctx);
-    nk_llvm_optimize(module, nkb->tm, nkb->pbo);
-
-    char *error = NULL;
-    if (LLVMTargetMachineEmitToFile(nkb->tm, module, obj_file.data, LLVMObjectFile, &error) != 0) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("Failed to emit object file: %s", error);
-        _exit(1);
-        return false;
-    }
+    nk_llvm_emitObjectFile(nkb->scratch, &nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)}, obj_file);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){
@@ -462,77 +397,6 @@ bool nkir_exportModule(NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
     return ret;
 }
 
-NkIrRuntime nkir_createRuntime(NkbState nkb) {
-    NK_LOG_TRC("%s", __func__);
-
-    NkIrRuntime rt = nk_arena_allocT(&nkb->arena, NkIrRuntime_T);
-    *rt = (NkIrRuntime_T){
-        .nkb = nkb,
-    };
-    return rt;
-}
-
-static NkIrRuntime getRuntime(NkbState nkb) {
-    if (!nkb->_rt) {
-        LLVMErrorRef err = NULL;
-        char *error = NULL;
-
-        LLVMOrcThreadSafeContextRef tsc = LLVMOrcCreateNewThreadSafeContext();
-
-        LLVMOrcLLJITBuilderRef builder = LLVMOrcCreateLLJITBuilder();
-        LLVMOrcLLJITRef jit;
-        if ((err = LLVMOrcCreateLLJIT(&jit, builder))) {
-            char *err_msg = LLVMGetErrorMessage(err);
-            NK_LOG_ERR("Failed to create jit: %s", err_msg);
-            LLVMDisposeErrorMessage(err_msg);
-        }
-
-        char *triple = LLVMGetDefaultTargetTriple();
-
-        LLVMTargetRef target;
-        if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
-            // TODO: Report errors properly
-            NK_LOG_ERR("Failed to get target from triple: %s", error);
-            LLVMDisposeMessage(error);
-            _exit(1);
-            return NULL;
-        }
-
-        LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
-            target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelJITDefault);
-
-        nkb->_rt = nk_arena_allocT(&nkb->arena, NkIrRuntime_T);
-        *nkb->_rt = (NkIrRuntime_T){
-            .nkb = nkb,
-            .tsc = tsc,
-            .jit = jit,
-            .triple = triple,
-            .tm = tm,
-        };
-    }
-
-    return nkb->_rt;
-}
-
-static LLVMOrcJITDylibRef getModuleDylib(NkIrModule mod) {
-    NkbState nkb = mod->nkb;
-    NkIrRuntime rt = getRuntime(nkb);
-    if (!mod->_jd) {
-        LLVMOrcExecutionSessionRef es = LLVMOrcLLJITGetExecutionSession(rt->jit);
-        LLVMErrorRef err = LLVMOrcExecutionSessionCreateJITDylib(es, &mod->_jd, "main"); // TODO: Hardcoded dylib name
-        if (err) {
-            char *err_msg = LLVMGetErrorMessage(err);
-            // TODO: Report errors properly
-            NK_LOG_ERR("failed to create the dylib: %s\n", err_msg);
-            LLVMDisposeErrorMessage(err_msg);
-            _exit(1);
-            return NULL;
-        }
-    }
-
-    return mod->_jd;
-}
-
 bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret) {
     NK_LOG_TRC("%s", __func__);
 
@@ -544,24 +408,31 @@ bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret) {
     return false;
 }
 
+static NkLlvmRuntime getLlvmRuntime(NkbState nkb) {
+    if (!nkb->_llvm_rt) {
+        nkb->_llvm_rt = nk_arena_allocT(&nkb->arena, NkLlvmRuntime_T);
+        nk_llvm_initRuntime(&nkb->llvm, nkb->_llvm_rt);
+    }
+    return nkb->_llvm_rt;
+}
+
+static NkLlvmRuntimeModule getLlvmRuntimeModule(NkIrModule mod) {
+    if (!mod->_llvm_rt_mod) {
+        NkbState nkb = mod->nkb;
+        NkLlvmRuntime llvm_rt = getLlvmRuntime(nkb);
+
+        mod->_llvm_rt_mod = nk_arena_allocT(&nkb->arena, NkLlvmRuntimeModule_T);
+        nk_llvm_initRuntimeModule(llvm_rt, mod->_llvm_rt_mod);
+    }
+    return mod->_llvm_rt_mod;
+}
+
 void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
     NK_LOG_TRC("%s", __func__);
 
     NkbState nkb = mod->nkb;
-
-    NkIrRuntime rt = getRuntime(nkb);
-    LLVMOrcLLJITRef jit = rt->jit;
-    LLVMOrcJITDylibRef jd = getModuleDylib(mod);
-
-    NkArena *scratch = &nkb->scratch[0];
-    LLVMModuleRef module = nk_llvm_createModule(
-        scratch, getNextScratch(nkb, scratch), (NkIrSymbolArray){NKS_INIT(mod->syms)}, nkb->llvm_ctx);
-    nk_llvm_optimize(module, rt->tm, nkb->pbo);
-
-    LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(module, rt->tsc);
-    LLVMOrcLLJITAddLLVMIRModule(jit, jd, tsm);
-
-    return nk_llvm_lookup(jit, jd, nk_atom2cs(sym));
+    NkLlvmRuntimeModule rt_mod = getLlvmRuntimeModule(mod);
+    return nk_llvm_getSymbolAddress(nkb->scratch, rt_mod, (NkIrSymbolArray){NKS_INIT(mod->syms)}, sym);
 }
 
 bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
@@ -569,34 +440,8 @@ bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
 
     NkbState nkb = mod->nkb;
 
-    LLVMOrcLLJITRef jit = getRuntime(nkb)->jit;
-    LLVMOrcJITDylibRef jd = getModuleDylib(mod);
-
-    NkArena *scratch = &nkb->scratch[0];
-
-    LLVMOrcMaterializationUnitRef mu;
-    NK_ARENA_SCOPE(scratch) {
-        NkDynArray(LLVMOrcCSymbolMapPair) llvm_syms = {.alloc = nk_arena_getAllocator(scratch)};
-        NK_ITERATE(NkIrSymbolAddress const *, it, syms) {
-            nkda_append(
-                &llvm_syms,
-                ((LLVMOrcCSymbolMapPair){
-                    .Name = LLVMOrcLLJITMangleAndIntern(jit, nk_atom2cs(it->sym)),
-                    .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)it->addr, {0}},
-                }));
-        }
-        mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
-    }
-
-    LLVMErrorRef err = LLVMOrcJITDylibDefine(jd, mu);
-    if (err) {
-        char *err_msg = LLVMGetErrorMessage(err);
-        // TODO: Report errors properly
-        NK_LOG_ERR("define symbol: %s\n", err_msg);
-        LLVMDisposeErrorMessage(err_msg);
-        _exit(1);
-        return false;
-    }
+    NkLlvmRuntimeModule rt_mod = getLlvmRuntimeModule(mod);
+    nk_llvm_defineExternSymbols(&nkb->scratch[0], rt_mod, syms);
 
     return true;
 }

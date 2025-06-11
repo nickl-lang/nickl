@@ -25,7 +25,6 @@ typedef enum {
 
 typedef struct NkbState_T *NkbState;
 typedef struct NkIrModule_T *NkIrModule;
-typedef struct NkIrRuntime_T *NkIrRuntime;
 
 typedef enum {
     NkIrOutput_None = 0,

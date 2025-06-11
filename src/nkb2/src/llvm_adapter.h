@@ -1,27 +1,56 @@
 #pragma once
 
 #include <llvm-c/Core.h>
-#include <llvm-c/Error.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/IRReader.h>
 #include <llvm-c/LLJIT.h>
 #include <llvm-c/Orc.h>
 #include <llvm-c/TargetMachine.h>
-#include <llvm-c/Transforms/PassBuilder.h>
 #include <llvm-c/Types.h>
-#include <nkb/ir.h>
-#include <ntk/arena.h>
-#include <ntk/common.h>
+
+#include "nkb/ir.h"
+#include "ntk/arena.h"
+#include "ntk/atom.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void *nk_llvm_lookup(LLVMOrcLLJITRef jit_raw, LLVMOrcJITDylibRef jd, char const *name);
+typedef struct NkLlvmState_T *NkLlvmState;
+typedef struct NkLlvmRuntime_T *NkLlvmRuntime;
+typedef struct NkLlvmRuntimeModule_T *NkLlvmRuntimeModule;
 
-LLVMModuleRef nk_llvm_createModule(NkArena *scratch1, NkArena *scratch2, NkIrSymbolArray ir, LLVMContextRef ctx);
+typedef struct NkLlvmState_T {
+    LLVMContextRef ctx;
+    char *triple;
+    LLVMTargetMachineRef tm;
+} NkLlvmState_T;
 
-bool nk_llvm_optimize(LLVMModuleRef module, LLVMTargetMachineRef tm, LLVMPassBuilderOptionsRef pbo);
+typedef struct NkLlvmRuntime_T {
+    NkLlvmState llvm;
+    LLVMOrcLLJITRef jit;
+    LLVMOrcThreadSafeContextRef tsc;
+    char *triple;
+    LLVMTargetMachineRef tm;
+} NkLlvmRuntime_T;
+
+typedef struct NkLlvmRuntimeModule_T {
+    NkLlvmRuntime rt;
+    LLVMOrcJITDylibRef jd;
+} NkLlvmRuntimeModule_T;
+
+void nk_llvm_init(NkLlvmState llvm);
+void nk_llvm_free(NkLlvmState llvm);
+
+void nk_llvm_initRuntime(NkLlvmState llvm, NkLlvmRuntime rt);
+void nk_llvm_freeRuntime(NkLlvmRuntime rt);
+
+void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod);
+
+void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmRuntimeModule mod, NkIrSymbolAddressArray syms);
+
+void nk_llvm_emitObjectFile(NkArena scratch[2], NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file);
+void *nk_llvm_getSymbolAddress(NkArena scratch[2], NkLlvmRuntimeModule mod, NkIrSymbolArray syms, NkAtom sym);
+
+void *nk_llvm_lookup(LLVMOrcLLJITRef jit, LLVMOrcJITDylibRef jd, char const *name);
 
 #ifdef __cplusplus
 }
