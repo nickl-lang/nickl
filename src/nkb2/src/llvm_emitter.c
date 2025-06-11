@@ -1,4 +1,4 @@
-#include "emit_llvm.h"
+#include "llvm_emitter.h"
 
 #include <float.h>
 #include <inttypes.h>
@@ -15,7 +15,7 @@
 #include "ntk/utils.h"
 // #include "ntk/log.h"
 
-// NK_LOG_USE_SCOPE(emit_llvm);
+// NK_LOG_USE_SCOPE(llvm_emitter);
 
 static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrRelocArray relocs) {
     if (!type) {
@@ -923,7 +923,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
     nk_printf(out, "\n");
 }
 
-void nkir_emit_llvm(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
+void nk_llvm_emitIr(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
     NK_ARENA_SCOPE(scratch) {
         NK_ITERATE(NkIrSymbol const *, sym, mod) {
             emitSymbol(out, scratch, sym);

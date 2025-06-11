@@ -12,9 +12,8 @@
 #include <unistd.h> // TODO: Remove this, only used for _exit
 
 #include "common.h"
-#include "emit_llvm.h"
 #include "linker.h"
-#include "llvm.h"
+#include "llvm_adapter.h"
 #include "nkb/types.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
@@ -24,7 +23,6 @@
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
-#include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(ir);
@@ -396,16 +394,6 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-static bool nk_llvm_optimize(LLVMModuleRef module, LLVMTargetMachineRef tm, LLVMPassBuilderOptionsRef pbo) {
-    LLVMErrorRef err = NULL;
-    if ((err = LLVMRunPasses(module, "default<O3>", tm, pbo))) { // TODO: Hardcoded opt level
-        char *err_msg = LLVMGetErrorMessage(err);
-        NK_LOG_ERR("Failed to optimize: %s", err_msg);
-        return false;
-    }
-    return true;
-}
-
 static NkArena *getNextScratch(NkbState nkb, NkArena *conflict) {
     return conflict != &nkb->scratch[0] ? &nkb->scratch[0] : &nkb->scratch[1];
 }
@@ -440,32 +428,8 @@ bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrO
     NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                                                   : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    LLVMModuleRef module = NULL;
-    NkArena *llvm_ir_arena = getNextScratch(nkb, scratch);
-    NK_ARENA_SCOPE(llvm_ir_arena) {
-        // TODO: Emit ir selectively, reuse previously emitted ir?
-        NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(llvm_ir_arena)};
-        NK_ARENA_SCOPE(scratch) {
-            nkir_emit_llvm(nksb_getStream(&llvm_ir), scratch, (NkIrSymbolArray){NKS_INIT(mod->syms)});
-        }
-        nksb_appendNull(&llvm_ir);
-
-        NK_LOG_STREAM_INF {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
-        }
-
-        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
-
-        char *error = NULL;
-        if (LLVMParseIRInContext(nkb->llvm_ctx, buffer, &module, &error)) {
-            // TODO: Report errors properly
-            NK_LOG_ERR("Error parsing IR: %s", error);
-            _exit(1);
-            return false;
-        }
-    }
-
+    LLVMModuleRef module = nk_llvm_createModule(
+        scratch, getNextScratch(nkb, scratch), (NkIrSymbolArray){NKS_INIT(mod->syms)}, nkb->llvm_ctx);
     nk_llvm_optimize(module, nkb->tm, nkb->pbo);
 
     char *error = NULL;
@@ -589,34 +553,9 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
     LLVMOrcLLJITRef jit = rt->jit;
     LLVMOrcJITDylibRef jd = getModuleDylib(mod);
 
-    NkArena *llvm_ir_arena = &nkb->scratch[0];
-    NkArena *scratch = &nkb->scratch[1];
-
-    LLVMModuleRef module = NULL;
-    NK_ARENA_SCOPE(llvm_ir_arena) {
-        // TODO: Emit ir selectively, remember what's emitted
-        NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(llvm_ir_arena)};
-        NK_ARENA_SCOPE(scratch) {
-            nkir_emit_llvm(nksb_getStream(&llvm_ir), scratch, (NkIrSymbolArray){NKS_INIT(mod->syms)});
-        }
-        nksb_appendNull(&llvm_ir);
-
-        NK_LOG_STREAM_INF {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
-        }
-
-        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "buffer", 0);
-
-        char *error = NULL;
-        if (LLVMParseIRInContext(nkb->llvm_ctx, buffer, &module, &error)) {
-            // TODO: Report errors properly
-            NK_LOG_ERR("Error parsing IR: %s", error);
-            _exit(1);
-            return false;
-        }
-    }
-
+    NkArena *scratch = &nkb->scratch[0];
+    LLVMModuleRef module = nk_llvm_createModule(
+        scratch, getNextScratch(nkb, scratch), (NkIrSymbolArray){NKS_INIT(mod->syms)}, nkb->llvm_ctx);
     nk_llvm_optimize(module, rt->tm, nkb->pbo);
 
     LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(module, rt->tsc);

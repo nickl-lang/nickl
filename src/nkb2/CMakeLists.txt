@@ -2,12 +2,13 @@ set(LIB nkb2)
 
 add_library(${LIB}
     src/common.c
-    src/emit_llvm.c
     src/ir.c
     src/linker.c
+    src/llvm_adapter.c
+    src/llvm_adapter.cpp
+    src/llvm_emitter.c
     src/llvm_stream.c
     src/types.c
-    src/llvm.cpp
     )
 
 target_include_directories(${LIB}
