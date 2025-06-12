@@ -931,12 +931,12 @@ void nk_llvm_emitIr(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
             emitSymbol(out, scratch, sym);
         }
 
-        // TODO: Inserting name for libc compatibility main
-        nk_printf(
-            out,
-            "define dso_local i32 @main() {\n\
-  call void () @_entry()\n\
-  ret i32 0\n\
-}\n");
+//         // TODO: Inserting name for libc compatibility main
+//         nk_printf(
+//             out,
+//             "define dso_local i32 @main() {\n\
+//   call void () @_entry()\n\
+//   ret i32 0\n\
+// }\n");
     }
 }

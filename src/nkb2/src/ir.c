@@ -1,5 +1,7 @@
 #include "nkb/ir.h"
 
+#include <unistd.h> // TODO: Remove, only used for _exit
+
 #include "common.h"
 #include "linker.h"
 #include "llvm_adapter.h"
@@ -8,6 +10,7 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
+#include "ntk/hash_tree.h"
 #include "ntk/log.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
@@ -422,17 +425,173 @@ static NkLlvmRuntimeModule getLlvmRuntimeModule(NkIrModule mod) {
     return mod->_llvm_rt_mod;
 }
 
-void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
+static NkIrSymbol *findSymbol(NkIrModule mod, NkAtom sym_name) {
+    NK_ITERATE(NkIrSymbol *, it, mod->syms) {
+        if (it->name == sym_name) {
+            return it;
+        }
+    }
+    return NULL;
+}
+
+static void collectSymbols(_NkIntptrHashTree_Node *node, NkIrSymbolDynArray *out) {
+    if (!node) {
+        return;
+    }
+    NkIrSymbol const *sym = (NkIrSymbol const *)node->item.key;
+    nkda_append(out, *sym);
+    collectSymbols(node->child[0], out);
+    collectSymbols(node->child[1], out);
+}
+
+static void getDepsFromRef(NkIrModule mod, NkIrRef const *ref, NkIntptrHashTree *out) {
+    switch (ref->kind) {
+        case NkIrRef_Global:
+            NkIntptrHashTree_insert(
+                out,
+                (NkIntptr_kv){
+                    .key = (intptr_t)findSymbol(mod, ref->sym),
+                });
+            break;
+
+        case NkIrRef_None:
+        case NkIrRef_Null:
+        case NkIrRef_Local:
+        case NkIrRef_Param:
+        case NkIrRef_Imm:
+        case NkIrRef_VariadicMarker:
+            break;
+    }
+}
+
+static void getDepsFromArg(NkIrModule mod, NkIrArg const *arg, NkIntptrHashTree *out) {
+    switch (arg->kind) {
+        case NkIrArg_Ref:
+            getDepsFromRef(mod, &arg->ref, out);
+            break;
+
+        case NkIrArg_RefArray:
+            NK_ITERATE(NkIrRef const *, ref, arg->refs) {
+                getDepsFromRef(mod, ref, out);
+            }
+            break;
+
+        case NkIrArg_None:
+        case NkIrArg_Label:
+        case NkIrArg_LabelRel:
+        case NkIrArg_Type:
+        case NkIrArg_String:
+            break;
+    }
+}
+
+static void getDepsFromInstr(NkIrModule mod, NkIrInstr const *instr, NkIntptrHashTree *out) {
+    for (usize i = 0; i < 3; i++) {
+        NkIrArg const *arg = &instr->arg[i];
+        getDepsFromArg(mod, arg, out);
+    }
+}
+
+static void gatherDeps(NkIrModule mod, _NkIntptrHashTree_Node *node, NkIntptrHashTree *out) {
+    if (!node) {
+        return;
+    }
+
+    NkIrSymbol const *sym = (NkIrSymbol const *)node->item.key;
+    switch (sym->kind) {
+        case NkIrSymbol_Proc:
+            NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
+                getDepsFromInstr(mod, instr, out);
+            }
+            break;
+
+        case NkIrSymbol_Data:
+            NK_ITERATE(NkIrReloc const *, reloc, sym->data.relocs) {
+                NkIntptrHashTree_insert(
+                    out,
+                    (NkIntptr_kv){
+                        .key = (intptr_t)findSymbol(mod, reloc->sym),
+                    });
+            }
+            break;
+
+        case NkIrSymbol_None:
+        case NkIrSymbol_ExternProc:
+        case NkIrSymbol_ExternData:
+            break;
+    }
+
+    gatherDeps(mod, node->child[0], out);
+    gatherDeps(mod, node->child[1], out);
+}
+
+static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDynArray *out) {
+    NkIrSymbol const *sym = findSymbol(mod, sym_name);
+    if (!sym) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("Failed to find symbol `%s`", nk_atom2cs(sym_name));
+        _exit(1);
+        return;
+    }
+
+    NkbState nkb = mod->nkb;
+
+    NkIntptrHashTree deps = {.alloc = nk_arena_getAllocator(&nkb->scratch[0])};
+    NkIntptrHashTree deps_tmp = {.alloc = nk_arena_getAllocator(&nkb->scratch[1])};
+    NkIntptrHashTree_insert(
+        &deps,
+        (NkIntptr_kv){
+            .key = (intptr_t)sym,
+        });
+    NkIntptrHashTree_insert(
+        &deps_tmp,
+        (NkIntptr_kv){
+            .key = (intptr_t)sym,
+        });
+
+    usize sym_count = 0;
+    usize new_sym_count = 1;
+
+    while (sym_count != new_sym_count) {
+        sym_count = new_sym_count;
+        // NK_LOG_ERR("AAAAAA sym_count=%zu", sym_count);
+
+        gatherDeps(mod, deps.root, &deps_tmp);
+
+        NkIntptrHashTree tmp = deps;
+        deps = deps_tmp;
+        deps_tmp = tmp;
+
+        nkda_clear(out);
+        collectSymbols(deps.root, out);
+        new_sym_count = out->size;
+
+        // NK_ITERATE(NkIrSymbol const *, it, *out) {
+        //     NK_LOG_ERR("AAAAAAAAAAAA sym=%s", nk_atom2cs(it->name));
+        // }
+    }
+}
+
+void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym_name) {
     NK_LOG_TRC("%s", __func__);
 
     NkbState nkb = mod->nkb;
-    return nk_llvm_getSymbolAddress(
-        &nkb->scratch,
-        &nkb->llvm,
-        getLlvmRuntime(nkb),
-        getLlvmRuntimeModule(mod),
-        (NkIrSymbolArray){NKS_INIT(mod->syms)},
-        sym);
+
+    void *addr = NULL;
+    NK_ARENA_SCOPE(&nkb->scratch[0]) {
+        NkIrSymbolDynArray syms = {.alloc = nk_arena_getAllocator(&nkb->scratch[0])};
+        getSymbolDependencies(mod, sym_name, &syms);
+
+        addr = nk_llvm_getSymbolAddress(
+            &nkb->scratch,
+            &nkb->llvm,
+            getLlvmRuntime(nkb),
+            getLlvmRuntimeModule(mod),
+            (NkIrSymbolArray){NKS_INIT(syms)},
+            sym_name);
+    }
+
+    return addr;
 }
 
 bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {

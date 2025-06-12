@@ -327,30 +327,30 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 
     TRY(mod);
 
-    // TODO: Hardcoded external syms
-    NkIrSymbolAddress syms[] = {
-        {
-            .sym = nk_cs2atom("printf"),
-            .addr = printf,
-        },
-        {
-            .sym = nk_cs2atom("puts"),
-            .addr = puts,
-        },
-        {
-            .sym = nk_cs2atom("pthread_create"),
-            .addr = pthread_create,
-        },
-        {
-            .sym = nk_cs2atom("pthread_join"),
-            .addr = pthread_join,
-        },
-        {
-            .sym = nk_cs2atom("sqrt"),
-            .addr = sqrt,
-        },
-    };
-    TRY(nkir_defineExternSymbols(mod->ir, (NkIrSymbolAddressArray){syms, NK_ARRAY_COUNT(syms)}));
+    // // TODO: Hardcoded external syms
+    // NkIrSymbolAddress syms[] = {
+    //     {
+    //         .sym = nk_cs2atom("printf"),
+    //         .addr = printf,
+    //     },
+    //     {
+    //         .sym = nk_cs2atom("puts"),
+    //         .addr = puts,
+    //     },
+    //     {
+    //         .sym = nk_cs2atom("pthread_create"),
+    //         .addr = pthread_create,
+    //     },
+    //     {
+    //         .sym = nk_cs2atom("pthread_join"),
+    //         .addr = pthread_join,
+    //     },
+    //     {
+    //         .sym = nk_cs2atom("sqrt"),
+    //         .addr = sqrt,
+    //     },
+    // };
+    // TRY(nkir_defineExternSymbols(mod->ir, (NkIrSymbolAddressArray){syms, NK_ARRAY_COUNT(syms)}));
 
     return nkir_getSymbolAddress(mod->ir, nk_s2atom(name));
 }

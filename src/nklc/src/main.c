@@ -97,6 +97,23 @@ static int run(RunInfo const info) {
     }
 
     if (info.run) {
+        if (!nkl_compileStringIr(mod, nk_cs2s("\n\
+pub proc sayHello() {\n\
+    call printf, (\"hello\\n\", ...) -> :i32\n\
+    ret\n\
+}\n\
+"))) {
+            printDiag(nkl);
+            return 1;
+        }
+
+        void (*sayHello)(void) = nkl_getSymbolAddress(mod, nk_cs2s("sayHello"));
+        if (!sayHello) {
+            printDiag(nkl);
+            return 1;
+        }
+        sayHello();
+
         void (*entry)(void) = nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
         if (!entry) {
             printDiag(nkl);
