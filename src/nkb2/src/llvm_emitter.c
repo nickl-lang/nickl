@@ -790,15 +790,17 @@ static void emitData(NkStream out, NkIrData const *data) {
     if (data->addr) {
         emitVal(out, data->addr, 0, data->relocs, data->type);
     } else {
-        emitType(out, data->type);
         switch (data->type->kind) {
             case NkIrType_Aggregate:
+                emitType(out, data->type);
                 nk_printf(out, " zeroinitializer");
                 break;
 
-            case NkIrType_Numeric:
-                nk_printf(out, " 0");
+            case NkIrType_Numeric: {
+                NkIrImm imm = {0};
+                emitVal(out, &imm, 0, (NkIrRelocArray){0}, data->type);
                 break;
+            }
         }
     }
 

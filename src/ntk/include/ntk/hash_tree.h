@@ -22,6 +22,11 @@
     TItem *TTree##_find(TTree *ht, TKey const key);     \
     void TTree##_free(TTree *ht)
 
+#define NK_HASH_TREE_PROTO_EXPORT(TTree, TItem, TKey)             \
+    NK_EXPORT TItem *TTree##_insert(TTree *ht, TItem const item); \
+    NK_EXPORT TItem *TTree##_find(TTree *ht, TKey const key);     \
+    NK_EXPORT void TTree##_free(TTree *ht)
+
 #define NK_HASH_TREE_IMPL(TTree, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)                        \
     typedef struct {                                                                                        \
         _##TTree##_Node **node;                                                                             \
@@ -93,5 +98,21 @@
     NK_HASH_TREE_TYPEDEF(TTree, TItem);                                                \
     NK_HASH_TREE_PROTO(TTree, TItem, TKey);                                            \
     NK_HASH_TREE_IMPL(TTree, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    intptr_t key;
+    intptr_t val;
+} NkIntptr_kv;
+
+NK_HASH_TREE_TYPEDEF(NkIntptrHashTree, NkIntptr_kv);
+NK_HASH_TREE_PROTO_EXPORT(NkIntptrHashTree, NkIntptr_kv, intptr_t);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NTK_HASH_TREE_H_

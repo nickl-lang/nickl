@@ -99,6 +99,8 @@ NK_INLINE i64 nk_maxi(i64 x, i64 y) {
 
 #undef _MAGIC
 
+// TODO: Use stronger hash function
+
 NK_INLINE void nk_hashCombine(u64 *seed, usize n) {
     *seed ^= n + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
 }

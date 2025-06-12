@@ -60,7 +60,7 @@ static void optimizeModule(LLVMModuleRef module, LLVMTargetMachineRef tm) {
     NK_LOG_STREAM_INF {
         char *str = LLVMPrintModuleToString(module);
         NkStream log = nk_log_getStream();
-        nk_printf(log, "LLVM IR optimized:\n%s", str);
+        nk_printf(log, "Optimized LLVM IR:\n%s", str);
         LLVMDisposeMessage(str);
     }
 
@@ -151,7 +151,7 @@ void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod) {
     if (err) {
         char *err_msg = LLVMGetErrorMessage(err);
         // TODO: Report errors properly
-        NK_LOG_ERR("failed to create the dylib: %s\n", err_msg);
+        NK_LOG_ERR("failed to create the dylib: %s", err_msg);
         LLVMDisposeErrorMessage(err_msg);
         _exit(1);
         return;
@@ -187,7 +187,7 @@ void nk_llvm_defineExternSymbols(
     if (err) {
         char *err_msg = LLVMGetErrorMessage(err);
         // TODO: Report errors properly
-        NK_LOG_ERR("define symbol: %s\n", err_msg);
+        NK_LOG_ERR("define symbol: %s", err_msg);
         LLVMDisposeErrorMessage(err_msg);
         _exit(1);
         return;
@@ -220,7 +220,14 @@ void *nk_llvm_getSymbolAddress(
     optimizeModule(module, rt->tm);
 
     LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(module, rt->tsc);
-    LLVMOrcLLJITAddLLVMIRModule(jit, mod->jd, tsm);
+    LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit, mod->jd, tsm);
+    if (err) {
+        char *err_msg = LLVMGetErrorMessage(err);
+        // TODO: Report errors properly
+        NK_LOG_ERR("Failed to optimize: %s", err_msg);
+        _exit(1);
+        return NULL;
+    }
 
     return lookupSymbol(jit, mod->jd, nk_atom2cs(sym));
 }

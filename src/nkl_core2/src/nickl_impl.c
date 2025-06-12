@@ -5,10 +5,12 @@
 #include "ir_tokens.h"
 #include "nkb/ir.h"
 #include "nkl/core/lexer.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
+#include "ntk/hash_tree.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -43,17 +45,49 @@ void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va
         }              \
     } while (0)
 
+static void defineTextImpl(NklState nkl, NkAtom file, NkString const *text) {
+    NkIntptrHashTree_insert(
+        &nkl->text_map,
+        (NkIntptr_kv){
+            .key = (intptr_t)file,
+            .val = (intptr_t)text,
+        });
+}
+
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache text
+    NkString text;
 
-    NkAllocator const alloc = nk_arena_getAllocator(&nkl->arena);
+    NkIntptr_kv *found = NkIntptrHashTree_find(&nkl->text_map, (intptr_t)file);
+    if (found) {
+        NK_LOG_DBG("Using cached text for file `%s`", nk_atom2cs(file));
+        text = *(NkString const *)found->val;
+    } else {
+        NK_LOG_DBG("Loading text for file `%s`", nk_atom2cs(file));
 
-    if (!nk_file_read(alloc, nk_atom2s(file), out_text)) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
-        return false;
+        NkAllocator const alloc = nk_arena_getAllocator(&nkl->arena);
+
+        if (!nk_file_read(alloc, nk_atom2s(file), &text)) {
+            nickl_reportError(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
+            return false;
+        }
+
+        NkString *text_ptr = nk_arena_allocT(&nkl->arena, NkString);
+        *text_ptr = text;
+        defineTextImpl(nkl, file, text_ptr);
     }
+
+    *out_text = text;
+    return true;
+}
+
+bool nickl_defineText(NklState nkl, NkAtom file, NkString text) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkString *text_ptr = nk_arena_allocT(&nkl->arena, NkString);
+    *text_ptr = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(text));
+    defineTextImpl(nkl, file, text_ptr);
 
     return true;
 }

@@ -29,6 +29,7 @@ NklState nkl_newState(void) {
         .arena = arena,
         .nkb = nkir_newState(),
     };
+    nkl->text_map = (NkIntptrHashTree){.alloc = nk_arena_getAllocator(&nkl->arena)};
     return nkl;
 }
 
@@ -157,6 +158,46 @@ bool nkl_compileFile(NklModule mod, NkString path) {
     }
 }
 
+static bool compileIrImpl(NklModule mod, NkAtom file) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    TRY(nkl_ir_parse(&(NklIrParserData){
+        .mod = mod,
+        .file = file,
+        .token_names = s_ir_tokens,
+    }));
+
+    return true;
+}
+
+static bool compileAstImpl(NklModule mod, NkAtom file) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    NklState nkl = mod->com->nkl;
+
+    NklAstNodeArray nodes;
+    TRY(nickl_getAst(nkl, file, &nodes));
+
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `compileAstImpl` is not finished");
+    return false;
+}
+
+static bool compileNklImpl(NklModule mod, NkAtom file) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    NklState nkl = mod->com->nkl;
+
+    (void)file;
+    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `compileNklImpl` is not implemented");
+    return false;
+}
+
 bool nkl_compileFileIr(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
@@ -176,13 +217,7 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
         return false;
     }
 
-    TRY(nkl_ir_parse(&(NklIrParserData){
-        .mod = mod,
-        .file = file,
-        .token_names = s_ir_tokens,
-    }));
-
-    return true;
+    return compileIrImpl(mod, file);
 }
 
 bool nkl_compileFileAst(NklModule mod, NkString path) {
@@ -204,11 +239,7 @@ bool nkl_compileFileAst(NklModule mod, NkString path) {
         return false;
     }
 
-    NklAstNodeArray nodes;
-    TRY(nickl_getAst(nkl, file, &nodes));
-
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileAst` is not finished");
-    return false;
+    return compileAstImpl(mod, file);
 }
 
 bool nkl_compileFileNkl(NklModule mod, NkString path) {
@@ -218,9 +249,58 @@ bool nkl_compileFileNkl(NklModule mod, NkString path) {
 
     NklState nkl = mod->com->nkl;
 
-    (void)path;
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `nkl_compileFileNkl` is not implemented");
-    return false;
+    char cwd[NK_MAX_PATH];
+    if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
+        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
+
+    NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
+    if (!file) {
+        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
+
+    return compileNklImpl(mod, file);
+}
+
+bool nkl_compileStringIr(NklModule mod, NkString src) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    NklState nkl = mod->com->nkl;
+
+    NkAtom file = nk_atom_unique((NkString){0});
+    TRY(nickl_defineText(nkl, file, src));
+
+    return compileIrImpl(mod, file);
+}
+
+bool nkl_compileStringAst(NklModule mod, NkString src) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    NklState nkl = mod->com->nkl;
+
+    NkAtom file = nk_atom_unique((NkString){0});
+    TRY(nickl_defineText(nkl, file, src));
+
+    return compileAstImpl(mod, file);
+}
+
+bool nkl_compileStringNkl(NklModule mod, NkString src) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod);
+
+    NklState nkl = mod->com->nkl;
+
+    NkAtom file = nk_atom_unique((NkString){0});
+    TRY(nickl_defineText(nkl, file, src));
+
+    return compileNklImpl(mod, file);
 }
 
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
@@ -270,7 +350,7 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
             .addr = sqrt,
         },
     };
-    nkir_defineExternSymbols(mod->ir, (NkIrSymbolAddressArray){syms, NK_ARRAY_COUNT(syms)});
+    TRY(nkir_defineExternSymbols(mod->ir, (NkIrSymbolAddressArray){syms, NK_ARRAY_COUNT(syms)}));
 
     return nkir_getSymbolAddress(mod->ir, nk_s2atom(name));
 }

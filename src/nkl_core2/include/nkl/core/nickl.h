@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 // TODO: Provide a C version for Nickl API without dependencies
+// TODO: Provide access to types through this API, otherwise nkl_getSymbolAddress cannot be safely used
 
 typedef struct NklState_T *NklState;
 typedef struct NklCompiler_T *NklCompiler;
@@ -51,9 +52,14 @@ NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
 NK_EXPORT bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib);
 
 NK_EXPORT bool nkl_compileFile(NklModule mod, NkString path);
+
 NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString path);  // *.nkir
 NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString path); // *.nkst
 NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString path); // *.nkl
+
+NK_EXPORT bool nkl_compileStringIr(NklModule mod, NkString src);
+NK_EXPORT bool nkl_compileStringAst(NklModule mod, NkString src);
+NK_EXPORT bool nkl_compileStringNkl(NklModule mod, NkString src);
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 

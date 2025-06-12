@@ -8,6 +8,7 @@
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
+#include "ntk/hash_tree.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -17,7 +18,11 @@ extern "C" {
 typedef struct NklState_T {
     NkArena arena;
     NkArena scratch;
+
     NkbState nkb;
+
+    NkIntptrHashTree text_map;
+
     NklError *error;
 } NklState_T;
 
@@ -49,6 +54,7 @@ NK_PRINTF_LIKE(3) void nickl_reportError(NklState nkl, NklSourceLocation loc, ch
 void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap);
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text);
+bool nickl_defineText(NklState nkl, NkAtom file, NkString text);
 
 bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens);
 bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens);
