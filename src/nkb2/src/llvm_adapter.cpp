@@ -1,12 +1,12 @@
-#include "llvm_adapter.h"
-
 #include <llvm/ExecutionEngine/Orc/Core.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/raw_ostream.h>
 #include <unistd.h> // TODO: Remove this, only used for _exit
 
-void *nk_llvm_lookup(LLVMOrcLLJITRef jit_, LLVMOrcJITDylibRef jd_, char const *name) {
+#include "llvm_adapter_internal.h"
+
+void *lookupSymbol(LLVMOrcLLJITRef jit_, LLVMOrcJITDylibRef jd_, char const *name) {
     auto *jit = reinterpret_cast<llvm::orc::LLJIT *>(jit_);
     auto *jd = reinterpret_cast<llvm::orc::JITDylib *>(jd_);
 

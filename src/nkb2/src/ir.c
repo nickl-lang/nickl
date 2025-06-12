@@ -108,10 +108,7 @@ NkbState nkir_newState(void) {
 void nkir_freeState(NkbState nkb) {
     NK_LOG_TRC("%s", __func__);
 
-    if (nkb->_llvm_rt) {
-        nk_llvm_freeRuntime(nkb->_llvm_rt);
-    }
-
+    nk_llvm_freeRuntime(nkb->_llvm_rt);
     nk_llvm_free(&nkb->llvm);
 
     nk_arena_free(&nkb->scratch[0]);
@@ -373,7 +370,7 @@ static bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
     NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                                                   : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    nk_llvm_emitObjectFile(nkb->scratch, &nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)}, obj_file);
+    nk_llvm_emitObjectFile(&nkb->scratch, &nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)}, obj_file);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){
@@ -411,7 +408,7 @@ bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret) {
 static NkLlvmRuntime getLlvmRuntime(NkbState nkb) {
     if (!nkb->_llvm_rt) {
         nkb->_llvm_rt = nk_arena_allocT(&nkb->arena, NkLlvmRuntime_T);
-        nk_llvm_initRuntime(&nkb->llvm, nkb->_llvm_rt);
+        nk_llvm_initRuntime(nkb->_llvm_rt);
     }
     return nkb->_llvm_rt;
 }
@@ -419,10 +416,8 @@ static NkLlvmRuntime getLlvmRuntime(NkbState nkb) {
 static NkLlvmRuntimeModule getLlvmRuntimeModule(NkIrModule mod) {
     if (!mod->_llvm_rt_mod) {
         NkbState nkb = mod->nkb;
-        NkLlvmRuntime llvm_rt = getLlvmRuntime(nkb);
-
         mod->_llvm_rt_mod = nk_arena_allocT(&nkb->arena, NkLlvmRuntimeModule_T);
-        nk_llvm_initRuntimeModule(llvm_rt, mod->_llvm_rt_mod);
+        nk_llvm_initRuntimeModule(getLlvmRuntime(nkb), mod->_llvm_rt_mod);
     }
     return mod->_llvm_rt_mod;
 }
@@ -431,8 +426,13 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
     NK_LOG_TRC("%s", __func__);
 
     NkbState nkb = mod->nkb;
-    NkLlvmRuntimeModule rt_mod = getLlvmRuntimeModule(mod);
-    return nk_llvm_getSymbolAddress(nkb->scratch, rt_mod, (NkIrSymbolArray){NKS_INIT(mod->syms)}, sym);
+    return nk_llvm_getSymbolAddress(
+        &nkb->scratch,
+        &nkb->llvm,
+        getLlvmRuntime(nkb),
+        getLlvmRuntimeModule(mod),
+        (NkIrSymbolArray){NKS_INIT(mod->syms)},
+        sym);
 }
 
 bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
@@ -440,8 +440,7 @@ bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
 
     NkbState nkb = mod->nkb;
 
-    NkLlvmRuntimeModule rt_mod = getLlvmRuntimeModule(mod);
-    nk_llvm_defineExternSymbols(&nkb->scratch[0], rt_mod, syms);
+    nk_llvm_defineExternSymbols(&nkb->scratch[0], getLlvmRuntime(nkb), getLlvmRuntimeModule(mod), syms);
 
     return true;
 }

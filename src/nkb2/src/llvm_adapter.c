@@ -6,19 +6,23 @@
 #include <llvm-c/Transforms/PassBuilder.h>
 #include <unistd.h> // TODO: Remove, only used for _exit
 
+#include "llvm_adapter_internal.h"
 #include "llvm_emitter.h"
 #include "ntk/log.h"
 #include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(llvm_adapter);
 
-static LLVMModuleRef compilerIr(NkLlvmState llvm, NkArena scratch[2], NkIrSymbolArray ir) {
+static LLVMModuleRef compilerIr(NkLlvmState llvm, NkArena (*scratch)[2], NkIrSymbolArray ir) {
+    NkArena *scratch0 = &(*scratch)[0];
+    NkArena *scratch1 = &(*scratch)[1];
+
     LLVMModuleRef module = NULL;
-    NK_ARENA_SCOPE(&scratch[0]) {
+    NK_ARENA_SCOPE(scratch0) {
         // TODO: Emit ir selectively
-        NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(&scratch[0])};
-        NK_ARENA_SCOPE(&scratch[1]) {
-            nk_llvm_emitIr(nksb_getStream(&llvm_ir), &scratch[1], ir);
+        NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(scratch0)};
+        NK_ARENA_SCOPE(scratch1) {
+            nk_llvm_emitIr(nksb_getStream(&llvm_ir), scratch1, ir);
         }
         nksb_appendNull(&llvm_ir);
 
@@ -94,7 +98,7 @@ void nk_llvm_free(NkLlvmState llvm) {
     LLVMContextDispose(llvm->ctx);
 }
 
-void nk_llvm_initRuntime(NkLlvmState llvm, NkLlvmRuntime rt) {
+void nk_llvm_initRuntime(NkLlvmRuntime rt) {
     LLVMErrorRef err = NULL;
     char *error = NULL;
 
@@ -123,7 +127,6 @@ void nk_llvm_initRuntime(NkLlvmState llvm, NkLlvmRuntime rt) {
         target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelJITDefault);
 
     *rt = (NkLlvmRuntime_T){
-        .llvm = llvm,
         .jit = jit,
         .tsc = tsc,
         .triple = triple,
@@ -132,10 +135,12 @@ void nk_llvm_initRuntime(NkLlvmState llvm, NkLlvmRuntime rt) {
 }
 
 void nk_llvm_freeRuntime(NkLlvmRuntime rt) {
-    LLVMDisposeTargetMachine(rt->tm);
-    LLVMDisposeMessage(rt->triple);
-    LLVMOrcDisposeLLJIT(rt->jit);
-    LLVMOrcDisposeThreadSafeContext(rt->tsc);
+    if (rt) {
+        LLVMDisposeTargetMachine(rt->tm);
+        LLVMDisposeMessage(rt->triple);
+        LLVMOrcDisposeLLJIT(rt->jit);
+        LLVMOrcDisposeThreadSafeContext(rt->tsc);
+    }
 }
 
 void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod) {
@@ -153,13 +158,16 @@ void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod) {
     }
 
     *mod = (NkLlvmRuntimeModule_T){
-        .rt = rt,
         .jd = jd,
     };
 }
 
-void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmRuntimeModule mod, NkIrSymbolAddressArray syms) {
-    LLVMOrcLLJITRef jit = mod->rt->jit;
+void nk_llvm_defineExternSymbols(
+    NkArena *scratch,
+    NkLlvmRuntime rt,
+    NkLlvmRuntimeModule mod,
+    NkIrSymbolAddressArray syms) {
+    LLVMOrcLLJITRef jit = rt->jit;
 
     LLVMOrcMaterializationUnitRef mu;
     NK_ARENA_SCOPE(scratch) {
@@ -186,7 +194,7 @@ void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmRuntimeModule mod, NkIr
     }
 }
 
-void nk_llvm_emitObjectFile(NkArena scratch[2], NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file) {
+void nk_llvm_emitObjectFile(NkArena (*scratch)[2], NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file) {
     LLVMModuleRef module = compilerIr(llvm, scratch, syms);
     optimizeModule(module, llvm->tm);
 
@@ -199,9 +207,13 @@ void nk_llvm_emitObjectFile(NkArena scratch[2], NkLlvmState llvm, NkIrSymbolArra
     }
 }
 
-void *nk_llvm_getSymbolAddress(NkArena scratch[2], NkLlvmRuntimeModule mod, NkIrSymbolArray syms, NkAtom sym) {
-    NkLlvmRuntime rt = mod->rt;
-    NkLlvmState llvm = rt->llvm;
+void *nk_llvm_getSymbolAddress(
+    NkArena (*scratch)[2],
+    NkLlvmState llvm,
+    NkLlvmRuntime rt,
+    NkLlvmRuntimeModule mod,
+    NkIrSymbolArray syms,
+    NkAtom sym) {
     LLVMOrcLLJITRef jit = rt->jit;
 
     LLVMModuleRef module = compilerIr(llvm, scratch, syms);
@@ -210,5 +222,5 @@ void *nk_llvm_getSymbolAddress(NkArena scratch[2], NkLlvmRuntimeModule mod, NkIr
     LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(module, rt->tsc);
     LLVMOrcLLJITAddLLVMIRModule(jit, mod->jd, tsm);
 
-    return nk_llvm_lookup(jit, mod->jd, nk_atom2cs(sym));
+    return lookupSymbol(jit, mod->jd, nk_atom2cs(sym));
 }
