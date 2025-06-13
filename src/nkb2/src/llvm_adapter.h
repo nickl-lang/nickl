@@ -14,8 +14,21 @@ extern "C" {
 #endif
 
 typedef struct NkLlvmState_T *NkLlvmState;
+
+typedef struct NkLlvmModule_T *NkLlvmModule;
+typedef struct NkLlvmTarget_T *NkLlvmTarget;
+
 typedef struct NkLlvmRuntime_T *NkLlvmRuntime;
 typedef struct NkLlvmRuntimeModule_T *NkLlvmRuntimeModule;
+
+typedef enum {
+    NkLlvmOptLevel_O0,
+    NkLlvmOptLevel_O1,
+    NkLlvmOptLevel_O2,
+    NkLlvmOptLevel_O3,
+    NkLlvmOptLevel_Os,
+    NkLlvmOptLevel_Oz,
+} NkLlvmOptLevel;
 
 typedef struct NkLlvmState_T {
     LLVMContextRef ctx;
@@ -34,24 +47,24 @@ typedef struct NkLlvmRuntimeModule_T {
     LLVMOrcJITDylibRef jd;
 } NkLlvmRuntimeModule_T;
 
-void nk_llvm_init(NkLlvmState llvm);
-void nk_llvm_free(NkLlvmState llvm);
+NkLlvmState nk_llvm_newState(NkArena *arena);
+void nk_llvm_freeState(NkLlvmState llvm);
 
 void nk_llvm_initRuntime(NkLlvmRuntime rt);
 void nk_llvm_freeRuntime(NkLlvmRuntime rt);
 
 void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod);
 
-void nk_llvm_emitObjectFile(NkArena (*scratch)[2], NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file);
+void nk_llvm_emitObjectFile(NkArena *arena, NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file);
 
 void nk_llvm_defineExternSymbols(
-    NkArena *scratch,
+    NkArena *arena,
     NkLlvmRuntime rt,
     NkLlvmRuntimeModule mod,
     NkIrSymbolAddressArray syms);
 
 void *nk_llvm_getSymbolAddress(
-    NkArena (*scratch)[2],
+    NkArena *arena,
     NkLlvmState llvm,
     NkLlvmRuntime rt,
     NkLlvmRuntimeModule mod,

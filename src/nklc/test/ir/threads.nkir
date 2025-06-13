@@ -18,6 +18,11 @@ pub proc _entry() {
     ret
 }
 
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
+}
+
 /* @output
 hello
 

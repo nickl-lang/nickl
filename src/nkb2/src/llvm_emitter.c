@@ -797,7 +797,8 @@ static void emitData(NkStream out, NkIrData const *data) {
                 break;
 
             case NkIrType_Numeric: {
-                NkIrImm imm = {0};
+                NkIrImm imm;
+                memset(&imm, 0, sizeof(imm));
                 emitVal(out, &imm, 0, (NkIrRelocArray){0}, data->type);
                 break;
             }
@@ -926,17 +927,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
 }
 
 void nk_llvm_emitIr(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
-    NK_ARENA_SCOPE(scratch) {
-        NK_ITERATE(NkIrSymbol const *, sym, mod) {
-            emitSymbol(out, scratch, sym);
-        }
-
-//         // TODO: Inserting name for libc compatibility main
-//         nk_printf(
-//             out,
-//             "define dso_local i32 @main() {\n\
-//   call void () @_entry()\n\
-//   ret i32 0\n\
-// }\n");
+    NK_ITERATE(NkIrSymbol const *, sym, mod) {
+        emitSymbol(out, scratch, sym);
     }
 }

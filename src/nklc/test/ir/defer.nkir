@@ -60,6 +60,11 @@ comment "<<<<<< end defer"
 
 }
 
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
+}
+
 /* @output
 allocate()->42
 use(42)

@@ -20,6 +20,13 @@ target_compile_definitions(${EXE}
     PUBLIC NK_BUILD_TIME="${BUILD_TIME}"
     )
 
+
+target_compile_definitions(${EXE}
+    PRIVATE SYSTEM_LIBC="${SYSTEM_LIBC}"
+    PRIVATE SYSTEM_LIBM="${SYSTEM_LIBM}"
+    PRIVATE SYSTEM_LIBPTHREAD="${SYSTEM_LIBPTHREAD}"
+    )
+
 if(CMAKE_TESTING_ENABLED)
     include(NklcTest)
     add_subdirectory(test)
