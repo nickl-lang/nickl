@@ -12,6 +12,7 @@
 #include "ntk/arena.h"
 #include "ntk/common.h"
 #include "ntk/file.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 
 NkPipe nk_pipe_create(void) {
@@ -102,25 +103,30 @@ static i32 execAsyncImpl(char const *const *args, NkHandle *process, NkPipe *in,
 
 i32 nk_execAsync(NkArena *scratch, NkString cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     i32 ret = 0;
-    NK_ARENA_SCOPE(scratch) {
-        NkStringArray const strs = nks_shell_lex(scratch, cmd);
+    NK_PROF_FUNC() {
+        NK_ARENA_SCOPE(scratch) {
+            NkStringArray const strs = nks_shell_lex(scratch, cmd);
 
-        char const **args = nk_arena_allocTn(scratch, char const *, strs.size + 1);
-        NK_ITERATE(NkString const *, it, strs) {
-            args[NK_INDEX(it, strs)] = it->data;
+            char const **args = nk_arena_allocTn(scratch, char const *, strs.size + 1);
+            NK_ITERATE(NkString const *, it, strs) {
+                args[NK_INDEX(it, strs)] = it->data;
+            }
+            args[strs.size] = NULL;
+
+            ret = execAsyncImpl(args, process, in, out, err);
         }
-        args[strs.size] = NULL;
-
-        ret = execAsyncImpl(args, process, in, out, err);
     }
     return ret;
 }
 
 i32 nk_waitProc(NkHandle process, i32 *exit_status) {
+    NK_PROF_FUNC_BEGIN();
+
     if (!nk_handleIsNull(process)) {
         for (;;) {
             i32 wstatus = 0;
             if (waitpid(handle2pid(process), &wstatus, 0) < 0) {
+                NK_PROF_END();
                 return -1;
             }
 
@@ -128,6 +134,7 @@ i32 nk_waitProc(NkHandle process, i32 *exit_status) {
                 if (exit_status) {
                     *exit_status = WEXITSTATUS(wstatus);
                 }
+                NK_PROF_END();
                 return 0;
             }
 
@@ -135,10 +142,12 @@ i32 nk_waitProc(NkHandle process, i32 *exit_status) {
                 if (exit_status) {
                     *exit_status = 128 + WTERMSIG(wstatus);
                 }
+                NK_PROF_END();
                 return 0;
             }
         }
     } else {
+        NK_PROF_END();
         return 0;
     }
 }

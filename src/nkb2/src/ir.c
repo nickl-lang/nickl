@@ -86,13 +86,13 @@ typedef struct NkbState_T {
     NkArena scratch;
 
     NkLlvmState llvm;
-    NkLlvmRuntime _llvm_rt;
+    NkLlvmJitState _llvm_jit;
 } NkbState_T;
 
 typedef struct NkIrModule_T {
     NkbState nkb;
     NkIrSymbolDynArray syms;
-    NkLlvmRuntimeModule _llvm_rt_mod;
+    NkLlvmJitDylib _llvm_jit_dylib;
     NkIntptrHashTree rt_loaded_syms;
 } NkIrModule_T;
 
@@ -104,7 +104,7 @@ NkbState nkir_newState(void) {
     *nkb = (NkbState_T){
         .arena = arena,
     };
-    nkb->llvm = nk_llvm_newState(&nkb->arena);
+    nkb->llvm = nk_llvm_createState(&nkb->arena);
 
     return nkb;
 }
@@ -112,7 +112,7 @@ NkbState nkir_newState(void) {
 void nkir_freeState(NkbState nkb) {
     NK_LOG_TRC("%s", __func__);
 
-    nk_llvm_freeRuntime(nkb->_llvm_rt);
+    nk_llvm_freeJitState(nkb->_llvm_jit);
     nk_llvm_freeState(nkb->llvm);
 
     nk_arena_free(&nkb->scratch);
@@ -374,7 +374,15 @@ static bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
     NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                                                   : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    nk_llvm_emitObjectFile(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)}, obj_file);
+    NkLlvmTarget tgt =
+        nk_llvm_createTarget(nkb->llvm, "x86_64-pc-linux-gnu"); // TODO: Hardcoded target, also creating every time
+
+    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
+    nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
+
+    nk_llvm_emitObjectFile(llvm_mod, tgt, obj_file);
+
+    nk_llvm_freeTarget(tgt);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){
@@ -409,21 +417,19 @@ bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret) {
     return false;
 }
 
-static NkLlvmRuntime getLlvmRuntime(NkbState nkb) {
-    if (!nkb->_llvm_rt) {
-        nkb->_llvm_rt = nk_arena_allocT(&nkb->arena, NkLlvmRuntime_T);
-        nk_llvm_initRuntime(nkb->_llvm_rt);
+static NkLlvmJitState getLlvmJitState(NkbState nkb) {
+    if (!nkb->_llvm_jit) {
+        nkb->_llvm_jit = nk_llvm_createJitState(nkb->llvm);
     }
-    return nkb->_llvm_rt;
+    return nkb->_llvm_jit;
 }
 
-static NkLlvmRuntimeModule getLlvmRuntimeModule(NkIrModule mod) {
-    if (!mod->_llvm_rt_mod) {
+static NkLlvmJitDylib getLlvmJitDylib(NkIrModule mod) {
+    if (!mod->_llvm_jit_dylib) {
         NkbState nkb = mod->nkb;
-        mod->_llvm_rt_mod = nk_arena_allocT(&nkb->arena, NkLlvmRuntimeModule_T);
-        nk_llvm_initRuntimeModule(getLlvmRuntime(nkb), mod->_llvm_rt_mod);
+        mod->_llvm_jit_dylib = nk_llvm_createJitDylib(nkb->llvm, getLlvmJitState(nkb));
     }
-    return mod->_llvm_rt_mod;
+    return mod->_llvm_jit_dylib;
 }
 
 static NkIrSymbol *findSymbol(NkIrModule mod, NkAtom sym_name) {
@@ -438,7 +444,6 @@ static NkIrSymbol *findSymbol(NkIrModule mod, NkAtom sym_name) {
     // TODO: Report errors properly
     NK_LOG_ERR("Failed to find symbol `%s`", nk_atom2cs(sym_name));
     _exit(1);
-    return NULL;
 }
 
 static void collectSymbols(_NkIntptrHashTree_Node *node, NkIrSymbolDynArray *out) {
@@ -579,10 +584,6 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
 
         nkda_clear(out);
         collectSymbols(deps.root, out);
-        NK_LOG_DBG("current iteration:");
-        NK_ITERATE(NkIrSymbol const *, it, *out) {
-            NK_LOG_DBG("  `%s`", nk_atom2cs(it->name));
-        }
         new_sym_count = out->size;
     }
 }
@@ -639,14 +640,12 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym_name) {
                             nk_atom2cs(it->extern_proc.lib),
                             nkdl_getLastErrorString());
                         _exit(1);
-                        return NULL;
                     }
                     void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(it->name));
                     if (!addr) {
                         // TODO: Report errors properly
                         NK_LOG_ERR("Failed to load symbol `%s`: %s", nk_atom2cs(it->name), nkdl_getLastErrorString());
                         _exit(1);
-                        return NULL;
                     }
                     nkda_append(
                         &syms_to_define,
@@ -663,14 +662,12 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym_name) {
                             nk_atom2cs(it->extern_proc.lib),
                             nkdl_getLastErrorString());
                         _exit(1);
-                        return NULL;
                     }
                     void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(it->name));
                     if (!addr) {
                         // TODO: Report errors properly
                         NK_LOG_ERR("Failed to load symbol `%s`: %s", nk_atom2cs(it->name), nkdl_getLastErrorString());
                         _exit(1);
-                        return NULL;
                     }
                     nkda_append(
                         &syms_to_define,
@@ -682,19 +679,19 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym_name) {
             }
         }
 
-        nk_llvm_defineExternSymbols(
-            scratch,
-            getLlvmRuntime(nkb),
-            getLlvmRuntimeModule(mod),
-            (NkIrSymbolAddressArray){NKS_INIT(syms_to_define)});
+        NkLlvmJitState jit = getLlvmJitState(nkb);
+        NkLlvmJitDylib dll = getLlvmJitDylib(mod);
 
-        addr = nk_llvm_getSymbolAddress(
-            scratch,
-            nkb->llvm,
-            getLlvmRuntime(nkb),
-            getLlvmRuntimeModule(mod),
-            (NkIrSymbolArray){NKS_INIT(syms)},
-            sym_name);
+        nk_llvm_defineExternSymbols(scratch, jit, dll, (NkIrSymbolAddressArray){NKS_INIT(syms_to_define)});
+
+        NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(syms)});
+
+        NkLlvmTarget tgt = nk_llvm_getJitTarget(jit);
+        nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
+
+        nk_llvm_jitModule(llvm_mod, jit, dll);
+
+        addr = nk_llvm_getSymbolAddress(jit, dll, sym_name);
     }
 
     return addr;
@@ -707,7 +704,7 @@ bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
     NkArena *scratch = &nkb->scratch;
 
     NK_ARENA_SCOPE(scratch) {
-        nk_llvm_defineExternSymbols(scratch, getLlvmRuntime(nkb), getLlvmRuntimeModule(mod), syms);
+        nk_llvm_defineExternSymbols(scratch, getLlvmJitState(nkb), getLlvmJitDylib(mod), syms);
     }
 
     return true;

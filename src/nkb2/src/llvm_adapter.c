@@ -3,6 +3,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Error.h>
 #include <llvm-c/IRReader.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 #include <unistd.h> // TODO: Remove, only used for _exit
 
@@ -10,33 +11,168 @@
 #include "llvm_emitter.h"
 #include "ntk/arena.h"
 #include "ntk/log.h"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(llvm_adapter);
 
-static LLVMModuleRef compilerIr(NkArena *arena, NkLlvmState llvm, NkIrSymbolArray ir) {
+NkLlvmState nk_llvm_createState(NkArena *arena) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkLlvmState llvm;
+    NK_PROF_FUNC() {
+        LLVMInitializeNativeTarget();
+        LLVMInitializeNativeAsmPrinter();
+
+        llvm = nk_arena_allocT(arena, NkLlvmState_T);
+        *llvm = (NkLlvmState_T){
+            .arena = arena,
+            .ctx = LLVMContextCreate(),
+        };
+    }
+    return llvm;
+}
+
+void nk_llvm_freeState(NkLlvmState llvm) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_PROF_FUNC() {
+        LLVMContextDispose(llvm->ctx);
+    }
+}
+
+NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkLlvmJitState jit;
+    NK_PROF_FUNC() {
+        LLVMOrcThreadSafeContextRef tsc = LLVMOrcCreateNewThreadSafeContext();
+
+        LLVMOrcLLJITBuilderRef builder = LLVMOrcCreateLLJITBuilder();
+
+        LLVMOrcLLJITRef lljit = NULL;
+        LLVMErrorRef err = LLVMOrcCreateLLJIT(&lljit, builder);
+        if (err) {
+            char *err_msg = LLVMGetErrorMessage(err);
+            NK_LOG_ERR("Failed to create jit: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+        }
+
+        char *triple = LLVMGetDefaultTargetTriple();
+        NkLlvmTarget tgt = nk_llvm_createTarget(llvm, triple);
+        LLVMDisposeMessage(triple);
+
+        jit = nk_arena_allocT(llvm->arena, NkLlvmJitState_T);
+        *jit = (NkLlvmJitState_T){
+            .lljit = lljit,
+            .tsc = tsc,
+            .tgt = tgt,
+        };
+    }
+    return jit;
+}
+
+void nk_llvm_freeJitState(NkLlvmJitState jit) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_PROF_FUNC() {
+        if (jit) {
+            nk_llvm_freeTarget(jit->tgt);
+            LLVMOrcDisposeThreadSafeContext(jit->tsc);
+            LLVMOrcDisposeLLJIT(jit->lljit);
+        }
+    }
+}
+
+NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit) {
+    return jit->tgt;
+}
+
+NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkLlvmJitDylib dll;
+    NK_PROF_FUNC() {
+        LLVMOrcExecutionSessionRef es = LLVMOrcLLJITGetExecutionSession(jit->lljit);
+
+        LLVMOrcJITDylibRef jd = NULL;
+        LLVMErrorRef err = LLVMOrcExecutionSessionCreateJITDylib(es, &jd, "main");
+        if (err) {
+            char *err_msg = LLVMGetErrorMessage(err);
+            // TODO: Report errors properly
+            NK_LOG_ERR("failed to create the dylib: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+            _exit(1);
+        }
+
+        dll = nk_arena_allocT(llvm->arena, NkLlvmJitDylib_T);
+        *dll = (NkLlvmJitDylib_T){
+            .jd = jd,
+        };
+    }
+    return dll;
+}
+
+NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkLlvmTarget tgt;
+    NK_PROF_FUNC() {
+        char *error = NULL;
+
+        char *triple_norm = LLVMNormalizeTargetTriple(triple);
+        LLVMTargetRef t = NULL;
+        if (LLVMGetTargetFromTriple(triple_norm, &t, &error)) {
+            // TODO: Report errors properly
+            NK_LOG_ERR("Failed to get target from triple: %s", error);
+            _exit(1);
+        }
+        LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+            t, triple_norm, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
+
+        LLVMDisposeMessage(triple_norm);
+
+        tgt = nk_arena_allocT(llvm->arena, NkLlvmTarget_T);
+        *tgt = (NkLlvmTarget_T){
+            .tm = tm,
+        };
+    }
+    return tgt;
+}
+
+void nk_llvm_freeTarget(NkLlvmTarget tgt) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_PROF_FUNC() {
+        LLVMDisposeTargetMachine(tgt->tm);
+    }
+}
+
+NkLlvmModule nk_llvm_compilerIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir) {
+    NK_LOG_TRC("%s", __func__);
+
     LLVMModuleRef module = NULL;
-    NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(arena)};
-    nk_llvm_emitIr(nksb_getStream(&llvm_ir), arena, ir);
-    nksb_appendNull(&llvm_ir);
-    llvm_ir.size--;
+    NK_PROF_FUNC() {
+        NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(scratch)};
+        nk_llvm_emitIr(nksb_getStream(&llvm_ir), scratch, ir);
+        nksb_appendNull(&llvm_ir);
+        llvm_ir.size--;
 
-    NK_LOG_STREAM_INF {
-        NkStream log = nk_log_getStream();
-        nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
+        NK_LOG_STREAM_INF {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
+        }
+
+        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "main", 1);
+
+        char *error = NULL;
+        if (LLVMParseIRInContext(llvm->ctx, buffer, &module, &error)) {
+            // TODO: Report errors properly
+            NK_LOG_ERR("Error parsing IR: %s", error);
+            _exit(1);
+        }
     }
-
-    LLVMMemoryBufferRef buffer =
-        LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "main", 1); // TODO: hardcoded buffer name
-
-    char *error = NULL;
-    if (LLVMParseIRInContext(llvm->ctx, buffer, &module, &error)) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("Error parsing IR: %s", error);
-        _exit(1);
-        return NULL;
-    }
-    return module;
+    return (NkLlvmModule)module;
 }
 
 static char optLevelChar(NkLlvmOptLevel opt) {
@@ -57,189 +193,103 @@ static char optLevelChar(NkLlvmOptLevel opt) {
     return '0';
 }
 
-static void optimizeModule(NkArena *arena, LLVMModuleRef module, LLVMTargetMachineRef tm, NkLlvmOptLevel opt) {
-    LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+void nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt) {
+    NK_LOG_TRC("%s", __func__);
 
-    LLVMErrorRef err = NULL;
-    if ((err = LLVMRunPasses(module, nk_tprintf(arena, "default<O%c>", optLevelChar(opt)), tm, pbo))) {
-        char *err_msg = LLVMGetErrorMessage(err);
-        // TODO: Report errors properly
-        NK_LOG_ERR("Failed to optimize: %s", err_msg);
-        _exit(1);
-        return;
+    NK_PROF_FUNC() {
+        LLVMModuleRef module = (LLVMModuleRef)mod;
+
+        LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+
+        LLVMErrorRef err = LLVMRunPasses(module, nk_tprintf(scratch, "default<O%c>", optLevelChar(opt)), tgt->tm, pbo);
+        if (err) {
+            char *err_msg = LLVMGetErrorMessage(err);
+            // TODO: Report errors properly
+            NK_LOG_ERR("Failed to optimize: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+            _exit(1);
+        }
+
+        NK_LOG_STREAM_INF {
+            char *str = LLVMPrintModuleToString(module);
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "Optimized LLVM IR:\n%s", str);
+            LLVMDisposeMessage(str);
+        }
+
+        LLVMDisposePassBuilderOptions(pbo);
     }
-
-    NK_LOG_STREAM_INF {
-        char *str = LLVMPrintModuleToString(module);
-        NkStream log = nk_log_getStream();
-        nk_printf(log, "Optimized LLVM IR:\n%s", str);
-        LLVMDisposeMessage(str);
-    }
-
-    LLVMDisposePassBuilderOptions(pbo);
-}
-
-NkLlvmState nk_llvm_newState(NkArena *arena) {
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-
-    char *error = NULL;
-
-    char *triple = LLVMGetDefaultTargetTriple();
-    LLVMTargetRef target;
-    if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("Failed to get target from triple: %s", error);
-        _exit(1);
-        return NULL;
-    }
-    LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
-        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
-
-    NkLlvmState llvm = nk_arena_allocT(arena, NkLlvmState_T);
-    *llvm = (NkLlvmState_T){
-        .ctx = LLVMContextCreate(),
-        .triple = triple,
-        .tm = tm,
-    };
-    return llvm;
-}
-
-void nk_llvm_freeState(NkLlvmState llvm) {
-    LLVMDisposeTargetMachine(llvm->tm);
-    LLVMDisposeMessage(llvm->triple);
-
-    LLVMContextDispose(llvm->ctx);
-}
-
-void nk_llvm_initRuntime(NkLlvmRuntime rt) {
-    LLVMErrorRef err = NULL;
-    char *error = NULL;
-
-    LLVMOrcThreadSafeContextRef tsc = LLVMOrcCreateNewThreadSafeContext();
-
-    LLVMOrcLLJITBuilderRef builder = LLVMOrcCreateLLJITBuilder();
-    LLVMOrcLLJITRef jit;
-    if ((err = LLVMOrcCreateLLJIT(&jit, builder))) {
-        char *err_msg = LLVMGetErrorMessage(err);
-        NK_LOG_ERR("Failed to create jit: %s", err_msg);
-        LLVMDisposeErrorMessage(err_msg);
-    }
-
-    char *triple = LLVMGetDefaultTargetTriple();
-
-    LLVMTargetRef target;
-    if (LLVMGetTargetFromTriple(triple, &target, &error) != 0) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("Failed to get target from triple: %s", error);
-        LLVMDisposeMessage(error);
-        _exit(1);
-        return;
-    }
-
-    LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
-        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelJITDefault);
-
-    *rt = (NkLlvmRuntime_T){
-        .jit = jit,
-        .tsc = tsc,
-        .triple = triple,
-        .tm = tm,
-    };
-}
-
-void nk_llvm_freeRuntime(NkLlvmRuntime rt) {
-    if (rt) {
-        LLVMDisposeTargetMachine(rt->tm);
-        LLVMDisposeMessage(rt->triple);
-        LLVMOrcDisposeLLJIT(rt->jit);
-        LLVMOrcDisposeThreadSafeContext(rt->tsc);
-    }
-}
-
-void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod) {
-    LLVMOrcExecutionSessionRef es = LLVMOrcLLJITGetExecutionSession(rt->jit);
-
-    LLVMOrcJITDylibRef jd;
-    LLVMErrorRef err = LLVMOrcExecutionSessionCreateJITDylib(es, &jd, "main"); // TODO: Hardcoded dylib name
-    if (err) {
-        char *err_msg = LLVMGetErrorMessage(err);
-        // TODO: Report errors properly
-        NK_LOG_ERR("failed to create the dylib: %s", err_msg);
-        LLVMDisposeErrorMessage(err_msg);
-        _exit(1);
-        return;
-    }
-
-    *mod = (NkLlvmRuntimeModule_T){
-        .jd = jd,
-    };
 }
 
 void nk_llvm_defineExternSymbols(
-    NkArena *arena,
-    NkLlvmRuntime rt,
-    NkLlvmRuntimeModule mod,
+    NkArena *scratch,
+    NkLlvmJitState jit,
+    NkLlvmJitDylib dll,
     NkIrSymbolAddressArray syms) {
-    LLVMOrcLLJITRef jit = rt->jit;
+    NK_LOG_TRC("%s", __func__);
 
-    LLVMOrcMaterializationUnitRef mu;
-    NkDynArray(LLVMOrcCSymbolMapPair) llvm_syms = {.alloc = nk_arena_getAllocator(arena)};
-    NK_ITERATE(NkIrSymbolAddress const *, it, syms) {
-        nkda_append(
-            &llvm_syms,
-            ((LLVMOrcCSymbolMapPair){
-                .Name = LLVMOrcLLJITMangleAndIntern(jit, nk_atom2cs(it->sym)),
-                .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)it->addr, {0}},
-            }));
-    }
-    mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
+    NK_PROF_FUNC() {
+        LLVMOrcLLJITRef lljit = jit->lljit;
 
-    LLVMErrorRef err = LLVMOrcJITDylibDefine(mod->jd, mu);
-    if (err) {
-        char *err_msg = LLVMGetErrorMessage(err);
-        // TODO: Report errors properly
-        NK_LOG_ERR("define symbol: %s", err_msg);
-        LLVMDisposeErrorMessage(err_msg);
-        _exit(1);
-        return;
-    }
-}
+        LLVMOrcMaterializationUnitRef mu = NULL;
+        NkDynArray(LLVMOrcCSymbolMapPair) llvm_syms = {.alloc = nk_arena_getAllocator(scratch)};
+        NK_ITERATE(NkIrSymbolAddress const *, it, syms) {
+            nkda_append(
+                &llvm_syms,
+                ((LLVMOrcCSymbolMapPair){
+                    .Name = LLVMOrcLLJITMangleAndIntern(lljit, nk_atom2cs(it->sym)),
+                    .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)it->addr, {0}},
+                }));
+        }
+        mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
 
-void nk_llvm_emitObjectFile(NkArena *arena, NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file) {
-    LLVMModuleRef module = compilerIr(arena, llvm, syms);
-    optimizeModule(arena, module, llvm->tm, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
-
-    char *error = NULL;
-    if (LLVMTargetMachineEmitToFile(llvm->tm, module, obj_file.data, LLVMObjectFile, &error) != 0) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("Failed to emit object file: %s", error);
-        _exit(1);
-        return;
+        LLVMErrorRef err = LLVMOrcJITDylibDefine(dll->jd, mu);
+        if (err) {
+            char *err_msg = LLVMGetErrorMessage(err);
+            // TODO: Report errors properly
+            NK_LOG_ERR("define symbol: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+            _exit(1);
+        }
     }
 }
 
-void *nk_llvm_getSymbolAddress(
-    NkArena *arena,
-    NkLlvmState llvm,
-    NkLlvmRuntime rt,
-    NkLlvmRuntimeModule mod,
-    NkIrSymbolArray syms,
-    NkAtom sym) {
-    LLVMOrcLLJITRef jit = rt->jit;
+void nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_file) {
+    NK_LOG_TRC("%s", __func__);
 
-    LLVMModuleRef module = compilerIr(arena, llvm, syms);
-    optimizeModule(arena, module, rt->tm, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
-
-    LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(module, rt->tsc);
-    LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit, mod->jd, tsm);
-    if (err) {
-        char *err_msg = LLVMGetErrorMessage(err);
-        // TODO: Report errors properly
-        NK_LOG_ERR("Failed to optimize: %s", err_msg);
-        _exit(1);
-        return NULL;
+    NK_PROF_FUNC() {
+        char *error = NULL;
+        if (LLVMTargetMachineEmitToFile(tgt->tm, (LLVMModuleRef)mod, obj_file.data, LLVMObjectFile, &error) != 0) {
+            // TODO: Report errors properly
+            NK_LOG_ERR("Failed to emit object file: %s", error);
+            _exit(1);
+        }
     }
+}
 
-    return lookupSymbol(jit, mod->jd, nk_atom2cs(sym));
+void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dll) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_PROF_FUNC() {
+        LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule((LLVMModuleRef)mod, jit->tsc);
+
+        LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit->lljit, dll->jd, tsm);
+        if (err) {
+            char *err_msg = LLVMGetErrorMessage(err);
+            // TODO: Report errors properly
+            NK_LOG_ERR("Failed to optimize: %s", err_msg);
+            LLVMDisposeErrorMessage(err_msg);
+            _exit(1);
+        }
+    }
+}
+
+void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dll, NkAtom sym) {
+    NK_LOG_TRC("%s", __func__);
+
+    void *addr = NULL;
+    NK_PROF_FUNC() {
+        addr = lookupSymbol(jit->lljit, dll->jd, nk_atom2cs(sym));
+    }
+    return addr;
 }

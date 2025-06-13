@@ -13,22 +13,23 @@ bool nk_llvm_stream_open(NkLlvmStreamInfo const info, NkStream *out) {
 
     bool ret;
 
-    NK_PROF_FUNC()
-    NK_ARENA_SCOPE(info.scratch) {
-        // TODO: Hardcoded -lm
-        NkString const cmd = nk_tsprintf(
-            info.scratch,
-            "sh -c \"opt -O3 - | llc -O3 --relocation-model=pic --filetype=obj -o \\\"" NKS_FMT "\\\"\"",
-            NKS_ARG(info.out_file));
-        ret = nk_pipe_streamOpenWrite(
-            (NkPipeStreamInfo){
-                .ps = info.ps,
-                .scratch = info.scratch,
-                .cmd = cmd,
-                .opt_buf = info.opt_buf,
-                .quiet = false,
-            },
-            out);
+    NK_PROF_FUNC() {
+        NK_ARENA_SCOPE(info.scratch) {
+            // TODO: Hardcoded -lm
+            NkString const cmd = nk_tsprintf(
+                info.scratch,
+                "sh -c \"opt -O3 - | llc -O3 --relocation-model=pic --filetype=obj -o \\\"" NKS_FMT "\\\"\"",
+                NKS_ARG(info.out_file));
+            ret = nk_pipe_streamOpenWrite(
+                (NkPipeStreamInfo){
+                    .ps = info.ps,
+                    .scratch = info.scratch,
+                    .cmd = cmd,
+                    .opt_buf = info.opt_buf,
+                    .quiet = false,
+                },
+                out);
+        }
     }
 
     return ret;

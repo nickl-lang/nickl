@@ -9,6 +9,7 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
@@ -927,7 +928,9 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
 }
 
 void nk_llvm_emitIr(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
-    NK_ITERATE(NkIrSymbol const *, sym, mod) {
-        emitSymbol(out, scratch, sym);
+    NK_PROF_FUNC() {
+        NK_ITERATE(NkIrSymbol const *, sym, mod) {
+            emitSymbol(out, scratch, sym);
+        }
     }
 }

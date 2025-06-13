@@ -16,6 +16,7 @@
 #include "ntk/dyn_array.h"
 #include "ntk/list.h"
 #include "ntk/log.h"
+#include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
@@ -1184,22 +1185,27 @@ static Void parse(ParserState *p) {
 bool nkl_ir_parse(NklIrParserData const *data) {
     NK_LOG_TRC("%s", __func__);
 
-    NklModule const mod = data->mod;
+    bool ok = false;
+    NK_PROF_FUNC() {
+        NklModule const mod = data->mod;
 
-    NklState nkl = mod->com->nkl;
+        NklState nkl = mod->com->nkl;
 
-    ParserState p = {
-        .mod = mod,
-        .arena = &nkl->arena,
-        .token_names = data->token_names,
-        .types = {.alloc = nk_arena_getAllocator(p.arena)},
-    };
+        ParserState p = {
+            .mod = mod,
+            .arena = &nkl->arena,
+            .token_names = data->token_names,
+            .types = {.alloc = nk_arena_getAllocator(p.arena)},
+        };
 
-    if (pushSource(&p, data->file)) {
-        parse(&p);
+        if (pushSource(&p, data->file)) {
+            parse(&p);
+        }
+
+        nk_arena_free(&p.scratch);
+
+        ok = !p.error_occurred;
     }
 
-    nk_arena_free(&p.scratch);
-
-    return !p.error_occurred;
+    return ok;
 }

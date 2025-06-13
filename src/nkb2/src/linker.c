@@ -7,6 +7,7 @@
 #include "ntk/path.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/process.h"
+#include "ntk/profiler.h"
 #include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(linker);
@@ -15,6 +16,8 @@ NK_LOG_USE_SCOPE(linker);
 // TODO: Do not depend on gcc for finding files?
 static bool findFile(NkArena *scratch, char const *name, NkString *out_path) {
     NK_LOG_TRC("%s", __func__);
+
+    NK_PROF_FUNC_BEGIN();
 
     NkStream out;
     NkPipeStream ps;
@@ -28,6 +31,7 @@ static bool findFile(NkArena *scratch, char const *name, NkString *out_path) {
             },
             &out)) {
         NK_LOG_ERR("Failed to find file `%s`: %s", name, nk_getLastErrorString());
+        NK_PROF_END();
         return false;
     }
 
@@ -38,33 +42,42 @@ static bool findFile(NkArena *scratch, char const *name, NkString *out_path) {
 
     if (nk_pipe_streamClose(&ps)) {
         NK_LOG_ERR("Failed to find file `%s`: %s", name, nk_getLastErrorString());
+        NK_PROF_END();
         return false;
     }
 
     char full_path[NK_MAX_PATH];
     if (nk_fullPath(full_path, path.data) < 0) {
         NK_LOG_ERR("Failed to find file `%s`: %s", name, nk_getLastErrorString());
+        NK_PROF_END();
         return false;
     }
 
     NK_LOG_INF("Found file `%s`: %s", name, full_path);
 
     *out_path = nk_tsprintf(scratch, "%s", full_path);
+    NK_PROF_END();
     return true;
 }
 
-#define TRY(EXPR)      \
-    do {               \
-        if (!(EXPR)) { \
-            return 0;  \
-        }              \
+#define TRY(EXPR)          \
+    do {                   \
+        if (!(EXPR)) {     \
+            NK_PROF_END(); \
+            return 0;      \
+        }                  \
     } while (0)
 
 bool nk_link(NkLikerOpts const opts) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_PROF_FUNC_BEGIN();
+
     NkArena *scratch = opts.scratch;
     NkIrOutputKind kind = opts.out_kind;
 
     if (kind == NkIrOutput_None || kind == NkIrOutput_Object) {
+        NK_PROF_END();
         return false;
     }
 
@@ -162,8 +175,10 @@ bool nk_link(NkLikerOpts const opts) {
 
     if (nk_exec(scratch, (NkString){NKS_INIT(link_cmd)}, NULL, NULL, NULL, NULL)) {
         NK_LOG_ERR("%s", nk_getLastErrorString());
+        NK_PROF_END();
         return false;
     }
 
+    NK_PROF_END();
     return true;
 }

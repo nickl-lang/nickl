@@ -1,10 +1,5 @@
 #pragma once
 
-#include <llvm-c/LLJIT.h>
-#include <llvm-c/Orc.h>
-#include <llvm-c/TargetMachine.h>
-#include <llvm-c/Types.h>
-
 #include "nkb/ir.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
@@ -18,8 +13,8 @@ typedef struct NkLlvmState_T *NkLlvmState;
 typedef struct NkLlvmModule_T *NkLlvmModule;
 typedef struct NkLlvmTarget_T *NkLlvmTarget;
 
-typedef struct NkLlvmRuntime_T *NkLlvmRuntime;
-typedef struct NkLlvmRuntimeModule_T *NkLlvmRuntimeModule;
+typedef struct NkLlvmJitState_T *NkLlvmJitState;
+typedef struct NkLlvmJitDylib_T *NkLlvmJitDylib;
 
 typedef enum {
     NkLlvmOptLevel_O0,
@@ -30,46 +25,28 @@ typedef enum {
     NkLlvmOptLevel_Oz,
 } NkLlvmOptLevel;
 
-typedef struct NkLlvmState_T {
-    LLVMContextRef ctx;
-    char *triple;
-    LLVMTargetMachineRef tm;
-} NkLlvmState_T;
-
-typedef struct NkLlvmRuntime_T {
-    LLVMOrcLLJITRef jit;
-    LLVMOrcThreadSafeContextRef tsc;
-    char *triple;
-    LLVMTargetMachineRef tm;
-} NkLlvmRuntime_T;
-
-typedef struct NkLlvmRuntimeModule_T {
-    LLVMOrcJITDylibRef jd;
-} NkLlvmRuntimeModule_T;
-
-NkLlvmState nk_llvm_newState(NkArena *arena);
+NkLlvmState nk_llvm_createState(NkArena *arena);
 void nk_llvm_freeState(NkLlvmState llvm);
 
-void nk_llvm_initRuntime(NkLlvmRuntime rt);
-void nk_llvm_freeRuntime(NkLlvmRuntime rt);
+NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm);
+void nk_llvm_freeJitState(NkLlvmJitState jit);
 
-void nk_llvm_initRuntimeModule(NkLlvmRuntime rt, NkLlvmRuntimeModule mod);
+NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit);
 
-void nk_llvm_emitObjectFile(NkArena *arena, NkLlvmState llvm, NkIrSymbolArray syms, NkString obj_file);
+NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit);
 
-void nk_llvm_defineExternSymbols(
-    NkArena *arena,
-    NkLlvmRuntime rt,
-    NkLlvmRuntimeModule mod,
-    NkIrSymbolAddressArray syms);
+NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple);
+void nk_llvm_freeTarget(NkLlvmTarget tgt);
 
-void *nk_llvm_getSymbolAddress(
-    NkArena *arena,
-    NkLlvmState llvm,
-    NkLlvmRuntime rt,
-    NkLlvmRuntimeModule mod,
-    NkIrSymbolArray syms,
-    NkAtom sym);
+NkLlvmModule nk_llvm_compilerIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir);
+void nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt);
+
+void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dll, NkIrSymbolAddressArray syms);
+
+void nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_file);
+
+void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dll);
+void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dll, NkAtom sym);
 
 #ifdef __cplusplus
 }

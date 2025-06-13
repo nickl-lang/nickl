@@ -8,11 +8,11 @@
 
 NK_LOG_USE_SCOPE(llvm_adapter);
 
-void *lookupSymbol(LLVMOrcLLJITRef jit_, LLVMOrcJITDylibRef jd_, char const *name) {
-    auto *jit = reinterpret_cast<llvm::orc::LLJIT *>(jit_);
-    auto *jd = reinterpret_cast<llvm::orc::JITDylib *>(jd_);
+void *lookupSymbol(LLVMOrcLLJITRef clljit, LLVMOrcJITDylibRef cjd, char const *name) {
+    auto *lljit = reinterpret_cast<llvm::orc::LLJIT *>(clljit);
+    auto *jd = reinterpret_cast<llvm::orc::JITDylib *>(cjd);
 
-    auto sym = jit->lookup(*jd, name);
+    auto sym = lljit->lookup(*jd, name);
     if (!sym) {
         auto err = sym.takeError();
         // TODO: Report errors properly

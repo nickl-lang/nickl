@@ -1,4 +1,3 @@
-#include "nkb/ir.h"
 #include "nkl/common/diagnostics.h"
 #include "nkl/core/nickl.h"
 #include "ntk/allocator.h"
@@ -27,10 +26,15 @@ static void printUsage() {
         "\n    -c, --color {auto,always,never}                  Choose when to color output"
         "\n    -h, --help                                       Display this message and exit"
         "\n    -v, --version                                    Show version information"
-#ifdef ENABLE_LOGGING
+#if defined(ENABLE_LOGGING) || defined(ENABLE_PROFILING)
         "\nDeveloper options:"
+#endif
+#ifdef ENABLE_LOGGING
         "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
-#endif // ENABLE_LOGGING
+#endif
+#ifdef ENABLE_PROFILING
+        "\n    -p, --profile <trace-file>                       Output file for profiling traces"
+#endif
         "\n");
 }
 
@@ -127,6 +131,10 @@ static int parseArgsAndRun(char **argv) {
     log_opts.log_level = NkLogLevel_Warning;
 #endif // ENABLE_LOGGING
 
+#ifdef ENABLE_PROFILING
+    char const *prof_file = NK_BINARY_NAME ".spall";
+#endif // ENABLE_LOGGING
+
     for (argv++; *argv;) {
         NkString key = {0};
         NkString val = {0};
@@ -206,7 +214,10 @@ static int parseArgsAndRun(char **argv) {
                 } else if (nks_equal(val, nk_cs2s("never"))) {
                     log_opts.color_mode = NkLogColorMode_Never;
                 }
-            } else if (nks_equal(key, nk_cs2s("-t")) || nks_equal(key, nk_cs2s("--loglevel"))) {
+#endif // ENABLE_LOGGING
+            }
+#ifdef ENABLE_LOGGING
+            else if (nks_equal(key, nk_cs2s("-t")) || nks_equal(key, nk_cs2s("--loglevel"))) {
                 GET_VALUE;
                 if (nks_equal(val, nk_cs2s("none"))) {
                     log_opts.log_level = NkLogLevel_None;
@@ -228,8 +239,15 @@ static int parseArgsAndRun(char **argv) {
                     printErrorUsage();
                     return 1;
                 }
+            }
 #endif // ENABLE_LOGGING
-            } else {
+#ifdef ENABLE_PROFILING
+            else if (nks_equal(key, nk_cs2s("-p")) || nks_equal(key, nk_cs2s("--profile"))) {
+                GET_VALUE;
+                prof_file = val.data;
+            }
+#endif // ENABLE_PROFILING
+            else {
                 nkl_diag_printError("invalid argument `" NKS_FMT "`", NKS_ARG(key));
                 printErrorUsage();
                 return 1;
@@ -263,6 +281,9 @@ static int parseArgsAndRun(char **argv) {
 
     int ret_code = 0;
 
+    NK_DEFER_LOOP(NK_PROF_START(prof_file), NK_PROF_FINISH())
+    NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
+    NK_PROF_SCOPE(nk_cs2s("run"))
     NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
     NK_DEFER_LOOP(run_info.nkl = nkl_newState(), nkl_freeState(run_info.nkl)) {
         ret_code = run(run_info);
@@ -272,13 +293,5 @@ static int parseArgsAndRun(char **argv) {
 }
 
 int main(int NK_UNUSED argc, char **argv) {
-    int ret_code = 0;
-
-    NK_DEFER_LOOP(NK_PROF_START(NK_BINARY_NAME ".spall"), NK_PROF_FINISH())
-    NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
-    NK_PROF_FUNC() {
-        ret_code = parseArgsAndRun(argv);
-    }
-
-    return ret_code;
+    return parseArgsAndRun(argv);
 }
