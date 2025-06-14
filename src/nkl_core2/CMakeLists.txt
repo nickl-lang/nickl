@@ -21,3 +21,7 @@ target_link_libraries(${LIB}
 install(TARGETS ${LIB}
     RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
     )
+
+if(CMAKE_TESTING_ENABLED)
+    add_subdirectory(test)
+endif()

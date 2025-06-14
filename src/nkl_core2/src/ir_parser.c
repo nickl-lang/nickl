@@ -1175,6 +1175,9 @@ static Void parseSymbol(ParserState *p) {
 }
 
 static Void parse(ParserState *p) {
+    while (ACCEPT(NklToken_Newline)) {
+    }
+
     while (!on(p, NklToken_Eof)) {
         TRY(parseSymbol(p));
     }

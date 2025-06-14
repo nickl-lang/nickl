@@ -61,6 +61,7 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
 
     NkIntptr_kv *found = NkIntptrHashTree_find(&nkl->text_map, (intptr_t)file);
     if (found) {
+        // TODO: Print null names correctly
         NK_LOG_DBG("Using cached text for file `%s`", nk_atom2cs(file));
         text = *(NkString const *)found->val;
     } else {
