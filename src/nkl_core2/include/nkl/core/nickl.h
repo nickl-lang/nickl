@@ -20,6 +20,7 @@ typedef struct {
     NkAtom arch;
     NkAtom vendor;
     NkAtom sys;
+    NkAtom abi;
 } NklTargetTriple;
 
 typedef enum {

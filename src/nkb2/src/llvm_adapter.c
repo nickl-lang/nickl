@@ -116,6 +116,8 @@ NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit) {
 NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple) {
     NK_LOG_TRC("%s", __func__);
 
+    NK_LOG_INF("Creating target for triple: %s", triple);
+
     NkLlvmTarget tgt;
     NK_PROF_FUNC() {
         char *error = NULL;

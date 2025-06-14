@@ -88,6 +88,8 @@ typedef struct NkbState_T {
 
     NkLlvmState llvm;
     NkLlvmJitState _llvm_jit;
+
+    NkDynArray(NkLlvmTarget) created_targets;
 } NkbState_T;
 
 typedef struct NkIrModule_T {
@@ -97,7 +99,11 @@ typedef struct NkIrModule_T {
     NkIntptrHashTree rt_loaded_syms;
 } NkIrModule_T;
 
-NkbState nkir_newState(void) {
+typedef struct NkIrTarget_T {
+    NkLlvmTarget tgt;
+} NkIrTarget_T;
+
+NkbState nkir_createState(void) {
     NK_LOG_TRC("%s", __func__);
 
     NkArena arena = {0};
@@ -106,12 +112,17 @@ NkbState nkir_newState(void) {
         .arena = arena,
     };
     nkb->llvm = nk_llvm_createState(&nkb->arena);
+    nkb->created_targets.alloc = nk_arena_getAllocator(&nkb->arena);
 
     return nkb;
 }
 
 void nkir_freeState(NkbState nkb) {
     NK_LOG_TRC("%s", __func__);
+
+    NK_ITERATE(NkLlvmTarget const *, it, nkb->created_targets) {
+        nk_llvm_freeTarget(*it);
+    }
 
     nk_llvm_freeJitState(nkb->_llvm_jit);
     nk_llvm_freeState(nkb->llvm);
@@ -122,7 +133,7 @@ void nkir_freeState(NkbState nkb) {
     nk_arena_free(&arena);
 }
 
-NkIrModule nkir_newModule(NkbState nkb) {
+NkIrModule nkir_createModule(NkbState nkb) {
     NkIrModule mod = nk_arena_allocT(&nkb->arena, NkIrModule_T);
     *mod = (NkIrModule_T){
         .nkb = nkb,
@@ -130,6 +141,21 @@ NkIrModule nkir_newModule(NkbState nkb) {
         .rt_loaded_syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
     };
     return mod;
+}
+
+NkIrTarget nkir_createTarget(NkbState nkb, NkString triple) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkIrTarget target = nk_arena_allocT(&nkb->arena, NkIrTarget_T);
+    NkLlvmTarget tgt;
+    NK_ARENA_SCOPE(&nkb->scratch) {
+        tgt = nk_llvm_createTarget(nkb->llvm, nk_tprintf(&nkb->scratch, NKS_FMT, NKS_ARG(triple)));
+    }
+    nkda_append(&nkb->created_targets, tgt);
+    *target = (NkIrTarget_T){
+        .tgt = tgt,
+    };
+    return target;
 }
 
 NkArena *nkir_moduleGetArena(NkIrModule mod) {
@@ -345,7 +371,12 @@ NkIrInstr nkir_make_comment(NkString comment) {
     };
 }
 
-static bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
+static bool exportModuleImpl(
+    NkArena *scratch,
+    NkIrModule mod,
+    NkIrTarget target,
+    NkString out_file,
+    NkIrOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
     NkbState nkb = mod->nkb;
@@ -375,15 +406,10 @@ static bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
     NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                                                   : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    NkLlvmTarget tgt =
-        nk_llvm_createTarget(nkb->llvm, "x86_64-pc-linux-gnu"); // TODO: Hardcoded target, also creating every time
-
     NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
-    nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
+    nk_llvm_optimizeIr(scratch, llvm_mod, target->tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
 
-    nk_llvm_emitObjectFile(llvm_mod, tgt, obj_file);
-
-    nk_llvm_freeTarget(tgt);
+    nk_llvm_emitObjectFile(llvm_mod, target->tgt, obj_file);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){
@@ -397,12 +423,12 @@ static bool exportModuleImpl(NkArena *scratch, NkIrModule mod, NkString out_file
     return true;
 }
 
-bool nkir_exportModule(NkIrModule mod, NkString out_file, NkIrOutputKind kind) {
+bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkIrOutputKind kind) {
     bool ret = false;
     NkbState nkb = mod->nkb;
     NkArena *scratch = &nkb->scratch;
     NK_ARENA_SCOPE(scratch) {
-        ret = exportModuleImpl(scratch, mod, out_file, kind);
+        ret = exportModuleImpl(scratch, mod, target, out_file, kind);
     }
     return ret;
 }
@@ -508,7 +534,7 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym, NkIrSymbolDynArray
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        NK_LOG_DBG("getting dependencies for `%s`", nk_atom2cs(sym));
+        NK_LOG_DBG("Getting dependencies for `%s`", nk_atom2cs(sym));
 
         NkbState nkb = mod->nkb;
         NkArena *scratch = &nkb->scratch;

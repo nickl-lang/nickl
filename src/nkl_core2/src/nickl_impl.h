@@ -33,6 +33,7 @@ typedef struct {
 
 typedef struct NklCompiler_T {
     NklState nkl;
+    NkIrTarget target;
 
     NkDynArray(LibAlias) lib_aliases;
 } NklCompiler_T;

@@ -23,6 +23,7 @@ typedef struct NkLlvmJitState_T {
     NkLlvmTarget tgt;
 } NkLlvmJitState_T;
 
+// TODO: Just pass through dylib and target refs
 typedef struct NkLlvmJitDylib_T {
     LLVMOrcJITDylibRef jd;
 } NkLlvmJitDylib_T;

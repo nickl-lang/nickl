@@ -25,6 +25,7 @@ typedef enum {
 
 typedef struct NkbState_T *NkbState;
 typedef struct NkIrModule_T *NkIrModule;
+typedef struct NkIrTarget_T *NkIrTarget;
 
 typedef enum {
     NkIrOutput_None = 0,
@@ -217,10 +218,12 @@ typedef NkDynArray(NkIrSymbolAddress) NkIrSymbolAddressDynArray;
 
 /// Main
 
-NkbState nkir_newState(void);
+NkbState nkir_createState(void);
 void nkir_freeState(NkbState nkb);
 
-NkIrModule nkir_newModule(NkbState nkb);
+NkIrModule nkir_createModule(NkbState nkb);
+
+NkIrTarget nkir_createTarget(NkbState nkb, NkString triple);
 
 NkArena *nkir_moduleGetArena(NkIrModule mod);
 
@@ -280,7 +283,7 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-bool nkir_exportModule(NkIrModule mod, NkString out_file, NkIrOutputKind kind);
+bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkIrOutputKind kind);
 
 /// Runtime
 

@@ -14,6 +14,7 @@
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
+#include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -24,7 +25,7 @@ NklState nkl_newState(void) {
     NklState nkl = nk_arena_allocT(&arena, NklState_T);
     *nkl = (NklState_T){
         .arena = arena,
-        .nkb = nkir_newState(),
+        .nkb = nkir_createState(),
     };
     nkl->text_map = (NkIntptrHashTree){.alloc = nk_arena_getAllocator(&nkl->arena)};
     return nkl;
@@ -43,23 +44,40 @@ void nkl_freeState(NklState nkl) {
     nk_arena_free(&arena);
 }
 
+static NkString targetTripleToString(NkArena *arena, NklTargetTriple target) {
+    NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
+    nksb_printf(&sb, "%s-%s-%s", nk_atom2cs(target.arch), nk_atom2cs(target.vendor), nk_atom2cs(target.sys));
+    if (target.abi) {
+        nksb_printf(&sb, "-%s", nk_atom2cs(target.abi));
+    }
+    return (NkString){NKS_INIT(sb)};
+}
+
 NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple target) {
     NK_LOG_TRC("%s", __func__);
 
-    (void)target; // TODO: Use target triple
     NklCompiler com = nk_arena_allocT(&nkl->arena, NklCompiler_T);
     *com = (NklCompiler_T){
         .nkl = nkl,
         .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
+    NK_ARENA_SCOPE(&nkl->scratch) {
+        com->target = nkir_createTarget(nkl->nkb, targetTripleToString(&nkl->scratch, target));
+    }
     return com;
 }
 
 NklCompiler nkl_newCompilerHost(NklState nkl) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Actually fill host target triple
-    return nkl_newCompiler(nkl, (NklTargetTriple){0});
+    return nkl_newCompiler(
+        nkl,
+        (NklTargetTriple){
+            .arch = nk_cs2atom(HOST_TARGET_ARCH),
+            .vendor = nk_cs2atom(HOST_TARGET_VENDOR),
+            .sys = nk_cs2atom(HOST_TARGET_SYS),
+            .abi = strlen(HOST_TARGET_ABI) ? nk_cs2atom(HOST_TARGET_ABI) : 0,
+        });
 }
 
 // TODO: Reuse TRY macro
@@ -80,7 +98,7 @@ NklModule nkl_newModule(NklCompiler com) {
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
         .com = com,
-        .ir = nkir_newModule(nkl->nkb),
+        .ir = nkir_createModule(nkl->nkb),
         .linked_in = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
@@ -314,7 +332,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     static_assert((int)NklOutput_Archiv == NkIrOutput_Archiv, "");
     static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
 
-    nkir_exportModule(mod->ir, out_file, (NkIrOutputKind)kind);
+    nkir_exportModule(mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
 
     return true;
 }
