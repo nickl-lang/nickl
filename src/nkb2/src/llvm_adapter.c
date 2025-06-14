@@ -3,8 +3,11 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Error.h>
 #include <llvm-c/IRReader.h>
+#include <llvm-c/LLJIT.h>
+#include <llvm-c/Orc.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+#include <llvm-c/Types.h>
 #include <unistd.h> // TODO: Remove, only used for _exit
 
 #include "llvm_adapter_internal.h"
@@ -88,14 +91,13 @@ NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit) {
     return jit->tgt;
 }
 
-NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit) {
+NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState NK_UNUSED llvm, NkLlvmJitState jit) {
     NK_LOG_TRC("%s", __func__);
 
-    NkLlvmJitDylib dll;
+    LLVMOrcJITDylibRef jd = NULL;
     NK_PROF_FUNC() {
         LLVMOrcExecutionSessionRef es = LLVMOrcLLJITGetExecutionSession(jit->lljit);
 
-        LLVMOrcJITDylibRef jd = NULL;
         LLVMErrorRef err = LLVMOrcExecutionSessionCreateJITDylib(es, &jd, "main");
         if (err) {
             char *err_msg = LLVMGetErrorMessage(err);
@@ -104,21 +106,16 @@ NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit) {
             LLVMDisposeErrorMessage(err_msg);
             _exit(1);
         }
-
-        dll = nk_arena_allocT(llvm->arena, NkLlvmJitDylib_T);
-        *dll = (NkLlvmJitDylib_T){
-            .jd = jd,
-        };
     }
-    return dll;
+    return (NkLlvmJitDylib)jd;
 }
 
-NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple) {
+NkLlvmTarget nk_llvm_createTarget(NkLlvmState NK_UNUSED llvm, char const *triple) {
     NK_LOG_TRC("%s", __func__);
 
     NK_LOG_INF("Creating target for triple: %s", triple);
 
-    NkLlvmTarget tgt;
+    LLVMTargetMachineRef tm = NULL;
     NK_PROF_FUNC() {
         char *error = NULL;
 
@@ -129,24 +126,20 @@ NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple) {
             NK_LOG_ERR("Failed to get target from triple: %s", error);
             _exit(1);
         }
-        LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+        tm = LLVMCreateTargetMachine(
             t, triple_norm, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
 
         LLVMDisposeMessage(triple_norm);
-
-        tgt = nk_arena_allocT(llvm->arena, NkLlvmTarget_T);
-        *tgt = (NkLlvmTarget_T){
-            .tm = tm,
-        };
     }
-    return tgt;
+    return (NkLlvmTarget)tm;
 }
 
 void nk_llvm_freeTarget(NkLlvmTarget tgt) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        LLVMDisposeTargetMachine(tgt->tm);
+        LLVMTargetMachineRef tm = (LLVMTargetMachineRef)tgt;
+        LLVMDisposeTargetMachine(tm);
     }
 }
 
@@ -200,10 +193,11 @@ void nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, Nk
 
     NK_PROF_FUNC() {
         LLVMModuleRef module = (LLVMModuleRef)mod;
+        LLVMTargetMachineRef tm = (LLVMTargetMachineRef)tgt;
 
         LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
 
-        LLVMErrorRef err = LLVMRunPasses(module, nk_tprintf(scratch, "default<O%c>", optLevelChar(opt)), tgt->tm, pbo);
+        LLVMErrorRef err = LLVMRunPasses(module, nk_tprintf(scratch, "default<O%c>", optLevelChar(opt)), tm, pbo);
         if (err) {
             char *err_msg = LLVMGetErrorMessage(err);
             // TODO: Report errors properly
@@ -223,11 +217,7 @@ void nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, Nk
     }
 }
 
-void nk_llvm_defineExternSymbols(
-    NkArena *scratch,
-    NkLlvmJitState jit,
-    NkLlvmJitDylib dll,
-    NkIrSymbolAddressArray syms) {
+void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
@@ -245,7 +235,9 @@ void nk_llvm_defineExternSymbols(
         }
         mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
 
-        LLVMErrorRef err = LLVMOrcJITDylibDefine(dll->jd, mu);
+        LLVMOrcJITDylibRef jd = (LLVMOrcJITDylibRef)dl;
+
+        LLVMErrorRef err = LLVMOrcJITDylibDefine(jd, mu);
         if (err) {
             char *err_msg = LLVMGetErrorMessage(err);
             // TODO: Report errors properly
@@ -260,8 +252,10 @@ void nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_fil
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
+        LLVMTargetMachineRef tm = (LLVMTargetMachineRef)tgt;
+
         char *error = NULL;
-        if (LLVMTargetMachineEmitToFile(tgt->tm, (LLVMModuleRef)mod, obj_file.data, LLVMObjectFile, &error) != 0) {
+        if (LLVMTargetMachineEmitToFile(tm, (LLVMModuleRef)mod, obj_file.data, LLVMObjectFile, &error) != 0) {
             // TODO: Report errors properly
             NK_LOG_ERR("Failed to emit object file: %s", error);
             _exit(1);
@@ -269,13 +263,15 @@ void nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_fil
     }
 }
 
-void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dll) {
+void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dl) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
         LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule((LLVMModuleRef)mod, jit->tsc);
 
-        LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit->lljit, dll->jd, tsm);
+        LLVMOrcJITDylibRef jd = (LLVMOrcJITDylibRef)dl;
+
+        LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit->lljit, jd, tsm);
         if (err) {
             char *err_msg = LLVMGetErrorMessage(err);
             // TODO: Report errors properly
@@ -286,12 +282,13 @@ void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dll)
     }
 }
 
-void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dll, NkAtom sym) {
+void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dl, NkAtom sym) {
     NK_LOG_TRC("%s", __func__);
 
     void *addr = NULL;
     NK_PROF_FUNC() {
-        addr = lookupSymbol(jit->lljit, dll->jd, nk_atom2cs(sym));
+        LLVMOrcJITDylibRef jd = (LLVMOrcJITDylibRef)dl;
+        addr = lookupSymbol(jit->lljit, jd, nk_atom2cs(sym));
     }
     return addr;
 }

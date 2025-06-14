@@ -78,7 +78,7 @@ typedef enum {
     NkIrArg_RefArray,
     NkIrArg_Label,
     NkIrArg_LabelRel,
-    NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
+    NkIrArg_Type,
     NkIrArg_String,
 } NkIrArgKind;
 
