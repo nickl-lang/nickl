@@ -800,7 +800,7 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
                         }
                         bool found_reloc = false;
                         NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                            if (reloc->offset == offset && elem->type->size == 8) { // TODO: Hardcoded ptr size
+                            if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
                                 nk_printf(out, "$%s", nk_atom2cs(reloc->sym));
                                 found_reloc = true;
                                 break;

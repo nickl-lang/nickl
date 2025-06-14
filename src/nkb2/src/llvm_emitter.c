@@ -9,14 +9,14 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
-// #include "ntk/log.h"
 
-// NK_LOG_USE_SCOPE(llvm_emitter);
+NK_LOG_USE_SCOPE(llvm_emitter);
 
 static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrRelocArray relocs) {
     if (!type) {
@@ -37,7 +37,7 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                     }
                     bool found_reloc = false;
                     NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                        if (reloc->offset == offset && elem->type->size == 8) { // TODO: Hardcoded ptr size
+                        if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
                             nk_printf(out, "ptr");
                             found_reloc = true;
                             break;
@@ -645,15 +645,8 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             bool sret = false;
             if (ref0->kind && ref0->kind != NkIrRef_Null) {
                 if (ref0->type->kind == NkIrType_Aggregate && ref0->type->size) {
-                    NkIrType_T const ptr_t = {
-                        // TODO: Hardcoded ptr type
-                        .num = Int64,
-                        .size = 8,
-                        .align = 8,
-                        .id = 0,
-                        .kind = NkIrType_Numeric,
-                    };
-                    dst = intToPtr(ctx, out, ref0, &ptr_t);
+                    NkIrType const ptr_t = ref1->type;
+                    dst = intToPtr(ctx, out, ref0, ptr_t);
                     sret = true;
                 } else {
                     emitRefUntyped(out, ref0);
@@ -753,7 +746,7 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
                         }
                         bool found_reloc = false;
                         NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                            if (reloc->offset == offset && elem->type->size == 8) { // TODO: Hardcoded ptr size
+                            if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
                                 nk_printf(out, "ptr ");
                                 emitGlobal(out, reloc->sym);
                                 found_reloc = true;
@@ -882,7 +875,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             break;
 
         case NkIrSymbol_ExternProc: {
-            bool const sret = sym->extern_proc.ret_type->size > 8; // TODO: Hardcoded ptr size
+            bool const sret = sym->extern_proc.ret_type->kind == NkIrType_Aggregate && sym->extern_proc.ret_type->size;
             nk_printf(out, "declare ");
             if (sret) {
                 nk_printf(out, "void");
@@ -928,6 +921,8 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
 }
 
 void nk_llvm_emitIr(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {
+    NK_LOG_TRC("%s", __func__);
+
     NK_PROF_FUNC() {
         NK_ITERATE(NkIrSymbol const *, sym, mod) {
             emitSymbol(out, scratch, sym);

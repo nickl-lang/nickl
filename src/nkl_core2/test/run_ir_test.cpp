@@ -10,7 +10,10 @@
 class nkl_run_ir : public testing::Test {
 protected:
     void SetUp() override {
-        NK_LOG_INIT({});
+        NK_LOG_INIT({
+            .log_level = NkLogLevel_Warning,
+            .color_mode = NkLogColorMode_Auto,
+        });
 
         nkl = nkl_newState();
 
