@@ -234,8 +234,6 @@ static NklToken const *expect(ParserState *p, u32 id) {
 }
 
 static Void parseNumber(ParserState *p, void *addr, NkString str, NkIrNumericValueType value_type) {
-    // TODO: Add support for hex constants
-
     char const *cstr = nk_tprintf(&p->scratch, NKS_FMT, NKS_ARG(str));
 
     char *endptr = NULL;
@@ -432,14 +430,11 @@ static NkAtom parseId(ParserState *p) {
     return ret;
 }
 
-static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
-    NkIrRelocArray ret = {0};
-
+static Void parseConst(ParserState *p, void *addr, NkIrType type, NkIrRelocDynArray *relocs) {
     switch (type->kind) {
         case NkIrType_Aggregate: {
             EXPECT(NklIrToken_LBrace);
 
-            NkIrRelocDynArray relocs = nkir_moduleNewRelocArray(p->mod->ir);
             NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                 usize offset = elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1 &&
@@ -462,17 +457,17 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                         }
                         TRY(NkAtom const sym = parseId(p));
                         nkda_append(
-                            &relocs,
+                            relocs,
                             ((NkIrReloc){
                                 .sym = sym,
                                 .offset = offset,
                             }));
                     } else {
-                        TRY(NkIrRelocArray const relocs2 = parseConst(p, (u8 *)addr + offset, elem->type));
-                        // TODO: Switch recursion to iteration to avoid merge?
+                        NkIrRelocDynArray relocs2 = {.alloc = nk_arena_getAllocator(&p->scratch)};
+                        TRY(parseConst(p, (u8 *)addr + offset, elem->type, &relocs2));
                         NK_ITERATE(NkIrReloc const *, reloc, relocs2) {
                             nkda_append(
-                                &relocs,
+                                relocs,
                                 ((NkIrReloc){
                                     .sym = reloc->sym,
                                     .offset = offset + reloc->offset,
@@ -497,10 +492,8 @@ static NkIrRelocArray parseConst(ParserState *p, void *addr, NkIrType type) {
                     EXPECT(NklIrToken_Comma);
                 }
             }
-            ret = (NkIrRelocArray){NKS_INIT(relocs)};
 
             EXPECT(NklIrToken_RBrace);
-
             break;
         }
 
@@ -636,7 +629,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     else if (type) {
         if (type->kind == NkIrType_Numeric) {
             NkIrImm imm = {0};
-            TRY(parseConst(p, &imm, type));
+            TRY(parseConst(p, &imm, type, NULL));
             return nkir_makeRefImm(imm, type);
         } else {
             void *addr = NULL;
@@ -644,7 +637,8 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                 addr = nk_arena_allocAligned(p->arena, type->size, type->align);
                 memset(addr, 0, type->size);
             }
-            TRY(NkIrRelocArray relocs = parseConst(p, addr, type));
+            NkIrRelocDynArray relocs = nkir_moduleNewRelocArray(p->mod->ir);
+            TRY(parseConst(p, addr, type, &relocs));
 
             NkAtom const sym = nk_atom_unique((NkString){0});
             defineSymbol(
@@ -653,7 +647,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                     .data =
                         {
                             .type = type,
-                            .relocs = relocs,
+                            .relocs = {NKS_INIT(relocs)},
                             .addr = addr,
                             .flags = NkIrData_ReadOnly,
                         },
@@ -955,14 +949,14 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
     }
 
     void *addr = NULL;
-    NkIrRelocArray relocs = {0};
+    NkIrRelocDynArray relocs = nkir_moduleNewRelocArray(p->mod->ir);
     if (!on(p, NklToken_Newline)) {
         if (type) {
             if (type->size) {
                 addr = nk_arena_allocAligned(p->arena, type->size, type->align);
                 memset(addr, 0, type->size);
             }
-            TRY(relocs = parseConst(p, addr, type));
+            TRY(parseConst(p, addr, type, &relocs));
         }
 
         else if (on(p, NklToken_String) || on(p, NklToken_EscapedString)) {
@@ -987,7 +981,7 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
             .data =
                 {
                     .type = type,
-                    .relocs = relocs,
+                    .relocs = {NKS_INIT(relocs)},
                     .addr = addr,
                     .flags = flags,
                 },

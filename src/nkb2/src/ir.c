@@ -99,10 +99,6 @@ typedef struct NkIrModule_T {
     NkIntptrHashTree rt_loaded_syms;
 } NkIrModule_T;
 
-typedef struct NkIrTarget_T {
-    NkLlvmTarget tgt;
-} NkIrTarget_T;
-
 NkbState nkir_createState(void) {
     NK_LOG_TRC("%s", __func__);
 
@@ -146,16 +142,14 @@ NkIrModule nkir_createModule(NkbState nkb) {
 NkIrTarget nkir_createTarget(NkbState nkb, NkString triple) {
     NK_LOG_TRC("%s", __func__);
 
-    NkIrTarget target = nk_arena_allocT(&nkb->arena, NkIrTarget_T);
-    NkLlvmTarget tgt;
+    NkLlvmTarget tgt = NULL;
     NK_ARENA_SCOPE(&nkb->scratch) {
         tgt = nk_llvm_createTarget(nkb->llvm, nk_tprintf(&nkb->scratch, NKS_FMT, NKS_ARG(triple)));
     }
-    nkda_append(&nkb->created_targets, tgt);
-    *target = (NkIrTarget_T){
-        .tgt = tgt,
-    };
-    return target;
+    if (tgt) {
+        nkda_append(&nkb->created_targets, tgt);
+    }
+    return (NkIrTarget)tgt;
 }
 
 NkArena *nkir_moduleGetArena(NkIrModule mod) {
@@ -406,10 +400,12 @@ static bool exportModuleImpl(
     NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                                                   : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
 
-    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
-    nk_llvm_optimizeIr(scratch, llvm_mod, target->tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
+    NkLlvmTarget tgt = (NkLlvmTarget)target;
 
-    nk_llvm_emitObjectFile(llvm_mod, target->tgt, obj_file);
+    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
+    nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
+
+    nk_llvm_emitObjectFile(llvm_mod, tgt, obj_file);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){

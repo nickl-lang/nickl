@@ -19,7 +19,16 @@
 
 NK_LOG_USE_SCOPE(nickl);
 
-NK_PRINTF_LIKE(3) void nickl_reportError(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {
+void nickl_reportError(NklState nkl, char const *fmt, ...) {
+    NK_LOG_TRC("%s", __func__);
+
+    va_list ap;
+    va_start(ap, fmt);
+    nickl_vreportError(nkl, (NklSourceLocation){0}, fmt, ap);
+    va_end(ap);
+}
+
+void nickl_reportErrorLoc(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {
     NK_LOG_TRC("%s", __func__);
 
     va_list ap;
@@ -70,7 +79,7 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
         NkAllocator const alloc = nk_arena_getAllocator(&nkl->arena);
 
         if (!nk_file_read(alloc, nk_atom2s(file), &text)) {
-            nickl_reportError(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
+            nickl_reportErrorLoc(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
             return false;
         }
 
@@ -177,7 +186,7 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             out_tokens)) {
         nk_assert(out_tokens->size);
         NklToken const err_token = nks_last(*out_tokens);
-        nickl_reportError(
+        nickl_reportErrorLoc(
             nkl,
             (NklSourceLocation){
                 .file = nk_atom2s(file),
@@ -239,7 +248,7 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             out_tokens)) {
         nk_assert(out_tokens->size);
         NklToken const err_token = nks_last(*out_tokens);
-        nickl_reportError(
+        nickl_reportErrorLoc(
             nkl,
             (NklSourceLocation){
                 .file = nk_atom2s(file),

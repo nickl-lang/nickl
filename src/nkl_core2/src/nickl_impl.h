@@ -51,7 +51,8 @@ typedef struct NklModule_T {
 extern char const *s_ir_tokens[];
 extern char const *s_ast_tokens[];
 
-NK_PRINTF_LIKE(3) void nickl_reportError(NklState nkl, NklSourceLocation loc, char const *fmt, ...);
+NK_PRINTF_LIKE(2) void nickl_reportError(NklState nkl, char const *fmt, ...);
+NK_PRINTF_LIKE(3) void nickl_reportErrorLoc(NklState nkl, NklSourceLocation loc, char const *fmt, ...);
 void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap);
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text);

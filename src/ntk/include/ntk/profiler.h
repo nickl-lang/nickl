@@ -79,8 +79,8 @@ struct _NkProfScopeGuard {
 
 #else // __cplusplus
 
-#define NK_PROF_SCOPE(str)
-#define NK_PROF_FUNC()
+#define NK_PROF_SCOPE(str) NK_DEFER_LOOP(_NK_NOP, _NK_NOP)
+#define NK_PROF_FUNC() NK_DEFER_LOOP(_NK_NOP, _NK_NOP)
 
 #endif // __cplusplus
 

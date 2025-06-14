@@ -6,7 +6,6 @@
 #include "nickl_impl.h"
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
-#include "nkl/common/diagnostics.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
@@ -44,26 +43,34 @@ void nkl_freeState(NklState nkl) {
     nk_arena_free(&arena);
 }
 
-static NkString targetTripleToString(NkArena *arena, NklTargetTriple target) {
+static NkString targetTripleToString(NkArena *arena, NklTargetTriple triple) {
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
-    nksb_printf(&sb, "%s-%s-%s", nk_atom2cs(target.arch), nk_atom2cs(target.vendor), nk_atom2cs(target.sys));
-    if (target.abi) {
-        nksb_printf(&sb, "-%s", nk_atom2cs(target.abi));
+    nksb_printf(&sb, "%s-%s-%s", nk_atom2cs(triple.arch), nk_atom2cs(triple.vendor), nk_atom2cs(triple.sys));
+    if (triple.abi) {
+        nksb_printf(&sb, "-%s", nk_atom2cs(triple.abi));
     }
     return (NkString){NKS_INIT(sb)};
 }
 
-NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple target) {
+NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
     NK_LOG_TRC("%s", __func__);
+
+    NkIrTarget tgt = NULL;
+    NK_ARENA_SCOPE(&nkl->scratch) {
+        NkString const triple_str = targetTripleToString(&nkl->scratch, triple);
+        tgt = nkir_createTarget(nkl->nkb, triple_str);
+        if (!tgt) {
+            nickl_reportError(nkl, "failed to create compiler for target `" NKS_FMT "`", NKS_ARG(triple_str));
+            return NULL;
+        }
+    }
 
     NklCompiler com = nk_arena_allocT(&nkl->arena, NklCompiler_T);
     *com = (NklCompiler_T){
         .nkl = nkl,
         .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+        .target = tgt,
     };
-    NK_ARENA_SCOPE(&nkl->scratch) {
-        com->target = nkir_createTarget(nkl->nkb, targetTripleToString(&nkl->scratch, target));
-    }
     return com;
 }
 
@@ -80,7 +87,6 @@ NklCompiler nkl_newCompilerHost(NklState nkl) {
         });
 }
 
-// TODO: Reuse TRY macro
 #define TRY(EXPR)      \
     do {               \
         if (!(EXPR)) { \
@@ -113,12 +119,12 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     NklState nkl = dst_mod->com->nkl;
 
     if (!src_mod) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, "src_mod is null");
+        nickl_reportError(nkl, "src_mod is null");
         return false;
     }
 
     if (dst_mod->com != src_mod->com) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, "mixed modules from different compilers");
+        nickl_reportError(nkl, "mixed modules from different compilers");
     }
 
     nkda_append(&dst_mod->linked_in, src_mod);
@@ -165,10 +171,7 @@ bool nkl_compileFile(NklModule mod, NkString path) {
         return nkl_compileFileNkl(mod, path);
     } else {
         nickl_reportError(
-            nkl,
-            (NklSourceLocation){0},
-            "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkir`, `*.nkst`, `*.nkl`.",
-            NKS_ARG(ext));
+            nkl, "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkir`, `*.nkst`, `*.nkl`.", NKS_ARG(ext));
         return false;
     }
 }
@@ -197,7 +200,7 @@ static bool compileAstImpl(NklModule mod, NkAtom file) {
     NklAstNodeArray nodes;
     TRY(nickl_getAst(nkl, file, &nodes));
 
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `compileAstImpl` is not finished");
+    nickl_reportError(nkl, "TODO: `compileAstImpl` is not finished");
     return false;
 }
 
@@ -209,7 +212,7 @@ static bool compileNklImpl(NklModule mod, NkAtom file) {
     NklState nkl = mod->com->nkl;
 
     (void)file;
-    nickl_reportError(nkl, (NklSourceLocation){0}, "TODO: `compileNklImpl` is not implemented");
+    nickl_reportError(nkl, "TODO: `compileNklImpl` is not implemented");
     return false;
 }
 
@@ -222,13 +225,13 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
 
     char cwd[NK_MAX_PATH];
     if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
     }
 
     NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
     }
 
@@ -244,13 +247,13 @@ bool nkl_compileFileAst(NklModule mod, NkString path) {
 
     char cwd[NK_MAX_PATH];
     if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
     }
 
     NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
     }
 
@@ -266,13 +269,13 @@ bool nkl_compileFileNkl(NklModule mod, NkString path) {
 
     char cwd[NK_MAX_PATH];
     if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
     }
 
     NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
     if (!file) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
         return false;
     }
 

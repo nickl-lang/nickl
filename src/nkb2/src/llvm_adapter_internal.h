@@ -20,7 +20,7 @@ typedef struct NkLlvmState_T {
 typedef struct NkLlvmJitState_T {
     LLVMOrcLLJITRef lljit;
     LLVMOrcThreadSafeContextRef tsc;
-    NkLlvmTarget tgt;
+    LLVMTargetMachineRef tm;
 } NkLlvmJitState_T;
 
 void *lookupSymbol(LLVMOrcLLJITRef jit, LLVMOrcJITDylibRef jd, char const *name);

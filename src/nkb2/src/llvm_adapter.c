@@ -16,8 +16,30 @@
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"
+#include "ntk/utils.h"
 
 NK_LOG_USE_SCOPE(llvm_adapter);
+
+static NkLlvmTarget tm_wrap(LLVMTargetMachineRef val) {
+    return (NkLlvmTarget)val;
+}
+static LLVMTargetMachineRef tm_unwrap(NkLlvmTarget val) {
+    return (LLVMTargetMachineRef)val;
+}
+
+static NkLlvmJitDylib jd_wrap(LLVMOrcJITDylibRef val) {
+    return (NkLlvmJitDylib)val;
+}
+static LLVMOrcJITDylibRef jd_unwrap(NkLlvmJitDylib val) {
+    return (LLVMOrcJITDylibRef)val;
+}
+
+static NkLlvmModule m_wrap(LLVMModuleRef val) {
+    return (NkLlvmModule)val;
+}
+static LLVMModuleRef m_unwrap(NkLlvmModule val) {
+    return (LLVMModuleRef)val;
+}
 
 NkLlvmState nk_llvm_createState(NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
@@ -44,6 +66,26 @@ void nk_llvm_freeState(NkLlvmState llvm) {
     }
 }
 
+static LLVMTargetMachineRef createTargetImpl(char const *triple, LLVMCodeModel cm) {
+    char *triple_norm = LLVMNormalizeTargetTriple(triple);
+
+    LLVMTargetRef t = NULL;
+    char *error = NULL;
+    if (LLVMGetTargetFromTriple(triple_norm, &t, &error)) {
+        NK_LOG_ERR("%s", error);
+        LLVMDisposeMessage(error);
+        LLVMDisposeMessage(triple_norm);
+        return NULL;
+    }
+
+    LLVMTargetMachineRef tm =
+        LLVMCreateTargetMachine(t, triple_norm, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, cm);
+
+    LLVMDisposeMessage(triple_norm);
+
+    return tm;
+}
+
 NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm) {
     NK_LOG_TRC("%s", __func__);
 
@@ -62,14 +104,15 @@ NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm) {
         }
 
         char *triple = LLVMGetDefaultTargetTriple();
-        NkLlvmTarget tgt = nk_llvm_createTarget(llvm, triple);
+        LLVMTargetMachineRef tm = createTargetImpl(triple, LLVMCodeModelJITDefault);
+        nk_assert(tm);
         LLVMDisposeMessage(triple);
 
         jit = nk_arena_allocT(llvm->arena, NkLlvmJitState_T);
         *jit = (NkLlvmJitState_T){
             .lljit = lljit,
             .tsc = tsc,
-            .tgt = tgt,
+            .tm = tm,
         };
     }
     return jit;
@@ -80,7 +123,7 @@ void nk_llvm_freeJitState(NkLlvmJitState jit) {
 
     NK_PROF_FUNC() {
         if (jit) {
-            nk_llvm_freeTarget(jit->tgt);
+            LLVMDisposeTargetMachine(jit->tm);
             LLVMOrcDisposeThreadSafeContext(jit->tsc);
             LLVMOrcDisposeLLJIT(jit->lljit);
         }
@@ -88,7 +131,7 @@ void nk_llvm_freeJitState(NkLlvmJitState jit) {
 }
 
 NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit) {
-    return jit->tgt;
+    return tm_wrap(jit->tm);
 }
 
 NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState NK_UNUSED llvm, NkLlvmJitState jit) {
@@ -107,38 +150,25 @@ NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState NK_UNUSED llvm, NkLlvmJitState
             _exit(1);
         }
     }
-    return (NkLlvmJitDylib)jd;
+    return jd_wrap(jd);
 }
 
 NkLlvmTarget nk_llvm_createTarget(NkLlvmState NK_UNUSED llvm, char const *triple) {
     NK_LOG_TRC("%s", __func__);
 
-    NK_LOG_INF("Creating target for triple: %s", triple);
-
     LLVMTargetMachineRef tm = NULL;
     NK_PROF_FUNC() {
-        char *error = NULL;
-
-        char *triple_norm = LLVMNormalizeTargetTriple(triple);
-        LLVMTargetRef t = NULL;
-        if (LLVMGetTargetFromTriple(triple_norm, &t, &error)) {
-            // TODO: Report errors properly
-            NK_LOG_ERR("Failed to get target from triple: %s", error);
-            _exit(1);
-        }
-        tm = LLVMCreateTargetMachine(
-            t, triple_norm, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
-
-        LLVMDisposeMessage(triple_norm);
+        NK_LOG_INF("Creating target for triple: %s", triple);
+        tm = createTargetImpl(triple, LLVMCodeModelDefault);
     }
-    return (NkLlvmTarget)tm;
+    return tm_wrap(tm);
 }
 
 void nk_llvm_freeTarget(NkLlvmTarget tgt) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        LLVMTargetMachineRef tm = (LLVMTargetMachineRef)tgt;
+        LLVMTargetMachineRef tm = tm_unwrap(tgt);
         LLVMDisposeTargetMachine(tm);
     }
 }
@@ -167,7 +197,7 @@ NkLlvmModule nk_llvm_compilerIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolAr
             _exit(1);
         }
     }
-    return (NkLlvmModule)module;
+    return m_wrap(module);
 }
 
 static char optLevelChar(NkLlvmOptLevel opt) {
@@ -192,8 +222,8 @@ void nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, Nk
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        LLVMModuleRef module = (LLVMModuleRef)mod;
-        LLVMTargetMachineRef tm = (LLVMTargetMachineRef)tgt;
+        LLVMModuleRef module = m_unwrap(mod);
+        LLVMTargetMachineRef tm = tm_unwrap(tgt);
 
         LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
 
@@ -235,7 +265,7 @@ void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJit
         }
         mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
 
-        LLVMOrcJITDylibRef jd = (LLVMOrcJITDylibRef)dl;
+        LLVMOrcJITDylibRef jd = jd_unwrap(dl);
 
         LLVMErrorRef err = LLVMOrcJITDylibDefine(jd, mu);
         if (err) {
@@ -252,10 +282,10 @@ void nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_fil
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        LLVMTargetMachineRef tm = (LLVMTargetMachineRef)tgt;
+        LLVMTargetMachineRef tm = tm_unwrap(tgt);
 
         char *error = NULL;
-        if (LLVMTargetMachineEmitToFile(tm, (LLVMModuleRef)mod, obj_file.data, LLVMObjectFile, &error) != 0) {
+        if (LLVMTargetMachineEmitToFile(tm, m_unwrap(mod), obj_file.data, LLVMObjectFile, &error) != 0) {
             // TODO: Report errors properly
             NK_LOG_ERR("Failed to emit object file: %s", error);
             _exit(1);
@@ -267,9 +297,9 @@ void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dl) 
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule((LLVMModuleRef)mod, jit->tsc);
+        LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(m_unwrap(mod), jit->tsc);
 
-        LLVMOrcJITDylibRef jd = (LLVMOrcJITDylibRef)dl;
+        LLVMOrcJITDylibRef jd = jd_unwrap(dl);
 
         LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit->lljit, jd, tsm);
         if (err) {
@@ -287,7 +317,7 @@ void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dl, NkAtom sym
 
     void *addr = NULL;
     NK_PROF_FUNC() {
-        LLVMOrcJITDylibRef jd = (LLVMOrcJITDylibRef)dl;
+        LLVMOrcJITDylibRef jd = jd_unwrap(dl);
         addr = lookupSymbol(jit->lljit, jd, nk_atom2cs(sym));
     }
     return addr;
