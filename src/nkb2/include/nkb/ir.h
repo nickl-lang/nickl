@@ -64,8 +64,8 @@ typedef union {
 
 typedef struct {
     union {
-        NkAtom sym;  // Local, Param, Global
-        NkIrImm imm; // Imm
+        NkAtom sym;  // NkIrRef_Local, NkIrRef_Param, NkIrRef_Global
+        NkIrImm imm; // NkIrRef_Imm
     };
     NkIrType type;
     NkIrRefKind kind;
@@ -87,12 +87,12 @@ typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
 typedef struct {
     union {
-        NkIrRef ref;       // Ref
-        NkIrRefArray refs; // RefArray
-        NkAtom label;      // Label
-        i32 offset;        // LabelRel
-        NkIrType type;     // Type
-        NkString str;      // String
+        NkIrRef ref;       // NkIrArg_Ref
+        NkIrRefArray refs; // NkIrArg_RefArray
+        NkAtom label;      // NkIrArg_Label
+        i32 offset;        // NkIrArg_LabelRel
+        NkIrType type;     // NkIrArg_Type
+        NkString str;      // NkIrArg_String
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -110,8 +110,7 @@ typedef enum {
 
     NkIrSymbol_Proc,
     NkIrSymbol_Data,
-    NkIrSymbol_ExternProc,
-    NkIrSymbol_ExternData,
+    NkIrSymbol_Extern,
 } NkIrSymbolKind;
 
 typedef enum {
@@ -120,18 +119,6 @@ typedef enum {
 
 typedef NkSlice(NkIrType const) NkIrTypeArray;
 typedef NkDynArray(NkIrType) NkIrTypeDynArray;
-
-typedef struct {
-    NkAtom lib;
-    NkIrTypeArray param_types;
-    NkIrType ret_type;
-    NkIrProcFlags flags;
-} NkIrExternProc;
-
-typedef struct {
-    NkAtom lib;
-    NkIrType type;
-} NkIrExternData;
 
 typedef struct {
     NkAtom sym;
@@ -179,12 +166,31 @@ typedef enum {
     NkIrSymbol_ThreadLocal = 1 << 0,
 } NkIrSymbolFlags;
 
+typedef enum {
+    NkIrExtern_Proc,
+    NkIrExtern_Data,
+} NkIrExternKind;
+
 typedef struct {
     union {
-        NkIrProc proc;              // Proc
-        NkIrData data;              // Data
-        NkIrExternProc extern_proc; // ExternProc
-        NkIrExternData extern_data; // ExternData
+        struct {
+            NkIrTypeArray param_types;
+            NkIrType ret_type;
+            NkIrProcFlags flags;
+        } proc; // NkIrExtern_Proc
+        struct {
+            NkIrType type;
+        } data; // NkIrExtern_Data
+    };
+    NkAtom lib;
+    NkIrExternKind kind;
+} NkIrExtern;
+
+typedef struct {
+    union {
+        NkIrProc proc;    // NkIrSymbol_Proc
+        NkIrData data;    // NkIrSymbol_Data
+        NkIrExtern extrn; // NkIrSymbol_Extern
     };
     NkAtom name;
     NkIrVisibility vis;
@@ -202,8 +208,8 @@ typedef enum {
 
 typedef struct {
     union {
-        NkAtom name;
-        i32 offset;
+        NkAtom name; // NkIrLabel_Abs
+        i32 offset;  // NkIrLabel_Rel
     };
     NkIrLabelKind kind;
 } NkIrLabel;

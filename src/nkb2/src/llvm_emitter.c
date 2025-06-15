@@ -874,46 +874,51 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             emitData(out, &sym->data);
             break;
 
-        case NkIrSymbol_ExternProc: {
-            bool const sret = sym->extern_proc.ret_type->kind == NkIrType_Aggregate && sym->extern_proc.ret_type->size;
-            nk_printf(out, "declare ");
-            if (sret) {
-                nk_printf(out, "void");
-            } else {
-                emitType(out, sym->extern_proc.ret_type);
-            }
-            nk_printf(out, " ");
-            emitGlobal(out, sym->name);
-            nk_printf(out, "(");
-            if (sret) {
-                nk_printf(out, "ptr sret(");
-                emitType(out, sym->extern_proc.ret_type);
-                nk_printf(out, ") align %u", sym->extern_proc.ret_type->align);
-            }
-            NK_ITERATE(NkIrType const *, type, sym->extern_proc.param_types) {
-                if (NK_INDEX(type, sym->extern_proc.param_types) || sret) {
-                    nk_printf(out, ", ");
+        case NkIrSymbol_Extern:
+            switch (sym->extrn.kind) {
+                case NkIrExtern_Proc: {
+                    bool const sret =
+                        sym->extrn.proc.ret_type->kind == NkIrType_Aggregate && sym->extrn.proc.ret_type->size;
+                    nk_printf(out, "declare ");
+                    if (sret) {
+                        nk_printf(out, "void");
+                    } else {
+                        emitType(out, sym->extrn.proc.ret_type);
+                    }
+                    nk_printf(out, " ");
+                    emitGlobal(out, sym->name);
+                    nk_printf(out, "(");
+                    if (sret) {
+                        nk_printf(out, "ptr sret(");
+                        emitType(out, sym->extrn.proc.ret_type);
+                        nk_printf(out, ") align %u", sym->extrn.proc.ret_type->align);
+                    }
+                    NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
+                        if (NK_INDEX(type, sym->extrn.proc.param_types) || sret) {
+                            nk_printf(out, ", ");
+                        }
+                        if ((*type)->kind == NkIrType_Aggregate) {
+                            nk_printf(out, "ptr byval(");
+                        }
+                        emitType(out, *type);
+                        if ((*type)->kind == NkIrType_Aggregate) {
+                            nk_printf(out, ") align %u", (*type)->align);
+                        }
+                    }
+                    if (sym->extrn.proc.flags & NkIrProc_Variadic) {
+                        nk_printf(out, ", ...");
+                    }
+                    nk_printf(out, ")\n");
+                    break;
                 }
-                if ((*type)->kind == NkIrType_Aggregate) {
-                    nk_printf(out, "ptr byval(");
-                }
-                emitType(out, *type);
-                if ((*type)->kind == NkIrType_Aggregate) {
-                    nk_printf(out, ") align %u", (*type)->align);
-                }
-            }
-            if (sym->extern_proc.flags & NkIrProc_Variadic) {
-                nk_printf(out, ", ...");
-            }
-            nk_printf(out, ")\n");
-            break;
-        }
 
-        case NkIrSymbol_ExternData:
-            emitGlobal(out, sym->name);
-            nk_printf(out, " = external global ");
-            emitType(out, sym->extern_data.type);
-            nk_printf(out, "\n");
+                case NkIrExtern_Data:
+                    emitGlobal(out, sym->name);
+                    nk_printf(out, " = external global ");
+                    emitType(out, sym->extrn.data.type);
+                    nk_printf(out, "\n");
+                    break;
+            }
             break;
     }
 

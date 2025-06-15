@@ -520,8 +520,7 @@ static void gatherDeps(NkIrModule mod, NkIrSymbol const *sym, NkIrSymbolPtrDynAr
             break;
 
         case NkIrSymbol_None:
-        case NkIrSymbol_ExternProc:
-        case NkIrSymbol_ExternData:
+        case NkIrSymbol_Extern:
             break;
     }
 }
@@ -554,6 +553,54 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym, NkIrSymbolDynArray
     }
 }
 
+static NkIrSymbol symToExtern(NkArena *arena, NkIrSymbol sym) {
+    switch (sym.kind) {
+        case NkIrSymbol_Proc: {
+            NkIrTypeDynArray param_types = {.alloc = nk_arena_getAllocator(arena)};
+            NK_ITERATE(NkIrParam const *, param, sym.proc.params) {
+                nkda_append(&param_types, param->type);
+            }
+
+            return (NkIrSymbol){
+                .extrn =
+                    {
+                        .proc =
+                            {
+                                .param_types = {NKS_INIT(param_types)},
+                                .ret_type = sym.proc.ret.type,
+                                .flags = sym.proc.flags,
+                            },
+                        .kind = NkIrExtern_Proc,
+                    },
+                .name = sym.name,
+                .vis = sym.vis,
+                .flags = sym.flags,
+                .kind = NkIrSymbol_Extern,
+            };
+        }
+
+        case NkIrSymbol_Data:
+            return (NkIrSymbol){
+                .extrn =
+                    {
+                        .data =
+                            {
+                                .type = sym.data.type,
+                            },
+                        .kind = NkIrExtern_Data,
+                    },
+                .name = sym.name,
+                .vis = sym.vis,
+                .flags = sym.flags,
+                .kind = NkIrSymbol_Extern,
+            };
+
+        case NkIrSymbol_None:
+        case NkIrSymbol_Extern:
+            return sym;
+    }
+}
+
 static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_name) {
     NkbState nkb = mod->nkb;
 
@@ -564,39 +611,18 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
 
     NK_ITERATE(NkIrSymbol *, sym, syms) {
         if (NkIntptrHashTree_find(&mod->rt_loaded_syms, (intptr_t)sym->name)) {
-            if (sym->kind == NkIrSymbol_Proc) {
-                NkIrProc info = sym->proc;
-                NkIrTypeDynArray param_types = {.alloc = nk_arena_getAllocator(scratch)};
-                NK_ITERATE(NkIrParam const *, param, info.params) {
-                    nkda_append(&param_types, param->type);
-                }
-                sym->extern_proc = (NkIrExternProc){
-                    .param_types = {NKS_INIT(param_types)},
-                    .ret_type = info.ret.type,
-                    .flags = info.flags,
-                };
-                sym->kind = NkIrSymbol_ExternProc;
-            } else if (sym->kind == NkIrSymbol_Data) {
-                NkIrData info = sym->data;
-                sym->extern_data = (NkIrExternData){
-                    .type = info.type,
-                };
-                sym->kind = NkIrSymbol_ExternData;
+            if (sym->kind == NkIrSymbol_Proc || sym->kind == NkIrSymbol_Data) {
+                *sym = symToExtern(scratch, *sym);
             }
         } else {
             NkIntptrHashTree_insert(&mod->rt_loaded_syms, (NkIntptr_kv){.key = (intptr_t)sym->name});
 
-            NkAtom lib_name = 0;
-            if (sym->kind == NkIrSymbol_ExternProc) {
-                lib_name = sym->extern_proc.lib;
-            } else if (sym->kind == NkIrSymbol_ExternData) {
-                lib_name = sym->extern_data.lib;
-            }
-            if (lib_name) {
-                NkHandle lib = nkdl_loadLibrary(nk_atom2cs(lib_name));
+            if (sym->kind == NkIrSymbol_Extern) {
+                NkHandle lib = nkdl_loadLibrary(nk_atom2cs(sym->extrn.lib));
                 if (nk_handleIsNull(lib)) {
                     // TODO: Report errors properly
-                    NK_LOG_ERR("Failed to load library `%s`: %s", nk_atom2cs(lib_name), nkdl_getLastErrorString());
+                    NK_LOG_ERR(
+                        "Failed to load library `%s`: %s", nk_atom2cs(sym->extrn.lib), nkdl_getLastErrorString());
                     _exit(1);
                 }
                 void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(sym->name));
@@ -616,18 +642,18 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
     }
 
     NkLlvmJitState jit = getLlvmJitState(nkb);
-    NkLlvmJitDylib dll = getLlvmJitDylib(mod);
+    NkLlvmJitDylib jdl = getLlvmJitDylib(mod);
 
-    nk_llvm_defineExternSymbols(scratch, jit, dll, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
+    nk_llvm_defineExternSymbols(scratch, jit, jdl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
 
     NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(syms)});
 
     NkLlvmTarget tgt = nk_llvm_getJitTarget(jit);
     nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
 
-    nk_llvm_jitModule(llvm_mod, jit, dll);
+    nk_llvm_jitModule(llvm_mod, jit, jdl);
 
-    return nk_llvm_getSymbolAddress(jit, dll, sym_name);
+    return nk_llvm_getSymbolAddress(jit, jdl, sym_name);
 }
 
 void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
@@ -908,36 +934,40 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             }
             break;
 
-        case NkIrSymbol_ExternProc:
-            nk_printf(out, "extern ");
-            if (sym->extern_proc.lib) {
-                nk_printf(out, "\"");
-                nks_escape(out, nk_atom2s(sym->extern_proc.lib));
-                nk_printf(out, "\" ");
-            }
-            nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
-            NK_ITERATE(NkIrType const *, type, sym->extern_proc.param_types) {
-                if (NK_INDEX(type, sym->extern_proc.param_types)) {
-                    nk_printf(out, ", ");
-                }
-                nkir_inspectType(*type, out);
-            }
-            if (sym->extern_proc.flags & NkIrProc_Variadic) {
-                nk_printf(out, ", ...");
-            }
-            nk_printf(out, ") :");
-            nkir_inspectType(sym->extern_proc.ret_type, out);
-            break;
+        case NkIrSymbol_Extern:
+            switch (sym->extrn.kind) {
+                case NkIrExtern_Proc:
+                    nk_printf(out, "extern ");
+                    if (sym->extrn.lib) {
+                        nk_printf(out, "\"");
+                        nks_escape(out, nk_atom2s(sym->extrn.lib));
+                        nk_printf(out, "\" ");
+                    }
+                    nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
+                    NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
+                        if (NK_INDEX(type, sym->extrn.proc.param_types)) {
+                            nk_printf(out, ", ");
+                        }
+                        nkir_inspectType(*type, out);
+                    }
+                    if (sym->extrn.proc.flags & NkIrProc_Variadic) {
+                        nk_printf(out, ", ...");
+                    }
+                    nk_printf(out, ") :");
+                    nkir_inspectType(sym->extrn.proc.ret_type, out);
+                    break;
 
-        case NkIrSymbol_ExternData:
-            nk_printf(out, "extern ");
-            if (sym->extern_data.lib) {
-                nk_printf(out, "\"");
-                nks_escape(out, nk_atom2s(sym->extern_data.lib));
-                nk_printf(out, "\" ");
+                case NkIrExtern_Data:
+                    nk_printf(out, "extern ");
+                    if (sym->extrn.lib) {
+                        nk_printf(out, "\"");
+                        nks_escape(out, nk_atom2s(sym->extrn.lib));
+                        nk_printf(out, "\" ");
+                    }
+                    nk_printf(out, "data $" NKS_FMT " :", NKS_ARG(sym_str));
+                    nkir_inspectType(sym->extrn.data.type, out);
+                    break;
             }
-            nk_printf(out, "data $" NKS_FMT " :", NKS_ARG(sym_str));
-            nkir_inspectType(sym->extern_data.type, out);
             break;
     }
 

@@ -1032,17 +1032,21 @@ static Void parseExtern(ParserState *p) {
         defineSymbol(
             p,
             &(NkIrSymbol){
-                .extern_proc =
+                .extrn =
                     {
+                        .proc =
+                            {
+                                .param_types = {NKS_INIT(param_types)},
+                                .ret_type = ret_type,
+                                .flags = is_variadic ? NkIrProc_Variadic : 0,
+                            },
                         .lib = lib,
-                        .param_types = {NKS_INIT(param_types)},
-                        .ret_type = ret_type,
-                        .flags = is_variadic ? NkIrProc_Variadic : 0,
+                        .kind = NkIrExtern_Proc,
                     },
                 .name = sym_name,
                 .vis = 0,
                 .flags = 0,
-                .kind = NkIrSymbol_ExternProc,
+                .kind = NkIrSymbol_Extern,
             });
     }
 
@@ -1055,15 +1059,19 @@ static Void parseExtern(ParserState *p) {
         defineSymbol(
             p,
             &(NkIrSymbol){
-                .extern_data =
+                .extrn =
                     {
+                        .data =
+                            {
+                                .type = type,
+                            },
                         .lib = lib,
-                        .type = type,
+                        .kind = NkIrExtern_Data,
                     },
                 .name = sym_name,
                 .vis = 0,
                 .flags = 0,
-                .kind = NkIrSymbol_ExternData,
+                .kind = NkIrSymbol_Extern,
             });
     }
 
