@@ -94,13 +94,13 @@ typedef struct NkbState_T {
 typedef struct NkIrModule_T {
     NkbState nkb;
     NkIrSymbolDynArray syms;
-    NkLlvmJitDylib _llvm_jit_dylib;
 
-    // TODO: Add type safe wrapper for the hash tree
-    NkIntptrHashTree rt_loaded_syms;
+    NkIntptrHashSet rt_loaded_syms;
 
     NkIrSymbolResolver sym_resolver_fn;
     void *sym_resolver_userdata;
+
+    NkLlvmJitDylib _llvm_jit_dylib;
 } NkIrModule_T;
 
 NkbState nkir_createState(void) {
@@ -138,6 +138,7 @@ NkIrModule nkir_createModule(NkbState nkb) {
     *mod = (NkIrModule_T){
         .nkb = nkb,
         .syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
+
         .rt_loaded_syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
     };
     return mod;
@@ -479,12 +480,12 @@ static NkLlvmJitDylib getLlvmJitDylib(NkIrModule mod) {
     return mod->_llvm_jit_dylib;
 }
 
-static void collectSymbols(NkIrModule mod, _NkIntptrHashTree_Node *node, NkIrSymbolDynArray *out) {
+static void collectSymbols(NkIrModule mod, _NkIntptrHashSet_Node *node, NkIrSymbolDynArray *out) {
     if (!node) {
         return;
     }
 
-    NkIrSymbol const *sym = nkir_findSymbol(mod, (NkAtom)node->item.key);
+    NkIrSymbol const *sym = nkir_findSymbol(mod, node->item);
     nk_assert(sym && "symbol not found, invalid ir");
     nkda_append(out, *sym);
 
@@ -548,8 +549,7 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
         NkArena *scratch = &nkb->scratch;
 
         NkAtomDynArray stack = {.alloc = nk_arena_getAllocator(scratch)};
-        // TODO: Add type safe wrapper for the hash tree
-        NkIntptrHashTree deps = {.alloc = nk_arena_getAllocator(scratch)};
+        NkIntptrHashSet deps = {.alloc = nk_arena_getAllocator(scratch)};
 
         nkda_append(&stack, sym_name);
 
@@ -557,8 +557,8 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
             NkAtom const sym_name = nks_last(stack);
             nkda_pop(&stack, 1);
 
-            if (!NkIntptrHashTree_find(&deps, (intptr_t)sym_name)) {
-                NkIntptrHashTree_insert(&deps, (NkIntptr_kv){.key = (intptr_t)sym_name});
+            if (!NkIntptrHashSet_find(&deps, sym_name)) {
+                NkIntptrHashSet_insert(&deps, sym_name);
 
                 NkIrSymbol const *sym = nkir_findSymbol(mod, sym_name);
                 nk_assert(sym && "symbol not found, invalid ir");
@@ -629,12 +629,12 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
     NkIrSymbolAddressDynArray to_define = {.alloc = nk_arena_getAllocator(scratch)};
 
     NK_ITERATE(NkIrSymbol *, sym, syms) {
-        if (NkIntptrHashTree_find(&mod->rt_loaded_syms, (intptr_t)sym->name)) {
+        if (NkIntptrHashSet_find(&mod->rt_loaded_syms, sym->name)) {
             if (sym->kind == NkIrSymbol_Proc || sym->kind == NkIrSymbol_Data) {
                 *sym = symToExtern(scratch, *sym);
             }
         } else {
-            NkIntptrHashTree_insert(&mod->rt_loaded_syms, (NkIntptr_kv){.key = (intptr_t)sym->name});
+            NkIntptrHashSet_insert(&mod->rt_loaded_syms, sym->name);
 
             if (sym->kind == NkIrSymbol_Extern) {
                 if (!mod->sym_resolver_fn) {

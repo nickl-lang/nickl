@@ -99,6 +99,8 @@ constexpr usize nk_alignofval(T const &) {
 #define _NK_NOP (void)0
 #define _NK_NOP_TOPLEVEL extern NK_UNUSED int NK_CAT(_, __LINE__)
 
+#define _NK_EMPTY
+
 #define nk_trap() __builtin_trap()
 
 #ifdef __cplusplus

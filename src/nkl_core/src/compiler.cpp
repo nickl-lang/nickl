@@ -1320,7 +1320,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
 
-            auto found = DeclMap_find(&scope->locals, name);
+            auto found = DeclMap_findItem(&scope->locals, name);
             if (found) {
                 return resolveDecl(ctx, found->val);
             } else {
@@ -1488,12 +1488,12 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             };
             nk_list_push(ctx.scope_stack->export_list, export_node);
 
-            auto const found = NkAtomSet_find(&ctx.m->export_set, name);
+            auto const found = NkAtomSet_findItem(&ctx.m->export_set, name);
             if (found) {
                 // TODO: Report the conflicting export location
                 return error(ctx, "symbol '%s' is already exported in the current module", nk_atom2cs(name));
             }
-            NkAtomSet_insert(&ctx.m->export_set, name);
+            NkAtomSet_insertItem(&ctx.m->export_set, name);
 
             DEFINE(proc, compile(ctx, const_n));
 

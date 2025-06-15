@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "hash_trees.h"
 #include "ir_parser.h"
 #include "nickl_impl.h"
 #include "nkb/ir.h"
@@ -12,7 +13,6 @@
 #include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
-#include "ntk/hash_tree.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -29,7 +29,7 @@ NklState nkl_newState(void) {
         .arena = arena,
         .nkb = nkir_createState(),
     };
-    nkl->text_map = (NkIntptrHashTree){.alloc = nk_arena_getAllocator(&nkl->arena)};
+    nkl->text_map = (NkAtomStringHashMap){.alloc = nk_arena_getAllocator(&nkl->arena)};
     return nkl;
 }
 
@@ -103,17 +103,17 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
     NklModule mod = userdata;
 
     NK_LOG_DBG("Searching for extern symbol `%s` in module `%s`", nk_atom2cs(sym), nk_atom2cs(mod->name));
-    NkIntptr_kv *found = NkIntptrHashTree_find(&mod->extern_syms, (intptr_t)sym);
+    NkAtom *found = NkAtomHashMap_find(&mod->extern_syms, sym);
     if (found) {
-        NkAtom const lib = (NkAtom)found->val;
+        NkAtom const lib = *found;
 
         NK_LOG_DBG("Module library is `%s`", nk_atom2cs(lib));
 
         if (lib) {
-            NkIntptr_kv *found_mod = NkIntptrHashTree_find(&mod->linked_mods, (intptr_t)lib);
+            NklModule *found_mod = NkAtomModuleHashMap_find(&mod->linked_mods, lib);
             if (found_mod) {
                 // TODO: Detect cycles during symbol resolution
-                NklModule src_mod = (NklModule)found_mod->val;
+                NklModule const src_mod = *found_mod;
                 return nkir_getSymbolAddress(src_mod->ir, sym);
             } else {
                 NkAtom lib_tr = nickl_translateLib(mod->com, lib);
@@ -201,13 +201,7 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
         nickl_reportError(nkl, "mixed modules from different compilers");
     }
 
-    // TODO: Check for linking conflicts
-    NkIntptrHashTree_insert(
-        &dst_mod->linked_mods,
-        (NkIntptr_kv){
-            .key = (intptr_t)src_mod->name,
-            .val = (intptr_t)src_mod,
-        });
+    NkAtomModuleHashMap_insert(&dst_mod->linked_mods, src_mod->name, src_mod);
 
     nkda_append(&src_mod->mods_linked_to, dst_mod);
 
@@ -227,12 +221,7 @@ bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib) {
 
     // TODO: Validate input
 
-    NkIntptrHashTree_insert(
-        &com->lib_aliases,
-        (NkIntptr_kv){
-            .key = (intptr_t)nk_s2atom(alias),
-            .val = (intptr_t)nk_s2atom(lib),
-        });
+    NkAtomHashMap_insert(&com->lib_aliases, nk_s2atom(alias), nk_s2atom(lib));
 
     return true;
 }

@@ -10,7 +10,6 @@
 #include "ntk/common.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
-#include "ntk/hash_tree.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -54,13 +53,8 @@ void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va
         }              \
     } while (0)
 
-static void defineTextImpl(NklState nkl, NkAtom file, NkString const *text) {
-    NkIntptrHashTree_insert(
-        &nkl->text_map,
-        (NkIntptr_kv){
-            .key = (intptr_t)file,
-            .val = (intptr_t)text,
-        });
+static void defineTextImpl(NklState nkl, NkAtom file, NkString text) {
+    NkAtomStringHashMap_insert(&nkl->text_map, file, text);
 }
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
@@ -68,11 +62,11 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
 
     NkString text;
 
-    NkIntptr_kv *found = NkIntptrHashTree_find(&nkl->text_map, (intptr_t)file);
+    NkString *found = NkAtomStringHashMap_find(&nkl->text_map, file);
     if (found) {
         // TODO: Print null names properly
         NK_LOG_DBG("Using cached text for file `%s`", nk_atom2cs(file));
-        text = *(NkString const *)found->val;
+        text = *found;
     } else {
         NK_LOG_DBG("Loading text for file `%s`", nk_atom2cs(file));
 
@@ -83,9 +77,7 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
             return false;
         }
 
-        NkString *text_ptr = nk_arena_allocT(&nkl->arena, NkString);
-        *text_ptr = text;
-        defineTextImpl(nkl, file, text_ptr);
+        defineTextImpl(nkl, file, text);
     }
 
     *out_text = text;
@@ -95,10 +87,7 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
 bool nickl_defineText(NklState nkl, NkAtom file, NkString text) {
     NK_LOG_TRC("%s", __func__);
 
-    NkString *text_ptr = nk_arena_allocT(&nkl->arena, NkString);
-    *text_ptr = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(text));
-    defineTextImpl(nkl, file, text_ptr);
-
+    defineTextImpl(nkl, file, nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(text)));
     return true;
 }
 
@@ -316,8 +305,8 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
 }
 
 NkAtom nickl_translateLib(NklCompiler com, NkAtom alias) {
-    NkIntptr_kv *found = NkIntptrHashTree_find(&com->lib_aliases, (intptr_t)alias);
-    return found ? (NkAtom)found->val : alias;
+    NkAtom *found = NkAtomHashMap_find(&com->lib_aliases, alias);
+    return found ? *found : alias;
 }
 
 static bool defineSymbol(NklModule mod, NkIrSymbol const *sym) {
@@ -351,13 +340,7 @@ static bool defineIntern(NklModule mod, NkIrSymbol const *sym) {
 
 static bool defineExtern(NklModule mod, NkIrSymbol const *sym, NkAtom lib) {
     if (defineSymbol(mod, sym)) {
-        NkIntptrHashTree_insert(
-            &mod->extern_syms,
-            (NkIntptr_kv){
-                .key = (intptr_t)sym->name,
-                .val = (intptr_t)lib,
-            });
-
+        NkAtomHashMap_insert(&mod->extern_syms, sym->name, lib);
         return true;
     }
     return false;
@@ -435,9 +418,9 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
     }
 
     {
-        NkIntptr_kv *found = NkIntptrHashTree_find(&dst_mod->extern_syms, (intptr_t)sym->name);
+        NkAtom *found = NkAtomHashMap_find(&dst_mod->extern_syms, sym->name);
         if (found) {
-            NkAtom const found_name = (NkAtom)found->val;
+            NkAtom const found_name = *found;
             if (found_name) {
                 if (found_name != src_mod->name) {
                     NK_LOG_ERR("Symbol already exists with lib `%s`", nk_atom2cs(found_name));
@@ -450,15 +433,10 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
                     nk_atom2cs(sym->name),
                     nk_atom2cs(dst_mod->name),
                     nk_atom2cs(src_mod->name));
-                found->val = (intptr_t)src_mod->name;
+                *found = src_mod->name;
             }
         } else {
-            NkIntptrHashTree_insert(
-                &dst_mod->extern_syms,
-                (NkIntptr_kv){
-                    .key = (intptr_t)sym->name,
-                    .val = (intptr_t)src_mod->name,
-                });
+            NkAtomHashMap_insert(&dst_mod->extern_syms, sym->name, src_mod->name);
         }
     }
 

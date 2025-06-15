@@ -1,6 +1,7 @@
 #ifndef NKL_CORE_NICKL_IMPL_H_
 #define NKL_CORE_NICKL_IMPL_H_
 
+#include "hash_trees.h"
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/diagnostics.h"
@@ -8,7 +9,6 @@
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
-#include "ntk/hash_tree.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -21,8 +21,7 @@ typedef struct NklState_T {
 
     NkbState nkb;
 
-    // TODO: Add type safe wrapper for the hash tree
-    NkIntptrHashTree text_map;
+    NkAtomStringHashMap text_map;
 
     NklError *error;
 } NklState_T;
@@ -31,8 +30,7 @@ typedef struct NklCompiler_T {
     NklState nkl;
     NkIrTarget target;
 
-    // TODO: Add type safe wrapper for the hash tree
-    NkIntptrHashTree lib_aliases;
+    NkAtomHashMap lib_aliases;
 
     usize module_count;
 } NklCompiler_T;
@@ -45,9 +43,8 @@ typedef struct NklModule_T {
     NklCompiler com;
     NkIrModule ir;
 
-    // TODO: Add type safe wrapper for the hash tree
-    NkIntptrHashTree linked_mods;
-    NkIntptrHashTree extern_syms;
+    NkAtomModuleHashMap linked_mods;
+    NkAtomHashMap extern_syms;
 
     NklModuleDynArray mods_linked_to;
 } NklModule_T;

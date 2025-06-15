@@ -84,7 +84,7 @@ pub proc plus(:i64 %a, :i64 %b) :i64 {
 }
 )"));
 
-    auto plus = (i64 (*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2s("plus"));
+    auto plus = (i64(*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2s("plus"));
     ASSERT_TRUE(plus);
     EXPECT_EQ(plus(4, 5), 9);
 }
@@ -134,13 +134,13 @@ pub proc foo() :i64 {
 )"));
 
     {
-        auto foo = (i64 (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+        auto foo = (i64(*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
         ASSERT_TRUE(foo);
         EXPECT_EQ(foo(), 42);
     }
 
     {
-        auto foo = (i64 (*)())nkl_getSymbolAddress(mod2, nk_cs2s("foo"));
+        auto foo = (i64(*)())nkl_getSymbolAddress(mod2, nk_cs2s("foo"));
         ASSERT_TRUE(foo);
         EXPECT_EQ(foo(), 43);
     }

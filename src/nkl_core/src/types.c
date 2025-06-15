@@ -53,7 +53,7 @@ static TypeSearchResult getTypeByFingerprint(NklState nkl, ByteArray fp, NklType
     NK_PROF_FUNC() {
         nk_mutex_lock(nkl->types.mtx);
 
-        Type_kv *found = TypeMap_find(&nkl->types.type_map, fp);
+        Type_kv *found = TypeMap_findItem(&nkl->types.type_map, fp);
         if (found) {
             res.type = found->val;
         } else {
@@ -69,7 +69,7 @@ static TypeSearchResult getTypeByFingerprint(NklState nkl, ByteArray fp, NklType
             ByteArray fp_copy;
             nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &fp_copy, fp);
 
-            TypeMap_insert(&nkl->types.type_map, (Type_kv){fp_copy, res.type});
+            TypeMap_insertItem(&nkl->types.type_map, (Type_kv){fp_copy, res.type});
         }
 
         nk_mutex_unlock(nkl->types.mtx);

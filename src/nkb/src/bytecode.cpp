@@ -309,7 +309,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
                 case NkIrRef_ExternData: {
                     auto data = ir.extern_data.data[ir_ref.index];
-                    auto sym = ExternSymTree_find(&ctx->extern_syms, data.name);
+                    auto sym = ExternSymTree_findItem(&ctx->extern_syms, data.name);
                     if (!sym) {
                         reportError(ctx, "undefined reference to `%s`", nk_atom2cs(data.name));
                         return false;
@@ -321,7 +321,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
                 case NkIrRef_ExternProc: {
                     auto proc = ir.extern_procs.data[ir_ref.index];
-                    auto sym = ExternSymTree_find(&ctx->extern_syms, proc.name);
+                    auto sym = ExternSymTree_findItem(&ctx->extern_syms, proc.name);
                     if (!sym) {
                         reportError(ctx, "undefined reference to `%s`", nk_atom2cs(proc.name));
                         return false;
@@ -651,5 +651,5 @@ NkString nkir_getRunErrorString(NkIrRunCtx ctx) {
 }
 
 void nkir_setExternSymAddr(NkIrRunCtx ctx, NkAtom sym, void *addr) {
-    ExternSymTree_insert(&ctx->extern_syms, ExternSym_kv{sym, addr});
+    ExternSymTree_insertItem(&ctx->extern_syms, ExternSym_kv{sym, addr});
 }

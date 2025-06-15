@@ -13,12 +13,6 @@
 #include "ntk/list.h"
 #include "ntk/string_builder.h"
 
-static u64 nk_atom_hash(NkAtom const key) {
-    return nk_hashVal(key);
-}
-static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
-    return lhs == rhs;
-}
 static NkAtom const *Source_kv_GetKey(Source_kv const *item) {
     return &item->key;
 }
@@ -53,9 +47,9 @@ void nkl_state_free(NklState nkl) {
 }
 
 NklSource const *nkl_getSource(NklState nkl, NkAtom file) {
-    Source_kv *found = FileMap_find(&nkl->files, file);
+    Source_kv *found = FileMap_findItem(&nkl->files, file);
     if (!found) {
-        found = FileMap_insert(&nkl->files, (Source_kv){.key = file, .val = {0}});
+        found = FileMap_insertItem(&nkl->files, (Source_kv){.key = file, .val = {0}});
 
         NklSource *src = &found->val;
         src->file = file;

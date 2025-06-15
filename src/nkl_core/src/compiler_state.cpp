@@ -13,13 +13,6 @@ namespace {
 
 NK_LOG_USE_SCOPE(compiler);
 
-static u64 nk_atom_hash(NkAtom const key) {
-    return nk_hashVal(key);
-}
-static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
-    return lhs == rhs;
-}
-
 static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
     return &item->key;
 }
@@ -43,9 +36,9 @@ NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
 }
 
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
-    auto found = FileContextMap_find(&c->files, file);
+    auto found = FileContextMap_findItem(&c->files, file);
     if (!found) {
-        found = FileContextMap_insert(&c->files, {file, {}});
+        found = FileContextMap_insertItem(&c->files, {file, {}});
     }
     return *found;
 }
@@ -250,12 +243,12 @@ void popScope(Context &ctx) {
 static Decl &makeDecl(Context &ctx, NkAtom name) {
     nk_assert(ctx.scope_stack && "no current scope");
     NK_LOG_DBG("Declaring name=`%s` scope=%p", nk_atom2cs(name), (void *)ctx.scope_stack);
-    auto const found = DeclMap_find(&ctx.scope_stack->locals, name);
+    auto const found = DeclMap_findItem(&ctx.scope_stack->locals, name);
     if (found) {
         static Decl s_dummy{};
         return error(ctx, "redefinition of '%s'", nk_atom2cs(name)), s_dummy;
     }
-    auto kv = DeclMap_insert(&ctx.scope_stack->locals, {name, {}});
+    auto kv = DeclMap_insertItem(&ctx.scope_stack->locals, {name, {}});
     return kv->val;
 }
 
@@ -302,7 +295,7 @@ Decl &resolve(Context &ctx, NkAtom name) {
     NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
 
     for (; scope; scope = scope->next) {
-        auto found = DeclMap_find(&scope->locals, name);
+        auto found = DeclMap_findItem(&scope->locals, name);
         if (found) {
             return found->val;
         }
