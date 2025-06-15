@@ -70,7 +70,7 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
 
     NkIntptr_kv *found = NkIntptrHashTree_find(&nkl->text_map, (intptr_t)file);
     if (found) {
-        // TODO: Print null names correctly
+        // TODO: Print null names properly
         NK_LOG_DBG("Using cached text for file `%s`", nk_atom2cs(file));
         text = *(NkString const *)found->val;
     } else {
@@ -316,25 +316,152 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
 }
 
 NkString nickl_translateLib(NklModule mod, NkString alias) {
-    NK_ITERATE(LibAlias const *, it, mod->com->lib_aliases) {
-        if (nks_equal(alias, it->alias)) {
-            return it->lib;
-        }
-    }
-
-    return alias;
+    NkIntptr_kv *found = NkIntptrHashTree_find(&mod->com->lib_aliases, (intptr_t)nk_s2atom(alias));
+    return found ? nk_atom2s((NkAtom)found->val) : alias;
 }
 
-bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
+NkAtom nickl_translateLib2(NklCompiler com, NkAtom alias) {
+    NkIntptr_kv *found = NkIntptrHashTree_find(&com->lib_aliases, (intptr_t)alias);
+    return found ? (NkAtom)found->val : alias;
+}
+
+static bool defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     NK_LOG_STREAM_INF {
-        NkArena scratch = {0};
-        NkStream log = nk_log_getStream();
-        nk_printf(log, "new symbol:\n");
-        nkir_inspectSymbol(log, &scratch, sym);
-        nk_arena_free(&scratch); // TODO: Use existing scratch arena
+        NkArena *scratch = &mod->com->nkl->scratch;
+        NK_ARENA_SCOPE(scratch) {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "symbol:\n");
+            nkir_inspectSymbol(log, scratch, sym);
+        }
     }
 
     // TODO: Check for symbol conflicts
     nkir_moduleDefineSymbol(mod->ir, sym);
+    return true;
+}
+
+static bool defineIntern(NklModule mod, NkIrSymbol const *sym) {
+    if (defineSymbol(mod, sym)) {
+        if (sym->vis == NkIrVisibility_Default) {
+            NK_ITERATE(NklModule const *, it, mod->mods_linked_to) {
+                NklModule const dst_mod = *it;
+                nickl_linkSymbol(dst_mod, mod, sym);
+            }
+        }
+
+        return true;
+    }
+    return false;
+}
+
+static bool defineExtern(NklModule mod, NkIrSymbol const *sym, NkAtom lib) {
+    if (defineSymbol(mod, sym)) {
+        NkIntptrHashTree_insert(
+            &mod->extern_syms,
+            (NkIntptr_kv){
+                .key = (intptr_t)sym->name,
+                .val = (intptr_t)lib,
+            });
+
+        return true;
+    }
+    return false;
+}
+
+bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *info) {
+    // TODO: Print null names properly
+    NK_LOG_DBG("Defining proc `%s` in module `%u`", nk_atom2cs(info->name), mod->name);
+
+    return defineIntern(
+        mod,
+        &(NkIrSymbol){
+            .proc = *proc,
+            .name = info->name,
+            .vis = info->vis,
+            .flags = info->flags,
+            .kind = NkIrSymbol_Proc,
+        });
+}
+
+bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *info) {
+    // TODO: Print null names properly
+    NK_LOG_DBG("Defining data `%s` in module `%u`", nk_atom2cs(info->name), mod->name);
+
+    return defineIntern(
+        mod,
+        &(NkIrSymbol){
+            .data = *data,
+            .name = info->name,
+            .vis = info->vis,
+            .flags = info->flags,
+            .kind = NkIrSymbol_Data,
+        });
+}
+
+bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib) {
+    // TODO: Print null names properly
+    NK_LOG_DBG(
+        "Defining extern symbol `%s` in module `%u` with lib `%s`", nk_atom2cs(info->name), mod->name, nk_atom2cs(lib));
+
+    return defineExtern(
+        mod,
+        &(NkIrSymbol){
+            .extrn = *extrn,
+            .name = info->name,
+            .vis = info->vis,
+            .flags = info->flags,
+            .kind = NkIrSymbol_Extern,
+        },
+        lib);
+}
+
+bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
+    NklState nkl = dst_mod->com->nkl;
+
+    // TODO: Print null names properly
+    NK_LOG_DBG("Linking symbol `%s` from `%u` to `%u`", nk_atom2cs(sym->name), src_mod->name, dst_mod->name);
+
+    if (sym->vis != NkIrVisibility_Default) {
+        return true;
+    }
+
+    {
+        NkIntptr_kv *found = NkIntptrHashTree_find(&dst_mod->extern_syms, (intptr_t)sym->name);
+        if (found) {
+            NkAtom const found_name = (NkAtom)found->val;
+            if (found_name) {
+                if (found_name != src_mod->name) {
+                    NK_LOG_ERR("Symbol already exists with lib `%s`", nk_atom2cs(found_name));
+                    nickl_reportError(nkl, "TODO: Symbol conflict");
+                    return false;
+                }
+            } else {
+                // TODO: Print null names properly
+                NK_LOG_DBG(
+                    "Patching extern symbol `%s` in mod `%u` with lib `%s`",
+                    nk_atom2cs(sym->name),
+                    dst_mod->name,
+                    nk_atom2cs(src_mod->name));
+                found->val = (intptr_t)src_mod->name;
+            }
+        } else {
+            NkIntptrHashTree_insert(
+                &dst_mod->extern_syms,
+                (NkIntptr_kv){
+                    .key = (intptr_t)sym->name,
+                    .val = (intptr_t)src_mod->name,
+                });
+        }
+    }
+
+    {
+        NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
+        if (found && found->kind != NkIrSymbol_Extern) {
+            NK_LOG_ERR("TODO: Symbol conflict");
+            nickl_reportError(nkl, "TODO: Symbol conflict");
+            return false;
+        }
+    }
+
     return true;
 }

@@ -8,8 +8,11 @@
 #include "nkl/common/ast.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
+#include "ntk/common.h"
+#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
+#include "ntk/hash_tree.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/string.h"
@@ -94,6 +97,60 @@ NklCompiler nkl_newCompilerHost(NklState nkl) {
         }              \
     } while (0)
 
+typedef struct {
+    NklModule mod;
+} SymbolResolverCtx;
+
+static void *symbolResolver(NkAtom sym, void *userdata) {
+    NK_LOG_TRC("%s", __func__);
+
+    SymbolResolverCtx *ctx = userdata;
+
+    // TODO: Print null names properly
+    NK_LOG_DBG("Searching for extern symbol `%s` in module `%u`", nk_atom2cs(sym), ctx->mod->name);
+    NkIntptr_kv *found = NkIntptrHashTree_find(&ctx->mod->extern_syms, (intptr_t)sym);
+    if (found) {
+        NkAtom const lib = (NkAtom)found->val;
+
+        NK_LOG_DBG("Module library is `%s`", nk_atom2cs(lib));
+
+        if (lib) {
+            NkIntptr_kv *found_mod = NkIntptrHashTree_find(&ctx->mod->linked_mods, (intptr_t)lib);
+            if (found_mod) {
+                // TODO: Detect cycles during symbol resolution
+                NklModule src_mod = (NklModule)found_mod->val;
+                return nkir_getSymbolAddress(src_mod->ir, sym);
+            } else {
+                NkAtom lib_tr = nickl_translateLib2(ctx->mod->com, lib);
+
+                NkHandle lib = nkdl_loadLibrary(nk_atom2cs(lib_tr));
+                if (nk_handleIsNull(lib)) {
+                    nickl_reportError(
+                        ctx->mod->com->nkl,
+                        "Failed to load library `%s`: %s",
+                        nk_atom2cs(lib_tr),
+                        nkdl_getLastErrorString());
+                    return NULL;
+                }
+
+                void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(sym));
+                if (!addr) {
+                    nickl_reportError(
+                        ctx->mod->com->nkl,
+                        "Failed to load symbol `%s`: %s",
+                        nk_atom2cs(sym),
+                        nkdl_getLastErrorString());
+                    return NULL;
+                }
+
+                return addr;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 NklModule nkl_newModule(NklCompiler com) {
     NK_LOG_TRC("%s", __func__);
 
@@ -103,11 +160,24 @@ NklModule nkl_newModule(NklCompiler com) {
 
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
+        // TODO: Allow setting custom module names
+        .name = nk_atom_unique((NkString){0}),
+
         .com = com,
         .ir = nkir_createModule(nkl->nkb),
-        .linked_in = {.alloc = nk_arena_getAllocator(&nkl->arena)},
-        .linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+
+        .linked_mods = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+        .extern_syms = {.alloc = nk_arena_getAllocator(&nkl->arena)},
+
+        .mods_linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
+
+    SymbolResolverCtx *ctx = nk_arena_allocT(&nkl->arena, SymbolResolverCtx);
+    *ctx = (SymbolResolverCtx){
+        .mod = mod,
+    };
+    nkir_setSymbolResolver(mod->ir, symbolResolver, ctx);
+
     return mod;
 }
 
@@ -127,10 +197,21 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
         nickl_reportError(nkl, "mixed modules from different compilers");
     }
 
-    nkda_append(&dst_mod->linked_in, src_mod);
-    nkda_append(&src_mod->linked_to, dst_mod);
+    // TODO: Check for linking conflicts
+    NkIntptrHashTree_insert(
+        &dst_mod->linked_mods,
+        (NkIntptr_kv){
+            .key = (intptr_t)src_mod->name,
+            .val = (intptr_t)src_mod,
+        });
 
-    // TODO: Check for symbol conflicts
+    nkda_append(&src_mod->mods_linked_to, dst_mod);
+
+    NK_ITERATE(NkIrSymbol const *, sym, nkir_moduleGetSymbols(src_mod->ir)) {
+        if (!nickl_linkSymbol(dst_mod, src_mod, sym)) {
+            return false;
+        }
+    }
 
     return true;
 }
@@ -140,16 +221,14 @@ bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib) {
 
     TRY(com);
 
-    NklState nkl = com->nkl;
-
     // TODO: Validate input
 
-    nkda_append(
+    NkIntptrHashTree_insert(
         &com->lib_aliases,
-        ((LibAlias){
-            .lib = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(lib)),
-            .alias = nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(alias)),
-        }));
+        (NkIntptr_kv){
+            .key = (intptr_t)nk_s2atom(alias),
+            .val = (intptr_t)nk_s2atom(lib),
+        });
 
     return true;
 }

@@ -91,7 +91,6 @@ static NkIrType allocNumericType(ParserState *p, NkIrNumericValueType value_type
         .num = value_type,
         .size = NKIR_NUMERIC_TYPE_SIZE(value_type),
         .align = NKIR_NUMERIC_TYPE_SIZE(value_type),
-        .id = 0,
         .kind = NkIrType_Numeric,
     };
     return type;
@@ -125,14 +124,12 @@ static NkIrType allocStringType(ParserState *p, usize size) {
     *elem = (NkIrAggregateElemInfo){
         .type = get_i8_t(p),
         .count = size + 1,
-        .offset = 0,
     };
     NkIrType_T *type = nk_arena_allocT(p->arena, NkIrType_T);
     *type = (NkIrType_T){
         .aggr = {elem, 1},
         .size = size + 1,
         .align = 1,
-        .id = 0,
         .kind = NkIrType_Aggregate,
     };
     return type;
@@ -361,7 +358,6 @@ static NkIrType parseType(ParserState *p) {
             .aggr = {NKS_INIT(elems)},
             .size = size,
             .align = align,
-            .id = 0,
             .kind = NkIrType_Aggregate,
         };
 
@@ -585,8 +581,24 @@ static NkIrRef parseDst(ParserState *p, NkIrType type_opt, bool allow_null) {
     }
 }
 
-static Void defineSymbol(ParserState *p, NkIrSymbol const *sym) {
-    if (!nickl_defineSymbol(p->mod, sym)) {
+static Void defineProc(ParserState *p, NkIrProc const *proc, NklSymbolInfo const *info) {
+    if (!nickl_defineProc(p->mod, proc, info)) {
+        // TODO: Report proper conflict errors
+        ERROR("failed to define symbol");
+    }
+    return ret;
+}
+
+static Void defineData(ParserState *p, NkIrData const *data, NklSymbolInfo const *info) {
+    if (!nickl_defineData(p->mod, data, info)) {
+        // TODO: Report proper conflict errors
+        ERROR("failed to define symbol");
+    }
+    return ret;
+}
+
+static Void defineExtern(ParserState *p, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib) {
+    if (!nickl_defineExtern(p->mod, extrn, info, lib)) {
         // TODO: Report proper conflict errors
         ERROR("failed to define symbol");
     }
@@ -641,21 +653,18 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
             TRY(parseConst(p, addr, type, &relocs));
 
             NkAtom const sym = nk_atom_unique((NkString){0});
-            defineSymbol(
+            TRY(defineData(
                 p,
-                &(NkIrSymbol){
-                    .data =
-                        {
-                            .type = type,
-                            .relocs = {NKS_INIT(relocs)},
-                            .addr = addr,
-                            .flags = NkIrData_ReadOnly,
-                        },
+                &(NkIrData){
+                    .type = type,
+                    .relocs = {NKS_INIT(relocs)},
+                    .addr = addr,
+                    .flags = NkIrData_ReadOnly,
+                },
+                &(NklSymbolInfo){
                     .name = sym,
                     .vis = NkIrVisibility_Local,
-                    .flags = 0,
-                    .kind = NkIrSymbol_Data,
-                });
+                }));
             return nkir_makeRefGlobal(sym, get_ptr_t(p));
         }
     }
@@ -666,21 +675,18 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         NkIrType type = allocStringType(p, str.size);
 
         NkAtom const sym = nk_atom_unique((NkString){0});
-        defineSymbol(
+        TRY(defineData(
             p,
-            &(NkIrSymbol){
-                .data =
-                    {
-                        .type = type,
-                        .relocs = {0},
-                        .addr = (void *)str.data,
-                        .flags = NkIrData_ReadOnly,
-                    },
+            &(NkIrData){
+                .type = type,
+                .relocs = {0},
+                .addr = (void *)str.data,
+                .flags = NkIrData_ReadOnly,
+            },
+            &(NklSymbolInfo){
                 .name = sym,
                 .vis = NkIrVisibility_Local,
-                .flags = 0,
-                .kind = NkIrSymbol_Data,
-            });
+            }));
         return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
 
@@ -911,21 +917,17 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RBrace);
 
-    defineSymbol(
+    TRY(defineProc(
         p,
-        &(NkIrSymbol){
-            .proc =
-                {
-                    .params = p->proc_params,
-                    .ret = p->proc_ret,
-                    .instrs = {NKS_INIT(instrs)},
-                    .flags = 0,
-                },
+        &(NkIrProc){
+            .params = p->proc_params,
+            .ret = p->proc_ret,
+            .instrs = {NKS_INIT(instrs)},
+        },
+        &(NklSymbolInfo){
             .name = name,
             .vis = vis,
-            .flags = 0,
-            .kind = NkIrSymbol_Proc,
-        });
+        }));
 
     return ret;
 }
@@ -975,21 +977,18 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         ERROR_EXPECT("type or constant");
     }
 
-    defineSymbol(
+    TRY(defineData(
         p,
-        &(NkIrSymbol){
-            .data =
-                {
-                    .type = type,
-                    .relocs = {NKS_INIT(relocs)},
-                    .addr = addr,
-                    .flags = flags,
-                },
+        &(NkIrData){
+            .type = type,
+            .relocs = {NKS_INIT(relocs)},
+            .addr = addr,
+            .flags = flags,
+        },
+        &(NklSymbolInfo){
             .name = name,
             .vis = vis,
-            .flags = 0,
-            .kind = NkIrSymbol_Data,
-        });
+        }));
 
     return ret;
 }
@@ -1029,25 +1028,22 @@ static Void parseExtern(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const ret_type = parseType(p));
 
-        defineSymbol(
+        TRY(defineExtern(
             p,
-            &(NkIrSymbol){
-                .extrn =
+            &(NkIrExtern){
+                .proc =
                     {
-                        .proc =
-                            {
-                                .param_types = {NKS_INIT(param_types)},
-                                .ret_type = ret_type,
-                                .flags = is_variadic ? NkIrProc_Variadic : 0,
-                            },
-                        .lib = lib,
-                        .kind = NkIrExtern_Proc,
+                        .param_types = {NKS_INIT(param_types)},
+                        .ret_type = ret_type,
+                        .flags = is_variadic ? NkIrProc_Variadic : 0,
                     },
+                .kind = NkIrExtern_Proc,
+            },
+            &(NklSymbolInfo){
                 .name = sym_name,
-                .vis = 0,
-                .flags = 0,
-                .kind = NkIrSymbol_Extern,
-            });
+                .vis = NkIrVisibility_Local, // TODO: Extern defaults to local visibility
+            },
+            lib));
     }
 
     else if (ACCEPT(NklIrToken_data)) {
@@ -1056,23 +1052,20 @@ static Void parseExtern(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
 
-        defineSymbol(
+        TRY(defineExtern(
             p,
-            &(NkIrSymbol){
-                .extrn =
+            &(NkIrExtern){
+                .data =
                     {
-                        .data =
-                            {
-                                .type = type,
-                            },
-                        .lib = lib,
-                        .kind = NkIrExtern_Data,
+                        .type = type,
                     },
+                .kind = NkIrExtern_Data,
+            },
+            &(NklSymbolInfo){
                 .name = sym_name,
-                .vis = 0,
-                .flags = 0,
-                .kind = NkIrSymbol_Extern,
-            });
+                .vis = NkIrVisibility_Local, // TODO: Extern defaults to local visibility
+            },
+            lib));
     }
 
     return ret;

@@ -182,7 +182,6 @@ typedef struct {
             NkIrType type;
         } data; // NkIrExtern_Data
     };
-    NkAtom lib;
     NkIrExternKind kind;
 } NkIrExtern;
 
@@ -240,6 +239,12 @@ NkIrInstrDynArray nkir_moduleNewInstrArray(NkIrModule mod);
 NkIrTypeDynArray nkir_moduleNewTypeArray(NkIrModule mod);
 NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod);
 NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod);
+
+typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
+void nkir_setSymbolResolver(NkIrModule mod, NkIrSymbolResolver fn, void *userdata);
+
+NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod);
+NkIrSymbol const *nkir_findSymbol(NkIrModule mod, NkAtom sym);
 
 /// Utility
 

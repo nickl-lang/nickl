@@ -21,31 +21,33 @@ typedef struct NklState_T {
 
     NkbState nkb;
 
+    // TODO: Add type safe wrapper for the hash tree
     NkIntptrHashTree text_map;
 
     NklError *error;
 } NklState_T;
 
-typedef struct {
-    NkString lib;
-    NkString alias;
-} LibAlias;
-
 typedef struct NklCompiler_T {
     NklState nkl;
     NkIrTarget target;
 
-    NkDynArray(LibAlias) lib_aliases;
+    // TODO: Add type safe wrapper for the hash tree
+    NkIntptrHashTree lib_aliases;
 } NklCompiler_T;
 
 typedef NkDynArray(NklModule) NklModuleDynArray;
 
 typedef struct NklModule_T {
+    NkAtom name;
+
     NklCompiler com;
     NkIrModule ir;
 
-    NklModuleDynArray linked_in;
-    NklModuleDynArray linked_to;
+    // TODO: Add type safe wrapper for the hash tree
+    NkIntptrHashTree linked_mods;
+    NkIntptrHashTree extern_syms;
+
+    NklModuleDynArray mods_linked_to;
 } NklModule_T;
 
 extern char const *s_ir_tokens[];
@@ -67,8 +69,19 @@ NkAtom nickl_canonicalizePath(NkString base, NkString path);
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
 
 NkString nickl_translateLib(NklModule mod, NkString alias);
+NkAtom nickl_translateLib2(NklCompiler com, NkAtom alias);
 
-bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym);
+typedef struct {
+    NkAtom name;
+    NkIrVisibility vis;
+    NkIrSymbolFlags flags;
+} NklSymbolInfo;
+
+bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *info);
+bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *info);
+bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib);
+
+bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym);
 
 #ifdef __cplusplus
 }

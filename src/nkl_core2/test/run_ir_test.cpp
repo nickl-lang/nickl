@@ -48,24 +48,25 @@ protected:
     NklState nkl;
     NklCompiler com;
     NklModule mod;
-    bool ok;
 };
 
-#define EXPECT_NO_ERROR(status) EXPECT_TRUE((status) && !nkl_getErrors(nkl)) << printErrors()
+#define COMPILE(...)                                             \
+    do {                                                         \
+        bool const ok = nkl_compileStringIr(__VA_ARGS__);        \
+        EXPECT_TRUE(ok && !nkl_getErrors(nkl)) << printErrors(); \
+    } while (0)
 
 TEST_F(nkl_run_ir, empty) {
-    ok = nkl_compileStringIr(mod, nk_cs2s(R"(
+    COMPILE(mod, nk_cs2s(R"(
 )"));
-    EXPECT_NO_ERROR(ok);
 }
 
 TEST_F(nkl_run_ir, basic) {
-    ok = nkl_compileStringIr(mod, nk_cs2s(R"(
+    COMPILE(mod, nk_cs2s(R"(
 pub proc _entry() {
     ret
 }
 )"));
-    EXPECT_NO_ERROR(ok);
 
     auto entry = (void (*)(void))nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
     ASSERT_TRUE(entry);
@@ -73,21 +74,20 @@ pub proc _entry() {
 }
 
 TEST_F(nkl_run_ir, plus) {
-    ok = nkl_compileStringIr(mod, nk_cs2s(R"(
+    COMPILE(mod, nk_cs2s(R"(
 pub proc plus(:i64 %a, :i64 %b) :i64 {
     add %a, %b -> %ret
     ret %ret
 }
 )"));
-    EXPECT_NO_ERROR(ok);
 
     auto plus = (i64 (*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2s("plus"));
     ASSERT_TRUE(plus);
     EXPECT_EQ(plus(4, 5), 9);
 }
 
-TEST_F(nkl_run_ir, consecutive_resolve) {
-    ok = nkl_compileStringIr(mod, nk_cs2s(R"(
+TEST_F(nkl_run_ir, resolve_with_existing_dependency) {
+    COMPILE(mod, nk_cs2s(R"(
 extern "c" proc puts() :i32
 
 pub proc bar() {
@@ -101,7 +101,6 @@ pub proc foo() {
     ret
 }
 )"));
-    EXPECT_NO_ERROR(ok);
 
     auto bar = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("bar"));
     ASSERT_TRUE(bar);
@@ -113,21 +112,19 @@ pub proc foo() {
 }
 
 TEST_F(nkl_run_ir, independent_modules) {
-    ok = nkl_compileStringIr(mod, nk_cs2s(R"(
+    COMPILE(mod, nk_cs2s(R"(
 pub proc foo() :i64 {
     ret 42
 }
 )"));
-    EXPECT_NO_ERROR(ok);
 
     auto mod2 = nkl_newModule(com);
 
-    ok = nkl_compileStringIr(mod2, nk_cs2s(R"(
+    COMPILE(mod2, nk_cs2s(R"(
 pub proc foo() :i64 {
     ret 43
 }
 )"));
-    EXPECT_NO_ERROR(ok);
 
     {
         auto foo = (i64 (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
@@ -142,38 +139,62 @@ pub proc foo() :i64 {
     }
 }
 
-// TEST_F(nkl_run_ir, link) {
-//     ok = nkl_compileStringIr(mod, nk_cs2s(R"(
-// extern "c" proc puts() :i32
-// extern proc bar() :void
+TEST_F(nkl_run_ir, define_then_link) {
+    COMPILE(mod, nk_cs2s(R"(
+extern "c" proc puts() :i32
+extern proc bar() :void
 
-// pub proc foo() {
-//     call puts, ("foo") -> :i32
-//     call bar, ()
-//     ret
-// }
-// )"));
-//     EXPECT_NO_ERROR(ok);
+pub proc foo() {
+    call puts, ("foo") -> :i32
+    call bar, ()
+    ret
+}
+)"));
 
-//     // auto bar = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("bar"));
-//     // ASSERT_TRUE(bar);
-//     // bar();
+    auto mod2 = nkl_newModule(com);
 
-//     auto mod2 = nkl_newModule(com);
+    COMPILE(mod2, nk_cs2s(R"(
+extern "c" proc puts() :i32
 
-//     ok = nkl_compileStringIr(mod2, nk_cs2s(R"(
-// // extern "c" proc puts() :i32
+pub proc bar() {
+    call puts, ("bar") -> :i32
+    ret
+}
+)"));
 
-// pub proc bar() {
-//     call puts, ("bar") -> :i32
-//     ret
-// }
-// )"));
-//     EXPECT_NO_ERROR(ok);
+    nkl_linkModule(mod, mod2);
 
-//     nkl_linkModule(mod, mod2);
+    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+    ASSERT_TRUE(foo);
+    foo();
+}
 
-//     auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
-//     ASSERT_TRUE(foo);
-//     foo();
-// }
+TEST_F(nkl_run_ir, link_then_define) {
+    COMPILE(mod, nk_cs2s(R"(
+extern "c" proc puts() :i32
+extern proc bar() :void
+
+pub proc foo() {
+    call puts, ("foo") -> :i32
+    call bar, ()
+    ret
+}
+)"));
+
+    auto mod2 = nkl_newModule(com);
+
+    nkl_linkModule(mod, mod2);
+
+    COMPILE(mod2, nk_cs2s(R"(
+extern "c" proc puts() :i32
+
+pub proc bar() {
+    call puts, ("bar") -> :i32
+    ret
+}
+)"));
+
+    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+    ASSERT_TRUE(foo);
+    foo();
+}

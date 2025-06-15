@@ -9,7 +9,6 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
-#include "ntk/dl.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash_tree.h"
 #include "ntk/log.h"
@@ -96,7 +95,12 @@ typedef struct NkIrModule_T {
     NkbState nkb;
     NkIrSymbolDynArray syms;
     NkLlvmJitDylib _llvm_jit_dylib;
+
+    // TODO: Add type safe wrapper for the hash tree
     NkIntptrHashTree rt_loaded_syms;
+
+    NkIrSymbolResolver sym_resolver_fn;
+    void *sym_resolver_userdata;
 } NkIrModule_T;
 
 NkbState nkir_createState(void) {
@@ -178,6 +182,25 @@ NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod) {
 
 NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod) {
     return (NkIrRelocDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
+}
+
+void nkir_setSymbolResolver(NkIrModule mod, NkIrSymbolResolver fn, void *userdata) {
+    nk_assert(!mod->sym_resolver_fn && "overwriting existing symbol resolver");
+    mod->sym_resolver_fn = fn;
+    mod->sym_resolver_userdata = userdata;
+}
+
+NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod) {
+    return (NkIrSymbolArray){NKS_INIT(mod->syms)};
+}
+
+NkIrSymbol const *nkir_findSymbol(NkIrModule mod, NkAtom sym) {
+    NK_ITERATE(NkIrSymbol *, it, mod->syms) {
+        if (it->name == sym) {
+            return it;
+        }
+    }
+    return NULL;
 }
 
 void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out) {
@@ -455,33 +478,22 @@ static NkLlvmJitDylib getLlvmJitDylib(NkIrModule mod) {
     return mod->_llvm_jit_dylib;
 }
 
-static NkIrSymbol *findSymbol(NkIrModule mod, NkAtom sym_name) {
-    NK_ITERATE(NkIrSymbol *, it, mod->syms) {
-        if (it->name == sym_name) {
-            return it;
-        }
-    }
-
-    // TODO: Report errors properly
-    NK_LOG_ERR("Failed to find symbol `%s`", nk_atom2cs(sym_name));
-    _exit(1);
-}
-
 static void collectSymbols(NkIrModule mod, _NkIntptrHashTree_Node *node, NkIrSymbolDynArray *out) {
     if (!node) {
         return;
     }
 
-    NkIrSymbol const *sym = (NkIrSymbol const *)node->item.key;
+    NkIrSymbol const *sym = nkir_findSymbol(mod, (NkAtom)node->item.key);
+    nk_assert(sym && "symbol not found, invalid ir");
     nkda_append(out, *sym);
 
     collectSymbols(mod, node->child[0], out);
     collectSymbols(mod, node->child[1], out);
 }
 
-typedef NkDynArray(NkIrSymbol const *) NkIrSymbolPtrDynArray;
+typedef NkDynArray(NkAtom) NkAtomDynArray;
 
-static void gatherDeps(NkIrModule mod, NkIrSymbol const *sym, NkIrSymbolPtrDynArray *out) {
+static void gatherDeps(NkIrSymbol const *sym, NkAtomDynArray *out) {
     switch (sym->kind) {
         case NkIrSymbol_Proc:
             NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
@@ -490,14 +502,14 @@ static void gatherDeps(NkIrModule mod, NkIrSymbol const *sym, NkIrSymbolPtrDynAr
                     switch (arg->kind) {
                         case NkIrArg_Ref:
                             if (arg->ref.kind == NkIrRef_Global) {
-                                nkda_append(out, findSymbol(mod, arg->ref.sym));
+                                nkda_append(out, arg->ref.sym);
                             }
                             break;
 
                         case NkIrArg_RefArray:
                             NK_ITERATE(NkIrRef const *, ref, arg->refs) {
                                 if (ref->kind == NkIrRef_Global) {
-                                    nkda_append(out, findSymbol(mod, ref->sym));
+                                    nkda_append(out, ref->sym);
                                 }
                             }
                             break;
@@ -515,7 +527,7 @@ static void gatherDeps(NkIrModule mod, NkIrSymbol const *sym, NkIrSymbolPtrDynAr
 
         case NkIrSymbol_Data:
             NK_ITERATE(NkIrReloc const *, reloc, sym->data.relocs) {
-                nkda_append(out, findSymbol(mod, reloc->sym));
+                nkda_append(out, reloc->sym);
             }
             break;
 
@@ -525,27 +537,31 @@ static void gatherDeps(NkIrModule mod, NkIrSymbol const *sym, NkIrSymbolPtrDynAr
     }
 }
 
-static void getSymbolDependencies(NkIrModule mod, NkAtom sym, NkIrSymbolDynArray *out) {
+static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDynArray *out) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
-        NK_LOG_DBG("Getting dependencies for `%s`", nk_atom2cs(sym));
+        NK_LOG_DBG("Getting dependencies for `%s`", nk_atom2cs(sym_name));
 
         NkbState nkb = mod->nkb;
         NkArena *scratch = &nkb->scratch;
 
-        NkIrSymbolPtrDynArray stack = {.alloc = nk_arena_getAllocator(scratch)};
+        NkAtomDynArray stack = {.alloc = nk_arena_getAllocator(scratch)};
+        // TODO: Add type safe wrapper for the hash tree
         NkIntptrHashTree deps = {.alloc = nk_arena_getAllocator(scratch)};
 
-        nkda_append(&stack, findSymbol(mod, sym));
+        nkda_append(&stack, sym_name);
 
         while (stack.size) {
-            NkIrSymbol const *sym = nks_last(stack);
+            NkAtom const sym_name = nks_last(stack);
             nkda_pop(&stack, 1);
 
-            if (!NkIntptrHashTree_find(&deps, (intptr_t)sym)) {
-                NkIntptrHashTree_insert(&deps, (NkIntptr_kv){.key = (intptr_t)sym});
-                gatherDeps(mod, sym, &stack);
+            if (!NkIntptrHashTree_find(&deps, (intptr_t)sym_name)) {
+                NkIntptrHashTree_insert(&deps, (NkIntptr_kv){.key = (intptr_t)sym_name});
+
+                NkIrSymbol const *sym = nkir_findSymbol(mod, sym_name);
+                nk_assert(sym && "symbol not found, invalid ir");
+                gatherDeps(sym, &stack);
             }
         }
 
@@ -597,8 +613,10 @@ static NkIrSymbol symToExtern(NkArena *arena, NkIrSymbol sym) {
 
         case NkIrSymbol_None:
         case NkIrSymbol_Extern:
-            return sym;
+            break;
     }
+
+    return sym;
 }
 
 static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_name) {
@@ -618,19 +636,19 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
             NkIntptrHashTree_insert(&mod->rt_loaded_syms, (NkIntptr_kv){.key = (intptr_t)sym->name});
 
             if (sym->kind == NkIrSymbol_Extern) {
-                NkHandle lib = nkdl_loadLibrary(nk_atom2cs(sym->extrn.lib));
-                if (nk_handleIsNull(lib)) {
+                if (!mod->sym_resolver_fn) {
                     // TODO: Report errors properly
-                    NK_LOG_ERR(
-                        "Failed to load library `%s`: %s", nk_atom2cs(sym->extrn.lib), nkdl_getLastErrorString());
+                    NK_LOG_ERR("Symbol resolver is not set up");
                     _exit(1);
                 }
-                void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(sym->name));
+
+                void *addr = mod->sym_resolver_fn(sym->name, mod->sym_resolver_userdata);
                 if (!addr) {
                     // TODO: Report errors properly
-                    NK_LOG_ERR("Failed to load symbol `%s`: %s", nk_atom2cs(sym->name), nkdl_getLastErrorString());
+                    NK_LOG_ERR("Failed to resolve symbol `%s`", nk_atom2cs(sym->name));
                     _exit(1);
                 }
+
                 nkda_append(
                     &to_define,
                     ((NkIrSymbolAddress){
@@ -661,6 +679,12 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
 
     NkbState nkb = mod->nkb;
     NkArena *scratch = &nkb->scratch;
+
+    if (!nkir_findSymbol(mod, sym)) {
+        // TODO: Report errors properly
+        NK_LOG_ERR("Symbol not found: %s", nk_atom2cs(sym));
+        _exit(1);
+    }
 
     void *addr = NULL;
     NK_PROF_FUNC() {
@@ -938,11 +962,6 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             switch (sym->extrn.kind) {
                 case NkIrExtern_Proc:
                     nk_printf(out, "extern ");
-                    if (sym->extrn.lib) {
-                        nk_printf(out, "\"");
-                        nks_escape(out, nk_atom2s(sym->extrn.lib));
-                        nk_printf(out, "\" ");
-                    }
                     nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
                     NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
                         if (NK_INDEX(type, sym->extrn.proc.param_types)) {
@@ -959,11 +978,6 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
 
                 case NkIrExtern_Data:
                     nk_printf(out, "extern ");
-                    if (sym->extrn.lib) {
-                        nk_printf(out, "\"");
-                        nks_escape(out, nk_atom2s(sym->extrn.lib));
-                        nk_printf(out, "\" ");
-                    }
                     nk_printf(out, "data $" NKS_FMT " :", NKS_ARG(sym_str));
                     nkir_inspectType(sym->extrn.data.type, out);
                     break;
