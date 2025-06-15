@@ -997,8 +997,7 @@ static Void parseExtern(ParserState *p) {
     NkAtom lib = 0;
     if (on(p, NklToken_String)) {
         TRY(NkString const str = parseString(p, &p->scratch));
-        TRY(NkString const lib_str = nickl_translateLib(p->mod, str));
-        lib = nk_s2atom(lib_str);
+        lib = nk_s2atom(str);
     }
 
     if (ACCEPT(NklIrToken_proc)) {
@@ -1041,7 +1040,6 @@ static Void parseExtern(ParserState *p) {
             },
             &(NklSymbolInfo){
                 .name = sym_name,
-                .vis = NkIrVisibility_Local, // TODO: Extern defaults to local visibility
             },
             lib));
     }
@@ -1063,7 +1061,6 @@ static Void parseExtern(ParserState *p) {
             },
             &(NklSymbolInfo){
                 .name = sym_name,
-                .vis = NkIrVisibility_Local, // TODO: Extern defaults to local visibility
             },
             lib));
     }

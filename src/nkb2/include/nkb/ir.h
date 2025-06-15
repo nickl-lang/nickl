@@ -155,8 +155,10 @@ typedef struct {
 } NkIrProc;
 
 typedef enum {
-    NkIrVisibility_Hidden = 0,
+    NkIrVisibility_Unknown = 0,
+
     NkIrVisibility_Default,
+    NkIrVisibility_Hidden,
     NkIrVisibility_Protected,
     NkIrVisibility_Internal,
     NkIrVisibility_Local,

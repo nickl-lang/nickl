@@ -186,6 +186,7 @@ NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod) {
 
 void nkir_setSymbolResolver(NkIrModule mod, NkIrSymbolResolver fn, void *userdata) {
     nk_assert(!mod->sym_resolver_fn && "overwriting existing symbol resolver");
+
     mod->sym_resolver_fn = fn;
     mod->sym_resolver_userdata = userdata;
 }
@@ -881,6 +882,7 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
         case NkIrVisibility_Local:
             nk_printf(out, "local ");
             break;
+        case NkIrVisibility_Unknown:
         case NkIrVisibility_Hidden: // TODO: Support other visibilities
         case NkIrVisibility_Protected:
         case NkIrVisibility_Internal:
@@ -906,7 +908,7 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             if (sym_str.size) {
                 nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
             } else {
-                nk_printf(out, "proc $_%" PRIu32 "(", sym->name);
+                nk_printf(out, "proc $__%" PRIu32 "__(", sym->name);
             }
             NK_ITERATE(NkIrParam const *, param, sym->proc.params) {
                 if (NK_INDEX(param, sym->proc.params)) {
@@ -949,7 +951,7 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             if (sym_str.size) {
                 nk_printf(out, "$" NKS_FMT " :", NKS_ARG(sym_str));
             } else {
-                nk_printf(out, "$_%" PRIu32 " :", sym->name);
+                nk_printf(out, "$__%" PRIu32 "__ :", sym->name);
             }
             nkir_inspectType(sym->data.type, out);
             if (sym->data.addr) {
@@ -961,12 +963,12 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
         case NkIrSymbol_Extern:
             switch (sym->extrn.kind) {
                 case NkIrExtern_Proc:
-                    nk_printf(out, "extern ");
-                    nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
+                    nk_printf(out, "extern proc $" NKS_FMT "(", NKS_ARG(sym_str));
                     NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
                         if (NK_INDEX(type, sym->extrn.proc.param_types)) {
                             nk_printf(out, ", ");
                         }
+                        nk_printf(out, ":");
                         nkir_inspectType(*type, out);
                     }
                     if (sym->extrn.proc.flags & NkIrProc_Variadic) {
@@ -977,8 +979,7 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                     break;
 
                 case NkIrExtern_Data:
-                    nk_printf(out, "extern ");
-                    nk_printf(out, "data $" NKS_FMT " :", NKS_ARG(sym_str));
+                    nk_printf(out, "extern data $" NKS_FMT " :", NKS_ARG(sym_str));
                     nkir_inspectType(sym->extrn.data.type, out);
                     break;
             }
@@ -1021,7 +1022,7 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
             if (sym_str.size) {
                 nk_printf(out, " $" NKS_FMT, NKS_ARG(sym_str));
             } else {
-                nk_printf(out, " $_%" PRIu32, ref.sym);
+                nk_printf(out, " $__%" PRIu32 "__", ref.sym);
             }
             break;
         }

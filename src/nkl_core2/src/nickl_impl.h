@@ -33,6 +33,8 @@ typedef struct NklCompiler_T {
 
     // TODO: Add type safe wrapper for the hash tree
     NkIntptrHashTree lib_aliases;
+
+    usize module_count;
 } NklCompiler_T;
 
 typedef NkDynArray(NklModule) NklModuleDynArray;
@@ -68,8 +70,7 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes);
 NkAtom nickl_canonicalizePath(NkString base, NkString path);
 NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
 
-NkString nickl_translateLib(NklModule mod, NkString alias);
-NkAtom nickl_translateLib2(NklCompiler com, NkAtom alias);
+NkAtom nickl_translateLib(NklCompiler com, NkAtom alias);
 
 typedef struct {
     NkAtom name;

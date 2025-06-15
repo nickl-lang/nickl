@@ -77,7 +77,7 @@ NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
     return com;
 }
 
-NklCompiler nkl_newCompilerHost(NklState nkl) {
+NklCompiler nkl_newCompilerForHost(NklState nkl) {
     NK_LOG_TRC("%s", __func__);
 
     return nkl_newCompiler(
@@ -97,36 +97,31 @@ NklCompiler nkl_newCompilerHost(NklState nkl) {
         }              \
     } while (0)
 
-typedef struct {
-    NklModule mod;
-} SymbolResolverCtx;
-
 static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_TRC("%s", __func__);
 
-    SymbolResolverCtx *ctx = userdata;
+    NklModule mod = userdata;
 
-    // TODO: Print null names properly
-    NK_LOG_DBG("Searching for extern symbol `%s` in module `%u`", nk_atom2cs(sym), ctx->mod->name);
-    NkIntptr_kv *found = NkIntptrHashTree_find(&ctx->mod->extern_syms, (intptr_t)sym);
+    NK_LOG_DBG("Searching for extern symbol `%s` in module `%s`", nk_atom2cs(sym), nk_atom2cs(mod->name));
+    NkIntptr_kv *found = NkIntptrHashTree_find(&mod->extern_syms, (intptr_t)sym);
     if (found) {
         NkAtom const lib = (NkAtom)found->val;
 
         NK_LOG_DBG("Module library is `%s`", nk_atom2cs(lib));
 
         if (lib) {
-            NkIntptr_kv *found_mod = NkIntptrHashTree_find(&ctx->mod->linked_mods, (intptr_t)lib);
+            NkIntptr_kv *found_mod = NkIntptrHashTree_find(&mod->linked_mods, (intptr_t)lib);
             if (found_mod) {
                 // TODO: Detect cycles during symbol resolution
                 NklModule src_mod = (NklModule)found_mod->val;
                 return nkir_getSymbolAddress(src_mod->ir, sym);
             } else {
-                NkAtom lib_tr = nickl_translateLib2(ctx->mod->com, lib);
+                NkAtom lib_tr = nickl_translateLib(mod->com, lib);
 
                 NkHandle lib = nkdl_loadLibrary(nk_atom2cs(lib_tr));
                 if (nk_handleIsNull(lib)) {
                     nickl_reportError(
-                        ctx->mod->com->nkl,
+                        mod->com->nkl,
                         "Failed to load library `%s`: %s",
                         nk_atom2cs(lib_tr),
                         nkdl_getLastErrorString());
@@ -136,10 +131,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
                 void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(sym));
                 if (!addr) {
                     nickl_reportError(
-                        ctx->mod->com->nkl,
-                        "Failed to load symbol `%s`: %s",
-                        nk_atom2cs(sym),
-                        nkdl_getLastErrorString());
+                        mod->com->nkl, "Failed to load symbol `%s`: %s", nk_atom2cs(sym), nkdl_getLastErrorString());
                     return NULL;
                 }
 
@@ -151,17 +143,14 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
     return NULL;
 }
 
-NklModule nkl_newModule(NklCompiler com) {
-    NK_LOG_TRC("%s", __func__);
-
+static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
     TRY(com);
 
     NklState nkl = com->nkl;
 
     NklModule mod = nk_arena_allocT(&nkl->arena, NklModule_T);
     *mod = (NklModule_T){
-        // TODO: Allow setting custom module names
-        .name = nk_atom_unique((NkString){0}),
+        .name = name,
 
         .com = com,
         .ir = nkir_createModule(nkl->nkb),
@@ -172,13 +161,28 @@ NklModule nkl_newModule(NklCompiler com) {
         .mods_linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
 
-    SymbolResolverCtx *ctx = nk_arena_allocT(&nkl->arena, SymbolResolverCtx);
-    *ctx = (SymbolResolverCtx){
-        .mod = mod,
-    };
-    nkir_setSymbolResolver(mod->ir, symbolResolver, ctx);
+    com->module_count++;
+
+    nkir_setSymbolResolver(mod->ir, symbolResolver, mod);
 
     return mod;
+}
+
+NklModule nkl_newModule(NklCompiler com) {
+    NK_LOG_TRC("%s", __func__);
+
+    NkAtom name = 0;
+    NkArena *scratch = &com->nkl->scratch;
+    NK_ARENA_SCOPE(scratch) {
+        name = nk_s2atom(nk_tsprintf(scratch, ".%zu", com->module_count));
+    }
+    return newModuleImpl(com, name);
+}
+
+NklModule nkl_newModuleNamed(NklCompiler com, NkString name) {
+    NK_LOG_TRC("%s", __func__);
+
+    return newModuleImpl(com, nk_s2atom(name));
 }
 
 bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {

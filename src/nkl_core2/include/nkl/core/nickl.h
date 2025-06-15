@@ -44,9 +44,10 @@ NK_EXPORT NklState nkl_newState(void);
 NK_EXPORT void nkl_freeState(NklState nkl);
 
 NK_EXPORT NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple target);
-NK_EXPORT NklCompiler nkl_newCompilerHost(NklState nkl);
+NK_EXPORT NklCompiler nkl_newCompilerForHost(NklState nkl);
 
 NK_EXPORT NklModule nkl_newModule(NklCompiler com);
+NK_EXPORT NklModule nkl_newModuleNamed(NklCompiler com, NkString name);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
 

@@ -107,6 +107,9 @@ static void emitVisibility(NkStream out, NkIrVisibility vis) {
         case NkIrVisibility_Local:
             nk_printf(out, "internal");
             break;
+        case NkIrVisibility_Unknown:
+            nk_assert(!"unreachable");
+            break;
     }
 }
 
@@ -115,7 +118,7 @@ static void emitName(NkStream out, NkAtom name) {
     if (name_str.size) {
         nk_printf(out, NKS_FMT, NKS_ARG(name_str));
     } else {
-        nk_printf(out, "_%u", name);
+        nk_printf(out, "__%u__", name);
     }
 }
 

@@ -315,12 +315,7 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
     return nickl_canonicalizePath(base_dir, name);
 }
 
-NkString nickl_translateLib(NklModule mod, NkString alias) {
-    NkIntptr_kv *found = NkIntptrHashTree_find(&mod->com->lib_aliases, (intptr_t)nk_s2atom(alias));
-    return found ? nk_atom2s((NkAtom)found->val) : alias;
-}
-
-NkAtom nickl_translateLib2(NklCompiler com, NkAtom alias) {
+NkAtom nickl_translateLib(NklCompiler com, NkAtom alias) {
     NkIntptr_kv *found = NkIntptrHashTree_find(&com->lib_aliases, (intptr_t)alias);
     return found ? (NkAtom)found->val : alias;
 }
@@ -368,9 +363,18 @@ static bool defineExtern(NklModule mod, NkIrSymbol const *sym, NkAtom lib) {
     return false;
 }
 
+static char const *inspectSym(NkArena *arena, NkAtom sym) {
+    NkString const str = nk_atom2s(sym);
+    if (str.size) {
+        return str.data;
+    } else {
+        return nk_tprintf(arena, "__%u__", sym);
+    }
+}
+
 bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *info) {
-    // TODO: Print null names properly
-    NK_LOG_DBG("Defining proc `%s` in module `%u`", nk_atom2cs(info->name), mod->name);
+    NK_LOG_DBG(
+        "Defining proc `%s` in module `%s`", inspectSym(&mod->com->nkl->scratch, info->name), nk_atom2cs(mod->name));
 
     return defineIntern(
         mod,
@@ -384,8 +388,8 @@ bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *
 }
 
 bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *info) {
-    // TODO: Print null names properly
-    NK_LOG_DBG("Defining data `%s` in module `%u`", nk_atom2cs(info->name), mod->name);
+    NK_LOG_DBG(
+        "Defining data `%s` in module `%s`", inspectSym(&mod->com->nkl->scratch, info->name), nk_atom2cs(mod->name));
 
     return defineIntern(
         mod,
@@ -399,9 +403,11 @@ bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *
 }
 
 bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib) {
-    // TODO: Print null names properly
     NK_LOG_DBG(
-        "Defining extern symbol `%s` in module `%u` with lib `%s`", nk_atom2cs(info->name), mod->name, nk_atom2cs(lib));
+        "Defining extern symbol `%s` in module `%s` with lib `%s`",
+        inspectSym(&mod->com->nkl->scratch, info->name),
+        nk_atom2cs(mod->name),
+        nk_atom2cs(lib));
 
     return defineExtern(
         mod,
@@ -418,8 +424,11 @@ bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo co
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
     NklState nkl = dst_mod->com->nkl;
 
-    // TODO: Print null names properly
-    NK_LOG_DBG("Linking symbol `%s` from `%u` to `%u`", nk_atom2cs(sym->name), src_mod->name, dst_mod->name);
+    NK_LOG_DBG(
+        "Linking symbol `%s` from `%s` to `%s`",
+        inspectSym(&nkl->scratch, sym->name),
+        nk_atom2cs(src_mod->name),
+        nk_atom2cs(dst_mod->name));
 
     if (sym->vis != NkIrVisibility_Default) {
         return true;
@@ -436,11 +445,10 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
                     return false;
                 }
             } else {
-                // TODO: Print null names properly
                 NK_LOG_DBG(
-                    "Patching extern symbol `%s` in mod `%u` with lib `%s`",
+                    "Patching extern symbol `%s` in mod `%s` with lib `%s`",
                     nk_atom2cs(sym->name),
-                    dst_mod->name,
+                    nk_atom2cs(dst_mod->name),
                     nk_atom2cs(src_mod->name));
                 found->val = (intptr_t)src_mod->name;
             }

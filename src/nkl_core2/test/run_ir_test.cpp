@@ -17,13 +17,11 @@ protected:
 
         nkl = nkl_newState();
 
-        com = nkl_newCompilerHost(nkl);
+        com = nkl_newCompilerForHost(nkl);
 
         nkl_addLibraryAlias(com, nk_cs2s("c"), nk_cs2s(SYSTEM_LIBC));
         nkl_addLibraryAlias(com, nk_cs2s("m"), nk_cs2s(SYSTEM_LIBM));
         nkl_addLibraryAlias(com, nk_cs2s("pthread"), nk_cs2s(SYSTEM_LIBPTHREAD));
-
-        mod = nkl_newModule(com);
     }
 
     void TearDown() override {
@@ -47,7 +45,6 @@ protected:
 
     NklState nkl;
     NklCompiler com;
-    NklModule mod;
 };
 
 #define COMPILE(...)                                             \
@@ -57,11 +54,15 @@ protected:
     } while (0)
 
 TEST_F(nkl_run_ir, empty) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 )"));
 }
 
 TEST_F(nkl_run_ir, basic) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 pub proc _entry() {
     ret
@@ -74,6 +75,8 @@ pub proc _entry() {
 }
 
 TEST_F(nkl_run_ir, plus) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 pub proc plus(:i64 %a, :i64 %b) :i64 {
     add %a, %b -> %ret
@@ -87,6 +90,8 @@ pub proc plus(:i64 %a, :i64 %b) :i64 {
 }
 
 TEST_F(nkl_run_ir, resolve_with_existing_dependency) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 extern "c" proc puts() :i32
 
@@ -112,6 +117,8 @@ pub proc foo() {
 }
 
 TEST_F(nkl_run_ir, independent_modules) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 pub proc foo() :i64 {
     ret 42
@@ -140,6 +147,8 @@ pub proc foo() :i64 {
 }
 
 TEST_F(nkl_run_ir, define_then_link) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 extern "c" proc puts() :i32
 extern proc bar() :void
@@ -170,6 +179,8 @@ pub proc bar() {
 }
 
 TEST_F(nkl_run_ir, link_then_define) {
+    auto mod = nkl_newModule(com);
+
     COMPILE(mod, nk_cs2s(R"(
 extern "c" proc puts() :i32
 extern proc bar() :void

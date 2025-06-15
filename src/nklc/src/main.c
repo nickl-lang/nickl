@@ -86,7 +86,7 @@ typedef struct {
 static int run(RunInfo const info) {
     NklState const nkl = info.nkl;
 
-    NklCompiler const com = nkl_newCompilerHost(nkl);
+    NklCompiler const com = nkl_newCompilerForHost(nkl);
 
     // TODO: Hardcoded lib names
     nkl_addLibraryAlias(com, nk_cs2s("c"), nk_cs2s(SYSTEM_LIBC));
