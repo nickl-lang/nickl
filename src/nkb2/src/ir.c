@@ -968,9 +968,15 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             break;
 
         case NkIrSymbol_Extern:
+            nk_printf(out, "extern ");
+            if (sym->extrn.lib) {
+                nk_printf(out, "\"");
+                nks_escape(out, nk_atom2s(sym->extrn.lib));
+                nk_printf(out, "\" ");
+            }
             switch (sym->extrn.kind) {
                 case NkIrExtern_Proc:
-                    nk_printf(out, "extern proc $");
+                    nk_printf(out, "proc $");
                     nkir_printSymbolName(out, sym->name);
                     nk_printf(out, "(");
                     NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
@@ -988,7 +994,7 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                     break;
 
                 case NkIrExtern_Data:
-                    nk_printf(out, "extern data $");
+                    nk_printf(out, "data $");
                     nkir_printSymbolName(out, sym->name);
                     nk_printf(out, " :");
                     nkir_inspectType(sym->extrn.data.type, out);

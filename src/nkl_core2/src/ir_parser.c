@@ -1036,6 +1036,7 @@ static Void parseExtern(ParserState *p) {
                         .ret_type = ret_type,
                         .flags = is_variadic ? NkIrProc_Variadic : 0,
                     },
+                .lib = lib,
                 .kind = NkIrExtern_Proc,
             },
             &(NklSymbolInfo){
@@ -1057,6 +1058,7 @@ static Void parseExtern(ParserState *p) {
                     {
                         .type = type,
                     },
+                .lib = lib,
                 .kind = NkIrExtern_Data,
             },
             &(NklSymbolInfo){

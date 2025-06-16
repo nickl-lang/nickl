@@ -184,6 +184,7 @@ typedef struct {
             NkIrType type;
         } data; // NkIrExtern_Data
     };
+    NkAtom lib;
     NkIrExternKind kind;
 } NkIrExtern;
 
