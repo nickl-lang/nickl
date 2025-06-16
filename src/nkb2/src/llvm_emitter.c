@@ -113,23 +113,14 @@ static void emitVisibility(NkStream out, NkIrVisibility vis) {
     }
 }
 
-static void emitName(NkStream out, NkAtom name) {
-    NkString const name_str = nk_atom2s(name);
-    if (name_str.size) {
-        nk_printf(out, NKS_FMT, NKS_ARG(name_str));
-    } else {
-        nk_printf(out, "__%u__", name);
-    }
-}
-
 static void emitGlobal(NkStream out, NkAtom name) {
     nk_printf(out, "@");
-    emitName(out, name);
+    nkir_printSymbolName(out, name);
 }
 
 static void emitLocal(NkStream out, NkAtom name) {
     nk_printf(out, "%%");
-    emitName(out, name);
+    nkir_printSymbolName(out, name);
 }
 
 static void emitFloat(NkStream out, void *addr, NkIrNumericValueType value_type) {

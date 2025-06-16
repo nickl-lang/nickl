@@ -710,6 +710,19 @@ bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
     return true;
 }
 
+void nkir_printName(NkStream out, char const *kind, NkAtom name) {
+    NkString const str = nk_atom2s(name);
+    if (str.size) {
+        nk_printf(out, NKS_FMT, NKS_ARG(str));
+    } else {
+        nk_printf(out, "__nkl_%s_%u__", kind, name);
+    }
+}
+
+void nkir_printSymbolName(NkStream out, NkAtom sym) {
+    nkir_printName(out, "anonymous", sym);
+}
+
 void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod) {
     NK_ITERATE(NkIrSymbol const *, sym, mod->syms) {
         nk_printf(out, "\n");
@@ -893,8 +906,6 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
         nk_printf(out, "thread_local ");
     }
 
-    NkString const sym_str = nk_atom2s(sym->name);
-
     switch (sym->kind) {
         case NkIrSymbol_None:
             break;
@@ -905,11 +916,9 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
 
             u32 *indices = countLabels(scratch, labels);
 
-            if (sym_str.size) {
-                nk_printf(out, "proc $" NKS_FMT "(", NKS_ARG(sym_str));
-            } else {
-                nk_printf(out, "proc $__%" PRIu32 "__(", sym->name);
-            }
+            nk_printf(out, "proc $");
+            nkir_printSymbolName(out, sym->name);
+            nk_printf(out, "(");
             NK_ITERATE(NkIrParam const *, param, sym->proc.params) {
                 if (NK_INDEX(param, sym->proc.params)) {
                     nk_printf(out, ", ");
@@ -948,11 +957,9 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                 nk_printf(out, "data ");
             }
             // TODO: Inline strings
-            if (sym_str.size) {
-                nk_printf(out, "$" NKS_FMT " :", NKS_ARG(sym_str));
-            } else {
-                nk_printf(out, "$__%" PRIu32 "__ :", sym->name);
-            }
+            nk_printf(out, "$");
+            nkir_printSymbolName(out, sym->name);
+            nk_printf(out, " :");
             nkir_inspectType(sym->data.type, out);
             if (sym->data.addr) {
                 nk_printf(out, " ");
@@ -963,7 +970,9 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
         case NkIrSymbol_Extern:
             switch (sym->extrn.kind) {
                 case NkIrExtern_Proc:
-                    nk_printf(out, "extern proc $" NKS_FMT "(", NKS_ARG(sym_str));
+                    nk_printf(out, "extern proc $");
+                    nkir_printSymbolName(out, sym->name);
+                    nk_printf(out, "(");
                     NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
                         if (NK_INDEX(type, sym->extrn.proc.param_types)) {
                             nk_printf(out, ", ");
@@ -979,7 +988,9 @@ void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                     break;
 
                 case NkIrExtern_Data:
-                    nk_printf(out, "extern data $" NKS_FMT " :", NKS_ARG(sym_str));
+                    nk_printf(out, "extern data $");
+                    nkir_printSymbolName(out, sym->name);
+                    nk_printf(out, " :");
                     nkir_inspectType(sym->extrn.data.type, out);
                     break;
             }
@@ -1018,12 +1029,8 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
             break;
 
         case NkIrRef_Global: {
-            NkString const sym_str = nk_atom2s(ref.sym);
-            if (sym_str.size) {
-                nk_printf(out, " $" NKS_FMT, NKS_ARG(sym_str));
-            } else {
-                nk_printf(out, " $__%" PRIu32 "__", ref.sym);
-            }
+            nk_printf(out, " $");
+            nkir_printSymbolName(out, ref.sym);
             break;
         }
 

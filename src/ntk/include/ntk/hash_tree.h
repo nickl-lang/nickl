@@ -169,8 +169,8 @@
     NK_HASH_TREE_FWD(TTree, TItem, TKey);                                              \
     NK_HASH_TREE_IMPL(TTree, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)
 
-#define NK_HASH_TREE_DEFINE_K(TTree, TKey, TVal, KeyHashFunc, KeyEqualFunc) \
-    NK_HASH_TREE_FWD_K(TTree, TKey);                                        \
+#define NK_HASH_TREE_DEFINE_K(TTree, TKey, KeyHashFunc, KeyEqualFunc) \
+    NK_HASH_TREE_FWD_K(TTree, TKey);                                  \
     NK_HASH_TREE_IMPL_K(TTree, TKey, KeyHashFunc, KeyEqualFunc)
 
 #define NK_HASH_TREE_DEFINE_KV(TTree, TKey, TVal, KeyHashFunc, KeyEqualFunc) \

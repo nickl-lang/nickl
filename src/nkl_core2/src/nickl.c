@@ -29,7 +29,7 @@ NklState nkl_newState(void) {
         .arena = arena,
         .nkb = nkir_createState(),
     };
-    nkl->text_map = (NkAtomStringHashMap){.alloc = nk_arena_getAllocator(&nkl->arena)};
+    nkl->text_map = (NkAtomStringMap){.alloc = nk_arena_getAllocator(&nkl->arena)};
     return nkl;
 }
 
@@ -102,15 +102,20 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
     NklModule mod = userdata;
 
-    NK_LOG_DBG("Searching for extern symbol `%s` in module `%s`", nk_atom2cs(sym), nk_atom2cs(mod->name));
-    NkAtom *found = NkAtomHashMap_find(&mod->extern_syms, sym);
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Resolving ");
+        nickl_printSymbol(log, mod, sym);
+    }
+
+    NkAtom *found = NkAtomMap_find(&mod->extern_syms, sym);
     if (found) {
         NkAtom const lib = *found;
 
-        NK_LOG_DBG("Module library is `%s`", nk_atom2cs(lib));
+        NK_LOG_DBG("  Found lib \"%s\"", nk_atom2cs(lib));
 
         if (lib) {
-            NklModule *found_mod = NkAtomModuleHashMap_find(&mod->linked_mods, lib);
+            NklModule *found_mod = NkAtomModuleMap_find(&mod->linked_mods, lib);
             if (found_mod) {
                 // TODO: Detect cycles during symbol resolution
                 NklModule const src_mod = *found_mod;
@@ -161,7 +166,11 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
         .mods_linked_to = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
 
-    com->module_count++;
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Creating module ");
+        nickl_printModuleName(log, mod);
+    }
 
     nkir_setSymbolResolver(mod->ir, symbolResolver, mod);
 
@@ -171,12 +180,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
 NklModule nkl_newModule(NklCompiler com) {
     NK_LOG_TRC("%s", __func__);
 
-    NkAtom name = 0;
-    NkArena *scratch = &com->nkl->scratch;
-    NK_ARENA_SCOPE(scratch) {
-        name = nk_s2atom(nk_tsprintf(scratch, ".%zu", com->module_count));
-    }
-    return newModuleImpl(com, name);
+    return newModuleImpl(com, nk_atom_unique((NkString){0}));
 }
 
 NklModule nkl_newModuleNamed(NklCompiler com, NkString name) {
@@ -201,7 +205,7 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
         nickl_reportError(nkl, "mixed modules from different compilers");
     }
 
-    NkAtomModuleHashMap_insert(&dst_mod->linked_mods, src_mod->name, src_mod);
+    NkAtomModuleMap_insert(&dst_mod->linked_mods, src_mod->name, src_mod);
 
     nkda_append(&src_mod->mods_linked_to, dst_mod);
 
@@ -221,7 +225,7 @@ bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib) {
 
     // TODO: Validate input
 
-    NkAtomHashMap_insert(&com->lib_aliases, nk_s2atom(alias), nk_s2atom(lib));
+    NkAtomMap_insert(&com->lib_aliases, nk_s2atom(alias), nk_s2atom(lib));
 
     return true;
 }

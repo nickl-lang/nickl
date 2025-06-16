@@ -306,6 +306,9 @@ bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms);
 
 /// Inspection
 
+void nkir_printName(NkStream out, char const *kind, NkAtom name);
+void nkir_printSymbolName(NkStream out, NkAtom sym);
+
 void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod);
 void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym);
 void nkir_inspectInstr(NkStream out, NkIrInstr instr);

@@ -21,7 +21,7 @@ typedef struct NklState_T {
 
     NkbState nkb;
 
-    NkAtomStringHashMap text_map;
+    NkAtomStringMap text_map;
 
     NklError *error;
 } NklState_T;
@@ -30,9 +30,7 @@ typedef struct NklCompiler_T {
     NklState nkl;
     NkIrTarget target;
 
-    NkAtomHashMap lib_aliases;
-
-    usize module_count;
+    NkAtomMap lib_aliases;
 } NklCompiler_T;
 
 typedef NkDynArray(NklModule) NklModuleDynArray;
@@ -43,8 +41,8 @@ typedef struct NklModule_T {
     NklCompiler com;
     NkIrModule ir;
 
-    NkAtomModuleHashMap linked_mods;
-    NkAtomHashMap extern_syms;
+    NkAtomModuleMap linked_mods;
+    NkAtomMap extern_syms;
 
     NklModuleDynArray mods_linked_to;
 } NklModule_T;
@@ -55,6 +53,9 @@ extern char const *s_ast_tokens[];
 NK_PRINTF_LIKE(2) void nickl_reportError(NklState nkl, char const *fmt, ...);
 NK_PRINTF_LIKE(3) void nickl_reportErrorLoc(NklState nkl, NklSourceLocation loc, char const *fmt, ...);
 void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap);
+
+void nickl_printModuleName(NkStream out, NklModule mod);
+void nickl_printSymbol(NkStream out, NklModule mod, NkAtom sym);
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text);
 bool nickl_defineText(NklState nkl, NkAtom file, NkString text);

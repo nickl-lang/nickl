@@ -21,15 +21,10 @@ static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
     return &item->key;
 }
 
-static NkAtom const *NkAtom_GetKey(NkAtom const *item) {
-    return item;
-}
-
 } // namespace
 
 NK_HASH_TREE_IMPL(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 NK_HASH_TREE_IMPL(FileContextMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
-NK_HASH_TREE_IMPL(NkAtomSet, NkAtom, NkAtom, NkAtom_GetKey, nk_atom_hash, nk_atom_equal);
 
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
     return &c->temp_arenas[0] == conflict ? &c->temp_arenas[1] : &c->temp_arenas[0];

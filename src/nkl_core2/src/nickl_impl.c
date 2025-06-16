@@ -12,6 +12,7 @@
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
+#include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
@@ -37,6 +38,15 @@ void nickl_reportErrorLoc(NklState nkl, NklSourceLocation loc, char const *fmt, 
 }
 
 void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap) {
+#ifdef ENABLE_LOGGING
+    {
+        va_list ap_copy;
+        va_copy(ap_copy, ap);
+        NK_LOGV(NkLogLevel_Error, fmt, ap_copy);
+        va_end(ap_copy);
+    }
+#endif // ENABLE_LOGGING
+
     NklError *err = nk_arena_allocT(&nkl->arena, NklError);
     *err = (NklError){
         .next = nkl->error,
@@ -54,7 +64,17 @@ void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va
     } while (0)
 
 static void defineTextImpl(NklState nkl, NkAtom file, NkString text) {
-    NkAtomStringHashMap_insert(&nkl->text_map, file, text);
+    NkAtomStringMap_insert(&nkl->text_map, file, text);
+}
+
+void nickl_printModuleName(NkStream out, NklModule mod) {
+    nkir_printName(out, "module", mod->name);
+}
+
+void nickl_printSymbol(NkStream out, NklModule mod, NkAtom sym) {
+    nickl_printModuleName(out, mod);
+    nk_printf(out, "::");
+    nkir_printSymbolName(out, sym);
 }
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
@@ -62,10 +82,14 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
 
     NkString text;
 
-    NkString *found = NkAtomStringHashMap_find(&nkl->text_map, file);
+    NkString *found = NkAtomStringMap_find(&nkl->text_map, file);
     if (found) {
-        // TODO: Print null names properly
-        NK_LOG_DBG("Using cached text for file `%s`", nk_atom2cs(file));
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "Using cached text for file \"");
+            nkir_printName(log, "file", file);
+            nk_printf(log, "\"");
+        }
         text = *found;
     } else {
         NK_LOG_DBG("Loading text for file `%s`", nk_atom2cs(file));
@@ -305,11 +329,43 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
 }
 
 NkAtom nickl_translateLib(NklCompiler com, NkAtom alias) {
-    NkAtom *found = NkAtomHashMap_find(&com->lib_aliases, alias);
+    NkAtom *found = NkAtomMap_find(&com->lib_aliases, alias);
     return found ? *found : alias;
 }
 
-static bool defineSymbol(NklModule mod, NkIrSymbol const *sym) {
+static char const *getSymbolKind(NkIrSymbol const *sym) {
+    switch (sym->kind) {
+        case NkIrSymbol_None:
+            break;
+        case NkIrSymbol_Proc:
+            return "proc";
+        case NkIrSymbol_Data:
+            return "data";
+        case NkIrSymbol_Extern:
+            switch (sym->extrn.kind) {
+                case NkIrExtern_Proc:
+                    return "proc";
+                case NkIrExtern_Data:
+                    return "data";
+            }
+            break;
+    }
+    return "";
+}
+
+static bool defineSymbol(NklModule mod, NkIrSymbol const *sym, NkAtom NK_UNUSED lib) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Defining ");
+        if (sym->kind == NkIrSymbol_Extern) {
+            nk_printf(log, "extern \"%s\" ", lib ? nk_atom2cs(lib) : "");
+        }
+        nk_printf(log, "%s ", getSymbolKind(sym));
+        nickl_printSymbol(log, mod, sym->name);
+    }
+
     NK_LOG_STREAM_INF {
         NkArena *scratch = &mod->com->nkl->scratch;
         NK_ARENA_SCOPE(scratch) {
@@ -325,7 +381,7 @@ static bool defineSymbol(NklModule mod, NkIrSymbol const *sym) {
 }
 
 static bool defineIntern(NklModule mod, NkIrSymbol const *sym) {
-    if (defineSymbol(mod, sym)) {
+    if (defineSymbol(mod, sym, 0)) {
         if (sym->vis == NkIrVisibility_Default) {
             NK_ITERATE(NklModule const *, it, mod->mods_linked_to) {
                 NklModule const dst_mod = *it;
@@ -339,26 +395,14 @@ static bool defineIntern(NklModule mod, NkIrSymbol const *sym) {
 }
 
 static bool defineExtern(NklModule mod, NkIrSymbol const *sym, NkAtom lib) {
-    if (defineSymbol(mod, sym)) {
-        NkAtomHashMap_insert(&mod->extern_syms, sym->name, lib);
+    if (defineSymbol(mod, sym, lib)) {
+        NkAtomMap_insert(&mod->extern_syms, sym->name, lib);
         return true;
     }
     return false;
 }
 
-static char const *inspectSym(NkArena *arena, NkAtom sym) {
-    NkString const str = nk_atom2s(sym);
-    if (str.size) {
-        return str.data;
-    } else {
-        return nk_tprintf(arena, "__%u__", sym);
-    }
-}
-
 bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *info) {
-    NK_LOG_DBG(
-        "Defining proc `%s` in module `%s`", inspectSym(&mod->com->nkl->scratch, info->name), nk_atom2cs(mod->name));
-
     return defineIntern(
         mod,
         &(NkIrSymbol){
@@ -371,9 +415,6 @@ bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *
 }
 
 bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *info) {
-    NK_LOG_DBG(
-        "Defining data `%s` in module `%s`", inspectSym(&mod->com->nkl->scratch, info->name), nk_atom2cs(mod->name));
-
     return defineIntern(
         mod,
         &(NkIrSymbol){
@@ -386,12 +427,6 @@ bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *
 }
 
 bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib) {
-    NK_LOG_DBG(
-        "Defining extern symbol `%s` in module `%s` with lib `%s`",
-        inspectSym(&mod->com->nkl->scratch, info->name),
-        nk_atom2cs(mod->name),
-        nk_atom2cs(lib));
-
     return defineExtern(
         mod,
         &(NkIrSymbol){
@@ -405,20 +440,24 @@ bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo co
 }
 
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
-    NklState nkl = dst_mod->com->nkl;
+    NK_LOG_TRC("%s", __func__);
 
-    NK_LOG_DBG(
-        "Linking symbol `%s` from `%s` to `%s`",
-        inspectSym(&nkl->scratch, sym->name),
-        nk_atom2cs(src_mod->name),
-        nk_atom2cs(dst_mod->name));
+    NklState nkl = dst_mod->com->nkl;
 
     if (sym->vis != NkIrVisibility_Default) {
         return true;
     }
 
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Linking ");
+        nickl_printSymbol(log, dst_mod, sym->name);
+        nk_printf(log, " <- ");
+        nickl_printSymbol(log, src_mod, sym->name);
+    }
+
     {
-        NkAtom *found = NkAtomHashMap_find(&dst_mod->extern_syms, sym->name);
+        NkAtom *found = NkAtomMap_find(&dst_mod->extern_syms, sym->name);
         if (found) {
             NkAtom const found_name = *found;
             if (found_name) {
@@ -428,15 +467,10 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
                     return false;
                 }
             } else {
-                NK_LOG_DBG(
-                    "Patching extern symbol `%s` in mod `%s` with lib `%s`",
-                    nk_atom2cs(sym->name),
-                    nk_atom2cs(dst_mod->name),
-                    nk_atom2cs(src_mod->name));
                 *found = src_mod->name;
             }
         } else {
-            NkAtomHashMap_insert(&dst_mod->extern_syms, sym->name, src_mod->name);
+            NkAtomMap_insert(&dst_mod->extern_syms, sym->name, src_mod->name);
         }
     }
 
