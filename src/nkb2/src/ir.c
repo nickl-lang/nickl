@@ -623,12 +623,24 @@ static NkIrSymbol symToExtern(NkArena *arena, NkIrSymbol sym) {
 static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_name) {
     NkbState nkb = mod->nkb;
 
-    NkIrSymbolDynArray syms = {.alloc = nk_arena_getAllocator(scratch)};
-    getSymbolDependencies(mod, sym_name, &syms);
+    NkIrSymbolDynArray deps = {.alloc = nk_arena_getAllocator(scratch)};
+    getSymbolDependencies(mod, sym_name, &deps);
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Dependencies: [ ");
+        NK_ITERATE(NkIrSymbol *, sym, deps) {
+            if (NK_INDEX(sym, deps)) {
+                nk_printf(log, ", ");
+            }
+            nkir_printSymbolName(log, sym->name);
+        }
+        nk_printf(log, " ]");
+    }
 
     NkIrSymbolAddressDynArray to_define = {.alloc = nk_arena_getAllocator(scratch)};
 
-    NK_ITERATE(NkIrSymbol *, sym, syms) {
+    NK_ITERATE(NkIrSymbol *, sym, deps) {
         if (NkAtomSet_find(&mod->rt_loaded_syms, sym->name)) {
             if (sym->kind == NkIrSymbol_Proc || sym->kind == NkIrSymbol_Data) {
                 *sym = symToExtern(scratch, *sym);
@@ -665,7 +677,7 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
 
     nk_llvm_defineExternSymbols(scratch, jit, jdl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
 
-    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(syms)});
+    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(deps)});
 
     NkLlvmTarget tgt = nk_llvm_getJitTarget(jit);
     nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level

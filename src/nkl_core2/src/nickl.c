@@ -97,6 +97,16 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
         }              \
     } while (0)
 
+static void *getSymbolAddress(NklModule mod, NkAtom sym) {
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Resolving address of ");
+        nickl_printSymbol(log, mod->name, sym);
+    }
+
+    return nkir_getSymbolAddress(mod->ir, sym);
+}
+
 static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_TRC("%s", __func__);
 
@@ -104,7 +114,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Resolving ");
+        nk_printf(log, "Searching for ");
         nickl_printSymbol(log, mod->name, sym);
     }
 
@@ -441,7 +451,7 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 
     TRY(mod);
 
-    return nkir_getSymbolAddress(mod->ir, nk_s2atom(name));
+    return getSymbolAddress(mod, nk_s2atom(name));
 }
 
 NklError const *nkl_getErrors(NklState nkl) {

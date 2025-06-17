@@ -238,3 +238,78 @@ pub proc hello() :i32 {
     ASSERT_TRUE(hello);
     EXPECT_EQ(hello(), 42);
 }
+
+TEST_F(nkl_run_ir, mutual_link) {
+    auto mod0 = nkl_newModuleNamed(com, nk_cs2s("mod0"));
+    auto mod1 = nkl_newModuleNamed(com, nk_cs2s("mod1"));
+
+    nkl_linkModule(mod0, mod1);
+    nkl_linkModule(mod1, mod0);
+
+    COMPILE(mod0, nk_cs2s(R"(
+extern "c" proc printf(:i64, ...) :i32
+extern proc bar() :i32
+
+pub proc foo() :i32 {
+    call printf, ("foo\n") -> :i32 %a
+    call bar, () -> :i32 %b
+    add :i32 %a, %b -> %c
+    ret %c
+}
+
+pub proc baz() :i32 {
+    call printf, ("baz\n") -> :i32 %a
+    ret %a
+}
+)"));
+
+    COMPILE(mod1, nk_cs2s(R"(
+extern "c" proc printf(:i64, ...) :i32
+extern proc baz() :i32
+
+pub proc bar() :i32 {
+    call printf, ("bar\n") -> :i32 %a
+    call baz, () -> :i32 %b
+    add :i32 %a, %b -> %c
+    ret %c
+}
+)"));
+
+    auto foo = (i32 (*)())nkl_getSymbolAddress(mod0, nk_cs2s("foo"));
+    ASSERT_TRUE(foo);
+    EXPECT_EQ(foo(), 12);
+}
+
+// TEST_F(nkl_run_ir, link_cycle) {
+//     auto mod0 = nkl_newModuleNamed(com, nk_cs2s("mod0"));
+//     auto mod1 = nkl_newModuleNamed(com, nk_cs2s("mod1"));
+
+//     nkl_linkModule(mod0, mod1);
+//     nkl_linkModule(mod1, mod0);
+
+//     COMPILE(mod0, nk_cs2s(R"(
+// extern "c" proc puts() :i32
+// extern proc bar() :void
+
+// pub proc foo() {
+//     call puts, ("foo") -> :i32
+//     call bar, ()
+//     ret
+// }
+// )"));
+
+//     COMPILE(mod1, nk_cs2s(R"(
+// extern "c" proc puts() :i32
+// extern proc foo() :void
+
+// pub proc bar() {
+//     call puts, ("bar") -> :i32
+//     call foo, ()
+//     ret
+// }
+// )"));
+
+//     auto foo = (void (*)())nkl_getSymbolAddress(mod0, nk_cs2s("foo"));
+//     ASSERT_TRUE(foo);
+//     foo();
+// }
