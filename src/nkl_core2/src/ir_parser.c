@@ -581,24 +581,8 @@ static NkIrRef parseDst(ParserState *p, NkIrType type_opt, bool allow_null) {
     }
 }
 
-static Void defineProc(ParserState *p, NkIrProc const *proc, NklSymbolInfo const *info) {
-    if (!nickl_defineProc(p->mod, proc, info)) {
-        // TODO: Report proper conflict errors
-        ERROR("failed to define symbol");
-    }
-    return ret;
-}
-
-static Void defineData(ParserState *p, NkIrData const *data, NklSymbolInfo const *info) {
-    if (!nickl_defineData(p->mod, data, info)) {
-        // TODO: Report proper conflict errors
-        ERROR("failed to define symbol");
-    }
-    return ret;
-}
-
-static Void defineExtern(ParserState *p, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib) {
-    if (!nickl_defineExtern(p->mod, extrn, info, lib)) {
+static Void defineSymbol(ParserState *p, NkIrSymbol const *sym) {
+    if (!nickl_defineSymbol(p->mod, sym)) {
         // TODO: Report proper conflict errors
         ERROR("failed to define symbol");
     }
@@ -653,17 +637,19 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
             TRY(parseConst(p, addr, type, &relocs));
 
             NkAtom const sym = nk_atom_unique((NkString){0});
-            TRY(defineData(
+            TRY(defineSymbol(
                 p,
-                &(NkIrData){
-                    .type = type,
-                    .relocs = {NKS_INIT(relocs)},
-                    .addr = addr,
-                    .flags = NkIrData_ReadOnly,
-                },
-                &(NklSymbolInfo){
+                &(NkIrSymbol){
+                    .data =
+                        {
+                            .type = type,
+                            .relocs = {NKS_INIT(relocs)},
+                            .addr = addr,
+                            .flags = NkIrData_ReadOnly,
+                        },
                     .name = sym,
                     .vis = NkIrVisibility_Local,
+                    .kind = NkIrSymbol_Data,
                 }));
             return nkir_makeRefGlobal(sym, get_ptr_t(p));
         }
@@ -675,17 +661,19 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
         NkIrType type = allocStringType(p, str.size);
 
         NkAtom const sym = nk_atom_unique((NkString){0});
-        TRY(defineData(
+        TRY(defineSymbol(
             p,
-            &(NkIrData){
-                .type = type,
-                .relocs = {0},
-                .addr = (void *)str.data,
-                .flags = NkIrData_ReadOnly,
-            },
-            &(NklSymbolInfo){
+            &(NkIrSymbol){
+                .data =
+                    {
+                        .type = type,
+                        .relocs = {0},
+                        .addr = (void *)str.data,
+                        .flags = NkIrData_ReadOnly,
+                    },
                 .name = sym,
                 .vis = NkIrVisibility_Local,
+                .kind = NkIrSymbol_Data,
             }));
         return nkir_makeRefGlobal(sym, get_ptr_t(p));
     }
@@ -917,16 +905,18 @@ static Void parseProc(ParserState *p, NkIrVisibility vis) {
 
     EXPECT(NklIrToken_RBrace);
 
-    TRY(defineProc(
+    TRY(defineSymbol(
         p,
-        &(NkIrProc){
-            .params = p->proc_params,
-            .ret = p->proc_ret,
-            .instrs = {NKS_INIT(instrs)},
-        },
-        &(NklSymbolInfo){
+        &(NkIrSymbol){
+            .proc =
+                {
+                    .params = p->proc_params,
+                    .ret = p->proc_ret,
+                    .instrs = {NKS_INIT(instrs)},
+                },
             .name = name,
             .vis = vis,
+            .kind = NkIrSymbol_Proc,
         }));
 
     return ret;
@@ -977,17 +967,19 @@ static Void parseData(ParserState *p, NkIrVisibility vis, NkIrDataFlags flags) {
         ERROR_EXPECT("type or constant");
     }
 
-    TRY(defineData(
+    TRY(defineSymbol(
         p,
-        &(NkIrData){
-            .type = type,
-            .relocs = {NKS_INIT(relocs)},
-            .addr = addr,
-            .flags = flags,
-        },
-        &(NklSymbolInfo){
+        &(NkIrSymbol){
+            .data =
+                {
+                    .type = type,
+                    .relocs = {NKS_INIT(relocs)},
+                    .addr = addr,
+                    .flags = flags,
+                },
             .name = name,
             .vis = vis,
+            .kind = NkIrSymbol_Data,
         }));
 
     return ret;
@@ -1027,22 +1019,23 @@ static Void parseExtern(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const ret_type = parseType(p));
 
-        TRY(defineExtern(
+        TRY(defineSymbol(
             p,
-            &(NkIrExtern){
-                .proc =
+            &(NkIrSymbol){
+                .extrn =
                     {
-                        .param_types = {NKS_INIT(param_types)},
-                        .ret_type = ret_type,
-                        .flags = is_variadic ? NkIrProc_Variadic : 0,
+                        .proc =
+                            {
+                                .param_types = {NKS_INIT(param_types)},
+                                .ret_type = ret_type,
+                                .flags = is_variadic ? NkIrProc_Variadic : 0,
+                            },
+                        .lib = lib,
+                        .kind = NkIrExtern_Proc,
                     },
-                .lib = lib,
-                .kind = NkIrExtern_Proc,
-            },
-            &(NklSymbolInfo){
                 .name = sym_name,
-            },
-            lib));
+                .kind = NkIrSymbol_Extern,
+            }));
     }
 
     else if (ACCEPT(NklIrToken_data)) {
@@ -1051,20 +1044,21 @@ static Void parseExtern(ParserState *p) {
         EXPECT(NklIrToken_Colon);
         TRY(NkIrType const type = parseType(p));
 
-        TRY(defineExtern(
+        TRY(defineSymbol(
             p,
-            &(NkIrExtern){
-                .data =
+            &(NkIrSymbol){
+                .extrn =
                     {
-                        .type = type,
+                        .data =
+                            {
+                                .type = type,
+                            },
+                        .lib = lib,
+                        .kind = NkIrExtern_Data,
                     },
-                .lib = lib,
-                .kind = NkIrExtern_Data,
-            },
-            &(NklSymbolInfo){
                 .name = sym_name,
-            },
-            lib));
+                .kind = NkIrSymbol_Extern,
+            }));
     }
 
     return ret;

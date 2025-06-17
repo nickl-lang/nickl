@@ -54,8 +54,8 @@ NK_PRINTF_LIKE(2) void nickl_reportError(NklState nkl, char const *fmt, ...);
 NK_PRINTF_LIKE(3) void nickl_reportErrorLoc(NklState nkl, NklSourceLocation loc, char const *fmt, ...);
 void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap);
 
-void nickl_printModuleName(NkStream out, NklModule mod);
-void nickl_printSymbol(NkStream out, NklModule mod, NkAtom sym);
+void nickl_printModuleName(NkStream out, NkAtom name);
+void nickl_printSymbol(NkStream out, NkAtom mod, NkAtom sym);
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text);
 bool nickl_defineText(NklState nkl, NkAtom file, NkString text);
@@ -70,15 +70,7 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name);
 
 NkAtom nickl_translateLib(NklCompiler com, NkAtom alias);
 
-typedef struct {
-    NkAtom name;
-    NkIrVisibility vis;
-    NkIrSymbolFlags flags;
-} NklSymbolInfo;
-
-bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *info);
-bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *info);
-bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib);
+bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym);
 
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym);
 

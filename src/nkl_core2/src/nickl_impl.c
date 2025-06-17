@@ -67,11 +67,11 @@ static void defineTextImpl(NklState nkl, NkAtom file, NkString text) {
     NkAtomStringMap_insert(&nkl->text_map, file, text);
 }
 
-void nickl_printModuleName(NkStream out, NklModule mod) {
-    nkir_printName(out, "module", mod->name);
+void nickl_printModuleName(NkStream out, NkAtom mod) {
+    nkir_printName(out, "module", mod);
 }
 
-void nickl_printSymbol(NkStream out, NklModule mod, NkAtom sym) {
+void nickl_printSymbol(NkStream out, NkAtom mod, NkAtom sym) {
     nickl_printModuleName(out, mod);
     nk_printf(out, "::");
     nkir_printSymbolName(out, sym);
@@ -353,17 +353,21 @@ static char const *getSymbolKind(NkIrSymbol const *sym) {
     return "";
 }
 
-static bool defineSymbol(NklModule mod, NkIrSymbol const *sym, NkAtom NK_UNUSED lib) {
+bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     NK_LOG_TRC("%s", __func__);
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Defining ");
         if (sym->kind == NkIrSymbol_Extern) {
-            nk_printf(log, "extern \"%s\" ", lib ? nk_atom2cs(lib) : "");
+            nk_printf(log, "Declaring extern ");
+            if (sym->extrn.lib) {
+                nk_printf(log, "\"%s\" ", nk_atom2cs(sym->extrn.lib));
+            }
+        } else {
+            nk_printf(log, "Defining ");
         }
         nk_printf(log, "%s ", getSymbolKind(sym));
-        nickl_printSymbol(log, mod, sym->name);
+        nickl_printSymbol(log, mod->name, sym->name);
     }
 
     NK_LOG_STREAM_INF {
@@ -377,66 +381,17 @@ static bool defineSymbol(NklModule mod, NkIrSymbol const *sym, NkAtom NK_UNUSED 
 
     // TODO: Check for symbol conflicts
     nkir_moduleDefineSymbol(mod->ir, sym);
-    return true;
-}
 
-static bool defineIntern(NklModule mod, NkIrSymbol const *sym) {
-    if (defineSymbol(mod, sym, 0)) {
-        if (sym->vis == NkIrVisibility_Default) {
-            NK_ITERATE(NklModule const *, it, mod->mods_linked_to) {
-                NklModule const dst_mod = *it;
-                nickl_linkSymbol(dst_mod, mod, sym);
-            }
+    if (sym->kind == NkIrSymbol_Extern) {
+        NkAtomMap_insert(&mod->extern_syms, sym->name, sym->extrn.lib);
+    } else if (sym->vis == NkIrVisibility_Default) {
+        NK_ITERATE(NklModule const *, it, mod->mods_linked_to) {
+            NklModule const dst_mod = *it;
+            nickl_linkSymbol(dst_mod, mod, sym);
         }
-
-        return true;
     }
-    return false;
-}
 
-static bool defineExtern(NklModule mod, NkIrSymbol const *sym, NkAtom lib) {
-    if (defineSymbol(mod, sym, lib)) {
-        NkAtomMap_insert(&mod->extern_syms, sym->name, lib);
-        return true;
-    }
-    return false;
-}
-
-bool nickl_defineProc(NklModule mod, NkIrProc const *proc, NklSymbolInfo const *info) {
-    return defineIntern(
-        mod,
-        &(NkIrSymbol){
-            .proc = *proc,
-            .name = info->name,
-            .vis = info->vis,
-            .flags = info->flags,
-            .kind = NkIrSymbol_Proc,
-        });
-}
-
-bool nickl_defineData(NklModule mod, NkIrData const *data, NklSymbolInfo const *info) {
-    return defineIntern(
-        mod,
-        &(NkIrSymbol){
-            .data = *data,
-            .name = info->name,
-            .vis = info->vis,
-            .flags = info->flags,
-            .kind = NkIrSymbol_Data,
-        });
-}
-
-bool nickl_defineExtern(NklModule mod, NkIrExtern const *extrn, NklSymbolInfo const *info, NkAtom lib) {
-    return defineExtern(
-        mod,
-        &(NkIrSymbol){
-            .extrn = *extrn,
-            .name = info->name,
-            .vis = info->vis,
-            .flags = info->flags,
-            .kind = NkIrSymbol_Extern,
-        },
-        lib);
+    return true;
 }
 
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
@@ -451,9 +406,9 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_printf(log, "Linking ");
-        nickl_printSymbol(log, dst_mod, sym->name);
+        nickl_printSymbol(log, dst_mod->name, sym->name);
         nk_printf(log, " <- ");
-        nickl_printSymbol(log, src_mod, sym->name);
+        nickl_printSymbol(log, src_mod->name, sym->name);
     }
 
     {

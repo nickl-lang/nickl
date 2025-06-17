@@ -105,47 +105,50 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_printf(log, "Resolving ");
-        nickl_printSymbol(log, mod, sym);
+        nickl_printSymbol(log, mod->name, sym);
     }
 
     NkAtom *found = NkAtomMap_find(&mod->extern_syms, sym);
-    if (found) {
-        NkAtom const lib = *found;
-
-        NK_LOG_DBG("  Found lib \"%s\"", nk_atom2cs(lib));
-
-        if (lib) {
-            NklModule *found_mod = NkAtomModuleMap_find(&mod->linked_mods, lib);
-            if (found_mod) {
-                // TODO: Detect cycles during symbol resolution
-                NklModule const src_mod = *found_mod;
-                return nkir_getSymbolAddress(src_mod->ir, sym);
-            } else {
-                NkAtom lib_tr = nickl_translateLib(mod->com, lib);
-
-                NkHandle lib = nkdl_loadLibrary(nk_atom2cs(lib_tr));
-                if (nk_handleIsNull(lib)) {
-                    nickl_reportError(
-                        mod->com->nkl,
-                        "Failed to load library `%s`: %s",
-                        nk_atom2cs(lib_tr),
-                        nkdl_getLastErrorString());
-                    return NULL;
-                }
-
-                void *addr = nkdl_resolveSymbol(lib, nk_atom2cs(sym));
-                if (!addr) {
-                    nickl_reportError(
-                        mod->com->nkl, "Failed to load symbol `%s`: %s", nk_atom2cs(sym), nkdl_getLastErrorString());
-                    return NULL;
-                }
-
-                return addr;
-            }
-        }
+    if (!found) {
+        NK_LOG_DBG("  Not found");
+        return NULL;
+    }
+    NkAtom const mod_name = *found;
+    if (!mod_name) {
+        NK_LOG_DBG("  Not found");
+        return NULL;
     }
 
-    return NULL;
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "  Found in ");
+        nickl_printModuleName(log, mod_name);
+    }
+
+    NklModule *found_mod = NkAtomModuleMap_find(&mod->linked_mods, mod_name);
+    if (found_mod) {
+        // TODO: Detect cycles during symbol resolution
+        NklModule const src_mod = *found_mod;
+        return nkir_getSymbolAddress(src_mod->ir, sym);
+    } else {
+        NkAtom const lib = nickl_translateLib(mod->com, mod_name);
+
+        NkHandle dl = nkdl_loadLibrary(nk_atom2cs(lib));
+        if (nk_handleIsNull(dl)) {
+            nickl_reportError(
+                mod->com->nkl, "Failed to load library `%s`: %s", nk_atom2cs(lib), nkdl_getLastErrorString());
+            return NULL;
+        }
+
+        void *addr = nkdl_resolveSymbol(dl, nk_atom2cs(sym));
+        if (!addr) {
+            nickl_reportError(
+                mod->com->nkl, "Failed to load symbol `%s`: %s", nk_atom2cs(sym), nkdl_getLastErrorString());
+            return NULL;
+        }
+
+        return addr;
+    }
 }
 
 static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
@@ -169,7 +172,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_printf(log, "Creating module ");
-        nickl_printModuleName(log, mod);
+        nickl_printModuleName(log, mod->name);
     }
 
     nkir_setSymbolResolver(mod->ir, symbolResolver, mod);
