@@ -119,19 +119,28 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
         return NULL;
     }
 
-    NK_LOG_STREAM_DBG {
-        NkStream log = nk_log_getStream();
-        nk_printf(log, "  Found in ");
-        nickl_printModuleName(log, mod_name);
-    }
-
     NklModule *found_mod = NkAtomModuleMap_find(&mod->linked_mods, mod_name);
     if (found_mod) {
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "  Found in ");
+            nickl_printModuleName(log, mod_name);
+        }
+
         // TODO: Detect cycles during symbol resolution
         NklModule const src_mod = *found_mod;
         return nkir_getSymbolAddress(src_mod->ir, sym);
     } else {
         NkAtom const lib = nickl_translateLib(mod->com, mod_name);
+
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "  Found in ");
+            nickl_printModuleName(log, mod_name);
+            if (lib != mod_name) {
+                nk_printf(log, " aka \"%s\"", nk_atom2cs(lib));
+            }
+        }
 
         NkHandle dl = nkdl_loadLibrary(nk_atom2cs(lib));
         if (nk_handleIsNull(dl)) {
@@ -206,6 +215,14 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
 
     if (dst_mod->com != src_mod->com) {
         nickl_reportError(nkl, "mixed modules from different compilers");
+    }
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Linking ");
+        nickl_printModuleName(log, dst_mod->name);
+        nk_printf(log, " <- ");
+        nickl_printModuleName(log, src_mod->name);
     }
 
     NkAtomModuleMap_insert(&dst_mod->linked_mods, src_mod->name, src_mod);

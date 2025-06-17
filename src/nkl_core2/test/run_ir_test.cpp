@@ -84,7 +84,7 @@ pub proc plus(:i64 %a, :i64 %b) :i64 {
 }
 )"));
 
-    auto plus = (i64(*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2s("plus"));
+    auto plus = (i64 (*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2s("plus"));
     ASSERT_TRUE(plus);
     EXPECT_EQ(plus(4, 5), 9);
 }
@@ -134,13 +134,13 @@ pub proc foo() :i64 {
 )"));
 
     {
-        auto foo = (i64(*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+        auto foo = (i64 (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
         ASSERT_TRUE(foo);
         EXPECT_EQ(foo(), 42);
     }
 
     {
-        auto foo = (i64(*)())nkl_getSymbolAddress(mod2, nk_cs2s("foo"));
+        auto foo = (i64 (*)())nkl_getSymbolAddress(mod2, nk_cs2s("foo"));
         ASSERT_TRUE(foo);
         EXPECT_EQ(foo(), 43);
     }
@@ -208,4 +208,33 @@ pub proc bar() {
     auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
     ASSERT_TRUE(foo);
     foo();
+}
+
+TEST_F(nkl_run_ir, override_libc) {
+    auto mod = nkl_newModule(com);
+
+    auto libc = nkl_newModuleNamed(com, nk_cs2s("c"));
+    nkl_linkModule(mod, libc);
+
+    COMPILE(libc, nk_cs2s(R"(
+extern "c" proc printf(:i64, ...) :i32
+
+pub proc puts(:i64 %s) :i32 {
+    call printf, ("[my_puts] %s\n", ..., :i64 %s) -> :i32
+    ret 42
+}
+)"));
+
+    COMPILE(mod, nk_cs2s(R"(
+extern "c" proc puts() :i32
+
+pub proc hello() :i32 {
+    call puts, ("hello") -> :i32 %ret
+    ret %ret
+}
+)"));
+
+    auto hello = (i32 (*)())nkl_getSymbolAddress(mod, nk_cs2s("hello"));
+    ASSERT_TRUE(hello);
+    EXPECT_EQ(hello(), 42);
 }

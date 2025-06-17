@@ -417,8 +417,7 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
             NkAtom const found_name = *found;
             if (found_name) {
                 if (found_name != src_mod->name) {
-                    NK_LOG_ERR("Symbol already exists with lib `%s`", nk_atom2cs(found_name));
-                    nickl_reportError(nkl, "TODO: Symbol conflict");
+                    nickl_reportError(nkl, "Symbol already exists with lib `%s`", nk_atom2cs(found_name));
                     return false;
                 }
             } else {
@@ -432,7 +431,6 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
     {
         NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
         if (found && found->kind != NkIrSymbol_Extern) {
-            NK_LOG_ERR("TODO: Symbol conflict");
             nickl_reportError(nkl, "TODO: Symbol conflict");
             return false;
         }
