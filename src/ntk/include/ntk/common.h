@@ -141,8 +141,8 @@ inline bool operator==(NkHandle lhs, NkHandle rhs) {
 }
 #endif
 
-#define NK_DEFER_LOOP(begin, end) for (int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
-#define NK_DEFER_LOOP_OPT(enable, begin, end) for (int _i_ = !((enable) && ((begin), 1)); !_i_; _i_ += 1, (end))
+#define NK_DEFER_LOOP(BEGIN, END) for (int _i_ = ((BEGIN), 0); !_i_; _i_ += 1, (END))
+#define NK_DEFER_LOOP_OPT(ENABLE, BEGIN, END) for (int _i_ = !((ENABLE) && ((BEGIN), 1)); !_i_; _i_ += 1, (END))
 
 #define NK_ITERATE(TYPE, IT, SLICE) for (TYPE IT = (SLICE).data; IT < (SLICE).data + (SLICE).size; IT++)
 #define NK_INDEX(IT, SLICE) (usize)((IT) - (SLICE).data)

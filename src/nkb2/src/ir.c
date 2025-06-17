@@ -10,7 +10,7 @@
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
-#include "ntk/hash_tree.h"
+#include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
@@ -640,32 +640,30 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
 
     NkIrSymbolAddressDynArray to_define = {.alloc = nk_arena_getAllocator(scratch)};
 
-    NK_ITERATE(NkIrSymbol *, sym, deps) {
-        if (NkAtomSet_find(&mod->rt_loaded_syms, sym->name)) {
-            if (sym->kind == NkIrSymbol_Proc || sym->kind == NkIrSymbol_Data) {
-                *sym = symToExtern(scratch, *sym);
+    NK_ITERATE(NkIrSymbol *, dep, deps) {
+        if (NkAtomSet_find(&mod->rt_loaded_syms, dep->name)) {
+            if (dep->kind == NkIrSymbol_Proc || dep->kind == NkIrSymbol_Data) {
+                *dep = symToExtern(scratch, *dep);
             }
         } else {
-            NkAtomSet_insert(&mod->rt_loaded_syms, sym->name);
+            NkAtomSet_insert(&mod->rt_loaded_syms, dep->name);
 
-            if (sym->kind == NkIrSymbol_Extern) {
-                if (!mod->sym_resolver_fn) {
-                    // TODO: Report errors properly
-                    NK_LOG_ERR("Symbol resolver is not set up");
-                    _exit(1);
-                }
+            if (dep->kind == NkIrSymbol_Extern) {
+                nk_assert(mod->sym_resolver_fn && "Symbol resolver is not set up");
 
-                void *addr = mod->sym_resolver_fn(sym->name, mod->sym_resolver_userdata);
+                void *addr = mod->sym_resolver_fn(dep->name, mod->sym_resolver_userdata);
                 if (!addr) {
-                    // TODO: Report errors properly
-                    NK_LOG_ERR("Failed to resolve symbol `%s`", nk_atom2cs(sym->name));
-                    _exit(1);
+                    nk_error_printf(
+                        "Failed to get address of `%s`, dependency `%s` not found",
+                        nk_atom2cs(sym_name),
+                        nk_atom2cs(dep->name));
+                    return NULL;
                 }
 
                 nkda_append(
                     &to_define,
                     ((NkIrSymbolAddress){
-                        .sym = sym->name,
+                        .sym = dep->name,
                         .addr = addr,
                     }));
             }
@@ -694,9 +692,8 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
     NkArena *scratch = &nkb->scratch;
 
     if (!nkir_findSymbol(mod, sym)) {
-        // TODO: Report errors properly
-        NK_LOG_ERR("Symbol not found: %s", nk_atom2cs(sym));
-        _exit(1);
+        nk_error_printf("Symbol not found: %s", nk_atom2cs(sym));
+        return NULL;
     }
 
     void *addr = NULL;

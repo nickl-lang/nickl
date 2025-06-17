@@ -97,16 +97,6 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
         }              \
     } while (0)
 
-static void *getSymbolAddress(NklModule mod, NkAtom sym) {
-    NK_LOG_STREAM_DBG {
-        NkStream log = nk_log_getStream();
-        nk_printf(log, "Resolving address of ");
-        nickl_printSymbol(log, mod->name, sym);
-    }
-
-    return nkir_getSymbolAddress(mod->ir, sym);
-}
-
 static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_TRC("%s", __func__);
 
@@ -446,12 +436,44 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     return true;
 }
 
+// TODO: Infer source location if operating during compilation
+
+#define HANDLE_ERRORS()                                              \
+    do {                                                             \
+        NkErrorNode *_err = err.errors;                              \
+        if (_err) {                                                  \
+            while (_err) {                                           \
+                nickl_reportError(nkl, NKS_FMT, NKS_ARG(_err->msg)); \
+                _err = _err->next;                                   \
+            }                                                        \
+            return 0;                                                \
+        }                                                            \
+    } while (0)
+
 void *nkl_getSymbolAddress(NklModule mod, NkString name) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
 
-    return getSymbolAddress(mod, nk_s2atom(name));
+    NkAtom const sym = nk_s2atom(name);
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Resolving address of ");
+        nickl_printSymbol(log, mod->name, sym);
+    }
+
+    NklState nkl = mod->com->nkl;
+
+    void *addr = NULL;
+
+    NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+    NK_ERROR_SCOPE(&err) {
+        addr = nkir_getSymbolAddress(mod->ir, sym);
+    }
+    HANDLE_ERRORS();
+
+    return addr;
 }
 
 NklError const *nkl_getErrors(NklState nkl) {

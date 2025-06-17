@@ -16,9 +16,7 @@ void *lookupSymbol(LLVMOrcLLJITRef clljit, LLVMOrcJITDylibRef cjd, char const *n
     if (!sym) {
         auto err = sym.takeError();
         // TODO: Report errors properly
-        llvm::visitErrors(err, [](llvm::ErrorInfoBase const &err_msg) {
-            NK_LOG_ERR("%s", err_msg.message().c_str());
-        });
+        NK_LOG_ERR("%s", llvm::toString(std::move(err)).c_str());
         _exit(1);
         return NULL;
     }
