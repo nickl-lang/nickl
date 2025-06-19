@@ -261,7 +261,7 @@ NkIrRef nkir_makeRefParam(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefGlobal(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
 
-NkIrRef nkir_makeVariadicMarker();
+NkIrRef nkir_makeVariadicMarker(void);
 
 /// Labels
 
@@ -270,7 +270,7 @@ NkIrLabel nkir_makeLabelRel(i32 offset);
 
 /// Codegen
 
-NkIrInstr nkir_make_nop();
+NkIrInstr nkir_make_nop(void);
 
 NkIrInstr nkir_make_ret(NkIrRef arg);
 

@@ -39,13 +39,13 @@ NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple);
 void nk_llvm_freeTarget(NkLlvmTarget tgt);
 
 NkLlvmModule nk_llvm_compilerIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir);
-void nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt);
+bool nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt);
 
-void nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms);
+bool nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms);
 
-void nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_file);
+bool nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_file);
 
-void nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dl);
+bool nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dl);
 void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dl, NkAtom sym);
 
 #ifdef __cplusplus

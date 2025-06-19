@@ -20,6 +20,27 @@
 
 NK_LOG_USE_SCOPE(nickl);
 
+#define TRY(EXPR)      \
+    do {               \
+        if (!(EXPR)) { \
+            return 0;  \
+        }              \
+    } while (0)
+
+// TODO: Infer source location if operating during compilation
+
+#define HANDLE_ERRORS()                                              \
+    do {                                                             \
+        NkErrorNode *_err = err.errors;                              \
+        if (_err) {                                                  \
+            while (_err) {                                           \
+                nickl_reportError(nkl, NKS_FMT, NKS_ARG(_err->msg)); \
+                _err = _err->next;                                   \
+            }                                                        \
+            return 0;                                                \
+        }                                                            \
+    } while (0)
+
 NklState nkl_newState(void) {
     NK_LOG_TRC("%s", __func__);
 
@@ -58,15 +79,18 @@ static NkString targetTripleToString(NkArena *arena, NklTargetTriple triple) {
 NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
     NK_LOG_TRC("%s", __func__);
 
+    NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+
     NkIrTarget tgt = NULL;
     NK_ARENA_SCOPE(&nkl->scratch) {
         NkString const triple_str = targetTripleToString(&nkl->scratch, triple);
-        tgt = nkir_createTarget(nkl->nkb, triple_str);
-        if (!tgt) {
-            nickl_reportError(nkl, "failed to create compiler for target `" NKS_FMT "`", NKS_ARG(triple_str));
-            return NULL;
+
+        NK_ERROR_SCOPE(&err) {
+            tgt = nkir_createTarget(nkl->nkb, triple_str);
         }
     }
+
+    HANDLE_ERRORS();
 
     NklCompiler com = nk_arena_allocT(&nkl->arena, NklCompiler_T);
     *com = (NklCompiler_T){
@@ -89,13 +113,6 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
             .abi = strlen(HOST_TARGET_ABI) ? nk_cs2atom(HOST_TARGET_ABI) : 0,
         });
 }
-
-#define TRY(EXPR)      \
-    do {               \
-        if (!(EXPR)) { \
-            return 0;  \
-        }              \
-    } while (0)
 
 static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_TRC("%s", __func__);
@@ -417,38 +434,28 @@ bool nkl_compileStringNkl(NklModule mod, NkString src) {
     return compileNklImpl(mod, file);
 }
 
+static_assert((int)NklOutput_None == NkIrOutput_None, "");
+static_assert((int)NklOutput_Binary == NkIrOutput_Binary, "");
+static_assert((int)NklOutput_Static == NkIrOutput_Static, "");
+static_assert((int)NklOutput_Shared == NkIrOutput_Shared, "");
+static_assert((int)NklOutput_Archiv == NkIrOutput_Archiv, "");
+static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
+
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod);
 
-    // TODO: Handle errors
+    NklState nkl = mod->com->nkl;
 
-    static_assert((int)NklOutput_None == NkIrOutput_None, "");
-    static_assert((int)NklOutput_Binary == NkIrOutput_Binary, "");
-    static_assert((int)NklOutput_Static == NkIrOutput_Static, "");
-    static_assert((int)NklOutput_Shared == NkIrOutput_Shared, "");
-    static_assert((int)NklOutput_Archiv == NkIrOutput_Archiv, "");
-    static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
-
-    nkir_exportModule(mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
+    NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+    NK_ERROR_SCOPE(&err) {
+        nkir_exportModule(mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
+    }
+    HANDLE_ERRORS();
 
     return true;
 }
-
-// TODO: Infer source location if operating during compilation
-
-#define HANDLE_ERRORS()                                              \
-    do {                                                             \
-        NkErrorNode *_err = err.errors;                              \
-        if (_err) {                                                  \
-            while (_err) {                                           \
-                nickl_reportError(nkl, NKS_FMT, NKS_ARG(_err->msg)); \
-                _err = _err->next;                                   \
-            }                                                        \
-            return 0;                                                \
-        }                                                            \
-    } while (0)
 
 void *nkl_getSymbolAddress(NklModule mod, NkString name) {
     NK_LOG_TRC("%s", __func__);

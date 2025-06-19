@@ -12,7 +12,6 @@
 
 NK_LOG_USE_SCOPE(linker);
 
-// TODO: Report errors properly
 // TODO: Do not depend on gcc for finding files?
 static bool findFile(NkArena *scratch, char const *name, NkString *out_path) {
     NK_LOG_TRC("%s", __func__);
@@ -30,7 +29,7 @@ static bool findFile(NkArena *scratch, char const *name, NkString *out_path) {
                 .quiet = false,
             },
             &out)) {
-        NK_LOG_ERR("Failed to find file `%s`: %s", name, nk_getLastErrorString());
+        nk_error_printf("Failed to find file `%s`: %s", name, nk_getLastErrorString());
         NK_PROF_END();
         return false;
     }
@@ -41,14 +40,14 @@ static bool findFile(NkArena *scratch, char const *name, NkString *out_path) {
     nksb_appendNull(&path);
 
     if (nk_pipe_streamClose(&ps)) {
-        NK_LOG_ERR("Failed to find file `%s`: %s", name, nk_getLastErrorString());
+        nk_error_printf("Failed to find file `%s`: %s", name, nk_getLastErrorString());
         NK_PROF_END();
         return false;
     }
 
     char full_path[NK_MAX_PATH];
     if (nk_fullPath(full_path, path.data) < 0) {
-        NK_LOG_ERR("Failed to find file `%s`: %s", name, nk_getLastErrorString());
+        nk_error_printf("Failed to find file `%s`: %s", name, nk_getLastErrorString());
         NK_PROF_END();
         return false;
     }
@@ -82,6 +81,8 @@ bool nk_link(NkLikerOpts const opts) {
     }
 
     NkStringBuilder link_cmd = {.alloc = nk_arena_getAllocator(scratch)};
+
+    char const *linker = "ld"; // TODO: Hardcoded linker name
 
     if (kind == NkIrOutput_Archiv) {
         nksb_printf(&link_cmd, "ar rcs");
@@ -134,7 +135,7 @@ bool nk_link(NkLikerOpts const opts) {
 
         NkString const toolchain_dir = nk_path_getParent(crtbegin);
 
-        nksb_printf(&link_cmd, "ld"); // TODO: Hardcoded linker name
+        nksb_printf(&link_cmd, "%s", linker);
         nksb_printf(&link_cmd, is_exe ? (is_dynamic ? " -pie" : " -static") : " -shared");
         if (is_exe && is_dynamic) {
             nksb_printf(&link_cmd, " -dynamic-linker /lib64/ld-linux-x86-64.so.2");
@@ -173,8 +174,14 @@ bool nk_link(NkLikerOpts const opts) {
 
     NK_LOG_INF("Linking: " NKS_FMT, NKS_ARG(link_cmd));
 
-    if (nk_exec(scratch, (NkString){NKS_INIT(link_cmd)}, NULL, NULL, NULL, NULL)) {
-        NK_LOG_ERR("%s", nk_getLastErrorString());
+    i32 exit_code = 0;
+    if (nk_exec(scratch, (NkString){NKS_INIT(link_cmd)}, NULL, NULL, NULL, &exit_code) < 0) {
+        nk_error_printf("Failed to run the linker `%s`: %s", linker, nk_getLastErrorString());
+        NK_PROF_END();
+        return false;
+    }
+    if (exit_code) {
+        nk_error_printf("Linker returned nonzero exit code");
         NK_PROF_END();
         return false;
     }

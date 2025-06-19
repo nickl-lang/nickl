@@ -19,6 +19,13 @@
 
 NK_LOG_USE_SCOPE(nickl);
 
+#define TRY(EXPR, ...)          \
+    do {                        \
+        if (!(EXPR)) {          \
+            return __VA_ARGS__; \
+        }                       \
+    } while (0)
+
 void nickl_reportError(NklState nkl, char const *fmt, ...) {
     NK_LOG_TRC("%s", __func__);
 
@@ -55,13 +62,6 @@ void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va
     };
     nkl->error = err;
 }
-
-#define TRY(EXPR)      \
-    do {               \
-        if (!(EXPR)) { \
-            return 0;  \
-        }              \
-    } while (0)
 
 static void defineTextImpl(NklState nkl, NkAtom file, NkString text) {
     NkAtomStringMap_insert(&nkl->text_map, file, text);
@@ -182,7 +182,7 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     // TODO: Cache tokens
 
     NkString text;
-    TRY(nickl_getText(nkl, file, &text));
+    TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
@@ -246,7 +246,7 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     // TODO: Cache tokens
 
     NkString text;
-    TRY(nickl_getText(nkl, file, &text));
+    TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
@@ -283,12 +283,13 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
     // TODO: Cache ast
 
     TRY(nkl_ast_parse(
-        &(NklAstParserData){
-            .nkl = nkl,
-            .file = file,
-            .token_names = s_ast_tokens,
-        },
-        out_nodes));
+            &(NklAstParserData){
+                .nkl = nkl,
+                .file = file,
+                .token_names = s_ast_tokens,
+            },
+            out_nodes),
+        false);
 
     return true;
 }
@@ -380,6 +381,7 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     }
 
     // TODO: Check for symbol conflicts
+
     nkir_moduleDefineSymbol(mod->ir, sym);
 
     if (sym->kind == NkIrSymbol_Extern) {
@@ -429,9 +431,19 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
     }
 
     {
+        // TODO: Verify linker symbol compatibility
         NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
         if (found && found->kind != NkIrSymbol_Extern) {
-            nickl_reportError(nkl, "TODO: Symbol conflict");
+            NK_ARENA_SCOPE(&nkl->scratch) {
+                NkStringBuilder sb = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+                NkStream err = nksb_getStream(&sb);
+                nk_printf(err, "Failed to link ");
+                nickl_printSymbol(err, src_mod->name, sym->name);
+                nk_printf(err, " to ");
+                nickl_printSymbol(err, dst_mod->name, sym->name);
+                nk_printf(err, ", it's already defined");
+                nickl_reportError(nkl, NKS_FMT, NKS_ARG(sb));
+            }
             return false;
         }
     }
