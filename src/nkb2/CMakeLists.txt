@@ -7,7 +7,6 @@ add_library(${LIB}
     src/llvm_adapter.c
     src/llvm_adapter.cpp
     src/llvm_emitter.c
-    src/llvm_stream.c
     src/types.c
     )
 
