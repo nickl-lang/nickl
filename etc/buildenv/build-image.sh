@@ -15,8 +15,13 @@ maybe_tee() {
   fi
 }
 
+replace_vars() {
+  sed $(echo "$ARGS" | jq -r '. | "s@{{\(.key)}}@\(.value)@g"' | xargs -I{} echo "-e {}")
+}
+
 echo "$STAGES" | xargs -I{} cat "$DIR/src/Dockerfile.{}" |
-  sed $(echo "$ARGS" | jq -r '. | "s@{{\(.key)}}@\(.value)@g"' | xargs -I{} echo "-e {}") |
+  replace_vars |
+  replace_vars |
   maybe_tee |
   docker build \
     -t "$IMAGE_TAG" \

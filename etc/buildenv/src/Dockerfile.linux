@@ -1,8 +1,6 @@
 FROM common AS linux
 
 ARG PREFIX=/opt
-ENV TARGET=x86_64-linux-gnu
-ENV PATH="${PREFIX}/bin:${PATH}"
 ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
