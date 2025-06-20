@@ -18,10 +18,10 @@ to the program with ability to execute arbitrary code at compile time.
 - [Build from source](#build-from-source)
     - [Install dependencies](#install-dependencies)
       - [Ubuntu](#ubuntu)
-      - [Arch](#arch)
+      - [Arch Linux](#arch-linux)
       - [Darwin](#darwin)
-      - [MSYS2](#msys2)
-      - [Windows](#windows)
+      - [Windows (MSYS2)](#windows-msys2)
+      - [Windows (MSVC)](#windows-msvc)
     - [Build](#build)
 
 # Dependencies
@@ -36,75 +36,40 @@ to the program with ability to execute arbitrary code at compile time.
 ### Ubuntu
 
 ```sh
-sudo apt install \
-  build-essential \
-  cmake \
-  libffi-dev \
-  llvm \
-  pkg-config \
-  zlib1g-dev \
-  ;
+sudo apt install build-essential cmake libffi-dev llvm pkg-config zlib2g-dev
 
 # Optional:
-sudo apt install \
-  ccache \
-  ninja-build \
-  ;
+sudo apt install ccache ninja-build
 
 # For tests:
-sudo apt install \
-  libgtest-dev \
-  ;
+sudo apt install libgtest-dev
 ```
 
-### Arch
+### Arch Linux
 
 ```sh
-sudo pacman -S \
-  cmake \
-  gcc \
-  libffi \
-  llvm \
-  make \
-  pkgconf \
-  ;
+sudo pacman -S cmake gcc libffi llvm make pkgconf
 
 # Optional:
-sudo pacman -S \
-  ccache \
-  ninja \
-  ;
+sudo pacman -S ccache ninja
 
 # For tests:
-sudo pacman -S \
-  diffutils \
-  gtest \
-  perl \
-  ;
+sudo pacman -S diffutils gtest perl
 ```
 
 ### Darwin
 
 ```sh
-brew install \
-  cmake \
-  llvm \
-  pkgconf \
-  ;
+brew install cmake llvm pkgconf
 
 # Optional:
-brew install \
-  ccache \
-  ninja \
-  ;
+brew install ccache ninja
 
 # For tests:
-brew install \
-  googletest \
-  ;
+brew install googletest
 ```
 
-### MSYS2
+### Windows (MSYS2)
 
 ```sh
 pacman -S \
@@ -130,9 +95,9 @@ pacman -S \
   ;
 ```
 
-### Windows
+### Windows (MSVC)
 
-> [!TODO]
+[TODO]
 
 ## Build
 
