@@ -4,7 +4,7 @@ set -e
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
 print_usage() {
-  echo >&2 "Usage: $0 [OPTIONS] [TARGET...]"
+  echo >&2 "Usage: $0 [OPTIONS] [CMAKE TARGET...]"
 }
 
 SYSTEMS='linux windows darwin'
