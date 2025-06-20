@@ -463,7 +463,7 @@ static bool exportModuleImpl(
     NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
     nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
 
-    nk_llvm_emitObjectFile(llvm_mod, tgt, obj_file);
+    TRY(nk_llvm_emitObjectFile(llvm_mod, tgt, obj_file), false);
 
     if (kind != NkIrOutput_None && kind != NkIrOutput_Object) {
         nk_link((NkLikerOpts){

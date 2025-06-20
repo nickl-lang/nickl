@@ -89,9 +89,10 @@ bool nk_link(NkLikerOpts const opts) {
         nksb_printf(&link_cmd, " \"" NKS_FMT "\"", NKS_ARG(opts.out_file));
         nksb_printf(&link_cmd, " \"" NKS_FMT "\"", NKS_ARG(opts.obj_file));
     } else {
-#if defined(__APPLE__)
+// #if defined(__APPLE__)
+#if 1
         // TODO: Falling back to clang on darwin
-        nksb_printf(&link_cmd, "clang");
+        nksb_printf(&link_cmd, "gcc");
 
         switch (kind) {
             case NkIrOutput_Binary:

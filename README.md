@@ -106,7 +106,28 @@ brew install \
 
 ### MSYS2
 
-> [!TODO]
+```sh
+pacman -S \
+  mingw-w64-x86_64-cmake \
+  mingw-w64-x86_64-dlfcn \
+  mingw-w64-x86_64-gcc \
+  mingw-w64-x86_64-libffi \
+  mingw-w64-x86_64-llvm \
+  mingw-w64-x86_64-pkgconf \
+  mingw-w64-x86_64-winpthreads \
+  ;
+
+# Optional:
+pacman -S \
+  mingw-w64-x86_64-ccache \
+  mingw-w64-x86_64-ninja \
+  ;
+
+# For tests:
+pacman -S \
+  mingw-w64-x86_64-gtest \
+  ;
+```
 
 ### Windows
 

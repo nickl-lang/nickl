@@ -1,8 +1,6 @@
 #include "ntk/path.h"
 
-#include <direct.h>
 #include <shlwapi.h>
-#include <stdlib.h>
 
 #include "common.h"
 #include "ntk/profiler.h"
@@ -21,14 +19,23 @@ i32 nk_getBinaryPath(char *buf, usize size) {
 }
 
 i32 nk_fullPath(char *buf, char const *path) {
-    if (_fullpath(buf, path, NK_MAX_PATH)) {
+    if (GetFullPathNameA(
+           path,        // LPCSTR lpFileName,
+           NK_MAX_PATH, // DWORD  nBufferLength,
+           buf,         // LPSTR  lpBuffer,
+           NULL         // LPSTR  *lpFilePart
+    )) {
         return 0;
     } else {
         return -1;
     }
 }
+
 i32 nk_getCwd(char *buf, usize size) {
-    return _getcwd(buf, size) ? 0 : -1;
+    return GetCurrentDirectory(
+        size, // DWORD  nBufferLength,
+        buf   // LPTSTR lpBuffer
+    ) ? 0 : -1;
 }
 
 bool nk_pathIsRelative(char const *path) {

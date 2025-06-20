@@ -39,16 +39,6 @@ eval set -- "$__POS_ARGS"
   SYSTEM=$("$DIR/etc/utils/get_system_name.sh" | tr '[:upper:]' '[:lower:]')
 }
 
-case "$SYSTEM" in
-  linux);;
-  windows);;
-  darwin);;
-  *)
-    echo >&2 "ERROR: Invalid system '$SYSTEM', possible values: $SYSTEMS"
-    exit 1
-    ;;
-esac
-
 [ -z ${MACHINE+x} ] && {
   MACHINE=$("$DIR/etc/utils/get_machine_name.sh")
 }

@@ -317,7 +317,7 @@ bool nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_fil
 
         char *error = NULL;
         if (LLVMTargetMachineEmitToFile(tm, m_unwrap(mod), obj_file.data, LLVMObjectFile, &error) != 0) {
-            nk_error_printf("Failed to emit object file: %s", error);
+            nk_error_printf("Failed to emit object file `" NKS_FMT "`: %s", NKS_ARG(obj_file), error);
             LLVMDisposeMessage(error);
             ret = false;
         }
