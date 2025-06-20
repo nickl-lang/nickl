@@ -4,8 +4,6 @@
 #include "ntk/arena.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
-#include "ntk/path.h"
-#include "ntk/pipe_stream.h"
 #include "ntk/process.h"
 #include "ntk/profiler.h"
 #include "ntk/string_builder.h"

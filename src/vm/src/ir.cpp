@@ -184,11 +184,12 @@ NkIrConstId nkir_makeConst(NkIrProg p, nkval_t val) {
 
 NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, NkString name, nktype_t type) {
     NkIrExtSymId id{p->exsyms.size()};
-    p->exsyms.emplace_back(IrExSym{
-        .name = nk_s2stdStr(name),
-        .so_id = so,
-        .type = type,
-    });
+    p->exsyms.emplace_back(
+        IrExSym{
+            .name = nk_s2stdStr(name),
+            .so_id = so,
+            .type = type,
+        });
     return id;
 }
 

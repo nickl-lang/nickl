@@ -17,24 +17,25 @@ static void printErrorUsage() {
 }
 
 static void printUsage() {
-    printf("Usage: " NK_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
-           "\n    -o, --output <file>                              Output file path"
-           "\n    -k, --kind {run,exe,static,shared,archive,obj}   Output file kind"
-           "\n    -c, --color {auto,always,never}                  Choose when to color output"
-           "\n    -h, --help                                       Display this message and exit"
-           "\n    -v, --version                                    Show version information"
+    printf(
+        "Usage: " NK_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
+        "\n    -o, --output <file>                              Output file path"
+        "\n    -k, --kind {run,exe,static,shared,archive,obj}   Output file kind"
+        "\n    -c, --color {auto,always,never}                  Choose when to color output"
+        "\n    -h, --help                                       Display this message and exit"
+        "\n    -v, --version                                    Show version information"
 #if defined(ENABLE_LOGGING) || defined(ENABLE_PROFILING)
-           "\nDeveloper options:"
+        "\nDeveloper options:"
 #endif
 #ifdef ENABLE_LOGGING
-           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif
 #ifdef ENABLE_PROFILING
-           "\n    -p, --profile <trace-file>                       Output file for profiling traces"
+        "\n    -p, --profile <trace-file>                       Output file for profiling traces"
 #endif
-           "\n");
+        "\n");
 }
 
 static void printVersion() {

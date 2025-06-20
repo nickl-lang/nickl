@@ -111,12 +111,13 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
 
     auto &instrs = p->instrs.emplace_back();
 
-    auto &bc_funct = p->functs.emplace_back(NkBcFunct_T{
-        .prog = p,
-        .frame_size = frame_layout.size,
-        .instrs = nullptr,
-        .fn_t = fn->fn_t,
-    });
+    auto &bc_funct = p->functs.emplace_back(
+        NkBcFunct_T{
+            .prog = p,
+            .frame_size = frame_layout.size,
+            .instrs = nullptr,
+            .fn_t = fn->fn_t,
+        });
 
     enum ERelocType {
         Reloc_Block,
@@ -207,12 +208,13 @@ NkBcFunct _translateIr(NkBcProg p, NkIrFunct fn) {
             }
             case NkIrArg_BlockId:
                 arg.ref_type = NkBcRef_Instr;
-                relocs.emplace_back(Reloc{
-                    .instr_index = ii,
-                    .arg = ai,
-                    .target_id = ir_arg.id,
-                    .reloc_type = Reloc_Block,
-                });
+                relocs.emplace_back(
+                    Reloc{
+                        .instr_index = ii,
+                        .arg = ai,
+                        .target_id = ir_arg.id,
+                        .reloc_type = Reloc_Block,
+                    });
                 break;
             case NkIrArg_NumValType: // TODO
                 break;
