@@ -2,9 +2,9 @@ name: Nickl CI
 
 on:
   push:
-    branches: ["develop"]
+    branches: [develop, feature/llvm-backend]
   pull_request:
-    branches: ["develop"]
+    branches: [develop]
 
 permissions:
   contents: read

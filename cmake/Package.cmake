@@ -1,6 +1,6 @@
 function(add_package_target PKG_NAME OUT_DIR)
     execute_process(
-        COMMAND tar --version
+        COMMAND sh -c "tar --version"
         OUTPUT_VARIABLE TAR_VERSION
         ERROR_QUIET
         )
@@ -20,8 +20,8 @@ function(add_package_target PKG_NAME OUT_DIR)
         COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target install/strip
         )
     add_custom_target(package
-        COMMAND mkdir -p "${OUT_DIR}"
-        COMMAND ${TAR_CMD} -czf "${PKG_FILE}" -C "${CMAKE_INSTALL_PREFIX}" .
+        COMMAND sh -c "mkdir -p '${OUT_DIR}'"
+        COMMAND sh -c "${TAR_CMD} -czf '${PKG_FILE}' -C '${CMAKE_INSTALL_PREFIX}' ."
         COMMAND echo "Generated package '${PKG_FILE}'"
         DEPENDS $<IF:$<CONFIG:Debug>,package_install,package_install_strip>
         COMMENT "Generating package '${PKG_FILENAME}'"
