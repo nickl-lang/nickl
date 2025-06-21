@@ -10,6 +10,8 @@ extern "C" {
 // TODO: Rewrite to use NkString
 NK_EXPORT i32 nk_relativePath(char *buf, usize size, char const *full_path, char const *full_base);
 
+NK_EXPORT i32 nk_getTempPath(char *buf, usize size);
+
 NK_EXPORT NkString nk_path_getParent(NkString path);
 NK_EXPORT NkString nk_path_getFilename(NkString path);
 NK_EXPORT NkString nk_path_getExtension(NkString path);

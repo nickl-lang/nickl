@@ -7,7 +7,6 @@ print_usage() {
   echo >&2 "Usage: $0 [OPTIONS] [CMAKE TARGET...]"
 }
 
-SYSTEMS='linux windows darwin'
 MACHINES='x86_64 arm64'
 
 OPTIONS="

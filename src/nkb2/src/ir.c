@@ -10,6 +10,7 @@
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
+#include "ntk/path.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
@@ -454,9 +455,16 @@ static bool exportModuleImpl(
         out_file = nk_tsprintf(scratch, NKS_FMT "%s", NKS_ARG(out_file), file_ext);
     }
 
+    char tmp_path[NK_MAX_PATH];
+    if (nk_getTempPath(tmp_path, sizeof(tmp_path)) < 0) {
+        nk_error_printf("Failed to get temporary directory path: %s", nk_getLastErrorString());
+        return false;
+    }
+
     // TODO: Generate temporary file more rebustly, and cleanup
-    NkString obj_file = kind == NkIrOutput_Object ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
-                                                  : nk_tsprintf(scratch, "/tmp/" NKS_FMT ".o", NKS_ARG(out_file));
+    NkString obj_file = kind == NkIrOutput_Object
+                            ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
+                            : nk_tsprintf(scratch, "%s" NKS_FMT ".o", tmp_path, NKS_ARG(out_file));
 
     NkLlvmTarget tgt = (NkLlvmTarget)target;
 

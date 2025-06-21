@@ -125,6 +125,7 @@ pacman -S \
 
 # For tests:
 pacman -S \
+  mingw-w64-x86_64-diffutils \
   mingw-w64-x86_64-gtest \
   ;
 ```

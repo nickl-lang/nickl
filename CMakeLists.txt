@@ -135,7 +135,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(LIBDL "")
 
     set(SYSTEM_LIBRARY_PATH DYLD_LIBRARY_PATH)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "MSYS")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(SYSTEM_INSTALL_DIR bin)
     set(SYSTEM_RPATH_ORIGIN "")
 
@@ -154,12 +154,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "MSYS"
 
     find_library_ex(LIBDL dl SHARED)
 
-    list(APPEND CMAKE_PREFIX_PATH ${PREFIX}/x86_64-w64-mingw32)
-
     find_library_ex(LIBSHLWAPI shlwapi SHARED)
     find_library_ex(LIBWINPTHREAD winpthread SHARED)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-use-cxa-atexit")
+    set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
