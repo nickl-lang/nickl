@@ -32,4 +32,6 @@ target_link_llvm(
         Target
         X86CodeGen
         X86Desc
+        AArch64CodeGen
+        AArch64Desc
     )

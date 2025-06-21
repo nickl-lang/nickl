@@ -31,6 +31,9 @@ typedef struct {
     u32 col;
 } LexerState;
 
+// TODO: Support CRLF
+// TODO: Support UTF-8
+
 static char chr(LexerState const *l, i64 offset) {
     return l->pos + offset < (u32)l->text.size ? l->text.data[l->pos + offset] : '\0';
 }
