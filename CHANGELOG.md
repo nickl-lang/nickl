@@ -1,8 +1,11 @@
 # v0.3.2
 
 - Start core2, add nklc for testing
+- Implement new backend API
+- Add LLVM backend
+- Implement JIT in backend
+- Drop support for cross toolchain docker images for now
 - Update Readme
-- Sketch out new backend api
 
 # v0.3.1 - 2025.04.18
 

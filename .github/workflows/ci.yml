@@ -2,7 +2,7 @@ name: Nickl CI
 
 on:
   push:
-    branches: ["develop", feature/llvm-backend]
+    branches: ["develop"]
   pull_request:
     branches: ["develop"]
 
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           sudo apt update
-          sudo apt install -y build-essential cmake libffi-dev libgtest-dev llvm pkg-config zlib1g-dev
+          sudo apt install -y libffi-dev libgtest-dev llvm zlib1g-dev
       - run: ./build.sh ${{ matrix.build_args }}
       - run: ./build.sh ${{ matrix.build_args }} test
         env:
@@ -32,7 +32,7 @@ jobs:
         build_args: [-t, -td]
     steps:
       - uses: actions/checkout@v4
-      - run: brew install cmake googletest llvm ninja pkgconf
+      - run: brew install googletest llvm
       - run: ./build.sh ${{ matrix.build_args }}
         env:
           LLVM_DIR: /opt/homebrew/opt/llvm
