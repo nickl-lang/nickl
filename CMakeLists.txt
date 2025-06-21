@@ -8,8 +8,6 @@ option(ENABLE_LOGGING "Enable logging" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 option(ENABLE_PROFILING "Enable profiling" OFF)
 
-option(TARGET_MACHINE "Target architecture for OSX build" "${CMAKE_HOST_SYSTEM_PROCESSOR}")
-
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -115,9 +113,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
     set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(CMAKE_OSX_ARCHITECTURES "${TARGET_MACHINE}")
-    set(CMAKE_SYSTEM_PROCESSOR "${TARGET_MACHINE}")
-
     set(SYSTEM_INSTALL_DIR lib)
     set(SYSTEM_RPATH_ORIGIN "@executable_path")
 

@@ -7,12 +7,9 @@ print_usage() {
   echo >&2 "Usage: $0 [OPTIONS] [CMAKE TARGET...]"
 }
 
-MACHINES='x86_64 arm64'
-
 OPTIONS="
   -h, --help               : Show this message
   -b, --build TAG          : Build tag to distinguish the output directory
-  -m, --machine MACHINE    : Target machine, possible values: $MACHINES
   -d, --debug              : Build with debug information
   -t, --test               : Build tests
   -l, --logs               : Enable logging support
@@ -41,15 +38,6 @@ eval set -- "$__POS_ARGS"
 [ -z ${MACHINE+x} ] && {
   MACHINE=$("$DIR/etc/utils/get_machine_name.sh")
 }
-
-case "$MACHINE" in
-  x86_64);;
-  arm64);;
-  *)
-    echo >&2 "ERROR: Invalid machine '$MACHINE', possible values: $MACHINES"
-    exit 1
-    ;;
-esac
 
 [ "$DEBUG" = 1 ] && BUILD_TYPE='Debug'
 [ -z ${BUILD_TYPE+x} ] && BUILD_TYPE='Release'
@@ -122,7 +110,6 @@ if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
     -DCMAKE_INSTALL_PREFIX="$DIR/out/install/$BUILD_DIR" \
     -DDEPLOY_PREFIX="$DIR/out/deploy" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-    -DTARGET_MACHINE="$MACHINE" \
     $EXTRA_CMAKE_ARGS
 fi
 
