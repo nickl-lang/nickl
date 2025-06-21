@@ -31,18 +31,20 @@ eval set -- "$__POS_ARGS"
   exit
 }
 
-[ -z ${SYSTEM+x} ] && {
-  SYSTEM=$("$DIR/etc/utils/get_system_name.sh" | tr '[:upper:]' '[:lower:]')
-}
+SYSTEM=$("$DIR/etc/utils/get_system_name.sh")
+case "$SYSTEM" in
+  Linux*)  OS=linux ;;
+  Darwin*) OS=macos ;;
+  MINGW*)  OS=windows ;;
+  *)       OS=unknown ;;
+esac
 
-[ -z ${MACHINE+x} ] && {
-  MACHINE=$("$DIR/etc/utils/get_machine_name.sh")
-}
+MACHINE=$("$DIR/etc/utils/get_machine_name.sh")
 
 [ "$DEBUG" = 1 ] && BUILD_TYPE='Debug'
 [ -z ${BUILD_TYPE+x} ] && BUILD_TYPE='Release'
 
-BUILD_DIR="$SYSTEM-$MACHINE-$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')"
+BUILD_DIR="$OS-$MACHINE-$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')"
 [ -n "${BUILD+x}" ] && {
   BUILD_DIR="$BUILD_DIR-$BUILD"
 }
@@ -107,17 +109,17 @@ if [ ! -f "$BIN_DIR/$MAKEFILE" ] ||
    [ ! -f "$BIN_DIR/CMakeCache.txt" ] ||
    [ "$FORCE_CONF" = 1 ]; then
   cmake -S "$DIR" -B "$BIN_DIR" \
-    -DCMAKE_INSTALL_PREFIX="$DIR/out/install/$BUILD_DIR" \
-    -DDEPLOY_PREFIX="$DIR/out/deploy" \
+    -DARTIFACTS_DIR="$DIR/out" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     $EXTRA_CMAKE_ARGS
 fi
 
 numcores() {
   case $(uname) in
-    Linux) nproc ;;
+    Linux)  nproc ;;
     Darwin) sysctl -n hw.logicalcpu 2>/dev/null ;;
-    *) echo 1 ;;
+    MINGW*) nproc ;;
+    *)      echo 1 ;;
   esac
 }
 

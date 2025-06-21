@@ -170,15 +170,25 @@ string(TIMESTAMP BUILD_TIME UTC)
 message(STATUS "Build version: ${BUILD_VERSION}")
 message(STATUS "Build time: ${BUILD_TIME}")
 
-include(Package)
-string(TOLOWER "${CMAKE_SYSTEM_NAME}" SYSTEM_NAME)
-if(NOT DEFINED DEPLOY_PREFIX)
-    set(DEPLOY_PREFIX "${CMAKE_BINARY_DIR}")
-endif()
-add_package_target(
-    "${PROJECT_NAME}-${BUILD_VERSION}-${CMAKE_SYSTEM_PROCESSOR}-${SYSTEM_NAME}"
-    "${DEPLOY_PREFIX}"
+include(GetTargetTriple)
+get_target_triple(
+    TRIPLE TARGET_TRIPLE
     )
+
+message(STATUS "Target triple: ${TARGET_TRIPLE}")
+
+if(DEFINED ARTIFACTS_DIR)
+    string(TOLOWER "${CMAKE_SYSTEM_NAME}" SYSTEM_NAME)
+    set(PACKAGE_NAME "${PROJECT_NAME}-${BUILD_VERSION}-${TARGET_TRIPLE}")
+    if(CMAKE_BUILD_TYPE STREQUAL Debug)
+        set(PACKAGE_NAME "${PACKAGE_NAME}-debug")
+    endif()
+
+    set(CMAKE_INSTALL_PREFIX "${ARTIFACTS_DIR}/install/${PACKAGE_NAME}")
+
+    include(Package)
+    add_package_target("${PACKAGE_NAME}" "${ARTIFACTS_DIR}/deploy")
+endif()
 
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 set(CMAKE_INSTALL_RPATH "${SYSTEM_RPATH_ORIGIN}/../lib")
