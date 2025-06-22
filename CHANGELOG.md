@@ -1,3 +1,7 @@
+# v0.4.1-1 - 2025.06.23
+
+- Fix stripping binaries for windows
+
 # v0.4.1 - 2025.06.23
 
 - Better control symbol visibility in nkl core
