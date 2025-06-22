@@ -1,3 +1,5 @@
+set(LLVM_LINKER_VERSION_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/llvm.map")
+
 function(target_link_llvm)
     set(options)
     set(oneValueArgs TARGET)
@@ -45,5 +47,9 @@ function(target_link_llvm)
     separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
     target_compile_definitions(${ARG_TARGET}
         PRIVATE ${LLVM_DEFINITIONS_LIST}
-    )
+        )
+
+    target_link_options(${ARG_TARGET}
+        PUBLIC "-Wl,--version-script=${LLVM_LINKER_VERSION_SCRIPT}"
+        )
 endfunction()
