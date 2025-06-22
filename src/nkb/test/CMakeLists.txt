@@ -1,7 +1,7 @@
 def_test(GROUP nkb NAME cc_adapter LINK ${LIB} TARGET CC_ADAPTER_TEST)
 def_test(GROUP nkb NAME ir_paste LINK ${LIB} TARGET IR_PASTE_TEST)
 
-set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/")
+set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/cc_adapter")
 file(MAKE_DIRECTORY "${TEST_FILES_DIR}")
 target_compile_definitions(${CC_ADAPTER_TEST}
     PRIVATE TEST_CC="cc"

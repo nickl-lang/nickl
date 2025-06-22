@@ -16,7 +16,7 @@ namespace {
 
 NK_LOG_USE_SCOPE(test);
 
-class cc_adapter : public testing::Test {
+class vm_cc_adapter : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT({});
 
@@ -79,7 +79,7 @@ protected:
 
 } // namespace
 
-TEST_F(cc_adapter, empty) {
+TEST_F(vm_cc_adapter, empty) {
     NkStream src;
     NkPipeStream ps;
     nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
@@ -87,7 +87,7 @@ TEST_F(cc_adapter, empty) {
     EXPECT_TRUE(ret);
 }
 
-TEST_F(cc_adapter, empty_main) {
+TEST_F(vm_cc_adapter, empty_main) {
     NkStream src;
     NkPipeStream ps;
     nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
@@ -99,7 +99,7 @@ TEST_F(cc_adapter, empty_main) {
     EXPECT_EQ(runGetStdout(), "");
 }
 
-TEST_F(cc_adapter, hello_world) {
+TEST_F(vm_cc_adapter, hello_world) {
     NkStream src;
     NkPipeStream ps;
     nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
@@ -116,7 +116,7 @@ int main() {
     EXPECT_EQ(runGetStdout(), "Hello, World!");
 }
 
-TEST_F(cc_adapter, undefined_var) {
+TEST_F(vm_cc_adapter, undefined_var) {
     NkStream src;
     NkPipeStream ps;
     nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);

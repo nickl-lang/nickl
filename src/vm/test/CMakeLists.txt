@@ -4,7 +4,7 @@ def_test(GROUP vm NAME native_fn_adapter LINK ${LIB})
 
 target_link_options(${IR_TEST} PRIVATE ${SYSTEM_EXPORT_DYNAMIC_FLAG})
 
-set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/")
+set(TEST_FILES_DIR "${CMAKE_BINARY_DIR}/test_out/vm_cc_adapter")
 file(MAKE_DIRECTORY "${TEST_FILES_DIR}")
 target_compile_definitions(${CC_ADAPTER_TEST}
     PRIVATE TEST_CC="cc"
