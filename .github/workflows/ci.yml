@@ -22,6 +22,8 @@ jobs:
           sudo apt install -y libffi-dev libgtest-dev llvm-15-dev zlib1g-dev
       - run: ./build.sh ${{ matrix.build_args }}
         env:
+          CC: clang
+          CXX: clang++
           LLVM_DIR: /usr/lib/llvm-15
       - run: ./build.sh ${{ matrix.build_args }} test
         env:
@@ -70,10 +72,10 @@ jobs:
           msystem: mingw64
           update: true
           install: >-
+            mingw-w64-x86_64-clang
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-diffutils
             mingw-w64-x86_64-dlfcn
-            mingw-w64-x86_64-gcc
             mingw-w64-x86_64-gtest
             mingw-w64-x86_64-libffi
             mingw-w64-x86_64-llvm
@@ -82,6 +84,9 @@ jobs:
             mingw-w64-x86_64-winpthreads
       - shell: msys2 {0}
         run: ./build.sh ${{ matrix.build_args }}
+        env:
+          CC: clang
+          CXX: clang++
       - shell: msys2 {0}
         run: ./build.sh ${{ matrix.build_args }} test
         env:
