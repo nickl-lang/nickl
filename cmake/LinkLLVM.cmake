@@ -1,5 +1,3 @@
-set(LLVM_LINKER_VERSION_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/llvm.map")
-
 function(target_link_llvm)
     set(options)
     set(oneValueArgs TARGET)
@@ -48,10 +46,4 @@ function(target_link_llvm)
     target_compile_definitions(${ARG_TARGET}
         PRIVATE ${LLVM_DEFINITIONS_LIST}
         )
-
-    if(NOT APPLE)
-        target_link_options(${ARG_TARGET}
-            PUBLIC "-Wl,--version-script=${LLVM_LINKER_VERSION_SCRIPT}"
-            )
-    endif()
 endfunction()

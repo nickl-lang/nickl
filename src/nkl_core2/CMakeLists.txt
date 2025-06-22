@@ -33,6 +33,18 @@ target_compile_definitions(${LIB}
     PRIVATE HOST_TARGET_ABI="${TARGET_ABI}"
     )
 
+if(NOT ENABLE_ASAN)
+    if(APPLE)
+        target_link_options(${LIB}
+            PUBLIC "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/etc/exported-symbols.txt"
+            )
+    else()
+        target_link_options(${LIB}
+            PUBLIC "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/etc/exports.map"
+            )
+    endif()
+endif()
+
 install(TARGETS ${LIB}
     RUNTIME DESTINATION ${SYSTEM_INSTALL_DIR}
     )
