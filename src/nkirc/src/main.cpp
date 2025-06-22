@@ -22,22 +22,23 @@ void printErrorUsage() {
 }
 
 void printUsage() {
-    printf("Usage: " NK_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
-           "\n    -o, --output <file>                      Output file path"
-           "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
-           "\n    -l <lib>                                 Link the library <lib>"
-           "\n    -L <dir>                                 Search dir for linked libraries"
-           "\n    -g                                       Add debug information"
-           "\n    -c, --color {auto,always,never}          Choose when to color output"
-           "\n    -h, --help                               Display this message and exit"
-           "\n    -v, --version                            Show version information"
+    printf(
+        "Usage: " NK_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
+        "\n    -o, --output <file>                      Output file path"
+        "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
+        "\n    -l <lib>                                 Link the library <lib>"
+        "\n    -L <dir>                                 Search dir for linked libraries"
+        "\n    -g                                       Add debug information"
+        "\n    -c, --color {auto,always,never}          Choose when to color output"
+        "\n    -h, --help                               Display this message and exit"
+        "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
-           "\nDeveloper options:"
-           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+        "\nDeveloper options:"
+        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-           "\n");
+        "\n");
 }
 
 void printVersion() {
@@ -262,7 +263,7 @@ int main(int /*argc*/, char **argv) {
 
     NkIrcConfig irc_conf{};
 
-    auto ptr_size = nks_config_find(&config, nk_cs2s("usize"));
+    auto ptr_size = nks_config_findItem(&config, nk_cs2s("usize"));
     if (ptr_size) {
         NK_LOG_DBG("usize=`" NKS_FMT "`", NKS_ARG(ptr_size->val));
         char *endptr = NULL;
@@ -274,19 +275,19 @@ int main(int /*argc*/, char **argv) {
         }
     }
 
-    auto libc_name = nks_config_find(&config, nk_cs2s("libc_name"));
+    auto libc_name = nks_config_findItem(&config, nk_cs2s("libc_name"));
     if (libc_name) {
         NK_LOG_DBG("libc_name=`" NKS_FMT "`", NKS_ARG(libc_name->val));
         irc_conf.libc_name = nk_s2atom(libc_name->val);
     }
 
-    auto libm_name = nks_config_find(&config, nk_cs2s("libm_name"));
+    auto libm_name = nks_config_findItem(&config, nk_cs2s("libm_name"));
     if (libm_name) {
         NK_LOG_DBG("libm_name=`" NKS_FMT "`", NKS_ARG(libm_name->val));
         irc_conf.libm_name = nk_s2atom(libm_name->val);
     }
 
-    auto libpthread_name = nks_config_find(&config, nk_cs2s("libpthread_name"));
+    auto libpthread_name = nks_config_findItem(&config, nk_cs2s("libpthread_name"));
     if (libpthread_name) {
         NK_LOG_DBG("libpthread_name=`" NKS_FMT "`", NKS_ARG(libpthread_name->val));
         irc_conf.libpthread_name = nk_s2atom(libpthread_name->val);
@@ -301,7 +302,7 @@ int main(int /*argc*/, char **argv) {
     if (run) {
         code = nkir_run(c, in_file);
     } else {
-        auto c_compiler = nks_config_find(&config, nk_cs2s("c_compiler"));
+        auto c_compiler = nks_config_findItem(&config, nk_cs2s("c_compiler"));
         if (!c_compiler) {
             nkl_diag_printError("`c_compiler` field is missing in the config");
             return 1;
@@ -310,7 +311,7 @@ int main(int /*argc*/, char **argv) {
 
         NkDynArray(NkString) additional_flags{NKDA_INIT(alloc)};
 
-        auto c_flags = nks_config_find(&config, nk_cs2s("c_flags"));
+        auto c_flags = nks_config_findItem(&config, nk_cs2s("c_flags"));
         if (c_flags) {
             NK_LOG_DBG("c_flags=`" NKS_FMT "`", NKS_ARG(c_flags->val));
             nkda_append(&additional_flags, c_flags->val);

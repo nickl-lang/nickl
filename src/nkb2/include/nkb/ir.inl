@@ -33,12 +33,8 @@ IR(load)  // load [src] ->  dst
 
 IR(alloc) // alloc :type -> dst
 
-UNA_IR(mov) // mov src -> dst
-
-UNA_IR(ext)   // ext   src -> dst
-UNA_IR(trunc) // trunc src -> dst
-UNA_IR(fp2i)  // fp2i  src -> dst
-UNA_IR(i2fp)  // i2fp  src -> dst
+UNA_IR(mov)  // mov src -> dst
+UNA_IR(cast) // cast src -> dst
 
 BIN_IR(add) // add lhs, rhs -> dst
 BIN_IR(sub) // sub lhs, rhs -> dst
@@ -59,7 +55,7 @@ CMP_IR(le) // cmp le lhs, rhs -> dst
 CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
-IR(label) // @label
+IR(label)   // @label
 IR(comment) // comment "str"
 
 #undef CMP_IR

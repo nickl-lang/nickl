@@ -1134,10 +1134,11 @@ ValueInfo compileCompositeType(
             }
             type = nklval_as(nkltype_t, type_val);
         }
-        fields.emplace_back(NklField{
-            .name = name,
-            .type = type,
-        });
+        fields.emplace_back(
+            NklField{
+                .name = name,
+                .type = type,
+            });
         if (out_inits && init_node && init_node->id) {
             auto const pop_node = pushNode(c, init_node);
             DEFINE(init_val, comptimeCompileNodeGetValue(c, init_node, type));
@@ -1302,11 +1303,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
     NK_PROF_FUNC();
     NK_LOG_DBG("node: %s", s_nkl_ast_node_names[node->id]);
 
-    c->node_stack.emplace_back(NodeInfo{
-        .node = node,
-        .type = type,
-        .tags = tags,
-    });
+    c->node_stack.emplace_back(
+        NodeInfo{
+            .node = node,
+            .type = type,
+            .tags = tags,
+        });
     defer {
         c->node_stack.pop_back();
     };
@@ -2617,7 +2619,11 @@ extern "C" NK_EXPORT bool nkl_compiler_build(NklCompilerBuilder *b, NkIrFunct en
         .output_filename = exe_name,
         .quiet = 0,
     };
-    return nkir_compile(conf, c->ir, entry);
+
+    NkArena scratch{};
+    bool ret = nkir_compile(&scratch, conf, c->ir, entry);
+    nk_arena_free(&scratch);
+    return ret;
 }
 
 struct StructField {
@@ -2632,11 +2638,12 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(StructFieldArray fields_r
     std::vector<NklField> fields;
     fields.reserve(fields_raw.size);
     for (auto const &field : nk_iterate(fields_raw)) {
-        fields.emplace_back(NklField{
-            // TODO Treating slice as cstring, while we include excess zero charater
-            .name = nk_cs2atom(nk_s2stdStr(field.name).c_str()),
-            .type = field.type,
-        });
+        fields.emplace_back(
+            NklField{
+                // TODO Treating slice as cstring, while we include excess zero charater
+                .name = nk_cs2atom(nk_s2stdStr(field.name).c_str()),
+                .type = field.type,
+            });
     }
     return nkl_get_struct(c->alloc, {fields.data(), fields.size()});
 }

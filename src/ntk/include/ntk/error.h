@@ -52,4 +52,6 @@ NK_INLINE char const *nk_getLastErrorString(void) {
 }
 #endif
 
+#define NK_ERROR_SCOPE(STATE) NK_DEFER_LOOP(nk_error_pushState(STATE), nk_error_popState())
+
 #endif // NTK_ERROR_H_

@@ -4,7 +4,7 @@ endif
 
 syn keyword nkirKeyword proc extern type data const pub local include
 syn keyword nkirKeyword nop ret jmp jmpz jmpnz
-syn keyword nkirKeyword call store load alloc mov ext trunc fp2i i2fp
+syn keyword nkirKeyword call store load alloc mov cast
 syn keyword nkirKeyword add sub mul div mod and or xor lsh rsh
 syn keyword nkirKeyword cmp eq ne lt le gt ge
 syn keyword nkirKeyword comment

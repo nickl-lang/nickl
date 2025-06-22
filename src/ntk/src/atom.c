@@ -5,35 +5,14 @@
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 
-typedef struct {
-    NkString key;
-    NkAtom val;
-} s2atom_kv;
-
-typedef struct {
-    NkAtom key;
-    NkString val;
-} atom2s_kv;
-
-static NkString const *s2atom_kv_GetKey(s2atom_kv const *item) {
-    return &item->key;
-}
-NK_HASH_TREE_DEFINE(str2atom, s2atom_kv, NkString, s2atom_kv_GetKey, nks_hash, nks_equal);
-
-static NkAtom const *atom2s_kv_GetKey(atom2s_kv const *item) {
-    return &item->key;
-}
-static u64 nk_atom_hash(NkAtom const key) {
-    return nk_hashVal(key);
-}
-static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
-    return lhs == rhs;
-}
-NK_HASH_TREE_DEFINE(atom2str, atom2s_kv, NkAtom, atom2s_kv_GetKey, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_IMPL_K(NkAtomSet, NkAtom, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_IMPL_KV(NkAtomMap, NkAtom, NkAtom, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_IMPL_KV(NkAtomStringMap, NkAtom, NkString, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_IMPL_KV(NkStringAtomMap, NkString, NkAtom, nks_hash, nks_equal);
 
 static NkArena g_arena;
-static str2atom g_str2atom;
-static atom2str g_atom2str;
+static NkStringAtomMap g_str2atom;
+static NkAtomStringMap g_atom2str;
 static NkAtom g_next_atom = 1000;
 
 void nk_atom_init(void) {
@@ -48,8 +27,8 @@ void nk_atom_deinit(void) {
 NkString nk_atom2s(NkAtom atom) {
     NkString ret;
     NK_PROF_FUNC() {
-        atom2s_kv const *found = atom2str_find(&g_atom2str, atom);
-        ret = found ? found->val : (NkString){0};
+        NkString const *found = NkAtomStringMap_find(&g_atom2str, atom);
+        ret = found ? *found : (NkString){0};
     }
     return ret;
 }
@@ -61,10 +40,10 @@ char const *nk_atom2cs(NkAtom atom) {
 NkAtom nk_s2atom(NkString str) {
     NkAtom ret = 0;
     NK_PROF_FUNC() {
-        s2atom_kv const *found = str2atom_find(&g_str2atom, str);
+        NkAtom const *found = NkStringAtomMap_find(&g_str2atom, str);
 
         if (found) {
-            ret = found->val;
+            ret = *found;
         } else {
             NkAtom atom = g_next_atom++;
             nk_atom_define(atom, str);
@@ -81,8 +60,8 @@ NkAtom nk_cs2atom(char const *str) {
 void nk_atom_define(NkAtom atom, NkString str) {
     NK_PROF_FUNC() {
         NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
-        str2atom_insert(&g_str2atom, (s2atom_kv){str_copy, atom});
-        atom2str_insert(&g_atom2str, (atom2s_kv){atom, str_copy});
+        NkStringAtomMap_insert(&g_str2atom, str_copy, atom);
+        NkAtomStringMap_insert(&g_atom2str, atom, str_copy);
     }
 }
 
@@ -90,7 +69,7 @@ NkAtom nk_atom_unique(NkString str) {
     NkAtom atom = g_next_atom++;
     NK_PROF_FUNC() {
         NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
-        atom2str_insert(&g_atom2str, (atom2s_kv){atom, str_copy});
+        NkAtomStringMap_insert(&g_atom2str, atom, str_copy);
     }
     return atom;
 }

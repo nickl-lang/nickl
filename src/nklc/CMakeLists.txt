@@ -1,3 +1,5 @@
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 set(EXE nklc)
 
 add_executable(${EXE}
@@ -17,3 +19,15 @@ target_compile_definitions(${EXE}
     PUBLIC NK_BUILD_VERSION="${BUILD_VERSION}"
     PUBLIC NK_BUILD_TIME="${BUILD_TIME}"
     )
+
+
+target_compile_definitions(${EXE}
+    PRIVATE SYSTEM_LIBC="${SYSTEM_LIBC}"
+    PRIVATE SYSTEM_LIBM="${SYSTEM_LIBM}"
+    PRIVATE SYSTEM_LIBPTHREAD="${SYSTEM_LIBPTHREAD}"
+    )
+
+if(CMAKE_TESTING_ENABLED)
+    include(NklcTest)
+    add_subdirectory(test)
+endif()

@@ -1,12 +1,7 @@
 FROM common AS linux
 
-ARG PREFIX=/opt/toolchain
-ENV TARGET=x86_64-linux-gnu
-ENV CMAKE_TOOLCHAIN_FILE=${PREFIX}/etc/toolchain.cmake
-ENV PATH="${PREFIX}/bin:${PATH}"
+ARG PREFIX=/opt
 ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
-
-COPY --from=toolchain-linux ${PREFIX} ${PREFIX}
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{LIBFFI_URL}} \
@@ -14,7 +9,6 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cd libffi-{{LIBFFI_VERSION}} \
  && mkdir build \
  && cd build \
- && . ${PREFIX}/etc/env.sh \
  && ../configure -v \
       --host=${TARGET} \
       --prefix=${PREFIX} \
@@ -27,6 +21,11 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && install -m 644 ../LICENSE ${PREFIX}/share/licenses/libffi/ \
  && rm -rf /root/* \
  ;
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libzstd-dev \
+    zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
 
 FROM linux AS linux-{{MACHINE}}
 

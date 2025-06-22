@@ -62,7 +62,7 @@ bool nksb_readFromStreamEx(NkStringBuilder *sb, NkStream in, usize buf_size) {
         i32 res = 0;
         for (;;) {
             nksb_reserve(sb, sb->size + buf_size);
-            res = nk_stream_read(in, nk_slice_end(sb), buf_size);
+            res = nk_stream_read(in, nks_end(sb), buf_size);
             if (res > 0) {
                 sb->size += res;
             } else {

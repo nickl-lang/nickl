@@ -1,0 +1,7 @@
+def_test(GROUP nkl_core NAME run_ir LINK ${LIB} TARGET RUN_IR_TEST)
+
+target_compile_definitions(${RUN_IR_TEST}
+    PRIVATE SYSTEM_LIBC="${SYSTEM_LIBC}"
+    PRIVATE SYSTEM_LIBM="${SYSTEM_LIBM}"
+    PRIVATE SYSTEM_LIBPTHREAD="${SYSTEM_LIBPTHREAD}"
+    )

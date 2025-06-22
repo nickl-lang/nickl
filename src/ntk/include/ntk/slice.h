@@ -19,13 +19,13 @@
         usize stride;     \
     }
 
-#define NK_SLICE_INIT(slice) .data = (slice).data, .size = (slice).size
+#define NKS_INIT(slice) .data = (slice).data, .size = (slice).size
 
-#define nk_slice_begin(slice) ((slice)->data)
-#define nk_slice_end(slice) ((slice)->data + (slice)->size)
+#define nks_begin(slice) ((slice)->data)
+#define nks_end(slice) ((slice)->data + (slice)->size)
 
-#define nk_slice_first(slice) ((slice).data[0])
-#define nk_slice_last(slice) ((slice).data[(slice).size - 1])
+#define nks_first(slice) ((slice).data[0])
+#define nks_last(slice) ((slice).data[(slice).size - 1])
 
 #define _nk_slice_copy(alloc, dst, src)                                     \
     do {                                                                    \
@@ -51,10 +51,10 @@ template <class TSlice>
 struct _NkIterate {
     TSlice const &_slice;
     auto begin() {
-        return nk_slice_begin(&_slice);
+        return nks_begin(&_slice);
     }
     auto end() {
-        return nk_slice_end(&_slice);
+        return nks_end(&_slice);
     }
 };
 

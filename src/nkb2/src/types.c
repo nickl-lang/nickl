@@ -4,6 +4,7 @@
 
 #include "ntk/common.h"
 #include "ntk/string.h"
+#include "ntk/utils.h"
 
 void nkir_inspectType(NkIrType type, NkStream out) {
     if (!type) {
@@ -31,36 +32,12 @@ void nkir_inspectType(NkIrType type, NkStream out) {
 
         case NkIrType_Numeric:
             switch (type->num) {
-                case Int8:
-                    nk_printf(out, "i8");
-                    break;
-                case Uint8:
-                    nk_printf(out, "u8");
-                    break;
-                case Int16:
-                    nk_printf(out, "i16");
-                    break;
-                case Uint16:
-                    nk_printf(out, "u16");
-                    break;
-                case Int32:
-                    nk_printf(out, "i32");
-                    break;
-                case Uint32:
-                    nk_printf(out, "u32");
-                    break;
-                case Int64:
-                    nk_printf(out, "i64");
-                    break;
-                case Uint64:
-                    nk_printf(out, "u64");
-                    break;
-                case Float32:
-                    nk_printf(out, "f32");
-                    break;
-                case Float64:
-                    nk_printf(out, "f64");
-                    break;
+#define X(TYPE, VALUE_TYPE)    \
+    case VALUE_TYPE:           \
+        nk_printf(out, #TYPE); \
+        break;
+                NKIR_NUMERIC_ITERATE(X)
+#undef X
             }
             break;
     }
@@ -113,10 +90,10 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                 NKIR_NUMERIC_ITERATE_INT(X)
 #undef X
                 case Float32:
-                    nk_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
+                    printFloat32Exact(out, *(f32 *)data);
                     break;
                 case Float64:
-                    nk_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
+                    printFloat64Exact(out, *(f64 *)data);
                     break;
             }
             break;

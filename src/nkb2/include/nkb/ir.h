@@ -16,12 +16,26 @@ extern "C" {
 
 /// Instrs
 
-enum {
+typedef enum {
 #define IR(NAME) NK_CAT(NkIrOp_, NAME),
 #include "nkb/ir.inl"
-};
+} NkIrOpcode;
 
-/// Common
+/// Types
+
+typedef struct NkbState_T *NkbState;
+typedef struct NkIrModule_T *NkIrModule;
+typedef struct NkIrTarget_T *NkIrTarget;
+
+typedef enum {
+    NkIrOutput_None = 0,
+
+    NkIrOutput_Binary,
+    NkIrOutput_Static,
+    NkIrOutput_Shared,
+    NkIrOutput_Archiv,
+    NkIrOutput_Object,
+} NkIrOutputKind;
 
 typedef enum {
     NkIrRef_None = 0,
@@ -50,8 +64,8 @@ typedef union {
 
 typedef struct {
     union {
-        NkAtom sym;  // Local, Param, Global
-        NkIrImm imm; // Imm
+        NkAtom sym;  // NkIrRef_Local, NkIrRef_Param, NkIrRef_Global
+        NkIrImm imm; // NkIrRef_Imm
     };
     NkIrType type;
     NkIrRefKind kind;
@@ -64,7 +78,7 @@ typedef enum {
     NkIrArg_RefArray,
     NkIrArg_Label,
     NkIrArg_LabelRel,
-    NkIrArg_Type, // TODO: Replace type with 2 imms for size and align?
+    NkIrArg_Type,
     NkIrArg_String,
 } NkIrArgKind;
 
@@ -73,12 +87,12 @@ typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
 typedef struct {
     union {
-        NkIrRef ref;       // Ref
-        NkIrRefArray refs; // RefArray
-        NkAtom label;      // Label
-        i32 offset;        // LabelRel
-        NkIrType type;     // Type
-        NkString str;      // String
+        NkIrRef ref;       // NkIrArg_Ref
+        NkIrRefArray refs; // NkIrArg_RefArray
+        NkAtom label;      // NkIrArg_Label
+        i32 offset;        // NkIrArg_LabelRel
+        NkIrType type;     // NkIrArg_Type
+        NkString str;      // NkIrArg_String
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -92,14 +106,19 @@ typedef NkSlice(NkIrInstr const) NkIrInstrArray;
 typedef NkDynArray(NkIrInstr) NkIrInstrDynArray;
 
 typedef enum {
-    NkIrSymbol_Extern,
-    NkIrSymbol_Data,
+    NkIrSymbol_None = 0,
+
     NkIrSymbol_Proc,
+    NkIrSymbol_Data,
+    NkIrSymbol_Extern,
 } NkIrSymbolKind;
 
-typedef struct {
-    NkAtom lib;
-} NkIrExtern;
+typedef enum {
+    NkIrProc_Variadic = 1 << 0,
+} NkIrProcFlags;
+
+typedef NkSlice(NkIrType const) NkIrTypeArray;
+typedef NkDynArray(NkIrType) NkIrTypeDynArray;
 
 typedef struct {
     NkAtom sym;
@@ -128,10 +147,6 @@ typedef struct {
 typedef NkSlice(NkIrParam const) NkIrParamArray;
 typedef NkDynArray(NkIrParam) NkIrParamDynArray;
 
-typedef enum {
-    NkIrProc_Variadic = 1 << 0,
-} NkIrProcFlags;
-
 typedef struct {
     NkIrParamArray params;
     NkIrParam ret;
@@ -140,8 +155,10 @@ typedef struct {
 } NkIrProc;
 
 typedef enum {
-    NkIrVisibility_Hidden = 0,
+    NkIrVisibility_Unknown = 0,
+
     NkIrVisibility_Default,
+    NkIrVisibility_Hidden,
     NkIrVisibility_Protected,
     NkIrVisibility_Internal,
     NkIrVisibility_Local,
@@ -151,11 +168,31 @@ typedef enum {
     NkIrSymbol_ThreadLocal = 1 << 0,
 } NkIrSymbolFlags;
 
+typedef enum {
+    NkIrExtern_Proc,
+    NkIrExtern_Data,
+} NkIrExternKind;
+
 typedef struct {
     union {
-        NkIrExtern extrn; // Extern
-        NkIrData data;    // Data
-        NkIrProc proc;    // Proc
+        struct {
+            NkIrTypeArray param_types;
+            NkIrType ret_type;
+            NkIrProcFlags flags;
+        } proc; // NkIrExtern_Proc
+        struct {
+            NkIrType type;
+        } data; // NkIrExtern_Data
+    };
+    NkAtom lib;
+    NkIrExternKind kind;
+} NkIrExtern;
+
+typedef struct {
+    union {
+        NkIrProc proc;    // NkIrSymbol_Proc
+        NkIrData data;    // NkIrSymbol_Data
+        NkIrExtern extrn; // NkIrSymbol_Extern
     };
     NkAtom name;
     NkIrVisibility vis;
@@ -166,8 +203,6 @@ typedef struct {
 typedef NkSlice(NkIrSymbol const) NkIrSymbolArray;
 typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 
-typedef NkIrSymbolArray NkIrModule;
-
 typedef enum {
     NkIrLabel_Abs,
     NkIrLabel_Rel,
@@ -175,15 +210,48 @@ typedef enum {
 
 typedef struct {
     union {
-        NkAtom name;
-        i32 offset;
+        NkAtom name; // NkIrLabel_Abs
+        i32 offset;  // NkIrLabel_Rel
     };
     NkIrLabelKind kind;
 } NkIrLabel;
 
+typedef struct {
+    NkAtom sym;
+    void *addr;
+} NkIrSymbolAddress;
+
+typedef NkSlice(NkIrSymbolAddress const) NkIrSymbolAddressArray;
+typedef NkDynArray(NkIrSymbolAddress) NkIrSymbolAddressDynArray;
+
 /// Main
 
-void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
+NkbState nkir_createState(void);
+void nkir_freeState(NkbState nkb);
+
+NkIrModule nkir_createModule(NkbState nkb);
+
+NkIrTarget nkir_createTarget(NkbState nkb, NkString triple);
+
+NkArena *nkir_moduleGetArena(NkIrModule mod);
+
+void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym);
+
+NkIrRefDynArray nkir_moduleNewRefArray(NkIrModule mod);
+NkIrInstrDynArray nkir_moduleNewInstrArray(NkIrModule mod);
+NkIrTypeDynArray nkir_moduleNewTypeArray(NkIrModule mod);
+NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod);
+NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod);
+
+typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
+void nkir_setSymbolResolver(NkIrModule mod, NkIrSymbolResolver fn, void *userdata);
+
+NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod);
+NkIrSymbol const *nkir_findSymbol(NkIrModule mod, NkAtom sym);
+
+/// Utility
+
+void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
 /// Refs
 
@@ -193,7 +261,7 @@ NkIrRef nkir_makeRefParam(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefGlobal(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
 
-NkIrRef nkir_makeVariadicMarker();
+NkIrRef nkir_makeVariadicMarker(void);
 
 /// Labels
 
@@ -202,7 +270,7 @@ NkIrLabel nkir_makeLabelRel(i32 offset);
 
 /// Codegen
 
-NkIrInstr nkir_make_nop();
+NkIrInstr nkir_make_nop(void);
 
 NkIrInstr nkir_make_ret(NkIrRef arg);
 
@@ -229,26 +297,27 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-void nkir_exportModule(NkIrModule m, NkString path /*, c_compiler_config */);
+bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkIrOutputKind kind);
 
-/// Execution
+/// Runtime
 
-typedef struct NkIrRunCtx_T *NkIrRunCtx;
-
-NkIrRunCtx nkir_createRunCtx(NkIrModule *m, NkArena *arena);
-
-bool nkir_invoke(NkIrRunCtx ctx, NkAtom sym, void **args, void **ret);
+bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret);
+void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym);
+bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms);
 
 /// Inspection
 
-void nkir_inspectModule(NkStream out, NkIrModule m);
-void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym);
+void nkir_printName(NkStream out, char const *kind, NkAtom name);
+void nkir_printSymbolName(NkStream out, NkAtom sym);
+
+void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod);
+void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym);
 void nkir_inspectInstr(NkStream out, NkIrInstr instr);
 void nkir_inspectRef(NkStream out, NkIrRef ref);
 
 /// Validation
 
-bool nkir_validateModule(NkIrModule m);
+bool nkir_validateModule(NkIrModule mod);
 bool nkir_validateProc(NkIrProc const *proc);
 
 #ifdef __cplusplus

@@ -163,9 +163,9 @@ bool nkir_compileFile(NkIrCompiler c, NkString base_file, NkString in_file) {
                 text,
                 {
                     in_file_s,
-                    nk_slice_last(lexer.tokens).lin,
-                    nk_slice_last(lexer.tokens).col,
-                    nk_slice_last(lexer.tokens).len,
+                    nks_last(lexer.tokens).lin,
+                    nks_last(lexer.tokens).col,
+                    nks_last(lexer.tokens).len,
                 },
                 NKS_FMT,
                 NKS_ARG(lexer.error_msg));
@@ -178,7 +178,7 @@ bool nkir_compileFile(NkIrCompiler c, NkString base_file, NkString in_file) {
         defer {
             nk_arena_popFrame(c->tmp_arena, frame);
         };
-        nkir_parse(c, in_file_id, text, {NK_SLICE_INIT(lexer.tokens)});
+        nkir_parse(c, in_file_id, text, {NKS_INIT(lexer.tokens)});
         if (!c->parser.ok) {
             nkl_diag_printErrorQuote(
                 text,

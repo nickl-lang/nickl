@@ -21,13 +21,20 @@ static void printUsage() {
         "Usage: " NK_BINARY_NAME
         " [options] file"
         "\nOptions:"
-        "\n    -c, --color {auto,always,never}          Choose when to color output"
-        "\n    -h, --help                               Display this message and exit"
-        "\n    -v, --version                            Show version information"
-#ifdef ENABLE_LOGGING
+        "\n    -o, --output <file>                              Output file path"
+        "\n    -k, --kind {run,exe,static,shared,archive,obj}   Output file kind"
+        "\n    -c, --color {auto,always,never}                  Choose when to color output"
+        "\n    -h, --help                                       Display this message and exit"
+        "\n    -v, --version                                    Show version information"
+#if defined(ENABLE_LOGGING) || defined(ENABLE_PROFILING)
         "\nDeveloper options:"
+#endif
+#ifdef ENABLE_LOGGING
         "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
-#endif // ENABLE_LOGGING
+#endif
+#ifdef ENABLE_PROFILING
+        "\n    -p, --profile <trace-file>                       Output file for profiling traces"
+#endif
         "\n");
 }
 
@@ -68,26 +75,53 @@ static void printDiag(NklState nkl) {
     }
 }
 
-static int run(NklState nkl, NkString in_file) {
-    NklCompiler const com = nkl_newCompilerHost();
+typedef struct {
+    NklState nkl;
+    NkString in_file;
+    NkString out_file;
+    NklOutputKind out_kind;
+    bool run;
+} RunInfo;
+
+static int run(RunInfo const info) {
+    NklState const nkl = info.nkl;
+
+    NklCompiler const com = nkl_newCompilerForHost(nkl);
 
     // TODO: Hardcoded lib names
-    nkl_addLibraryAliasGlobal(com, nk_cs2s("c"), nk_cs2s("libc.so.6"));
-    nkl_addLibraryAliasGlobal(com, nk_cs2s("m"), nk_cs2s("libm.so.6"));
-    nkl_addLibraryAliasGlobal(com, nk_cs2s("pthread"), nk_cs2s("libpthread.so.0"));
+    nkl_addLibraryAlias(com, nk_cs2s("c"), nk_cs2s(SYSTEM_LIBC));
+    nkl_addLibraryAlias(com, nk_cs2s("m"), nk_cs2s(SYSTEM_LIBM));
+    nkl_addLibraryAlias(com, nk_cs2s("pthread"), nk_cs2s(SYSTEM_LIBPTHREAD));
 
     NklModule const mod = nkl_newModule(com);
 
-    if (!nkl_compileFile(mod, in_file)) {
+    if (!nkl_compileFile(mod, info.in_file)) {
         printDiag(nkl);
         return 1;
+    }
+
+    if (info.run) {
+        void (*entry)(void) = nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
+        if (!entry) {
+            printDiag(nkl);
+            return 1;
+        }
+        entry();
+    } else {
+        if (!nkl_exportModule(mod, info.out_file, info.out_kind)) {
+            printDiag(nkl);
+            return 1;
+        }
     }
 
     return 0;
 }
 
 static int parseArgsAndRun(char **argv) {
-    NkString in_file = {0};
+    RunInfo run_info = {
+        .out_file = nk_cs2s("a.out"),
+        .out_kind = NklOutput_Binary,
+    };
 
     bool help = false;
     bool version = false;
@@ -95,6 +129,10 @@ static int parseArgsAndRun(char **argv) {
 #ifdef ENABLE_LOGGING
     NkLogOptions log_opts = {0};
     log_opts.log_level = NkLogLevel_Warning;
+#endif // ENABLE_LOGGING
+
+#ifdef ENABLE_PROFILING
+    char const *prof_file = NK_BINARY_NAME ".spall";
 #endif // ENABLE_LOGGING
 
     for (argv++; *argv;) {
@@ -128,6 +166,31 @@ static int parseArgsAndRun(char **argv) {
             } else if (nks_equal(key, nk_cs2s("-v")) || nks_equal(key, nk_cs2s("--version"))) {
                 NO_VALUE;
                 version = true;
+            } else if (nks_equal(key, nk_cs2s("-o")) || nks_equal(key, nk_cs2s("--output"))) {
+                GET_VALUE;
+                run_info.out_file = val;
+            } else if (nks_equal(key, nk_cs2s("-k")) || nks_equal(key, nk_cs2s("--kind"))) {
+                GET_VALUE;
+                if (nks_equal(val, nk_cs2s("run"))) {
+                    run_info.run = true;
+                } else if (nks_equal(val, nk_cs2s("exe"))) {
+                    run_info.out_kind = NklOutput_Binary;
+                } else if (nks_equal(val, nk_cs2s("static"))) {
+                    run_info.out_kind = NklOutput_Static;
+                } else if (nks_equal(val, nk_cs2s("shared"))) {
+                    run_info.out_kind = NklOutput_Shared;
+                } else if (nks_equal(val, nk_cs2s("archive"))) {
+                    run_info.out_kind = NklOutput_Archiv;
+                } else if (nks_equal(val, nk_cs2s("obj"))) {
+                    run_info.out_kind = NklOutput_Object;
+                } else {
+                    nkl_diag_printError(
+                        "invalid output kind `" NKS_FMT
+                        "`. Possible values are `run`, `exe`, `static`, `shared`, `archive`, `obj`",
+                        NKS_ARG(val));
+                    printErrorUsage();
+                    return 1;
+                }
             } else if (nks_equal(key, nk_cs2s("-c")) || nks_equal(key, nk_cs2s("--color"))) {
                 GET_VALUE;
                 if (nks_equal(val, nk_cs2s("auto"))) {
@@ -151,7 +214,10 @@ static int parseArgsAndRun(char **argv) {
                 } else if (nks_equal(val, nk_cs2s("never"))) {
                     log_opts.color_mode = NkLogColorMode_Never;
                 }
-            } else if (nks_equal(key, nk_cs2s("-t")) || nks_equal(key, nk_cs2s("--loglevel"))) {
+#endif // ENABLE_LOGGING
+            }
+#ifdef ENABLE_LOGGING
+            else if (nks_equal(key, nk_cs2s("-t")) || nks_equal(key, nk_cs2s("--loglevel"))) {
                 GET_VALUE;
                 if (nks_equal(val, nk_cs2s("none"))) {
                     log_opts.log_level = NkLogLevel_None;
@@ -173,14 +239,21 @@ static int parseArgsAndRun(char **argv) {
                     printErrorUsage();
                     return 1;
                 }
+            }
 #endif // ENABLE_LOGGING
-            } else {
+#ifdef ENABLE_PROFILING
+            else if (nks_equal(key, nk_cs2s("-p")) || nks_equal(key, nk_cs2s("--profile"))) {
+                GET_VALUE;
+                prof_file = val.data;
+            }
+#endif // ENABLE_PROFILING
+            else {
                 nkl_diag_printError("invalid argument `" NKS_FMT "`", NKS_ARG(key));
                 printErrorUsage();
                 return 1;
             }
-        } else if (!in_file.size) {
-            in_file = val;
+        } else if (!run_info.in_file.size) {
+            run_info.in_file = val;
         } else {
             nkl_diag_printError("extra argument `" NKS_FMT "`", NKS_ARG(val));
             printErrorUsage();
@@ -198,7 +271,7 @@ static int parseArgsAndRun(char **argv) {
         return 0;
     }
 
-    if (!in_file.size) {
+    if (!run_info.in_file.size) {
         nkl_diag_printError("no input file");
         printErrorUsage();
         return 1;
@@ -206,26 +279,19 @@ static int parseArgsAndRun(char **argv) {
 
     NK_LOG_INIT(log_opts);
 
-    NklState nkl;
     int ret_code = 0;
 
+    NK_DEFER_LOOP(NK_PROF_START(prof_file), NK_PROF_FINISH())
+    NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
+    NK_PROF_SCOPE(nk_cs2s("run"))
     NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
-    NK_DEFER_LOOP(nkl = nkl_newState(), nkl_freeState(nkl))
-    NK_DEFER_LOOP(nkl_pushState(nkl), nkl_popState()) {
-        ret_code = run(nkl, in_file);
+    NK_DEFER_LOOP(run_info.nkl = nkl_newState(), nkl_freeState(run_info.nkl)) {
+        ret_code = run(run_info);
     }
 
     return ret_code;
 }
 
 int main(int NK_UNUSED argc, char **argv) {
-    int ret_code = 0;
-
-    NK_DEFER_LOOP(NK_PROF_START(NK_BINARY_NAME ".spall"), NK_PROF_FINISH())
-    NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
-    NK_PROF_FUNC() {
-        ret_code = parseArgsAndRun(argv);
-    }
-
-    return ret_code;
+    return parseArgsAndRun(argv);
 }

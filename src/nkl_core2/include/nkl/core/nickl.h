@@ -9,6 +9,9 @@
 extern "C" {
 #endif
 
+// TODO: Provide a C version for Nickl API without dependencies
+// TODO: Provide access to types through this API, otherwise nkl_getSymbolAddress cannot be safely used
+
 typedef struct NklState_T *NklState;
 typedef struct NklCompiler_T *NklCompiler;
 typedef struct NklModule_T *NklModule;
@@ -17,15 +20,17 @@ typedef struct {
     NkAtom arch;
     NkAtom vendor;
     NkAtom sys;
+    NkAtom abi;
 } NklTargetTriple;
 
 typedef enum {
     NklOutput_None = 0,
 
-    NklOutput_Object,
+    NklOutput_Binary,
     NklOutput_Static,
     NklOutput_Shared,
-    NklOutput_Binary,
+    NklOutput_Archiv,
+    NklOutput_Object,
 } NklOutputKind;
 
 typedef struct NklError {
@@ -38,25 +43,29 @@ typedef struct NklError {
 NK_EXPORT NklState nkl_newState(void);
 NK_EXPORT void nkl_freeState(NklState nkl);
 
-NK_EXPORT void nkl_pushState(NklState nkl);
-NK_EXPORT void nkl_popState(void);
-
-NK_EXPORT NklCompiler nkl_newCompiler(NklTargetTriple target);
-NK_EXPORT NklCompiler nkl_newCompilerHost(void);
+NK_EXPORT NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple target);
+NK_EXPORT NklCompiler nkl_newCompilerForHost(NklState nkl);
 
 NK_EXPORT NklModule nkl_newModule(NklCompiler com);
+NK_EXPORT NklModule nkl_newModuleNamed(NklCompiler com, NkString name);
 
 NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
 
-NK_EXPORT bool nkl_addLibraryAliasGlobal(NklCompiler com, NkString alias, NkString lib);
-NK_EXPORT bool nkl_addLibraryAlias(NklModule dst_mod, NkString alias, NkString lib);
+NK_EXPORT bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib);
 
 NK_EXPORT bool nkl_compileFile(NklModule mod, NkString path);
+
 NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString path);  // *.nkir
 NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString path); // *.nkst
 NK_EXPORT bool nkl_compileFileNkl(NklModule mod, NkString path); // *.nkl
 
+NK_EXPORT bool nkl_compileStringIr(NklModule mod, NkString src);
+NK_EXPORT bool nkl_compileStringAst(NklModule mod, NkString src);
+NK_EXPORT bool nkl_compileStringNkl(NklModule mod, NkString src);
+
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
+
+NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkString name);
 
 NK_EXPORT NklError const *nkl_getErrors(NklState nkl);
 

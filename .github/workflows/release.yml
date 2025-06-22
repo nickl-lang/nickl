@@ -3,26 +3,24 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - v*.*.*
 
 permissions:
   contents: write
 
 jobs:
-  common:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        system: [linux, windows]
+  linux:
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build
-        run: ./build.sh -s ${{ matrix.system }} package
-      - name: Generate Changelog
-        run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
-      - name: Release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt update
+          sudo apt install -y libffi-dev llvm-15-dev zlib1g-dev
+      - run: ./build.sh package
+        env:
+          LLVM_DIR: /usr/lib/llvm-15
+      - run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - uses: softprops/action-gh-release@v2
         with:
           files: out/deploy/*
           name: nickl ${{ github.ref_name }}
@@ -32,18 +30,61 @@ jobs:
 
   darwin:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        machine: [x86_64, arm64]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build
-        run: ./build.sh -n -m ${{ matrix.machine }} package
-      - name: Generate Changelog
-        run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
-      - name: Release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/checkout@v4
+      - run: brew install llvm
+      - run: ./build.sh package
+        env:
+          LLVM_DIR: /opt/homebrew/opt/llvm
+      - run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/deploy/*
+          name: nickl ${{ github.ref_name }}
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          draft: false
+          prerelease: true
+
+  darwin-x86_64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install llvm
+      - run: ./build.sh package
+        env:
+          LLVM_DIR: /usr/local/opt/llvm
+      - run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/deploy/*
+          name: nickl ${{ github.ref_name }}
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          draft: false
+          prerelease: true
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - run: git config --global core.autocrlf input
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          update: true
+          install: >-
+            git
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-dlfcn
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-libffi
+            mingw-w64-x86_64-llvm
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-winpthreads
+      - shell: msys2 {0}
+        run: ./build.sh package
+      - run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - uses: softprops/action-gh-release@v2
         with:
           files: out/deploy/*
           name: nickl ${{ github.ref_name }}

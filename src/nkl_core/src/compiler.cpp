@@ -68,6 +68,7 @@ struct Void {};
 } // namespace
 
 NklCompiler nkl_createCompiler(NklState nkl, NklTargetTriple target) {
+    (void)target;
     NkArena arena{};
     auto c = new (nk_arena_allocT<NklCompiler_T>(&arena)) NklCompiler_T{
         .ir{},
@@ -615,7 +616,7 @@ static NklFieldArray compileParams(Context &ctx, NklAstNode const &params_n, Com
         nkda_append(&fields, {name, type});
     }
 
-    return {NK_SLICE_INIT(fields)};
+    return {NKS_INIT(fields)};
 }
 
 static nkltype_t compileProcType(
@@ -1290,7 +1291,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             }
 
             return makeInstr(
-                nkir_make_call(ctx.ir, {}, asRef(ctx, lhs), {NK_SLICE_INIT(arg_refs)}), nklt_proc_retType(lhs.type));
+                nkir_make_call(ctx.ir, {}, asRef(ctx, lhs), {NKS_INIT(arg_refs)}), nklt_proc_retType(lhs.type));
         }
 
         case n_const: {
@@ -1319,7 +1320,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 
             NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
 
-            auto found = DeclMap_find(&scope->locals, name);
+            auto found = DeclMap_findItem(&scope->locals, name);
             if (found) {
                 return resolveDecl(ctx, found->val);
             } else {
@@ -1487,12 +1488,12 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             };
             nk_list_push(ctx.scope_stack->export_list, export_node);
 
-            auto const found = NkAtomSet_find(&ctx.m->export_set, name);
+            auto const found = NkAtomSet_findItem(&ctx.m->export_set, name);
             if (found) {
                 // TODO: Report the conflicting export location
                 return error(ctx, "symbol '%s' is already exported in the current module", nk_atom2cs(name));
             }
-            NkAtomSet_insert(&ctx.m->export_set, name);
+            NkAtomSet_insertItem(&ctx.m->export_set, name);
 
             DEFINE(proc, compile(ctx, const_n));
 
@@ -1659,7 +1660,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
         case n_struct: {
             auto &params_n = nextNode(node_it);
             DEFINE(fields, compileParams(ctx, params_n, {}));
-            auto struct_t = nkl_get_struct(ctx.nkl, {NK_SLICE_INIT(fields)});
+            auto struct_t = nkl_get_struct(ctx.nkl, {NKS_INIT(fields)});
             return makeConst(ctx, ctx.c->type_t(), struct_t);
         }
 

@@ -1,60 +1,273 @@
-extern "c" $printf
+extern "c" proc $printf(:i64, ...) :i32
 
-pub proc _entry(:f32 %x, :f32 %y) :i16 {
+type Vec2 :{[2]f64}
+
+local proc make_vec2(:f64 %x, :f64 %y) :Vec2 %vec {
+    store %x -> %vec
+    add 8, %vec -> %y_addr
+    store %y -> %y_addr
+    ret
+}
+
+local data x :i64
+
+pub proc foo(:f64 %x, :f64 %y) :f64 {
+
+    // TODO: Fix f32 constants
 
 @start
     nop
 
-    ret
+    comment "===== control flow ====================="
+    jmp      @label
+    jmpz  1, @label
+    jmpnz 1, @label
+    jmpz  1.0, @label
+    jmpnz 1.0, @label
+    jmpz  :f32 1.0, @label
+    jmpnz :f32 1.0, @label
+
+    jmp @label
+@label
+
+    comment "===== mov =============================="
+
+    mov :u8  1 -> :u8  %_0
+    mov :u8  1 -> :i8  %_1
+    mov :i8  1 -> :u8  %_2
+    mov :i8  1 -> :i8  %_3
+    mov :u16 1 -> :u16 %_4
+    mov :u16 1 -> :i16 %_5
+    mov :i16 1 -> :u16 %_6
+    mov :i16 1 -> :i16 %_7
+    mov :u32 1 -> :u32 %_8
+    mov :u32 1 -> :i32 %_9
+    mov :i32 1 -> :u32 %_10
+    mov :i32 1 -> :i32 %_11
+    mov :u32 1 -> :f32 %_12
+    mov :f32 1 -> :u32 %_13
+    mov :u64 1 -> :u64 %_14
+    mov :u64 1 -> :i64 %_15
+    mov :i64 1 -> :u64 %_16
+    mov :i64 1 -> :i64 %_17
+    mov :u64 1 -> :f64 %_18
+    mov :f64 1 -> :u64 %_19
+
+    comment "===== copy ============================="
+    cast :i8  1 -> :i8  %_20
+    cast :i16 1 -> :i16 %_21
+    cast :i32 1 -> :i32 %_22
+    cast :i64 1 -> :i64 %_23
+
+    cast :u8  1 -> :u8  %_24
+    cast :u16 1 -> :u16 %_25
+    cast :u32 1 -> :u32 %_26
+    cast :u64 1 -> :u64 %_27
+
+    cast :i8  1 -> :u8  %_28
+    cast :i16 1 -> :u16 %_29
+    cast :i32 1 -> :u32 %_30
+    cast :i64 1 -> :u64 %_31
+
+    cast :u8  1 -> :i8  %_32
+    cast :u16 1 -> :i16 %_33
+    cast :u32 1 -> :i32 %_34
+    cast :u64 1 -> :i64 %_35
+
+    cast :f32 1 -> :f32 %_36
+    cast :f64 1 -> :f64 %_37
+
+    comment "===== sign extend ======================"
+    cast :i8  1 -> :i16 %_38
+    cast :i8  1 -> :i32 %_39
+    cast :i8  1 -> :i64 %_40
+    cast :i16 1 -> :i32 %_41
+    cast :i16 1 -> :i64 %_42
+    cast :i32 1 -> :i64 %_43
+
+    cast :i8  1 -> :u16 %_44
+    cast :i8  1 -> :u32 %_45
+    cast :i8  1 -> :u64 %_46
+    cast :i16 1 -> :u32 %_47
+    cast :i16 1 -> :u64 %_48
+    cast :i32 1 -> :u64 %_49
+
+    comment "===== zero extend ======================"
+    cast :u8  1 -> :u16 %_50
+    cast :u8  1 -> :u32 %_51
+    cast :u8  1 -> :u64 %_52
+    cast :u16 1 -> :u32 %_53
+    cast :u16 1 -> :u64 %_54
+    cast :u32 1 -> :u64 %_55
+
+    cast :u8  1 -> :i16 %_56
+    cast :u8  1 -> :i32 %_57
+    cast :u8  1 -> :i64 %_58
+    cast :u16 1 -> :i32 %_59
+    cast :u16 1 -> :i64 %_60
+    cast :u32 1 -> :i64 %_61
+
+    comment "===== float extend ====================="
+    cast :f32 1 -> :f64 %_62
+
+    comment "===== int trunc ========================"
+    cast :i16 1 -> :i8  %_63
+    cast :i32 1 -> :i8  %_64
+    cast :i64 1 -> :i8  %_65
+    cast :i32 1 -> :i16 %_66
+    cast :i64 1 -> :i16 %_67
+    cast :i64 1 -> :i32 %_68
+
+    cast :u16 1 -> :u8  %_69
+    cast :u32 1 -> :u8  %_70
+    cast :u64 1 -> :u8  %_71
+    cast :u32 1 -> :u16 %_72
+    cast :u64 1 -> :u16 %_73
+    cast :u64 1 -> :u32 %_74
+
+    cast :i16 1 -> :u8  %_75
+    cast :i32 1 -> :u8  %_76
+    cast :i64 1 -> :u8  %_77
+    cast :i32 1 -> :u16 %_78
+    cast :i64 1 -> :u16 %_79
+    cast :i64 1 -> :u32 %_80
+
+    cast :u16 1 -> :i8  %_81
+    cast :u32 1 -> :i8  %_82
+    cast :u64 1 -> :i8  %_83
+    cast :u32 1 -> :i16 %_84
+    cast :u64 1 -> :i16 %_85
+    cast :u64 1 -> :i32 %_86
+
+    comment "===== float trunc ======================"
+    cast :f64 1 -> :f32 %_87
+
+    comment "===== float to int ====================="
+    cast :f32 1 -> :i8  %_88
+    cast :f32 1 -> :i16 %_89
+    cast :f32 1 -> :i32 %_90
+    cast :f32 1 -> :i64 %_91
+    cast :f64 1 -> :i8  %_92
+    cast :f64 1 -> :i16 %_93
+    cast :f64 1 -> :i32 %_94
+    cast :f64 1 -> :i64 %_95
+
+    comment "===== float to uint ===================="
+    cast :f32 1 -> :u8  %_96
+    cast :f32 1 -> :u16 %_97
+    cast :f32 1 -> :u32 %_98
+    cast :f32 1 -> :u64 %_99
+    cast :f64 1 -> :u8  %_100
+    cast :f64 1 -> :u16 %_101
+    cast :f64 1 -> :u32 %_102
+    cast :f64 1 -> :u64 %_103
+
+    comment "===== int to float ====================="
+    cast :i8  1 -> :f32 %_104
+    cast :i16 1 -> :f32 %_105
+    cast :i32 1 -> :f32 %_106
+    cast :i64 1 -> :f32 %_107
+    cast :i8  1 -> :f64 %_108
+    cast :i16 1 -> :f64 %_109
+    cast :i32 1 -> :f64 %_110
+    cast :i64 1 -> :f64 %_111
+
+    comment "===== uint to float ===================="
+    cast :u8  1 -> :f32 %_112
+    cast :u16 1 -> :f32 %_113
+    cast :u32 1 -> :f32 %_114
+    cast :u64 1 -> :f32 %_115
+    cast :u8  1 -> :f64 %_116
+    cast :u16 1 -> :f64 %_117
+    cast :u32 1 -> :f64 %_118
+    cast :u64 1 -> :f64 %_119
+
+    comment "===== arithmetic ======================="
+    add %x, 1          -> %_120
+    sub %y, %x         -> %_121
+    mul 3.14, 1        -> %_122
+    div :f64 1.0, 3.14 -> %_123
+    mod 1, 1           -> %_124
+
+    comment "===== logic ============================"
+    and 1, 1      -> %_125
+    or  1, 1      -> %_126
+    xor 1, 1      -> %_127
+    lsh 1, 1      -> %_128
+    rsh 1, 1      -> %_129
+    lsh :u64 1, 1 -> %_130
+    rsh :u64 1, 1 -> %_131
+
+    comment "===== comparisons ======================"
+    cmp eq 1, 1 -> %_132
+    cmp ne 1, 1 -> %_133
+    cmp lt 1, 1 -> %_134
+    cmp le 1, 1 -> :i32 %_135
+    cmp gt 1, 1 -> :i32 %_136
+    cmp ge 1, 1 -> :i32 %_137
+
+    comment "===== memory ==========================="
+    alloc :i32 -> :i32 %_138
+    store 1    -> x
+    load  x    -> :i32 %_139
+
+    comment "===== call ============================="
+    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %_140
+
+    comment "===== float constants =================="
+    mov :f32 0x7fc00000         -> :u32 %f32_nan
+    mov :f64 0x7ff8000000000000 -> :u64 %f64_nan
+
+    mov :f32 1.25 -> :u32 %f32_1_25
+    mov :f64 1.25 -> :u64 %f64_1_25
+    mov :f32 1.3  -> :u32 %f32_1_3
+    mov :f64 1.3  -> :u64 %f64_1_3
+
+    mov :f32 0.123456789 -> :u32 %f32_0_123456789
+    mov :f64 0.123456789 -> :u64 %f64_0_123456789
+
+    mov :f32 0.12345678 -> :u32 %f32_0_12345678
+    mov :f64 0.12345678 -> :u64 %f64_0_12345678
+
+    mov :f32 0.1234567 -> :u32 %f32_0_1234567
+    mov :f64 0.1234567 -> :u64 %f64_0_1234567
+
+    mov :f32 0.123456 -> :u32 %f32_0_123456
+    mov :f64 0.123456 -> :u64 %f64_0_123456
+
+    mov :f32 0.12345 -> :u32 %f32_0_12345
+    mov :f64 0.12345 -> :u64 %f64_0_12345
+
+    mov :f32 0.1234 -> :u32 %f32_0_1234
+    mov :f64 0.1234 -> :u64 %f64_0_1234
+
+    mov :f32 0x00000001 -> :u32 %_141
+    mov :f32 0x10000000 -> :u32 %_142
+
+    comment "===== ret =============================="
     ret 42
-    ret :i32 42
-
-    jmp      @start
-    jmpz  1, @start
-    jmpnz 1, @start
-
-    call :i64 printf, ("%zi\n", ..., 42) -> :i32 %a
-
-    store 1 -> 1
-    load  1 -> :i32 %a
-
-    alloc :i32 -> :i32 %a
-
-    mov :i64 x  -> :i64 %a
-
-    ext :i8 1   -> :i32 %a
-    trunc 1     -> :i32 %a
-    fp2i :f32 1 -> :i32 %a
-    i2fp 1      -> :f32 %a
-
-    add %x, 1          -> %a
-    sub %y, %x         -> %a
-    mul 3.14, 1        -> %a
-    div :f32 1.0, 3.14 -> %a
-    mod 1, 1           -> %a
-
-    and 1, 1 -> %b
-    or  1, 1 -> %b
-    xor 1, 1 -> %b
-    lsh 1, 1 -> :i32 %b
-    rsh 1, 1 -> :i32 %b
-
-    cmp eq 1, 1 -> %b
-    cmp ne 1, 1 -> %b
-    cmp lt 1, 1 -> %b
-    cmp le 1, 1 -> :i32 %b
-    cmp gt 1, 1 -> :i32 %b
-    cmp ge 1, 1 -> :i32 %b
-
-    comment "This is a comment"
 
 }
 
-local const one 123
+proc bar() :f64 {
+    ret :f64 3.14
+}
+
+local const one 0x1000
 pub data two :i32 42
 data three :i64
-const four :f32 3.14
-const five "a string"
+const four :f64 0x40091eb851eb851f
+const five :f32 1
+const six "a string"
+
+proc _entry() {
+    ret
+}
+
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
+}
 
 /* @retcode
 0

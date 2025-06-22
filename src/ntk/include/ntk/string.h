@@ -13,14 +13,9 @@ extern "C" {
 #endif
 
 typedef NkSlice(char const) NkString;
+typedef NkSlice(char) NkStringBuf;
 
-#define NKS_INIT NK_SLICE_INIT
-
-#define nks_begin nk_slice_begin
-#define nks_end nk_slice_end
-
-#define nks_first nk_slice_first
-#define nks_last nk_slice_last
+#define NK_STATIC_BUF(BUF) (NK_LITERAL(NkStringBuf){.data = (BUF), .size = sizeof(BUF)})
 
 NK_INLINE NkString nk_cs2s(char const *str) {
     return NK_LITERAL(NkString){str, strlen(str)};
@@ -49,6 +44,10 @@ NK_EXPORT bool nks_endsWith(NkString str, NkString suffix);
 NK_EXPORT i32 nks_escape(NkStream out, NkString str);
 NK_EXPORT i32 nks_unescape(NkStream out, NkString str);
 NK_EXPORT i32 nks_sanitize(NkStream out, NkString str);
+
+typedef NkSlice(NkString) NkStringArray;
+
+NK_EXPORT NkStringArray nks_shell_lex(NkArena *arena, NkString str);
 
 #define NKS_FMT "%.*s"
 #define NKS_ARG(str) (i32)(str).size, (str).data

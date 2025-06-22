@@ -1,6 +1,6 @@
 include "vec2.nkir"
 
-extern "c" printf
+extern "c" proc printf(:i64, ...) :i32
 
 pub proc _entry() {
     alloc :Vec2 -> %vec
@@ -10,9 +10,14 @@ pub proc _entry() {
     load %vec -> :f64 %x
     add 8, %vec -> %y_addr
     load %y_addr -> :f64 %y
-    call printf, ("vec=[%g, %g]=\n", ..., :f64 %x, :f64 %y) -> :i32
+    call printf, ("vec=[%g, %g]\n", ..., :f64 %x, :f64 %y) -> :i32
 
     ret
+}
+
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
 }
 
 /* @output

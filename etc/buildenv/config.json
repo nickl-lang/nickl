@@ -2,72 +2,33 @@
   "base_name": "buildenv-nickl",
   "remote": "ghcr.io/nickl-lang",
   "images": [
-    "linux-x86_64:1.0",
-    "linux-x86_64-dev:1.0",
-    "windows-x86_64:1.0",
-    "windows-x86_64-dev:1.0",
-    "darwin-x86_64:1.0",
-    "darwin-arm64:1.0",
-    "darwin-x86_64-dev:1.0",
-    "darwin-arm64-dev:1.0"
+    "linux-x86_64:2.0",
+    "linux-x86_64-dev:2.0"
   ],
   "args": {
     "DISTRO": "ubuntu:22.04",
 
-    "CMAKE_VERSION": "3.31.6",
-    "CMAKE_URL": "http://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz",
-
-    "BINUTILS_VERSION": "2.44",
-    "BINUTILS_URL": "http://mirrorservice.org/sites/sourceware.org/pub/binutils/releases/binutils-2.44.tar.xz",
-
-    "GCC_VERSION": "11.4.0",
-    "GCC_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-11.4.0/gcc-11.4.0.tar.xz",
-    "GMP_VERSION": "6.1.0",
-    "GMP_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/gmp-6.1.0.tar.bz2",
-    "MPFR_VERSION": "3.1.6",
-    "MPFR_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpfr-3.1.6.tar.bz2",
-    "MPC_VERSION": "1.0.3",
-    "MPC_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gcc/infrastructure/mpc-1.0.3.tar.gz",
-
-    "MINGW_VERSION": "12.0.0",
-    "MINGW_URL": "http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v12.0.0.tar.bz2",
+    "CMAKE_VERSION": "4.0.3",
+    "CMAKE_URL": "http://github.com/Kitware/CMake/releases/download/v{{CMAKE_VERSION}}/cmake-{{CMAKE_VERSION}}.tar.gz",
 
     "LIBFFI_VERSION": "3.4.2",
-    "LIBFFI_URL": "http://github.com/libffi/libffi/releases/download/v3.4.2/libffi-3.4.2.tar.gz",
-
-    "DLFCN_VERSION": "1.4.2",
-    "DLFCN_URL": "http://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v1.4.2.tar.gz",
+    "LIBFFI_URL": "http://github.com/libffi/libffi/releases/download/v{{LIBFFI_VERSION}}/libffi-{{LIBFFI_VERSION}}.tar.gz",
 
     "GTEST_VERSION": "1.16.0",
-    "GTEST_URL": "http://github.com/google/googletest/releases/download/v1.16.0/googletest-1.16.0.tar.gz",
+    "GTEST_URL": "http://github.com/google/googletest/releases/download/v{{GTEST_VERSION}}/googletest-{{GTEST_VERSION}}.tar.gz",
 
     "JSON_C_VERSION": "json-c-0.18-20240915",
-    "JSON_C_URL": "http://github.com/json-c/json-c/archive/refs/tags/json-c-0.18-20240915.tar.gz",
+    "JSON_C_URL": "http://github.com/json-c/json-c/archive/refs/tags/{{JSON_C_VERSION}}.tar.gz",
 
-    "GDB_VERSION": "16.2",
-    "GDB_URL": "http://mirrorservice.org/sites/sourceware.org/pub/gdb/releases/gdb-16.2.tar.xz",
-
-    "OSXCROSS_VERSION": "d0376b1c368055bd7ce26da97b86b7fbff2814f1",
-    "OSXCROSS_URL": "https://github.com/tpoechtrager/osxcross",
-
-    "CLANG_VERSION": "19",
-    "MACOS_SDK_VERSION": "15.4",
-    "DARWIN_TARGET_VERSION": "24.4"
+    "LLVM_VERSION": "20"
   },
   "stages": [
-    "common",
-    "toolchain-linux",
-    "linux",
-    "gdb-linux",
-    "linux-dev",
-    "toolchain-windows",
-    "windows",
-    "toolchain-windows-native",
-    "windows-dev",
+    "base",
     "clang",
-    "toolchain-darwin",
-    "darwin",
-    "darwin-dev"
+    "cmake",
+    "common",
+    "linux",
+    "linux-dev"
   ],
   "debug_image_build": false
 }

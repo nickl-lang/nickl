@@ -14,126 +14,98 @@ focused on exploring the boundaries of what happens when a compiler exposes a ri
 to the program with ability to execute arbitrary code at compile time.
 
 # Table of Contents
-- [Building from source](#building-from-source)
-    - [Install build dependencies](#install-build-dependencies)
+- [Dependencies](#dependencies)
+- [Build from source](#build-from-source)
+    - [Install dependencies](#install-dependencies)
+      - [Ubuntu](#ubuntu)
+      - [Arch Linux](#arch-linux)
+      - [Darwin](#darwin)
+      - [Windows (MSYS2)](#windows-msys2)
+      - [Windows (MSVC)](#windows-msvc)
     - [Build](#build)
-- [Building from source (with docker)](#building-from-source-with-docker)
-    - [Install build dependencies](#install-build-dependencies-1)
-    - [Start container runtime](#start-container-runtime)
-    - [Build](#build-1)
 
-# Building from source
+# Dependencies
 
-## Install build dependencies
+ - LLVM (15+)
+ - libffi
+
+# Build from source
+
+## Install dependencies
 
 ### Ubuntu
 
 ```sh
-sudo apt install build-essential pkg-config cmake libffi-dev
+sudo apt install build-essential cmake libffi-dev llvm-dev pkg-config zlib1g-dev
 
 # Optional:
-sudo apt install ninja-build ccache
+sudo apt install ccache ninja-build
 
-# With tests:
+# For tests:
 sudo apt install libgtest-dev
 ```
 
-### Arch
+### Arch Linux
 
 ```sh
-sudo pacman -S gcc make pkgconf cmake libffi
+sudo pacman -S cmake gcc libffi llvm make pkgconf
 
 # Optional:
-sudo pacman -S ninja ccache
+sudo pacman -S ccache ninja
 
-# With tests:
-sudo pacman -S gtest perl diffutils
+# For tests:
+sudo pacman -S diffutils gtest perl
 ```
 
 ### Darwin
 
 ```sh
-brew install pkgconf cmake
+brew install cmake llvm pkgconf
 
 # Optional:
-brew install ninja ccache
+brew install ccache ninja
 
-# With tests:
+# For tests:
 brew install googletest
 ```
 
-## Build
-
-For native build use:
-```sh
-./build -n
-```
-
-# Building from source (with docker)
-
-Nickl build scripts are using docker containers as a build environment by default.
-
-Currently following target platforms are supported:
-- Linux
-- Windows (Mingw-w64)
-- Darwin
-
-> [!NOTE]
-> Darwin build with docker must only be done on Apple hardware, because it requires an Apple SDK.
-> [Please read Xcode license agreement.](https://www.apple.com/legal/sla/docs/xcode.pdf)
-
-## Install build dependencies
-
-### Ubuntu
+### Windows (MSYS2)
 
 ```sh
-sudo apt install docker.io jq
+pacman -S \
+  mingw-w64-x86_64-cmake \
+  mingw-w64-x86_64-dlfcn \
+  mingw-w64-x86_64-gcc \
+  mingw-w64-x86_64-libffi \
+  mingw-w64-x86_64-llvm \
+  mingw-w64-x86_64-pkgconf \
+  mingw-w64-x86_64-winpthreads \
+  ;
+
+# Optional:
+pacman -S \
+  mingw-w64-x86_64-ccache \
+  mingw-w64-x86_64-ninja \
+  ;
+
+# For tests:
+pacman -S \
+  mingw-w64-x86_64-diffutils \
+  mingw-w64-x86_64-gtest \
+  ;
 ```
 
-### Arch
+### Windows (MSVC)
 
-```sh
-sudo pacman -S docker jq
-```
-
-### Darwin
-
-```sh
-brew install docker colima jq
-```
-
-## Start container runtime
-
-### Linux
-
-```sh
-sudo systemctl start docker.service
-```
-
-Don't forget to add your user to the `docker` group.
-```sh
-sudo usermod -aG docker $USER
-newgrp docker # or relogin
-```
-
-### Darwin
-
-```sh
-colima start
-```
+[TODO]
 
 ## Build
-
-Build script will automatically pull or build the necessary docker image.
-
-### Linux
 
 ```sh
 ./build.sh
 ```
 
-### Darwin
-
+See help for more options:
 ```sh
-./build.sh -k /path/to/dir/with/sdk
+./build.sh -h
 ```

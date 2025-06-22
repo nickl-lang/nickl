@@ -9,7 +9,10 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "ntk/arena.h"
+#include "ntk/common.h"
 #include "ntk/file.h"
+#include "ntk/profiler.h"
 #include "ntk/string.h"
 
 NkPipe nk_pipe_create(void) {
@@ -29,43 +32,7 @@ void nk_pipe_close(NkPipe pipe) {
     nk_close(pipe.write_file);
 }
 
-#define MAX_ARGS 31
-#define CMD_BUF_SIZE 4095
-
-i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
-    char cmd_buf[CMD_BUF_SIZE + 1];
-    usize cmd_buf_pos = 0;
-
-    char *args[MAX_ARGS + 1];
-    usize argc = 0;
-
-    NkString cmd_str = nk_cs2s(cmd);
-    for (;;) {
-        cmd_str = nks_trimLeft(cmd_str);
-        if (!cmd_str.size) {
-            break;
-        }
-
-        if (argc == MAX_ARGS) {
-            errno = E2BIG;
-            return -1;
-        }
-        args[argc++] = &cmd_buf[cmd_buf_pos];
-
-        NkString arg = nks_chopByDelim(&cmd_str, ' ');
-        while (arg.size) {
-            if (cmd_buf_pos == CMD_BUF_SIZE) {
-                errno = E2BIG;
-                return -1;
-            }
-            cmd_buf[cmd_buf_pos++] = nks_first(arg);
-            arg.size--;
-            arg.data++;
-        }
-        cmd_buf[cmd_buf_pos++] = '\0';
-    }
-    args[argc++] = NULL;
-
+static i32 execAsyncImpl(char const *const *args, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     i32 err_pipe[2];
     if (pipe(err_pipe) < 0) {
         return -1;
@@ -134,11 +101,32 @@ i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, Nk
     }
 }
 
+i32 nk_execAsync(NkArena *scratch, NkString cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+    i32 ret = 0;
+    NK_PROF_FUNC() {
+        NK_ARENA_SCOPE(scratch) {
+            NkStringArray const strs = nks_shell_lex(scratch, cmd);
+
+            char const **args = nk_arena_allocTn(scratch, char const *, strs.size + 1);
+            NK_ITERATE(NkString const *, it, strs) {
+                args[NK_INDEX(it, strs)] = it->data;
+            }
+            args[strs.size] = NULL;
+
+            ret = execAsyncImpl(args, process, in, out, err);
+        }
+    }
+    return ret;
+}
+
 i32 nk_waitProc(NkHandle process, i32 *exit_status) {
+    NK_PROF_FUNC_BEGIN();
+
     if (!nk_handleIsNull(process)) {
         for (;;) {
             i32 wstatus = 0;
             if (waitpid(handle2pid(process), &wstatus, 0) < 0) {
+                NK_PROF_END();
                 return -1;
             }
 
@@ -146,6 +134,7 @@ i32 nk_waitProc(NkHandle process, i32 *exit_status) {
                 if (exit_status) {
                     *exit_status = WEXITSTATUS(wstatus);
                 }
+                NK_PROF_END();
                 return 0;
             }
 
@@ -153,10 +142,12 @@ i32 nk_waitProc(NkHandle process, i32 *exit_status) {
                 if (exit_status) {
                     *exit_status = 128 + WTERMSIG(wstatus);
                 }
+                NK_PROF_END();
                 return 0;
             }
         }
     } else {
+        NK_PROF_END();
         return 0;
     }
 }

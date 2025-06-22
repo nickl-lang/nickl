@@ -1,7 +1,9 @@
 #include "ntk/process.h"
 
 #include "common.h"
+#include "ntk/arena.h"
 #include "ntk/file.h"
+#include "ntk/string_builder.h"
 
 NkPipe nk_pipe_create(void) {
     NkPipe pip = {0};
@@ -30,7 +32,7 @@ void nk_pipe_close(NkPipe pipe) {
     nk_close(pipe.write_file);
 }
 
-i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+static i32 execAsyncImpl(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
     STARTUPINFO siStartInfo;
     ZeroMemory(&siStartInfo, sizeof(siStartInfo));
     siStartInfo.cb = sizeof(STARTUPINFO);
@@ -97,6 +99,18 @@ i32 nk_execAsync(char const *cmd, NkHandle *process, NkPipe *in, NkPipe *out, Nk
     *process = native2handle(piProcInfo.hProcess);
 
     return 0;
+}
+
+i32 nk_execAsync(NkArena *scratch, NkString cmd, NkHandle *process, NkPipe *in, NkPipe *out, NkPipe *err) {
+    i32 ret = 0;
+    NK_ARENA_SCOPE(scratch) {
+        NkStringBuilder cmd_nt = {.alloc = nk_arena_getAllocator(scratch)};
+        nksb_appendStr(&cmd_nt, cmd);
+        nksb_appendNull(&cmd_nt);
+
+        ret = execAsyncImpl(cmd_nt.data, process, in, out, err);
+    }
+    return ret;
 }
 
 i32 nk_waitProc(NkHandle process, i32 *exit_status) {

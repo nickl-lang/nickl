@@ -1,4 +1,4 @@
-extern "c" puts
+extern "c" proc puts(:i64) :i32
 
 local proc invoke(:i64 %cb) {
     call %cb, ()
@@ -13,6 +13,11 @@ local proc callback() {
 pub proc _entry() {
     call invoke, (callback)
     ret
+}
+
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
 }
 
 /* @output

@@ -1,4 +1,4 @@
-extern "c" printf
+extern "c" proc printf(:i64, ...) :i32
 
 local proc allocate() :i64 {
     mov 42 -> :i64 %res
@@ -7,12 +7,12 @@ local proc allocate() :i64 {
 }
 
 local proc free(:i64 %resource) {
-    call printf, ("free(%zi)\n", ..., resource) -> :i32
+    call printf, ("free(%zi)\n", ..., %resource) -> :i32
     ret
 }
 
 local proc use(:i64 %resource) {
-    call printf, ("use(%zi)\n", ..., resource) -> :i32
+    call printf, ("use(%zi)\n", ..., %resource) -> :i32
     ret
 }
 
@@ -58,6 +58,11 @@ comment "<<<<<< end defer"
     call printf, ("done\n", ...) -> :i32
     ret
 
+}
+
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
 }
 
 /* @output

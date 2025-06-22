@@ -126,11 +126,8 @@ void nk_log_init(NkLogOptions opt) {
             .stream_buf =
                 {
                     .file = nk_stderr(),
-                    .buf = s_log.buf,
-                    .size = LOG_BUFFER_SIZE,
+                    .buf = {s_log.buf, LOG_BUFFER_SIZE},
                 },
-            .out = nk_file_getBufferedWriteStream(&s_log.stream_buf),
-
             .start_time = nk_now_ns(),
             .log_level = env_log_level ? parseEnvLogLevel(env_log_level) : opt.log_level,
             .mtx = nk_mutex_alloc(NkMutex_Recursive),
@@ -138,5 +135,6 @@ void nk_log_init(NkLogOptions opt) {
                 opt.color_mode == NkLogColorMode_Always || (opt.color_mode == NkLogColorMode_Auto && nk_isatty(2)),
             .initialized = true,
         };
+        s_log.out = nk_file_getBufferedWriteStream(&s_log.stream_buf);
     }
 }

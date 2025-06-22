@@ -2,7 +2,10 @@
 
 #include <ctype.h>
 
+#include "ntk/arena.h"
+#include "ntk/dyn_array.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
@@ -20,7 +23,7 @@ NkString nks_copyNt(NkAllocator alloc, NkString src) {
 }
 
 NkString nks_trimLeft(NkString str) {
-    while (str.size && nks_first(str) == ' ') {
+    while (str.size && isspace(nks_first(str))) {
         str.size -= 1;
         str.data += 1;
     }
@@ -28,7 +31,7 @@ NkString nks_trimLeft(NkString str) {
 }
 
 NkString nks_trimRight(NkString str) {
-    while (str.size && nks_last(str) == ' ') {
+    while (str.size && isspace(nks_last(str))) {
         str.size -= 1;
     }
     return str;
@@ -229,11 +232,55 @@ i32 nks_sanitize(NkStream out, NkString str) {
             if (isprint(str.data[i])) {
                 WRITE(nk_stream_write(out, &str.data[i], 1));
             } else {
-                WRITE(nk_printf(out, "\\x%" PRIx8, str.data[i] & 0xff));
+                WRITE(nk_printf(out, "\\%02" PRIx8, str.data[i] & 0xff));
             }
         }
     }
     return ret;
+}
+
+NkStringArray nks_shell_lex(NkArena *arena, NkString str) {
+    NkDynArray(NkString) tokens = {.alloc = nk_arena_getAllocator(arena)};
+    NkStringBuilder token = {.alloc = nk_arena_getAllocator(arena)};
+
+    char quote = 0;
+    for (usize i = 0; i < str.size; i++) {
+        char const c = str.data[i];
+
+        if (c == '\\' && i + 1 < str.size) {
+            nksb_append(&token, str.data[++i]);
+        }
+
+        else if (quote) {
+            if (c == quote) {
+                quote = 0;
+            } else {
+                nksb_append(&token, c);
+            }
+        } else if (c == '\'' || c == '"') {
+            quote = c;
+        }
+
+        else if (isspace(c)) {
+            if (token.data) {
+                nksb_appendNull(&token);
+                nkda_append(&tokens, ((NkString){NKS_INIT(token)}));
+
+                token = (NkStringBuilder){.alloc = nk_arena_getAllocator(arena)};
+            }
+        }
+
+        else {
+            nksb_append(&token, c);
+        }
+    }
+
+    if (token.data) {
+        nksb_appendNull(&token);
+        nkda_append(&tokens, ((NkString){NKS_INIT(token)}));
+    }
+
+    return (NkStringArray){NKS_INIT(tokens)};
 }
 
 char const *nk_tprintf(NkArena *arena, char const *fmt, ...) {

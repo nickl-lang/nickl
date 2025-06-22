@@ -96,14 +96,15 @@ void _jumpTo(NkBcRef const &ref) {
 }
 
 void _jumpCall(NkBcFunct fn, nkval_t ret, nkval_t args) {
-    ctx.ctrl_stack.emplace_back(ControlFrame{
-        .stack_frame = ctx.stack_frame,
-        .base_frame = ctx.base.frame,
-        .base_arg = ctx.base.arg,
-        .base_ret = ctx.base.ret,
-        .base_instr = ctx.base.instr,
-        .pinstr = ctx.pinstr,
-    });
+    ctx.ctrl_stack.emplace_back(
+        ControlFrame{
+            .stack_frame = ctx.stack_frame,
+            .base_frame = ctx.base.frame,
+            .base_arg = ctx.base.arg,
+            .base_ret = ctx.base.ret,
+            .base_instr = ctx.base.instr,
+            .pinstr = ctx.pinstr,
+        });
 
     ctx.stack_frame = nk_arena_grab(&ctx.stack);
     ctx.base.frame = (u8 *)nk_arena_allocAligned(&ctx.stack, fn->frame_size, alignof(max_align_t));

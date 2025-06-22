@@ -15,6 +15,7 @@ enum {
 
     NklToken_Id,
     NklToken_Int,
+    NklToken_IntHex,
     NklToken_Float,
     NklToken_String,
     NklToken_EscapedString,

@@ -123,7 +123,7 @@ static NklAstNode *pushNode(ParserState *p) {
         ((NklAstNode){
             .token_idx = p->cur_token - p->tokens.data,
         }));
-    return &nk_slice_last(p->nodes);
+    return &nks_last(p->nodes);
 }
 
 static bool parseNode(ParserState *p) {
@@ -183,7 +183,7 @@ static bool parseNode(ParserState *p) {
 }
 
 static bool parse(ParserState *p) {
-    nk_assert(p->tokens.size && nk_slice_last(p->tokens).id == NklToken_Eof && "ill-formed token stream");
+    nk_assert(p->tokens.size && nks_last(p->tokens).id == NklToken_Eof && "ill-formed token stream");
 
     NklAstNode *node = pushNode(p);
     node->id = nk_cs2atom("list");
@@ -237,11 +237,11 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
                 .file = 0,
                 .text = text,
                 .tokens = tokens,
-                .nodes = {NK_SLICE_INIT(p.nodes)},
+                .nodes = {NKS_INIT(p.nodes)},
             },
             log);
     }
 
-    *out_nodes = (NklAstNodeArray){NK_SLICE_INIT(p.nodes)};
+    *out_nodes = (NklAstNodeArray){NKS_INIT(p.nodes)};
     return true;
 }

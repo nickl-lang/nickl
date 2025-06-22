@@ -31,22 +31,23 @@ void printErrorUsage() {
 }
 
 void printUsage() {
-    printf("Usage: " NK_BINARY_NAME
-           " [options] file"
-           "\nOptions:"
-           "\n    -o, --output <file>                      Output file path"
-           "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
-           "\n    -l <lib>                                 Link the library <lib>"
-           "\n    -L <dir>                                 Search dir for linked libraries"
-           "\n    -g                                       Add debug information"
-           "\n    -c, --color {auto,always,never}          Choose when to color output"
-           "\n    -h, --help                               Display this message and exit"
-           "\n    -v, --version                            Show version information"
+    printf(
+        "Usage: " NK_BINARY_NAME
+        " [options] file"
+        "\nOptions:"
+        "\n    -o, --output <file>                      Output file path"
+        "\n    -k, --kind {run,exe,shared,static,obj}   Output file kind"
+        "\n    -l <lib>                                 Link the library <lib>"
+        "\n    -L <dir>                                 Search dir for linked libraries"
+        "\n    -g                                       Add debug information"
+        "\n    -c, --color {auto,always,never}          Choose when to color output"
+        "\n    -h, --help                               Display this message and exit"
+        "\n    -v, --version                            Show version information"
 #ifdef ENABLE_LOGGING
-           "\nDeveloper options:"
-           "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
+        "\nDeveloper options:"
+        "\n    -t, --loglevel {none,error,warning,info,debug,trace}   Select logging level"
 #endif // ENABLE_LOGGING
-           "\n");
+        "\n");
 }
 
 void printVersion() {
@@ -253,7 +254,7 @@ int main(int /*argc*/, char **argv) {
         nk_atom_deinit();
     };
 
-    auto nkl = nkl_state_create({NK_SLICE_INIT(extra_args)}, lexer_proc, parser_proc);
+    auto nkl = nkl_state_create({NKS_INIT(extra_args)}, lexer_proc, parser_proc);
     defer {
         nkl_state_free(nkl);
     };
@@ -290,7 +291,7 @@ int main(int /*argc*/, char **argv) {
             nkl,
             in_file,
             {
-                .compiler_binary = nk_cs2s("gcc"), // TODO: Hardcoded C compiler
+                .compiler_binary = nk_cs2s("cc"), // TODO: Hardcoded C compiler
                 .additional_flags{NKS_INIT(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,

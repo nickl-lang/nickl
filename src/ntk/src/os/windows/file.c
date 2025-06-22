@@ -66,12 +66,12 @@ NkHandle nk_open(char const *path, i32 flags) {
                                       : (flags & NkOpenFlags_Truncate) ? TRUNCATE_EXISTING
                                                                        : OPEN_EXISTING;
         HANDLE hFile = CreateFile(
-            path,                  // LPCSTR                lpFileName,
-            dwDesiredAccess,       // DWORD                 dwDesiredAccess,
-            dwShareMode,           // DWORD                 dwShareMode,
-            NULL,                  // LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-            dwCreationDisposition, // DWORD                 dwCreationDisposition,
-            FILE_ATTRIBUTE_NORMAL, // DWORD                 dwFlagsAndAttributes,
+            path,                  // LPCSTR                lpFileName
+            dwDesiredAccess,       // DWORD                 dwDesiredAccess
+            dwShareMode,           // DWORD                 dwShareMode
+            NULL,                  // LPSECURITY_ATTRIBUTES lpSecurityAttributes
+            dwCreationDisposition, // DWORD                 dwCreationDisposition
+            FILE_ATTRIBUTE_NORMAL, // DWORD                 dwFlagsAndAttributes
             NULL                   // HANDLE                hTemplateFile
         );
         if (hFile != INVALID_HANDLE_VALUE) {

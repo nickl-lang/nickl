@@ -3,5 +3,5 @@ corelib_dir :: "@CORELIB_DIR@";
 libc_name :: "@SYSTEM_LIBC@";
 libm_name :: "@SYSTEM_LIBM@";
 
-c_compiler :: "gcc";
+c_compiler :: "cc";
 c_compiler_flags :: "-O2";

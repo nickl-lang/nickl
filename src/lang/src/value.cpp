@@ -82,12 +82,13 @@ nktype_t nkl_get_vm_fn(NktFnInfo info) {
     pushVal(fp, info.is_variadic);
 
     return getTypeByFingerprint(std::move(fp), [=]() {
-        return &s_vm_types.emplace_back(nkt_get_fn(NktFnInfo{
-            .ret_t = info.ret_t,
-            .args_t = info.args_t,
-            .call_conv = info.call_conv,
-            .is_variadic = info.is_variadic,
-        }));
+        return &s_vm_types.emplace_back(nkt_get_fn(
+            NktFnInfo{
+                .ret_t = info.ret_t,
+                .args_t = info.args_t,
+                .call_conv = info.call_conv,
+                .is_variadic = info.is_variadic,
+            }));
     });
 }
 
@@ -171,15 +172,16 @@ nkltype_t nkl_get_array(nkltype_t elem_type, usize elem_count) {
     pushVal(fp, elem_count);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_array(tovmt(elem_type), elem_count),
-            .as{.arr{
-                .elem_type = elem_type,
-                .elem_count = elem_count,
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *nkl_get_vm_array(tovmt(elem_type), elem_count),
+                .as{.arr{
+                    .elem_type = elem_type,
+                    .elem_count = elem_count,
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -195,17 +197,18 @@ nkltype_t nkl_get_fn(NkltFnInfo info) {
     pushVal(fp, info.is_variadic);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_fn(tovmf(info)),
-            .as{.fn{
-                .ret_t = info.ret_t,
-                .args_t = info.args_t,
-                .call_conv = info.call_conv,
-                .is_variadic = info.is_variadic,
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *nkl_get_vm_fn(tovmf(info)),
+                .as{.fn{
+                    .ret_t = info.ret_t,
+                    .args_t = info.args_t,
+                    .call_conv = info.call_conv,
+                    .is_variadic = info.is_variadic,
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -218,14 +221,15 @@ nkltype_t nkl_get_numeric(NkNumericValueType value_type) {
     pushVal(fp, value_type);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_numeric(value_type),
-            .as{.num{
-                .value_type = value_type,
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *nkl_get_vm_numeric(value_type),
+                .as{.num{
+                    .value_type = value_type,
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -239,15 +243,16 @@ nkltype_t nkl_get_ptr(nkltype_t target_type, bool is_const) {
     pushVal(fp, is_const);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_ptr(tovmt(target_type)),
-            .as{.ptr{
-                .target_type = target_type,
-                .is_const = is_const,
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *nkl_get_vm_ptr(tovmt(target_type)),
+                .as{.ptr{
+                    .target_type = target_type,
+                    .is_const = is_const,
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -267,17 +272,18 @@ nkltype_t nkl_get_tuple(NkAllocator alloc, NklTypeArray types, usize stride) {
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto const layout = nk_calcTupleLayout((nktype_t const *)types.data, types.size, alloc, stride);
-        return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t const *)types.data, types.size, stride),
-            .as{.tuple{
-                .elems{
-                    .data = (NklTupleElemInfo *)layout.info_ar.data,
-                    .size = layout.info_ar.size,
-                },
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *nkl_get_vm_tuple(alloc, (nktype_t const *)types.data, types.size, stride),
+                .as{.tuple{
+                    .elems{
+                        .data = (NklTupleElemInfo *)layout.info_ar.data,
+                        .size = layout.info_ar.size,
+                    },
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -290,12 +296,13 @@ nkltype_t nkl_get_void() {
     pushVal(fp, (usize)0);
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
-        return &s_types.emplace_back(NklType{
-            .vm_type = *nkl_get_vm_void(),
-            .as{},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *nkl_get_vm_void(),
+                .as{},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -308,13 +315,14 @@ nkltype_t nkl_get_typeref() {
 
     return (nkltype_t)getTypeByFingerprint(std::move(fp), [=]() {
         auto const void_ptr_t = nkl_get_ptr(nkl_get_void());
-        return &s_types.emplace_back(NklType{
-            .vm_type = *tovmt(void_ptr_t),
-            .as{},
-            .tclass = tclass,
-            .id = s_next_id++,
-            .underlying_type = void_ptr_t,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *tovmt(void_ptr_t),
+                .as{},
+                .tclass = tclass,
+                .id = s_next_id++,
+                .underlying_type = void_ptr_t,
+            });
     });
 }
 
@@ -339,13 +347,14 @@ nkltype_t nkl_get_any(NkAllocator alloc) {
             },
         };
         auto const underlying_type = nkl_get_struct(alloc, {fields, NK_ARRAY_COUNT(fields)});
-        return &s_types.emplace_back(NklType{
-            .vm_type = *tovmt(underlying_type),
-            .as{},
-            .tclass = tclass,
-            .id = s_next_id++,
-            .underlying_type = underlying_type,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *tovmt(underlying_type),
+                .as{},
+                .tclass = tclass,
+                .id = s_next_id++,
+                .underlying_type = underlying_type,
+            });
     });
 }
 
@@ -372,16 +381,17 @@ nkltype_t nkl_get_slice(NkAllocator alloc, nkltype_t elem_type, bool is_const) {
             },
         };
         auto const underlying_type = nkl_get_struct(alloc, {fields, NK_ARRAY_COUNT(fields)});
-        return &s_types.emplace_back(NklType{
-            .vm_type = *tovmt(underlying_type),
-            .as{.slice{
-                .target_type = elem_type,
-                .is_const = is_const,
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-            .underlying_type = underlying_type,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *tovmt(underlying_type),
+                .as{.slice{
+                    .target_type = elem_type,
+                    .is_const = is_const,
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+                .underlying_type = underlying_type,
+            });
     });
 }
 
@@ -401,18 +411,19 @@ nkltype_t nkl_get_struct(NkAllocator alloc, NklFieldArray fields) {
         auto fields_data = (NklField *)nk_alloc(alloc, fields.size * sizeof(NklField));
         std::memcpy(fields_data, fields.data, fields.size * sizeof(NklField));
         auto underlying_type = nkl_get_tuple(alloc, {&fields.data[0].type, fields.size}, sizeof(fields.data[0]));
-        return &s_types.emplace_back(NklType{
-            .vm_type = *tovmt(underlying_type),
-            .as{.strct{
-                .fields{
-                    .data = fields_data,
-                    .size = fields.size,
-                },
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-            .underlying_type = underlying_type,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *tovmt(underlying_type),
+                .as{.strct{
+                    .fields{
+                        .data = fields_data,
+                        .size = fields.size,
+                    },
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+                .underlying_type = underlying_type,
+            });
     });
 }
 
@@ -442,17 +453,18 @@ nkltype_t nkl_get_union(NkAllocator alloc, NklFieldArray fields) {
         }
         auto vm_type = *tovmt(largest_type);
         vm_type.align = max_align;
-        return &s_types.emplace_back(NklType{
-            .vm_type = vm_type,
-            .as{.strct{
-                .fields{
-                    .data = fields_data,
-                    .size = fields.size,
-                },
-            }},
-            .tclass = tclass,
-            .id = s_next_id++,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = vm_type,
+                .as{.strct{
+                    .fields{
+                        .data = fields_data,
+                        .size = fields.size,
+                    },
+                }},
+                .tclass = tclass,
+                .id = s_next_id++,
+            });
     });
 }
 
@@ -482,13 +494,14 @@ nkltype_t nkl_get_enum(NkAllocator alloc, NklFieldArray fields) {
             },
         };
         auto const underlying_type = nkl_get_struct(alloc, {enum_fields, NK_ARRAY_COUNT(enum_fields)});
-        return &s_types.emplace_back(NklType{
-            .vm_type = *tovmt(underlying_type),
-            .as{},
-            .tclass = tclass,
-            .id = s_next_id++,
-            .underlying_type = underlying_type,
-        });
+        return &s_types.emplace_back(
+            NklType{
+                .vm_type = *tovmt(underlying_type),
+                .as{},
+                .tclass = tclass,
+                .id = s_next_id++,
+                .underlying_type = underlying_type,
+            });
     });
 }
 

@@ -1,10 +1,9 @@
 FROM linux AS linux-dev
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdb \
     python3-dev \
  && rm -rf /var/lib/apt/lists/*
-
-COPY --from=gdb-linux ${PREFIX} ${PREFIX}
 
 RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && cwget {{GTEST_URL}} \
@@ -25,6 +24,7 @@ RUN --mount=type=cache,dst=${CWGET_CACHE_DIR} cd /root \
  && tar xvf {{JSON_C_VERSION}}.tar.gz \
  && cd json-c-{{JSON_C_VERSION}} \
  && cmake -B build -GNinja \
+      -DBUILD_APPS=OFF \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=${PREFIX} \
  && ninja -C build \

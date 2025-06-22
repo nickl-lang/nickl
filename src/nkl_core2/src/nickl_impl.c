@@ -3,22 +3,39 @@
 #include "ast_parser.h"
 #include "ast_tokens.h"
 #include "ir_tokens.h"
+#include "nkb/ir.h"
 #include "nkl/core/lexer.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
+#include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
-_Thread_local NklState s_nkl;
-
 NK_LOG_USE_SCOPE(nickl);
 
-NK_PRINTF_LIKE(3) void nickl_reportError(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {
+#define TRY(EXPR, ...)          \
+    do {                        \
+        if (!(EXPR)) {          \
+            return __VA_ARGS__; \
+        }                       \
+    } while (0)
+
+void nickl_reportError(NklState nkl, char const *fmt, ...) {
+    NK_LOG_TRC("%s", __func__);
+
+    va_list ap;
+    va_start(ap, fmt);
+    nickl_vreportError(nkl, (NklSourceLocation){0}, fmt, ap);
+    va_end(ap);
+}
+
+void nickl_reportErrorLoc(NklState nkl, NklSourceLocation loc, char const *fmt, ...) {
     NK_LOG_TRC("%s", __func__);
 
     va_list ap;
@@ -28,6 +45,15 @@ NK_PRINTF_LIKE(3) void nickl_reportError(NklState nkl, NklSourceLocation loc, ch
 }
 
 void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va_list ap) {
+#ifdef ENABLE_LOGGING
+    {
+        va_list ap_copy;
+        va_copy(ap_copy, ap);
+        NK_LOGV(NkLogLevel_Error, fmt, ap_copy);
+        va_end(ap_copy);
+    }
+#endif // ENABLE_LOGGING
+
     NklError *err = nk_arena_allocT(&nkl->arena, NklError);
     *err = (NklError){
         .next = nkl->error,
@@ -37,37 +63,68 @@ void nickl_vreportError(NklState nkl, NklSourceLocation loc, char const *fmt, va
     nkl->error = err;
 }
 
-#define TRY(EXPR)      \
-    do {               \
-        if (!(EXPR)) { \
-            return 0;  \
-        }              \
-    } while (0)
+static void defineTextImpl(NklState nkl, NkAtom file, NkString text) {
+    NkAtomStringMap_insert(&nkl->text_map, file, text);
+}
+
+void nickl_printModuleName(NkStream out, NkAtom mod) {
+    nkir_printName(out, "module", mod);
+}
+
+void nickl_printSymbol(NkStream out, NkAtom mod, NkAtom sym) {
+    nickl_printModuleName(out, mod);
+    nk_printf(out, "::");
+    nkir_printSymbolName(out, sym);
+}
 
 bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache text
+    NkString text;
 
-    NkAllocator const alloc = nk_arena_getAllocator(&nkl->arena);
+    NkString *found = NkAtomStringMap_find(&nkl->text_map, file);
+    if (found) {
+        NK_LOG_STREAM_DBG {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "Using cached text for file \"");
+            nkir_printName(log, "file", file);
+            nk_printf(log, "\"");
+        }
+        text = *found;
+    } else {
+        NK_LOG_DBG("Loading text for file `%s`", nk_atom2cs(file));
 
-    if (!nk_file_read(alloc, nk_atom2s(file), out_text)) {
-        nickl_reportError(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
-        return false;
+        NkAllocator const alloc = nk_arena_getAllocator(&nkl->arena);
+
+        if (!nk_file_read(alloc, nk_atom2s(file), &text)) {
+            nickl_reportErrorLoc(nkl, (NklSourceLocation){0}, "%s: %s", nk_atom2cs(file), nk_getLastErrorString());
+            return false;
+        }
+
+        defineTextImpl(nkl, file, text);
     }
 
+    *out_text = text;
+    return true;
+}
+
+bool nickl_defineText(NklState nkl, NkAtom file, NkString text) {
+    NK_LOG_TRC("%s", __func__);
+
+    defineTextImpl(nkl, file, nk_tsprintf(&nkl->arena, NKS_FMT, NKS_ARG(text)));
     return true;
 }
 
 char const *s_ir_tokens[] = {
     "end of file", // NklToken_Eof,
 
-    "identifier",       // NklToken_Id,
-    "integer constant", // NklToken_Int,
-    "float constant",   // NklToken_Float,
-    "string constant",  // NklToken_String,
-    "string constant",  // NklToken_EscapedString,
-    "newline",          // NklToken_Newline,
+    "identifier",           // NklToken_Id,
+    "integer constant",     // NklToken_Int,
+    "hex integer constant", // NklToken_IntHex,
+    "float constant",       // NklToken_Float,
+    "string constant",      // NklToken_String,
+    "string constant",      // NklToken_EscapedString,
+    "newline",              // NklToken_Newline,
 
     "error", // NklToken_Error,
 
@@ -125,7 +182,7 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     // TODO: Cache tokens
 
     NkString text;
-    TRY(nickl_getText(nkl, file, &text));
+    TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
@@ -141,8 +198,8 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             },
             out_tokens)) {
         nk_assert(out_tokens->size);
-        NklToken const err_token = nk_slice_last(*out_tokens);
-        nickl_reportError(
+        NklToken const err_token = nks_last(*out_tokens);
+        nickl_reportErrorLoc(
             nkl,
             (NklSourceLocation){
                 .file = nk_atom2s(file),
@@ -161,12 +218,13 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
 char const *s_ast_tokens[] = {
     "end of file", // NklToken_Eof
 
-    "identifier",       // NklToken_Id
-    "integer constant", // NklToken_Int
-    "float constant",   // NklToken_Float
-    "string constant",  // NklToken_String
-    "string constant",  // NklToken_EscapedString
-    "newline",          // NklToken_Newline
+    "identifier",           // NklToken_Id
+    "integer constant",     // NklToken_Int
+    "hex integer constant", // NklToken_IntHex,
+    "float constant",       // NklToken_Float
+    "string constant",      // NklToken_String
+    "string constant",      // NklToken_EscapedString
+    "newline",              // NklToken_Newline
 
     "error", // NklToken_Error
 
@@ -188,7 +246,7 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     // TODO: Cache tokens
 
     NkString text;
-    TRY(nickl_getText(nkl, file, &text));
+    TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
@@ -202,8 +260,8 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             },
             out_tokens)) {
         nk_assert(out_tokens->size);
-        NklToken const err_token = nk_slice_last(*out_tokens);
-        nickl_reportError(
+        NklToken const err_token = nks_last(*out_tokens);
+        nickl_reportErrorLoc(
             nkl,
             (NklSourceLocation){
                 .file = nk_atom2s(file),
@@ -225,12 +283,13 @@ bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
     // TODO: Cache ast
 
     TRY(nkl_ast_parse(
-        &(NklAstParserData){
-            .nkl = nkl,
-            .file = file,
-            .token_names = s_ast_tokens,
-        },
-        out_nodes));
+            &(NklAstParserData){
+                .nkl = nkl,
+                .file = file,
+                .token_names = s_ast_tokens,
+            },
+            out_nodes),
+        false);
 
     return true;
 }
@@ -270,18 +329,124 @@ NkAtom nickl_findFile(NklState nkl, NkAtom base, NkString name) {
     return nickl_canonicalizePath(base_dir, name);
 }
 
-NkString nickl_translateLib(NklModule mod, NkString alias) {
-    NK_ITERATE(LibAlias const *, it, mod->lib_aliases) {
-        if (nks_equal(alias, it->alias)) {
-            return it->lib;
+NkAtom nickl_translateLib(NklCompiler com, NkAtom alias) {
+    NkAtom *found = NkAtomMap_find(&com->lib_aliases, alias);
+    return found ? *found : alias;
+}
+
+static char const *getSymbolKind(NkIrSymbol const *sym) {
+    switch (sym->kind) {
+        case NkIrSymbol_None:
+            break;
+        case NkIrSymbol_Proc:
+            return "proc";
+        case NkIrSymbol_Data:
+            return "data";
+        case NkIrSymbol_Extern:
+            switch (sym->extrn.kind) {
+                case NkIrExtern_Proc:
+                    return "proc";
+                case NkIrExtern_Data:
+                    return "data";
+            }
+            break;
+    }
+    return "";
+}
+
+bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
+    NK_LOG_TRC("%s", __func__);
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        if (sym->kind == NkIrSymbol_Extern) {
+            nk_printf(log, "Declaring extern ");
+            if (sym->extrn.lib) {
+                nk_printf(log, "\"%s\" ", nk_atom2cs(sym->extrn.lib));
+            }
+        } else {
+            nk_printf(log, "Defining ");
+        }
+        nk_printf(log, "%s ", getSymbolKind(sym));
+        nickl_printSymbol(log, mod->name, sym->name);
+    }
+
+    NK_LOG_STREAM_INF {
+        NkArena *scratch = &mod->com->nkl->scratch;
+        NK_ARENA_SCOPE(scratch) {
+            NkStream log = nk_log_getStream();
+            nk_printf(log, "symbol:\n");
+            nkir_inspectSymbol(log, scratch, sym);
         }
     }
 
-    NK_ITERATE(LibAlias const *, it, mod->com->lib_aliases) {
-        if (nks_equal(alias, it->alias)) {
-            return it->lib;
+    // TODO: Check for symbol conflicts
+
+    nkir_moduleDefineSymbol(mod->ir, sym);
+
+    if (sym->kind == NkIrSymbol_Extern) {
+        NkAtomMap_insert(&mod->extern_syms, sym->name, sym->extrn.lib);
+    } else if (sym->vis == NkIrVisibility_Default) {
+        NK_ITERATE(NklModule const *, it, mod->mods_linked_to) {
+            NklModule const dst_mod = *it;
+            nickl_linkSymbol(dst_mod, mod, sym);
         }
     }
 
-    return alias;
+    return true;
+}
+
+bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
+    NK_LOG_TRC("%s", __func__);
+
+    NklState nkl = dst_mod->com->nkl;
+
+    if (sym->vis != NkIrVisibility_Default) {
+        return true;
+    }
+
+    NK_LOG_STREAM_DBG {
+        NkStream log = nk_log_getStream();
+        nk_printf(log, "Linking ");
+        nickl_printSymbol(log, dst_mod->name, sym->name);
+        nk_printf(log, " <- ");
+        nickl_printSymbol(log, src_mod->name, sym->name);
+    }
+
+    {
+        NkAtom *found = NkAtomMap_find(&dst_mod->extern_syms, sym->name);
+        if (found) {
+            NkAtom const found_name = *found;
+            if (found_name) {
+                if (found_name != src_mod->name) {
+                    nickl_reportError(nkl, "Symbol already exists with lib `%s`", nk_atom2cs(found_name));
+                    return false;
+                }
+            } else {
+                *found = src_mod->name;
+            }
+        } else {
+            NkAtomMap_insert(&dst_mod->extern_syms, sym->name, src_mod->name);
+        }
+    }
+
+    {
+        // TODO: Verify linker symbol compatibility
+        NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
+        if (found && found->kind != NkIrSymbol_Extern) {
+            NK_ARENA_SCOPE(&nkl->scratch) {
+                NkStringBuilder sb = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+                NkStream err = nksb_getStream(&sb);
+                nk_printf(err, "Failed to link ");
+                nickl_printSymbol(err, src_mod->name, sym->name);
+                nk_printf(err, " to ");
+                nickl_printSymbol(err, dst_mod->name, sym->name);
+                nk_printf(err, ", it's already defined");
+                nickl_reportError(nkl, NKS_FMT, NKS_ARG(sb));
+            }
+            return false;
+        }
+    }
+
+    return true;
 }

@@ -22,11 +22,11 @@ nktype_t getTypeByFp(NkIrCompiler c, ByteArray fp, F const &make_type) {
 
     std::lock_guard lk{c->mtx};
 
-    auto found = c->fpmap.find({NK_SLICE_INIT(fp)});
+    auto found = c->fpmap.find({NKS_INIT(fp)});
     if (found) {
         return *found;
     } else {
-        auto copy = nks_copy(nk_arena_getAllocator(&c->file_arena), {NK_SLICE_INIT(fp)});
+        auto copy = nks_copy(nk_arena_getAllocator(&c->file_arena), {NKS_INIT(fp)});
         return c->fpmap.insert(copy, make_type());
     }
 }
@@ -34,7 +34,7 @@ nktype_t getTypeByFp(NkIrCompiler c, ByteArray fp, F const &make_type) {
 template <class T>
 void pushVal(ByteArray &ar, T const v) {
     nkda_reserve(&ar, ar.size + sizeof(v));
-    memcpy(nk_slice_end(&ar), &v, sizeof(v));
+    memcpy(nks_end(&ar), &v, sizeof(v));
     ar.size += sizeof(v);
 }
 

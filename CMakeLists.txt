@@ -8,8 +8,6 @@ option(ENABLE_LOGGING "Enable logging" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 option(ENABLE_PROFILING "Enable profiling" OFF)
 
-option(TARGET_MACHINE "Target architecture for OSX build" "${CMAKE_HOST_SYSTEM_PROCESSOR}")
-
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -41,6 +39,10 @@ include(FindLibraryEx)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules_ex(LIBFFI libffi SHARED)
+
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 if(BUILD_TESTS)
     enable_testing()
@@ -111,10 +113,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
     set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
-    set(CMAKE_OSX_ARCHITECTURES "${TARGET_MACHINE}")
-    set(CMAKE_SYSTEM_PROCESSOR "${TARGET_MACHINE}")
-
     set(SYSTEM_INSTALL_DIR lib)
     set(SYSTEM_RPATH_ORIGIN "@executable_path")
 
@@ -151,12 +149,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     find_library_ex(LIBDL dl SHARED)
 
-    list(APPEND CMAKE_PREFIX_PATH ${PREFIX}/x86_64-w64-mingw32)
-
     find_library_ex(LIBSHLWAPI shlwapi SHARED)
     find_library_ex(LIBWINPTHREAD winpthread SHARED)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-use-cxa-atexit")
+    set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
@@ -174,15 +170,25 @@ string(TIMESTAMP BUILD_TIME UTC)
 message(STATUS "Build version: ${BUILD_VERSION}")
 message(STATUS "Build time: ${BUILD_TIME}")
 
-include(Package)
-string(TOLOWER "${CMAKE_SYSTEM_NAME}" SYSTEM_NAME)
-if(NOT DEFINED DEPLOY_PREFIX)
-    set(DEPLOY_PREFIX "${CMAKE_BINARY_DIR}")
-endif()
-add_package_target(
-    "${PROJECT_NAME}-${BUILD_VERSION}-${CMAKE_SYSTEM_PROCESSOR}-${SYSTEM_NAME}"
-    "${DEPLOY_PREFIX}"
+include(GetTargetTriple)
+get_target_triple(
+    TRIPLE TARGET_TRIPLE
     )
+
+message(STATUS "Target triple: ${TARGET_TRIPLE}")
+
+if(DEFINED ARTIFACTS_DIR)
+    string(TOLOWER "${CMAKE_SYSTEM_NAME}" SYSTEM_NAME)
+    set(PACKAGE_NAME "${PROJECT_NAME}-${BUILD_VERSION}-${TARGET_TRIPLE}")
+    if(CMAKE_BUILD_TYPE STREQUAL Debug)
+        set(PACKAGE_NAME "${PACKAGE_NAME}-debug")
+    endif()
+
+    set(CMAKE_INSTALL_PREFIX "${ARTIFACTS_DIR}/install/${PACKAGE_NAME}")
+
+    include(Package)
+    add_package_target("${PACKAGE_NAME}" "${ARTIFACTS_DIR}/deploy")
+endif()
 
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 set(CMAKE_INSTALL_RPATH "${SYSTEM_RPATH_ORIGIN}/../lib")

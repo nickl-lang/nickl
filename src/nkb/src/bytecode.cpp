@@ -309,7 +309,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
                 case NkIrRef_ExternData: {
                     auto data = ir.extern_data.data[ir_ref.index];
-                    auto sym = ExternSymTree_find(&ctx->extern_syms, data.name);
+                    auto sym = ExternSymTree_findItem(&ctx->extern_syms, data.name);
                     if (!sym) {
                         reportError(ctx, "undefined reference to `%s`", nk_atom2cs(data.name));
                         return false;
@@ -321,7 +321,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
                 case NkIrRef_ExternProc: {
                     auto proc = ir.extern_procs.data[ir_ref.index];
-                    auto sym = ExternSymTree_find(&ctx->extern_syms, proc.name);
+                    auto sym = ExternSymTree_findItem(&ctx->extern_syms, proc.name);
                     if (!sym) {
                         reportError(ctx, "undefined reference to `%s`", nk_atom2cs(proc.name));
                         return false;
@@ -524,7 +524,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
 
                 nkda_append(&bc_proc.instrs, {});
-                auto &instr = nk_slice_last(bc_proc.instrs);
+                auto &instr = nks_last(bc_proc.instrs);
                 instr.code = code;
                 for (usize ai = 0; ai < 3; ai++) {
                     if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {
@@ -582,7 +582,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
         nksb_printf(&sb, "_proc%zu", proc.idx);
     }
     nksb_printf(&sb, "\n");
-    inspect({NK_SLICE_INIT(bc_proc.instrs)}, nksb_getStream(&sb));
+    inspect({NKS_INIT(bc_proc.instrs)}, nksb_getStream(&sb));
     NK_LOG_INF(NKS_FMT, NKS_ARG(sb));
 #endif // ENABLE_LOGGING
 
@@ -651,5 +651,5 @@ NkString nkir_getRunErrorString(NkIrRunCtx ctx) {
 }
 
 void nkir_setExternSymAddr(NkIrRunCtx ctx, NkAtom sym, void *addr) {
-    ExternSymTree_insert(&ctx->extern_syms, ExternSym_kv{sym, addr});
+    ExternSymTree_insertItem(&ctx->extern_syms, ExternSym_kv{sym, addr});
 }

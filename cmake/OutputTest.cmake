@@ -32,10 +32,11 @@ function(def_output_test)
     make_directory("${ARG_WORKING_DIRECTORY}")
     add_test(
         NAME ${ARG_NAME}.${BASE_NAME}
-        COMMAND "${OUTPUT_TEST_SCRIPT}"
-            "--file=${TEST_FILE}"
-            "--cmd=${CMD}"
-            "--args=${ARGS}"
+        COMMAND sh -c " \
+            '${OUTPUT_TEST_SCRIPT}' \
+            '--file=${TEST_FILE}' \
+            '--cmd=${CMD}' \
+            '--args=${ARGS}'"
         WORKING_DIRECTORY "${ARG_WORKING_DIRECTORY}"
         )
 endfunction()

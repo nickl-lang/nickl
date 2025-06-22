@@ -127,13 +127,13 @@ void nkir_mergeModules(NkIrModule dst, NkIrModule src) {
     // TODO: Linear manual search in nkir module merge. Maybe just allow duplicates?
 
     for (auto const proc_id : nk_iterate(src->exported_procs)) {
-        if (!std::count(nk_slice_begin(&dst->exported_procs), nk_slice_end(&dst->exported_procs), proc_id)) {
+        if (!std::count(nks_begin(&dst->exported_procs), nks_end(&dst->exported_procs), proc_id)) {
             nkda_append(&dst->exported_procs, proc_id);
         }
     }
 
     for (auto const decl_id : nk_iterate(src->exported_data)) {
-        if (!std::count(nk_slice_begin(&dst->exported_data), nk_slice_end(&dst->exported_data), decl_id)) {
+        if (!std::count(nks_begin(&dst->exported_data), nks_end(&dst->exported_data), decl_id)) {
             nkda_append(&dst->exported_data, decl_id);
         }
     }
@@ -340,8 +340,8 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
         usize idx = instrs.size;
         nkda_append(&instrs, instr);
 
-        if (ranges.size && idx == nk_slice_last(ranges).end_idx) {
-            nk_slice_last(ranges).end_idx++;
+        if (ranges.size && idx == nks_last(ranges).end_idx) {
+            nks_last(ranges).end_idx++;
         } else {
             nkda_append(&ranges, {idx, idx + 1});
         }
@@ -410,7 +410,7 @@ void nkir_leave(NkIrProg ir) {
 
     nk_assert(proc.scopes.size && "mismatched enter/leave");
 
-    proc.cur_frame_size = nk_slice_last(proc.scopes);
+    proc.cur_frame_size = nks_last(proc.scopes);
     nkda_pop(&proc.scopes, 1);
 }
 
@@ -648,11 +648,13 @@ NkIrInstr nkir_make_comment(NkIrProg ir, NkString comment) {
 bool nkir_write(NkIrProg ir, NkIrModule mod, NkArena *tmp_arena, NkIrCompilerConfig conf) {
     NK_LOG_TRC("%s", __func__);
 
-    NkPipeStream src{};
-    bool res = nkcc_streamOpen(&src, conf);
+    char buf[512];
+    NkStream src;
+    NkPipeStream ps{};
+    bool res = nkcc_streamOpen(tmp_arena, &ps, NK_STATIC_BUF(buf), conf, &src);
     if (res) {
-        nkir_translate2c(tmp_arena, ir, mod, src.stream);
-        if (nkcc_streamClose(&src)) {
+        nkir_translate2c(tmp_arena, ir, mod, src);
+        if (nkcc_streamClose(&ps)) {
             reportError(ir, "C compiler `" NKS_FMT "` returned nonzero exit code", NKS_ARG(conf.compiler_binary));
             return false;
         }
@@ -765,10 +767,10 @@ static void inspectVal(NkIrProg ir, NkIrRef const &ref, NkStream out, bool force
                 NKIR_NUMERIC_ITERATE_INT(X)
 #undef X
                 case Float32:
-                    nk_printf(out, "%.*g", FLT_DIG, *(f32 *)data);
+                    nk_printf(out, "%.*g", FLT_DECIMAL_DIG, *(f32 *)data);
                     break;
                 case Float64:
-                    nk_printf(out, "%.*g", DBL_DIG, *(f64 *)data);
+                    nk_printf(out, "%.*g", DBL_DECIMAL_DIG, *(f64 *)data);
                     break;
                 default:
                     nk_assert(!"unreachable");
@@ -1103,7 +1105,7 @@ bool nkir_validateProc(NkIrProg ir, NkIrProc _proc) {
         auto const &block = ir->blocks.data[block_id];
 
         if (block.instr_ranges.size) {
-            auto const range = nk_slice_last(block.instr_ranges);
+            auto const range = nks_last(block.instr_ranges);
             if (range.begin_idx != range.end_idx) {
                 auto const &instr = ir->instrs.data[range.end_idx - 1];
                 if (instr.code != nkir_ret && instr.code != nkir_jmp) {

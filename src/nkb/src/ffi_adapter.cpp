@@ -29,7 +29,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
 
     ffi_type *ffi_t = nullptr;
 
-    auto found = TypeTree_find(&ctx->types, type->id);
+    auto found = TypeTree_findItem(&ctx->types, type->id);
     if (found) {
         NK_LOG_DBG("Found existing ffi type=%p", found->val);
         ffi_t = (ffi_type *)found->val;
@@ -105,7 +105,7 @@ ffi_type *getNativeHandle(NkFfiContext *ctx, nktype_t type) {
                 break;
         }
 
-        TypeTree_insert(&ctx->types, {type->id, ffi_t});
+        TypeTree_insertItem(&ctx->types, {type->id, ffi_t});
     }
 
 #ifdef ENABLE_LOGGING

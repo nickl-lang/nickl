@@ -1,45 +1,72 @@
-extern "c" printf
+extern "c" proc printf(:i64, ...) :i32
 
 local const ITER :i64 10
 
 local proc myatan(:f64 %x) :f64 {
-    mov %x -> :f64 %sum
-    mov %x -> :f64 %num
-    mov 1. -> :f64 %sign
-    mov 1. -> :f64 %denom
+    alloc :f64 -> %sum_addr
+    alloc :f64 -> %num_addr
+    alloc :f64 -> %sign_addr
+    alloc :f64 -> %denom_addr
+    alloc :u64 -> %i_addr
+
+    store %x -> %sum_addr
+    store %x -> %num_addr
+    store 1. -> %sign_addr
+    store 1. -> %denom_addr
+    store 0 -> %i_addr
+
     jmp @loop
 
 @loop
-    load ITER -> :i64 %iter
-    cmp lt :i64 %i, %iter -> :i8 %cond
+    load %num_addr -> :f64 %num
+    load %sum_addr -> :f64 %sum
+    load %sign_addr -> :f64 %sign
+    load %denom_addr -> :f64 %denom
+    load %i_addr -> :u64 %i
+
+    load ITER -> :u64 %iter
+    cmp lt :u64 %i, %iter -> :i8 %cond
     jmpz :i8 %cond, @endloop
 
-    mul %x, %num -> %num
-    mul %x, %num -> %num
-    add 2., %denom -> %denom
-    mul -1., %sign -> %sign
-    mul :f64 %sign, %num -> %tmp
-    div :f64 %tmp, %denom -> %tmp
-    add :f64 %sum, %tmp -> %sum
-    add 1, %i -> %i
+    mul %x, %num -> %num1
+    mul %x, %num1 -> %num2
+    add 2., %denom -> %denom1
+    mul -1., %sign -> %sign1
+    mul :f64 %sign1, %num2 -> %_1
+    div :f64 %_1, %denom1 -> %_2
+    add :f64 %sum, %_2 -> %sum1
+
+    add 1, %i -> %i1
+
+    store :f64 %num2 -> %num_addr
+    store :f64 %sum1 -> %sum_addr
+    store :f64 %sign1 -> %sign_addr
+    store :f64 %denom1 -> %denom_addr
+    store :u64 %i1 -> %i_addr
 
     jmp @loop
 
 @endloop
-    ret %sum
+    load %sum_addr -> :f64 %sum2
+    ret %sum2
 }
 
 pub proc _entry() {
-    call myatan, (0.2) -> :f64 %pi
-    call myatan, (0.0041841004184100415) -> :f64 %tmp
+    call myatan, (0.2) -> :f64 %_1
+    call myatan, (:f64 0x3F712358E75D3033) -> :f64 %_2
 
-    mul :f64 %pi, 4    -> %pi
-    sub :f64 %pi, %tmp -> %pi
-    mul :f64 %pi, 4    -> %pi
+    mul :f64 %_1, 4   -> %_3
+    sub :f64 %_3, %_2 -> %_4
+    mul :f64 %_4, 4   -> %_5
 
-    call printf, ("pi = %.*g\n", ..., :i32 16, :f64 %pi) -> :i32
+    call printf, ("pi = %.*g\n", ..., :i32 16, :f64 %_5) -> :i32
 
     ret
+}
+
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
 }
 
 /* @output

@@ -1,4 +1,4 @@
-extern "c" printf
+extern "c" proc printf(:i64, ...) :i32
 
 data g_value :i64
 proc getValue() :i64 {
@@ -33,6 +33,11 @@ pub proc _entry() {
     call printValue, ()
 
     ret
+}
+
+pub proc main(:i32 %argc, :i64 %argv) :i32 {
+    call _entry, ()
+    ret 0
 }
 
 /* @output

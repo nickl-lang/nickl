@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "nkb/ir.h"
+#include "ntk/arena.h"
 #include "ntk/log.h"
 #include "ntk/pipe_stream.h"
 #include "ntk/stream.h"
@@ -37,15 +38,25 @@ class cc_adapter : public testing::Test {
     }
 
     void TearDown() override {
+        nk_arena_free(&m_scratch);
         nksb_free(&m_output_filename_sb);
     }
 
 protected:
     std::string runGetStdout() {
-        NkPipeStream in;
-        auto res = nk_pipe_streamOpenRead(&in, m_conf.output_filename, false);
+        NkStream in;
+        NkPipeStream ps;
+        bool const res = nk_pipe_streamOpenRead(
+            {
+                .ps = &ps,
+                .scratch = &m_scratch,
+                .cmd = m_conf.output_filename,
+                .opt_buf = {},
+                .quiet = false,
+            },
+            &in);
         defer {
-            nk_pipe_streamClose(&in);
+            nk_pipe_streamClose(&ps);
         };
 
         EXPECT_TRUE(res);
@@ -55,7 +66,7 @@ protected:
             defer {
                 nksb_free(&sb);
             };
-            EXPECT_TRUE(nksb_readFromStream(&sb, in.stream));
+            EXPECT_TRUE(nksb_readFromStream(&sb, in));
             NK_LOG_DBG("out_str=\"" NKS_FMT "\"", NKS_ARG(sb));
             return nk_s2stdStr({NKS_INIT(sb)});
         } else {
@@ -64,6 +75,7 @@ protected:
     }
 
 protected:
+    NkArena m_scratch{};
     NkStringBuilder m_output_filename_sb{};
     NkIrCompilerConfig m_conf;
 };
@@ -71,34 +83,37 @@ protected:
 } // namespace
 
 TEST_F(cc_adapter, empty) {
-    NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    NkStream src;
+    NkPipeStream ps;
+    auto res = nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
     EXPECT_TRUE(res);
 
-    EXPECT_TRUE(nkcc_streamClose(&src));
+    EXPECT_TRUE(nkcc_streamClose(&ps));
 }
 
 TEST_F(cc_adapter, empty_main) {
-    NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    NkStream src;
+    NkPipeStream ps;
+    auto res = nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src.stream, "%s", "int main() {}\n");
+        nk_printf(src, "%s", "int main() {}\n");
     }
 
-    EXPECT_FALSE(nkcc_streamClose(&src));
+    EXPECT_FALSE(nkcc_streamClose(&ps));
 
     EXPECT_EQ(runGetStdout(), "");
 }
 
 TEST_F(cc_adapter, hello_world) {
-    NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    NkStream src;
+    NkPipeStream ps;
+    auto res = nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src.stream, "%s", R"(
+        nk_printf(src, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("Hello, World!");
@@ -106,18 +121,19 @@ int main() {
 )");
     }
 
-    EXPECT_FALSE(nkcc_streamClose(&src));
+    EXPECT_FALSE(nkcc_streamClose(&ps));
 
     EXPECT_EQ(runGetStdout(), "Hello, World!");
 }
 
 TEST_F(cc_adapter, undefined_var) {
-    NkPipeStream src;
-    auto res = nkcc_streamOpen(&src, m_conf);
+    NkStream src;
+    NkPipeStream ps;
+    auto res = nkcc_streamOpen(&m_scratch, &ps, {}, m_conf, &src);
     EXPECT_TRUE(res);
 
     if (res) {
-        nk_printf(src.stream, "%s", R"(
+        nk_printf(src, "%s", R"(
 #include <stdio.h>
 int main() {
     printf("%i", var);
@@ -125,5 +141,5 @@ int main() {
 )");
     }
 
-    EXPECT_TRUE(nkcc_streamClose(&src));
+    EXPECT_TRUE(nkcc_streamClose(&ps));
 }

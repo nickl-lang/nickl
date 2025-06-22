@@ -1,13 +1,13 @@
 #include <stdint.h>
 
-#include "ntk/common.h"
+#define EXPORT __attribute__((__visibility__("default")))
 
-NK_EXPORT i64 g_test_global_var;
+EXPORT int64_t g_test_global_var;
 
-NK_EXPORT void setTestGlobalVar(i64 val) {
+EXPORT void setTestGlobalVar(int64_t val) {
     g_test_global_var = val;
 }
 
-NK_EXPORT i64 getTestGlobalVar() {
+EXPORT int64_t getTestGlobalVar() {
     return g_test_global_var;
 }

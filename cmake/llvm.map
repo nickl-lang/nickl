@@ -1,0 +1,8 @@
+{
+  local:
+    *LLVM*;
+    _Z*K4llvm*;
+    _Z*LLVM*;
+    _Z*N4llvm*;
+    llvm_*;
+};

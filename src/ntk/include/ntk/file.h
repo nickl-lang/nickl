@@ -15,8 +15,7 @@ NK_EXPORT NkStream nk_file_getStream(NkHandle file);
 
 typedef struct {
     NkHandle file;
-    char *buf;
-    usize size;
+    NkStringBuf buf;
     usize _used;
 } NkFileStreamBuf;
 

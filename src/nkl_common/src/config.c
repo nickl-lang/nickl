@@ -42,7 +42,7 @@ bool readConfig(nks_config *conf, NkString file) {
             }
             NkString const field_copy = nks_copyNt(conf->alloc, nks_trim(field));
             NkString const line_copy = nks_copyNt(conf->alloc, nks_trim(line));
-            nks_config_insert(conf, (NkString_kv){field_copy, line_copy});
+            nks_config_insertItem(conf, (NkString_kv){field_copy, line_copy});
         }
 
         lin++;

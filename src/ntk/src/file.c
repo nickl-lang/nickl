@@ -62,7 +62,7 @@ NkStream nk_file_getStream(NkHandle file) {
 }
 
 static i32 bufferedWriteStreamFlush(NkFileStreamBuf *stream_buf) {
-    i32 ret = nk_write(stream_buf->file, stream_buf->buf, stream_buf->_used);
+    i32 ret = nk_write(stream_buf->file, stream_buf->buf.data, stream_buf->_used);
     stream_buf->_used = 0;
     return ret;
 }
@@ -71,16 +71,19 @@ static i32 bufferedWriteStreamProc(void *stream_data, char *buf, usize const siz
     NkFileStreamBuf *stream_buf = stream_data;
 
     switch (mode) {
+        case NkStreamMode_Read:
+            return nk_read(stream_buf->file, buf, size);
+
         case NkStreamMode_Write: {
             usize bytes_left_to_write = size;
             while (bytes_left_to_write) {
-                usize bytes_available = stream_buf->size - stream_buf->_used;
+                usize bytes_available = stream_buf->buf.size - stream_buf->_used;
                 if (bytes_available == 0) {
                     bufferedWriteStreamFlush(stream_buf);
-                    bytes_available = stream_buf->size;
+                    bytes_available = stream_buf->buf.size;
                 }
                 usize const bytes_to_write = nk_minu(bytes_available, bytes_left_to_write);
-                memcpy(stream_buf->buf + stream_buf->_used, buf, bytes_to_write);
+                memcpy(stream_buf->buf.data + stream_buf->_used, buf, bytes_to_write);
                 buf += bytes_to_write;
                 bytes_left_to_write -= bytes_to_write;
                 stream_buf->_used += bytes_to_write;
@@ -88,11 +91,11 @@ static i32 bufferedWriteStreamProc(void *stream_data, char *buf, usize const siz
             return size;
         }
 
-        case NkStreamMode_Flush:
-            return bufferedWriteStreamFlush(stream_buf);
-
-        case NkStreamMode_Read:
-            return -1;
+        case NkStreamMode_Flush: {
+            i32 ret = bufferedWriteStreamFlush(stream_buf);
+            nk_flush(stream_buf->file);
+            return ret;
+        }
     }
 
     nk_assert(!"unreachable");
@@ -100,5 +103,9 @@ static i32 bufferedWriteStreamProc(void *stream_data, char *buf, usize const siz
 }
 
 NkStream nk_file_getBufferedWriteStream(NkFileStreamBuf *stream_buf) {
-    return (NkStream){stream_buf, bufferedWriteStreamProc};
+    if (stream_buf->buf.size) {
+        return (NkStream){stream_buf, bufferedWriteStreamProc};
+    } else {
+        return nk_file_getStream(stream_buf->file);
+    }
 }

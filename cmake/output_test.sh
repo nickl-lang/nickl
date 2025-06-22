@@ -94,8 +94,9 @@ set -e
 sed -i='' 's/\r//g' "$STDOUT_FILE"
 sed -i='' 's/\r//g' "$STDERR_FILE"
 
-OUTPUT_STDERRX="$(cat "$STDERR_FILE" | tee /dev/stderr; echo x)"
+OUTPUT_STDERRX="$(cat "$STDERR_FILE"; echo x)"
 OUTPUT_STDERR="${OUTPUT_STDERRX%x}"
+echo "$OUTPUT_STDERR" >&2
 
 if [ "$RETCODE" -ne "${EXPECTED_RETCODE:-0}" ]; then
   echo >&2 "INFO: TEST FAILED:

@@ -13,13 +13,6 @@ namespace {
 
 NK_LOG_USE_SCOPE(compiler);
 
-static u64 nk_atom_hash(NkAtom const key) {
-    return nk_hashVal(key);
-}
-static bool nk_atom_equal(NkAtom const lhs, NkAtom const rhs) {
-    return lhs == rhs;
-}
-
 static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
     return &item->key;
 }
@@ -28,24 +21,19 @@ static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
     return &item->key;
 }
 
-static NkAtom const *NkAtom_GetKey(NkAtom const *item) {
-    return item;
-}
-
 } // namespace
 
 NK_HASH_TREE_IMPL(DeclMap, Decl_kv, NkAtom, Decl_kv_GetKey, nk_atom_hash, nk_atom_equal);
 NK_HASH_TREE_IMPL(FileContextMap, FileContext_kv, NkAtom, FileContext_kv_GetKey, nk_atom_hash, nk_atom_equal);
-NK_HASH_TREE_IMPL(NkAtomSet, NkAtom, NkAtom, NkAtom_GetKey, nk_atom_hash, nk_atom_equal);
 
 NkArena *getNextTempArena(NklCompiler c, NkArena *conflict) {
     return &c->temp_arenas[0] == conflict ? &c->temp_arenas[1] : &c->temp_arenas[0];
 }
 
 FileContext_kv &getContextForFile(NklCompiler c, NkAtom file) {
-    auto found = FileContextMap_find(&c->files, file);
+    auto found = FileContextMap_findItem(&c->files, file);
     if (!found) {
-        found = FileContextMap_insert(&c->files, {file, {}});
+        found = FileContextMap_insertItem(&c->files, {file, {}});
     }
     return *found;
 }
@@ -120,18 +108,15 @@ static void emitDefersForScope(Context &ctx, Scope const *scope) {
 
         if (ctx.proc_stack->active_defer_node) {
             nkir_instrArrayDupInto(
-                ctx.ir,
-                {NK_SLICE_INIT(defer_node->instrs)},
-                &ctx.proc_stack->active_defer_node->instrs,
-                scope->temp_arena);
+                ctx.ir, {NKS_INIT(defer_node->instrs)}, &ctx.proc_stack->active_defer_node->instrs, scope->temp_arena);
         } else {
             auto frame = nk_arena_grab(scope->temp_arena);
             defer {
                 nk_arena_popFrame(scope->temp_arena, frame);
             };
             NkIrInstrDynArray instrs_copy{NKDA_INIT(nk_arena_getAllocator(scope->temp_arena))};
-            nkir_instrArrayDupInto(ctx.ir, {NK_SLICE_INIT(defer_node->instrs)}, &instrs_copy, scope->temp_arena);
-            nkir_emitArray(ctx.ir, {NK_SLICE_INIT(instrs_copy)});
+            nkir_instrArrayDupInto(ctx.ir, {NKS_INIT(defer_node->instrs)}, &instrs_copy, scope->temp_arena);
+            nkir_emitArray(ctx.ir, {NKS_INIT(instrs_copy)});
         }
 
         defer_node = defer_node->next;
@@ -253,12 +238,12 @@ void popScope(Context &ctx) {
 static Decl &makeDecl(Context &ctx, NkAtom name) {
     nk_assert(ctx.scope_stack && "no current scope");
     NK_LOG_DBG("Declaring name=`%s` scope=%p", nk_atom2cs(name), (void *)ctx.scope_stack);
-    auto const found = DeclMap_find(&ctx.scope_stack->locals, name);
+    auto const found = DeclMap_findItem(&ctx.scope_stack->locals, name);
     if (found) {
         static Decl s_dummy{};
         return error(ctx, "redefinition of '%s'", nk_atom2cs(name)), s_dummy;
     }
-    auto kv = DeclMap_insert(&ctx.scope_stack->locals, {name, {}});
+    auto kv = DeclMap_insertItem(&ctx.scope_stack->locals, {name, {}});
     return kv->val;
 }
 
@@ -305,7 +290,7 @@ Decl &resolve(Context &ctx, NkAtom name) {
     NK_LOG_DBG("Resolving id: name=`%s` scope=%p", nk_atom2cs(name), (void *)scope);
 
     for (; scope; scope = scope->next) {
-        auto found = DeclMap_find(&scope->locals, name);
+        auto found = DeclMap_findItem(&scope->locals, name);
         if (found) {
             return found->val;
         }

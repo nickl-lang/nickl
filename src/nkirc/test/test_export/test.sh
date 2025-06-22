@@ -11,5 +11,5 @@ cleanup() {
 trap cleanup EXIT
 
 $EMULATOR $COMPILER -kobj -o${OUT_FILE}.o ${NKIR_SRC}
-$EMULATOR gcc -g -O0 -otest_export ${OUT_FILE}.o $@
+$EMULATOR cc -g -O0 -otest_export ${OUT_FILE}.o $@
 $EMULATOR ./${OUT_FILE}

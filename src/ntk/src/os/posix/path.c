@@ -19,3 +19,7 @@ i32 nk_getCwd(char *buf, usize size) {
 bool nk_pathIsRelative(char const *path) {
     return !strlen(path) || path[0] != NK_PATH_SEPARATOR;
 }
+
+i32 nk_getTempPath(char *buf, usize size) {
+    return snprintf(buf, size, "/tmp/") ? 0 : -1;
+}
