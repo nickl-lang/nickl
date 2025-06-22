@@ -69,7 +69,7 @@ void _inspect(NklAstNodeArray nodes, NkStringBuilder *sb, usize depth = 1) {
 
 } // namespace
 
-NK_EXPORT void nkl_ast_init() {
+void nkl_ast_init() {
 #define X(ID) nk_atom_define(NK_CAT(n_, ID), nk_cs2s(#ID));
 #include "nodes.inl"
 }
