@@ -42,6 +42,21 @@ jobs:
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
 
+  darwin-x86_64:
+    runs-on: macos-13
+    strategy:
+      matrix:
+        build_args: [-t, -td]
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install googletest llvm
+      - run: ./build.sh ${{ matrix.build_args }}
+        env:
+          LLVM_DIR: /usr/local/opt/llvm
+      - run: ./build.sh ${{ matrix.build_args }} test
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+
   windows:
     runs-on: windows-latest
     strategy:

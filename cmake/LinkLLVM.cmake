@@ -49,7 +49,9 @@ function(target_link_llvm)
         PRIVATE ${LLVM_DEFINITIONS_LIST}
         )
 
-    target_link_options(${ARG_TARGET}
-        PUBLIC "-Wl,--version-script=${LLVM_LINKER_VERSION_SCRIPT}"
-        )
+    if(NOT APPLE)
+        target_link_options(${ARG_TARGET}
+            PUBLIC "-Wl,--version-script=${LLVM_LINKER_VERSION_SCRIPT}"
+            )
+    endif()
 endfunction()

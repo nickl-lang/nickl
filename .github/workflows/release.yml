@@ -45,6 +45,23 @@ jobs:
           draft: false
           prerelease: true
 
+  darwin-x86_64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install llvm
+      - run: ./build.sh package
+        env:
+          LLVM_DIR: /usr/local/opt/llvm
+      - run: ./etc/utils/get_latest_changelog.sh > ${{ github.workspace }}-CHANGELOG.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/deploy/*
+          name: nickl ${{ github.ref_name }}
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          draft: false
+          prerelease: true
+
   windows:
     runs-on: windows-latest
     steps:
