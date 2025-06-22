@@ -1,3 +1,9 @@
+# v0.4.1 - 2025.06.23
+
+- Better control symbol visibility in nkl core
+- Update windows package naming
+- Update CI to use clang
+
 # v0.4.0 - 2025.06.22
 
 - Start nkb2 and core2, add nklc for testing
