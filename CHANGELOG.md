@@ -1,11 +1,12 @@
-# v0.3.2
+# v0.4.0 - 2025.06.22
 
-- Start core2, add nklc for testing
-- Implement new backend API
+- Start nkb2 and core2, add nklc for testing
 - Add LLVM backend
-- Implement JIT in backend
+- Implement JIT
+- Reimplement some parts of ntk to simplify/optimize stuff
 - Drop support for cross toolchain docker images for now
-- Update Readme
+- Update CI to use native builds
+- Update Readme with new build instructions
 
 # v0.3.1 - 2025.04.18
 
