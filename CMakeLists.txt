@@ -153,6 +153,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     find_library_ex(LIBWINPTHREAD winpthread SHARED)
 
     set(SYSTEM_LIBRARY_PATH LD_LIBRARY_PATH)
+
+    # Workaround for llvm-strip not being able to strip binaries on windows
+    set(CMAKE_STRIP strip)
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
