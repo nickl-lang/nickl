@@ -1,3 +1,4 @@
+add_subdirectory(3rdparty/blake3)
 add_subdirectory(3rdparty/spall)
 add_subdirectory(3rdparty/stb)
 add_subdirectory(config)

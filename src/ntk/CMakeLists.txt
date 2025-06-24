@@ -6,6 +6,7 @@ set(SOURCES
     src/atom.c
     src/error.c
     src/file.c
+    src/hash.c
     src/hash_tree.c
     src/log.c
     src/path.c
@@ -81,12 +82,13 @@ target_include_directories(${LIB}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
-target_link_libraries(${LIB}
-    PRIVATE ${LIBDL}
-    PRIVATE ${LIBSHLWAPI}
-    PRIVATE ${LIBWINPTHREAD}
-    PRIVATE spall
-    PRIVATE stb
+target_link_libraries(${LIB} PRIVATE
+    ${LIBDL}
+    ${LIBSHLWAPI}
+    ${LIBWINPTHREAD}
+    blake3
+    spall
+    stb
     )
 
 if(ENABLE_PROFILING)
