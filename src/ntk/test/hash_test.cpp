@@ -4,46 +4,56 @@
 
 #include <gtest/gtest.h>
 
-#define EXPECT_HASH_EQ(lhs, rhs)               \
-    do {                                       \
-        EXPECT_EQ(lhs.parts[0], rhs.parts[0]); \
-        EXPECT_EQ(lhs.parts[1], rhs.parts[1]); \
-        EXPECT_EQ(lhs.parts[2], rhs.parts[2]); \
-        EXPECT_EQ(lhs.parts[3], rhs.parts[3]); \
-    } while (0)
-
-void printHash4(NkHash hash) {
-    printf("%08x%08x%08x%08x", hash.parts[0], hash.parts[1], hash.parts[2], hash.parts[3]);
+static void printHash128(NkHash128 hash) {
+    for (u8 byte : hash.bytes) {
+        printf("%02x", byte);
+    }
 }
 
-TEST(hash, basic) {
+#define EXPECT_HASH_EQ(lhs, rhs) EXPECT_TRUE(nk_hash128_equal((lhs), (rhs)))
+
+TEST(hash, basic128) {
     char const *str = "hello world";
 
-    auto hash = nk_hash((u8 const *)str, strlen(str));
+    auto const hash = nk_hash128((u8 const *)str, strlen(str));
 
     std::cout << "hash: ";
-    printHash4(hash);
+    printHash128(hash);
     std::cout << std::endl;
 
-    EXPECT_HASH_EQ(hash, (NkHash{{0xd74981ef, 0xa70a0c88, 0x0b8d8c19, 0x85d075db}}));
+    EXPECT_HASH_EQ(
+        hash,
+        (NkHash128{0xd7, 0x49, 0x81, 0xef, 0xa7, 0x0a, 0x0c, 0x88, 0x0b, 0x8d, 0x8c, 0x19, 0x85, 0xd0, 0x75, 0xdb}));
 }
 
-TEST(hash, state) {
+TEST(hash, state128) {
     char const *str = "hello world";
 
-    auto const hash_expected = nk_hash((u8 const *)str, strlen(str));
+    auto const hash_expected = nk_hash128((u8 const *)str, strlen(str));
 
     NkHashState state;
-    nk_hash_init(&state);
-    nk_hash_update(&state, (u8 const *)str, strlen(str));
+    nk_hash128_init(&state);
+    nk_hash128_update(&state, (u8 const *)str, strlen(str));
 
-    auto const hash_actual = nk_hash_finalize(&state);
+    auto const hash_actual = nk_hash128_finalize(&state);
 
     EXPECT_HASH_EQ(hash_actual, hash_expected);
 }
 
-TEST(hash, value) {
-    double const val = 3.14;
+TEST(hash, basic64) {
+    char const *str0 = "hello world";
+    char const *str1 = "hello world";
+    char const *str2 = "hello-world";
 
-    EXPECT_HASH_EQ(nk_hash((u8 *)&val, sizeof(val)), nk_hash_val(val));
+    auto const hash0 = nk_hash64((u8 const *)str0, strlen(str0));
+    auto const hash1 = nk_hash64((u8 const *)str1, strlen(str1));
+    auto const hash2 = nk_hash64((u8 const *)str2, strlen(str2));
+
+    EXPECT_EQ(hash0, hash1);
+    EXPECT_NE(hash0, hash2);
+}
+
+TEST(hash, value64) {
+    double const val = 3.14;
+    EXPECT_EQ(nk_hash64((u8 *)&val, sizeof(val)), nk_hash64_val(val));
 }

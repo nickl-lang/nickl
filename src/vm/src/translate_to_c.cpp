@@ -14,7 +14,7 @@
 #include "nk/vm/common.h"
 #include "nk/vm/ir.h"
 #include "nk/vm/value.h"
-#include "ntk/allocator.h"
+#include "ntk/hash.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/utils.h"
@@ -30,8 +30,8 @@ struct nkval_equal_to {
 };
 
 struct nkval_hash {
-    u64 operator()(nkval_t key) const noexcept {
-        return nk_hashArray((u8 *)&key, (u8 *)&key + sizeof(key));
+    usize operator()(nkval_t key) const noexcept {
+        return nk_hash64((u8 *)&key, sizeof(key));
     }
 };
 

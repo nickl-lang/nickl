@@ -3,13 +3,14 @@
 
 #include "ntk/allocator.h"
 #include "ntk/common.h"
+#include "ntk/hash.h"
 #include "ntk/utils.h"
 
 #define NK_HASH_TREE_TYPEDEF(TTree, TItem)          \
     typedef struct _##TTree##_Node _##TTree##_Node; \
     struct _##TTree##_Node {                        \
         TItem item;                                 \
-        u64 hash;                                   \
+        NkHash64 hash;                              \
         _##TTree##_Node *child[2];                  \
     };                                              \
     typedef struct {                                \
@@ -49,71 +50,71 @@
 #define NK_HASH_TREE_PROTO_K_EXPORT(TTree, TKey) _NK_HASH_TREE_PROTO_K(NK_EXPORT, TTree, TKey)
 #define NK_HASH_TREE_PROTO_KV_EXPORT(TTree, TKey, TVal) _NK_HASH_TREE_PROTO_KV(NK_EXPORT, TTree, TKey, TVal)
 
-#define NK_HASH_TREE_IMPL(TTree, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)                        \
-    typedef struct {                                                                                        \
-        _##TTree##_Node **node;                                                                             \
-        bool existing;                                                                                      \
-    } _##TTree##_SearchResult;                                                                              \
-                                                                                                            \
-    static _##TTree##_SearchResult _##TTree##_findNode(_##TTree##_Node **node, TKey const *key, u64 hash) { \
-        while (*node) {                                                                                     \
-            switch ((hash > (*node)->hash) - (hash < (*node)->hash)) {                                      \
-                case 0: {                                                                                   \
-                    TKey const *existing_key = GetKeyFunc(&(*node)->item);                                  \
-                    if (KeyEqualFunc(*key, *existing_key)) {                                                \
-                        return NK_LITERAL(_##TTree##_SearchResult){node, true};                             \
-                    }                                                                                       \
-                    NK_FALLTHROUGH;                                                                         \
-                }                                                                                           \
-                case -1:                                                                                    \
-                    node = (*node)->child + 0;                                                              \
-                    break;                                                                                  \
-                case +1:                                                                                    \
-                    node = (*node)->child + 1;                                                              \
-                    break;                                                                                  \
-            }                                                                                               \
-        }                                                                                                   \
-        return NK_LITERAL(_##TTree##_SearchResult){node, false};                                            \
-    }                                                                                                       \
-                                                                                                            \
-    TItem *TTree##_insertItem(TTree *ht, TItem item) {                                                      \
-        TKey const *key = GetKeyFunc(&item);                                                                \
-        u64 hash = KeyHashFunc(*key);                                                                       \
-        _##TTree##_SearchResult res = _##TTree##_findNode(&ht->root, key, hash);                            \
-        if (!res.existing) {                                                                                \
-            NkAllocator _alloc = ht->alloc.proc ? ht->alloc : nk_default_allocator;                         \
-            *res.node = (_##TTree##_Node *)nk_allocAligned(                                                 \
-                _alloc, sizeof(_##TTree##_Node), nk_maxu(alignof(TItem), alignof(_##TTree##_Node)));        \
-            **res.node = NK_LITERAL(_##TTree##_Node){                                                       \
-                .item = item,                                                                               \
-                .hash = hash,                                                                               \
-                .child = {0},                                                                               \
-            };                                                                                              \
-        }                                                                                                   \
-        return (TItem *)*res.node;                                                                          \
-    }                                                                                                       \
-                                                                                                            \
-    TItem *TTree##_findItem(TTree *ht, TKey key) {                                                          \
-        u64 hash = KeyHashFunc(key);                                                                        \
-        _##TTree##_SearchResult res = _##TTree##_findNode(&ht->root, &key, hash);                           \
-        return (TItem *)*res.node;                                                                          \
-    }                                                                                                       \
-                                                                                                            \
-    static void _##TTree##_freeNode(NkAllocator alloc, _##TTree##_Node *node) {                             \
-        if (!node) {                                                                                        \
-            return;                                                                                         \
-        }                                                                                                   \
-        _##TTree##_freeNode(alloc, node->child[0]);                                                         \
-        _##TTree##_freeNode(alloc, node->child[1]);                                                         \
-        nk_free(alloc, node, sizeof(_##TTree##_Node));                                                      \
-    }                                                                                                       \
-                                                                                                            \
-    void TTree##_free(TTree *ht) {                                                                          \
-        NkAllocator _alloc = ht->alloc.proc ? ht->alloc : nk_default_allocator;                             \
-        _##TTree##_freeNode(_alloc, ht->root);                                                              \
-        ht->root = NULL;                                                                                    \
-    }                                                                                                       \
-                                                                                                            \
+#define NK_HASH_TREE_IMPL(TTree, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)                             \
+    typedef struct {                                                                                             \
+        _##TTree##_Node **node;                                                                                  \
+        bool existing;                                                                                           \
+    } _##TTree##_SearchResult;                                                                                   \
+                                                                                                                 \
+    static _##TTree##_SearchResult _##TTree##_findNode(_##TTree##_Node **node, TKey const *key, NkHash64 hash) { \
+        while (*node) {                                                                                          \
+            switch (((*node)->hash < hash) - (hash < (*node)->hash)) {                                           \
+                case 0: {                                                                                        \
+                    TKey const *existing_key = GetKeyFunc(&(*node)->item);                                       \
+                    if (KeyEqualFunc(*key, *existing_key)) {                                                     \
+                        return NK_LITERAL(_##TTree##_SearchResult){node, true};                                  \
+                    }                                                                                            \
+                    NK_FALLTHROUGH;                                                                              \
+                }                                                                                                \
+                case -1:                                                                                         \
+                    node = (*node)->child + 0;                                                                   \
+                    break;                                                                                       \
+                case +1:                                                                                         \
+                    node = (*node)->child + 1;                                                                   \
+                    break;                                                                                       \
+            }                                                                                                    \
+        }                                                                                                        \
+        return NK_LITERAL(_##TTree##_SearchResult){node, false};                                                 \
+    }                                                                                                            \
+                                                                                                                 \
+    TItem *TTree##_insertItem(TTree *ht, TItem item) {                                                           \
+        TKey const *key = GetKeyFunc(&item);                                                                     \
+        NkHash64 const hash = KeyHashFunc(*key);                                                                 \
+        _##TTree##_SearchResult res = _##TTree##_findNode(&ht->root, key, hash);                                 \
+        if (!res.existing) {                                                                                     \
+            NkAllocator _alloc = ht->alloc.proc ? ht->alloc : nk_default_allocator;                              \
+            *res.node = (_##TTree##_Node *)nk_allocAligned(                                                      \
+                _alloc, sizeof(_##TTree##_Node), nk_maxu(alignof(TItem), alignof(_##TTree##_Node)));             \
+            **res.node = NK_LITERAL(_##TTree##_Node){                                                            \
+                .item = item,                                                                                    \
+                .hash = hash,                                                                                    \
+                .child = {0},                                                                                    \
+            };                                                                                                   \
+        }                                                                                                        \
+        return (TItem *)*res.node;                                                                               \
+    }                                                                                                            \
+                                                                                                                 \
+    TItem *TTree##_findItem(TTree *ht, TKey key) {                                                               \
+        NkHash64 const hash = KeyHashFunc(key);                                                                  \
+        _##TTree##_SearchResult res = _##TTree##_findNode(&ht->root, &key, hash);                                \
+        return (TItem *)*res.node;                                                                               \
+    }                                                                                                            \
+                                                                                                                 \
+    static void _##TTree##_freeNode(NkAllocator alloc, _##TTree##_Node *node) {                                  \
+        if (!node) {                                                                                             \
+            return;                                                                                              \
+        }                                                                                                        \
+        _##TTree##_freeNode(alloc, node->child[0]);                                                              \
+        _##TTree##_freeNode(alloc, node->child[1]);                                                              \
+        nk_free(alloc, node, sizeof(_##TTree##_Node));                                                           \
+    }                                                                                                            \
+                                                                                                                 \
+    void TTree##_free(TTree *ht) {                                                                               \
+        NkAllocator _alloc = ht->alloc.proc ? ht->alloc : nk_default_allocator;                                  \
+        _##TTree##_freeNode(_alloc, ht->root);                                                                   \
+        ht->root = NULL;                                                                                         \
+    }                                                                                                            \
+                                                                                                                 \
     _NK_NOP_TOPLEVEL
 
 #define NK_HASH_TREE_IMPL_K(TTree, TKey, KeyHashFunc, KeyEqualFunc) \

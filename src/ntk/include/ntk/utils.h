@@ -99,20 +99,6 @@ NK_INLINE i64 nk_maxi(i64 x, i64 y) {
 
 #undef _MAGIC
 
-// TODO: Use stronger hash function
-
-NK_INLINE void nk_hashCombine(u64 *seed, usize n) {
-    *seed ^= n + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-}
-
-NK_EXPORT u64 nk_hashArray(u8 const *begin, u8 const *end);
-
-#define nk_hashVal(val) nk_hashArray((u8 const *)&(val), (u8 const *)(&(val) + 1))
-
-NK_INLINE u64 nk_hashCStr(char const *str) {
-    return nk_hashArray((u8 *)str, (u8 *)str + strlen(str));
-}
-
 NK_EXPORT void printFloat32Exact(NkStream out, f32 val);
 NK_EXPORT void printFloat64Exact(NkStream out, f64 val);
 

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "ntk/arena.h"
+#include "ntk/hash.h"
 #include "ntk/log.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -25,8 +26,8 @@ int const *int2cstr_kv_GetKey(int2cstr_kv const *elem) {
     return &elem->key;
 }
 
-u64 int_hash(int const key) {
-    return nk_hashArray((u8 const *)&key, (u8 const *)&key + sizeof(key));
+NkHash64 int_hash(int const key) {
+    return nk_hash64_val(key);
 }
 
 bool int_equal(int const lhs, int const rhs) {

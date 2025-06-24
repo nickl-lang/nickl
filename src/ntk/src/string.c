@@ -4,6 +4,7 @@
 
 #include "ntk/arena.h"
 #include "ntk/dyn_array.h"
+#include "ntk/hash.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/string_builder.h"
@@ -78,14 +79,6 @@ NkString nks_chopByDelimReverse(NkString *str, char delim) {
     }
 
     return res;
-}
-
-u64 nks_hash(NkString str) {
-    return nk_hashArray((u8 *)&str.data[0], (u8 *)&str.data[str.size]);
-}
-
-bool nks_equal(NkString lhs, NkString rhs) {
-    return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
 }
 
 bool nks_equalCStr(NkString lhs, char const *rhs) {

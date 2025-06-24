@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "ntk/arena.h"
+#include "ntk/hash.h"
 #include "ntk/log.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -180,7 +181,7 @@ TEST_F(HashMap, str_map) {
 
     struct HashMapContext {
         static u64 hash(key_t const &key) {
-            return nk_hashArray(key.data, key.data + c_key_size);
+            return nk_hash64(key.data, c_key_size);
         }
 
         static u64 equal_to(key_t const &lhs, key_t const &rhs) {

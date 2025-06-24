@@ -1,9 +1,9 @@
 #ifndef NTK_ATOM_H_
 #define NTK_ATOM_H_
 
+#include "ntk/hash.h"
 #include "ntk/hash_tree.h"
 #include "ntk/string.h"
-#include "ntk/utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,8 +24,8 @@ NK_EXPORT void nk_atom_define(NkAtom atom, NkString str);
 
 NK_EXPORT NkAtom nk_atom_unique(NkString str);
 
-NK_INLINE u64 nk_atom_hash(NkAtom atom) {
-    return nk_hashVal(atom);
+NK_INLINE NkHash64 nk_atom_hash(NkAtom atom) {
+    return nk_hash64_val(atom);
 }
 
 NK_INLINE bool nk_atom_equal(NkAtom lhs, NkAtom rhs) {

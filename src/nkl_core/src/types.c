@@ -5,6 +5,7 @@
 #include "ntk/arena.h"
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
+#include "ntk/hash.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
@@ -24,8 +25,8 @@ static ByteArray const *Type_kv_GetKey(Type_kv const *item) {
     return &item->key;
 }
 
-static u64 ByteArray_hash(ByteArray const key) {
-    return nk_hashArray(key.data, key.data + key.size);
+static NkHash64 ByteArray_hash(ByteArray const key) {
+    return nk_hash64(key.data, key.size);
 }
 
 static bool ByteArray_equal(ByteArray const lhs, ByteArray const rhs) {

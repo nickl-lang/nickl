@@ -87,6 +87,7 @@ target_link_libraries(${LIB} PRIVATE
     ${LIBSHLWAPI}
     ${LIBWINPTHREAD}
     blake3
+    rapidhash
     spall
     stb
     )

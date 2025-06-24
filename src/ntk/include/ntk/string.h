@@ -5,6 +5,7 @@
 
 #include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/hash.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 
@@ -31,8 +32,14 @@ NK_EXPORT NkString nks_trim(NkString str);
 NK_EXPORT NkString nks_chopByDelim(NkString *str, char delim);
 NK_EXPORT NkString nks_chopByDelimReverse(NkString *str, char delim);
 
-NK_EXPORT u64 nks_hash(NkString str);
-NK_EXPORT bool nks_equal(NkString lhs, NkString rhs);
+NK_INLINE NkHash64 nks_hash(NkString str) {
+    return nk_hash64((u8 const *)str.data, str.size);
+}
+
+NK_INLINE bool nks_equal(NkString lhs, NkString rhs) {
+    return lhs.size == rhs.size && memcmp(lhs.data, rhs.data, lhs.size) == 0;
+}
+
 NK_EXPORT bool nks_equalCStr(NkString lhs, char const *rhs);
 
 NK_EXPORT NkString nks_left(NkString str, usize n);

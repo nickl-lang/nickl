@@ -21,8 +21,8 @@ static u32 const *TypeTree_kv_getKey(TypeTree_kv const *item) {
     return &item->key;
 }
 
-static u64 u32_hash(u32 key) {
-    return nk_hashVal(key);
+static NkHash64 u32_hash(u32 key) {
+    return nk_hash64_val(key);
 }
 
 static bool u32_equal(u32 lhs, u32 rhs) {
@@ -35,8 +35,8 @@ static NkAtom const *ExternSym_kv_getKey(ExternSym_kv const *item) {
     return &item->key;
 }
 
-static u64 NkAtom_hash(NkAtom key) {
-    return nk_hashVal(key);
+static NkHash64 NkAtom_hash(NkAtom key) {
+    return nk_hash64_val(key);
 }
 
 static bool NkAtom_equal(NkAtom lhs, NkAtom rhs) {
