@@ -67,17 +67,21 @@
         usize _count = (count);                                              \
         nkda_reserve(ar, (ar)->size + _count);                               \
         nk_assert((ar)->capacity - (ar)->size >= _count && "no space left"); \
-        memcpy(nks_end(ar), (items), _count * sizeof(*(ar)->data));          \
-        (ar)->size += _count;                                                \
+        if (_count) {                                                        \
+            memcpy(nks_end(ar), (items), _count * sizeof(*(ar)->data));      \
+            (ar)->size += _count;                                            \
+        }                                                                    \
     } while (0)
 
-#define _nkda_tryAppendMany(ar, items, count)                       \
-    do {                                                            \
-        usize _count = (count);                                     \
-        nkda_reserve(ar, (ar)->size + _count);                      \
-        _count = nk_minu(_count, (ar)->capacity - (ar)->size);      \
-        memcpy(nks_end(ar), (items), _count * sizeof(*(ar)->data)); \
-        (ar)->size += _count;                                       \
+#define _nkda_tryAppendMany(ar, items, count)                           \
+    do {                                                                \
+        usize _count = (count);                                         \
+        nkda_reserve(ar, (ar)->size + _count);                          \
+        _count = nk_minu(_count, (ar)->capacity - (ar)->size);          \
+        if (_count) {                                                   \
+            memcpy(nks_end(ar), (items), _count * sizeof(*(ar)->data)); \
+            (ar)->size += _count;                                       \
+        }                                                               \
     } while (0)
 
 #define _nkda_free(ar)                                                                                        \

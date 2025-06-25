@@ -31,7 +31,9 @@
     do {                                                                    \
         (dst)->size = (src).size;                                           \
         void *_mem = nk_alloc((alloc), (dst)->size * sizeof(*(dst)->data)); \
-        memcpy(_mem, (src).data, (dst)->size * sizeof(*(dst)->data));       \
+        if ((dst)->size) {                                                  \
+            memcpy(_mem, (src).data, (dst)->size * sizeof(*(dst)->data));   \
+        }                                                                   \
         _nk_assignVoidPtr((dst)->data, _mem);                               \
     } while (0)
 

@@ -48,6 +48,8 @@ typedef i64 isize;
 
 #define NK_ARRAY_COUNT(AR) (sizeof(AR) / sizeof((AR)[0]))
 
+#define nk_alignofval alignof
+
 #ifdef __cplusplus
 
 #define NK_LITERAL(T) T
@@ -60,19 +62,12 @@ T *_nk_assignVoidPtr(T *&dst, void *src) {
     return dst = (T *)src;
 }
 
-template <class T>
-constexpr usize nk_alignofval(T const &) {
-    return alignof(T);
-}
-
 #else // __cplusplus
 
 #define NK_LITERAL(T) (T)
 #define NK_ZERO_STRUCT {0}
 
 #define _nk_assignVoidPtr(dst, src) ((dst) = (src))
-
-#define nk_alignofval alignof
 
 #endif // __cplusplus
 

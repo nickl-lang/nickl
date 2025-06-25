@@ -78,7 +78,9 @@ static void *arenaAllocatorProc(void *data, NkAllocatorMode mode, usize size, u8
                 ret = allocAlignedRaw(arena, size, align, false);
             } else {
                 ret = allocAlignedRaw(arena, size, align, true);
-                memcpy(ret, old_mem, old_size);
+                if (old_size) {
+                    memcpy(ret, old_mem, old_size);
+                }
             }
 
             NK_LOG_TRC("arena=%p realloc(%zu, %hhu, %p, %zu) -> %p", data, size, align, old_mem, old_size, ret);

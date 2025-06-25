@@ -644,7 +644,7 @@ static nkltype_t compileProcType(
         ctx.nkl,
         ctx.c->word_size,
         NklProcInfo{
-            .param_types{&params.data->type, params.size, sizeof(params.data[0])},
+            .param_types{params.size ? &params.data->type : nullptr, params.size, sizeof(params.data[0])},
             .ret_t = ret_t,
             .call_conv = call_conv,
             .flags = proc_flags,
@@ -1521,7 +1521,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
                         NkIrProcDescr{
                             .name = decl_name, // TODO: Need to generate names for anonymous procs
                             .proc_t = nklt2nkirt(proc_t),
-                            .arg_names{&params.data->name, params.size, sizeof(params.data[0])},
+                            .arg_names{params.size ? &params.data->name : nullptr, params.size, sizeof(params.data[0])},
                             .file = ctx.src.file,
                             .line = token.lin,
                             .visibility = NkIrVisibility_Default, // TODO: Hardcoded visibility

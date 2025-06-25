@@ -4,7 +4,6 @@
 
 #include "ntk/arena.h"
 #include "ntk/dyn_array.h"
-#include "ntk/hash.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
 #include "ntk/string_builder.h"
@@ -12,13 +11,17 @@
 
 NkString nks_copy(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size);
-    memcpy(mem, src.data, src.size);
+    if (src.size) {
+        memcpy(mem, src.data, src.size);
+    }
     return (NkString){mem, src.size};
 }
 
 NkString nks_copyNt(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size + 1);
-    memcpy(mem, src.data, src.size);
+    if (src.size) {
+        memcpy(mem, src.data, src.size);
+    }
     mem[src.size] = '\0';
     return (NkString){(char const *)mem, src.size};
 }
