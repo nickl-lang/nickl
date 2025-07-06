@@ -59,7 +59,7 @@ NkAtom nk_cs2atom(char const *str) {
 
 void nk_atom_define(NkAtom atom, NkString str) {
     NK_PROF_FUNC() {
-        NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
+        NkString const str_copy = nks_dupNt(nk_arena_getAllocator(&g_arena), str);
         NkStringAtomMap_insert(&g_str2atom, str_copy, atom);
         NkAtomStringMap_insert(&g_atom2str, atom, str_copy);
     }
@@ -68,7 +68,7 @@ void nk_atom_define(NkAtom atom, NkString str) {
 NkAtom nk_atom_unique(NkString str) {
     NkAtom atom = g_next_atom++;
     NK_PROF_FUNC() {
-        NkString const str_copy = nks_copyNt(nk_arena_getAllocator(&g_arena), str);
+        NkString const str_copy = nks_dupNt(nk_arena_getAllocator(&g_arena), str);
         NkAtomStringMap_insert(&g_atom2str, atom, str_copy);
     }
     return atom;

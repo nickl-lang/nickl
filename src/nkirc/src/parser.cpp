@@ -57,7 +57,7 @@ struct EmitterState {
     ProcRecord *m_cur_proc{};
 
     Void emit() {
-        nk_assert(m_tokens.size && nks_last(m_tokens).id == t_eof && "ill-formed token stream");
+        nk_assert(m_tokens.size && NKS_LAST(m_tokens).id == t_eof && "ill-formed token stream");
         m_cur_token = &m_tokens.data[0];
 
         while (!check(t_eof)) {
@@ -353,7 +353,7 @@ private:
         }
 
         auto const token_str = nkl_getTokenStr(m_cur_token, m_text);
-        char const *cstr = nks_copyNt(m_tmp_alloc, token_str).data;
+        char const *cstr = nks_dupNt(m_tmp_alloc, token_str).data;
         getToken();
 
         char *endptr = NULL;
@@ -406,7 +406,7 @@ private:
         auto const len = m_cur_token->len - 2;
         getToken();
 
-        return nks_copyNt(alloc, {data, len});
+        return nks_dupNt(alloc, {data, len});
     }
 
     NkString parseEscapedString(NkAllocator alloc) {

@@ -48,13 +48,8 @@ void nkl_type_complete(NklState NK_UNUSED nkl, NklType dst, NklType src) {
 NklAggregateType nkl_type_getAggregateDistinct(NklState nkl, NklTypeStridedArray types) {
     NklTypeStorage *st = &nkl->types;
 
-    // TODO: Manual slice copy
-    NklType *types_copy_data = nk_arena_allocTn(st->arena, NklType, types.size);
-    usize i = 0;
-    NK_ITERATE_STRIDED(NklType const *, it, types) {
-        types_copy_data[i++] = *it;
-    }
-    NklTypeArray types_copy = {types_copy_data, types.size};
+    NklTypeArray types_copy = {0};
+    NKS_COPY_STRIDED(nk_arena_getAllocator(st->arena), &types_copy, types);
 
     usize align = 0;
     usize offset = 0;
@@ -141,10 +136,8 @@ NklNumericType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type
 NklStructType nkl_type_getStructDistinct(NklState nkl, NklFieldArray fields) {
     NklTypeStorage *st = &nkl->types;
 
-    // TODO: Manual slice copy
-    NklField *fields_copy_data = nk_arena_allocTn(st->arena, NklField, fields.size);
-    memcpy(fields_copy_data, fields.data, fields.size * sizeof(NklField));
-    NklFieldArray fields_copy = {fields_copy_data, fields.size};
+    NklFieldArray fields_copy = {0};
+    NKS_COPY(nk_arena_getAllocator(st->arena), &fields_copy, fields);
 
     NklType const base_t = (NklType)nkl_type_getAggregate(
         nkl,

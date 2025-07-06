@@ -32,7 +32,7 @@ NkIrArg _arg(NkIrRef ref) {
 
 NkIrArg _arg(NkIrProg ir, NkIrRefArray args) {
     NkIrRefArray dst_refs{};
-    nk_slice_copy(ir->alloc, &dst_refs, args);
+    NKS_COPY(ir->alloc, &dst_refs, args);
     return {{.refs{dst_refs}}, NkIrArg_RefArray};
 }
 
@@ -41,7 +41,7 @@ NkIrArg _arg(NkIrLabel label) {
 }
 
 NkIrArg _arg(NkIrProg ir, NkString comment) {
-    return {{.comment = nks_copy(ir->alloc, comment)}, NkIrArg_Comment};
+    return {{.comment = nks_dup(ir->alloc, comment)}, NkIrArg_Comment};
 }
 
 } // namespace
@@ -127,13 +127,13 @@ void nkir_mergeModules(NkIrModule dst, NkIrModule src) {
     // TODO: Linear manual search in nkir module merge. Maybe just allow duplicates?
 
     for (auto const proc_id : nk_iterate(src->exported_procs)) {
-        if (!std::count(nks_begin(&dst->exported_procs), nks_end(&dst->exported_procs), proc_id)) {
+        if (!std::count(NKS_BEGIN(&dst->exported_procs), NKS_END(&dst->exported_procs), proc_id)) {
             nkda_append(&dst->exported_procs, proc_id);
         }
     }
 
     for (auto const decl_id : nk_iterate(src->exported_data)) {
-        if (!std::count(nks_begin(&dst->exported_data), nks_end(&dst->exported_data), decl_id)) {
+        if (!std::count(NKS_BEGIN(&dst->exported_data), NKS_END(&dst->exported_data), decl_id)) {
             nkda_append(&dst->exported_data, decl_id);
         }
     }
@@ -340,8 +340,8 @@ void nkir_emitArray(NkIrProg ir, NkIrInstrArray instrs_array) {
         usize idx = instrs.size;
         nkda_append(&instrs, instr);
 
-        if (ranges.size && idx == nks_last(ranges).end_idx) {
-            nks_last(ranges).end_idx++;
+        if (ranges.size && idx == NKS_LAST(ranges).end_idx) {
+            NKS_LAST(ranges).end_idx++;
         } else {
             nkda_append(&ranges, {idx, idx + 1});
         }
@@ -410,7 +410,7 @@ void nkir_leave(NkIrProg ir) {
 
     nk_assert(proc.scopes.size && "mismatched enter/leave");
 
-    proc.cur_frame_size = nks_last(proc.scopes);
+    proc.cur_frame_size = NKS_LAST(proc.scopes);
     nkda_pop(&proc.scopes, 1);
 }
 
@@ -1105,7 +1105,7 @@ bool nkir_validateProc(NkIrProg ir, NkIrProc _proc) {
         auto const &block = ir->blocks.data[block_id];
 
         if (block.instr_ranges.size) {
-            auto const range = nks_last(block.instr_ranges);
+            auto const range = NKS_LAST(block.instr_ranges);
             if (range.begin_idx != range.end_idx) {
                 auto const &instr = ir->instrs.data[range.end_idx - 1];
                 if (instr.code != nkir_ret && instr.code != nkir_jmp) {

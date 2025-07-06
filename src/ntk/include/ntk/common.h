@@ -139,11 +139,4 @@ inline bool operator==(NkHandle lhs, NkHandle rhs) {
 #define NK_DEFER_LOOP(BEGIN, END) for (int _i_ = ((BEGIN), 0); !_i_; _i_ += 1, (END))
 #define NK_DEFER_LOOP_OPT(ENABLE, BEGIN, END) for (int _i_ = !((ENABLE) && ((BEGIN), 1)); !_i_; _i_ += 1, (END))
 
-#define NK_ITERATE(TYPE, IT, SLICE) for (TYPE IT = (SLICE).data; IT < (SLICE).data + (SLICE).size; IT++)
-#define NK_INDEX(IT, SLICE) (usize)((IT) - (SLICE).data)
-
-#define NK_ITERATE_STRIDED(TYPE, IT, SLICE)                                                             \
-    for (TYPE IT = (SLICE).data; IT < (TYPE)((u8 const *)(SLICE).data + (SLICE).size * (SLICE).stride); \
-         IT = (TYPE)((u8 const *)IT + (SLICE).stride))
-
 #endif // NTK_COMMON_H_

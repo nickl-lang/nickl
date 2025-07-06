@@ -248,7 +248,7 @@ void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArra
 
         NK_ITERATE(NkIrInstr const *, instr, instrs) {
             nkda_append(out, *instr);
-            NkIrInstr *instr_copy = &nks_last(*out);
+            NkIrInstr *instr_copy = &NKS_LAST(*out);
 
             if (isJumpInstr(instr_copy->code)) {
                 for (usize ai = 1; ai < 3; ai++) {
@@ -601,7 +601,7 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
         nkda_append(&stack, sym_name);
 
         while (stack.size) {
-            NkAtom const sym_name = nks_last(stack);
+            NkAtom const sym_name = NKS_LAST(stack);
             nkda_pop(&stack, 1);
 
             if (!NkAtomSet_find(&deps, sym_name)) {

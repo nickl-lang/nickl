@@ -22,8 +22,8 @@ NK_INLINE NkString nk_cs2s(char const *str) {
     return NK_LITERAL(NkString){str, strlen(str)};
 }
 
-NK_EXPORT NkString nks_copy(NkAllocator alloc, NkString src);
-NK_EXPORT NkString nks_copyNt(NkAllocator alloc, NkString src);
+NK_EXPORT NkString nks_dup(NkAllocator alloc, NkString src);
+NK_EXPORT NkString nks_dupNt(NkAllocator alloc, NkString src);
 
 NK_EXPORT NkString nks_trimLeft(NkString str);
 NK_EXPORT NkString nks_trimRight(NkString str);

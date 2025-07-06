@@ -31,7 +31,7 @@ bool readConfig(nks_config *conf, NkString file) {
                     src, (NklSourceLocation){file, lin, 0, 0}, "failed to read compiler config: line too long");
                 return false;
             }
-            if (nks_first(line) == '#') {
+            if (NKS_FIRST(line) == '#') {
                 continue;
             }
             NkString field = nks_chopByDelim(&line, '=');
@@ -40,8 +40,8 @@ bool readConfig(nks_config *conf, NkString file) {
                     src, (NklSourceLocation){file, lin, 0, 0}, "failed to read compiler config: syntax error");
                 return false;
             }
-            NkString const field_copy = nks_copyNt(conf->alloc, nks_trim(field));
-            NkString const line_copy = nks_copyNt(conf->alloc, nks_trim(line));
+            NkString const field_copy = nks_dupNt(conf->alloc, nks_trim(field));
+            NkString const line_copy = nks_dupNt(conf->alloc, nks_trim(line));
             nks_config_insertItem(conf, (NkString_kv){field_copy, line_copy});
         }
 

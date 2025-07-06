@@ -68,7 +68,7 @@ static TypeSearchResult getTypeByFingerprint(NklState nkl, ByteArray fp, NklType
             res.id = nkl->types.next_id++;
 
             ByteArray fp_copy;
-            nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &fp_copy, fp);
+            NKS_COPY(nk_arena_getAllocator(&nkl->types.type_arena), &fp_copy, fp);
 
             TypeMap_insertItem(&nkl->types.type_map, (Type_kv){fp_copy, res.type});
         }
@@ -122,8 +122,7 @@ static void get_ir_aggregate(NklState nkl, NklType *backing, NkIrAggregateLayout
                 .kind = kind,
                 .id = res.id,
             };
-            nk_slice_copy(
-                nk_arena_getAllocator(&nkl->types.type_arena), &backing->ir_type.as.aggr.elems, layout.info_ar);
+            NKS_COPY(nk_arena_getAllocator(&nkl->types.type_arena), &backing->ir_type.as.aggr.elems, layout.info_ar);
         } else {
             backing->ir_type = res.type->ir_type;
         }
@@ -541,7 +540,7 @@ nkltype_t nkl_get_struct(NklState nkl, NklFieldArray fields) {
             nkltype_t const underlying_type =
                 nkl_get_tupleEx(nkl, &fields.data->type, fields.size, sizeof(*fields.data));
 
-            nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &res.type->as.strct.fields, fields);
+            NKS_COPY(nk_arena_getAllocator(&nkl->types.type_arena), &res.type->as.strct.fields, fields);
 
             res.type->ir_type = underlying_type->ir_type;
             res.type->tclass = tclass;
@@ -664,7 +663,7 @@ nkltype_t nkl_get_union(NklState nkl, NklFieldArray fields) {
                 max_align = nk_maxu(max_align, type->ir_type.align);
             }
 
-            nk_slice_copy(nk_arena_getAllocator(&nkl->types.type_arena), &res.type->as.strct.fields, fields);
+            NKS_COPY(nk_arena_getAllocator(&nkl->types.type_arena), &res.type->as.strct.fields, fields);
 
             // TODO Use a special ir_type for union? bytes or smth?
             res.type->ir_type = largest_type->ir_type;

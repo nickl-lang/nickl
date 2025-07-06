@@ -19,29 +19,52 @@
         usize stride;     \
     }
 
-#define NKS_INIT(slice) .data = (slice).data, .size = (slice).size
+#define NKS_INIT(SLICE) .data = (SLICE).data, .size = (SLICE).size
 
-#define nks_begin(slice) ((slice)->data)
-#define nks_end(slice) ((slice)->data + (slice)->size)
+#define NKS_BEGIN(SLICE) ((SLICE)->data)
+#define NKS_END(SLICE) ((SLICE)->data + (SLICE)->size)
 
-#define nks_first(slice) ((slice).data[0])
-#define nks_last(slice) ((slice).data[(slice).size - 1])
+#define NKS_FIRST(SLICE) ((SLICE).data[0])
+#define NKS_LAST(SLICE) ((SLICE).data[(SLICE).size - 1])
 
-#define _nk_slice_copy(alloc, dst, src)                                     \
-    do {                                                                    \
-        (dst)->size = (src).size;                                           \
-        void *_mem = nk_alloc((alloc), (dst)->size * sizeof(*(dst)->data)); \
-        if ((dst)->size) {                                                  \
-            memcpy(_mem, (src).data, (dst)->size * sizeof(*(dst)->data));   \
-        }                                                                   \
-        _nk_assignVoidPtr((dst)->data, _mem);                               \
+#define _NKS_COPY(ALLOC, DST, SRC)                                                      \
+    do {                                                                                \
+        if ((SRC).size) {                                                               \
+            usize const _bytes = (SRC).size * sizeof(*(SRC).data);                      \
+            void *_data = nk_allocAligned((ALLOC), _bytes, nk_alignofval(*(SRC).data)); \
+            memcpy(_data, (SRC).data, _bytes);                                          \
+            _nk_assignVoidPtr((DST)->data, _data);                                      \
+        }                                                                               \
+        (DST)->size = (SRC).size;                                                       \
+    } while (0)
+
+#define _NKS_COPY_STRIDED(ALLOC, DST, SRC)                                              \
+    do {                                                                                \
+        if ((SRC).size) {                                                               \
+            usize const _bytes = (SRC).size * sizeof(*(SRC).data);                      \
+            void *_data = nk_allocAligned((ALLOC), _bytes, nk_alignofval(*(SRC).data)); \
+            u8 *_dst_it = (u8 *)_data;                                                  \
+            u8 const *_src_it = (u8 const *)(SRC).data;                                 \
+            while (_dst_it < (u8 *)_data + _bytes) {                                    \
+                memcpy(_dst_it, _src_it, sizeof(*(SRC).data));                          \
+                _dst_it += sizeof(*(SRC).data);                                         \
+                _src_it += (SRC).stride;                                                \
+            }                                                                           \
+            _nk_assignVoidPtr((DST)->data, _data);                                      \
+        }                                                                               \
+        (DST)->size = (SRC).size;                                                       \
     } while (0)
 
 #ifdef __cplusplus
 
 template <class TDst, class TSrc>
-void nk_slice_copy(NkAllocator alloc, TDst *dst, TSrc src) {
-    _nk_slice_copy(alloc, dst, src);
+void NKS_COPY(NkAllocator alloc, TDst *dst, TSrc src) {
+    _NKS_COPY(alloc, dst, src);
+}
+
+template <class TDst, class TSrc>
+void NKS_COPY_STRIDED(NkAllocator alloc, TDst *dst, TSrc src) {
+    _NKS_COPY_STRIDED(alloc, dst, src);
 }
 
 #define nk_iterate(slice)         \
@@ -53,17 +76,25 @@ template <class TSlice>
 struct _NkIterate {
     TSlice const &_slice;
     auto begin() {
-        return nks_begin(&_slice);
+        return NKS_BEGIN(&_slice);
     }
     auto end() {
-        return nks_end(&_slice);
+        return NKS_END(&_slice);
     }
 };
 
 #else // __cplusplus
 
-#define nk_slice_copy _nk_slice_copy
+#define NKS_COPY _NKS_COPY
+#define NKS_COPY_STRIDED _NKS_COPY_STRIDED
 
 #endif // __cplusplus
+
+#define NK_ITERATE(TYPE, IT, SLICE) for (TYPE IT = (SLICE).data; IT < (SLICE).data + (SLICE).size; IT++)
+#define NK_INDEX(IT, SLICE) (usize)((IT) - (SLICE).data)
+
+#define NK_ITERATE_STRIDED(TYPE, IT, SLICE)                                                             \
+    for (TYPE IT = (SLICE).data; IT < (TYPE)((u8 const *)(SLICE).data + (SLICE).size * (SLICE).stride); \
+         IT = (TYPE)((u8 const *)IT + (SLICE).stride))
 
 #endif // NTK_SLICE_H_
