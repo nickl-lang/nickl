@@ -142,4 +142,8 @@ inline bool operator==(NkHandle lhs, NkHandle rhs) {
 #define NK_ITERATE(TYPE, IT, SLICE) for (TYPE IT = (SLICE).data; IT < (SLICE).data + (SLICE).size; IT++)
 #define NK_INDEX(IT, SLICE) (usize)((IT) - (SLICE).data)
 
+#define NK_ITERATE_STRIDED(TYPE, IT, SLICE)                                                             \
+    for (TYPE IT = (SLICE).data; IT < (TYPE)((u8 const *)(SLICE).data + (SLICE).size * (SLICE).stride); \
+         IT = (TYPE)((u8 const *)IT + (SLICE).stride))
+
 #endif // NTK_COMMON_H_
