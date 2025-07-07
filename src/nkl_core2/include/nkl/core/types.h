@@ -4,6 +4,7 @@
 #include "nkb/types.h"
 #include "nkl/core/nickl.h"
 #include "ntk/common.h"
+#include "ntk/hash.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,10 +32,14 @@ typedef struct NklType_T {
     u64 type_size;
 } NklType_T;
 
-NK_EXPORT NklTypeClass nkl_newTypeClass(NklState nkl);
+NK_EXPORT NklTypeClass nkl_type_newClass(NklState nkl);
 
 NK_EXPORT NklType nkl_type_getIncomplete(NklState nkl, u64 type_size);
 NK_EXPORT void nkl_type_complete(NklState nkl, NklType dst, NklType src);
+
+NK_EXPORT bool nkl_type_isComplete(NklType type);
+
+NK_EXPORT NklType nkl_type_getFromCache(NklState nkl, NkHash128 hash, u64 type_size);
 
 NK_INLINE NklType nkl_type_getDistinct(NklState nkl, NklType type) {
     NklType const res = nkl_type_getIncomplete(nkl, type->type_size);
@@ -50,9 +55,7 @@ NK_INLINE NklType nkl_type_getTypeclassInstance(NklState nkl, NklTypeClass tclas
         .tclass = tclass,
         .type_size = sizeof(NklType_T),
     };
-    NklType const res = nkl_type_getIncomplete(nkl, src_t.type_size);
-    nkl_type_complete(nkl, res, &src_t);
-    return res;
+    return nkl_type_getDistinct(nkl, &src_t);
 }
 
 typedef NkSlice(NklType const) NklTypeArray;
