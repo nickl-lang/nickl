@@ -189,13 +189,7 @@ void nkir_startProc(NkIrProg ir, NkIrProc _proc, NkIrProcDescr descr) {
     proc.name = descr.name;
     proc.proc_t = descr.proc_t;
 
-    auto arg_names_copy = nk_allocT<NkAtom>(ir->alloc, descr.arg_names.size);
-    auto arg_names_it = descr.arg_names.data;
-    for (usize i = 0; i < descr.arg_names.size; i++) {
-        arg_names_copy[i] = *arg_names_it;
-        arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
-    }
-    proc.arg_names = {arg_names_copy, descr.arg_names.size};
+    NKS_COPY_STRIDED(ir->alloc, &proc.arg_names, descr.arg_names);
 
     proc.file = descr.file;
     proc.start_line = descr.line;

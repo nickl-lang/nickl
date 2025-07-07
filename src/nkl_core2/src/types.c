@@ -139,13 +139,8 @@ NklStructType nkl_type_getStructDistinct(NklState nkl, NklFieldArray fields) {
     NklFieldArray fields_copy = {0};
     NKS_COPY(nk_arena_getAllocator(st->arena), &fields_copy, fields);
 
-    NklType const base_t = (NklType)nkl_type_getAggregate(
-        nkl,
-        (NklTypeStridedArray){
-            .data = &fields.data[0].type,
-            .size = fields.size,
-            .stride = sizeof(fields.data[0]),
-        });
+    NklType const base_t =
+        (NklType)nkl_type_getAggregate(nkl, (NklTypeStridedArray){NKS_INIT_STRIDED_FROM_FIELD(fields, type)});
 
     NklStructType_T *type = nk_arena_allocT(st->arena, NklStructType_T);
     *type = (NklStructType_T){

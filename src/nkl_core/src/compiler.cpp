@@ -746,11 +746,8 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
         emit(ctx, nkir_make_label(createLabel(ctx, LabelName_Start)));
 
-        auto arg_names_it = descr.arg_names.data;
-        for (usize i = 0; i < descr.arg_names.size; i++) {
-            // TODO: Push param nodes to point to the correct place in the code
-            CHECK(defineParam(ctx, *arg_names_it, i));
-            arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
+        NK_ITERATE_STRIDED(NkAtom const *, it, descr.arg_names) {
+            CHECK(defineParam(ctx, *it, NK_INDEX_STRIDED(it, descr.arg_names)));
         }
 
         CHECK(compileStmt(ctx, body_n));

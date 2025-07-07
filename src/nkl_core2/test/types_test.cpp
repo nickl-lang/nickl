@@ -47,33 +47,16 @@ TEST_F(nkl_types, aggregate) {
     auto const i16_t = (NklType)nkl_type_getNumeric(nkl, Int16);
     auto const i32_t = (NklType)nkl_type_getNumeric(nkl, Int32);
 
-    NklType types[] = {
+    NklType const types_ar[] = {
         i32_t,
         i16_t,
         i8_t,
     };
+    NklTypeStridedArray const types = {NKS_INIT_STRIDED_STATIC(types_ar)};
 
-    auto const agg_t = nkl_type_getAggregate(
-        nkl,
-        {
-            .data = types,
-            .size = NK_ARRAY_COUNT(types),
-            .stride = sizeof(NklType),
-        });
-    auto const agg_t_1 = nkl_type_getAggregate(
-        nkl,
-        {
-            .data = types,
-            .size = NK_ARRAY_COUNT(types),
-            .stride = sizeof(NklType),
-        });
-    auto const agg_t_2 = nkl_type_getAggregateDistinct(
-        nkl,
-        {
-            .data = types,
-            .size = NK_ARRAY_COUNT(types),
-            .stride = sizeof(NklType),
-        });
+    auto const agg_t = nkl_type_getAggregate(nkl, types);
+    auto const agg_t_1 = nkl_type_getAggregate(nkl, types);
+    auto const agg_t_2 = nkl_type_getAggregateDistinct(nkl, types);
 
     EXPECT_EQ(agg_t, agg_t_1);
     EXPECT_NE(agg_t, agg_t_2);
@@ -93,15 +76,15 @@ TEST_F(nkl_types, struct) {
     auto const f64_t = (NklType)nkl_type_getNumeric(nkl, Float64);
 
     NklField const fields[] = {
-        {
+        (NklField){
             .name = nk_cs2atom("x"),
             .type = f64_t,
         },
-        {
+        (NklField){
             .name = nk_cs2atom("y"),
             .type = f64_t,
         },
-        {
+        (NklField){
             .name = nk_cs2atom("z"),
             .type = f64_t,
         },
@@ -109,36 +92,31 @@ TEST_F(nkl_types, struct) {
 
     auto const struct_t = nkl_type_getStruct(
         nkl,
-        {
+        (NklFieldArray){
             .data = fields,
             .size = NK_ARRAY_COUNT(fields),
         });
     auto const struct_t_1 = nkl_type_getStruct(
         nkl,
-        {
+        (NklFieldArray){
             .data = fields,
             .size = NK_ARRAY_COUNT(fields),
         });
     auto const struct_t_2 = nkl_type_getStructDistinct(
         nkl,
-        {
+        (NklFieldArray){
             .data = fields,
             .size = NK_ARRAY_COUNT(fields),
         });
 
-    NklType types[] = {
+    NklType types_ar[] = {
         f64_t,
         f64_t,
         f64_t,
     };
+    NklTypeStridedArray const types = {NKS_INIT_STRIDED_STATIC(types_ar)};
 
-    auto const base_t = (NklType)nkl_type_getAggregate(
-        nkl,
-        {
-            .data = types,
-            .size = NK_ARRAY_COUNT(types),
-            .stride = sizeof(NklType),
-        });
+    auto const base_t = (NklType)nkl_type_getAggregate(nkl, types);
 
     EXPECT_EQ(struct_t, struct_t_1);
     EXPECT_NE(struct_t, struct_t_2);
@@ -163,22 +141,22 @@ TEST_F(nkl_types, custom_type_class) {
     auto const f32_t = (NklType)nkl_type_getNumeric(nkl, Float32);
 
     NklField const fields[] = {
-        {
+        (NklField){
             .name = nk_cs2atom("x"),
             .type = f32_t,
         },
-        {
+        (NklField){
             .name = nk_cs2atom("y"),
             .type = f32_t,
         },
-        {
+        (NklField){
             .name = nk_cs2atom("z"),
             .type = f32_t,
         },
     };
     auto const struct_t = (NklType)nkl_type_getStructDistinct(
         nkl,
-        {
+        (NklFieldArray){
             .data = fields,
             .size = NK_ARRAY_COUNT(fields),
         });

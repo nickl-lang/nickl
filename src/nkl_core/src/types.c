@@ -195,10 +195,8 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
         PUSH_VAL(&fp, u8, TypeSubset_Ir);
         PUSH_VAL(&fp, u8, kind);
         PUSH_VAL(&fp, usize, info.param_types.size);
-        nkltype_t const *types_it = info.param_types.data;
-        for (usize i = 0; i < info.param_types.size; i++) {
-            PUSH_VAL(&fp, u32, (*types_it)->id);
-            types_it = (nkltype_t const *)((u8 const *)types_it + info.param_types.stride);
+        NK_ITERATE_STRIDED(nkltype_t const *, it, info.param_types) {
+            PUSH_VAL(&fp, u32, (*it)->id);
         }
         PUSH_VAL(&fp, u32, info.ret_t->id);
         PUSH_VAL(&fp, u8, info.call_conv);
@@ -222,14 +220,8 @@ static void get_ir_proc(NklState nkl, usize word_size, NklType *backing, NklProc
                 .kind = kind,
                 .id = res.id,
             };
-            nkltype_t *param_types_copy =
-                nk_alloc(nk_arena_getAllocator(&nkl->types.type_arena), info.param_types.size * sizeof(void *));
-            nkltype_t const *types_it = info.param_types.data;
-            for (usize i = 0; i < info.param_types.size; i++) {
-                param_types_copy[i] = *types_it;
-                types_it = (nkltype_t const *)((u8 const *)types_it + info.param_types.stride);
-            }
-            backing->ir_type.as.proc.info.args_t = (NkTypeArray){(nktype_t *)param_types_copy, info.param_types.size};
+            NKS_COPY_STRIDED(
+                nk_arena_getAllocator(&nkl->types.type_arena), &backing->ir_type.as.proc.info.args_t, info.param_types);
         } else {
             backing->ir_type = res.type->ir_type;
         }
@@ -427,10 +419,8 @@ nkltype_t nkl_get_proc(NklState nkl, usize word_size, NklProcInfo info) {
         PUSH_VAL(&fp, u8, TypeSubset_Nkl);
         PUSH_VAL(&fp, u8, tclass);
         PUSH_VAL(&fp, usize, info.param_types.size);
-        nkltype_t const *types_it = info.param_types.data;
-        for (usize i = 0; i < info.param_types.size; i++) {
-            PUSH_VAL(&fp, u32, (*types_it)->id);
-            types_it = (nkltype_t const *)((u8 const *)types_it + info.param_types.stride);
+        NK_ITERATE_STRIDED(nkltype_t const *, it, info.param_types) {
+            PUSH_VAL(&fp, u32, (*it)->id);
         }
         PUSH_VAL(&fp, u32, info.ret_t->id);
         PUSH_VAL(&fp, u8, info.call_conv);
@@ -562,7 +552,7 @@ nkltype_t nkl_get_struct_packed(NklState nkl, NklFieldArray fields) {
 }
 
 nkltype_t nkl_get_tuple(NklState nkl, NklTypeStridedArray types) {
-    return nkl_get_tupleEx(nkl, types.data, types.size, types.stride);
+    return nkl_get_tupleEx(nkl, types.strided_data, types.size, types.stride);
 }
 
 nkltype_t nkl_get_tupleEx(NklState nkl, nkltype_t const *types, usize count, usize stride) {
