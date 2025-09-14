@@ -7,7 +7,6 @@
 #include "nkl/core/lexer.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
-#include "ntk/common.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
 #include "ntk/log.h"
@@ -357,6 +356,8 @@ static char const *getSymbolKind(NkIrSymbol const *sym) {
 bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     NK_LOG_TRC("%s", __func__);
 
+    NklState nkl = mod->com->nkl;
+
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         if (sym->kind == NkIrSymbol_Extern) {
@@ -385,7 +386,22 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     nkir_moduleDefineSymbol(mod->ir, sym);
 
     if (sym->kind == NkIrSymbol_Extern) {
-        NkAtomMap_insert(&mod->extern_syms, sym->name, sym->extrn.lib);
+        NkAtom *found = NkAtomMap_find(&mod->extern_syms, sym->name);
+        if (found) {
+            NkAtom const found_name = *found;
+            if (found_name) {
+                if (sym->extrn.lib) {
+                    if (found_name != sym->extrn.lib) {
+                        nickl_reportError(nkl, "Symbol already exists with lib `%s`", nk_atom2cs(found_name));
+                        return false;
+                    }
+                }
+            } else {
+                *found = sym->extrn.lib;
+            }
+        } else {
+            NkAtomMap_insert(&mod->extern_syms, sym->name, sym->extrn.lib);
+        }
     } else if (sym->vis == NkIrVisibility_Default) {
         NK_ITERATE(NklModule const *, it, mod->mods_linked_to) {
             NklModule const dst_mod = *it;
@@ -431,7 +447,7 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
     }
 
     {
-        // TODO: Verify linker symbol compatibility
+        // TODO: Verify linked symbol compatibility
         NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
         if (found && found->kind != NkIrSymbol_Extern) {
             NK_ARENA_SCOPE(&nkl->scratch) {
