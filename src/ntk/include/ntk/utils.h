@@ -8,7 +8,7 @@
 #include "ntk/stream.h"
 
 #ifdef NDEBUG
-#define nk_assert(x) (void)(x)
+#define nk_assert(x)
 #else // NDEBUG
 #define nk_assert(x)                                                                                                 \
     do {                                                                                                             \
