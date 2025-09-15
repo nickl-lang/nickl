@@ -7,16 +7,34 @@
 #include "ntk/file.h"
 #include "ntk/stream.h"
 
+#ifdef NDEBUG
+#define nk_assert(x) (void)(x)
+#else // NDEBUG
+#define nk_assert(x)                                                                                                 \
+    do {                                                                                                             \
+        if (!(x)) {                                                                                                  \
+            nk_printf(                                                                                               \
+                nk_file_getStream(nk_stderr()), __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
+            nk_trap();                                                                                               \
+        }                                                                                                            \
+    } while (0)
+#endif // NDEBUG
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-NK_INLINE usize nk_roundUp(usize v, usize m) {
-    return (v + m - 1) / m * m;
+NK_INLINE bool nk_isZeroOrPowerOf2(u64 n) {
+    return (n & (n - 1)) == 0;
 }
 
-NK_INLINE usize nk_roundUpSafe(usize v, usize m) {
-    return m ? nk_roundUp(v, m) : v;
+NK_INLINE usize nk_alignToPowerOf2(i64 v, i64 m) {
+    nk_assert(nk_isZeroOrPowerOf2(m));
+    return (v + (m - 1)) & ~(m - 1);
+}
+
+NK_INLINE usize nk_roundUp(usize v, usize m) {
+    return (v + m - 1) / m * m;
 }
 
 NK_INLINE u64 nk_ceilToPowerOf2(u64 n) {
@@ -39,10 +57,6 @@ NK_INLINE u64 nk_floorToPowerOf2(u64 n) {
     n |= n >> 16;
     n |= n >> 32;
     return n - (n >> 1);
-}
-
-NK_INLINE bool nk_isZeroOrPowerOf2(u64 n) {
-    return (n & (n - 1)) == 0;
 }
 
 NK_INLINE u64 nk_log2u64(u64 n) {
@@ -150,18 +164,5 @@ _NkDeferWithData<T, F> nk_defer(T &&data, F &&f) {
 }
 
 #endif // __cplusplus
-
-#ifdef NDEBUG
-#define nk_assert(x) (void)(x)
-#else // NDEBUG
-#define nk_assert(x)                                                                                                 \
-    do {                                                                                                             \
-        if (!(x)) {                                                                                                  \
-            nk_printf(                                                                                               \
-                nk_file_getStream(nk_stderr()), __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
-            nk_trap();                                                                                               \
-        }                                                                                                            \
-    } while (0)
-#endif // NDEBUG
 
 #endif // NTK_UTILS_H_

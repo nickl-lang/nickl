@@ -195,7 +195,7 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
 
         alignment = nk_maxu(alignment, type->align);
 
-        offset = nk_roundUpSafe(offset, type->align);
+        offset = nk_alignToPowerOf2(offset, type->align);
         info_ar[i] = {
             type,
             elem_count,
@@ -204,5 +204,5 @@ NkIrAggregateLayout nkir_calcAggregateLayout(
         offset += type->size * elem_count;
     }
 
-    return NkIrAggregateLayout{{info_ar, n}, nk_roundUpSafe(offset, alignment), alignment};
+    return NkIrAggregateLayout{{info_ar, n}, nk_alignToPowerOf2(offset, alignment), alignment};
 }

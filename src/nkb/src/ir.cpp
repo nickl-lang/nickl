@@ -217,7 +217,7 @@ void nkir_finishProc(NkIrProg ir, NkIrProc _proc, usize line) {
 
     auto &proc = ir->procs.data[_proc.idx];
     proc.end_line = line;
-    proc.frame_size = nk_roundUpSafe(proc.frame_size, proc.frame_align);
+    proc.frame_size = nk_alignToPowerOf2(proc.frame_size, proc.frame_align);
 }
 
 void *nkir_getDataPtr(NkIrProg ir, NkIrData var) {
@@ -422,7 +422,7 @@ NkIrLocalVar nkir_makeLocalVar(NkIrProg ir, NkAtom name, nktype_t type) {
 
     NkIrLocalVar id{proc.locals.size};
     proc.frame_align = nk_maxu(proc.frame_align, type->align);
-    proc.cur_frame_size = nk_roundUpSafe(proc.cur_frame_size, type->align);
+    proc.cur_frame_size = nk_alignToPowerOf2(proc.cur_frame_size, type->align);
     nkda_append(&proc.locals, {name, type, proc.cur_frame_size});
     proc.cur_frame_size += type->size;
     proc.frame_size = nk_maxu(proc.frame_size, proc.cur_frame_size);

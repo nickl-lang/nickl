@@ -335,7 +335,7 @@ static NkIrType parseType(ParserState *p) {
             TRY(NkIrType const type = parseType(p));
 
             align = nk_maxu(align, type->align);
-            offset = nk_roundUpSafe(offset, type->align);
+            offset = nk_alignToPowerOf2(offset, type->align);
             nkda_append(
                 &elems,
                 ((NkIrAggregateElemInfo){
@@ -349,7 +349,7 @@ static NkIrType parseType(ParserState *p) {
                 EXPECT(NklIrToken_Comma);
             }
         }
-        u64 const size = nk_roundUpSafe(offset, align);
+        u64 const size = nk_alignToPowerOf2(offset, align);
 
         EXPECT(NklIrToken_RBrace);
 

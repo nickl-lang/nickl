@@ -305,10 +305,10 @@ NkTupleLayout nk_calcTupleLayout(nktype_t const *types, usize count, NkAllocator
 
         alignment = nk_maxu(alignment, type->align);
 
-        offset = nk_roundUpSafe(offset, type->align);
+        offset = nk_alignToPowerOf2(offset, type->align);
         info_ar[i] = NkTupleElemInfo{type, offset};
         offset += type->size;
     }
 
-    return NkTupleLayout{{info_ar, count}, nk_roundUpSafe(offset, alignment), alignment};
+    return NkTupleLayout{{info_ar, count}, nk_alignToPowerOf2(offset, alignment), alignment};
 }
