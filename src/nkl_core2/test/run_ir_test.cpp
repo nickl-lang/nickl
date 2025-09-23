@@ -313,3 +313,43 @@ pub proc bar() :i32 {
 //     ASSERT_TRUE(foo);
 //     foo();
 // }
+
+TEST_F(nkl_run_ir, new_test) {
+    auto mod = nkl_newModuleNamed(com, nk_cs2s("A"));
+    auto mod2 = nkl_newModule(com);
+
+    EXPECT_TRUE(nkl_linkModule(mod2, mod));
+
+    COMPILE(mod, nk_cs2s(R"(
+extern "c" proc puts() :i32
+
+proc bar() :i32 {
+    call puts, ("bar 0") -> :i32 %a
+    ret %a
+}
+
+pub proc foo() :i32 {
+    call puts, ("foo") -> :i32 %a
+    call bar, ()
+    ret %a
+}
+)"));
+
+    COMPILE(mod2, nk_cs2s(R"(
+extern "c" proc puts() :i32
+extern proc foo() :i32
+
+proc bar() :i32 {
+    call puts, ("bar 00") -> :i32 %a
+    ret %a
+}
+)"));
+
+    auto foo = (i32 (*)())nkl_getSymbolAddress(mod2, nk_cs2s("foo"));
+    ASSERT_TRUE(foo);
+    EXPECT_EQ(foo(), 4);
+
+    auto bar = (i32 (*)())nkl_getSymbolAddress(mod2, nk_cs2s("bar"));
+    ASSERT_TRUE(bar);
+    EXPECT_EQ(bar(), 7);
+}
