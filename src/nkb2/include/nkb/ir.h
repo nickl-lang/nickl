@@ -198,10 +198,12 @@ typedef struct {
     NkIrVisibility vis;
     NkIrSymbolFlags flags;
     NkIrSymbolKind kind;
+
+    size_t left;
+    size_t right;
 } NkIrSymbol;
 
 typedef NkSlice(NkIrSymbol const) NkIrSymbolArray;
-typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 
 typedef enum {
     NkIrLabel_Abs,

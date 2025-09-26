@@ -194,7 +194,7 @@ void nk_llvm_freeTarget(NkLlvmTarget tgt) {
     }
 }
 
-NkLlvmModule nk_llvm_compilerIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir) {
+NkLlvmModule nk_llvm_compileIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(scratch && llvm, NULL);
