@@ -104,7 +104,7 @@ namespace std {
 
 template <>
 struct hash<::NkString> {
-    usize operator()(::NkString str) {
+    usize operator()(::NkString str) const {
         return nks_hash(str);
     }
 };
