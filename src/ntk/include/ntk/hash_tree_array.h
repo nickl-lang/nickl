@@ -86,19 +86,21 @@
     TItem *TArray##_insertItem(TArray *items, TItem item) {                                                  \
         TKey const *key = GetKeyFunc(&item);                                                                 \
         size_t null_idx = 0;                                                                                 \
-        _##TArray##_SearchResult res = _##TArray##_findNode(items, &null_idx, key);                          \
-        if (!res.existing) {                                                                                 \
+        _##TArray##_SearchResult const res = _##TArray##_findNode(items, &null_idx, key);                    \
+        if (res.existing) {                                                                                  \
+            return &items->data[*res.idx_ptr];                                                               \
+        } else {                                                                                             \
             *res.idx_ptr = items->size;                                                                      \
             nkda_append(items, item);                                                                        \
             nks_last(*items).left = 0;                                                                       \
             nks_last(*items).right = 0;                                                                      \
+            return &nks_last(*items);                                                                        \
         }                                                                                                    \
-        return &items->data[*res.idx_ptr];                                                                   \
     }                                                                                                        \
                                                                                                              \
     TItem *TArray##_findItem(TArray *items, TKey key) {                                                      \
         size_t null_idx = 0;                                                                                 \
-        _##TArray##_SearchResult res = _##TArray##_findNode(items, &null_idx, &key);                         \
+        _##TArray##_SearchResult const res = _##TArray##_findNode(items, &null_idx, &key);                   \
         return res.existing ? &items->data[*res.idx_ptr] : NULL;                                             \
     }                                                                                                        \
                                                                                                              \
