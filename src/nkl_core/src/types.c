@@ -21,8 +21,8 @@ typedef enum {
     TypeSubset_Nkl,
 } TypeSubset;
 
-static ByteArray const *Type_kv_GetKey(Type_kv const *item) {
-    return &item->key;
+static ByteArray Type_kv_GetKey(Type_kv const *item) {
+    return item->key;
 }
 
 static NkHash64 ByteArray_hash(ByteArray const key) {

@@ -100,8 +100,8 @@ typedef struct NkbState_T {
 
 typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 
-NkAtom const *NkIrSymbol_getKey(NkIrSymbol const *item) {
-    return &item->name;
+NkAtom NkIrSymbol_getKey(NkIrSymbol const *item) {
+    return item->name;
 }
 
 NK_HASH_TREE_ARRAY_DEFINE(NkIrSymbolHashTreeArray, NkIrSymbol, NkAtom, NkIrSymbol_getKey, nk_atom_hash, nk_atom_equal);

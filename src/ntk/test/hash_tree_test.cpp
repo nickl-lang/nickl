@@ -22,8 +22,8 @@ struct int2cstr_kv {
     char const *val;
 };
 
-int const *int2cstr_kv_GetKey(int2cstr_kv const *elem) {
-    return &elem->key;
+int int2cstr_kv_GetKey(int2cstr_kv const *elem) {
+    return elem->key;
 }
 
 NkHash64 int_hash(int const key) {
@@ -91,8 +91,8 @@ struct str2int_kv {
     int val;
 };
 
-NkString const *str2int_kv_GetKey(str2int_kv const *elem) {
-    return &elem->key;
+NkString str2int_kv_GetKey(str2int_kv const *elem) {
+    return elem->key;
 }
 
 NK_HASH_TREE_DEFINE(str2int, str2int_kv, NkString, str2int_kv_GetKey, nks_hash, nks_equal);

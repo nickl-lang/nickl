@@ -50,69 +50,69 @@
 #define NK_HASH_TREE_ARRAY_PROTO_KV_EXPORT(TArray, TKey, TVal) \
     _NK_HASH_TREE_ARRAY_PROTO_KV(NK_EXPORT, TArray, TKey, TVal)
 
-#define NK_HASH_TREE_ARRAY_IMPL(TArray, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)                  \
-    typedef struct {                                                                                         \
-        size_t *idx_ptr;                                                                                     \
-        bool existing;                                                                                       \
-    } _##TArray##_SearchResult;                                                                              \
-                                                                                                             \
-    static _##TArray##_SearchResult _##TArray##_findNode(TArray *items, size_t *null_idx, TKey const *key) { \
-        size_t *idx_ptr = null_idx;                                                                          \
-        if (!items->size) {                                                                                  \
-            return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, false};                                     \
-        }                                                                                                    \
-        NkHash64 const hash = KeyHashFunc(*key);                                                             \
-        do {                                                                                                 \
-            TItem *node = &items->data[*idx_ptr];                                                            \
-            TKey const *existing_key = GetKeyFunc(node);                                                     \
-            NkHash64 const existing_hash = KeyHashFunc(*existing_key);                                       \
-            switch ((existing_hash < hash) - (hash < existing_hash)) {                                       \
-                case 0:                                                                                      \
-                    if (KeyEqualFunc(*key, *existing_key)) {                                                 \
-                        return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, true};                          \
-                    }                                                                                        \
-                    NK_FALLTHROUGH;                                                                          \
-                case -1:                                                                                     \
-                    idx_ptr = &node->left;                                                                   \
-                    break;                                                                                   \
-                case +1:                                                                                     \
-                    idx_ptr = &node->right;                                                                  \
-                    break;                                                                                   \
-            }                                                                                                \
-        } while (*idx_ptr);                                                                                  \
-        return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, false};                                         \
-    }                                                                                                        \
-                                                                                                             \
-    TItem *TArray##_insertItem(TArray *items, TItem item) {                                                  \
-        TKey const *key = GetKeyFunc(&item);                                                                 \
-        size_t null_idx = 0;                                                                                 \
-        _##TArray##_SearchResult const res = _##TArray##_findNode(items, &null_idx, key);                    \
-        if (res.existing) {                                                                                  \
-            return &items->data[*res.idx_ptr];                                                               \
-        } else {                                                                                             \
-            *res.idx_ptr = items->size;                                                                      \
-            nkda_append(items, item);                                                                        \
-            nks_last(*items).left = 0;                                                                       \
-            nks_last(*items).right = 0;                                                                      \
-            return &nks_last(*items);                                                                        \
-        }                                                                                                    \
-    }                                                                                                        \
-                                                                                                             \
-    TItem *TArray##_findItem(TArray *items, TKey key) {                                                      \
-        size_t null_idx = 0;                                                                                 \
-        _##TArray##_SearchResult const res = _##TArray##_findNode(items, &null_idx, &key);                   \
-        return res.existing ? &items->data[*res.idx_ptr] : NULL;                                             \
-    }                                                                                                        \
-                                                                                                             \
-    void TArray##_free(TArray *items) {                                                                      \
-        nkda_free(items);                                                                                    \
-    }                                                                                                        \
-                                                                                                             \
+#define NK_HASH_TREE_ARRAY_IMPL(TArray, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc)           \
+    typedef struct {                                                                                  \
+        size_t *idx_ptr;                                                                              \
+        bool existing;                                                                                \
+    } _##TArray##_SearchResult;                                                                       \
+                                                                                                      \
+    static _##TArray##_SearchResult _##TArray##_findNode(TArray *items, size_t *null_idx, TKey key) { \
+        size_t *idx_ptr = null_idx;                                                                   \
+        if (!items->size) {                                                                           \
+            return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, false};                              \
+        }                                                                                             \
+        NkHash64 const hash = KeyHashFunc(key);                                                       \
+        do {                                                                                          \
+            TItem *node = &items->data[*idx_ptr];                                                     \
+            TKey const existing_key = GetKeyFunc(node);                                               \
+            NkHash64 const existing_hash = KeyHashFunc(existing_key);                                 \
+            switch ((existing_hash < hash) - (hash < existing_hash)) {                                \
+                case 0:                                                                               \
+                    if (KeyEqualFunc(key, existing_key)) {                                            \
+                        return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, true};                   \
+                    }                                                                                 \
+                    NK_FALLTHROUGH;                                                                   \
+                case -1:                                                                              \
+                    idx_ptr = &node->left;                                                            \
+                    break;                                                                            \
+                case +1:                                                                              \
+                    idx_ptr = &node->right;                                                           \
+                    break;                                                                            \
+            }                                                                                         \
+        } while (*idx_ptr);                                                                           \
+        return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, false};                                  \
+    }                                                                                                 \
+                                                                                                      \
+    TItem *TArray##_insertItem(TArray *items, TItem item) {                                           \
+        TKey const key = GetKeyFunc(&item);                                                           \
+        size_t null_idx = 0;                                                                          \
+        _##TArray##_SearchResult const res = _##TArray##_findNode(items, &null_idx, key);             \
+        if (res.existing) {                                                                           \
+            return &items->data[*res.idx_ptr];                                                        \
+        } else {                                                                                      \
+            *res.idx_ptr = items->size;                                                               \
+            nkda_append(items, item);                                                                 \
+            nks_last(*items).left = 0;                                                                \
+            nks_last(*items).right = 0;                                                               \
+            return &nks_last(*items);                                                                 \
+        }                                                                                             \
+    }                                                                                                 \
+                                                                                                      \
+    TItem *TArray##_findItem(TArray *items, TKey key) {                                               \
+        size_t null_idx = 0;                                                                          \
+        _##TArray##_SearchResult const res = _##TArray##_findNode(items, &null_idx, key);             \
+        return res.existing ? &items->data[*res.idx_ptr] : NULL;                                      \
+    }                                                                                                 \
+                                                                                                      \
+    void TArray##_free(TArray *items) {                                                               \
+        nkda_free(items);                                                                             \
+    }                                                                                                 \
+                                                                                                      \
     _NK_NOP_TOPLEVEL
 
 #define NK_HASH_TREE_ARRAY_IMPL_K(TArray, TKey, KeyHashFunc, KeyEqualFunc)             \
-    static TKey const *_##TArray##_Item_GetKey(TArray##_Item const *item) {            \
-        return &item->key;                                                             \
+    static TKey _##TArray##_Item_GetKey(TArray##_Item const *item) {                   \
+        return item->key;                                                              \
     }                                                                                  \
     TKey *TArray##_insert(TArray *items, TKey key) {                                   \
         return &TArray##_insertItem(items, NK_LITERAL(TArray##_Item){key, 0, 0})->key; \
@@ -124,8 +124,8 @@
     NK_HASH_TREE_ARRAY_IMPL(TArray, TArray##_Item, TKey, _##TArray##_Item_GetKey, KeyHashFunc, KeyEqualFunc)
 
 #define NK_HASH_TREE_ARRAY_IMPL_KV(TArray, TKey, TVal, KeyHashFunc, KeyEqualFunc)     \
-    static TKey const *_##TArray##_Item_GetKey(TArray##_Item const *item) {           \
-        return &item->key;                                                            \
+    static TKey _##TArray##_Item_GetKey(TArray##_Item const *item) {                  \
+        return item->key;                                                             \
     }                                                                                 \
     TArray##_Item *TArray##_insert(TArray *items, TKey key, TVal val) {               \
         return TArray##_insertItem(items, NK_LITERAL(TArray##_Item){key, val, 0, 0}); \

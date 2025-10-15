@@ -263,34 +263,34 @@ int main(int /*argc*/, char **argv) {
 
     NkIrcConfig irc_conf{};
 
-    auto ptr_size = nks_config_findItem(&config, nk_cs2s("usize"));
+    auto *ptr_size = nks_config_find(&config, nk_cs2s("usize"));
     if (ptr_size) {
-        NK_LOG_DBG("usize=`" NKS_FMT "`", NKS_ARG(ptr_size->val));
+        NK_LOG_DBG("usize=`" NKS_FMT "`", NKS_ARG(*ptr_size));
         char *endptr = NULL;
-        irc_conf.ptr_size = strtol(ptr_size->val.data, &endptr, 10);
-        if (endptr != ptr_size->val.data + ptr_size->val.size || !irc_conf.ptr_size ||
+        irc_conf.ptr_size = strtol(ptr_size->data, &endptr, 10);
+        if (endptr != ptr_size->data + ptr_size->size || !irc_conf.ptr_size ||
             !nk_isZeroOrPowerOf2(irc_conf.ptr_size)) {
-            nkl_diag_printError("invalid usize in config: `" NKS_FMT "`", NKS_ARG(ptr_size->val));
+            nkl_diag_printError("invalid usize in config: `" NKS_FMT "`", NKS_ARG(*ptr_size));
             return 1;
         }
     }
 
-    auto libc_name = nks_config_findItem(&config, nk_cs2s("libc_name"));
+    auto libc_name = nks_config_find(&config, nk_cs2s("libc_name"));
     if (libc_name) {
-        NK_LOG_DBG("libc_name=`" NKS_FMT "`", NKS_ARG(libc_name->val));
-        irc_conf.libc_name = nk_s2atom(libc_name->val);
+        NK_LOG_DBG("libc_name=`" NKS_FMT "`", NKS_ARG(*libc_name));
+        irc_conf.libc_name = nk_s2atom(*libc_name);
     }
 
-    auto libm_name = nks_config_findItem(&config, nk_cs2s("libm_name"));
+    auto libm_name = nks_config_find(&config, nk_cs2s("libm_name"));
     if (libm_name) {
-        NK_LOG_DBG("libm_name=`" NKS_FMT "`", NKS_ARG(libm_name->val));
-        irc_conf.libm_name = nk_s2atom(libm_name->val);
+        NK_LOG_DBG("libm_name=`" NKS_FMT "`", NKS_ARG(*libm_name));
+        irc_conf.libm_name = nk_s2atom(*libm_name);
     }
 
-    auto libpthread_name = nks_config_findItem(&config, nk_cs2s("libpthread_name"));
+    auto libpthread_name = nks_config_find(&config, nk_cs2s("libpthread_name"));
     if (libpthread_name) {
-        NK_LOG_DBG("libpthread_name=`" NKS_FMT "`", NKS_ARG(libpthread_name->val));
-        irc_conf.libpthread_name = nk_s2atom(libpthread_name->val);
+        NK_LOG_DBG("libpthread_name=`" NKS_FMT "`", NKS_ARG(*libpthread_name));
+        irc_conf.libpthread_name = nk_s2atom(*libpthread_name);
     }
 
     auto const c = nkirc_create(&arena, irc_conf);
@@ -302,19 +302,19 @@ int main(int /*argc*/, char **argv) {
     if (run) {
         code = nkir_run(c, in_file);
     } else {
-        auto c_compiler = nks_config_findItem(&config, nk_cs2s("c_compiler"));
+        auto c_compiler = nks_config_find(&config, nk_cs2s("c_compiler"));
         if (!c_compiler) {
             nkl_diag_printError("`c_compiler` field is missing in the config");
             return 1;
         }
-        NK_LOG_DBG("c_compiler=`" NKS_FMT "`", NKS_ARG(c_compiler->val));
+        NK_LOG_DBG("c_compiler=`" NKS_FMT "`", NKS_ARG(*c_compiler));
 
         NkDynArray(NkString) additional_flags{NKDA_INIT(alloc)};
 
-        auto c_flags = nks_config_findItem(&config, nk_cs2s("c_flags"));
+        auto c_flags = nks_config_find(&config, nk_cs2s("c_flags"));
         if (c_flags) {
-            NK_LOG_DBG("c_flags=`" NKS_FMT "`", NKS_ARG(c_flags->val));
-            nkda_append(&additional_flags, c_flags->val);
+            NK_LOG_DBG("c_flags=`" NKS_FMT "`", NKS_ARG(*c_flags));
+            nkda_append(&additional_flags, *c_flags);
         }
 
         if (add_debug_info || enable_asan) {
@@ -347,7 +347,7 @@ int main(int /*argc*/, char **argv) {
             c,
             in_file,
             {
-                .compiler_binary = c_compiler->val,
+                .compiler_binary = *c_compiler,
                 .additional_flags{NKS_INIT(additional_flags)},
                 .output_filename = out_file,
                 .output_kind = output_kind,

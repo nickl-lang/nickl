@@ -13,8 +13,8 @@
 #include "ntk/list.h"
 #include "ntk/string_builder.h"
 
-static NkAtom const *Source_kv_GetKey(Source_kv const *item) {
-    return &item->key;
+static NkAtom Source_kv_GetKey(Source_kv const *item) {
+    return item->key;
 }
 NK_HASH_TREE_IMPL(FileMap, Source_kv, NkAtom, Source_kv_GetKey, nk_atom_hash, nk_atom_equal);
 
