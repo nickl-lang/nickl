@@ -1,14 +1,13 @@
 #include "ntk/atom.h"
 
 #include "ntk/arena.h"
-#include "ntk/hash_tree.h"
 #include "ntk/profiler.h"
 #include "ntk/string.h"
 
-NK_HASH_TREE_IMPL_K(NkAtomSet, NkAtom, nk_atom_hash, nk_atom_equal);
-NK_HASH_TREE_IMPL_KV(NkAtomMap, NkAtom, NkAtom, nk_atom_hash, nk_atom_equal);
-NK_HASH_TREE_IMPL_KV(NkAtomStringMap, NkAtom, NkString, nk_atom_hash, nk_atom_equal);
-NK_HASH_TREE_IMPL_KV(NkStringAtomMap, NkString, NkAtom, nks_hash, nks_equal);
+NK_HASH_TREE_ARRAY_IMPL_K(NkAtomSet, NkAtom, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_ARRAY_IMPL_KV(NkAtomMap, NkAtom, NkAtom, nk_atom_hash, nk_atom_equal);
+NK_HASH_TREE_ARRAY_IMPL_KV(NkStringAtomMap, NkString, NkAtom, nks_hash, nks_equal);
+NK_HASH_TREE_ARRAY_IMPL_KV(NkAtomStringMap, NkAtom, NkString, nk_atom_hash, nk_atom_equal);
 
 static NkArena g_arena;
 static NkStringAtomMap g_str2atom;

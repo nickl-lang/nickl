@@ -531,19 +531,6 @@ static NkLlvmJitDylib getLlvmJitDylib(NkIrModule mod) {
     return mod->_llvm_jit_dylib;
 }
 
-static void collectSymbols(NkIrModule mod, _NkAtomSet_Node *node, NkIrSymbolDynArray *out) {
-    if (!node) {
-        return;
-    }
-
-    NkIrSymbol const *sym = nkir_findSymbol(mod, node->item);
-    nk_assert(sym && "symbol not found, invalid ir");
-    nkda_append(out, *sym);
-
-    collectSymbols(mod, node->child[0], out);
-    collectSymbols(mod, node->child[1], out);
-}
-
 typedef NkDynArray(NkAtom) NkAtomDynArray;
 
 static void gatherDeps(NkIrSymbol const *sym, NkAtomDynArray *out) {
@@ -617,7 +604,11 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
             }
         }
 
-        collectSymbols(mod, deps.root, out);
+        NK_ITERATE(NkAtomSet_Item const *, it, deps) {
+            NkIrSymbol const *sym = nkir_findSymbol(mod, it->key);
+            nk_assert(sym && "symbol not found, invalid ir");
+            nkda_append(out, *sym);
+        }
     }
 }
 

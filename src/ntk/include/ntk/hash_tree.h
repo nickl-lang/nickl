@@ -178,15 +178,4 @@
     NK_HASH_TREE_FWD_KV(TTree, TKey, TVal);                                  \
     NK_HASH_TREE_IMPL_KV(TTree, TKey, TVal, KeyHashFunc, KeyEqualFunc)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-NK_HASH_TREE_FWD_K_EXPORT(NkIntptrHashSet, intptr_t);
-NK_HASH_TREE_FWD_KV_EXPORT(NkIntptrHashMap, intptr_t, intptr_t);
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif // NTK_HASH_TREE_H_
