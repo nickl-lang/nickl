@@ -38,7 +38,7 @@ NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit);
 NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple);
 void nk_llvm_freeTarget(NkLlvmTarget tgt);
 
-NkLlvmModule nk_llvm_compilerIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir);
+NkLlvmModule nk_llvm_compileIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir);
 bool nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt);
 
 bool nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms);

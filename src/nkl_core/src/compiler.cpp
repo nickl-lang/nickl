@@ -116,7 +116,7 @@ NklModule nkl_createModule(NklCompiler c) {
     return new (nk_allocT<NklModule_T>(alloc)) NklModule_T{
         .com = c,
         .mod = nkir_createModule(c->ir),
-        .export_set{nullptr, alloc},
+        .export_set{NKDA_INIT(alloc)},
     };
 }
 
@@ -1488,12 +1488,11 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
             };
             nk_list_push(ctx.scope_stack->export_list, export_node);
 
-            auto const found = NkAtomSet_findItem(&ctx.m->export_set, name);
-            if (found) {
+            if (NkAtomSet_find(&ctx.m->export_set, name)) {
                 // TODO: Report the conflicting export location
                 return error(ctx, "symbol '%s' is already exported in the current module", nk_atom2cs(name));
             }
-            NkAtomSet_insertItem(&ctx.m->export_set, name);
+            NkAtomSet_insert(&ctx.m->export_set, name);
 
             DEFINE(proc, compile(ctx, const_n));
 

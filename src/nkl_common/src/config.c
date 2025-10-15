@@ -3,16 +3,11 @@
 #include "nkl/common/diagnostics.h"
 #include "ntk/error.h"
 #include "ntk/file.h"
-#include "ntk/hash_tree.h"
 #include "ntk/string.h"
 
 #define MAX_LINE 4096
 
-static NkString const *NkString_kv_GetKey(NkString_kv const *item) {
-    return &item->key;
-}
-
-NK_HASH_TREE_IMPL(nks_config, NkString_kv, NkString, NkString_kv_GetKey, nks_hash, nks_equal);
+NK_HASH_TREE_ARRAY_IMPL_KV(nks_config, NkString, NkString, nks_hash, nks_equal);
 
 bool readConfig(nks_config *conf, NkString file) {
     NkString src;
@@ -42,7 +37,7 @@ bool readConfig(nks_config *conf, NkString file) {
             }
             NkString const field_copy = nks_copyNt(conf->alloc, nks_trim(field));
             NkString const line_copy = nks_copyNt(conf->alloc, nks_trim(line));
-            nks_config_insertItem(conf, (NkString_kv){field_copy, line_copy});
+            nks_config_insert(conf, field_copy, line_copy);
         }
 
         lin++;

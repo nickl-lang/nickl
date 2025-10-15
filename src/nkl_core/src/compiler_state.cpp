@@ -13,12 +13,12 @@ namespace {
 
 NK_LOG_USE_SCOPE(compiler);
 
-static NkAtom const *Decl_kv_GetKey(Decl_kv const *item) {
-    return &item->key;
+static NkAtom Decl_kv_GetKey(Decl_kv const *item) {
+    return item->key;
 }
 
-static NkAtom const *FileContext_kv_GetKey(FileContext_kv const *item) {
-    return &item->key;
+static NkAtom FileContext_kv_GetKey(FileContext_kv const *item) {
+    return item->key;
 }
 
 } // namespace

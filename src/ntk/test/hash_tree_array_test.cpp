@@ -1,4 +1,4 @@
-#include "ntk/hash_tree.h"
+#include "ntk/hash_tree_array.h"
 
 #include <gtest/gtest.h>
 
@@ -8,7 +8,7 @@
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
-class HashTree : public testing::Test {
+class HashTreeArray : public testing::Test {
     void SetUp() override {
         NK_LOG_INIT({});
     }
@@ -20,6 +20,9 @@ class HashTree : public testing::Test {
 struct int2cstr_kv {
     int key;
     char const *val;
+
+    size_t left;
+    size_t right;
 };
 
 int int2cstr_kv_GetKey(int2cstr_kv const *elem) {
@@ -34,9 +37,9 @@ bool int_equal(int const lhs, int const rhs) {
     return lhs == rhs;
 }
 
-NK_HASH_TREE_DEFINE(int2cstr_ht, int2cstr_kv, int, int2cstr_kv_GetKey, int_hash, int_equal);
+NK_HASH_TREE_ARRAY_DEFINE(int2cstr_ht, int2cstr_kv, int, int2cstr_kv_GetKey, int_hash, int_equal);
 
-TEST_F(HashTree, val_key) {
+TEST_F(HashTreeArray, val_key) {
     int2cstr_ht ht{};
     defer {
         int2cstr_ht_free(&ht);
@@ -45,43 +48,49 @@ TEST_F(HashTree, val_key) {
     int2cstr_kv elem{};
     int2cstr_kv *found;
 
-    elem = {42, "forty two"};
+    elem = {42, "forty two", 0, 0};
     EXPECT_FALSE(int2cstr_ht_findItem(&ht, 42));
     found = int2cstr_ht_insertItem(&ht, elem);
     EXPECT_TRUE(int2cstr_ht_findItem(&ht, 42));
+    ASSERT_TRUE(found);
     EXPECT_EQ(found->key, 42);
     EXPECT_STREQ(found->val, "forty two");
 
-    elem = {1, "one"};
+    elem = {1, "one", 0, 0};
     EXPECT_FALSE(int2cstr_ht_findItem(&ht, 1));
     found = int2cstr_ht_insertItem(&ht, elem);
     EXPECT_TRUE(int2cstr_ht_findItem(&ht, 1));
+    ASSERT_TRUE(found);
     EXPECT_EQ(found->key, 1);
     EXPECT_STREQ(found->val, "one");
 
-    elem = {2, "two"};
+    elem = {2, "two", 0, 0};
     EXPECT_FALSE(int2cstr_ht_findItem(&ht, 2));
     found = int2cstr_ht_insertItem(&ht, elem);
     EXPECT_TRUE(int2cstr_ht_findItem(&ht, 2));
+    ASSERT_TRUE(found);
     EXPECT_EQ(found->key, 2);
     EXPECT_STREQ(found->val, "two");
 
-    elem = {2, "asdasdasd"};
+    elem = {2, "asdasdasd", 0, 0};
     EXPECT_TRUE(int2cstr_ht_findItem(&ht, 2));
     found = int2cstr_ht_insertItem(&ht, elem);
+    ASSERT_TRUE(found);
     EXPECT_EQ(found->key, 2);
     EXPECT_STREQ(found->val, "two");
 
-    elem = {41, "asdasdasd"};
+    elem = {41, "asdasdasd", 0, 0};
     EXPECT_FALSE(int2cstr_ht_findItem(&ht, 41));
     found = int2cstr_ht_insertItem(&ht, elem);
     EXPECT_TRUE(int2cstr_ht_findItem(&ht, 41));
+    ASSERT_TRUE(found);
     EXPECT_EQ(found->key, 41);
     EXPECT_STREQ(found->val, "asdasdasd");
 
-    elem = {42, "asdasdasd"};
+    elem = {42, "asdasdasd", 0, 0};
     EXPECT_TRUE(int2cstr_ht_findItem(&ht, 42));
     found = int2cstr_ht_insertItem(&ht, elem);
+    ASSERT_TRUE(found);
     EXPECT_EQ(found->key, 42);
     EXPECT_STREQ(found->val, "forty two");
 }
@@ -89,15 +98,18 @@ TEST_F(HashTree, val_key) {
 struct str2int_kv {
     NkString key;
     int val;
+
+    size_t left;
+    size_t right;
 };
 
 NkString str2int_kv_GetKey(str2int_kv const *elem) {
     return elem->key;
 }
 
-NK_HASH_TREE_DEFINE(str2int, str2int_kv, NkString, str2int_kv_GetKey, nks_hash, nks_equal);
+NK_HASH_TREE_ARRAY_DEFINE(str2int, str2int_kv, NkString, str2int_kv_GetKey, nks_hash, nks_equal);
 
-TEST_F(HashTree, str_key) {
+TEST_F(HashTreeArray, str_key) {
     str2int ht{};
     defer {
         str2int_free(&ht);
@@ -106,48 +118,48 @@ TEST_F(HashTree, str_key) {
     str2int_kv elem{};
     str2int_kv *found;
 
-    elem = {nk_cs2s("forty two"), 42};
+    elem = {nk_cs2s("forty two"), 42, 0, 0};
     EXPECT_FALSE(str2int_findItem(&ht, nk_cs2s("forty two")));
     found = str2int_insertItem(&ht, elem);
     EXPECT_TRUE(str2int_findItem(&ht, nk_cs2s("forty two")));
     EXPECT_EQ(found->key, "forty two");
     EXPECT_EQ(found->val, 42);
 
-    elem = {nk_cs2s("one"), 1};
+    elem = {nk_cs2s("one"), 1, 0, 0};
     EXPECT_FALSE(str2int_findItem(&ht, nk_cs2s("one")));
     found = str2int_insertItem(&ht, elem);
     EXPECT_TRUE(str2int_findItem(&ht, nk_cs2s("one")));
     EXPECT_EQ(found->key, "one");
     EXPECT_EQ(found->val, 1);
 
-    elem = {nk_cs2s("two"), 2};
+    elem = {nk_cs2s("two"), 2, 0, 0};
     EXPECT_FALSE(str2int_findItem(&ht, nk_cs2s("two")));
     found = str2int_insertItem(&ht, elem);
     EXPECT_TRUE(str2int_findItem(&ht, nk_cs2s("two")));
     EXPECT_EQ(found->key, "two");
     EXPECT_EQ(found->val, 2);
 
-    elem = {nk_cs2s("two"), 123};
+    elem = {nk_cs2s("two"), 123, 0, 0};
     EXPECT_TRUE(str2int_findItem(&ht, nk_cs2s("two")));
     found = str2int_insertItem(&ht, elem);
     EXPECT_EQ(found->key, "two");
     EXPECT_EQ(found->val, 2);
 
-    elem = {nk_cs2s("forty one"), 41};
+    elem = {nk_cs2s("forty one"), 41, 0, 0};
     EXPECT_FALSE(str2int_findItem(&ht, nk_cs2s("forty one")));
     found = str2int_insertItem(&ht, elem);
     EXPECT_TRUE(str2int_findItem(&ht, nk_cs2s("forty one")));
     EXPECT_EQ(found->key, "forty one");
     EXPECT_EQ(found->val, 41);
 
-    elem = {nk_cs2s("forty two"), 123};
+    elem = {nk_cs2s("forty two"), 123, 0, 0};
     EXPECT_TRUE(str2int_findItem(&ht, nk_cs2s("forty two")));
     found = str2int_insertItem(&ht, elem);
     EXPECT_EQ(found->key, "forty two");
     EXPECT_EQ(found->val, 42);
 }
 
-TEST_F(HashTree, alignment) {
+TEST_F(HashTreeArray, alignment) {
     NkArena arena{};
     auto alloc = nk_arena_getAllocator(&arena);
     defer {
@@ -158,11 +170,11 @@ TEST_F(HashTree, alignment) {
     ht.alloc = alloc;
 
     nk_arena_alloc(&arena, 1);
-    str2int_insertItem(&ht, str2int_kv{nk_cs2s("one"), 42});
-    str2int_insertItem(&ht, str2int_kv{nk_cs2s("two"), 42});
+    str2int_insertItem(&ht, str2int_kv{nk_cs2s("one"), 42, 0, 0});
+    str2int_insertItem(&ht, str2int_kv{nk_cs2s("two"), 42, 0, 0});
 }
 
-TEST_F(HashTree, not_found) {
+TEST_F(HashTreeArray, not_found) {
     str2int ht{};
     defer {
         str2int_free(&ht);
@@ -171,9 +183,9 @@ TEST_F(HashTree, not_found) {
     EXPECT_FALSE(str2int_findItem(&ht, nk_cs2s("one")));
 }
 
-NK_HASH_TREE_DEFINE_K(IntSet, int, int_hash, int_equal);
+NK_HASH_TREE_ARRAY_DEFINE_K(IntSet, int, int_hash, int_equal);
 
-TEST_F(HashTree, hash_set) {
+TEST_F(HashTreeArray, hash_set) {
     IntSet set{};
     defer {
         IntSet_free(&set);
@@ -196,9 +208,9 @@ TEST_F(HashTree, hash_set) {
     EXPECT_FALSE(IntSet_find(&set, 5));
 }
 
-NK_HASH_TREE_DEFINE_KV(IntStringMap, int, NkString, int_hash, int_equal);
+NK_HASH_TREE_ARRAY_DEFINE_KV(IntStringMap, int, NkString, int_hash, int_equal);
 
-TEST_F(HashTree, hash_map) {
+TEST_F(HashTreeArray, hash_map) {
     IntStringMap map{};
     defer {
         IntStringMap_free(&map);

@@ -1,20 +1,14 @@
 #ifndef NKL_COMMON_CONFIG_H_
 #define NKL_COMMON_CONFIG_H_
 
-#include "ntk/hash_tree.h"
+#include "ntk/hash_tree_array.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
-    NkString key;
-    NkString val;
-} NkString_kv;
-
-NK_HASH_TREE_TYPEDEF(nks_config, NkString_kv);
-NK_HASH_TREE_PROTO(nks_config, NkString_kv, NkString);
+NK_HASH_TREE_ARRAY_FWD_KV(nks_config, NkString, NkString);
 
 bool readConfig(nks_config *conf, NkString file);
 

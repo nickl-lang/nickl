@@ -2,7 +2,7 @@
 #define NTK_ATOM_H_
 
 #include "ntk/hash.h"
-#include "ntk/hash_tree.h"
+#include "ntk/hash_tree_array.h"
 #include "ntk/string.h"
 
 #ifdef __cplusplus
@@ -32,10 +32,10 @@ NK_INLINE bool nk_atom_equal(NkAtom lhs, NkAtom rhs) {
     return lhs == rhs;
 }
 
-NK_HASH_TREE_FWD_K_EXPORT(NkAtomSet, NkAtom);
-NK_HASH_TREE_FWD_KV_EXPORT(NkAtomMap, NkAtom, NkAtom);
-NK_HASH_TREE_FWD_KV_EXPORT(NkStringAtomMap, NkString, NkAtom);
-NK_HASH_TREE_FWD_KV_EXPORT(NkAtomStringMap, NkAtom, NkString);
+NK_HASH_TREE_ARRAY_FWD_K_EXPORT(NkAtomSet, NkAtom);
+NK_HASH_TREE_ARRAY_FWD_KV_EXPORT(NkAtomMap, NkAtom, NkAtom);
+NK_HASH_TREE_ARRAY_FWD_KV_EXPORT(NkStringAtomMap, NkString, NkAtom);
+NK_HASH_TREE_ARRAY_FWD_KV_EXPORT(NkAtomStringMap, NkAtom, NkString);
 
 #ifdef __cplusplus
 }

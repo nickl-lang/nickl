@@ -17,8 +17,8 @@
 #include "ntk/syscall.h"
 #include "ntk/thread.h"
 
-static u32 const *TypeTree_kv_getKey(TypeTree_kv const *item) {
-    return &item->key;
+static u32 TypeTree_kv_getKey(TypeTree_kv const *item) {
+    return item->key;
 }
 
 static NkHash64 u32_hash(u32 key) {
@@ -31,8 +31,8 @@ static bool u32_equal(u32 lhs, u32 rhs) {
 
 NK_HASH_TREE_IMPL(TypeTree, TypeTree_kv, u32, TypeTree_kv_getKey, u32_hash, u32_equal);
 
-static NkAtom const *ExternSym_kv_getKey(ExternSym_kv const *item) {
-    return &item->key;
+static NkAtom ExternSym_kv_getKey(ExternSym_kv const *item) {
+    return item->key;
 }
 
 static NkHash64 NkAtom_hash(NkAtom key) {

@@ -9,6 +9,7 @@
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/error.h"
+#include "ntk/hash_tree_array.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
 #include "ntk/profiler.h"
@@ -97,9 +98,17 @@ typedef struct NkbState_T {
     NkDynArray(NkLlvmTarget) created_targets;
 } NkbState_T;
 
+typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
+
+NkAtom NkIrSymbol_getKey(NkIrSymbol const *item) {
+    return item->name;
+}
+
+NK_HASH_TREE_ARRAY_DEFINE(NkIrSymbolHashTreeArray, NkIrSymbol, NkAtom, NkIrSymbol_getKey, nk_atom_hash, nk_atom_equal);
+
 typedef struct NkIrModule_T {
     NkbState nkb;
-    NkIrSymbolDynArray syms;
+    NkIrSymbolHashTreeArray syms;
 
     NkAtomSet rt_loaded_syms;
 
@@ -178,7 +187,7 @@ NkArena *nkir_moduleGetArena(NkIrModule mod) {
 void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym) {
     TRY(mod && sym);
 
-    nkda_append(&mod->syms, *sym);
+    NkIrSymbolHashTreeArray_insertItem(&mod->syms, *sym);
 }
 
 NkIrRefDynArray nkir_moduleNewRefArray(NkIrModule mod) {
@@ -229,12 +238,7 @@ NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod) {
 NkIrSymbol const *nkir_findSymbol(NkIrModule mod, NkAtom sym) {
     TRY(mod, NULL);
 
-    NK_ITERATE(NkIrSymbol *, it, mod->syms) {
-        if (it->name == sym) {
-            return it;
-        }
-    }
-    return NULL;
+    return NkIrSymbolHashTreeArray_findItem(&mod->syms, sym);
 }
 
 void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out) {
@@ -468,7 +472,7 @@ static bool exportModuleImpl(
 
     NkLlvmTarget tgt = (NkLlvmTarget)target;
 
-    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
+    NkLlvmModule llvm_mod = nk_llvm_compileIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
     nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
 
     TRY(nk_llvm_emitObjectFile(llvm_mod, tgt, obj_file), false);
@@ -525,19 +529,6 @@ static NkLlvmJitDylib getLlvmJitDylib(NkIrModule mod) {
         mod->_llvm_jit_dylib = nk_llvm_createJitDylib(nkb->llvm, getLlvmJitState(nkb));
     }
     return mod->_llvm_jit_dylib;
-}
-
-static void collectSymbols(NkIrModule mod, _NkAtomSet_Node *node, NkIrSymbolDynArray *out) {
-    if (!node) {
-        return;
-    }
-
-    NkIrSymbol const *sym = nkir_findSymbol(mod, node->item);
-    nk_assert(sym && "symbol not found, invalid ir");
-    nkda_append(out, *sym);
-
-    collectSymbols(mod, node->child[0], out);
-    collectSymbols(mod, node->child[1], out);
 }
 
 typedef NkDynArray(NkAtom) NkAtomDynArray;
@@ -613,7 +604,11 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
             }
         }
 
-        collectSymbols(mod, deps.root, out);
+        NK_ITERATE(NkAtomSet_Item const *, it, deps) {
+            NkIrSymbol const *sym = nkir_findSymbol(mod, it->key);
+            nk_assert(sym && "symbol not found, invalid ir");
+            nkda_append(out, *sym);
+        }
     }
 }
 
@@ -722,7 +717,7 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
 
     nk_llvm_defineExternSymbols(scratch, jit, jdl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
 
-    NkLlvmModule llvm_mod = nk_llvm_compilerIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(deps)});
+    NkLlvmModule llvm_mod = nk_llvm_compileIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(deps)});
 
     NkLlvmTarget tgt = nk_llvm_getJitTarget(jit);
     nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level

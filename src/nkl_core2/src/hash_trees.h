@@ -3,13 +3,13 @@
 
 #include "nkl/core/nickl.h"
 #include "ntk/atom.h"
-#include "ntk/hash_tree.h"
+#include "ntk/hash_tree_array.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-NK_HASH_TREE_FWD_KV(NkAtomModuleMap, NkAtom, NklModule);
+NK_HASH_TREE_ARRAY_FWD_KV(NkAtomModuleMap, NkAtom, NklModule);
 
 #ifdef __cplusplus
 }
