@@ -137,34 +137,34 @@ i32 nks_escape(NkStream out, NkString str) {
         for (usize i = 0; i < str.size; i++) {
             switch (str.data[i]) {
                 case '\a':
-                    WRITE(nk_stream_writeCStr(out, "\\a"));
+                    WRITE(nk_print(out, "\\a"));
                     break;
                 case '\b':
-                    WRITE(nk_stream_writeCStr(out, "\\b"));
+                    WRITE(nk_print(out, "\\b"));
                     break;
                 case '\f':
-                    WRITE(nk_stream_writeCStr(out, "\\f"));
+                    WRITE(nk_print(out, "\\f"));
                     break;
                 case '\n':
-                    WRITE(nk_stream_writeCStr(out, "\\n"));
+                    WRITE(nk_print(out, "\\n"));
                     break;
                 case '\r':
-                    WRITE(nk_stream_writeCStr(out, "\\r"));
+                    WRITE(nk_print(out, "\\r"));
                     break;
                 case '\t':
-                    WRITE(nk_stream_writeCStr(out, "\\t"));
+                    WRITE(nk_print(out, "\\t"));
                     break;
                 case '\v':
-                    WRITE(nk_stream_writeCStr(out, "\\v"));
+                    WRITE(nk_print(out, "\\v"));
                     break;
                 case '\0':
-                    WRITE(nk_stream_writeCStr(out, "\\0"));
+                    WRITE(nk_print(out, "\\0"));
                     break;
                 case '\"':
-                    WRITE(nk_stream_writeCStr(out, "\\\""));
+                    WRITE(nk_print(out, "\\\""));
                     break;
                 case '\\':
-                    WRITE(nk_stream_writeCStr(out, "\\\\"));
+                    WRITE(nk_print(out, "\\\\"));
                     break;
                 default:
                     if (isprint(str.data[i])) {
@@ -186,25 +186,25 @@ i32 nks_unescape(NkStream out, NkString str) {
             if (str.data[i] == '\\' && i < str.size - 1) {
                 switch (str.data[++i]) {
                     case 'a':
-                        WRITE(nk_stream_writeCStr(out, "\a"));
+                        WRITE(nk_print(out, "\a"));
                         break;
                     case 'b':
-                        WRITE(nk_stream_writeCStr(out, "\b"));
+                        WRITE(nk_print(out, "\b"));
                         break;
                     case 'f':
-                        WRITE(nk_stream_writeCStr(out, "\f"));
+                        WRITE(nk_print(out, "\f"));
                         break;
                     case 'n':
-                        WRITE(nk_stream_writeCStr(out, "\n"));
+                        WRITE(nk_print(out, "\n"));
                         break;
                     case 'r':
-                        WRITE(nk_stream_writeCStr(out, "\r"));
+                        WRITE(nk_print(out, "\r"));
                         break;
                     case 't':
-                        WRITE(nk_stream_writeCStr(out, "\t"));
+                        WRITE(nk_print(out, "\t"));
                         break;
                     case 'v':
-                        WRITE(nk_stream_writeCStr(out, "\v"));
+                        WRITE(nk_print(out, "\v"));
                         break;
                     case '0':
                         WRITE(nk_stream_write(out, "\0", 1));
