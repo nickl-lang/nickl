@@ -72,7 +72,7 @@ void nickl_printModuleName(NkStream out, NkAtom mod) {
 
 void nickl_printSymbol(NkStream out, NkAtom mod, NkAtom sym) {
     nickl_printModuleName(out, mod);
-    nk_printf(out, "::");
+    nk_print(out, "::");
     nkir_printSymbolName(out, sym);
 }
 
@@ -85,9 +85,9 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
     if (found) {
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "Using cached text for file \"");
+            nk_print(log, "Using cached text for file \"");
             nkir_printName(log, "file", file);
-            nk_printf(log, "\"");
+            nk_print(log, "\"");
         }
         text = *found;
     } else {
@@ -361,12 +361,12 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         if (sym->kind == NkIrSymbol_Extern) {
-            nk_printf(log, "Declaring extern ");
+            nk_print(log, "Declaring extern ");
             if (sym->extrn.lib) {
                 nk_printf(log, "\"%s\" ", nk_atom2cs(sym->extrn.lib));
             }
         } else {
-            nk_printf(log, "Defining ");
+            nk_print(log, "Defining ");
         }
         nk_printf(log, "%s ", getSymbolKind(sym));
         nickl_printSymbol(log, mod->name, sym->name);
@@ -376,7 +376,7 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
         NkArena *scratch = &mod->com->nkl->scratch;
         NK_ARENA_SCOPE(scratch) {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "symbol:\n");
+            nk_print(log, "symbol:\n");
             nkir_inspectSymbol(log, scratch, sym);
         }
     }
@@ -423,9 +423,9 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Linking ");
+        nk_print(log, "Linking ");
         nickl_printSymbol(log, dst_mod->name, sym->name);
-        nk_printf(log, " <- ");
+        nk_print(log, " <- ");
         nickl_printSymbol(log, src_mod->name, sym->name);
     }
 
@@ -453,11 +453,11 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
             NK_ARENA_SCOPE(&nkl->scratch) {
                 NkStringBuilder sb = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
                 NkStream err = nksb_getStream(&sb);
-                nk_printf(err, "Failed to link ");
+                nk_print(err, "Failed to link ");
                 nickl_printSymbol(err, src_mod->name, sym->name);
-                nk_printf(err, " to ");
+                nk_print(err, " to ");
                 nickl_printSymbol(err, dst_mod->name, sym->name);
-                nk_printf(err, ", it's already defined");
+                nk_print(err, ", it's already defined");
                 nickl_reportError(nkl, NKS_FMT, NKS_ARG(sb));
             }
             return false;

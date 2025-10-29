@@ -26,10 +26,10 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
     switch (type->kind) {
         case NkIrType_Aggregate:
             if (type->size) {
-                nk_printf(out, "{");
+                nk_print(out, "{");
                 NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                     if (NK_INDEX(elem, type->aggr)) {
-                        nk_printf(out, ", ");
+                        nk_print(out, ", ");
                     }
                     usize const offset = base_offset + elem->offset;
                     if (elem->count > 1) {
@@ -38,7 +38,7 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                     bool found_reloc = false;
                     NK_ITERATE(NkIrReloc const *, reloc, relocs) {
                         if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
-                            nk_printf(out, "ptr");
+                            nk_print(out, "ptr");
                             found_reloc = true;
                             break;
                         }
@@ -47,12 +47,12 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                         emitTypeEx(out, elem->type, offset, relocs);
                     }
                     if (elem->count > 1) {
-                        nk_printf(out, "]");
+                        nk_print(out, "]");
                     }
                 }
-                nk_printf(out, "}");
+                nk_print(out, "}");
             } else {
-                nk_printf(out, "void");
+                nk_print(out, "void");
             }
 
             break;
@@ -61,25 +61,25 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
             switch (type->num) {
                 case Int8:
                 case Uint8:
-                    nk_printf(out, "i8");
+                    nk_print(out, "i8");
                     break;
                 case Int16:
                 case Uint16:
-                    nk_printf(out, "i16");
+                    nk_print(out, "i16");
                     break;
                 case Int32:
                 case Uint32:
-                    nk_printf(out, "i32");
+                    nk_print(out, "i32");
                     break;
                 case Int64:
                 case Uint64:
-                    nk_printf(out, "i64");
+                    nk_print(out, "i64");
                     break;
                 case Float32:
-                    nk_printf(out, "float");
+                    nk_print(out, "float");
                     break;
                 case Float64:
-                    nk_printf(out, "double");
+                    nk_print(out, "double");
                     break;
             }
             break;
@@ -93,19 +93,19 @@ static void emitType(NkStream out, NkIrType type) {
 static void emitVisibility(NkStream out, NkIrVisibility vis) {
     switch (vis) {
         case NkIrVisibility_Hidden:
-            nk_printf(out, "hidden");
+            nk_print(out, "hidden");
             break;
         case NkIrVisibility_Default:
-            nk_printf(out, "dso_local");
+            nk_print(out, "dso_local");
             break;
         case NkIrVisibility_Protected:
-            nk_printf(out, "protected");
+            nk_print(out, "protected");
             break;
         case NkIrVisibility_Internal:
-            nk_printf(out, "hidden");
+            nk_print(out, "hidden");
             break;
         case NkIrVisibility_Local:
-            nk_printf(out, "internal");
+            nk_print(out, "internal");
             break;
         case NkIrVisibility_Unknown:
             nk_assert(!"unreachable");
@@ -114,12 +114,12 @@ static void emitVisibility(NkStream out, NkIrVisibility vis) {
 }
 
 static void emitGlobal(NkStream out, NkAtom name) {
-    nk_printf(out, "@");
+    nk_print(out, "@");
     nkir_printSymbolName(out, name);
 }
 
 static void emitLocal(NkStream out, NkAtom name) {
-    nk_printf(out, "%%");
+    nk_print(out, "%");
     nkir_printSymbolName(out, name);
 }
 
@@ -171,7 +171,7 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
         }
 
         case NkIrRef_VariadicMarker:
-            nk_printf(out, "...");
+            nk_print(out, "...");
             break;
     }
 }
@@ -182,7 +182,7 @@ static void emitRefType(NkStream out, NkIrRef const *ref) {
             break;
 
         case NkIrRef_Global:
-            nk_printf(out, "ptr");
+            nk_print(out, "ptr");
             break;
 
         case NkIrRef_Imm:
@@ -193,14 +193,14 @@ static void emitRefType(NkStream out, NkIrRef const *ref) {
             break;
 
         case NkIrRef_VariadicMarker:
-            nk_printf(out, "...");
+            nk_print(out, "...");
             break;
     }
 }
 
 static void emitRef(NkStream out, NkIrRef const *ref) {
     emitRefType(out, ref);
-    nk_printf(out, " ");
+    nk_print(out, " ");
     emitRefUntyped(out, ref);
 }
 
@@ -256,9 +256,9 @@ static NkString intToPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrTyp
 
         nk_printf(out, "%%.%zu = inttoptr ", reg);
         emitType(out, type);
-        nk_printf(out, " ");
+        nk_print(out, " ");
         emitRefUntyped(out, ref);
-        nk_printf(out, " to ptr\n  ");
+        nk_print(out, " to ptr\n  ");
 
         nk_printf(tmp, "%%.%zu", reg);
     }
@@ -275,9 +275,9 @@ static NkString ptrToInt(Context *ctx, NkStream out, NkIrRef const *ref) {
 
         nk_printf(out, "%%.%zu = ptrtoint ptr ", reg);
         emitRefUntyped(out, ref);
-        nk_printf(out, " to ");
+        nk_print(out, " to ");
         emitType(out, ref->type);
-        nk_printf(out, "\n  ");
+        nk_print(out, "\n  ");
 
         nk_printf(tmp, "%%.%zu", reg);
     } else {
@@ -438,9 +438,9 @@ static void emitCond(Context *ctx, NkStream out, NkIrInstr const *instr, char co
 
     nk_printf(out, "%%.%zu = %scmp %s%s ", reg, opcode_prefix, cond_prefix, cond);
     emitRef(out, ref1);
-    nk_printf(out, ", ");
+    nk_print(out, ", ");
     emitRefUntyped(out, ref2);
-    nk_printf(out, "\n  ");
+    nk_print(out, "\n  ");
     emitRefUntyped(out, ref0);
     nk_printf(out, " = %sext i1 %%.%zu to ", ext_prefix, reg);
     emitRefType(out, ref0);
@@ -508,7 +508,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
     }
 
     if (instr->code != NkIrOp_label) {
-        nk_printf(out, "  ");
+        nk_print(out, "  ");
     }
 
     NkIrRef const *ref0 = &instr->arg[0].ref;
@@ -534,7 +534,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             usize const reg = ctx->proc.next_local++;
             nk_printf(out, "%%.%zu = alloca ", reg);
             emitType(out, instr->arg[1].type);
-            nk_printf(out, "\n  ");
+            nk_print(out, "\n  ");
             emitRefUntyped(out, ref0);
             nk_printf(out, " = ptrtoint ptr %%.%zu to ", reg);
             emitRefType(out, ref0);
@@ -544,24 +544,24 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
         case NkIrOp_load: {
             NkString const ptr = intToPtr(ctx, out, ref1, NULL);
             emitRefUntyped(out, ref0);
-            nk_printf(out, " = load ");
+            nk_print(out, " = load ");
             emitRefType(out, ref0);
-            nk_printf(out, ", ptr ");
+            nk_print(out, ", ptr ");
             nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             break;
         }
 
         case NkIrOp_store: {
             NkString const ptr = intToPtr(ctx, out, ref0, NULL);
-            nk_printf(out, "store ");
+            nk_print(out, "store ");
             emitRef(out, ref1);
-            nk_printf(out, ", ptr ");
+            nk_print(out, ", ptr ");
             nk_printf(out, NKS_FMT, NKS_ARG(ptr));
             break;
         }
 
         case NkIrOp_jmp:
-            nk_printf(out, "br label %%");
+            nk_print(out, "br label %");
             emitLabel(ctx, out, instr, 1);
             break;
 
@@ -594,7 +594,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_label:
             emitLabel(ctx, out, instr, 1);
-            nk_printf(out, ":");
+            nk_print(out, ":");
             break;
 
         case NkIrOp_add:
@@ -644,25 +644,25 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                     sret = true;
                 } else {
                     emitRefUntyped(out, ref0);
-                    nk_printf(out, " = ");
+                    nk_print(out, " = ");
                 }
             }
 
-            nk_printf(out, "call ");
+            nk_print(out, "call ");
             if (sret || !ref0->kind) {
-                nk_printf(out, "void");
+                nk_print(out, "void");
             } else {
                 emitType(out, ref0->type);
             }
 
-            nk_printf(out, " (");
+            nk_print(out, " (");
             if (sret) {
-                nk_printf(out, "ptr");
+                nk_print(out, "ptr");
             }
 
             NK_ITERATE(NkIrRef const *, arg_ref, arg_refs) {
                 if (NK_INDEX(arg_ref, arg_refs) || sret) {
-                    nk_printf(out, ", ");
+                    nk_print(out, ", ");
                 }
                 emitRefType(out, arg_ref);
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
@@ -673,7 +673,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             nk_printf(out, ") " NKS_FMT "(", NKS_ARG(proc));
 
             if (sret) {
-                nk_printf(out, "ptr sret(");
+                nk_print(out, "ptr sret(");
                 emitType(out, ref0->type);
                 nk_printf(out, ") align %u " NKS_FMT, ref0->type->align, NKS_ARG(dst));
             }
@@ -683,65 +683,65 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                     continue;
                 }
                 if (NK_INDEX(arg_ref, arg_refs) || sret) {
-                    nk_printf(out, ", ");
+                    nk_print(out, ", ");
                 }
                 emitRef(out, arg_ref);
             }
 
-            nk_printf(out, ")");
+            nk_print(out, ")");
 
             break;
         }
 
         case NkIrOp_ret:
-            nk_printf(out, "ret ");
+            nk_print(out, "ret ");
             if (ref1->kind) {
                 emitRef(out, ref1);
             } else {
-                nk_printf(out, "void");
+                nk_print(out, "void");
             }
             break;
     }
 
-    nk_printf(out, "\n");
+    nk_print(out, "\n");
 }
 
 static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocArray relocs, NkIrType type) {
     nk_assert(base_addr && "trying to inspect nullptr");
 
     emitTypeEx(out, type, base_offset, relocs);
-    nk_printf(out, " ");
+    nk_print(out, " ");
 
     switch (type->kind) {
         case NkIrType_Aggregate:
-            nk_printf(out, "{");
+            nk_print(out, "{");
             NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                 if (NK_INDEX(elem, type->aggr)) {
-                    nk_printf(out, ", ");
+                    nk_print(out, ", ");
                 }
                 usize offset = base_offset + elem->offset;
                 if (elem->count > 1) {
                     nk_printf(out, "[%u x ", elem->count);
                     emitTypeEx(out, elem->type, offset, relocs);
-                    nk_printf(out, "] ");
+                    nk_print(out, "] ");
                 }
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
                     char const *addr = (char *)base_addr + offset;
-                    nk_printf(out, "c\"");
+                    nk_print(out, "c\"");
                     nks_sanitize(out, (NkString){addr, type->aggr.data[0].count});
-                    nk_printf(out, "\"");
+                    nk_print(out, "\"");
                 } else {
                     if (elem->count > 1) {
-                        nk_printf(out, "[");
+                        nk_print(out, "[");
                     }
                     for (usize i = 0; i < elem->count; i++) {
                         if (i) {
-                            nk_printf(out, ", ");
+                            nk_print(out, ", ");
                         }
                         bool found_reloc = false;
                         NK_ITERATE(NkIrReloc const *, reloc, relocs) {
                             if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
-                                nk_printf(out, "ptr ");
+                                nk_print(out, "ptr ");
                                 emitGlobal(out, reloc->sym);
                                 found_reloc = true;
                                 break;
@@ -753,11 +753,11 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
                         offset += elem->type->size;
                     }
                     if (elem->count > 1) {
-                        nk_printf(out, "]");
+                        nk_print(out, "]");
                     }
                 }
             }
-            nk_printf(out, "}");
+            nk_print(out, "}");
             break;
 
         case NkIrType_Numeric: {
@@ -781,7 +781,7 @@ static void emitData(NkStream out, NkIrData const *data) {
         switch (data->type->kind) {
             case NkIrType_Aggregate:
                 emitType(out, data->type);
-                nk_printf(out, " zeroinitializer");
+                nk_print(out, " zeroinitializer");
                 break;
 
             case NkIrType_Numeric: {
@@ -793,7 +793,7 @@ static void emitData(NkStream out, NkIrData const *data) {
         }
     }
 
-    nk_printf(out, "\n");
+    nk_print(out, "\n");
 }
 
 static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
@@ -821,50 +821,50 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                     },
             };
 
-            nk_printf(out, "define ");
+            nk_print(out, "define ");
             emitVisibility(out, sym->vis);
-            nk_printf(out, " ");
+            nk_print(out, " ");
             if (ctx.proc.ret.name) {
-                nk_printf(out, "void");
+                nk_print(out, "void");
             } else {
                 emitType(out, sym->proc.ret.type);
             }
-            nk_printf(out, " ");
+            nk_print(out, " ");
             emitGlobal(out, sym->name);
-            nk_printf(out, "(");
+            nk_print(out, "(");
             if (ctx.proc.ret.name) {
-                nk_printf(out, "ptr sret(");
+                nk_print(out, "ptr sret(");
                 emitType(out, ctx.proc.ret.type);
                 nk_printf(out, ") align %u ", ctx.proc.ret.type->align);
                 emitLocal(out, ctx.proc.ret.name);
             }
             NK_ITERATE(NkIrParam const *, param, ctx.proc.params) {
                 if (NK_INDEX(param, sym->proc.params) || ctx.proc.ret.name) {
-                    nk_printf(out, ", ");
+                    nk_print(out, ", ");
                 }
                 if (param->type->kind == NkIrType_Aggregate) {
-                    nk_printf(out, "ptr byval(");
+                    nk_print(out, "ptr byval(");
                 }
                 emitType(out, param->type);
                 if (param->type->kind == NkIrType_Aggregate) {
                     nk_printf(out, ") align %u", param->type->align);
                 }
-                nk_printf(out, " ");
+                nk_print(out, " ");
                 emitLocal(out, param->name);
             }
-            nk_printf(out, ") {\n");
+            nk_print(out, ") {\n");
             NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {
                 emitInstr(&ctx, out, instr);
             }
-            nk_printf(out, "}\n");
+            nk_print(out, "}\n");
             break;
         }
 
         case NkIrSymbol_Data:
             emitGlobal(out, sym->name);
-            nk_printf(out, " = ");
+            nk_print(out, " = ");
             emitVisibility(out, sym->vis);
-            nk_printf(out, " ");
+            nk_print(out, " ");
             emitData(out, &sym->data);
             break;
 
@@ -873,26 +873,26 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                 case NkIrExtern_Proc: {
                     bool const sret =
                         sym->extrn.proc.ret_type->kind == NkIrType_Aggregate && sym->extrn.proc.ret_type->size;
-                    nk_printf(out, "declare ");
+                    nk_print(out, "declare ");
                     if (sret) {
-                        nk_printf(out, "void");
+                        nk_print(out, "void");
                     } else {
                         emitType(out, sym->extrn.proc.ret_type);
                     }
-                    nk_printf(out, " ");
+                    nk_print(out, " ");
                     emitGlobal(out, sym->name);
-                    nk_printf(out, "(");
+                    nk_print(out, "(");
                     if (sret) {
-                        nk_printf(out, "ptr sret(");
+                        nk_print(out, "ptr sret(");
                         emitType(out, sym->extrn.proc.ret_type);
                         nk_printf(out, ") align %u", sym->extrn.proc.ret_type->align);
                     }
                     NK_ITERATE(NkIrType const *, type, sym->extrn.proc.param_types) {
                         if (NK_INDEX(type, sym->extrn.proc.param_types) || sret) {
-                            nk_printf(out, ", ");
+                            nk_print(out, ", ");
                         }
                         if ((*type)->kind == NkIrType_Aggregate) {
-                            nk_printf(out, "ptr byval(");
+                            nk_print(out, "ptr byval(");
                         }
                         emitType(out, *type);
                         if ((*type)->kind == NkIrType_Aggregate) {
@@ -900,23 +900,23 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                         }
                     }
                     if (sym->extrn.proc.flags & NkIrProc_Variadic) {
-                        nk_printf(out, ", ...");
+                        nk_print(out, ", ...");
                     }
-                    nk_printf(out, ")\n");
+                    nk_print(out, ")\n");
                     break;
                 }
 
                 case NkIrExtern_Data:
                     emitGlobal(out, sym->name);
-                    nk_printf(out, " = external global ");
+                    nk_print(out, " = external global ");
                     emitType(out, sym->extrn.data.type);
-                    nk_printf(out, "\n");
+                    nk_print(out, "\n");
                     break;
             }
             break;
     }
 
-    nk_printf(out, "\n");
+    nk_print(out, "\n");
 }
 
 void nk_llvm_emitIr(NkStream out, NkArena *scratch, NkIrSymbolArray mod) {

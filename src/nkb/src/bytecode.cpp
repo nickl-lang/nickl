@@ -60,31 +60,31 @@ typedef NkSlice(NkBcInstr) NkBcInstrArray;
 void inspect(NkBcInstrArray instrs, NkStream out) {
     auto inspect_ref = [&](NkBcRef const &ref, bool expand_values) {
         if (ref.kind == NkBcRef_None) {
-            nk_printf(out, "(null)");
+            nk_print(out, "(null)");
             return;
         } else if (ref.kind == NkBcRef_Instr) {
             nk_printf(out, "instr@%zi", ref.offset / sizeof(NkBcInstr));
             return;
         } else if (ref.kind == NkBcRef_VariadicMarker) {
-            nk_printf(out, "...");
+            nk_print(out, "...");
             return;
         }
         for (usize i = 0; i < ref.indir; i++) {
-            nk_printf(out, "[");
+            nk_print(out, "[");
         }
         switch (ref.kind) {
             case NkBcRef_Frame:
-                nk_printf(out, "frame");
+                nk_print(out, "frame");
                 break;
             case NkBcRef_Arg:
-                nk_printf(out, "arg");
+                nk_print(out, "arg");
                 break;
                 break;
             case NkBcRef_Data:
                 if (expand_values) {
                     nkirv_inspect(nkbc_deref(nullptr, &ref), ref.type, out);
                 } else {
-                    nk_printf(out, "data");
+                    nk_print(out, "data");
                 }
                 break;
             default:
@@ -98,13 +98,13 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
             nk_printf(out, "+%zx", ref.offset);
         }
         for (usize i = 0; i < ref.indir; i++) {
-            nk_printf(out, "]");
+            nk_print(out, "]");
         }
         if (ref.post_offset && !expand_values) {
             nk_printf(out, "+%zx", ref.post_offset);
         }
         if (ref.type) {
-            nk_printf(out, ":");
+            nk_print(out, ":");
             nkirt_inspect(ref.type, out);
         }
     };
@@ -117,14 +117,14 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
             }
 
             case NkBcArg_RefArray:
-                nk_printf(out, "(");
+                nk_print(out, "(");
                 for (usize i = 0; i < arg.refs.size; i++) {
                     if (i) {
-                        nk_printf(out, ", ");
+                        nk_print(out, ", ");
                     }
                     inspect_ref(arg.refs.data[i], expand_values);
                 }
-                nk_printf(out, ")");
+                nk_print(out, ")");
                 break;
 
             default:
@@ -137,17 +137,17 @@ void inspect(NkBcInstrArray instrs, NkStream out) {
 
         for (usize i = 1; i < 3; i++) {
             if (instr.arg[i].kind != NkBcArg_None) {
-                nk_printf(out, ((i > 1) ? ", " : " "));
+                nk_print(out, ((i > 1) ? ", " : " "));
                 inspect_arg(instr.arg[i], true);
             }
         }
 
         if (instr.arg[0].ref.kind != NkBcRef_None) {
-            nk_printf(out, " -> ");
+            nk_print(out, " -> ");
             inspect_arg(instr.arg[0], false);
         }
 
-        nk_printf(out, "\n");
+        nk_print(out, "\n");
     }
 }
 #endif // ENABLE_LOGGING

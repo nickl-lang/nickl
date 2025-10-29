@@ -6,8 +6,6 @@
 #define X(N) XN(N, #N)
 #endif
 
-X(null)
-
 X(escaped_string)
 X(float)
 X(id)

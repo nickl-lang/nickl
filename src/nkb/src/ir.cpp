@@ -720,7 +720,7 @@ static void inspectVal(NkIrProg ir, NkIrRef const &ref, NkStream out, bool force
         case NkIrType_Aggregate: {
             for (usize elemi = 0; elemi < type->as.aggr.elems.size; elemi++) {
                 if (elemi) {
-                    nk_printf(out, ", ");
+                    nk_print(out, ", ");
                 }
 
                 auto const &elem = type->as.aggr.elems.data[elemi];
@@ -730,28 +730,28 @@ static void inspectVal(NkIrProg ir, NkIrRef const &ref, NkStream out, bool force
                 elem_ref.type = elem.type;
 
                 if (elem.type->kind == NkIrType_Numeric && elem.type->size == 1) {
-                    nk_printf(out, "\"");
+                    nk_print(out, "\"");
                     nks_escape(out, {(char const *)nkir_dataRefDeref(ir, elem_ref), elem.count});
-                    nk_printf(out, "\"");
+                    nk_print(out, "\"");
                 } else {
                     if (elemi == 0) {
-                        nk_printf(out, "{");
+                        nk_print(out, "{");
                     }
                     if (elem.count > 1) {
-                        nk_printf(out, "[");
+                        nk_print(out, "[");
                     }
                     for (usize i = 0; i < elem.count; i++) {
                         if (i) {
-                            nk_printf(out, ", ");
+                            nk_print(out, ", ");
                         }
                         inspectVal(ir, elem_ref, out);
                         elem_ref.post_offset += elem.type->size;
                     }
                     if (elem.count > 1) {
-                        nk_printf(out, "]");
+                        nk_print(out, "]");
                     }
                     if (elemi == type->as.aggr.elems.size - 1) {
-                        nk_printf(out, "}");
+                        nk_print(out, "}");
                     }
                 }
             }
@@ -813,17 +813,17 @@ void nkir_inspectData(NkIrProg ir, NkStream out) {
                 } else {
                     nk_printf(out, "%s%zu", decl.read_only ? "_const" : "_data", i);
                 }
-                nk_printf(out, ": ");
+                nk_print(out, ": ");
                 nkirt_inspect(decl.type, out);
                 if (decl.data) {
-                    nk_printf(out, " ");
+                    nk_print(out, " ");
                     inspectVal(ir, nkir_makeDataRef(ir, {i}), out, true);
                 }
                 printed = true;
             }
         }
         if (printed) {
-            nk_printf(out, "\n");
+            nk_print(out, "\n");
         }
     }
 }
@@ -833,11 +833,11 @@ void inspectProcSignature(
     NkAtomArray arg_names,
     NkStream out,
     bool print_arg_names = true) {
-    nk_printf(out, "(");
+    nk_print(out, "(");
 
     for (usize i = 0; i < proc_info.args_t.size; i++) {
         if (i) {
-            nk_printf(out, ", ");
+            nk_print(out, ", ");
         }
         if (print_arg_names) {
             if (i < arg_names.size && arg_names.data[i]) {
@@ -852,12 +852,12 @@ void inspectProcSignature(
 
     if (proc_info.flags & NkProcVariadic) {
         if (proc_info.args_t.size) {
-            nk_printf(out, ", ");
+            nk_print(out, ", ");
         }
-        nk_printf(out, "...");
+        nk_print(out, "...");
     }
 
-    nk_printf(out, ") ");
+    nk_print(out, ") ");
 
     nkirt_inspect(proc_info.ret_t, out);
 }
@@ -865,20 +865,20 @@ void inspectProcSignature(
 void nkir_inspectExternSyms(NkIrProg ir, NkStream out) {
     if (ir->extern_data.size) {
         for (auto const &data : nk_iterate(ir->extern_data)) {
-            nk_printf(out, "\nextern");
+            nk_print(out, "\nextern");
             nk_printf(out, " data %s: ", nk_atom2cs(data.name));
             nkirt_inspect(data.type, out);
         }
-        nk_printf(out, "\n");
+        nk_print(out, "\n");
     }
 
     if (ir->extern_procs.size) {
         for (auto const &proc : nk_iterate(ir->extern_procs)) {
-            nk_printf(out, "\nextern");
+            nk_print(out, "\nextern");
             nk_printf(out, " proc %s", nk_atom2cs(proc.name));
             inspectProcSignature(proc.type->as.proc.info, {}, out, false);
         }
-        nk_printf(out, "\n");
+        nk_print(out, "\n");
     }
 }
 
@@ -902,7 +902,7 @@ static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStr
     for (usize i = 1; i < 3; i++) {
         auto const &arg = instr.arg[i];
         if (arg.kind != NkIrArg_None) {
-            nk_printf(out, ((i > 1) ? ", " : " "));
+            nk_print(out, ((i > 1) ? ", " : " "));
         }
         switch (arg.kind) {
             case NkIrArg_Ref: {
@@ -911,15 +911,15 @@ static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStr
                 break;
             }
             case NkIrArg_RefArray: {
-                nk_printf(out, "(");
+                nk_print(out, "(");
                 for (usize i = 0; i < arg.refs.size; i++) {
                     if (i) {
-                        nk_printf(out, ", ");
+                        nk_print(out, ", ");
                     }
                     auto const &ref = arg.refs.data[i];
                     nkir_inspectRef(ir, _proc, ref, out);
                 }
-                nk_printf(out, ")");
+                nk_print(out, ")");
                 break;
             }
             case NkIrArg_Label:
@@ -927,7 +927,7 @@ static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStr
                     auto const name_str = nk_atom2s(ir->blocks.data[arg.id].name);
                     nk_printf(out, NKS_FMT, NKS_ARG(name_str));
                 } else {
-                    nk_printf(out, "(null)");
+                    nk_print(out, "(null)");
                 }
                 break;
             case NkIrArg_None:
@@ -937,7 +937,7 @@ static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStr
     }
 
     if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
-        nk_printf(out, " -> ");
+        nk_print(out, " -> ");
         nkir_inspectRef(ir, _proc, instr.arg[0].ref, out);
     }
 }
@@ -958,7 +958,7 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
     }
     inspectProcSignature(proc.proc_t->as.proc.info, proc.arg_names, out);
 
-    nk_printf(out, " {\n\n");
+    nk_print(out, " {\n\n");
 
     if (proc.locals.size) {
         for (usize i = 0; i < proc.locals.size; i++) {
@@ -969,9 +969,9 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
                 nk_printf(out, "_var%zu: ", i);
             }
             nkirt_inspect(proc.locals.data[i].type, out);
-            nk_printf(out, "\n");
+            nk_print(out, "\n");
         }
-        nk_printf(out, "\n");
+        nk_print(out, "\n");
     }
 
     usize instr_index = 0;
@@ -985,14 +985,14 @@ void nkir_inspectProc(NkIrProg ir, NkIrProc _proc, NkStream out) {
             for (auto instr_idx = range.begin_idx; instr_idx < range.end_idx; instr_idx++) {
                 auto const &instr = ir->instrs.data[instr_idx];
                 inspectInstrImpl(ir, _proc, instr, out, instr_index++);
-                nk_printf(out, "\n");
+                nk_print(out, "\n");
             }
         }
 
-        nk_printf(out, "\n");
+        nk_print(out, "\n");
     }
 
-    nk_printf(out, "}\n");
+    nk_print(out, "}\n");
 }
 
 void nkir_inspectInstr(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStream out) {
@@ -1003,15 +1003,15 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
     auto const &proc = ir->procs.data[_proc.idx];
 
     if (ref.kind == NkIrRef_None) {
-        nk_printf(out, "{}");
+        nk_print(out, "{}");
         return;
     } else if (ref.kind == NkIrRef_VariadicMarker) {
-        nk_printf(out, "...");
+        nk_print(out, "...");
         return;
     }
 
     for (usize i = 0; i < ref.indir; i++) {
-        nk_printf(out, "[");
+        nk_print(out, "[");
     }
     switch (ref.kind) {
         case NkIrRef_Frame: {
@@ -1077,12 +1077,12 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
         nk_printf(out, "+%zu", ref.offset);
     }
     for (usize i = 0; i < ref.indir; i++) {
-        nk_printf(out, "]");
+        nk_print(out, "]");
     }
     if (ref.post_offset) {
         nk_printf(out, "+%zu", ref.post_offset);
     }
-    nk_printf(out, ":");
+    nk_print(out, ":");
     nkirt_inspect(ref.type, out);
 }
 

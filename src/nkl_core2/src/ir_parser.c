@@ -191,7 +191,7 @@ static void getTokenImpl(ParserState *p) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "next token: \"");
+        nk_print(log, "next token: \"");
         nks_escape(log, curTokenStr(p));
         nk_printf(log, "\":%u", p->src->cur_token->id);
     }
@@ -207,7 +207,7 @@ static bool accept(ParserState *p, u32 id) {
     if (on(p, id)) {
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "accept \"");
+            nk_print(log, "accept \"");
             nks_escape(log, curTokenStr(p));
             nk_printf(log, "\":%u", p->src->cur_token->id);
         }

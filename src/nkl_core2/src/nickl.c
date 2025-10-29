@@ -125,7 +125,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Searching for ");
+        nk_print(log, "Searching for ");
         nickl_printSymbol(log, mod->name, sym);
     }
 
@@ -144,7 +144,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
     if (found_mod) {
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "  Found in ");
+            nk_print(log, "  Found in ");
             nickl_printModuleName(log, mod_name);
         }
 
@@ -156,7 +156,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "  Found in ");
+            nk_print(log, "  Found in ");
             nickl_printModuleName(log, mod_name);
             if (lib != mod_name) {
                 nk_printf(log, " aka \"%s\"", nk_atom2cs(lib));
@@ -201,7 +201,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Creating module ");
+        nk_print(log, "Creating module ");
         nickl_printModuleName(log, mod->name);
     }
 
@@ -240,9 +240,9 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Linking ");
+        nk_print(log, "Linking ");
         nickl_printModuleName(log, dst_mod->name);
-        nk_printf(log, " <- ");
+        nk_print(log, " <- ");
         nickl_printModuleName(log, src_mod->name);
     }
 
@@ -316,6 +316,9 @@ static bool compileAstImpl(NklModule mod, NkAtom file) {
     NklCompiler com = mod->com;
     NklState nkl = com->nkl;
 
+    NkString text;
+    TRY(nickl_getText(nkl, file, &text), false);
+
     NklTokenArray tokens;
     TRY(nickl_getTokensAst(nkl, file, &tokens), false);
 
@@ -323,8 +326,9 @@ static bool compileAstImpl(NklModule mod, NkAtom file) {
     TRY(nickl_getAst(nkl, file, &nodes), false);
 
     TRY(nickl_compile(&(NklCompileArgs){
-            .com = com,
+            .mod = mod,
             .file = file,
+            .text = text,
             .tokens = tokens,
             .nodes = nodes,
         }),
@@ -482,7 +486,7 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Resolving address of ");
+        nk_print(log, "Resolving address of ");
         nickl_printSymbol(log, mod->name, sym);
     }
 

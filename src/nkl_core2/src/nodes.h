@@ -8,6 +8,8 @@ extern "C" {
 #endif
 
 typedef enum {
+    n_null = 0,
+
 #define XN(N, T) NK_CAT(n_, N),
 #include "nodes.inl"
 
