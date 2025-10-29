@@ -5,6 +5,7 @@
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
 #include "nkl/core/lexer.h"
+#include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
@@ -70,9 +71,9 @@ static void getToken(ParserState *p) {
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "next token: \"");
+        nk_printf(log, "next: %s \"", p->token_names ? p->token_names[p->cur_token->id] : "??TokenNameUnavailable??");
         nks_escape(log, nkl_getTokenStr(p->cur_token, p->text));
-        nk_printf(log, "\":%u", p->cur_token->id);
+        nk_print(log, "\"");
     }
 }
 
@@ -80,9 +81,10 @@ static bool accept(ParserState *p, u32 id) {
     if (on(p, id)) {
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "accept \"");
+            nk_printf(
+                log, "accept: %s \"", p->token_names ? p->token_names[p->cur_token->id] : "??TokenNameUnavailable??");
             nks_escape(log, nkl_getTokenStr(p->cur_token, p->text));
-            nk_printf(log, "\":%u", p->cur_token->id);
+            nk_print(log, "\"");
         }
 
         getToken(p);
@@ -152,25 +154,25 @@ static bool parseNode(ParserState *p) {
     }
 
     else if (accept(p, NklAstToken_LBraket)) {
-        node->id = nk_cs2atom("list");
+        node->id = n_list;
         TRY(parseNodeList(p, node));
         TRY(expect(p, NklAstToken_RBraket));
     }
 
     else if (accept(p, NklToken_Id)) {
-        node->id = nk_cs2atom("id");
+        node->id = n_id;
     }
 
     else if (accept(p, NklToken_Int)) {
-        node->id = nk_cs2atom("int");
+        node->id = n_int;
     } else if (accept(p, NklToken_Float)) {
-        node->id = nk_cs2atom("float");
+        node->id = n_float;
     }
 
     else if (accept(p, NklToken_String)) {
-        node->id = nk_cs2atom("string");
+        node->id = n_string;
     } else if (accept(p, NklToken_EscapedString)) {
-        node->id = nk_cs2atom("escaped_string");
+        node->id = n_escaped_string;
     }
 
     else {
@@ -185,8 +187,12 @@ static bool parseNode(ParserState *p) {
 static bool parse(ParserState *p) {
     nk_assert(p->tokens.size && nks_last(p->tokens).id == NklToken_Eof && "ill-formed token stream");
 
+    if (on(p, NklToken_Newline)) {
+        getToken(p);
+    }
+
     NklAstNode *node = pushNode(p);
-    node->id = nk_cs2atom("list");
+    node->id = n_list;
 
     TRY(parseNodeList(p, node));
 
@@ -199,11 +205,11 @@ static bool parse(ParserState *p) {
     return true;
 }
 
-bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
+bool nkl_ast_parse(NklAstParserArgs const *args, NklAstNodeArray *out_nodes) {
     NK_LOG_TRC("%s", __func__);
 
-    NklState const nkl = data->nkl;
-    NkAtom const file = data->file;
+    NklState const nkl = args->nkl;
+    NkAtom const file = args->file;
 
     NkString text;
     if (!nickl_getText(nkl, file, &text)) {
@@ -211,9 +217,7 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
     }
 
     NklTokenArray tokens;
-    if (!nickl_getTokensAst(nkl, file, &tokens)) {
-        return false;
-    }
+    TRY(nickl_getTokensAst(nkl, file, &tokens));
 
     ParserState p = {
         .nkl = nkl,
@@ -221,7 +225,7 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
         .text = text,
         .tokens = tokens,
         .arena = &nkl->arena,
-        .token_names = data->token_names,
+        .token_names = args->token_names,
         .cur_token = p.tokens.data,
         .nodes = {.alloc = nk_arena_getAllocator(&nkl->arena)},
     };
@@ -231,7 +235,7 @@ bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes) {
 
     NK_LOG_STREAM_INF {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "AST:");
+        nk_print(log, "AST:");
         nkl_ast_inspect(
             (NklSource){
                 .file = 0,

@@ -7,6 +7,7 @@
 #include "nickl_impl.h"
 #include "nkb/ir.h"
 #include "nkl/common/ast.h"
+#include "nodes.h"
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
@@ -20,11 +21,11 @@
 
 NK_LOG_USE_SCOPE(nickl);
 
-#define TRY(EXPR)      \
-    do {               \
-        if (!(EXPR)) { \
-            return 0;  \
-        }              \
+#define TRY(EXPR, ...)          \
+    do {                        \
+        if (!(EXPR)) {          \
+            return __VA_ARGS__; \
+        }                       \
     } while (0)
 
 // TODO: Infer source location if operating during compilation
@@ -43,6 +44,9 @@ NK_LOG_USE_SCOPE(nickl);
 
 NklState nkl_newState(void) {
     NK_LOG_TRC("%s", __func__);
+
+#define XN(N, T) nk_atom_define(NK_CAT(n_, N), nk_cs2s(T));
+#include "nodes.inl"
 
     NkArena arena = {0};
     NklState nkl = nk_arena_allocT(&arena, NklState_T);
@@ -178,7 +182,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 }
 
 static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
-    TRY(com);
+    TRY(com, NULL);
 
     NklState nkl = com->nkl;
 
@@ -221,7 +225,7 @@ NklModule nkl_newModuleNamed(NklCompiler com, NkString name) {
 bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(dst_mod);
+    TRY(dst_mod, false);
 
     NklState nkl = dst_mod->com->nkl;
 
@@ -258,7 +262,7 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
 bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(com);
+    TRY(com, false);
 
     // TODO: Validate input
 
@@ -270,7 +274,7 @@ bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib) {
 bool nkl_compileFile(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
@@ -292,13 +296,14 @@ bool nkl_compileFile(NklModule mod, NkString path) {
 static bool compileIrImpl(NklModule mod, NkAtom file) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
-    TRY(nkl_ir_parse(&(NklIrParserData){
-        .mod = mod,
-        .file = file,
-        .token_names = s_ir_tokens,
-    }));
+    TRY(nkl_ir_parse(&(NklIrParserArgs){
+            .mod = mod,
+            .file = file,
+            .token_names = s_ir_tokens,
+        }),
+        false);
 
     return true;
 }
@@ -306,21 +311,32 @@ static bool compileIrImpl(NklModule mod, NkAtom file) {
 static bool compileAstImpl(NklModule mod, NkAtom file) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
-    NklState nkl = mod->com->nkl;
+    NklCompiler com = mod->com;
+    NklState nkl = com->nkl;
+
+    NklTokenArray tokens;
+    TRY(nickl_getTokensAst(nkl, file, &tokens), false);
 
     NklAstNodeArray nodes;
-    TRY(nickl_getAst(nkl, file, &nodes));
+    TRY(nickl_getAst(nkl, file, &nodes), false);
 
-    nickl_reportError(nkl, "TODO: `compileAstImpl` is not finished");
-    return false;
+    TRY(nickl_compile(&(NklCompileArgs){
+            .com = com,
+            .file = file,
+            .tokens = tokens,
+            .nodes = nodes,
+        }),
+        false);
+
+    return true;
 }
 
 static bool compileNklImpl(NklModule mod, NkAtom file) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
@@ -332,7 +348,7 @@ static bool compileNklImpl(NklModule mod, NkAtom file) {
 bool nkl_compileFileIr(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
@@ -354,7 +370,7 @@ bool nkl_compileFileIr(NklModule mod, NkString path) {
 bool nkl_compileFileAst(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
@@ -376,7 +392,7 @@ bool nkl_compileFileAst(NklModule mod, NkString path) {
 bool nkl_compileFileNkl(NklModule mod, NkString path) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
@@ -398,12 +414,12 @@ bool nkl_compileFileNkl(NklModule mod, NkString path) {
 bool nkl_compileStringIr(NklModule mod, NkString src) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
     NkAtom file = nk_atom_unique((NkString){0});
-    TRY(nickl_defineText(nkl, file, src));
+    TRY(nickl_defineText(nkl, file, src), false);
 
     return compileIrImpl(mod, file);
 }
@@ -411,12 +427,12 @@ bool nkl_compileStringIr(NklModule mod, NkString src) {
 bool nkl_compileStringAst(NklModule mod, NkString src) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
     NkAtom file = nk_atom_unique((NkString){0});
-    TRY(nickl_defineText(nkl, file, src));
+    TRY(nickl_defineText(nkl, file, src), false);
 
     return compileAstImpl(mod, file);
 }
@@ -424,12 +440,12 @@ bool nkl_compileStringAst(NklModule mod, NkString src) {
 bool nkl_compileStringNkl(NklModule mod, NkString src) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
     NkAtom file = nk_atom_unique((NkString){0});
-    TRY(nickl_defineText(nkl, file, src));
+    TRY(nickl_defineText(nkl, file, src), false);
 
     return compileNklImpl(mod, file);
 }
@@ -444,7 +460,7 @@ static_assert((int)NklOutput_Object == NkIrOutput_Object, "");
 bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, false);
 
     NklState nkl = mod->com->nkl;
 
@@ -460,7 +476,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 void *nkl_getSymbolAddress(NklModule mod, NkString name) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod);
+    TRY(mod, NULL);
 
     NkAtom const sym = nk_s2atom(name);
 

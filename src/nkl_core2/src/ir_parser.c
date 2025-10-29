@@ -1173,23 +1173,23 @@ static Void parse(ParserState *p) {
     return ret;
 }
 
-bool nkl_ir_parse(NklIrParserData const *data) {
+bool nkl_ir_parse(NklIrParserArgs const *args) {
     NK_LOG_TRC("%s", __func__);
 
     bool ok = false;
     NK_PROF_FUNC() {
-        NklModule const mod = data->mod;
+        NklModule const mod = args->mod;
 
         NklState nkl = mod->com->nkl;
 
         ParserState p = {
             .mod = mod,
             .arena = &nkl->arena,
-            .token_names = data->token_names,
+            .token_names = args->token_names,
             .types = {.alloc = nk_arena_getAllocator(p.arena)},
         };
 
-        if (pushSource(&p, data->file)) {
+        if (pushSource(&p, args->file)) {
             parse(&p);
         }
 

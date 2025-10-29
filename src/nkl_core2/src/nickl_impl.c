@@ -178,14 +178,14 @@ char const *s_ir_tokens[] = {
 bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache tokens
+    NK_LOG_WRN("TODO: Cache IR tokens");
 
     NkString text;
     TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
-            &(NklLexerData){
+            &(NklLexerArgs){
                 .text = text,
                 .arena = &nkl->arena,
                 .err_str = &err_str,
@@ -242,14 +242,14 @@ char const *s_ast_tokens[] = {
 bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache tokens
+    NK_LOG_WRN("TODO: Cache AST tokens");
 
     NkString text;
     TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
-            &(NklLexerData){
+            &(NklLexerArgs){
                 .text = text,
                 .arena = &nkl->arena,
                 .err_str = &err_str,
@@ -279,10 +279,10 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
 bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache ast
+    NK_LOG_WRN("TODO: Cache AST");
 
     TRY(nkl_ast_parse(
-            &(NklAstParserData){
+            &(NklAstParserArgs){
                 .nkl = nkl,
                 .file = file,
                 .token_names = s_ast_tokens,

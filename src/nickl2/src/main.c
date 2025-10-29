@@ -12,6 +12,8 @@
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 
+NK_LOG_USE_SCOPE(main);
+
 static void printErrorUsage() {
     nk_printf(nk_file_getStream(nk_stderr()), "See `%s --help` for usage information\n", NK_BINARY_NAME);
 }
@@ -57,7 +59,7 @@ static void printDiag(NklState nkl) {
             NklSourceLocation loc = err->loc;
             loc.file = nk_cs2s(relpath);
 
-            // TODO: Avoid reading file again
+            NK_LOG_WRN("TODO: Avoid readling file twice");
             NkString text;
             if (nk_file_read(nk_default_allocator, err->loc.file, &text)) {
                 nkl_diag_printErrorQuote(text, loc, NKS_FMT, NKS_ARG(err->msg));
