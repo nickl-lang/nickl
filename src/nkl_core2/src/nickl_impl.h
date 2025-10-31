@@ -43,6 +43,7 @@ typedef struct NklModule_T {
 
     NklCompiler com;
     NkIrModule ir;
+    NkIrDylib _dl;
 
     NkAtomModuleMap linked_mods;
     NkAtomMap extern_syms;

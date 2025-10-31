@@ -109,6 +109,10 @@ NK_HASH_TREE_ARRAY_DEFINE(NkIrSymbolHashTreeArray, NkIrSymbol, NkAtom, NkIrSymbo
 typedef struct NkIrModule_T {
     NkbState nkb;
     NkIrSymbolHashTreeArray syms;
+} NkIrModule_T;
+
+typedef struct NkIrDylib_T {
+    NkIrModule mod;
 
     NkAtomSet rt_loaded_syms;
 
@@ -116,7 +120,7 @@ typedef struct NkIrModule_T {
     void *sym_resolver_userdata;
 
     NkLlvmJitDylib _llvm_jit_dylib;
-} NkIrModule_T;
+} NkIrDylib_T;
 
 NkbState nkir_createState(void) {
     NK_LOG_TRC("%s", __func__);
@@ -157,8 +161,6 @@ NkIrModule nkir_createModule(NkbState nkb) {
     *mod = (NkIrModule_T){
         .nkb = nkb,
         .syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
-
-        .rt_loaded_syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
     };
     return mod;
 }
@@ -218,15 +220,6 @@ NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod) {
     TRY(mod, (NkIrRelocDynArray){0});
 
     return (NkIrRelocDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
-}
-
-void nkir_setSymbolResolver(NkIrModule mod, NkIrSymbolResolver fn, void *userdata) {
-    TRY(mod);
-
-    nk_assert(!mod->sym_resolver_fn && "overwriting existing symbol resolver");
-
-    mod->sym_resolver_fn = fn;
-    mod->sym_resolver_userdata = userdata;
 }
 
 NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod) {
@@ -503,17 +496,24 @@ bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkI
     return ret;
 }
 
-bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret) {
-    NK_LOG_TRC("%s", __func__);
+NkIrDylib nkir_createDylib(NkIrModule mod) {
+    TRY(mod, NULL);
 
-    TRY(mod, false);
+    NkIrDylib dl = nk_arena_allocT(&mod->nkb->arena, NkIrDylib_T);
+    *dl = (NkIrDylib_T){
+        .mod = mod,
+        .rt_loaded_syms = {.alloc = nk_arena_getAllocator(&mod->nkb->arena)},
+    };
+    return dl;
+}
 
-    (void)mod;
-    (void)sym;
-    (void)args;
-    (void)ret;
-    nk_assert(!"TODO: `nkir_invoke` not implemented");
-    return false;
+void nkir_setSymbolResolver(NkIrDylib dl, NkIrSymbolResolver fn, void *userdata) {
+    TRY(dl);
+
+    nk_assert(!dl->sym_resolver_fn && "overwriting existing symbol resolver");
+
+    dl->sym_resolver_fn = fn;
+    dl->sym_resolver_userdata = userdata;
 }
 
 static NkLlvmJitState getLlvmJitState(NkbState nkb) {
@@ -523,12 +523,12 @@ static NkLlvmJitState getLlvmJitState(NkbState nkb) {
     return nkb->_llvm_jit;
 }
 
-static NkLlvmJitDylib getLlvmJitDylib(NkIrModule mod) {
-    if (!mod->_llvm_jit_dylib) {
-        NkbState nkb = mod->nkb;
-        mod->_llvm_jit_dylib = nk_llvm_createJitDylib(nkb->llvm, getLlvmJitState(nkb));
+static NkLlvmJitDylib getLlvmJitDylib(NkIrDylib dl) {
+    if (!dl->_llvm_jit_dylib) {
+        NkbState nkb = dl->mod->nkb;
+        dl->_llvm_jit_dylib = nk_llvm_createJitDylib(nkb->llvm, getLlvmJitState(nkb));
     }
-    return mod->_llvm_jit_dylib;
+    return dl->_llvm_jit_dylib;
 }
 
 typedef NkDynArray(NkAtom) NkAtomDynArray;
@@ -662,7 +662,8 @@ static NkIrSymbol symToExtern(NkArena *arena, NkIrSymbol sym) {
     return sym;
 }
 
-static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_name) {
+static void *getSymbolAddressImpl(NkArena *scratch, NkIrDylib dl, NkAtom sym_name) {
+    NkIrModule mod = dl->mod;
     NkbState nkb = mod->nkb;
 
     NkIrSymbolDynArray deps = {.alloc = nk_arena_getAllocator(scratch)};
@@ -683,17 +684,17 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
     NkIrSymbolAddressDynArray to_define = {.alloc = nk_arena_getAllocator(scratch)};
 
     NK_ITERATE(NkIrSymbol *, dep, deps) {
-        if (NkAtomSet_find(&mod->rt_loaded_syms, dep->name)) {
+        if (NkAtomSet_find(&dl->rt_loaded_syms, dep->name)) {
             if (dep->kind == NkIrSymbol_Proc || dep->kind == NkIrSymbol_Data) {
                 *dep = symToExtern(scratch, *dep);
             }
         } else {
-            NkAtomSet_insert(&mod->rt_loaded_syms, dep->name);
+            NkAtomSet_insert(&dl->rt_loaded_syms, dep->name);
 
             if (dep->kind == NkIrSymbol_Extern) {
-                nk_assert(mod->sym_resolver_fn && "Symbol resolver is not set up");
+                nk_assert(dl->sym_resolver_fn && "Symbol resolver is not set up");
 
-                void *addr = mod->sym_resolver_fn(dep->name, mod->sym_resolver_userdata);
+                void *addr = dl->sym_resolver_fn(dep->name, dl->sym_resolver_userdata);
                 if (!addr) {
                     nk_error_printf(
                         "Failed to get address of `%s`, dependency `%s` not found",
@@ -713,7 +714,7 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
     }
 
     NkLlvmJitState jit = getLlvmJitState(nkb);
-    NkLlvmJitDylib jdl = getLlvmJitDylib(mod);
+    NkLlvmJitDylib jdl = getLlvmJitDylib(dl);
 
     nk_llvm_defineExternSymbols(scratch, jit, jdl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
 
@@ -727,11 +728,12 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrModule mod, NkAtom sym_n
     return nk_llvm_getSymbolAddress(jit, jdl, sym_name);
 }
 
-void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
+void *nkir_getSymbolAddress(NkIrDylib dl, NkAtom sym) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod, false);
+    TRY(dl, false);
 
+    NkIrModule mod = dl->mod;
     NkbState nkb = mod->nkb;
     NkArena *scratch = &nkb->scratch;
 
@@ -743,26 +745,40 @@ void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym) {
     void *addr = NULL;
     NK_PROF_FUNC() {
         NK_ARENA_SCOPE(scratch) {
-            addr = getSymbolAddressImpl(scratch, mod, sym);
+            addr = getSymbolAddressImpl(scratch, dl, sym);
         }
     }
 
     return addr;
 }
 
-bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms) {
+bool nkir_defineExternSymbols(NkIrDylib dl, NkIrSymbolAddressArray syms) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(mod, false);
+    TRY(dl, false);
 
+    NkIrModule mod = dl->mod;
     NkbState nkb = mod->nkb;
     NkArena *scratch = &nkb->scratch;
 
     NK_ARENA_SCOPE(scratch) {
-        nk_llvm_defineExternSymbols(scratch, getLlvmJitState(nkb), getLlvmJitDylib(mod), syms);
+        nk_llvm_defineExternSymbols(scratch, getLlvmJitState(nkb), getLlvmJitDylib(dl), syms);
     }
 
     return true;
+}
+
+bool nkir_invoke(NkIrDylib dl, NkAtom sym, void **args, void **ret) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(dl, false);
+
+    (void)dl;
+    (void)sym;
+    (void)args;
+    (void)ret;
+    nk_assert(!"TODO: `nkir_invoke` not implemented");
+    return false;
 }
 
 void nkir_printName(NkStream out, char const *kind, NkAtom name) {

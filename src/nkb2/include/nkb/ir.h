@@ -25,6 +25,7 @@ typedef enum {
 
 typedef struct NkbState_T *NkbState;
 typedef struct NkIrModule_T *NkIrModule;
+typedef struct NkIrDylib_T *NkIrDylib;
 typedef struct NkIrTarget_T *NkIrTarget;
 
 typedef enum {
@@ -245,9 +246,6 @@ NkIrTypeDynArray nkir_moduleNewTypeArray(NkIrModule mod);
 NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod);
 NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod);
 
-typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
-void nkir_setSymbolResolver(NkIrModule mod, NkIrSymbolResolver fn, void *userdata);
-
 NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod);
 NkIrSymbol const *nkir_findSymbol(NkIrModule mod, NkAtom sym);
 
@@ -303,9 +301,15 @@ bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkI
 
 /// Runtime
 
-bool nkir_invoke(NkIrModule mod, NkAtom sym, void **args, void **ret);
-void *nkir_getSymbolAddress(NkIrModule mod, NkAtom sym);
-bool nkir_defineExternSymbols(NkIrModule mod, NkIrSymbolAddressArray syms);
+NkIrDylib nkir_createDylib(NkIrModule mod);
+
+typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
+void nkir_setSymbolResolver(NkIrDylib dl, NkIrSymbolResolver fn, void *userdata);
+
+void *nkir_getSymbolAddress(NkIrDylib dl, NkAtom sym);
+bool nkir_defineExternSymbols(NkIrDylib dl, NkIrSymbolAddressArray syms);
+
+bool nkir_invoke(NkIrDylib dl, NkAtom sym, void **args, void **ret);
 
 /// Inspection
 

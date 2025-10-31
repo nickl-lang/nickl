@@ -120,6 +120,13 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
         });
 }
 
+NkIrDylib getDylib(NklModule mod) {
+    if (!mod->_dl) {
+        mod->_dl = nkir_createDylib(mod->ir);
+    }
+    return mod->_dl;
+}
+
 static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_TRC("%s", __func__);
 
@@ -152,7 +159,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
         // TODO: Detect cycles during symbol resolution
         NklModule const src_mod = *found_mod;
-        return nkir_getSymbolAddress(src_mod->ir, sym);
+        return nkir_getSymbolAddress(getDylib(src_mod), sym);
     } else {
         NkAtom const lib = nickl_translateLib(mod->com, mod_name);
 
@@ -207,7 +214,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
         nickl_printModuleName(log, mod->name);
     }
 
-    nkir_setSymbolResolver(mod->ir, symbolResolver, mod);
+    nkir_setSymbolResolver(getDylib(mod), symbolResolver, mod);
 
     return mod;
 }
@@ -497,7 +504,7 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 
     NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
     NK_ERROR_SCOPE(&err) {
-        addr = nkir_getSymbolAddress(mod->ir, sym);
+        addr = nkir_getSymbolAddress(getDylib(mod), sym);
     }
     HANDLE_ERRORS();
 
