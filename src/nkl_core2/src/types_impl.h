@@ -4,13 +4,13 @@
 #include "nkl/core/types.h"
 #include "ntk/arena.h"
 #include "ntk/hash.h"
-#include "ntk/hash_tree.h"
+#include "ntk/hash_tree_array.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-NK_HASH_TREE_FWD_KV(NklTypeMap, NkHash128, NklType);
+NK_HASH_TREE_ARRAY_FWD_KV(NklTypeMap, NkHash128, NklType);
 
 typedef struct {
     NkArena *arena;

@@ -314,7 +314,7 @@ pub proc bar() :i32 {
 //     foo();
 // }
 
-TEST_F(nkl_run_ir, new_test) {
+TEST_F(nkl_run_ir, private_name_collision) {
     auto mod = nkl_newModuleNamed(com, nk_cs2s("A"));
     auto mod2 = nkl_newModule(com);
 

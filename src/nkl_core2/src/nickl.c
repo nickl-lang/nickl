@@ -315,8 +315,7 @@ static bool compileAstImpl(NklModule mod, NkAtom file) {
 
     TRY(mod, false);
 
-    NklCompiler com = mod->com;
-    NklState nkl = com->nkl;
+    NklState nkl = mod->com->nkl;
 
     NkString text;
     TRY(nickl_getText(nkl, file, &text), false);

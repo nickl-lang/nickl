@@ -123,7 +123,30 @@ static bool compile(CompilerCtx *ctx, NklAstNode const *node) {
                 lib = nk_s2atom(getString(ctx, lib_node, &ctx->scratch));
             }
 
-            reportError(ctx, node, "extern compilation unfinished");
+            if (decl_node->id == n_proc) {
+                // if (!nickl_defineSymbol(
+                //         ctx->mod,
+                //         &(NkIrSymbol){
+                //             .extrn =
+                //                 {
+                //                     .proc =
+                //                         {
+                //                             .param_types = {NKS_INIT(param_types)},
+                //                             .ret_type = ret_type,
+                //                             .flags = is_variadic ? NkIrProc_Variadic : 0,
+                //                         },
+                //                     .lib = lib,
+                //                     .kind = NkIrExtern_Proc,
+                //                 },
+                //             .name = sym_name,
+                //             .kind = NkIrSymbol_Extern,
+                //         })) {
+                //     // TODO: Report proper conflict errors
+                //     reportError(ctx, "failed to define symbol");
+                // }
+            }
+
+            reportError(ctx, node, "TODO: handle extern data");
             return false;
         }
 

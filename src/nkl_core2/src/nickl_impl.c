@@ -415,8 +415,6 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
     NK_LOG_TRC("%s", __func__);
 
-    NklState nkl = dst_mod->com->nkl;
-
     if (sym->vis != NkIrVisibility_Default) {
         return true;
     }
@@ -428,6 +426,8 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
         nk_print(log, " <- ");
         nickl_printSymbol(log, src_mod->name, sym->name);
     }
+
+    NklState nkl = dst_mod->com->nkl;
 
     {
         NkAtom *found = NkAtomMap_find(&dst_mod->extern_syms, sym->name);
