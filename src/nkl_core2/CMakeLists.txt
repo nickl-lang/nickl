@@ -8,6 +8,7 @@ add_library(${LIB} SHARED
     src/lexer.c
     src/nickl.c
     src/nickl_impl.c
+    src/types.c
     )
 
 target_include_directories(${LIB}

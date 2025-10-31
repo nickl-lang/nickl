@@ -125,7 +125,7 @@ static NklAstNode *pushNode(ParserState *p) {
         ((NklAstNode){
             .token_idx = p->cur_token - p->tokens.data,
         }));
-    return &nks_last(p->nodes);
+    return &NKS_LAST(p->nodes);
 }
 
 static bool parseNode(ParserState *p) {
@@ -185,7 +185,7 @@ static bool parseNode(ParserState *p) {
 }
 
 static bool parse(ParserState *p) {
-    nk_assert(p->tokens.size && nks_last(p->tokens).id == NklToken_Eof && "ill-formed token stream");
+    nk_assert(p->tokens.size && NKS_LAST(p->tokens).id == NklToken_Eof && "ill-formed token stream");
 
     if (on(p, NklToken_Newline)) {
         getToken(p);

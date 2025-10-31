@@ -524,7 +524,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
                 }
 
                 nkda_append(&bc_proc.instrs, {});
-                auto &instr = nks_last(bc_proc.instrs);
+                auto &instr = NKS_LAST(bc_proc.instrs);
                 instr.code = code;
                 for (usize ai = 0; ai < 3; ai++) {
                     if (!translate_arg(bc_proc.instrs.size - 1, ai, instr.arg[ai], ir_instr.arg[ai])) {

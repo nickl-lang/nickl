@@ -89,7 +89,7 @@ static NkString getString(CompilerCtx *ctx, NklAstNode const *node, NkArena *are
     } else {
         NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
         nks_unescape(nksb_getStream(&sb), str);
-        if (nks_last(sb)) {
+        if (NKS_LAST(sb)) {
             nksb_appendNull(&sb);
         }
 
@@ -151,7 +151,7 @@ bool nickl_compile(NklCompileArgs const *args) {
                 .nodes = args->nodes,
             };
 
-            ok = compile(&ctx, &nks_first(args->nodes));
+            ok = compile(&ctx, &NKS_FIRST(args->nodes));
 
             // TODO: Reuse scratch arena for other compiles
             nk_arena_free(&ctx.scratch);

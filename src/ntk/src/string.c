@@ -9,7 +9,7 @@
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
-NkString nks_copy(NkAllocator alloc, NkString src) {
+NkString nks_dup(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size);
     if (src.size) {
         memcpy(mem, src.data, src.size);
@@ -17,7 +17,7 @@ NkString nks_copy(NkAllocator alloc, NkString src) {
     return (NkString){mem, src.size};
 }
 
-NkString nks_copyNt(NkAllocator alloc, NkString src) {
+NkString nks_dupNt(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size + 1);
     if (src.size) {
         memcpy(mem, src.data, src.size);
@@ -27,7 +27,7 @@ NkString nks_copyNt(NkAllocator alloc, NkString src) {
 }
 
 NkString nks_trimLeft(NkString str) {
-    while (str.size && isspace(nks_first(str))) {
+    while (str.size && isspace(NKS_FIRST(str))) {
         str.size -= 1;
         str.data += 1;
     }
@@ -35,7 +35,7 @@ NkString nks_trimLeft(NkString str) {
 }
 
 NkString nks_trimRight(NkString str) {
-    while (str.size && isspace(nks_last(str))) {
+    while (str.size && isspace(NKS_LAST(str))) {
         str.size -= 1;
     }
     return str;
@@ -67,7 +67,7 @@ NkString nks_chopByDelim(NkString *str, char delim) {
 NkString nks_chopByDelimReverse(NkString *str, char delim) {
     NkString res = *str;
 
-    while (str->size && nks_last(*str) != delim) {
+    while (str->size && NKS_LAST(*str) != delim) {
         str->size--;
     }
 

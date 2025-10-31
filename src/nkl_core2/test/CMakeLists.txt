@@ -1,4 +1,5 @@
-def_test(GROUP nkl_core NAME run_ir LINK ${LIB} TARGET RUN_IR_TEST)
+def_test(GROUP nkl_core2 NAME run_ir LINK ${LIB} TARGET RUN_IR_TEST)
+def_test(GROUP nkl_core2 NAME types LINK ${LIB})
 
 target_compile_definitions(${RUN_IR_TEST}
     PRIVATE SYSTEM_LIBC="${SYSTEM_LIBC}"

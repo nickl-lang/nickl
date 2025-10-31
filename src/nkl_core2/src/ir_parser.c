@@ -398,7 +398,7 @@ static NkString parseString(ParserState *p, NkArena *arena) {
     } else {
         NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
         nks_unescape(nksb_getStream(&sb), str);
-        if (nks_last(sb)) {
+        if (NKS_LAST(sb)) {
             nksb_appendNull(&sb);
         }
 
@@ -1077,7 +1077,7 @@ static bool pushSource(ParserState *p, NkAtom file) {
         return false;
     }
 
-    nk_assert(tokens.size && nks_last(tokens).id == NklToken_Eof && "ill-formed token stream");
+    nk_assert(tokens.size && NKS_LAST(tokens).id == NklToken_Eof && "ill-formed token stream");
 
     SourceInfo *src = nk_arena_allocT(&p->scratch, SourceInfo);
     *src = (SourceInfo){

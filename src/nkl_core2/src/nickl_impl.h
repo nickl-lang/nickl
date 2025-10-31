@@ -10,6 +10,7 @@
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
 #include "ntk/string.h"
+#include "types_impl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +25,8 @@ typedef struct NklState_T {
     NkAtomStringMap text_map;
 
     NklError *error;
+
+    NklTypeStorage types;
 } NklState_T;
 
 typedef struct NklCompiler_T {

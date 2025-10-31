@@ -18,6 +18,7 @@
 #include "ntk/path.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
+#include "types_impl.h"
 
 NK_LOG_USE_SCOPE(nickl);
 
@@ -55,6 +56,7 @@ NklState nkl_newState(void) {
         .nkb = nkir_createState(),
     };
     nkl->text_map = (NkAtomStringMap){.alloc = nk_arena_getAllocator(&nkl->arena)};
+    nkl_types_init(&nkl->types, &nkl->arena);
     return nkl;
 }
 

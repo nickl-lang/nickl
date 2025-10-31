@@ -92,9 +92,9 @@
         } else {                                                                                      \
             *res.idx_ptr = items->size;                                                               \
             nkda_append(items, item);                                                                 \
-            nks_last(*items).left = 0;                                                                \
-            nks_last(*items).right = 0;                                                               \
-            return &nks_last(*items);                                                                 \
+            NKS_LAST(*items).left = 0;                                                                \
+            NKS_LAST(*items).right = 0;                                                               \
+            return &NKS_LAST(*items);                                                                 \
         }                                                                                             \
     }                                                                                                 \
                                                                                                       \
