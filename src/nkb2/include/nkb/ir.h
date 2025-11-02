@@ -237,6 +237,7 @@ void nkir_freeState(NkbState nkb);
 NkIrModule nkir_createModule(NkArena *arena);
 
 NkIrTarget nkir_createTarget(NkArena *scratch, NkbState nkb, NkString triple);
+void nkir_freeTarget(NkIrTarget tgt);
 
 void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym);
 
@@ -295,7 +296,7 @@ bool nkir_exportModule(
     NkArena *scratch,
     NkbState nkb,
     NkIrModule mod,
-    NkIrTarget target,
+    NkIrTarget tgt,
     NkString out_file,
     NkIrOutputKind kind);
 

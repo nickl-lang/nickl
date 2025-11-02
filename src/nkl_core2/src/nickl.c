@@ -16,6 +16,7 @@
 #include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/path.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
 #include "ntk/string_builder.h"
 #include "types_impl.h"
@@ -57,7 +58,8 @@ NklState nkl_newState(void) {
         .arena = arena,
     };
     nkl->nkb = nkir_createState(&nkl->arena);
-    nkl->text_map = (NkAtomStringMap){.alloc = nk_arena_getAllocator(&nkl->arena)};
+    nkl->created_targets.alloc = nk_arena_getAllocator(&nkl->arena);
+    nkl->text_map.alloc = nk_arena_getAllocator(&nkl->arena);
     nkl_types_init(&nkl->types, &nkl->arena);
     return nkl;
 }
@@ -68,6 +70,10 @@ void nkl_freeState(NklState nkl) {
     nk_assert(nkl && "state is null");
 
     nk_arena_free(&nkl->scratch);
+
+    NK_ITERATE(NkIrTarget const *, it, nkl->created_targets) {
+        nkir_freeTarget(*it);
+    }
 
     nkir_freeState(nkl->nkb);
     nkir_freeRuntime(nkl->_rt);
@@ -96,6 +102,9 @@ NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
 
         NK_ERROR_SCOPE(&err) {
             tgt = nkir_createTarget(&nkl->scratch, nkl->nkb, triple_str);
+            if (tgt) {
+                nkda_append(&nkl->created_targets, tgt);
+            }
         }
     }
 
