@@ -89,7 +89,6 @@ static bool isJumpInstr(u8 code) {
 }
 
 typedef struct NkbState_T {
-    NkArena arena;
     NkArena scratch;
 
     NkLlvmState llvm;
@@ -122,16 +121,13 @@ typedef struct NkIrDylib_T {
     NkLlvmJitDylib _llvm_jit_dylib;
 } NkIrDylib_T;
 
-NkbState nkir_createState(void) {
+NkbState nkir_createState(NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
 
-    NkArena arena = {0};
-    NkbState nkb = nk_arena_allocT(&arena, NkbState_T);
-    *nkb = (NkbState_T){
-        .arena = arena,
-    };
-    nkb->llvm = nk_llvm_createState(&nkb->arena);
-    nkb->created_targets.alloc = nk_arena_getAllocator(&nkb->arena);
+    NkbState nkb = nk_arena_allocT(arena, NkbState_T);
+    *nkb = (NkbState_T){0};
+    nkb->llvm = nk_llvm_createState(arena);
+    nkb->created_targets.alloc = nk_arena_getAllocator(arena);
 
     return nkb;
 }
@@ -149,18 +145,15 @@ void nkir_freeState(NkbState nkb) {
     nk_llvm_freeState(nkb->llvm);
 
     nk_arena_free(&nkb->scratch);
-
-    NkArena arena = nkb->arena;
-    nk_arena_free(&arena);
 }
 
-NkIrModule nkir_createModule(NkbState nkb) {
+NkIrModule nkir_createModule(NkArena *arena, NkbState nkb) {
     TRY(nkb, NULL);
 
-    NkIrModule mod = nk_arena_allocT(&nkb->arena, NkIrModule_T);
+    NkIrModule mod = nk_arena_allocT(arena, NkIrModule_T);
     *mod = (NkIrModule_T){
         .nkb = nkb,
-        .syms = {.alloc = nk_arena_getAllocator(&nkb->arena)},
+        .syms = {.alloc = nk_arena_getAllocator(arena)},
     };
     return mod;
 }
@@ -180,46 +173,10 @@ NkIrTarget nkir_createTarget(NkbState nkb, NkString triple) {
     return (NkIrTarget)tgt;
 }
 
-NkArena *nkir_moduleGetArena(NkIrModule mod) {
-    TRY(mod, NULL);
-
-    return &mod->nkb->arena;
-}
-
 void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym) {
     TRY(mod && sym);
 
     NkIrSymbolHashTreeArray_insertItem(&mod->syms, *sym);
-}
-
-NkIrRefDynArray nkir_moduleNewRefArray(NkIrModule mod) {
-    TRY(mod, (NkIrRefDynArray){0});
-
-    return (NkIrRefDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
-}
-
-NkIrInstrDynArray nkir_moduleNewInstrArray(NkIrModule mod) {
-    TRY(mod, (NkIrInstrDynArray){0});
-
-    return (NkIrInstrDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
-}
-
-NkIrTypeDynArray nkir_moduleNewTypeArray(NkIrModule mod) {
-    TRY(mod, (NkIrTypeDynArray){0});
-
-    return (NkIrTypeDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
-}
-
-NkIrParamDynArray nkir_moduleNewParamArray(NkIrModule mod) {
-    TRY(mod, (NkIrParamDynArray){0});
-
-    return (NkIrParamDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
-}
-
-NkIrRelocDynArray nkir_moduleNewRelocArray(NkIrModule mod) {
-    TRY(mod, (NkIrRelocDynArray){0});
-
-    return (NkIrRelocDynArray){.alloc = nk_arena_getAllocator(&mod->nkb->arena)};
 }
 
 NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod) {
@@ -496,13 +453,13 @@ bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkI
     return ret;
 }
 
-NkIrDylib nkir_createDylib(NkIrModule mod) {
+NkIrDylib nkir_createDylib(NkArena *arena, NkIrModule mod) {
     TRY(mod, NULL);
 
-    NkIrDylib dl = nk_arena_allocT(&mod->nkb->arena, NkIrDylib_T);
+    NkIrDylib dl = nk_arena_allocT(arena, NkIrDylib_T);
     *dl = (NkIrDylib_T){
         .mod = mod,
-        .rt_loaded_syms = {.alloc = nk_arena_getAllocator(&mod->nkb->arena)},
+        .rt_loaded_syms = {.alloc = nk_arena_getAllocator(arena)},
     };
     return dl;
 }

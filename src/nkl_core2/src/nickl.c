@@ -53,8 +53,8 @@ NklState nkl_newState(void) {
     NklState nkl = nk_arena_allocT(&arena, NklState_T);
     *nkl = (NklState_T){
         .arena = arena,
-        .nkb = nkir_createState(),
     };
+    nkl->nkb = nkir_createState(&nkl->arena);
     nkl->text_map = (NkAtomStringMap){.alloc = nk_arena_getAllocator(&nkl->arena)};
     nkl_types_init(&nkl->types, &nkl->arena);
     return nkl;
@@ -121,8 +121,9 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
 }
 
 NkIrDylib getDylib(NklModule mod) {
+    NklState nkl = mod->com->nkl;
     if (!mod->_dl) {
-        mod->_dl = nkir_createDylib(mod->ir);
+        mod->_dl = nkir_createDylib(&nkl->arena, mod->ir);
     }
     return mod->_dl;
 }
@@ -200,7 +201,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
         .name = name,
 
         .com = com,
-        .ir = nkir_createModule(nkl->nkb),
+        .ir = nkir_createModule(&nkl->arena, nkl->nkb),
 
         .linked_mods = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .extern_syms = {.alloc = nk_arena_getAllocator(&nkl->arena)},
