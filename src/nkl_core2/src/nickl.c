@@ -125,7 +125,7 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
 
 static NkIrRuntime getRuntime(NklState nkl) {
     if (!nkl->_rt) {
-        nkl->_rt = nkir_createRuntime(nkl->nkb);
+        nkl->_rt = nkir_createRuntime(&nkl->arena, nkl->nkb);
     }
     return nkl->_rt;
 }

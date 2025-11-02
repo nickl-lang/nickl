@@ -6,16 +6,10 @@
 #include <llvm-c/Types.h>
 
 #include "llvm_adapter.h"
-#include "ntk/arena.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct NkLlvmState_T {
-    NkArena *arena;
-    LLVMContextRef ctx;
-} NkLlvmState_T;
 
 typedef struct NkLlvmJitState_T {
     LLVMOrcLLJITRef lljit;

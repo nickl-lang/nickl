@@ -301,7 +301,7 @@ bool nkir_exportModule(
 
 /// Runtime
 
-NkIrRuntime nkir_createRuntime(NkbState nkb);
+NkIrRuntime nkir_createRuntime(NkArena *arena, NkbState nkb);
 void nkir_freeRuntime(NkIrRuntime rt);
 
 NkIrDylib nkir_createDylib(NkArena *arena, NkbState nkb, NkIrRuntime rt, NkIrModule mod);

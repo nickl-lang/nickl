@@ -463,12 +463,12 @@ bool nkir_exportModule(
     return ret;
 }
 
-NkIrRuntime nkir_createRuntime(NkbState nkb) {
+NkIrRuntime nkir_createRuntime(NkArena *arena, NkbState nkb) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(nkb, NULL);
 
-    return rt_wrap(nk_llvm_createJitState(nkb->llvm));
+    return rt_wrap(nk_llvm_createJitState(arena, nkb->llvm));
 }
 
 void nkir_freeRuntime(NkIrRuntime rt) {

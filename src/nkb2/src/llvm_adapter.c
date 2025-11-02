@@ -27,6 +27,13 @@ NK_LOG_USE_SCOPE(llvm_adapter);
         }                       \
     } while (0)
 
+static NkLlvmState ctx_wrap(LLVMContextRef val) {
+    return (NkLlvmState)val;
+}
+static LLVMContextRef ctx_unwrap(NkLlvmState val) {
+    return (LLVMContextRef)val;
+}
+
 static NkLlvmTarget tm_wrap(LLVMTargetMachineRef val) {
     return (NkLlvmTarget)val;
 }
@@ -58,11 +65,7 @@ NkLlvmState nk_llvm_createState(NkArena *arena) {
         LLVMInitializeNativeTarget();
         LLVMInitializeNativeAsmPrinter();
 
-        llvm = nk_arena_allocT(arena, NkLlvmState_T);
-        *llvm = (NkLlvmState_T){
-            .arena = arena,
-            .ctx = LLVMContextCreate(),
-        };
+        llvm = ctx_wrap(LLVMContextCreate());
     }
     return llvm;
 }
@@ -73,7 +76,7 @@ void nk_llvm_freeState(NkLlvmState llvm) {
     TRY(llvm);
 
     NK_PROF_FUNC() {
-        LLVMContextDispose(llvm->ctx);
+        LLVMContextDispose(ctx_unwrap(llvm));
     }
 }
 
@@ -97,7 +100,7 @@ static LLVMTargetMachineRef createTargetImpl(char const *triple, LLVMCodeModel c
     return tm;
 }
 
-NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm) {
+NkLlvmJitState nk_llvm_createJitState(NkArena *arena, NkLlvmState llvm) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(llvm, NULL);
@@ -118,7 +121,7 @@ NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm) {
             char *triple = LLVMGetDefaultTargetTriple();
             LLVMTargetMachineRef tm = createTargetImpl(triple, LLVMCodeModelJITDefault);
             if (tm) {
-                jit = nk_arena_allocT(llvm->arena, NkLlvmJitState_T);
+                jit = nk_arena_allocT(arena, NkLlvmJitState_T);
                 *jit = (NkLlvmJitState_T){
                     .lljit = lljit,
                     .tsc = tsc,
@@ -214,7 +217,7 @@ NkLlvmModule nk_llvm_compileIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArr
         LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "main", 1);
 
         char *error = NULL;
-        if (LLVMParseIRInContext(llvm->ctx, buffer, &module, &error)) {
+        if (LLVMParseIRInContext(ctx_unwrap(llvm), buffer, &module, &error)) {
             nk_error_printf("Failed to parse IR: %s", error);
             LLVMDisposeMessage(error);
         }

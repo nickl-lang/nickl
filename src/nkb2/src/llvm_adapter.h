@@ -28,7 +28,7 @@ typedef enum {
 NkLlvmState nk_llvm_createState(NkArena *arena);
 void nk_llvm_freeState(NkLlvmState llvm);
 
-NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm);
+NkLlvmJitState nk_llvm_createJitState(NkArena *arena, NkLlvmState llvm);
 void nk_llvm_freeJitState(NkLlvmJitState jit);
 
 NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit);

@@ -26,19 +26,19 @@
     } TArray##_Item;                                      \
     NK_HASH_TREE_ARRAY_TYPEDEF(TArray, TArray##_Item)
 
-#define _NK_HASH_TREE_ARRAY_PROTO(ATTR, TArray, TItem, TKey) \
-    ATTR TItem *TArray##_insertItem(TArray *ht, TItem item); \
-    ATTR TItem *TArray##_findItem(TArray *ht, TKey key);     \
-    ATTR void TArray##_free(TArray *ht)
+#define _NK_HASH_TREE_ARRAY_PROTO(ATTR, TArray, TItem, TKey)    \
+    ATTR TItem *TArray##_insertItem(TArray *items, TItem item); \
+    ATTR TItem *TArray##_findItem(TArray *items, TKey key);     \
+    ATTR void TArray##_free(TArray *items)
 
-#define _NK_HASH_TREE_ARRAY_PROTO_K(ATTR, TArray, TKey) \
-    ATTR TKey *TArray##_insert(TArray *ht, TKey key);   \
-    ATTR TKey *TArray##_find(TArray *ht, TKey key);     \
+#define _NK_HASH_TREE_ARRAY_PROTO_K(ATTR, TArray, TKey)  \
+    ATTR TKey *TArray##_insert(TArray *items, TKey key); \
+    ATTR TKey *TArray##_find(TArray *items, TKey key);   \
     _NK_HASH_TREE_ARRAY_PROTO(ATTR, TArray, TArray##_Item, TKey)
 
-#define _NK_HASH_TREE_ARRAY_PROTO_KV(ATTR, TArray, TKey, TVal)           \
-    ATTR TArray##_Item *TArray##_insert(TArray *ht, TKey key, TVal val); \
-    ATTR TVal *TArray##_find(TArray *ht, TKey key);                      \
+#define _NK_HASH_TREE_ARRAY_PROTO_KV(ATTR, TArray, TKey, TVal)              \
+    ATTR TArray##_Item *TArray##_insert(TArray *items, TKey key, TVal val); \
+    ATTR TVal *TArray##_find(TArray *items, TKey key);                      \
     _NK_HASH_TREE_ARRAY_PROTO(ATTR, TArray, TArray##_Item, TKey)
 
 #define NK_HASH_TREE_ARRAY_PROTO(TArray, TItem, TKey) _NK_HASH_TREE_ARRAY_PROTO(_NK_EMPTY, TArray, TItem, TKey)
