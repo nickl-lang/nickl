@@ -27,6 +27,13 @@ NK_LOG_USE_SCOPE(ir);
         }                       \
     } while (0)
 
+static NkIrRuntime rt_wrap(NkLlvmJitState val) {
+    return (NkIrRuntime)val;
+}
+static NkLlvmJitState rt_unwrap(NkIrRuntime val) {
+    return (NkLlvmJitState)val;
+}
+
 static NkIrArg argNull() {
     return (NkIrArg){0};
 }
@@ -92,7 +99,6 @@ typedef struct NkbState_T {
     NkArena scratch;
 
     NkLlvmState llvm;
-    NkLlvmJitState _llvm_jit;
 
     NkDynArray(NkLlvmTarget) created_targets;
 } NkbState_T;
@@ -111,6 +117,7 @@ typedef struct NkIrModule_T {
 } NkIrModule_T;
 
 typedef struct NkIrDylib_T {
+    NkIrRuntime rt;
     NkIrModule mod;
 
     NkAtomSet rt_loaded_syms;
@@ -118,7 +125,7 @@ typedef struct NkIrDylib_T {
     NkIrSymbolResolver sym_resolver_fn;
     void *sym_resolver_userdata;
 
-    NkLlvmJitDylib _llvm_jit_dylib;
+    NkLlvmJitDylib llvm_jit_dylib;
 } NkIrDylib_T;
 
 NkbState nkir_createState(NkArena *arena) {
@@ -141,13 +148,14 @@ void nkir_freeState(NkbState nkb) {
         nk_llvm_freeTarget(*it);
     }
 
-    nk_llvm_freeJitState(nkb->_llvm_jit);
     nk_llvm_freeState(nkb->llvm);
 
     nk_arena_free(&nkb->scratch);
 }
 
 NkIrModule nkir_createModule(NkArena *arena, NkbState nkb) {
+    NK_LOG_TRC("%s", __func__);
+
     TRY(nkb, NULL);
 
     NkIrModule mod = nk_arena_allocT(arena, NkIrModule_T);
@@ -453,13 +461,31 @@ bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkI
     return ret;
 }
 
-NkIrDylib nkir_createDylib(NkArena *arena, NkIrModule mod) {
+NkIrRuntime nkir_createRuntime(NkbState nkb) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(nkb, NULL);
+
+    return rt_wrap(nk_llvm_createJitState(nkb->llvm));
+}
+
+void nkir_freeRuntime(NkIrRuntime rt) {
+    TRY(rt);
+
+    nk_llvm_freeJitState(rt_unwrap(rt));
+}
+
+NkIrDylib nkir_createDylib(NkArena *arena, NkIrRuntime rt, NkIrModule mod) {
+    NK_LOG_TRC("%s", __func__);
+
     TRY(mod, NULL);
 
     NkIrDylib dl = nk_arena_allocT(arena, NkIrDylib_T);
     *dl = (NkIrDylib_T){
+        .rt = rt,
         .mod = mod,
         .rt_loaded_syms = {.alloc = nk_arena_getAllocator(arena)},
+        .llvm_jit_dylib = nk_llvm_createJitDylib(mod->nkb->llvm, rt_unwrap(rt)),
     };
     return dl;
 }
@@ -471,21 +497,6 @@ void nkir_setSymbolResolver(NkIrDylib dl, NkIrSymbolResolver fn, void *userdata)
 
     dl->sym_resolver_fn = fn;
     dl->sym_resolver_userdata = userdata;
-}
-
-static NkLlvmJitState getLlvmJitState(NkbState nkb) {
-    if (!nkb->_llvm_jit) {
-        nkb->_llvm_jit = nk_llvm_createJitState(nkb->llvm);
-    }
-    return nkb->_llvm_jit;
-}
-
-static NkLlvmJitDylib getLlvmJitDylib(NkIrDylib dl) {
-    if (!dl->_llvm_jit_dylib) {
-        NkbState nkb = dl->mod->nkb;
-        dl->_llvm_jit_dylib = nk_llvm_createJitDylib(nkb->llvm, getLlvmJitState(nkb));
-    }
-    return dl->_llvm_jit_dylib;
 }
 
 typedef NkDynArray(NkAtom) NkAtomDynArray;
@@ -670,8 +681,8 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrDylib dl, NkAtom sym_nam
         }
     }
 
-    NkLlvmJitState jit = getLlvmJitState(nkb);
-    NkLlvmJitDylib jdl = getLlvmJitDylib(dl);
+    NkLlvmJitState jit = rt_unwrap(dl->rt);
+    NkLlvmJitDylib jdl = dl->llvm_jit_dylib;
 
     nk_llvm_defineExternSymbols(scratch, jit, jdl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
 
@@ -719,7 +730,7 @@ bool nkir_defineExternSymbols(NkIrDylib dl, NkIrSymbolAddressArray syms) {
     NkArena *scratch = &nkb->scratch;
 
     NK_ARENA_SCOPE(scratch) {
-        nk_llvm_defineExternSymbols(scratch, getLlvmJitState(nkb), getLlvmJitDylib(dl), syms);
+        nk_llvm_defineExternSymbols(scratch, rt_unwrap(dl->rt), dl->llvm_jit_dylib, syms);
     }
 
     return true;

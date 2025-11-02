@@ -25,8 +25,10 @@ typedef enum {
 
 typedef struct NkbState_T *NkbState;
 typedef struct NkIrModule_T *NkIrModule;
-typedef struct NkIrDylib_T *NkIrDylib;
 typedef struct NkIrTarget_T *NkIrTarget;
+
+typedef struct NkIrRuntime_T *NkIrRuntime;
+typedef struct NkIrDylib_T *NkIrDylib;
 
 typedef enum {
     NkIrOutput_None = 0,
@@ -293,7 +295,10 @@ bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkI
 
 /// Runtime
 
-NkIrDylib nkir_createDylib(NkArena *arena, NkIrModule mod);
+NkIrRuntime nkir_createRuntime(NkbState nkb);
+void nkir_freeRuntime(NkIrRuntime rt);
+
+NkIrDylib nkir_createDylib(NkArena *arena, NkIrRuntime rt, NkIrModule mod);
 
 typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
 void nkir_setSymbolResolver(NkIrDylib dl, NkIrSymbolResolver fn, void *userdata);

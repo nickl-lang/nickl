@@ -68,6 +68,7 @@ void nkl_freeState(NklState nkl) {
     nk_arena_free(&nkl->scratch);
 
     nkir_freeState(nkl->nkb);
+    nkir_freeRuntime(nkl->_rt);
 
     NkArena arena = nkl->arena;
     nk_arena_free(&arena);
@@ -120,10 +121,17 @@ NklCompiler nkl_newCompilerForHost(NklState nkl) {
         });
 }
 
-NkIrDylib getDylib(NklModule mod) {
-    NklState nkl = mod->com->nkl;
+static NkIrRuntime getRuntime(NklState nkl) {
+    if (!nkl->_rt) {
+        nkl->_rt = nkir_createRuntime(nkl->nkb);
+    }
+    return nkl->_rt;
+}
+
+static NkIrDylib getDylib(NklModule mod) {
     if (!mod->_dl) {
-        mod->_dl = nkir_createDylib(&nkl->arena, mod->ir);
+        NklState nkl = mod->com->nkl;
+        mod->_dl = nkir_createDylib(&nkl->arena, getRuntime(nkl), mod->ir);
     }
     return mod->_dl;
 }

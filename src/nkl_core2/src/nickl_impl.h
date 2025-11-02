@@ -21,6 +21,7 @@ typedef struct NklState_T {
     NkArena scratch;
 
     NkbState nkb;
+    NkIrRuntime _rt;
 
     NkAtomStringMap text_map;
 
