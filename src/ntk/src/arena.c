@@ -15,7 +15,7 @@
 
 NK_LOG_USE_SCOPE(arena);
 
-// TODO Hardcoded arena size
+// TODO: Hardcoded arena size
 #define FIXED_ARENA_SIZE ((usize)(1 << 24)) // 16 Mib
 
 static void *allocAlignedRaw(NkArena *arena, usize size, u8 align, bool pad) {
@@ -125,4 +125,23 @@ void nk_arena_free(NkArena *arena) {
         nk_mem_release(arena->data, FIXED_ARENA_SIZE);
     }
     *arena = (NkArena){0};
+}
+
+static _Thread_local NkScratchPair *g_pair;
+
+void nk_arena_scratchPairEquip(NkScratchPair *pair) {
+    nk_assert(!g_pair && "Scratch arenas are already initialized");
+    g_pair = pair;
+}
+
+void nk_arena_scratchPairUnequip() {
+    nk_assert(g_pair && "No scratch arenas");
+    nk_arena_free(&g_pair->arena[0]);
+    nk_arena_free(&g_pair->arena[1]);
+    g_pair = NULL;
+}
+
+NkArena *nk_arena_getScratch(NkArena *conflict) {
+    nk_assert(g_pair && "No scratch arenas");
+    return &g_pair->arena[conflict != &g_pair->arena[0] ? 0 : 1];
 }

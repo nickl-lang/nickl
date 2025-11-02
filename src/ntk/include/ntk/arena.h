@@ -42,6 +42,19 @@ NK_INLINE void nk_arena_popFrame(NkArena *arena, NkArenaFrame frame) {
     nk_arena_pop(arena, arena->size - frame.size);
 }
 
+typedef struct {
+    NkArena arena[2];
+} NkScratchPair;
+
+NK_EXPORT void nk_arena_scratchPairEquip(NkScratchPair *pair);
+NK_EXPORT void nk_arena_scratchPairUnequip();
+
+NK_EXPORT NkArena *nk_arena_getScratch(NkArena *conflict);
+
+NK_INLINE NkAllocator nk_arena_getScratchAllocator(NkArena *conflict) {
+    return nk_arena_getAllocator(nk_arena_getScratch(conflict));
+}
+
 #ifdef __cplusplus
 }
 #endif

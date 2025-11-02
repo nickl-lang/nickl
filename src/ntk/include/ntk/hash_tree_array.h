@@ -138,27 +138,27 @@
 
 #define NK_HASH_TREE_ARRAY_FWD(TArray, TItem, TKey) \
     NK_HASH_TREE_ARRAY_TYPEDEF(TArray, TItem);      \
-    NK_HASH_TREE_ARRAY_PROTO(TArray, TItem, TKey);
+    NK_HASH_TREE_ARRAY_PROTO(TArray, TItem, TKey)
 
 #define NK_HASH_TREE_ARRAY_FWD_EXPORT(TArray, TItem, TKey) \
     NK_HASH_TREE_ARRAY_TYPEDEF(TArray, TItem);             \
-    NK_HASH_TREE_ARRAY_PROTO_EXPORT(TArray, TItem, TKey);
+    NK_HASH_TREE_ARRAY_PROTO_EXPORT(TArray, TItem, TKey)
 
 #define NK_HASH_TREE_ARRAY_FWD_K(TArray, TKey)  \
     NK_HASH_TREE_ARRAY_TYPEDEF_K(TArray, TKey); \
-    NK_HASH_TREE_ARRAY_PROTO_K(TArray, TKey);
+    NK_HASH_TREE_ARRAY_PROTO_K(TArray, TKey)
 
 #define NK_HASH_TREE_ARRAY_FWD_K_EXPORT(TArray, TKey) \
     NK_HASH_TREE_ARRAY_TYPEDEF_K(TArray, TKey);       \
-    NK_HASH_TREE_ARRAY_PROTO_K_EXPORT(TArray, TKey);
+    NK_HASH_TREE_ARRAY_PROTO_K_EXPORT(TArray, TKey)
 
 #define NK_HASH_TREE_ARRAY_FWD_KV(TArray, TKey, TVal)  \
     NK_HASH_TREE_ARRAY_TYPEDEF_KV(TArray, TKey, TVal); \
-    NK_HASH_TREE_ARRAY_PROTO_KV(TArray, TKey, TVal);
+    NK_HASH_TREE_ARRAY_PROTO_KV(TArray, TKey, TVal)
 
 #define NK_HASH_TREE_ARRAY_FWD_KV_EXPORT(TArray, TKey, TVal) \
     NK_HASH_TREE_ARRAY_TYPEDEF_KV(TArray, TKey, TVal);       \
-    NK_HASH_TREE_ARRAY_PROTO_KV_EXPORT(TArray, TKey, TVal);
+    NK_HASH_TREE_ARRAY_PROTO_KV_EXPORT(TArray, TKey, TVal)
 
 #define NK_HASH_TREE_ARRAY_DEFINE(TArray, TItem, TKey, GetKeyFunc, KeyHashFunc, KeyEqualFunc) \
     NK_HASH_TREE_ARRAY_FWD(TArray, TItem, TKey);                                              \
