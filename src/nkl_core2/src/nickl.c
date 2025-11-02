@@ -39,8 +39,10 @@ NK_LOG_USE_SCOPE(nickl);
                 nickl_reportError(nkl, NKS_FMT, NKS_ARG(_err->msg)); \
                 _err = _err->next;                                   \
             }                                                        \
+            nk_error_freeState(&err);                                \
             return 0;                                                \
         }                                                            \
+        nk_error_freeState(&err);                                    \
     } while (0)
 
 NklState nkl_newState(void) {
@@ -86,14 +88,14 @@ static NkString targetTripleToString(NkArena *arena, NklTargetTriple triple) {
 NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
     NK_LOG_TRC("%s", __func__);
 
-    NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+    NkErrorState err = {0};
 
     NkIrTarget tgt = NULL;
     NK_ARENA_SCOPE(&nkl->scratch) {
         NkString const triple_str = targetTripleToString(&nkl->scratch, triple);
 
         NK_ERROR_SCOPE(&err) {
-            tgt = nkir_createTarget(nkl->nkb, triple_str);
+            tgt = nkir_createTarget(&nkl->scratch, nkl->nkb, triple_str);
         }
     }
 
@@ -131,7 +133,7 @@ static NkIrRuntime getRuntime(NklState nkl) {
 static NkIrDylib getDylib(NklModule mod) {
     if (!mod->_dl) {
         NklState nkl = mod->com->nkl;
-        mod->_dl = nkir_createDylib(&nkl->arena, getRuntime(nkl), mod->ir);
+        mod->_dl = nkir_createDylib(&nkl->arena, nkl->nkb, getRuntime(nkl), mod->ir);
     }
     return mod->_dl;
 }
@@ -140,6 +142,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
     NK_LOG_TRC("%s", __func__);
 
     NklModule mod = userdata;
+    NklState nkl = mod->com->nkl;
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
@@ -168,7 +171,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
         // TODO: Detect cycles during symbol resolution
         NklModule const src_mod = *found_mod;
-        return nkir_getSymbolAddress(getDylib(src_mod), sym);
+        return nkir_getSymbolAddress(&nkl->scratch, nkl->nkb, getDylib(src_mod), sym);
     } else {
         NkAtom const lib = nickl_translateLib(mod->com, mod_name);
 
@@ -209,7 +212,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
         .name = name,
 
         .com = com,
-        .ir = nkir_createModule(&nkl->arena, nkl->nkb),
+        .ir = nkir_createModule(&nkl->arena),
 
         .linked_mods = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .extern_syms = {.alloc = nk_arena_getAllocator(&nkl->arena)},
@@ -485,9 +488,9 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     NklState nkl = mod->com->nkl;
 
-    NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+    NkErrorState err = {0};
     NK_ERROR_SCOPE(&err) {
-        nkir_exportModule(mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
+        nkir_exportModule(&nkl->scratch, nkl->nkb, mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
     }
     HANDLE_ERRORS();
 
@@ -511,9 +514,9 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 
     void *addr = NULL;
 
-    NkErrorState err = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+    NkErrorState err = {0};
     NK_ERROR_SCOPE(&err) {
-        addr = nkir_getSymbolAddress(getDylib(mod), sym);
+        addr = nkir_getSymbolAddress(&nkl->scratch, nkl->nkb, getDylib(mod), sym);
     }
     HANDLE_ERRORS();
 

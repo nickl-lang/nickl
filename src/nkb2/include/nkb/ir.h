@@ -234,9 +234,9 @@ typedef NkDynArray(NkIrSymbolAddress) NkIrSymbolAddressDynArray;
 NkbState nkir_createState(NkArena *arena);
 void nkir_freeState(NkbState nkb);
 
-NkIrModule nkir_createModule(NkArena *arena, NkbState nkb);
+NkIrModule nkir_createModule(NkArena *arena);
 
-NkIrTarget nkir_createTarget(NkbState nkb, NkString triple);
+NkIrTarget nkir_createTarget(NkArena *scratch, NkbState nkb, NkString triple);
 
 void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym);
 
@@ -291,20 +291,26 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkIrOutputKind kind);
+bool nkir_exportModule(
+    NkArena *scratch,
+    NkbState nkb,
+    NkIrModule mod,
+    NkIrTarget target,
+    NkString out_file,
+    NkIrOutputKind kind);
 
 /// Runtime
 
 NkIrRuntime nkir_createRuntime(NkbState nkb);
 void nkir_freeRuntime(NkIrRuntime rt);
 
-NkIrDylib nkir_createDylib(NkArena *arena, NkIrRuntime rt, NkIrModule mod);
+NkIrDylib nkir_createDylib(NkArena *arena, NkbState nkb, NkIrRuntime rt, NkIrModule mod);
 
 typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
 void nkir_setSymbolResolver(NkIrDylib dl, NkIrSymbolResolver fn, void *userdata);
 
-void *nkir_getSymbolAddress(NkIrDylib dl, NkAtom sym);
-bool nkir_defineExternSymbols(NkIrDylib dl, NkIrSymbolAddressArray syms);
+void *nkir_getSymbolAddress(NkArena *scratch, NkbState nkb, NkIrDylib dl, NkAtom sym);
+bool nkir_defineExternSymbols(NkArena *scratch, NkIrDylib dl, NkIrSymbolAddressArray syms);
 
 bool nkir_invoke(NkIrDylib dl, NkAtom sym, void **args, void **ret);
 

@@ -27,6 +27,13 @@ NK_LOG_USE_SCOPE(ir);
         }                       \
     } while (0)
 
+static NkIrTarget tgt_wrap(NkLlvmTarget val) {
+    return (NkIrTarget)val;
+}
+static NkLlvmTarget tgt_unwrap(NkIrTarget val) {
+    return (NkLlvmTarget)val;
+}
+
 static NkIrRuntime rt_wrap(NkLlvmJitState val) {
     return (NkIrRuntime)val;
 }
@@ -96,10 +103,7 @@ static bool isJumpInstr(u8 code) {
 }
 
 typedef struct NkbState_T {
-    NkArena scratch;
-
     NkLlvmState llvm;
-
     NkDynArray(NkLlvmTarget) created_targets;
 } NkbState_T;
 
@@ -112,7 +116,6 @@ NkAtom NkIrSymbol_getKey(NkIrSymbol const *item) {
 NK_HASH_TREE_ARRAY_DEFINE(NkIrSymbolHashTreeArray, NkIrSymbol, NkAtom, NkIrSymbol_getKey, nk_atom_hash, nk_atom_equal);
 
 typedef struct NkIrModule_T {
-    NkbState nkb;
     NkIrSymbolHashTreeArray syms;
 } NkIrModule_T;
 
@@ -132,9 +135,10 @@ NkbState nkir_createState(NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
 
     NkbState nkb = nk_arena_allocT(arena, NkbState_T);
-    *nkb = (NkbState_T){0};
-    nkb->llvm = nk_llvm_createState(arena);
-    nkb->created_targets.alloc = nk_arena_getAllocator(arena);
+    *nkb = (NkbState_T){
+        .llvm = nk_llvm_createState(arena),
+        .created_targets.alloc = nk_arena_getAllocator(arena),
+    };
 
     return nkb;
 }
@@ -149,36 +153,31 @@ void nkir_freeState(NkbState nkb) {
     }
 
     nk_llvm_freeState(nkb->llvm);
-
-    nk_arena_free(&nkb->scratch);
 }
 
-NkIrModule nkir_createModule(NkArena *arena, NkbState nkb) {
+NkIrModule nkir_createModule(NkArena *arena) {
     NK_LOG_TRC("%s", __func__);
-
-    TRY(nkb, NULL);
 
     NkIrModule mod = nk_arena_allocT(arena, NkIrModule_T);
     *mod = (NkIrModule_T){
-        .nkb = nkb,
         .syms = {.alloc = nk_arena_getAllocator(arena)},
     };
     return mod;
 }
 
-NkIrTarget nkir_createTarget(NkbState nkb, NkString triple) {
+NkIrTarget nkir_createTarget(NkArena *scratch, NkbState nkb, NkString triple) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(nkb, NULL);
 
     NkLlvmTarget tgt = NULL;
-    NK_ARENA_SCOPE(&nkb->scratch) {
-        tgt = nk_llvm_createTarget(nkb->llvm, nk_tprintf(&nkb->scratch, NKS_FMT, NKS_ARG(triple)));
+    NK_ARENA_SCOPE(scratch) {
+        tgt = nk_llvm_createTarget(nkb->llvm, nk_tprintf(scratch, NKS_FMT, NKS_ARG(triple)));
     }
     if (tgt) {
         nkda_append(&nkb->created_targets, tgt);
     }
-    return (NkIrTarget)tgt;
+    return tgt_wrap(tgt);
 }
 
 void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym) {
@@ -388,13 +387,12 @@ NkIrInstr nkir_make_comment(NkString comment) {
 
 static bool exportModuleImpl(
     NkArena *scratch,
+    NkbState nkb,
     NkIrModule mod,
     NkIrTarget target,
     NkString out_file,
     NkIrOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
-
-    NkbState nkb = mod->nkb;
 
     // TODO: Hardcoded file extensions
     char const *file_ext = "";
@@ -428,7 +426,7 @@ static bool exportModuleImpl(
                             ? nk_tsprintf(scratch, NKS_FMT, NKS_ARG(out_file))
                             : nk_tsprintf(scratch, "%s" NKS_FMT ".o", tmp_path, NKS_ARG(out_file));
 
-    NkLlvmTarget tgt = (NkLlvmTarget)target;
+    NkLlvmTarget tgt = tgt_unwrap(target);
 
     NkLlvmModule llvm_mod = nk_llvm_compileIr(scratch, nkb->llvm, (NkIrSymbolArray){NKS_INIT(mod->syms)});
     nk_llvm_optimizeIr(scratch, llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
@@ -447,16 +445,20 @@ static bool exportModuleImpl(
     return true;
 }
 
-bool nkir_exportModule(NkIrModule mod, NkIrTarget target, NkString out_file, NkIrOutputKind kind) {
+bool nkir_exportModule(
+    NkArena *scratch,
+    NkbState nkb,
+    NkIrModule mod,
+    NkIrTarget target,
+    NkString out_file,
+    NkIrOutputKind kind) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod && target, false);
 
     bool ret = false;
-    NkbState nkb = mod->nkb;
-    NkArena *scratch = &nkb->scratch;
     NK_ARENA_SCOPE(scratch) {
-        ret = exportModuleImpl(scratch, mod, target, out_file, kind);
+        ret = exportModuleImpl(scratch, nkb, mod, target, out_file, kind);
     }
     return ret;
 }
@@ -475,7 +477,7 @@ void nkir_freeRuntime(NkIrRuntime rt) {
     nk_llvm_freeJitState(rt_unwrap(rt));
 }
 
-NkIrDylib nkir_createDylib(NkArena *arena, NkIrRuntime rt, NkIrModule mod) {
+NkIrDylib nkir_createDylib(NkArena *arena, NkbState nkb, NkIrRuntime rt, NkIrModule mod) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod, NULL);
@@ -485,7 +487,7 @@ NkIrDylib nkir_createDylib(NkArena *arena, NkIrRuntime rt, NkIrModule mod) {
         .rt = rt,
         .mod = mod,
         .rt_loaded_syms = {.alloc = nk_arena_getAllocator(arena)},
-        .llvm_jit_dylib = nk_llvm_createJitDylib(mod->nkb->llvm, rt_unwrap(rt)),
+        .llvm_jit_dylib = nk_llvm_createJitDylib(nkb->llvm, rt_unwrap(rt)),
     };
     return dl;
 }
@@ -545,14 +547,11 @@ static void gatherDeps(NkIrSymbol const *sym, NkAtomDynArray *out) {
     }
 }
 
-static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDynArray *out) {
+static void getSymbolDependencies(NkArena *scratch, NkIrModule mod, NkAtom sym_name, NkIrSymbolDynArray *out) {
     NK_LOG_TRC("%s", __func__);
 
     NK_PROF_FUNC() {
         NK_LOG_DBG("Getting dependencies for `%s`", nk_atom2cs(sym_name));
-
-        NkbState nkb = mod->nkb;
-        NkArena *scratch = &nkb->scratch;
 
         NkAtomDynArray stack = {.alloc = nk_arena_getAllocator(scratch)};
         NkAtomSet deps = {.alloc = nk_arena_getAllocator(scratch)};
@@ -630,12 +629,11 @@ static NkIrSymbol symToExtern(NkArena *arena, NkIrSymbol sym) {
     return sym;
 }
 
-static void *getSymbolAddressImpl(NkArena *scratch, NkIrDylib dl, NkAtom sym_name) {
+static void *getSymbolAddressImpl(NkArena *scratch, NkbState nkb, NkIrDylib dl, NkAtom sym_name) {
     NkIrModule mod = dl->mod;
-    NkbState nkb = mod->nkb;
 
     NkIrSymbolDynArray deps = {.alloc = nk_arena_getAllocator(scratch)};
-    getSymbolDependencies(mod, sym_name, &deps);
+    getSymbolDependencies(scratch, mod, sym_name, &deps);
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
@@ -696,14 +694,12 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkIrDylib dl, NkAtom sym_nam
     return nk_llvm_getSymbolAddress(jit, jdl, sym_name);
 }
 
-void *nkir_getSymbolAddress(NkIrDylib dl, NkAtom sym) {
+void *nkir_getSymbolAddress(NkArena *scratch, NkbState nkb, NkIrDylib dl, NkAtom sym) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(dl, false);
 
     NkIrModule mod = dl->mod;
-    NkbState nkb = mod->nkb;
-    NkArena *scratch = &nkb->scratch;
 
     if (!nkir_findSymbol(mod, sym)) {
         nk_error_printf("Symbol not found: %s", nk_atom2cs(sym));
@@ -713,21 +709,17 @@ void *nkir_getSymbolAddress(NkIrDylib dl, NkAtom sym) {
     void *addr = NULL;
     NK_PROF_FUNC() {
         NK_ARENA_SCOPE(scratch) {
-            addr = getSymbolAddressImpl(scratch, dl, sym);
+            addr = getSymbolAddressImpl(scratch, nkb, dl, sym);
         }
     }
 
     return addr;
 }
 
-bool nkir_defineExternSymbols(NkIrDylib dl, NkIrSymbolAddressArray syms) {
+bool nkir_defineExternSymbols(NkArena *scratch, NkIrDylib dl, NkIrSymbolAddressArray syms) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(dl, false);
-
-    NkIrModule mod = dl->mod;
-    NkbState nkb = mod->nkb;
-    NkArena *scratch = &nkb->scratch;
 
     NK_ARENA_SCOPE(scratch) {
         nk_llvm_defineExternSymbols(scratch, rt_unwrap(dl->rt), dl->llvm_jit_dylib, syms);

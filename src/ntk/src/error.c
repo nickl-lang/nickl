@@ -15,14 +15,12 @@ void nk_error_popState(void) {
     nk_list_pop(g_error_state);
 }
 
-void nk_error_freeState(void) {
-    nk_assert(g_error_state && "no error state");
+void nk_error_freeState(NkErrorState *state) {
+    NkAllocator alloc = state->alloc.proc ? state->alloc : nk_default_allocator;
 
-    NkAllocator alloc = g_error_state->alloc.proc ? g_error_state->alloc : nk_default_allocator;
-
-    while (g_error_state->errors) {
-        NkErrorNode const *node = g_error_state->errors;
-        g_error_state->errors = node->next;
+    while (state->errors) {
+        NkErrorNode const *node = state->errors;
+        state->errors = node->next;
 
         nk_free(alloc, (void *)node->msg.data, node->msg.size);
         nk_freeT(alloc, node, NkErrorNode);

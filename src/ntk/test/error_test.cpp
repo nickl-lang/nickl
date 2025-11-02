@@ -1,7 +1,5 @@
 #include "ntk/error.h"
 
-#include <cstdio>
-
 #include <gtest/gtest.h>
 
 #include "ntk/arena.h"
@@ -21,7 +19,7 @@ TEST_F(Error, basic) {
     NkErrorState err{};
     nk_error_pushState(&err);
     defer {
-        nk_error_freeState();
+        nk_error_freeState(&err);
         nk_error_popState();
     };
 
@@ -42,7 +40,7 @@ TEST_F(Error, nested) {
     NkErrorState err{};
     nk_error_pushState(&err);
     defer {
-        nk_error_freeState();
+        nk_error_freeState(&err);
         nk_error_popState();
     };
 
@@ -52,7 +50,7 @@ TEST_F(Error, nested) {
         NkErrorState err{};
         nk_error_pushState(&err);
         defer {
-            nk_error_freeState();
+            nk_error_freeState(&err);
             nk_error_popState();
         };
 
