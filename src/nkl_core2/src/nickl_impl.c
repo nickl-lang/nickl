@@ -383,7 +383,7 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
 
     // TODO: Check for symbol conflicts
 
-    nkir_moduleDefineSymbol(mod->ir, sym);
+    NkIrSymbolDynArray_insertItem(&mod->ir, *sym);
 
     if (sym->kind == NkIrSymbol_Extern) {
         NkAtom *found = NkAtomMap_find(&mod->extern_syms, sym->name);
@@ -448,7 +448,7 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
 
     {
         // TODO: Verify linked symbol compatibility
-        NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
+        NkIrSymbol const *found = NkIrSymbolDynArray_findItem(&dst_mod->ir, sym->name);
         if (found && found->kind != NkIrSymbol_Extern) {
             NK_ARENA_SCOPE(&nkl->scratch) {
                 NkStringBuilder sb = {.alloc = nk_arena_getAllocator(&nkl->scratch)};

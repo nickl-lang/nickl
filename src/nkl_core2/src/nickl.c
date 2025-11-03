@@ -142,7 +142,7 @@ static NkIrRuntime getRuntime(NklState nkl) {
 static NkIrDylib getDylib(NklModule mod) {
     if (!mod->_dl) {
         NklState nkl = mod->com->nkl;
-        mod->_dl = nkir_createDylib(&nkl->arena, nkl->nkb, getRuntime(nkl), mod->ir);
+        mod->_dl = nkir_createDylib(&nkl->arena, nkl->nkb, getRuntime(nkl), &mod->ir);
     }
     return mod->_dl;
 }
@@ -221,7 +221,7 @@ static NklModule newModuleImpl(NklCompiler com, NkAtom name) {
         .name = name,
 
         .com = com,
-        .ir = nkir_createModule(&nkl->arena),
+        .ir = {.alloc = nk_arena_getAllocator(&nkl->arena)},
 
         .linked_mods = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .extern_syms = {.alloc = nk_arena_getAllocator(&nkl->arena)},
@@ -280,7 +280,7 @@ bool nkl_linkModule(NklModule dst_mod, NklModule src_mod) {
 
     nkda_append(&src_mod->mods_linked_to, dst_mod);
 
-    NK_ITERATE(NkIrSymbol const *, sym, nkir_moduleGetSymbols(src_mod->ir)) {
+    NK_ITERATE(NkIrSymbol const *, sym, src_mod->ir) {
         if (!nickl_linkSymbol(dst_mod, src_mod, sym)) {
             return false;
         }
@@ -499,7 +499,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     NkErrorState err = {0};
     NK_ERROR_SCOPE(&err) {
-        nkir_exportModule(&nkl->scratch, nkl->nkb, mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
+        nkir_exportModule(&nkl->scratch, nkl->nkb, &mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
     }
     HANDLE_ERRORS();
 

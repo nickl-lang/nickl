@@ -44,7 +44,7 @@ typedef struct NklModule_T {
     NkAtom name;
 
     NklCompiler com;
-    NkIrModule ir;
+    NkIrSymbolDynArray ir;
     NkIrDylib _dl;
 
     NkAtomModuleMap linked_mods;

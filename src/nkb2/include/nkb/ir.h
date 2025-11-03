@@ -23,8 +23,15 @@ typedef enum {
 
 /// Types
 
+typedef struct NkIrSymbol NkIrSymbol;
+
+typedef NkSlice(NkIrSymbol const) NkIrSymbolArray;
+typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
+
+NK_HASH_TREE_ARRAY_PROTO(NkIrSymbolDynArray, NkIrSymbol, NkAtom);
+
 typedef struct NkbState_T *NkbState;
-typedef struct NkIrModule_T *NkIrModule;
+typedef NkIrSymbolDynArray *NkIrModule;
 typedef struct NkIrTarget_T *NkIrTarget;
 
 typedef struct NkIrRuntime_T *NkIrRuntime;
@@ -191,7 +198,7 @@ typedef struct {
     NkIrExternKind kind;
 } NkIrExtern;
 
-typedef struct {
+struct NkIrSymbol {
     union {
         NkIrProc proc;    // NkIrSymbol_Proc
         NkIrData data;    // NkIrSymbol_Data
@@ -202,11 +209,9 @@ typedef struct {
     NkIrSymbolFlags flags;
     NkIrSymbolKind kind;
 
-    size_t left;
-    size_t right;
-} NkIrSymbol;
-
-typedef NkSlice(NkIrSymbol const) NkIrSymbolArray;
+    usize left;
+    usize right;
+};
 
 typedef enum {
     NkIrLabel_Abs,
@@ -234,15 +239,8 @@ typedef NkDynArray(NkIrSymbolAddress) NkIrSymbolAddressDynArray;
 NkbState nkir_createState(NkArena *arena);
 void nkir_freeState(NkbState nkb);
 
-NkIrModule nkir_createModule(NkArena *arena);
-
 NkIrTarget nkir_createTarget(NkArena *scratch, NkbState nkb, NkString triple);
 void nkir_freeTarget(NkIrTarget tgt);
-
-void nkir_moduleDefineSymbol(NkIrModule mod, NkIrSymbol const *sym);
-
-NkIrSymbolArray nkir_moduleGetSymbols(NkIrModule mod);
-NkIrSymbol const *nkir_findSymbol(NkIrModule mod, NkAtom sym);
 
 /// Utility
 

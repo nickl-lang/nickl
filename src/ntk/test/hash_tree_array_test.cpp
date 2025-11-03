@@ -21,8 +21,8 @@ struct int2cstr_kv {
     int key;
     char const *val;
 
-    size_t left;
-    size_t right;
+    usize left;
+    usize right;
 };
 
 int int2cstr_kv_GetKey(int2cstr_kv const *elem) {
@@ -99,8 +99,8 @@ struct str2int_kv {
     NkString key;
     int val;
 
-    size_t left;
-    size_t right;
+    usize left;
+    usize right;
 };
 
 NkString str2int_kv_GetKey(str2int_kv const *elem) {
