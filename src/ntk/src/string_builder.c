@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "ntk/arena.h"
 #include "ntk/profiler.h"
 #include "ntk/stream.h"
 #include "stb/sprintf.h"
@@ -47,7 +48,10 @@ static i32 streamProc(void *stream_data, char *buf, usize size, NkStreamMode mod
 }
 
 NkStream nksb_getStream(NkStringBuilder *sb) {
-    return (NkStream){sb, streamProc};
+    return (NkStream){
+        .data = sb,
+        .proc = streamProc,
+    };
 }
 
 #define DEFAULT_BUF_SIZE 1024
@@ -72,4 +76,9 @@ bool nksb_readFromStreamEx(NkStringBuilder *sb, NkStream in, usize buf_size) {
         ret = res == 0;
     }
     return ret;
+}
+
+NkArena *nksb_getOptArenaFromStream(NkStream stream) {
+    return stream.proc == streamProc ? nk_arena_getOptArenaFromAllocator((*(NkStringBuilder *)stream.data).alloc)
+                                     : NULL;
 }

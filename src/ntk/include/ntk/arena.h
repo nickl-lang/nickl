@@ -55,6 +55,8 @@ NK_INLINE NkAllocator nk_arena_getScratchAllocator(NkArena *conflict) {
     return nk_arena_getAllocator(nk_arena_getScratch(conflict));
 }
 
+NK_EXPORT NkArena *nk_arena_getOptArenaFromAllocator(NkAllocator alloc);
+
 #ifdef __cplusplus
 }
 #endif

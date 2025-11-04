@@ -206,7 +206,6 @@ static void emitRef(NkStream out, NkIrRef const *ref) {
 
 typedef struct {
     NkArena *scratch;
-
     NkIrInstrArray instrs;
 
     LabelArray labels;
@@ -217,25 +216,20 @@ typedef struct {
 
     usize next_local;
     usize next_label;
-} ProcContext;
-
-typedef struct {
-    NkArena *scratch;
-    ProcContext proc;
 } Context;
 
 static bool refIsPtr(Context *ctx, NkIrRef const *ref) {
     bool is_ptr = ref->kind == NkIrRef_Global;
 
     if (ref->kind == NkIrRef_Param) {
-        NK_ITERATE(NkIrParam const *, param, ctx->proc.params) {
+        NK_ITERATE(NkIrParam const *, param, ctx->params) {
             if (param->name == ref->sym && param->type->kind == NkIrType_Aggregate) {
                 is_ptr = true;
                 break;
             }
         }
 
-        if (ctx->proc.ret.name == ref->sym) {
+        if (ctx->ret.name == ref->sym) {
             is_ptr = true;
         }
     }
@@ -250,7 +244,7 @@ static NkString intToPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrTyp
     if (refIsPtr(ctx, ref)) {
         emitRefUntyped(tmp, ref);
     } else {
-        usize const reg = ctx->proc.next_local++;
+        usize const reg = ctx->next_local++;
 
         NkIrType const type = int_t ? int_t : ref->type;
 
@@ -271,7 +265,7 @@ static NkString ptrToInt(Context *ctx, NkStream out, NkIrRef const *ref) {
     NkStream tmp = nksb_getStream(&sb);
 
     if (refIsPtr(ctx, ref)) {
-        usize const reg = ctx->proc.next_local++;
+        usize const reg = ctx->next_local++;
 
         nk_printf(out, "%%.%zu = ptrtoint ptr ", reg);
         emitRefUntyped(out, ref);
@@ -289,7 +283,7 @@ static NkString ptrToInt(Context *ctx, NkStream out, NkIrRef const *ref) {
 
 static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize arg_idx) {
     NkIrArg const *arg = &instr->arg[arg_idx];
-    usize const instr_idx = NK_INDEX(instr, ctx->proc.instrs);
+    usize const instr_idx = NK_INDEX(instr, ctx->instrs);
 
     nk_assert(arg->kind == NkIrArg_Label || arg->kind == NkIrArg_LabelRel);
 
@@ -297,14 +291,13 @@ static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize 
 
     switch (arg->kind) {
         case NkIrArg_Label:
-            label = ctx->proc.instrs.data[instr_idx].code == NkIrOp_label
-                        ? findLabelByIdx(ctx->proc.labels, instr_idx)
-                        : findLabelByName(ctx->proc.labels, arg->label);
+            label = ctx->instrs.data[instr_idx].code == NkIrOp_label ? findLabelByIdx(ctx->labels, instr_idx)
+                                                                     : findLabelByName(ctx->labels, arg->label);
             break;
 
         case NkIrArg_LabelRel: {
             usize const target_idx = instr_idx + arg->offset;
-            label = findLabelByIdx(ctx->proc.labels, target_idx);
+            label = findLabelByIdx(ctx->labels, target_idx);
             break;
         }
 
@@ -315,7 +308,7 @@ static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize 
 
     nk_assert(label && "invalid label");
 
-    u32 const label_idx = ctx->proc.indices[NK_INDEX(label, ctx->proc.labels)];
+    u32 const label_idx = ctx->indices[NK_INDEX(label, ctx->labels)];
     if (label_idx) {
         nk_printf(out, "%s%u", nk_atom2cs(label->name), label_idx);
     } else {
@@ -392,8 +385,8 @@ static void emitLogic(Context *ctx, NkStream out, NkIrInstr const *instr, char c
 static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char const *cond) {
     NkIrRef const *ref1 = &instr->arg[1].ref;
 
-    usize const label = ctx->proc.next_label++;
-    usize const reg = ctx->proc.next_local++;
+    usize const label = ctx->next_label++;
+    usize const reg = ctx->next_local++;
 
     NkIrType const type = ref1->type;
     nk_assert(type->kind == NkIrType_Numeric);
@@ -414,7 +407,7 @@ static void emitCond(Context *ctx, NkStream out, NkIrInstr const *instr, char co
     NkIrRef const *ref1 = &instr->arg[1].ref;
     NkIrRef const *ref2 = &instr->arg[2].ref;
 
-    usize const reg = ctx->proc.next_local++;
+    usize const reg = ctx->next_local++;
 
     NkIrType const type = ref1->type;
     NkIrType const dst_type = ref0->type;
@@ -531,7 +524,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_alloc: {
-            usize const reg = ctx->proc.next_local++;
+            usize const reg = ctx->next_local++;
             nk_printf(out, "%%.%zu = alloca ", reg);
             emitType(out, instr->arg[1].type);
             nk_print(out, "\n  ");
@@ -809,22 +802,19 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
 
             Context ctx = {
                 .scratch = scratch,
-                .proc =
-                    {
-                        .instrs = sym->proc.instrs,
+                .instrs = sym->proc.instrs,
 
-                        .labels = labels,
-                        .indices = indices,
+                .labels = labels,
+                .indices = indices,
 
-                        .params = sym->proc.params,
-                        .ret = sym->proc.ret,
-                    },
+                .params = sym->proc.params,
+                .ret = sym->proc.ret,
             };
 
             nk_print(out, "define ");
             emitVisibility(out, sym->vis);
             nk_print(out, " ");
-            if (ctx.proc.ret.name) {
+            if (ctx.ret.name) {
                 nk_print(out, "void");
             } else {
                 emitType(out, sym->proc.ret.type);
@@ -832,14 +822,14 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             nk_print(out, " ");
             emitGlobal(out, sym->name);
             nk_print(out, "(");
-            if (ctx.proc.ret.name) {
+            if (ctx.ret.name) {
                 nk_print(out, "ptr sret(");
-                emitType(out, ctx.proc.ret.type);
-                nk_printf(out, ") align %u ", ctx.proc.ret.type->align);
-                emitLocal(out, ctx.proc.ret.name);
+                emitType(out, ctx.ret.type);
+                nk_printf(out, ") align %u ", ctx.ret.type->align);
+                emitLocal(out, ctx.ret.name);
             }
-            NK_ITERATE(NkIrParam const *, param, ctx.proc.params) {
-                if (NK_INDEX(param, sym->proc.params) || ctx.proc.ret.name) {
+            NK_ITERATE(NkIrParam const *, param, ctx.params) {
+                if (NK_INDEX(param, sym->proc.params) || ctx.ret.name) {
                     nk_print(out, ", ");
                 }
                 if (param->type->kind == NkIrType_Aggregate) {

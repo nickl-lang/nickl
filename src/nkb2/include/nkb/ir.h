@@ -31,7 +31,7 @@ typedef NkDynArray(NkIrSymbol) NkIrSymbolDynArray;
 NK_HASH_TREE_ARRAY_PROTO(NkIrSymbolDynArray, NkIrSymbol, NkAtom);
 
 typedef struct NkbState_T *NkbState;
-typedef NkIrSymbolDynArray *NkIrModule;
+typedef NkIrSymbolDynArray const *NkIrModule;
 typedef struct NkIrTarget_T *NkIrTarget;
 
 typedef struct NkIrRuntime_T *NkIrRuntime;
@@ -239,12 +239,12 @@ typedef NkDynArray(NkIrSymbolAddress) NkIrSymbolAddressDynArray;
 NkbState nkir_createState(NkArena *arena);
 void nkir_freeState(NkbState nkb);
 
-NkIrTarget nkir_createTarget(NkArena *scratch, NkbState nkb, NkString triple);
+NkIrTarget nkir_createTarget(NkbState nkb, NkString triple);
 void nkir_freeTarget(NkIrTarget tgt);
 
 /// Utility
 
-void nkir_convertToPic(NkArena *scratch, NkIrInstrArray instrs, NkIrInstrDynArray *out);
+void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
 /// Refs
 
@@ -290,13 +290,7 @@ NkIrInstr nkir_make_comment(NkString comment);
 
 /// Output
 
-bool nkir_exportModule(
-    NkArena *scratch,
-    NkbState nkb,
-    NkIrModule mod,
-    NkIrTarget tgt,
-    NkString out_file,
-    NkIrOutputKind kind);
+bool nkir_exportModule(NkbState nkb, NkIrModule mod, NkIrTarget tgt, NkString out_file, NkIrOutputKind kind);
 
 /// Runtime
 
@@ -308,8 +302,8 @@ NkIrDylib nkir_createDylib(NkArena *arena, NkbState nkb, NkIrRuntime rt, NkIrMod
 typedef void *(*NkIrSymbolResolver)(NkAtom sym, void *userdata);
 void nkir_setSymbolResolver(NkIrDylib dl, NkIrSymbolResolver fn, void *userdata);
 
-void *nkir_getSymbolAddress(NkArena *scratch, NkbState nkb, NkIrDylib dl, NkAtom sym);
-bool nkir_defineExternSymbols(NkArena *scratch, NkIrDylib dl, NkIrSymbolAddressArray syms);
+void *nkir_getSymbolAddress(NkbState nkb, NkIrDylib dl, NkAtom sym);
+bool nkir_defineExternSymbols(NkIrDylib dl, NkIrSymbolAddressArray syms);
 
 bool nkir_invoke(NkIrDylib dl, NkAtom sym, void **args, void **ret);
 
@@ -318,8 +312,8 @@ bool nkir_invoke(NkIrDylib dl, NkAtom sym, void **args, void **ret);
 void nkir_printName(NkStream out, char const *kind, NkAtom name);
 void nkir_printSymbolName(NkStream out, NkAtom sym);
 
-void nkir_inspectModule(NkStream out, NkArena *scratch, NkIrModule mod);
-void nkir_inspectSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym);
+void nkir_inspectModule(NkStream out, NkIrModule mod);
+void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym);
 void nkir_inspectInstr(NkStream out, NkIrInstr instr);
 void nkir_inspectRef(NkStream out, NkIrRef ref);
 

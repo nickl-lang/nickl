@@ -18,7 +18,7 @@ extern "C" {
 
 typedef struct NklState_T {
     NkArena arena;
-    NkArena scratch;
+    NkScratchPair scratch_pair;
 
     NkbState nkb;
     NkDynArray(NkIrTarget) created_targets;

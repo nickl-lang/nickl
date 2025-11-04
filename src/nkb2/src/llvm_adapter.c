@@ -197,29 +197,32 @@ void nk_llvm_freeTarget(NkLlvmTarget tgt) {
     }
 }
 
-NkLlvmModule nk_llvm_compileIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir) {
+NkLlvmModule nk_llvm_compileIr(NkLlvmState llvm, NkIrSymbolArray ir) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(scratch && llvm, NULL);
+    TRY(llvm, NULL);
 
     LLVMModuleRef module = NULL;
     NK_PROF_FUNC() {
-        NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(scratch)};
-        nk_llvm_emitIr(nksb_getStream(&llvm_ir), scratch, ir);
-        nksb_appendNull(&llvm_ir);
-        llvm_ir.size--;
+        NkArena *scratch = nk_arena_getScratch(NULL);
+        NK_ARENA_SCOPE(scratch) {
+            NkStringBuilder llvm_ir = {.alloc = nk_arena_getAllocator(scratch)};
+            nk_llvm_emitIr(nksb_getStream(&llvm_ir), nk_arena_getScratch(scratch), ir);
+            nksb_appendNull(&llvm_ir);
+            llvm_ir.size--;
 
-        NK_LOG_STREAM_INF {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
-        }
+            NK_LOG_STREAM_INF {
+                NkStream log = nk_log_getStream();
+                nk_printf(log, "LLVM IR:\n" NKS_FMT, NKS_ARG(llvm_ir));
+            }
 
-        LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "main", 1);
+            LLVMMemoryBufferRef buffer = LLVMCreateMemoryBufferWithMemoryRange(llvm_ir.data, llvm_ir.size, "main", 1);
 
-        char *error = NULL;
-        if (LLVMParseIRInContext(ctx_unwrap(llvm), buffer, &module, &error)) {
-            nk_error_printf("Failed to parse IR: %s", error);
-            LLVMDisposeMessage(error);
+            char *error = NULL;
+            if (LLVMParseIRInContext(ctx_unwrap(llvm), buffer, &module, &error)) {
+                nk_error_printf("Failed to parse IR: %s", error);
+                LLVMDisposeMessage(error);
+            }
         }
     }
     return m_wrap(module);
@@ -243,66 +246,72 @@ static char optLevelChar(NkLlvmOptLevel opt) {
     return '0';
 }
 
-bool nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt) {
+bool nk_llvm_optimizeIr(NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(scratch && mod && tgt, false);
+    TRY(mod && tgt, false);
 
     bool ret = true;
     NK_PROF_FUNC() {
-        LLVMModuleRef module = m_unwrap(mod);
-        LLVMTargetMachineRef tm = tm_unwrap(tgt);
+        NkArena *scratch = nk_arena_getScratch(NULL);
+        NK_ARENA_SCOPE(scratch) {
+            LLVMModuleRef module = m_unwrap(mod);
+            LLVMTargetMachineRef tm = tm_unwrap(tgt);
 
-        LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+            LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
 
-        LLVMErrorRef err = LLVMRunPasses(module, nk_tprintf(scratch, "default<O%c>", optLevelChar(opt)), tm, pbo);
-        if (err) {
-            char *err_msg = LLVMGetErrorMessage(err);
-            nk_error_printf("Failed to optimize IR module: %s", err_msg);
-            LLVMDisposeErrorMessage(err_msg);
-            ret = false;
-        } else {
-            NK_LOG_STREAM_INF {
-                char *str = LLVMPrintModuleToString(module);
-                NkStream log = nk_log_getStream();
-                nk_printf(log, "Optimized LLVM IR:\n%s", str);
-                LLVMDisposeMessage(str);
+            LLVMErrorRef err = LLVMRunPasses(module, nk_tprintf(scratch, "default<O%c>", optLevelChar(opt)), tm, pbo);
+            if (err) {
+                char *err_msg = LLVMGetErrorMessage(err);
+                nk_error_printf("Failed to optimize IR module: %s", err_msg);
+                LLVMDisposeErrorMessage(err_msg);
+                ret = false;
+            } else {
+                NK_LOG_STREAM_INF {
+                    char *str = LLVMPrintModuleToString(module);
+                    NkStream log = nk_log_getStream();
+                    nk_printf(log, "Optimized LLVM IR:\n%s", str);
+                    LLVMDisposeMessage(str);
+                }
             }
+            LLVMDisposePassBuilderOptions(pbo);
         }
-        LLVMDisposePassBuilderOptions(pbo);
     }
     return ret;
 }
 
-bool nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms) {
+bool nk_llvm_defineExternSymbols(NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms) {
     NK_LOG_TRC("%s", __func__);
 
-    TRY(scratch && jit && dl, false);
+    TRY(jit && dl, false);
 
     bool ret = true;
     NK_PROF_FUNC() {
-        LLVMOrcLLJITRef lljit = jit->lljit;
+        NkArena *scratch = nk_arena_getScratch(NULL);
+        NK_ARENA_SCOPE(scratch) {
+            LLVMOrcLLJITRef lljit = jit->lljit;
 
-        LLVMOrcMaterializationUnitRef mu = NULL;
-        NkDynArray(LLVMOrcCSymbolMapPair) llvm_syms = {.alloc = nk_arena_getAllocator(scratch)};
-        NK_ITERATE(NkIrSymbolAddress const *, it, syms) {
-            nkda_append(
-                &llvm_syms,
-                ((LLVMOrcCSymbolMapPair){
-                    .Name = LLVMOrcLLJITMangleAndIntern(lljit, nk_atom2cs(it->sym)),
-                    .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)it->addr, {0}},
-                }));
-        }
-        mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
+            LLVMOrcMaterializationUnitRef mu = NULL;
+            NkDynArray(LLVMOrcCSymbolMapPair) llvm_syms = {.alloc = nk_arena_getAllocator(scratch)};
+            NK_ITERATE(NkIrSymbolAddress const *, it, syms) {
+                nkda_append(
+                    &llvm_syms,
+                    ((LLVMOrcCSymbolMapPair){
+                        .Name = LLVMOrcLLJITMangleAndIntern(lljit, nk_atom2cs(it->sym)),
+                        .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)it->addr, {0}},
+                    }));
+            }
+            mu = LLVMOrcAbsoluteSymbols(llvm_syms.data, llvm_syms.size);
 
-        LLVMOrcJITDylibRef jd = jd_unwrap(dl);
+            LLVMOrcJITDylibRef jd = jd_unwrap(dl);
 
-        LLVMErrorRef err = LLVMOrcJITDylibDefine(jd, mu);
-        if (err) {
-            char *err_msg = LLVMGetErrorMessage(err);
-            nk_error_printf("Failed to define extern symbols: %s", err_msg);
-            LLVMDisposeErrorMessage(err_msg);
-            ret = false;
+            LLVMErrorRef err = LLVMOrcJITDylibDefine(jd, mu);
+            if (err) {
+                char *err_msg = LLVMGetErrorMessage(err);
+                nk_error_printf("Failed to define extern symbols: %s", err_msg);
+                LLVMDisposeErrorMessage(err_msg);
+                ret = false;
+            }
         }
     }
 

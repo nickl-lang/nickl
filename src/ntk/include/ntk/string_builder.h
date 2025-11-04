@@ -64,6 +64,8 @@ NK_EXPORT NkStream nksb_getStream(NkStringBuilder *sb);
 NK_EXPORT bool nksb_readFromStream(NkStringBuilder *sb, NkStream in);
 NK_EXPORT bool nksb_readFromStreamEx(NkStringBuilder *sb, NkStream in, usize buf_size);
 
+NK_EXPORT NkArena *nksb_getOptArenaFromStream(NkStream stream);
+
 #ifdef __cplusplus
 }
 #endif

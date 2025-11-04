@@ -145,3 +145,7 @@ NkArena *nk_arena_getScratch(NkArena *conflict) {
     nk_assert(g_pair && "No scratch arenas");
     return &g_pair->arena[conflict != &g_pair->arena[0] ? 0 : 1];
 }
+
+NkArena *nk_arena_getOptArenaFromAllocator(NkAllocator alloc) {
+    return alloc.proc == arenaAllocatorProc ? alloc.data : NULL;
+}

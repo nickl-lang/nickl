@@ -373,12 +373,9 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     }
 
     NK_LOG_STREAM_INF {
-        NkArena *scratch = &mod->com->nkl->scratch;
-        NK_ARENA_SCOPE(scratch) {
-            NkStream log = nk_log_getStream();
-            nk_print(log, "symbol:\n");
-            nkir_inspectSymbol(log, scratch, sym);
-        }
+        NkStream log = nk_log_getStream();
+        nk_print(log, "symbol:\n");
+        nkir_inspectSymbol(log, sym);
     }
 
     // TODO: Check for symbol conflicts
@@ -450,8 +447,9 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
         // TODO: Verify linked symbol compatibility
         NkIrSymbol const *found = NkIrSymbolDynArray_findItem(&dst_mod->ir, sym->name);
         if (found && found->kind != NkIrSymbol_Extern) {
-            NK_ARENA_SCOPE(&nkl->scratch) {
-                NkStringBuilder sb = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+            NkArena *scratch = nk_arena_getScratch(NULL);
+            NK_ARENA_SCOPE(scratch) {
+                NkStringBuilder sb = {.alloc = nk_arena_getAllocator(scratch)};
                 NkStream err = nksb_getStream(&sb);
                 nk_print(err, "Failed to link ");
                 nickl_printSymbol(err, src_mod->name, sym->name);

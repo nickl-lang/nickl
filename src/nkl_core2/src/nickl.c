@@ -57,10 +57,15 @@ NklState nkl_newState(void) {
     *nkl = (NklState_T){
         .arena = arena,
     };
+
+    nk_arena_scratchPairEquip(&nkl->scratch_pair);
+
     nkl->nkb = nkir_createState(&nkl->arena);
     nkl->created_targets.alloc = nk_arena_getAllocator(&nkl->arena);
     nkl->text_map.alloc = nk_arena_getAllocator(&nkl->arena);
+
     nkl_types_init(&nkl->types, &nkl->arena);
+
     return nkl;
 }
 
@@ -69,14 +74,14 @@ void nkl_freeState(NklState nkl) {
 
     nk_assert(nkl && "state is null");
 
-    nk_arena_free(&nkl->scratch);
-
     NK_ITERATE(NkIrTarget const *, it, nkl->created_targets) {
         nkir_freeTarget(*it);
     }
 
     nkir_freeState(nkl->nkb);
     nkir_freeRuntime(nkl->_rt);
+
+    nk_arena_scratchPairUnequip();
 
     NkArena arena = nkl->arena;
     nk_arena_free(&arena);
@@ -97,11 +102,13 @@ NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
     NkErrorState err = {0};
 
     NkIrTarget tgt = NULL;
-    NK_ARENA_SCOPE(&nkl->scratch) {
-        NkString const triple_str = targetTripleToString(&nkl->scratch, triple);
+
+    NkArena *scratch = nk_arena_getScratch(NULL);
+    NK_ARENA_SCOPE(scratch) {
+        NkString const triple_str = targetTripleToString(scratch, triple);
 
         NK_ERROR_SCOPE(&err) {
-            tgt = nkir_createTarget(&nkl->scratch, nkl->nkb, triple_str);
+            tgt = nkir_createTarget(nkl->nkb, triple_str);
             if (tgt) {
                 nkda_append(&nkl->created_targets, tgt);
             }
@@ -180,7 +187,7 @@ static void *symbolResolver(NkAtom sym, void *userdata) {
 
         // TODO: Detect cycles during symbol resolution
         NklModule const src_mod = *found_mod;
-        return nkir_getSymbolAddress(&nkl->scratch, nkl->nkb, getDylib(src_mod), sym);
+        return nkir_getSymbolAddress(nkl->nkb, getDylib(src_mod), sym);
     } else {
         NkAtom const lib = nickl_translateLib(mod->com, mod_name);
 
@@ -499,7 +506,7 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
 
     NkErrorState err = {0};
     NK_ERROR_SCOPE(&err) {
-        nkir_exportModule(&nkl->scratch, nkl->nkb, &mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
+        nkir_exportModule(nkl->nkb, &mod->ir, mod->com->target, out_file, (NkIrOutputKind)kind);
     }
     HANDLE_ERRORS();
 
@@ -525,7 +532,7 @@ void *nkl_getSymbolAddress(NklModule mod, NkString name) {
 
     NkErrorState err = {0};
     NK_ERROR_SCOPE(&err) {
-        addr = nkir_getSymbolAddress(&nkl->scratch, nkl->nkb, getDylib(mod), sym);
+        addr = nkir_getSymbolAddress(nkl->nkb, getDylib(mod), sym);
     }
     HANDLE_ERRORS();
 
