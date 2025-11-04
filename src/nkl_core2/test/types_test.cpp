@@ -35,12 +35,12 @@ TEST_F(nkl_types, numeric) {
     EXPECT_EQ(i32_t, i32_t_1);
     EXPECT_NE(i32_t, i32_t_2);
 
-    EXPECT_EQ(i32_t->base.base_t, nullptr);
-    EXPECT_EQ(i32_t->base.size, 4);
-    EXPECT_EQ(i32_t->base.align, 4);
-    EXPECT_EQ(i32_t->base.tclass, NklType_Numeric);
+    EXPECT_EQ(i32_t->base_t, nullptr);
+    EXPECT_EQ(i32_t->size, 4);
+    EXPECT_EQ(i32_t->align, 4);
+    EXPECT_EQ(i32_t->tclass, NklType_Numeric);
 
-    EXPECT_EQ(i32_t->value_type, Int32);
+    EXPECT_EQ(i32_t->as.num.value_type, Int32);
 }
 
 TEST_F(nkl_types, aggregate) {
@@ -60,15 +60,15 @@ TEST_F(nkl_types, aggregate) {
     EXPECT_EQ(agg_t, agg_t_1);
     EXPECT_NE(agg_t, agg_t_2);
 
-    EXPECT_EQ(agg_t->base.base_t, nullptr);
-    EXPECT_EQ(agg_t->base.size, 8);
-    EXPECT_EQ(agg_t->base.align, 4);
-    EXPECT_EQ(agg_t->base.tclass, NklType_Aggregate);
+    EXPECT_EQ(agg_t->base_t, nullptr);
+    EXPECT_EQ(agg_t->size, 8);
+    EXPECT_EQ(agg_t->align, 4);
+    EXPECT_EQ(agg_t->tclass, NklType_Aggregate);
 
-    ASSERT_EQ(agg_t->types.size, 3);
-    EXPECT_EQ(agg_t->types.data[0], i32_t);
-    EXPECT_EQ(agg_t->types.data[1], i16_t);
-    EXPECT_EQ(agg_t->types.data[2], i8_t);
+    ASSERT_EQ(agg_t->as.aggr.types.size, 3);
+    EXPECT_EQ(agg_t->as.aggr.types.data[0], i32_t);
+    EXPECT_EQ(agg_t->as.aggr.types.data[1], i16_t);
+    EXPECT_EQ(agg_t->as.aggr.types.data[2], i8_t);
 }
 
 TEST_F(nkl_types, struct) {
@@ -102,18 +102,18 @@ TEST_F(nkl_types, struct) {
     EXPECT_EQ(struct_t, struct_t_1);
     EXPECT_NE(struct_t, struct_t_2);
 
-    EXPECT_EQ(struct_t->base.base_t, base_t);
-    EXPECT_EQ(struct_t->base.size, 24);
-    EXPECT_EQ(struct_t->base.align, 8);
-    EXPECT_EQ(struct_t->base.tclass, NklType_Struct);
+    EXPECT_EQ(struct_t->base_t, base_t);
+    EXPECT_EQ(struct_t->size, 24);
+    EXPECT_EQ(struct_t->align, 8);
+    EXPECT_EQ(struct_t->tclass, NklType_Struct);
 
-    ASSERT_EQ(struct_t->fields.size, 3);
-    EXPECT_EQ(struct_t->fields.data[0].name, nk_cs2atom("x"));
-    EXPECT_EQ(struct_t->fields.data[0].type, f64_t);
-    EXPECT_EQ(struct_t->fields.data[1].name, nk_cs2atom("y"));
-    EXPECT_EQ(struct_t->fields.data[1].type, f64_t);
-    EXPECT_EQ(struct_t->fields.data[2].name, nk_cs2atom("z"));
-    EXPECT_EQ(struct_t->fields.data[2].type, f64_t);
+    ASSERT_EQ(struct_t->as.strct.fields.size, 3);
+    EXPECT_EQ(struct_t->as.strct.fields.data[0].name, nk_cs2atom("x"));
+    EXPECT_EQ(struct_t->as.strct.fields.data[0].type, f64_t);
+    EXPECT_EQ(struct_t->as.strct.fields.data[1].name, nk_cs2atom("y"));
+    EXPECT_EQ(struct_t->as.strct.fields.data[1].type, f64_t);
+    EXPECT_EQ(struct_t->as.strct.fields.data[2].name, nk_cs2atom("z"));
+    EXPECT_EQ(struct_t->as.strct.fields.data[2].type, f64_t);
 }
 
 TEST_F(nkl_types, custom_type_class) {
