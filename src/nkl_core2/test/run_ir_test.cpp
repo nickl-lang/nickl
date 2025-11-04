@@ -321,26 +321,26 @@ TEST_F(nkl_run_ir, private_name_collision) {
     EXPECT_TRUE(nkl_linkModule(mod2, mod));
 
     COMPILE(mod, nk_cs2s(R"(
-extern "c" proc puts() :i32
+extern "c" proc printf(:i64, ...) :i32
 
 proc bar() :i32 {
-    call puts, ("bar 0") -> :i32 %a
+    call printf, ("bar 0\n") -> :i32 %a
     ret %a
 }
 
 pub proc foo() :i32 {
-    call puts, ("foo") -> :i32 %a
+    call printf, ("foo\n") -> :i32 %a
     call bar, ()
     ret %a
 }
 )"));
 
     COMPILE(mod2, nk_cs2s(R"(
-extern "c" proc puts() :i32
+extern "c" proc printf(:i64, ...) :i32
 extern proc foo() :i32
 
 proc bar() :i32 {
-    call puts, ("bar 00") -> :i32 %a
+    call printf, ("bar 00\n") -> :i32 %a
     ret %a
 }
 )"));
