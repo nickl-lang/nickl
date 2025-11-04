@@ -21,7 +21,7 @@ static NkHash64 NkHash128_KeyHash(NkHash128 key) {
 NK_HASH_TREE_ARRAY_IMPL_KV(NklTypeMap, NkHash128, NklType, NkHash128_KeyHash, nk_hash128_equal);
 // NK_HASH_TREE_ARRAY_IMPL(NklTypeMap, NklType_T, NkHash128, NklType_T_GetKey, NkHash128_KeyHash, nk_hash128_equal);
 
-#define hashVal(HASHER, T, VAL)                                      \
+#define HASH_VAL(HASHER, T, VAL)                                     \
     do {                                                             \
         T const _val = (T)(VAL);                                     \
         nk_hash128_update(&hasher, (u8 const *)&_val, sizeof(_val)); \
@@ -68,6 +68,16 @@ NklType nkl_type_getFromCache(NklState nkl, NkHash128 hash) {
     }
 }
 
+NklType nkl_type_getTypeclassInstance(NklState nkl, NklTypeClass tclass, NklType base) {
+    NklType_T const src_t = {
+        .base_t = base,
+        .size = base->size,
+        .align = base->align,
+        .tclass = tclass,
+    };
+    return nkl_type_getDistinct(nkl, &src_t);
+}
+
 static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray types) {
     NklTypeStorage *st = &nkl->types;
 
@@ -78,7 +88,6 @@ static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray
     usize offset = 0;
     NK_ITERATE_STRIDED(NklType const *, it, types) {
         NklType const type = *it;
-
         align = nk_maxu(align, type->align);
         offset = nk_alignToPowerOf2(offset, type->align) + type->size;
     }
@@ -106,9 +115,10 @@ NklType nkl_type_getAggregate(NklState nkl, NklTypeStridedArray types) {
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
-    hashVal(hasher, NklTypeClass, NklType_Aggregate);
+    HASH_VAL(hasher, NklTypeClass, NklType_Aggregate);
     NK_ITERATE_STRIDED(NklType const *, it, types) {
-        hashVal(hasher, intptr_t, *it);
+        NklType const type = *it;
+        HASH_VAL(hasher, intptr_t, type);
     }
 
     NkHash128 const hash = nk_hash128_finalize(&hasher);
@@ -116,6 +126,73 @@ NklType nkl_type_getAggregate(NklState nkl, NklTypeStridedArray types) {
     NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
     if (!nkl_type_isComplete(type)) {
         completeAggregate(nkl, type, types);
+    }
+    return type;
+}
+
+static void completeArray(NklState NK_UNUSED nkl, NklType_T *type, NklType elem_t, usize count) {
+    *type = (NklType_T){
+        .base_t = NULL,
+        .size = elem_t->size * count,
+        .align = elem_t->align,
+        .tclass = NklType_Array,
+        .as.arr =
+            {
+                .elem_t = elem_t,
+                .count = count,
+            },
+    };
+}
+
+NklType nkl_type_getArrayDistinct(NklState nkl, NklType elem_t, usize count) {
+    NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
+    completeArray(nkl, type, elem_t, count);
+    return type;
+}
+
+NklType nkl_type_getArray(NklState nkl, NklType elem_t, usize count) {
+    NkHashState hasher;
+    nk_hash128_init(&hasher);
+
+    HASH_VAL(hasher, NklTypeClass, NklType_Array);
+    HASH_VAL(hasher, intptr_t, elem_t);
+    HASH_VAL(hasher, usize, count);
+
+    NkHash128 const hash = nk_hash128_finalize(&hasher);
+
+    NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
+    if (!nkl_type_isComplete(type)) {
+        completeArray(nkl, type, elem_t, count);
+    }
+    return type;
+}
+
+static void completeBool(NklState NK_UNUSED nkl, NklType_T *type) {
+    *type = (NklType_T){
+        .base_t = NULL,
+        .size = 1,
+        .align = 1,
+        .tclass = NklType_Bool,
+    };
+}
+
+NklType nkl_type_getBoolDistinct(NklState nkl) {
+    NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
+    completeBool(nkl, type);
+    return type;
+}
+
+NklType nkl_type_getBool(NklState nkl) {
+    NkHashState hasher;
+    nk_hash128_init(&hasher);
+
+    HASH_VAL(hasher, NklTypeClass, NklType_Bool);
+
+    NkHash128 const hash = nk_hash128_finalize(&hasher);
+
+    NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
+    if (!nkl_type_isComplete(type)) {
+        completeBool(nkl, type);
     }
     return type;
 }
@@ -143,8 +220,8 @@ NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type) {
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
-    hashVal(hasher, NklTypeClass, NklType_Numeric);
-    hashVal(hasher, NkIrNumericValueType, value_type);
+    HASH_VAL(hasher, NklTypeClass, NklType_Numeric);
+    HASH_VAL(hasher, NkIrNumericValueType, value_type);
 
     NkHash128 const hash = nk_hash128_finalize(&hasher);
 
@@ -155,13 +232,108 @@ NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type) {
     return type;
 }
 
-static void completeStruct(NklState nkl, NklType_T *type, NklFieldArray fields) {
+static void completePointer(NklState nkl, NklType_T *type, NkIrNumericValueType ptr, NklType target_t, bool is_const) {
+    NklType const base_t = nkl_type_getNumeric(nkl, ptr);
+
+    *type = (NklType_T){
+        .base_t = base_t,
+        .size = base_t->size,
+        .align = base_t->align,
+        .tclass = NklType_Pointer,
+        .as.ptr =
+            {
+                .target_t = target_t,
+                .is_const = is_const,
+            },
+    };
+}
+
+NklType nkl_type_getPointerDistinct(NklState nkl, NkIrNumericValueType ptr, NklType target_t, bool is_const) {
+    NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
+    completePointer(nkl, type, ptr, target_t, is_const);
+    return type;
+}
+
+NklType nkl_type_getPointer(NklState nkl, NkIrNumericValueType ptr, NklType target_t, bool is_const) {
+    NkHashState hasher;
+    nk_hash128_init(&hasher);
+
+    HASH_VAL(hasher, NklTypeClass, NklType_Pointer);
+    HASH_VAL(hasher, NkIrNumericValueType, ptr);
+    HASH_VAL(hasher, intptr_t, target_t);
+    HASH_VAL(hasher, bool, is_const);
+
+    NkHash128 const hash = nk_hash128_finalize(&hasher);
+
+    NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
+    if (!nkl_type_isComplete(type)) {
+        completePointer(nkl, type, ptr, target_t, is_const);
+    }
+    return type;
+}
+
+static void completeProcedure(NklState nkl, NklType_T *type, NkIrNumericValueType ptr, NklProcInfo info) {
+    NklTypeStorage *st = &nkl->types;
+
+    NklTypeArray param_types_copy = {0};
+    NKS_COPY_STRIDED(nk_arena_getAllocator(st->arena), &param_types_copy, info.param_types);
+
+    NklType const base_t = nkl_type_getPointer(nkl, ptr, nkl_type_getVoid(nkl), true);
+
+    *type = (NklType_T){
+        .base_t = base_t,
+        .size = base_t->size,
+        .align = base_t->align,
+        .tclass = NklType_Procedure,
+        .as.proc =
+            {
+                .param_types = param_types_copy,
+                .ret_t = info.ret_t,
+                .flags = info.flags,
+            },
+    };
+}
+
+NklType nkl_type_getProcedureDistinct(NklState nkl, NkIrNumericValueType ptr, NklProcInfo info) {
+    NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
+    completeProcedure(nkl, type, ptr, info);
+    return type;
+}
+
+NklType nkl_type_getProcedure(NklState nkl, NkIrNumericValueType ptr, NklProcInfo info) {
+    NkHashState hasher;
+    nk_hash128_init(&hasher);
+
+    HASH_VAL(hasher, NklTypeClass, NklType_Procedure);
+    NK_ITERATE_STRIDED(NklType const *, it, info.param_types) {
+        NklType const type = *it;
+        HASH_VAL(hasher, intptr_t, type);
+    }
+    HASH_VAL(hasher, intptr_t, info.ret_t);
+    HASH_VAL(hasher, NklProcFlags, info.flags);
+
+    NkHash128 const hash = nk_hash128_finalize(&hasher);
+
+    NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
+    if (!nkl_type_isComplete(type)) {
+        completeProcedure(nkl, type, ptr, info);
+    }
+    return type;
+}
+
+static void completeStruct(NklState nkl, NklType_T *type, NklFieldStridedArray fields) {
     NklTypeStorage *st = &nkl->types;
 
     NklFieldArray fields_copy = {0};
-    NKS_COPY(nk_arena_getAllocator(st->arena), &fields_copy, fields);
+    NKS_COPY_STRIDED(nk_arena_getAllocator(st->arena), &fields_copy, fields);
 
-    NklType const base_t = nkl_type_getAggregate(nkl, (NklTypeStridedArray){NKS_INIT_STRIDED_FROM_FIELD(fields, type)});
+    NklType const base_t = nkl_type_getAggregate(
+        nkl,
+        (NklTypeStridedArray){
+            .strided_data = &fields.strided_data->type,
+            .size = fields.size,
+            .stride = fields.stride,
+        });
 
     *type = (NklType_T){
         .base_t = base_t,
@@ -175,20 +347,20 @@ static void completeStruct(NklState nkl, NklType_T *type, NklFieldArray fields) 
     };
 }
 
-NklType nkl_type_getStructDistinct(NklState nkl, NklFieldArray fields) {
+NklType nkl_type_getStructDistinct(NklState nkl, NklFieldStridedArray fields) {
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeStruct(nkl, type, fields);
     return type;
 }
 
-NklType nkl_type_getStruct(NklState nkl, NklFieldArray fields) {
+NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields) {
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
-    hashVal(hasher, NklTypeClass, NklType_Struct);
-    NK_ITERATE(NklField const *, it, fields) {
-        hashVal(hasher, NkAtom, it->name);
-        hashVal(hasher, intptr_t, it->type);
+    HASH_VAL(hasher, NklTypeClass, NklType_Struct);
+    NK_ITERATE_STRIDED(NklField const *, it, fields) {
+        HASH_VAL(hasher, NkAtom, it->name);
+        HASH_VAL(hasher, intptr_t, it->type);
     }
 
     NkHash128 const hash = nk_hash128_finalize(&hasher);
@@ -196,6 +368,36 @@ NklType nkl_type_getStruct(NklState nkl, NklFieldArray fields) {
     NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
     if (!nkl_type_isComplete(type)) {
         completeStruct(nkl, type, fields);
+    }
+    return type;
+}
+
+static void completeVoid(NklState NK_UNUSED nkl, NklType_T *type) {
+    *type = (NklType_T){
+        .base_t = NULL,
+        .size = 0,
+        .align = 0,
+        .tclass = NklType_Void,
+    };
+}
+
+NklType nkl_type_getVoidDistinct(NklState nkl) {
+    NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
+    completeVoid(nkl, type);
+    return type;
+}
+
+NklType nkl_type_getVoid(NklState nkl) {
+    NkHashState hasher;
+    nk_hash128_init(&hasher);
+
+    HASH_VAL(hasher, NklTypeClass, NklType_Void);
+
+    NkHash128 const hash = nk_hash128_finalize(&hasher);
+
+    NklType_T *type = (NklType_T *)nkl_type_getFromCache(nkl, hash);
+    if (!nkl_type_isComplete(type)) {
+        completeVoid(nkl, type);
     }
     return type;
 }
