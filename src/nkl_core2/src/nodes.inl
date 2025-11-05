@@ -15,6 +15,7 @@ X(string)
 
 X(call)
 X(const)
+X(def)
 X(extern)
 X(param)
 X(proc)

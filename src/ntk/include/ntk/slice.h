@@ -35,10 +35,15 @@
 #define NKS_FIRST(SLICE) ((SLICE).data[0])
 #define NKS_LAST(SLICE) ((SLICE).data[(SLICE).size - 1])
 
+#define NKS_BYTE_SIZE(SLICE) ((SLICE).size * sizeof(*(SLICE).data))
+#define NKS_BYTE_SIZE_STRIDED(SLICE) ((SLICE).size * sizeof(*(SLICE).strided_data))
+
+#define NKS_ZERO(SLICE) memset((SLICE).data, 0, NKS_BYTE_SIZE(SLICE))
+
 #define _NKS_COPY(ALLOC, DST, SRC)                                                      \
     do {                                                                                \
         if ((SRC).size) {                                                               \
-            usize const _bytes = (SRC).size * sizeof(*(SRC).data);                      \
+            usize const _bytes = NKS_BYTE_SIZE(SRC);                                    \
             void *_data = nk_allocAligned((ALLOC), _bytes, nk_alignofval(*(SRC).data)); \
             memcpy(_data, (SRC).data, _bytes);                                          \
             _nk_assignVoidPtr((DST)->data, _data);                                      \
@@ -49,7 +54,7 @@
 #define _NKS_COPY_STRIDED(ALLOC, DST, SRC)                                                      \
     do {                                                                                        \
         if ((SRC).size) {                                                                       \
-            usize const _bytes = (SRC).size * sizeof(*(SRC).strided_data);                      \
+            usize const _bytes = NKS_BYTE_SIZE_STRIDED(SRC);                                    \
             void *_data = nk_allocAligned((ALLOC), _bytes, nk_alignofval(*(SRC).strided_data)); \
             u8 *_dst_it = (u8 *)_data;                                                          \
             u8 const *_src_it = (u8 const *)(SRC).strided_data;                                 \

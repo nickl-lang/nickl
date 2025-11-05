@@ -1,7 +1,9 @@
 #include "nickl_impl.h"
 #include "nkl/common/ast.h"
 #include "nkl/common/token.h"
+#include "nkl/core/types.h"
 #include "nodes.h"
+#include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
 #include "ntk/log.h"
@@ -44,14 +46,22 @@ typedef struct {
 } Interm;
 
 typedef struct {
-    NkArena scratch;
+    NklType type;
+    bool is_comptime;
+} AstNodeExt;
 
+typedef NkSlice(AstNodeExt) AstNodeExtArray;
+
+typedef struct {
+    NklState nkl;
     NklModule mod;
 
     NkAtom file;
     NkString text;
     NklTokenArray tokens;
     NklAstNodeArray nodes;
+
+    AstNodeExtArray nodes_ext;
 } CompilerCtx;
 
 static void vreportError(CompilerCtx *ctx, NklAstNode const *node, char const *fmt, va_list ap) {
@@ -75,7 +85,7 @@ static NK_PRINTF_LIKE(3) void reportError(CompilerCtx *ctx, NklAstNode const *no
     va_end(ap);
 }
 
-static NkString getString(CompilerCtx *ctx, NklAstNode const *node, NkArena *arena) {
+static NkString parseString(CompilerCtx *ctx, NkArena *arena, NklAstNode const *node) {
     nk_assert(node->id == n_string || node->id == n_escaped_string);
 
     NklToken const *token = &ctx->tokens.data[node->token_idx];
@@ -97,57 +107,33 @@ static NkString getString(CompilerCtx *ctx, NklAstNode const *node, NkArena *are
     }
 }
 
-static bool compile(CompilerCtx *ctx, NklAstNode const *node) {
-    NK_LOG_DBG("Compiling node %5u | %s", nodeIdx(ctx->nodes, node), nk_atom2cs(node->id));
+static bool typecheck(CompilerCtx *ctx, NklAstNode const *node) {
+    u32 const node_idx = nodeIdx(ctx->nodes, node);
+    NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
+
+    AstNodeExt *node_ext = &ctx->nodes_ext.data[node_idx];
 
     AstNodeIterator it = nodeIterate(ctx->nodes, node);
 
     switch (node->id) {
         case 0: {
-            return true; // TODO: make void
+            *node_ext = (AstNodeExt){
+                .type = nkl_type_getVoid(ctx->nkl),
+                .is_comptime = true,
+            };
+            return true;
         }
 
         case n_list: {
             for (u32 i = 0; i < node->arity; i++) {
-                TRY(compile(ctx, nextNode(&it)), false);
+                NklAstNode const *child_node = nextNode(&it);
+
+                TRY(typecheck(ctx, child_node), false);
+
+                AstNodeExt const *child_node_ext = &ctx->nodes_ext.data[nodeIdx(ctx->nodes, child_node)];
+                *node_ext = *child_node_ext;
             }
-            return true; // TODO: make void
-        }
-
-        case n_extern: {
-            NklAstNode const *lib_node = nextNode(&it);
-            NklAstNode const *decl_node = nextNode(&it);
-
-            NkAtom lib = 0;
-            if (lib_node->id) {
-                lib = nk_s2atom(getString(ctx, lib_node, &ctx->scratch));
-            }
-
-            if (decl_node->id == n_proc) {
-                // if (!nickl_defineSymbol(
-                //         ctx->mod,
-                //         &(NkIrSymbol){
-                //             .extrn =
-                //                 {
-                //                     .proc =
-                //                         {
-                //                             .param_types = {NKS_INIT(param_types)},
-                //                             .ret_type = ret_type,
-                //                             .flags = is_variadic ? NkIrProc_Variadic : 0,
-                //                         },
-                //                     .lib = lib,
-                //                     .kind = NkIrExtern_Proc,
-                //                 },
-                //             .name = sym_name,
-                //             .kind = NkIrSymbol_Extern,
-                //         })) {
-                //     // TODO: Report proper conflict errors
-                //     reportError(ctx, "failed to define symbol");
-                // }
-            }
-
-            reportError(ctx, node, "TODO: handle extern data");
-            return false;
+            return true;
         }
 
         default: {
@@ -160,26 +146,65 @@ static bool compile(CompilerCtx *ctx, NklAstNode const *node) {
     return false;
 }
 
+static void compile(CompilerCtx *ctx, NklAstNode const *node) {
+    u32 const node_idx = nodeIdx(ctx->nodes, node);
+    NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
+
+    AstNodeExt const *node_ext = &ctx->nodes_ext.data[node_idx];
+
+    AstNodeIterator it = nodeIterate(ctx->nodes, node);
+
+    switch (node->id) {
+        case 0: {
+            break;
+        }
+
+        case n_list: {
+            for (u32 i = 0; i < node->arity; i++) {
+                compile(ctx, nextNode(&it));
+            }
+            break;
+        }
+
+        default: {
+            nk_assert(!"unreachable");
+            break;
+        }
+    }
+}
+
 bool nickl_compile(NklCompileArgs const *args) {
     NK_LOG_TRC("%s", __func__);
 
     bool ok = true;
     NK_PROF_FUNC() {
         if (args->nodes.size) {
-            CompilerCtx ctx = {
-                .mod = args->mod,
-                .file = args->file,
-                .text = args->text,
-                .tokens = args->tokens,
-                .nodes = args->nodes,
-            };
+            NkArena *scratch = nk_arena_getScratch(NULL);
+            NK_ARENA_SCOPE(scratch) {
+                CompilerCtx ctx = {
+                    .nkl = args->mod->com->nkl,
+                    .mod = args->mod,
 
-            ok = compile(&ctx, &NKS_FIRST(args->nodes));
+                    .file = args->file,
+                    .text = args->text,
+                    .tokens = args->tokens,
+                    .nodes = args->nodes,
 
-            // TODO: Reuse scratch arena for other compiles
-            nk_arena_free(&ctx.scratch);
+                    .nodes_ext =
+                        {
+                            .data = nk_arena_allocTn(scratch, AstNodeExt, args->nodes.size),
+                            .size = args->nodes.size,
+                        },
+                };
+                NKS_ZERO(ctx.nodes_ext);
+
+                NklAstNode const *root = &NKS_FIRST(args->nodes);
+                ok = typecheck(&ctx, root);
+                if (ok) {
+                    compile(&ctx, root);
+                }
+            }
         }
     }
-
     return ok;
 }
