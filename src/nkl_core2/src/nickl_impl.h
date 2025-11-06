@@ -80,15 +80,7 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym);
 
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym);
 
-typedef struct {
-    NklModule mod;
-    NkAtom file;
-    NkString text;
-    NklTokenArray tokens;
-    NklAstNodeArray nodes;
-} NklCompileArgs;
-
-bool nickl_compile(NklCompileArgs const *args);
+bool nickl_compile(NklModule mod, NklSource const *src);
 
 #ifdef __cplusplus
 }

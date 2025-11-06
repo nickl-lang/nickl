@@ -361,13 +361,14 @@ static bool compileAstImpl(NklModule mod, NkAtom file) {
     NklAstNodeArray nodes;
     TRY(nickl_getAst(nkl, file, &nodes), false);
 
-    TRY(nickl_compile(&(NklCompileArgs){
-            .mod = mod,
-            .file = file,
-            .text = text,
-            .tokens = tokens,
-            .nodes = nodes,
-        }),
+    TRY(nickl_compile(
+            mod,
+            &(NklSource){
+                .file = file,
+                .text = text,
+                .tokens = tokens,
+                .nodes = nodes,
+            }),
         false);
 
     return true;

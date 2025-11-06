@@ -30,6 +30,11 @@ typedef u32 NklTypeClass;
 
 typedef struct NklType_T const *NklType;
 
+typedef struct {
+    void *data;
+    NklType type;
+} NklAny;
+
 typedef NkSlice(NklType const) NklTypeArray;
 typedef NkStridedSlice(NklType const) NklTypeStridedArray;
 
