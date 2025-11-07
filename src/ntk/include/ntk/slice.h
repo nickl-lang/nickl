@@ -22,6 +22,8 @@
 #define NKS_INIT(SLICE) .data = (SLICE).data, .size = (SLICE).size
 #define NKS_INIT_STATIC(AR) .data = (AR), .size = NK_ARRAY_COUNT(AR)
 
+#define NKS_INIT_STRIDED(SLICE) .strided_data = (SLICE).data, .size = (SLICE).size, .stride = sizeof(*(SLICE).data)
+
 #define NKS_INIT_STRIDED_STATIC(AR) .strided_data = (AR), .size = NK_ARRAY_COUNT(AR), .stride = sizeof(*(AR))
 
 #define NKS_INIT_STRIDED_FROM_FIELD(SLICE, FIELD) \

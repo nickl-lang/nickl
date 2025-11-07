@@ -1,7 +1,6 @@
 #ifndef NKL_CORE_TYPES_H_
 #define NKL_CORE_TYPES_H_
 
-// TODO: Don't depend on nkb in public API
 #include "nkb/types.h"
 #include "nkl/core/nickl.h"
 #include "ntk/common.h"
@@ -37,9 +36,10 @@ typedef struct {
 
 typedef NkSlice(NklType const) NklTypeArray;
 typedef NkStridedSlice(NklType const) NklTypeStridedArray;
+typedef NkDynArray(NklType) NklTypeDynArray;
 
 typedef enum {
-    NklProcFlags_Variadic = 1 << 0,
+    NklProc_Variadic = 1 << 0,
 } NklProcFlags;
 
 typedef struct {
@@ -51,6 +51,7 @@ typedef NkSlice(NklField const) NklFieldArray;
 typedef NkStridedSlice(NklField const) NklFieldStridedArray;
 
 typedef struct NklType_T {
+    NkIrType_T ir_type; // TODO: Don't depend on nkb in public API
     NklType base_t;
     u64 size;
     u32 align;
@@ -81,6 +82,10 @@ typedef struct NklType_T {
     } as;
 } NklType_T;
 
+NK_INLINE NkIrType nkl_type_getIrType(NklType type) {
+    return &type->ir_type;
+}
+
 NK_EXPORT NklTypeClass nkl_type_newClass(NklState nkl);
 
 NK_EXPORT NklType nkl_type_getIncomplete(NklState nkl);
@@ -110,8 +115,8 @@ NK_EXPORT NklType nkl_type_getBool(NklState nkl);
 NK_EXPORT NklType nkl_type_getNumericDistinct(NklState nkl, NkIrNumericValueType value_type);
 NK_EXPORT NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type);
 
-NK_EXPORT NklType nkl_type_getPointerDistinct(NklState nkl, NkIrNumericValueType ptr, NklType target_t, bool is_const);
-NK_EXPORT NklType nkl_type_getPointer(NklState nkl, NkIrNumericValueType ptr, NklType target_t, bool is_const);
+NK_EXPORT NklType nkl_type_getPointerDistinct(NklState nkl, usize word_size, NklType target_t, bool is_const);
+NK_EXPORT NklType nkl_type_getPointer(NklState nkl, usize word_size, NklType target_t, bool is_const);
 
 typedef struct {
     NklTypeStridedArray param_types;
@@ -119,8 +124,8 @@ typedef struct {
     u8 flags;
 } NklProcInfo;
 
-NK_EXPORT NklType nkl_type_getProcedureDistinct(NklState nkl, NkIrNumericValueType ptr, NklProcInfo info);
-NK_EXPORT NklType nkl_type_getProcedure(NklState nkl, NkIrNumericValueType ptr, NklProcInfo info);
+NK_EXPORT NklType nkl_type_getProcedureDistinct(NklState nkl, usize word_size, NklProcInfo info);
+NK_EXPORT NklType nkl_type_getProcedure(NklState nkl, usize word_size, NklProcInfo info);
 
 NK_EXPORT NklType nkl_type_getStructDistinct(NklState nkl, NklFieldStridedArray fields);
 NK_EXPORT NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields);

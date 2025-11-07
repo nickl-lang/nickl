@@ -122,6 +122,7 @@ NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
         .nkl = nkl,
         .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .target = tgt,
+        .word_size = 8, // TODO: Hardcoded word size
     };
     return com;
 }

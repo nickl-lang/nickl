@@ -108,9 +108,9 @@ TEST_F(nkl_types, pointer) {
     auto const i32_t = nkl_type_getNumeric(nkl, Int32);
     auto const i64_t = nkl_type_getNumeric(nkl, Int64);
 
-    auto const ptr_t = nkl_type_getPointer(nkl, Int64, i32_t, true);
-    auto const ptr_t_1 = nkl_type_getPointer(nkl, Int64, i32_t, true);
-    auto const ptr_t_2 = nkl_type_getPointerDistinct(nkl, Int64, i32_t, true);
+    auto const ptr_t = nkl_type_getPointer(nkl, 8, i32_t, true);
+    auto const ptr_t_1 = nkl_type_getPointer(nkl, 8, i32_t, true);
+    auto const ptr_t_2 = nkl_type_getPointerDistinct(nkl, 8, i32_t, true);
 
     EXPECT_EQ(ptr_t, ptr_t_1);
     EXPECT_NE(ptr_t, ptr_t_2);
@@ -137,14 +137,14 @@ TEST_F(nkl_types, procedure) {
         .flags = 0,
     };
 
-    auto const proc_t = nkl_type_getProcedure(nkl, Int64, info);
-    auto const proc_t_1 = nkl_type_getProcedure(nkl, Int64, info);
-    auto const proc_t_2 = nkl_type_getProcedureDistinct(nkl, Int64, info);
+    auto const proc_t = nkl_type_getProcedure(nkl, 8, info);
+    auto const proc_t_1 = nkl_type_getProcedure(nkl, 8, info);
+    auto const proc_t_2 = nkl_type_getProcedureDistinct(nkl, 8, info);
 
     EXPECT_EQ(proc_t, proc_t_1);
     EXPECT_NE(proc_t, proc_t_2);
 
-    EXPECT_EQ(proc_t->base_t, nkl_type_getPointer(nkl, Int64, nkl_type_getVoid(nkl), true));
+    EXPECT_EQ(proc_t->base_t, nkl_type_getPointer(nkl, 8, nkl_type_getVoid(nkl), true));
     EXPECT_EQ(proc_t->size, 8);
     EXPECT_EQ(proc_t->align, 8);
     EXPECT_EQ(proc_t->tclass, NklType_Procedure);
