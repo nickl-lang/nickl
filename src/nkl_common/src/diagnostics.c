@@ -91,7 +91,7 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
     nkl_diag_vprintError(fmt, ap);
 }
 
-#define MAX_LINE_QUOTE 120
+#define MAX_LINE_QUOTE 180
 
 void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, va_list ap) {
     char buf[512];

@@ -32,18 +32,18 @@ NK_LOG_USE_SCOPE(nickl);
 
 // TODO: Infer source location if operating during compilation
 
-#define HANDLE_ERRORS()                                              \
-    do {                                                             \
-        NkErrorNode *_err = err.errors;                              \
-        if (_err) {                                                  \
-            while (_err) {                                           \
-                nickl_reportError(nkl, NKS_FMT, NKS_ARG(_err->msg)); \
-                _err = _err->next;                                   \
-            }                                                        \
-            nk_error_freeState(&err);                                \
-            return 0;                                                \
-        }                                                            \
-        nk_error_freeState(&err);                                    \
+#define HANDLE_ERRORS()                                                                           \
+    do {                                                                                          \
+        NkErrorNode *_err = err.errors;                                                           \
+        if (_err) {                                                                               \
+            while (_err) {                                                                        \
+                nickl_reportError(nkl, "[Internal Compiler Error] " NKS_FMT, NKS_ARG(_err->msg)); \
+                _err = _err->next;                                                                \
+            }                                                                                     \
+            nk_error_freeState(&err);                                                             \
+            return 0;                                                                             \
+        }                                                                                         \
+        nk_error_freeState(&err);                                                                 \
     } while (0)
 
 NklState nkl_newState(void) {
@@ -563,12 +563,10 @@ bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind) {
     return true;
 }
 
-void *nkl_getSymbolAddress(NklModule mod, NkString name) {
+void *nkl_getSymbolAddress(NklModule mod, NkAtom sym) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(mod, NULL);
-
-    NkAtom const sym = nk_s2atom(name);
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();

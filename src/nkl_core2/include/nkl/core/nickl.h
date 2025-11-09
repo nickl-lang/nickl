@@ -66,7 +66,7 @@ NK_EXPORT bool nkl_compileStringNkl(NklModule mod, NkString src);
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 
-NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkString name);
+NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkAtom sym);
 
 NK_EXPORT NklError const *nkl_getErrors(NklState nkl);
 

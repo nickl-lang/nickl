@@ -504,13 +504,19 @@ static void gatherDeps(NkIrSymbol const *sym, NkAtomDynArray *out) {
     }
 }
 
-static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDynArray *out) {
+static bool getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDynArray *out) {
     NK_LOG_TRC("%s", __func__);
 
+    bool ok = true;
     NK_PROF_FUNC() {
         NkArena *scratch = nk_arena_getScratch(nk_arena_getOptArenaFromAllocator(out->alloc));
         NK_ARENA_SCOPE(scratch) {
-            NK_LOG_DBG("Getting dependencies for `%s`", nk_atom2cs(sym_name));
+            NK_LOG_STREAM_DBG {
+                NkStream log = nk_log_getStream();
+                nk_printf(log, "Getting dependencies for `");
+                nkir_printSymbolName(log, sym_name);
+                nk_printf(log, "`");
+            }
 
             NkAtomDynArray stack = {.alloc = nk_arena_getAllocator(scratch)};
             NkAtomSet deps = {.alloc = nk_arena_getAllocator(scratch)};
@@ -525,18 +531,34 @@ static void getSymbolDependencies(NkIrModule mod, NkAtom sym_name, NkIrSymbolDyn
                     NkAtomSet_insert(&deps, sym_name);
 
                     NkIrSymbol const *sym = NkIrSymbolDynArray_findItem(mod, sym_name);
-                    nk_assert(sym && "symbol not found, invalid ir");
+                    if (!sym) {
+                        NkStringBuilder sym_name_str = {.alloc = nk_arena_getAllocator(scratch)};
+                        nkir_printSymbolName(nksb_getStream(&sym_name_str), sym_name);
+                        nk_error_printf("symbol `" NKS_FMT "` not found, invalid ir", NKS_ARG(sym_name_str));
+                        ok = false;
+                        break;
+                    }
                     gatherDeps(sym, &stack);
                 }
             }
 
-            NK_ITERATE(NkAtomSet_Item const *, it, deps) {
-                NkIrSymbol const *sym = NkIrSymbolDynArray_findItem(mod, it->key);
-                nk_assert(sym && "symbol not found, invalid ir");
-                nkda_append(out, *sym);
+            if (ok) {
+                NK_ITERATE(NkAtomSet_Item const *, it, deps) {
+                    NkIrSymbol const *sym = NkIrSymbolDynArray_findItem(mod, it->key);
+                    if (!sym) {
+                        NkStringBuilder sym_name_str = {.alloc = nk_arena_getAllocator(scratch)};
+                        nkir_printSymbolName(nksb_getStream(&sym_name_str), it->key);
+                        nk_error_printf("symbol `" NKS_FMT "` not found, invalid ir", NKS_ARG(sym_name_str));
+                        ok = false;
+                        break;
+                    }
+                    nkda_append(out, *sym);
+                }
             }
         }
     }
+
+    return ok;
 }
 
 static NkIrSymbol symToExtern(NkArena *arena, NkIrSymbol sym) {
@@ -593,7 +615,7 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkbState nkb, NkIrDylib dl, 
     NkIrModule mod = dl->mod;
 
     NkIrSymbolDynArray deps = {.alloc = nk_arena_getAllocator(scratch)};
-    getSymbolDependencies(mod, sym_name, &deps);
+    TRY(getSymbolDependencies(mod, sym_name, &deps), NULL);
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
@@ -738,6 +760,7 @@ typedef struct {
     NkIrInstrArray instrs;
     LabelArray labels;
     u32 const *indices;
+    bool write_idx;
 } InspectInstrCtx;
 
 static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
@@ -751,8 +774,10 @@ static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
     if (instr->code == NkIrOp_label) {
     } else if (instr->code == NkIrOp_comment) {
         nk_printf(out, "%5s | ", "//");
-    } else {
+    } else if (ctx.write_idx) {
         nk_printf(out, "%5zu |%7s ", idx, s_opcode_names[instr->code]);
+    } else {
+        nk_printf(out, "%s ", s_opcode_names[instr->code]);
     }
 
     for (usize ai = 0; ai < 3; ai++) {
@@ -934,6 +959,7 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
                             .instrs = sym->proc.instrs,
                             .labels = labels,
                             .indices = indices,
+                            .write_idx = true,
                         });
                     nk_printf(out, "\n");
                 }
@@ -1004,6 +1030,7 @@ void nkir_inspectInstr(NkStream out, NkIrInstr instr) {
         0,
         (InspectInstrCtx){
             .instrs = (NkIrInstrArray){&instr, 1},
+            .write_idx = false,
         });
 }
 

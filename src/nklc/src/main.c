@@ -101,7 +101,7 @@ static int run(RunInfo const info) {
     }
 
     if (info.run) {
-        void (*entry)(void) = nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
+        void (*entry)(void) = nkl_getSymbolAddress(mod, nk_cs2atom("_entry"));
         if (!entry) {
             printDiag(nkl);
             return 1;
