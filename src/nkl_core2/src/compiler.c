@@ -62,12 +62,13 @@ typedef enum {
 
     Decl_Entity,
     Decl_Extern,
+    Decl_LocalVar,
 } DeclKind;
 
 typedef struct {
     union {
         Entity *entity;
-        NkAtom extern_sym;
+        NkAtom sym;
     };
     NklType type;
     DeclKind kind;
@@ -538,7 +539,7 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                     &ctx->scope_stack->names,
                     proc_info.sym,
                     (Decl){
-                        .extern_sym = proc_info.sym,
+                        .sym = proc_info.sym,
                         .type = proc_t,
                         .kind = Decl_Extern,
                         .is_pub = false,
@@ -627,6 +628,48 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             return true;
         }
 
+        case n_var: {
+            NklAstNode const *name_n = nextNode(&it);
+            NklAstNode const *type_n = nextNode(&it);
+            NklAstNode const *val_n = nextNode(&it);
+
+            NkAtom const name = parseId(ctx, name_n);
+
+            NklType type = NULL;
+            if (type_n->id) {
+                TRY(parseType(ctx, type_n, &type));
+            }
+
+            TRY(typecheck(
+                ctx,
+                val_n,
+                &(TypecheckArgs){
+                    .type = type,
+                }));
+
+            if (!type) {
+                AstNodeExt const *val_node_ext = nodeExt(ctx, val_n);
+                type = val_node_ext->type;
+            }
+
+            DeclMap_insert(
+                &ctx->scope_stack->names,
+                name,
+                (Decl){
+                    .sym = name,
+                    .type = type,
+                    .kind = Decl_LocalVar,
+                    .is_pub = false,
+                    .is_comptime = false,
+                });
+
+            *node_ext = (AstNodeExt){
+                .type = nkl_type_getVoid(ctx->nkl),
+                .is_comptime = true,
+            };
+            return true;
+        }
+
         default: {
             reportError(ctx, node, "unknown AST node `%s`", nk_atom2cs(node->id));
             return false;
@@ -663,6 +706,10 @@ typedef struct {
     IntermKind kind;
 } Interm;
 
+static NkAtom getNextLocal(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "_%u", ctx->next_local_idx++));
+}
+
 static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
     switch (interm.kind) {
         case Interm_Void:
@@ -680,8 +727,7 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
                 nk_assert(instr.arg[0].kind == NkIrArg_Ref);
                 NkIrRef *dst = &instr.arg[0].ref;
                 if (dst->kind == NkIrRef_None && interm.type->size) {
-                    NkAtom const sym = nk_s2atom(nk_tsprintf(ctx->scratch, "_%u", ctx->next_local_idx++));
-                    *dst = nkir_makeRefLocal(sym, &interm.type->ir_type);
+                    *dst = nkir_makeRefLocal(getNextLocal(ctx), &interm.type->ir_type);
                 }
                 emit(ctx, instr);
                 return *dst;
@@ -710,9 +756,19 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
 
         case Decl_Extern: {
             return (Interm){
-                .ref = nkir_makeRefGlobal(decl->extern_sym, &decl->type->ir_type),
+                .ref = nkir_makeRefGlobal(decl->sym, &decl->type->ir_type),
                 .type = decl->type,
                 .kind = Interm_Ref,
+            };
+        }
+
+        case Decl_LocalVar: {
+            NklType const void_ptr_t =
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+            return (Interm){
+                .instr = nkir_make_load((NkIrRef){0}, nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type)),
+                .type = decl->type,
+                .kind = Interm_Instr,
             };
         }
     }
@@ -884,6 +940,29 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 .instr = nkir_make_ret(arg_ref),
                 .type = nkl_type_getVoid(ctx->nkl),
                 .kind = Interm_Instr,
+            };
+        }
+
+        case n_var: {
+            NklAstNode const *name_n = nextNode(&it); // name
+            nextNode(&it);                            // type
+            NklAstNode const *val_n = nextNode(&it);
+
+            NkAtom const name = parseId(ctx, name_n);
+            Interm const val = compile(ctx, val_n);
+
+            NklType const void_ptr_t =
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+
+            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+            NkIrRef const var = nkir_makeRefLocal(name, &void_ptr_t->ir_type);
+
+            emit(ctx, nkir_make_alloc(var, &decl->type->ir_type));
+            emit(ctx, nkir_make_store(var, toRef(ctx, val)));
+
+            return (Interm){
+                .type = nkl_type_getVoid(ctx->nkl),
+                .kind = Interm_Void,
             };
         }
 

@@ -1,0 +1,14 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def foo (proc foo [] (void) [
+    (var a (u32) 42)
+    (call printf ["a=%u\n" a])
+    (return)
+]))
+
+(call foo [])
+
+/* @output
+a=42
+
+@endoutput */

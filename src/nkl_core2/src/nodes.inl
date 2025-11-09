@@ -22,6 +22,7 @@ X(proc)
 X(ptr)
 X(pub)
 X(return)
+X(var)
 
 X(false)
 X(true)
