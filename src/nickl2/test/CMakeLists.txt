@@ -1,0 +1,3 @@
+def_nickl_test(FILE nkst/empty.nkst)
+def_nickl_test(FILE nkst/hello_world.nkst)
+def_nickl_test(FILE nkst/proc.nkst)

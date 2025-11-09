@@ -27,5 +27,6 @@ target_compile_definitions(${EXE}
     )
 
 if(CMAKE_TESTING_ENABLED)
+    include(NicklTest)
     add_subdirectory(test)
 endif()
