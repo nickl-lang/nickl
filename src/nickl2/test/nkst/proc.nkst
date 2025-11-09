@@ -1,6 +1,6 @@
 (def foo (proc foo [] (void) [
     (extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
-    (call printf ["Hello from foo!\n"])
+    (call printf ["Hello from %s!\n" "foo"])
     (return)
 ]))
 

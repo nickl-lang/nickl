@@ -446,7 +446,10 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
 
             AstNodeIterator args_it = nodeIterate(ctx->src.nodes, args_n);
 
-            if (args_n->arity != proc_node_ext->type->as.proc.param_types.size) {
+            bool const is_variadic = (proc_node_ext->type->as.proc.flags & NklProc_Variadic);
+            bool const param_count = proc_node_ext->type->as.proc.param_types.size;
+
+            if ((!is_variadic && args_n->arity != param_count) || (is_variadic && args_n->arity < param_count)) {
                 reportError(ctx, proc_n, "invalid number of arguments");
                 return false;
             }
@@ -457,7 +460,7 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                     ctx,
                     arg_n,
                     &(TypecheckArgs){
-                        .type = proc_node_ext->type->as.proc.param_types.data[i],
+                        .type = i < param_count ? proc_node_ext->type->as.proc.param_types.data[i] : NULL,
                     }));
             }
 
@@ -851,6 +854,9 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NkIrRefDynArray args = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
 
             for (u32 i = 0; i < args_n->arity; i++) {
+                if (i == proc.type->as.proc.param_types.size) {
+                    nkda_append(&args, nkir_makeVariadicMarker());
+                }
                 NklAstNode const *arg_n = nextNode(&args_it);
                 nkda_append(&args, toRef(ctx, compile(ctx, arg_n)));
             }
