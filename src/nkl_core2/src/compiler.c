@@ -112,6 +112,7 @@ static NklAstNode const *nextNode(AstNodeIterator *it) {
 
 typedef struct {
     Entity *entity;
+    NkAtom sym;
     NklType type;
     // Scope *scope;
     bool is_comptime;
@@ -337,7 +338,6 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             NklType const i8_t = nkl_type_getNumeric(ctx->nkl, Int8);
             NklType const str_t = nkl_type_getArray(ctx->nkl, i8_t, str.size + 1);
 
-            // TODO: Define string symbol during compilation phase?
             NkAtom const sym = nk_atom_unique((NkString){0});
             TRY(nickl_defineSymbol(
                 ctx->mod,
@@ -355,6 +355,7 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                 }));
 
             *node_ext = (AstNodeExt){
+                .sym = sym,
                 .type = str_t,
                 .is_comptime = true,
             };
@@ -779,6 +780,15 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             };
         }
 
+        case n_string:
+        case n_escaped_string: {
+            return (Interm){
+                .ref = nkir_makeRefGlobal(node_ext->sym, &node_ext->type->ir_type),
+                .type = node_ext->type,
+                .kind = Interm_Ref,
+            };
+        }
+
         case n_id: {
             NkAtom const name = parseId(ctx, node);
 
@@ -907,7 +917,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
                     .flags = 0,
                 },
             .name = proc->sym,
-            .vis = NkIrVisibility_Local,
+            .vis = NkIrVisibility_Hidden, // TODO: Prevent symbol being optimized away
             .kind = NkIrSymbol_Proc,
         }));
 

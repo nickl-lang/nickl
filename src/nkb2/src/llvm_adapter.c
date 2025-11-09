@@ -367,7 +367,15 @@ void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dl, NkAtom sym
     void *addr = NULL;
     NK_PROF_FUNC() {
         LLVMOrcJITDylibRef jd = jd_unwrap(dl);
-        addr = lookupSymbol(jit->lljit, jd, nk_atom2cs(sym));
+
+        NkArena *scratch = nk_arena_getScratch(NULL);
+        NK_ARENA_SCOPE(scratch) {
+            NkStringBuilder sym_str = {.alloc = nk_arena_getAllocator(scratch)};
+            nkir_printSymbolName(nksb_getStream(&sym_str), sym);
+            nksb_appendNull(&sym_str);
+
+            addr = lookupSymbol(jit->lljit, jd, sym_str.data);
+        }
     }
     return addr;
 }
