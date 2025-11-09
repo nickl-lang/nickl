@@ -92,17 +92,22 @@ static int run(RunInfo const info) {
 
     NklModule const mod = nkl_newModule(com);
 
-    if (!nkl_compileFile(mod, info.in_file)) {
+    if (!nkl_TMP_compileAndRunFile(mod, info.in_file)) {
         printDiag(nkl);
         return 1;
     }
 
-    void (*entry)(void) = nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
-    if (!entry) {
-        printDiag(nkl);
-        return 1;
-    }
-    entry();
+    // if (!nkl_compileFile(mod, info.in_file)) {
+    //     printDiag(nkl);
+    //     return 1;
+    // }
+
+    // void (*entry)(void) = nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
+    // if (!entry) {
+    //     printDiag(nkl);
+    //     return 1;
+    // }
+    // entry();
 
     return 0;
 }

@@ -83,6 +83,7 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym);
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym);
 
 bool nickl_compile(NklModule mod, NklSource const *src);
+bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src);
 
 #ifdef __cplusplus
 }

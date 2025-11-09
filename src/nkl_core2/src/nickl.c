@@ -331,6 +331,54 @@ bool nkl_compileFile(NklModule mod, NkString path) {
     }
 }
 
+bool nkl_TMP_compileAndRunFile(NklModule mod, NkString path) {
+    NK_LOG_TRC("%s", __func__);
+
+    TRY(mod, false);
+
+    NklState nkl = mod->com->nkl;
+
+    NkString const ext = nk_path_getExtension(path);
+
+    if (!nks_equal(ext, nk_cs2s("nkst"))) {
+        nickl_reportError(nkl, "Unsupported source file `*." NKS_FMT "`. Supported: `*.nkst`.", NKS_ARG(ext));
+        return false;
+    }
+
+    char cwd[NK_MAX_PATH];
+    if (nk_getCwd(cwd, sizeof(cwd)) < 0) {
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
+
+    NkAtom const file = nickl_canonicalizePath(nk_cs2s(cwd), path);
+    if (!file) {
+        nickl_reportError(nkl, NKS_FMT ": %s", NKS_ARG(path), nk_getLastErrorString());
+        return false;
+    }
+
+    NkString text;
+    TRY(nickl_getText(nkl, file, &text), false);
+
+    NklTokenArray tokens;
+    TRY(nickl_getTokensAst(nkl, file, &tokens), false);
+
+    NklAstNodeArray nodes;
+    TRY(nickl_getAst(nkl, file, &nodes), false);
+
+    TRY(nickl_TMP_compileAndRunFile(
+            mod,
+            &(NklSource){
+                .file = file,
+                .text = text,
+                .tokens = tokens,
+                .nodes = nodes,
+            }),
+        false);
+
+    return true;
+}
+
 static bool compileIrImpl(NklModule mod, NkAtom file) {
     NK_LOG_TRC("%s", __func__);
 
