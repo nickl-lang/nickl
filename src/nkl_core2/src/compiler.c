@@ -255,6 +255,11 @@ static bool parseType(CompileCtx *ctx, NklAstNode const *node, NklType *out_type
     NKIR_NUMERIC_ITERATE(X)
 #undef X
 
+    else if (node->id == n_void) {
+        *out_type = nkl_type_getVoid(ctx->nkl);
+        return true;
+    }
+
     reportError(ctx, node, "TODO: parseType is not finished");
     return false;
 }
@@ -403,13 +408,20 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
         }
 
         case n_list: {
-            for (u32 i = 0; i < node->arity; i++) {
-                NklAstNode const *child_n = nextNode(&it);
+            if (node->arity) {
+                for (u32 i = 0; i < node->arity; i++) {
+                    NklAstNode const *child_n = nextNode(&it);
 
-                TRY(typecheck(ctx, child_n, &(TypecheckArgs){0}));
+                    TRY(typecheck(ctx, child_n, &(TypecheckArgs){0}));
 
-                AstNodeExt const *child_n_ext = nodeExt(ctx, child_n);
-                *node_ext = *child_n_ext;
+                    AstNodeExt const *child_n_ext = nodeExt(ctx, child_n);
+                    *node_ext = *child_n_ext;
+                }
+            } else {
+                *node_ext = (AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                };
             }
             return true;
         }
@@ -594,14 +606,16 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
         }
 
         case n_return: {
-            NklAstNode const *arg_n = nextNode(&it);
+            if (node->arity) {
+                NklAstNode const *arg_n = nextNode(&it);
 
-            TRY(typecheck(
-                ctx,
-                arg_n,
-                &(TypecheckArgs){
-                    .type = ctx->proc_t->as.proc.ret_t,
-                }));
+                TRY(typecheck(
+                    ctx,
+                    arg_n,
+                    &(TypecheckArgs){
+                        .type = ctx->proc_t->as.proc.ret_t,
+                    }));
+            }
 
             *node_ext = (AstNodeExt){
                 .type = nkl_type_getVoid(ctx->nkl),
@@ -852,12 +866,16 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         }
 
         case n_return: {
-            NklAstNode const *arg_n = nextNode(&it);
+            NkIrRef arg_ref = {0};
+            if (node->arity) {
+                NklAstNode const *arg_n = nextNode(&it);
 
-            Interm const arg = compile(ctx, arg_n);
+                Interm const arg = compile(ctx, arg_n);
+                arg_ref = toRef(ctx, arg);
+            }
 
             return (Interm){
-                .instr = nkir_make_ret(toRef(ctx, arg)),
+                .instr = nkir_make_ret(arg_ref),
                 .type = nkl_type_getVoid(ctx->nkl),
                 .kind = Interm_Instr,
             };
