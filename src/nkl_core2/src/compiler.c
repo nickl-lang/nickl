@@ -58,7 +58,7 @@ typedef struct {
 } Entity;
 
 typedef enum {
-    Decl_None = 0,
+    Decl_None = 0, // TODO: Remove?
 
     Decl_Entity,
     Decl_Extern,
@@ -112,8 +112,10 @@ static NklAstNode const *nextNode(AstNodeIterator *it) {
 }
 
 typedef struct {
-    Entity *entity;
-    NkAtom sym;
+    union {
+        Entity *entity;
+        NkAtom sym;
+    };
     NklType type;
     // Scope *scope;
     bool is_comptime;
@@ -320,6 +322,42 @@ static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out
     return true;
 }
 
+static bool typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
+    u32 const node_idx = nodeIdx(ctx->src.nodes, node);
+    NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
+
+    AstNodeExt *node_ext = nodeExtMut(ctx, node);
+
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+
+    switch (node->id) {
+        case n_id: {
+            NkAtom const name = parseId(ctx, node);
+
+            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+            if (!decl) {
+                reportError(ctx, node, "`%s` hasn't been declared", nk_atom2cs(name));
+                return false;
+            }
+
+            if (decl->kind != Decl_LocalVar) {
+                reportError(ctx, node, "cannot assign `%s`", nk_atom2cs(name));
+                return false;
+            }
+
+            *node_ext = (AstNodeExt){
+                .type = decl->type,
+                .is_comptime = false,
+            };
+            return true;
+        }
+
+        default:
+            reportError(ctx, node, "invalid lvalue");
+            return false;
+    }
+}
+
 static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
@@ -371,16 +409,16 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
         case n_id: {
             NkAtom const name = parseId(ctx, node);
 
-            Decl const *found = DeclMap_find(&ctx->scope_stack->names, name);
-            if (!found) {
+            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+            if (!decl) {
                 reportError(ctx, node, "undeclared identifier `%s`", nk_atom2cs(name));
                 return false;
             }
 
             *node_ext = (AstNodeExt){
-                .entity = found->kind == Decl_Entity ? found->entity : NULL,
-                .type = found->type,
-                .is_comptime = found->is_comptime,
+                .entity = decl->kind == Decl_Entity ? decl->entity : NULL,
+                .type = decl->type,
+                .is_comptime = decl->is_comptime,
             };
             return true;
         }
@@ -427,16 +465,27 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             return true;
         }
 
+        case n_assign: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *rhs_n = nextNode(&it);
+
+            TRY(typecheckLvalue(ctx, lhs_n));
+            AstNodeExt const *lhs_n_ext = nodeExt(ctx, lhs_n);
+
+            TRY(typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_n_ext->type}));
+
+            *node_ext = (AstNodeExt){
+                .type = lhs_n_ext->type,
+                .is_comptime = false,
+            };
+            return true;
+        }
+
         case n_call: {
             NklAstNode const *proc_n = nextNode(&it);
             NklAstNode const *args_n = nextNode(&it);
 
-            TRY(typecheck(
-                ctx,
-                proc_n,
-                &(TypecheckArgs){
-                    .tclass = NklType_Procedure,
-                }));
+            TRY(typecheck(ctx, proc_n, &(TypecheckArgs){.tclass = NklType_Procedure}));
 
             AstNodeExt const *proc_node_ext = nodeExt(ctx, proc_n);
 
@@ -457,12 +506,8 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
 
             for (u32 i = 0; i < args_n->arity; i++) {
                 NklAstNode const *arg_n = nextNode(&args_it);
-                TRY(typecheck(
-                    ctx,
-                    arg_n,
-                    &(TypecheckArgs){
-                        .type = i < param_count ? proc_node_ext->type->as.proc.param_types.data[i] : NULL,
-                    }));
+                NklType const arg_t = i < param_count ? proc_node_ext->type->as.proc.param_types.data[i] : NULL;
+                TRY(typecheck(ctx, arg_n, &(TypecheckArgs){.type = arg_t}));
             }
 
             *node_ext = (AstNodeExt){
@@ -613,12 +658,7 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             if (node->arity) {
                 NklAstNode const *arg_n = nextNode(&it);
 
-                TRY(typecheck(
-                    ctx,
-                    arg_n,
-                    &(TypecheckArgs){
-                        .type = ctx->proc_t->as.proc.ret_t,
-                    }));
+                TRY(typecheck(ctx, arg_n, &(TypecheckArgs){.type = ctx->proc_t->as.proc.ret_t}));
             }
 
             *node_ext = (AstNodeExt){
@@ -631,7 +671,7 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
         case n_var: {
             NklAstNode const *name_n = nextNode(&it);
             NklAstNode const *type_n = nextNode(&it);
-            NklAstNode const *val_n = nextNode(&it);
+            NklAstNode const *val_n = node->arity > 2 ? nextNode(&it) : NULL;
 
             NkAtom const name = parseId(ctx, name_n);
 
@@ -640,12 +680,9 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                 TRY(parseType(ctx, type_n, &type));
             }
 
-            TRY(typecheck(
-                ctx,
-                val_n,
-                &(TypecheckArgs){
-                    .type = type,
-                }));
+            if (val_n) {
+                TRY(typecheck(ctx, val_n, &(TypecheckArgs){.type = type}));
+            }
 
             if (!type) {
                 AstNodeExt const *val_node_ext = nodeExt(ctx, val_n);
@@ -835,6 +872,58 @@ static void parseNumber(CompileCtx *ctx, void *addr, NklAstNode const *node, NkI
     nk_assert(endptr == cstr + token_str.size && "failed to parse numeric constant");
 }
 
+static Interm compileStore(CompileCtx *ctx, Interm dst, Interm src) {
+    NklType const dst_t = dst.type;
+    NklType const src_t = dst.type;
+    if (src_t->size) {
+        if (src.kind == Interm_Instr && src.instr.arg[0].ref.kind == NkIrRef_None) {
+            src.instr.arg[0].ref = toRef(ctx, dst); // TODO: Check, is this correct?
+        } else {
+            src = (Interm){
+                .instr = nkir_make_store(toRef(ctx, dst), toRef(ctx, src)),
+                .type = dst_t,
+                .kind = Interm_Instr,
+            };
+        }
+    }
+    return (Interm){
+        .ref = toRef(ctx, src),
+        .type = dst_t,
+        .kind = Interm_Ref,
+    };
+}
+
+static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
+    u32 const node_idx = nodeIdx(ctx->src.nodes, node);
+    NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
+
+    AstNodeExt const *node_ext = nodeExt(ctx, node);
+
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+
+    switch (node->id) {
+        case n_id: {
+            NkAtom const name = parseId(ctx, node);
+
+            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+            nk_assert(decl);
+
+            NklType const void_ptr_t =
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+
+            return (Interm){
+                .ref = nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type),
+                .type = decl->type,
+                .kind = Interm_Ref,
+            };
+        }
+
+        default:
+            nk_assert(!"unreachable");
+            return (Interm){0};
+    }
+}
+
 static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
@@ -865,10 +954,10 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         case n_id: {
             NkAtom const name = parseId(ctx, node);
 
-            Decl const *found = DeclMap_find(&ctx->scope_stack->names, name);
-            nk_assert(found);
+            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+            nk_assert(decl);
 
-            return resolveDecl(ctx, found);
+            return resolveDecl(ctx, decl);
         }
 
         case n_int: {
@@ -897,6 +986,16 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 res = compile(ctx, nextNode(&it));
             }
             return res;
+        }
+
+        case n_assign: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *rhs_n = nextNode(&it);
+
+            Interm const lhs = compileLvalue(ctx, lhs_n);
+            Interm const rhs = compile(ctx, rhs_n);
+
+            return compileStore(ctx, lhs, rhs);
         }
 
         case n_call: {
@@ -944,12 +1043,11 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         }
 
         case n_var: {
-            NklAstNode const *name_n = nextNode(&it); // name
-            nextNode(&it);                            // type
-            NklAstNode const *val_n = nextNode(&it);
+            NklAstNode const *name_n = nextNode(&it);
+            nextNode(&it); // type
+            NklAstNode const *val_n = node->arity > 2 ? nextNode(&it) : NULL;
 
             NkAtom const name = parseId(ctx, name_n);
-            Interm const val = compile(ctx, val_n);
 
             NklType const void_ptr_t =
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
@@ -958,7 +1056,12 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NkIrRef const var = nkir_makeRefLocal(name, &void_ptr_t->ir_type);
 
             emit(ctx, nkir_make_alloc(var, &decl->type->ir_type));
-            emit(ctx, nkir_make_store(var, toRef(ctx, val)));
+
+            if (val_n) {
+                Interm const val = compile(ctx, val_n);
+                emit(ctx, nkir_make_store(var, toRef(ctx, val)));
+            }
+            // TODO: Zero init
 
             return (Interm){
                 .type = nkl_type_getVoid(ctx->nkl),
