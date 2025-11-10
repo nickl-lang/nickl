@@ -472,7 +472,11 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             return setNodeExt(ctx, node, &nodex);
         }
 
-        case n_add: {
+        case n_add:
+        case n_sub:
+        case n_mul:
+        case n_div:
+        case n_mod: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
 
@@ -1034,19 +1038,28 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return res;
         }
 
-        case n_add: {
-            NklAstNode const *lhs_n = nextNode(&it);
-            NklAstNode const *rhs_n = nextNode(&it);
+#define BINOP(NAME)                                                                            \
+    case NK_CAT(n_, NAME): {                                                                   \
+        NklAstNode const *lhs_n = nextNode(&it);                                               \
+        NklAstNode const *rhs_n = nextNode(&it);                                               \
+                                                                                               \
+        Interm const lhs = compile(ctx, lhs_n);                                                \
+        Interm const rhs = compile(ctx, rhs_n);                                                \
+                                                                                               \
+        return (Interm){                                                                       \
+            .instr = NK_CAT(nkir_make_, NAME)((NkIrRef){0}, toRef(ctx, lhs), toRef(ctx, rhs)), \
+            .type = nodex->type,                                                               \
+            .kind = Interm_Instr,                                                              \
+        };                                                                                     \
+    }
 
-            Interm const lhs = compile(ctx, lhs_n);
-            Interm const rhs = compile(ctx, rhs_n);
+            BINOP(add)
+            BINOP(sub)
+            BINOP(mul)
+            BINOP(div)
+            BINOP(mod)
 
-            return (Interm){
-                .instr = nkir_make_add((NkIrRef){0}, toRef(ctx, lhs), toRef(ctx, rhs)),
-                .type = nodex->type,
-                .kind = Interm_Instr,
-            };
-        }
+#undef BINOP
 
         case n_assign: {
             NklAstNode const *lhs_n = nextNode(&it);

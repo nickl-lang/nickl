@@ -14,6 +14,10 @@ X(list)
 X(string)
 
 X(add)
+X(sub)
+X(mul)
+X(div)
+X(mod)
 
 X(assign)
 X(call)

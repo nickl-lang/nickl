@@ -1,0 +1,16 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(call printf ["4 + 5 = %zi\n"  (add 4 5)])
+(call printf ["4 - 5 = %zi\n"  (sub 4 5)])
+(call printf ["4 * 5 = %zi\n"  (mul 4 5)])
+(call printf ["4 / 5 = %zi\n"  (div 4 5)])
+(call printf ["4 %% 5 = %zi\n" (mod 4 5)])
+
+/* @output
+4 + 5 = 9
+4 - 5 = -1
+4 * 5 = 20
+4 / 5 = 0
+4 % 5 = 4
+
+@endoutput */

@@ -1,4 +1,4 @@
-def_nickl_test(FILE nkst/arithmetic.nkst)
+def_nickl_test(FILE nkst/arith.nkst)
 def_nickl_test(FILE nkst/assign.nkst)
 def_nickl_test(FILE nkst/empty.nkst)
 def_nickl_test(FILE nkst/hello_world.nkst)
