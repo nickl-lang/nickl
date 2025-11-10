@@ -1,10 +1,15 @@
 (extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
 
-(var b (u32))
-(assign b 123)
-(call printf ["b=%u\n" b])
+(var var (u32))
+(assign var 123)
+(call printf ["var=%u\n" var])
+
+(assign var (call printf ["hello\n" var]))
+(call printf ["var=%u\n" var])
 
 /* @output
-b=123
+var=123
+hello
+var=6
 
 @endoutput */

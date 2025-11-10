@@ -930,15 +930,12 @@ static Interm compileStore(CompileCtx *ctx, Interm dst, Interm src) {
     NklType const dst_t = dst.type;
     NklType const src_t = dst.type;
     if (src_t->size) {
-        if (src.kind == Interm_Instr && src.instr.arg[0].ref.kind == NkIrRef_None) {
-            src.instr.arg[0].ref = toRef(ctx, dst); // TODO: Check, is this correct?
-        } else {
-            src = (Interm){
-                .instr = nkir_make_store(toRef(ctx, dst), toRef(ctx, src)),
-                .type = dst_t,
-                .kind = Interm_Instr,
-            };
-        }
+        // TODO: Check if we can generate better IR by substituting src.instr.arg[0]
+        src = (Interm){
+            .instr = nkir_make_store(toRef(ctx, dst), toRef(ctx, src)),
+            .type = dst_t,
+            .kind = Interm_Instr,
+        };
     }
     return (Interm){
         .ref = toRef(ctx, src),
