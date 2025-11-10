@@ -425,10 +425,11 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 });
         }
 
-        case n_int: {
+        case n_int:
+        case n_float: {
             NklType const type = (args->type && args->type->tclass == NklType_Numeric)
                                      ? args->type
-                                     : nkl_type_getNumeric(ctx->nkl, Int64);
+                                     : nkl_type_getNumeric(ctx->nkl, node->id == n_int ? Int64 : Float64);
             return setNodeExt(
                 ctx,
                 node,
@@ -859,6 +860,9 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
             };
         }
     }
+
+    nk_assert(!"unreachable");
+    return (Interm){0};
 }
 
 static void parseNumber(CompileCtx *ctx, void *addr, NklAstNode const *node, NkIrNumericValueType value_type) {
@@ -1010,7 +1014,8 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return resolveDecl(ctx, decl);
         }
 
-        case n_int: {
+        case n_int:
+        case n_float: {
             NkIrImm imm = {0};
             nk_assert(nodex->type->tclass == NklType_Numeric);
             parseNumber(ctx, &imm, node, nodex->type->as.num.value_type);

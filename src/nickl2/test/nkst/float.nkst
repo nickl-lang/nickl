@@ -1,0 +1,8 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(call printf ["pi = %.16g\n" 3.1415926535897932384626433])
+
+/* @output
+pi = 3.141592653589793
+
+@endoutput */
