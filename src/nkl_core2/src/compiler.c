@@ -197,15 +197,18 @@ static NkAtom parseId(CompileCtx *ctx, NklAstNode const *node) {
     return nk_s2atom(token_str);
 }
 
-static AstNodeExt *nodeExtMut(CompileCtx *ctx, NklAstNode const *node) {
+static AstNodeExt const *setNodeExt(CompileCtx *ctx, NklAstNode const *node, AstNodeExt const *x) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
-    return &ctx->nodes_ext.data[node_idx];
+    AstNodeExt *nodex = &ctx->nodes_ext.data[node_idx];
+    *nodex = *x;
+    return nodex;
 }
 
-static AstNodeExt const *nodeExt(CompileCtx *ctx, NklAstNode const *node) {
-    AstNodeExt const *node_ext = nodeExtMut(ctx, node);
-    nk_assert(node_ext->type && "typecheck failed to compute type");
-    return node_ext;
+static AstNodeExt const *getNodeExt(CompileCtx *ctx, NklAstNode const *node) {
+    u32 const node_idx = nodeIdx(ctx->src.nodes, node);
+    AstNodeExt const *nodex = &ctx->nodes_ext.data[node_idx];
+    nk_assert(nodex->type && "typecheck failed to compute type");
+    return nodex;
 }
 
 typedef struct {
@@ -213,28 +216,26 @@ typedef struct {
     NklTypeClass tclass;
 } TypecheckArgs;
 
-static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args);
+static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args);
 
-static bool typecheckComptimeConst(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
-    TRY(typecheck(ctx, node, args));
+static AstNodeExt const *typecheckComptimeConst(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+    AstNodeExt const *nodex;
+    TRY(nodex = typecheck(ctx, node, args));
 
-    AstNodeExt const *node_ext = nodeExt(ctx, node);
-    if (!node_ext->is_comptime) {
+    if (!nodex->is_comptime) {
         reportError(ctx, node, "comptime const expected");
-        return false;
+        return NULL;
     }
 
-    return true;
+    return nodex;
 }
 
 static NklAny compileComptimeConst(CompileCtx *ctx, NklAstNode const *node) {
-    // AstNodeExt const *node_ext = nodeExt(ctx, node);
-
     reportError(ctx, node, "TODO: compileComptimeConst is not finished");
     return (NklAny){0};
 }
 
-static bool parseType(CompileCtx *ctx, NklAstNode const *node, NklType *out_type) {
+static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
     AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     if (node->id == n_ptr) {
@@ -244,27 +245,24 @@ static bool parseType(CompileCtx *ctx, NklAstNode const *node, NklType *out_type
         NklAstNode const *target_t_n = is_const ? nextNode(&it) : const_or_target_t_n;
 
         NklType target_t;
-        TRY(parseType(ctx, target_t_n, &target_t));
+        TRY(target_t = parseType(ctx, target_t_n));
 
-        *out_type = nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, target_t, is_const);
-        return true;
+        return nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, target_t, is_const);
     }
 
-#define X(NAME, VALUE_TYPE)                                    \
-    else if (node->id == NK_CAT(n_, NAME)) {                   \
-        *out_type = nkl_type_getNumeric(ctx->nkl, VALUE_TYPE); \
-        return true;                                           \
+#define X(NAME, VALUE_TYPE)                               \
+    else if (node->id == NK_CAT(n_, NAME)) {              \
+        return nkl_type_getNumeric(ctx->nkl, VALUE_TYPE); \
     }
     NKIR_NUMERIC_ITERATE(X)
 #undef X
 
     else if (node->id == n_void) {
-        *out_type = nkl_type_getVoid(ctx->nkl);
-        return true;
+        return nkl_type_getVoid(ctx->nkl);
     }
 
     reportError(ctx, node, "TODO: parseType is not finished");
-    return false;
+    return NULL;
 }
 
 typedef struct {
@@ -304,13 +302,13 @@ static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out
         NklAstNode const *type_n = (name_or_type_n->id == n_id) ? nextNode(&param_it) : name_or_type_n;
 
         NklType param_t;
-        TRY(parseType(ctx, type_n, &param_t));
+        TRY(param_t = parseType(ctx, type_n));
 
         nkda_append(&param_types, param_t);
     }
 
     NklType ret_t;
-    TRY(parseType(ctx, ret_t_n, &ret_t));
+    TRY(ret_t = parseType(ctx, ret_t_n));
 
     *out_info = (ProcInfo){
         .sym = sym,
@@ -322,13 +320,11 @@ static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out
     return true;
 }
 
-static bool typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
+static AstNodeExt const *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
 
-    AstNodeExt *node_ext = nodeExtMut(ctx, node);
-
-    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+    // AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     switch (node->id) {
         case n_id: {
@@ -337,42 +333,44 @@ static bool typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             if (!decl) {
                 reportError(ctx, node, "`%s` hasn't been declared", nk_atom2cs(name));
-                return false;
+                return NULL;
             }
 
             if (decl->kind != Decl_LocalVar) {
                 reportError(ctx, node, "cannot assign `%s`", nk_atom2cs(name));
-                return false;
+                return NULL;
             }
 
-            *node_ext = (AstNodeExt){
-                .type = decl->type,
-                .is_comptime = false,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = decl->type,
+                    .is_comptime = false,
+                });
         }
 
         default:
             reportError(ctx, node, "invalid lvalue");
-            return false;
+            return NULL;
     }
 }
 
-static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
-
-    AstNodeExt *node_ext = nodeExtMut(ctx, node);
 
     AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     switch (node->id) {
         case 0: {
-            *node_ext = (AstNodeExt){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
         }
 
         case n_string:
@@ -398,12 +396,14 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                     .kind = NkIrSymbol_Data,
                 }));
 
-            *node_ext = (AstNodeExt){
-                .sym = sym,
-                .type = str_t,
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .sym = sym,
+                    .type = str_t,
+                    .is_comptime = true,
+                });
         }
 
         case n_id: {
@@ -412,26 +412,30 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             if (!decl) {
                 reportError(ctx, node, "undeclared identifier `%s`", nk_atom2cs(name));
-                return false;
+                return NULL;
             }
 
-            *node_ext = (AstNodeExt){
-                .entity = decl->kind == Decl_Entity ? decl->entity : NULL,
-                .type = decl->type,
-                .is_comptime = decl->is_comptime,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .entity = decl->kind == Decl_Entity ? decl->entity : NULL,
+                    .type = decl->type,
+                    .is_comptime = decl->is_comptime,
+                });
         }
 
         case n_int: {
             NklType const type = (args->type && args->type->tclass == NklType_Numeric)
                                      ? args->type
                                      : nkl_type_getNumeric(ctx->nkl, Int64);
-            *node_ext = (AstNodeExt){
-                .type = type,
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = type,
+                    .is_comptime = true,
+                });
         }
 
         case n_nullptr: {
@@ -439,82 +443,88 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                 (args->type && args->type->tclass == NklType_Pointer)
                     ? args->type
                     : nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            *node_ext = (AstNodeExt){
-                .type = type,
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = type,
+                    .is_comptime = true,
+                });
         }
 
         case n_list: {
+            AstNodeExt nodex;
             if (node->arity) {
                 for (u32 i = 0; i < node->arity; i++) {
                     NklAstNode const *child_n = nextNode(&it);
 
-                    TRY(typecheck(ctx, child_n, &(TypecheckArgs){0}));
+                    AstNodeExt const *child_nodex;
+                    TRY(child_nodex = typecheck(ctx, child_n, &(TypecheckArgs){0}));
 
-                    AstNodeExt const *child_n_ext = nodeExt(ctx, child_n);
-                    *node_ext = *child_n_ext;
+                    nodex = *child_nodex;
                 }
             } else {
-                *node_ext = (AstNodeExt){
+                nodex = (AstNodeExt){
                     .type = nkl_type_getVoid(ctx->nkl),
                     .is_comptime = true,
                 };
             }
-            return true;
+            return setNodeExt(ctx, node, &nodex);
         }
 
         case n_assign: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
 
-            TRY(typecheckLvalue(ctx, lhs_n));
-            AstNodeExt const *lhs_n_ext = nodeExt(ctx, lhs_n);
+            AstNodeExt const *lhs_n_ext;
+            TRY(lhs_n_ext = typecheckLvalue(ctx, lhs_n));
 
             TRY(typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_n_ext->type}));
 
-            *node_ext = (AstNodeExt){
-                .type = lhs_n_ext->type,
-                .is_comptime = false,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = lhs_n_ext->type,
+                    .is_comptime = false,
+                });
         }
 
         case n_call: {
             NklAstNode const *proc_n = nextNode(&it);
             NklAstNode const *args_n = nextNode(&it);
 
-            TRY(typecheck(ctx, proc_n, &(TypecheckArgs){.tclass = NklType_Procedure}));
+            AstNodeExt const *proc_nodex;
+            TRY(proc_nodex = typecheck(ctx, proc_n, &(TypecheckArgs){.tclass = NklType_Procedure}));
 
-            AstNodeExt const *proc_node_ext = nodeExt(ctx, proc_n);
-
-            if (proc_node_ext->type->tclass != NklType_Procedure) {
+            if (proc_nodex->type->tclass != NklType_Procedure) {
                 reportError(ctx, proc_n, "proc expected");
-                return false;
+                return NULL;
             }
 
             AstNodeIterator args_it = nodeIterate(ctx->src.nodes, args_n);
 
-            bool const is_variadic = (proc_node_ext->type->as.proc.flags & NklProc_Variadic);
-            bool const param_count = proc_node_ext->type->as.proc.param_types.size;
+            bool const is_variadic = (proc_nodex->type->as.proc.flags & NklProc_Variadic);
+            bool const param_count = proc_nodex->type->as.proc.param_types.size;
 
             if ((!is_variadic && args_n->arity != param_count) || (is_variadic && args_n->arity < param_count)) {
                 reportError(ctx, proc_n, "invalid number of arguments");
-                return false;
+                return NULL;
             }
 
             for (u32 i = 0; i < args_n->arity; i++) {
                 NklAstNode const *arg_n = nextNode(&args_it);
-                NklType const arg_t = i < param_count ? proc_node_ext->type->as.proc.param_types.data[i] : NULL;
+                NklType const arg_t = i < param_count ? proc_nodex->type->as.proc.param_types.data[i] : NULL;
                 TRY(typecheck(ctx, arg_n, &(TypecheckArgs){.type = arg_t}));
             }
 
-            *node_ext = (AstNodeExt){
-                .type = proc_node_ext->type->as.proc.ret_t,
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = proc_nodex->type->as.proc.ret_t,
+                    .is_comptime = true,
+                });
         }
 
         case n_def: {
@@ -524,27 +534,28 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             NklAstNode const *name_n = is_pub ? nextNode(&it) : pub_or_name_n;
             NklAstNode const *value_n = nextNode(&it);
 
-            TRY(typecheckComptimeConst(ctx, value_n, &(TypecheckArgs){0}));
+            AstNodeExt const *value_nodex;
+            TRY(value_nodex = typecheckComptimeConst(ctx, value_n, &(TypecheckArgs){0}));
 
-            AstNodeExt const *value_node_ext = nodeExt(ctx, value_n);
-
-            nk_assert(value_node_ext->entity && "TODO: Is is_comptime == entity?");
+            nk_assert(value_nodex->entity && "TODO: Is is_comptime == entity?");
             DeclMap_insert(
                 &ctx->scope_stack->names,
                 parseId(ctx, name_n),
                 (Decl){
-                    .entity = value_node_ext->entity,
-                    .type = value_node_ext->type,
+                    .entity = value_nodex->entity,
+                    .type = value_nodex->type,
                     .kind = Decl_Entity,
                     .is_pub = is_pub,
                     .is_comptime = true,
                 });
 
-            *node_ext = (AstNodeExt){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
         }
 
         case n_extern: {
@@ -610,14 +621,16 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                     }));
             } else {
                 reportError(ctx, node, "TODO: Only proc extern is implemented");
-                return false;
+                return NULL;
             }
 
-            *node_ext = (AstNodeExt){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
         }
 
         case n_proc: {
@@ -646,12 +659,14 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                 .kind = Entity_Proc,
             };
 
-            *node_ext = (AstNodeExt){
-                .entity = proc,
-                .type = proc_t,
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .entity = proc,
+                    .type = proc_t,
+                    .is_comptime = true,
+                });
         }
 
         case n_return: {
@@ -661,11 +676,13 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                 TRY(typecheck(ctx, arg_n, &(TypecheckArgs){.type = ctx->proc_t->as.proc.ret_t}));
             }
 
-            *node_ext = (AstNodeExt){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
         }
 
         case n_var: {
@@ -673,20 +690,22 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
             NklAstNode const *type_n = nextNode(&it);
             NklAstNode const *val_n = node->arity > 2 ? nextNode(&it) : NULL;
 
+            nk_assert(type_n->id || val_n);
+
             NkAtom const name = parseId(ctx, name_n);
 
             NklType type = NULL;
             if (type_n->id) {
-                TRY(parseType(ctx, type_n, &type));
+                TRY(type = parseType(ctx, type_n));
             }
 
+            AstNodeExt const *val_nodex = NULL;
             if (val_n) {
-                TRY(typecheck(ctx, val_n, &(TypecheckArgs){.type = type}));
+                TRY(val_nodex = typecheck(ctx, val_n, &(TypecheckArgs){.type = type}));
             }
 
             if (!type) {
-                AstNodeExt const *val_node_ext = nodeExt(ctx, val_n);
-                type = val_node_ext->type;
+                type = val_nodex->type;
             }
 
             DeclMap_insert(
@@ -700,21 +719,23 @@ static bool typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs con
                     .is_comptime = false,
                 });
 
-            *node_ext = (AstNodeExt){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .is_comptime = true,
-            };
-            return true;
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
         }
 
         default: {
             reportError(ctx, node, "unknown AST node `%s`", nk_atom2cs(node->id));
-            return false;
+            return NULL;
         }
     }
 
     nk_assert(!"unreachable");
-    return false;
+    return NULL;
 }
 
 static void emit(CompileCtx *ctx, NkIrInstr instr) {
@@ -897,9 +918,9 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
 
-    AstNodeExt const *node_ext = nodeExt(ctx, node);
+    // AstNodeExt const *nodex = getNodeExt(ctx, node);
 
-    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+    // AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     switch (node->id) {
         case n_id: {
@@ -928,7 +949,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
 
-    AstNodeExt const *node_ext = nodeExt(ctx, node);
+    AstNodeExt const *nodex = getNodeExt(ctx, node);
 
     AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
@@ -945,8 +966,8 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         case n_string:
         case n_escaped_string: {
             return (Interm){
-                .ref = nkir_makeRefGlobal(node_ext->sym, &node_ext->type->ir_type),
-                .type = node_ext->type,
+                .ref = nkir_makeRefGlobal(nodex->sym, &nodex->type->ir_type),
+                .type = nodex->type,
                 .kind = Interm_Ref,
             };
         }
@@ -962,19 +983,19 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_int: {
             NkIrImm imm = {0};
-            nk_assert(node_ext->type->tclass == NklType_Numeric);
-            parseNumber(ctx, &imm, node, node_ext->type->as.num.value_type);
+            nk_assert(nodex->type->tclass == NklType_Numeric);
+            parseNumber(ctx, &imm, node, nodex->type->as.num.value_type);
             return (Interm){
-                .ref = nkir_makeRefImm(imm, &node_ext->type->ir_type),
-                .type = node_ext->type,
+                .ref = nkir_makeRefImm(imm, &nodex->type->ir_type),
+                .type = nodex->type,
                 .kind = Interm_Ref,
             };
         }
 
         case n_nullptr: {
             return (Interm){
-                .ref = nkir_makeRefImm((NkIrImm){.u64 = 0}, &node_ext->type->ir_type),
-                .type = node_ext->type,
+                .ref = nkir_makeRefImm((NkIrImm){.u64 = 0}, &nodex->type->ir_type),
+                .type = nodex->type,
                 .kind = Interm_Ref,
             };
         }
@@ -1018,7 +1039,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             return (Interm){
                 .instr = nkir_make_call(
-                    (NkIrRef){0}, // nkir_makeRefNull(&node_ext->type->ir_type), // TODO: Do we create null ref here?
+                    (NkIrRef){0}, // nkir_makeRefNull(&nodex->type->ir_type), // TODO: Do we create null ref here?
                     toRef(ctx, proc),
                     (NkIrRefArray){NKS_INIT(args)}),
                 .type = proc.type->as.proc.ret_t,
