@@ -13,6 +13,8 @@ X(int)
 X(list)
 X(string)
 
+X(add)
+
 X(assign)
 X(call)
 X(const)

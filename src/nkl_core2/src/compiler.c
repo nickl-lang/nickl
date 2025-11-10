@@ -22,11 +22,11 @@
 
 NK_LOG_USE_SCOPE(compiler);
 
-#define TRY(EXPR)         \
-    do {                  \
-        if (!(EXPR)) {    \
-            return false; \
-        }                 \
+#define TRY(EXPR)      \
+    do {               \
+        if (!(EXPR)) { \
+            return 0;  \
+        }              \
     } while (0)
 
 typedef enum {
@@ -472,20 +472,45 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             return setNodeExt(ctx, node, &nodex);
         }
 
-        case n_assign: {
+        case n_add: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
 
-            AstNodeExt const *lhs_n_ext;
-            TRY(lhs_n_ext = typecheckLvalue(ctx, lhs_n));
+            AstNodeExt const *lhs_nodex;
+            AstNodeExt const *rhs_nodex;
 
-            TRY(typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_n_ext->type}));
+            TRY(lhs_nodex = typecheck(ctx, lhs_n, &(TypecheckArgs){0}));
+
+            if (lhs_nodex->type->tclass != NklType_Numeric) {
+                reportError(ctx, lhs_n, "number expected");
+                return NULL;
+            }
+
+            TRY(rhs_nodex = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_nodex->type}));
 
             return setNodeExt(
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = lhs_n_ext->type,
+                    .type = lhs_nodex->type,
+                    .is_comptime = lhs_nodex->is_comptime && rhs_nodex->is_comptime,
+                });
+        }
+
+        case n_assign: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *rhs_n = nextNode(&it);
+
+            AstNodeExt const *lhs_nodex;
+            TRY(lhs_nodex = typecheckLvalue(ctx, lhs_n));
+
+            TRY(typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_nodex->type}));
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = lhs_nodex->type,
                     .is_comptime = false,
                 });
         }
@@ -1007,6 +1032,20 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 res = compile(ctx, nextNode(&it));
             }
             return res;
+        }
+
+        case n_add: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *rhs_n = nextNode(&it);
+
+            Interm const lhs = compile(ctx, lhs_n);
+            Interm const rhs = compile(ctx, rhs_n);
+
+            return (Interm){
+                .instr = nkir_make_add((NkIrRef){0}, toRef(ctx, lhs), toRef(ctx, rhs)),
+                .type = nodex->type,
+                .kind = Interm_Instr,
+            };
         }
 
         case n_assign: {
