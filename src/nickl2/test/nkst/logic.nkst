@@ -1,0 +1,69 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def getFalse (proc getFalse [] (bool) [
+    (call printf [" getFalse"])
+    (return (false))
+]))
+
+(def getTrue (proc getTrue [] (bool) [
+    (call printf [" getTrue"])
+    (return (true))
+]))
+
+(def sayHello (proc sayHello [] (bool) [
+    (call printf [" hello"])
+    (return (true))
+]))
+
+(call printf ["and full:"])
+(and (call getTrue []) (call sayHello []))
+(call printf ["\n"])
+
+(call printf ["and short:"])
+(and (call getFalse []) (call sayHello []))
+(call printf ["\n"])
+
+(call printf ["or full:"])
+(or (call getFalse []) (call sayHello []))
+(call printf ["\n"])
+
+(call printf ["or short:"])
+(or (call getTrue []) (call sayHello []))
+(call printf ["\n"])
+
+(call printf ["\n"])
+
+(call printf ["and not:"])
+(and (not (call getTrue [])) (call sayHello []))
+(call printf ["\n"])
+
+(call printf ["and not:"])
+(and (not (call getFalse [])) (call sayHello []))
+(call printf ["\n"])
+
+(call printf ["\n"])
+
+(call printf ["if and:"])
+(if (and (call getTrue []) (call getTrue [])) [
+    (call printf [" YES"])
+])
+(call printf ["\n"])
+
+// (call printf ["if and:"])
+// (if (and (call getTrue []) (call getFalse [])) [
+//     (call printf [" NO"])
+// ])
+// (call printf ["\n"])
+
+/* @output
+and full: getTrue hello
+and short: getFalse
+or full: getFalse hello
+or short: getTrue
+
+and not: getTrue
+and not: getFalse hello
+
+if and: getTrue getTrue YES
+
+@endoutput */

@@ -139,13 +139,15 @@ typedef struct {
 
     Scope *scope_stack;
 
-    EntityPtrDynArray procs_to_compile;
+    EntityPtrDynArray procs_to_compile; // TODO: This must be a set
 
     u32 next_local_idx;
     u32 next_label_else;
     u32 next_label_endif;
     u32 next_label_loop;
     u32 next_label_endloop;
+    u32 next_label_short;
+    u32 next_label_join;
 } CompileCtx;
 
 static NkAtom getNextLocal(CompileCtx *ctx) {
@@ -166,6 +168,14 @@ static NkAtom getNextLabelLoop(CompileCtx *ctx) {
 
 static NkAtom getNextLabelEndloop(CompileCtx *ctx) {
     return nk_s2atom(nk_tsprintf(ctx->scratch, "endloop%u", ctx->next_label_endloop++));
+}
+
+static NkAtom getNextLabelShort(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "short%u", ctx->next_label_short++));
+}
+
+static NkAtom getNextLabelJoin(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "join%u", ctx->next_label_join++));
 }
 
 static NklToken const *getToken(CompileCtx *ctx, NklAstNode const *node) {
@@ -284,6 +294,10 @@ static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
 
     else if (node->id == n_void) {
         return nkl_type_getVoid(ctx->nkl);
+    }
+
+    else if (node->id == n_bool_type) {
+        return nkl_type_getBool(ctx->nkl);
     }
 
     reportError(ctx, node, "TODO: parseType is not finished");
@@ -546,6 +560,41 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 &(AstNodeExt){
                     .type = (node->id >= n_lt && node->id <= n_ne) ? nkl_type_getBool(ctx->nkl) : lhs_nodex->type,
                     .is_comptime = lhs_nodex->is_comptime && rhs_nodex->is_comptime,
+                });
+        }
+
+        case n_and:
+        case n_or: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *rhs_n = nextNode(&it);
+
+            AstNodeExt const *lhs_nodex;
+            AstNodeExt const *rhs_nodex;
+
+            TRY(lhs_nodex = typecheck(ctx, lhs_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+            TRY(rhs_nodex = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getBool(ctx->nkl),
+                    .is_comptime = lhs_nodex->is_comptime && rhs_nodex->is_comptime,
+                });
+        }
+
+        case n_not: {
+            NklAstNode const *arg_n = nextNode(&it);
+
+            AstNodeExt const *arg_nodex;
+            TRY(arg_nodex = typecheck(ctx, arg_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getBool(ctx->nkl),
+                    .is_comptime = arg_nodex->is_comptime,
                 });
         }
 
@@ -978,6 +1027,8 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
     return (Interm){0};
 }
 
+static Interm compile(CompileCtx *ctx, NklAstNode const *node);
+
 static void parseNumber(CompileCtx *ctx, void *addr, NkString str, NkIrNumericValueType value_type) {
     char const *cstr = nk_tprintf(ctx->scratch, NKS_FMT, NKS_ARG(str));
 
@@ -1036,22 +1087,42 @@ static void parseNumber(CompileCtx *ctx, void *addr, NkString str, NkIrNumericVa
     nk_assert(endptr == cstr + str.size && "failed to parse numeric constant");
 }
 
-static Interm compileStore(CompileCtx *ctx, Interm dst, Interm src) {
+// static Interm compileRegisterStore(CompileCtx *ctx, Interm dst, Interm src) {
+//     NklType const dst_t = dst.type;
+//     NklType const src_t = dst.type;
+//     if (src_t->size) {
+//         if (src.kind == Interm_Instr &&
+//             (src.instr.arg[0].ref.kind == NkIrRef_None || src.instr.arg[0].ref.kind == NkIrRef_Null)) {
+//             src.instr.arg[0].ref = toRef(ctx, dst);
+//         } else {
+//             src = (Interm){
+//                 .instr = nkir_make_mov(toRef(ctx, dst), toRef(ctx, src)),
+//                 .type = dst_t,
+//                 .kind = Interm_Instr,
+//             };
+//         }
+//     }
+//     // TODO: Can we defer materializing this interm?
+//     return (Interm){
+//         .ref = toRef(ctx, src),
+//         .type = dst_t,
+//         .kind = Interm_Ref,
+//     };
+// }
+
+static Interm compileMemoryStore(CompileCtx *ctx, Interm dst, Interm src) {
     NklType const dst_t = dst.type;
     NklType const src_t = dst.type;
     if (src_t->size) {
         // TODO: Check if we can generate better IR by substituting src.instr.arg[0]
-        src = (Interm){
+        return (Interm){
             .instr = nkir_make_store(toRef(ctx, dst), toRef(ctx, src)),
             .type = dst_t,
             .kind = Interm_Instr,
         };
+    } else {
+        return src;
     }
-    return (Interm){
-        .ref = toRef(ctx, src),
-        .type = dst_t,
-        .kind = Interm_Ref,
-    };
 }
 
 static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
@@ -1107,6 +1178,113 @@ static NklType promote(CompileCtx *ctx, NklType type) {
         }
 
     return type;
+}
+
+static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert);
+
+static Interm compileLogicExpr(
+    CompileCtx *ctx,
+    NkAtom op,
+    NklAstNode const *lhs_n,
+    NklAstNode const *rhs_n,
+    bool invert) {
+    nk_assert(op == n_and || op == n_or);
+
+#ifdef ENABLE_LOGGING
+    emit(
+        ctx,
+        nkir_make_comment(
+            nk_tsprintf(&ctx->nkl->arena, "begin %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1)));
+#endif // ENABLE_LOGGING
+
+    NkIrLabel const short_l = nkir_makeLabelAbs(getNextLabelShort(ctx));
+    NkIrLabel const join_l = nkir_makeLabelAbs(getNextLabelJoin(ctx));
+
+    NklType const void_ptr_t =
+        nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+
+    Interm const res = (Interm){
+        .ref = nkir_makeRefLocal(getNextLocal(ctx), &void_ptr_t->ir_type),
+        .type = nkl_type_getBool(ctx->nkl),
+        .kind = Interm_Ref,
+    };
+
+    emit(ctx, nkir_make_alloc(toRef(ctx, res), &nkl_type_getBool(ctx->nkl)->ir_type));
+    Interm const lhs = (Interm){
+        .ref = toRef(ctx, compileLogic(ctx, lhs_n, invert)),
+        .type = nkl_type_getBool(ctx->nkl),
+        .kind = Interm_Ref,
+    };
+    if (op == n_and) {
+        emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
+    } else {
+        emit(ctx, nkir_make_jmpnz(toRef(ctx, lhs), short_l));
+    }
+    Interm const rhs = compileLogic(ctx, rhs_n, invert);
+    discard(ctx, compileMemoryStore(ctx, res, rhs));
+    emit(ctx, nkir_make_jmp(join_l));
+
+    emit(ctx, nkir_make_label(short_l.name));
+    discard(ctx, compileMemoryStore(ctx, res, lhs));
+    emit(ctx, nkir_make_jmp(join_l));
+
+    emit(ctx, nkir_make_label(join_l.name));
+
+#ifdef ENABLE_LOGGING
+    emit(
+        ctx,
+        nkir_make_comment(
+            nk_tsprintf(&ctx->nkl->arena, "end %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1)));
+#endif // ENABLE_LOGGING
+
+    // TODO: Always returning true, because we need to figure on-demand loads
+    return (Interm){
+        .ref = nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type),
+        .type = nkl_type_getBool(ctx->nkl),
+        .kind = Interm_Instr,
+    };
+    // return (Interm){
+    //     .instr = nkir_make_load((NkIrRef){0}, toRef(ctx, res)),
+    //     .type = nkl_type_getBool(ctx->nkl),
+    //     .kind = Interm_Instr,
+    // };
+}
+
+static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert) {
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+
+    NklAstNode const *lhs_n = nextNode(&it);
+    NklAstNode const *rhs_n = nextNode(&it);
+
+    switch (node->id) {
+        case n_and:
+            return compileLogicExpr(ctx, invert ? n_or : n_and, lhs_n, rhs_n, invert);
+
+        case n_or:
+            return compileLogicExpr(ctx, invert ? n_and : n_or, lhs_n, rhs_n, invert);
+
+        case n_not:
+            return compileLogic(ctx, lhs_n, !invert);
+
+        default: {
+            Interm const res = compile(ctx, node);
+            if (invert) {
+                return (Interm){
+                    .instr = nkir_make_xor(
+                        (NkIrRef){0},
+                        nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type),
+                        toRef(ctx, res)),
+                    .type = nkl_type_getBool(ctx->nkl),
+                    .kind = Interm_Instr,
+                };
+            } else {
+                return res;
+            }
+        }
+    }
+
+    nk_assert(!"unreachable");
+    return (Interm){0};
 }
 
 static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
@@ -1230,6 +1408,12 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
 #undef BINOP
 
+        case n_and:
+        case n_or:
+        case n_not: {
+            return compileLogic(ctx, node, false);
+        }
+
         case n_cast: {
             nextNode(&it); // type
             NklAstNode const *val_n = nextNode(&it);
@@ -1254,7 +1438,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             Interm const lhs = compileLvalue(ctx, lhs_n);
             Interm const rhs = compile(ctx, rhs_n);
 
-            return compileStore(ctx, lhs, rhs);
+            return compileMemoryStore(ctx, lhs, rhs);
         }
 
         case n_call: {
@@ -1306,24 +1490,24 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NklAstNode const *body_n = nextNode(&it);
             NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
 
-            NkAtom const endif_l = getNextLabelEndif(ctx);
-            NkAtom const else_l = else_n ? getNextLabelElse(ctx) : endif_l;
+            NkIrLabel const endif_l = nkir_makeLabelAbs(getNextLabelEndif(ctx));
+            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextLabelElse(ctx)) : endif_l;
 
             Interm const cond = compile(ctx, cond_n);
 
-            emit(ctx, nkir_make_jmpz(toRef(ctx, cond), nkir_makeLabelAbs(else_l)));
+            emit(ctx, nkir_make_jmpz(toRef(ctx, cond), else_l));
 
             discard(ctx, compile(ctx, body_n));
 
             if (else_n) {
-                emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(endif_l)));
-                emit(ctx, nkir_make_label(else_l));
+                emit(ctx, nkir_make_jmp(endif_l));
+                emit(ctx, nkir_make_label(else_l.name));
 
                 discard(ctx, compile(ctx, else_n));
             }
 
-            emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(endif_l)));
-            emit(ctx, nkir_make_label(endif_l));
+            emit(ctx, nkir_make_jmp(endif_l));
+            emit(ctx, nkir_make_label(endif_l.name));
 
 #ifdef ENABLE_LOGGING
             emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "end if (node %u)", node_idx)));
@@ -1386,20 +1570,20 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NklAstNode const *cond_n = nextNode(&it);
             NklAstNode const *body_n = nextNode(&it);
 
-            NkAtom const loop_l = getNextLabelLoop(ctx);
-            NkAtom const endloop_l = getNextLabelEndloop(ctx);
+            NkIrLabel const loop_l = nkir_makeLabelAbs(getNextLabelLoop(ctx));
+            NkIrLabel const endloop_l = nkir_makeLabelAbs(getNextLabelEndloop(ctx));
 
-            emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(loop_l)));
-            emit(ctx, nkir_make_label(loop_l));
+            emit(ctx, nkir_make_jmp(loop_l));
+            emit(ctx, nkir_make_label(loop_l.name));
 
             Interm const cond = compile(ctx, cond_n);
 
-            emit(ctx, nkir_make_jmpz(toRef(ctx, cond), nkir_makeLabelAbs(endloop_l)));
+            emit(ctx, nkir_make_jmpz(toRef(ctx, cond), endloop_l));
 
             discard(ctx, compile(ctx, body_n));
 
-            emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(loop_l)));
-            emit(ctx, nkir_make_label(endloop_l));
+            emit(ctx, nkir_make_jmp(loop_l));
+            emit(ctx, nkir_make_label(endloop_l.name));
 
 #ifdef ENABLE_LOGGING
             emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "end while (node %u)", node_idx)));

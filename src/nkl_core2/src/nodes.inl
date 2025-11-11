@@ -32,6 +32,10 @@ X(ge)
 X(eq)
 X(ne)
 
+X(and)
+X(or)
+X(not)
+
 X(cast)
 
 X(assign)
@@ -53,7 +57,7 @@ XN(true_lit, "true")
 X(nullptr)
 
 X(void)
-X(bool)
+XN(bool_type, "bool")
 
 X(i8)
 X(i16)
