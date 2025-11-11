@@ -133,7 +133,6 @@ typedef struct {
 
     NklType proc_t;
     NkIrInstrDynArray *instrs;
-    u32 next_local_idx;
 
     NklSource src;
     AstNodeExtArray nodes_ext;
@@ -141,10 +140,22 @@ typedef struct {
     Scope *scope_stack;
 
     EntityPtrDynArray procs_to_compile;
+
+    u32 next_local_idx;
+    u32 next_label_else;
+    u32 next_label_endif;
 } CompileCtx;
 
 static NkAtom getNextLocal(CompileCtx *ctx) {
     return nk_s2atom(nk_tsprintf(ctx->scratch, "_%u", ctx->next_local_idx++));
+}
+
+static NkAtom getNextLabelElse(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "else%u", ctx->next_label_else++));
+}
+
+static NkAtom getNextLabelEndif(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "endif%u", ctx->next_label_endif++));
 }
 
 static NklToken const *getToken(CompileCtx *ctx, NklAstNode const *node) {
@@ -443,6 +454,17 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 });
         }
 
+        case n_true_lit:
+        case n_false_lit: {
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getBool(ctx->nkl),
+                    .is_comptime = true,
+                });
+        }
+
         case n_nullptr: {
             NklType const type =
                 (args->type && args->type->tclass == NklType_Pointer)
@@ -682,6 +704,29 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             } else {
                 reportError(ctx, node, "TODO: Only proc extern is implemented");
                 return NULL;
+            }
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
+        }
+
+        case n_if: {
+            NklAstNode const *cond_n = nextNode(&it);
+            NklAstNode const *body_n = nextNode(&it);
+            NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
+
+            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+
+            // TODO: Skip typechecking branches if cond is comptime
+
+            TRY(typecheck(ctx, body_n, &(TypecheckArgs){0}));
+            if (else_n) {
+                TRY(typecheck(ctx, else_n, &(TypecheckArgs){0}));
             }
 
             return setNodeExt(
@@ -1081,6 +1126,22 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             };
         }
 
+        case n_true_lit: {
+            return (Interm){
+                .ref = nkir_makeRefImm((NkIrImm){.u8 = 1}, &nodex->type->ir_type),
+                .type = nodex->type,
+                .kind = Interm_Ref,
+            };
+        }
+
+        case n_false_lit: {
+            return (Interm){
+                .ref = nkir_makeRefImm((NkIrImm){.u8 = 0}, &nodex->type->ir_type),
+                .type = nodex->type,
+                .kind = Interm_Ref,
+            };
+        }
+
         case n_nullptr: {
             return (Interm){
                 .ref = nkir_makeRefImm((NkIrImm){.u64 = 0}, &nodex->type->ir_type),
@@ -1191,6 +1252,44 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                     nkir_makeRefNull(&nodex->type->ir_type), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
                 .type = proc.type->as.proc.ret_t,
                 .kind = Interm_Instr,
+            };
+        }
+
+        case n_if: {
+#ifdef ENABLE_LOGGING
+            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "begin if (node %u)", node_idx)));
+#endif // ENABLE_LOGGING
+
+            NklAstNode const *cond_n = nextNode(&it);
+            NklAstNode const *body_n = nextNode(&it);
+            NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
+
+            NkAtom const endif_l = getNextLabelEndif(ctx);
+            NkAtom const else_l = else_n ? getNextLabelElse(ctx) : endif_l;
+
+            Interm const cond = compile(ctx, cond_n);
+
+            emit(ctx, nkir_make_jmpz(toRef(ctx, cond), nkir_makeLabelAbs(else_l)));
+
+            discard(ctx, compile(ctx, body_n));
+
+            if (else_n) {
+                emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(endif_l)));
+                emit(ctx, nkir_make_label(else_l));
+
+                discard(ctx, compile(ctx, else_n));
+            }
+
+            emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(endif_l)));
+            emit(ctx, nkir_make_label(endif_l));
+
+#ifdef ENABLE_LOGGING
+            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "end if (node %u)", node_idx)));
+#endif // ENABLE_LOGGING
+
+            return (Interm){
+                .type = nkl_type_getVoid(ctx->nkl),
+                .kind = Interm_Void,
             };
         }
 
