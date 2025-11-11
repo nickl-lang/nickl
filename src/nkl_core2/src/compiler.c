@@ -143,6 +143,10 @@ typedef struct {
     EntityPtrDynArray procs_to_compile;
 } CompileCtx;
 
+static NkAtom getNextLocal(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "_%u", ctx->next_local_idx++));
+}
+
 static NklToken const *getToken(CompileCtx *ctx, NklAstNode const *node) {
     return &ctx->src.tokens.data[node->token_idx];
 }
@@ -799,8 +803,18 @@ typedef struct {
     IntermKind kind;
 } Interm;
 
-static NkAtom getNextLocal(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "_%u", ctx->next_local_idx++));
+static void discard(CompileCtx *ctx, Interm interm) {
+    switch (interm.kind) {
+        case Interm_Void:
+        case Interm_Ref:
+            return;
+
+        case Interm_Instr:
+            emit(ctx, interm.instr);
+            return;
+    };
+
+    nk_assert(!"unreachable");
 }
 
 static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
@@ -819,7 +833,7 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
             } else {
                 nk_assert(instr.arg[0].kind == NkIrArg_Ref);
                 NkIrRef *dst = &instr.arg[0].ref;
-                if (dst->kind == NkIrRef_None && interm.type->size) {
+                if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
                     *dst = nkir_makeRefLocal(getNextLocal(ctx), &interm.type->ir_type);
                 }
                 emit(ctx, instr);
@@ -1039,7 +1053,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         case n_list: {
             Interm res = {0};
             for (u32 i = 0; i < node->arity; i++) {
-                toRef(ctx, res);
+                discard(ctx, res);
                 res = compile(ctx, nextNode(&it));
             }
             return res;
@@ -1104,9 +1118,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             return (Interm){
                 .instr = nkir_make_call(
-                    (NkIrRef){0}, // nkir_makeRefNull(&nodex->type->ir_type), // TODO: Do we create null ref here?
-                    toRef(ctx, proc),
-                    (NkIrRefArray){NKS_INIT(args)}),
+                    nkir_makeRefNull(&nodex->type->ir_type), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
                 .type = proc.type->as.proc.ret_t,
                 .kind = Interm_Instr,
             };
@@ -1177,7 +1189,7 @@ static bool compileProc(NklModule mod, NklSource const *src, Entity *proc);
 
 static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
     TRY(typecheck(ctx, proc->proc.node, &(TypecheckArgs){0}));
-    toRef(ctx, compile(ctx, proc->proc.node));
+    discard(ctx, compile(ctx, proc->proc.node));
 
     if (!proc->proc.ir.size || NKS_LAST(proc->proc.ir).code != NkIrOp_ret) {
         if (proc->type->as.proc.ret_t->tclass != NklType_Void) {
