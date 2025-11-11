@@ -144,6 +144,8 @@ typedef struct {
     u32 next_local_idx;
     u32 next_label_else;
     u32 next_label_endif;
+    u32 next_label_loop;
+    u32 next_label_endloop;
 } CompileCtx;
 
 static NkAtom getNextLocal(CompileCtx *ctx) {
@@ -156,6 +158,14 @@ static NkAtom getNextLabelElse(CompileCtx *ctx) {
 
 static NkAtom getNextLabelEndif(CompileCtx *ctx) {
     return nk_s2atom(nk_tsprintf(ctx->scratch, "endif%u", ctx->next_label_endif++));
+}
+
+static NkAtom getNextLabelLoop(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "loop%u", ctx->next_label_loop++));
+}
+
+static NkAtom getNextLabelEndloop(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "endloop%u", ctx->next_label_endloop++));
 }
 
 static NklToken const *getToken(CompileCtx *ctx, NklAstNode const *node) {
@@ -508,7 +518,13 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
         case n_rsh:
         case n_xor:
         case n_bitor:
-        case n_bitand: {
+        case n_bitand:
+        case n_lt:
+        case n_gt:
+        case n_le:
+        case n_ge:
+        case n_eq:
+        case n_ne: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
 
@@ -528,7 +544,7 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = lhs_nodex->type,
+                    .type = (node->id >= n_lt && node->id <= n_ne) ? nkl_type_getBool(ctx->nkl) : lhs_nodex->type,
                     .is_comptime = lhs_nodex->is_comptime && rhs_nodex->is_comptime,
                 });
         }
@@ -823,6 +839,25 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                     .is_pub = false,
                     .is_comptime = false,
                 });
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = nkl_type_getVoid(ctx->nkl),
+                    .is_comptime = true,
+                });
+        }
+
+        case n_while: {
+            NklAstNode const *cond_n = nextNode(&it);
+            NklAstNode const *body_n = nextNode(&it);
+
+            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+
+            // TODO: Skip typechecking branches if cond is comptime
+
+            TRY(typecheck(ctx, body_n, &(TypecheckArgs){0}));
 
             return setNodeExt(
                 ctx,
@@ -1186,6 +1221,13 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             BINOP(bitor, or)
             BINOP(bitand, and)
 
+            BINOP(lt, cmp_lt)
+            BINOP(gt, cmp_gt)
+            BINOP(le, cmp_le)
+            BINOP(ge, cmp_ge)
+            BINOP(eq, cmp_eq)
+            BINOP(ne, cmp_ne)
+
 #undef BINOP
 
         case n_cast: {
@@ -1329,6 +1371,39 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 emit(ctx, nkir_make_store(var, toRef(ctx, val)));
             }
             // TODO: Zero init
+
+            return (Interm){
+                .type = nkl_type_getVoid(ctx->nkl),
+                .kind = Interm_Void,
+            };
+        }
+
+        case n_while: {
+#ifdef ENABLE_LOGGING
+            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "begin while (node %u)", node_idx)));
+#endif // ENABLE_LOGGING
+
+            NklAstNode const *cond_n = nextNode(&it);
+            NklAstNode const *body_n = nextNode(&it);
+
+            NkAtom const loop_l = getNextLabelLoop(ctx);
+            NkAtom const endloop_l = getNextLabelEndloop(ctx);
+
+            emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(loop_l)));
+            emit(ctx, nkir_make_label(loop_l));
+
+            Interm const cond = compile(ctx, cond_n);
+
+            emit(ctx, nkir_make_jmpz(toRef(ctx, cond), nkir_makeLabelAbs(endloop_l)));
+
+            discard(ctx, compile(ctx, body_n));
+
+            emit(ctx, nkir_make_jmp(nkir_makeLabelAbs(loop_l)));
+            emit(ctx, nkir_make_label(endloop_l));
+
+#ifdef ENABLE_LOGGING
+            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "end while (node %u)", node_idx)));
+#endif // ENABLE_LOGGING
 
             return (Interm){
                 .type = nkl_type_getVoid(ctx->nkl),

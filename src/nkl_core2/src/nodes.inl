@@ -25,6 +25,13 @@ X(xor)
 X(bitor)
 X(bitand)
 
+X(lt)
+X(gt)
+X(le)
+X(ge)
+X(eq)
+X(ne)
+
 X(cast)
 
 X(assign)
@@ -39,6 +46,7 @@ X(ptr)
 X(pub)
 X(return)
 X(var)
+X(while)
 
 XN(false_lit, "false")
 XN(true_lit, "true")
