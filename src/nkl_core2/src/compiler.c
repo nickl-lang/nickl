@@ -826,19 +826,12 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
             return interm.ref;
 
         case Interm_Instr: {
-            NkIrInstr instr = interm.instr;
-            if (instr.arg->kind == NkIrArg_None) {
-                emit(ctx, instr);
-                return (NkIrRef){0};
-            } else {
-                nk_assert(instr.arg[0].kind == NkIrArg_Ref);
-                NkIrRef *dst = &instr.arg[0].ref;
-                if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
-                    *dst = nkir_makeRefLocal(getNextLocal(ctx), &interm.type->ir_type);
-                }
-                emit(ctx, instr);
-                return *dst;
+            NkIrRef *dst = &interm.instr.arg[0].ref;
+            if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
+                *dst = nkir_makeRefLocal(getNextLocal(ctx), &interm.type->ir_type);
             }
+            emit(ctx, interm.instr);
+            return *dst;
         }
     };
 
