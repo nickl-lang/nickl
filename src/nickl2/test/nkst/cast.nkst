@@ -1,0 +1,24 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(call printf ["%zi\n" (cast (i64) 42  )])
+(call printf ["%zi\n" (cast (i64) 3.14)])
+(call printf ["%g\n"  (cast (f64) 3   )])
+(call printf ["%i\n"  (cast (i8)  -1  )])
+(call printf ["%i\n"  (cast (i8)  127 )])
+(call printf ["%i\n"  (cast (i8)  128 )])
+(call printf ["%u\n"  (cast (u8)  255 )])
+(call printf ["%u\n"  (cast (u8)  256 )])
+(call printf ["%g\n"  (cast (f32) 3.14)])
+
+/* @output
+42
+3
+3
+-1
+127
+-128
+255
+0
+3.14
+
+@endoutput */

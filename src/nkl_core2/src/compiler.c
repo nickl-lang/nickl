@@ -511,6 +511,27 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 });
         }
 
+        case n_cast: {
+            NklAstNode const *type_n = nextNode(&it);
+            NklAstNode const *val_n = nextNode(&it);
+
+            NklType type;
+            TRY(type = parseType(ctx, type_n));
+
+            AstNodeExt const *val_nodex;
+            TRY(val_nodex = typecheck(ctx, val_n, &(TypecheckArgs){0}));
+
+            // TODO: Check cast compatibility
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = type,
+                    .is_comptime = val_nodex->is_comptime,
+                });
+        }
+
         case n_assign: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
@@ -877,11 +898,8 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
     return (Interm){0};
 }
 
-static void parseNumber(CompileCtx *ctx, void *addr, NklAstNode const *node, NkIrNumericValueType value_type) {
-    NklToken const *token = getToken(ctx, node);
-    NkString const token_str = nkl_getTokenStr(token, ctx->src.text);
-
-    char const *cstr = nk_tprintf(ctx->scratch, NKS_FMT, NKS_ARG(token_str));
+static void parseNumber(CompileCtx *ctx, void *addr, NkString str, NkIrNumericValueType value_type) {
+    char const *cstr = nk_tprintf(ctx->scratch, NKS_FMT, NKS_ARG(str));
 
     char *endptr = NULL;
 
@@ -911,7 +929,7 @@ static void parseNumber(CompileCtx *ctx, void *addr, NklAstNode const *node, NkI
             *(u64 *)addr = strtoull(cstr, &endptr, 0);
             break;
         case Float32: {
-            if (nks_startsWith(token_str, nk_cs2s("0x"))) {
+            if (nks_startsWith(str, nk_cs2s("0x"))) {
                 union {
                     f32 f;
                     u32 i;
@@ -923,7 +941,7 @@ static void parseNumber(CompileCtx *ctx, void *addr, NklAstNode const *node, NkI
             break;
         }
         case Float64:
-            if (nks_startsWith(token_str, nk_cs2s("0x"))) {
+            if (nks_startsWith(str, nk_cs2s("0x"))) {
                 union {
                     f64 f;
                     u64 i;
@@ -935,7 +953,7 @@ static void parseNumber(CompileCtx *ctx, void *addr, NklAstNode const *node, NkI
             break;
     }
 
-    nk_assert(endptr == cstr + token_str.size && "failed to parse numeric constant");
+    nk_assert(endptr == cstr + str.size && "failed to parse numeric constant");
 }
 
 static Interm compileStore(CompileCtx *ctx, Interm dst, Interm src) {
@@ -987,6 +1005,30 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
     }
 }
 
+static NklType promote(CompileCtx *ctx, NklType type) {
+    if (type->tclass == NklType_Numeric)
+        switch (type->as.num.value_type) {
+            case Int8:
+            case Int16:
+                type = nkl_type_getNumeric(ctx->nkl, Int32);
+                break;
+
+            case Uint8:
+            case Uint16:
+                type = nkl_type_getNumeric(ctx->nkl, Uint32);
+                break;
+
+            case Float32:
+                type = nkl_type_getNumeric(ctx->nkl, Float64);
+                break;
+
+            default:
+                break;
+        }
+
+    return type;
+}
+
 static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
@@ -1025,9 +1067,13 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_int:
         case n_float: {
-            NkIrImm imm = {0};
             nk_assert(nodex->type->tclass == NklType_Numeric);
-            parseNumber(ctx, &imm, node, nodex->type->as.num.value_type);
+
+            NklToken const *token = getToken(ctx, node);
+            NkString const token_str = nkl_getTokenStr(token, ctx->src.text);
+
+            NkIrImm imm = {0};
+            parseNumber(ctx, &imm, token_str, nodex->type->as.num.value_type);
             return (Interm){
                 .ref = nkir_makeRefImm(imm, &nodex->type->ir_type),
                 .type = nodex->type,
@@ -1081,6 +1127,23 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
 #undef BINOP
 
+        case n_cast: {
+            nextNode(&it); // type
+            NklAstNode const *val_n = nextNode(&it);
+
+            Interm const val = compile(ctx, val_n);
+
+            if (val.type != nodex->type) {
+                return (Interm){
+                    .instr = nkir_make_cast((NkIrRef){0}, toRef(ctx, val)),
+                    .type = nodex->type,
+                    .kind = Interm_Instr,
+                };
+            } else {
+                return val;
+            }
+        }
+
         case n_assign: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
@@ -1105,8 +1168,22 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 if (i == proc.type->as.proc.param_types.size) {
                     nkda_append(&args, nkir_makeVariadicMarker());
                 }
+
                 NklAstNode const *arg_n = nextNode(&args_it);
-                nkda_append(&args, toRef(ctx, compile(ctx, arg_n)));
+                Interm arg = compile(ctx, arg_n);
+
+                if (i >= proc.type->as.proc.param_types.size) {
+                    NklType const arg_t = promote(ctx, arg.type);
+                    if (arg_t != arg.type) {
+                        arg = (Interm){
+                            .instr = nkir_make_cast((NkIrRef){0}, toRef(ctx, arg)),
+                            .type = arg_t,
+                            .kind = Interm_Instr,
+                        };
+                    }
+                }
+
+                nkda_append(&args, toRef(ctx, arg));
             }
 
             return (Interm){

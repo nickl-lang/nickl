@@ -25,6 +25,8 @@ X(xor)
 X(bitor)
 X(bitand)
 
+X(cast)
+
 X(assign)
 X(call)
 X(const)
