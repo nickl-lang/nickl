@@ -19,6 +19,12 @@ X(mul)
 X(div)
 X(mod)
 
+X(lsh)
+X(rsh)
+X(xor)
+X(bitor)
+X(bitand)
+
 X(assign)
 X(call)
 X(const)

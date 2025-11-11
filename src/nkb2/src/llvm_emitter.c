@@ -364,11 +364,10 @@ static void emitLogic(Context *ctx, NkStream out, NkIrInstr const *instr, char c
 
     nk_assert(type->id == ref2->type->id);
     nk_assert(type->kind == NkIrType_Numeric);
-    nk_assert(NKIR_NUMERIC_IS_INT(type->num));
 
     char const *opcode_prefix = "";
 
-    if ((mask & Prefix_Sign) && NKIR_NUMERIC_IS_INT(type->num)) {
+    if ((mask & Prefix_Sign)) {
         if (NKIR_NUMERIC_IS_SIGNED(type->num)) {
             opcode_prefix = "a";
         } else {

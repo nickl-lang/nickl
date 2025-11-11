@@ -477,7 +477,12 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
         case n_sub:
         case n_mul:
         case n_div:
-        case n_mod: {
+        case n_mod:
+        case n_lsh:
+        case n_rsh:
+        case n_xor:
+        case n_bitor:
+        case n_bitand: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
 
@@ -1040,8 +1045,8 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return res;
         }
 
-#define BINOP(NAME)                                                                            \
-    case NK_CAT(n_, NAME): {                                                                   \
+#define BINOP(ID, NAME)                                                                        \
+    case NK_CAT(n_, ID): {                                                                     \
         NklAstNode const *lhs_n = nextNode(&it);                                               \
         NklAstNode const *rhs_n = nextNode(&it);                                               \
                                                                                                \
@@ -1055,11 +1060,17 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         };                                                                                     \
     }
 
-            BINOP(add)
-            BINOP(sub)
-            BINOP(mul)
-            BINOP(div)
-            BINOP(mod)
+            BINOP(add, add)
+            BINOP(sub, sub)
+            BINOP(mul, mul)
+            BINOP(div, div)
+            BINOP(mod, mod)
+
+            BINOP(lsh, lsh)
+            BINOP(rsh, rsh)
+            BINOP(xor, xor)
+            BINOP(bitor, or)
+            BINOP(bitand, and)
 
 #undef BINOP
 
