@@ -159,8 +159,12 @@ typedef struct {
     u32 next_label_join;
 } CompileCtx;
 
-static NkAtom getNextLocal(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "_%u", ctx->next_local_idx++));
+static NkAtom getNextValue(CompileCtx *ctx) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "v%u", ctx->next_local_idx++));
+}
+
+static NkAtom getNextLocalVar(CompileCtx *ctx, NkAtom name) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "v%u_%s", ctx->next_local_idx++, nk_atom2cs(name)));
 }
 
 static NkAtom getNextLabelElse(CompileCtx *ctx) {
@@ -894,7 +898,7 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 &ctx->scope_stack->names,
                 name,
                 (Decl){
-                    .sym = name,
+                    .sym = getNextLocalVar(ctx, name),
                     .type = type,
                     .kind = Decl_LocalVar,
                     .is_pub = false,
@@ -1026,7 +1030,7 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
         case Interm_Instr: {
             NkIrRef *dst = &interm.instr.arg[0].ref;
             if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
-                *dst = nkir_makeRefLocal(getNextLocal(ctx), &interm.type->ir_type);
+                *dst = nkir_makeRefLocal(getNextValue(ctx), &interm.type->ir_type);
             }
             emit(ctx, interm.instr);
             return *dst;
@@ -1234,7 +1238,7 @@ static Interm compileLogicExpr(
     NklType const void_ptr_t =
         nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
     Interm const res =
-        makeRefIndir(nkir_makeRefLocal(getNextLocal(ctx), &void_ptr_t->ir_type), nkl_type_getBool(ctx->nkl));
+        makeRefIndir(nkir_makeRefLocal(getNextValue(ctx), &void_ptr_t->ir_type), nkl_type_getBool(ctx->nkl));
 
     emit(ctx, nkir_make_alloc(res.ref, &nkl_type_getBool(ctx->nkl)->ir_type));
     Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
@@ -1512,7 +1516,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             NklType const void_ptr_t =
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            Interm const var = makeRefIndir(nkir_makeRefLocal(name, &void_ptr_t->ir_type), decl->type);
+            Interm const var = makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
 
             emit(ctx, nkir_make_alloc(var.ref, &decl->type->ir_type));
 
