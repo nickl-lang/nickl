@@ -245,7 +245,7 @@ static NkAtom parseId(CompileCtx *ctx, NklAstNode const *node) {
     return nk_s2atom(token_str);
 }
 
-static AstNodeExt const *setNodeExt(CompileCtx *ctx, NklAstNode const *node, AstNodeExt const *x) {
+static AstNodeExt *setNodeExt(CompileCtx *ctx, NklAstNode const *node, AstNodeExt const *x) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     AstNodeExt *nodex = &ctx->nodes_ext.data[node_idx];
     *nodex = *x;
@@ -405,7 +405,7 @@ static AstNodeExt const *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node
     }
 }
 
-static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
 
@@ -427,7 +427,8 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             NkString const str = parseString(ctx, &ctx->nkl->arena, node);
 
             NklType const i8_t = nkl_type_getNumeric(ctx->nkl, Int8);
-            NklType const str_t = nkl_type_getArray(ctx->nkl, i8_t, str.size + 1);
+            NklType const arr_t = nkl_type_getArray(ctx->nkl, i8_t, str.size + 1);
+            NklType const str_t = nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, arr_t, true);
 
             NkAtom const sym = nk_atom_unique((NkString){0});
             TRY(nickl_defineSymbol(
@@ -435,7 +436,7 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
                 &(NkIrSymbol){
                     .data =
                         {
-                            .type = &str_t->ir_type,
+                            .type = &arr_t->ir_type,
                             .relocs = {0},
                             .addr = (void *)str.data,
                             .flags = NkIrData_ReadOnly,
@@ -941,6 +942,37 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
 
     nk_assert(!"unreachable");
     return NULL;
+}
+
+static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+    AstNodeExt *nodex;
+    TRY(nodex = typecheckImpl(ctx, node, args));
+
+    NklType const dst_t = args->type;
+    NklType const src_t = nodex->type;
+
+    if (dst_t && src_t != dst_t) {
+        if (dst_t->tclass == NklType_Pointer && src_t->tclass == NklType_Pointer &&
+            src_t->as.ptr.target_t->tclass == NklType_Array &&
+            src_t->as.ptr.target_t->as.arr.elem_t == dst_t->as.ptr.target_t) {
+            nodex->type = dst_t;
+        } else {
+            NkStringBuilder msg = {.alloc = nk_arena_getAllocator(ctx->scratch)};
+            NkStream out = nksb_getStream(&msg);
+            nk_printf(out, "type mismatch: expected `");
+            nk_printf(out, "TODO: expected type");
+            nk_printf(out, "`, got `");
+            nk_printf(out, "TODO: actual type");
+            nk_printf(out, "`");
+            reportError(ctx, node, NKS_FMT, NKS_ARG(msg));
+            return NULL;
+        }
+    } else if (args->tclass && src_t->tclass != args->tclass) {
+        reportError(ctx, node, "TODO: tclass mismatch");
+        return NULL;
+    }
+
+    return nodex;
 }
 
 static void emit(CompileCtx *ctx, NkIrInstr instr) {
