@@ -91,6 +91,16 @@ T *_nk_assignVoidPtr(T *&dst, void *src) {
 #define NK_FALLTHROUGH
 #endif
 
+#if defined(__has_attribute)
+#if __has_attribute(warn_unused_result)
+#define NK_NODISCARD __attribute__((warn_unused_result))
+#else
+#define NK_NODISCARD
+#endif
+#else
+#define NK_NODISCARD
+#endif
+
 #define _NK_NOP (void)0
 #define _NK_NOP_TOPLEVEL extern NK_UNUSED int NK_CAT(_, __LINE__)
 

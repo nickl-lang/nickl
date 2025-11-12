@@ -940,11 +940,12 @@ static void emit(CompileCtx *ctx, NkIrInstr instr) {
 typedef enum {
     Interm_Void = 0,
 
-    Interm_Instr,
     Interm_Ref,
+    Interm_RefIndir,
+    Interm_Instr,
 } IntermKind;
 
-typedef struct {
+typedef struct NK_NODISCARD {
     union {
         NkIrInstr instr;
         NkIrRef ref;
@@ -953,10 +954,42 @@ typedef struct {
     IntermKind kind;
 } Interm;
 
+static Interm makeVoid(CompileCtx *ctx) {
+    return (Interm){
+        .type = nkl_type_getVoid(ctx->nkl),
+        .kind = Interm_Void,
+    };
+}
+
+static Interm makeRef(NkIrRef ref) {
+    return (Interm){
+        .ref = ref,
+        .type = (NklType)ref.type,
+        .kind = Interm_Ref,
+    };
+}
+
+static Interm makeRefIndir(NkIrRef ref, NklType type) {
+    return (Interm){
+        .ref = ref,
+        .type = type,
+        .kind = Interm_RefIndir,
+    };
+}
+
+static Interm makeInstr(NkIrInstr instr, NklType type) {
+    return (Interm){
+        .instr = instr,
+        .type = type,
+        .kind = Interm_Instr,
+    };
+}
+
 static void discard(CompileCtx *ctx, Interm interm) {
     switch (interm.kind) {
         case Interm_Void:
         case Interm_Ref:
+        case Interm_RefIndir:
             return;
 
         case Interm_Instr:
@@ -975,6 +1008,9 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
         case Interm_Ref:
             return interm.ref;
 
+        case Interm_RefIndir:
+            return toRef(ctx, makeInstr(nkir_make_load((NkIrRef){0}, interm.ref), interm.type));
+
         case Interm_Instr: {
             NkIrRef *dst = &interm.instr.arg[0].ref;
             if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
@@ -987,29 +1023,6 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
 
     nk_assert(!"unreachable");
     return (NkIrRef){0};
-}
-
-static Interm makeVoid(CompileCtx *ctx) {
-    return (Interm){
-        .type = nkl_type_getVoid(ctx->nkl),
-        .kind = Interm_Void,
-    };
-}
-
-static Interm makeRef(NkIrRef ref) {
-    return (Interm){
-        .ref = ref,
-        .type = (NklType)ref.type,
-        .kind = Interm_Ref,
-    };
-}
-
-static Interm makeInstr(NkIrInstr instr, NklType type) {
-    return (Interm){
-        .instr = instr,
-        .type = type,
-        .kind = Interm_Instr,
-    };
 }
 
 static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
@@ -1028,8 +1041,7 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
         case Decl_LocalVar: {
             NklType const void_ptr_t =
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            return makeInstr(
-                nkir_make_load((NkIrRef){0}, nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type)), decl->type);
+            return makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
         }
     }
 
@@ -1113,11 +1125,13 @@ static void parseNumber(CompileCtx *ctx, void *addr, NkString str, NkIrNumericVa
 // }
 
 static Interm compileMemoryStore(CompileCtx *ctx, Interm dst, Interm src) {
+    nk_assert(dst.kind == Interm_RefIndir);
+
     NklType const dst_t = dst.type;
     NklType const src_t = dst.type;
+
     if (src_t->size) {
-        // TODO: Check if we can generate better IR by substituting src.instr.arg[0]
-        return makeInstr(nkir_make_store(toRef(ctx, dst), toRef(ctx, src)), dst_t);
+        return makeInstr(nkir_make_store(dst.ref, toRef(ctx, src)), dst_t);
     } else {
         return src;
     }
@@ -1140,8 +1154,7 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
 
             NklType const void_ptr_t =
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-
-            return makeRef(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type));
+            return makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
         }
 
         default:
@@ -1196,7 +1209,7 @@ static Interm compileLogicExpr(
     nk_assert(op == n_and || op == n_or);
 
 #ifdef ENABLE_LOGGING
-    comment(ctx, "begin %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
+    comment(ctx, ">>>>>>> %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
     NkIrLabel const short_l = nkir_makeLabelAbs(getNextLabelShort(ctx));
@@ -1204,10 +1217,10 @@ static Interm compileLogicExpr(
 
     NklType const void_ptr_t =
         nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+    Interm const res =
+        makeRefIndir(nkir_makeRefLocal(getNextLocal(ctx), &void_ptr_t->ir_type), nkl_type_getBool(ctx->nkl));
 
-    Interm const res = makeRef(nkir_makeRefLocal(getNextLocal(ctx), &void_ptr_t->ir_type));
-
-    emit(ctx, nkir_make_alloc(toRef(ctx, res), &nkl_type_getBool(ctx->nkl)->ir_type));
+    emit(ctx, nkir_make_alloc(res.ref, &nkl_type_getBool(ctx->nkl)->ir_type));
     Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
     if (op == n_and) {
         emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
@@ -1225,12 +1238,10 @@ static Interm compileLogicExpr(
     emit(ctx, nkir_make_label(join_l.name));
 
 #ifdef ENABLE_LOGGING
-    comment(ctx, "end %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
+    comment(ctx, "<<<<<<< %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    // TODO: Always returning true, because we need to figure on-demand loads
-    return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type));
-    // return makeInstr(nkir_make_load((NkIrRef){0}, toRef(ctx, res)), nkl_type_getBool(ctx->nkl));
+    return res;
 }
 
 static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert) {
@@ -1427,7 +1438,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_if: {
 #ifdef ENABLE_LOGGING
-            comment(ctx, "begin if (node %u)", node_idx);
+            comment(ctx, ">>>>>>> if (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
             NklAstNode const *cond_n = nextNode(&it);
@@ -1454,7 +1465,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             emit(ctx, nkir_make_label(endif_l.name));
 
 #ifdef ENABLE_LOGGING
-            comment(ctx, "end if (node %u)", node_idx);
+            comment(ctx, "<<<<<<< if (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
             return makeVoid(ctx);
@@ -1479,18 +1490,18 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             NkAtom const name = parseId(ctx, name_n);
 
-            NklType const void_ptr_t =
-                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             nk_assert(decl);
 
-            NkIrRef const var = nkir_makeRefLocal(name, &void_ptr_t->ir_type);
-            emit(ctx, nkir_make_alloc(var, &decl->type->ir_type));
+            NklType const void_ptr_t =
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+            Interm const var = makeRefIndir(nkir_makeRefLocal(name, &void_ptr_t->ir_type), decl->type);
+
+            emit(ctx, nkir_make_alloc(var.ref, &decl->type->ir_type));
 
             if (val_n) {
                 Interm const val = compile(ctx, val_n);
-                emit(ctx, nkir_make_store(var, toRef(ctx, val)));
+                discard(ctx, compileMemoryStore(ctx, var, val));
             }
             // TODO: Zero init
 
@@ -1499,7 +1510,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_while: {
 #ifdef ENABLE_LOGGING
-            comment(ctx, "begin while (node %u)", node_idx);
+            comment(ctx, ">>>>>>> while (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
             NklAstNode const *cond_n = nextNode(&it);
@@ -1521,7 +1532,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             emit(ctx, nkir_make_label(endloop_l.name));
 
 #ifdef ENABLE_LOGGING
-            comment(ctx, "end while (node %u)", node_idx);
+            comment(ctx, "<<<<<<< while (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
             return makeVoid(ctx);

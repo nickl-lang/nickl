@@ -49,11 +49,11 @@
 ])
 (call printf ["\n"])
 
-// (call printf ["if and:"])
-// (if (and (call getTrue []) (call getFalse [])) [
-//     (call printf [" NO"])
-// ])
-// (call printf ["\n"])
+(call printf ["if and:"])
+(if (and (call getTrue []) (call getFalse [])) [
+    (call printf [" NO"])
+])
+(call printf ["\n"])
 
 /* @output
 and full: getTrue hello
@@ -65,5 +65,6 @@ and not: getTrue
 and not: getFalse hello
 
 if and: getTrue getTrue YES
+if and: getTrue getFalse
 
 @endoutput */
