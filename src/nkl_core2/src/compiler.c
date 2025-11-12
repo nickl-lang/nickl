@@ -989,37 +989,47 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
     return (NkIrRef){0};
 }
 
+static Interm makeVoid(CompileCtx *ctx) {
+    return (Interm){
+        .type = nkl_type_getVoid(ctx->nkl),
+        .kind = Interm_Void,
+    };
+}
+
+static Interm makeRef(NkIrRef ref) {
+    return (Interm){
+        .ref = ref,
+        .type = (NklType)ref.type,
+        .kind = Interm_Ref,
+    };
+}
+
+static Interm makeInstr(NkIrInstr instr, NklType type) {
+    return (Interm){
+        .instr = instr,
+        .type = type,
+        .kind = Interm_Instr,
+    };
+}
+
 static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
     switch (decl->kind) {
         case Decl_None:
             nk_assert(!"unreachable");
             return (Interm){0};
 
-        case Decl_Entity: {
+        case Decl_Entity:
             nkda_append(&ctx->procs_to_compile, decl->entity);
-            return (Interm){
-                .ref = nkir_makeRefGlobal(decl->entity->sym, &decl->type->ir_type),
-                .type = decl->type,
-                .kind = Interm_Ref,
-            };
-        }
+            return makeRef(nkir_makeRefGlobal(decl->entity->sym, &decl->type->ir_type));
 
-        case Decl_Extern: {
-            return (Interm){
-                .ref = nkir_makeRefGlobal(decl->sym, &decl->type->ir_type),
-                .type = decl->type,
-                .kind = Interm_Ref,
-            };
-        }
+        case Decl_Extern:
+            return makeRef(nkir_makeRefGlobal(decl->sym, &decl->type->ir_type));
 
         case Decl_LocalVar: {
             NklType const void_ptr_t =
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            return (Interm){
-                .instr = nkir_make_load((NkIrRef){0}, nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type)),
-                .type = decl->type,
-                .kind = Interm_Instr,
-            };
+            return makeInstr(
+                nkir_make_load((NkIrRef){0}, nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type)), decl->type);
         }
     }
 
@@ -1095,19 +1105,11 @@ static void parseNumber(CompileCtx *ctx, void *addr, NkString str, NkIrNumericVa
 //             (src.instr.arg[0].ref.kind == NkIrRef_None || src.instr.arg[0].ref.kind == NkIrRef_Null)) {
 //             src.instr.arg[0].ref = toRef(ctx, dst);
 //         } else {
-//             src = (Interm){
-//                 .instr = nkir_make_mov(toRef(ctx, dst), toRef(ctx, src)),
-//                 .type = dst_t,
-//                 .kind = Interm_Instr,
-//             };
+//             src = makeInstr(nkir_make_mov(toRef(ctx, dst), toRef(ctx, src)), dst_t);
 //         }
 //     }
-//     // TODO: Can we defer materializing this interm?
-//     return (Interm){
-//         .ref = toRef(ctx, src),
-//         .type = dst_t,
-//         .kind = Interm_Ref,
-//     };
+//     // TODO: Can we defer materializing this interm? (most likely yes)
+//     return makeRef(toRef(ctx, src));
 // }
 
 static Interm compileMemoryStore(CompileCtx *ctx, Interm dst, Interm src) {
@@ -1115,11 +1117,7 @@ static Interm compileMemoryStore(CompileCtx *ctx, Interm dst, Interm src) {
     NklType const src_t = dst.type;
     if (src_t->size) {
         // TODO: Check if we can generate better IR by substituting src.instr.arg[0]
-        return (Interm){
-            .instr = nkir_make_store(toRef(ctx, dst), toRef(ctx, src)),
-            .type = dst_t,
-            .kind = Interm_Instr,
-        };
+        return makeInstr(nkir_make_store(toRef(ctx, dst), toRef(ctx, src)), dst_t);
     } else {
         return src;
     }
@@ -1143,11 +1141,7 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             NklType const void_ptr_t =
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
 
-            return (Interm){
-                .ref = nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type),
-                .type = decl->type,
-                .kind = Interm_Ref,
-            };
+            return makeRef(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type));
         }
 
         default:
@@ -1180,6 +1174,17 @@ static NklType promote(CompileCtx *ctx, NklType type) {
     return type;
 }
 
+static void vcomment(CompileCtx *ctx, char const *fmt, va_list ap) {
+    emit(ctx, nkir_make_comment(nk_vtsprintf(&ctx->nkl->arena, fmt, ap)));
+}
+
+static NK_PRINTF_LIKE(2) void comment(CompileCtx *ctx, char const *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vcomment(ctx, fmt, ap);
+    va_end(ap);
+}
+
 static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert);
 
 static Interm compileLogicExpr(
@@ -1191,10 +1196,7 @@ static Interm compileLogicExpr(
     nk_assert(op == n_and || op == n_or);
 
 #ifdef ENABLE_LOGGING
-    emit(
-        ctx,
-        nkir_make_comment(
-            nk_tsprintf(&ctx->nkl->arena, "begin %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1)));
+    comment(ctx, "begin %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
     NkIrLabel const short_l = nkir_makeLabelAbs(getNextLabelShort(ctx));
@@ -1203,18 +1205,10 @@ static Interm compileLogicExpr(
     NklType const void_ptr_t =
         nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
 
-    Interm const res = (Interm){
-        .ref = nkir_makeRefLocal(getNextLocal(ctx), &void_ptr_t->ir_type),
-        .type = nkl_type_getBool(ctx->nkl),
-        .kind = Interm_Ref,
-    };
+    Interm const res = makeRef(nkir_makeRefLocal(getNextLocal(ctx), &void_ptr_t->ir_type));
 
     emit(ctx, nkir_make_alloc(toRef(ctx, res), &nkl_type_getBool(ctx->nkl)->ir_type));
-    Interm const lhs = (Interm){
-        .ref = toRef(ctx, compileLogic(ctx, lhs_n, invert)),
-        .type = nkl_type_getBool(ctx->nkl),
-        .kind = Interm_Ref,
-    };
+    Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
     if (op == n_and) {
         emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
     } else {
@@ -1231,23 +1225,12 @@ static Interm compileLogicExpr(
     emit(ctx, nkir_make_label(join_l.name));
 
 #ifdef ENABLE_LOGGING
-    emit(
-        ctx,
-        nkir_make_comment(
-            nk_tsprintf(&ctx->nkl->arena, "end %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1)));
+    comment(ctx, "end %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
     // TODO: Always returning true, because we need to figure on-demand loads
-    return (Interm){
-        .ref = nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type),
-        .type = nkl_type_getBool(ctx->nkl),
-        .kind = Interm_Instr,
-    };
-    // return (Interm){
-    //     .instr = nkir_make_load((NkIrRef){0}, toRef(ctx, res)),
-    //     .type = nkl_type_getBool(ctx->nkl),
-    //     .kind = Interm_Instr,
-    // };
+    return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type));
+    // return makeInstr(nkir_make_load((NkIrRef){0}, toRef(ctx, res)), nkl_type_getBool(ctx->nkl));
 }
 
 static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert) {
@@ -1269,14 +1252,12 @@ static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert)
         default: {
             Interm const res = compile(ctx, node);
             if (invert) {
-                return (Interm){
-                    .instr = nkir_make_xor(
+                return makeInstr(
+                    nkir_make_xor(
                         (NkIrRef){0},
                         nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type),
                         toRef(ctx, res)),
-                    .type = nkl_type_getBool(ctx->nkl),
-                    .kind = Interm_Instr,
-                };
+                    nkl_type_getBool(ctx->nkl));
             } else {
                 return res;
             }
@@ -1299,19 +1280,12 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         case n_extern:
         case n_def:
         case 0: {
-            return (Interm){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .kind = Interm_Void,
-            };
+            return makeVoid(ctx);
         }
 
         case n_string:
         case n_escaped_string: {
-            return (Interm){
-                .ref = nkir_makeRefGlobal(nodex->sym, &nodex->type->ir_type),
-                .type = nodex->type,
-                .kind = Interm_Ref,
-            };
+            return makeRef(nkir_makeRefGlobal(nodex->sym, &nodex->type->ir_type));
         }
 
         case n_id: {
@@ -1332,35 +1306,19 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             NkIrImm imm = {0};
             parseNumber(ctx, &imm, token_str, nodex->type->as.num.value_type);
-            return (Interm){
-                .ref = nkir_makeRefImm(imm, &nodex->type->ir_type),
-                .type = nodex->type,
-                .kind = Interm_Ref,
-            };
+            return makeRef(nkir_makeRefImm(imm, &nodex->type->ir_type));
         }
 
         case n_true_lit: {
-            return (Interm){
-                .ref = nkir_makeRefImm((NkIrImm){.u8 = 1}, &nodex->type->ir_type),
-                .type = nodex->type,
-                .kind = Interm_Ref,
-            };
+            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, &nodex->type->ir_type));
         }
 
         case n_false_lit: {
-            return (Interm){
-                .ref = nkir_makeRefImm((NkIrImm){.u8 = 0}, &nodex->type->ir_type),
-                .type = nodex->type,
-                .kind = Interm_Ref,
-            };
+            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 0}, &nodex->type->ir_type));
         }
 
         case n_nullptr: {
-            return (Interm){
-                .ref = nkir_makeRefImm((NkIrImm){.u64 = 0}, &nodex->type->ir_type),
-                .type = nodex->type,
-                .kind = Interm_Ref,
-            };
+            return makeRef(nkir_makeRefImm((NkIrImm){.u64 = 0}, &nodex->type->ir_type));
         }
 
         case n_list: {
@@ -1372,19 +1330,15 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return res;
         }
 
-#define BINOP(ID, NAME)                                                                        \
-    case NK_CAT(n_, ID): {                                                                     \
-        NklAstNode const *lhs_n = nextNode(&it);                                               \
-        NklAstNode const *rhs_n = nextNode(&it);                                               \
-                                                                                               \
-        Interm const lhs = compile(ctx, lhs_n);                                                \
-        Interm const rhs = compile(ctx, rhs_n);                                                \
-                                                                                               \
-        return (Interm){                                                                       \
-            .instr = NK_CAT(nkir_make_, NAME)((NkIrRef){0}, toRef(ctx, lhs), toRef(ctx, rhs)), \
-            .type = nodex->type,                                                               \
-            .kind = Interm_Instr,                                                              \
-        };                                                                                     \
+#define BINOP(ID, NAME)                                                                                          \
+    case NK_CAT(n_, ID): {                                                                                       \
+        NklAstNode const *lhs_n = nextNode(&it);                                                                 \
+        NklAstNode const *rhs_n = nextNode(&it);                                                                 \
+                                                                                                                 \
+        Interm const lhs = compile(ctx, lhs_n);                                                                  \
+        Interm const rhs = compile(ctx, rhs_n);                                                                  \
+                                                                                                                 \
+        return makeInstr(NK_CAT(nkir_make_, NAME)((NkIrRef){0}, toRef(ctx, lhs), toRef(ctx, rhs)), nodex->type); \
     }
 
             BINOP(add, add)
@@ -1421,11 +1375,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             Interm const val = compile(ctx, val_n);
 
             if (val.type != nodex->type) {
-                return (Interm){
-                    .instr = nkir_make_cast((NkIrRef){0}, toRef(ctx, val)),
-                    .type = nodex->type,
-                    .kind = Interm_Instr,
-                };
+                return makeInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, val)), nodex->type);
             } else {
                 return val;
             }
@@ -1462,28 +1412,22 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 if (i >= proc.type->as.proc.param_types.size) {
                     NklType const arg_t = promote(ctx, arg.type);
                     if (arg_t != arg.type) {
-                        arg = (Interm){
-                            .instr = nkir_make_cast((NkIrRef){0}, toRef(ctx, arg)),
-                            .type = arg_t,
-                            .kind = Interm_Instr,
-                        };
+                        arg = makeInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, arg)), arg_t);
                     }
                 }
 
                 nkda_append(&args, toRef(ctx, arg));
             }
 
-            return (Interm){
-                .instr = nkir_make_call(
+            return makeInstr(
+                nkir_make_call(
                     nkir_makeRefNull(&nodex->type->ir_type), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
-                .type = proc.type->as.proc.ret_t,
-                .kind = Interm_Instr,
-            };
+                proc.type->as.proc.ret_t);
         }
 
         case n_if: {
 #ifdef ENABLE_LOGGING
-            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "begin if (node %u)", node_idx)));
+            comment(ctx, "begin if (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
             NklAstNode const *cond_n = nextNode(&it);
@@ -1510,13 +1454,10 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             emit(ctx, nkir_make_label(endif_l.name));
 
 #ifdef ENABLE_LOGGING
-            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "end if (node %u)", node_idx)));
+            comment(ctx, "end if (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
-            return (Interm){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .kind = Interm_Void,
-            };
+            return makeVoid(ctx);
         }
 
         case n_return: {
@@ -1528,11 +1469,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 arg_ref = toRef(ctx, arg);
             }
 
-            return (Interm){
-                .instr = nkir_make_ret(arg_ref),
-                .type = nkl_type_getVoid(ctx->nkl),
-                .kind = Interm_Instr,
-            };
+            return makeInstr(nkir_make_ret(arg_ref), nkl_type_getVoid(ctx->nkl));
         }
 
         case n_var: {
@@ -1546,8 +1483,9 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
 
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
-            NkIrRef const var = nkir_makeRefLocal(name, &void_ptr_t->ir_type);
+            nk_assert(decl);
 
+            NkIrRef const var = nkir_makeRefLocal(name, &void_ptr_t->ir_type);
             emit(ctx, nkir_make_alloc(var, &decl->type->ir_type));
 
             if (val_n) {
@@ -1556,15 +1494,12 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             }
             // TODO: Zero init
 
-            return (Interm){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .kind = Interm_Void,
-            };
+            return makeVoid(ctx);
         }
 
         case n_while: {
 #ifdef ENABLE_LOGGING
-            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "begin while (node %u)", node_idx)));
+            comment(ctx, "begin while (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
             NklAstNode const *cond_n = nextNode(&it);
@@ -1586,13 +1521,10 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             emit(ctx, nkir_make_label(endloop_l.name));
 
 #ifdef ENABLE_LOGGING
-            emit(ctx, nkir_make_comment(nk_tsprintf(&ctx->nkl->arena, "end while (node %u)", node_idx)));
+            comment(ctx, "end while (node %u)", node_idx);
 #endif // ENABLE_LOGGING
 
-            return (Interm){
-                .type = nkl_type_getVoid(ctx->nkl),
-                .kind = Interm_Void,
-            };
+            return makeVoid(ctx);
         }
 
         default: {
