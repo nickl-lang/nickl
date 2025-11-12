@@ -1,0 +1,28 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def fast_exp (proc fast_exp [(param (i64) _x) (param (i64) _n)] (i64) [
+    (var x () _x)
+    (var n () _n)
+
+    (var a () 1)
+
+    (while (ne n 0) [
+        (if (ne (bitand n 1) 0) [
+            (assign a (mul a x))
+        ])
+        (assign n (rsh n 1))
+        (assign x (mul x x))
+    ])
+
+    (return a)
+]))
+
+(var BASE () 2)
+(var EXP () 24)
+
+(call printf ["%zi^%zi=%zi\n" BASE EXP (call fast_exp [BASE EXP])])
+
+/* @output
+2^24=16777216
+
+@endoutput */
