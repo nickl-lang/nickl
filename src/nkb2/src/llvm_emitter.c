@@ -32,7 +32,8 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                         nk_print(out, ", ");
                     }
                     usize const offset = base_offset + elem->offset;
-                    if (elem->count > 1) {
+                    bool const is_string = elem->type->kind == NkIrType_Numeric && elem->type->size == 1;
+                    if (elem->count > 1 || is_string) {
                         nk_printf(out, "[%u x ", elem->count);
                     }
                     bool found_reloc = false;
@@ -46,7 +47,7 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                     if (!found_reloc) {
                         emitTypeEx(out, elem->type, offset, relocs);
                     }
-                    if (elem->count > 1) {
+                    if (elem->count > 1 || is_string) {
                         nk_print(out, "]");
                     }
                 }
@@ -712,12 +713,13 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
                     nk_print(out, ", ");
                 }
                 usize offset = base_offset + elem->offset;
-                if (elem->count > 1) {
+                bool const is_string = elem->type->kind == NkIrType_Numeric && elem->type->size == 1;
+                if (elem->count > 1 || is_string) {
                     nk_printf(out, "[%u x ", elem->count);
                     emitTypeEx(out, elem->type, offset, relocs);
                     nk_print(out, "] ");
                 }
-                if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
+                if (is_string) {
                     char const *addr = (char *)base_addr + offset;
                     nk_print(out, "c\"");
                     nks_sanitize(out, (NkString){addr, type->aggr.data[0].count});

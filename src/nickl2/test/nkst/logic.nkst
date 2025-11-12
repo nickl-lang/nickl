@@ -1,70 +1,66 @@
 (extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+(extern "c" (proc puts   [(param (ptr (const) (i8)))]         (i32)))
 
-(def getFalse (proc getFalse [] (bool) [
-    (call printf [" getFalse"])
-    (return (false))
-]))
+(var yay () (true))
+(var nay () (false))
 
-(def getTrue (proc getTrue [] (bool) [
-    (call printf [" getTrue"])
-    (return (true))
-]))
+(if (and nay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (and nay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (and yay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (and yay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (or  nay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (or  nay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (or  yay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (or  yay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
 
-(def sayHello (proc sayHello [] (bool) [
-    (call printf [" hello"])
-    (return (true))
-]))
+(call puts [""])
 
-(call printf ["and full:"])
-(and (call getTrue []) (call sayHello []))
-(call printf ["\n"])
+(if (not (and nay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (and nay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (and yay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (and yay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (not (or  nay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (or  nay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (not (or  yay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (not (or  yay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
 
-(call printf ["and short:"])
-(and (call getFalse []) (call sayHello []))
-(call printf ["\n"])
+(call puts [""])
 
-(call printf ["or full:"])
-(or (call getFalse []) (call sayHello []))
-(call printf ["\n"])
+(if (and (eq (call printf ["one "])  4) (eq (call printf ["two "])  4)) (call printf ["yay\n"])) // one two yay
+(if (and (eq (call printf ["one "])  4) (eq (call printf ["nay\n"]) 0)) (call printf ["nay\n"])) // one nay
+(if (and (eq (call printf ["nay\n"]) 0) (eq (call printf ["two "])  4)) (call printf ["nay\n"])) // nay
 
-(call printf ["or short:"])
-(or (call getTrue []) (call sayHello []))
-(call printf ["\n"])
+(call puts [""])
 
-(call printf ["\n"])
-
-(call printf ["and not:"])
-(and (not (call getTrue [])) (call sayHello []))
-(call printf ["\n"])
-
-(call printf ["and not:"])
-(and (not (call getFalse [])) (call sayHello []))
-(call printf ["\n"])
-
-(call printf ["\n"])
-
-(call printf ["if and:"])
-(if (and (call getTrue []) (call getTrue [])) [
-    (call printf [" YES"])
-])
-(call printf ["\n"])
-
-(call printf ["if and:"])
-(if (and (call getTrue []) (call getFalse [])) [
-    (call printf [" NO"])
-])
-(call printf ["\n"])
+(if (or  (eq (call printf ["nay "])  0) (eq (call printf ["two "])  4)) (call printf ["yay\n"])) // nay two yay
+(if (or  (eq (call printf ["nay "])  0) (eq (call printf ["nay\n"]) 0)) (call printf ["nay\n"])) // nay nay
+(if (or  (eq (call printf ["one "])  4) (eq (call printf ["nay\n"]) 0)) (call printf ["yay\n"])) // one yay
 
 /* @output
-and full: getTrue hello
-and short: getFalse
-or full: getFalse hello
-or short: getTrue
+nay
+nay
+nay
+yay
+nay
+yay
+yay
+yay
 
-and not: getTrue
-and not: getFalse hello
+yay
+yay
+yay
+nay
+yay
+nay
+nay
+nay
 
-if and: getTrue getTrue YES
-if and: getTrue getFalse
+one two yay
+one nay
+nay
+
+nay two yay
+nay nay
+one yay
 
 @endoutput */
