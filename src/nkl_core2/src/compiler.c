@@ -369,11 +369,11 @@ static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *nod
     return true;
 }
 
-static AstNodeExt const *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
+static AstNodeExt *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
 
-    // AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     switch (node->id) {
         case n_id: {
@@ -396,6 +396,21 @@ static AstNodeExt const *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node
                 &(AstNodeExt){
                     .type = decl->type,
                     .is_comptime = false,
+                });
+        }
+
+        case n_deref: {
+            NklAstNode const *arg_n = nextNode(&it);
+
+            AstNodeExt const *arg;
+            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){.tclass = NklType_Pointer}));
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = arg->type->as.ptr.target_t,
+                    .is_comptime = arg->is_comptime,
                 });
         }
 
@@ -628,6 +643,26 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                     .type = type,
                     .is_comptime = val_nodex->is_comptime,
                 });
+        }
+
+        case n_addr: {
+            NklAstNode const *arg_n = nextNode(&it);
+
+            AstNodeExt const *arg;
+            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){0}));
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    // TODO: Hardcoded mutable pointer
+                    .type = nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, arg->type, false),
+                    .is_comptime = arg->is_comptime,
+                });
+        }
+
+        case n_deref: {
+            return typecheckLvalue(ctx, node);
         }
 
         case n_assign: {
@@ -1193,9 +1228,9 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
 
-    // AstNodeExt const *nodex = getNodeExt(ctx, node);
+    AstNodeExt const *nodex = getNodeExt(ctx, node);
 
-    // AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     switch (node->id) {
         case n_id: {
@@ -1209,8 +1244,14 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             return makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
         }
 
+        case n_deref: {
+            NklAstNode const *arg_n = nextNode(&it);
+            Interm const arg = compile(ctx, arg_n);
+            return makeRefIndir(toRef(ctx, arg), nodex->type);
+        }
+
         default:
-            nk_assert(!"unreachable");
+            reportError(ctx, node, "TODO: invlid lvalue AST node `%s`", nk_atom2cs(node->id));
             return (Interm){0};
     }
 }
@@ -1446,6 +1487,21 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             Interm const val = compile(ctx, val_n);
 
             return makeCast(ctx, nodex->type, val);
+        }
+
+        case n_addr: {
+            NklAstNode const *arg_n = nextNode(&it);
+
+            Interm const addr = compileLvalue(ctx, arg_n);
+            if (addr.kind == Interm_RefIndir) {
+                return makeRef(addr.ref);
+            } else {
+                return addr;
+            }
+        }
+
+        case n_deref: {
+            return compileLvalue(ctx, node);
         }
 
         case n_assign: {

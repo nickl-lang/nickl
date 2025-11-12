@@ -1,0 +1,16 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(var data (i32))
+
+(var p () (addr data))
+(assign (deref p) 42)
+(call printf ["data=%i\n" data])
+
+(assign (deref (addr data)) 123)
+(call printf ["data=%i\n" data])
+
+/* @output
+data=42
+data=123
+
+@endoutput */

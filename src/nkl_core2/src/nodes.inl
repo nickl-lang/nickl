@@ -38,6 +38,9 @@ X(not)
 
 X(cast)
 
+X(addr)
+X(deref)
+
 X(assign)
 X(call)
 X(const)

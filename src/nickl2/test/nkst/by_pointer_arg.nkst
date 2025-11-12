@@ -1,0 +1,14 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def fillData (proc fillData [(param (ptr (i32)) p)] (void) [
+    (assign (deref p) 42)
+]))
+
+(var data (i32))
+(call fillData [(addr data)])
+(call printf ["data=%i\n" data])
+
+/* @output
+data=42
+
+@endoutput */
