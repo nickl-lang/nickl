@@ -43,7 +43,15 @@ typedef enum {
 typedef struct Scope Scope;
 
 typedef struct {
-    NklAstNode const *node;
+    NkAtom sym;
+    NklFieldDynArray params;
+    NklType ret_t;
+    u8 flags;
+    NklAstNode const *body_n;
+} ProcInfo;
+
+typedef struct {
+    ProcInfo info;
     NkIrInstrDynArray ir;
     Scope *scope;
 } ProcEntity;
@@ -63,6 +71,7 @@ typedef enum {
     Decl_Entity,
     Decl_Extern,
     Decl_LocalVar,
+    Decl_Param,
 } DeclKind;
 
 typedef struct {
@@ -304,15 +313,7 @@ static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
     return NULL;
 }
 
-typedef struct {
-    NkAtom sym;
-    NklTypeArray param_types;
-    NklType ret_t;
-    u8 flags;
-    NklAstNode const *body_n;
-} ProcInfo;
-
-static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out_info) {
+static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *node, ProcInfo *out_info) {
     AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
     NklAstNode const *sym_n = nextNode(&it);
@@ -322,7 +323,7 @@ static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out
 
     NkAtom const sym = parseId(ctx, sym_n);
 
-    NklTypeDynArray param_types = {.alloc = nk_arena_getAllocator(ctx->scratch)};
+    NklFieldDynArray params = {.alloc = nk_arena_getAllocator(arena)};
 
     bool is_variadic = false;
 
@@ -337,13 +338,18 @@ static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out
 
         AstNodeIterator param_it = nodeIterate(ctx->src.nodes, param_n);
 
-        NklAstNode const *name_or_type_n = nextNode(&param_it);
-        NklAstNode const *type_n = (name_or_type_n->id == n_id) ? nextNode(&param_it) : name_or_type_n;
+        NklAstNode const *type_n = nextNode(&param_it);
+        NklAstNode const *name_n = param_n->arity == 2 ? nextNode(&param_it) : NULL;
 
-        NklType param_t;
-        TRY(param_t = parseType(ctx, type_n));
+        NklType type;
+        TRY(type = parseType(ctx, type_n));
 
-        nkda_append(&param_types, param_t);
+        nkda_append(
+            &params,
+            ((NklField){
+                .name = name_n ? parseId(ctx, name_n) : 0,
+                .type = type,
+            }));
     }
 
     NklType ret_t;
@@ -351,7 +357,7 @@ static bool parseProcInfo(CompileCtx *ctx, NklAstNode const *node, ProcInfo *out
 
     *out_info = (ProcInfo){
         .sym = sym,
-        .param_types = {NKS_INIT(param_types)},
+        .params = {NKS_INIT(params)},
         .ret_t = ret_t,
         .flags = is_variadic ? NklProc_Variadic : 0,
         .body_n = body_n,
@@ -652,10 +658,17 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             AstNodeIterator args_it = nodeIterate(ctx->src.nodes, args_n);
 
             bool const is_variadic = (proc_nodex->type->as.proc.flags & NklProc_Variadic);
-            bool const param_count = proc_nodex->type->as.proc.param_types.size;
+            usize const param_count = proc_nodex->type->as.proc.param_types.size;
 
             if ((!is_variadic && args_n->arity != param_count) || (is_variadic && args_n->arity < param_count)) {
-                reportError(ctx, proc_n, "invalid number of arguments");
+                reportError(
+                    ctx,
+                    args_n,
+                    "exected%s %zu argument%s, got %u",
+                    is_variadic ? " at least" : "",
+                    param_count,
+                    param_count == 1 ? "" : "s",
+                    args_n->arity);
                 return NULL;
             }
 
@@ -722,19 +735,18 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
 
             if (decl_n->id == n_proc) {
                 ProcInfo proc_info;
-                TRY(parseProcInfo(ctx, decl_n, &proc_info));
+                TRY(parseProcInfo(ctx, ctx->scratch, decl_n, &proc_info));
 
                 NkIrTypeDynArray ir_param_types = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
-                NK_ITERATE(NklType const *, it, proc_info.param_types) {
-                    NklType type = *it;
-                    nkda_append(&ir_param_types, nkl_type_getIrType(type));
+                NK_ITERATE(NklField const *, it, proc_info.params) {
+                    nkda_append(&ir_param_types, nkl_type_getIrType(it->type));
                 }
 
                 NklType const proc_t = nkl_type_getProcedure(
                     ctx->nkl,
                     ctx->mod->com->word_size,
                     (NklProcInfo){
-                        .param_types = {NKS_INIT_STRIDED(proc_info.param_types)},
+                        .param_types = {NKS_INIT_STRIDED_FROM_FIELD(proc_info.params, type)},
                         .ret_t = proc_info.ret_t,
                         .flags = proc_info.flags,
                     });
@@ -805,13 +817,13 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
 
         case n_proc: {
             ProcInfo proc_info;
-            TRY(parseProcInfo(ctx, node, &proc_info));
+            TRY(parseProcInfo(ctx, &ctx->nkl->arena, node, &proc_info));
 
             NklType const proc_t = nkl_type_getProcedure(
                 ctx->nkl,
                 ctx->mod->com->word_size,
                 (NklProcInfo){
-                    .param_types = {NKS_INIT_STRIDED(proc_info.param_types)},
+                    .param_types = {NKS_INIT_STRIDED_FROM_FIELD(proc_info.params, type)},
                     .ret_t = proc_info.ret_t,
                     .flags = proc_info.flags,
                 });
@@ -820,7 +832,7 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             *proc = (Entity){
                 .proc =
                     {
-                        .node = proc_info.body_n,
+                        .info = proc_info,
                         .ir = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)},
                         .scope = ctx->scope_stack,
                     },
@@ -1043,6 +1055,10 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
                 nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
             return makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
         }
+
+        case Decl_Param: {
+            return makeRef(nkir_makeRefParam(decl->sym, &decl->type->ir_type));
+        }
     }
 
     nk_assert(!"unreachable");
@@ -1222,7 +1238,7 @@ static Interm compileLogicExpr(
 
     emit(ctx, nkir_make_alloc(res.ref, &nkl_type_getBool(ctx->nkl)->ir_type));
     Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
-    if (op == n_and) {
+    if (op == (invert ? n_or : n_and)) {
         emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
     } else {
         emit(ctx, nkir_make_jmpnz(toRef(ctx, lhs), short_l));
@@ -1252,10 +1268,10 @@ static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert)
 
     switch (node->id) {
         case n_and:
-            return compileLogicExpr(ctx, invert ? n_or : n_and, lhs_n, rhs_n, invert);
+            return compileLogicExpr(ctx, n_and, lhs_n, rhs_n, invert);
 
         case n_or:
-            return compileLogicExpr(ctx, invert ? n_and : n_or, lhs_n, rhs_n, invert);
+            return compileLogicExpr(ctx, n_or, lhs_n, rhs_n, invert);
 
         case n_not:
             return compileLogic(ctx, lhs_n, !invert);
@@ -1277,6 +1293,14 @@ static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert)
 
     nk_assert(!"unreachable");
     return (Interm){0};
+}
+
+static Interm makeCast(CompileCtx *ctx, NklType dst_t, Interm val) {
+    if (val.type != dst_t) {
+        return makeInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, val)), dst_t);
+    } else {
+        return val;
+    }
 }
 
 static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
@@ -1385,11 +1409,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             Interm const val = compile(ctx, val_n);
 
-            if (val.type != nodex->type) {
-                return makeInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, val)), nodex->type);
-            } else {
-                return val;
-            }
+            return makeCast(ctx, nodex->type, val);
         }
 
         case n_assign: {
@@ -1421,10 +1441,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 Interm arg = compile(ctx, arg_n);
 
                 if (i >= proc.type->as.proc.param_types.size) {
-                    NklType const arg_t = promote(ctx, arg.type);
-                    if (arg_t != arg.type) {
-                        arg = makeInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, arg)), arg_t);
-                    }
+                    arg = makeCast(ctx, promote(ctx, arg.type), arg);
                 }
 
                 nkda_append(&args, toRef(ctx, arg));
@@ -1559,13 +1576,33 @@ static void pushScope(CompileCtx *ctx) {
 static bool compileProc(NklModule mod, NklSource const *src, Entity *proc);
 
 static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
-    TRY(typecheck(ctx, proc->proc.node, &(TypecheckArgs){0}));
-    discard(ctx, compile(ctx, proc->proc.node));
+    NkIrParamDynArray ir_params = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
+
+    NK_ITERATE(NklField const *, it, proc->proc.info.params) {
+        DeclMap_insert(
+            &ctx->scope_stack->names,
+            it->name,
+            (Decl){
+                .sym = it->name,
+                .type = it->type,
+                .kind = Decl_Param,
+            });
+
+        nkda_append(
+            &ir_params,
+            ((NkIrParam){
+                .name = it->name,
+                .type = &it->type->ir_type,
+            }));
+    }
+
+    TRY(typecheck(ctx, proc->proc.info.body_n, &(TypecheckArgs){0}));
+    discard(ctx, compile(ctx, proc->proc.info.body_n));
 
     if (!proc->proc.ir.size || NKS_LAST(proc->proc.ir).code != NkIrOp_ret) {
         if (proc->type->as.proc.ret_t->tclass != NklType_Void) {
             // TODO: Point to a better node
-            reportError(ctx, proc->proc.node, "missing return statement");
+            reportError(ctx, proc->proc.info.body_n, "missing return statement");
             return false;
         }
         emit(ctx, nkir_make_ret((NkIrRef){0}));
@@ -1583,7 +1620,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
         &(NkIrSymbol){
             .proc =
                 {
-                    .params = {0},
+                    .params = {NKS_INIT(ir_params)},
                     .ret =
                         {
                             .type = &proc->type->as.proc.ret_t->ir_type,
@@ -1673,7 +1710,14 @@ bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src) {
             Entity proc = (Entity){
                 .proc =
                     {
-                        .node = &NKS_FIRST(src->nodes),
+                        .info =
+                            {
+                                .sym = sym,
+                                .params = {0},
+                                .ret_t = nkl_type_getVoid(nkl),
+                                .flags = 0,
+                                .body_n = &NKS_FIRST(src->nodes),
+                            },
                         .ir = {.alloc = nk_arena_getAllocator(&nkl->arena)},
                         .scope = &scope,
                     },

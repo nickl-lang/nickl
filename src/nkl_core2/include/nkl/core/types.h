@@ -49,6 +49,7 @@ typedef struct {
 
 typedef NkSlice(NklField const) NklFieldArray;
 typedef NkStridedSlice(NklField const) NklFieldStridedArray;
+typedef NkDynArray(NklField) NklFieldDynArray;
 
 typedef struct NklType_T {
     NkIrType_T ir_type; // TODO: Don't depend on nkb in public API

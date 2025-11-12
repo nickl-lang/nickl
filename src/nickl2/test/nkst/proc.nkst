@@ -1,12 +1,12 @@
-(def foo (proc foo [] (void) [
-    (extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
-    (call printf ["Hello from %s!\n" "foo"])
-    (return)
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def add (proc add [(param (i64) a) (param (i64) b)] (i64) [
+    (return (add a b))
 ]))
 
-(call foo [])
+(call printf ["2 + 2 = %i\n" (call add [2 2])])
 
 /* @output
-Hello from foo!
+2 + 2 = 4
 
 @endoutput */
