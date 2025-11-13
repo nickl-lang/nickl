@@ -20,6 +20,7 @@ enum {
     NklType_Pointer,
     NklType_Procedure,
     NklType_Struct,
+    NklType_Typeref,
     NklType_Void,
 
     NklTypeClassCount,
@@ -130,6 +131,9 @@ NK_EXPORT NklType nkl_type_getProcedure(NklState nkl, usize word_size, NklProcIn
 
 NK_EXPORT NklType nkl_type_getStructDistinct(NklState nkl, NklFieldStridedArray fields);
 NK_EXPORT NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields);
+
+NK_EXPORT NklType nkl_type_getTyperefDistinct(NklState nkl, usize word_size);
+NK_EXPORT NklType nkl_type_getTyperef(NklState nkl, usize word_size);
 
 NK_EXPORT NklType nkl_type_getVoidDistinct(NklState nkl);
 NK_EXPORT NklType nkl_type_getVoid(NklState nkl);

@@ -30,12 +30,11 @@ NK_LOG_USE_SCOPE(compiler);
     } while (0)
 
 typedef enum {
-    Entity_None = 0,
-
     Entity_Incomplete = 0,
 
     Entity_ExternProc,
     Entity_Proc,
+    Entity_Typeref,
 
     EntityKind_Count,
 } EntityKind;
@@ -59,6 +58,7 @@ typedef struct {
 typedef struct {
     union {
         ProcEntity proc;
+        NklType typeref;
     };
     NkAtom sym;
     NklType type;
@@ -287,26 +287,17 @@ static NklAny compileComptimeConst(CompileCtx *ctx, NklAstNode const *node) {
 
 static NklType parseType(CompileCtx *ctx, NklAstNode const *node);
 
-static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *node, ProcInfo *out_info) {
-    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
-
-    NklAstNode const *name_or_params_n = nextNode(&it);
-    NklAstNode const *params_n = name_or_params_n->id == n_id ? nextNode(&it) : name_or_params_n;
-    NklAstNode const *ret_t_n = nextNode(&it);
-    NklAstNode const *body_n = nextNode(&it);
-
-    NkAtom const name = name_or_params_n->id == n_id ? parseId(ctx, name_or_params_n) : nk_atom_unique((NkString){0});
-
-    NklFieldDynArray params = {.alloc = nk_arena_getAllocator(arena)};
-
-    bool is_variadic = false;
-
+static bool parseParamsList(
+    CompileCtx *ctx,
+    NklAstNode const *params_n,
+    NklFieldDynArray *out_params,
+    bool *allow_ellipsis) {
     AstNodeIterator params_it = nodeIterate(ctx->src.nodes, params_n);
     for (u32 i = 0; i < params_n->arity; i++) {
         NklAstNode const *param_n = nextNode(&params_it);
 
-        if (param_n->id == n_ellipsis) {
-            is_variadic = true;
+        if (allow_ellipsis && param_n->id == n_ellipsis) {
+            *allow_ellipsis = true;
             continue;
         }
 
@@ -319,12 +310,29 @@ static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *nod
         TRY(type = parseType(ctx, type_n));
 
         nkda_append(
-            &params,
+            out_params,
             ((NklField){
                 .name = name_n ? parseId(ctx, name_n) : 0,
                 .type = type,
             }));
     }
+
+    return true;
+}
+
+static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *node, ProcInfo *out_info) {
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+
+    NklAstNode const *name_or_params_n = nextNode(&it);
+    NklAstNode const *params_n = name_or_params_n->id == n_id ? nextNode(&it) : name_or_params_n;
+    NklAstNode const *ret_t_n = nextNode(&it);
+    NklAstNode const *body_n = nextNode(&it);
+
+    NkAtom const name = name_or_params_n->id == n_id ? parseId(ctx, name_or_params_n) : nk_atom_unique((NkString){0});
+
+    bool is_variadic = false;
+    NklFieldDynArray params = {.alloc = nk_arena_getAllocator(arena)};
+    TRY(parseParamsList(ctx, params_n, &params, &is_variadic));
 
     NklType ret_t;
     TRY(ret_t = parseType(ctx, ret_t_n));
@@ -383,6 +391,23 @@ static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
             });
     }
 
+    else if (node->id == n_id) {
+        NkAtom const name = parseId(ctx, node);
+
+        Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+        if (!decl) {
+            reportError(ctx, node, "undeclared identifier `%s`", nk_atom2cs(name));
+            return NULL;
+        }
+
+        if (decl->kind != Decl_Entity || decl->entity->kind != Entity_Typeref) {
+            reportError(ctx, node, "type expected");
+            return NULL;
+        }
+
+        return decl->entity->typeref;
+    }
+
     reportError(ctx, node, "TODO: parseType is not finished");
     return NULL;
 }
@@ -429,6 +454,39 @@ static AstNodeExt *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
                 &(AstNodeExt){
                     .type = arg->type->as.ptr.target_t,
                     .is_comptime = arg->is_comptime,
+                });
+        }
+
+        case n_member: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *name_n = nextNode(&it);
+
+            AstNodeExt const *lhs;
+            TRY(lhs = typecheck(ctx, lhs_n, &(TypecheckArgs){0}));
+
+            NkAtom const name = parseId(ctx, name_n);
+
+            nk_assert(lhs->type->tclass == NklType_Struct);
+
+            // TODO: Boilerplate field search
+            usize idx = -1u;
+            NK_ITERATE(NklField const *, it, lhs->type->as.strct.fields) {
+                if (it->name == name) {
+                    idx = NK_INDEX(it, lhs->type->as.strct.fields);
+                }
+            }
+
+            if (idx == -1u) {
+                reportError(ctx, node, "undefined field `%s`", nk_atom2cs(name));
+                return NULL;
+            }
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = lhs->type->as.strct.fields.data[idx].type,
+                    .is_comptime = lhs->is_comptime,
                 });
         }
 
@@ -683,6 +741,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 });
         }
 
+        case n_member:
         case n_deref: {
             return typecheckLvalue(ctx, node);
         }
@@ -925,6 +984,35 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 node,
                 &(AstNodeExt){
                     .type = nickl_get_void_t(ctx->nkl),
+                    .is_comptime = true,
+                });
+        }
+
+        case n_struct: {
+            NklAstNode const *fields_n = nextNode(&it);
+
+            // TODO: Allow declaring incomplete type before typechecking params
+
+            NklFieldDynArray fields = {.alloc = nk_arena_getAllocator(ctx->scratch)};
+            TRY(parseParamsList(ctx, fields_n, &fields, NULL));
+
+            NklType const struct_t = nkl_type_getStruct(ctx->nkl, (NklFieldStridedArray){NKS_INIT_STRIDED(fields)});
+
+            NklType const typeref_t = nkl_type_getTyperef(ctx->nkl, ctx->mod->com->word_size);
+
+            Entity *entity = nk_arena_allocT(&ctx->nkl->arena, Entity);
+            *entity = (Entity){
+                .typeref = struct_t,
+                .type = typeref_t,
+                .kind = Entity_Typeref,
+            };
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .entity = entity,
+                    .type = typeref_t,
                     .is_comptime = true,
                 });
         }
@@ -1272,6 +1360,42 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             return makeRefIndir(toRef(ctx, arg), nodex->type);
         }
 
+        case n_member: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *name_n = nextNode(&it);
+
+            Interm const lhs = compileLvalue(ctx, lhs_n);
+            NkAtom const name = parseId(ctx, name_n);
+
+            nk_assert(lhs.kind == Interm_RefIndir);
+            nk_assert(lhs.type->tclass == NklType_Struct);
+
+            // TODO: Hardcoded u64 for offset calc
+            NklType const u64_t = nickl_get_u64_t(ctx->nkl);
+
+            // TODO: Boilerplate field search
+            usize idx = -1u;
+            NK_ITERATE(NklField const *, it, lhs.type->as.strct.fields) {
+                if (it->name == name) {
+                    idx = NK_INDEX(it, lhs.type->as.strct.fields);
+                }
+            }
+            nk_assert(idx < -1u);
+
+            return makeRefIndir(
+                toRef(
+                    ctx,
+                    makeInstr(
+                        nkir_make_add(
+                            (NkIrRef){0},
+                            lhs.ref,
+                            nkir_makeRefImm(
+                                (NkIrImm){.u64 = nkl_type_getIrType(lhs.type)->aggr.data[idx].offset},
+                                nkl_type_getIrType(u64_t))),
+                        u64_t)),
+                nodex->type);
+        }
+
         default:
             reportError(ctx, node, "TODO: invlid lvalue AST node `%s`", nk_atom2cs(node->id));
             return (Interm){0};
@@ -1519,6 +1643,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return makeRef(addr.ref);
         }
 
+        case n_member:
         case n_deref: {
             return compileLvalue(ctx, node);
         }
@@ -1691,12 +1816,12 @@ static void pushScope(CompileCtx *ctx) {
     nk_list_push(ctx->scope_stack, scope);
 }
 
-static bool compileProc(NklModule mod, NklSource const *src, Entity *proc);
+static bool compileProc(NklModule mod, NklSource const *src, Entity *proc_e);
 
-static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
+static bool compileProcImpl(CompileCtx *ctx, Entity *proc_e) {
     NkIrParamDynArray ir_params = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
 
-    NK_ITERATE(NklField const *, it, proc->proc.info.params) {
+    NK_ITERATE(NklField const *, it, proc_e->proc.info.params) {
         DeclMap_insert(
             &ctx->scope_stack->names,
             it->name,
@@ -1714,13 +1839,13 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
             }));
     }
 
-    TRY(typecheck(ctx, proc->proc.info.body_n, &(TypecheckArgs){0}));
-    discard(ctx, compile(ctx, proc->proc.info.body_n));
+    TRY(typecheck(ctx, proc_e->proc.info.body_n, &(TypecheckArgs){0}));
+    discard(ctx, compile(ctx, proc_e->proc.info.body_n));
 
-    if (!proc->proc.ir.size || NKS_LAST(proc->proc.ir).code != NkIrOp_ret) {
-        if (proc->type->as.proc.ret_t->tclass != NklType_Void) {
+    if (!proc_e->proc.ir.size || NKS_LAST(proc_e->proc.ir).code != NkIrOp_ret) {
+        if (proc_e->type->as.proc.ret_t->tclass != NklType_Void) {
             // TODO: Point to a better node
-            reportError(ctx, proc->proc.info.body_n, "missing return statement");
+            reportError(ctx, proc_e->proc.info.body_n, "missing return statement");
             return false;
         }
         emit(ctx, nkir_make_ret((NkIrRef){0}));
@@ -1741,12 +1866,12 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
                     .params = {NKS_INIT(ir_params)},
                     .ret =
                         {
-                            .type = nkl_type_getIrType(proc->type->as.proc.ret_t),
+                            .type = nkl_type_getIrType(proc_e->type->as.proc.ret_t),
                         },
-                    .instrs = {NKS_INIT(proc->proc.ir)},
+                    .instrs = {NKS_INIT(proc_e->proc.ir)},
                     .flags = 0,
                 },
-            .name = proc->sym,
+            .name = proc_e->sym,
             .vis = NkIrVisibility_Hidden, // TODO: Prevent symbol being optimized away
             .kind = NkIrSymbol_Proc,
         }));
@@ -1754,10 +1879,10 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
     return true;
 }
 
-static bool compileProc(NklModule mod, NklSource const *src, Entity *proc) {
+static bool compileProc(NklModule mod, NklSource const *src, Entity *proc_e) {
     bool ok = true;
 
-    nk_assert(proc->type->tclass == NklType_Procedure);
+    nk_assert(proc_e->type->tclass == NklType_Procedure);
 
     NkArena *scratch = nk_arena_getScratch(NULL);
     NK_ARENA_SCOPE(scratch) {
@@ -1767,8 +1892,8 @@ static bool compileProc(NklModule mod, NklSource const *src, Entity *proc) {
             .nkl = mod->com->nkl,
             .mod = mod,
 
-            .proc_t = proc->type,
-            .instrs = &proc->proc.ir,
+            .proc_t = proc_e->type,
+            .instrs = &proc_e->proc.ir,
 
             .src = *src,
             .nodes_ext =
@@ -1777,13 +1902,13 @@ static bool compileProc(NklModule mod, NklSource const *src, Entity *proc) {
                     .size = src->nodes.size,
                 },
 
-            .scope_stack = proc->proc.scope,
+            .scope_stack = proc_e->proc.scope,
 
             .procs_to_compile = {.alloc = nk_arena_getAllocator(scratch)},
         };
         NKS_ZERO(ctx.nodes_ext);
 
-        ok = compileProcImpl(&ctx, proc);
+        ok = compileProcImpl(&ctx, proc_e);
     }
 
     return ok;
@@ -1825,7 +1950,7 @@ bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src) {
 
             NkAtom const sym = nk_atom_unique((NkString){0});
 
-            Entity proc = (Entity){
+            Entity proc_e = (Entity){
                 .proc =
                     {
                         .info =
@@ -1843,7 +1968,7 @@ bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src) {
                 .type = proc_t,
                 .kind = Entity_Proc,
             };
-            ok = compileProc(mod, src, &proc);
+            ok = compileProc(mod, src, &proc_e);
 
             if (ok) {
                 void (*proc)(void) = nkl_getSymbolAddress(mod, sym);
