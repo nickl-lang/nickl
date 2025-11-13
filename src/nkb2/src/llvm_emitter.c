@@ -9,6 +9,7 @@
 #include "ntk/arena.h"
 #include "ntk/atom.h"
 #include "ntk/common.h"
+#include "ntk/dyn_array.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/stream.h"
@@ -629,6 +630,17 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             NkString const proc = intToPtr(ctx, out, ref1, NULL);
             NkString dst = {0};
 
+            NkDynArray(NkString) args = {.alloc = nk_arena_getAllocator(ctx->scratch)};
+
+            NK_ITERATE(NkIrRef const *, arg_ref, arg_refs) {
+                if (arg_ref->type && arg_ref->type->kind == NkIrType_Aggregate) {
+                    NkIrType const ptr_t = ref1->type;
+                    nkda_append(&args, intToPtr(ctx, out, arg_ref, ptr_t));
+                } else {
+                    nkda_append(&args, ((NkString){0}));
+                }
+            }
+
             bool sret = false;
             if (ref0->kind && ref0->kind != NkIrRef_Null) {
                 if (ref0->type->kind == NkIrType_Aggregate && ref0->type->size) {
@@ -657,7 +669,11 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                 if (NK_INDEX(arg_ref, arg_refs) || sret) {
                     nk_print(out, ", ");
                 }
-                emitRefType(out, arg_ref);
+                if (arg_ref->type && arg_ref->type->kind == NkIrType_Aggregate) {
+                    nk_print(out, "ptr");
+                } else {
+                    emitRefType(out, arg_ref);
+                }
                 if (arg_ref->kind == NkIrRef_VariadicMarker) {
                     break;
                 }
@@ -678,7 +694,21 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                 if (NK_INDEX(arg_ref, arg_refs) || sret) {
                     nk_print(out, ", ");
                 }
-                emitRef(out, arg_ref);
+
+                if (arg_ref->type->kind == NkIrType_Aggregate) {
+                    nk_print(out, "ptr byval(");
+                    emitRefType(out, arg_ref);
+                    nk_printf(out, ") align %u", arg_ref->type->align);
+                } else {
+                    emitRefType(out, arg_ref);
+                }
+                nk_print(out, " ");
+                NkString const arg_str = args.data[NK_INDEX(arg_ref, arg_refs)];
+                if (arg_str.size) {
+                    nk_printf(out, NKS_FMT, NKS_ARG(arg_str));
+                } else {
+                    emitRefUntyped(out, arg_ref);
+                }
             }
 
             nk_print(out, ")");
