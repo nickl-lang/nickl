@@ -88,7 +88,7 @@ NklType nkl_type_getFromCache(NklState nkl, NkHash128 hash) {
 
 NklType nkl_type_getTypeclassInstance(NklState nkl, NklTypeClass tclass, NklType base) {
     NklType_T const src_t = {
-        .ir_type = base->ir_type,
+        ._ir_type = base->_ir_type,
         .base_t = base,
         .size = base->size,
         .align = base->align,
@@ -116,7 +116,7 @@ static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray
         nkda_append(
             &ir_elems,
             ((NkIrAggregateElemInfo){
-                .type = &elem_t->ir_type,
+                .type = nkl_type_getIrType(elem_t),
                 .count = 1,
                 .offset = offset,
             }));
@@ -126,7 +126,7 @@ static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray
     usize const size = nk_alignToPowerOf2(offset, align);
 
     *type = (NklType_T){
-        .ir_type =
+        ._ir_type =
             (NkIrType_T){
                 .aggr = {NKS_INIT(ir_elems)},
                 .size = size,
@@ -175,13 +175,13 @@ static void completeArray(NklState NK_UNUSED nkl, NklType_T *type, NklType elem_
 
     NkIrAggregateElemInfo *elem = nk_arena_allocT(st->arena, NkIrAggregateElemInfo);
     *elem = (NkIrAggregateElemInfo){
-        .type = &elem_t->ir_type,
+        .type = nkl_type_getIrType(elem_t),
         .count = count,
         .offset = 0,
     };
 
     *type = (NklType_T){
-        .ir_type =
+        ._ir_type =
             (NkIrType_T){
                 .aggr = {elem, 1},
                 .size = elem_t->size * count,
@@ -226,7 +226,7 @@ NklType nkl_type_getArray(NklState nkl, NklType elem_t, usize count) {
 
 static void completeBool(NklState NK_UNUSED nkl, NklType_T *type) {
     *type = (NklType_T){
-        .ir_type =
+        ._ir_type =
             (NkIrType_T){
                 .num = Uint8,
                 .size = 1,
@@ -264,7 +264,7 @@ NklType nkl_type_getBool(NklState nkl) {
 
 static void completeNumeric(NklState NK_UNUSED nkl, NklType_T *type, NkIrNumericValueType value_type) {
     *type = (NklType_T){
-        .ir_type =
+        ._ir_type =
             (NkIrType_T){
                 .num = value_type,
                 .size = NKIR_NUMERIC_TYPE_SIZE(value_type),
@@ -309,7 +309,7 @@ static void completePointer(NklState nkl, NklType_T *type, usize word_size, NklT
     NklType const base_t = nkl_type_getNumeric(nkl, numericValueTypeFromSize(word_size));
 
     *type = (NklType_T){
-        .ir_type = base_t->ir_type,
+        ._ir_type = base_t->_ir_type,
         .base_t = base_t,
         .size = base_t->size,
         .align = base_t->align,
@@ -355,7 +355,7 @@ static void completeProcedure(NklState nkl, NklType_T *type, usize word_size, Nk
     NklType const base_t = nkl_type_getPointer(nkl, word_size, nkl_type_getVoid(nkl), true);
 
     *type = (NklType_T){
-        .ir_type = base_t->ir_type,
+        ._ir_type = base_t->_ir_type,
         .base_t = base_t,
         .size = base_t->size,
         .align = base_t->align,
@@ -411,7 +411,7 @@ static void completeStruct(NklState nkl, NklType_T *type, NklFieldStridedArray f
         });
 
     *type = (NklType_T){
-        .ir_type = base_t->ir_type,
+        ._ir_type = base_t->_ir_type,
         .base_t = base_t,
         .size = base_t->size,
         .align = base_t->align,
@@ -450,7 +450,7 @@ NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields) {
 
 static void completeVoid(NklState NK_UNUSED nkl, NklType_T *type) {
     *type = (NklType_T){
-        .ir_type =
+        ._ir_type =
             (NkIrType_T){
                 .kind = NkIrType_Aggregate,
             },

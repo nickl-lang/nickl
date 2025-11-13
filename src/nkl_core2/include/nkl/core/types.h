@@ -52,7 +52,7 @@ typedef NkStridedSlice(NklField const) NklFieldStridedArray;
 typedef NkDynArray(NklField) NklFieldDynArray;
 
 typedef struct NklType_T {
-    NkIrType_T ir_type; // TODO: Don't depend on nkb in public API
+    NkIrType_T _ir_type; // TODO: Don't depend on nkb in public API
     NklType base_t;
     u64 size;
     u32 align;
@@ -84,7 +84,7 @@ typedef struct NklType_T {
 } NklType_T;
 
 NK_INLINE NkIrType nkl_type_getIrType(NklType type) {
-    return &type->ir_type;
+    return &type->_ir_type;
 }
 
 NK_EXPORT NklTypeClass nkl_type_newClass(NklState nkl);

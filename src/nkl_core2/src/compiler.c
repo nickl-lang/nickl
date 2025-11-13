@@ -43,7 +43,7 @@ typedef enum {
 typedef struct Scope Scope;
 
 typedef struct {
-    NkAtom sym;
+    NkAtom name;
     NklFieldDynArray params;
     NklType ret_t;
     u8 flags;
@@ -279,53 +279,21 @@ static AstNodeExt const *typecheckComptimeConst(CompileCtx *ctx, NklAstNode cons
 }
 
 static NklAny compileComptimeConst(CompileCtx *ctx, NklAstNode const *node) {
-    reportError(ctx, node, "TODO: compileComptimeConst is not finished");
+    reportError(ctx, node, "TODO: compileComptimeConst is not implemented");
     return (NklAny){0};
 }
 
-static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
-    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
-
-    if (node->id == n_ptr) {
-        NklAstNode const *const_or_target_t_n = nextNode(&it);
-        bool is_const = const_or_target_t_n->id == n_const;
-
-        NklAstNode const *target_t_n = is_const ? nextNode(&it) : const_or_target_t_n;
-
-        NklType target_t;
-        TRY(target_t = parseType(ctx, target_t_n));
-
-        return nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, target_t, is_const);
-    }
-
-#define X(NAME, VALUE_TYPE)                                    \
-    else if (node->id == NK_CAT(n_, NAME)) {                   \
-        return NK_CAT(nickl_get_, NK_CAT(NAME, _t))(ctx->nkl); \
-    }
-    NKIR_NUMERIC_ITERATE(X)
-#undef X
-
-    else if (node->id == n_void) {
-        return nickl_get_void_t(ctx->nkl);
-    }
-
-    else if (node->id == n_boolean) {
-        return nickl_get_bool_t(ctx->nkl);
-    }
-
-    reportError(ctx, node, "TODO: parseType is not finished");
-    return NULL;
-}
+static NklType parseType(CompileCtx *ctx, NklAstNode const *node);
 
 static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *node, ProcInfo *out_info) {
     AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
 
-    NklAstNode const *sym_n = nextNode(&it);
-    NklAstNode const *params_n = nextNode(&it);
+    NklAstNode const *name_or_params_n = nextNode(&it);
+    NklAstNode const *params_n = name_or_params_n->id == n_id ? nextNode(&it) : name_or_params_n;
     NklAstNode const *ret_t_n = nextNode(&it);
     NklAstNode const *body_n = nextNode(&it);
 
-    NkAtom const sym = parseId(ctx, sym_n);
+    NkAtom const name = name_or_params_n->id == n_id ? parseId(ctx, name_or_params_n) : nk_atom_unique((NkString){0});
 
     NklFieldDynArray params = {.alloc = nk_arena_getAllocator(arena)};
 
@@ -360,13 +328,61 @@ static bool parseProcInfo(CompileCtx *ctx, NkArena *arena, NklAstNode const *nod
     TRY(ret_t = parseType(ctx, ret_t_n));
 
     *out_info = (ProcInfo){
-        .sym = sym,
+        .name = name,
         .params = {NKS_INIT(params)},
         .ret_t = ret_t,
         .flags = is_variadic ? NklProc_Variadic : 0,
         .body_n = body_n,
     };
     return true;
+}
+
+static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
+    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
+
+    if (node->id == n_ptr) {
+        NklAstNode const *const_or_target_t_n = nextNode(&it);
+        bool is_const = const_or_target_t_n->id == n_const;
+
+        NklAstNode const *target_t_n = is_const ? nextNode(&it) : const_or_target_t_n;
+
+        NklType target_t;
+        TRY(target_t = parseType(ctx, target_t_n));
+
+        return nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, target_t, is_const);
+    }
+
+#define X(NAME, VALUE_TYPE)                                    \
+    else if (node->id == NK_CAT(n_, NAME)) {                   \
+        return NK_CAT(nickl_get_, NK_CAT(NAME, _t))(ctx->nkl); \
+    }
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+    else if (node->id == n_void) {
+        return nickl_get_void_t(ctx->nkl);
+    }
+
+    else if (node->id == n_boolean) {
+        return nickl_get_bool_t(ctx->nkl);
+    }
+
+    else if (node->id == n_proc) {
+        ProcInfo proc_info;
+        TRY(parseProcInfo(ctx, ctx->scratch, node, &proc_info));
+
+        return nkl_type_getProcedure(
+            ctx->nkl,
+            ctx->mod->com->word_size,
+            (NklProcInfo){
+                .param_types = {NKS_INIT_STRIDED_FROM_FIELD(proc_info.params, type)},
+                .ret_t = proc_info.ret_t,
+                .flags = proc_info.flags,
+            });
+    }
+
+    reportError(ctx, node, "TODO: parseType is not finished");
+    return NULL;
 }
 
 static AstNodeExt *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
@@ -796,9 +812,9 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                     });
                 DeclMap_insert(
                     &ctx->scope_stack->names,
-                    proc_info.sym,
+                    proc_info.name,
                     (Decl){
-                        .sym = proc_info.sym,
+                        .sym = proc_info.name,
                         .type = proc_t,
                         .kind = Decl_Extern,
                         .is_pub = false,
@@ -819,7 +835,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                                 .lib = lib,
                                 .kind = NkIrExtern_Proc,
                             },
-                        .name = proc_info.sym,
+                        .name = proc_info.name,
                         .kind = NkIrSymbol_Extern,
                     }));
             } else {
@@ -880,7 +896,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                         .ir = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)},
                         .scope = ctx->scope_stack,
                     },
-                .sym = proc_info.sym,
+                .sym = proc_info.name,
                 .type = proc_t,
                 .kind = Entity_Proc,
             };
@@ -1583,6 +1599,12 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return makeVoid(ctx);
         }
 
+        case n_proc: {
+            nkda_append(&ctx->procs_to_compile, nodex->entity);
+
+            return makeRef(nkir_makeRefGlobal(nodex->entity->sym, nkl_type_getIrType(nodex->type)));
+        }
+
         case n_return: {
             NkIrRef arg_ref = {0};
             if (node->arity) {
@@ -1807,7 +1829,7 @@ bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src) {
                     {
                         .info =
                             {
-                                .sym = sym,
+                                .name = sym,
                                 .params = {0},
                                 .ret_t = nickl_get_void_t(nkl),
                                 .flags = 0,
