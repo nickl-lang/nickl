@@ -117,12 +117,15 @@ NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
 
     HANDLE_ERRORS();
 
+    usize const word_size = 8; // TODO: Hardcoded word size
+
     NklCompiler com = nk_arena_allocT(&nkl->arena, NklCompiler_T);
     *com = (NklCompiler_T){
         .nkl = nkl,
         .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .target = tgt,
-        .word_size = 8, // TODO: Hardcoded word size
+        .word_size = word_size,
+        .ptr_t = nkl_type_getIrType(nkl_type_getPointer(nkl, word_size, nickl_get_void_t(nkl), false)),
     };
     return com;
 }

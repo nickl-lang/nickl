@@ -62,6 +62,7 @@ typedef struct NklCompiler_T {
     NkAtomMap lib_aliases;
 
     usize word_size;
+    NkIrType ptr_t;
 } NklCompiler_T;
 
 typedef NkDynArray(NklModule) NklModuleDynArray;
