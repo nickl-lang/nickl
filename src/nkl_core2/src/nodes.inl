@@ -60,7 +60,7 @@ XN(true_lit, "true")
 X(nullptr)
 
 X(void)
-XN(bool_type, "bool")
+XN(boolean, "bool")
 
 X(i8)
 X(i16)

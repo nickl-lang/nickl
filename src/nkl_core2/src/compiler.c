@@ -298,19 +298,19 @@ static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
         return nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, target_t, is_const);
     }
 
-#define X(NAME, VALUE_TYPE)                               \
-    else if (node->id == NK_CAT(n_, NAME)) {              \
-        return nkl_type_getNumeric(ctx->nkl, VALUE_TYPE); \
+#define X(NAME, VALUE_TYPE)                                    \
+    else if (node->id == NK_CAT(n_, NAME)) {                   \
+        return NK_CAT(nickl_get_, NK_CAT(NAME, _t))(ctx->nkl); \
     }
     NKIR_NUMERIC_ITERATE(X)
 #undef X
 
     else if (node->id == n_void) {
-        return nkl_type_getVoid(ctx->nkl);
+        return nickl_get_void_t(ctx->nkl);
     }
 
-    else if (node->id == n_bool_type) {
-        return nkl_type_getBool(ctx->nkl);
+    else if (node->id == n_boolean) {
+        return nickl_get_bool_t(ctx->nkl);
     }
 
     reportError(ctx, node, "TODO: parseType is not finished");
@@ -432,7 +432,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -441,7 +441,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
         case n_escaped_string: {
             NkString const str = parseString(ctx, &ctx->nkl->arena, node);
 
-            NklType const i8_t = nkl_type_getNumeric(ctx->nkl, Int8);
+            NklType const i8_t = nickl_get_i8_t(ctx->nkl);
             NklType const arr_t = nkl_type_getArray(ctx->nkl, i8_t, str.size + 1);
             NklType const str_t = nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, arr_t, true);
 
@@ -451,7 +451,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 &(NkIrSymbol){
                     .data =
                         {
-                            .type = &arr_t->ir_type,
+                            .type = nkl_type_getIrType(arr_t),
                             .relocs = {0},
                             .addr = (void *)str.data,
                             .flags = NkIrData_ReadOnly,
@@ -492,9 +492,9 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
 
         case n_int:
         case n_float: {
-            NklType const type = (args->type && args->type->tclass == NklType_Numeric)
-                                     ? args->type
-                                     : nkl_type_getNumeric(ctx->nkl, node->id == n_int ? Int64 : Float64);
+            NklType const type = (args->type && args->type->tclass == NklType_Numeric) ? args->type
+                                 : node->id == n_int                                   ? nickl_get_i64_t(ctx->nkl)
+                                                                                       : nickl_get_f64_t(ctx->nkl);
             return setNodeExt(
                 ctx,
                 node,
@@ -510,7 +510,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getBool(ctx->nkl),
+                    .type = nickl_get_bool_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -519,7 +519,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             NklType const type =
                 (args->type && args->type->tclass == NklType_Pointer)
                     ? args->type
-                    : nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
+                    : nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nickl_get_void_t(ctx->nkl), false);
             return setNodeExt(
                 ctx,
                 node,
@@ -542,7 +542,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 }
             } else {
                 nodex = (AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 };
             }
@@ -584,7 +584,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = (node->id >= n_lt && node->id <= n_ne) ? nkl_type_getBool(ctx->nkl) : lhs_nodex->type,
+                    .type = (node->id >= n_lt && node->id <= n_ne) ? nickl_get_bool_t(ctx->nkl) : lhs_nodex->type,
                     .is_comptime = lhs_nodex->is_comptime && rhs_nodex->is_comptime,
                 });
         }
@@ -597,14 +597,16 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             AstNodeExt const *lhs_nodex;
             AstNodeExt const *rhs_nodex;
 
-            TRY(lhs_nodex = typecheck(ctx, lhs_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
-            TRY(rhs_nodex = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+            NklType const bool_t = nickl_get_bool_t(ctx->nkl);
+
+            TRY(lhs_nodex = typecheck(ctx, lhs_n, &(TypecheckArgs){.type = bool_t}));
+            TRY(rhs_nodex = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = bool_t}));
 
             return setNodeExt(
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getBool(ctx->nkl),
+                    .type = bool_t,
                     .is_comptime = lhs_nodex->is_comptime && rhs_nodex->is_comptime,
                 });
         }
@@ -612,14 +614,16 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
         case n_not: {
             NklAstNode const *arg_n = nextNode(&it);
 
+            NklType const bool_t = nickl_get_bool_t(ctx->nkl);
+
             AstNodeExt const *arg_nodex;
-            TRY(arg_nodex = typecheck(ctx, arg_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+            TRY(arg_nodex = typecheck(ctx, arg_n, &(TypecheckArgs){.type = bool_t}));
 
             return setNodeExt(
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getBool(ctx->nkl),
+                    .type = bool_t,
                     .is_comptime = arg_nodex->is_comptime,
                 });
         }
@@ -753,7 +757,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -827,7 +831,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -837,7 +841,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             NklAstNode const *body_n = nextNode(&it);
             NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
 
-            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nickl_get_bool_t(ctx->nkl)}));
 
             // TODO: Skip typechecking branches if cond is comptime
 
@@ -850,7 +854,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -902,7 +906,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -945,7 +949,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -954,7 +958,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             NklAstNode const *cond_n = nextNode(&it);
             NklAstNode const *body_n = nextNode(&it);
 
-            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nkl_type_getBool(ctx->nkl)}));
+            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nickl_get_bool_t(ctx->nkl)}));
 
             // TODO: Skip typechecking branches if cond is comptime
 
@@ -964,7 +968,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 ctx,
                 node,
                 &(AstNodeExt){
-                    .type = nkl_type_getVoid(ctx->nkl),
+                    .type = nickl_get_void_t(ctx->nkl),
                     .is_comptime = true,
                 });
         }
@@ -1039,7 +1043,7 @@ typedef struct NK_NODISCARD {
 
 static Interm makeVoid(CompileCtx *ctx) {
     return (Interm){
-        .type = nkl_type_getVoid(ctx->nkl),
+        .type = nickl_get_void_t(ctx->nkl),
         .kind = Interm_Void,
     };
 }
@@ -1097,7 +1101,7 @@ static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
         case Interm_Instr: {
             NkIrRef *dst = &interm.instr.arg[0].ref;
             if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
-                *dst = nkir_makeRefLocal(getNextValue(ctx), &interm.type->ir_type);
+                *dst = nkir_makeRefLocal(getNextValue(ctx), nkl_type_getIrType(interm.type));
             }
             emit(ctx, interm.instr);
             return *dst;
@@ -1116,19 +1120,19 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
 
         case Decl_Entity:
             nkda_append(&ctx->procs_to_compile, decl->entity);
-            return makeRef(nkir_makeRefGlobal(decl->entity->sym, &decl->type->ir_type));
+            return makeRef(nkir_makeRefGlobal(decl->entity->sym, nkl_type_getIrType(decl->type)));
 
         case Decl_Extern:
-            return makeRef(nkir_makeRefGlobal(decl->sym, &decl->type->ir_type));
+            return makeRef(nkir_makeRefGlobal(decl->sym, nkl_type_getIrType(decl->type)));
 
         case Decl_LocalVar: {
             NklType const void_ptr_t =
-                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            return makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nickl_get_void_t(ctx->nkl), false);
+            return makeRefIndir(nkir_makeRefLocal(decl->sym, nkl_type_getIrType(void_ptr_t)), decl->type);
         }
 
         case Decl_Param: {
-            return makeRef(nkir_makeRefParam(decl->sym, &decl->type->ir_type));
+            return makeRef(nkir_makeRefParam(decl->sym, nkl_type_getIrType(decl->type)));
         }
     }
 
@@ -1240,8 +1244,8 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             nk_assert(decl);
 
             NklType const void_ptr_t =
-                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            return makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nickl_get_void_t(ctx->nkl), false);
+            return makeRefIndir(nkir_makeRefLocal(decl->sym, nkl_type_getIrType(void_ptr_t)), decl->type);
         }
 
         case n_deref: {
@@ -1261,16 +1265,16 @@ static NklType promote(CompileCtx *ctx, NklType type) {
         switch (type->as.num.value_type) {
             case Int8:
             case Int16:
-                type = nkl_type_getNumeric(ctx->nkl, Int32);
+                type = nickl_get_i32_t(ctx->nkl);
                 break;
 
             case Uint8:
             case Uint16:
-                type = nkl_type_getNumeric(ctx->nkl, Uint32);
+                type = nickl_get_u32_t(ctx->nkl);
                 break;
 
             case Float32:
-                type = nkl_type_getNumeric(ctx->nkl, Float64);
+                type = nickl_get_f64_t(ctx->nkl);
                 break;
 
             default:
@@ -1308,12 +1312,12 @@ static Interm compileLogicExpr(
     NkIrLabel const short_l = nkir_makeLabelAbs(getNextLabelShort(ctx));
     NkIrLabel const join_l = nkir_makeLabelAbs(getNextLabelJoin(ctx));
 
+    NklType const bool_t = nickl_get_bool_t(ctx->nkl);
     NklType const void_ptr_t =
-        nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-    Interm const res =
-        makeRefIndir(nkir_makeRefLocal(getNextValue(ctx), &void_ptr_t->ir_type), nkl_type_getBool(ctx->nkl));
+        nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nickl_get_void_t(ctx->nkl), false);
+    Interm const res = makeRefIndir(nkir_makeRefLocal(getNextValue(ctx), nkl_type_getIrType(void_ptr_t)), bool_t);
 
-    emit(ctx, nkir_make_alloc(res.ref, &nkl_type_getBool(ctx->nkl)->ir_type));
+    emit(ctx, nkir_make_alloc(res.ref, nkl_type_getIrType(bool_t)));
     Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
     if (op == (invert ? n_or : n_and)) {
         emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
@@ -1356,12 +1360,11 @@ static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert)
         default: {
             Interm const res = compile(ctx, node);
             if (invert) {
+                NklType const bool_t = nickl_get_bool_t(ctx->nkl);
                 return makeInstr(
                     nkir_make_xor(
-                        (NkIrRef){0},
-                        nkir_makeRefImm((NkIrImm){.u8 = 1}, &nkl_type_getBool(ctx->nkl)->ir_type),
-                        toRef(ctx, res)),
-                    nkl_type_getBool(ctx->nkl));
+                        (NkIrRef){0}, nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_getIrType(bool_t)), toRef(ctx, res)),
+                    bool_t);
             } else {
                 return res;
             }
@@ -1397,7 +1400,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_string:
         case n_escaped_string: {
-            return makeRef(nkir_makeRefGlobal(nodex->sym, &nodex->type->ir_type));
+            return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_getIrType(nodex->type)));
         }
 
         case n_id: {
@@ -1418,19 +1421,19 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             NkIrImm imm = {0};
             parseNumber(ctx, &imm, token_str, nodex->type->as.num.value_type);
-            return makeRef(nkir_makeRefImm(imm, &nodex->type->ir_type));
+            return makeRef(nkir_makeRefImm(imm, nkl_type_getIrType(nodex->type)));
         }
 
         case n_true_lit: {
-            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, &nodex->type->ir_type));
+            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_getIrType(nodex->type)));
         }
 
         case n_false_lit: {
-            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 0}, &nodex->type->ir_type));
+            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 0}, nkl_type_getIrType(nodex->type)));
         }
 
         case n_nullptr: {
-            return makeRef(nkir_makeRefImm((NkIrImm){.u64 = 0}, &nodex->type->ir_type));
+            return makeRef(nkir_makeRefImm((NkIrImm){.u64 = 0}, nkl_type_getIrType(nodex->type)));
         }
 
         case n_list: {
@@ -1493,11 +1496,9 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NklAstNode const *arg_n = nextNode(&it);
 
             Interm const addr = compileLvalue(ctx, arg_n);
-            if (addr.kind == Interm_RefIndir) {
-                return makeRef(addr.ref);
-            } else {
-                return addr;
-            }
+            nk_assert(addr.kind == Interm_RefIndir);
+
+            return makeRef(addr.ref);
         }
 
         case n_deref: {
@@ -1541,7 +1542,9 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             return makeInstr(
                 nkir_make_call(
-                    nkir_makeRefNull(&nodex->type->ir_type), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
+                    nkir_makeRefNull(nkl_type_getIrType(nodex->type)),
+                    toRef(ctx, proc),
+                    (NkIrRefArray){NKS_INIT(args)}),
                 proc.type->as.proc.ret_t);
         }
 
@@ -1589,7 +1592,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 arg_ref = toRef(ctx, arg);
             }
 
-            return makeInstr(nkir_make_ret(arg_ref), nkl_type_getVoid(ctx->nkl));
+            return makeInstr(nkir_make_ret(arg_ref), nickl_get_void_t(ctx->nkl));
         }
 
         case n_var: {
@@ -1603,10 +1606,10 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             nk_assert(decl);
 
             NklType const void_ptr_t =
-                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nkl_type_getVoid(ctx->nkl), false);
-            Interm const var = makeRefIndir(nkir_makeRefLocal(decl->sym, &void_ptr_t->ir_type), decl->type);
+                nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nickl_get_void_t(ctx->nkl), false);
+            Interm const var = makeRefIndir(nkir_makeRefLocal(decl->sym, nkl_type_getIrType(void_ptr_t)), decl->type);
 
-            emit(ctx, nkir_make_alloc(var.ref, &decl->type->ir_type));
+            emit(ctx, nkir_make_alloc(var.ref, nkl_type_getIrType(decl->type)));
 
             if (val_n) {
                 Interm const val = compile(ctx, val_n);
@@ -1684,7 +1687,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
             &ir_params,
             ((NkIrParam){
                 .name = it->name,
-                .type = &it->type->ir_type,
+                .type = nkl_type_getIrType(it->type),
             }));
     }
 
@@ -1715,7 +1718,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
                     .params = {NKS_INIT(ir_params)},
                     .ret =
                         {
-                            .type = &proc->type->as.proc.ret_t->ir_type,
+                            .type = nkl_type_getIrType(proc->type->as.proc.ret_t),
                         },
                     .instrs = {NKS_INIT(proc->proc.ir)},
                     .flags = 0,
@@ -1789,7 +1792,7 @@ bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src) {
                 com->word_size,
                 (NklProcInfo){
                     .param_types = {0},
-                    .ret_t = nkl_type_getVoid(nkl),
+                    .ret_t = nickl_get_void_t(nkl),
                     .flags = 0,
                 });
 
@@ -1806,7 +1809,7 @@ bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src) {
                             {
                                 .sym = sym,
                                 .params = {0},
-                                .ret_t = nkl_type_getVoid(nkl),
+                                .ret_t = nickl_get_void_t(nkl),
                                 .flags = 0,
                                 .body_n = &NKS_FIRST(src->nodes),
                             },

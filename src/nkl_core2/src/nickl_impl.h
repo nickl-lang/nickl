@@ -29,7 +29,31 @@ typedef struct NklState_T {
     NklError *error;
 
     NklTypeStorage types;
+
+#define X(TYPE, VALUE_TYPE) NklType NK_CAT(_cached_, NK_CAT(TYPE, _t));
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+    NklType _cached_void_t;
+    NklType _cached_bool_t;
 } NklState_T;
+
+#define CACHED_TYPE(NAME, EXPR)                                \
+    NK_INLINE NklType NK_CAT(nickl_get_, NAME)(NklState nkl) { \
+        NklType *cached = &nkl->NK_CAT(_cached_, NAME);        \
+        if (!*cached) {                                        \
+            *cached = (EXPR);                                  \
+        }                                                      \
+        return *cached;                                        \
+    };
+
+#define X(TYPE, VALUE_TYPE) CACHED_TYPE(NK_CAT(TYPE, _t), nkl_type_getNumeric(nkl, VALUE_TYPE))
+NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+CACHED_TYPE(void_t, nkl_type_getVoid(nkl));
+CACHED_TYPE(bool_t, nkl_type_getBool(nkl));
+
+#undef CACHED_TYPE
 
 typedef struct NklCompiler_T {
     NklState nkl;
