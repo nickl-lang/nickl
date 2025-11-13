@@ -1252,7 +1252,11 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
         }
 
         case Decl_Param: {
-            return makeRef(nkir_makeRefParam(decl->sym, nkl_type_getIrType(decl->type)));
+            if (nkl_type_getIrType(decl->type)->kind == NkIrType_Aggregate) {
+                return makeRefIndir(nkir_makeRefParam(decl->sym, ctx->mod->com->ptr_t), decl->type);
+            } else {
+                return makeRef(nkir_makeRefParam(decl->sym, nkl_type_getIrType(decl->type)));
+            }
         }
     }
 
@@ -1363,7 +1367,14 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             nk_assert(decl);
 
-            return makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
+            if (decl->kind == Decl_LocalVar) {
+                return makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
+            } else if (decl->kind == Decl_Param) {
+                return makeRefIndir(nkir_makeRefParam(decl->sym, ctx->mod->com->ptr_t), decl->type);
+            } else {
+                nk_assert(!"unreachable");
+                return (Interm){0};
+            }
         }
 
         case n_deref: {
@@ -1382,8 +1393,8 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             nk_assert(lhs.indir);
             nk_assert(lhs.type->tclass == NklType_Struct);
 
-            // TODO: Hardcoded u64 for offset calc
-            NklType const u64_t = nickl_get_u64_t(ctx->nkl);
+            // TODO: Hardcoded i64 for offset calc
+            NklType const i64_t = nickl_get_i64_t(ctx->nkl);
 
             // TODO: Boilerplate field search
             usize idx = -1u;
@@ -1394,14 +1405,17 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             }
             nk_assert(idx < -1u);
 
-            return makeInstrIndir(
-                nkir_make_add(
-                    (NkIrRef){0},
-                    toRefDirect(ctx, lhs),
-                    nkir_makeRefImm(
-                        (NkIrImm){.u64 = nkl_type_getIrType(lhs.type)->aggr.data[idx].offset},
-                        nkl_type_getIrType(u64_t))),
-                nodex->type);
+            usize const offset = nkl_type_getIrType(lhs.type)->aggr.data[idx].offset;
+            if (offset) {
+                return makeInstrIndir(
+                    nkir_make_add(
+                        (NkIrRef){0},
+                        toRefDirect(ctx, lhs),
+                        nkir_makeRefImm((NkIrImm){.u64 = offset}, nkl_type_getIrType(i64_t))),
+                    nodex->type);
+            } else {
+                return makeRefIndir(toRefDirect(ctx, lhs), nodex->type);
+            }
         }
 
         default:
