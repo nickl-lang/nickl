@@ -134,6 +134,8 @@ typedef NkSlice(AstNodeExt) AstNodeExtArray;
 
 typedef NkDynArray(Entity *) EntityPtrDynArray;
 
+NK_HASH_TREE_ARRAY_DEFINE_KV(EntityMap, NkAtom, Entity *, nk_atom_hash, nk_atom_equal);
+
 typedef struct {
     NkArena *scratch;
 
@@ -148,7 +150,7 @@ typedef struct {
 
     Scope *scope_stack;
 
-    EntityPtrDynArray procs_to_compile; // TODO: This must be a set
+    EntityMap procs_to_compile;
 
     u32 next_local_idx;
     u32 next_label_else;
@@ -1135,7 +1137,7 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
             return (Interm){0};
 
         case Decl_Entity:
-            nkda_append(&ctx->procs_to_compile, decl->entity);
+            EntityMap_insert(&ctx->procs_to_compile, decl->sym, decl->entity);
             return makeRef(nkir_makeRefGlobal(decl->entity->sym, nkl_type_getIrType(decl->type)));
 
         case Decl_Extern:
@@ -1600,8 +1602,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         }
 
         case n_proc: {
-            nkda_append(&ctx->procs_to_compile, nodex->entity);
-
+            EntityMap_insert(&ctx->procs_to_compile, nodex->entity->sym, nodex->entity);
             return makeRef(nkir_makeRefGlobal(nodex->entity->sym, nkl_type_getIrType(nodex->type)));
         }
 
@@ -1726,7 +1727,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc) {
     }
 
     while (ctx->procs_to_compile.size) {
-        Entity *dep = NKS_LAST(ctx->procs_to_compile);
+        Entity *dep = NKS_LAST(ctx->procs_to_compile).val;
         nkda_pop(&ctx->procs_to_compile, 1);
 
         TRY(compileProc(ctx->mod, &ctx->src, dep));

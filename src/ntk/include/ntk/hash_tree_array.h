@@ -79,7 +79,7 @@
                     idx_ptr = &node->right;                                                                \
                     break;                                                                                 \
             }                                                                                              \
-        } while (*idx_ptr);                                                                                \
+        } while (*idx_ptr && *idx_ptr < items->size);                                                      \
         return NK_LITERAL(_##TArray##_SearchResult){idx_ptr, false};                                       \
     }                                                                                                      \
                                                                                                            \

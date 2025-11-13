@@ -1,11 +1,16 @@
 #include "ntk/hash_tree_array.h"
 
+#include <cstdlib>
+#include <unordered_set>
+
 #include <gtest/gtest.h>
 
 #include "ntk/arena.h"
 #include "ntk/hash.h"
 #include "ntk/log.h"
+#include "ntk/slice.h"
 #include "ntk/string.h"
+#include "ntk/time.h"
 #include "ntk/utils.h"
 
 class HashTreeArray : public testing::Test {
@@ -238,4 +243,55 @@ TEST_F(HashTreeArray, hash_map) {
     }
     EXPECT_FALSE(IntStringMap_find(&map, 4));
     EXPECT_FALSE(IntStringMap_find(&map, 5));
+}
+
+TEST_F(HashTreeArray, stress) {
+    IntSet set{};
+    defer {
+        IntSet_free(&set);
+    };
+
+    std::unordered_set<int> std_set;
+
+    auto const check = [&]() {
+        ASSERT_EQ(std_set.size(), set.size);
+
+        for (auto const n : std_set) {
+            auto found = IntSet_find(&set, n);
+            ASSERT_TRUE(found);
+            EXPECT_EQ(*found, n);
+        }
+
+        NK_ITERATE(IntSet_Item const *, it, set) {
+            ASSERT_NE(std_set.find(it->key), std::end(std_set));
+        }
+    };
+
+    srand(nk_now_ns());
+
+    for (usize i = 0; i < 1000; i++) {
+        int n = rand();
+
+        if (n % 2) {
+            IntSet_insert(&set, n);
+
+            std_set.insert(n);
+
+            auto found = IntSet_find(&set, n);
+            ASSERT_TRUE(found);
+            EXPECT_EQ(*found, n);
+        } else if (std_set.size()) {
+            ASSERT_TRUE(set.size);
+            int const key = NKS_LAST(set).key;
+
+            std_set.erase(key);
+
+            nkda_pop(&set, 1);
+
+            auto found = IntSet_find(&set, n);
+            EXPECT_TRUE(!found);
+        }
+
+        check();
+    }
 }
