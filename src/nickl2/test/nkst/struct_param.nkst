@@ -18,13 +18,10 @@
 (assign (member b x) 2.0)
 (assign (member b y) -1.0)
 
-(var ok (f64) (call dot [a b]))
-(call printf ["%g\n" ok])
-
-// (call printf ["{%g, %g} dot {%g, %g} = %g\n"
-//     (member a x) (member a y) (member b x) (member b y)
-//     (call dot [a b])
-//     ])
+(call printf ["{%g, %g} dot {%g, %g} = %g\n"
+    (member a x) (member a y) (member b x) (member b y)
+    (call dot [a b])
+    ])
 
 /* @output
 {1, 2} dot {2, -1} = 0

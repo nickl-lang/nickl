@@ -1700,7 +1700,14 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                     arg = makeCast(ctx, promote(ctx, arg.type), arg);
                 }
 
-                nkda_append(&args, toRef(ctx, arg));
+                if (nkl_type_getIrType(arg.type)->kind == NkIrType_Aggregate) {
+                    nk_assert(arg.indir);
+                    NkIrRef arg_ref = toRefDirect(ctx, arg);
+                    arg_ref.type = nkl_type_getIrType(arg.type); // TODO: Manually patching ref type
+                    nkda_append(&args, arg_ref);
+                } else {
+                    nkda_append(&args, toRef(ctx, arg));
+                }
             }
 
             return makeInstr(
