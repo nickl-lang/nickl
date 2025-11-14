@@ -85,6 +85,10 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                     break;
             }
             break;
+
+        case NkIrType_Pointer:
+            nk_print(out, "ptr");
+            break;
     }
 }
 
@@ -793,6 +797,10 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
             }
             break;
         }
+
+        case NkIrType_Pointer:
+            nk_assert(!"cannot write pointer constant");
+            break;
     }
 }
 
@@ -804,6 +812,7 @@ static void emitData(NkStream out, NkIrData const *data) {
     } else {
         switch (data->type->kind) {
             case NkIrType_Aggregate:
+            case NkIrType_Pointer:
                 emitType(out, data->type);
                 nk_print(out, " zeroinitializer");
                 break;

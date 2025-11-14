@@ -8,25 +8,25 @@
 
 void nkir_inspectType(NkIrType type, NkStream out) {
     if (!type) {
-        nk_printf(out, "(null)");
+        nk_print(out, "(null)");
         return;
     }
     switch (type->kind) {
         case NkIrType_Aggregate:
             if (type->aggr.size) {
-                nk_printf(out, "{");
+                nk_print(out, "{");
                 NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                     if (NK_INDEX(elem, type->aggr)) {
-                        nk_printf(out, ", ");
+                        nk_print(out, ", ");
                     }
                     if (elem->count > 1) {
                         nk_printf(out, "[%" PRIu32 "]", elem->count);
                     }
                     nkir_inspectType(elem->type, out);
                 }
-                nk_printf(out, "}");
+                nk_print(out, "}");
             } else {
-                nk_printf(out, "void");
+                nk_print(out, "void");
             }
             break;
 
@@ -40,6 +40,10 @@ void nkir_inspectType(NkIrType type, NkStream out) {
 #undef X
             }
             break;
+
+        case NkIrType_Pointer:
+            nk_print(out, "ptr");
+            break;
     }
 
     // TODO: Print alignment conservatively
@@ -47,38 +51,38 @@ void nkir_inspectType(NkIrType type, NkStream out) {
 
 void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
     if (!data) {
-        nk_printf(out, "(null)");
+        nk_print(out, "(null)");
         return;
     }
     switch (type->kind) {
         case NkIrType_Aggregate:
-            nk_printf(out, "{");
+            nk_print(out, "{");
             NK_ITERATE(NkIrAggregateElemInfo const *, elem, type->aggr) {
                 if (NK_INDEX(elem, type->aggr)) {
-                    nk_printf(out, ", ");
+                    nk_print(out, ", ");
                 }
                 u8 *ptr = (u8 *)data + elem->offset;
                 if (elem->type->kind == NkIrType_Numeric && elem->type->size == 1) {
-                    nk_printf(out, "\"");
+                    nk_print(out, "\"");
                     nks_escape(out, (NkString){(char const *)ptr, elem->count});
-                    nk_printf(out, "\"");
+                    nk_print(out, "\"");
                 } else {
                     if (elem->count > 1) {
-                        nk_printf(out, "[");
+                        nk_print(out, "[");
                     }
                     for (usize i = 0; i < elem->count; i++) {
                         if (i) {
-                            nk_printf(out, ", ");
+                            nk_print(out, ", ");
                         }
                         nkir_inspectVal(ptr, elem->type, out);
                         ptr += elem->type->size;
                     }
                     if (elem->count > 1) {
-                        nk_printf(out, "]");
+                        nk_print(out, "]");
                     }
                 }
             }
-            nk_printf(out, "}");
+            nk_print(out, "}");
             break;
 
         case NkIrType_Numeric:
@@ -94,6 +98,22 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                     break;
                 case Float64:
                     printFloat64Exact(out, *(f64 *)data);
+                    break;
+            }
+            break;
+
+        case NkIrType_Pointer:
+            switch (type->size) {
+                case 4:
+                    nk_printf(out, "0x%" PRIx32, *(i32 *)data);
+                    break;
+
+                case 8:
+                    nk_printf(out, "0x%" PRIx64, *(i64 *)data);
+                    break;
+
+                default:
+                    nk_assert(!"pointer must be 4 or 8 bytes");
                     break;
             }
             break;
