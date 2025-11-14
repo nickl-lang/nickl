@@ -559,7 +559,7 @@ static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
 
     if (name == p->proc_ret.name) {
         is_param = true;
-        type = get_ptr_t(p);
+        type = p->proc_ret.type;
     } else {
         NK_ITERATE(NkIrParam const *, param, p->proc_params) {
             if (name == param->name) {
@@ -651,7 +651,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
 
     else if (on(p, NklToken_Id) || on(p, NklIrToken_DollarTag)) {
         TRY(NkAtom const sym = parseId(p));
-        return nkir_makeRefGlobal(sym, get_ptr_t(p));
+        return nkir_makeRefGlobal(sym, type ? type : get_ptr_t(p));
     }
 
     else if (type) {
@@ -683,7 +683,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
                     .vis = NkIrVisibility_Local,
                     .kind = NkIrSymbol_Data,
                 }));
-            return nkir_makeRefGlobal(sym, get_ptr_t(p));
+            return nkir_makeRefGlobal(sym, type ? type : get_ptr_t(p));
         }
     }
 

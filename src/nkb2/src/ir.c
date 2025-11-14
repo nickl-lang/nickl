@@ -682,6 +682,14 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkbState nkb, NkIrDylib dl, 
     NkLlvmTarget tgt = nk_llvm_getJitTarget(jit);
     nk_llvm_optimizeIr(llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
 
+    // // TODO: Dirty hack for printf being optimized into puts
+    // nkda_append(
+    //     &to_define,
+    //     ((NkIrSymbolAddress){
+    //         .sym = nk_cs2atom("puts"),
+    //         .addr = puts,
+    //     }));
+
     nk_llvm_jitModule(llvm_mod, jit, jdl);
 
     return nk_llvm_getSymbolAddress(jit, jdl, sym_name);
@@ -885,7 +893,7 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
                         }
                         bool found_reloc = false;
                         NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                            if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
+                            if (reloc->offset == offset && elem->type->kind == NkIrType_Pointer) {
                                 nk_printf(out, "$%s", nk_atom2cs(reloc->sym));
                                 found_reloc = true;
                                 break;

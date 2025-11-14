@@ -1,4 +1,4 @@
-extern "c" proc $printf(:i64, ...) :i32
+extern "c" proc $printf(:ptr, ...) :i32
 
 pub proc $_entry() {
 
@@ -7,7 +7,7 @@ pub proc $_entry() {
 
 }
 
-pub proc main(:i32 %argc, :i64 %argv) :i32 {
+pub proc main(:i32 %argc, :ptr %argv) :i32 {
     call _entry, ()
     ret 0
 }

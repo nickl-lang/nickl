@@ -39,7 +39,7 @@ static void emitTypeEx(NkStream out, NkIrType type, usize base_offset, NkIrReloc
                     }
                     bool found_reloc = false;
                     NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                        if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
+                        if (reloc->offset == offset && elem->type->kind == NkIrType_Pointer) {
                             nk_print(out, "ptr");
                             found_reloc = true;
                             break;
@@ -168,10 +168,31 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
 
         case NkIrRef_Imm: {
             void *addr = (void *)&ref->imm;
-            if (NKIR_NUMERIC_IS_INT(ref->type->num)) {
-                nkir_inspectVal(addr, ref->type, out);
+            if (ref->type->kind == NkIrType_Pointer) {
+                switch (ref->type->size) {
+                    case 4: {
+                        i32 val = *(i32 *)addr;
+                        nk_assert(!val && "pointer constant can only be null");
+                        break;
+                    }
+
+                    case 8: {
+                        i64 val = *(i64 *)addr;
+                        nk_assert(!val && "pointer constant can only be null");
+                        break;
+                    }
+
+                    default:
+                        nk_assert(!"pointer must be 4 or 8 bytes");
+                        break;
+                }
+                nk_print(out, "zeroinitializer");
             } else {
-                emitFloat(out, addr, ref->type->num);
+                if (NKIR_NUMERIC_IS_INT(ref->type->num)) {
+                    nkir_inspectVal(addr, ref->type, out);
+                } else {
+                    emitFloat(out, addr, ref->type->num);
+                }
             }
             break;
         }
@@ -187,14 +208,11 @@ static void emitRefType(NkStream out, NkIrRef const *ref) {
         case NkIrRef_None:
             break;
 
-        case NkIrRef_Global:
-            nk_print(out, "ptr");
-            break;
-
         case NkIrRef_Imm:
         case NkIrRef_Null:
         case NkIrRef_Local:
         case NkIrRef_Param:
+        case NkIrRef_Global:
             emitType(out, ref->type);
             break;
 
@@ -781,7 +799,7 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
                         }
                         bool found_reloc = false;
                         NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                            if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
+                            if (reloc->offset == offset && elem->type->kind == NkIrType_Pointer) {
                                 nk_print(out, "ptr ");
                                 emitGlobal(out, reloc->sym);
                                 found_reloc = true;
