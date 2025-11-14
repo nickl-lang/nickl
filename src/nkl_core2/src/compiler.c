@@ -1373,14 +1373,7 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             nk_assert(decl);
 
-            if (decl->kind == Decl_LocalVar) {
-                return makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
-            } else if (decl->kind == Decl_Param) {
-                return makeRefIndir(nkir_makeRefParam(decl->sym, ctx->mod->com->ptr_t), decl->type);
-            } else {
-                nk_assert(!"unreachable");
-                return (Interm){0};
-            }
+            return resolveDecl(ctx, decl);
         }
 
         case n_deref: {
@@ -1566,15 +1559,6 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_getIrType(nodex->type)));
         }
 
-        case n_id: {
-            NkAtom const name = parseId(ctx, node);
-
-            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
-            nk_assert(decl);
-
-            return resolveDecl(ctx, decl);
-        }
-
         case n_int:
         case n_float: {
             nk_assert(nodex->type->tclass == NklType_Numeric);
@@ -1664,6 +1648,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return makeRef(toRefDirect(ctx, addr));
         }
 
+        case n_id:
         case n_member:
         case n_deref: {
             return compileLvalue(ctx, node);
