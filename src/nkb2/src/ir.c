@@ -291,6 +291,13 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args) {
     };
 }
 
+NkIrInstr nkir_make_offset(NkIrRef dst, NkIrRef ptr, NkIrRef idx) {
+    return (NkIrInstr){
+        .arg = {argRef(dst), argRef(ptr), argRef(idx)},
+        .code = NkIrOp_offset,
+    };
+}
+
 NkIrInstr nkir_make_store(NkIrRef dst, NkIrRef src) {
     return (NkIrInstr){
         .arg = {argRef(dst), argRef(src), argNull()},

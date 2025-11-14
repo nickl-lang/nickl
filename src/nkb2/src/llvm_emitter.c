@@ -247,21 +247,21 @@ static NkString intToPtr(Context *ctx, NkStream out, NkIrRef const *ref, NkIrTyp
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
     NkStream tmp = nksb_getStream(&sb);
 
-    if (refIsPtr(ctx, ref)) {
-        emitRefUntyped(tmp, ref);
-    } else {
-        usize const reg = ctx->next_local++;
+    // if (refIsPtr(ctx, ref)) {
+    emitRefUntyped(tmp, ref);
+    // } else {
+    //     usize const reg = ctx->next_local++;
 
-        NkIrType const type = int_t ? int_t : ref->type;
+    //     NkIrType const type = int_t ? int_t : ref->type;
 
-        nk_printf(out, "%%.%zu = inttoptr ", reg);
-        emitType(out, type);
-        nk_print(out, " ");
-        emitRefUntyped(out, ref);
-        nk_print(out, " to ptr\n  ");
+    //     nk_printf(out, "%%.%zu = inttoptr ", reg);
+    //     emitType(out, type);
+    //     nk_print(out, " ");
+    //     emitRefUntyped(out, ref);
+    //     nk_print(out, " to ptr\n  ");
 
-        nk_printf(tmp, "%%.%zu", reg);
-    }
+    //     nk_printf(tmp, "%%.%zu", reg);
+    // }
 
     return (NkString){NKS_INIT(sb)};
 }
@@ -270,19 +270,19 @@ static NkString ptrToInt(Context *ctx, NkStream out, NkIrRef const *ref) {
     NkStringBuilder sb = {.alloc = nk_arena_getAllocator(ctx->scratch)};
     NkStream tmp = nksb_getStream(&sb);
 
-    if (refIsPtr(ctx, ref)) {
-        usize const reg = ctx->next_local++;
+    // if (refIsPtr(ctx, ref)) {
+    //     usize const reg = ctx->next_local++;
 
-        nk_printf(out, "%%.%zu = ptrtoint ptr ", reg);
-        emitRefUntyped(out, ref);
-        nk_print(out, " to ");
-        emitType(out, ref->type);
-        nk_print(out, "\n  ");
+    //     nk_printf(out, "%%.%zu = ptrtoint ptr ", reg);
+    //     emitRefUntyped(out, ref);
+    //     nk_print(out, " to ");
+    //     emitType(out, ref->type);
+    //     nk_print(out, "\n  ");
 
-        nk_printf(tmp, "%%.%zu", reg);
-    } else {
-        emitRefUntyped(tmp, ref);
-    }
+    //     nk_printf(tmp, "%%.%zu", reg);
+    // } else {
+    emitRefUntyped(tmp, ref);
+    // }
 
     return (NkString){NKS_INIT(sb)};
 }
@@ -529,13 +529,26 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_alloc: {
-            usize const reg = ctx->next_local++;
-            nk_printf(out, "%%.%zu = alloca ", reg);
-            emitType(out, instr->arg[1].type);
-            nk_print(out, "\n  ");
             emitRefUntyped(out, ref0);
-            nk_printf(out, " = ptrtoint ptr %%.%zu to ", reg);
-            emitRefType(out, ref0);
+            nk_print(out, " = alloca ");
+            emitType(out, instr->arg[1].type);
+            break;
+        }
+
+        case NkIrOp_offset: {
+            emitRefUntyped(out, ref0);
+            nk_print(out, " = getelementptr inbounds ");
+            emitRefType(out, ref1);
+            nk_print(out, ", ptr ");
+            emitRefUntyped(out, ref1);
+            nk_assert(ref1->type->kind == NkIrType_Aggregate);
+            if (ref1->type->aggr.size == 1 && ref1->type->aggr.data[0].count > 1) {
+                nk_print(out, ", i32 0, i32 0, ");
+                emitRef(out, &instr->arg[2].ref);
+            } else {
+                nk_print(out, ", i32 0, ");
+                emitRef(out, &instr->arg[2].ref);
+            }
             break;
         }
 
