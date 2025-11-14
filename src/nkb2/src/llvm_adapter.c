@@ -13,9 +13,11 @@
 #include "llvm_emitter.h"
 #include "ntk/arena.h"
 #include "ntk/common.h"
+#include "ntk/dl.h"
 #include "ntk/error.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
+#include "ntk/string.h"
 #include "ntk/string_builder.h"
 
 NK_LOG_USE_SCOPE(llvm_adapter);
@@ -348,6 +350,54 @@ bool nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dl) 
 
         LLVMOrcJITDylibRef jd = jd_unwrap(dl);
 
+        // Try to patch missing symbols from libc
+        // Happens when IR optimization introduces new symbols
+        NkArena *scratch = nk_arena_getScratch(NULL);
+        NK_ARENA_SCOPE(scratch) {
+            NkIrSymbolAddressDynArray to_define = {.alloc = nk_arena_getAllocator(scratch)};
+
+            LLVMValueRef f = LLVMGetFirstFunction(m_unwrap(mod));
+            while (f) {
+                if (LLVMIsDeclaration(f)) {
+                    LLVMLinkage linkage = LLVMGetLinkage(f);
+                    switch (linkage) {
+                        case LLVMExternalLinkage:
+                        case LLVMExternalWeakLinkage:
+                        case LLVMAvailableExternallyLinkage: {
+                            NkString name = {0};
+                            name.data = LLVMGetValueName2(f, &name.size);
+
+                            if (!nks_startsWith(name, nk_cs2s("llvm.")) && !tryLookupSymbol(jit->lljit, jd, name)) {
+                                NkStringBuilder name_nt = {.alloc = nk_arena_getAllocator(scratch)};
+                                nksb_printf(&name_nt, NKS_FMT, NKS_ARG(name));
+                                nksb_appendNull(&name_nt);
+
+                                void *addr = nkdl_resolveSymbol(nkdl_loadLibrary(SYSTEM_LIBC), name_nt.data);
+                                if (addr) {
+                                    nkda_append(
+                                        &to_define,
+                                        ((NkIrSymbolAddress){
+                                            .sym = nk_s2atom(name),
+                                            .addr = addr,
+                                        }));
+                                } else {
+                                    NK_LOG_WRN("Failed to lookup symbol: " NKS_FMT, NKS_ARG(name));
+                                }
+                            }
+
+                            break;
+                        }
+
+                        default:
+                            break;
+                    }
+                }
+                f = LLVMGetNextFunction(f);
+            }
+
+            nk_llvm_defineExternSymbols(jit, dl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
+        }
+
         LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit->lljit, jd, tsm);
         if (err) {
             char *err_msg = LLVMGetErrorMessage(err);
@@ -372,9 +422,8 @@ void *nk_llvm_getSymbolAddress(NkLlvmJitState jit, NkLlvmJitDylib dl, NkAtom sym
         NK_ARENA_SCOPE(scratch) {
             NkStringBuilder sym_str = {.alloc = nk_arena_getAllocator(scratch)};
             nkir_printSymbolName(nksb_getStream(&sym_str), sym);
-            nksb_appendNull(&sym_str);
 
-            addr = lookupSymbol(jit->lljit, jd, sym_str.data);
+            addr = lookupSymbol(jit->lljit, jd, (NkString){NKS_INIT(sym_str)});
         }
     }
     return addr;

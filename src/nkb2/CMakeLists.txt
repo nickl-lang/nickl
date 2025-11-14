@@ -18,6 +18,10 @@ target_link_libraries(${LIB}
     PUBLIC ntk
     )
 
+target_compile_definitions(${LIB}
+    PRIVATE SYSTEM_LIBC="${SYSTEM_LIBC}"
+    )
+
 include(LinkLLVM)
 target_link_llvm(
     TARGET ${LIB}

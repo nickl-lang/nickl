@@ -682,14 +682,6 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkbState nkb, NkIrDylib dl, 
     NkLlvmTarget tgt = nk_llvm_getJitTarget(jit);
     nk_llvm_optimizeIr(llvm_mod, tgt, NkLlvmOptLevel_O3); // TODO: Hardcoded opt level
 
-    // // TODO: Dirty hack for printf being optimized into puts
-    // nkda_append(
-    //     &to_define,
-    //     ((NkIrSymbolAddress){
-    //         .sym = nk_cs2atom("puts"),
-    //         .addr = puts,
-    //     }));
-
     nk_llvm_jitModule(llvm_mod, jit, jdl);
 
     return nk_llvm_getSymbolAddress(jit, jdl, sym_name);
