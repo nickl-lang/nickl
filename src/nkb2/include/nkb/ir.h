@@ -273,6 +273,7 @@ NkIrInstr nkir_make_jmpnz(NkIrRef cond, NkIrLabel label);
 
 NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args);
 
+NkIrInstr nkir_make_offset(NkIrRef dst, NkIrRef ptr, NkIrRef idx);
 NkIrInstr nkir_make_store(NkIrRef dst, NkIrRef src);
 NkIrInstr nkir_make_load(NkIrRef dst, NkIrRef ptr);
 

@@ -291,6 +291,13 @@ NkIrInstr nkir_make_call(NkIrRef dst, NkIrRef proc, NkIrRefArray args) {
     };
 }
 
+NkIrInstr nkir_make_offset(NkIrRef dst, NkIrRef ptr, NkIrRef idx) {
+    return (NkIrInstr){
+        .arg = {argRef(dst), argRef(ptr), argRef(idx)},
+        .code = NkIrOp_offset,
+    };
+}
+
 NkIrInstr nkir_make_store(NkIrRef dst, NkIrRef src) {
     return (NkIrInstr){
         .arg = {argRef(dst), argRef(src), argNull()},
@@ -878,7 +885,7 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
                         }
                         bool found_reloc = false;
                         NK_ITERATE(NkIrReloc const *, reloc, relocs) {
-                            if (reloc->offset == offset && elem->type->kind == NkIrType_Numeric) {
+                            if (reloc->offset == offset && elem->type->kind == NkIrType_Pointer) {
                                 nk_printf(out, "$%s", nk_atom2cs(reloc->sym));
                                 found_reloc = true;
                                 break;
@@ -897,7 +904,8 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
             nk_printf(out, "}");
             break;
 
-        case NkIrType_Numeric: {
+        case NkIrType_Numeric:
+        case NkIrType_Pointer: {
             void *addr = (u8 *)base_addr + base_offset;
             nkir_inspectVal(addr, type, out);
             break;

@@ -15,6 +15,7 @@ enum {
     NklIrToken_include,
     NklIrToken_local,
     NklIrToken_proc,
+    NklIrToken_ptr,
     NklIrToken_pub,
     NklIrToken_type,
     NklIrToken_void,

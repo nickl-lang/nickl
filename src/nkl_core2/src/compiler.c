@@ -1225,6 +1225,12 @@ static NkIrRef toRefDirect(CompileCtx *ctx, Interm interm) {
     return (NkIrRef){0};
 }
 
+static NkIrRef toRefDirectTyped(CompileCtx *ctx, Interm interm) {
+    NkIrRef ref = toRefDirect(ctx, interm);
+    ref.type = nkl_type_getIrType(interm.type);
+    return ref;
+}
+
 static NkIrRef toRef(CompileCtx *ctx, Interm interm) {
     NkIrRef const ref = toRefDirect(ctx, interm);
     if (interm.indir) {
@@ -1367,14 +1373,7 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             nk_assert(decl);
 
-            if (decl->kind == Decl_LocalVar) {
-                return makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
-            } else if (decl->kind == Decl_Param) {
-                return makeRefIndir(nkir_makeRefParam(decl->sym, ctx->mod->com->ptr_t), decl->type);
-            } else {
-                nk_assert(!"unreachable");
-                return (Interm){0};
-            }
+            return resolveDecl(ctx, decl);
         }
 
         case n_deref: {
@@ -1393,8 +1392,8 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             nk_assert(lhs.indir);
             nk_assert(lhs.type->tclass == NklType_Struct);
 
-            // TODO: Hardcoded i64 for offset calc
-            NklType const i64_t = nickl_get_i64_t(ctx->nkl);
+            // TODO: Hardcoded i32 for offset calc
+            NklType const i32_t = nickl_get_i32_t(ctx->nkl);
 
             // TODO: Boilerplate field search
             usize idx = -1u;
@@ -1405,17 +1404,12 @@ static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
             }
             nk_assert(idx < -1u);
 
-            usize const offset = nkl_type_getIrType(lhs.type)->aggr.data[idx].offset;
-            if (offset) {
-                return makeInstrIndir(
-                    nkir_make_add(
-                        (NkIrRef){0},
-                        toRefDirect(ctx, lhs),
-                        nkir_makeRefImm((NkIrImm){.u64 = offset}, nkl_type_getIrType(i64_t))),
-                    nodex->type);
-            } else {
-                return makeRefIndir(toRefDirect(ctx, lhs), nodex->type);
-            }
+            return makeInstrIndir(
+                nkir_make_offset(
+                    (NkIrRef){0},
+                    toRefDirectTyped(ctx, lhs),
+                    nkir_makeRefImm((NkIrImm){.i32 = idx}, nkl_type_getIrType(i32_t))),
+                nodex->type);
         }
 
         default:
@@ -1565,15 +1559,6 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_getIrType(nodex->type)));
         }
 
-        case n_id: {
-            NkAtom const name = parseId(ctx, node);
-
-            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
-            nk_assert(decl);
-
-            return resolveDecl(ctx, decl);
-        }
-
         case n_int:
         case n_float: {
             nk_assert(nodex->type->tclass == NklType_Numeric);
@@ -1663,6 +1648,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             return makeRef(toRefDirect(ctx, addr));
         }
 
+        case n_id:
         case n_member:
         case n_deref: {
             return compileLvalue(ctx, node);
@@ -1702,9 +1688,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
                 if (nkl_type_getIrType(arg.type)->kind == NkIrType_Aggregate) {
                     nk_assert(arg.indir);
-                    NkIrRef arg_ref = toRefDirect(ctx, arg);
-                    arg_ref.type = nkl_type_getIrType(arg.type); // TODO: Manually patching ref type
-                    nkda_append(&args, arg_ref);
+                    nkda_append(&args, toRefDirectTyped(ctx, arg));
                 } else {
                     nkda_append(&args, toRef(ctx, arg));
                 }

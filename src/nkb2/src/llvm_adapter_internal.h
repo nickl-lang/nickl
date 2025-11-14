@@ -17,7 +17,8 @@ typedef struct NkLlvmJitState_T {
     LLVMTargetMachineRef tm;
 } NkLlvmJitState_T;
 
-void *lookupSymbol(LLVMOrcLLJITRef jit, LLVMOrcJITDylibRef jd, char const *name);
+void *tryLookupSymbol(LLVMOrcLLJITRef lljit, LLVMOrcJITDylibRef jd, NkString name);
+void *lookupSymbol(LLVMOrcLLJITRef lljit, LLVMOrcJITDylibRef jd, NkString name);
 
 #ifdef __cplusplus
 }

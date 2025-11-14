@@ -1,15 +1,15 @@
-extern "c" proc printf(:i64, ...) :i32
+extern "c" proc printf(:ptr, ...) :i32
 
 type Mat2 :{[4]f64}
 
 proc getIdentityMatrix() :Mat2 %mat_addr {
-    mov %mat_addr -> :i64 %m00_addr
+    offset :Mat2 %mat_addr, 0 -> %m00_addr
     store 1.0 -> %m00_addr
-    add 8, %mat_addr -> %m01_addr
+    offset :Mat2 %mat_addr, 1 -> %m01_addr
     store 0.0 -> %m01_addr
-    add 16, %mat_addr -> %m10_addr
+    offset :Mat2 %mat_addr, 2 -> %m10_addr
     store 0.0 -> %m10_addr
-    add 24, %mat_addr -> %m11_addr
+    offset :Mat2 %mat_addr, 3 -> %m11_addr
     store 1.0 -> %m11_addr
     ret
 }
@@ -17,19 +17,20 @@ proc getIdentityMatrix() :Mat2 %mat_addr {
 pub proc _entry() {
     alloc :Mat2 -> %mat_addr
     call getIdentityMatrix, () -> :Mat2 %mat_addr
-    load %mat_addr -> :f64 %m00
-    add 8, %mat_addr -> %m01_addr
+    offset :Mat2 %mat_addr, 0 -> %m00_addr
+    load %m00_addr -> :f64 %m00
+    offset :Mat2 %mat_addr, 1 -> %m01_addr
     load %m01_addr -> :f64 %m01
-    add 16, %mat_addr -> %m10_addr
+    offset :Mat2 %mat_addr, 2 -> %m10_addr
     load %m10_addr -> :f64 %m10
-    add 24, %mat_addr -> %m11_addr
+    offset :Mat2 %mat_addr, 3 -> %m11_addr
     load %m11_addr -> :f64 %m11
     call printf, ("Identity = [[%g, %g], [%g, %g]]\n", ..., \
         :f64 %m00, :f64 %m01, :f64 %m10, :f64 %m11) -> :i32
     ret
 }
 
-pub proc main(:i32 %argc, :i64 %argv) :i32 {
+pub proc main(:i32 %argc, :ptr %argv) :i32 {
     call _entry, ()
     ret 0
 }

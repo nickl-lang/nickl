@@ -28,6 +28,7 @@ IR(jmpnz) // jmpnz cond, @label
 
 IR(call) // call proc, (args, ...) -> dst
 
+IR(offset) // offset ptr, idx -> dst
 IR(store) // store src  -> [dst]
 IR(load)  // load [src] ->  dst
 

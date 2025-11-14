@@ -1,6 +1,6 @@
-extern "c" proc puts(:i64) :i32
+extern "c" proc puts(:ptr) :i32
 
-local proc invoke(:i64 %cb) {
+local proc invoke(:ptr %cb) {
     call %cb, ()
     ret
 }
@@ -15,7 +15,7 @@ pub proc _entry() {
     ret
 }
 
-pub proc main(:i32 %argc, :i64 %argv) :i32 {
+pub proc main(:i32 %argc, :ptr %argv) :i32 {
     call _entry, ()
     ret 0
 }
