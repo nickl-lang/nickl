@@ -106,7 +106,6 @@ TEST_F(nkl_types, numeric) {
 
 TEST_F(nkl_types, pointer) {
     auto const i32_t = nkl_type_getNumeric(nkl, Int32);
-    auto const i64_t = nkl_type_getNumeric(nkl, Int64);
 
     auto const ptr_t = nkl_type_getPointer(nkl, 8, i32_t, true);
     auto const ptr_t_1 = nkl_type_getPointer(nkl, 8, i32_t, true);
@@ -115,7 +114,7 @@ TEST_F(nkl_types, pointer) {
     EXPECT_EQ(ptr_t, ptr_t_1);
     EXPECT_NE(ptr_t, ptr_t_2);
 
-    EXPECT_EQ(ptr_t->base_t, i64_t);
+    EXPECT_EQ(ptr_t->base_t, nullptr);
     EXPECT_EQ(ptr_t->size, 8);
     EXPECT_EQ(ptr_t->align, 8);
     EXPECT_EQ(ptr_t->tclass, NklType_Pointer);

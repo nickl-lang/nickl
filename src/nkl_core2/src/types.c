@@ -305,14 +305,18 @@ NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type) {
     return type;
 }
 
-static void completePointer(NklState nkl, NklType_T *type, usize word_size, NklType target_t, bool is_const) {
-    NklType const base_t = nkl_type_getNumeric(nkl, numericValueTypeFromSize(word_size));
-
+static void completePointer(NklState NK_UNUSED nkl, NklType_T *type, usize word_size, NklType target_t, bool is_const) {
     *type = (NklType_T){
-        ._ir_type = base_t->_ir_type,
-        .base_t = base_t,
-        .size = base_t->size,
-        .align = base_t->align,
+        ._ir_type =
+            (NkIrType_T){
+                .size = word_size,
+                .align = word_size,
+                .id = 0,
+                .kind = NkIrType_Pointer,
+            },
+        .base_t = NULL,
+        .size = word_size,
+        .align = word_size,
         .tclass = NklType_Pointer,
         .as.ptr =
             {
@@ -450,13 +454,17 @@ NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields) {
 }
 
 static void completeTyperef(NklState NK_UNUSED nkl, NklType_T *type, usize word_size) {
-    NklType const base_t = nkl_type_getNumeric(nkl, numericValueTypeFromSize(word_size));
-
     *type = (NklType_T){
-        ._ir_type = base_t->_ir_type,
-        .base_t = base_t,
-        .size = base_t->size,
-        .align = base_t->align,
+        ._ir_type =
+            (NkIrType_T){
+                .size = word_size,
+                .align = word_size,
+                .id = 0,
+                .kind = NkIrType_Pointer,
+            },
+        .base_t = NULL,
+        .size = word_size,
+        .align = word_size,
         .tclass = NklType_Typeref,
     };
 }
