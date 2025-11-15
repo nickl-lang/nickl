@@ -34,8 +34,8 @@ TEST_F(atom, backward) {
     NkAtom const atom_a = nk_cs2atom(c_str_a);
     NkAtom const atom_b = nk_cs2atom(c_str_b);
 
-    EXPECT_EQ(c_str_a, nk_s2stdView(nk_atom2s(atom_a)));
-    EXPECT_EQ(c_str_b, nk_s2stdView(nk_atom2s(atom_b)));
+    EXPECT_EQ(c_str_a, nk_s2view(nk_atom2s(atom_a)));
+    EXPECT_EQ(c_str_b, nk_s2view(nk_atom2s(atom_b)));
 }
 
 TEST_F(atom, nonexistent) {
@@ -55,5 +55,5 @@ TEST_F(atom, unique) {
     EXPECT_EQ(hello, hello2);
     EXPECT_NE(hello, hello_unique);
 
-    EXPECT_EQ(c_str_hello, nk_s2stdView(nk_atom2s(hello_unique)));
+    EXPECT_EQ(c_str_hello, nk_s2view(nk_atom2s(hello_unique)));
 }

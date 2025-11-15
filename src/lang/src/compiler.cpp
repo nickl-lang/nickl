@@ -266,7 +266,7 @@ NK_PRINTF_LIKE(2) void error(NklCompiler c, char const *fmt, ...) {
     va_start(ap, fmt);
     NkStringBuilder sb{};
     nksb_vprintf(&sb, fmt, ap);
-    c->err_str = nk_s2stdStr({NKS_INIT(sb)});
+    c->err_str = nk_s2std({NKS_INIT(sb)});
     nksb_free(&sb);
     va_end(ap);
 
@@ -887,7 +887,7 @@ ValueInfo compileComptimeConstDef(NklCompiler c, NklAstNode node, F const &compi
     if (names.size > 1) {
         return error(c, "TODO multiple assignment is not implemented"), ValueInfo{};
     }
-    auto name_str = nk_s2stdStr(names.data[0].token->text);
+    auto name_str = nk_s2std(names.data[0].token->text);
     c->comptime_const_names.push(name_str);
     defer {
         c->comptime_const_names.pop();
@@ -1035,7 +1035,7 @@ Void initFromAst(NklCompiler c, nklval_t val, NklAstNodeArray init_nodes) {
             if (node.id != n_int && node.id != n_float) {
                 return error(c, "invalid value to init numeric"), Void{};
             }
-            auto str = nk_s2stdStr(node.token->text);
+            auto str = nk_s2std(node.token->text);
             switch (nklval_typeof(val)->as.num.value_type) {
                 case Int8:
                     nklval_as(i8, val) = std::stoll(str);
@@ -1688,7 +1688,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
 
         case n_import: {
             auto const name = narg0(node)->token->text;
-            std::string const filename = nk_s2stdStr(name) + ".nkl";
+            std::string const filename = nk_s2std(name) + ".nkl";
             auto corelib_path = fs::path{c->corelib_dir};
             if (!corelib_path.is_absolute()) {
                 corelib_path = fs::path{c->compiler_dir} / corelib_path;
@@ -1700,7 +1700,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
         case n_import_path: {
             NkString const text{node->token->text.data + 1, node->token->text.size - 2};
             auto const name = text;
-            auto filepath = fs::path(nk_s2stdView(name)).lexically_normal();
+            auto filepath = fs::path(nk_s2view(name)).lexically_normal();
             if (!filepath.is_absolute()) {
                 filepath = (c->file_stack.top().parent_path() / filepath).lexically_normal();
             }
@@ -2158,7 +2158,7 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 auto &link = opt_link_tag.value();
 
                 // TODO Treating slice as cstring, while we include excess zero charater
-                auto soname = std::string{nk_s2stdStr(link.libname).c_str()};
+                auto soname = std::string{nk_s2std(link.libname).c_str()};
                 if (soname == "c" || soname == "C") {
                     soname = c->libc_name;
                 } else if (soname == "m" || soname == "M") {
@@ -2166,12 +2166,12 @@ ValueInfo compile(NklCompiler c, NklAstNode node, nkltype_t type, TagInfoArray t
                 }
 
                 // TODO Treating slice as cstring, while we include excess zero charater
-                auto link_prefix = std::string{nk_s2stdStr(link.prefix).c_str()};
+                auto link_prefix = std::string{nk_s2std(link.prefix).c_str()};
 
                 auto so = nkir_makeShObj(c->ir, nk_cs2s(soname.c_str())); // TODO Creating so every time
 
                 auto sym_name = narg0(node)->token->text;
-                auto sym_name_with_prefix_std_str = link_prefix + nk_s2stdStr(sym_name);
+                auto sym_name_with_prefix_std_str = link_prefix + nk_s2std(sym_name);
                 NkString sym_name_with_prefix{sym_name_with_prefix_std_str.data(), sym_name_with_prefix_std_str.size()};
 
                 bool const is_variadic = def_id == n_fn_type_var;
@@ -2427,7 +2427,7 @@ void printError(NklCompiler c, NklTokenRef token, std::string const &err_str) {
         err_str.data());
 
     nk_assert(!c->src_stack.empty());
-    auto src = nk_s2stdView(c->src_stack.top());
+    auto src = nk_s2view(c->src_stack.top());
 
     printQuote(src, token, to_color);
 
@@ -2556,7 +2556,7 @@ extern "C" NK_EXPORT Void nkl_compiler_declareLocal(NkString name, nkltype_t typ
     NK_LOG_TRC("%s", __func__);
     NklCompiler c = s_compiler;
     // TODO Treating slice as cstring, while we include excess zero charater
-    CHECK(defineLocal(c, nk_cs2atom(nk_s2stdStr(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
+    CHECK(defineLocal(c, nk_cs2atom(nk_s2std(name).c_str()), nkir_makeLocalVar(c->ir, tovmt(type)), type));
     return {};
 }
 
@@ -2584,13 +2584,13 @@ extern "C" NK_EXPORT void nkl_compiler_freeBuilder(NklCompilerBuilder *b) {
 
 extern "C" NK_EXPORT bool nkl_compiler_link(NklCompilerBuilder *b, NkString lib) {
     NK_LOG_TRC("%s", __func__);
-    b->libs.emplace_back(LinkedLib{nk_s2stdStr(lib), false});
+    b->libs.emplace_back(LinkedLib{nk_s2std(lib), false});
     return true;
 }
 
 extern "C" NK_EXPORT bool nkl_compiler_linkFile(NklCompilerBuilder *b, NkString lib) {
     NK_LOG_TRC("%s", __func__);
-    b->libs.emplace_back(LinkedLib{nk_s2stdStr(lib), true});
+    b->libs.emplace_back(LinkedLib{nk_s2std(lib), true});
     return true;
 }
 
@@ -2641,7 +2641,7 @@ extern "C" NK_EXPORT nkltype_t nkl_compiler_makeStruct(StructFieldArray fields_r
         fields.emplace_back(
             NklField{
                 // TODO Treating slice as cstring, while we include excess zero charater
-                .name = nk_cs2atom(nk_s2stdStr(field.name).c_str()),
+                .name = nk_cs2atom(nk_s2std(field.name).c_str()),
                 .type = field.type,
             });
     }
@@ -2686,7 +2686,7 @@ bool nkl_compiler_configure(NklCompiler c, NkString self_path) {
     NK_LOG_TRC("%s", __func__);
     NK_LOG_DBG("self_path=`" NKS_FMT "`", NKS_ARG(self_path));
 
-    c->compiler_dir = fs::path(nk_s2stdStr(self_path)).parent_path().string();
+    c->compiler_dir = fs::path(nk_s2std(self_path)).parent_path().string();
 
     pushScope(c);
     auto preload_filepath = fs::path{c->compiler_dir} / "preload.nkl";
@@ -2781,7 +2781,7 @@ bool nkl_compiler_runFile(NklCompiler c, NkString path) {
         s_compiler = prev_compiler;
     };
 
-    DEFINE(fn, nkl_compileFile(c, fs::path{nk_s2stdView(path)}));
+    DEFINE(fn, nkl_compileFile(c, fs::path{nk_s2view(path)}));
     nkir_invoke({&fn, nkir_functGetType(fn)}, {}, {});
 
     return true;

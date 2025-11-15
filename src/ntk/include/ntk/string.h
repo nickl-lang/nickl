@@ -76,12 +76,12 @@ NK_EXPORT NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap);
 #include <string>
 #include <string_view>
 
-inline std::string_view nk_s2stdView(NkString str) {
+inline std::string_view nk_s2view(NkString str) {
     return std::string_view{str.data, str.size};
 }
 
-inline std::string nk_s2stdStr(NkString str) {
-    return std::string{nk_s2stdView(str)};
+inline std::string nk_s2std(NkString str) {
+    return std::string{nk_s2view(str)};
 }
 
 inline std::ostream &operator<<(std::ostream &stream, NkString str) {

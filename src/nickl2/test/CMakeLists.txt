@@ -18,3 +18,5 @@ def_nickl_test(FILE nkst/struct.nkst)
 def_nickl_test(FILE nkst/struct_param.nkst)
 def_nickl_test(FILE nkst/variadic_promotion.nkst)
 def_nickl_test(FILE nkst/while.nkst)
+
+def_nickl_test(FILE error_nkst/type_mismatch.nkst)

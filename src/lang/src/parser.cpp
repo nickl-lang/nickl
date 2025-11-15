@@ -501,7 +501,7 @@ private:
                     .allow_omit_type = true,
                 }));
             node = nkl_makeNode1(n_enum, _n_token, nkl_pushNodeAr(m_ast, {res.fields.data(), res.fields.size()}));
-        } else if (check(t_tag) && nk_s2stdView(m_cur_token->text) == "#type") {
+        } else if (check(t_tag) && nk_s2view(m_cur_token->text) == "#type") {
             getToken();
             ASSIGN(node, expr(Expr_Type));
         } else {
@@ -967,7 +967,7 @@ private:
         va_start(ap, fmt);
         NkStringBuilder sb{};
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = nk_s2stdStr({NKS_INIT(sb)});
+        m_err_str = nk_s2std({NKS_INIT(sb)});
         nksb_free(&sb);
         va_end(ap);
 

@@ -84,7 +84,7 @@ typedef struct NklType_T {
     } as;
 } NklType_T;
 
-NK_INLINE NkIrType nkl_type_getIrType(NklType type) {
+NK_INLINE NkIrType nkl_type_toIr(NklType type) {
     return &type->_ir_type;
 }
 
@@ -137,6 +137,8 @@ NK_EXPORT NklType nkl_type_getTyperef(NklState nkl, usize word_size);
 
 NK_EXPORT NklType nkl_type_getVoidDistinct(NklState nkl);
 NK_EXPORT NklType nkl_type_getVoid(NklState nkl);
+
+NK_EXPORT void nkl_type_inspect(NkStream out, NklType type);
 
 #ifdef __cplusplus
 }

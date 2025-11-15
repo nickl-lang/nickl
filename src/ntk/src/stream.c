@@ -21,7 +21,7 @@ static char *sprintfCallback(char const *buf, void *user, i32 len) {
     char *ret;
     NK_PROF_FUNC() {
         SprintfContext *ctx = user;
-        i32 res = nk_stream_write(ctx->out, (char *)buf, len);
+        i32 res = nk_stream_write(ctx->out, buf, len);
         ret = res < 0 ? NULL : ctx->buf;
     }
     return ret;

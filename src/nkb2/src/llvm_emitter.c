@@ -187,7 +187,7 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
                 nk_print(out, "zeroinitializer");
             } else {
                 if (NKIR_NUMERIC_IS_INT(ref->type->num)) {
-                    nkir_inspectVal(addr, ref->type, out);
+                    nkir_inspectVal(out, addr, ref->type);
                 } else {
                     emitFloat(out, addr, ref->type->num);
                 }
@@ -737,7 +737,7 @@ static void emitVal(NkStream out, void *base_addr, usize base_offset, NkIrRelocA
         case NkIrType_Numeric: {
             void *addr = (u8 *)base_addr + base_offset;
             if (NKIR_NUMERIC_IS_INT(type->num)) {
-                nkir_inspectVal(addr, type, out);
+                nkir_inspectVal(out, addr, type);
             } else {
                 emitFloat(out, addr, type->num);
             }

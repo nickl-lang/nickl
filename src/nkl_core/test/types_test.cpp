@@ -44,7 +44,7 @@ TEST_F(types, any) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(any_t, nksb_getStream(&sb));
-    EXPECT_EQ("any_t", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("any_t", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, array) {
@@ -69,7 +69,7 @@ TEST_F(types, array) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(vec3_t, nksb_getStream(&sb));
-    EXPECT_EQ("[3]f64", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("[3]f64", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, bool) {
@@ -87,7 +87,7 @@ TEST_F(types, bool) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(bool_t, nksb_getStream(&sb));
-    EXPECT_EQ("bool", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("bool", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, enum) {
@@ -122,7 +122,7 @@ TEST_F(types, enum) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(opt_t, nksb_getStream(&sb));
-    EXPECT_EQ("enum { val: i32, nil: void, }", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("enum { val: i32, nil: void, }", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, numeric) {
@@ -152,7 +152,7 @@ TEST_F(types, numeric) {
 
     nksb_clear(&sb);
     nkl_type_inspect(i8_t, nksb_getStream(&sb));
-    EXPECT_EQ("i8", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("i8", nk_s2std({NKS_INIT(sb)}));
 
     EXPECT_EQ(u32_t->ir_type.size, 4u);
     EXPECT_EQ(u32_t->ir_type.align, 4);
@@ -163,7 +163,7 @@ TEST_F(types, numeric) {
 
     nksb_clear(&sb);
     nkl_type_inspect(u32_t, nksb_getStream(&sb));
-    EXPECT_EQ("u32", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("u32", nk_s2std({NKS_INIT(sb)}));
 
     EXPECT_EQ(i64_t->ir_type.size, 8u);
     EXPECT_EQ(i64_t->ir_type.align, 8);
@@ -174,7 +174,7 @@ TEST_F(types, numeric) {
 
     nksb_clear(&sb);
     nkl_type_inspect(i64_t, nksb_getStream(&sb));
-    EXPECT_EQ("i64", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("i64", nk_s2std({NKS_INIT(sb)}));
 
     EXPECT_EQ(f64_t->ir_type.size, 8u);
     EXPECT_EQ(f64_t->ir_type.align, 8);
@@ -185,7 +185,7 @@ TEST_F(types, numeric) {
 
     nksb_clear(&sb);
     nkl_type_inspect(f64_t, nksb_getStream(&sb));
-    EXPECT_EQ("f64", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("f64", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, proc) {
@@ -222,7 +222,7 @@ TEST_F(types, proc) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(add_t, nksb_getStream(&sb));
-    EXPECT_EQ("(i32, i32) -> i32", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("(i32, i32) -> i32", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, ptr) {
@@ -264,11 +264,11 @@ TEST_F(types, ptr) {
 
     nksb_clear(&sb);
     nkl_type_inspect(void_ptr_t, nksb_getStream(&sb));
-    EXPECT_EQ("*void", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("*void", nk_s2std({NKS_INIT(sb)}));
 
     nksb_clear(&sb);
     nkl_type_inspect(str_t, nksb_getStream(&sb));
-    EXPECT_EQ("*const i8", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("*const i8", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, slice) {
@@ -296,7 +296,7 @@ TEST_F(types, slice) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(string_t, nksb_getStream(&sb));
-    EXPECT_EQ("[]const i8", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("[]const i8", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, struct) {
@@ -328,7 +328,7 @@ TEST_F(types, struct) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(ivec2_t, nksb_getStream(&sb));
-    EXPECT_EQ("struct { x: i64, y: i64, }", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("struct { x: i64, y: i64, }", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, tuple) {
@@ -358,7 +358,7 @@ TEST_F(types, tuple) {
 
     nksb_clear(&sb);
     nkl_type_inspect(vec3_t, nksb_getStream(&sb));
-    EXPECT_EQ("(f64, f64, f64, )", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("(f64, f64, f64, )", nk_s2std({NKS_INIT(sb)}));
 
     auto void_t = nkl_get_tuple(nkl, {});
 
@@ -371,7 +371,7 @@ TEST_F(types, tuple) {
 
     nksb_clear(&sb);
     nkl_type_inspect(void_t, nksb_getStream(&sb));
-    EXPECT_EQ("void", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("void", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, typeref) {
@@ -391,7 +391,7 @@ TEST_F(types, typeref) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(typeref_t, nksb_getStream(&sb));
-    EXPECT_EQ("type_t", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("type_t", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, union) {
@@ -422,7 +422,7 @@ TEST_F(types, union) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(union_t, nksb_getStream(&sb));
-    EXPECT_EQ("union { float64: f64, uint64: u64, }", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("union { float64: f64, uint64: u64, }", nk_s2std({NKS_INIT(sb)}));
 }
 
 TEST_F(types, void) {
@@ -439,5 +439,5 @@ TEST_F(types, void) {
 
     NKSB_FIXED_BUFFER(sb, 64);
     nkl_type_inspect(void_t, nksb_getStream(&sb));
-    EXPECT_EQ("void", nk_s2stdStr({NKS_INIT(sb)}));
+    EXPECT_EQ("void", nk_s2std({NKS_INIT(sb)}));
 }

@@ -8,6 +8,8 @@
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash.h"
+#include "ntk/slice.h"
+#include "ntk/stream.h"
 #include "ntk/utils.h"
 
 // TODO: Use 128bit hash directly?
@@ -27,23 +29,6 @@ NK_HASH_TREE_ARRAY_IMPL_KV(NklTypeMap, NkHash128, NklType, NkHash128_KeyHash, nk
         T const _val = (T)(VAL);                                     \
         nk_hash128_update(&hasher, (u8 const *)&_val, sizeof(_val)); \
     } while (0)
-
-static NkIrNumericValueType numericValueTypeFromSize(usize size) {
-    switch (size) {
-        case 1:
-            return Int8;
-        case 2:
-            return Int16;
-        case 4:
-            return Int32;
-        case 8:
-            return Int64;
-
-        default:
-            nk_assert(!"unreachable");
-            return 0;
-    }
-}
 
 void nkl_types_init(NklTypeStorage *st, NkArena *arena) {
     *st = (NklTypeStorage){
@@ -116,7 +101,7 @@ static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray
         nkda_append(
             &ir_elems,
             ((NkIrAggregateElemInfo){
-                .type = nkl_type_getIrType(elem_t),
+                .type = nkl_type_toIr(elem_t),
                 .count = 1,
                 .offset = offset,
             }));
@@ -175,7 +160,7 @@ static void completeArray(NklState NK_UNUSED nkl, NklType_T *type, NklType elem_
 
     NkIrAggregateElemInfo *elem = nk_arena_allocT(st->arena, NkIrAggregateElemInfo);
     *elem = (NkIrAggregateElemInfo){
-        .type = nkl_type_getIrType(elem_t),
+        .type = nkl_type_toIr(elem_t),
         .count = count,
         .offset = 0,
     };
@@ -523,4 +508,82 @@ NklType nkl_type_getVoid(NklState nkl) {
         completeVoid(nkl, type);
     }
     return type;
+}
+
+void nkl_type_inspect(NkStream out, NklType type) {
+    switch (type->tclass) {
+        break;
+
+        case NklType_Aggregate:
+            nk_print(out, "(");
+            NK_ITERATE(NklType const *, it, type->as.aggr.types) {
+                if (NK_INDEX(it, type->as.aggr.types)) {
+                    nk_print(out, ", ");
+                }
+                NklType elem_t = *it;
+                nkl_type_inspect(out, elem_t);
+            }
+            nk_print(out, ")");
+            break;
+
+        case NklType_Array:
+            nk_printf(out, "[%zu]", type->as.arr.count);
+            nkl_type_inspect(out, type->as.arr.elem_t);
+            break;
+
+        case NklType_Bool:
+            nk_print(out, "bool");
+            break;
+
+        case NklType_Numeric:
+            nkir_inspectType(out, nkl_type_toIr(type));
+            break;
+
+        case NklType_Pointer:
+            nk_printf(out, "*%s", type->as.ptr.is_const ? "const " : "");
+            nkl_type_inspect(out, type->as.ptr.target_t);
+            break;
+
+        case NklType_Procedure:
+            nk_print(out, "*proc (");
+            NK_ITERATE(NklType const *, it, type->as.proc.param_types) {
+                if (NK_INDEX(it, type->as.proc.param_types)) {
+                    nk_print(out, ", ");
+                }
+                NklType param_t = *it;
+                nkl_type_inspect(out, param_t);
+            }
+            if (type->as.proc.flags & NklProc_Variadic) {
+                nk_print(out, ", ...");
+            }
+            nk_print(out, ") ");
+            nkl_type_inspect(out, type->as.proc.ret_t);
+            break;
+
+        case NklType_Struct:
+            nk_print(out, "struct {");
+            NK_ITERATE(NklField const *, it, type->as.strct.fields) {
+                if (NK_INDEX(it, type->as.strct.fields)) {
+                    nk_print(out, ", ");
+                }
+                NklField field = *it;
+                nk_printf(out, "%s: ", nk_atom2cs(field.name));
+                nkl_type_inspect(out, field.type);
+            }
+            nk_print(out, "}");
+            break;
+
+        case NklType_Typeref:
+            nk_print(out, "type_t");
+            break;
+
+        case NklType_Void:
+            nk_print(out, "void");
+            break;
+
+        case NklType_None:
+        case NklTypeClassCount:
+            nk_assert(!"unreachable");
+            break;
+    }
 }

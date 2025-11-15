@@ -125,7 +125,7 @@ NklCompiler nkl_newCompiler(NklState nkl, NklTargetTriple triple) {
         .lib_aliases = {.alloc = nk_arena_getAllocator(&nkl->arena)},
         .target = tgt,
         .word_size = word_size,
-        .ptr_t = nkl_type_getIrType(nkl_type_getPointer(nkl, word_size, nickl_get_void_t(nkl), false)),
+        .ptr_t = nkl_type_toIr(nkl_type_getPointer(nkl, word_size, nickl_get_void_t(nkl), false)),
     };
     return com;
 }

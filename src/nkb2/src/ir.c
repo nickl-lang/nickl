@@ -847,7 +847,7 @@ static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
 
             case NkIrArg_Type:
                 nk_printf(out, ":");
-                nkir_inspectType(arg->type, out);
+                nkir_inspectType(out, arg->type);
                 break;
 
             case NkIrArg_String:
@@ -907,7 +907,7 @@ static void inspectVal(NkStream out, void *base_addr, usize base_offset, NkIrRel
         case NkIrType_Numeric:
         case NkIrType_Pointer: {
             void *addr = (u8 *)base_addr + base_offset;
-            nkir_inspectVal(addr, type, out);
+            nkir_inspectVal(out, addr, type);
             break;
         }
     }
@@ -952,13 +952,13 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
                         nk_printf(out, ", ");
                     }
                     nk_printf(out, ":");
-                    nkir_inspectType(param->type, out);
+                    nkir_inspectType(out, param->type);
                     if (param->name) {
                         nk_printf(out, " %%%s", nk_atom2cs(param->name));
                     }
                 }
                 nk_printf(out, ") :");
-                nkir_inspectType(sym->proc.ret.type, out);
+                nkir_inspectType(out, sym->proc.ret.type);
                 if (sym->proc.ret.name) {
                     nk_printf(out, " %%%s", nk_atom2cs(sym->proc.ret.name));
                 }
@@ -990,7 +990,7 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
             nk_printf(out, "$");
             nkir_printSymbolName(out, sym->name);
             nk_printf(out, " :");
-            nkir_inspectType(sym->data.type, out);
+            nkir_inspectType(out, sym->data.type);
             if (sym->data.addr) {
                 nk_printf(out, " ");
                 inspectVal(out, sym->data.addr, 0, sym->data.relocs, sym->data.type);
@@ -1014,20 +1014,20 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
                             nk_printf(out, ", ");
                         }
                         nk_printf(out, ":");
-                        nkir_inspectType(*type, out);
+                        nkir_inspectType(out, *type);
                     }
                     if (sym->extrn.proc.flags & NkIrProc_Variadic) {
                         nk_printf(out, ", ...");
                     }
                     nk_printf(out, ") :");
-                    nkir_inspectType(sym->extrn.proc.ret_type, out);
+                    nkir_inspectType(out, sym->extrn.proc.ret_type);
                     break;
 
                 case NkIrExtern_Data:
                     nk_printf(out, "data $");
                     nkir_printSymbolName(out, sym->name);
                     nk_printf(out, " :");
-                    nkir_inspectType(sym->extrn.data.type, out);
+                    nkir_inspectType(out, sym->extrn.data.type);
                     break;
             }
             break;
@@ -1057,7 +1057,7 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
     }
 
     nk_printf(out, ":");
-    nkir_inspectType(ref.type, out);
+    nkir_inspectType(out, ref.type);
 
     switch (ref.kind) {
         case NkIrRef_Local:
@@ -1073,7 +1073,7 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
 
         case NkIrRef_Imm:
             nk_printf(out, " ");
-            nkir_inspectVal(&ref.imm, ref.type, out);
+            nkir_inspectVal(out, &ref.imm, ref.type);
             break;
 
         case NkIrRef_None:

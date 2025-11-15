@@ -456,7 +456,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 &(NkIrSymbol){
                     .data =
                         {
-                            .type = nkl_type_getIrType(arr_t),
+                            .type = nkl_type_toIr(arr_t),
                             .relocs = {0},
                             .addr = (void *)str.data,
                             .flags = NkIrData_ReadOnly,
@@ -838,7 +838,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
 
                 NkIrTypeDynArray ir_param_types = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
                 NK_ITERATE(NklField const *, it, proc_info.params) {
-                    nkda_append(&ir_param_types, nkl_type_getIrType(it->type));
+                    nkda_append(&ir_param_types, nkl_type_toIr(it->type));
                 }
 
                 NklType const proc_t = nkl_type_getProcedure(
@@ -868,7 +868,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                                 .proc =
                                     {
                                         .param_types = {NKS_INIT(ir_param_types)},
-                                        .ret_type = nkl_type_getIrType(proc_info.ret_t),
+                                        .ret_type = nkl_type_toIr(proc_info.ret_t),
                                         .flags = (proc_info.flags & NklProc_Variadic) ? NkIrProc_Variadic : 0,
                                     },
                                 .lib = lib,
@@ -1084,10 +1084,10 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
         } else {
             NkStringBuilder msg = {.alloc = nk_arena_getAllocator(ctx->scratch)};
             NkStream out = nksb_getStream(&msg);
-            nk_printf(out, "type mismatch: expected `");
-            nk_printf(out, "TODO: expected type");
-            nk_printf(out, "`, got `");
-            nk_printf(out, "TODO: actual type");
+            nk_printf(out, "cannot convert a value of type `");
+            nkl_type_inspect(out, src_t);
+            nk_printf(out, "` to `");
+            nkl_type_inspect(out, dst_t);
             nk_printf(out, "`");
             reportError(ctx, node, NKS_FMT, NKS_ARG(msg));
             return NULL;
@@ -1194,7 +1194,7 @@ static NkIrRef toRefDirect(CompileCtx *ctx, Interm interm) {
             NkIrRef *dst = &interm.instr.arg[0].ref;
             if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
                 *dst = nkir_makeRefLocal(
-                    getNextValue(ctx), interm.indir ? ctx->mod->com->ptr_t : nkl_type_getIrType(interm.type));
+                    getNextValue(ctx), interm.indir ? ctx->mod->com->ptr_t : nkl_type_toIr(interm.type));
             }
             emit(ctx, interm.instr);
             return *dst;
@@ -1207,7 +1207,7 @@ static NkIrRef toRefDirect(CompileCtx *ctx, Interm interm) {
 
 static NkIrRef toRefDirectTyped(CompileCtx *ctx, Interm interm) {
     NkIrRef ref = toRefDirect(ctx, interm);
-    ref.type = nkl_type_getIrType(interm.type);
+    ref.type = nkl_type_toIr(interm.type);
     return ref;
 }
 
@@ -1228,20 +1228,20 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
 
         case Decl_Entity:
             EntityMap_insert(&ctx->procs_to_compile, decl->sym, decl->entity);
-            return makeRef(nkir_makeRefGlobal(decl->entity->sym, nkl_type_getIrType(decl->type)));
+            return makeRef(nkir_makeRefGlobal(decl->entity->sym, nkl_type_toIr(decl->type)));
 
         case Decl_Extern:
-            return makeRef(nkir_makeRefGlobal(decl->sym, nkl_type_getIrType(decl->type)));
+            return makeRef(nkir_makeRefGlobal(decl->sym, nkl_type_toIr(decl->type)));
 
         case Decl_LocalVar: {
             return makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
         }
 
         case Decl_Param: {
-            if (nkl_type_getIrType(decl->type)->kind == NkIrType_Aggregate) {
+            if (nkl_type_toIr(decl->type)->kind == NkIrType_Aggregate) {
                 return makeRefIndir(nkir_makeRefParam(decl->sym, ctx->mod->com->ptr_t), decl->type);
             } else {
-                return makeRef(nkir_makeRefParam(decl->sym, nkl_type_getIrType(decl->type)));
+                return makeRef(nkir_makeRefParam(decl->sym, nkl_type_toIr(decl->type)));
             }
         }
     }
@@ -1398,7 +1398,7 @@ static Interm compileLogicExpr(
     NklType const bool_t = nickl_get_bool_t(ctx->nkl);
     Interm const res = makeRefIndir(nkir_makeRefLocal(getNextValue(ctx), ctx->mod->com->ptr_t), bool_t);
 
-    emit(ctx, nkir_make_alloc(res.ref, nkl_type_getIrType(bool_t)));
+    emit(ctx, nkir_make_alloc(res.ref, nkl_type_toIr(bool_t)));
     Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
     if (op == (invert ? n_or : n_and)) {
         emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
@@ -1444,7 +1444,7 @@ static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert)
                 NklType const bool_t = nickl_get_bool_t(ctx->nkl);
                 return makeInstr(
                     nkir_make_xor(
-                        (NkIrRef){0}, nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_getIrType(bool_t)), toRef(ctx, res)),
+                        (NkIrRef){0}, nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_toIr(bool_t)), toRef(ctx, res)),
                     bool_t);
             } else {
                 return res;
@@ -1495,21 +1495,21 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             NkIrImm imm = {0};
             parseNumber(ctx, &imm, token_str, nodex->type->as.num.value_type);
-            return makeRef(nkir_makeRefImm(imm, nkl_type_getIrType(nodex->type)));
+            return makeRef(nkir_makeRefImm(imm, nkl_type_toIr(nodex->type)));
         }
 
         case n_string:
         case n_escaped_string:
-            return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_getIrType(nodex->type)));
+            return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_toIr(nodex->type)));
 
         case n_true_lit:
-            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_getIrType(nodex->type)));
+            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_toIr(nodex->type)));
 
         case n_false_lit:
-            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 0}, nkl_type_getIrType(nodex->type)));
+            return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 0}, nkl_type_toIr(nodex->type)));
 
         case n_nullptr:
-            return makeRef(nkir_makeRefImm((NkIrImm){.u64 = 0}, nkl_type_getIrType(nodex->type)));
+            return makeRef(nkir_makeRefImm((NkIrImm){.u64 = 0}, nkl_type_toIr(nodex->type)));
 
         case n_list: {
             Interm res = {0};
@@ -1607,7 +1607,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 nkir_make_offset(
                     (NkIrRef){0},
                     toRefDirectTyped(ctx, lhs),
-                    nkir_makeRefImm((NkIrImm){.i32 = idx}, nkl_type_getIrType(i32_t))),
+                    nkir_makeRefImm((NkIrImm){.i32 = idx}, nkl_type_toIr(i32_t))),
                 nodex->type);
         }
 
@@ -1643,7 +1643,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                     arg = cast(ctx, promote(ctx, arg.type), arg);
                 }
 
-                if (nkl_type_getIrType(arg.type)->kind == NkIrType_Aggregate) {
+                if (nkl_type_toIr(arg.type)->kind == NkIrType_Aggregate) {
                     nk_assert(arg.indir);
                     nkda_append(&args, toRefDirectTyped(ctx, arg));
                 } else {
@@ -1653,9 +1653,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             return makeInstr(
                 nkir_make_call(
-                    nkir_makeRefNull(nkl_type_getIrType(nodex->type)),
-                    toRef(ctx, proc),
-                    (NkIrRefArray){NKS_INIT(args)}),
+                    nkir_makeRefNull(nkl_type_toIr(nodex->type)), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
                 proc.type->as.proc.ret_t);
         }
 
@@ -1696,7 +1694,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_proc: {
             EntityMap_insert(&ctx->procs_to_compile, nodex->entity->sym, nodex->entity);
-            return makeRef(nkir_makeRefGlobal(nodex->entity->sym, nkl_type_getIrType(nodex->type)));
+            return makeRef(nkir_makeRefGlobal(nodex->entity->sym, nkl_type_toIr(nodex->type)));
         }
 
         case n_return: {
@@ -1723,7 +1721,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             Interm const var = makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
 
-            emit(ctx, nkir_make_alloc(var.ref, nkl_type_getIrType(decl->type)));
+            emit(ctx, nkir_make_alloc(var.ref, nkl_type_toIr(decl->type)));
 
             if (val_n) {
                 Interm const val = compile(ctx, val_n);
@@ -1801,7 +1799,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc_e) {
             &ir_params,
             ((NkIrParam){
                 .name = it->name,
-                .type = nkl_type_getIrType(it->type),
+                .type = nkl_type_toIr(it->type),
             }));
     }
 
@@ -1832,7 +1830,7 @@ static bool compileProcImpl(CompileCtx *ctx, Entity *proc_e) {
                     .params = {NKS_INIT(ir_params)},
                     .ret =
                         {
-                            .type = nkl_type_getIrType(proc_e->type->as.proc.ret_t),
+                            .type = nkl_type_toIr(proc_e->type->as.proc.ret_t),
                         },
                     .instrs = {NKS_INIT(proc_e->proc.ir)},
                     .flags = 0,

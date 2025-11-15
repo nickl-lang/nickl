@@ -129,7 +129,7 @@ bool nkir_compileFile(NkIrCompiler c, NkString base_file, NkString in_file) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto in_file_path = fs::path{nk_s2stdStr(base_file)}.parent_path() / fs::path{nk_s2stdStr(in_file)};
+    auto in_file_path = fs::path{nk_s2std(base_file)}.parent_path() / fs::path{nk_s2std(in_file)};
 
     if (!fs::exists(in_file_path)) {
         auto const in_file_path_str = in_file_path.string();

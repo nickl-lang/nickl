@@ -6,7 +6,7 @@
 #include "ntk/string.h"
 #include "ntk/utils.h"
 
-void nkir_inspectType(NkIrType type, NkStream out) {
+void nkir_inspectType(NkStream out, NkIrType type) {
     if (!type) {
         nk_print(out, "(null)");
         return;
@@ -22,7 +22,7 @@ void nkir_inspectType(NkIrType type, NkStream out) {
                     if (elem->count > 1) {
                         nk_printf(out, "[%" PRIu32 "]", elem->count);
                     }
-                    nkir_inspectType(elem->type, out);
+                    nkir_inspectType(out, elem->type);
                 }
                 nk_print(out, "}");
             } else {
@@ -49,7 +49,7 @@ void nkir_inspectType(NkIrType type, NkStream out) {
     // TODO: Print alignment conservatively
 }
 
-void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
+void nkir_inspectVal(NkStream out, void *data, NkIrType type) {
     if (!data) {
         nk_print(out, "(null)");
         return;
@@ -74,7 +74,7 @@ void nkir_inspectVal(void *data, NkIrType type, NkStream out) {
                         if (i) {
                             nk_print(out, ", ");
                         }
-                        nkir_inspectVal(ptr, elem->type, out);
+                        nkir_inspectVal(out, ptr, elem->type);
                         ptr += elem->type->size;
                     }
                     if (elem->count > 1) {

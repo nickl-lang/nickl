@@ -58,7 +58,7 @@ protected:
     };
 
     LogMsg parseLogMsg() {
-        std::istringstream ss{nk_s2stdStr(NkString{m_buf.data, m_buf.size})};
+        std::istringstream ss{nk_s2std(NkString{m_buf.data, m_buf.size})};
 
         LogMsg msg{};
 
