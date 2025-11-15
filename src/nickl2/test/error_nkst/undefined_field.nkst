@@ -1,0 +1,14 @@
+(def A (struct [
+    (param (i32) x)
+    (param (i32) y)
+]))
+(var a A)
+(member a foo)
+
+/* @error
+error: undefined field `foo`
+@enderror */
+
+/* @retcode
+1
+@endretcode */

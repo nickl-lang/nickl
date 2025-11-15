@@ -1,0 +1,10 @@
+(def foo (proc foo [(param (i64) a)] (void) []))
+(call foo ["hello"])
+
+/* @error
+error: cannot convert a value of type `*const [6]i8` to `i64`
+@enderror */
+
+/* @retcode
+1
+@endretcode */

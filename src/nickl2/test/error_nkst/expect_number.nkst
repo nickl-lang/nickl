@@ -1,0 +1,9 @@
+(add () ())
+
+/* @error
+error: number expected
+@enderror */
+
+/* @retcode
+1
+@endretcode */

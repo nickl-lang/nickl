@@ -1,0 +1,9 @@
+(addr 42)
+
+/* @error
+error: lvalue expected
+@enderror */
+
+/* @retcode
+1
+@endretcode */

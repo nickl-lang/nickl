@@ -243,7 +243,7 @@ static NkString parseString(CompileCtx *ctx, NkArena *arena, NklAstNode const *n
             nksb_appendNull(&sb);
         }
 
-        return (NkString){sb.data, sb.size - 1};
+        return (NkString){sb.data, sb.size};
     }
 }
 
@@ -578,13 +578,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             AstNodeExt const *lhs_nodex;
             AstNodeExt const *rhs_nodex;
 
-            TRY(lhs_nodex = typecheck(ctx, lhs_n, &(TypecheckArgs){0}));
-
-            if (lhs_nodex->type->tclass != NklType_Numeric) {
-                reportError(ctx, lhs_n, "number expected");
-                return NULL;
-            }
-
+            TRY(lhs_nodex = typecheck(ctx, lhs_n, &(TypecheckArgs){.tclass = NklType_Numeric}));
             TRY(rhs_nodex = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_nodex->type}));
 
             return setNodeExt(
@@ -660,7 +654,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             NklAstNode const *arg_n = nextNode(&it);
 
             AstNodeExt const *arg;
-            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){0}));
+            TRY(arg = typecheckLvalue(ctx, arg_n, &(TypecheckArgs){0}));
 
             return setNodeExt(
                 ctx,
@@ -749,11 +743,6 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             AstNodeExt const *proc_nodex;
             TRY(proc_nodex = typecheck(ctx, proc_n, &(TypecheckArgs){.tclass = NklType_Procedure}));
 
-            if (proc_nodex->type->tclass != NklType_Procedure) {
-                reportError(ctx, proc_n, "proc expected");
-                return NULL;
-            }
-
             AstNodeIterator args_it = nodeIterate(ctx->src.nodes, args_n);
 
             bool const is_variadic = (proc_nodex->type->as.proc.flags & NklProc_Variadic);
@@ -763,7 +752,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 reportError(
                     ctx,
                     args_n,
-                    "exected%s %zu argument%s, got %u",
+                    "expected%s %zu argument%s, got %u",
                     is_variadic ? " at least" : "",
                     param_count,
                     param_count == 1 ? "" : "s",
@@ -1226,16 +1215,16 @@ static Interm resolveDecl(CompileCtx *ctx, Decl const *decl) {
             nk_assert(!"unreachable");
             return (Interm){0};
 
-        case Decl_Entity:
+        case Decl_Entity: {
             EntityMap_insert(&ctx->procs_to_compile, decl->sym, decl->entity);
             return makeRef(nkir_makeRefGlobal(decl->entity->sym, nkl_type_toIr(decl->type)));
+        }
 
         case Decl_Extern:
             return makeRef(nkir_makeRefGlobal(decl->sym, nkl_type_toIr(decl->type)));
 
-        case Decl_LocalVar: {
+        case Decl_LocalVar:
             return makeRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
-        }
 
         case Decl_Param: {
             if (nkl_type_toIr(decl->type)->kind == NkIrType_Aggregate) {
@@ -1560,18 +1549,13 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
         case n_cast: {
             nextNode(&it); // type
             NklAstNode const *val_n = nextNode(&it);
-
             Interm const val = compile(ctx, val_n);
-
             return cast(ctx, nodex->type, val);
         }
 
         case n_addr: {
             NklAstNode const *arg_n = nextNode(&it);
-
             Interm const addr = compile(ctx, arg_n);
-            nk_assert(addr.indir);
-
             return makeRef(toRefDirect(ctx, addr));
         }
 
