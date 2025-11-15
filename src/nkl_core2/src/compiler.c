@@ -140,6 +140,28 @@ typedef NkDynArray(Entity *) EntityPtrDynArray;
 
 NK_HASH_TREE_ARRAY_DEFINE_KV(EntityMap, NkAtom, Entity *, nk_atom_hash, nk_atom_equal);
 
+typedef enum {
+    Id_Value,
+    Id_LabelElse,
+    Id_LabelEndif,
+    Id_LabelLoop,
+    Id_LabelEndloop,
+    Id_LabelShort,
+    Id_LabelJoin,
+
+    IdKind_Count,
+} IdKind;
+
+char const *s_id_names[] = {
+    "v",       // Id_Value
+    "else",    // Id_LabelElse
+    "endif",   // Id_LabelEndif
+    "loop",    // Id_LabelLoop
+    "endloop", // Id_LabelEndloop
+    "short",   // Id_LabelShort
+    "join",    // Id_LabelJoin
+};
+
 typedef struct {
     NkArena *scratch;
 
@@ -156,45 +178,16 @@ typedef struct {
 
     EntityMap procs_to_compile;
 
-    u32 next_local_idx;
-    u32 next_label_else;
-    u32 next_label_endif;
-    u32 next_label_loop;
-    u32 next_label_endloop;
-    u32 next_label_short;
-    u32 next_label_join;
+    u32 id_counters[IdKind_Count];
 } CompileCtx;
 
-static NkAtom getNextValue(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "v%u", ctx->next_local_idx++));
+static NkAtom getNextId(CompileCtx *ctx, IdKind kind) {
+    return nk_s2atom(nk_tsprintf(ctx->scratch, "%s%u", s_id_names[kind], ctx->id_counters[kind]++));
 }
 
 static NkAtom getNextLocalVar(CompileCtx *ctx, NkAtom name) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "v%u_%s", ctx->next_local_idx++, nk_atom2cs(name)));
-}
-
-static NkAtom getNextLabelElse(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "else%u", ctx->next_label_else++));
-}
-
-static NkAtom getNextLabelEndif(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "endif%u", ctx->next_label_endif++));
-}
-
-static NkAtom getNextLabelLoop(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "loop%u", ctx->next_label_loop++));
-}
-
-static NkAtom getNextLabelEndloop(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "endloop%u", ctx->next_label_endloop++));
-}
-
-static NkAtom getNextLabelShort(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "short%u", ctx->next_label_short++));
-}
-
-static NkAtom getNextLabelJoin(CompileCtx *ctx) {
-    return nk_s2atom(nk_tsprintf(ctx->scratch, "join%u", ctx->next_label_join++));
+    return nk_s2atom(
+        nk_tsprintf(ctx->scratch, "%s%u_%s", s_id_names[Id_Value], ctx->id_counters[Id_Value]++, nk_atom2cs(name)));
 }
 
 static NklToken const *getToken(CompileCtx *ctx, NklAstNode const *node) {
@@ -1183,7 +1176,7 @@ static NkIrRef toRefDirect(CompileCtx *ctx, Interm interm) {
             NkIrRef *dst = &interm.instr.arg[0].ref;
             if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && interm.type->size) {
                 *dst = nkir_makeRefLocal(
-                    getNextValue(ctx), interm.indir ? ctx->mod->com->ptr_t : nkl_type_toIr(interm.type));
+                    getNextId(ctx, Id_Value), interm.indir ? ctx->mod->com->ptr_t : nkl_type_toIr(interm.type));
             }
             emit(ctx, interm.instr);
             return *dst;
@@ -1381,11 +1374,11 @@ static Interm compileLogicExpr(
     comment(ctx, ">>>>>>> %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    NkIrLabel const short_l = nkir_makeLabelAbs(getNextLabelShort(ctx));
-    NkIrLabel const join_l = nkir_makeLabelAbs(getNextLabelJoin(ctx));
+    NkIrLabel const short_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelShort));
+    NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
 
     NklType const bool_t = nickl_get_bool_t(ctx->nkl);
-    Interm const res = makeRefIndir(nkir_makeRefLocal(getNextValue(ctx), ctx->mod->com->ptr_t), bool_t);
+    Interm const res = makeRefIndir(nkir_makeRefLocal(getNextId(ctx, Id_Value), ctx->mod->com->ptr_t), bool_t);
 
     emit(ctx, nkir_make_alloc(res.ref, nkl_type_toIr(bool_t)));
     Interm const lhs = makeRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
@@ -1650,8 +1643,8 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NklAstNode const *body_n = nextNode(&it);
             NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
 
-            NkIrLabel const endif_l = nkir_makeLabelAbs(getNextLabelEndif(ctx));
-            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextLabelElse(ctx)) : endif_l;
+            NkIrLabel const endif_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndif));
+            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse)) : endif_l;
 
             Interm const cond = compile(ctx, cond_n);
 
@@ -1724,8 +1717,8 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
             NklAstNode const *cond_n = nextNode(&it);
             NklAstNode const *body_n = nextNode(&it);
 
-            NkIrLabel const loop_l = nkir_makeLabelAbs(getNextLabelLoop(ctx));
-            NkIrLabel const endloop_l = nkir_makeLabelAbs(getNextLabelEndloop(ctx));
+            NkIrLabel const loop_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelLoop));
+            NkIrLabel const endloop_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndloop));
 
             emit(ctx, nkir_make_jmp(loop_l));
             emit(ctx, nkir_make_label(loop_l.name));
