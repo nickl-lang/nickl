@@ -146,7 +146,8 @@ typedef enum {
     Id_LabelEndif,
     Id_LabelLoop,
     Id_LabelEndloop,
-    Id_LabelShort,
+    Id_LabelLhs,
+    Id_LabelRhs,
     Id_LabelJoin,
 
     IdKind_Count,
@@ -158,7 +159,8 @@ char const *s_id_names[] = {
     "endif",   // Id_LabelEndif
     "loop",    // Id_LabelLoop
     "endloop", // Id_LabelEndloop
-    "short",   // Id_LabelShort
+    "lhs",     // Id_LabelLhs
+    "rhs",     // Id_LabelRhs
     "join",    // Id_LabelJoin
 };
 
@@ -1176,7 +1178,9 @@ static void discard(Context *ctx, Value val) {
             return;
 
         case Value_Instr:
-            emit(ctx, val.instr);
+            if (val.instr.code != NkIrOp_phi) { // TODO: phi singled out
+                emit(ctx, val.instr);
+            }
             return;
     };
 
@@ -1388,34 +1392,48 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
     comment(ctx, ">>>>>>> %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    NkIrLabel const short_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelShort));
+    // TODO: Avoid needing lhs_l label
+    NkIrLabel const lhs_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelLhs));
+    NkIrLabel const rhs_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelRhs));
     NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
 
     NklType const bool_t = nickl_get_bool_t(ctx->nkl);
-    Value const res = newRefIndir(nkir_makeRefLocal(getNextId(ctx, Id_Value), ctx->mod->com->ptr_t), bool_t);
 
-    emit(ctx, nkir_make_alloc(res.ref, nkl_type_toIr(bool_t)));
-    Value const lhs = newRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
+    emit(ctx, nkir_make_jmp(lhs_l));
+    emit(ctx, nkir_make_label(lhs_l.name));
+
+    NkIrRef const lhs = toRef(ctx, newRef(toRef(ctx, compileLogic(ctx, lhs_n, invert))));
     if (op == (invert ? n_or : n_and)) {
-        emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
+        emit(ctx, nkir_make_jmpz(lhs, join_l));
     } else {
-        emit(ctx, nkir_make_jmpnz(toRef(ctx, lhs), short_l));
+        emit(ctx, nkir_make_jmpnz(lhs, join_l));
     }
-    Value const rhs = compileLogic(ctx, rhs_n, invert);
-    discard(ctx, compileMemoryStore(ctx, res, rhs));
+    emit(ctx, nkir_make_jmp(rhs_l));
+    emit(ctx, nkir_make_label(rhs_l.name));
+    NkIrRef const rhs = toRef(ctx, compileLogic(ctx, rhs_n, invert));
     emit(ctx, nkir_make_jmp(join_l));
-
-    emit(ctx, nkir_make_label(short_l.name));
-    discard(ctx, compileMemoryStore(ctx, res, lhs));
-    emit(ctx, nkir_make_jmp(join_l));
-
-    emit(ctx, nkir_make_label(join_l.name));
 
 #ifdef ENABLE_LOGGING
     comment(ctx, "<<<<<<< %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    return res;
+    emit(ctx, nkir_make_label(join_l.name));
+
+    NkIrPhiArgDynArray phi_args = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
+    nkda_append(
+        &phi_args,
+        ((NkIrPhiArg){
+            .ref = lhs,
+            .label = lhs_l.name,
+        }));
+    nkda_append(
+        &phi_args,
+        ((NkIrPhiArg){
+            .ref = rhs,
+            .label = rhs_l.name,
+        }));
+
+    return newInstr(nkir_make_phi((NkIrRef){0}, (NkIrPhiArgArray){NKS_INIT(phi_args)}), bool_t);
 }
 
 static Value compileLogic(Context *ctx, NklAstNode const *node, bool invert) {

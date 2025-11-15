@@ -90,19 +90,29 @@ typedef enum {
     NkIrArg_LabelRel,
     NkIrArg_Type,
     NkIrArg_String,
+    NkIrArg_PhiArgsArray,
 } NkIrArgKind;
 
 typedef NkSlice(NkIrRef const) NkIrRefArray;
 typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
 typedef struct {
+    NkIrRef ref;
+    NkAtom label;
+} NkIrPhiArg;
+
+typedef NkSlice(NkIrPhiArg const) NkIrPhiArgArray;
+typedef NkDynArray(NkIrPhiArg) NkIrPhiArgDynArray;
+
+typedef struct {
     union {
-        NkIrRef ref;       // NkIrArg_Ref
-        NkIrRefArray refs; // NkIrArg_RefArray
-        NkAtom label;      // NkIrArg_Label
-        i32 offset;        // NkIrArg_LabelRel
-        NkIrType type;     // NkIrArg_Type
-        NkString str;      // NkIrArg_String
+        NkIrRef ref;              // NkIrArg_Ref
+        NkIrRefArray refs;        // NkIrArg_RefArray
+        NkAtom label;             // NkIrArg_Label
+        i32 offset;               // NkIrArg_LabelRel
+        NkIrType type;            // NkIrArg_Type
+        NkString str;             // NkIrArg_String
+        NkIrPhiArgArray phi_args; // NkIrArg_PhiArgsArray
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -284,6 +294,8 @@ NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type);
 #define DBL_IR(NAME1, NAME2) \
     NkIrInstr NK_CAT(nkir_make_, NK_CAT(NAME1, NK_CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #include "nkb/ir.inl"
+
+NkIrInstr nkir_make_phi(NkIrRef dst, NkIrPhiArgArray args);
 
 NkIrInstr nkir_make_label(NkAtom label);
 

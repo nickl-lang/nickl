@@ -11,6 +11,7 @@
 #include "ntk/common.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -475,6 +476,21 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_cast:
             emitCast(out, instr);
+            break;
+
+        case NkIrOp_phi:
+            emitRefUntyped(out, ref0);
+            nk_print(out, " = phi ");
+            emitRefType(out, ref0);
+            nk_print(out, " ");
+            NK_ITERATE(NkIrPhiArg const *, phi_arg, instr->arg[1].phi_args) {
+                if (NK_INDEX(phi_arg, instr->arg[1].phi_args)) {
+                    nk_print(out, ", ");
+                }
+                nk_print(out, "[ ");
+                emitRefUntyped(out, &phi_arg->ref);
+                nk_printf(out, ", %%%s ]", nk_atom2cs(phi_arg->label));
+            }
             break;
 
         case NkIrOp_comment:

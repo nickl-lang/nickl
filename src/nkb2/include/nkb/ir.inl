@@ -29,8 +29,8 @@ IR(jmpnz) // jmpnz cond, @label
 IR(call) // call proc, (args, ...) -> dst
 
 IR(offset) // offset ptr, idx -> dst
-IR(store) // store src  -> [dst]
-IR(load)  // load [src] ->  dst
+IR(store)  // store src  -> [dst]
+IR(load)   // load [src] ->  dst
 
 IR(alloc) // alloc :type -> dst
 
@@ -55,6 +55,8 @@ CMP_IR(lt) // cmp lt lhs, rhs -> dst
 CMP_IR(le) // cmp le lhs, rhs -> dst
 CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
+
+IR(phi) // phi ((val, label), ...) -> dst
 
 IR(label)   // @label
 IR(comment) // comment "str"
