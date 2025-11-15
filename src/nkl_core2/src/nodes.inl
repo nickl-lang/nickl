@@ -6,12 +6,17 @@
 #define X(N) XN(N, #N)
 #endif
 
-X(escaped_string)
-X(float)
 X(id)
 X(int)
-X(list)
+X(float)
 X(string)
+X(escaped_string)
+
+XN(true_lit, "true")
+XN(false_lit, "false")
+X(nullptr)
+
+X(list)
 
 X(add)
 X(sub)
@@ -40,6 +45,7 @@ X(cast)
 
 X(addr)
 X(deref)
+X(member)
 
 X(assign)
 X(call)
@@ -47,7 +53,6 @@ X(const)
 X(def)
 X(extern)
 X(if)
-X(member)
 X(param)
 X(proc)
 X(ptr)
@@ -56,10 +61,6 @@ X(return)
 X(struct)
 X(var)
 X(while)
-
-XN(false_lit, "false")
-XN(true_lit, "true")
-X(nullptr)
 
 X(void)
 XN(boolean, "bool")

@@ -83,6 +83,8 @@ typedef struct {
     DeclKind kind;
     bool is_pub;
     bool is_comptime;
+    bool is_lvalue;
+    bool is_const;
 } Decl;
 
 NK_HASH_TREE_ARRAY_DEFINE_KV(DeclMap, NkAtom, Decl, nk_atom_hash, nk_atom_equal);
@@ -128,6 +130,8 @@ typedef struct {
     NklType type;
     // Scope *scope;
     bool is_comptime;
+    bool is_lvalue;
+    bool is_const;
 } AstNodeExt;
 
 typedef NkSlice(AstNodeExt) AstNodeExtArray;
@@ -197,6 +201,11 @@ static NklToken const *getToken(CompileCtx *ctx, NklAstNode const *node) {
     return &ctx->src.tokens.data[node->token_idx];
 }
 
+static NkString getTokenStr(CompileCtx *ctx, NklAstNode const *node) {
+    NklToken const *token = getToken(ctx, node);
+    return nkl_getTokenStr(token, ctx->src.text);
+}
+
 static void vreportError(CompileCtx *ctx, NklAstNode const *node, char const *fmt, va_list ap) {
     NklToken const *token = getToken(ctx, node);
     nickl_vreportError(
@@ -221,9 +230,7 @@ static NK_PRINTF_LIKE(3) void reportError(CompileCtx *ctx, NklAstNode const *nod
 static NkString parseString(CompileCtx *ctx, NkArena *arena, NklAstNode const *node) {
     nk_assert(node->id == n_string || node->id == n_escaped_string);
 
-    NklToken const *token = getToken(ctx, node);
-
-    NkString const token_str = nkl_getTokenStr(token, ctx->src.text);
+    NkString const token_str = getTokenStr(ctx, node);
     NkString const str = (NkString){token_str.data + 1, token_str.size - 2};
 
     if (node->id == n_string) {
@@ -242,8 +249,7 @@ static NkString parseString(CompileCtx *ctx, NkArena *arena, NklAstNode const *n
 
 static NkAtom parseId(CompileCtx *ctx, NklAstNode const *node) {
     nk_assert(node->id == n_id);
-    NklToken const *token = getToken(ctx, node);
-    NkString const token_str = nkl_getTokenStr(token, ctx->src.text);
+    NkString const token_str = getTokenStr(ctx, node);
     return nk_s2atom(token_str);
 }
 
@@ -280,9 +286,16 @@ static AstNodeExt const *typecheckComptimeConst(CompileCtx *ctx, NklAstNode cons
     return nodex;
 }
 
-static NklAny compileComptimeConst(CompileCtx *ctx, NklAstNode const *node) {
-    reportError(ctx, node, "TODO: compileComptimeConst is not implemented");
-    return (NklAny){0};
+static AstNodeExt const *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+    AstNodeExt const *nodex;
+    TRY(nodex = typecheck(ctx, node, args));
+
+    if (!nodex->is_lvalue) {
+        reportError(ctx, node, "lvalue expected");
+        return NULL;
+    }
+
+    return nodex;
 }
 
 static NklType parseType(CompileCtx *ctx, NklAstNode const *node);
@@ -412,90 +425,6 @@ static NklType parseType(CompileCtx *ctx, NklAstNode const *node) {
     return NULL;
 }
 
-static AstNodeExt *typecheckLvalue(CompileCtx *ctx, NklAstNode const *node) {
-    u32 const node_idx = nodeIdx(ctx->src.nodes, node);
-    NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
-
-    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
-
-    switch (node->id) {
-        case n_id: {
-            NkAtom const name = parseId(ctx, node);
-
-            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
-            if (!decl) {
-                reportError(ctx, node, "`%s` hasn't been declared", nk_atom2cs(name));
-                return NULL;
-            }
-
-            if (decl->kind != Decl_LocalVar) {
-                reportError(ctx, node, "cannot assign `%s`", nk_atom2cs(name));
-                return NULL;
-            }
-
-            return setNodeExt(
-                ctx,
-                node,
-                &(AstNodeExt){
-                    .type = decl->type,
-                    .is_comptime = false,
-                });
-        }
-
-        case n_deref: {
-            NklAstNode const *arg_n = nextNode(&it);
-
-            AstNodeExt const *arg;
-            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){.tclass = NklType_Pointer}));
-
-            return setNodeExt(
-                ctx,
-                node,
-                &(AstNodeExt){
-                    .type = arg->type->as.ptr.target_t,
-                    .is_comptime = arg->is_comptime,
-                });
-        }
-
-        case n_member: {
-            NklAstNode const *lhs_n = nextNode(&it);
-            NklAstNode const *name_n = nextNode(&it);
-
-            AstNodeExt const *lhs;
-            TRY(lhs = typecheck(ctx, lhs_n, &(TypecheckArgs){0}));
-
-            NkAtom const name = parseId(ctx, name_n);
-
-            nk_assert(lhs->type->tclass == NklType_Struct);
-
-            // TODO: Boilerplate field search
-            usize idx = -1u;
-            NK_ITERATE(NklField const *, it, lhs->type->as.strct.fields) {
-                if (it->name == name) {
-                    idx = NK_INDEX(it, lhs->type->as.strct.fields);
-                }
-            }
-
-            if (idx == -1u) {
-                reportError(ctx, node, "undefined field `%s`", nk_atom2cs(name));
-                return NULL;
-            }
-
-            return setNodeExt(
-                ctx,
-                node,
-                &(AstNodeExt){
-                    .type = lhs->type->as.strct.fields.data[idx].type,
-                    .is_comptime = lhs->is_comptime,
-                });
-        }
-
-        default:
-            reportError(ctx, node, "invalid lvalue");
-            return NULL;
-    }
-}
-
 static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
@@ -563,6 +492,8 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                     .entity = decl->kind == Decl_Entity ? decl->entity : NULL,
                     .type = decl->type,
                     .is_comptime = decl->is_comptime,
+                    .is_lvalue = true,
+                    .is_const = decl->is_const,
                 });
         }
 
@@ -741,9 +672,56 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                 });
         }
 
-        case n_member:
         case n_deref: {
-            return typecheckLvalue(ctx, node);
+            NklAstNode const *arg_n = nextNode(&it);
+
+            AstNodeExt const *arg;
+            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){.tclass = NklType_Pointer}));
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = arg->type->as.ptr.target_t,
+                    .is_comptime = arg->is_comptime,
+                    .is_lvalue = true,
+                    .is_const = false, // TODO: Detect const lvalues
+                });
+        }
+
+        case n_member: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *name_n = nextNode(&it);
+
+            AstNodeExt const *lhs;
+            TRY(lhs = typecheck(ctx, lhs_n, &(TypecheckArgs){0}));
+
+            NkAtom const name = parseId(ctx, name_n);
+
+            nk_assert(lhs->type->tclass == NklType_Struct);
+
+            // TODO: Boilerplate field search
+            usize idx = -1u;
+            NK_ITERATE(NklField const *, it, lhs->type->as.strct.fields) {
+                if (it->name == name) {
+                    idx = NK_INDEX(it, lhs->type->as.strct.fields);
+                }
+            }
+
+            if (idx == -1u) {
+                reportError(ctx, node, "undefined field `%s`", nk_atom2cs(name));
+                return NULL;
+            }
+
+            return setNodeExt(
+                ctx,
+                node,
+                &(AstNodeExt){
+                    .type = lhs->type->as.strct.fields.data[idx].type,
+                    .is_comptime = lhs->is_comptime,
+                    .is_lvalue = lhs->is_lvalue,
+                    .is_const = false, // TODO: Detect const lvalues
+                });
         }
 
         case n_assign: {
@@ -751,7 +729,7 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
             NklAstNode const *rhs_n = nextNode(&it);
 
             AstNodeExt const *lhs_nodex;
-            TRY(lhs_nodex = typecheckLvalue(ctx, lhs_n));
+            TRY(lhs_nodex = typecheckLvalue(ctx, lhs_n, &(TypecheckArgs){0}));
 
             TRY(typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs_nodex->type}));
 
@@ -1049,6 +1027,8 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
                     .kind = Decl_LocalVar,
                     .is_pub = false,
                     .is_comptime = false,
+                    .is_lvalue = true,
+                    .is_const = false, // TODO: Detect const lvalues
                 });
 
             return setNodeExt(
@@ -1358,64 +1338,9 @@ static Interm compileMemoryStore(CompileCtx *ctx, Interm dst, Interm src) {
     }
 }
 
-static Interm compileLvalue(CompileCtx *ctx, NklAstNode const *node) {
-    u32 const node_idx = nodeIdx(ctx->src.nodes, node);
-    NK_LOG_DBG("Compiling node %5u | %s", node_idx, nk_atom2cs(node->id));
-
-    AstNodeExt const *nodex = getNodeExt(ctx, node);
-
-    AstNodeIterator it = nodeIterate(ctx->src.nodes, node);
-
-    switch (node->id) {
-        case n_id: {
-            NkAtom const name = parseId(ctx, node);
-
-            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
-            nk_assert(decl);
-
-            return resolveDecl(ctx, decl);
-        }
-
-        case n_deref: {
-            NklAstNode const *arg_n = nextNode(&it);
-            Interm const arg = compile(ctx, arg_n);
-            return makeRefIndir(toRef(ctx, arg), nodex->type);
-        }
-
-        case n_member: {
-            NklAstNode const *lhs_n = nextNode(&it);
-            NklAstNode const *name_n = nextNode(&it);
-
-            Interm const lhs = compileLvalue(ctx, lhs_n);
-            NkAtom const name = parseId(ctx, name_n);
-
-            nk_assert(lhs.indir);
-            nk_assert(lhs.type->tclass == NklType_Struct);
-
-            // TODO: Hardcoded i32 for offset calc
-            NklType const i32_t = nickl_get_i32_t(ctx->nkl);
-
-            // TODO: Boilerplate field search
-            usize idx = -1u;
-            NK_ITERATE(NklField const *, it, lhs.type->as.strct.fields) {
-                if (it->name == name) {
-                    idx = NK_INDEX(it, lhs.type->as.strct.fields);
-                }
-            }
-            nk_assert(idx < -1u);
-
-            return makeInstrIndir(
-                nkir_make_offset(
-                    (NkIrRef){0},
-                    toRefDirectTyped(ctx, lhs),
-                    nkir_makeRefImm((NkIrImm){.i32 = idx}, nkl_type_getIrType(i32_t))),
-                nodex->type);
-        }
-
-        default:
-            reportError(ctx, node, "TODO: invlid lvalue AST node `%s`", nk_atom2cs(node->id));
-            return (Interm){0};
-    }
+static NklAny compileComptimeConst(CompileCtx *ctx, NklAstNode const *node) {
+    reportError(ctx, node, "TODO: compileComptimeConst is not implemented");
+    return (NklAny){0};
 }
 
 static NklType promote(CompileCtx *ctx, NklType type) {
@@ -1531,7 +1456,7 @@ static Interm compileLogic(CompileCtx *ctx, NklAstNode const *node, bool invert)
     return (Interm){0};
 }
 
-static Interm makeCast(CompileCtx *ctx, NklType dst_t, Interm val) {
+static Interm cast(CompileCtx *ctx, NklType dst_t, Interm val) {
     if (val.type != dst_t) {
         return makeInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, val)), dst_t);
     } else {
@@ -1550,38 +1475,41 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
     switch (node->id) {
         case n_extern:
         case n_def:
-        case 0: {
+        case 0:
             return makeVoid(ctx);
-        }
 
-        case n_string:
-        case n_escaped_string: {
-            return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_getIrType(nodex->type)));
+        case n_id: {
+            NkAtom const name = parseId(ctx, node);
+
+            Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
+            nk_assert(decl);
+
+            return resolveDecl(ctx, decl);
         }
 
         case n_int:
         case n_float: {
             nk_assert(nodex->type->tclass == NklType_Numeric);
 
-            NklToken const *token = getToken(ctx, node);
-            NkString const token_str = nkl_getTokenStr(token, ctx->src.text);
+            NkString const token_str = getTokenStr(ctx, node);
 
             NkIrImm imm = {0};
             parseNumber(ctx, &imm, token_str, nodex->type->as.num.value_type);
             return makeRef(nkir_makeRefImm(imm, nkl_type_getIrType(nodex->type)));
         }
 
-        case n_true_lit: {
+        case n_string:
+        case n_escaped_string:
+            return makeRef(nkir_makeRefGlobal(nodex->sym, nkl_type_getIrType(nodex->type)));
+
+        case n_true_lit:
             return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_getIrType(nodex->type)));
-        }
 
-        case n_false_lit: {
+        case n_false_lit:
             return makeRef(nkir_makeRefImm((NkIrImm){.u8 = 0}, nkl_type_getIrType(nodex->type)));
-        }
 
-        case n_nullptr: {
+        case n_nullptr:
             return makeRef(nkir_makeRefImm((NkIrImm){.u64 = 0}, nkl_type_getIrType(nodex->type)));
-        }
 
         case n_list: {
             Interm res = {0};
@@ -1626,9 +1554,8 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
         case n_and:
         case n_or:
-        case n_not: {
+        case n_not:
             return compileLogic(ctx, node, false);
-        }
 
         case n_cast: {
             nextNode(&it); // type
@@ -1636,29 +1563,59 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
 
             Interm const val = compile(ctx, val_n);
 
-            return makeCast(ctx, nodex->type, val);
+            return cast(ctx, nodex->type, val);
         }
 
         case n_addr: {
             NklAstNode const *arg_n = nextNode(&it);
 
-            Interm const addr = compileLvalue(ctx, arg_n);
+            Interm const addr = compile(ctx, arg_n);
             nk_assert(addr.indir);
 
             return makeRef(toRefDirect(ctx, addr));
         }
 
-        case n_id:
-        case n_member:
         case n_deref: {
-            return compileLvalue(ctx, node);
+            NklAstNode const *arg_n = nextNode(&it);
+            Interm const arg = compile(ctx, arg_n);
+            return makeRefIndir(toRef(ctx, arg), nodex->type);
+        }
+
+        case n_member: {
+            NklAstNode const *lhs_n = nextNode(&it);
+            NklAstNode const *name_n = nextNode(&it);
+
+            Interm const lhs = compile(ctx, lhs_n);
+            NkAtom const name = parseId(ctx, name_n);
+
+            nk_assert(lhs.indir);
+            nk_assert(lhs.type->tclass == NklType_Struct);
+
+            // TODO: Hardcoded i32 for offset calc
+            NklType const i32_t = nickl_get_i32_t(ctx->nkl);
+
+            // TODO: Boilerplate field search
+            usize idx = -1u;
+            NK_ITERATE(NklField const *, it, lhs.type->as.strct.fields) {
+                if (it->name == name) {
+                    idx = NK_INDEX(it, lhs.type->as.strct.fields);
+                }
+            }
+            nk_assert(idx < -1u);
+
+            return makeInstrIndir(
+                nkir_make_offset(
+                    (NkIrRef){0},
+                    toRefDirectTyped(ctx, lhs),
+                    nkir_makeRefImm((NkIrImm){.i32 = idx}, nkl_type_getIrType(i32_t))),
+                nodex->type);
         }
 
         case n_assign: {
             NklAstNode const *lhs_n = nextNode(&it);
             NklAstNode const *rhs_n = nextNode(&it);
 
-            Interm const lhs = compileLvalue(ctx, lhs_n);
+            Interm const lhs = compile(ctx, lhs_n);
             Interm const rhs = compile(ctx, rhs_n);
 
             return compileMemoryStore(ctx, lhs, rhs);
@@ -1683,7 +1640,7 @@ static Interm compile(CompileCtx *ctx, NklAstNode const *node) {
                 Interm arg = compile(ctx, arg_n);
 
                 if (i >= proc.type->as.proc.param_types.size) {
-                    arg = makeCast(ctx, promote(ctx, arg.type), arg);
+                    arg = cast(ctx, promote(ctx, arg.type), arg);
                 }
 
                 if (nkl_type_getIrType(arg.type)->kind == NkIrType_Aggregate) {
