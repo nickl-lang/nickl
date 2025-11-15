@@ -1051,6 +1051,20 @@ static AstNodeExt *typecheckImpl(CompileCtx *ctx, NklAstNode const *node, Typech
     return NULL;
 }
 
+static char const *s_tclass_names[] = {
+    "", // NklType_None
+
+    "aggregate", // NklType_Aggregate,
+    "array",     // NklType_Array,
+    "bool",      // NklType_Bool,
+    "number",    // NklType_Numeric,
+    "pointer",   // NklType_Pointer,
+    "procedure", // NklType_Procedure,
+    "struct",    // NklType_Struct,
+    "typeref",   // NklType_Typeref,
+    "void",      // NklType_Void,
+};
+
 static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, TypecheckArgs const *args) {
     AstNodeExt *nodex;
     TRY(nodex = typecheckImpl(ctx, node, args));
@@ -1075,7 +1089,7 @@ static AstNodeExt const *typecheck(CompileCtx *ctx, NklAstNode const *node, Type
             return NULL;
         }
     } else if (args->tclass && src_t->tclass != args->tclass) {
-        reportError(ctx, node, "TODO: tclass mismatch");
+        reportError(ctx, node, "%s expected", s_tclass_names[args->tclass]);
         return NULL;
     }
 
