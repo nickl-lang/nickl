@@ -1178,8 +1178,15 @@ static void discard(Context *ctx, Value val) {
             return;
 
         case Value_Instr:
-            if (val.instr.code != NkIrOp_phi) { // TODO: phi singled out
-                emit(ctx, val.instr);
+            switch (val.instr.code) {
+                case NkIrOp_call:
+                case NkIrOp_ret:
+                case NkIrOp_store:
+                    emit(ctx, val.instr);
+                    break;
+
+                default:
+                    break;
             }
             return;
     };
