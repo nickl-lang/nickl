@@ -48,10 +48,10 @@ typedef enum {
 } NkIrOutputKind;
 
 typedef enum {
-    NkIrRef_None = 0,
+    NkIrRef_Null = 0,
 
-    NkIrRef_Null,
-    NkIrRef_Local,
+    NkIrRef_Ignore,
+    NkIrRef_Value,
     NkIrRef_Param,
     NkIrRef_Global,
     NkIrRef_Imm,
@@ -74,7 +74,7 @@ typedef union {
 
 typedef struct {
     union {
-        NkAtom sym;  // NkIrRef_Local, NkIrRef_Param, NkIrRef_Global
+        NkAtom sym;  // NkIrRef_Value, NkIrRef_Param, NkIrRef_Global
         NkIrImm imm; // NkIrRef_Imm
     };
     NkIrType type;
@@ -87,22 +87,42 @@ typedef enum {
     NkIrArg_Ref,
     NkIrArg_RefArray,
     NkIrArg_Label,
-    NkIrArg_LabelRel,
     NkIrArg_Type,
     NkIrArg_String,
+    NkIrArg_PhiArgsArray,
 } NkIrArgKind;
 
 typedef NkSlice(NkIrRef const) NkIrRefArray;
 typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
+typedef enum {
+    NkIrLabel_Abs,
+    NkIrLabel_Rel,
+} NkIrLabelKind;
+
 typedef struct {
     union {
-        NkIrRef ref;       // NkIrArg_Ref
-        NkIrRefArray refs; // NkIrArg_RefArray
-        NkAtom label;      // NkIrArg_Label
-        i32 offset;        // NkIrArg_LabelRel
-        NkIrType type;     // NkIrArg_Type
-        NkString str;      // NkIrArg_String
+        NkAtom name; // NkIrLabel_Abs
+        i32 offset;  // NkIrLabel_Rel
+    };
+    NkIrLabelKind kind;
+} NkIrLabel;
+
+typedef struct {
+    NkIrRef ref;
+    NkIrLabel label;
+} NkIrPhiArg;
+
+typedef NkSlice(NkIrPhiArg const) NkIrPhiArgArray;
+typedef NkDynArray(NkIrPhiArg) NkIrPhiArgDynArray;
+typedef struct {
+    union {
+        NkIrRef ref;              // NkIrArg_Ref
+        NkIrRefArray refs;        // NkIrArg_RefArray
+        NkIrLabel label;          // NkIrArg_Label
+        NkIrType type;            // NkIrArg_Type
+        NkString str;             // NkIrArg_String
+        NkIrPhiArgArray phi_args; // NkIrArg_PhiArgsArray
     };
     NkIrArgKind kind;
 } NkIrArg;
@@ -213,19 +233,6 @@ struct NkIrSymbol {
     usize right;
 };
 
-typedef enum {
-    NkIrLabel_Abs,
-    NkIrLabel_Rel,
-} NkIrLabelKind;
-
-typedef struct {
-    union {
-        NkAtom name; // NkIrLabel_Abs
-        i32 offset;  // NkIrLabel_Rel
-    };
-    NkIrLabelKind kind;
-} NkIrLabel;
-
 typedef struct {
     NkAtom sym;
     void *addr;
@@ -248,8 +255,9 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
 /// Refs
 
-NkIrRef nkir_makeRefNull(NkIrType type);
-NkIrRef nkir_makeRefLocal(NkAtom sym, NkIrType type);
+NkIrRef nkir_null();
+NkIrRef nkir_makeRefIgnore(NkIrType type);
+NkIrRef nkir_makeRefValue(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefParam(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefGlobal(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
@@ -284,6 +292,8 @@ NkIrInstr nkir_make_alloc(NkIrRef dst, NkIrType type);
 #define DBL_IR(NAME1, NAME2) \
     NkIrInstr NK_CAT(nkir_make_, NK_CAT(NAME1, NK_CAT(_, NAME2)))(NkIrRef dst, NkIrRef lhs, NkIrRef rhs);
 #include "nkb/ir.inl"
+
+NkIrInstr nkir_make_phi(NkIrRef dst, NkIrPhiArgArray args);
 
 NkIrInstr nkir_make_label(NkAtom label);
 

@@ -143,11 +143,9 @@ NK_HASH_TREE_ARRAY_DEFINE_KV(EntityMap, NkAtom, Entity *, nk_atom_hash, nk_atom_
 typedef enum {
     Id_Value,
     Id_LabelElse,
-    Id_LabelEndif,
+    Id_LabelJoin,
     Id_LabelLoop,
     Id_LabelEndloop,
-    Id_LabelShort,
-    Id_LabelJoin,
 
     IdKind_Count,
 } IdKind;
@@ -155,11 +153,9 @@ typedef enum {
 char const *s_id_names[] = {
     "v",       // Id_Value
     "else",    // Id_LabelElse
-    "endif",   // Id_LabelEndif
+    "join",    // Id_LabelJoin
     "loop",    // Id_LabelLoop
     "endloop", // Id_LabelEndloop
-    "short",   // Id_LabelShort
-    "join",    // Id_LabelJoin
 };
 
 typedef struct {
@@ -170,6 +166,7 @@ typedef struct {
 
     NklType proc_t;
     NkIrInstrDynArray *instrs;
+    NkIrLabel last_label;
 
     NklSource src;
     ValueInfoArray nodes_info;
@@ -227,16 +224,14 @@ static NkString parseString(Context *ctx, NkArena *arena, NklAstNode const *node
     NkString const str = (NkString){token_str.data + 1, token_str.size - 2};
 
     if (node->id == n_string) {
-        char const *cstr = nk_tprintf(arena, NKS_FMT, NKS_ARG(str));
-        return (NkString){cstr, str.size};
+        return nk_tsprintf(arena, NKS_FMT, NKS_ARG(str));
     } else {
         NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
         nks_unescape(nksb_getStream(&sb), str);
         if (NKS_LAST(sb)) {
             nksb_appendNull(&sb);
         }
-
-        return (NkString){sb.data, sb.size};
+        return (NkString){sb.data, sb.size - 1};
     }
 }
 
@@ -1101,7 +1096,7 @@ static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, Typechec
     return val;
 }
 
-static void emit(Context *ctx, NkIrInstr instr) {
+static void emitRaw(Context *ctx, NkIrInstr instr) {
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_print(log, "Emitting ");
@@ -1109,6 +1104,19 @@ static void emit(Context *ctx, NkIrInstr instr) {
     }
 
     nkda_append(ctx->instrs, instr);
+}
+
+static void label(Context *ctx, NkIrLabel label) {
+    nk_assert(label.kind == NkIrLabel_Abs && "only support abs labels in codegen");
+    ctx->last_label = label;
+    emitRaw(ctx, nkir_make_label(label.name));
+}
+
+static void emit(Context *ctx, NkIrInstr instr) {
+    if (!ctx->instrs->size) {
+        label(ctx, nkir_makeLabelAbs(nk_cs2atom("start")));
+    }
+    emitRaw(ctx, instr);
 }
 
 typedef enum {
@@ -1176,7 +1184,16 @@ static void discard(Context *ctx, Value val) {
             return;
 
         case Value_Instr:
-            emit(ctx, val.instr);
+            switch (val.instr.code) {
+                case NkIrOp_call:
+                case NkIrOp_ret:
+                case NkIrOp_store:
+                    emit(ctx, val.instr);
+                    break;
+
+                default:
+                    break;
+            }
             return;
     };
 
@@ -1186,15 +1203,15 @@ static void discard(Context *ctx, Value val) {
 static NkIrRef toRefDirect(Context *ctx, Value val) {
     switch (val.kind) {
         case Value_Void:
-            return (NkIrRef){0};
+            return nkir_null();
 
         case Value_Ref:
             return val.ref;
 
         case Value_Instr: {
             NkIrRef *dst = &val.instr.arg[0].ref;
-            if ((dst->kind == NkIrRef_None || dst->kind == NkIrRef_Null) && val.type->size) {
-                *dst = nkir_makeRefLocal(
+            if ((dst->kind == NkIrRef_Null || dst->kind == NkIrRef_Ignore) && val.type->size) {
+                *dst = nkir_makeRefValue(
                     getNextId(ctx, Id_Value), val.indir ? ctx->mod->com->ptr_t : nkl_type_toIr(val.type));
             }
             emit(ctx, val.instr);
@@ -1203,7 +1220,7 @@ static NkIrRef toRefDirect(Context *ctx, Value val) {
     };
 
     nk_assert(!"unreachable");
-    return (NkIrRef){0};
+    return nkir_null();
 }
 
 static NkIrRef toRefDirectTyped(Context *ctx, Value val) {
@@ -1215,7 +1232,7 @@ static NkIrRef toRefDirectTyped(Context *ctx, Value val) {
 static NkIrRef toRef(Context *ctx, Value val) {
     NkIrRef const ref = toRefDirect(ctx, val);
     if (val.indir) {
-        return toRef(ctx, newInstr(nkir_make_load((NkIrRef){0}, ref), val.type));
+        return toRef(ctx, newInstr(nkir_make_load(nkir_null(), ref), val.type));
     } else {
         return ref;
     }
@@ -1236,7 +1253,7 @@ static Value resolveDecl(Context *ctx, Decl const *decl) {
             return newRef(nkir_makeRefGlobal(decl->sym, nkl_type_toIr(decl->type)));
 
         case Decl_LocalVar:
-            return newRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
+            return newRefIndir(nkir_makeRefValue(decl->sym, ctx->mod->com->ptr_t), decl->type);
 
         case Decl_Param: {
             if (nkl_type_toIr(decl->type)->kind == NkIrType_Aggregate) {
@@ -1388,34 +1405,41 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
     comment(ctx, ">>>>>>> %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    NkIrLabel const short_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelShort));
+    NkIrLabel const lhs_l = ctx->last_label;
+    NkIrLabel const else_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse));
     NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
 
-    NklType const bool_t = nickl_get_bool_t(ctx->nkl);
-    Value const res = newRefIndir(nkir_makeRefLocal(getNextId(ctx, Id_Value), ctx->mod->com->ptr_t), bool_t);
-
-    emit(ctx, nkir_make_alloc(res.ref, nkl_type_toIr(bool_t)));
-    Value const lhs = newRef(toRef(ctx, compileLogic(ctx, lhs_n, invert)));
+    NkIrRef const lhs = toRef(ctx, newRef(toRef(ctx, compileLogic(ctx, lhs_n, invert))));
     if (op == (invert ? n_or : n_and)) {
-        emit(ctx, nkir_make_jmpz(toRef(ctx, lhs), short_l));
+        emit(ctx, nkir_make_jmpz(lhs, join_l));
     } else {
-        emit(ctx, nkir_make_jmpnz(toRef(ctx, lhs), short_l));
+        emit(ctx, nkir_make_jmpnz(lhs, join_l));
     }
-    Value const rhs = compileLogic(ctx, rhs_n, invert);
-    discard(ctx, compileMemoryStore(ctx, res, rhs));
+    label(ctx, else_l);
+    NkIrRef const rhs = toRef(ctx, compileLogic(ctx, rhs_n, invert));
     emit(ctx, nkir_make_jmp(join_l));
 
-    emit(ctx, nkir_make_label(short_l.name));
-    discard(ctx, compileMemoryStore(ctx, res, lhs));
-    emit(ctx, nkir_make_jmp(join_l));
-
-    emit(ctx, nkir_make_label(join_l.name));
+    label(ctx, join_l);
 
 #ifdef ENABLE_LOGGING
     comment(ctx, "<<<<<<< %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    return res;
+    NkIrPhiArgDynArray phi_args = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
+    nkda_append(
+        &phi_args,
+        ((NkIrPhiArg){
+            .ref = lhs,
+            .label = lhs_l,
+        }));
+    nkda_append(
+        &phi_args,
+        ((NkIrPhiArg){
+            .ref = rhs,
+            .label = else_l,
+        }));
+
+    return newInstr(nkir_make_phi(nkir_null(), (NkIrPhiArgArray){NKS_INIT(phi_args)}), nickl_get_bool_t(ctx->nkl));
 }
 
 static Value compileLogic(Context *ctx, NklAstNode const *node, bool invert) {
@@ -1440,7 +1464,7 @@ static Value compileLogic(Context *ctx, NklAstNode const *node, bool invert) {
                 NklType const bool_t = nickl_get_bool_t(ctx->nkl);
                 return newInstr(
                     nkir_make_xor(
-                        (NkIrRef){0}, nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_toIr(bool_t)), toRef(ctx, res)),
+                        nkir_null(), nkir_makeRefImm((NkIrImm){.u8 = 1}, nkl_type_toIr(bool_t)), toRef(ctx, res)),
                     bool_t);
             } else {
                 return res;
@@ -1454,7 +1478,7 @@ static Value compileLogic(Context *ctx, NklAstNode const *node, bool invert) {
 
 static Value cast(Context *ctx, NklType dst_t, Value val) {
     if (val.type != dst_t) {
-        return newInstr(nkir_make_cast((NkIrRef){0}, toRef(ctx, val)), dst_t);
+        return newInstr(nkir_make_cast(nkir_null(), toRef(ctx, val)), dst_t);
     } else {
         return val;
     }
@@ -1516,15 +1540,15 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             return res;
         }
 
-#define BINOP(ID, NAME)                                                                                        \
-    case NK_CAT(n_, ID): {                                                                                     \
-        NklAstNode const *lhs_n = nextNode(&it);                                                               \
-        NklAstNode const *rhs_n = nextNode(&it);                                                               \
-                                                                                                               \
-        Value const lhs = compile(ctx, lhs_n);                                                                 \
-        Value const rhs = compile(ctx, rhs_n);                                                                 \
-                                                                                                               \
-        return newInstr(NK_CAT(nkir_make_, NAME)((NkIrRef){0}, toRef(ctx, lhs), toRef(ctx, rhs)), info->type); \
+#define BINOP(ID, NAME)                                                                                       \
+    case NK_CAT(n_, ID): {                                                                                    \
+        NklAstNode const *lhs_n = nextNode(&it);                                                              \
+        NklAstNode const *rhs_n = nextNode(&it);                                                              \
+                                                                                                              \
+        Value const lhs = compile(ctx, lhs_n);                                                                \
+        Value const rhs = compile(ctx, rhs_n);                                                                \
+                                                                                                              \
+        return newInstr(NK_CAT(nkir_make_, NAME)(nkir_null(), toRef(ctx, lhs), toRef(ctx, rhs)), info->type); \
     }
 
             BINOP(add, add)
@@ -1596,7 +1620,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
 
             return newInstrIndir(
                 nkir_make_offset(
-                    (NkIrRef){0},
+                    nkir_null(),
                     toRefDirectTyped(ctx, lhs),
                     nkir_makeRefImm((NkIrImm){.i32 = idx}, nkl_type_toIr(i32_t))),
                 info->type);
@@ -1644,7 +1668,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
 
             return newInstr(
                 nkir_make_call(
-                    nkir_makeRefNull(nkl_type_toIr(info->type)), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
+                    nkir_makeRefIgnore(nkl_type_toIr(info->type)), toRef(ctx, proc), (NkIrRefArray){NKS_INIT(args)}),
                 proc.type->as.proc.ret_t);
         }
 
@@ -1657,8 +1681,8 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             NklAstNode const *body_n = nextNode(&it);
             NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
 
-            NkIrLabel const endif_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndif));
-            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse)) : endif_l;
+            NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
+            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse)) : join_l;
 
             Value const cond = compile(ctx, cond_n);
 
@@ -1667,14 +1691,14 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             discard(ctx, compile(ctx, body_n));
 
             if (else_n) {
-                emit(ctx, nkir_make_jmp(endif_l));
-                emit(ctx, nkir_make_label(else_l.name));
+                emit(ctx, nkir_make_jmp(join_l));
+                label(ctx, else_l);
 
                 discard(ctx, compile(ctx, else_n));
             }
 
-            emit(ctx, nkir_make_jmp(endif_l));
-            emit(ctx, nkir_make_label(endif_l.name));
+            emit(ctx, nkir_make_jmp(join_l));
+            label(ctx, join_l);
 
 #ifdef ENABLE_LOGGING
             comment(ctx, "<<<<<<< if (node %u)", node_idx);
@@ -1710,7 +1734,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             Decl const *decl = DeclMap_find(&ctx->scope_stack->names, name);
             nk_assert(decl);
 
-            Value const var = newRefIndir(nkir_makeRefLocal(decl->sym, ctx->mod->com->ptr_t), decl->type);
+            Value const var = newRefIndir(nkir_makeRefValue(decl->sym, ctx->mod->com->ptr_t), decl->type);
 
             emit(ctx, nkir_make_alloc(var.ref, nkl_type_toIr(decl->type)));
 
@@ -1735,7 +1759,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             NkIrLabel const endloop_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndloop));
 
             emit(ctx, nkir_make_jmp(loop_l));
-            emit(ctx, nkir_make_label(loop_l.name));
+            label(ctx, loop_l);
 
             Value const cond = compile(ctx, cond_n);
 
@@ -1744,7 +1768,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             discard(ctx, compile(ctx, body_n));
 
             emit(ctx, nkir_make_jmp(loop_l));
-            emit(ctx, nkir_make_label(endloop_l.name));
+            label(ctx, endloop_l);
 
 #ifdef ENABLE_LOGGING
             comment(ctx, "<<<<<<< while (node %u)", node_idx);
@@ -1803,7 +1827,7 @@ static bool compileProcImpl(Context *ctx, Entity *proc_e) {
             reportError(ctx, proc_e->proc.info.body_n, "missing return statement");
             return false;
         }
-        emit(ctx, nkir_make_ret((NkIrRef){0}));
+        emit(ctx, nkir_make_ret(nkir_null()));
     }
 
     while (ctx->procs_to_compile.size) {

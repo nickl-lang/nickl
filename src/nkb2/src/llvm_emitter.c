@@ -11,6 +11,7 @@
 #include "ntk/common.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
+#include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/string.h"
 #include "ntk/utils.h"
@@ -122,7 +123,7 @@ static void emitGlobal(NkStream out, NkAtom name) {
     nkir_printSymbolName(out, name);
 }
 
-static void emitLocal(NkStream out, NkAtom name) {
+static void emitValue(NkStream out, NkAtom name) {
     nk_print(out, "%");
     nkir_printSymbolName(out, name);
 }
@@ -149,15 +150,15 @@ static void emitFloat(NkStream out, void *addr, NkIrNumericValueType value_type)
 
 static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
-        case NkIrRef_None:
-            break;
-
         case NkIrRef_Null:
             break;
 
-        case NkIrRef_Local:
+        case NkIrRef_Ignore:
+            break;
+
+        case NkIrRef_Value:
         case NkIrRef_Param:
-            emitLocal(out, ref->sym);
+            emitValue(out, ref->sym);
             break;
 
         case NkIrRef_Global:
@@ -203,12 +204,12 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
 
 static void emitRefType(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
-        case NkIrRef_None:
+        case NkIrRef_Null:
             break;
 
         case NkIrRef_Imm:
-        case NkIrRef_Null:
-        case NkIrRef_Local:
+        case NkIrRef_Ignore:
+        case NkIrRef_Value:
         case NkIrRef_Param:
         case NkIrRef_Global:
             emitType(out, ref->type);
@@ -231,7 +232,7 @@ typedef struct {
     NkIrInstrArray instrs;
 
     LabelArray labels;
-    u32 *indices;
+    u32 const *counts;
 
     NkIrParamArray params;
     NkIrParam ret;
@@ -240,34 +241,28 @@ typedef struct {
     usize next_label;
 } Context;
 
-static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize arg_idx) {
-    NkIrArg const *arg = &instr->arg[arg_idx];
+static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, NkIrLabel ir_label) {
     usize const instr_idx = NK_INDEX(instr, ctx->instrs);
-
-    nk_assert(arg->kind == NkIrArg_Label || arg->kind == NkIrArg_LabelRel);
 
     Label const *label = NULL;
 
-    switch (arg->kind) {
-        case NkIrArg_Label:
+    switch (ir_label.kind) {
+        case NkIrLabel_Abs: {
             label = ctx->instrs.data[instr_idx].code == NkIrOp_label ? findLabelByIdx(ctx->labels, instr_idx)
-                                                                     : findLabelByName(ctx->labels, arg->label);
-            break;
-
-        case NkIrArg_LabelRel: {
-            usize const target_idx = instr_idx + arg->offset;
-            label = findLabelByIdx(ctx->labels, target_idx);
+                                                                     : findLabelByName(ctx->labels, ir_label.name);
             break;
         }
 
-        default:
-            nk_assert(!"unreachable");
+        case NkIrLabel_Rel: {
+            usize const target_idx = instr_idx + ir_label.offset;
+            label = findLabelByIdx(ctx->labels, target_idx);
             break;
+        }
     }
 
     nk_assert(label && "invalid label");
 
-    u32 const label_idx = ctx->indices[NK_INDEX(label, ctx->labels)];
+    u32 const label_idx = ctx->counts[NK_INDEX(label, ctx->labels)];
     if (label_idx) {
         nk_printf(out, "%s%u", nk_atom2cs(label->name), label_idx);
     } else {
@@ -343,7 +338,6 @@ static void emitLogic(NkStream out, NkIrInstr const *instr, char const *name, Pr
 static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char const *cond) {
     NkIrRef const *ref1 = &instr->arg[1].ref;
 
-    usize const label = ctx->next_label++;
     usize const reg = ctx->next_local++;
 
     NkIrType const type = ref1->type;
@@ -356,8 +350,17 @@ static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char
     nk_printf(out, "%%.%zu = %scmp %s%s ", reg, opcode_prefix, cond_prefix, cond);
     emitRef(out, ref1);
     nk_printf(out, ", 0%s\n  br i1 %%.%zu, label %%", fp_suffix, reg);
-    emitLabel(ctx, out, instr, 2);
-    nk_printf(out, ", label %%.label%zu\n.label%zu:", label, label);
+    emitLabel(ctx, out, instr, instr->arg[2].label);
+    nk_print(out, ", label %");
+
+    usize const next_instr_idx = NK_INDEX(instr, ctx->instrs) + 1;
+    NkIrInstr const *next_instr = next_instr_idx < ctx->instrs.size ? &ctx->instrs.data[next_instr_idx] : NULL;
+    if (next_instr && (next_instr->code == NkIrOp_jmp || next_instr->code == NkIrOp_label)) {
+        emitLabel(ctx, out, next_instr, next_instr->arg[1].label);
+    } else {
+        usize const label = ctx->next_label++;
+        nk_printf(out, ".label%zu\n.label%zu:", label, label);
+    }
 }
 
 static void emitCond(Context *ctx, NkStream out, NkIrInstr const *instr, char const *cond, PrefixMask mask) {
@@ -477,6 +480,23 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             emitCast(out, instr);
             break;
 
+        case NkIrOp_phi:
+            emitRefUntyped(out, ref0);
+            nk_print(out, " = phi ");
+            emitRefType(out, ref0);
+            nk_print(out, " ");
+            NK_ITERATE(NkIrPhiArg const *, phi_arg, instr->arg[1].phi_args) {
+                if (NK_INDEX(phi_arg, instr->arg[1].phi_args)) {
+                    nk_print(out, ", ");
+                }
+                nk_print(out, "[ ");
+                emitRefUntyped(out, &phi_arg->ref);
+                nk_print(out, ", %");
+                emitLabel(ctx, out, instr, phi_arg->label);
+                nk_print(out, " ]");
+            }
+            break;
+
         case NkIrOp_comment:
             nk_printf(out, "; " NKS_FMT, NKS_ARG(instr->arg[1].str));
             break;
@@ -524,7 +544,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_jmp:
             nk_print(out, "br label %");
-            emitLabel(ctx, out, instr, 1);
+            emitLabel(ctx, out, instr, instr->arg[1].label);
             break;
 
         case NkIrOp_jmpz:
@@ -555,7 +575,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_label:
-            emitLabel(ctx, out, instr, 1);
+            emitLabel(ctx, out, instr, instr->arg[1].label);
             nk_print(out, ":");
             break;
 
@@ -596,7 +616,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             NkIrRefArray const arg_refs = instr->arg[2].refs;
 
             bool sret = false;
-            if (ref0->kind && ref0->kind != NkIrRef_Null) {
+            if (ref0->kind && ref0->kind != NkIrRef_Ignore) {
                 if (ref0->type->kind == NkIrType_Aggregate && ref0->type->size) {
                     sret = true;
                 } else {
@@ -784,14 +804,14 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
 
-            u32 *indices = countLabels(scratch, labels);
+            u32 const *counts = countLabels(scratch, labels);
 
             Context ctx = {
                 .scratch = scratch,
                 .instrs = sym->proc.instrs,
 
                 .labels = labels,
-                .indices = indices,
+                .counts = counts,
 
                 .params = sym->proc.params,
                 .ret = sym->proc.ret,
@@ -812,7 +832,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                 nk_print(out, "ptr sret(");
                 emitType(out, ctx.ret.type);
                 nk_printf(out, ") align %u ", ctx.ret.type->align);
-                emitLocal(out, ctx.ret.name);
+                emitValue(out, ctx.ret.name);
             }
             NK_ITERATE(NkIrParam const *, param, ctx.params) {
                 if (NK_INDEX(param, sym->proc.params) || ctx.ret.name) {
@@ -826,7 +846,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                     nk_printf(out, ") align %u", param->type->align);
                 }
                 nk_print(out, " ");
-                emitLocal(out, param->name);
+                emitValue(out, param->name);
             }
             nk_print(out, ") {\n");
             NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {

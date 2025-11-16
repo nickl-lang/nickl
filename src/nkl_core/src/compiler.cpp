@@ -317,7 +317,7 @@ static Interm store(Context &ctx, NkIrRef const &dst, Interm src) {
     auto const dst_type = dst.type;
     auto const src_type = src.type;
     if (nklt_sizeof(src_type)) {
-        if (src.kind == IntermKind_Instr && src.as.instr.arg[0].ref.kind == NkIrRef_None) {
+        if (src.kind == IntermKind_Instr && src.as.instr.arg[0].ref.kind == NkIrRef_Null) {
             src.as.instr.arg[0].ref = dst;
         } else {
             src = makeInstr(nkir_make_mov(ctx.ir, dst, asRef(ctx, src)), nkirt2nklt(dst_type));
@@ -1904,7 +1904,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 static Void compileStmt(Context &ctx, NklAstNode const &node) {
     DEFINE(val, compile(ctx, node));
     auto const ref = asRef(ctx, val);
-    if (ref.kind != NkIrRef_None && ref.type->size) {
+    if (ref.kind != NkIrRef_Null && ref.type->size) {
         NKSB_FIXED_BUFFER(sb, 1024);
         nk_assert(ctx.proc_stack && "no current proc");
         nkir_inspectRef(ctx.ir, ctx.proc_stack->proc, ref, nksb_getStream(&sb));

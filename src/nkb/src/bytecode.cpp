@@ -267,7 +267,7 @@ bool translateProc(NkIrRunCtx ctx, NkIrProc proc) {
             };
 
             switch (ir_ref.kind) {
-                case NkIrRef_None:
+                case NkIrRef_Null:
                     break;
                 case NkIrRef_Frame:
                     ref.offset += ir_proc.locals.data[ir_ref.index].offset;
