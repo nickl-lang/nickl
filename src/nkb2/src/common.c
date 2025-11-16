@@ -8,7 +8,7 @@ LabelArray collectLabels(NkIrInstrArray instrs, LabelDynArray *out) {
             nkda_append(
                 out,
                 ((Label){
-                    .name = instr->arg[1].label,
+                    .name = instr->arg[1].label.name,
                     .idx = NK_INDEX(instr, instrs),
                 }));
         }

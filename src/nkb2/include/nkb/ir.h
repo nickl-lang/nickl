@@ -87,7 +87,6 @@ typedef enum {
     NkIrArg_Ref,
     NkIrArg_RefArray,
     NkIrArg_Label,
-    NkIrArg_LabelRel,
     NkIrArg_Type,
     NkIrArg_String,
     NkIrArg_PhiArgsArray,
@@ -96,6 +95,19 @@ typedef enum {
 typedef NkSlice(NkIrRef const) NkIrRefArray;
 typedef NkDynArray(NkIrRef) NkIrRefDynArray;
 
+typedef enum {
+    NkIrLabel_Abs,
+    NkIrLabel_Rel,
+} NkIrLabelKind;
+
+typedef struct {
+    union {
+        NkAtom name; // NkIrLabel_Abs
+        i32 offset;  // NkIrLabel_Rel
+    };
+    NkIrLabelKind kind;
+} NkIrLabel;
+
 typedef struct {
     NkIrRef ref;
     NkAtom label;
@@ -103,13 +115,11 @@ typedef struct {
 
 typedef NkSlice(NkIrPhiArg const) NkIrPhiArgArray;
 typedef NkDynArray(NkIrPhiArg) NkIrPhiArgDynArray;
-
 typedef struct {
     union {
         NkIrRef ref;              // NkIrArg_Ref
         NkIrRefArray refs;        // NkIrArg_RefArray
-        NkAtom label;             // NkIrArg_Label
-        i32 offset;               // NkIrArg_LabelRel
+        NkIrLabel label;          // NkIrArg_Label
         NkIrType type;            // NkIrArg_Type
         NkString str;             // NkIrArg_String
         NkIrPhiArgArray phi_args; // NkIrArg_PhiArgsArray
@@ -222,19 +232,6 @@ struct NkIrSymbol {
     usize left;
     usize right;
 };
-
-typedef enum {
-    NkIrLabel_Abs,
-    NkIrLabel_Rel,
-} NkIrLabelKind;
-
-typedef struct {
-    union {
-        NkAtom name; // NkIrLabel_Abs
-        i32 offset;  // NkIrLabel_Rel
-    };
-    NkIrLabelKind kind;
-} NkIrLabel;
 
 typedef struct {
     NkAtom sym;

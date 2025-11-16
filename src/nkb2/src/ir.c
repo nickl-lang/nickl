@@ -75,21 +75,10 @@ static NkIrArg argPhiArgsArray(NkIrPhiArgArray args) {
 }
 
 static NkIrArg argLabel(NkIrLabel label) {
-    switch (label.kind) {
-        case NkIrLabel_Abs:
-            return (NkIrArg){
-                .label = label.name,
-                .kind = NkIrArg_Label,
-            };
-        case NkIrLabel_Rel:
-            return (NkIrArg){
-                .offset = label.offset,
-                .kind = NkIrArg_LabelRel,
-            };
-    }
-
-    nk_assert(!"unreachable");
-    return (NkIrArg){0};
+    return (NkIrArg){
+        .label = label,
+        .kind = NkIrArg_Label,
+    };
 }
 
 static NkIrArg argType(NkIrType type) {
@@ -186,11 +175,11 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out) {
                 for (usize ai = 1; ai < 3; ai++) {
                     NkIrArg *arg = &instr_copy->arg[ai];
 
-                    if (arg->kind == NkIrArg_Label) {
-                        Label const *label = findLabelByName(labels, arg->label);
+                    if (arg->kind == NkIrArg_Label && arg->label.kind == NkIrLabel_Abs) {
+                        Label const *label = findLabelByName(labels, arg->label.name);
                         if (label) {
-                            arg->offset = label->idx - NK_INDEX(instr, instrs);
-                            arg->kind = NkIrArg_LabelRel;
+                            arg->label.offset = label->idx - NK_INDEX(instr, instrs);
+                            arg->label.kind = NkIrLabel_Rel;
                             break;
                         }
                     }
@@ -516,7 +505,6 @@ static void gatherDeps(NkIrSymbol const *sym, NkAtomDynArray *out) {
 
                         case NkIrArg_None:
                         case NkIrArg_Label:
-                        case NkIrArg_LabelRel:
                         case NkIrArg_Type:
                         case NkIrArg_String:
                             break;
@@ -861,27 +849,31 @@ static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
                 nk_print(out, ")");
                 break;
 
-            case NkIrArg_Label: {
-                Label const *label = instr->code == NkIrOp_label ? findLabelByIdx(ctx.labels, idx)
-                                                                 : findLabelByName(ctx.labels, arg->label);
-                if (label) {
-                    inspectLabel(out, label, ctx.labels, ctx.indices);
-                } else {
-                    nk_printf(out, "@%s", nk_atom2cs(arg->label));
-                }
-                break;
-            }
+            case NkIrArg_Label:
+                switch (arg->label.kind) {
+                    case NkIrLabel_Abs: {
+                        Label const *label = instr->code == NkIrOp_label ? findLabelByIdx(ctx.labels, idx)
+                                                                         : findLabelByName(ctx.labels, arg->label.name);
+                        if (label) {
+                            inspectLabel(out, label, ctx.labels, ctx.indices);
+                        } else {
+                            nk_printf(out, "@%s", nk_atom2cs(arg->label.name));
+                        }
+                        break;
+                    }
 
-            case NkIrArg_LabelRel: {
-                usize const target_idx = idx + arg->offset;
-                Label const *label = findLabelByIdx(ctx.labels, target_idx);
-                if (label) {
-                    inspectLabel(out, label, ctx.labels, ctx.indices);
-                } else {
-                    nk_printf(out, "@%s%i", arg->offset >= 0 ? "+" : "", arg->offset);
+                    case NkIrLabel_Rel: {
+                        usize const target_idx = idx + arg->label.offset;
+                        Label const *label = findLabelByIdx(ctx.labels, target_idx);
+                        if (label) {
+                            inspectLabel(out, label, ctx.labels, ctx.indices);
+                        } else {
+                            nk_printf(out, "@%s%i", arg->label.offset >= 0 ? "+" : "", arg->label.offset);
+                        }
+                        break;
+                    }
                 }
                 break;
-            }
 
             case NkIrArg_Type:
                 nk_print(out, ":");

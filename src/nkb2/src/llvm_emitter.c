@@ -245,21 +245,27 @@ static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize 
     NkIrArg const *arg = &instr->arg[arg_idx];
     usize const instr_idx = NK_INDEX(instr, ctx->instrs);
 
-    nk_assert(arg->kind == NkIrArg_Label || arg->kind == NkIrArg_LabelRel);
+    nk_assert(arg->kind == NkIrArg_Label);
 
     Label const *label = NULL;
 
     switch (arg->kind) {
         case NkIrArg_Label:
-            label = ctx->instrs.data[instr_idx].code == NkIrOp_label ? findLabelByIdx(ctx->labels, instr_idx)
-                                                                     : findLabelByName(ctx->labels, arg->label);
-            break;
+            switch (arg->label.kind) {
+                case NkIrLabel_Abs: {
+                    label = ctx->instrs.data[instr_idx].code == NkIrOp_label
+                                ? findLabelByIdx(ctx->labels, instr_idx)
+                                : findLabelByName(ctx->labels, arg->label.name);
+                    break;
+                }
 
-        case NkIrArg_LabelRel: {
-            usize const target_idx = instr_idx + arg->offset;
-            label = findLabelByIdx(ctx->labels, target_idx);
+                case NkIrLabel_Rel: {
+                    usize const target_idx = instr_idx + arg->label.offset;
+                    label = findLabelByIdx(ctx->labels, target_idx);
+                    break;
+                }
+            }
             break;
-        }
 
         default:
             nk_assert(!"unreachable");
