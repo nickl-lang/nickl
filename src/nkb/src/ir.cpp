@@ -930,7 +930,7 @@ static void inspectInstrImpl(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStr
         }
     }
 
-    if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
+    if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_Null) {
         nk_print(out, " -> ");
         nkir_inspectRef(ir, _proc, instr.arg[0].ref, out);
     }
@@ -996,7 +996,7 @@ void nkir_inspectInstr(NkIrProg ir, NkIrProc _proc, NkIrInstr instr, NkStream ou
 void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
     auto const &proc = ir->procs.data[_proc.idx];
 
-    if (ref.kind == NkIrRef_None) {
+    if (ref.kind == NkIrRef_Null) {
         nk_print(out, "{}");
         return;
     } else if (ref.kind == NkIrRef_VariadicMarker) {
@@ -1061,7 +1061,7 @@ void nkir_inspectRef(NkIrProg ir, NkIrProc _proc, NkIrRef ref, NkStream out) {
             nk_printf(out, NKS_FMT, NKS_ARG(name_str));
             break;
         }
-        case NkIrRef_None:
+        case NkIrRef_Null:
         case NkIrRef_VariadicMarker:
         default:
             nk_assert(!"unreachable");

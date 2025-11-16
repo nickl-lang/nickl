@@ -200,18 +200,22 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out) {
     }
 }
 
-NkIrRef nkir_makeRefNull(NkIrType type) {
+NkIrRef nkir_null() {
+    return (NkIrRef){0};
+}
+
+NkIrRef nkir_makeRefIgnore(NkIrType type) {
     return (NkIrRef){
         .type = type,
-        .kind = NkIrRef_Null,
+        .kind = NkIrRef_Ignore,
     };
 }
 
-NkIrRef nkir_makeRefLocal(NkAtom sym, NkIrType type) {
+NkIrRef nkir_makeRefValue(NkAtom sym, NkIrType type) {
     return (NkIrRef){
         .sym = sym,
         .type = type,
-        .kind = NkIrRef_Local,
+        .kind = NkIrRef_Value,
     };
 }
 
@@ -1081,7 +1085,7 @@ void nkir_inspectInstr(NkStream out, NkIrInstr instr) {
 }
 
 void nkir_inspectRef(NkStream out, NkIrRef ref) {
-    if (ref.kind == NkIrRef_None) {
+    if (ref.kind == NkIrRef_Null) {
         return;
     }
 
@@ -1094,7 +1098,7 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
     nkir_inspectType(out, ref.type);
 
     switch (ref.kind) {
-        case NkIrRef_Local:
+        case NkIrRef_Value:
         case NkIrRef_Param:
             nk_printf(out, " %%%s", nk_atom2cs(ref.sym));
             break;
@@ -1110,8 +1114,8 @@ void nkir_inspectRef(NkStream out, NkIrRef ref) {
             nkir_inspectVal(out, &ref.imm, ref.type);
             break;
 
-        case NkIrRef_None:
         case NkIrRef_Null:
+        case NkIrRef_Ignore:
         case NkIrRef_VariadicMarker:
             break;
     }

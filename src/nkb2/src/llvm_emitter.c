@@ -123,7 +123,7 @@ static void emitGlobal(NkStream out, NkAtom name) {
     nkir_printSymbolName(out, name);
 }
 
-static void emitLocal(NkStream out, NkAtom name) {
+static void emitValue(NkStream out, NkAtom name) {
     nk_print(out, "%");
     nkir_printSymbolName(out, name);
 }
@@ -150,15 +150,15 @@ static void emitFloat(NkStream out, void *addr, NkIrNumericValueType value_type)
 
 static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
-        case NkIrRef_None:
-            break;
-
         case NkIrRef_Null:
             break;
 
-        case NkIrRef_Local:
+        case NkIrRef_Ignore:
+            break;
+
+        case NkIrRef_Value:
         case NkIrRef_Param:
-            emitLocal(out, ref->sym);
+            emitValue(out, ref->sym);
             break;
 
         case NkIrRef_Global:
@@ -204,12 +204,12 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
 
 static void emitRefType(NkStream out, NkIrRef const *ref) {
     switch (ref->kind) {
-        case NkIrRef_None:
+        case NkIrRef_Null:
             break;
 
         case NkIrRef_Imm:
-        case NkIrRef_Null:
-        case NkIrRef_Local:
+        case NkIrRef_Ignore:
+        case NkIrRef_Value:
         case NkIrRef_Param:
         case NkIrRef_Global:
             emitType(out, ref->type);
@@ -620,7 +620,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             NkIrRefArray const arg_refs = instr->arg[2].refs;
 
             bool sret = false;
-            if (ref0->kind && ref0->kind != NkIrRef_Null) {
+            if (ref0->kind && ref0->kind != NkIrRef_Ignore) {
                 if (ref0->type->kind == NkIrType_Aggregate && ref0->type->size) {
                     sret = true;
                 } else {
@@ -836,7 +836,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                 nk_print(out, "ptr sret(");
                 emitType(out, ctx.ret.type);
                 nk_printf(out, ") align %u ", ctx.ret.type->align);
-                emitLocal(out, ctx.ret.name);
+                emitValue(out, ctx.ret.name);
             }
             NK_ITERATE(NkIrParam const *, param, ctx.params) {
                 if (NK_INDEX(param, sym->proc.params) || ctx.ret.name) {
@@ -850,7 +850,7 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
                     nk_printf(out, ") align %u", param->type->align);
                 }
                 nk_print(out, " ");
-                emitLocal(out, param->name);
+                emitValue(out, param->name);
             }
             nk_print(out, ") {\n");
             NK_ITERATE(NkIrInstr const *, instr, sym->proc.instrs) {

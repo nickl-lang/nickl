@@ -146,7 +146,7 @@ NkIrRef asRef(Context &ctx, Interm const &val) {
         case IntermKind_Instr: {
             auto instr = val.as.instr;
             auto &dst = instr.arg[0].ref;
-            if (dst.kind == NkIrRef_None && nklt_sizeof(val.type)) {
+            if (dst.kind == NkIrRef_Null && nklt_sizeof(val.type)) {
                 dst = nkir_makeFrameRef(ctx.ir, nkir_makeLocalVar(ctx.ir, 0, nklt2nkirt(val.type)));
             }
             emit(ctx, instr);

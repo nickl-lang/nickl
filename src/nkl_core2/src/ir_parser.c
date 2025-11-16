@@ -586,7 +586,7 @@ static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
         ERROR("params are read-only");
     }
 
-    return is_param ? nkir_makeRefParam(name, type) : nkir_makeRefLocal(name, type);
+    return is_param ? nkir_makeRefParam(name, type) : nkir_makeRefValue(name, type);
 }
 
 static NkIrRef parseDst(ParserState *p, NkIrType type_opt, bool allow_null) {
@@ -603,7 +603,7 @@ static NkIrRef parseDst(ParserState *p, NkIrType type_opt, bool allow_null) {
         if (!type) {
             ERROR("type must be specified");
         }
-        return nkir_makeRefNull(type);
+        return nkir_makeRefIgnore(type);
     } else {
         if (!on(p, NklIrToken_PercentTag)) {
             ERROR_EXPECT("local");
@@ -800,7 +800,7 @@ static NkIrInstr parseInstr(ParserState *p) {
         TRY(NkIrRef const proc = parseRef(p, get_ptr_t(p)));
         EXPECT(NklIrToken_Comma);
         TRY(NkIrRefArray const args = parseRefArray(p));
-        NkIrRef dst = nkir_makeRefNull(get_void_t(p));
+        NkIrRef dst = nkir_makeRefIgnore(get_void_t(p));
         if (ACCEPT(NklIrToken_MinusGreater)) {
             TRY(dst = parseDst(p, NULL, true));
         }

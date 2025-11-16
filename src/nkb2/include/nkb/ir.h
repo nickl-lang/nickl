@@ -48,10 +48,10 @@ typedef enum {
 } NkIrOutputKind;
 
 typedef enum {
-    NkIrRef_None = 0,
+    NkIrRef_Null = 0,
 
-    NkIrRef_Null,
-    NkIrRef_Local,
+    NkIrRef_Ignore,
+    NkIrRef_Value,
     NkIrRef_Param,
     NkIrRef_Global,
     NkIrRef_Imm,
@@ -74,7 +74,7 @@ typedef union {
 
 typedef struct {
     union {
-        NkAtom sym;  // NkIrRef_Local, NkIrRef_Param, NkIrRef_Global
+        NkAtom sym;  // NkIrRef_Value, NkIrRef_Param, NkIrRef_Global
         NkIrImm imm; // NkIrRef_Imm
     };
     NkIrType type;
@@ -258,8 +258,9 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out);
 
 /// Refs
 
-NkIrRef nkir_makeRefNull(NkIrType type);
-NkIrRef nkir_makeRefLocal(NkAtom sym, NkIrType type);
+NkIrRef nkir_null();
+NkIrRef nkir_makeRefIgnore(NkIrType type);
+NkIrRef nkir_makeRefValue(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefParam(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefGlobal(NkAtom sym, NkIrType type);
 NkIrRef nkir_makeRefImm(NkIrImm imm, NkIrType type);
