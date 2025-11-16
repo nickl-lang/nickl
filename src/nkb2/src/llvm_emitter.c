@@ -241,35 +241,23 @@ typedef struct {
     usize next_label;
 } Context;
 
-static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize arg_idx) {
-    NkIrArg const *arg = &instr->arg[arg_idx];
+static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, NkIrLabel ir_label) {
     usize const instr_idx = NK_INDEX(instr, ctx->instrs);
-
-    nk_assert(arg->kind == NkIrArg_Label);
 
     Label const *label = NULL;
 
-    switch (arg->kind) {
-        case NkIrArg_Label:
-            switch (arg->label.kind) {
-                case NkIrLabel_Abs: {
-                    label = ctx->instrs.data[instr_idx].code == NkIrOp_label
-                                ? findLabelByIdx(ctx->labels, instr_idx)
-                                : findLabelByName(ctx->labels, arg->label.name);
-                    break;
-                }
-
-                case NkIrLabel_Rel: {
-                    usize const target_idx = instr_idx + arg->label.offset;
-                    label = findLabelByIdx(ctx->labels, target_idx);
-                    break;
-                }
-            }
+    switch (ir_label.kind) {
+        case NkIrLabel_Abs: {
+            label = ctx->instrs.data[instr_idx].code == NkIrOp_label ? findLabelByIdx(ctx->labels, instr_idx)
+                                                                     : findLabelByName(ctx->labels, ir_label.name);
             break;
+        }
 
-        default:
-            nk_assert(!"unreachable");
+        case NkIrLabel_Rel: {
+            usize const target_idx = instr_idx + ir_label.offset;
+            label = findLabelByIdx(ctx->labels, target_idx);
             break;
+        }
     }
 
     nk_assert(label && "invalid label");
@@ -362,13 +350,13 @@ static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char
     nk_printf(out, "%%.%zu = %scmp %s%s ", reg, opcode_prefix, cond_prefix, cond);
     emitRef(out, ref1);
     nk_printf(out, ", 0%s\n  br i1 %%.%zu, label %%", fp_suffix, reg);
-    emitLabel(ctx, out, instr, 2);
+    emitLabel(ctx, out, instr, instr->arg[2].label);
     nk_print(out, ", label %");
 
     usize const next_instr_idx = NK_INDEX(instr, ctx->instrs) + 1;
     NkIrInstr const *next_instr = next_instr_idx < ctx->instrs.size ? &ctx->instrs.data[next_instr_idx] : NULL;
     if (next_instr && (next_instr->code == NkIrOp_jmp || next_instr->code == NkIrOp_label)) {
-        emitLabel(ctx, out, next_instr, 1);
+        emitLabel(ctx, out, next_instr, next_instr->arg[1].label);
     } else {
         usize const label = ctx->next_label++;
         nk_printf(out, ".label%zu\n.label%zu:", label, label);
@@ -503,7 +491,9 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                 }
                 nk_print(out, "[ ");
                 emitRefUntyped(out, &phi_arg->ref);
-                nk_printf(out, ", %%%s ]", nk_atom2cs(phi_arg->label.name)); // TODO: Support relative labels!
+                nk_print(out, ", %");
+                emitLabel(ctx, out, instr, phi_arg->label);
+                nk_print(out, " ]");
             }
             break;
 
@@ -554,7 +544,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
 
         case NkIrOp_jmp:
             nk_print(out, "br label %");
-            emitLabel(ctx, out, instr, 1);
+            emitLabel(ctx, out, instr, instr->arg[1].label);
             break;
 
         case NkIrOp_jmpz:
@@ -585,7 +575,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
             break;
 
         case NkIrOp_label:
-            emitLabel(ctx, out, instr, 1);
+            emitLabel(ctx, out, instr, instr->arg[1].label);
             nk_print(out, ":");
             break;
 

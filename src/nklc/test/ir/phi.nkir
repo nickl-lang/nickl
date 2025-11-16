@@ -6,7 +6,7 @@ pub proc _entry() {
     jmp @loop_head
 
 @loop_head
-    phi (@start :u64 0, @loop_body %i_next) -> %i
+    phi (@start :u64 0, @+3 %i_next) -> %i
     cmp lt :u64 %i, 5 -> %cond
     jmpz :i8 %cond, @endloop
 

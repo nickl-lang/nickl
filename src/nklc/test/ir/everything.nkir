@@ -14,8 +14,6 @@ local data x :i64
 
 pub proc foo(:f64 %x, :f64 %y) :f64 {
 
-    // TODO: Fix f32 constants
-
 @start
     nop
 
