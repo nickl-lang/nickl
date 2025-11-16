@@ -772,8 +772,15 @@ static char const *s_opcode_names[] = {
 #include "nkb/ir.inl"
 };
 
-static void inspectLabel(NkStream out, Label const *label, LabelArray labels, u32 const *indices) {
-    u32 const label_idx = indices[NK_INDEX(label, labels)];
+typedef struct {
+    NkIrInstrArray instrs;
+    LabelArray labels;
+    u32 const *counts;
+    bool write_idx;
+} InspectInstrCtx;
+
+static void writeLabelName(NkStream out, InspectInstrCtx *ctx, Label const *label) {
+    u32 const label_idx = ctx->counts[NK_INDEX(label, ctx->labels)];
     if (label_idx) {
         nk_printf(out, "@%s%u", nk_atom2cs(label->name), label_idx);
     } else {
@@ -781,26 +788,46 @@ static void inspectLabel(NkStream out, Label const *label, LabelArray labels, u3
     }
 }
 
-typedef struct {
-    NkIrInstrArray instrs;
-    LabelArray labels;
-    u32 const *indices;
-    bool write_idx;
-} InspectInstrCtx;
+static void inspectLabel(NkStream out, InspectInstrCtx *ctx, usize instr_idx, NkIrLabel ir_label) {
+    switch (ir_label.kind) {
+        case NkIrLabel_Abs: {
+            NkIrInstr const *instr = &ctx->instrs.data[instr_idx];
+            Label const *label = instr->code == NkIrOp_label ? findLabelByIdx(ctx->labels, instr_idx)
+                                                             : findLabelByName(ctx->labels, ir_label.name);
+            if (label) {
+                writeLabelName(out, ctx, label);
+            } else {
+                nk_printf(out, "@%s", nk_atom2cs(ir_label.name));
+            }
+            break;
+        }
 
-static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
-    if (idx >= ctx.instrs.size) {
-        nk_printf(out, "instr@%zu", idx);
+        case NkIrLabel_Rel: {
+            usize const target_idx = instr_idx + ir_label.offset;
+            Label const *label = findLabelByIdx(ctx->labels, target_idx);
+            if (label) {
+                writeLabelName(out, ctx, label);
+            } else {
+                nk_printf(out, "@%s%i", ir_label.offset >= 0 ? "+" : "", ir_label.offset);
+            }
+            break;
+        }
+    }
+}
+
+static void inspectInstrImpl(NkStream out, usize instr_idx, InspectInstrCtx *ctx) {
+    if (instr_idx >= ctx->instrs.size) {
+        nk_printf(out, "instr@%zu", instr_idx);
         return;
     }
 
-    NkIrInstr const *instr = &ctx.instrs.data[idx];
+    NkIrInstr const *instr = &ctx->instrs.data[instr_idx];
 
     if (instr->code == NkIrOp_label) {
     } else if (instr->code == NkIrOp_comment) {
         nk_printf(out, "%5s | ", "//");
-    } else if (ctx.write_idx) {
-        nk_printf(out, "%5zu |%7s ", idx, s_opcode_names[instr->code]);
+    } else if (ctx->write_idx) {
+        nk_printf(out, "%5zu |%7s ", instr_idx, s_opcode_names[instr->code]);
     } else {
         nk_printf(out, "%s ", s_opcode_names[instr->code]);
     }
@@ -843,36 +870,15 @@ static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
                     if (NK_INDEX(phi_arg, arg->phi_args)) {
                         nk_print(out, ", ");
                     }
-                    nk_printf(out, "@%s ", nk_atom2cs(phi_arg->label));
+                    inspectLabel(out, ctx, instr_idx, phi_arg->label);
+                    nk_print(out, " ");
                     nkir_inspectRef(out, phi_arg->ref);
                 }
                 nk_print(out, ")");
                 break;
 
             case NkIrArg_Label:
-                switch (arg->label.kind) {
-                    case NkIrLabel_Abs: {
-                        Label const *label = instr->code == NkIrOp_label ? findLabelByIdx(ctx.labels, idx)
-                                                                         : findLabelByName(ctx.labels, arg->label.name);
-                        if (label) {
-                            inspectLabel(out, label, ctx.labels, ctx.indices);
-                        } else {
-                            nk_printf(out, "@%s", nk_atom2cs(arg->label.name));
-                        }
-                        break;
-                    }
-
-                    case NkIrLabel_Rel: {
-                        usize const target_idx = idx + arg->label.offset;
-                        Label const *label = findLabelByIdx(ctx.labels, target_idx);
-                        if (label) {
-                            inspectLabel(out, label, ctx.labels, ctx.indices);
-                        } else {
-                            nk_printf(out, "@%s%i", arg->label.offset >= 0 ? "+" : "", arg->label.offset);
-                        }
-                        break;
-                    }
-                }
+                inspectLabel(out, ctx, instr_idx, arg->label);
                 break;
 
             case NkIrArg_Type:
@@ -972,7 +978,7 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
                 LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
                 LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
 
-                u32 *indices = countLabels(scratch, labels);
+                u32 const *counts = countLabels(scratch, labels);
 
                 nk_print(out, "proc $");
                 nkir_printSymbolName(out, sym->name);
@@ -997,10 +1003,10 @@ void nkir_inspectSymbol(NkStream out, NkIrSymbol const *sym) {
                     inspectInstrImpl(
                         out,
                         NK_INDEX(instr, sym->proc.instrs),
-                        (InspectInstrCtx){
+                        &(InspectInstrCtx){
                             .instrs = sym->proc.instrs,
                             .labels = labels,
-                            .indices = indices,
+                            .counts = counts,
                             .write_idx = true,
                         });
                     nk_print(out, "\n");
@@ -1070,7 +1076,7 @@ void nkir_inspectInstr(NkStream out, NkIrInstr instr) {
     inspectInstrImpl(
         out,
         0,
-        (InspectInstrCtx){
+        &(InspectInstrCtx){
             .instrs = (NkIrInstrArray){&instr, 1},
             .write_idx = false,
         });

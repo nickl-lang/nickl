@@ -232,7 +232,7 @@ typedef struct {
     NkIrInstrArray instrs;
 
     LabelArray labels;
-    u32 *indices;
+    u32 const *counts;
 
     NkIrParamArray params;
     NkIrParam ret;
@@ -274,7 +274,7 @@ static void emitLabel(Context *ctx, NkStream out, NkIrInstr const *instr, usize 
 
     nk_assert(label && "invalid label");
 
-    u32 const label_idx = ctx->indices[NK_INDEX(label, ctx->labels)];
+    u32 const label_idx = ctx->counts[NK_INDEX(label, ctx->labels)];
     if (label_idx) {
         nk_printf(out, "%s%u", nk_atom2cs(label->name), label_idx);
     } else {
@@ -503,7 +503,7 @@ static void emitInstr(Context *ctx, NkStream out, NkIrInstr const *instr) {
                 }
                 nk_print(out, "[ ");
                 emitRefUntyped(out, &phi_arg->ref);
-                nk_printf(out, ", %%%s ]", nk_atom2cs(phi_arg->label));
+                nk_printf(out, ", %%%s ]", nk_atom2cs(phi_arg->label.name)); // TODO: Support relative labels!
             }
             break;
 
@@ -814,14 +814,14 @@ static void emitSymbol(NkStream out, NkArena *scratch, NkIrSymbol const *sym) {
             LabelDynArray da_labels = {.alloc = nk_arena_getAllocator(scratch)};
             LabelArray const labels = collectLabels(sym->proc.instrs, &da_labels);
 
-            u32 *indices = countLabels(scratch, labels);
+            u32 const *counts = countLabels(scratch, labels);
 
             Context ctx = {
                 .scratch = scratch,
                 .instrs = sym->proc.instrs,
 
                 .labels = labels,
-                .indices = indices,
+                .counts = counts,
 
                 .params = sym->proc.params,
                 .ret = sym->proc.ret,

@@ -110,7 +110,7 @@ typedef struct {
 
 typedef struct {
     NkIrRef ref;
-    NkAtom label;
+    NkIrLabel label;
 } NkIrPhiArg;
 
 typedef NkSlice(NkIrPhiArg const) NkIrPhiArgArray;

@@ -17,7 +17,7 @@ LabelArray collectLabels(NkIrInstrArray instrs, LabelDynArray *out) {
 }
 
 u32 *countLabels(NkArena *arena, LabelArray labels) {
-    u32 *indices = nk_arena_allocTn(arena, u32, labels.size);
+    u32 *counts = nk_arena_allocTn(arena, u32, labels.size);
 
     NK_ITERATE(Label const *, label1, labels) {
         u32 count = 0;
@@ -27,10 +27,10 @@ u32 *countLabels(NkArena *arena, LabelArray labels) {
                 count++;
             }
         }
-        indices[NK_INDEX(label1, labels)] = count;
+        counts[NK_INDEX(label1, labels)] = count;
     }
 
-    return indices;
+    return counts;
 }
 
 Label const *findLabelByName(LabelArray labels, NkAtom name) {

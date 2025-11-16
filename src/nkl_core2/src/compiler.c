@@ -166,7 +166,7 @@ typedef struct {
 
     NklType proc_t;
     NkIrInstrDynArray *instrs;
-    NkAtom last_label;
+    NkIrLabel last_label;
 
     NklSource src;
     ValueInfoArray nodes_info;
@@ -1106,14 +1106,15 @@ static void emitRaw(Context *ctx, NkIrInstr instr) {
     nkda_append(ctx->instrs, instr);
 }
 
-static void label(Context *ctx, NkAtom name) {
-    ctx->last_label = name;
-    emitRaw(ctx, nkir_make_label(name));
+static void label(Context *ctx, NkIrLabel label) {
+    nk_assert(label.kind == NkIrLabel_Abs && "only support abs labels in codegen");
+    ctx->last_label = label;
+    emitRaw(ctx, nkir_make_label(label.name));
 }
 
 static void emit(Context *ctx, NkIrInstr instr) {
     if (!ctx->instrs->size) {
-        label(ctx, nk_cs2atom("start"));
+        label(ctx, nkir_makeLabelAbs(nk_cs2atom("start")));
     }
     emitRaw(ctx, instr);
 }
@@ -1404,7 +1405,7 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
     comment(ctx, ">>>>>>> %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    NkAtom const lhs_label = ctx->last_label;
+    NkIrLabel const lhs_l = ctx->last_label;
     NkIrLabel const else_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse));
     NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
 
@@ -1414,11 +1415,11 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
     } else {
         emit(ctx, nkir_make_jmpnz(lhs, join_l));
     }
-    label(ctx, else_l.name);
+    label(ctx, else_l);
     NkIrRef const rhs = toRef(ctx, compileLogic(ctx, rhs_n, invert));
     emit(ctx, nkir_make_jmp(join_l));
 
-    label(ctx, join_l.name);
+    label(ctx, join_l);
 
 #ifdef ENABLE_LOGGING
     comment(ctx, "<<<<<<< %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
@@ -1429,13 +1430,13 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
         &phi_args,
         ((NkIrPhiArg){
             .ref = lhs,
-            .label = lhs_label,
+            .label = lhs_l,
         }));
     nkda_append(
         &phi_args,
         ((NkIrPhiArg){
             .ref = rhs,
-            .label = else_l.name,
+            .label = else_l,
         }));
 
     return newInstr(nkir_make_phi(nkir_null(), (NkIrPhiArgArray){NKS_INIT(phi_args)}), nickl_get_bool_t(ctx->nkl));
@@ -1691,13 +1692,13 @@ static Value compile(Context *ctx, NklAstNode const *node) {
 
             if (else_n) {
                 emit(ctx, nkir_make_jmp(join_l));
-                label(ctx, else_l.name);
+                label(ctx, else_l);
 
                 discard(ctx, compile(ctx, else_n));
             }
 
             emit(ctx, nkir_make_jmp(join_l));
-            label(ctx, join_l.name);
+            label(ctx, join_l);
 
 #ifdef ENABLE_LOGGING
             comment(ctx, "<<<<<<< if (node %u)", node_idx);
@@ -1758,7 +1759,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             NkIrLabel const endloop_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndloop));
 
             emit(ctx, nkir_make_jmp(loop_l));
-            label(ctx, loop_l.name);
+            label(ctx, loop_l);
 
             Value const cond = compile(ctx, cond_n);
 
@@ -1767,7 +1768,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             discard(ctx, compile(ctx, body_n));
 
             emit(ctx, nkir_make_jmp(loop_l));
-            label(ctx, endloop_l.name);
+            label(ctx, endloop_l);
 
 #ifdef ENABLE_LOGGING
             comment(ctx, "<<<<<<< while (node %u)", node_idx);
