@@ -95,17 +95,6 @@ static NkIrArg argString(NkString str) {
     };
 }
 
-static bool isJumpInstr(u8 code) {
-    switch (code) {
-        case NkIrOp_jmp:
-        case NkIrOp_jmpz:
-        case NkIrOp_jmpnz:
-            return true;
-        default:
-            return false;
-    }
-}
-
 NkAtom NkIrSymbol_getKey(NkIrSymbol const *item) {
     return item->name;
 }
@@ -157,6 +146,25 @@ void nkir_freeTarget(NkIrTarget tgt) {
     nk_llvm_freeTarget(tgt_unwrap(tgt));
 }
 
+static void labelAbs2Rel(usize instr_idx, LabelArray labels, NkIrLabel *ir_label) {
+    Label const *label = findLabelByName(labels, ir_label->name);
+    if (label) {
+        ir_label->offset = label->idx - instr_idx;
+        ir_label->kind = NkIrLabel_Rel;
+    }
+}
+
+static bool isJumpInstr(u8 code) {
+    switch (code) {
+        case NkIrOp_jmp:
+        case NkIrOp_jmpz:
+        case NkIrOp_jmpnz:
+            return true;
+        default:
+            return false;
+    }
+}
+
 void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out) {
     NK_LOG_TRC("%s", __func__);
 
@@ -172,15 +180,18 @@ void nkir_convertToPic(NkIrInstrArray instrs, NkIrInstrDynArray *out) {
             NkIrInstr *instr_copy = &NKS_LAST(*out);
 
             if (isJumpInstr(instr_copy->code)) {
+                usize const instr_idx = NK_INDEX(instr, instrs);
+
                 for (usize ai = 1; ai < 3; ai++) {
                     NkIrArg *arg = &instr_copy->arg[ai];
 
                     if (arg->kind == NkIrArg_Label && arg->label.kind == NkIrLabel_Abs) {
-                        Label const *label = findLabelByName(labels, arg->label.name);
-                        if (label) {
-                            arg->label.offset = label->idx - NK_INDEX(instr, instrs);
-                            arg->label.kind = NkIrLabel_Rel;
-                            break;
+                        labelAbs2Rel(instr_idx, labels, &arg->label);
+                    } else if (arg->kind == NkIrArg_PhiArgsArray) {
+                        NK_ITERATE(NkIrPhiArg const *, phi_arg, arg->phi_args) {
+                            if (phi_arg->label.kind == NkIrLabel_Abs) {
+                                labelAbs2Rel(instr_idx, labels, &arg->label);
+                            }
                         }
                     }
                 }
