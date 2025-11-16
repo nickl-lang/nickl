@@ -1,0 +1,35 @@
+extern "c" proc printf(:ptr, ...) :i32
+
+pub proc _entry() {
+
+    alloc :u64 -> %i
+    store :u64 0 -> %i
+    jmp @+1
+
+@loop
+    load %i -> :u64 %_1
+    cmp lt :u64 %_1, 5 -> %cond
+    jmpz :i8 %cond, @+5
+    call printf, ("%zi\n", ..., :u64 %_1) -> :i32
+    add :u64 %_1, 1 -> %_2
+    store :u64 %_2 -> %i
+    jmp @-7
+
+@endloop
+    ret
+
+}
+
+pub proc main(:i32 %argc, :ptr %argv) :i32 {
+    call _entry, ()
+    ret 0
+}
+
+/* @output
+0
+1
+2
+3
+4
+
+@endoutput */
