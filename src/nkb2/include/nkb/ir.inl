@@ -56,7 +56,7 @@ CMP_IR(le) // cmp le lhs, rhs -> dst
 CMP_IR(gt) // cmp gt lhs, rhs -> dst
 CMP_IR(ge) // cmp ge lhs, rhs -> dst
 
-IR(phi) // phi ((val, label), ...) -> dst
+IR(phi) // phi (label val, ...) -> dst
 
 IR(label)   // @label
 IR(comment) // comment "str"

@@ -846,14 +846,15 @@ static void inspectInstrImpl(NkStream out, usize idx, InspectInstrCtx ctx) {
                 break;
 
             case NkIrArg_PhiArgsArray:
+                nk_print(out, "(");
                 NK_ITERATE(NkIrPhiArg const *, phi_arg, arg->phi_args) {
                     if (NK_INDEX(phi_arg, arg->phi_args)) {
                         nk_print(out, ", ");
                     }
-                    nk_print(out, "(");
+                    nk_printf(out, "@%s ", nk_atom2cs(phi_arg->label));
                     nkir_inspectRef(out, phi_arg->ref);
-                    nk_printf(out, ", @%s)", nk_atom2cs(phi_arg->label));
                 }
+                nk_print(out, ")");
                 break;
 
             case NkIrArg_Label: {

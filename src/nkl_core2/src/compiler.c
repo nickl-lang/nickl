@@ -143,12 +143,9 @@ NK_HASH_TREE_ARRAY_DEFINE_KV(EntityMap, NkAtom, Entity *, nk_atom_hash, nk_atom_
 typedef enum {
     Id_Value,
     Id_LabelElse,
-    Id_LabelEndif,
+    Id_LabelJoin,
     Id_LabelLoop,
     Id_LabelEndloop,
-    Id_LabelLhs,
-    Id_LabelRhs,
-    Id_LabelJoin,
 
     IdKind_Count,
 } IdKind;
@@ -156,12 +153,9 @@ typedef enum {
 char const *s_id_names[] = {
     "v",       // Id_Value
     "else",    // Id_LabelElse
-    "endif",   // Id_LabelEndif
+    "join",    // Id_LabelJoin
     "loop",    // Id_LabelLoop
     "endloop", // Id_LabelEndloop
-    "lhs",     // Id_LabelLhs
-    "rhs",     // Id_LabelRhs
-    "join",    // Id_LabelJoin
 };
 
 typedef struct {
@@ -172,6 +166,7 @@ typedef struct {
 
     NklType proc_t;
     NkIrInstrDynArray *instrs;
+    NkAtom last_label;
 
     NklSource src;
     ValueInfoArray nodes_info;
@@ -1103,7 +1098,7 @@ static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, Typechec
     return val;
 }
 
-static void emit(Context *ctx, NkIrInstr instr) {
+static void emitRaw(Context *ctx, NkIrInstr instr) {
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         nk_print(log, "Emitting ");
@@ -1111,6 +1106,18 @@ static void emit(Context *ctx, NkIrInstr instr) {
     }
 
     nkda_append(ctx->instrs, instr);
+}
+
+static void label(Context *ctx, NkAtom name) {
+    ctx->last_label = name;
+    emitRaw(ctx, nkir_make_label(name));
+}
+
+static void emit(Context *ctx, NkIrInstr instr) {
+    if (!ctx->instrs->size) {
+        label(ctx, nk_cs2atom("start"));
+    }
+    emitRaw(ctx, instr);
 }
 
 typedef enum {
@@ -1399,15 +1406,9 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
     comment(ctx, ">>>>>>> %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
 
-    // TODO: Avoid needing lhs_l label
-    NkIrLabel const lhs_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelLhs));
-    NkIrLabel const rhs_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelRhs));
+    NkAtom const lhs_label = ctx->last_label;
+    NkIrLabel const else_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse));
     NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
-
-    NklType const bool_t = nickl_get_bool_t(ctx->nkl);
-
-    emit(ctx, nkir_make_jmp(lhs_l));
-    emit(ctx, nkir_make_label(lhs_l.name));
 
     NkIrRef const lhs = toRef(ctx, newRef(toRef(ctx, compileLogic(ctx, lhs_n, invert))));
     if (op == (invert ? n_or : n_and)) {
@@ -1415,32 +1416,31 @@ static Value compileLogicExpr(Context *ctx, NkAtom op, NklAstNode const *lhs_n, 
     } else {
         emit(ctx, nkir_make_jmpnz(lhs, join_l));
     }
-    emit(ctx, nkir_make_jmp(rhs_l));
-    emit(ctx, nkir_make_label(rhs_l.name));
+    label(ctx, else_l.name);
     NkIrRef const rhs = toRef(ctx, compileLogic(ctx, rhs_n, invert));
     emit(ctx, nkir_make_jmp(join_l));
+
+    label(ctx, join_l.name);
 
 #ifdef ENABLE_LOGGING
     comment(ctx, "<<<<<<< %s (node %u)", nk_atom2cs(op), nodeIdx(ctx->src.nodes, lhs_n) - 1);
 #endif // ENABLE_LOGGING
-
-    emit(ctx, nkir_make_label(join_l.name));
 
     NkIrPhiArgDynArray phi_args = {.alloc = nk_arena_getAllocator(&ctx->nkl->arena)};
     nkda_append(
         &phi_args,
         ((NkIrPhiArg){
             .ref = lhs,
-            .label = lhs_l.name,
+            .label = lhs_label,
         }));
     nkda_append(
         &phi_args,
         ((NkIrPhiArg){
             .ref = rhs,
-            .label = rhs_l.name,
+            .label = else_l.name,
         }));
 
-    return newInstr(nkir_make_phi((NkIrRef){0}, (NkIrPhiArgArray){NKS_INIT(phi_args)}), bool_t);
+    return newInstr(nkir_make_phi((NkIrRef){0}, (NkIrPhiArgArray){NKS_INIT(phi_args)}), nickl_get_bool_t(ctx->nkl));
 }
 
 static Value compileLogic(Context *ctx, NklAstNode const *node, bool invert) {
@@ -1682,8 +1682,8 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             NklAstNode const *body_n = nextNode(&it);
             NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
 
-            NkIrLabel const endif_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndif));
-            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse)) : endif_l;
+            NkIrLabel const join_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelJoin));
+            NkIrLabel const else_l = else_n ? nkir_makeLabelAbs(getNextId(ctx, Id_LabelElse)) : join_l;
 
             Value const cond = compile(ctx, cond_n);
 
@@ -1692,14 +1692,14 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             discard(ctx, compile(ctx, body_n));
 
             if (else_n) {
-                emit(ctx, nkir_make_jmp(endif_l));
-                emit(ctx, nkir_make_label(else_l.name));
+                emit(ctx, nkir_make_jmp(join_l));
+                label(ctx, else_l.name);
 
                 discard(ctx, compile(ctx, else_n));
             }
 
-            emit(ctx, nkir_make_jmp(endif_l));
-            emit(ctx, nkir_make_label(endif_l.name));
+            emit(ctx, nkir_make_jmp(join_l));
+            label(ctx, join_l.name);
 
 #ifdef ENABLE_LOGGING
             comment(ctx, "<<<<<<< if (node %u)", node_idx);
@@ -1760,7 +1760,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             NkIrLabel const endloop_l = nkir_makeLabelAbs(getNextId(ctx, Id_LabelEndloop));
 
             emit(ctx, nkir_make_jmp(loop_l));
-            emit(ctx, nkir_make_label(loop_l.name));
+            label(ctx, loop_l.name);
 
             Value const cond = compile(ctx, cond_n);
 
@@ -1769,7 +1769,7 @@ static Value compile(Context *ctx, NklAstNode const *node) {
             discard(ctx, compile(ctx, body_n));
 
             emit(ctx, nkir_make_jmp(loop_l));
-            emit(ctx, nkir_make_label(endloop_l.name));
+            label(ctx, endloop_l.name);
 
 #ifdef ENABLE_LOGGING
             comment(ctx, "<<<<<<< while (node %u)", node_idx);

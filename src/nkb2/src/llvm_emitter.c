@@ -344,7 +344,6 @@ static void emitLogic(NkStream out, NkIrInstr const *instr, char const *name, Pr
 static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char const *cond) {
     NkIrRef const *ref1 = &instr->arg[1].ref;
 
-    usize const label = ctx->next_label++;
     usize const reg = ctx->next_local++;
 
     NkIrType const type = ref1->type;
@@ -358,7 +357,16 @@ static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char
     emitRef(out, ref1);
     nk_printf(out, ", 0%s\n  br i1 %%.%zu, label %%", fp_suffix, reg);
     emitLabel(ctx, out, instr, 2);
-    nk_printf(out, ", label %%.label%zu\n.label%zu:", label, label);
+    nk_print(out, ", label %");
+
+    usize const next_instr_idx = NK_INDEX(instr, ctx->instrs) + 1;
+    NkIrInstr const *next_instr = next_instr_idx < ctx->instrs.size ? &ctx->instrs.data[next_instr_idx] : NULL;
+    if (next_instr && (next_instr->code == NkIrOp_jmp || next_instr->code == NkIrOp_label)) {
+        emitLabel(ctx, out, next_instr, 1);
+    } else {
+        usize const label = ctx->next_label++;
+        nk_printf(out, ".label%zu\n.label%zu:", label, label);
+    }
 }
 
 static void emitCond(Context *ctx, NkStream out, NkIrInstr const *instr, char const *cond, PrefixMask mask) {
