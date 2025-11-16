@@ -255,37 +255,6 @@ static ValueInfo const *getInfo(Context *ctx, NklAstNode const *node) {
     return node_info;
 }
 
-typedef struct {
-    NklType type;
-    NklTypeClass tclass;
-} TypecheckArgs;
-
-static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, TypecheckArgs const *args);
-
-static ValueInfo const *typecheckComptimeConst(Context *ctx, NklAstNode const *node, TypecheckArgs const *args) {
-    ValueInfo const *val;
-    TRY(val = typecheck(ctx, node, args));
-
-    if (!val->is_comptime) {
-        reportError(ctx, node, "comptime const expected");
-        return NULL;
-    }
-
-    return val;
-}
-
-static ValueInfo const *typecheckLvalue(Context *ctx, NklAstNode const *node, TypecheckArgs const *args) {
-    ValueInfo const *val;
-    TRY(val = typecheck(ctx, node, args));
-
-    if (!val->is_lvalue) {
-        reportError(ctx, node, "lvalue expected");
-        return NULL;
-    }
-
-    return val;
-}
-
 static NklType parseType(Context *ctx, NklAstNode const *node);
 
 static bool parseParamsList(
@@ -413,7 +382,19 @@ static NklType parseType(Context *ctx, NklAstNode const *node) {
     return NULL;
 }
 
-static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+typedef struct {
+    NklType expect_type;
+    NklTypeClass expect_tclass;
+    bool expect_comptime;
+    bool expect_lvalue;
+    bool expect_mutable;
+} TypecheckParams;
+
+static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, TypecheckParams const *params);
+
+#define TYPECHECK(CTX, NODE, ...) typecheck(CTX, NODE, &(TypecheckParams){__VA_ARGS__})
+
+static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckParams const *params) {
     u32 const node_idx = nodeIdx(ctx->src.nodes, node);
     NK_LOG_DBG("Typechecking node %5u | %s", node_idx, nk_atom2cs(node->id));
 
@@ -487,9 +468,10 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
 
         case n_int:
         case n_float: {
-            NklType const type = (args->type && args->type->tclass == NklType_Numeric) ? args->type
-                                 : node->id == n_int                                   ? nickl_get_i64_t(ctx->nkl)
-                                                                                       : nickl_get_f64_t(ctx->nkl);
+            NklType const type = (params->expect_type && params->expect_type->tclass == NklType_Numeric)
+                                     ? params->expect_type
+                                 : node->id == n_int ? nickl_get_i64_t(ctx->nkl)
+                                                     : nickl_get_f64_t(ctx->nkl);
             return setInfo(
                 ctx,
                 node,
@@ -512,8 +494,8 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
 
         case n_nullptr: {
             NklType const type =
-                (args->type && args->type->tclass == NklType_Pointer)
-                    ? args->type
+                (params->expect_type && params->expect_type->tclass == NklType_Pointer)
+                    ? params->expect_type
                     : nkl_type_getPointer(ctx->nkl, ctx->mod->com->word_size, nickl_get_void_t(ctx->nkl), false);
             return setInfo(
                 ctx,
@@ -527,14 +509,18 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
         case n_list: {
             ValueInfo val;
             if (node->arity) {
+                bool all_comptime = true;
                 for (u32 i = 0; i < node->arity; i++) {
                     NklAstNode const *stmt_n = nextNode(&it);
 
                     ValueInfo const *stmt;
-                    TRY(stmt = typecheck(ctx, stmt_n, &(TypecheckArgs){0}));
+                    TRY(stmt = TYPECHECK(ctx, stmt_n));
+
+                    all_comptime &= stmt->is_comptime;
 
                     val = *stmt;
                 }
+                val.is_comptime = all_comptime;
             } else {
                 val = (ValueInfo){
                     .type = nickl_get_void_t(ctx->nkl),
@@ -566,8 +552,8 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             ValueInfo const *lhs;
             ValueInfo const *rhs;
 
-            TRY(lhs = typecheck(ctx, lhs_n, &(TypecheckArgs){.tclass = NklType_Numeric}));
-            TRY(rhs = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs->type}));
+            TRY(lhs = TYPECHECK(ctx, lhs_n, .expect_tclass = NklType_Numeric));
+            TRY(rhs = TYPECHECK(ctx, rhs_n, .expect_type = lhs->type));
 
             return setInfo(
                 ctx,
@@ -588,8 +574,8 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
 
             NklType const bool_t = nickl_get_bool_t(ctx->nkl);
 
-            TRY(lhs = typecheck(ctx, lhs_n, &(TypecheckArgs){.type = bool_t}));
-            TRY(rhs = typecheck(ctx, rhs_n, &(TypecheckArgs){.type = bool_t}));
+            TRY(lhs = TYPECHECK(ctx, lhs_n, .expect_type = bool_t));
+            TRY(rhs = TYPECHECK(ctx, rhs_n, .expect_type = bool_t));
 
             return setInfo(
                 ctx,
@@ -606,7 +592,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklType const bool_t = nickl_get_bool_t(ctx->nkl);
 
             ValueInfo const *arg;
-            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){.type = bool_t}));
+            TRY(arg = TYPECHECK(ctx, arg_n, .expect_type = bool_t));
 
             return setInfo(
                 ctx,
@@ -625,7 +611,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             TRY(type = parseType(ctx, type_n));
 
             ValueInfo const *val;
-            TRY(val = typecheck(ctx, val_n, &(TypecheckArgs){0}));
+            TRY(val = TYPECHECK(ctx, val_n));
 
             // TODO: Check cast compatibility
 
@@ -642,7 +628,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *arg_n = nextNode(&it);
 
             ValueInfo const *arg;
-            TRY(arg = typecheckLvalue(ctx, arg_n, &(TypecheckArgs){0}));
+            TRY(arg = TYPECHECK(ctx, arg_n, .expect_lvalue = true));
 
             return setInfo(
                 ctx,
@@ -658,7 +644,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *arg_n = nextNode(&it);
 
             ValueInfo const *arg;
-            TRY(arg = typecheck(ctx, arg_n, &(TypecheckArgs){.tclass = NklType_Pointer}));
+            TRY(arg = TYPECHECK(ctx, arg_n, .expect_tclass = NklType_Pointer));
 
             return setInfo(
                 ctx,
@@ -676,7 +662,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *name_n = nextNode(&it);
 
             ValueInfo const *lhs;
-            TRY(lhs = typecheck(ctx, lhs_n, &(TypecheckArgs){0}));
+            TRY(lhs = TYPECHECK(ctx, lhs_n));
 
             NkAtom const name = parseId(ctx, name_n);
 
@@ -711,21 +697,23 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *rhs_n = nextNode(&it);
 
             ValueInfo const *lhs;
-            TRY(lhs = typecheckLvalue(ctx, lhs_n, &(TypecheckArgs){0}));
+            TRY(lhs = TYPECHECK(ctx, lhs_n, .expect_lvalue = true));
 
             if (!lhs->is_mutable) {
                 reportError(ctx, node, "cannot assign to a constant");
                 return NULL;
             }
 
-            TRY(typecheck(ctx, rhs_n, &(TypecheckArgs){.type = lhs->type}));
+            TRY(TYPECHECK(ctx, rhs_n, .expect_type = lhs->type));
 
             return setInfo(
                 ctx,
                 node,
                 &(ValueInfo){
                     .type = lhs->type,
-                    .is_comptime = false,
+                    .is_comptime = lhs->is_comptime,
+                    .is_lvalue = true,
+                    .is_mutable = true,
                 });
         }
 
@@ -734,7 +722,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *args_n = nextNode(&it);
 
             ValueInfo const *proc;
-            TRY(proc = typecheck(ctx, proc_n, &(TypecheckArgs){.tclass = NklType_Procedure}));
+            TRY(proc = TYPECHECK(ctx, proc_n, .expect_tclass = NklType_Procedure));
 
             AstNodeIterator args_it = nodeIterate(ctx->src.nodes, args_n);
 
@@ -756,7 +744,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             for (u32 i = 0; i < args_n->arity; i++) {
                 NklAstNode const *arg_n = nextNode(&args_it);
                 NklType const arg_t = i < param_count ? proc->type->as.proc.param_types.data[i] : NULL;
-                TRY(typecheck(ctx, arg_n, &(TypecheckArgs){.type = arg_t}));
+                TRY(TYPECHECK(ctx, arg_n, .expect_type = arg_t));
             }
 
             return setInfo(
@@ -764,7 +752,6 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
                 node,
                 &(ValueInfo){
                     .type = proc->type->as.proc.ret_t,
-                    .is_comptime = false,
                 });
         }
 
@@ -776,7 +763,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *value_n = nextNode(&it);
 
             ValueInfo const *val;
-            TRY(val = typecheckComptimeConst(ctx, value_n, &(TypecheckArgs){0}));
+            TRY(val = TYPECHECK(ctx, value_n, .expect_comptime = true));
 
             nk_assert(val->entity && "TODO: Is is_comptime == entity?");
             DeclMap_insert(
@@ -838,8 +825,6 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
                         .sym = proc_info.name,
                         .type = proc_t,
                         .kind = Decl_Extern,
-                        .is_pub = false,
-                        .is_comptime = false,
                     });
 
                 TRY(nickl_defineSymbol(
@@ -878,13 +863,13 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *body_n = nextNode(&it);
             NklAstNode const *else_n = node->arity == 3 ? nextNode(&it) : NULL;
 
-            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nickl_get_bool_t(ctx->nkl)}));
+            TRY(TYPECHECK(ctx, cond_n, .expect_type = nickl_get_bool_t(ctx->nkl)));
 
             // TODO: Skip typechecking branches if cond is comptime?
 
-            TRY(typecheck(ctx, body_n, &(TypecheckArgs){0}));
+            TRY(TYPECHECK(ctx, body_n));
             if (else_n) {
-                TRY(typecheck(ctx, else_n, &(TypecheckArgs){0}));
+                TRY(TYPECHECK(ctx, else_n));
             }
 
             return setInfo(
@@ -892,7 +877,6 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
                 node,
                 &(ValueInfo){
                     .type = nickl_get_void_t(ctx->nkl),
-                    .is_comptime = true,
                 });
         }
 
@@ -936,7 +920,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             if (node->arity) {
                 NklAstNode const *arg_n = nextNode(&it);
 
-                TRY(typecheck(ctx, arg_n, &(TypecheckArgs){.type = ctx->proc_t->as.proc.ret_t}));
+                TRY(TYPECHECK(ctx, arg_n, .expect_type = ctx->proc_t->as.proc.ret_t));
             }
 
             return setInfo(
@@ -944,7 +928,6 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
                 node,
                 &(ValueInfo){
                     .type = nickl_get_void_t(ctx->nkl),
-                    .is_comptime = true,
                 });
         }
 
@@ -993,7 +976,7 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
 
             ValueInfo const *val = NULL;
             if (val_n) {
-                TRY(val = typecheck(ctx, val_n, &(TypecheckArgs){.type = type}));
+                TRY(val = TYPECHECK(ctx, val_n, .expect_type = type));
             }
 
             if (!type) {
@@ -1007,8 +990,6 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
                     .sym = getNextLocalVar(ctx, name),
                     .type = type,
                     .kind = Decl_LocalVar,
-                    .is_pub = false,
-                    .is_comptime = false,
                     .is_lvalue = true,
                     .is_mutable = true, // TODO: Support const vars
                 });
@@ -1018,7 +999,6 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
                 node,
                 &(ValueInfo){
                     .type = nickl_get_void_t(ctx->nkl),
-                    .is_comptime = true,
                 });
         }
 
@@ -1026,18 +1006,17 @@ static ValueInfo *typecheckImpl(Context *ctx, NklAstNode const *node, TypecheckA
             NklAstNode const *cond_n = nextNode(&it);
             NklAstNode const *body_n = nextNode(&it);
 
-            TRY(typecheck(ctx, cond_n, &(TypecheckArgs){.type = nickl_get_bool_t(ctx->nkl)}));
+            TRY(TYPECHECK(ctx, cond_n, .expect_type = nickl_get_bool_t(ctx->nkl)));
 
             // TODO: Skip typechecking branches if cond is comptime?
 
-            TRY(typecheck(ctx, body_n, &(TypecheckArgs){0}));
+            TRY(TYPECHECK(ctx, body_n));
 
             return setInfo(
                 ctx,
                 node,
                 &(ValueInfo){
                     .type = nickl_get_void_t(ctx->nkl),
-                    .is_comptime = true,
                 });
         }
 
@@ -1065,11 +1044,11 @@ static char const *s_tclass_names[] = {
     "void",      // NklType_Void,
 };
 
-static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, TypecheckArgs const *args) {
+static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, TypecheckParams const *params) {
     ValueInfo *val;
-    TRY(val = typecheckImpl(ctx, node, args));
+    TRY(val = typecheckImpl(ctx, node, params));
 
-    NklType const dst_t = args->type;
+    NklType const dst_t = params->expect_type;
     NklType const src_t = val->type;
 
     if (dst_t && src_t != dst_t) {
@@ -1088,8 +1067,25 @@ static ValueInfo const *typecheck(Context *ctx, NklAstNode const *node, Typechec
             reportError(ctx, node, NKS_FMT, NKS_ARG(msg));
             return NULL;
         }
-    } else if (args->tclass && src_t->tclass != args->tclass) {
-        reportError(ctx, node, "%s expected", s_tclass_names[args->tclass]);
+    }
+
+    if (params->expect_tclass && src_t->tclass != params->expect_tclass) {
+        reportError(ctx, node, "%s expected", s_tclass_names[params->expect_tclass]);
+        return NULL;
+    }
+
+    if (params->expect_comptime && !val->is_comptime) {
+        reportError(ctx, node, "comptime const expected");
+        return NULL;
+    }
+
+    if (params->expect_lvalue && !val->is_lvalue) {
+        reportError(ctx, node, "lvalue expected");
+        return NULL;
+    }
+
+    if (params->expect_mutable && !val->is_mutable) {
+        reportError(ctx, node, "mutable value expected");
         return NULL;
     }
 
@@ -1818,7 +1814,7 @@ static bool compileProcImpl(Context *ctx, Entity *proc_e) {
             }));
     }
 
-    TRY(typecheck(ctx, proc_e->proc.info.body_n, &(TypecheckArgs){0}));
+    TRY(TYPECHECK(ctx, proc_e->proc.info.body_n));
     discard(ctx, compile(ctx, proc_e->proc.info.body_n));
 
     if (!proc_e->proc.ir.size || NKS_LAST(proc_e->proc.ir).code != NkIrOp_ret) {

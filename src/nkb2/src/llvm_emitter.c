@@ -358,6 +358,7 @@ static void emitCondJmp(Context *ctx, NkStream out, NkIrInstr const *instr, char
     if (next_instr && (next_instr->code == NkIrOp_jmp || next_instr->code == NkIrOp_label)) {
         emitLabel(ctx, out, next_instr, next_instr->arg[1].label);
     } else {
+        // TODO: Introducing new labels can break phi instrs
         usize const label = ctx->next_label++;
         nk_printf(out, ".label%zu\n.label%zu:", label, label);
     }
