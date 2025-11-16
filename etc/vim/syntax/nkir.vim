@@ -3,7 +3,7 @@ if exists("b:current_syntax")
 endif
 
 syn keyword nkirKeyword proc extern type data const pub local include
-syn keyword nkirKeyword nop ret jmp jmpz jmpnz
+syn keyword nkirKeyword nop ret jmp jmpz jmpnz phi
 syn keyword nkirKeyword call offset store load alloc mov cast
 syn keyword nkirKeyword add sub mul div mod and or xor lsh rsh
 syn keyword nkirKeyword cmp eq ne lt le gt ge

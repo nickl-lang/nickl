@@ -547,7 +547,7 @@ static Void parseConst(ParserState *p, void *addr, NkIrType type, NkIrRelocDynAr
     return ret;
 }
 
-static NkIrRef parseLocal(ParserState *p, NkIrType type_opt, bool to_write) {
+static NkIrRef parseValue(ParserState *p, NkIrType type_opt, bool to_write) {
     NkIrRef ret = {0};
 
     NkIrType type = type_opt;
@@ -606,10 +606,10 @@ static NkIrRef parseDst(ParserState *p, NkIrType type_opt, bool allow_null) {
         return nkir_makeRefIgnore(type);
     } else {
         if (!on(p, NklIrToken_PercentTag)) {
-            ERROR_EXPECT("local");
+            ERROR_EXPECT("value");
         }
 
-        return parseLocal(p, type, true);
+        return parseValue(p, type, true);
     }
 }
 
@@ -646,7 +646,7 @@ static NkIrRef parseRef(ParserState *p, NkIrType type_opt) {
     }
 
     if (on(p, NklIrToken_PercentTag)) {
-        return parseLocal(p, type, false);
+        return parseValue(p, type, false);
     }
 
     else if (on(p, NklToken_Id) || on(p, NklIrToken_DollarTag)) {
@@ -757,6 +757,40 @@ static NkIrLabel parseLabel(ParserState *p, bool allow_rel) {
     }
 }
 
+static NkIrPhiArgArray parsePhiArgsArray(ParserState *p) {
+    NkIrPhiArgArray ret = {0};
+
+    NkIrPhiArgDynArray phi_args = {.alloc = nk_arena_getAllocator(p->arena)};
+
+    EXPECT(NklIrToken_LParen);
+
+    NkIrType type = NULL;
+
+    while (!on(p, NklIrToken_RParen) && !on(p, NklToken_Eof)) {
+        TRY(NkIrLabel const label = parseLabel(p, true));
+        TRY(NkIrRef const ref = parseRef(p, type));
+        if (!type) {
+            type = ref.type;
+        }
+        nkda_append(
+            &phi_args,
+            ((NkIrPhiArg){
+                .label = label,
+                .ref = ref,
+            }));
+        ACCEPT(NklIrToken_Comma);
+    }
+
+    if (phi_args.size < 1) {
+        ERROR("at least one phi argument expected");
+    }
+
+    EXPECT(NklIrToken_RParen);
+
+    ret = (NkIrPhiArgArray){NKS_INIT(phi_args)};
+
+    return ret;
+}
 static NkIrInstr parseInstr(ParserState *p) {
     NkIrInstr ret = {0};
 
@@ -834,6 +868,14 @@ static NkIrInstr parseInstr(ParserState *p) {
         EXPECT(NklIrToken_MinusGreater);
         TRY(NkIrRef const dst = parseDst(p, get_ptr_t(p), false));
         ret = nkir_make_alloc(dst, type);
+    }
+
+    else if (ACCEPT(NklIrToken_phi)) {
+        TRY(NkIrPhiArgArray const phi_args = parsePhiArgsArray(p));
+        nk_assert(phi_args.size);
+        EXPECT(NklIrToken_MinusGreater);
+        TRY(NkIrRef const dst = parseDst(p, phi_args.data[0].ref.type, false));
+        ret = nkir_make_phi(dst, phi_args);
     }
 
     else if (0) {
