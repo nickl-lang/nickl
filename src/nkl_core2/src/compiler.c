@@ -224,16 +224,14 @@ static NkString parseString(Context *ctx, NkArena *arena, NklAstNode const *node
     NkString const str = (NkString){token_str.data + 1, token_str.size - 2};
 
     if (node->id == n_string) {
-        char const *cstr = nk_tprintf(arena, NKS_FMT, NKS_ARG(str));
-        return (NkString){cstr, str.size};
+        return nk_tsprintf(arena, NKS_FMT, NKS_ARG(str));
     } else {
         NkStringBuilder sb = {.alloc = nk_arena_getAllocator(arena)};
         nks_unescape(nksb_getStream(&sb), str);
         if (NKS_LAST(sb)) {
             nksb_appendNull(&sb);
         }
-
-        return (NkString){sb.data, sb.size};
+        return (NkString){sb.data, sb.size - 1};
     }
 }
 
