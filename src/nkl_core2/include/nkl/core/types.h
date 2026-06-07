@@ -35,6 +35,8 @@ typedef struct {
     NklType type;
 } NklAny;
 
+#define NklAnyCast(T, ANY) (*(T *)(ANY).data)
+
 typedef NkSlice(NklType const) NklTypeArray;
 typedef NkStridedSlice(NklType const) NklTypeStridedArray;
 typedef NkDynArray(NklType) NklTypeDynArray;

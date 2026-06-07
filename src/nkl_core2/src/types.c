@@ -8,9 +8,12 @@
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash.h"
+#include "ntk/log.h"
 #include "ntk/slice.h"
 #include "ntk/stream.h"
 #include "ntk/utils.h"
+
+NK_LOG_USE_SCOPE(types);
 
 // TODO: Use 128bit hash directly?
 static NkHash64 NkHash128_KeyHash(NkHash128 key) {
@@ -83,6 +86,8 @@ NklType nkl_type_getTypeclassInstance(NklState nkl, NklTypeClass tclass, NklType
 }
 
 static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray types) {
+    NK_LOG_TRC("%s", __func__);
+
     NklTypeStorage *st = &nkl->types;
 
     NklTypeArray types_copy = {0};
@@ -131,12 +136,16 @@ static void completeAggregate(NklState nkl, NklType_T *type, NklTypeStridedArray
 }
 
 NklType nkl_type_getAggregateDistinct(NklState nkl, NklTypeStridedArray types) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeAggregate(nkl, type, types);
     return type;
 }
 
 NklType nkl_type_getAggregate(NklState nkl, NklTypeStridedArray types) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -156,6 +165,8 @@ NklType nkl_type_getAggregate(NklState nkl, NklTypeStridedArray types) {
 }
 
 static void completeArray(NklState NK_UNUSED nkl, NklType_T *type, NklType elem_t, usize count) {
+    NK_LOG_TRC("%s", __func__);
+
     NklTypeStorage *st = &nkl->types;
 
     NkIrAggregateElemInfo *elem = nk_arena_allocT(st->arena, NkIrAggregateElemInfo);
@@ -187,12 +198,16 @@ static void completeArray(NklState NK_UNUSED nkl, NklType_T *type, NklType elem_
 }
 
 NklType nkl_type_getArrayDistinct(NklState nkl, NklType elem_t, usize count) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeArray(nkl, type, elem_t, count);
     return type;
 }
 
 NklType nkl_type_getArray(NklState nkl, NklType elem_t, usize count) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -210,6 +225,8 @@ NklType nkl_type_getArray(NklState nkl, NklType elem_t, usize count) {
 }
 
 static void completeBool(NklState NK_UNUSED nkl, NklType_T *type) {
+    NK_LOG_TRC("%s", __func__);
+
     *type = (NklType_T){
         ._ir_type =
             (NkIrType_T){
@@ -227,12 +244,16 @@ static void completeBool(NklState NK_UNUSED nkl, NklType_T *type) {
 }
 
 NklType nkl_type_getBoolDistinct(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeBool(nkl, type);
     return type;
 }
 
 NklType nkl_type_getBool(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -248,6 +269,8 @@ NklType nkl_type_getBool(NklState nkl) {
 }
 
 static void completeNumeric(NklState NK_UNUSED nkl, NklType_T *type, NkIrNumericValueType value_type) {
+    NK_LOG_TRC("%s", __func__);
+
     *type = (NklType_T){
         ._ir_type =
             (NkIrType_T){
@@ -269,12 +292,16 @@ static void completeNumeric(NklState NK_UNUSED nkl, NklType_T *type, NkIrNumeric
 }
 
 NklType nkl_type_getNumericDistinct(NklState nkl, NkIrNumericValueType value_type) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeNumeric(nkl, type, value_type);
     return type;
 }
 
 NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -291,6 +318,8 @@ NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type) {
 }
 
 static void completePointer(NklState NK_UNUSED nkl, NklType_T *type, usize word_size, NklType target_t, bool is_const) {
+    NK_LOG_TRC("%s", __func__);
+
     *type = (NklType_T){
         ._ir_type =
             (NkIrType_T){
@@ -312,12 +341,16 @@ static void completePointer(NklState NK_UNUSED nkl, NklType_T *type, usize word_
 }
 
 NklType nkl_type_getPointerDistinct(NklState nkl, usize word_size, NklType target_t, bool is_const) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completePointer(nkl, type, word_size, target_t, is_const);
     return type;
 }
 
 NklType nkl_type_getPointer(NklState nkl, usize word_size, NklType target_t, bool is_const) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -336,6 +369,8 @@ NklType nkl_type_getPointer(NklState nkl, usize word_size, NklType target_t, boo
 }
 
 static void completeProcedure(NklState nkl, NklType_T *type, usize word_size, NklProcInfo info) {
+    NK_LOG_TRC("%s", __func__);
+
     NklTypeStorage *st = &nkl->types;
 
     NklTypeArray param_types_copy = {0};
@@ -359,12 +394,16 @@ static void completeProcedure(NklState nkl, NklType_T *type, usize word_size, Nk
 }
 
 NklType nkl_type_getProcedureDistinct(NklState nkl, usize word_size, NklProcInfo info) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeProcedure(nkl, type, word_size, info);
     return type;
 }
 
 NklType nkl_type_getProcedure(NklState nkl, usize word_size, NklProcInfo info) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -387,6 +426,8 @@ NklType nkl_type_getProcedure(NklState nkl, usize word_size, NklProcInfo info) {
 }
 
 static void completeStruct(NklState nkl, NklType_T *type, NklFieldStridedArray fields) {
+    NK_LOG_TRC("%s", __func__);
+
     NklTypeStorage *st = &nkl->types;
 
     NklFieldArray fields_copy = {0};
@@ -414,12 +455,16 @@ static void completeStruct(NklState nkl, NklType_T *type, NklFieldStridedArray f
 }
 
 NklType nkl_type_getStructDistinct(NklState nkl, NklFieldStridedArray fields) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeStruct(nkl, type, fields);
     return type;
 }
 
 NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -439,6 +484,8 @@ NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields) {
 }
 
 static void completeTyperef(NklState NK_UNUSED nkl, NklType_T *type, usize word_size) {
+    NK_LOG_TRC("%s", __func__);
+
     *type = (NklType_T){
         ._ir_type =
             (NkIrType_T){
@@ -455,12 +502,16 @@ static void completeTyperef(NklState NK_UNUSED nkl, NklType_T *type, usize word_
 }
 
 NklType nkl_type_getTyperefDistinct(NklState nkl, usize word_size) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeTyperef(nkl, type, word_size);
     return type;
 }
 
 NklType nkl_type_getTyperef(NklState nkl, usize word_size) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
@@ -477,6 +528,8 @@ NklType nkl_type_getTyperef(NklState nkl, usize word_size) {
 }
 
 static void completeVoid(NklState NK_UNUSED nkl, NklType_T *type) {
+    NK_LOG_TRC("%s", __func__);
+
     *type = (NklType_T){
         ._ir_type =
             (NkIrType_T){
@@ -490,12 +543,16 @@ static void completeVoid(NklState NK_UNUSED nkl, NklType_T *type) {
 }
 
 NklType nkl_type_getVoidDistinct(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
     NklType_T *type = (NklType_T *)nkl_type_getIncomplete(nkl);
     completeVoid(nkl, type);
     return type;
 }
 
 NklType nkl_type_getVoid(NklState nkl) {
+    NK_LOG_TRC("%s", __func__);
+
     NkHashState hasher;
     nk_hash128_init(&hasher);
 
