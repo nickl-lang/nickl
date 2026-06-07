@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ntk/log.h"
 #include "ntk/time.h"
+
+NK_LOG_USE_SCOPE(profiler);
 
 static SpallProfile spall_ctx;
 static _Thread_local SpallBuffer spall_buffer;
@@ -12,7 +15,9 @@ static _Thread_local u32 tid;
 static _Thread_local bool is_thread_running;
 
 void nk_prof_start(char const *filename) {
-    f64 timestamp_unit = 1000000.0 / (f64)nk_getTscFreq();
+    u64 const tsc_freq = nk_getTscFreqHz();
+    NK_LOG_INF("TSC frequency: %zu Hz", tsc_freq);
+    f64 const timestamp_unit = 1000000.0 / (f64)tsc_freq;
     spall_ctx = spall_init_file(filename, timestamp_unit);
 }
 

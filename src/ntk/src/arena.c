@@ -94,11 +94,10 @@ static void *arenaAllocatorProc(void *data, NkAllocatorMode mode, usize size, u8
                 .bytes_left = (arena->data ? arena->capacity : FIXED_ARENA_SIZE) - arena->size,
             };
             return NULL;
-
-        default:
-            nk_assert(!"unreachable");
-            return NULL;
     }
+
+    nk_assert(!"unreachable");
+    return NULL;
 }
 
 NkAllocator nk_arena_getAllocator(NkArena *arena) {

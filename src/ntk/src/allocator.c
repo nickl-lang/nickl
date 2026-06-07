@@ -53,11 +53,10 @@ static void *defaultAllocatorProc(
             };
             return NULL;
         }
-
-        default:
-            nk_assert(!"unreachable");
-            return NULL;
     }
+
+    nk_assert(!"unreachable");
+    return NULL;
 }
 
 NkAllocator nk_default_allocator = {

@@ -5,13 +5,13 @@
 
 #include "ntk/time.h"
 
-u64 nk_getTscFreq(void) {
+u64 nk_getTscFreqHz(void) {
     u64 tsc_freq;
     usize len = sizeof(tsc_freq);
     if (sysctlbyname("machdep.tsc.frequency", &tsc_freq, &len, NULL, 0) == 0) { // NOTE: x86 only!
         return tsc_freq;
     } else {
-        return nk_estimateTscFrequency();
+        return nk_estimateTscFrequencyHz();
     }
 }
 

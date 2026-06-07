@@ -10,7 +10,7 @@ i64 nk_now_ns(void) {
     return ts.tv_sec * 1000000000ull + ts.tv_nsec;
 }
 
-u64 nk_estimateTscFrequency(void) {
+u64 nk_estimateTscFrequencyHz(void) {
     u64 tsc_freq = 0;
 
     // Get time before sleep
