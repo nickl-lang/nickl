@@ -672,19 +672,22 @@ static void *getSymbolAddressImpl(NkArena *scratch, NkbState nkb, NkIrDylib dl, 
             NkAtomSet_insert(&dl->rt_loaded_syms, dep->name);
 
             if (dep->kind == NkIrSymbol_Extern) {
-                nk_assert(dl->sym_resolver_fn && "Symbol resolver is not set up");
-
-                void *addr = dl->sym_resolver_fn(dep->name, dl->sym_resolver_userdata);
+                void *addr = dep->extrn.addr;
                 if (!addr) {
-                    NkStringBuilder sym_name_str = {.alloc = nk_arena_getAllocator(scratch)};
-                    nkir_printSymbolName(nksb_getStream(&sym_name_str), sym_name);
-                    NkStringBuilder dep_name_str = {.alloc = nk_arena_getAllocator(scratch)};
-                    nkir_printSymbolName(nksb_getStream(&dep_name_str), dep->name);
-                    nk_error_printf(
-                        "Failed to get address of `" NKS_FMT "`, dependency `" NKS_FMT "` not found",
-                        NKS_ARG(sym_name_str),
-                        NKS_ARG(dep_name_str));
-                    return NULL;
+                    nk_assert(dl->sym_resolver_fn && "Symbol resolver is not set up");
+
+                    addr = dl->sym_resolver_fn(dep->name, dl->sym_resolver_userdata);
+                    if (!addr) {
+                        NkStringBuilder sym_name_str = {.alloc = nk_arena_getAllocator(scratch)};
+                        nkir_printSymbolName(nksb_getStream(&sym_name_str), sym_name);
+                        NkStringBuilder dep_name_str = {.alloc = nk_arena_getAllocator(scratch)};
+                        nkir_printSymbolName(nksb_getStream(&dep_name_str), dep->name);
+                        nk_error_printf(
+                            "Failed to get address of `" NKS_FMT "`, dependency `" NKS_FMT "` not found",
+                            NKS_ARG(sym_name_str),
+                            NKS_ARG(dep_name_str));
+                        return NULL;
+                    }
                 }
 
                 nkda_append(

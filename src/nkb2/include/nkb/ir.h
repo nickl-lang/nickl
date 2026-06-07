@@ -214,6 +214,7 @@ typedef struct {
             NkIrType type;
         } data; // NkIrExtern_Data
     };
+    void *addr;
     NkAtom lib;
     NkIrExternKind kind;
 } NkIrExtern;

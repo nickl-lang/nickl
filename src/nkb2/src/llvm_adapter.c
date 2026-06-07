@@ -296,10 +296,14 @@ bool nk_llvm_defineExternSymbols(NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymb
             LLVMOrcMaterializationUnitRef mu = NULL;
             NkDynArray(LLVMOrcCSymbolMapPair) llvm_syms = {.alloc = nk_arena_getAllocator(scratch)};
             NK_ITERATE(NkIrSymbolAddress const *, it, syms) {
+                NkStringBuilder sym_str = {.alloc = nk_arena_getAllocator(scratch)};
+                nkir_printSymbolName(nksb_getStream(&sym_str), it->sym);
+                nksb_appendNull(&sym_str);
+
                 nkda_append(
                     &llvm_syms,
                     ((LLVMOrcCSymbolMapPair){
-                        .Name = LLVMOrcLLJITMangleAndIntern(lljit, nk_atom2cs(it->sym)),
+                        .Name = LLVMOrcLLJITMangleAndIntern(lljit, sym_str.data),
                         .Sym = {(LLVMOrcJITTargetAddress)(uintptr_t)it->addr, {0}},
                     }));
             }
@@ -395,7 +399,9 @@ bool nk_llvm_jitModule(NkLlvmModule mod, NkLlvmJitState jit, NkLlvmJitDylib dl) 
                 f = LLVMGetNextFunction(f);
             }
 
-            nk_llvm_defineExternSymbols(jit, dl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
+            if (to_define.size) {
+                nk_llvm_defineExternSymbols(jit, dl, (NkIrSymbolAddressArray){NKS_INIT(to_define)});
+            }
         }
 
         LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(jit->lljit, jd, tsm);

@@ -187,6 +187,7 @@ static void emitRefUntyped(NkStream out, NkIrRef const *ref) {
                 }
                 nk_print(out, "zeroinitializer");
             } else {
+                nk_assert(ref->type->kind == NkIrType_Numeric);
                 if (NKIR_NUMERIC_IS_INT(ref->type->num)) {
                     nkir_inspectVal(out, addr, ref->type);
                 } else {
