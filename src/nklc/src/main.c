@@ -284,7 +284,7 @@ static int parseArgsAndRun(char **argv) {
     NK_DEFER_LOOP(NK_PROF_START(prof_file), NK_PROF_FINISH())
     NK_DEFER_LOOP(NK_PROF_THREAD_ENTER(0, 32 * 1024 * 1024), NK_PROF_THREAD_LEAVE())
     NK_PROF_SCOPE(nk_cs2s("run"))
-    NK_DEFER_LOOP(nk_atom_init(), nk_atom_init())
+    NK_DEFER_LOOP(nk_atom_init(), nk_atom_deinit())
     NK_DEFER_LOOP(run_info.nkl = nkl_newState(), nkl_freeState(run_info.nkl)) {
         ret_code = run(run_info);
     }
