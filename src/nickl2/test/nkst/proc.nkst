@@ -1,0 +1,12 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def add (proc add [(param (i64) a) (param (i64) b)] (i64) [
+    (return (add a b))
+]))
+
+(call printf ["2 + 2 = %i\n" (call add [2 2])])
+
+/* @output
+2 + 2 = 4
+
+@endoutput */

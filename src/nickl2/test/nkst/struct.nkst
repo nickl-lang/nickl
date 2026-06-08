@@ -1,0 +1,18 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def Vec2 (struct [
+    (param (f64) x)
+    (param (f64) y)
+]))
+
+(var v Vec2)
+
+(assign (member v x) 1.0)
+(assign (member v y) 2.0)
+
+(call printf ["v = {%g, %g}\n" (member v x) (member v y)])
+
+/* @output
+v = {1, 2}
+
+@endoutput */

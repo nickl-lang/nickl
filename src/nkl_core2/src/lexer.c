@@ -373,26 +373,26 @@ static NklToken scan(LexerState *l) {
     }
 }
 
-bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
+bool nkl_lex(NklLexerArgs const *args, NklTokenArray *out_tokens) {
     NK_LOG_TRC("%s", __func__);
 
     bool ret;
     NK_PROF_FUNC() {
-        NklTokenDynArray tokens = {.alloc = nk_arena_getAllocator(data->arena)};
+        NklTokenDynArray tokens = {.alloc = nk_arena_getAllocator(args->arena)};
         nkda_reserve(&tokens, 1000);
 
         LexerState l = {
-            .text = data->text,
-            .arena = data->arena,
-            .err_str = data->err_str,
+            .text = args->text,
+            .arena = args->arena,
+            .err_str = args->err_str,
 
-            .first_keyword_id = data->keywords_base + 1,
-            .first_operator_id = data->operators_base + 1,
-            .first_tag_id = data->tags_base + 1,
+            .first_keyword_id = args->keywords_base + 1,
+            .first_operator_id = args->operators_base + 1,
+            .first_tag_id = args->tags_base + 1,
 
-            .keywords = data->tokens + l.first_keyword_id,
-            .operators = data->tokens + l.first_operator_id,
-            .tag_prefixes = data->tokens + l.first_tag_id,
+            .keywords = args->tokens + l.first_keyword_id,
+            .operators = args->tokens + l.first_operator_id,
+            .tag_prefixes = args->tokens + l.first_tag_id,
 
             .pos = 0,
             .lin = 1,
@@ -406,8 +406,8 @@ bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens) {
 
 #ifdef ENABLE_LOGGING
             NKSB_FIXED_BUFFER(sb, 256);
-            nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&token, data->text));
-            NK_LOG_DBG("%u:%u: \"" NKS_FMT "\":%u", token.lin, token.col, NKS_ARG(sb), token.id);
+            nks_escape(nksb_getStream(&sb), nkl_getTokenStr(&token, args->text));
+            NK_LOG_DBG("%u:%u: %s \"" NKS_FMT "\"", token.lin, token.col, args->tokens[token.id], NKS_ARG(sb));
 #endif // ENABLE_LOGGING
         } while (token.id != NklToken_Error && token.id != NklToken_Eof);
 

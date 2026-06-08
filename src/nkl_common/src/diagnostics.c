@@ -46,15 +46,15 @@ void nkl_diag_vprintError(char const *fmt, va_list ap) {
     bool const to_color = toColor();
 
     if (to_color) {
-        nk_printf(out, NK_TERM_COLOR_RED);
+        nk_print(out, NK_TERM_COLOR_RED);
     }
-    nk_printf(out, "error:");
+    nk_print(out, "error:");
     if (to_color) {
-        nk_printf(out, NK_TERM_COLOR_NONE);
+        nk_print(out, NK_TERM_COLOR_NONE);
     }
-    nk_printf(out, " ");
+    nk_print(out, " ");
     nk_vprintf(out, fmt, ap);
-    nk_printf(out, "\n");
+    nk_print(out, "\n");
 
     nk_stream_flush(out);
 }
@@ -70,7 +70,7 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
         bool const to_color = toColor();
 
         if (to_color) {
-            nk_printf(out, NK_TERM_COLOR_WHITE);
+            nk_print(out, NK_TERM_COLOR_WHITE);
         }
         nk_printf(out, NKS_FMT, NKS_ARG(loc.file));
         if (loc.lin) {
@@ -79,11 +79,11 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
         if (loc.col) {
             nk_printf(out, ":%u", loc.col);
         }
-        nk_printf(out, ":");
+        nk_print(out, ":");
         if (to_color) {
-            nk_printf(out, NK_TERM_COLOR_NONE);
+            nk_print(out, NK_TERM_COLOR_NONE);
         }
-        nk_printf(out, " ");
+        nk_print(out, " ");
     }
 
     nk_stream_flush(out);
@@ -91,7 +91,7 @@ void nkl_diag_vprintErrorFile(NklSourceLocation loc, char const *fmt, va_list ap
     nkl_diag_vprintError(fmt, ap);
 }
 
-#define MAX_LINE_QUOTE 120
+#define MAX_LINE_QUOTE 180
 
 void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *fmt, va_list ap) {
     char buf[512];
@@ -129,32 +129,32 @@ void nkl_diag_vprintErrorQuote(NkString src, NklSourceLocation loc, char const *
         if (loc.col && loc.col <= line.size && loc.len) {
             pointer_offset = nks_sanitize(out, (NkString){line.data, loc.col - 1}) + 1;
             if (to_color) {
-                nk_printf(out, NK_TERM_COLOR_RED);
+                nk_print(out, NK_TERM_COLOR_RED);
             }
             actual_len = nks_sanitize(out, (NkString){line.data + loc.col - 1, loc.len});
             if (to_color) {
-                nk_printf(out, NK_TERM_COLOR_NONE);
+                nk_print(out, NK_TERM_COLOR_NONE);
             }
             nks_sanitize(out, (NkString){line.data + loc.col - 1 + loc.len, line.size - loc.col + 1 - loc.len});
         } else {
             nks_sanitize(out, line);
         }
-        nk_printf(out, "\n");
+        nk_print(out, "\n");
         if (loc.col) {
             nk_printf(out, "%*s", line_offset, "| ");
             if (to_color) {
-                nk_printf(out, NK_TERM_COLOR_RED);
+                nk_print(out, NK_TERM_COLOR_RED);
             }
             nk_printf(out, "%*c", pointer_offset, '^');
             if (actual_len > 0) {
                 for (usize i = 0; i < (usize)actual_len - 1; i++) {
-                    nk_printf(out, "~");
+                    nk_print(out, "~");
                 }
             }
             if (to_color) {
-                nk_printf(out, NK_TERM_COLOR_NONE);
+                nk_print(out, NK_TERM_COLOR_NONE);
             }
-            nk_printf(out, "\n");
+            nk_print(out, "\n");
         }
     }
 

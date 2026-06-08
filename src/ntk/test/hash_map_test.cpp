@@ -337,7 +337,7 @@ TEST_F(HashMap, index_operator) {
 
     found = hm.find(1);
     ASSERT_TRUE(found);
-    EXPECT_EQ(nk_s2stdStr(*found), "one");
+    EXPECT_EQ(nk_s2std(*found), "one");
 
     hm[42];
 
@@ -345,7 +345,7 @@ TEST_F(HashMap, index_operator) {
 
     found = hm.find(42);
     ASSERT_TRUE(found);
-    EXPECT_EQ(nk_s2stdStr(*found), "");
+    EXPECT_EQ(nk_s2std(*found), "");
 
     hm[42] = nk_cs2s("forty-two");
 
@@ -353,7 +353,7 @@ TEST_F(HashMap, index_operator) {
 
     found = hm.find(42);
     ASSERT_TRUE(found);
-    EXPECT_EQ(nk_s2stdStr(*found), "forty-two");
+    EXPECT_EQ(nk_s2std(*found), "forty-two");
 }
 
 TEST_F(HashMap, iteration) {

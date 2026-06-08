@@ -15,6 +15,7 @@ typedef struct NkIrType_T const *NkIrType;
 typedef enum {
     NkIrType_Aggregate = 0,
     NkIrType_Numeric,
+    NkIrType_Pointer,
 } NkIrTypeKind;
 
 // 0x<index><size>
@@ -79,8 +80,8 @@ typedef struct NkIrType_T {
     NkIrTypeKind kind;
 } NkIrType_T;
 
-void nkir_inspectType(NkIrType type, NkStream out);
-void nkir_inspectVal(void *data, NkIrType type, NkStream out);
+void nkir_inspectType(NkStream out, NkIrType type);
+void nkir_inspectVal(NkStream out, void *data, NkIrType type);
 
 #ifdef __cplusplus
 }

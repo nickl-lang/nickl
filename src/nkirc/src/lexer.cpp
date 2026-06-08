@@ -183,7 +183,7 @@ struct ScannerState {
                 accept();
             }
 
-            auto const token_str = nk_s2stdView(nkl_getTokenStr(&m_token, m_text));
+            auto const token_str = nk_s2view(nkl_getTokenStr(&m_token, m_text));
             auto it = std::begin(s_keywords) + 1;
             for (; it != std::end(s_keywords) && (m_token.len != strlen(*it) || *it != token_str); ++it) {
             }

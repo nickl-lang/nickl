@@ -22,8 +22,8 @@ NK_INLINE NkString nk_cs2s(char const *str) {
     return NK_LITERAL(NkString){str, strlen(str)};
 }
 
-NK_EXPORT NkString nks_copy(NkAllocator alloc, NkString src);
-NK_EXPORT NkString nks_copyNt(NkAllocator alloc, NkString src);
+NK_EXPORT NkString nks_dup(NkAllocator alloc, NkString src);
+NK_EXPORT NkString nks_dupNt(NkAllocator alloc, NkString src);
 
 NK_EXPORT NkString nks_trimLeft(NkString str);
 NK_EXPORT NkString nks_trimRight(NkString str);
@@ -76,12 +76,12 @@ NK_EXPORT NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap);
 #include <string>
 #include <string_view>
 
-inline std::string_view nk_s2stdView(NkString str) {
+inline std::string_view nk_s2view(NkString str) {
     return std::string_view{str.data, str.size};
 }
 
-inline std::string nk_s2stdStr(NkString str) {
-    return std::string{nk_s2stdView(str)};
+inline std::string nk_s2std(NkString str) {
+    return std::string{nk_s2view(str)};
 }
 
 inline std::ostream &operator<<(std::ostream &stream, NkString str) {

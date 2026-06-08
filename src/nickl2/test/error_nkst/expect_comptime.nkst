@@ -1,0 +1,10 @@
+(var a (i32))
+(def A a)
+
+/* @error
+error: comptime const expected
+@enderror */
+
+/* @retcode
+1
+@endretcode */

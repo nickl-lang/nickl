@@ -13,9 +13,9 @@ typedef struct {
     NklState nkl;
     NkAtom file;
     char const **token_names;
-} NklAstParserData;
+} NklAstParserArgs;
 
-bool nkl_ast_parse(NklAstParserData const *data, NklAstNodeArray *out_nodes);
+bool nkl_ast_parse(NklAstParserArgs const *args, NklAstNodeArray *out_nodes);
 
 #ifdef __cplusplus
 }

@@ -193,7 +193,7 @@ struct ScanEngine {
 
             auto it = std::begin(s_keywords) + 1;
             for (; it != std::end(s_keywords) &&
-                   (m_token.text.size != std::strlen(*it) || *it != nk_s2stdView(m_token.text));
+                   (m_token.text.size != std::strlen(*it) || *it != nk_s2view(m_token.text));
                  ++it) {
             }
 
@@ -292,7 +292,7 @@ private:
         va_start(ap, fmt);
         NkStringBuilder sb{};
         nksb_vprintf(&sb, fmt, ap);
-        m_err_str = nk_s2stdStr({NKS_INIT(sb)});
+        m_err_str = nk_s2std({NKS_INIT(sb)});
         nksb_free(&sb);
         va_end(ap);
         m_token.id = t_error;

@@ -1,0 +1,37 @@
+set(NICKL_TEST_OUT_DIR "${CMAKE_BINARY_DIR}/nickl_test_out")
+
+function(def_nickl_test)
+    set(options)
+    set(oneValueArgs FILE SYSTEM)
+    set(multiValueArgs ARGS)
+
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(NOT ARG_FILE)
+        message(FATAL_ERROR "FILE argument is required")
+    endif()
+
+    if(ARG_SYSTEM)
+        string(REGEX MATCH "${ARG_SYSTEM}" CONTINUE "${CMAKE_SYSTEM_NAME}")
+        if(NOT CONTINUE)
+            return()
+        endif()
+    endif()
+
+    if(ARG_ARGS)
+        set(ARGS "--")
+        list(APPEND ARGS ${ARG_ARGS})
+    endif()
+
+    def_output_test(
+        NAME nickl
+        FILE ${ARG_FILE}
+        WORKING_DIRECTORY "${NICKL_TEST_OUT_DIR}"
+        COMMAND
+            env
+            "${SYSTEM_LIBRARY_PATH}=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{${SYSTEM_LIBRARY_PATH}}"
+            ${CMAKE_CROSSCOMPILING_EMULATOR} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE}"
+        EXTRA_ARGS
+            ${ARGS}
+        )
+endfunction()

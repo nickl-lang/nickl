@@ -14,11 +14,11 @@
         if (nks_startsWith(_str, nk_cs2s("--"))) {                                  \
             *_nk_cli_pval = _str;                                                   \
             *_nk_cli_pkey = nks_chopByDelim(_nk_cli_pval, '=');                     \
-        } else if (nks_first(_str) == '-') {                                        \
+        } else if (NKS_FIRST(_str) == '-') {                                        \
             *_nk_cli_pkey = NK_LITERAL(NkString){_str.data, nk_minu(_str.size, 2)}; \
             if (_str.size > 2) {                                                    \
                 *_nk_cli_pval = NK_LITERAL(NkString){_str.data + 2, _str.size - 2}; \
-                if (nks_first(*_nk_cli_pval) == '=') {                              \
+                if (NKS_FIRST(*_nk_cli_pval) == '=') {                              \
                     _nk_cli_pval->data += 1;                                        \
                     _nk_cli_pval->size -= 1;                                        \
                 }                                                                   \

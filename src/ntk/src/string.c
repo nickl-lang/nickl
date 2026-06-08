@@ -9,7 +9,7 @@
 #include "ntk/string_builder.h"
 #include "ntk/utils.h"
 
-NkString nks_copy(NkAllocator alloc, NkString src) {
+NkString nks_dup(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size);
     if (src.size) {
         memcpy(mem, src.data, src.size);
@@ -17,7 +17,7 @@ NkString nks_copy(NkAllocator alloc, NkString src) {
     return (NkString){mem, src.size};
 }
 
-NkString nks_copyNt(NkAllocator alloc, NkString src) {
+NkString nks_dupNt(NkAllocator alloc, NkString src) {
     char *mem = (char *)nk_alloc(alloc, src.size + 1);
     if (src.size) {
         memcpy(mem, src.data, src.size);
@@ -27,7 +27,7 @@ NkString nks_copyNt(NkAllocator alloc, NkString src) {
 }
 
 NkString nks_trimLeft(NkString str) {
-    while (str.size && isspace(nks_first(str))) {
+    while (str.size && isspace(NKS_FIRST(str))) {
         str.size -= 1;
         str.data += 1;
     }
@@ -35,7 +35,7 @@ NkString nks_trimLeft(NkString str) {
 }
 
 NkString nks_trimRight(NkString str) {
-    while (str.size && isspace(nks_last(str))) {
+    while (str.size && isspace(NKS_LAST(str))) {
         str.size -= 1;
     }
     return str;
@@ -67,7 +67,7 @@ NkString nks_chopByDelim(NkString *str, char delim) {
 NkString nks_chopByDelimReverse(NkString *str, char delim) {
     NkString res = *str;
 
-    while (str->size && nks_last(*str) != delim) {
+    while (str->size && NKS_LAST(*str) != delim) {
         str->size--;
     }
 
@@ -137,34 +137,34 @@ i32 nks_escape(NkStream out, NkString str) {
         for (usize i = 0; i < str.size; i++) {
             switch (str.data[i]) {
                 case '\a':
-                    WRITE(nk_stream_writeCStr(out, "\\a"));
+                    WRITE(nk_print(out, "\\a"));
                     break;
                 case '\b':
-                    WRITE(nk_stream_writeCStr(out, "\\b"));
+                    WRITE(nk_print(out, "\\b"));
                     break;
                 case '\f':
-                    WRITE(nk_stream_writeCStr(out, "\\f"));
+                    WRITE(nk_print(out, "\\f"));
                     break;
                 case '\n':
-                    WRITE(nk_stream_writeCStr(out, "\\n"));
+                    WRITE(nk_print(out, "\\n"));
                     break;
                 case '\r':
-                    WRITE(nk_stream_writeCStr(out, "\\r"));
+                    WRITE(nk_print(out, "\\r"));
                     break;
                 case '\t':
-                    WRITE(nk_stream_writeCStr(out, "\\t"));
+                    WRITE(nk_print(out, "\\t"));
                     break;
                 case '\v':
-                    WRITE(nk_stream_writeCStr(out, "\\v"));
+                    WRITE(nk_print(out, "\\v"));
                     break;
                 case '\0':
-                    WRITE(nk_stream_writeCStr(out, "\\0"));
+                    WRITE(nk_print(out, "\\0"));
                     break;
                 case '\"':
-                    WRITE(nk_stream_writeCStr(out, "\\\""));
+                    WRITE(nk_print(out, "\\\""));
                     break;
                 case '\\':
-                    WRITE(nk_stream_writeCStr(out, "\\\\"));
+                    WRITE(nk_print(out, "\\\\"));
                     break;
                 default:
                     if (isprint(str.data[i])) {
@@ -186,25 +186,25 @@ i32 nks_unescape(NkStream out, NkString str) {
             if (str.data[i] == '\\' && i < str.size - 1) {
                 switch (str.data[++i]) {
                     case 'a':
-                        WRITE(nk_stream_writeCStr(out, "\a"));
+                        WRITE(nk_print(out, "\a"));
                         break;
                     case 'b':
-                        WRITE(nk_stream_writeCStr(out, "\b"));
+                        WRITE(nk_print(out, "\b"));
                         break;
                     case 'f':
-                        WRITE(nk_stream_writeCStr(out, "\f"));
+                        WRITE(nk_print(out, "\f"));
                         break;
                     case 'n':
-                        WRITE(nk_stream_writeCStr(out, "\n"));
+                        WRITE(nk_print(out, "\n"));
                         break;
                     case 'r':
-                        WRITE(nk_stream_writeCStr(out, "\r"));
+                        WRITE(nk_print(out, "\r"));
                         break;
                     case 't':
-                        WRITE(nk_stream_writeCStr(out, "\t"));
+                        WRITE(nk_print(out, "\t"));
                         break;
                     case 'v':
-                        WRITE(nk_stream_writeCStr(out, "\v"));
+                        WRITE(nk_print(out, "\v"));
                         break;
                     case '0':
                         WRITE(nk_stream_write(out, "\0", 1));

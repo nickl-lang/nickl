@@ -1,0 +1,9 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(var a (u32) 42)
+(call printf ["a=%u\n" a])
+
+/* @output
+a=42
+
+@endoutput */

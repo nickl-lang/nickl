@@ -6,8 +6,8 @@
 #include "common.h"
 #include "ntk/time.h"
 
-u64 nk_getTscFreq(void) {
-    return nk_estimateTscFrequency();
+u64 nk_getTscFreqHz(void) {
+    return nk_estimateTscFrequencyHz();
 }
 
 void nk_usleep(u64 usec) {

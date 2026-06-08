@@ -586,7 +586,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
             case NkIrRef_Proc:
             case NkIrRef_ExternProc:
             case NkIrRef_ExternData:
-            case NkIrRef_None:
+            case NkIrRef_Null:
             default:
                 nk_assert(!"unreachable");
                 break;
@@ -629,7 +629,7 @@ void translateProc(WriterCtx &ctx, usize proc_id) {
 
                 nksb_printf(src, "  ");
 
-                if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_None) {
+                if (instr.arg[0].kind == NkIrArg_Ref && instr.arg[0].ref.kind != NkIrRef_Null) {
                     write_ref(instr.arg[0].ref);
                     nksb_printf(src, " = ");
                     writeCast(ctx, src, instr.arg[0].ref.type);
@@ -806,7 +806,7 @@ void nkir_translate2c(NkArena *arena, NkIrProg ir, NkIrModule mod, NkStream src)
         translateProc(ctx, proc_id);
 
         while (ctx.procs_to_translate.size) {
-            auto proc = nks_last(ctx.procs_to_translate);
+            auto proc = NKS_LAST(ctx.procs_to_translate);
             nkda_pop(&ctx.procs_to_translate, 1);
             translateProc(ctx, proc);
         }

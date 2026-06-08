@@ -23,7 +23,7 @@ TEST_F(string_builder, basic) {
 
     nksb_printf(&sb, "Hello, %s!", "World");
 
-    EXPECT_EQ(nk_s2stdView({NKS_INIT(sb)}), "Hello, World!");
+    EXPECT_EQ(nk_s2view({NKS_INIT(sb)}), "Hello, World!");
 }
 
 TEST_F(string_builder, counting) {
@@ -40,7 +40,7 @@ TEST_F(string_builder, counting) {
 
     nksb_printf(&sb, "]");
 
-    EXPECT_EQ(nk_s2stdView({NKS_INIT(sb)}), "[0123456789]");
+    EXPECT_EQ(nk_s2view({NKS_INIT(sb)}), "[0123456789]");
 }
 
 TEST_F(string_builder, stream) {
@@ -54,5 +54,5 @@ TEST_F(string_builder, stream) {
     nk_printf(stream, "Hello");
     nk_printf(stream, ", %s!", "World");
 
-    EXPECT_EQ(nk_s2stdView({NKS_INIT(sb)}), "Hello, World!");
+    EXPECT_EQ(nk_s2view({NKS_INIT(sb)}), "Hello, World!");
 }

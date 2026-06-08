@@ -65,7 +65,7 @@ protected:
             };
             EXPECT_TRUE(nksb_readFromStream(&sb, in));
             NK_LOG_DBG("out_str=\"" NKS_FMT "\"", NKS_ARG(sb));
-            return nk_s2stdStr({NKS_INIT(sb)});
+            return nk_s2std({NKS_INIT(sb)});
         } else {
             return "";
         }

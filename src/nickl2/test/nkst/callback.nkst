@@ -1,0 +1,14 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def invoke (proc invoke [(param (proc [(param (i32))] (i32)) cb) (param (i32) arg)] (i32) [
+    (return (call cb [arg]))
+]))
+
+(call printf ["%zi\n" (call invoke [(proc [(param (i32) x)] (i32) [
+    (return (mul x x))
+]) 64])])
+
+/* @output
+4096
+
+@endoutput */

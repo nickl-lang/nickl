@@ -1,7 +1,5 @@
 #include "ntk/error.h"
 
-#include <cstdio>
-
 #include <gtest/gtest.h>
 
 #include "ntk/arena.h"
@@ -21,7 +19,7 @@ TEST_F(Error, basic) {
     NkErrorState err{};
     nk_error_pushState(&err);
     defer {
-        nk_error_freeState();
+        nk_error_freeState(&err);
         nk_error_popState();
     };
 
@@ -32,7 +30,7 @@ TEST_F(Error, basic) {
     auto errors = err.errors;
 
     EXPECT_NE(errors, nullptr);
-    EXPECT_EQ(nk_s2stdStr(errors->msg), "Hello, Error!");
+    EXPECT_EQ(nk_s2std(errors->msg), "Hello, Error!");
     errors = errors->next;
 
     EXPECT_EQ(errors, nullptr);
@@ -42,7 +40,7 @@ TEST_F(Error, nested) {
     NkErrorState err{};
     nk_error_pushState(&err);
     defer {
-        nk_error_freeState();
+        nk_error_freeState(&err);
         nk_error_popState();
     };
 
@@ -52,7 +50,7 @@ TEST_F(Error, nested) {
         NkErrorState err{};
         nk_error_pushState(&err);
         defer {
-            nk_error_freeState();
+            nk_error_freeState(&err);
             nk_error_popState();
         };
 
@@ -63,7 +61,7 @@ TEST_F(Error, nested) {
         auto errors = err.errors;
 
         ASSERT_NE(errors, nullptr);
-        EXPECT_EQ(nk_s2stdStr(errors->msg), "Nested Error");
+        EXPECT_EQ(nk_s2std(errors->msg), "Nested Error");
         errors = errors->next;
 
         EXPECT_EQ(errors, nullptr);
@@ -76,11 +74,11 @@ TEST_F(Error, nested) {
     auto errors = err.errors;
 
     ASSERT_NE(errors, nullptr);
-    EXPECT_EQ(nk_s2stdStr(errors->msg), "Error 1");
+    EXPECT_EQ(nk_s2std(errors->msg), "Error 1");
     errors = errors->next;
 
     ASSERT_NE(errors, nullptr);
-    EXPECT_EQ(nk_s2stdStr(errors->msg), "Error 2");
+    EXPECT_EQ(nk_s2std(errors->msg), "Error 2");
     errors = errors->next;
 
     EXPECT_EQ(errors, nullptr);
@@ -105,7 +103,7 @@ TEST_F(Error, arena) {
     auto errors = err.errors;
 
     EXPECT_NE(errors, nullptr);
-    EXPECT_EQ(nk_s2stdStr(errors->msg), "Hello, Arena-stored Error!");
+    EXPECT_EQ(nk_s2std(errors->msg), "Hello, Arena-stored Error!");
     errors = errors->next;
 
     EXPECT_EQ(errors, nullptr);

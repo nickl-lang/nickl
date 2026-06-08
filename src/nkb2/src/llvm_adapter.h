@@ -28,7 +28,7 @@ typedef enum {
 NkLlvmState nk_llvm_createState(NkArena *arena);
 void nk_llvm_freeState(NkLlvmState llvm);
 
-NkLlvmJitState nk_llvm_createJitState(NkLlvmState llvm);
+NkLlvmJitState nk_llvm_createJitState(NkArena *arena, NkLlvmState llvm);
 void nk_llvm_freeJitState(NkLlvmJitState jit);
 
 NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit);
@@ -38,10 +38,10 @@ NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState llvm, NkLlvmJitState jit);
 NkLlvmTarget nk_llvm_createTarget(NkLlvmState llvm, char const *triple);
 void nk_llvm_freeTarget(NkLlvmTarget tgt);
 
-NkLlvmModule nk_llvm_compileIr(NkArena *scratch, NkLlvmState llvm, NkIrSymbolArray ir);
-bool nk_llvm_optimizeIr(NkArena *scratch, NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt);
+NkLlvmModule nk_llvm_compileIr(NkLlvmState llvm, NkIrSymbolArray ir);
+bool nk_llvm_optimizeIr(NkLlvmModule mod, NkLlvmTarget tgt, NkLlvmOptLevel opt);
 
-bool nk_llvm_defineExternSymbols(NkArena *scratch, NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms);
+bool nk_llvm_defineExternSymbols(NkLlvmJitState jit, NkLlvmJitDylib dl, NkIrSymbolAddressArray syms);
 
 bool nk_llvm_emitObjectFile(NkLlvmModule mod, NkLlvmTarget tgt, NkString obj_file);
 

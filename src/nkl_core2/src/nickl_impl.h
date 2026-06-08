@@ -10,6 +10,7 @@
 #include "ntk/atom.h"
 #include "ntk/dyn_array.h"
 #include "ntk/string.h"
+#include "types_impl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,20 +18,51 @@ extern "C" {
 
 typedef struct NklState_T {
     NkArena arena;
-    NkArena scratch;
+    NkScratchPair scratch_pair;
 
     NkbState nkb;
+    NkDynArray(NkIrTarget) created_targets;
+    NkIrRuntime _rt;
 
     NkAtomStringMap text_map;
 
     NklError *error;
+
+    NklTypeStorage types;
+
+#define X(TYPE, VALUE_TYPE) NklType NK_CAT(_cached_, NK_CAT(TYPE, _t));
+    NKIR_NUMERIC_ITERATE(X)
+#undef X
+    NklType _cached_void_t;
+    NklType _cached_bool_t;
 } NklState_T;
+
+#define CACHED_TYPE(NAME, EXPR)                                \
+    NK_INLINE NklType NK_CAT(nickl_get_, NAME)(NklState nkl) { \
+        NklType *cached = &nkl->NK_CAT(_cached_, NAME);        \
+        if (!*cached) {                                        \
+            *cached = (EXPR);                                  \
+        }                                                      \
+        return *cached;                                        \
+    };
+
+#define X(TYPE, VALUE_TYPE) CACHED_TYPE(NK_CAT(TYPE, _t), nkl_type_getNumeric(nkl, VALUE_TYPE))
+NKIR_NUMERIC_ITERATE(X)
+#undef X
+
+CACHED_TYPE(void_t, nkl_type_getVoid(nkl));
+CACHED_TYPE(bool_t, nkl_type_getBool(nkl));
+
+#undef CACHED_TYPE
 
 typedef struct NklCompiler_T {
     NklState nkl;
     NkIrTarget target;
 
     NkAtomMap lib_aliases;
+
+    usize word_size;
+    NkIrType ptr_t;
 } NklCompiler_T;
 
 typedef NkDynArray(NklModule) NklModuleDynArray;
@@ -39,7 +71,8 @@ typedef struct NklModule_T {
     NkAtom name;
 
     NklCompiler com;
-    NkIrModule ir;
+    NkIrSymbolDynArray ir;
+    NkIrDylib _dl;
 
     NkAtomModuleMap linked_mods;
     NkAtomMap extern_syms;
@@ -73,6 +106,9 @@ NkAtom nickl_translateLib(NklCompiler com, NkAtom alias);
 bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym);
 
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym);
+
+bool nickl_compile(NklModule mod, NklSource const *src);
+bool nickl_TMP_compileAndRunFile(NklModule mod, NklSource const *src);
 
 #ifdef __cplusplus
 }

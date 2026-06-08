@@ -129,7 +129,7 @@ bool nkir_compileFile(NkIrCompiler c, NkString base_file, NkString in_file) {
     NK_PROF_FUNC();
     NK_LOG_TRC("%s", __func__);
 
-    auto in_file_path = fs::path{nk_s2stdStr(base_file)}.parent_path() / fs::path{nk_s2stdStr(in_file)};
+    auto in_file_path = fs::path{nk_s2std(base_file)}.parent_path() / fs::path{nk_s2std(in_file)};
 
     if (!fs::exists(in_file_path)) {
         auto const in_file_path_str = in_file_path.string();
@@ -163,9 +163,9 @@ bool nkir_compileFile(NkIrCompiler c, NkString base_file, NkString in_file) {
                 text,
                 {
                     in_file_s,
-                    nks_last(lexer.tokens).lin,
-                    nks_last(lexer.tokens).col,
-                    nks_last(lexer.tokens).len,
+                    NKS_LAST(lexer.tokens).lin,
+                    NKS_LAST(lexer.tokens).col,
+                    NKS_LAST(lexer.tokens).len,
                 },
                 NKS_FMT,
                 NKS_ARG(lexer.error_msg));

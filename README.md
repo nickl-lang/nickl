@@ -36,7 +36,7 @@ to the program with ability to execute arbitrary code at compile time.
 ### Ubuntu
 
 ```sh
-sudo apt install build-essential cmake libffi-dev llvm-dev pkg-config zlib1g-dev
+sudo apt install build-essential cmake libffi-dev llvm-dev pkg-config zlib1g-dev libzstd-dev
 
 # Optional:
 sudo apt install ccache ninja-build

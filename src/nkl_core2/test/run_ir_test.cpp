@@ -69,7 +69,7 @@ pub proc _entry() {
 }
 )"));
 
-    auto entry = (void (*)(void))nkl_getSymbolAddress(mod, nk_cs2s("_entry"));
+    auto entry = (void (*)(void))nkl_getSymbolAddress(mod, nk_cs2atom("_entry"));
     ASSERT_TRUE(entry);
     entry();
 }
@@ -84,7 +84,7 @@ pub proc plus(:i64 %a, :i64 %b) :i64 {
 }
 )"));
 
-    auto plus = (i64 (*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2s("plus"));
+    auto plus = (i64 (*)(i64, i64))nkl_getSymbolAddress(mod, nk_cs2atom("plus"));
     ASSERT_TRUE(plus);
     EXPECT_EQ(plus(4, 5), 9);
 }
@@ -107,11 +107,11 @@ pub proc foo() {
 }
 )"));
 
-    auto bar = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("bar"));
+    auto bar = (void (*)())nkl_getSymbolAddress(mod, nk_cs2atom("bar"));
     ASSERT_TRUE(bar);
     bar();
 
-    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2atom("foo"));
     ASSERT_TRUE(foo);
     foo();
 }
@@ -134,13 +134,13 @@ pub proc foo() :i64 {
 )"));
 
     {
-        auto foo = (i64 (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+        auto foo = (i64 (*)())nkl_getSymbolAddress(mod, nk_cs2atom("foo"));
         ASSERT_TRUE(foo);
         EXPECT_EQ(foo(), 42);
     }
 
     {
-        auto foo = (i64 (*)())nkl_getSymbolAddress(mod2, nk_cs2s("foo"));
+        auto foo = (i64 (*)())nkl_getSymbolAddress(mod2, nk_cs2atom("foo"));
         ASSERT_TRUE(foo);
         EXPECT_EQ(foo(), 43);
     }
@@ -173,7 +173,7 @@ pub proc bar() {
 
     EXPECT_TRUE(nkl_linkModule(mod, mod2));
 
-    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2atom("foo"));
     ASSERT_TRUE(foo);
     foo();
 }
@@ -205,7 +205,7 @@ pub proc bar() {
 }
 )"));
 
-    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2s("foo"));
+    auto foo = (void (*)())nkl_getSymbolAddress(mod, nk_cs2atom("foo"));
     ASSERT_TRUE(foo);
     foo();
 }
@@ -234,7 +234,7 @@ pub proc hello() :i32 {
 }
 )"));
 
-    auto hello = (i32 (*)())nkl_getSymbolAddress(mod, nk_cs2s("hello"));
+    auto hello = (i32 (*)())nkl_getSymbolAddress(mod, nk_cs2atom("hello"));
     ASSERT_TRUE(hello);
     EXPECT_EQ(hello(), 42);
 }
@@ -275,7 +275,7 @@ pub proc bar() :i32 {
 }
 )"));
 
-    auto foo = (i32 (*)())nkl_getSymbolAddress(mod0, nk_cs2s("foo"));
+    auto foo = (i32 (*)())nkl_getSymbolAddress(mod0, nk_cs2atom("foo"));
     ASSERT_TRUE(foo);
     EXPECT_EQ(foo(), 12);
 }
@@ -313,3 +313,43 @@ pub proc bar() :i32 {
 //     ASSERT_TRUE(foo);
 //     foo();
 // }
+
+TEST_F(nkl_run_ir, private_name_collision) {
+    auto mod = nkl_newModuleNamed(com, nk_cs2s("A"));
+    auto mod2 = nkl_newModule(com);
+
+    EXPECT_TRUE(nkl_linkModule(mod2, mod));
+
+    COMPILE(mod, nk_cs2s(R"(
+extern "c" proc printf(:i64, ...) :i32
+
+proc bar() :i32 {
+    call printf, ("bar 0\n") -> :i32 %a
+    ret %a
+}
+
+pub proc foo() :i32 {
+    call printf, ("foo\n") -> :i32 %a
+    call bar, ()
+    ret %a
+}
+)"));
+
+    COMPILE(mod2, nk_cs2s(R"(
+extern "c" proc printf(:i64, ...) :i32
+extern proc foo() :i32
+
+proc bar() :i32 {
+    call printf, ("bar 00\n") -> :i32 %a
+    ret %a
+}
+)"));
+
+    auto foo = (i32 (*)())nkl_getSymbolAddress(mod2, nk_cs2atom("foo"));
+    ASSERT_TRUE(foo);
+    EXPECT_EQ(foo(), 4);
+
+    auto bar = (i32 (*)())nkl_getSymbolAddress(mod2, nk_cs2atom("bar"));
+    ASSERT_TRUE(bar);
+    EXPECT_EQ(bar(), 7);
+}

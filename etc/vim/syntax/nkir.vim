@@ -3,12 +3,12 @@ if exists("b:current_syntax")
 endif
 
 syn keyword nkirKeyword proc extern type data const pub local include
-syn keyword nkirKeyword nop ret jmp jmpz jmpnz
-syn keyword nkirKeyword call store load alloc mov cast
+syn keyword nkirKeyword nop ret jmp jmpz jmpnz phi
+syn keyword nkirKeyword call offset store load alloc mov cast
 syn keyword nkirKeyword add sub mul div mod and or xor lsh rsh
 syn keyword nkirKeyword cmp eq ne lt le gt ge
 syn keyword nkirKeyword comment
-syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void
+syn keyword nkirType i8 i16 i32 i64 u16 u32 u64 u8 f32 f64 void ptr
 
 syn match nkirComment    display '//.*$'
 syn match nkirFunction   display '\<[a-zA-Z_]\+[(]'me=e-1

@@ -62,7 +62,7 @@ NkIrBlockId nkir_makeBlock(NkIrProg p) {
 
 NkIrShObjId nkir_makeShObj(NkIrProg p, NkString name) {
     NkIrShObjId shobj_id{p->shobjs.size()};
-    p->shobjs.emplace_back(nk_s2stdStr(name));
+    p->shobjs.emplace_back(nk_s2std(name));
     return shobj_id;
 }
 
@@ -74,7 +74,7 @@ NkIrNativeClosure nkir_makeNativeClosure(NkIrProg p, NkIrFunct funct) {
 }
 
 void nkir_startFunct(NkIrFunct funct, NkString name, nktype_t fn_t) {
-    funct->name = nk_s2stdStr(name);
+    funct->name = nk_s2std(name);
 
     funct->fn_t = fn_t;
     funct->state = NkIrFunct_Complete;
@@ -83,7 +83,7 @@ void nkir_startFunct(NkIrFunct funct, NkString name, nktype_t fn_t) {
 }
 
 void nkir_startIncompleteFunct(NkIrFunct funct, NkString name, NktFnInfo const *fn_info) {
-    funct->name = nk_s2stdStr(name);
+    funct->name = nk_s2std(name);
 
     funct->fn_info = *fn_info;
     funct->state = NkIrFunct_Incomplete;
@@ -146,7 +146,7 @@ void nkir_startBlock(NkIrProg p, NkIrBlockId block_id, NkString name) {
     nk_assert(block_id.id < p->blocks.size() && "invalid block");
 
     auto &block = p->blocks[block_id.id];
-    block.name = nk_s2stdStr(name);
+    block.name = nk_s2std(name);
 
     p->cur_funct->blocks.emplace_back(block_id.id);
 
@@ -186,7 +186,7 @@ NkIrExtSymId nkir_makeExtSym(NkIrProg p, NkIrShObjId so, NkString name, nktype_t
     NkIrExtSymId id{p->exsyms.size()};
     p->exsyms.emplace_back(
         IrExSym{
-            .name = nk_s2stdStr(name),
+            .name = nk_s2std(name),
             .so_id = so,
             .type = type,
         });

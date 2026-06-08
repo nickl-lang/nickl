@@ -68,7 +68,7 @@
         nkda_reserve(ar, (ar)->size + _count);                               \
         nk_assert((ar)->capacity - (ar)->size >= _count && "no space left"); \
         if (_count) {                                                        \
-            memcpy(nks_end(ar), (items), _count * sizeof(*(ar)->data));      \
+            memcpy(NKS_END(ar), (items), _count * sizeof(*(ar)->data));      \
             (ar)->size += _count;                                            \
         }                                                                    \
     } while (0)
@@ -79,7 +79,7 @@
         nkda_reserve(ar, (ar)->size + _count);                          \
         _count = nk_minu(_count, (ar)->capacity - (ar)->size);          \
         if (_count) {                                                   \
-            memcpy(nks_end(ar), (items), _count * sizeof(*(ar)->data)); \
+            memcpy(NKS_END(ar), (items), _count * sizeof(*(ar)->data)); \
             (ar)->size += _count;                                       \
         }                                                               \
     } while (0)

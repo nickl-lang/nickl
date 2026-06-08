@@ -91,6 +91,16 @@ T *_nk_assignVoidPtr(T *&dst, void *src) {
 #define NK_FALLTHROUGH
 #endif
 
+#if defined(__has_attribute)
+#if __has_attribute(warn_unused_result)
+#define NK_NODISCARD __attribute__((warn_unused_result))
+#else
+#define NK_NODISCARD
+#endif
+#else
+#define NK_NODISCARD
+#endif
+
 #define _NK_NOP (void)0
 #define _NK_NOP_TOPLEVEL extern NK_UNUSED int NK_CAT(_, __LINE__)
 
@@ -138,8 +148,5 @@ inline bool operator==(NkHandle lhs, NkHandle rhs) {
 
 #define NK_DEFER_LOOP(BEGIN, END) for (int _i_ = ((BEGIN), 0); !_i_; _i_ += 1, (END))
 #define NK_DEFER_LOOP_OPT(ENABLE, BEGIN, END) for (int _i_ = !((ENABLE) && ((BEGIN), 1)); !_i_; _i_ += 1, (END))
-
-#define NK_ITERATE(TYPE, IT, SLICE) for (TYPE IT = (SLICE).data; IT < (SLICE).data + (SLICE).size; IT++)
-#define NK_INDEX(IT, SLICE) (usize)((IT) - (SLICE).data)
 
 #endif // NTK_COMMON_H_

@@ -317,7 +317,7 @@ static Interm store(Context &ctx, NkIrRef const &dst, Interm src) {
     auto const dst_type = dst.type;
     auto const src_type = src.type;
     if (nklt_sizeof(src_type)) {
-        if (src.kind == IntermKind_Instr && src.as.instr.arg[0].ref.kind == NkIrRef_None) {
+        if (src.kind == IntermKind_Instr && src.as.instr.arg[0].ref.kind == NkIrRef_Null) {
             src.as.instr.arg[0].ref = dst;
         } else {
             src = makeInstr(nkir_make_mov(ctx.ir, dst, asRef(ctx, src)), nkirt2nklt(dst_type));
@@ -746,11 +746,8 @@ static decltype(Value::as.proc) compileProc(Context &ctx, NkIrProcDescr const &d
 
         emit(ctx, nkir_make_label(createLabel(ctx, LabelName_Start)));
 
-        auto arg_names_it = descr.arg_names.data;
-        for (usize i = 0; i < descr.arg_names.size; i++) {
-            // TODO: Push param nodes to point to the correct place in the code
-            CHECK(defineParam(ctx, *arg_names_it, i));
-            arg_names_it = (NkAtom *)((u8 const *)arg_names_it + descr.arg_names.stride);
+        NK_ITERATE_STRIDED(NkAtom const *, it, descr.arg_names) {
+            CHECK(defineParam(ctx, *it, NK_INDEX_STRIDED(it, descr.arg_names)));
         }
 
         CHECK(compileStmt(ctx, body_n));
@@ -1907,7 +1904,7 @@ static Interm compileImpl(Context &ctx, NklAstNode const &node, CompileConfig co
 static Void compileStmt(Context &ctx, NklAstNode const &node) {
     DEFINE(val, compile(ctx, node));
     auto const ref = asRef(ctx, val);
-    if (ref.kind != NkIrRef_None && ref.type->size) {
+    if (ref.kind != NkIrRef_Null && ref.type->size) {
         NKSB_FIXED_BUFFER(sb, 1024);
         nk_assert(ctx.proc_stack && "no current proc");
         nkir_inspectRef(ctx.ir, ctx.proc_stack->proc, ref, nksb_getStream(&sb));

@@ -10,8 +10,8 @@ extern "C" {
 NK_EXPORT i64 nk_now_ns(void);
 
 // Time Stamp Counter
-NK_EXPORT u64 nk_getTscFreq(void);
-NK_EXPORT u64 nk_estimateTscFrequency(void);
+NK_EXPORT u64 nk_getTscFreqHz(void);
+NK_EXPORT u64 nk_estimateTscFrequencyHz(void);
 NK_EXPORT u64 nk_readTsc(void);
 
 NK_EXPORT void nk_usleep(u64 usec);

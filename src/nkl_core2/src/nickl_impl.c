@@ -72,7 +72,7 @@ void nickl_printModuleName(NkStream out, NkAtom mod) {
 
 void nickl_printSymbol(NkStream out, NkAtom mod, NkAtom sym) {
     nickl_printModuleName(out, mod);
-    nk_printf(out, "::");
+    nk_print(out, "::");
     nkir_printSymbolName(out, sym);
 }
 
@@ -85,9 +85,9 @@ bool nickl_getText(NklState nkl, NkAtom file, NkString *out_text) {
     if (found) {
         NK_LOG_STREAM_DBG {
             NkStream log = nk_log_getStream();
-            nk_printf(log, "Using cached text for file \"");
+            nk_print(log, "Using cached text for file \"");
             nkir_printName(log, "file", file);
-            nk_printf(log, "\"");
+            nk_print(log, "\"");
         }
         text = *found;
     } else {
@@ -136,6 +136,7 @@ char const *s_ir_tokens[] = {
     "include", // NklIrToken_include,
     "local",   // NklIrToken_local,
     "proc",    // NklIrToken_proc,
+    "ptr",     // NklIrToken_ptr,
     "pub",     // NklIrToken_pub,
     "type",    // NklIrToken_type,
     "void",    // NklIrToken_void,
@@ -178,14 +179,14 @@ char const *s_ir_tokens[] = {
 bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache tokens
+    NK_LOG_WRN("TODO: Cache IR tokens");
 
     NkString text;
     TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
-            &(NklLexerData){
+            &(NklLexerArgs){
                 .text = text,
                 .arena = &nkl->arena,
                 .err_str = &err_str,
@@ -197,7 +198,7 @@ bool nickl_getTokensIr(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             },
             out_tokens)) {
         nk_assert(out_tokens->size);
-        NklToken const err_token = nks_last(*out_tokens);
+        NklToken const err_token = NKS_LAST(*out_tokens);
         nickl_reportErrorLoc(
             nkl,
             (NklSourceLocation){
@@ -242,14 +243,14 @@ char const *s_ast_tokens[] = {
 bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache tokens
+    NK_LOG_WRN("TODO: Cache AST tokens");
 
     NkString text;
     TRY(nickl_getText(nkl, file, &text), false);
 
     NkString err_str = {0};
     if (!nkl_lex(
-            &(NklLexerData){
+            &(NklLexerArgs){
                 .text = text,
                 .arena = &nkl->arena,
                 .err_str = &err_str,
@@ -259,7 +260,7 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
             },
             out_tokens)) {
         nk_assert(out_tokens->size);
-        NklToken const err_token = nks_last(*out_tokens);
+        NklToken const err_token = NKS_LAST(*out_tokens);
         nickl_reportErrorLoc(
             nkl,
             (NklSourceLocation){
@@ -279,10 +280,10 @@ bool nickl_getTokensAst(NklState nkl, NkAtom file, NklTokenArray *out_tokens) {
 bool nickl_getAst(NklState nkl, NkAtom file, NklAstNodeArray *out_nodes) {
     NK_LOG_TRC("%s", __func__);
 
-    // TODO: Cache ast
+    NK_LOG_WRN("TODO: Cache AST");
 
     TRY(nkl_ast_parse(
-            &(NklAstParserData){
+            &(NklAstParserArgs){
                 .nkl = nkl,
                 .file = file,
                 .token_names = s_ast_tokens,
@@ -361,29 +362,26 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
         if (sym->kind == NkIrSymbol_Extern) {
-            nk_printf(log, "Declaring extern ");
+            nk_print(log, "Declaring extern ");
             if (sym->extrn.lib) {
                 nk_printf(log, "\"%s\" ", nk_atom2cs(sym->extrn.lib));
             }
         } else {
-            nk_printf(log, "Defining ");
+            nk_print(log, "Defining ");
         }
         nk_printf(log, "%s ", getSymbolKind(sym));
         nickl_printSymbol(log, mod->name, sym->name);
     }
 
     NK_LOG_STREAM_INF {
-        NkArena *scratch = &mod->com->nkl->scratch;
-        NK_ARENA_SCOPE(scratch) {
-            NkStream log = nk_log_getStream();
-            nk_printf(log, "symbol:\n");
-            nkir_inspectSymbol(log, scratch, sym);
-        }
+        NkStream log = nk_log_getStream();
+        nk_print(log, "symbol:\n");
+        nkir_inspectSymbol(log, sym);
     }
 
     // TODO: Check for symbol conflicts
 
-    nkir_moduleDefineSymbol(mod->ir, sym);
+    NkIrSymbolDynArray_insertItem(&mod->ir, *sym);
 
     if (sym->kind == NkIrSymbol_Extern) {
         NkAtom *found = NkAtomMap_find(&mod->extern_syms, sym->name);
@@ -415,19 +413,19 @@ bool nickl_defineSymbol(NklModule mod, NkIrSymbol const *sym) {
 bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sym) {
     NK_LOG_TRC("%s", __func__);
 
-    NklState nkl = dst_mod->com->nkl;
-
     if (sym->vis != NkIrVisibility_Default) {
         return true;
     }
 
     NK_LOG_STREAM_DBG {
         NkStream log = nk_log_getStream();
-        nk_printf(log, "Linking ");
+        nk_print(log, "Linking ");
         nickl_printSymbol(log, dst_mod->name, sym->name);
-        nk_printf(log, " <- ");
+        nk_print(log, " <- ");
         nickl_printSymbol(log, src_mod->name, sym->name);
     }
+
+    NklState nkl = dst_mod->com->nkl;
 
     {
         NkAtom *found = NkAtomMap_find(&dst_mod->extern_syms, sym->name);
@@ -448,16 +446,17 @@ bool nickl_linkSymbol(NklModule dst_mod, NklModule src_mod, NkIrSymbol const *sy
 
     {
         // TODO: Verify linked symbol compatibility
-        NkIrSymbol const *found = nkir_findSymbol(dst_mod->ir, sym->name);
+        NkIrSymbol const *found = NkIrSymbolDynArray_findItem(&dst_mod->ir, sym->name);
         if (found && found->kind != NkIrSymbol_Extern) {
-            NK_ARENA_SCOPE(&nkl->scratch) {
-                NkStringBuilder sb = {.alloc = nk_arena_getAllocator(&nkl->scratch)};
+            NkArena *scratch = nk_arena_getScratch(NULL);
+            NK_ARENA_SCOPE(scratch) {
+                NkStringBuilder sb = {.alloc = nk_arena_getAllocator(scratch)};
                 NkStream err = nksb_getStream(&sb);
-                nk_printf(err, "Failed to link ");
+                nk_print(err, "Failed to link ");
                 nickl_printSymbol(err, src_mod->name, sym->name);
-                nk_printf(err, " to ");
+                nk_print(err, " to ");
                 nickl_printSymbol(err, dst_mod->name, sym->name);
-                nk_printf(err, ", it's already defined");
+                nk_print(err, ", it's already defined");
                 nickl_reportError(nkl, NKS_FMT, NKS_ARG(sb));
             }
             return false;

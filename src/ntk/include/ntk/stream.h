@@ -35,7 +35,7 @@ NK_INLINE i32 nk_stream_flush(NkStream out) {
     return out.proc(out.data, NULL, 0, NkStreamMode_Flush);
 }
 
-NK_INLINE i32 nk_stream_writeCStr(NkStream out, char const *str) {
+NK_INLINE i32 nk_print(NkStream out, char const *str) {
     return nk_stream_write(out, str, strlen(str));
 }
 

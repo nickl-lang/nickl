@@ -22,7 +22,7 @@ typedef NkSlice(NklAstNode const) NklAstNodeArray;
 typedef NkDynArray(NklAstNode) NklAstNodeDynArray;
 
 typedef struct {
-    NkAtom file; // TODO: Move it, it's unused in ast
+    NkAtom file;
     NkString text;
     NklTokenArray tokens;
     NklAstNodeArray nodes;

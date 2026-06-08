@@ -36,9 +36,9 @@ typedef struct {
     u32 keywords_base;
     u32 operators_base;
     u32 tags_base;
-} NklLexerData;
+} NklLexerArgs;
 
-bool nkl_lex(NklLexerData const *data, NklTokenArray *out_tokens);
+bool nkl_lex(NklLexerArgs const *args, NklTokenArray *out_tokens);
 
 #ifdef __cplusplus
 }

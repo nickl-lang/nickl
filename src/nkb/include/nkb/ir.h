@@ -22,7 +22,7 @@ typedef enum {
 char const *nkirOpcodeName(u8 code);
 
 typedef enum {
-    NkIrRef_None = 0,
+    NkIrRef_Null = 0,
     NkIrRef_Frame,
     NkIrRef_Arg,
     NkIrRef_Data,

@@ -12,7 +12,7 @@ static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, i32 cpu
     return syscall(SYS_perf_event_open, hw_event, pid, cpu, group_fd, flags);
 }
 
-u64 nk_getTscFreq(void) {
+u64 nk_getTscFreqHz(void) {
     struct perf_event_attr pe = {0};
     pe.type = PERF_TYPE_HARDWARE;
     pe.size = sizeof(struct perf_event_attr);
@@ -44,7 +44,7 @@ u64 nk_getTscFreq(void) {
 
     // Slow path
     if (!tsc_freq) {
-        tsc_freq = nk_estimateTscFrequency();
+        tsc_freq = nk_estimateTscFrequencyHz();
     }
 
     return tsc_freq;

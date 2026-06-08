@@ -1,0 +1,10 @@
+(def foo (proc foo [(param (i64) a) (param (i64) b)] (void) []))
+(call foo [1 2 3])
+
+/* @error
+error: expected 2 arguments, got 3
+@enderror */
+
+/* @retcode
+1
+@endretcode */

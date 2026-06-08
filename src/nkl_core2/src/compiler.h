@@ -1,0 +1,4 @@
+#ifndef NKL_CORE_IR_COMPILER_H_
+#define NKL_CORE_IR_COMPILER_H_
+
+#endif // NKL_CORE_IR_COMPILER_H_

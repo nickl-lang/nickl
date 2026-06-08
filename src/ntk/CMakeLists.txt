@@ -1,6 +1,6 @@
 set(LIB ntk)
 
-set(SOURCES
+add_library(${LIB} SHARED
     src/allocator.c
     src/arena.c
     src/atom.c
@@ -19,7 +19,7 @@ set(SOURCES
     )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    list(APPEND SOURCES
+    target_sources(${LIB} PRIVATE
         src/os/posix/dl.c
         src/os/posix/error.c
         src/os/posix/file.c
@@ -33,20 +33,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND SOURCES
+    target_sources(${LIB} PRIVATE
         src/os/linux/dl.c
         src/os/linux/path.c
         src/os/linux/syscall.c
         src/os/linux/time.c
         )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    list(APPEND SOURCES
+    target_sources(${LIB} PRIVATE
         src/os/darwin/dl.c
         src/os/darwin/path.c
         src/os/darwin/time.c
         )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    list(APPEND SOURCES
+    target_sources(${LIB} PRIVATE
         src/os/windows/dl.c
         src/os/windows/error.c
         src/os/windows/file.c
@@ -60,10 +60,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} system is not supported")
 endif()
-
-add_library(${LIB} SHARED
-    ${SOURCES}
-    )
 
 if(ENABLE_LOGGING)
     target_compile_definitions(${LIB}

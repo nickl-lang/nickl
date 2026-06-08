@@ -1,0 +1,10 @@
+(var a (i32))
+(assign a (cast (i64) 42))
+
+/* @error
+error: cannot convert a value of type `i64` to `i32`
+@enderror */
+
+/* @retcode
+1
+@endretcode */

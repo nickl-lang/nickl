@@ -75,8 +75,7 @@ echo >&2 "INFO: Running in docker container '$CONTAINER_NAME'"
 
 [ -t 0 ] && TTY_ARG="--tty"
 
-CMD="$*"
-[ -z "$CMD" ] && CMD=bash
+[ $# -eq 0 ] && set -- bash
 
 docker exec \
   $TTY_ARG \
@@ -87,4 +86,4 @@ docker exec \
   --env DISPLAY \
   --env TERM \
   "$CONTAINER_NAME" \
-  $CMD
+  "$@"

@@ -1,0 +1,9 @@
+(call 42 ())
+
+/* @error
+error: procedure expected
+@enderror */
+
+/* @retcode
+1
+@endretcode */

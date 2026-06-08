@@ -1,0 +1,66 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+(extern "c" (proc puts   [(param (ptr (const) (i8)))]         (i32)))
+
+(var yay () (true))
+(var nay () (false))
+
+(if (and nay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (and nay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (and yay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (and yay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (or  nay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (or  nay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (or  yay nay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (or  yay yay) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+
+(call puts [""])
+
+(if (not (and nay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (and nay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (and yay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (and yay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (not (or  nay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // yay
+(if (not (or  nay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (not (or  yay nay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+(if (not (or  yay yay)) (call printf ["yay\n"]) (call printf ["nay\n"])) // nay
+
+(call puts [""])
+
+(if (and (eq (call printf ["one "])  4) (eq (call printf ["two "])  4)) (call printf ["yay\n"])) // one two yay
+(if (and (eq (call printf ["one "])  4) (eq (call printf ["nay\n"]) 0)) (call printf ["nay\n"])) // one nay
+(if (and (eq (call printf ["nay\n"]) 0) (eq (call printf ["two "])  4)) (call printf ["nay\n"])) // nay
+
+(call puts [""])
+
+(if (or  (eq (call printf ["nay "])  0) (eq (call printf ["two "])  4)) (call printf ["yay\n"])) // nay two yay
+(if (or  (eq (call printf ["nay "])  0) (eq (call printf ["nay\n"]) 0)) (call printf ["nay\n"])) // nay nay
+(if (or  (eq (call printf ["one "])  4) (eq (call printf ["nay\n"]) 0)) (call printf ["yay\n"])) // one yay
+
+/* @output
+nay
+nay
+nay
+yay
+nay
+yay
+yay
+yay
+
+yay
+yay
+yay
+nay
+yay
+nay
+nay
+nay
+
+one two yay
+one nay
+nay
+
+nay two yay
+nay nay
+one yay
+
+@endoutput */

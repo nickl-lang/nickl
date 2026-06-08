@@ -11,9 +11,9 @@ typedef struct {
     NklModule mod;
     NkAtom file;
     char const **token_names;
-} NklIrParserData;
+} NklIrParserArgs;
 
-bool nkl_ir_parse(NklIrParserData const *data);
+bool nkl_ir_parse(NklIrParserArgs const *args);
 
 #ifdef __cplusplus
 }

@@ -29,7 +29,7 @@ typedef struct NkErrorState {
 NK_EXPORT void nk_error_pushState(NkErrorState *state);
 NK_EXPORT void nk_error_popState(void);
 
-NK_EXPORT void nk_error_freeState(void);
+NK_EXPORT void nk_error_freeState(NkErrorState *state);
 
 NK_EXPORT usize nk_error_count(void);
 

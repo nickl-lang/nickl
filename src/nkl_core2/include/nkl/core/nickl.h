@@ -54,6 +54,7 @@ NK_EXPORT bool nkl_linkModule(NklModule dst_mod, NklModule src_mod);
 NK_EXPORT bool nkl_addLibraryAlias(NklCompiler com, NkString alias, NkString lib);
 
 NK_EXPORT bool nkl_compileFile(NklModule mod, NkString path);
+NK_EXPORT bool nkl_TMP_compileAndRunFile(NklModule mod, NkString path);
 
 NK_EXPORT bool nkl_compileFileIr(NklModule mod, NkString path);  // *.nkir
 NK_EXPORT bool nkl_compileFileAst(NklModule mod, NkString path); // *.nkst
@@ -65,7 +66,7 @@ NK_EXPORT bool nkl_compileStringNkl(NklModule mod, NkString src);
 
 NK_EXPORT bool nkl_exportModule(NklModule mod, NkString out_file, NklOutputKind kind);
 
-NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkString name);
+NK_EXPORT void *nkl_getSymbolAddress(NklModule mod, NkAtom sym);
 
 NK_EXPORT NklError const *nkl_getErrors(NklState nkl);
 

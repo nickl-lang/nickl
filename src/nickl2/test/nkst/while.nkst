@@ -1,0 +1,17 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(var i () 0)
+
+(while (lt i 5) [
+    (call printf ["%zi\n" i])
+    (assign i (add i 1))
+])
+
+/* @output
+0
+1
+2
+3
+4
+
+@endoutput */

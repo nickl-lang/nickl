@@ -1,0 +1,9 @@
+a
+
+/* @error
+error: undeclared identifier `a`
+@enderror */
+
+/* @retcode
+1
+@endretcode */

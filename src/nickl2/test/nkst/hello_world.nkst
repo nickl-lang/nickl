@@ -1,0 +1,8 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(call printf ["Hello, World!\n"])
+
+/* @output
+Hello, World!
+
+@endoutput */

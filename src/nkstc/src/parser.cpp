@@ -37,10 +37,10 @@ struct ParseEngine {
     u32 m_cur_token_idx{};
 
     Void parse() {
-        nk_assert(m_tokens.size && nks_last(m_tokens).id == t_eof && "ill-formed token stream");
+        nk_assert(m_tokens.size && NKS_LAST(m_tokens).id == t_eof && "ill-formed token stream");
 
         nkda_append(m_nodes, NklAstNode{0, m_cur_token_idx, 0, 0});
-        auto &node = nks_last(*m_nodes);
+        auto &node = NKS_LAST(*m_nodes);
         node.id = nk_cs2atom("list");
         node.total_children = m_nodes->size;
         CHECK(parseNodeList(node));
@@ -55,7 +55,7 @@ struct ParseEngine {
 
     Void parseNode() {
         nkda_append(m_nodes, NklAstNode{0, m_cur_token_idx, 0, 0});
-        auto &node = nks_last(*m_nodes);
+        auto &node = NKS_LAST(*m_nodes);
 
         if (accept(t_par_l)) {
             if (!accept(t_par_r)) {
@@ -122,7 +122,7 @@ struct ParseEngine {
         auto const len = curToken()->len - 2;
         getToken();
 
-        return nks_copyNt(alloc, {data, len});
+        return nks_dupNt(alloc, {data, len});
     }
 
     void getToken() {

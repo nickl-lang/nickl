@@ -1,0 +1,29 @@
+(extern "c" (proc printf [(param (ptr (const) (i8))) ("...")] (i32)))
+
+(def Vec2 (struct [
+    (param (f64) x)
+    (param (f64) y)
+]))
+
+(def dot (proc dot [(param Vec2 lhs) (param Vec2 rhs)] (f64) [
+    (return (add (mul (member lhs x) (member rhs x)) (mul (member lhs y) (member rhs y))))
+]))
+
+(var a Vec2)
+(var b Vec2)
+
+(assign (member a x) 1.0)
+(assign (member a y) 2.0)
+
+(assign (member b x) 2.0)
+(assign (member b y) -1.0)
+
+(call printf ["{%g, %g} dot {%g, %g} = %g\n"
+    (member a x) (member a y) (member b x) (member b y)
+    (call dot [a b])
+    ])
+
+/* @output
+{1, 2} dot {2, -1} = 0
+
+@endoutput */

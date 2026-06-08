@@ -1,0 +1,23 @@
+#ifndef NKL_CORE_NODES_H_
+#define NKL_CORE_NODES_H_
+
+#include "ntk/utils.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {
+    n_null = 0,
+
+#define XN(N, T) NK_CAT(n_, N),
+#include "nodes.inl"
+
+    NklAstNodeId_Count,
+} NklAstNodeId;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NKL_CORE_NODES_H_
