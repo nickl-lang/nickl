@@ -156,7 +156,7 @@ NkLlvmTarget nk_llvm_getJitTarget(NkLlvmJitState jit) {
     return tm_wrap(jit->tm);
 }
 
-NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState NK_UNUSED llvm, NkLlvmJitState jit) {
+NkLlvmJitDylib nk_llvm_createJitDylib(NK_UNUSED NkLlvmState llvm, NkLlvmJitState jit) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(llvm && jit, NULL);
@@ -175,7 +175,7 @@ NkLlvmJitDylib nk_llvm_createJitDylib(NkLlvmState NK_UNUSED llvm, NkLlvmJitState
     return jd_wrap(jd);
 }
 
-NkLlvmTarget nk_llvm_createTarget(NkLlvmState NK_UNUSED llvm, char const *triple) {
+NkLlvmTarget nk_llvm_createTarget(NK_UNUSED NkLlvmState llvm, char const *triple) {
     NK_LOG_TRC("%s", __func__);
 
     TRY(llvm && triple, NULL);

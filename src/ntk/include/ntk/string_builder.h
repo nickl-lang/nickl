@@ -88,11 +88,11 @@ inline void nksb_tryAppendCStr(NkStringBuilder *sb, char const *str) {
 
 #else //__cplusplus
 
-#define nksb_appendStr _nksb_appendStr
-#define nksb_tryAppendStr _nksb_tryAppendStr
+    #define nksb_appendStr _nksb_appendStr
+    #define nksb_tryAppendStr _nksb_tryAppendStr
 
-#define nksb_appendCStr _nksb_appendCStr
-#define nksb_tryAppendCStr _nksb_tryAppendCStr
+    #define nksb_appendCStr _nksb_appendCStr
+    #define nksb_tryAppendCStr _nksb_tryAppendCStr
 
 #endif //__cplusplus
 

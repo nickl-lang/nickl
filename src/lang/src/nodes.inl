@@ -1,11 +1,11 @@
 #ifndef X
-#define X(...)
+    #define X(...)
 #endif
 
 // id
 
 #ifndef N
-#define N(...) X(__VA_ARGS__)
+    #define N(...) X(__VA_ARGS__)
 #endif
 
 N(none) // ()
@@ -38,11 +38,11 @@ N(void)
 #undef N
 
 #ifndef U
-#define U(...) X(__VA_ARGS__)
+    #define U(...) X(__VA_ARGS__)
 #endif
 
-U(compl ) // (arg: node)
-U(not )
+U(compl) // (arg: node)
+U(not)
 U(uminus)
 U(uplus)
 
@@ -51,7 +51,7 @@ U(deref) // (ptr: node)
 
 U(defer_stmt) // (expr: node)
 
-U(return ) // (expr: node)
+U(return) // (expr: node)
 
 U(ptr_type) // (target_type: node)
 U(const_ptr_type)
@@ -63,7 +63,7 @@ U(run)
 #undef U
 
 #ifndef B
-#define B(...) X(__VA_ARGS__)
+    #define B(...) X(__VA_ARGS__)
 #endif
 
 B(add) // (lhs: node, rhs: node)

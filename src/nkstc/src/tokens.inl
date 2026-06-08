@@ -1,5 +1,5 @@
 #ifndef OP
-#define OP(...)
+    #define OP(...)
 #endif
 
 // id, text
@@ -14,7 +14,7 @@ OP(par_r, ")")
 #undef OP
 
 #ifndef SP
-#define SP(...)
+    #define SP(...)
 #endif
 
 // id, text

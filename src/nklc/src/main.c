@@ -292,6 +292,6 @@ static int parseArgsAndRun(char **argv) {
     return ret_code;
 }
 
-int main(int NK_UNUSED argc, char **argv) {
+int main(NK_UNUSED int argc, char **argv) {
     return parseArgsAndRun(argv);
 }

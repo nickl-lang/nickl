@@ -18,18 +18,18 @@ NK_EXPORT NkString nk_path_getExtension(NkString path);
 
 #if defined(_WIN32)
 
-#define NK_MAX_PATH 260
-#define NK_PATH_SEPARATOR '\\'
+    #define NK_MAX_PATH 260
+    #define NK_PATH_SEPARATOR '\\'
 
 #elif defined(__APPLE__)
 
-#define NK_MAX_PATH 1024
-#define NK_PATH_SEPARATOR '/'
+    #define NK_MAX_PATH 1024
+    #define NK_PATH_SEPARATOR '/'
 
 #else
 
-#define NK_MAX_PATH 4096
-#define NK_PATH_SEPARATOR '/'
+    #define NK_MAX_PATH 4096
+    #define NK_PATH_SEPARATOR '/'
 
 #endif
 

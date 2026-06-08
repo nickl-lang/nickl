@@ -11,7 +11,6 @@
 #include "ntk/common.h"
 #include "ntk/dyn_array.h"
 #include "ntk/hash_tree_array.h"
-#include "ntk/list.h"
 #include "ntk/log.h"
 #include "ntk/profiler.h"
 #include "ntk/slice.h"
@@ -1352,10 +1351,10 @@ static Value compileMemoryStore(Context *ctx, Value dst, Value src) {
     }
 }
 
-static NklAny compileComptimeConst(Context *ctx, NklAstNode const *node) {
-    reportError(ctx, node, "TODO: compileComptimeConst is not implemented");
-    return (NklAny){0};
-}
+// static NklAny compileComptimeConst(Context *ctx, NklAstNode const *node) {
+//     reportError(ctx, node, "TODO: compileComptimeConst is not implemented");
+//     return (NklAny){0};
+// }
 
 static NklType promote(Context *ctx, NklType type) {
     if (type->tclass == NklType_Numeric)
@@ -1783,13 +1782,13 @@ static Value compile(Context *ctx, NklAstNode const *node) {
     return (Value){0};
 }
 
-static void pushScope(Context *ctx) {
-    Scope *scope = nk_arena_allocT(ctx->scratch, Scope);
-    *scope = (Scope){
-        .names = {.alloc = nk_arena_getAllocator(ctx->scratch)},
-    };
-    nk_list_push(ctx->scope_stack, scope);
-}
+// static void pushScope(Context *ctx) {
+//     Scope *scope = nk_arena_allocT(ctx->scratch, Scope);
+//     *scope = (Scope){
+//         .names = {.alloc = nk_arena_getAllocator(ctx->scratch)},
+//     };
+//     nk_list_push(ctx->scope_stack, scope);
+// }
 
 static bool compileProc(NklModule mod, NklSource const *src, Entity *proc_e);
 

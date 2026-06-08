@@ -52,7 +52,7 @@ NklType nkl_type_getIncomplete(NklState nkl) {
     return type;
 }
 
-void nkl_type_complete(NklState NK_UNUSED nkl, NklType dst, NklType src) {
+void nkl_type_complete(NK_UNUSED NklState nkl, NklType dst, NklType src) {
     nk_assert(!nkl_type_isComplete(dst));
     nk_assert(nkl_type_isComplete(src));
     *(NklType_T *)dst = *src;
@@ -164,7 +164,7 @@ NklType nkl_type_getAggregate(NklState nkl, NklTypeStridedArray types) {
     return type;
 }
 
-static void completeArray(NklState NK_UNUSED nkl, NklType_T *type, NklType elem_t, usize count) {
+static void completeArray(NK_UNUSED NklState nkl, NklType_T *type, NklType elem_t, usize count) {
     NK_LOG_TRC("%s", __func__);
 
     NklTypeStorage *st = &nkl->types;
@@ -224,7 +224,7 @@ NklType nkl_type_getArray(NklState nkl, NklType elem_t, usize count) {
     return type;
 }
 
-static void completeBool(NklState NK_UNUSED nkl, NklType_T *type) {
+static void completeBool(NK_UNUSED NklState nkl, NklType_T *type) {
     NK_LOG_TRC("%s", __func__);
 
     *type = (NklType_T){
@@ -268,7 +268,7 @@ NklType nkl_type_getBool(NklState nkl) {
     return type;
 }
 
-static void completeNumeric(NklState NK_UNUSED nkl, NklType_T *type, NkIrNumericValueType value_type) {
+static void completeNumeric(NK_UNUSED NklState nkl, NklType_T *type, NkIrNumericValueType value_type) {
     NK_LOG_TRC("%s", __func__);
 
     *type = (NklType_T){
@@ -317,7 +317,7 @@ NklType nkl_type_getNumeric(NklState nkl, NkIrNumericValueType value_type) {
     return type;
 }
 
-static void completePointer(NklState NK_UNUSED nkl, NklType_T *type, usize word_size, NklType target_t, bool is_const) {
+static void completePointer(NK_UNUSED NklState nkl, NklType_T *type, usize word_size, NklType target_t, bool is_const) {
     NK_LOG_TRC("%s", __func__);
 
     *type = (NklType_T){
@@ -483,7 +483,7 @@ NklType nkl_type_getStruct(NklState nkl, NklFieldStridedArray fields) {
     return type;
 }
 
-static void completeTyperef(NklState NK_UNUSED nkl, NklType_T *type, usize word_size) {
+static void completeTyperef(NK_UNUSED NklState nkl, NklType_T *type, usize word_size) {
     NK_LOG_TRC("%s", __func__);
 
     *type = (NklType_T){
@@ -527,7 +527,7 @@ NklType nkl_type_getTyperef(NklState nkl, usize word_size) {
     return type;
 }
 
-static void completeVoid(NklState NK_UNUSED nkl, NklType_T *type) {
+static void completeVoid(NK_UNUSED NklState nkl, NklType_T *type) {
     NK_LOG_TRC("%s", __func__);
 
     *type = (NklType_T){

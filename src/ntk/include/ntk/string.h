@@ -71,10 +71,10 @@ NK_EXPORT NkString nk_vtsprintf(NkArena *arena, char const *fmt, va_list ap);
 
 #ifdef __cplusplus
 
-#include <functional>
-#include <iosfwd>
-#include <string>
-#include <string_view>
+    #include <functional>
+    #include <iosfwd>
+    #include <string>
+    #include <string_view>
 
 inline std::string_view nk_s2view(NkString str) {
     return std::string_view{str.data, str.size};

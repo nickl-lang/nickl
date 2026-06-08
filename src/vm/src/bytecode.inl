@@ -1,9 +1,9 @@
 #ifndef X
-#define X(...)
+    #define X(...)
 #endif
 
 #ifndef XE
-#define XE(NAME, VAR) X(NAME##_##VAR)
+    #define XE(NAME, VAR) X(NAME##_##VAR)
 #endif
 
 X(nop)
@@ -28,8 +28,8 @@ XE(jmpnz, 64)
 X(cast)
 
 #ifndef CAST
-#define CAST_X(TYPE, VALUE_TYPE, TO) XE(cast, TYPE##_to_##TO)
-#define CAST(TO) NUMERIC_ITERATE(CAST_X, TO)
+    #define CAST_X(TYPE, VALUE_TYPE, TO) XE(cast, TYPE##_to_##TO)
+    #define CAST(TO) NUMERIC_ITERATE(CAST_X, TO)
 #endif
 
 // TODO Figure out a way to compress CAST with NUMERIC_ITERATE
@@ -59,22 +59,22 @@ XE(mov, 64)
 X(lea)
 
 #ifndef NUM
-#define NUM_IT(TYPE, VALUE_TYPE, NAME) XE(NAME, TYPE)
-#define NUM(NAME) \
-    X(NAME)       \
-    NUMERIC_ITERATE(NUM_IT, NAME)
+    #define NUM_IT(TYPE, VALUE_TYPE, NAME) XE(NAME, TYPE)
+    #define NUM(NAME) \
+        X(NAME)       \
+        NUMERIC_ITERATE(NUM_IT, NAME)
 #endif
 
 #ifndef INT
-#define INT_IT(TYPE, VALUE_TYPE, NAME) XE(NAME, TYPE)
-#define INT(NAME) \
-    X(NAME)       \
-    NUMERIC_ITERATE_INT(INT_IT, NAME)
+    #define INT_IT(TYPE, VALUE_TYPE, NAME) XE(NAME, TYPE)
+    #define INT(NAME) \
+        X(NAME)       \
+        NUMERIC_ITERATE_INT(INT_IT, NAME)
 #endif
 
 NUM(neg)
-INT(compl )
-NUM(not )
+INT(compl)
+NUM(not)
 
 NUM(add)
 NUM(sub)

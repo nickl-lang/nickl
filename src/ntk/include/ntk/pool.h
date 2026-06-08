@@ -53,23 +53,23 @@
 
 #ifdef __cplusplus
 
-#include <memory>
+    #include <memory>
 
-#define NK_POOL_SHARED_PROTO_(TPool, TItem) std::shared_ptr<TItem> TPool##_allocShared(TPool *pool)
+    #define NK_POOL_SHARED_PROTO_(TPool, TItem) std::shared_ptr<TItem> TPool##_allocShared(TPool *pool)
 
-#define NK_POOL_SHARED_IMPL_(TPool, TItem)                                       \
-    std::shared_ptr<TItem> TPool##_allocShared(TPool *pool) {                    \
-        return std::shared_ptr<TItem>{TPool##_alloc(pool), [pool](TItem *item) { \
-                                          TPool##_release(pool, item);           \
-                                      }};                                        \
-    }                                                                            \
-                                                                                 \
-    _NK_NOP_TOPLEVEL
+    #define NK_POOL_SHARED_IMPL_(TPool, TItem)                                       \
+        std::shared_ptr<TItem> TPool##_allocShared(TPool *pool) {                    \
+            return std::shared_ptr<TItem>{TPool##_alloc(pool), [pool](TItem *item) { \
+                                              TPool##_release(pool, item);           \
+                                          }};                                        \
+        }                                                                            \
+                                                                                     \
+        _NK_NOP_TOPLEVEL
 
 #else // __cplusplus
 
-#define NK_POOL_SHARED_PROTO_(TPool, TItem) _NK_NOP_TOPLEVEL
-#define NK_POOL_SHARED_IMPL_(TPool, TItem) _NK_NOP_TOPLEVEL
+    #define NK_POOL_SHARED_PROTO_(TPool, TItem) _NK_NOP_TOPLEVEL
+    #define NK_POOL_SHARED_IMPL_(TPool, TItem) _NK_NOP_TOPLEVEL
 
 #endif //__cplusplus
 

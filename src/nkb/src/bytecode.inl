@@ -1,46 +1,46 @@
 #ifndef OP
-#define OP(NAME)
+    #define OP(NAME)
 #endif
 
 #ifndef OPX
-#define OPX(NAME, EXT) OP(NAME##_##EXT)
+    #define OPX(NAME, EXT) OP(NAME##_##EXT)
 #endif
 
 #ifndef SIZ_OP
-#define SIZ_OP(NAME) \
-    OP(NAME)         \
-    OPX(NAME, 8)     \
-    OPX(NAME, 16)    \
-    OPX(NAME, 32)    \
-    OPX(NAME, 64)
+    #define SIZ_OP(NAME) \
+        OP(NAME)         \
+        OPX(NAME, 8)     \
+        OPX(NAME, 16)    \
+        OPX(NAME, 32)    \
+        OPX(NAME, 64)
 #endif
 
 #ifndef INT_OP
-#define INT_OP(NAME) \
-    OP(NAME)         \
-    OPX(NAME, i8)    \
-    OPX(NAME, u8)    \
-    OPX(NAME, i16)   \
-    OPX(NAME, u16)   \
-    OPX(NAME, i32)   \
-    OPX(NAME, u32)   \
-    OPX(NAME, i64)   \
-    OPX(NAME, u64)
+    #define INT_OP(NAME) \
+        OP(NAME)         \
+        OPX(NAME, i8)    \
+        OPX(NAME, u8)    \
+        OPX(NAME, i16)   \
+        OPX(NAME, u16)   \
+        OPX(NAME, i32)   \
+        OPX(NAME, u32)   \
+        OPX(NAME, i64)   \
+        OPX(NAME, u64)
 #endif
 
 #ifndef FP2I_OP
-#define FP2I_OP INT_OP
+    #define FP2I_OP INT_OP
 #endif
 
 #ifndef NUM_OP
-#define NUM_OP(NAME) \
-    INT_OP(NAME)     \
-    OPX(NAME, f32)   \
-    OPX(NAME, f64)
+    #define NUM_OP(NAME) \
+        INT_OP(NAME)     \
+        OPX(NAME, f32)   \
+        OPX(NAME, f64)
 #endif
 
 #ifndef BOOL_NUM_OP
-#define BOOL_NUM_OP(NAME) NUM_OP(NAME)
+    #define BOOL_NUM_OP(NAME) NUM_OP(NAME)
 #endif
 
 OP(nop)

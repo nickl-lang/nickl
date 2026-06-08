@@ -1,5 +1,5 @@
 #ifndef OP
-#define OP(...)
+    #define OP(...)
 #endif
 
 // id, text
@@ -69,7 +69,7 @@ OP(tilde, "~")
 #undef OP
 
 #ifndef KW
-#define KW(...)
+    #define KW(...)
 #endif
 
 // id
@@ -95,7 +95,7 @@ KW(if)
 KW(import)
 KW(in)
 KW(null)
-KW(return )
+KW(return)
 KW(struct)
 KW(true)
 KW(union)
@@ -122,7 +122,7 @@ KW(void)
 #undef KW
 
 #ifndef SP
-#define SP(...)
+    #define SP(...)
 #endif
 
 // id, text

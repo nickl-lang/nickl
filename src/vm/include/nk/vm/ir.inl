@@ -1,9 +1,9 @@
 #ifndef X
-#define X(...)
+    #define X(...)
 #endif
 
 #ifndef I
-#define I(...) X(__VA_ARGS__)
+    #define I(...) X(__VA_ARGS__)
 #endif
 
 I(nop)   // nop
@@ -24,21 +24,21 @@ I(call) // $dst := call %fn_id $args
 #undef I
 
 #ifndef U
-#define U(...) X(__VA_ARGS__)
+    #define U(...) X(__VA_ARGS__)
 #endif
 
 U(mov) // $dst := mov $arg
 U(lea) // $dst := lea $arg
 
-U(neg)    // $dst := neg $arg
-U(compl ) // $dst := compl $arg
+U(neg)   // $dst := neg $arg
+U(compl) // $dst := compl $arg
 
-U(not ) // $dst := not $arg
+U(not) // $dst := not $arg
 
 #undef U
 
 #ifndef B
-#define B(...) X(__VA_ARGS__)
+    #define B(...) X(__VA_ARGS__)
 #endif
 
 B(add) // $dst := add $lhs $rhs

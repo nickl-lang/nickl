@@ -82,10 +82,10 @@ void NKS_COPY_STRIDED(NkAllocator alloc, TDst *dst, TSrc src) {
     _NKS_COPY_STRIDED(alloc, dst, src);
 }
 
-#define nk_iterate(slice)         \
-    _NkIterate<decltype(slice)> { \
-        slice                     \
-    }
+    #define nk_iterate(slice)         \
+        _NkIterate<decltype(slice)> { \
+            slice                     \
+        }
 
 template <class TSlice>
 struct _NkIterate {
@@ -100,8 +100,8 @@ struct _NkIterate {
 
 #else // __cplusplus
 
-#define NKS_COPY _NKS_COPY
-#define NKS_COPY_STRIDED _NKS_COPY_STRIDED
+    #define NKS_COPY _NKS_COPY
+    #define NKS_COPY_STRIDED _NKS_COPY_STRIDED
 
 #endif // __cplusplus
 

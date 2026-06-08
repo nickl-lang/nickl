@@ -19,7 +19,7 @@
 #define NKDA_INIT(_alloc) .data = NULL, .size = 0, .capacity = 0, .alloc = (_alloc)
 
 #ifndef NKDA_INITIAL_CAPACITY
-#define NKDA_INITIAL_CAPACITY 16
+    #define NKDA_INITIAL_CAPACITY 16
 #endif // NKDA_INITIAL_CAPACITY
 
 #define _nkda_maybeGrow(ar, cap)                                                              \
@@ -104,8 +104,8 @@
 
 #ifdef __cplusplus
 
-#include <type_traits>
-#include <utility>
+    #include <type_traits>
+    #include <utility>
 
 template <class TAr>
 void nkda_reserve(TAr *ar, usize cap) {
@@ -142,14 +142,14 @@ void nkda_clear(TAr *ar) {
 
 #else // __cplusplus
 
-#define nkda_reserve _nkda_reserve
-#define nkda_append _nkda_append
-#define nkda_tryAppend _nkda_tryAppend
-#define nkda_appendMany _nkda_appendMany
-#define nkda_tryAppendMany _nkda_tryAppendMany
-#define nkda_free _nkda_free
-#define nkda_pop _nkda_pop
-#define nkda_clear _nkda_clear
+    #define nkda_reserve _nkda_reserve
+    #define nkda_append _nkda_append
+    #define nkda_tryAppend _nkda_tryAppend
+    #define nkda_appendMany _nkda_appendMany
+    #define nkda_tryAppendMany _nkda_tryAppendMany
+    #define nkda_free _nkda_free
+    #define nkda_pop _nkda_pop
+    #define nkda_clear _nkda_clear
 
 #endif // __cplusplus
 

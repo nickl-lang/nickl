@@ -112,7 +112,7 @@ static int run(RunInfo const info) {
     return 0;
 }
 
-int main(int NK_UNUSED argc, char **argv) {
+int main(NK_UNUSED int argc, char **argv) {
     RunInfo run_info = {0};
 
     bool help = false;

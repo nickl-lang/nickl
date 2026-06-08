@@ -40,15 +40,15 @@ struct Void {};
 #define APPEND(AR, VAL) CHECK(nkda_append((AR), (VAL)))
 
 #ifndef SCNi8
-#define SCNi8 "hhi"
+    #define SCNi8 "hhi"
 #endif // SCNi8
 
 #ifndef SCNu8
-#define SCNu8 "hhu"
+    #define SCNu8 "hhu"
 #endif // SCNu8
 
 #ifndef SCNx8
-#define SCNx8 "hhx"
+    #define SCNx8 "hhx"
 #endif // SCNx8
 
 #define SCNf32 "f"

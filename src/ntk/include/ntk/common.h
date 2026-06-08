@@ -25,15 +25,15 @@ typedef size_t usize;
 typedef i64 isize;
 
 #ifdef _WIN32
-#define NK_EXPORT __declspec(dllexport)
+    #define NK_EXPORT __declspec(dllexport)
 #else //_WIN32
-#define NK_EXPORT __attribute__((__visibility__("default")))
+    #define NK_EXPORT __attribute__((__visibility__("default")))
 #endif //_WIN32
 
 #ifdef __MINGW32__
-#define NK_PRINTF_LIKE(FMT_POS) __attribute__((__format__(__MINGW_PRINTF_FORMAT, FMT_POS, FMT_POS + 1)))
+    #define NK_PRINTF_LIKE(FMT_POS) __attribute__((__format__(__MINGW_PRINTF_FORMAT, FMT_POS, FMT_POS + 1)))
 #else //__MINGW32__
-#define NK_PRINTF_LIKE(FMT_POS) __attribute__((__format__(printf, FMT_POS, FMT_POS + 1)))
+    #define NK_PRINTF_LIKE(FMT_POS) __attribute__((__format__(printf, FMT_POS, FMT_POS + 1)))
 #endif //__MINGW32__
 
 #define NK_INLINE static inline
@@ -52,10 +52,10 @@ typedef i64 isize;
 
 #ifdef __cplusplus
 
-#define NK_LITERAL(T) T
-#define NK_ZERO_STRUCT \
-    {                  \
-    }
+    #define NK_LITERAL(T) T
+    #define NK_ZERO_STRUCT \
+        {                  \
+        }
 
 template <class T>
 T *_nk_assignVoidPtr(T *&dst, void *src) {
@@ -64,45 +64,57 @@ T *_nk_assignVoidPtr(T *&dst, void *src) {
 
 #else // __cplusplus
 
-#define NK_LITERAL(T) (T)
-#define NK_ZERO_STRUCT {0}
+    #define NK_LITERAL(T) (T)
+    #define NK_ZERO_STRUCT {0}
 
-#define _nk_assignVoidPtr(dst, src) ((dst) = (src))
+    #define _nk_assignVoidPtr(dst, src) ((dst) = (src))
 
 #endif // __cplusplus
 
-#if defined(__has_attribute)
-#if __has_attribute(unused)
-#define NK_UNUSED __attribute__((unused))
+#if defined(__has_cpp_attribute)
+    #if __has_cpp_attribute(maybe_unused)
+        #define NK_UNUSED [[maybe_unused]]
+    #endif
+#elif defined(__has_attribute)
+    #if __has_attribute(unused)
+        #define NK_UNUSED __attribute__((unused))
+    #else
+        #define NK_UNUSED
+    #endif
 #else
-#define NK_UNUSED
-#endif
-#else
-#define NK_UNUSED
-#endif
-
-#if defined(__has_attribute)
-#if __has_attribute(fallthrough)
-#define NK_FALLTHROUGH __attribute__((fallthrough))
-#else
-#define NK_FALLTHROUGH
-#endif
-#else
-#define NK_FALLTHROUGH
+    #define NK_UNUSED
 #endif
 
-#if defined(__has_attribute)
-#if __has_attribute(warn_unused_result)
-#define NK_NODISCARD __attribute__((warn_unused_result))
+#if defined(__has_cpp_attribute)
+    #if __has_cpp_attribute(fallthrough)
+        #define NK_FALLTHROUGH [[fallthrough]]
+    #endif
+#elif defined(__has_attribute)
+    #if __has_attribute(fallthrough)
+        #define NK_FALLTHROUGH __attribute__((fallthrough))
+    #else
+        #define NK_FALLTHROUGH
+    #endif
 #else
-#define NK_NODISCARD
+    #define NK_FALLTHROUGH
 #endif
+
+#if defined(__has_cpp_attribute)
+    #if __has_cpp_attribute(nodiscard)
+        #define NK_NODISCARD [[nodiscard]]
+    #endif
+#elif defined(__has_attribute)
+    #if __has_attribute(warn_unused_result)
+        #define NK_NODISCARD __attribute__((warn_unused_result))
+    #else
+        #define NK_NODISCARD
+    #endif
 #else
-#define NK_NODISCARD
+    #define NK_NODISCARD
 #endif
 
 #define _NK_NOP (void)0
-#define _NK_NOP_TOPLEVEL extern NK_UNUSED int NK_CAT(_, __LINE__)
+#define _NK_NOP_TOPLEVEL NK_UNUSED extern int NK_CAT(_, __LINE__)
 
 #define _NK_EMPTY
 

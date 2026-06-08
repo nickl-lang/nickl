@@ -5,9 +5,9 @@
 #include <unordered_map>
 
 #if defined(__APPLE__)
-#include <ffi/ffi.h>
+    #include <ffi/ffi.h>
 #else
-#include <ffi.h>
+    #include <ffi.h>
 #endif
 
 #include "ir_impl.hpp"

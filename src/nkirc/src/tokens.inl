@@ -1,5 +1,5 @@
 #ifndef OP
-#define OP(...)
+    #define OP(...)
 #endif
 
 // id, text
@@ -23,7 +23,7 @@ OP(plus, "+")
 #undef OP
 
 #ifndef KW
-#define KW(...)
+    #define KW(...)
 #endif
 
 // id
@@ -101,7 +101,7 @@ KW(u8)
 #undef KW
 
 #ifndef SP
-#define SP(...)
+    #define SP(...)
 #endif
 
 // id, text

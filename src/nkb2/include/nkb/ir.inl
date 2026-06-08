@@ -1,21 +1,21 @@
 #ifndef IR
-#define IR(NAME)
+    #define IR(NAME)
 #endif
 
 #ifndef UNA_IR
-#define UNA_IR(NAME) IR(NAME)
+    #define UNA_IR(NAME) IR(NAME)
 #endif
 
 #ifndef BIN_IR
-#define BIN_IR(NAME) IR(NAME)
+    #define BIN_IR(NAME) IR(NAME)
 #endif
 
 #ifndef DBL_IR
-#define DBL_IR(NAME1, NAME2) IR(NAME1##_##NAME2)
+    #define DBL_IR(NAME1, NAME2) IR(NAME1##_##NAME2)
 #endif
 
 #ifndef CMP_IR
-#define CMP_IR(NAME) DBL_IR(cmp, NAME)
+    #define CMP_IR(NAME) DBL_IR(cmp, NAME)
 #endif
 
 IR(nop) // nop

@@ -8,16 +8,17 @@
 #include "ntk/stream.h"
 
 #ifdef NDEBUG
-#define nk_assert(x)
+    #define nk_assert(x)
 #else // NDEBUG
-#define nk_assert(x)                                                                                                 \
-    do {                                                                                                             \
-        if (!(x)) {                                                                                                  \
-            nk_printf(                                                                                               \
-                nk_file_getStream(nk_stderr()), __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
-            nk_trap();                                                                                               \
-        }                                                                                                            \
-    } while (0)
+    #define nk_assert(x)                                                                 \
+        do {                                                                             \
+            if (!(x)) {                                                                  \
+                nk_printf(                                                               \
+                    nk_file_getStream(nk_stderr()),                                      \
+                    __FILE__ ":" NK_STRINGIFY(__LINE__) ": Assertion failed: " #x "\n"); \
+                nk_trap();                                                               \
+            }                                                                            \
+        } while (0)
 #endif // NDEBUG
 
 #ifdef __cplusplus
@@ -122,7 +123,7 @@ NK_EXPORT void printFloat64Exact(NkStream out, f64 val);
 
 #ifdef __cplusplus
 
-#include <utility>
+    #include <utility>
 
 template <class F>
 struct [[nodiscard]] _NkDefer {
@@ -144,14 +145,14 @@ struct [[nodiscard]] _NkDeferWithData {
     }
 };
 
-#ifndef defer
+    #ifndef defer
 struct _NkDeferDummy {};
 template <class F>
 _NkDefer<F> operator*(_NkDeferDummy, F &&f) {
     return {std::forward<F>(f)};
 }
-#define defer auto NK_CAT(__defer, __LINE__) = _NkDeferDummy{} *[&]()
-#endif // defer
+        #define defer auto NK_CAT(__defer, __LINE__) = _NkDeferDummy{} *[&]()
+    #endif // defer
 
 template <class F>
 _NkDefer<F> nk_defer(F &&f) {

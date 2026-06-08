@@ -15,6 +15,7 @@ ConstructorInitializerAllOnOneLineOrOnePerLine: false
 
 FixNamespaceComments: true
 NamespaceIndentation: None
+IndentPPDirectives: BeforeHash
 SpacesBeforeTrailingComments: 1
 
 AllowAllParametersOfDeclarationOnNextLine: false

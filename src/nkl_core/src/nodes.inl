@@ -1,9 +1,9 @@
 #ifndef XN
-#define XN(N, T)
+    #define XN(N, T)
 #endif
 
 #ifndef X
-#define X(N) XN(N, #N)
+    #define X(N) XN(N, #N)
 #endif
 
 X(null)
